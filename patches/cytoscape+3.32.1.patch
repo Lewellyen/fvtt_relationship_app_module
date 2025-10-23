@@ -1,0 +1,41 @@
+diff --git a/node_modules/cytoscape/dist/cytoscape.umd.js b/node_modules/cytoscape/dist/cytoscape.umd.js
+index ccab7f2..62d4ba7 100644
+--- a/node_modules/cytoscape/dist/cytoscape.umd.js
++++ b/node_modules/cytoscape/dist/cytoscape.umd.js
+@@ -340,21 +340,21 @@
+     return -1 * ascending(a, b);
+   };
+ 
+-  // Safe-Extend: skip 'equals' property and swallow readonly errors
+-     var extend = function (tgt) {
+-       var args = arguments;
+-       for (var i = 1; i < args.length; i++) {
+-         var obj = args[i];
+-         if (obj == null) continue;
+-         var keys = Object.keys(obj);
+-         for (var j = 0; j < keys.length; j++) {
+-           var k = keys[j];
+-           if (k === 'equals') continue;
+-           try { tgt[k] = obj[k]; } catch (e) { }
+-         }
+-       }
+-       return tgt;
+-     };
++  var extend = Object.assign != null ? Object.assign.bind(Object) : function (tgt) {
++    var args = arguments;
++    for (var i = 1; i < args.length; i++) {
++      var obj = args[i];
++      if (obj == null) {
++        continue;
++      }
++      var keys = Object.keys(obj);
++      for (var j = 0; j < keys.length; j++) {
++        var k = keys[j];
++        tgt[k] = obj[k];
++      }
++    }
++    return tgt;
++  };
+ 
+   // get [r, g, b] from #abc or #aabbcc
+   var hex2tuple = function hex2tuple(hex) {

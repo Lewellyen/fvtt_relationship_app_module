@@ -1,0 +1,34 @@
+{
+  "id": "fvtt_relationship_app_module",
+  "title": "Beziehungsnetzwerke für Foundry",
+  "description": "Ein Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken in Foundry VTT.",
+  "version": "0.0.1",
+  "compatibility": {
+    "minimum": 13,
+    "verified": 13,
+    "maximum": 13
+  },
+  "authors": [
+    {
+      "name": "Andreas Rothe",
+      "email": "forenadmin.tir@gmail.com",
+      "discord": "lewellyen"
+    }
+  ],
+  "scripts": [
+    "dist/fvtt_relationship_app_module.js"
+  ],
+  "languages": [
+    {
+      "lang": "de",
+      "name": "Deutsch",
+      "path": "lang/de.json"
+    }
+  ],
+  "documentTypes": {
+    "JournalEntryPage": {
+      "relationship_app_graph": {}
+    }
+  },
+  "packs": []
+}
