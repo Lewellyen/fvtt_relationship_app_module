@@ -14,6 +14,7 @@
     "lint": "eslint --config eslint.config.cjs --no-ignore \"src/**/*.{ts,js,svelte}\" --fix",
     "css-lint": "stylelint \"styles/**/*.css\" --fix",
     "type-check": "tsc --noEmit",
+    "type-check:watch": "tsc --noEmit --watch",
     "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
     "format": "prettier --plugin prettier-plugin-svelte --write \"src/**/*.{ts,js,svelte}\" \"styles/**/*.css\"",
     "test": "vitest",
