@@ -21,7 +21,57 @@ module.exports = [
       ...typescript.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
-      'prefer-const': 'error'
+      'prefer-const': 'error',
+
+      // 👇 Namenskonventionen für lesbaren, konsistenten Code
+      '@typescript-eslint/naming-convention': [
+        'error',
+
+      // 1️⃣ Klassen, Interfaces, Typen, Enums, Namespaces
+      {
+        selector: ['class', 'interface', 'typeAlias', 'enum'],
+        format: ['PascalCase'],
+      },
+
+      // 2️⃣ Generics (Type-Parameter) -> sprechende PascalCase-Namen, keine T/K/V/E
+      {
+        selector: 'typeParameter',
+        format: ['PascalCase'],
+        filter: {
+          regex: '^(T|K|V|E)$',
+          match: false,
+        },
+      },
+
+      // 3️⃣ Variablen und Funktionen -> camelCase
+      {
+        selector: ['variable', 'function'],
+        format: ['camelCase'],
+        leadingUnderscore: 'allow', // _temp ok
+      },
+
+      // 4️⃣ Konstanten in UPPER_CASE
+      {
+        selector: 'variable',
+        modifiers: ['const'],
+        format: ['UPPER_CASE', 'camelCase'], // erlaubt beides, bevorzugt UPPER_CASE
+        leadingUnderscore: 'allow',
+      },
+
+      // 5️⃣ Member von Objekten/Klassen (Properties, Methods)
+      {
+        selector: ['property', 'method'],
+        format: ['camelCase', 'PascalCase'], // erlaubt beide (z. B. Event-Handler in Pascal)
+        leadingUnderscore: 'allow',
+      },
+
+      // 6️⃣ Private Felder (#scope etc.)
+      {
+        selector: 'memberLike',
+        modifiers: ['private'],
+        format: ['camelCase'],
+      },
+      ]
     }
   },
   {

@@ -20,6 +20,9 @@ export default defineConfig(() => {
       extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.svelte', '.svelte.ts'],
       dedupe: ['svelte']
     },
+    esbuild: {
+      keepNames: true
+    },
     build: {
       target: "es2020",
       outDir: "dist",
@@ -38,7 +41,7 @@ export default defineConfig(() => {
           // manualChunks darf nicht gesetzt werden, wenn inlineDynamicImports true ist
           inlineDynamicImports: true,
           // Foundry VTT IIFE Format
-          format: "iife",
+          format: "es",
           name: "Beziehungsnetzwerke für Foundry",
           extend: true,
           // KRITISCH: Verhindert Name-Mangling komplett
@@ -57,6 +60,12 @@ export default defineConfig(() => {
         // Verhindert alle Optimierungen die Namen verkürzen
         treeshake: false, // Komplett deaktiviert
       },
+    },
+    define: {
+      // Manche UMD-Libs erwarten 'global' – mappe vorsichtshalber auf globalThis:
+      global: "globalThis",
+      // Falls eine Lib process.env referenziert (harmlos stubben):
+      "process.env": {}
     },
     server: {
       port: 3000,
