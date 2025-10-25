@@ -61,7 +61,7 @@ module.exports = [
       // 5️⃣ Member von Objekten/Klassen (Properties, Methods)
       {
         selector: ['property', 'method'],
-        format: ['camelCase', 'PascalCase'], // erlaubt beide (z. B. Event-Handler in Pascal)
+        format: ['camelCase', 'PascalCase', 'UPPER_CASE'], // erlaubt beide (z. B. Event-Handler in Pascal)
         leadingUnderscore: 'allow',
       },
 
