@@ -1,15 +1,10 @@
-export const RAM_CONSTANTS = {
-  MODULE_ID: "fvtt_relationship_app_module",
-  MODULE_NAME: "Beziehungsnetzwerke für Foundry",
-  MODULE_VERSION: "0.0.1",
-  MODULE_AUTHOR: "Andreas Rothe",
-  MODULE_AUTHOR_EMAIL: "forenadmin.tir@gmail.com",
-  MODULE_AUTHOR_DISCORD: "lewellyen",
-  MODULE_AUTHOR_URL: "https://github.com/lewellyen",
-  MODULE_AUTHOR_URL_GITHUB: "https://github.com/lewellyen",
-  MODULE_AUTHOR_URL_GITHUB_REPO: "https://github.com/lewellyen/fvtt-relationship-app-module",
-  MODULE_AUTHOR_URL_GITHUB_REPO_ISSUES: "https://github.com/lewellyen/fvtt-relationship-app-module/issues",
-  MODULE_AUTHOR_URL_GITHUB_REPO_ISSUES_NEW: "https://github.com/lewellyen/fvtt-relationship-app-module/issues/new",
-  MODULE_AUTHOR_URL_GITHUB_REPO_ISSUES_NEW_ISSUE: "https://github.com/lewellyen/fvtt-relationship-app-module/issues/new",
-  MODULE_LOG_PREFIX: "FVTT RAM |",
+export const MODULE_CONSTANTS = {
+  MODULE: {
+    ID: "fvtt_relationship_app_module",
+    NAME: "Beziehungsnetzwerke für Foundry",
+    AUTHOR: "Andreas Rothe",
+    AUTHOR_EMAIL: "forenadmin.tir@gmail.com",
+    AUTHOR_DISCORD: "lewellyen",
+  },
+  LOG_PREFIX: "Foundry VTT Relationship App Module |",
 }

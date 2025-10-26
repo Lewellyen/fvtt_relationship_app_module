@@ -13,25 +13,34 @@ Object.assign = function(target, ...sources) {
   }
   return target;
 };
-const RAM_CONSTANTS = {
-  MODULE_ID: "fvtt_relationship_app_module",
-  MODULE_NAME: "Beziehungsnetzwerke für Foundry",
-  MODULE_VERSION: "0.0.1",
-  MODULE_AUTHOR: "Andreas Rothe",
-  MODULE_AUTHOR_EMAIL: "forenadmin.tir@gmail.com",
-  MODULE_AUTHOR_DISCORD: "lewellyen",
-  MODULE_AUTHOR_URL: "https://github.com/lewellyen",
-  MODULE_AUTHOR_URL_GITHUB: "https://github.com/lewellyen",
-  MODULE_AUTHOR_URL_GITHUB_REPO: "https://github.com/lewellyen/fvtt-relationship-app-module",
-  MODULE_AUTHOR_URL_GITHUB_REPO_ISSUES: "https://github.com/lewellyen/fvtt-relationship-app-module/issues",
-  MODULE_AUTHOR_URL_GITHUB_REPO_ISSUES_NEW: "https://github.com/lewellyen/fvtt-relationship-app-module/issues/new",
-  MODULE_AUTHOR_URL_GITHUB_REPO_ISSUES_NEW_ISSUE: "https://github.com/lewellyen/fvtt-relationship-app-module/issues/new",
-  MODULE_LOG_PREFIX: "FVTT RAM |"
+const MODULE_CONSTANTS = {
+  MODULE: {
+    ID: "fvtt_relationship_app_module",
+    NAME: "Beziehungsnetzwerke für Foundry",
+    AUTHOR: "Andreas Rothe",
+    AUTHOR_EMAIL: "forenadmin.tir@gmail.com",
+    AUTHOR_DISCORD: "lewellyen"
+  },
+  LOG_PREFIX: "Foundry VTT Relationship App Module |"
 };
 Hooks.on("init", () => {
-  console.log(`${RAM_CONSTANTS.MODULE_LOG_PREFIX} init`);
+  console.log(`${MODULE_CONSTANTS.LOG_PREFIX} init`);
+  Hooks.on("renderJournalDirectory", (app, html) => {
+    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} renderJournalDirectory fired`, app);
+    const hidden = game.journal.filter((j) => j.getFlag(MODULE_CONSTANTS.MODULE.ID, "hidden") === true);
+    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} Found ${hidden.length} hidden journal entries`);
+    for (const j of hidden) {
+      const element = html.querySelector(`li.directory-item[data-entry-id="${j.id}"]`);
+      if (element) {
+        console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} Removing journal entry: ${j.name}`);
+        element.remove();
+      } else {
+        console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} Could not find element for journal entry: ${j.name} (${j.id})`);
+      }
+    }
+  });
 });
 Hooks.on("ready", () => {
-  console.log(`${RAM_CONSTANTS.MODULE_LOG_PREFIX} ready`);
+  console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ready`);
 });
 //# sourceMappingURL=fvtt_relationship_app_module.js.map

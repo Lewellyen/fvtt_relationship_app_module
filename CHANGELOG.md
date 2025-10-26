@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.0.6] - 2025-10-26
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Umbenennungen und Aufräumarbeiten + Dokumentationen hinzugefügt.
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.0.5] - 2025-10-25
 ### Hinzugefügt
 - Keine Einträge

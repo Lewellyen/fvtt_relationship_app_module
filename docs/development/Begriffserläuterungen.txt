@@ -1,0 +1,389 @@
+side effect
+Constructor/Fabric-Injection
+Result/Either
+unique symbol
+useClass | useFactory | useValue
+Toposort
+DAG
+Generics mit Constraints
+Conditional Types
+Mapped Types
+Provider
+satisfies
+Exhaustiveness Check
+Branded/Opaque Types
+Type Guards
+Abstract class
+
+Super, das ist die richtige Einstellung – bevor wir mit “Inversion of Control” und Lifecycle-Architekturen produktiv arbeiten, **muss man die Sprache verstehen, in der solche Architekturen beschrieben werden**.
+Ich erkläre dir also alle diese Fachbegriffe in **einfacher, bildlicher Sprache**, und danach bekommst du **kompakte TypeScript-Beispiele** dazu.
+
+---
+
+## 🧩 1. *Side Effect* („Seiteneffekt“)
+
+**Bedeutung:**
+Ein *Side Effect* ist jede Aktion in deinem Code, die **die Außenwelt verändert** oder **von ihr abhängt** – also z. B.:
+
+* Netzwerk-Request schicken
+* Datei speichern
+* Konsole loggen
+* DOM verändern
+* globale Variable setzen
+
+In der *funktionalen Programmierung* gelten Funktionen ohne Side Effects als *rein* (engl. *pure*).
+Das hilft beim Testen, weil sie immer das gleiche Ergebnis für die gleichen Eingaben liefern.
+
+**Beispiel:**
+
+```ts
+// ohne Side Effect:
+function add(a: number, b: number): number {
+  return a + b;
+}
+
+// mit Side Effect:
+function addAndLog(a: number, b: number): number {
+  console.log("adding", a, b); // <-- Side Effect (IO)
+  return a + b;
+}
+```
+
+---
+
+## 🧱 2. *Constructor / Factory Injection*
+
+**Bedeutung:**
+„Injection“ heißt hier: *etwas wird hineingespritzt*, also **Abhängigkeiten werden übergeben**, nicht im Inneren erzeugt.
+Das Ziel ist *lose Kopplung*.
+
+* **Constructor Injection:** über den Konstruktor (Standardweg in TypeScript/JavaScript)
+* **Factory Injection:** über eine Fabrikfunktion, wenn die Erstellung komplexer oder asynchron ist.
+
+**Beispiel:**
+
+```ts
+class Logger { log(msg: string) { console.log(msg); } }
+
+// Constructor Injection:
+class Service {
+  constructor(private logger: Logger) {}
+  work() { this.logger.log("working"); }
+}
+
+// Factory Injection:
+function createService(logger: Logger) {
+  return {
+    work: () => logger.log("working"),
+  };
+}
+```
+
+---
+
+## 🎭 3. *Result / Either Pattern*
+
+**Bedeutung:**
+Ein Muster zur **Fehlerbehandlung ohne `throw`**.
+Eine Funktion liefert nicht „Wert oder Exception“, sondern **immer ein Ergebnis-Objekt**, das entweder `ok` oder `error` ist.
+Das zwingt dich, beide Fälle explizit zu behandeln.
+
+**Beispiel:**
+
+```ts
+type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
+
+function parseJSON(input: string): Result<unknown, string> {
+  try {
+    return { ok: true, value: JSON.parse(input) };
+  } catch {
+    return { ok: false, error: "Invalid JSON" };
+  }
+}
+
+// Verwendung:
+const result = parseJSON("{bad}");
+if (result.ok) console.log("Wert:", result.value);
+else console.error("Fehler:", result.error);
+```
+
+---
+
+## 🧭 4. *unique symbol*
+
+**Bedeutung:**
+Ein `symbol` ist in JS ein eindeutiger, unverwechselbarer Schlüssel.
+Ein `unique symbol` in TypeScript ist ein **Typ, der garantiert nur an einer einzigen Stelle existiert**.
+Wird oft als „Token“ in Dependency Injection verwendet.
+
+**Beispiel:**
+
+```ts
+const MyToken: unique symbol = Symbol("MyToken");
+type MyToken = typeof MyToken;
+
+interface Registry {
+  [MyToken]: string;
+}
+
+const registry: Registry = { [MyToken]: "hello" };
+```
+
+---
+
+## 🧩 5. *useClass | useFactory | useValue*
+
+**Bedeutung:**
+In Dependency Injection beschreibt man **wie** ein Token erfüllt wird:
+
+* `useClass`: der Container erzeugt eine Instanz dieser Klasse
+* `useFactory`: er ruft eine Funktion auf, die die Instanz liefert
+* `useValue`: er gibt einfach diesen Wert zurück (z. B. Konfiguration)
+
+**Beispiel:**
+
+```ts
+const LoggerToken = Symbol("Logger");
+
+container.register({ token: LoggerToken, useClass: ConsoleLogger });
+container.register({ token: ConfigToken, useValue: { debug: true } });
+container.register({ token: HttpClientToken, useFactory: () => new HttpClient() });
+```
+
+---
+
+## 🔗 6. *Toposort* und *DAG*
+
+**Bedeutung:**
+
+* **DAG (Directed Acyclic Graph)** = gerichteter Graph ohne Zyklen
+  → Knoten = Objekte, Pfeile = „A hängt von B ab“.
+* **Toposort (Topological Sort)** = Algorithmus, der Knoten so ordnet, dass jede Abhängigkeit **vor** dem abhängigen Knoten kommt.
+
+Das braucht man, um Lifecycles in der richtigen Reihenfolge zu starten (zuerst Basisdienste, dann abhängige).
+
+**Beispiel:**
+
+```
+Logger ← Database ← UserService
+→ Reihenfolge nach Toposort: Logger, Database, UserService
+```
+
+---
+
+## 🧰 7. *Generics mit Constraints*
+
+**Bedeutung:**
+Generics sind Typ-Parameter („T“), die Funktionen und Klassen **generisch** machen.
+„Constraints“ (`extends`) schränken sie ein.
+
+**Beispiel:**
+
+```ts
+function firstElement<T extends { length: number }>(arr: T): number {
+  return arr.length;
+}
+
+firstElement([1, 2, 3]); // OK
+firstElement("abc");     // OK (string hat length)
+```
+
+---
+
+## 🧮 8. *Conditional Types*
+
+**Bedeutung:**
+Ein Typ, der **abhängig von einer Bedingung** berechnet wird (Ternary für Typen).
+
+**Beispiel:**
+
+```ts
+type IsString<T> = T extends string ? true : false;
+
+type A = IsString<string>; // true
+type B = IsString<number>; // false
+```
+
+---
+
+## 🧩 9. *Mapped Types*
+
+**Bedeutung:**
+Ein Typ, der über die Schlüssel eines anderen Typs iteriert und daraus einen neuen Typ erzeugt.
+
+**Beispiel:**
+
+```ts
+type Readonlyify<T> = {
+  [K in keyof T]: Readonly<T[K]>;
+};
+
+type Person = { name: string; age: number };
+type ReadonlyPerson = Readonlyify<Person>; 
+// => { name: string; age: number } (alles readonly)
+```
+
+---
+
+## 🧱 10. *Provider*
+
+**Bedeutung:**
+In der Dependency Injection beschreibt ein **Provider**, *wie* ein Token erfüllt wird –
+also *wer liefert das Ding, das ich brauche*.
+
+Ein Provider kann z. B. sagen:
+
+* „Wenn jemand `Logger` braucht, gib `ConsoleLogger`“
+* „Wenn jemand `Config` braucht, gib dieses Objekt“
+
+**Beispiel:**
+
+```ts
+type Provider<T> =
+  | { kind: "class"; useClass: new () => T }
+  | { kind: "factory"; useFactory: () => T }
+  | { kind: "value"; useValue: T };
+```
+
+---
+
+## ⚙️ 11. *satisfies*
+
+**Bedeutung:**
+TypeScript-Operator, um zu prüfen, ob ein Objekt einem Typ **entspricht**, ohne den Typ zu *engen*.
+Das heißt: Du bekommst Typ-Sicherheit, behältst aber die konkreten Literale.
+
+**Beispiel:**
+
+```ts
+type Role = "admin" | "user";
+const config = {
+  role: "admin",
+} satisfies { role: Role };
+
+// Rolle bleibt literal "admin", nicht nur string
+```
+
+---
+
+## 🧮 12. *Exhaustiveness Check*
+
+**Bedeutung:**
+Sicherstellen, dass in einem `switch` **alle Fälle behandelt** werden.
+Man macht das mit `never`, damit TypeScript bei neuen Fällen meckert.
+
+**Beispiel:**
+
+```ts
+type Shape = "circle" | "square";
+
+function area(shape: Shape) {
+  switch (shape) {
+    case "circle": return 3.14;
+    case "square": return 1;
+    default: assertNever(shape); // compiler-error, falls neuer Fall hinzukommt
+  }
+}
+
+function assertNever(x: never): never {
+  throw new Error("Unexpected case: " + x);
+}
+```
+
+---
+
+## 🧬 13. *Branded / Opaque Types*
+
+**Bedeutung:**
+Man markiert primitive Typen (z. B. `string`) mit einem „Brand“,
+damit sie **nicht versehentlich austauschbar** sind.
+
+**Beispiel:**
+
+```ts
+type UserId = string & { __brand: "UserId" };
+type OrderId = string & { __brand: "OrderId" };
+
+function getUser(id: UserId) {}
+const uid = "abc123" as UserId;
+const oid = "abc123" as OrderId;
+
+getUser(uid); // ✅
+getUser(oid); // ❌ (Typfehler!)
+```
+
+---
+
+## 🕵️ 14. *Type Guards*
+
+**Bedeutung:**
+Eine Funktion, die TypeScript **zur Laufzeit hilft, den Typ zu erkennen**.
+Sie prüft etwas und informiert den Compiler darüber mit einem *Prädikat* (`x is Type`).
+
+**Beispiel:**
+
+```ts
+function isString(x: unknown): x is string {
+  return typeof x === "string";
+}
+
+function print(x: unknown) {
+  if (isString(x)) {
+    // Hier weiß TS: x ist string
+    console.log(x.toUpperCase());
+  }
+}
+```
+
+---
+
+## 🧱 15. *Abstract class*
+
+**Bedeutung:**
+Eine abstrakte Klasse ist eine **Vorlage**, die nicht direkt instanziiert werden kann.
+Sie definiert Grundverhalten oder verpflichtende Methoden für Unterklassen.
+
+**Beispiel:**
+
+```ts
+abstract class Animal {
+  abstract speak(): void;
+  move() { console.log("moving"); }
+}
+
+class Dog extends Animal {
+  speak() { console.log("woof"); }
+}
+
+const a = new Dog(); // OK
+// const b = new Animal(); ❌ nicht erlaubt
+```
+
+---
+
+# 🧠 Kurzüberblick als Merkliste
+
+| Begriff                          | Kurzbeschreibung                         | Beispiel-Anwendung                 |
+| -------------------------------- | ---------------------------------------- | ---------------------------------- |
+| Side Effect                      | Wirkung außerhalb der Funktion           | `console.log`, Netz-Request        |
+| Constructor/Factory Injection    | Abhängigkeiten übergeben                 | `new Service(logger)`              |
+| Result/Either                    | Fehler explizit typisieren               | `{ ok: false, error }`             |
+| unique symbol                    | Eindeutiger Typschlüssel                 | `Symbol("Token")`                  |
+| useClass / useFactory / useValue | Wie ein Service bereitgestellt wird      | `container.register(...)`          |
+| Toposort                         | Reihenfolge von Abhängigkeiten           | Startreihenfolge von Services      |
+| DAG                              | Graph ohne Kreise                        | Abhängigkeitsnetz                  |
+| Generics mit Constraints         | Typsichere Platzhalter mit Einschränkung | `<T extends HasId>`                |
+| Conditional Types                | Typbedingungen                           | `T extends string ? A : B`         |
+| Mapped Types                     | Typen über Schlüssel transformieren      | `Readonly<T>`                      |
+| Provider                         | DI-Regel (Token → Instanz)               | `{ token, useClass }`              |
+| satisfies                        | TypeScript-Typprüfung für Literale       | `config satisfies Config`          |
+| Exhaustiveness Check             | Vollständigkeitsprüfung                  | `assertNever()`                    |
+| Branded/Opaque Types             | Stärkere Typtrennung                     | `type UserId = string & {__brand}` |
+| Type Guards                      | Typprüfung zur Laufzeit                  | `isString(x)`                      |
+| Abstract class                   | Template-Klasse                          | `abstract class Base {}`           |
+
+---
+
+Möchtest du, dass ich dir im nächsten Schritt **zeige, wie man all diese Konzepte in einer minimalen, lauffähigen DI-Infrastruktur kombiniert** (also praktisch angewendet)?
+Dann bekommst du eine Schritt-für-Schritt-Implementierung mit diesen Begriffen “in Aktion”.
+
