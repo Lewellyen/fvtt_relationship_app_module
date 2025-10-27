@@ -22,6 +22,7 @@ module.exports = [
       '@typescript-eslint/no-unused-vars': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
       'prefer-const': 'error',
+      'eqeqeq': ['error', 'always'],
 
       // 👇 Namenskonventionen für lesbaren, konsistenten Code
       '@typescript-eslint/naming-convention': [
@@ -65,6 +66,16 @@ module.exports = [
         leadingUnderscore: 'allow',
       },
 
+      // Exception: Type-Branding Properties (nur Compile-Zeit, kein Laufzeit-Property)
+      {
+        selector: 'property',
+        format: null, // keine Format-Prüfung
+        filter: {
+          regex: '^__.*', // Properties, die mit __ beginnen
+          match: true
+        }
+      },
+
       // 6️⃣ Private Felder (#scope etc.)
       {
         selector: 'memberLike',
@@ -94,5 +105,12 @@ module.exports = [
   },
   {
     ignores: ['node_modules/', 'dist/', 'packs/', 'assets/', 'tailwind.config.js', 'postcss.config.js']
+  },
+  {
+    // Exception für Cytoscape Polyfill (benötigt loose equality)
+    files: ['src/polyfills/cytoscape-assign-fix.ts'],
+    rules: {
+      'eqeqeq': 'off' // Deaktiviert für absichtlichen Patch
+    }
   }
 ]; 

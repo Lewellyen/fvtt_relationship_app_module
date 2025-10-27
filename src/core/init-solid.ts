@@ -1,5 +1,9 @@
 import { MODULE_CONSTANTS } from "../constants";
 
+/**
+ * Initializes the module when Foundry VTT starts.
+ * Registers hooks for hiding journal entries based on module flags.
+ */
 Hooks.on("init", () => {
   console.log(`${MODULE_CONSTANTS.LOG_PREFIX} init`);
   Hooks.on("renderJournalDirectory", (app, html) => {
@@ -20,6 +24,10 @@ Hooks.on("init", () => {
   });
 });
 
+/**
+ * Ready hook: Module initialization complete.
+ * Executes when Foundry VTT is fully ready.
+ */
 Hooks.on("ready", () => {
   console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ready`);
 });

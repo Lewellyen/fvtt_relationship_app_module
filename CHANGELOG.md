@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.0.7] - 2025-10-27
+### Hinzugefügt
+- Containerstruktur Prototyp
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.0.6] - 2025-10-26
 ### Hinzugefügt
 - Keine Einträge
