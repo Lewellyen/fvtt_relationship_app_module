@@ -1,7 +1,7 @@
 /**
  * Module-wide constants for the Foundry VTT Relationship App Module.
  * Contains metadata and configuration values used throughout the application.
- * 
+ *
  * @constant
  */
 export const MODULE_CONSTANTS = {

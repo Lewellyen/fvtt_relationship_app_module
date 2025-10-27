@@ -1,6 +1,6 @@
 /**
  * Main entry point for the Foundry VTT Relationship App Module.
- * 
+ *
  * This file:
  * - Applies polyfills for third-party libraries
  * - Initializes the module

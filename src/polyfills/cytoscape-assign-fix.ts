@@ -1,4 +1,9 @@
-// Polyfill für Cytoscape: Object.assign readonly 'equals' fix
+/**
+ * Polyfill für Cytoscape: Object.assign readonly 'equals' fix
+ *
+ * ⚠️ WICHTIG: Dieser Polyfill ist ein Legacy-Patch für die Cytoscape-Bibliothek.
+ * NIEMALS ÄNDERN - könnte das Verhalten der Cytoscape-Integration beeinträchtigen.
+ */
 Object.assign = function (target: any, ...sources: any[]) {
   for (const source of sources) {
     if (source != null) {

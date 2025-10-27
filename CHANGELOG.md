@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.0.8] - 2025-10-27
+### Hinzugefügt
+- Einführung Resultpattern
+
+### Geändert
+- Einführung Resultpattern
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.0.7] - 2025-10-27
 ### Hinzugefügt
 - Containerstruktur Prototyp

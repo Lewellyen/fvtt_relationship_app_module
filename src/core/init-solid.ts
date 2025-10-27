@@ -1,4 +1,43 @@
 import { MODULE_CONSTANTS } from "../constants";
+import { ok, err, tryCatch, match } from "@/utils/result";
+import type { Result } from "@/types/result";
+
+/**
+ * Safely gets journal entries that are marked as hidden.
+ */
+function getHiddenJournalEntries(): Result<any[], string> {
+  return tryCatch(
+    () => {
+      if (!game?.journal) {
+        throw new Error("game.journal is not available");
+      }
+      return (game as any).journal.filter(
+        (j: any) => j.getFlag(MODULE_CONSTANTS.MODULE.ID as any, "hidden") === true
+      );
+    },
+    (error) => `Failed to get hidden journal entries: ${error}`
+  );
+}
+
+/**
+ * Safely removes a journal entry from the UI.
+ */
+function removeJournalElement(
+  journalId: string,
+  journalName: string,
+  html: HTMLElement
+): Result<void, string> {
+  const element = html.querySelector(
+    `li.directory-item[data-entry-id="${journalId}"]`
+  ) as HTMLElement;
+
+  if (!element) {
+    return err(`Could not find element for journal entry: ${journalName} (${journalId})`);
+  }
+
+  element.remove();
+  return ok(undefined);
+}
 
 /**
  * Initializes the module when Foundry VTT starts.
@@ -6,21 +45,37 @@ import { MODULE_CONSTANTS } from "../constants";
  */
 Hooks.on("init", () => {
   console.log(`${MODULE_CONSTANTS.LOG_PREFIX} init`);
+
   Hooks.on("renderJournalDirectory", (app, html) => {
     console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} renderJournalDirectory fired`, app);
 
-    const hidden = (game as any).journal.filter((j: any) => j.getFlag(MODULE_CONSTANTS.MODULE.ID as any, "hidden") === true);
-    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} Found ${hidden.length} hidden journal entries`);
-    
-    for (const j of hidden) {
-      const element = (html as HTMLElement).querySelector(`li.directory-item[data-entry-id="${j.id}"]`) as HTMLElement;
-      if (element) {
-        console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} Removing journal entry: ${j.name}`);
-        element.remove();
-      } else {
-        console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} Could not find element for journal entry: ${j.name} (${j.id})`);
-      }
-    }
+    const hiddenResult = getHiddenJournalEntries();
+
+    match(hiddenResult, {
+      onOk: (hidden) => {
+        console.debug(
+          `${MODULE_CONSTANTS.LOG_PREFIX} Found ${hidden.length} hidden journal entries`
+        );
+
+        for (const journal of hidden) {
+          const removeResult = removeJournalElement(journal.id, journal.name, html as HTMLElement);
+
+          match(removeResult, {
+            onOk: () => {
+              console.debug(
+                `${MODULE_CONSTANTS.LOG_PREFIX} Removing journal entry: ${journal.name}`
+              );
+            },
+            onErr: (error) => {
+              console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${error}`);
+            },
+          });
+        }
+      },
+      onErr: (error) => {
+        console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${error}`);
+      },
+    });
   });
 });
 
@@ -31,4 +86,3 @@ Hooks.on("init", () => {
 Hooks.on("ready", () => {
   console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ready`);
 });
-
