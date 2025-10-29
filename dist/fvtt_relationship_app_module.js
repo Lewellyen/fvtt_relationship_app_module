@@ -1,5 +1,13 @@
 var __defProp = Object.defineProperty;
+var __typeError = (msg) => {
+  throw TypeError(msg);
+};
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
+var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
+var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
+var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
+var _serviceRegistrations, _validationState, _serviceInstances, _parentContainer, _disposed, _scopeName, _children;
 Object.assign = function(target, ...sources) {
   for (const source of sources) {
     if (source != null) {
@@ -115,6 +123,706 @@ async function asyncAll(asyncResults) {
   return all(results);
 }
 __name(asyncAll, "asyncAll");
+var ServiceLifecycle = /* @__PURE__ */ ((ServiceLifecycle2) => {
+  ServiceLifecycle2["SINGLETON"] = "singleton";
+  ServiceLifecycle2["TRANSIENT"] = "transient";
+  ServiceLifecycle2["SCOPED"] = "scoped";
+  return ServiceLifecycle2;
+})(ServiceLifecycle || {});
+const fallbackFactories = /* @__PURE__ */ new Map();
+function registerFallback(token, factory) {
+  fallbackFactories.set(token, factory);
+}
+__name(registerFallback, "registerFallback");
+const _ServiceContainer = class _ServiceContainer {
+  /**
+   * Creates a new service container.
+   * If a parent container is provided, creates a scoped child container.
+   *
+   * **Important:** Child containers are automatically registered with the parent
+   * and will be disposed when the parent is disposed (cascading disposal).
+   *
+   * @param parentContainer - Optional parent container for hierarchical DI
+   * @param scopeName - Optional name for the scope (auto-generated if not provided)
+   *
+   * @example
+   * ```typescript
+   * // Root container
+   * const root = new ServiceContainer();
+   *
+   * // Scoped container (child) with auto-generated name
+   * const scope = new ServiceContainer(root);
+   *
+   * // Scoped container (child) with custom name
+   * const namedScope = new ServiceContainer(root, "myScope");
+   *
+   * // All children are tracked by root for cascading disposal
+   * root.dispose(); // Automatically disposes scope and namedScope
+   * ```
+   */
+  constructor(parentContainer = null, scopeName = null) {
+    /** Service registrations mapping tokens to factories and lifecycles */
+    __privateAdd(this, _serviceRegistrations, /* @__PURE__ */ new Map());
+    /** Current validation state of the container */
+    __privateAdd(this, _validationState, "registering");
+    /** Cached service instances for Singleton and Scoped lifecycles */
+    __privateAdd(this, _serviceInstances, /* @__PURE__ */ new Map());
+    /** Reference to parent container in the scope hierarchy */
+    __privateAdd(this, _parentContainer, null);
+    /** Flag indicating if this container has been disposed */
+    __privateAdd(this, _disposed, false);
+    /** Hierarchical name for debugging and error messages (e.g., "root.child1") */
+    __privateAdd(this, _scopeName, null);
+    /** Set of all child containers for cascading disposal */
+    __privateAdd(this, _children, /* @__PURE__ */ new Set());
+    if (parentContainer !== null) {
+      __privateSet(this, _serviceRegistrations, new Map(__privateGet(parentContainer, _serviceRegistrations)));
+      __privateSet(this, _serviceInstances, /* @__PURE__ */ new Map());
+      __privateSet(this, _parentContainer, parentContainer);
+      __privateSet(this, _scopeName, __privateGet(parentContainer, _scopeName) + "." + (scopeName ?? "scope" + crypto.randomUUID() + Date.now()));
+      __privateSet(this, _disposed, false);
+      __privateGet(parentContainer, _children).add(this);
+    } else {
+      __privateSet(this, _scopeName, "root");
+      __privateSet(this, _disposed, false);
+    }
+  }
+  /**
+   * Create a child container with its own scope.
+   * Inherits service registrations from parent but maintains separate scoped instances.
+   *
+   * @param name - Optional name for the scope (auto-generated if not provided)
+   * @returns Result containing a new scoped container or an error if this container is disposed
+   *
+   * @example
+   * ```typescript
+   * const rootContainer = new ServiceContainer();
+   * const scopedContainer = rootContainer.createScope();
+   * if (isErr(scopedContainer)) {
+   *   console.error(scopedContainer.error.message);
+   * }
+   * ```
+   */
+  createScope(name) {
+    if (__privateGet(this, _disposed)) {
+      return err({
+        code: "Disposed",
+        message: `Cannot create scope from disposed container: ${__privateGet(this, _scopeName)}`
+      });
+    }
+    if (__privateGet(this, _validationState) !== "validated") {
+      return err({
+        code: "NotValidated",
+        message: "Parent must be validated before creating scopes. Call validate() first."
+      });
+    }
+    const child = new _ServiceContainer(this, name ?? null);
+    __privateSet(child, _validationState, "validated");
+    return ok(child);
+  }
+  /**
+   * Check if a service is registered.
+   * Recursively checks the entire parent container hierarchy from root to this container.
+   *
+   * @template TServiceType - The type of service
+   * @param token - The injection token to check
+   * @returns Result indicating if registered in this container or any parent container
+   *
+   * @example
+   * ```typescript
+   * const root = new ServiceContainer();
+   * const scope1 = root.createScope();
+   * const scope2 = scope1.createScope();
+   *
+   * root.register(LoggerToken, () => new Logger(), SINGLETON);
+   * const result = scope2.isRegistered(LoggerToken);
+   * if (isOk(result) && result.value) {
+   *   // Service is registered
+   * }
+   * ```
+   */
+  isRegistered(token) {
+    if (__privateGet(this, _parentContainer) !== null) {
+      return __privateGet(this, _parentContainer).isRegistered(token);
+    }
+    return ok(__privateGet(this, _serviceRegistrations).has(token));
+  }
+  /**
+   * Dispose this container and clean up all scoped instances.
+   * Services implementing Disposable will have their dispose() method called automatically.
+   *
+   * **Cascading Disposal:** All child containers are automatically disposed recursively.
+   * Child disposal errors are logged but do not stop parent disposal.
+   *
+   * Root container clearing requires manual clear() call.
+   *
+   * @returns Result indicating success or any disposal errors
+   *
+   * @example
+   * ```typescript
+   * const root = new ServiceContainer();
+   * const child = root.createScope();
+   * const db = child.resolve(DatabaseToken); // Implements Disposable
+   *
+   * // Disposing root automatically disposes child (and db.dispose() is called)
+   * const result = root.dispose();
+   * if (isErr(result)) {
+   *   console.error("Disposal failed:", result.error);
+   * }
+   * ```
+   */
+  dispose() {
+    if (__privateGet(this, _disposed)) {
+      return err({
+        code: "Disposed",
+        message: `Container already disposed: ${__privateGet(this, _scopeName)}`
+      });
+    }
+    __privateSet(this, _disposed, true);
+    for (const child of __privateGet(this, _children)) {
+      const childResult = tryCatch(
+        () => child.dispose(),
+        (error) => ({
+          code: "DisposalFailed",
+          message: `Error disposing child container ${__privateGet(child, _scopeName)}: ${String(error)}`,
+          cause: error
+        })
+      );
+      if (isErr(childResult)) {
+        console.warn(`Failed to dispose child container ${__privateGet(child, _scopeName)}:`, childResult.error);
+      }
+    }
+    for (const [token, instance] of __privateGet(this, _serviceInstances).entries()) {
+      if (this.isDisposable(instance)) {
+        const result = tryCatch(
+          () => instance.dispose(),
+          (error) => ({
+            code: "DisposalFailed",
+            message: `Error disposing service ${String(token)}: ${String(error)}`,
+            tokenDescription: String(token),
+            cause: error
+          })
+        );
+        if (isErr(result)) {
+          return result;
+        }
+      }
+    }
+    __privateGet(this, _serviceInstances).clear();
+    if (__privateGet(this, _parentContainer) !== null) {
+      __privateGet(__privateGet(this, _parentContainer), _children).delete(this);
+    }
+    __privateSet(this, _validationState, "registering");
+    return ok(void 0);
+  }
+  /**
+   * Check if an instance implements the Disposable interface.
+   *
+   * @param instance - The service instance to check
+   * @returns True if the instance has a dispose() method
+   */
+  isDisposable(instance) {
+    return "dispose" in instance && typeof instance.dispose === "function";
+  }
+  /**
+   * Clear all service registrations and instances.
+   * Use with caution - this will remove all configured services.
+   * Note: dispose() should be used for scoped containers instead.
+   *
+   * @returns Result indicating success
+   */
+  clear() {
+    __privateGet(this, _serviceRegistrations).clear();
+    __privateGet(this, _serviceInstances).clear();
+    return ok(void 0);
+  }
+  /**
+   * Register a service class with automatic dependency injection.
+   *
+   * @template TServiceType - The type of service to register
+   * @param token - The injection token that identifies this service
+   * @param serviceClass - The service class to instantiate
+   * @param lifecycle - Service lifecycle strategy
+   * @returns Result indicating success or registration error
+   */
+  registerClass(token, serviceClass, lifecycle) {
+    if (__privateGet(this, _disposed)) {
+      return err({
+        code: "Disposed",
+        message: `Cannot register service on disposed container: ${String(token)}`,
+        tokenDescription: String(token)
+      });
+    }
+    if (__privateGet(this, _validationState) === "validated") {
+      return err({
+        code: "InvalidOperation",
+        message: "Cannot register after validation"
+      });
+    }
+    if (__privateGet(this, _serviceRegistrations).has(token)) {
+      return err({
+        code: "DuplicateRegistration",
+        message: `Service ${String(token)} already registered`,
+        tokenDescription: String(token)
+      });
+    }
+    const dependencies = serviceClass.dependencies ?? [];
+    const factory = /* @__PURE__ */ __name(() => {
+      const resolvedDeps = dependencies.map((dep) => {
+        const result = this.resolveWithError(dep);
+        if (isErr(result)) {
+          throw new Error(`Dependency ${String(dep)} could not be resolved`);
+        }
+        return result.value;
+      });
+      return new serviceClass(...resolvedDeps);
+    }, "factory");
+    __privateGet(this, _serviceRegistrations).set(token, {
+      factory,
+      lifecycle,
+      dependencies,
+      providerType: "class"
+    });
+    return ok(void 0);
+  }
+  /**
+   * Register a factory function that creates service instances.
+   *
+   * @template T - The type this factory creates
+   * @param token - The injection token that identifies this service
+   * @param factory - Factory function that creates the service instance
+   * @param lifecycle - Service lifecycle strategy
+   * @param dependencies - Array of tokens this factory depends on
+   * @returns Result indicating success or registration error
+   */
+  registerFactory(token, factory, lifecycle, dependencies) {
+    if (__privateGet(this, _disposed)) {
+      return err({
+        code: "Disposed",
+        message: `Cannot register service on disposed container: ${String(token)}`,
+        tokenDescription: String(token)
+      });
+    }
+    if (__privateGet(this, _validationState) === "validated") {
+      return err({
+        code: "InvalidOperation",
+        message: "Cannot register after validation"
+      });
+    }
+    if (__privateGet(this, _serviceRegistrations).has(token)) {
+      return err({
+        code: "DuplicateRegistration",
+        message: `Service ${String(token)} already registered`,
+        tokenDescription: String(token)
+      });
+    }
+    __privateGet(this, _serviceRegistrations).set(token, {
+      factory,
+      lifecycle,
+      dependencies,
+      providerType: "factory"
+    });
+    return ok(void 0);
+  }
+  /**
+   * Register a constant value (always singleton).
+   *
+   * @template T - The type of value
+   * @param token - The injection token that identifies this value
+   * @param value - The value to register
+   * @returns Result indicating success or registration error
+   */
+  registerValue(token, value) {
+    if (__privateGet(this, _disposed)) {
+      return err({
+        code: "Disposed",
+        message: `Cannot register service on disposed container: ${String(token)}`,
+        tokenDescription: String(token)
+      });
+    }
+    if (__privateGet(this, _validationState) === "validated") {
+      return err({
+        code: "InvalidOperation",
+        message: "Cannot register after validation"
+      });
+    }
+    if (__privateGet(this, _serviceRegistrations).has(token)) {
+      return err({
+        code: "DuplicateRegistration",
+        message: `Service ${String(token)} already registered`,
+        tokenDescription: String(token)
+      });
+    }
+    if (typeof value === "function") {
+      return err({
+        code: "InvalidOperation",
+        message: "registerValue() only accepts plain values, not classes or functions. Use registerClass() or registerFactory() instead.",
+        tokenDescription: String(token)
+      });
+    }
+    __privateGet(this, _serviceRegistrations).set(token, {
+      factory: /* @__PURE__ */ __name(() => value, "factory"),
+      lifecycle: ServiceLifecycle.SINGLETON,
+      dependencies: [],
+      providerType: "value"
+    });
+    return ok(void 0);
+  }
+  /**
+   * Register an alias that points to another token.
+   *
+   * @template TServiceType - The type of service
+   * @param aliasToken - The alias token
+   * @param targetToken - The token to resolve instead
+   * @returns Result indicating success or registration error
+   */
+  registerAlias(aliasToken, targetToken) {
+    if (__privateGet(this, _disposed)) {
+      return err({
+        code: "Disposed",
+        message: `Cannot register service on disposed container: ${String(aliasToken)}`,
+        tokenDescription: String(aliasToken)
+      });
+    }
+    if (__privateGet(this, _validationState) === "validated") {
+      return err({
+        code: "InvalidOperation",
+        message: "Cannot register after validation"
+      });
+    }
+    if (__privateGet(this, _serviceRegistrations).has(aliasToken)) {
+      return err({
+        code: "DuplicateRegistration",
+        message: `Service ${String(aliasToken)} already registered`,
+        tokenDescription: String(aliasToken)
+      });
+    }
+    const factory = /* @__PURE__ */ __name(() => {
+      const result = this.resolveWithError(targetToken);
+      if (isErr(result)) {
+        throw new Error(`Alias target ${String(targetToken)} not found`);
+      }
+      return result.value;
+    }, "factory");
+    __privateGet(this, _serviceRegistrations).set(aliasToken, {
+      factory,
+      lifecycle: ServiceLifecycle.SINGLETON,
+      dependencies: [targetToken],
+      providerType: "alias",
+      aliasTarget: targetToken
+    });
+    return ok(void 0);
+  }
+  /**
+   * Validate all registered services and their dependencies.
+   */
+  validate() {
+    if (__privateGet(this, _validationState) === "validated") {
+      return ok(void 0);
+    }
+    if (__privateGet(this, _validationState) === "validating") {
+      return err([
+        {
+          code: "InvalidOperation",
+          message: "Validation already in progress"
+        }
+      ]);
+    }
+    __privateSet(this, _validationState, "validating");
+    const errors = this.validateAllDependencies();
+    if (errors.length > 0) {
+      __privateSet(this, _validationState, "registering");
+      return err(errors);
+    }
+    __privateSet(this, _validationState, "validated");
+    return ok(void 0);
+  }
+  /**
+   * Get the current validation state of the container.
+   */
+  getValidationState() {
+    return __privateGet(this, _validationState);
+  }
+  /**
+   * Resolve a service instance from the container with explicit error handling.
+   *
+   * @template TServiceType - The type of service to resolve
+   * @param token - The injection token identifying the service
+   * @returns Result containing the service instance or an error
+   *
+   * @example
+   * ```typescript
+   * const result = container.resolveWithError(LoggerToken);
+   * if (isOk(result)) {
+   *   const logger = result.value;
+   *   logger.info("Service resolved successfully");
+   * }
+   * ```
+   */
+  resolveWithError(token) {
+    if (__privateGet(this, _disposed)) {
+      return err({
+        code: "Disposed",
+        message: `Cannot resolve service from disposed container: ${String(token)}`,
+        tokenDescription: String(token)
+      });
+    }
+    if (__privateGet(this, _validationState) !== "validated") {
+      return err({
+        code: "NotValidated",
+        message: "Container must be validated before resolving. Call validate() first.",
+        tokenDescription: String(token)
+      });
+    }
+    const checkResult = this.isRegistered(token);
+    if (isErr(checkResult) || !checkResult.value) {
+      return err({
+        code: "TokenNotRegistered",
+        message: `Service ${String(token)} not registered`,
+        tokenDescription: String(token)
+      });
+    }
+    const service = __privateGet(this, _serviceRegistrations).get(token);
+    if (!service) {
+      return err({
+        code: "TokenNotRegistered",
+        message: `Service ${String(token)} not registered`,
+        tokenDescription: String(token)
+      });
+    }
+    return tryCatch(
+      () => {
+        switch (service.lifecycle) {
+          case ServiceLifecycle.SINGLETON:
+            if (__privateGet(this, _parentContainer) !== null) {
+              const parentResult = __privateGet(this, _parentContainer).resolveWithError(token);
+              if (isErr(parentResult)) {
+                throw new Error("CIRCULAR_DEPENDENCY");
+              }
+              return parentResult.value;
+            }
+            if (!__privateGet(this, _serviceInstances).has(token)) {
+              __privateGet(this, _serviceInstances).set(token, service.factory());
+            }
+            return __privateGet(this, _serviceInstances).get(token);
+          case ServiceLifecycle.TRANSIENT:
+            return service.factory();
+          case ServiceLifecycle.SCOPED:
+            if (__privateGet(this, _parentContainer) === null) {
+              throw new Error("SCOPED_REQUIRES_CONTAINER");
+            }
+            if (!__privateGet(this, _serviceInstances).has(token)) {
+              __privateGet(this, _serviceInstances).set(token, service.factory());
+            }
+            return __privateGet(this, _serviceInstances).get(token);
+          default:
+            throw new Error("INVALID_LIFECYCLE");
+        }
+      },
+      (error) => {
+        const errorMessage = String(error);
+        let code;
+        let message;
+        if (errorMessage.includes("CIRCULAR_DEPENDENCY")) {
+          code = "CircularDependency";
+          message = `Circular dependency detected for service ${String(token)}`;
+        } else if (errorMessage.includes("SCOPED_REQUIRES_CONTAINER")) {
+          code = "ScopeRequired";
+          message = `Scoped service ${String(token)} requires a scope container`;
+        } else if (errorMessage.includes("INVALID_LIFECYCLE")) {
+          code = "InvalidLifecycle";
+          message = `Invalid service lifecycle: ${String(service.lifecycle)}`;
+        } else {
+          code = "FactoryFailed";
+          message = `Error creating service ${String(token)}: ${errorMessage}`;
+        }
+        return {
+          code,
+          message,
+          tokenDescription: String(token),
+          cause: error
+        };
+      }
+    );
+  }
+  /**
+   * Resolve a service instance directly from the container.
+   * Uses fallback factory if container resolution fails and a fallback is registered.
+   *
+   * @template TServiceType - The type of service to resolve
+   * @param token - The injection token identifying the service
+   * @returns The resolved service instance
+   * @throws Error if container resolution fails and no fallback is registered
+   *
+   * @example
+   * ```typescript
+   * // Direct resolution with automatic fallback
+   * const logger = container.resolve(loggerToken);
+   * logger.info("This will work even if container resolution fails!");
+   * ```
+   */
+  resolve(token) {
+    const result = this.resolveWithError(token);
+    if (isOk(result)) {
+      return result.value;
+    }
+    const fallback = fallbackFactories.get(token);
+    if (fallback) {
+      return fallback();
+    }
+    throw new Error(
+      `Cannot resolve ${String(token)}: ${result.error.message}. No fallback factory registered for this token.`
+    );
+  }
+  /**
+   * Validate all dependencies and check for circular dependencies.
+   */
+  validateAllDependencies() {
+    const errors = [];
+    for (const [token, registration] of __privateGet(this, _serviceRegistrations).entries()) {
+      for (const dep of registration.dependencies) {
+        if (!__privateGet(this, _serviceRegistrations).has(dep)) {
+          errors.push({
+            code: "TokenNotRegistered",
+            message: `${String(token)} depends on ${String(dep)} which is not registered`,
+            tokenDescription: String(dep)
+          });
+        }
+      }
+    }
+    for (const [token, registration] of __privateGet(this, _serviceRegistrations).entries()) {
+      if (registration.providerType === "alias" && registration.aliasTarget) {
+        if (!__privateGet(this, _serviceRegistrations).has(registration.aliasTarget)) {
+          errors.push({
+            code: "AliasTargetNotFound",
+            message: `Alias ${String(token)} points to ${String(registration.aliasTarget)} which is not registered`,
+            tokenDescription: String(registration.aliasTarget)
+          });
+        }
+      }
+    }
+    const circularErrors = this.detectCircularDependencies();
+    errors.push(...circularErrors);
+    return errors;
+  }
+  /**
+   * Detect circular dependencies using DFS.
+   */
+  detectCircularDependencies() {
+    const errors = [];
+    const visited = /* @__PURE__ */ new Set();
+    for (const token of __privateGet(this, _serviceRegistrations).keys()) {
+      const visiting = /* @__PURE__ */ new Set();
+      const path = [];
+      const error = this.checkCycleForToken(token, visiting, visited, path);
+      if (error) {
+        errors.push(error);
+      }
+    }
+    return errors;
+  }
+  /**
+   * Check for cycles starting from a specific token.
+   */
+  checkCycleForToken(token, visiting, visited, path) {
+    if (visiting.has(token)) {
+      const cyclePath = [...path, token].map(String).join(" → ");
+      return {
+        code: "CircularDependency",
+        message: `Circular dependency: ${cyclePath}`,
+        tokenDescription: String(token)
+      };
+    }
+    if (visited.has(token)) {
+      return null;
+    }
+    visiting.add(token);
+    path.push(token);
+    const registration = __privateGet(this, _serviceRegistrations).get(token);
+    if (registration) {
+      for (const dep of registration.dependencies) {
+        const error = this.checkCycleForToken(dep, visiting, visited, path);
+        if (error) return error;
+      }
+    }
+    visiting.delete(token);
+    path.pop();
+    visited.add(token);
+    return null;
+  }
+};
+_serviceRegistrations = new WeakMap();
+_validationState = new WeakMap();
+_serviceInstances = new WeakMap();
+_parentContainer = new WeakMap();
+_disposed = new WeakMap();
+_scopeName = new WeakMap();
+_children = new WeakMap();
+__name(_ServiceContainer, "ServiceContainer");
+let ServiceContainer = _ServiceContainer;
+function createInjectionToken(description) {
+  return Symbol(description);
+}
+__name(createInjectionToken, "createInjectionToken");
+const loggerToken = createInjectionToken("Logger");
+const _ConsoleLoggerService = class _ConsoleLoggerService {
+  /**
+   * Log a message to console
+   * @param message - Message to log
+   */
+  log(message) {
+    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`);
+  }
+  /**
+   * Log an error message
+   * @param message - Error message to log
+   */
+  error(message) {
+    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`);
+  }
+  /**
+   * Log a warning message
+   * @param message - Warning message to log
+   */
+  warn(message) {
+    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`);
+  }
+  /**
+   * Log an info message
+   * @param message - Info message to log
+   */
+  info(message) {
+    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`);
+  }
+  /**
+   * Log a debug message
+   * @param message - Debug message to log
+   */
+  debug(message) {
+    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`);
+  }
+};
+__name(_ConsoleLoggerService, "ConsoleLoggerService");
+_ConsoleLoggerService.dependencies = [];
+let ConsoleLoggerService = _ConsoleLoggerService;
+function configureDependencies(container) {
+  registerFallback(loggerToken, () => new ConsoleLoggerService());
+  const result = container.registerClass(
+    loggerToken,
+    ConsoleLoggerService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(result)) {
+    return err(`Failed to register logger: ${result.error.message}`);
+  }
+  const validateResult = container.validate();
+  if (isErr(validateResult)) {
+    const errorMessages = validateResult.error.map((e) => e.message).join(", ");
+    return err(`Validation failed: ${errorMessages}`);
+  }
+  return ok(void 0);
+}
+__name(configureDependencies, "configureDependencies");
 function getHiddenJournalEntries() {
   return tryCatch(
     () => {
@@ -169,8 +877,25 @@ Hooks.on("init", () => {
       }, "onErr")
     });
   });
+  const container = new ServiceContainer();
+  const configureResult = configureDependencies(container);
+  match(configureResult, {
+    onOk: /* @__PURE__ */ __name(() => {
+      console.log(`${MODULE_CONSTANTS.LOG_PREFIX} dependencies configured`);
+      globalThis.container = container;
+    }, "onOk"),
+    onErr: /* @__PURE__ */ __name((error) => {
+      console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${error}`);
+      globalThis.container = null;
+    }, "onErr")
+  });
+  const logger = container.resolve(loggerToken);
+  logger.info("Logger resolved");
+  logger.info("init completed");
 });
 Hooks.on("ready", () => {
-  console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ready`);
+  const container = globalThis.container;
+  const logger = container.resolve(loggerToken);
+  logger.info("Module ready");
 });
 //# sourceMappingURL=fvtt_relationship_app_module.js.map

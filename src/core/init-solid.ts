@@ -1,6 +1,9 @@
 import { MODULE_CONSTANTS } from "../constants";
 import { ok, err, tryCatch, match } from "@/utils/result";
 import type { Result } from "@/types/result";
+import { ServiceContainer } from "@/di_infrastructure/container";
+import { configureDependencies } from "@/config/dependencyconfig";
+import { loggerToken } from "@/tokens/tokenindex";
 
 /**
  * Safely gets journal entries that are marked as hidden.
@@ -77,6 +80,24 @@ Hooks.on("init", () => {
       },
     });
   });
+
+  const container = new ServiceContainer();
+  const configureResult = configureDependencies(container);
+  match(configureResult, {
+    onOk: () => {
+      console.log(`${MODULE_CONSTANTS.LOG_PREFIX} dependencies configured`);
+      (globalThis as any).container = container;
+    },
+    onErr: (error) => {
+      console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${error}`);
+      (globalThis as any).container = null;
+    },
+  });
+
+  // Direct resolution with automatic fallback - no Result-Check needed
+  const logger = container.resolve(loggerToken);
+  logger.info("Logger resolved");
+  logger.info("init completed");
 });
 
 /**
@@ -84,5 +105,7 @@ Hooks.on("init", () => {
  * Executes when Foundry VTT is fully ready.
  */
 Hooks.on("ready", () => {
-  console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ready`);
+  const container = (globalThis as any).container;
+  const logger = container.resolve(loggerToken);
+  logger.info("Module ready");
 });

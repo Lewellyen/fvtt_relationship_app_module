@@ -15,7 +15,7 @@
  *   }
  *
  *   dispose() {
- *     this.connection.close(); // Cleanup aufräumen
+ *     this.connection.close(); // Cleanup resources
  *   }
  * }
  * ```

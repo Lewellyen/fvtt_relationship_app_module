@@ -1,37 +1,38 @@
 /**
- * Type for service factories used in dependency injection.
+ * Type for factory functions used in dependency injection.
  */
-import type { ServiceType } from "@/types/servicetypeindex";
 
 /**
- * A factory function type that creates instances of a service.
- * Used by the DI container to instantiate services on-demand based on their lifecycle.
+ * Type alias for factory functions that create instances.
+ * Self-documenting: makes it clear this is a factory function pattern.
  *
- * @template TServiceType - The type of service this factory creates (must extend ServiceType)
- * @returns A new instance of the service
+ * **Features:**
+ * - No type constraints: can create any type (services, values, primitives)
+ * - Function signature: `() => T`
+ * - Lazily executed when service is resolved
+ * - Container caches instances based on lifecycle (Singleton/Transient/Scoped)
  *
- * @remarks
- * - Factory functions are lazily executed when a service is resolved
- * - The container caches instances based on the service lifecycle (Singleton/Transient/Scoped)
- * - Each call to the factory function creates a new instance unless cached
+ * @template T - The type this factory creates (no constraint - can be any type)
+ * @returns A new instance of type T
  *
  * @example
  * ```typescript
- * // Simple service factory
- * const loggerFactory: ServiceFactory<Logger> = () => new Logger();
+ * // Simple factory
+ * const loggerFactory: FactoryFunction<Logger> = () => new Logger();
  *
- * // Factory with initialization
- * const dbFactory: ServiceFactory<Database> = () => {
- *   const db = new Database();
- *   db.configure(config);
- *   return db;
+ * // Factory with complex logic
+ * const configFactory: FactoryFunction<Config> = () => {
+ *   const config = JSON.parse(fs.readFileSync('config.json', 'utf-8'));
+ *   return config;
  * };
  *
- * // Factory using dependencies from container
- * const userRepoFactory: ServiceFactory<UserRepository> = () => {
- *   const db = container.resolve(DatabaseToken);
- *   return new UserRepository(db);
- * };
+ * // Factory with dependencies
+ * container.registerFactory(
+ *   ConfigToken,
+ *   () => loadConfig(),
+ *   SINGLETON,
+ *   []
+ * );
  * ```
  */
-export type ServiceFactory<TServiceType extends ServiceType> = () => TServiceType;
+export type FactoryFunction<T> = () => T;
