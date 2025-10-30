@@ -105,3 +105,19 @@
 ### Upgrade-Hinweise
 - Keine besonderen Maßnahmen erforderlich
 
+## [0.0.10] - 2025-10-30
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
