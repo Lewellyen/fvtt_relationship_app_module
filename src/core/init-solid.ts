@@ -58,14 +58,14 @@ export function initializeModule(container: ServiceContainer): void {
   // Register hook using Foundry abstraction
   foundryHooks.on("renderJournalDirectory", (app, html) => {
     const logger = container.resolve(loggerToken);
-    logger.debug(`${MODULE_CONSTANTS.LOG_PREFIX} renderJournalDirectory fired`);
+    logger.debug("renderJournalDirectory fired");
 
     const hiddenResult = getHiddenJournalEntries(foundryGame, foundryDocument);
 
     match(hiddenResult, {
       onOk: (hidden) => {
         logger.debug(
-          `${MODULE_CONSTANTS.LOG_PREFIX} Found ${hidden.length} hidden journal entries`
+          "Found " + hidden.length + " hidden journal entries"
         );
 
         for (const journal of hidden) {
@@ -78,18 +78,18 @@ export function initializeModule(container: ServiceContainer): void {
           match(removeResult, {
             onOk: () => {
               logger.debug(
-                `${MODULE_CONSTANTS.LOG_PREFIX} Removing journal entry: ${journal.name ?? "Unknown"}`
+                "Removing journal entry: " + (journal.name ?? "Unknown")
               );
             },
             onErr: (error) => {
-              logger.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${error}`);
+              logger.warn("Error removing journal entry: " + error);
             },
           });
         }
       },
       onErr: (error) => {
         const logger = container.resolve(loggerToken);
-        logger.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${error}`);
+        logger.error("Error getting hidden journal entries: " + error);
       },
     });
   });
