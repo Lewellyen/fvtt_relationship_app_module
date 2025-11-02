@@ -17,6 +17,7 @@ export type ContainerErrorCode =
   | "DuplicateRegistration" // Attempt to register the same service twice
   | "FactoryFailed" // Factory function threw an error
   | "CircularDependency" // Circular dependency detected between services
+  | "DependencyResolveFailed" // Failed to resolve a dependency during service instantiation
   | "Disposed" // Container or service has been disposed
   | "ScopeRequired" // Scoped service requires a child container
   | "DisposalFailed" // Error occurred during dispose() operation

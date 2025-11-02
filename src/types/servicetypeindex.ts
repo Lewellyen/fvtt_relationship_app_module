@@ -8,6 +8,7 @@ import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { PortSelector } from "@/foundry/versioning/portselector";
 import type { PortRegistry } from "@/foundry/versioning/portregistry";
+import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
 
 /**
  * Union type representing all registered service types in the application.
@@ -29,4 +30,5 @@ export type ServiceType =
   | PortRegistry<FoundryGame>
   | PortRegistry<FoundryHooks>
   | PortRegistry<FoundryDocument>
-  | PortRegistry<FoundryUI>;
+  | PortRegistry<FoundryUI>
+  | JournalVisibilityService;

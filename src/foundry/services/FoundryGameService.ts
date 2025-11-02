@@ -3,8 +3,9 @@ import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import type { PortSelector } from "@/foundry/versioning/portselector";
 import type { PortRegistry } from "@/foundry/versioning/portregistry";
-import { err } from "@/utils/result";
+import { err, tryCatch } from "@/utils/result";
 import { portSelectorToken, foundryGamePortRegistryToken } from "@/foundry/foundrytokens";
+import { getFoundryVersion } from "@/foundry/versioning/versiondetector";
 
 /**
  * Service wrapper for FoundryGame that automatically selects the appropriate port
@@ -24,39 +25,36 @@ export class FoundryGameService implements FoundryGame {
 
   /**
    * Lazy-loads the appropriate port based on Foundry version.
-   * @throws Error if no compatible port can be selected
+   * @returns Result containing the port or an error if no compatible port can be selected
    */
-  private getPort(): FoundryGame {
+  private getPort(): Result<FoundryGame, string> {
     if (this.port === null) {
-      const ports = this.portRegistry.createAll();
-      const result = this.portSelector.selectPort(ports);
-      if (!result.ok) {
-        throw new Error(`Failed to select FoundryGame port: ${result.error}`);
+      const versionResult = tryCatch(
+        () => getFoundryVersion(),
+        (e) => `Cannot detect Foundry version: ${e instanceof Error ? e.message : String(e)}`
+      );
+      if (!versionResult.ok) {
+        return err(`Failed to detect Foundry version: ${versionResult.error}`);
       }
-      this.port = result.value;
+
+      const portResult = this.portRegistry.createForVersion(versionResult.value);
+      if (!portResult.ok) {
+        return err(`Failed to select FoundryGame port: ${portResult.error}`);
+      }
+      this.port = portResult.value;
     }
-    return this.port;
+    return { ok: true, value: this.port };
   }
 
   getJournalEntries(): Result<FoundryJournalEntry[], string> {
-    try {
-      return this.getPort().getJournalEntries();
-    } catch (error) {
-      return err(
-        error instanceof Error ? error.message : `Failed to get journal entries: ${String(error)}`
-      );
-    }
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.getJournalEntries();
   }
 
   getJournalEntryById(id: string): Result<FoundryJournalEntry | null, string> {
-    try {
-      return this.getPort().getJournalEntryById(id);
-    } catch (error) {
-      return err(
-        error instanceof Error
-          ? error.message
-          : `Failed to get journal entry by ID ${id}: ${String(error)}`
-      );
-    }
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.getJournalEntryById(id);
   }
 }

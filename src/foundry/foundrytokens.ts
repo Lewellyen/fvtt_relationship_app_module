@@ -1,3 +1,8 @@
+/**
+ * Injection tokens for the Foundry abstraction layer and its versioned ports.
+ * These tokens allow services to be resolved via the DI container without
+ * directly depending on concrete implementations.
+ */
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import { createInjectionToken } from "@/di_infrastructure/tokenutilities";
 import type { FoundryGame } from "./interfaces/FoundryGame";

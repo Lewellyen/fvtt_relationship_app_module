@@ -60,9 +60,9 @@ export interface Container {
    * );
    * ```
    */
-  registerFactory<T>(
-    token: symbol,
-    factory: FactoryFunction<T>,
+  registerFactory<TServiceType extends ServiceType>(
+    token: InjectionToken<TServiceType>,
+    factory: FactoryFunction<TServiceType>,
     lifecycle: ServiceLifecycle,
     dependencies: ServiceDependencies
   ): Result<void, ContainerError>;
@@ -85,7 +85,10 @@ export interface Container {
    * container.registerValue(ConfigToken, { apiUrl: 'https://api.com' });
    * ```
    */
-  registerValue<T>(token: symbol, value: T): Result<void, ContainerError>;
+  registerValue<TServiceType extends ServiceType>(
+    token: InjectionToken<TServiceType>,
+    value: TServiceType
+  ): Result<void, ContainerError>;
 
   /**
    * Register an alias that points to another token.
@@ -127,8 +130,7 @@ export interface Container {
    * const result = container.validate();
    * if (isErr(result)) {
    *   result.error.forEach(err => console.error(err.message));
-  接下
-   }
+   * }
    * ```
    */
   validate(): Result<void, ContainerError[]>;
@@ -144,7 +146,9 @@ export interface Container {
    * Create a child container with its own scope.
    * @param name - Optional name for the scope
    */
-  createScope(name?: string): Result<Container, ContainerError>;
+  createScope(
+    name?: string
+  ): Result<import("@/di_infrastructure/container").ServiceContainer, ContainerError>;
 
   /**
    * Resolve a service instance directly from the container.

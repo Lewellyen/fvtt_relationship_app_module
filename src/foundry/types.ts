@@ -6,11 +6,18 @@
  */
 
 /**
- * Wrapper type for Foundry JournalEntry.
- * Provides a stable interface across Foundry versions.
- * Using any to avoid dependency on specific Foundry type definitions.
+ * Foundry Journal Entry document from the database.
+ * 
+ * Uses official fvtt-types for full type safety while maintaining
+ * version independence through Foundry's type system.
+ * 
+ * JournalEntry.Stored represents a journal entry that has been persisted
+ * to the database and retrieved, providing access to all document properties
+ * including id, name, pages, flags, and methods like getFlag().
+ * 
+ * @see {@link https://github.com/League-of-Foundry-Developers/foundry-vtt-types}
  */
-export type FoundryJournalEntry = any;
+export type FoundryJournalEntry = JournalEntry.Stored;
 
 /**
  * Hook callback type for Foundry hooks.

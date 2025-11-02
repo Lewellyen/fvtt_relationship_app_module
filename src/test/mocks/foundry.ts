@@ -1,0 +1,155 @@
+import { vi } from "vitest";
+import type { Logger } from "@/interfaces/logger";
+import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
+import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
+import { loggerToken } from "@/tokens/tokenindex";
+import { foundryHooksToken } from "@/foundry/foundrytokens";
+import { journalVisibilityServiceToken } from "@/tokens/tokenindex";
+import type { FoundryJournalEntry } from "@/foundry/types";
+
+/**
+ * Mock-Factories für Foundry VTT API-Objekte
+ */
+
+export interface MockGameOptions {
+  version?: string;
+  journal?: {
+    contents?: FoundryJournalEntry[];
+    get?: (id: string) => FoundryJournalEntry | undefined;
+  };
+  modules?: Map<string, unknown>;
+  user?: {
+    id?: string;
+    name?: string;
+  };
+}
+
+/**
+ * Erstellt ein Mock game-Objekt für Tests
+ */
+export function createMockGame(options: MockGameOptions = {}): typeof game {
+  const journalEntries = options.journal?.contents || [];
+  const journalGet = options.journal?.get || ((id: string) => journalEntries.find((e) => e.id === id));
+
+  // Explizit prüfen ob version gesetzt ist (inkl. empty string)
+  const version = options.version !== undefined ? options.version : "13.291";
+
+  return {
+    version,
+    journal: {
+      contents: journalEntries,
+      get: vi.fn(journalGet),
+    },
+    modules: options.modules || new Map(),
+    user: options.user || {
+      id: "test-user",
+      name: "Test User",
+    },
+  } as typeof game;
+}
+
+export interface MockJournalEntryOptions {
+  id?: string;
+  name?: string;
+  flags?: Record<string, unknown>;
+}
+
+/**
+ * Erstellt ein Mock JournalEntry.Stored Objekt
+ */
+export function createMockJournalEntry(
+  overrides: MockJournalEntryOptions = {}
+): FoundryJournalEntry {
+  const id = overrides.id || `journal-${Math.random().toString(36).substring(7)}`;
+  const name = overrides.name || "Test Journal Entry";
+
+  return {
+    id,
+    name,
+    flags: overrides.flags || {},
+    getFlag: vi.fn((scope: string, key: string) => {
+      const flags = overrides.flags || {};
+      return (flags[`${scope}.${key}`] as unknown) || (flags[key] as unknown);
+    }),
+    setFlag: vi.fn().mockResolvedValue(true),
+  } as unknown as FoundryJournalEntry;
+}
+
+/**
+ * Erstellt ein Mock Hooks-Objekt
+ */
+export function createMockHooks(): typeof Hooks {
+  return {
+    on: vi.fn(),
+    off: vi.fn(),
+    once: vi.fn(),
+    call: vi.fn(),
+    callAll: vi.fn(),
+  } as unknown as typeof Hooks;
+}
+
+/**
+ * Erstellt ein Mock UI-Objekt
+ */
+export function createMockUI(): typeof ui {
+  return {
+    notifications: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+  } as unknown as typeof ui;
+}
+
+/**
+ * Erstellt ein Mock HTMLElement für DOM-Tests
+ */
+export function createMockHTMLElement(tagName = "div"): HTMLElement {
+  return document.createElement(tagName);
+}
+
+/**
+ * Mock-Container für ModuleHookRegistrar Tests
+ * Verwendet resolve-Spies statt echten Container-Resolution
+ */
+export function createMockContainer(overrides: Partial<Record<symbol, unknown>> = {}) {
+  const mockLogger: Logger = {
+    debug: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    log: vi.fn(),
+  };
+
+  const mockHooks: FoundryHooks = {
+    on: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
+    off: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
+  };
+
+  const mockJournalService: JournalVisibilityService = {
+    processJournalDirectory: vi.fn(),
+    getHiddenJournalEntries: vi.fn().mockReturnValue({ ok: true as const, value: [] }),
+  };
+
+  const defaults: Record<symbol, unknown> = {
+    [loggerToken]: mockLogger,
+    [foundryHooksToken]: mockHooks,
+    [journalVisibilityServiceToken]: mockJournalService,
+  };
+
+  const services = { ...defaults, ...overrides };
+
+  return {
+    resolve: vi.fn((token: symbol) => {
+      if (!services[token]) {
+        throw new Error(`Token not mocked: ${String(token)}`);
+      }
+      return services[token];
+    }),
+    // Expose mocked services for assertions
+    getMockLogger: () => mockLogger,
+    getMockHooks: () => mockHooks,
+    getMockJournalService: () => mockJournalService,
+  };
+}
+

@@ -11,7 +11,7 @@
  *
  * @example
  * ```typescript
- * const container = new ServiceContainer();
+ * const container = ServiceContainer.createRoot();
  *
  * // Phase 1: Registration
  * container.getValidationState();  // 'registering'

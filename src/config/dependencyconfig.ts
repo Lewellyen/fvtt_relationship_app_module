@@ -1,6 +1,7 @@
 import { ServiceContainer, registerFallback } from "@/di_infrastructure/container";
-import { loggerToken } from "@/tokens/tokenindex";
+import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
+import { JournalVisibilityService } from "@/services/JournalVisibilityService";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import { ok, err, isErr } from "@/utils/result";
 import type { Result } from "@/types/result";
@@ -43,7 +44,7 @@ import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
  *
  * @example
  * ```typescript
- * const container = new ServiceContainer();
+ * const container = ServiceContainer.createRoot();
  * const result = configureDependencies(container);
  * if (isOk(result)) {
  *   const logger = container.resolve(loggerToken); // Direct resolution with fallback
@@ -78,17 +79,36 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   }
 
   // Register PortRegistries
+  const portRegistrationErrors: string[] = [];
+
   const gamePortRegistry = new PortRegistry<FoundryGame>();
-  gamePortRegistry.register(13, () => new FoundryGamePortV13());
+  const gamePortRegResult = gamePortRegistry.register(13, () => new FoundryGamePortV13());
+  if (isErr(gamePortRegResult)) {
+    portRegistrationErrors.push(`FoundryGame v13: ${gamePortRegResult.error}`);
+  }
 
   const hooksPortRegistry = new PortRegistry<FoundryHooks>();
-  hooksPortRegistry.register(13, () => new FoundryHooksPortV13());
+  const hooksPortRegResult = hooksPortRegistry.register(13, () => new FoundryHooksPortV13());
+  if (isErr(hooksPortRegResult)) {
+    portRegistrationErrors.push(`FoundryHooks v13: ${hooksPortRegResult.error}`);
+  }
 
   const documentPortRegistry = new PortRegistry<FoundryDocument>();
-  documentPortRegistry.register(13, () => new FoundryDocumentPortV13());
+  const documentPortRegResult = documentPortRegistry.register(13, () => new FoundryDocumentPortV13());
+  if (isErr(documentPortRegResult)) {
+    portRegistrationErrors.push(`FoundryDocument v13: ${documentPortRegResult.error}`);
+  }
 
   const uiPortRegistry = new PortRegistry<FoundryUI>();
-  uiPortRegistry.register(13, () => new FoundryUIPortV13());
+  const uiPortRegResult = uiPortRegistry.register(13, () => new FoundryUIPortV13());
+  if (isErr(uiPortRegResult)) {
+    portRegistrationErrors.push(`FoundryUI v13: ${uiPortRegResult.error}`);
+  }
+
+  // Return early if any port registration failed
+  if (portRegistrationErrors.length > 0) {
+    return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
+  }
 
   const gameRegistryResult = container.registerValue(
     foundryGamePortRegistryToken,
@@ -164,6 +184,18 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   if (isErr(uiServiceResult)) {
     return err(`Failed to register FoundryUI service: ${uiServiceResult.error.message}`);
+  }
+
+  const journalVisibilityResult = container.registerClass(
+    journalVisibilityServiceToken,
+    JournalVisibilityService,
+    ServiceLifecycle.SINGLETON
+  );
+
+  if (isErr(journalVisibilityResult)) {
+    return err(
+      `Failed to register JournalVisibility service: ${journalVisibilityResult.error.message}`
+    );
   }
 
   // Phase 2: Validate

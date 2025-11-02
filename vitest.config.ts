@@ -21,7 +21,31 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
-      exclude: ["node_modules/", "src/test/", "**/*.d.ts", "**/*.config.*"],
+      include: ["src/**/*.ts"],
+      exclude: [
+        "node_modules/",
+        "src/test/",
+        "**/*.d.ts",
+        "**/*.config.*",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        // Pure type/interface files
+        "src/**/interfaces/**",
+        "src/types/**",
+        "src/foundry/types.ts",
+        "src/di_infrastructure/types/containererrorcode.ts",
+        "src/di_infrastructure/types/containervalidationstate.ts",
+        "src/di_infrastructure/types/injectiontoken.ts",
+        "src/di_infrastructure/types/serviceclass.ts",
+        "src/di_infrastructure/types/servicedependencies.ts",
+        "src/di_infrastructure/types/servicefactory.ts",
+        "src/core/module-api.ts",
+        // Non-executable infrastructure
+        "src/polyfills/**",
+        "src/svelte/**",
+        "src/custom.d.ts",
+        "programming_learning_examples/**",
+      ],
     },
   },
 });

@@ -71,4 +71,3 @@ export class PortSelector {
     return ok(selectedPort);
   }
 }
-

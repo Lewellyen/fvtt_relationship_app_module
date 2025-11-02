@@ -13,8 +13,9 @@ export function getFoundryVersion(): number {
     throw new Error("Foundry game object is not available or version cannot be determined");
   }
 
-  // Prefer modern property if available, fallback to legacy
-  const versionString = String((game as any).version ?? (game as any).data?.version);
+  // game.version is typed as string by fvtt-types
+  // Format is "{major}.{minor}" (e.g., "13.348")
+  const versionString = game.version;
   if (!versionString) {
     throw new Error("Foundry version is not available on the game object");
   }

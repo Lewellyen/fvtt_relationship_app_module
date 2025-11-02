@@ -105,6 +105,22 @@
 ### Upgrade-Hinweise
 - Keine besonderen Maßnahmen erforderlich
 
+## [0.0.12] - 2025-11-02
+### Hinzugefügt
+- Test-Suite
+
+### Geändert
+- Fehlerbehandlung verbessert.
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.0.11] - 2025-10-31
 ### Hinzugefügt
 - Keine Einträge

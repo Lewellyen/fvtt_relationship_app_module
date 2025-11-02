@@ -33,4 +33,3 @@ export interface FoundryDocument {
     value: T
   ): Promise<Result<void, string>>;
 }
-

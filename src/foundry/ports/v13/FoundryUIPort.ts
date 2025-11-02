@@ -29,4 +29,3 @@ export class FoundryUIPortV13 implements FoundryUI {
     return ok(element);
   }
 }
-

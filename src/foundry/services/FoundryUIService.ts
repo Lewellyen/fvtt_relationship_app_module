@@ -2,8 +2,9 @@ import type { Result } from "@/types/result";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
-import { err } from "@/utils/result";
+import { err, tryCatch } from "@/utils/result";
 import { portSelectorToken, foundryUIPortRegistryToken } from "@/foundry/foundrytokens";
+import { getFoundryVersion } from "@/foundry/versioning/versiondetector";
 
 /**
  * Service wrapper for FoundryUI that automatically selects the appropriate port
@@ -23,18 +24,25 @@ export class FoundryUIService implements FoundryUI {
 
   /**
    * Lazy-loads the appropriate port based on Foundry version.
-   * @throws Error if no compatible port can be selected
+   * @returns Result containing the port or an error if no compatible port can be selected
    */
-  private getPort(): FoundryUI {
+  private getPort(): Result<FoundryUI, string> {
     if (this.port === null) {
-      const ports = this.portRegistry.createAll();
-      const result = this.portSelector.selectPort(ports);
-      if (!result.ok) {
-        throw new Error(`Failed to select FoundryUI port: ${result.error}`);
+      const versionResult = tryCatch(
+        () => getFoundryVersion(),
+        (e) => `Cannot detect Foundry version: ${e instanceof Error ? e.message : String(e)}`
+      );
+      if (!versionResult.ok) {
+        return err(`Failed to detect Foundry version: ${versionResult.error}`);
       }
-      this.port = result.value;
+
+      const portResult = this.portRegistry.createForVersion(versionResult.value);
+      if (!portResult.ok) {
+        return err(`Failed to select FoundryUI port: ${portResult.error}`);
+      }
+      this.port = portResult.value;
     }
-    return this.port;
+    return { ok: true, value: this.port };
   }
 
   removeJournalElement(
@@ -42,26 +50,14 @@ export class FoundryUIService implements FoundryUI {
     journalName: string,
     html: HTMLElement
   ): Result<void, string> {
-    try {
-      return this.getPort().removeJournalElement(journalId, journalName, html);
-    } catch (error) {
-      return err(
-        error instanceof Error
-          ? error.message
-          : `Failed to remove journal element ${journalId}: ${String(error)}`
-      );
-    }
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.removeJournalElement(journalId, journalName, html);
   }
 
   findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, string> {
-    try {
-      return this.getPort().findElement(container, selector);
-    } catch (error) {
-      return err(
-        error instanceof Error
-          ? error.message
-          : `Failed to find element with selector ${selector}: ${String(error)}`
-      );
-    }
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.findElement(container, selector);
   }
 }

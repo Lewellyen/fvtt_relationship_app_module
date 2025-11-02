@@ -26,4 +26,3 @@ export interface FoundryUI {
    */
   findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, string>;
 }
-

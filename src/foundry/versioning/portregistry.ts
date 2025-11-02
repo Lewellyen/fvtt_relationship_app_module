@@ -3,22 +3,31 @@
  * Centralizes port registration and discovery.
  */
 
+import type { Result } from "@/types/result";
+import { ok, err } from "@/utils/result";
+
 export type PortFactory<T> = () => T;
 
 /**
- * Registry that holds port factories organized by version.
+ * Registry that holds exactly one port factory per version.
  * @template T - The port interface type
  */
 export class PortRegistry<T> {
+  // Exactly one factory per version
   private readonly factories = new Map<number, PortFactory<T>>();
 
   /**
    * Registers a port factory for a specific Foundry version.
    * @param version - The Foundry version this port supports
    * @param factory - Factory function that creates the port instance
+   * @returns Result indicating success or duplicate registration error
    */
-  register(version: number, factory: PortFactory<T>): void {
+  register(version: number, factory: PortFactory<T>): Result<void, string> {
+    if (this.factories.has(version)) {
+      return err(`PortRegistry: version ${version} already registered`);
+    }
     this.factories.set(version, factory);
+    return ok(undefined);
   }
 
   /**
@@ -42,6 +51,30 @@ export class PortRegistry<T> {
   }
 
   /**
+   * Creates only the port for the specified version or the highest compatible version.
+   * More efficient than createAll() when only one port is needed.
+   * @param version - The target Foundry version
+   * @returns Result containing the port instance or error
+   */
+  createForVersion(version: number): Result<T, string> {
+    // Find highest compatible version (<= target version)
+    const compatibleVersions = Array.from(this.factories.keys())
+      .filter(v => v <= version)
+      .sort((a, b) => b - a);
+
+    if (compatibleVersions.length === 0) {
+      const availableVersions = this.getAvailableVersions().join(", ");
+      return err(
+        `No compatible port for Foundry v${version}. Available ports: ${availableVersions || "none"}`
+      );
+    }
+
+    const selectedVersion = compatibleVersions[0];
+    const factory = this.factories.get(selectedVersion)!;
+    return ok(factory());
+  }
+
+  /**
    * Checks if a port is registered for a specific version.
    * @param version - The version to check
    * @returns True if a port is registered for this version
@@ -59,4 +92,3 @@ export class PortRegistry<T> {
     return versions.length > 0 ? versions[versions.length - 1] : undefined;
   }
 }
-
