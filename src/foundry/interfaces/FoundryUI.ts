@@ -1,4 +1,5 @@
 import type { Result } from "@/types/result";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
  * Interface for Foundry UI manipulation.
@@ -10,19 +11,19 @@ export interface FoundryUI {
    * @param journalId - The ID of the journal entry
    * @param journalName - The name of the journal entry (for error messages)
    * @param html - The HTML element containing the journal directory
-   * @returns Result indicating success or failure
+   * @returns Result indicating success or a FoundryError
    */
   removeJournalElement(
     journalId: string,
     journalName: string,
     html: HTMLElement
-  ): Result<void, string>;
+  ): Result<void, FoundryError>;
 
   /**
    * Finds a DOM element within a container.
    * @param container - The HTML container to search in
    * @param selector - CSS selector for the element
-   * @returns Result containing the found element or null, or an error message
+   * @returns Result containing the found element or null, or a FoundryError
    */
-  findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, string>;
+  findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, FoundryError>;
 }

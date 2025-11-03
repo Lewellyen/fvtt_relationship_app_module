@@ -57,35 +57,43 @@ describe("FoundryGameService", () => {
     it("should propagate port selection errors", () => {
       // Create new service with failing selector
       const failingSelector = new PortSelector();
-      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(
-        err("Port selection failed")
-      );
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
       const failingService = new FoundryGameService(failingSelector, mockRegistry);
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
-      expect(result.error).toContain("Port selection failed");
+      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
+      expect(result.error.message).toContain("Port selection failed");
     });
   });
 
   describe("Version Detection Failures", () => {
     it("should handle port selector errors", () => {
       const failingSelector = new PortSelector();
-      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(
-        err("No compatible port found")
-      );
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "No compatible port found",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
       const failingService = new FoundryGameService(failingSelector, mockRegistry);
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
-      expect(result.error).toContain("No compatible port");
+      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
+      expect(result.error.message).toContain("No compatible port");
     });
 
     it("should handle port selection returning no port", () => {
       const failingSelector = new PortSelector();
-      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(
-        err("Port selection failed")
-      );
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
       const failingService = new FoundryGameService(failingSelector, mockRegistry);
 
       const result = failingService.getJournalEntries();
@@ -102,7 +110,8 @@ describe("FoundryGameService", () => {
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
-      expect(result.error).toContain("No compatible port");
+      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
+      expect(result.error.message).toContain("No compatible port");
     });
   });
 
@@ -118,11 +127,16 @@ describe("FoundryGameService", () => {
     });
 
     it("should propagate port method errors", () => {
-      mockPort.getJournalEntries = vi.fn().mockReturnValue(err("Port method failed"));
+      const mockError = {
+        code: "OPERATION_FAILED" as const,
+        message: "Port method failed",
+      };
+      mockPort.getJournalEntries = vi.fn().mockReturnValue(err(mockError));
 
       const result = service.getJournalEntries();
       expectResultErr(result);
-      expect(result.error).toContain("Port method failed");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Port method failed");
     });
 
     it("should delegate getJournalEntryById to port", () => {

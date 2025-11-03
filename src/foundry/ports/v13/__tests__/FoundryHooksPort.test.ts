@@ -32,7 +32,8 @@ describe("FoundryHooksPortV13", () => {
       const result = port.on("init", callback);
 
       expectResultErr(result);
-      expect(result.error).toContain("Hooks API");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to register hook");
     });
 
     it("should wrap exceptions in Result", () => {
@@ -45,7 +46,8 @@ describe("FoundryHooksPortV13", () => {
       const result = port.on("init", callback);
 
       expectResultErr(result);
-      expect(result.error).toContain("Hook error");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to register hook");
     });
   });
 
@@ -68,7 +70,8 @@ describe("FoundryHooksPortV13", () => {
       const result = port.off("init", callback);
 
       expectResultErr(result);
-      expect(result.error).toContain("Hooks API");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to unregister hook");
     });
 
     it("should wrap exceptions in Result", () => {
@@ -81,7 +84,8 @@ describe("FoundryHooksPortV13", () => {
       const result = port.off("init", callback);
 
       expectResultErr(result);
-      expect(result.error).toContain("Hook error");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to unregister hook");
     });
   });
 });

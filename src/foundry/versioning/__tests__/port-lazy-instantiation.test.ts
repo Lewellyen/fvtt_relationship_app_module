@@ -44,8 +44,8 @@ describe("PortSelector - Lazy Instantiation", () => {
     const result = selector.selectPortFromFactories(factories, 14);
 
     expectResultErr(result);
-    expect(result.error).toContain("Failed to instantiate port");
-    expect(result.error).toContain("Port requires v14 API");
+    expect(result.error.code).toBe("PORT_SELECTION_FAILED");
+    expect(result.error.message).toContain("Failed to instantiate port");
   });
 
   it("should select highest compatible version", () => {
@@ -81,8 +81,9 @@ describe("PortSelector - Lazy Instantiation", () => {
     const result = selector.selectPortFromFactories(factories, 13);
 
     expectResultErr(result);
-    expect(result.error).toContain("No compatible port found");
-    expect(result.error).toContain("13");
+    expect(result.error.code).toBe("PORT_SELECTION_FAILED");
+    expect(result.error.message).toContain("No compatible port found");
+    expect(result.error.details).toMatchObject({ version: 13 });
     expect(v14Factory).not.toHaveBeenCalled();
     expect(v15Factory).not.toHaveBeenCalled();
   });
@@ -114,7 +115,7 @@ describe("PortSelector - Lazy Instantiation", () => {
     const result = selector.selectPortFromFactories(factories);
 
     expectResultErr(result);
-    expect(result.error).toContain("Could not determine Foundry version");
-    expect(result.error).toContain("Version detection failed");
+    expect(result.error.code).toBe("PORT_SELECTION_FAILED");
+    expect(result.error.message).toContain("Could not determine Foundry version");
   });
 });

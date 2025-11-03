@@ -1,5 +1,6 @@
 import type { Result } from "@/types/result";
 import type { FoundryJournalEntry } from "../types";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
  * Interface for accessing Foundry's game object functionality.
@@ -8,14 +9,14 @@ import type { FoundryJournalEntry } from "../types";
 export interface FoundryGame {
   /**
    * Gets all journal entries.
-   * @returns Result containing all journal entries or an error message
+   * @returns Result containing all journal entries or a FoundryError
    */
-  getJournalEntries(): Result<FoundryJournalEntry[], string>;
+  getJournalEntries(): Result<FoundryJournalEntry[], FoundryError>;
 
   /**
    * Gets a journal entry by its ID.
    * @param id - The ID of the journal entry
-   * @returns Result containing the journal entry or null if not found, or an error message
+   * @returns Result containing the journal entry or null if not found, or a FoundryError
    */
-  getJournalEntryById(id: string): Result<FoundryJournalEntry | null, string>;
+  getJournalEntryById(id: string): Result<FoundryJournalEntry | null, FoundryError>;
 }

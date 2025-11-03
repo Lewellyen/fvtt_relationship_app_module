@@ -1,9 +1,9 @@
 import type { Result } from "@/types/result";
 import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import type { FoundryJournalEntry } from "@/foundry/types";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import type { PortSelector } from "@/foundry/versioning/portselector";
 import type { PortRegistry } from "@/foundry/versioning/portregistry";
-import { err } from "@/utils/result";
 import { portSelectorToken, foundryGamePortRegistryToken } from "@/foundry/foundrytokens";
 
 /**
@@ -29,9 +29,9 @@ export class FoundryGameService implements FoundryGame {
    * CRITICAL: This prevents crashes when newer port constructors access
    * APIs not available in the current Foundry version.
    *
-   * @returns Result containing the port or an error if no compatible port can be selected
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
    */
-  private getPort(): Result<FoundryGame, string> {
+  private getPort(): Result<FoundryGame, FoundryError> {
     if (this.port === null) {
       // Get factories (not instances) to avoid eager instantiation
       const factories = this.portRegistry.getFactories();
@@ -39,7 +39,7 @@ export class FoundryGameService implements FoundryGame {
       // Use PortSelector with factory-based selection
       const portResult = this.portSelector.selectPortFromFactories(factories);
       if (!portResult.ok) {
-        return err(`Failed to select FoundryGame port: ${portResult.error}`);
+        return portResult;
       }
 
       this.port = portResult.value;
@@ -47,13 +47,13 @@ export class FoundryGameService implements FoundryGame {
     return { ok: true, value: this.port };
   }
 
-  getJournalEntries(): Result<FoundryJournalEntry[], string> {
+  getJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.getJournalEntries();
   }
 
-  getJournalEntryById(id: string): Result<FoundryJournalEntry | null, string> {
+  getJournalEntryById(id: string): Result<FoundryJournalEntry | null, FoundryError> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.getJournalEntryById(id);

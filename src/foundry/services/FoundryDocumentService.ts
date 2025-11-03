@@ -1,8 +1,8 @@
 import type { Result } from "@/types/result";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
-import { err } from "@/utils/result";
 import { portSelectorToken, foundryDocumentPortRegistryToken } from "@/foundry/foundrytokens";
 
 /**
@@ -28,9 +28,9 @@ export class FoundryDocumentService implements FoundryDocument {
    * CRITICAL: This prevents crashes when newer port constructors access
    * APIs not available in the current Foundry version.
    *
-   * @returns Result containing the port or an error if no compatible port can be selected
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
    */
-  private getPort(): Result<FoundryDocument, string> {
+  private getPort(): Result<FoundryDocument, FoundryError> {
     if (this.port === null) {
       // Get factories (not instances) to avoid eager instantiation
       const factories = this.portRegistry.getFactories();
@@ -38,7 +38,7 @@ export class FoundryDocumentService implements FoundryDocument {
       // Use PortSelector with factory-based selection
       const portResult = this.portSelector.selectPortFromFactories(factories);
       if (!portResult.ok) {
-        return err(`Failed to select FoundryDocument port: ${portResult.error}`);
+        return portResult;
       }
 
       this.port = portResult.value;
@@ -50,7 +50,7 @@ export class FoundryDocumentService implements FoundryDocument {
     document: { getFlag: (scope: string, key: string) => unknown },
     scope: string,
     key: string
-  ): Result<T | null, string> {
+  ): Result<T | null, FoundryError> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.getFlag<T>(document, scope, key);
@@ -61,7 +61,7 @@ export class FoundryDocumentService implements FoundryDocument {
     scope: string,
     key: string,
     value: T
-  ): Promise<Result<void, string>> {
+  ): Promise<Result<void, FoundryError>> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return await portResult.value.setFlag(document, scope, key, value);

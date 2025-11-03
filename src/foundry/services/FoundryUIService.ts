@@ -1,8 +1,8 @@
 import type { Result } from "@/types/result";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
-import { err } from "@/utils/result";
 import { portSelectorToken, foundryUIPortRegistryToken } from "@/foundry/foundrytokens";
 
 /**
@@ -28,9 +28,9 @@ export class FoundryUIService implements FoundryUI {
    * CRITICAL: This prevents crashes when newer port constructors access
    * APIs not available in the current Foundry version.
    *
-   * @returns Result containing the port or an error if no compatible port can be selected
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
    */
-  private getPort(): Result<FoundryUI, string> {
+  private getPort(): Result<FoundryUI, FoundryError> {
     if (this.port === null) {
       // Get factories (not instances) to avoid eager instantiation
       const factories = this.portRegistry.getFactories();
@@ -38,7 +38,7 @@ export class FoundryUIService implements FoundryUI {
       // Use PortSelector with factory-based selection
       const portResult = this.portSelector.selectPortFromFactories(factories);
       if (!portResult.ok) {
-        return err(`Failed to select FoundryUI port: ${portResult.error}`);
+        return portResult;
       }
 
       this.port = portResult.value;
@@ -50,13 +50,13 @@ export class FoundryUIService implements FoundryUI {
     journalId: string,
     journalName: string,
     html: HTMLElement
-  ): Result<void, string> {
+  ): Result<void, FoundryError> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.removeJournalElement(journalId, journalName, html);
   }
 
-  findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, string> {
+  findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, FoundryError> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.findElement(container, selector);

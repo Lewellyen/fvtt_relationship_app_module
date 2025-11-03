@@ -1,6 +1,8 @@
 import type { Result } from "@/types/result";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { fromPromise, tryCatch } from "@/utils/result";
+import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
  * v13 implementation of FoundryDocument interface.
@@ -11,7 +13,7 @@ export class FoundryDocumentPortV13 implements FoundryDocument {
     document: { getFlag: (scope: string, key: string) => unknown },
     scope: string,
     key: string
-  ): Result<T | null, string> {
+  ): Result<T | null, FoundryError> {
     return tryCatch(
       () => {
         if (!document?.getFlag) {
@@ -21,7 +23,12 @@ export class FoundryDocumentPortV13 implements FoundryDocument {
         return value ?? null;
       },
       (error) =>
-        `Failed to get flag ${scope}.${key}: ${error instanceof Error ? error.message : String(error)}`
+        createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to get flag ${scope}.${key}`,
+          { scope, key },
+          error
+        )
     );
   }
 
@@ -30,8 +37,8 @@ export class FoundryDocumentPortV13 implements FoundryDocument {
     scope: string,
     key: string,
     value: T
-  ): Promise<Result<void, string>> {
-    return fromPromise<void, string>(
+  ): Promise<Result<void, FoundryError>> {
+    return fromPromise<void, FoundryError>(
       (async () => {
         if (!document?.setFlag) {
           throw new Error("Document does not have setFlag method");
@@ -39,7 +46,12 @@ export class FoundryDocumentPortV13 implements FoundryDocument {
         await document.setFlag(scope, key, value);
       })(),
       (error) =>
-        `Failed to set flag ${scope}.${key}: ${error instanceof Error ? error.message : String(error)}`
+        createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to set flag ${scope}.${key}`,
+          { scope, key, value },
+          error
+        )
     );
   }
 }

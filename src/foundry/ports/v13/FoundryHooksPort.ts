@@ -1,14 +1,16 @@
 import type { Result } from "@/types/result";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { FoundryHookCallback } from "@/foundry/types";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { tryCatch } from "@/utils/result";
+import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
  * v13 implementation of FoundryHooks interface.
  * Encapsulates Foundry v13-specific hook system access.
  */
 export class FoundryHooksPortV13 implements FoundryHooks {
-  on(hookName: string, callback: FoundryHookCallback): Result<void, string> {
+  on(hookName: string, callback: FoundryHookCallback): Result<void, FoundryError> {
     return tryCatch(
       () => {
         if (typeof Hooks === "undefined") {
@@ -20,11 +22,16 @@ export class FoundryHooksPortV13 implements FoundryHooks {
         (Hooks.on as (hook: string, fn: (...args: any[]) => any) => number)(hookName, callback);
       },
       (error) =>
-        `Failed to register hook ${hookName}: ${error instanceof Error ? error.message : String(error)}`
+        createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to register hook ${hookName}`,
+          { hookName },
+          error
+        )
     );
   }
 
-  off(hookName: string, callback: FoundryHookCallback): Result<void, string> {
+  off(hookName: string, callback: FoundryHookCallback): Result<void, FoundryError> {
     return tryCatch(
       () => {
         if (typeof Hooks === "undefined") {
@@ -39,7 +46,12 @@ export class FoundryHooksPortV13 implements FoundryHooks {
         );
       },
       (error) =>
-        `Failed to unregister hook ${hookName}: ${error instanceof Error ? error.message : String(error)}`
+        createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to unregister hook ${hookName}`,
+          { hookName },
+          error
+        )
     );
   }
 }

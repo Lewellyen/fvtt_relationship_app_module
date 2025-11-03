@@ -26,8 +26,8 @@ describe("FoundryUIPortV13", () => {
 
       const result = port.removeJournalElement("journal-123", "Journal Entry", container);
       expectResultErr(result);
-      expect(result.error).toContain("Could not find element");
-      expect(result.error).toContain("journal-123");
+      expect(result.error.code).toBe("NOT_FOUND");
+      expect(result.error.message).toContain("Could not find element");
     });
 
     it("should use correct selector format", () => {

@@ -105,6 +105,41 @@
 ### Upgrade-Hinweise
 - Keine besonderen Maßnahmen erforderlich
 
+## [0.0.14] - 2025-11-03
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- BREAKING CHANGE: All Foundry interfaces now return Result<T, FoundryError> instead of Result<T, string>
+- Features:
+- Add structured FoundryError type with 6 error codes (API_NOT_AVAILABLE, VALIDATION_FAILED, NOT_FOUND, ACCESS_DENIED, PORT_SELECTION_FAILED, OPERATION_FAILED)
+- Add Zod-based journal entry validation in FoundryGamePort
+- Add XSS protection with sanitizeId() and sanitizeHtml() utilities
+- Add registerPortToRegistry() helper to reduce code duplication in DI setup
+- Extend ContainerError with PartialDisposal code and details field
+- Improvements:
+- Refactor ScopeManager.dispose() to collect errors structurally instead of console.warn
+- Update JournalVisibilityService to use structured error logging with context
+- Migrate all Foundry ports, services, and interfaces to FoundryError
+- Migrate all tests to assert on structured error objects
+- Tests:
+- Add 15 new tests for Zod validation and sanitization utilities
+- Add test for ScopeManager PartialDisposal error handling
+- Update 40+ existing tests to use structured FoundryError assertions
+- All 332 tests passing
+- Docs:
+- Add JSDoc for FoundryError factory and type guards
+- Document XSS protection in sanitization utilities
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.0.13] - 2025-11-03
 ### Hinzugefügt
 - Keine Einträge

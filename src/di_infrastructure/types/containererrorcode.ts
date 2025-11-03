@@ -24,4 +24,5 @@ export type ContainerErrorCode =
   | "InvalidLifecycle" // Invalid service lifecycle configuration
   | "InvalidOperation" // General invalid operation error
   | "NotValidated" // Container must be validated before resolving
-  | "AliasTargetNotFound"; // Alias points to a token that is not registered
+  | "AliasTargetNotFound" // Alias points to a token that is not registered
+  | "PartialDisposal"; // Some child scopes failed to dispose properly

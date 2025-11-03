@@ -1,6 +1,8 @@
 import type { Result } from "@/types/result";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { err, ok } from "@/utils/result";
 import { getFoundryVersion } from "./versiondetector";
+import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
  * Factory function type for creating port instances.
@@ -43,14 +45,19 @@ export class PortSelector {
   selectPortFromFactories<T>(
     factories: Map<number, PortFactory<T>>,
     foundryVersion?: number
-  ): Result<T, string> {
+  ): Result<T, FoundryError> {
     // Use central version detection
     let version: number;
     try {
       version = foundryVersion ?? getFoundryVersion();
     } catch (error) {
       return err(
-        `Could not determine Foundry version: ${error instanceof Error ? error.message : String(error)}`
+        createFoundryError(
+          "PORT_SELECTION_FAILED",
+          "Could not determine Foundry version",
+          undefined,
+          error
+        )
       );
     }
 
@@ -73,7 +80,11 @@ export class PortSelector {
         .sort((a, b) => a - b)
         .join(", ");
       return err(
-        `No compatible port found for Foundry version ${version}. Available ports: ${availableVersions || "none"}`
+        createFoundryError(
+          "PORT_SELECTION_FAILED",
+          `No compatible port found for Foundry version ${version}`,
+          { version, availableVersions: availableVersions || "none" }
+        )
       );
     }
 
@@ -82,7 +93,12 @@ export class PortSelector {
       return ok(selectedFactory());
     } catch (error) {
       return err(
-        `Failed to instantiate port v${selectedVersion}: ${error instanceof Error ? error.message : String(error)}`
+        createFoundryError(
+          "PORT_SELECTION_FAILED",
+          `Failed to instantiate port v${selectedVersion}`,
+          { selectedVersion },
+          error
+        )
       );
     }
   }

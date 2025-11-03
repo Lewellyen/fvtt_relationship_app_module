@@ -101,13 +101,19 @@ export class ScopeManager {
     // Mark as disposed BEFORE disposing children to prevent concurrent operations
     this.disposed = true;
 
+    // Collect disposal errors instead of logging
+    const childDisposalErrors: Array<{ scopeName: string; error: ContainerError }> = [];
+
     // Step 1: Recursively dispose all child scopes (children first!)
     for (const child of this.children) {
       const childResult = child.dispose();
 
       if (isErr(childResult)) {
-        // Log warning but continue disposal
-        console.warn(`Failed to dispose child scope ${child.scopeName}:`, childResult.error);
+        // Collect error instead of logging
+        childDisposalErrors.push({
+          scopeName: child.scopeName,
+          error: childResult.error,
+        });
       }
     }
 
@@ -123,6 +129,15 @@ export class ScopeManager {
     // Step 4: Remove from parent's children set
     if (this.parent !== null) {
       this.parent.children.delete(this);
+    }
+
+    // Return aggregated errors if any children failed
+    if (childDisposalErrors.length > 0) {
+      return err({
+        code: "PartialDisposal",
+        message: `Failed to dispose ${childDisposalErrors.length} child scope(s)`,
+        details: childDisposalErrors,
+      });
     }
 
     return ok(undefined);

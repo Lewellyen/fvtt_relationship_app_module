@@ -1,10 +1,10 @@
 import type { Result } from "@/types/result";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { FoundryHookCallback } from "@/foundry/types";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { portSelectorToken, foundryHooksPortRegistryToken } from "@/foundry/foundrytokens";
-import { err } from "@/utils/result";
 
 /**
  * Service wrapper for FoundryHooks that automatically selects the appropriate port
@@ -29,9 +29,9 @@ export class FoundryHooksService implements FoundryHooks {
    * CRITICAL: This prevents crashes when newer port constructors access
    * APIs not available in the current Foundry version.
    *
-   * @returns Result containing the port or an error if no compatible port can be selected
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
    */
-  private getPort(): Result<FoundryHooks, string> {
+  private getPort(): Result<FoundryHooks, FoundryError> {
     if (this.port === null) {
       // Get factories (not instances) to avoid eager instantiation
       const factories = this.portRegistry.getFactories();
@@ -39,7 +39,7 @@ export class FoundryHooksService implements FoundryHooks {
       // Use PortSelector with factory-based selection
       const portResult = this.portSelector.selectPortFromFactories(factories);
       if (!portResult.ok) {
-        return err(`Failed to select FoundryHooks port: ${portResult.error}`);
+        return portResult;
       }
 
       this.port = portResult.value;
@@ -47,13 +47,13 @@ export class FoundryHooksService implements FoundryHooks {
     return { ok: true, value: this.port };
   }
 
-  on(hookName: string, callback: FoundryHookCallback): Result<void, string> {
+  on(hookName: string, callback: FoundryHookCallback): Result<void, FoundryError> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.on(hookName, callback);
   }
 
-  off(hookName: string, callback: FoundryHookCallback): Result<void, string> {
+  off(hookName: string, callback: FoundryHookCallback): Result<void, FoundryError> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.off(hookName, callback);

@@ -39,7 +39,8 @@ describe("FoundryGamePortV13", () => {
       const result = port.getJournalEntries();
 
       expectResultErr(result);
-      expect(result.error).toContain("game API not available");
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+      expect(result.error.message).toContain("game API not available");
     });
 
     it("should handle missing journal collection", () => {
@@ -48,7 +49,8 @@ describe("FoundryGamePortV13", () => {
       const result = port.getJournalEntries();
 
       expectResultErr(result);
-      expect(result.error).toContain("game API not available");
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+      expect(result.error.message).toContain("game API not available");
     });
 
     it("should handle iteration errors via tryCatch", () => {
@@ -63,7 +65,8 @@ describe("FoundryGamePortV13", () => {
       const result = port.getJournalEntries();
 
       expectResultErr(result);
-      expect(result.error).toContain("Internal error");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to get journal entries");
     });
 
     it("should return empty array for empty journal collection", () => {
@@ -115,7 +118,8 @@ describe("FoundryGamePortV13", () => {
       const result = port.getJournalEntryById("journal-1");
 
       expectResultErr(result);
-      expect(result.error).toContain("game API not available");
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+      expect(result.error.message).toContain("game API not available");
     });
 
     it("should handle missing journal collection", () => {
@@ -124,7 +128,8 @@ describe("FoundryGamePortV13", () => {
       const result = port.getJournalEntryById("journal-1");
 
       expectResultErr(result);
-      expect(result.error).toContain("game API not available");
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+      expect(result.error.message).toContain("game API not available");
     });
 
     it("should handle exceptions", () => {
@@ -139,7 +144,8 @@ describe("FoundryGamePortV13", () => {
       const result = port.getJournalEntryById("journal-1");
 
       expectResultErr(result);
-      expect(result.error).toContain("Get failed");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to get journal entry by ID");
     });
   });
 });

@@ -218,24 +218,40 @@ describe("ScopeManager", () => {
       expect(result.error.code).toBe("Disposed");
     });
 
-    it("should continue disposal even if child disposal fails", () => {
+    it("should return PartialDisposal error when children fail to dispose", () => {
       const parentCache = new InstanceCache();
       const parentManager = new ScopeManager("parent", null, parentCache);
 
-      const childResult = parentManager.createChild("child");
+      // Create child with a disposable that will fail
+      const childResult = parentManager.createChild("child1");
       expectResultOk(childResult);
-      const child = childResult.value.manager;
 
-      // Dispose child first
-      child.dispose();
+      // Add a failing disposable to child
+      class FailingDisposable implements Logger {
+        dispose(): void {
+          throw new Error("Disposal intentionally failed");
+        }
+        log(): void {}
+        debug(): void {}
+        info(): void {}
+        warn(): void {}
+        error(): void {}
+      }
 
-      // Try to dispose child again (should fail)
-      const childDisposeResult = child.dispose();
-      expectResultErr(childDisposeResult);
+      const failingDisposable = new FailingDisposable();
+      childResult.value.cache.set(Symbol("failing"), failingDisposable);
 
-      // Parent disposal should still succeed
+      // When parent tries to dispose, child will fail
       const parentDisposeResult = parentManager.dispose();
-      expectResultOk(parentDisposeResult);
+
+      expectResultErr(parentDisposeResult);
+      expect(parentDisposeResult.error.code).toBe("PartialDisposal");
+      expect(parentDisposeResult.error.message).toContain("Failed to dispose");
+      expect(parentDisposeResult.error.message).toContain("child scope");
+      expect(parentDisposeResult.error.details).toBeDefined();
+
+      // Parent should still be disposed despite child errors
+      expect(parentManager.isDisposed()).toBe(true);
     });
 
     it("should handle disposable instances that throw", () => {

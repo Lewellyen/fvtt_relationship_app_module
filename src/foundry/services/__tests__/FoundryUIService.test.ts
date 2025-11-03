@@ -57,9 +57,11 @@ describe("FoundryUIService", () => {
 
     it("should propagate port selection errors", () => {
       const failingSelector = new PortSelector();
-      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(
-        err("Port selection failed")
-      );
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
       const failingService = new FoundryUIService(failingSelector, mockRegistry);
 
       const element = document.createElement("div");
@@ -83,7 +85,11 @@ describe("FoundryUIService", () => {
 
     it("should handle port errors", () => {
       const element = document.createElement("div");
-      mockPort.removeJournalElement = vi.fn().mockReturnValue(err("Element not found"));
+      const mockError = {
+        code: "NOT_FOUND" as const,
+        message: "Element not found",
+      };
+      mockPort.removeJournalElement = vi.fn().mockReturnValue(err(mockError));
 
       const result = service.removeJournalElement("id", "name", element);
 
@@ -109,9 +115,11 @@ describe("FoundryUIService", () => {
   describe("Version Detection Failures", () => {
     it("should handle port selector errors", () => {
       const failingSelector = new PortSelector();
-      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(
-        err("No compatible port found")
-      );
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "No compatible port found",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
       const failingService = new FoundryUIService(failingSelector, mockRegistry);
 
       const element = document.createElement("div");

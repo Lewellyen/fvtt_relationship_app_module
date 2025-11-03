@@ -27,4 +27,7 @@ export interface ContainerError {
 
   /** Optional description of the token associated with this error */
   tokenDescription?: string;
+
+  /** Optional additional error context (e.g., failed children in PartialDisposal) */
+  details?: unknown;
 }

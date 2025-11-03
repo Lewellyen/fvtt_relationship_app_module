@@ -57,9 +57,11 @@ describe("FoundryDocumentService", () => {
 
     it("should propagate port selection errors", () => {
       const failingSelector = new PortSelector();
-      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(
-        err("Port selection failed")
-      );
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
       const failingService = new FoundryDocumentService(failingSelector, mockRegistry);
 
       const document = { getFlag: vi.fn() };
@@ -96,7 +98,11 @@ describe("FoundryDocumentService", () => {
 
     it("should handle async errors", async () => {
       const document = { setFlag: vi.fn() };
-      mockPort.setFlag = vi.fn().mockResolvedValue(err("Async error"));
+      const mockError = {
+        code: "OPERATION_FAILED" as const,
+        message: "Async error",
+      };
+      mockPort.setFlag = vi.fn().mockResolvedValue(err(mockError));
 
       const result = await service.setFlag(document, "scope", "key", "value");
 
@@ -108,9 +114,11 @@ describe("FoundryDocumentService", () => {
   describe("Version Detection Failures", () => {
     it("should handle port selector errors", () => {
       const failingSelector = new PortSelector();
-      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(
-        err("No compatible port found")
-      );
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "No compatible port found",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
       const failingService = new FoundryDocumentService(failingSelector, mockRegistry);
 
       const document = { getFlag: vi.fn() };

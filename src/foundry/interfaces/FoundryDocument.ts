@@ -1,4 +1,5 @@
 import type { Result } from "@/types/result";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
  * Interface for Foundry document operations.
@@ -10,13 +11,13 @@ export interface FoundryDocument {
    * @param document - The Foundry document (e.g., JournalEntry)
    * @param scope - The scope/namespace for the flag (usually the module ID)
    * @param key - The flag key
-   * @returns Result containing the flag value or null, or an error message
+   * @returns Result containing the flag value or null, or a FoundryError
    */
   getFlag<T = unknown>(
     document: { getFlag: (scope: string, key: string) => unknown },
     scope: string,
     key: string
-  ): Result<T | null, string>;
+  ): Result<T | null, FoundryError>;
 
   /**
    * Sets a flag value on a document.
@@ -24,12 +25,12 @@ export interface FoundryDocument {
    * @param scope - The scope/namespace for the flag (usually the module ID)
    * @param key - The flag key
    * @param value - The value to set
-   * @returns Result indicating success or failure
+   * @returns Result indicating success or a FoundryError
    */
   setFlag<T = unknown>(
     document: { setFlag: (scope: string, key: string, value: T) => Promise<unknown> },
     scope: string,
     key: string,
     value: T
-  ): Promise<Result<void, string>>;
+  ): Promise<Result<void, FoundryError>>;
 }

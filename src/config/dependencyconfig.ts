@@ -33,6 +33,30 @@ import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 
 /**
+ * Helper function for port registration.
+ * Reduces duplication when registering multiple ports.
+ *
+ * @template T - The port type
+ * @param registry - The port registry to register to
+ * @param version - The Foundry version this port supports
+ * @param factory - Factory function that creates the port instance
+ * @param portName - Name of the port (for error messages)
+ * @param errors - Array to collect error messages
+ */
+function registerPortToRegistry<T>(
+  registry: PortRegistry<T>,
+  version: number,
+  factory: () => T,
+  portName: string,
+  errors: string[]
+): void {
+  const result = registry.register(version, factory);
+  if (isErr(result)) {
+    errors.push(`${portName} v${version}: ${result.error}`);
+  }
+}
+
+/**
  * Configures all dependency injection mappings for the application.
  * This is the central place where tokens are connected to their factories.
  *
@@ -82,31 +106,40 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   const portRegistrationErrors: string[] = [];
 
   const gamePortRegistry = new PortRegistry<FoundryGame>();
-  const gamePortRegResult = gamePortRegistry.register(13, () => new FoundryGamePortV13());
-  if (isErr(gamePortRegResult)) {
-    portRegistrationErrors.push(`FoundryGame v13: ${gamePortRegResult.error}`);
-  }
+  registerPortToRegistry(
+    gamePortRegistry,
+    13,
+    () => new FoundryGamePortV13(),
+    "FoundryGame",
+    portRegistrationErrors
+  );
 
   const hooksPortRegistry = new PortRegistry<FoundryHooks>();
-  const hooksPortRegResult = hooksPortRegistry.register(13, () => new FoundryHooksPortV13());
-  if (isErr(hooksPortRegResult)) {
-    portRegistrationErrors.push(`FoundryHooks v13: ${hooksPortRegResult.error}`);
-  }
+  registerPortToRegistry(
+    hooksPortRegistry,
+    13,
+    () => new FoundryHooksPortV13(),
+    "FoundryHooks",
+    portRegistrationErrors
+  );
 
   const documentPortRegistry = new PortRegistry<FoundryDocument>();
-  const documentPortRegResult = documentPortRegistry.register(
+  registerPortToRegistry(
+    documentPortRegistry,
     13,
-    () => new FoundryDocumentPortV13()
+    () => new FoundryDocumentPortV13(),
+    "FoundryDocument",
+    portRegistrationErrors
   );
-  if (isErr(documentPortRegResult)) {
-    portRegistrationErrors.push(`FoundryDocument v13: ${documentPortRegResult.error}`);
-  }
 
   const uiPortRegistry = new PortRegistry<FoundryUI>();
-  const uiPortRegResult = uiPortRegistry.register(13, () => new FoundryUIPortV13());
-  if (isErr(uiPortRegResult)) {
-    portRegistrationErrors.push(`FoundryUI v13: ${uiPortRegResult.error}`);
-  }
+  registerPortToRegistry(
+    uiPortRegistry,
+    13,
+    () => new FoundryUIPortV13(),
+    "FoundryUI",
+    portRegistrationErrors
+  );
 
   // Return early if any port registration failed
   if (portRegistrationErrors.length > 0) {

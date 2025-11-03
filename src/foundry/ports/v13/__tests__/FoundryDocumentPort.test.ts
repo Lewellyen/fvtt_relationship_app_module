@@ -36,7 +36,8 @@ describe("FoundryDocumentPortV13", () => {
 
       const result = port.getFlag(document, "scope", "key");
       expectResultErr(result);
-      expect(result.error).toContain("getFlag method");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to get flag");
     });
 
     it("should wrap exceptions in error result", () => {
@@ -48,8 +49,8 @@ describe("FoundryDocumentPortV13", () => {
 
       const result = port.getFlag(document, "scope", "key");
       expectResultErr(result);
-      expect(result.error).toContain("Failed to get flag");
-      expect(result.error).toContain("Internal error");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to get flag");
     });
   });
 
@@ -75,8 +76,8 @@ describe("FoundryDocumentPortV13", () => {
 
       const result = await port.setFlag(document, "scope", "key", "value");
       expectResultErr(result);
-      expect(result.error).toContain("Failed to set flag");
-      expect(result.error).toContain("Async error");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to set flag");
     });
 
     it("should handle missing setFlag method", async () => {
@@ -84,7 +85,8 @@ describe("FoundryDocumentPortV13", () => {
 
       const result = await port.setFlag(document, "scope", "key", "value");
       expectResultErr(result);
-      expect(result.error).toContain("setFlag method");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to set flag");
     });
 
     it("should handle promise rejection", async () => {
@@ -94,7 +96,8 @@ describe("FoundryDocumentPortV13", () => {
 
       const result = await port.setFlag(document, "scope", "key", "value");
       expectResultErr(result);
-      expect(result.error).toContain("Failed to set flag");
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to set flag");
     });
   });
 });

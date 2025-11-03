@@ -2,6 +2,7 @@ import type { Result } from "@/types/result";
 import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import type { Logger } from "@/interfaces/logger";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import { MODULE_CONSTANTS } from "@/constants";
@@ -32,7 +33,7 @@ export class JournalVisibilityService {
    * Gets journal entries marked as hidden via module flag.
    * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
-  getHiddenJournalEntries(): Result<FoundryJournalEntry[], string> {
+  getHiddenJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
     const allEntriesResult = this.game.getJournalEntries();
     if (!allEntriesResult.ok) return allEntriesResult;
 
@@ -51,9 +52,10 @@ export class JournalVisibilityService {
         }
       } else {
         // Log flag read errors for diagnosis without interrupting processing
-        this.logger.warn(
-          `Failed to read hidden flag for journal "${journal.name ?? journal.id}": ${flagResult.error}`
-        );
+        this.logger.warn(`Failed to read hidden flag for journal "${journal.name ?? journal.id}"`, {
+          errorCode: flagResult.error.code,
+          errorMessage: flagResult.error.message,
+        });
         // Continue processing other entries
       }
     }
