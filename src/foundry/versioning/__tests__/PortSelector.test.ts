@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { PortSelector } from "../PortSelector";
+import { PortSelector } from "../portselector";
 import { getFoundryVersion } from "../versiondetector";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
@@ -131,4 +131,3 @@ describe("PortSelector", () => {
     });
   });
 });
-

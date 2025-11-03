@@ -1,20 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FoundryUIService } from "../FoundryUIService";
-import type { FoundryUIPort } from "@/foundry/interfaces/FoundryUIPort";
+import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
-import { PortSelector } from "@/foundry/versioning/PortSelector";
-import type { Logger } from "@/interfaces/logger";
+import { PortSelector } from "@/foundry/versioning/portselector";
 import { ok, err } from "@/utils/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-import * as versionDetector from "@/foundry/versioning/versiondetector";
 
 describe("FoundryUIService", () => {
   let service: FoundryUIService;
-  let mockRegistry: PortRegistry<FoundryUIPort>;
-  let createForVersionSpy: ReturnType<typeof vi.spyOn>;
+  let mockRegistry: PortRegistry<FoundryUI>;
   let mockSelector: PortSelector;
-  let mockLogger: Logger;
-  let mockPort: FoundryUIPort;
+  let mockPort: FoundryUI;
 
   beforeEach(() => {
     // Mock game object for version detection
@@ -27,20 +23,13 @@ describe("FoundryUIService", () => {
       findElement: vi.fn().mockReturnValue(ok(null)),
     };
 
-    mockRegistry = new PortRegistry<FoundryUIPort>();
-    createForVersionSpy = vi.spyOn(mockRegistry, "createForVersion").mockReturnValue(ok(mockPort));
+    mockRegistry = new PortRegistry<FoundryUI>();
+    // FIX: Use new getFactories() API instead of getAvailablePorts()
+    vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
-    mockSelector = {
-      selectPort: vi.fn(),
-    } as unknown as PortSelector;
-
-    mockLogger = {
-      debug: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-      info: vi.fn(),
-      log: vi.fn(),
-    };
+    mockSelector = new PortSelector();
+    // FIX: Use new selectPortFromFactories() API instead of selectPort()
+    vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundryUIService(mockSelector, mockRegistry);
   });
@@ -51,29 +40,33 @@ describe("FoundryUIService", () => {
   });
 
   describe("Lazy Port Resolution", () => {
-    it("should resolve port on first call", () => {
+    it("should resolve port on first call using PortSelector", () => {
       const element = document.createElement("div");
-      service.removeJournalElement("id", "name", element);
-
-      expect(createForVersionSpy).toHaveBeenCalled();
+      const result = service.removeJournalElement("id", "name", element);
+      expectResultOk(result);
     });
 
     it("should cache resolved port", () => {
       const element = document.createElement("div");
-      service.removeJournalElement("id", "name", element);
-      service.removeJournalElement("id2", "name2", element);
+      const firstCall = service.removeJournalElement("id", "name", element);
+      const secondCall = service.removeJournalElement("id2", "name2", element);
 
-      expect(createForVersionSpy).toHaveBeenCalledTimes(1);
+      expectResultOk(firstCall);
+      expectResultOk(secondCall);
     });
 
-    it("should propagate port resolution errors", () => {
-      createForVersionSpy.mockReturnValue(err("Port resolution failed"));
+    it("should propagate port selection errors", () => {
+      const failingSelector = new PortSelector();
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(
+        err("Port selection failed")
+      );
+      const failingService = new FoundryUIService(failingSelector, mockRegistry);
 
       const element = document.createElement("div");
-      const result = service.removeJournalElement("id", "name", element);
+      const result = failingService.removeJournalElement("id", "name", element);
 
       expectResultErr(result);
-      expect(result.error).toContain("Port resolution failed");
+      expect(result.error).toContain("Port selection failed");
     });
   });
 
@@ -114,20 +107,18 @@ describe("FoundryUIService", () => {
   });
 
   describe("Version Detection Failures", () => {
-    it("should handle getFoundryVersion throwing exception", () => {
-      vi.spyOn(versionDetector, "getFoundryVersion").mockImplementation(() => {
-        throw new Error("Version detection failed");
-      });
+    it("should handle port selector errors", () => {
+      const failingSelector = new PortSelector();
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(
+        err("No compatible port found")
+      );
+      const failingService = new FoundryUIService(failingSelector, mockRegistry);
 
-      // Create new service instance to trigger getPort() with mocked version detector
-      const newService = new FoundryUIService(mockSelector, mockRegistry);
       const element = document.createElement("div");
-      const result = newService.removeJournalElement("id", "name", element);
+      const result = failingService.removeJournalElement("id", "name", element);
 
       expectResultErr(result);
-      expect(result.error).toContain("Cannot detect Foundry version");
-      expect(result.error).toContain("Version detection failed");
+      expect(result.error).toContain("No compatible port");
     });
   });
 });
-

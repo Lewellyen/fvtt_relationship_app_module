@@ -1,6 +1,6 @@
-import { describe, it, expect, afterEach, vi, beforeEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
-import { createMockGame, createMockHooks } from "@/test/mocks/foundry";
+import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { CompositionRoot } from "../composition-root";
 import { ModuleHookRegistrar } from "../module-hook-registrar";
 import { MODULE_CONSTANTS } from "@/constants";
@@ -22,7 +22,9 @@ describe("init-solid Bootstrap", () => {
       const mockModule = {
         api: undefined as unknown,
       };
-      mockGame.modules.set(MODULE_CONSTANTS.MODULE.ID, mockModule);
+      if (mockGame.modules) {
+        mockGame.modules.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      }
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -31,14 +33,14 @@ describe("init-solid Bootstrap", () => {
 
       // Spies VOR dem Import setzen (für Callback-Execution)
       // WICHTIG: Spy auf Prototype setzen, damit er die Instanz-Methode erfasst
-      const exposeSpy = vi.spyOn(CompositionRoot.prototype, "exposeToModuleApi");
-      const registerAllSpy = vi.spyOn(ModuleHookRegistrar.prototype, "registerAll");
+      vi.spyOn(CompositionRoot.prototype, "exposeToModuleApi");
+      vi.spyOn(ModuleHookRegistrar.prototype, "registerAll");
 
       // Dynamic import NACH Mock-Setup
       await import("@/core/init-solid");
 
       // Prüfen dass Hooks registriert wurden
-      const hooksOnMock = globalThis.Hooks.on as ReturnType<typeof vi.fn>;
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
       expect(hooksOnMock).toHaveBeenCalledWith("init", expect.any(Function));
       expect(hooksOnMock).toHaveBeenCalledWith("ready", expect.any(Function));
 
@@ -55,7 +57,7 @@ describe("init-solid Bootstrap", () => {
       // Da Spies nach vi.resetModules() nicht funktionieren, prüfen wir Seiteneffekte:
       // 1. exposeToModuleApi sollte game.modules.get().api gesetzt haben
       expect(mockModule.api).toBeDefined();
-      expect(typeof mockModule.api?.resolve).toBe("function");
+      expect(typeof (mockModule.api as any)?.resolve).toBe("function");
 
       // 2. registerAll sollte den Hook-Callback aufgerufen haben
       // (wird durch processJournalDirectory im Mock geprüft)
@@ -72,7 +74,7 @@ describe("init-solid Bootstrap", () => {
       const mockModule = {
         api: undefined as unknown,
       };
-      mockGame.modules.set(MODULE_CONSTANTS.MODULE.ID, mockModule);
+      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -81,7 +83,7 @@ describe("init-solid Bootstrap", () => {
 
       await import("@/core/init-solid");
 
-      const hooksOnMock = globalThis.Hooks.on as ReturnType<typeof vi.fn>;
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
       expect(hooksOnMock).toHaveBeenCalledWith("ready", expect.any(Function));
 
       // Ready-Callback sollte Logger-Info aufrufen
@@ -113,20 +115,23 @@ describe("init-solid Bootstrap", () => {
       // Der Logger wird aufgerufen, aber wir müssen das anders prüfen
       // Da logger.warn() aufgerufen wird, nicht console.warn
       // Wir prüfen dass keine Hooks registriert wurden
-      expect(globalThis.Hooks).toBeUndefined();
+      expect((global as any).Hooks).toBeUndefined();
 
       consoleSpy.mockRestore();
       cleanup();
     });
   });
 
-  describe("Bootstrap Failure", () => {
-    it("should throw when bootstrap fails", async () => {
+  describe("Bootstrap Failure - Graceful Degradation", () => {
+    it("should NOT throw when bootstrap fails (graceful degradation)", async () => {
       vi.resetModules();
 
+      // Use proper mock UI with all required properties
+      const mockUI = createMockUI();
       const cleanup = withFoundryGlobals({
         game: createMockGame(),
         Hooks: createMockHooks(),
+        ui: mockUI,
       });
 
       // Mock configureDependencies um Fehler zu provozieren
@@ -139,10 +144,46 @@ describe("init-solid Bootstrap", () => {
 
       const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      // Sollte Exception werfen
-      await expect(import("@/core/init-solid")).rejects.toThrow("Test bootstrap error");
+      // FIXED: Sollte NICHT mehr werfen (graceful degradation)
+      await expect(import("@/core/init-solid")).resolves.toBeDefined();
 
-      // Sollte Fehler loggen
+      // Sollte Fehler zur Console loggen
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("bootstrap failed"));
+      expect(consoleErrorSpy).toHaveBeenCalledWith("Test bootstrap error");
+
+      // Sollte UI-Notification zeigen
+      expect(mockUI.notifications?.error).toHaveBeenCalledWith(
+        expect.stringContaining("failed to initialize"),
+        { permanent: true }
+      );
+
+      consoleErrorSpy.mockRestore();
+      cleanup();
+    });
+
+    it("should handle missing ui.notifications gracefully", async () => {
+      vi.resetModules();
+
+      const cleanup = withFoundryGlobals({
+        game: createMockGame(),
+        Hooks: createMockHooks(),
+        ui: undefined, // ui nicht verfügbar
+      });
+
+      // Mock configureDependencies um Fehler zu provozieren
+      vi.doMock("@/config/dependencyconfig", () => ({
+        configureDependencies: vi.fn().mockReturnValue({
+          ok: false,
+          error: "Test bootstrap error",
+        }),
+      }));
+
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      // Sollte nicht crashen, auch wenn ui.notifications fehlt
+      await expect(import("@/core/init-solid")).resolves.toBeDefined();
+
+      // Sollte trotzdem Console-Fehler loggen
       expect(consoleErrorSpy).toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
@@ -150,4 +191,3 @@ describe("init-solid Bootstrap", () => {
     });
   });
 });
-

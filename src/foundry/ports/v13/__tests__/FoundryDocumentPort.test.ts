@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { FoundryDocumentPortV13 } from "../FoundryDocumentPort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
@@ -12,7 +12,7 @@ describe("FoundryDocumentPortV13", () => {
   describe("getFlag", () => {
     it("should get flag value successfully", () => {
       const document = {
-        getFlag: vi.fn((scope: string, key: string) => "flag-value"),
+        getFlag: vi.fn(() => "flag-value"),
       };
 
       const result = port.getFlag(document, "scope", "key");
@@ -56,7 +56,7 @@ describe("FoundryDocumentPortV13", () => {
   describe("setFlag", () => {
     it("should set flag successfully", async () => {
       const document = {
-        setFlag: vi.fn(async (scope: string, key: string, value: unknown) => {
+        setFlag: vi.fn(async () => {
           return Promise.resolve(undefined);
         }),
       };
@@ -98,4 +98,3 @@ describe("FoundryDocumentPortV13", () => {
     });
   });
 });
-

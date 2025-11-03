@@ -2,16 +2,27 @@ import { describe, it, expect } from "vitest";
 import { ScopeManager } from "../ScopeManager";
 import { InstanceCache } from "../../cache/InstanceCache";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import type { Logger } from "@/interfaces/logger";
 
-class DisposableService {
+class DisposableService implements Logger {
   disposed = false;
   dispose(): void {
     this.disposed = true;
   }
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
-class NonDisposableService {
+class NonDisposableService implements Logger {
   value = 42;
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
 describe("ScopeManager", () => {
@@ -231,10 +242,15 @@ describe("ScopeManager", () => {
       const cache = new InstanceCache();
       const manager = new ScopeManager("root", null, cache);
 
-      class FailingDisposable {
+      class FailingDisposable implements Logger {
         dispose(): void {
           throw new Error("Disposal failed");
         }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
       }
 
       const token = Symbol("FailingDisposable");
@@ -246,4 +262,3 @@ describe("ScopeManager", () => {
     });
   });
 });
-

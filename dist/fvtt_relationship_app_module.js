@@ -147,8 +147,19 @@ function createInjectionToken(description) {
   return Symbol(description);
 }
 __name(createInjectionToken, "createInjectionToken");
+const foundryGameToken = createInjectionToken("FoundryGame");
+const foundryHooksToken = createInjectionToken("FoundryHooks");
+const foundryDocumentToken = createInjectionToken("FoundryDocument");
+const foundryUIToken = createInjectionToken("FoundryUI");
+const portSelectorToken = createInjectionToken("PortSelector");
+const foundryGamePortRegistryToken = createInjectionToken("FoundryGamePortRegistry");
+const foundryHooksPortRegistryToken = createInjectionToken("FoundryHooksPortRegistry");
+const foundryDocumentPortRegistryToken = createInjectionToken("FoundryDocumentPortRegistry");
+const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry");
 const loggerToken = createInjectionToken("Logger");
-const journalVisibilityServiceToken = createInjectionToken("JournalVisibilityService");
+const journalVisibilityServiceToken = createInjectionToken(
+  "JournalVisibilityService"
+);
 var ServiceLifecycle = /* @__PURE__ */ ((ServiceLifecycle2) => {
   ServiceLifecycle2["SINGLETON"] = "singleton";
   ServiceLifecycle2["TRANSIENT"] = "transient";
@@ -156,6 +167,11 @@ var ServiceLifecycle = /* @__PURE__ */ ((ServiceLifecycle2) => {
   return ServiceLifecycle2;
 })(ServiceLifecycle || {});
 const _ServiceRegistration = class _ServiceRegistration {
+  /**
+   * Private constructor - use static factory methods instead.
+   * This prevents direct construction with invalid parameters
+   * and ensures Result-based error handling.
+   */
   constructor(lifecycle, dependencies, providerType, serviceClass, factory, value, aliasTarget) {
     this.lifecycle = lifecycle;
     this.dependencies = dependencies;
@@ -164,29 +180,109 @@ const _ServiceRegistration = class _ServiceRegistration {
     this.factory = factory;
     this.value = value;
     this.aliasTarget = aliasTarget;
-    const setCount = [serviceClass, factory, value, aliasTarget].filter((x) => x !== void 0).length;
-    if (setCount !== 1) {
-      throw new Error(
-        `Invalid ServiceRegistration: exactly one of serviceClass, factory, value, or aliasTarget must be set. Got ${setCount} set. ProviderType: ${providerType}`
-      );
+  }
+  /**
+   * Creates a class-based registration.
+   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
+   * @param dependencies - Array of dependency tokens
+   * @param serviceClass - The class to instantiate
+   * @returns Result with registration or validation error
+   */
+  static createClass(lifecycle, dependencies, serviceClass) {
+    if (!serviceClass) {
+      return err({
+        code: "InvalidOperation",
+        message: "serviceClass is required for class registration"
+      });
     }
-    if (providerType === "class" && !serviceClass) {
-      throw new Error(`ProviderType "class" requires serviceClass to be set`);
+    return ok(
+      new _ServiceRegistration(
+        lifecycle,
+        dependencies,
+        "class",
+        serviceClass,
+        void 0,
+        void 0,
+        void 0
+      )
+    );
+  }
+  /**
+   * Creates a factory-based registration.
+   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
+   * @param dependencies - Array of dependency tokens
+   * @param factory - Factory function that creates instances
+   * @returns Result with registration or validation error
+   */
+  static createFactory(lifecycle, dependencies, factory) {
+    if (!factory) {
+      return err({
+        code: "InvalidOperation",
+        message: "factory is required for factory registration"
+      });
     }
-    if (providerType === "factory" && !factory) {
-      throw new Error(`ProviderType "factory" requires factory to be set`);
+    return ok(
+      new _ServiceRegistration(
+        lifecycle,
+        dependencies,
+        "factory",
+        void 0,
+        factory,
+        void 0,
+        void 0
+      )
+    );
+  }
+  /**
+   * Creates a value-based registration (always SINGLETON).
+   * @param value - The value to register
+   * @returns Result with registration or validation error
+   */
+  static createValue(value) {
+    if (value === void 0) {
+      return err({
+        code: "InvalidOperation",
+        message: "value cannot be undefined for value registration"
+      });
     }
-    if (providerType === "value" && value === void 0) {
-      throw new Error(`ProviderType "value" requires value to be set`);
+    if (typeof value === "function") {
+      return err({
+        code: "InvalidOperation",
+        message: "registerValue() only accepts plain values, not functions or classes. Use registerClass() or registerFactory() instead."
+      });
     }
-    if (providerType === "alias" && !aliasTarget) {
-      throw new Error(`ProviderType "alias" requires aliasTarget to be set`);
+    return ok(
+      new _ServiceRegistration(ServiceLifecycle.SINGLETON, [], "value", void 0, void 0, value, void 0)
+    );
+  }
+  /**
+   * Creates an alias registration (always SINGLETON).
+   * @param targetToken - The token to resolve instead
+   * @returns Result with registration or validation error
+   */
+  static createAlias(targetToken) {
+    if (!targetToken) {
+      return err({
+        code: "InvalidOperation",
+        message: "targetToken is required for alias registration"
+      });
     }
+    return ok(
+      new _ServiceRegistration(
+        ServiceLifecycle.SINGLETON,
+        [targetToken],
+        "alias",
+        void 0,
+        void 0,
+        void 0,
+        targetToken
+      )
+    );
   }
   /**
    * Creates a clone of this registration.
    * Used when child containers inherit registrations from parent.
-   * 
+   *
    * @returns A new ServiceRegistration instance with cloned dependencies array
    */
   clone() {
@@ -210,7 +306,7 @@ const _ServiceRegistry = class _ServiceRegistry {
   }
   /**
    * Registers a service class with automatic dependency injection.
-   * 
+   *
    * @template TServiceType - The type of service to register
    * @param token - The injection token identifying this service
    * @param serviceClass - The class to instantiate
@@ -226,25 +322,20 @@ const _ServiceRegistry = class _ServiceRegistry {
       });
     }
     const dependencies = serviceClass.dependencies ?? [];
-    const registration = new ServiceRegistration(
+    const registrationResult = ServiceRegistration.createClass(
       lifecycle,
       dependencies,
-      "class",
-      serviceClass,
-      // Store the class itself
-      void 0,
-      // factory
-      void 0,
-      // value
-      void 0
-      // aliasTarget
+      serviceClass
     );
-    this.registrations.set(token, registration);
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+    this.registrations.set(token, registrationResult.value);
     return ok(void 0);
   }
   /**
    * Registers a factory function for creating service instances.
-   * 
+   *
    * @template TServiceType - The type of service this factory creates
    * @param token - The injection token identifying this service
    * @param factory - Factory function that creates instances
@@ -260,25 +351,16 @@ const _ServiceRegistry = class _ServiceRegistry {
         tokenDescription: String(token)
       });
     }
-    const registration = new ServiceRegistration(
-      lifecycle,
-      dependencies,
-      "factory",
-      void 0,
-      // serviceClass
-      factory,
-      // Store the factory function
-      void 0,
-      // value
-      void 0
-      // aliasTarget
-    );
-    this.registrations.set(token, registration);
+    const registrationResult = ServiceRegistration.createFactory(lifecycle, dependencies, factory);
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+    this.registrations.set(token, registrationResult.value);
     return ok(void 0);
   }
   /**
    * Registers a constant value (always SINGLETON lifecycle).
-   * 
+   *
    * @template TServiceType - The type of value to register
    * @param token - The injection token identifying this value
    * @param value - The value to register
@@ -292,32 +374,16 @@ const _ServiceRegistry = class _ServiceRegistry {
         tokenDescription: String(token)
       });
     }
-    if (typeof value === "function") {
-      return err({
-        code: "InvalidOperation",
-        message: "registerValue() only accepts plain values, not classes or functions. Use registerClass() or registerFactory() instead.",
-        tokenDescription: String(token)
-      });
+    const registrationResult = ServiceRegistration.createValue(value);
+    if (isErr(registrationResult)) {
+      return registrationResult;
     }
-    const registration = new ServiceRegistration(
-      ServiceLifecycle.SINGLETON,
-      [],
-      "value",
-      void 0,
-      // serviceClass
-      void 0,
-      // factory
-      value,
-      // Store the value
-      void 0
-      // aliasTarget
-    );
-    this.registrations.set(token, registration);
+    this.registrations.set(token, registrationResult.value);
     return ok(void 0);
   }
   /**
    * Registers an alias that points to another token.
-   * 
+   *
    * @template TServiceType - The type of service
    * @param aliasToken - The alias token
    * @param targetToken - The token to resolve instead
@@ -331,25 +397,16 @@ const _ServiceRegistry = class _ServiceRegistry {
         tokenDescription: String(aliasToken)
       });
     }
-    const registration = new ServiceRegistration(
-      ServiceLifecycle.SINGLETON,
-      [targetToken],
-      "alias",
-      void 0,
-      // serviceClass
-      void 0,
-      // factory
-      void 0,
-      // value
-      targetToken
-      // Store alias target
-    );
-    this.registrations.set(aliasToken, registration);
+    const registrationResult = ServiceRegistration.createAlias(targetToken);
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+    this.registrations.set(aliasToken, registrationResult.value);
     return ok(void 0);
   }
   /**
    * Retrieves a service registration.
-   * 
+   *
    * @template TServiceType - The type of service
    * @param token - The injection token identifying the service
    * @returns The registration or undefined if not found
@@ -360,7 +417,7 @@ const _ServiceRegistry = class _ServiceRegistry {
   /**
    * Returns all registrations.
    * Used by ContainerValidator for dependency validation.
-   * 
+   *
    * @returns Map of all registrations
    */
   getAllRegistrations() {
@@ -368,7 +425,7 @@ const _ServiceRegistry = class _ServiceRegistry {
   }
   /**
    * Checks if a service is registered.
-   * 
+   *
    * @template TServiceType - The type of service
    * @param token - The injection token to check
    * @returns True if registered, false otherwise
@@ -385,10 +442,10 @@ const _ServiceRegistry = class _ServiceRegistry {
   }
   /**
    * Creates a deep clone of this registry for child containers.
-   * 
+   *
    * Important: Creates a new Map instance with cloned ServiceRegistration objects
    * to prevent child containers from mutating parent registrations.
-   * 
+   *
    * @returns A new ServiceRegistry with cloned registrations
    */
   clone() {
@@ -407,12 +464,12 @@ const _ContainerValidator = class _ContainerValidator {
   }
   /**
    * Validates all registrations in the registry.
-   * 
+   *
    * Performs three checks:
    * 1. All dependencies are registered
    * 2. All alias targets exist
    * 3. No circular dependencies
-   * 
+   *
    * @param registry - The service registry to validate
    * @returns Result with void on success, or array of errors
    */
@@ -427,7 +484,7 @@ const _ContainerValidator = class _ContainerValidator {
   }
   /**
    * Checks that all declared dependencies are registered.
-   * 
+   *
    * @param registry - The service registry to check
    * @returns Array of errors for missing dependencies
    */
@@ -449,7 +506,7 @@ const _ContainerValidator = class _ContainerValidator {
   }
   /**
    * Checks that all alias targets are registered.
-   * 
+   *
    * @param registry - The service registry to check
    * @returns Array of errors for missing alias targets
    */
@@ -471,7 +528,7 @@ const _ContainerValidator = class _ContainerValidator {
   }
   /**
    * Detects circular dependencies using depth-first search.
-   * 
+   *
    * @param registry - The service registry to check
    * @returns Array of errors for detected cycles
    */
@@ -491,10 +548,10 @@ const _ContainerValidator = class _ContainerValidator {
   }
   /**
    * Recursively checks for cycles starting from a specific token.
-   * 
+   *
    * Uses DFS with visiting/visited sets to detect back edges (cycles).
    * Performance optimization: Uses Set cache to skip already-validated sub-graphs.
-   * 
+   *
    * @param registry - The service registry
    * @param token - Current token being checked
    * @param visiting - Set of tokens in current DFS path
@@ -541,7 +598,7 @@ const _InstanceCache = class _InstanceCache {
   }
   /**
    * Retrieves a cached service instance.
-   * 
+   *
    * @template TServiceType - The type of service to retrieve
    * @param token - The injection token identifying the service
    * @returns The cached instance or undefined if not found
@@ -551,7 +608,7 @@ const _InstanceCache = class _InstanceCache {
   }
   /**
    * Stores a service instance in the cache.
-   * 
+   *
    * @template TServiceType - The type of service to store
    * @param token - The injection token identifying the service
    * @param instance - The service instance to cache
@@ -561,7 +618,7 @@ const _InstanceCache = class _InstanceCache {
   }
   /**
    * Checks if a service instance is cached.
-   * 
+   *
    * @template TServiceType - The type of service to check
    * @param token - The injection token identifying the service
    * @returns True if the instance is cached, false otherwise
@@ -579,7 +636,7 @@ const _InstanceCache = class _InstanceCache {
   /**
    * Returns all cached instances for disposal purposes.
    * Used by ScopeManager to dispose Disposable services.
-   * 
+   *
    * @returns A map of all cached instances
    */
   getAllInstances() {
@@ -588,46 +645,6 @@ const _InstanceCache = class _InstanceCache {
 };
 __name(_InstanceCache, "InstanceCache");
 let InstanceCache = _InstanceCache;
-const _CircularDependencyError = class _CircularDependencyError extends Error {
-  constructor(message, token, cause) {
-    super(message);
-    this.token = token;
-    this.name = "CircularDependencyError";
-    this.errorCause = cause;
-  }
-};
-__name(_CircularDependencyError, "CircularDependencyError");
-let CircularDependencyError = _CircularDependencyError;
-const _ScopeRequiredError = class _ScopeRequiredError extends Error {
-  constructor(message, token, cause) {
-    super(message);
-    this.token = token;
-    this.name = "ScopeRequiredError";
-    this.errorCause = cause;
-  }
-};
-__name(_ScopeRequiredError, "ScopeRequiredError");
-let ScopeRequiredError = _ScopeRequiredError;
-const _InvalidLifecycleError = class _InvalidLifecycleError extends Error {
-  constructor(message, lifecycle, cause) {
-    super(message);
-    this.lifecycle = lifecycle;
-    this.name = "InvalidLifecycleError";
-    this.errorCause = cause;
-  }
-};
-__name(_InvalidLifecycleError, "InvalidLifecycleError");
-let InvalidLifecycleError = _InvalidLifecycleError;
-const _FactoryFailedError = class _FactoryFailedError extends Error {
-  constructor(message, token, cause) {
-    super(message);
-    this.token = token;
-    this.name = "FactoryFailedError";
-    this.errorCause = cause;
-  }
-};
-__name(_FactoryFailedError, "FactoryFailedError");
-let FactoryFailedError = _FactoryFailedError;
 const _ServiceResolver = class _ServiceResolver {
   constructor(registry, cache, parentResolver, scopeName) {
     this.registry = registry;
@@ -637,13 +654,13 @@ const _ServiceResolver = class _ServiceResolver {
   }
   /**
    * Resolves a service by token.
-   * 
+   *
    * Handles:
    * - Alias resolution (recursive)
    * - Lifecycle-specific resolution (Singleton/Transient/Scoped)
    * - Parent delegation for Singletons
    * - Factory error wrapping
-   * 
+   *
    * @template TServiceType - The type of service to resolve
    * @param token - The injection token identifying the service
    * @returns Result with service instance or error
@@ -677,10 +694,10 @@ const _ServiceResolver = class _ServiceResolver {
   }
   /**
    * Instantiates a service based on registration type.
-   * 
+   *
    * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
    * Handles dependency resolution for classes, direct factory calls, and value returns.
-   * 
+   *
    * @template TServiceType - The type of service to instantiate
    * @param token - The injection token (used for error messages)
    * @param registration - The service registration metadata
@@ -734,14 +751,14 @@ const _ServiceResolver = class _ServiceResolver {
   }
   /**
    * Resolves a Singleton service.
-   * 
+   *
    * Strategy:
    * 1. Try parent resolver first (for shared parent singletons)
    * 2. If parent returns error:
    *    - CircularDependency → propagate error
    *    - TokenNotRegistered → fallback to own cache (child-specific singleton)
    * 3. Use own cache for root container or child-specific singletons
-   * 
+   *
    * @template TServiceType - The type of service
    * @param token - The injection token
    * @param registration - The service registration
@@ -768,10 +785,10 @@ const _ServiceResolver = class _ServiceResolver {
   }
   /**
    * Resolves a Transient service.
-   * 
+   *
    * Strategy:
    * - Always create new instance (no caching)
-   * 
+   *
    * @template TServiceType - The type of service
    * @param token - The injection token
    * @param registration - The service registration
@@ -782,11 +799,11 @@ const _ServiceResolver = class _ServiceResolver {
   }
   /**
    * Resolves a Scoped service.
-   * 
+   *
    * Strategy:
    * - Must be in child scope (not root)
    * - One instance per scope (cached)
-   * 
+   *
    * @template TServiceType - The type of service
    * @param token - The injection token
    * @param registration - The service registration
@@ -830,10 +847,10 @@ const _ScopeManager = class _ScopeManager {
   }
   /**
    * Creates a child scope manager.
-   * 
+   *
    * Note: Returns data (scopeName, cache, childManager) instead of full container
    * to avoid circular dependency with ServiceResolver.
-   * 
+   *
    * @param name - Optional custom name for the scope
    * @returns Result with child scope data or error if disposed
    */
@@ -857,13 +874,13 @@ const _ScopeManager = class _ScopeManager {
   }
   /**
    * Disposes this scope and all child scopes.
-   * 
+   *
    * Disposal order (critical):
    * 1. Recursively dispose all children
    * 2. Dispose instances in this scope (if Disposable)
    * 3. Clear instance cache
    * 4. Remove from parent's children set
-   * 
+   *
    * @returns Result indicating success or disposal error
    */
   dispose() {
@@ -892,7 +909,7 @@ const _ScopeManager = class _ScopeManager {
   }
   /**
    * Disposes all instances in the cache that implement Disposable.
-   * 
+   *
    * @returns Result indicating success or disposal error
    */
   disposeInstances() {
@@ -917,11 +934,11 @@ const _ScopeManager = class _ScopeManager {
   }
   /**
    * Type guard to check if an instance implements the Disposable pattern.
-   * 
+   *
    * Checks for:
    * - dispose() method (function)
    * - Future: Symbol.dispose support
-   * 
+   *
    * @param instance - The service instance to check
    * @returns True if instance has dispose() method
    */
@@ -930,7 +947,7 @@ const _ScopeManager = class _ScopeManager {
   }
   /**
    * Checks if this scope is disposed.
-   * 
+   *
    * @returns True if disposed, false otherwise
    */
   isDisposed() {
@@ -938,7 +955,7 @@ const _ScopeManager = class _ScopeManager {
   }
   /**
    * Gets the hierarchical scope name.
-   * 
+   *
    * @returns The scope name (e.g., "root.child1.grandchild")
    */
   getScopeName() {
@@ -955,7 +972,7 @@ __name(registerFallback, "registerFallback");
 const _ServiceContainer = class _ServiceContainer {
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
-   * 
+   *
    * This constructor is private to:
    * - Enforce factory pattern usage
    * - Prevent constructor throws (Result-Contract-breaking)
@@ -978,12 +995,12 @@ const _ServiceContainer = class _ServiceContainer {
   }
   /**
    * Creates a new root container.
-   * 
+   *
    * This is the preferred way to create containers.
    * All components are created fresh for the root container.
-   * 
+   *
    * @returns A new root ServiceContainer
-   * 
+   *
    * @example
    * ```typescript
    * const container = ServiceContainer.createRoot();
@@ -997,14 +1014,7 @@ const _ServiceContainer = class _ServiceContainer {
     const cache = new InstanceCache();
     const scopeManager = new ScopeManager("root", null, cache);
     const resolver = new ServiceResolver(registry, cache, null, "root");
-    return new _ServiceContainer(
-      registry,
-      validator,
-      cache,
-      resolver,
-      scopeManager,
-      "registering"
-    );
+    return new _ServiceContainer(registry, validator, cache, resolver, scopeManager, "registering");
   }
   /**
    * Register a service class with automatic dependency injection.
@@ -1114,27 +1124,27 @@ const _ServiceContainer = class _ServiceContainer {
   }
   /**
    * Creates a child scope container.
-   * 
+   *
    * Child containers:
    * - Inherit parent registrations (cloned)
    * - Can add their own registrations
    * - Must call validate() before resolving
    * - Share parent's singleton instances
    * - Have isolated scoped instances
-   * 
+   *
    * @param name - Optional custom name for the scope
    * @returns Result with child container or error
-   * 
+   *
    * @example
    * ```typescript
    * const parent = ServiceContainer.createRoot();
    * parent.registerClass(LoggerToken, Logger, SINGLETON);
    * parent.validate();
-   * 
+   *
    * const child = parent.createScope("request").value!;
    * child.registerClass(RequestToken, RequestContext, SCOPED);
    * child.validate();
-   * 
+   *
    * const logger = child.resolve(LoggerToken);   // From parent (shared)
    * const ctx = child.resolve(RequestToken);      // From child (isolated)
    * ```
@@ -1232,7 +1242,7 @@ const _ServiceContainer = class _ServiceContainer {
   }
   /**
    * Clear all registrations and instances.
-   * 
+   *
    * IMPORTANT: Resets validation state (per review feedback).
    */
   clear() {
@@ -1289,15 +1299,6 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
 __name(_ConsoleLoggerService, "ConsoleLoggerService");
 _ConsoleLoggerService.dependencies = [];
 let ConsoleLoggerService = _ConsoleLoggerService;
-const foundryGameToken = createInjectionToken("FoundryGame");
-const foundryHooksToken = createInjectionToken("FoundryHooks");
-const foundryDocumentToken = createInjectionToken("FoundryDocument");
-const foundryUIToken = createInjectionToken("FoundryUI");
-const portSelectorToken = createInjectionToken("PortSelector");
-const foundryGamePortRegistryToken = createInjectionToken("FoundryGamePortRegistry");
-const foundryHooksPortRegistryToken = createInjectionToken("FoundryHooksPortRegistry");
-const foundryDocumentPortRegistryToken = createInjectionToken("FoundryDocumentPortRegistry");
-const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry");
 const _JournalVisibilityService = class _JournalVisibilityService {
   constructor(game2, document, ui, logger2) {
     this.game = game2;
@@ -1307,6 +1308,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
   }
   /**
    * Gets journal entries marked as hidden via module flag.
+   * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
   getHiddenJournalEntries() {
     const allEntriesResult = this.game.getJournalEntries();
@@ -1318,8 +1320,14 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         MODULE_CONSTANTS.MODULE.ID,
         MODULE_CONSTANTS.FLAGS.HIDDEN
       );
-      if (flagResult.ok && flagResult.value === true) {
-        hidden.push(journal);
+      if (flagResult.ok) {
+        if (flagResult.value === true) {
+          hidden.push(journal);
+        }
+      } else {
+        this.logger.warn(
+          `Failed to read hidden flag for journal "${journal.name ?? journal.id}": ${flagResult.error}`
+        );
       }
     }
     return { ok: true, value: hidden };
@@ -1480,6 +1488,14 @@ const _PortRegistry = class _PortRegistry {
     return ports;
   }
   /**
+   * Gets available port instances for version selection.
+   * Alias for createAll() with clearer semantics for PortSelector usage.
+   * @returns Map of version numbers to port instances
+   */
+  getAvailablePorts() {
+    return this.createAll();
+  }
+  /**
    * Creates only the port for the specified version or the highest compatible version.
    * More efficient than createAll() when only one port is needed.
    * @param version - The target Foundry version
@@ -1494,7 +1510,13 @@ const _PortRegistry = class _PortRegistry {
       );
     }
     const selectedVersion = compatibleVersions[0];
+    if (selectedVersion === void 0) {
+      return err("No compatible version found");
+    }
     const factory = this.factories.get(selectedVersion);
+    if (!factory) {
+      return err(`Factory not found for version ${selectedVersion}`);
+    }
     return ok(factory());
   }
   /**
@@ -1524,18 +1546,13 @@ const _FoundryGameService = class _FoundryGameService {
   }
   /**
    * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector for centralized version selection logic.
    * @returns Result containing the port or an error if no compatible port can be selected
    */
   getPort() {
     if (this.port === null) {
-      const versionResult = tryCatch(
-        () => getFoundryVersion(),
-        (e) => `Cannot detect Foundry version: ${e instanceof Error ? e.message : String(e)}`
-      );
-      if (!versionResult.ok) {
-        return err(`Failed to detect Foundry version: ${versionResult.error}`);
-      }
-      const portResult = this.portRegistry.createForVersion(versionResult.value);
+      const availablePorts = this.portRegistry.getAvailablePorts();
+      const portResult = this.portSelector.selectPort(availablePorts);
       if (!portResult.ok) {
         return err(`Failed to select FoundryGame port: ${portResult.error}`);
       }
@@ -1565,18 +1582,13 @@ const _FoundryHooksService = class _FoundryHooksService {
   }
   /**
    * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector for centralized version selection logic.
    * @returns Result containing the port or an error if no compatible port can be selected
    */
   getPort() {
     if (this.port === null) {
-      const versionResult = tryCatch(
-        () => getFoundryVersion(),
-        (e) => `Cannot detect Foundry version: ${e instanceof Error ? e.message : String(e)}`
-      );
-      if (!versionResult.ok) {
-        return err(`Failed to detect Foundry version: ${versionResult.error}`);
-      }
-      const portResult = this.portRegistry.createForVersion(versionResult.value);
+      const availablePorts = this.portRegistry.getAvailablePorts();
+      const portResult = this.portSelector.selectPort(availablePorts);
       if (!portResult.ok) {
         return err(`Failed to select FoundryHooks port: ${portResult.error}`);
       }
@@ -1606,18 +1618,13 @@ const _FoundryDocumentService = class _FoundryDocumentService {
   }
   /**
    * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector for centralized version selection logic.
    * @returns Result containing the port or an error if no compatible port can be selected
    */
   getPort() {
     if (this.port === null) {
-      const versionResult = tryCatch(
-        () => getFoundryVersion(),
-        (e) => `Cannot detect Foundry version: ${e instanceof Error ? e.message : String(e)}`
-      );
-      if (!versionResult.ok) {
-        return err(`Failed to detect Foundry version: ${versionResult.error}`);
-      }
-      const portResult = this.portRegistry.createForVersion(versionResult.value);
+      const availablePorts = this.portRegistry.getAvailablePorts();
+      const portResult = this.portSelector.selectPort(availablePorts);
       if (!portResult.ok) {
         return err(`Failed to select FoundryDocument port: ${portResult.error}`);
       }
@@ -1647,18 +1654,13 @@ const _FoundryUIService = class _FoundryUIService {
   }
   /**
    * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector for centralized version selection logic.
    * @returns Result containing the port or an error if no compatible port can be selected
    */
   getPort() {
     if (this.port === null) {
-      const versionResult = tryCatch(
-        () => getFoundryVersion(),
-        (e) => `Cannot detect Foundry version: ${e instanceof Error ? e.message : String(e)}`
-      );
-      if (!versionResult.ok) {
-        return err(`Failed to detect Foundry version: ${versionResult.error}`);
-      }
-      const portResult = this.portRegistry.createForVersion(versionResult.value);
+      const availablePorts = this.portRegistry.getAvailablePorts();
+      const portResult = this.portSelector.selectPort(availablePorts);
       if (!portResult.ok) {
         return err(`Failed to select FoundryUI port: ${portResult.error}`);
       }
@@ -1710,18 +1712,29 @@ __name(_FoundryGamePortV13, "FoundryGamePortV13");
 let FoundryGamePortV13 = _FoundryGamePortV13;
 const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
   on(hookName, callback) {
-    if (typeof Hooks === "undefined") {
-      return err("Foundry Hooks API is not available");
-    }
-    Hooks.on(hookName, callback);
-    return ok(void 0);
+    return tryCatch(
+      () => {
+        if (typeof Hooks === "undefined") {
+          throw new Error("Foundry Hooks API is not available");
+        }
+        Hooks.on(hookName, callback);
+      },
+      (error) => `Failed to register hook ${hookName}: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
   off(hookName, callback) {
-    if (typeof Hooks === "undefined") {
-      return err("Foundry Hooks API is not available");
-    }
-    Hooks.off(hookName, callback);
-    return ok(void 0);
+    return tryCatch(
+      () => {
+        if (typeof Hooks === "undefined") {
+          throw new Error("Foundry Hooks API is not available");
+        }
+        Hooks.off(
+          hookName,
+          callback
+        );
+      },
+      (error) => `Failed to unregister hook ${hookName}: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 };
 __name(_FoundryHooksPortV13, "FoundryHooksPortV13");
@@ -1802,7 +1815,10 @@ function configureDependencies(container) {
     portRegistrationErrors.push(`FoundryHooks v13: ${hooksPortRegResult.error}`);
   }
   const documentPortRegistry = new PortRegistry();
-  const documentPortRegResult = documentPortRegistry.register(13, () => new FoundryDocumentPortV13());
+  const documentPortRegResult = documentPortRegistry.register(
+    13,
+    () => new FoundryDocumentPortV13()
+  );
   if (isErr(documentPortRegResult)) {
     portRegistrationErrors.push(`FoundryDocument v13: ${documentPortRegResult.error}`);
   }
@@ -1901,11 +1917,21 @@ const _CompositionRoot = class _CompositionRoot {
   }
   /**
    * Erstellt den ServiceContainer und führt Basis-Registrierungen aus.
+   * Misst Performance für Diagnose-Zwecke.
    * @returns Result mit initialisiertem Container oder Fehlermeldung
    */
   bootstrap() {
+    performance.mark("bootstrap-start");
     const container = ServiceContainer.createRoot();
     const configured = configureDependencies(container);
+    performance.mark("bootstrap-end");
+    performance.measure("bootstrap-duration", "bootstrap-start", "bootstrap-end");
+    const measure = performance.getEntriesByName("bootstrap-duration")[0];
+    if (measure) {
+      console.debug(
+        `${MODULE_CONSTANTS.LOG_PREFIX} Bootstrap completed in ${measure.duration.toFixed(2)}ms`
+      );
+    }
     if (configured.ok) {
       this.container = container;
       return { ok: true, value: container };
@@ -1913,7 +1939,8 @@ const _CompositionRoot = class _CompositionRoot {
     return { ok: false, error: configured.error };
   }
   /**
-   * Exponiert die öffentliche Modul-API (nur resolve) unter game.modules.get(MODULE_ID).api.
+   * Exponiert die öffentliche Modul-API unter game.modules.get(MODULE_ID).api.
+   * Stellt resolve(), getAvailableTokens() und tokens bereit.
    * Darf erst nach erfolgreichem Bootstrap aufgerufen werden.
    * @throws Fehler, wenn das Foundry-Modul-Objekt nicht verfügbar ist
    */
@@ -1926,8 +1953,36 @@ const _CompositionRoot = class _CompositionRoot {
     if (!mod) {
       throw new Error(`${MODULE_CONSTANTS.LOG_PREFIX} Module not available to expose API`);
     }
+    const wellKnownTokens = {
+      loggerToken,
+      journalVisibilityServiceToken,
+      foundryGameToken,
+      foundryHooksToken,
+      foundryDocumentToken,
+      foundryUIToken
+    };
     const api = {
-      resolve: /* @__PURE__ */ __name((token) => container.resolve(token), "resolve")
+      resolve: /* @__PURE__ */ __name((token) => container.resolve(token), "resolve"),
+      getAvailableTokens: /* @__PURE__ */ __name(() => {
+        const tokenMap = /* @__PURE__ */ new Map();
+        const tokenEntries = [
+          ["loggerToken", loggerToken],
+          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
+          ["foundryGameToken", foundryGameToken],
+          ["foundryHooksToken", foundryHooksToken],
+          ["foundryDocumentToken", foundryDocumentToken],
+          ["foundryUIToken", foundryUIToken]
+        ];
+        for (const [, token] of tokenEntries) {
+          const isRegisteredResult = container.isRegistered(token);
+          tokenMap.set(token, {
+            description: String(token).replace("Symbol(", "").replace(")", ""),
+            isRegistered: isRegisteredResult.ok ? isRegisteredResult.value : false
+          });
+        }
+        return tokenMap;
+      }, "getAvailableTokens"),
+      tokens: wellKnownTokens
     };
     mod.api = api;
   }
@@ -1953,17 +2008,22 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
     const foundryHooks = container.resolve(foundryHooksToken);
     const logger2 = container.resolve(loggerToken);
     const journalVisibility = container.resolve(journalVisibilityServiceToken);
-    const hookResult = foundryHooks.on(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY, (app, html) => {
-      logger2.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
-      const htmlElement = html;
-      if (!htmlElement) {
-        logger2.error("Failed to get HTMLElement from hook");
-        return;
+    const hookResult = foundryHooks.on(
+      MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
+      (app, html) => {
+        logger2.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
+        const htmlElement = html;
+        if (!htmlElement) {
+          logger2.error("Failed to get HTMLElement from hook");
+          return;
+        }
+        journalVisibility.processJournalDirectory(htmlElement);
       }
-      journalVisibility.processJournalDirectory(htmlElement);
-    });
+    );
     if (!hookResult.ok) {
-      logger2.error(`Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook: ${hookResult.error}`);
+      logger2.error(
+        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook: ${hookResult.error}`
+      );
     }
   }
 };

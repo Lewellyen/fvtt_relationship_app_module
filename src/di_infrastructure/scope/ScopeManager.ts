@@ -1,6 +1,5 @@
 import type { Result } from "@/types/result";
 import type { ContainerError } from "../interfaces/containererror";
-import type { InjectionToken } from "../types/injectiontoken";
 import type { ServiceType } from "@/types/servicetypeindex";
 import { InstanceCache } from "../cache/InstanceCache";
 import { ok, err, tryCatch, isErr } from "@/utils/result";
@@ -19,13 +18,13 @@ function generateScopeId(): string {
 
 /**
  * Manages scope hierarchy and disposal lifecycle.
- * 
+ *
  * Responsibilities:
  * - Track child scopes in hierarchy
  * - Generate scope names
  * - Dispose instances (including Disposable pattern support)
  * - Cascade disposal to children
- * 
+ *
  * Design:
  * - NO dependency on ServiceResolver (avoids circular dependency)
  * - createChild() returns data for facade to build new container
@@ -43,10 +42,10 @@ export class ScopeManager {
 
   /**
    * Creates a child scope manager.
-   * 
+   *
    * Note: Returns data (scopeName, cache, childManager) instead of full container
    * to avoid circular dependency with ServiceResolver.
-   * 
+   *
    * @param name - Optional custom name for the scope
    * @returns Result with child scope data or error if disposed
    */
@@ -82,13 +81,13 @@ export class ScopeManager {
 
   /**
    * Disposes this scope and all child scopes.
-   * 
+   *
    * Disposal order (critical):
    * 1. Recursively dispose all children
    * 2. Dispose instances in this scope (if Disposable)
    * 3. Clear instance cache
    * 4. Remove from parent's children set
-   * 
+   *
    * @returns Result indicating success or disposal error
    */
   dispose(): Result<void, ContainerError> {
@@ -131,7 +130,7 @@ export class ScopeManager {
 
   /**
    * Disposes all instances in the cache that implement Disposable.
-   * 
+   *
    * @returns Result indicating success or disposal error
    */
   private disposeInstances(): Result<void, ContainerError> {
@@ -160,11 +159,11 @@ export class ScopeManager {
 
   /**
    * Type guard to check if an instance implements the Disposable pattern.
-   * 
+   *
    * Checks for:
    * - dispose() method (function)
    * - Future: Symbol.dispose support
-   * 
+   *
    * @param instance - The service instance to check
    * @returns True if instance has dispose() method
    */
@@ -177,7 +176,7 @@ export class ScopeManager {
 
   /**
    * Checks if this scope is disposed.
-   * 
+   *
    * @returns True if disposed, false otherwise
    */
   isDisposed(): boolean {
@@ -186,11 +185,10 @@ export class ScopeManager {
 
   /**
    * Gets the hierarchical scope name.
-   * 
+   *
    * @returns The scope name (e.g., "root.child1.grandchild")
    */
   getScopeName(): string {
     return this.scopeName;
   }
 }
-

@@ -26,9 +26,7 @@ describe("ConsoleLoggerService", () => {
   describe("log", () => {
     it("should log message with prefix", () => {
       logger.log("Test message");
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Test message`
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(`${MODULE_CONSTANTS.LOG_PREFIX} Test message`);
     });
 
     it("should log with additional parameters", () => {
@@ -44,9 +42,7 @@ describe("ConsoleLoggerService", () => {
   describe("error", () => {
     it("should log error message with prefix", () => {
       logger.error("Error message");
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Error message`
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(`${MODULE_CONSTANTS.LOG_PREFIX} Error message`);
     });
 
     it("should log error with stack trace", () => {
@@ -62,9 +58,7 @@ describe("ConsoleLoggerService", () => {
   describe("warn", () => {
     it("should log warning message with prefix", () => {
       logger.warn("Warning message");
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Warning message`
-      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(`${MODULE_CONSTANTS.LOG_PREFIX} Warning message`);
     });
 
     it("should log warning with additional data", () => {
@@ -80,18 +74,14 @@ describe("ConsoleLoggerService", () => {
   describe("info", () => {
     it("should log info message with prefix", () => {
       logger.info("Info message");
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Info message`
-      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(`${MODULE_CONSTANTS.LOG_PREFIX} Info message`);
     });
   });
 
   describe("debug", () => {
     it("should log debug message with prefix", () => {
       logger.debug("Debug message");
-      expect(consoleDebugSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Debug message`
-      );
+      expect(consoleDebugSpy).toHaveBeenCalledWith(`${MODULE_CONSTANTS.LOG_PREFIX} Debug message`);
     });
 
     it("should log debug with complex objects", () => {
@@ -130,4 +120,3 @@ describe("ConsoleLoggerService", () => {
     });
   });
 });
-

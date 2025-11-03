@@ -6,11 +6,7 @@ import type { Logger } from "@/interfaces/logger";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import { MODULE_CONSTANTS } from "@/constants";
 import { match } from "@/utils/result";
-import {
-  foundryGameToken,
-  foundryDocumentToken,
-  foundryUIToken,
-} from "@/foundry/foundrytokens";
+import { foundryGameToken, foundryDocumentToken, foundryUIToken } from "@/foundry/foundrytokens";
 import { loggerToken } from "@/tokens/tokenindex";
 
 /**
@@ -34,22 +30,34 @@ export class JournalVisibilityService {
 
   /**
    * Gets journal entries marked as hidden via module flag.
+   * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
   getHiddenJournalEntries(): Result<FoundryJournalEntry[], string> {
     const allEntriesResult = this.game.getJournalEntries();
     if (!allEntriesResult.ok) return allEntriesResult;
 
     const hidden: FoundryJournalEntry[] = [];
+
     for (const journal of allEntriesResult.value) {
       const flagResult = this.document.getFlag<boolean>(
         journal as { getFlag: (scope: string, key: string) => unknown },
         MODULE_CONSTANTS.MODULE.ID,
         MODULE_CONSTANTS.FLAGS.HIDDEN
       );
-      if (flagResult.ok && flagResult.value === true) {
-        hidden.push(journal);
+
+      if (flagResult.ok) {
+        if (flagResult.value === true) {
+          hidden.push(journal);
+        }
+      } else {
+        // Log flag read errors for diagnosis without interrupting processing
+        this.logger.warn(
+          `Failed to read hidden flag for journal "${journal.name ?? journal.id}": ${flagResult.error}`
+        );
+        // Continue processing other entries
       }
     }
+
     return { ok: true, value: hidden };
   }
 

@@ -2,198 +2,166 @@ import { describe, it, expect } from "vitest";
 import { ServiceRegistration } from "../serviceregistration";
 import { ServiceLifecycle } from "../servicelifecycle";
 import { createInjectionToken } from "../../tokenutilities";
+import type { Logger } from "@/interfaces/logger";
 
-class TestService {
+class TestService implements Logger {
   static dependencies = [] as const;
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
 describe("ServiceRegistration", () => {
-  describe("Constructor Validation", () => {
+  describe("createClass() Factory Method", () => {
     it("should create valid class registration", () => {
-      const registration = new ServiceRegistration(
+      const result = ServiceRegistration.createClass(ServiceLifecycle.SINGLETON, [], TestService);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.providerType).toBe("class");
+        expect(result.value.serviceClass).toBe(TestService);
+        expect(result.value.lifecycle).toBe(ServiceLifecycle.SINGLETON);
+      }
+    });
+
+    it("should fail when serviceClass is undefined", () => {
+      const result = ServiceRegistration.createClass(
         ServiceLifecycle.SINGLETON,
         [],
-        "class",
-        TestService,
-        undefined,
-        undefined,
-        undefined
+        undefined as any
       );
 
-      expect(registration.providerType).toBe("class");
-      expect(registration.serviceClass).toBe(TestService);
-    });
-
-    it("should create valid factory registration", () => {
-      const factory = () => new TestService();
-      const registration = new ServiceRegistration(
-        ServiceLifecycle.SINGLETON,
-        [],
-        "factory",
-        undefined,
-        factory,
-        undefined,
-        undefined
-      );
-
-      expect(registration.providerType).toBe("factory");
-      expect(registration.factory).toBe(factory);
-    });
-
-    it("should create valid value registration", () => {
-      const value = { test: "value" };
-      const registration = new ServiceRegistration(
-        ServiceLifecycle.SINGLETON,
-        [],
-        "value",
-        undefined,
-        undefined,
-        value,
-        undefined
-      );
-
-      expect(registration.providerType).toBe("value");
-      expect(registration.value).toBe(value);
-    });
-
-    it("should create valid alias registration", () => {
-      const targetToken = createInjectionToken<TestService>("Target");
-      const registration = new ServiceRegistration(
-        ServiceLifecycle.SINGLETON,
-        [targetToken],
-        "alias",
-        undefined,
-        undefined,
-        undefined,
-        targetToken
-      );
-
-      expect(registration.providerType).toBe("alias");
-      expect(registration.aliasTarget).toBe(targetToken);
-    });
-
-    it("should throw when no field is set", () => {
-      expect(() => {
-        new ServiceRegistration(
-          ServiceLifecycle.SINGLETON,
-          [],
-          "class",
-          undefined,
-          undefined,
-          undefined,
-          undefined
-        );
-      }).toThrow("exactly one");
-    });
-
-    it("should throw when multiple fields are set", () => {
-      expect(() => {
-        new ServiceRegistration(
-          ServiceLifecycle.SINGLETON,
-          [],
-          "class",
-          TestService,
-          () => new TestService(),
-          undefined,
-          undefined
-        );
-      }).toThrow("exactly one");
-    });
-
-    it("should throw when providerType does not match field", () => {
-      expect(() => {
-        new ServiceRegistration(
-          ServiceLifecycle.SINGLETON,
-          [],
-          "class",
-          undefined,
-          () => new TestService(),
-          undefined,
-          undefined
-        );
-      }).toThrow('ProviderType "class" requires serviceClass');
-    });
-
-    it("should throw when factory providerType but no factory", () => {
-      expect(() => {
-        new ServiceRegistration(
-          ServiceLifecycle.SINGLETON,
-          [],
-          "factory",
-          TestService,
-          undefined,
-          undefined,
-          undefined
-        );
-      }).toThrow('ProviderType "factory" requires factory');
-    });
-
-    it("should throw when value providerType but no value", () => {
-      expect(() => {
-        new ServiceRegistration(
-          ServiceLifecycle.SINGLETON,
-          [],
-          "value",
-          undefined,
-          undefined,
-          undefined,
-          undefined
-        );
-      }).toThrow("exactly one");
-    });
-
-    it("should throw when alias providerType but no aliasTarget", () => {
-      expect(() => {
-        new ServiceRegistration(
-          ServiceLifecycle.SINGLETON,
-          [],
-          "alias",
-          undefined,
-          undefined,
-          undefined,
-          undefined
-        );
-      }).toThrow("exactly one");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+        expect(result.error.message).toContain("serviceClass is required");
+      }
     });
   });
 
-  describe("clone", () => {
-    it("should clone registration", () => {
-      const original = new ServiceRegistration(
-        ServiceLifecycle.SINGLETON,
-        [],
-        "class",
-        TestService,
-        undefined,
-        undefined,
-        undefined
-      );
+  describe("createFactory() Factory Method", () => {
+    it("should create valid factory registration", () => {
+      const factory = () => new TestService();
+      const result = ServiceRegistration.createFactory(ServiceLifecycle.TRANSIENT, [], factory);
 
-      const cloned = original.clone();
-
-      expect(cloned).not.toBe(original);
-      expect(cloned.serviceClass).toBe(original.serviceClass);
-      expect(cloned.providerType).toBe(original.providerType);
-      expect(cloned.lifecycle).toBe(original.lifecycle);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.providerType).toBe("factory");
+        expect(result.value.factory).toBe(factory);
+        expect(result.value.lifecycle).toBe(ServiceLifecycle.TRANSIENT);
+      }
     });
 
-    it("should clone dependencies array", () => {
-      const depToken = createInjectionToken<TestService>("Dep");
-      const original = new ServiceRegistration(
+    it("should fail when factory is undefined", () => {
+      const result = ServiceRegistration.createFactory(
         ServiceLifecycle.SINGLETON,
-        [depToken],
-        "class",
-        TestService,
-        undefined,
-        undefined,
-        undefined
+        [],
+        undefined as any
       );
 
-      const cloned = original.clone();
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+        expect(result.error.message).toContain("factory is required");
+      }
+    });
+  });
 
-      expect(cloned.dependencies).toEqual([depToken]);
-      expect(cloned.dependencies).not.toBe(original.dependencies);
+  describe("createValue() Factory Method", () => {
+    it("should create valid value registration", () => {
+      const value = new TestService();
+      const result = ServiceRegistration.createValue(value);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.providerType).toBe("value");
+        expect(result.value.value).toBeInstanceOf(TestService);
+        expect(result.value.lifecycle).toBe(ServiceLifecycle.SINGLETON);
+      }
+    });
+
+    it("should fail when value is undefined", () => {
+      const result = ServiceRegistration.createValue(undefined as any);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+        expect(result.error.message).toContain("value cannot be undefined");
+      }
+    });
+
+    it("should fail when value is a function", () => {
+      const result = ServiceRegistration.createValue((() => {}) as any);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+        expect(result.error.message).toContain("only accepts plain values");
+      }
+    });
+  });
+
+  describe("createAlias() Factory Method", () => {
+    it("should create valid alias registration", () => {
+      const targetToken = createInjectionToken<Logger>("Target");
+      const result = ServiceRegistration.createAlias(targetToken);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.providerType).toBe("alias");
+        expect(result.value.aliasTarget).toBe(targetToken);
+        expect(result.value.lifecycle).toBe(ServiceLifecycle.SINGLETON);
+        expect(result.value.dependencies).toContain(targetToken);
+      }
+    });
+
+    it("should fail when targetToken is undefined", () => {
+      const result = ServiceRegistration.createAlias(undefined as any);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+        expect(result.error.message).toContain("targetToken is required");
+      }
+    });
+  });
+
+  describe("clone()", () => {
+    it("should create independent clone with same values", () => {
+      const token = createInjectionToken<Logger>("Test");
+      const result = ServiceRegistration.createClass(
+        ServiceLifecycle.SINGLETON,
+        [token],
+        TestService
+      );
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const original = result.value;
+        const cloned = original.clone();
+
+        expect(cloned.lifecycle).toBe(original.lifecycle);
+        expect(cloned.providerType).toBe(original.providerType);
+        expect(cloned.serviceClass).toBe(original.serviceClass);
+        expect(cloned.dependencies).toEqual(original.dependencies);
+        expect(cloned.dependencies).not.toBe(original.dependencies); // Different array instance
+      }
+    });
+
+    it("should clone factory registration", () => {
+      const factory = () => new TestService();
+      const result = ServiceRegistration.createFactory(ServiceLifecycle.TRANSIENT, [], factory);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const original = result.value;
+        const cloned = original.clone();
+
+        expect(cloned.factory).toBe(factory);
+        expect(cloned.lifecycle).toBe(ServiceLifecycle.TRANSIENT);
+      }
     });
   });
 });
-

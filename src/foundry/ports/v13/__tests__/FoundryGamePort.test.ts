@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { FoundryGamePortV13 } from "../FoundryGamePort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-import type { FoundryJournalEntry } from "@/foundry/types";
 
 describe("FoundryGamePortV13", () => {
   let port: FoundryGamePortV13;
@@ -144,4 +143,3 @@ describe("FoundryGamePortV13", () => {
     });
   });
 });
-

@@ -11,5 +11,12 @@ export const loggerToken = createInjectionToken<Logger>("Logger");
 /**
  * Token for resolving the JournalVisibilityService.
  */
-export const journalVisibilityServiceToken =
-  createInjectionToken<JournalVisibilityService>("JournalVisibilityService");
+export const journalVisibilityServiceToken = createInjectionToken<JournalVisibilityService>(
+  "JournalVisibilityService"
+);
+
+/**
+ * Re-export port-related tokens for convenience.
+ * These are defined in @/foundry/foundrytokens but exported here for easier access.
+ */
+export { portSelectorToken } from "@/foundry/foundrytokens";

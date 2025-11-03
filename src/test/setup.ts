@@ -12,6 +12,3 @@
 
 // Vitest globals sind bereits durch vitest.config.ts aktiviert
 // Keine globalThis-Mocks hier!
-
-
-

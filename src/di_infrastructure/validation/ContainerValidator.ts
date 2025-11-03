@@ -7,12 +7,12 @@ import { ok, err } from "@/utils/result";
 
 /**
  * Validates service registrations and dependencies.
- * 
+ *
  * Responsibilities:
  * - Check that all dependencies are registered
  * - Detect circular dependencies using DFS
  * - Validate alias targets exist
- * 
+ *
  * Design:
  * - Stateless: can be shared between parent and child containers
  * - Returns aggregated errors for comprehensive feedback
@@ -25,19 +25,19 @@ export class ContainerValidator {
   private validatedSubgraphs = new Set<InjectionToken<ServiceType>>();
   /**
    * Validates all registrations in the registry.
-   * 
+   *
    * Performs three checks:
    * 1. All dependencies are registered
    * 2. All alias targets exist
    * 3. No circular dependencies
-   * 
+   *
    * @param registry - The service registry to validate
    * @returns Result with void on success, or array of errors
    */
   validate(registry: ServiceRegistry): Result<void, ContainerError[]> {
     // Clear cache for fresh validation
     this.validatedSubgraphs = new Set<InjectionToken<ServiceType>>();
-    
+
     const errors: ContainerError[] = [
       ...this.validateDependencies(registry),
       ...this.validateAliasTargets(registry),
@@ -49,7 +49,7 @@ export class ContainerValidator {
 
   /**
    * Checks that all declared dependencies are registered.
-   * 
+   *
    * @param registry - The service registry to check
    * @returns Array of errors for missing dependencies
    */
@@ -74,7 +74,7 @@ export class ContainerValidator {
 
   /**
    * Checks that all alias targets are registered.
-   * 
+   *
    * @param registry - The service registry to check
    * @returns Array of errors for missing alias targets
    */
@@ -99,7 +99,7 @@ export class ContainerValidator {
 
   /**
    * Detects circular dependencies using depth-first search.
-   * 
+   *
    * @param registry - The service registry to check
    * @returns Array of errors for detected cycles
    */
@@ -123,10 +123,10 @@ export class ContainerValidator {
 
   /**
    * Recursively checks for cycles starting from a specific token.
-   * 
+   *
    * Uses DFS with visiting/visited sets to detect back edges (cycles).
    * Performance optimization: Uses Set cache to skip already-validated sub-graphs.
-   * 
+   *
    * @param registry - The service registry
    * @param token - Current token being checked
    * @param visiting - Set of tokens in current DFS path
@@ -183,4 +183,3 @@ export class ContainerValidator {
     return null;
   }
 }
-

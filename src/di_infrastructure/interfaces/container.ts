@@ -114,16 +114,16 @@ export interface Container {
 
   /**
    * Validate all registered services and their dependencies.
-   * 
+   *
    * This method performs comprehensive validation:
    * - Checks that all dependencies are registered
    * - Detects circular dependencies
    * - Validates alias targets exist
-   * 
+   *
    * Must be called before resolve() or createScope().
-   * 
+   *
    * @returns Result containing array of errors if validation fails, or success if passed
-   * 
+   *
    * @example
    * ```typescript
    * container.registerClass(UserServiceToken, UserService, SINGLETON);

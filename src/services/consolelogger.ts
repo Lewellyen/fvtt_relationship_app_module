@@ -15,7 +15,7 @@ export class ConsoleLoggerService implements Logger {
    * @param message - Message to log
    * @param optionalParams - Additional data to log (objects will be interactive in browser console)
    */
-  log(message: string, ...optionalParams: any[]): void {
+  log(message: string, ...optionalParams: unknown[]): void {
     console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
   }
 
@@ -24,7 +24,7 @@ export class ConsoleLoggerService implements Logger {
    * @param message - Error message to log
    * @param optionalParams - Additional data to log (e.g., error objects, stack traces)
    */
-  error(message: string, ...optionalParams: any[]): void {
+  error(message: string, ...optionalParams: unknown[]): void {
     console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
   }
 
@@ -33,7 +33,7 @@ export class ConsoleLoggerService implements Logger {
    * @param message - Warning message to log
    * @param optionalParams - Additional data to log
    */
-  warn(message: string, ...optionalParams: any[]): void {
+  warn(message: string, ...optionalParams: unknown[]): void {
     console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
   }
 
@@ -42,7 +42,7 @@ export class ConsoleLoggerService implements Logger {
    * @param message - Info message to log
    * @param optionalParams - Additional data to log
    */
-  info(message: string, ...optionalParams: any[]): void {
+  info(message: string, ...optionalParams: unknown[]): void {
     console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
   }
 
@@ -51,7 +51,7 @@ export class ConsoleLoggerService implements Logger {
    * @param message - Debug message to log
    * @param optionalParams - Additional data to log (useful for inspecting complex objects)
    */
-  debug(message: string, ...optionalParams: any[]): void {
+  debug(message: string, ...optionalParams: unknown[]): void {
     console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
   }
 }

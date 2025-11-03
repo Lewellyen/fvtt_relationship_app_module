@@ -70,6 +70,55 @@ class FoundryGameService implements FoundryGame {
 }
 ```
 
+### Lazy Instantiation (Anti-Crash-Mechanismus)
+
+**Problem:** Wenn alle Ports sofort instantiiert werden, crashen neuere Ports auf älteren Foundry-Versionen:
+
+```typescript
+// ❌ Alt (vor Fix):
+registry.register(14, () => new FoundryGamePortV14()); // Registration OK
+const ports = registry.getAvailablePorts(); // 💥 Instantiiert v14-Port auf v13 → Crash
+
+// ✅ Neu (nach Fix):
+const factories = registry.getFactories(); // Gibt nur Factories zurück
+const port = selector.selectPortFromFactories(factories); // Nur kompatiblen Port instantiieren
+```
+
+**Implementierung:**
+
+1. `PortRegistry.getFactories()` gibt `Map<number, PortFactory<T>>` zurück (nicht Instanzen)
+2. `PortSelector.selectPortFromFactories()` wählt Factory basierend auf Version
+3. Nur die ausgewählte Factory wird ausgeführt → Safe!
+
+**Garantie:** v14-Ports mit `game.v14NewApi` crashen nicht auf v13, da sie nie instantiiert werden.
+
+### Hook-Adapter: jQuery ↔ HTMLElement
+
+**Problem:** Foundry-Hooks wechselten von jQuery zu nativen DOM-Elementen.
+
+**Lösung:** `ModuleHookRegistrar.extractHtmlElement()` behandelt beide Formate:
+
+```typescript
+private extractHtmlElement(html: unknown): HTMLElement | null {
+  // Case 1: Native HTMLElement (v13+)
+  if (html instanceof HTMLElement) return html;
+  
+  // Case 2: jQuery {0: HTMLElement, length: 1} (v10-12)
+  if (isJQueryObject(html)) return html[0];
+  
+  // Case 3: jQuery.get(0) method
+  if (hasGetMethod(html)) return html.get(0);
+  
+  return null;
+}
+```
+
+**Test-Coverage:**
+- ✅ Native HTMLElement
+- ✅ jQuery mit Index-Zugriff
+- ✅ jQuery mit `.get()` Methode
+- ✅ Ungültige Formate (Error-Logging)
+
 ### Child-Scope Registrierungen (NEU)
 
 **Wichtig**: Children erben Parent-Registrierungen, können aber eigene hinzufügen:

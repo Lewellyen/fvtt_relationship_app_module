@@ -1,20 +1,30 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { ServiceResolver } from "../ServiceResolver";
 import { ServiceRegistry } from "../../registry/ServiceRegistry";
 import { InstanceCache } from "../../cache/InstanceCache";
 import { createInjectionToken } from "../../tokenutilities";
 import { ServiceLifecycle } from "../../types/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-import type { ServiceType } from "@/types/servicetypeindex";
+import type { Logger } from "@/interfaces/logger";
 
-class TestService {
+class TestService implements Logger {
   static dependencies = [] as const;
   constructor(public value: number = Math.random()) {}
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
-class TestServiceWithDep {
+class TestServiceWithDep implements Logger {
   static dependencies = [] as const;
   constructor(public dep: TestService) {}
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
 describe("ServiceResolver", () => {
@@ -217,11 +227,21 @@ describe("ServiceResolver", () => {
       const parentResolver = new ServiceResolver(parentRegistry, parentCache, null, "parent");
       const child1Registry = parentRegistry.clone();
       const child1Cache = new InstanceCache();
-      const child1Resolver = new ServiceResolver(child1Registry, child1Cache, parentResolver, "child1");
+      const child1Resolver = new ServiceResolver(
+        child1Registry,
+        child1Cache,
+        parentResolver,
+        "child1"
+      );
 
       const child2Registry = parentRegistry.clone();
       const child2Cache = new InstanceCache();
-      const child2Resolver = new ServiceResolver(child2Registry, child2Cache, parentResolver, "child2");
+      const child2Resolver = new ServiceResolver(
+        child2Registry,
+        child2Cache,
+        parentResolver,
+        "child2"
+      );
 
       const child1Result = child1Resolver.resolve(token);
       expectResultOk(child1Result);
@@ -241,12 +261,7 @@ describe("ServiceResolver", () => {
 
       const token = createInjectionToken<TestService>("Factory");
 
-      registry.registerFactory(
-        token,
-        () => new TestService(42),
-        ServiceLifecycle.SINGLETON,
-        []
-      );
+      registry.registerFactory(token, () => new TestService(42), ServiceLifecycle.SINGLETON, []);
 
       const result = resolver.resolve(token);
       expectResultOk(result);
@@ -281,13 +296,16 @@ describe("ServiceResolver", () => {
       const cache = new InstanceCache();
       const resolver = new ServiceResolver(registry, cache, null, "root");
 
-      const token = createInjectionToken<{ value: number }>("Value");
+      const testInstance = new TestService(42);
+      const token = createInjectionToken<TestService>("Value");
 
-      registry.registerValue(token, { value: 42 });
+      registry.registerValue(token, testInstance);
 
       const result = resolver.resolve(token);
       expectResultOk(result);
-      expect(result.value.value).toBe(42);
+      if (result.ok) {
+        expect(result.value.value).toBe(42);
+      }
     });
   });
 
@@ -306,7 +324,7 @@ describe("ServiceResolver", () => {
 
       registry.registerClass(depToken, TestService, ServiceLifecycle.SINGLETON);
       // Class-basierte Dependency Injection
-      (TestServiceWithDep.dependencies as unknown as typeof depToken[]) = [depToken];
+      (TestServiceWithDep.dependencies as unknown as (typeof depToken)[]) = [depToken];
       registry.registerClass(serviceToken, TestServiceWithDep, ServiceLifecycle.SINGLETON);
 
       const result = resolver.resolve(serviceToken);
@@ -323,7 +341,7 @@ describe("ServiceResolver", () => {
       const serviceToken = createInjectionToken<TestServiceWithDep>("Service");
 
       registry.registerClass(depToken, TestService, ServiceLifecycle.SINGLETON);
-      
+
       // Factory muss Dependencies selbst auflösen (keine automatische DI)
       registry.registerFactory(
         serviceToken,
@@ -348,11 +366,16 @@ describe("ServiceResolver", () => {
       const cache = new InstanceCache();
       const resolver = new ServiceResolver(registry, cache, null, "root");
 
-      class FailingService {
+      class FailingService implements Logger {
         static dependencies = [] as const;
         constructor() {
           throw new Error("Constructor failed");
         }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
       }
 
       const token = createInjectionToken<FailingService>("Failing");
@@ -370,7 +393,7 @@ describe("ServiceResolver", () => {
       const resolver = new ServiceResolver(registry, cache, null, "root");
 
       const token = createInjectionToken<TestService>("Invalid");
-      
+
       // Manually create invalid registration (bypassing normal registration)
       (registry as any).registrations.set(
         token,
@@ -391,4 +414,3 @@ describe("ServiceResolver", () => {
     });
   });
 });
-

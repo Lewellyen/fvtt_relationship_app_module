@@ -2,9 +2,8 @@ import type { Result } from "@/types/result";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
-import { err, tryCatch } from "@/utils/result";
+import { err } from "@/utils/result";
 import { portSelectorToken, foundryDocumentPortRegistryToken } from "@/foundry/foundrytokens";
-import { getFoundryVersion } from "@/foundry/versioning/versiondetector";
 
 /**
  * Service wrapper for FoundryDocument that automatically selects the appropriate port
@@ -24,22 +23,24 @@ export class FoundryDocumentService implements FoundryDocument {
 
   /**
    * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version.
+   *
    * @returns Result containing the port or an error if no compatible port can be selected
    */
   private getPort(): Result<FoundryDocument, string> {
     if (this.port === null) {
-      const versionResult = tryCatch(
-        () => getFoundryVersion(),
-        (e) => `Cannot detect Foundry version: ${e instanceof Error ? e.message : String(e)}`
-      );
-      if (!versionResult.ok) {
-        return err(`Failed to detect Foundry version: ${versionResult.error}`);
-      }
+      // Get factories (not instances) to avoid eager instantiation
+      const factories = this.portRegistry.getFactories();
 
-      const portResult = this.portRegistry.createForVersion(versionResult.value);
+      // Use PortSelector with factory-based selection
+      const portResult = this.portSelector.selectPortFromFactories(factories);
       if (!portResult.ok) {
         return err(`Failed to select FoundryDocument port: ${portResult.error}`);
       }
+
       this.port = portResult.value;
     }
     return { ok: true, value: this.port };

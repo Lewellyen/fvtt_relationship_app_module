@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 import type { Result, Ok, Err } from "@/types/result";
-import { createMockGame, createMockHooks, createMockUI, type MockGameOptions } from "../mocks/foundry";
+import { createMockGame, createMockHooks, createMockUI } from "../mocks/foundry";
 
 /**
  * Type-safe Result assertion helpers
@@ -30,7 +30,7 @@ export function expectResultErr<E>(result: Result<unknown, E>): asserts result i
 export type MockFoundryGlobals = {
   game?: ReturnType<typeof createMockGame>;
   Hooks?: ReturnType<typeof createMockHooks> | undefined;
-  ui?: ReturnType<typeof createMockUI>;
+  ui?: ReturnType<typeof createMockUI> | undefined;
 };
 
 /**
@@ -75,20 +75,20 @@ export function withFoundryGlobals(overrides: Partial<MockFoundryGlobals> = {}):
  * @param selector - Optional: CSS-Selector um ein spezifisches Element zurückzugeben
  * @returns Container-Element und optional das gefundene Element
  */
-export function createMockDOM(htmlString: string, selector?: string): {
+export function createMockDOM(
+  htmlString: string,
+  selector?: string
+): {
   container: HTMLElement;
   element?: HTMLElement | null;
 } {
   const container = document.createElement("div");
   container.innerHTML = htmlString;
-  
+
   if (selector) {
     const element = container.querySelector(selector) as HTMLElement | null;
     return { container, element };
   }
-  
+
   return { container };
 }
-
-
-

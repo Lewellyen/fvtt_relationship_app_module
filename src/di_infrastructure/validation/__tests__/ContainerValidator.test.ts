@@ -4,31 +4,36 @@ import { ServiceRegistry } from "../../registry/ServiceRegistry";
 import { createInjectionToken } from "../../tokenutilities";
 import { ServiceLifecycle } from "../../types/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import type { Logger } from "@/interfaces/logger";
 
-class ServiceA {
+class ServiceA implements Logger {
   static dependencies = [] as const;
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
-class ServiceB {
+class ServiceB implements Logger {
   static dependencies = [] as const;
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
-class ServiceC {
+class ServiceC implements Logger {
   static dependencies = [] as const;
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
-// Klassen mit Dependencies für Tests
-class ServiceAWithDep {
-  static dependencies = [] as const;
-}
-
-class ServiceBWithDep {
-  static dependencies = [] as const;
-}
-
-class ServiceCWithDep {
-  static dependencies = [] as const;
-}
+// Note: ServiceAWithDep, ServiceBWithDep, ServiceCWithDep were removed as they were not used
 
 describe("ContainerValidator", () => {
   describe("Dependency Validation", () => {
@@ -114,20 +119,10 @@ describe("ContainerValidator", () => {
       const tokenB = createInjectionToken<ServiceB>("B");
 
       // A depends on B
-      registry.registerFactory(
-        tokenA,
-        () => new ServiceA(),
-        ServiceLifecycle.SINGLETON,
-        [tokenB]
-      );
+      registry.registerFactory(tokenA, () => new ServiceA(), ServiceLifecycle.SINGLETON, [tokenB]);
 
       // B depends on A (circular!)
-      registry.registerFactory(
-        tokenB,
-        () => new ServiceB(),
-        ServiceLifecycle.SINGLETON,
-        [tokenA]
-      );
+      registry.registerFactory(tokenB, () => new ServiceB(), ServiceLifecycle.SINGLETON, [tokenA]);
 
       const result = validator.validate(registry);
       expectResultErr(result);
@@ -146,26 +141,11 @@ describe("ContainerValidator", () => {
       const tokenC = createInjectionToken<ServiceC>("C");
 
       // A → B → C → A (circular!)
-      registry.registerFactory(
-        tokenA,
-        () => new ServiceA(),
-        ServiceLifecycle.SINGLETON,
-        [tokenB]
-      );
+      registry.registerFactory(tokenA, () => new ServiceA(), ServiceLifecycle.SINGLETON, [tokenB]);
 
-      registry.registerFactory(
-        tokenB,
-        () => new ServiceB(),
-        ServiceLifecycle.SINGLETON,
-        [tokenC]
-      );
+      registry.registerFactory(tokenB, () => new ServiceB(), ServiceLifecycle.SINGLETON, [tokenC]);
 
-      registry.registerFactory(
-        tokenC,
-        () => new ServiceC(),
-        ServiceLifecycle.SINGLETON,
-        [tokenA]
-      );
+      registry.registerFactory(tokenC, () => new ServiceC(), ServiceLifecycle.SINGLETON, [tokenA]);
 
       const result = validator.validate(registry);
       expectResultErr(result);
@@ -185,19 +165,9 @@ describe("ContainerValidator", () => {
       const tokenC = createInjectionToken<ServiceC>("C");
 
       // A → B → C (linear, no cycle)
-      registry.registerFactory(
-        tokenA,
-        () => new ServiceA(),
-        ServiceLifecycle.SINGLETON,
-        [tokenB]
-      );
+      registry.registerFactory(tokenA, () => new ServiceA(), ServiceLifecycle.SINGLETON, [tokenB]);
 
-      registry.registerFactory(
-        tokenB,
-        () => new ServiceB(),
-        ServiceLifecycle.SINGLETON,
-        [tokenC]
-      );
+      registry.registerFactory(tokenB, () => new ServiceB(), ServiceLifecycle.SINGLETON, [tokenC]);
 
       registry.registerClass(tokenC, ServiceC, ServiceLifecycle.SINGLETON);
 
@@ -224,12 +194,9 @@ describe("ContainerValidator", () => {
         } else {
           // Each service depends on previous
           const prevToken = tokens[i - 1]!;
-          registry.registerFactory(
-            token,
-            () => new ServiceA(),
-            ServiceLifecycle.SINGLETON,
-            [prevToken]
-          );
+          registry.registerFactory(token, () => new ServiceA(), ServiceLifecycle.SINGLETON, [
+            prevToken,
+          ]);
         }
       });
 
@@ -256,22 +223,11 @@ describe("ContainerValidator", () => {
       const tokenC = createInjectionToken<ServiceC>("C");
 
       registry.registerClass(tokenA, ServiceA, ServiceLifecycle.SINGLETON);
-      registry.registerFactory(
-        tokenB,
-        () => new ServiceB(),
-        ServiceLifecycle.SINGLETON,
-        [tokenA]
-      );
-      registry.registerFactory(
-        tokenC,
-        () => new ServiceC(),
-        ServiceLifecycle.SINGLETON,
-        [tokenA]
-      );
+      registry.registerFactory(tokenB, () => new ServiceB(), ServiceLifecycle.SINGLETON, [tokenA]);
+      registry.registerFactory(tokenC, () => new ServiceC(), ServiceLifecycle.SINGLETON, [tokenA]);
 
       const result = validator.validate(registry);
       expectResultOk(result);
     });
   });
 });
-

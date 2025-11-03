@@ -6,23 +6,17 @@ import type { ServiceRegistry } from "../registry/ServiceRegistry";
 import type { ServiceRegistration } from "../types/serviceregistration";
 import { InstanceCache } from "../cache/InstanceCache";
 import { ServiceLifecycle } from "../types/servicelifecycle";
-import {
-  CircularDependencyError,
-  ScopeRequiredError,
-  InvalidLifecycleError,
-  FactoryFailedError,
-} from "../errors/ContainerErrors";
-import { ok, err, tryCatch, isErr } from "@/utils/result";
+import { ok, err } from "@/utils/result";
 
 /**
  * Resolves service instances based on lifecycle and registration.
- * 
+ *
  * Responsibilities:
  * - Resolve services by token
  * - Handle lifecycle strategies (Singleton, Transient, Scoped)
  * - Handle alias resolution
  * - Delegate to parent resolver for Singletons
- * 
+ *
  * Design:
  * - Works with Result pattern (no throws)
  * - Wraps factory errors in FactoryFailedError
@@ -38,13 +32,13 @@ export class ServiceResolver {
 
   /**
    * Resolves a service by token.
-   * 
+   *
    * Handles:
    * - Alias resolution (recursive)
    * - Lifecycle-specific resolution (Singleton/Transient/Scoped)
    * - Parent delegation for Singletons
    * - Factory error wrapping
-   * 
+   *
    * @template TServiceType - The type of service to resolve
    * @param token - The injection token identifying the service
    * @returns Result with service instance or error
@@ -89,10 +83,10 @@ export class ServiceResolver {
 
   /**
    * Instantiates a service based on registration type.
-   * 
+   *
    * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
    * Handles dependency resolution for classes, direct factory calls, and value returns.
-   * 
+   *
    * @template TServiceType - The type of service to instantiate
    * @param token - The injection token (used for error messages)
    * @param registration - The service registration metadata
@@ -102,11 +96,10 @@ export class ServiceResolver {
     token: InjectionToken<TServiceType>,
     registration: ServiceRegistration
   ): Result<TServiceType, ContainerError> {
-    
     if (registration.serviceClass) {
       // Class: Resolve all dependencies first
       const resolvedDeps: ServiceType[] = [];
-      
+
       for (const dep of registration.dependencies) {
         const depResult = this.resolve(dep);
         if (!depResult.ok) {
@@ -120,7 +113,7 @@ export class ServiceResolver {
         }
         resolvedDeps.push(depResult.value);
       }
-      
+
       // Instantiate class with resolved dependencies
       try {
         return ok(new registration.serviceClass(...resolvedDeps) as TServiceType);
@@ -132,7 +125,6 @@ export class ServiceResolver {
           cause: constructorError,
         });
       }
-      
     } else if (registration.factory) {
       // Factory: Call directly
       try {
@@ -145,11 +137,9 @@ export class ServiceResolver {
           cause: factoryError,
         });
       }
-      
     } else if (registration.value !== undefined) {
       // Value: Return as-is
       return ok(registration.value as TServiceType);
-      
     } else {
       // Invalid registration
       return err({
@@ -162,14 +152,14 @@ export class ServiceResolver {
 
   /**
    * Resolves a Singleton service.
-   * 
+   *
    * Strategy:
    * 1. Try parent resolver first (for shared parent singletons)
    * 2. If parent returns error:
    *    - CircularDependency → propagate error
    *    - TokenNotRegistered → fallback to own cache (child-specific singleton)
    * 3. Use own cache for root container or child-specific singletons
-   * 
+   *
    * @template TServiceType - The type of service
    * @param token - The injection token
    * @param registration - The service registration
@@ -182,18 +172,18 @@ export class ServiceResolver {
     // Try parent resolver first for shared singletons
     if (this.parentResolver !== null) {
       const parentResult = this.parentResolver.resolve(token);
-      
+
       if (parentResult.ok) {
         // Parent has it - use parent's singleton instance (shared)
         return parentResult;
       }
-      
+
       // Check error code to determine action
       if (parentResult.error.code === "CircularDependency") {
         // Real circular dependency - propagate as-is
         return parentResult;
       }
-      
+
       // TokenNotRegistered or other error -> fallback to own cache
       // This allows child-specific singleton registrations
     }
@@ -212,10 +202,10 @@ export class ServiceResolver {
 
   /**
    * Resolves a Transient service.
-   * 
+   *
    * Strategy:
    * - Always create new instance (no caching)
-   * 
+   *
    * @template TServiceType - The type of service
    * @param token - The injection token
    * @param registration - The service registration
@@ -230,11 +220,11 @@ export class ServiceResolver {
 
   /**
    * Resolves a Scoped service.
-   * 
+   *
    * Strategy:
    * - Must be in child scope (not root)
    * - One instance per scope (cached)
-   * 
+   *
    * @template TServiceType - The type of service
    * @param token - The injection token
    * @param registration - The service registration
@@ -265,4 +255,3 @@ export class ServiceResolver {
     return ok(this.cache.get(token) as TServiceType);
   }
 }
-

@@ -1,10 +1,10 @@
 /**
  * Global type augmentations for Foundry VTT.
- * 
+ *
  * The base Foundry types are provided by the fvtt-types package which is
  * automatically imported in tsconfig.json. This file can be used to augment
  * or extend specific types as needed for this module.
- * 
+ *
  * @see {@link https://github.com/League-of-Foundry-Developers/foundry-vtt-types}
  */
 

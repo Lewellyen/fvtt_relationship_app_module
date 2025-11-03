@@ -12,17 +12,37 @@ import { ModuleHookRegistrar } from "@/core/module-hook-registrar";
  * - In init: API (resolve) exponieren, Ports selektieren/binden (via externem Selector), Hooks registrieren
  * - In ready: nur Logging o.ä. – Services sind über api.resolve nutzbar
  */
-// Hook-spezifische Logik ist in ModuleHookRegistrar ausgelagert
+
+/**
+ * Function to encapsulate initialization logic.
+ * This allows us to use return statements for soft aborts.
+ */
+function initializeFoundryModule(): void {
+  const logger = root.getContainerOrThrow().resolve(loggerToken);
+
+  // Guard: Ensure Foundry Hooks API is available
+  if (typeof Hooks === "undefined") {
+    logger.warn("Foundry Hooks API not available - module initialization skipped");
+    return; // Soft abort - OK inside function
+  }
+
+  Hooks.on("init", () => {
+    logger.info("init-phase");
+    root.exposeToModuleApi();
+    new ModuleHookRegistrar().registerAll(root.getContainerOrThrow());
+    logger.info("init-phase completed");
+  });
+
+  Hooks.on("ready", () => {
+    logger.info("ready-phase");
+    logger.info("ready-phase completed");
+  });
+}
 
 /**
  * Leerer Platzhalter – frühere Initialisierung ist jetzt in den Bootkernel ausgelagert.
  */
 export function initializeModule(): void {}
-
-/**
- * Initializes the module when Foundry VTT starts.
- * Registers hooks for hiding journal entries based on module flags.
- */
 
 // Eager bootstrap DI before Foundry init
 const root = new CompositionRoot();
@@ -32,31 +52,18 @@ const bootstrapOk = isOk(bootstrapResult);
 if (!bootstrapOk) {
   console.error(`${MODULE_CONSTANTS.LOG_PREFIX} bootstrap failed`);
   console.error(bootstrapResult.error);
-  throw new Error(bootstrapResult.error);
-}
 
-const logger = root.getContainerOrThrow().resolve(loggerToken);
+  // Graceful degradation: Show UI notification if available
+  if (typeof ui !== "undefined" && ui?.notifications) {
+    ui.notifications?.error(
+      `${MODULE_CONSTANTS.MODULE.NAME} failed to initialize. Check console for details.`,
+      { permanent: true }
+    );
+  }
 
-// Guard: Ensure Foundry Hooks API is available before registering hooks
-if (typeof Hooks === "undefined") {
-  logger.warn("Foundry Hooks API not available - module initialization skipped");
-  // Soft abort: Don't register hooks if Foundry isn't ready
-  // This allows tests or non-standard environments to load the module
+  // Soft abort: Don't proceed with initialization
+  // (no throw, no return - just don't call initializeFoundryModule)
 } else {
-  Hooks.on("init", () => {
-    logger.info("init-phase");
-    // Expose API and register hooks
-    root.exposeToModuleApi();
-    new ModuleHookRegistrar().registerAll(root.getContainerOrThrow());
-    logger.info("init-phase completed");
-  });
-
-  /**
-   * Ready hook: Module initialization complete.
-   * Executes when Foundry VTT is fully ready.
-   */
-  Hooks.on("ready", () => {
-    logger.info("ready-phase");
-    logger.info("ready-phase completed");
-  });
+  // Only initialize if bootstrap succeeded
+  initializeFoundryModule();
 }

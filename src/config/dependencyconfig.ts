@@ -94,7 +94,10 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   }
 
   const documentPortRegistry = new PortRegistry<FoundryDocument>();
-  const documentPortRegResult = documentPortRegistry.register(13, () => new FoundryDocumentPortV13());
+  const documentPortRegResult = documentPortRegistry.register(
+    13,
+    () => new FoundryDocumentPortV13()
+  );
   if (isErr(documentPortRegResult)) {
     portRegistrationErrors.push(`FoundryDocument v13: ${documentPortRegResult.error}`);
   }

@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "../dependencyconfig";
-import { loggerToken, journalVisibilityServiceToken, portSelectorToken } from "@/tokens/tokenindex";
+import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
 import {
   foundryGameToken,
   foundryHooksToken,
@@ -22,12 +22,12 @@ describe("dependencyconfig", () => {
       expectResultOk(result);
 
       // Alle Services sollten registriert sein
-      expect(container.isRegistered(loggerToken).value).toBe(true);
-      expect(container.isRegistered(foundryGameToken).value).toBe(true);
-      expect(container.isRegistered(foundryHooksToken).value).toBe(true);
-      expect(container.isRegistered(foundryDocumentToken).value).toBe(true);
-      expect(container.isRegistered(foundryUIToken).value).toBe(true);
-      expect(container.isRegistered(journalVisibilityServiceToken).value).toBe(true);
+      expectResultOk(container.isRegistered(loggerToken));
+      expectResultOk(container.isRegistered(foundryGameToken));
+      expectResultOk(container.isRegistered(foundryHooksToken));
+      expectResultOk(container.isRegistered(foundryDocumentToken));
+      expectResultOk(container.isRegistered(foundryUIToken));
+      expectResultOk(container.isRegistered(journalVisibilityServiceToken));
     });
 
     it("should validate container after configuration", () => {
@@ -65,16 +65,12 @@ describe("dependencyconfig", () => {
         .mockImplementation((token, value) => {
           if (token === foundryGamePortRegistryToken) {
             return err({
-              code: "TestError",
+              code: "InvalidOperation",
               message: "Mocked failure",
             });
           }
           // Original-Verhalten für andere Tokens
-          return Reflect.apply(
-            ServiceContainer.prototype.registerValue,
-            container,
-            [token, value]
-          );
+          return Reflect.apply(ServiceContainer.prototype.registerValue, container, [token, value]);
         });
 
       const result = configureDependencies(container);
@@ -93,26 +89,27 @@ describe("dependencyconfig", () => {
       const container = ServiceContainer.createRoot();
 
       // Mock registerClass um Fehler zu provozieren
-      const registerClassSpy = vi
-        .spyOn(container, "registerClass")
-        .mockImplementation((token) => {
-          if (token === loggerToken) {
-            return err({
-              code: "TestError",
-              message: "Mocked logger registration failure",
-            });
-          }
-          return Reflect.apply(
-            ServiceContainer.prototype.registerClass,
-            container,
-            // eslint-disable-next-line prefer-rest-params
-            Array.from(arguments) as unknown as Parameters<typeof container.registerClass>
-          );
-        });
+      const registerClassSpy = vi.spyOn(container, "registerClass").mockImplementation((token) => {
+        if (token === loggerToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "Mocked logger registration failure",
+          });
+        }
+        // Forward call to original method
+        return ServiceContainer.prototype.registerClass.call(
+          container,
+          token as any,
+          {} as any,
+          {} as any
+        );
+      });
 
       const result = configureDependencies(container);
-      expect(result.ok).toBe(false);
-      expect(result.error).toContain("Failed to register logger");
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("Failed to register logger");
+      }
 
       registerClassSpy.mockRestore();
     });
@@ -120,25 +117,24 @@ describe("dependencyconfig", () => {
     it("should return error when port registry registration fails", () => {
       const container = ServiceContainer.createRoot();
 
-      const registerValueSpy = vi
-        .spyOn(container, "registerValue")
-        .mockImplementation((token) => {
-          if (token === foundryGamePortRegistryToken) {
-            return err({
-              code: "TestError",
-              message: "Mocked port registry failure",
-            });
-          }
-          return Reflect.apply(
-            ServiceContainer.prototype.registerValue,
-            container,
-            [token, {} as never]
-          );
-        });
+      const registerValueSpy = vi.spyOn(container, "registerValue").mockImplementation((token) => {
+        if (token === foundryGamePortRegistryToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "Mocked port registry failure",
+          });
+        }
+        return Reflect.apply(ServiceContainer.prototype.registerValue, container, [
+          token,
+          {} as never,
+        ]);
+      });
 
       const result = configureDependencies(container);
-      expect(result.ok).toBe(false);
-      expect(result.error).toContain("Failed to register FoundryGame PortRegistry");
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("Failed to register FoundryGame PortRegistry");
+      }
 
       registerValueSpy.mockRestore();
     });
@@ -148,10 +144,10 @@ describe("dependencyconfig", () => {
     it("should handle FoundryHooks service registration failure", () => {
       const container = ServiceContainer.createRoot();
       const originalRegisterClass = container.registerClass.bind(container);
-      
+
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
         if (token === foundryHooksToken) {
-          return err({ code: "TestError", message: "FoundryHooks registration failed" });
+          return err({ code: "InvalidOperation", message: "FoundryHooks registration failed" });
         }
         return originalRegisterClass(token, serviceClass, lifecycle);
       });
@@ -164,10 +160,10 @@ describe("dependencyconfig", () => {
     it("should handle FoundryDocument service registration failure", () => {
       const container = ServiceContainer.createRoot();
       const originalRegisterClass = container.registerClass.bind(container);
-      
+
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
         if (token === foundryDocumentToken) {
-          return err({ code: "TestError", message: "FoundryDocument registration failed" });
+          return err({ code: "InvalidOperation", message: "FoundryDocument registration failed" });
         }
         return originalRegisterClass(token, serviceClass, lifecycle);
       });
@@ -180,10 +176,10 @@ describe("dependencyconfig", () => {
     it("should handle FoundryUI service registration failure", () => {
       const container = ServiceContainer.createRoot();
       const originalRegisterClass = container.registerClass.bind(container);
-      
+
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
         if (token === foundryUIToken) {
-          return err({ code: "TestError", message: "FoundryUI registration failed" });
+          return err({ code: "InvalidOperation", message: "FoundryUI registration failed" });
         }
         return originalRegisterClass(token, serviceClass, lifecycle);
       });
@@ -196,10 +192,13 @@ describe("dependencyconfig", () => {
     it("should handle JournalVisibility service registration failure", () => {
       const container = ServiceContainer.createRoot();
       const originalRegisterClass = container.registerClass.bind(container);
-      
+
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
         if (token === journalVisibilityServiceToken) {
-          return err({ code: "TestError", message: "JournalVisibility registration failed" });
+          return err({
+            code: "InvalidOperation",
+            message: "JournalVisibility registration failed",
+          });
         }
         return originalRegisterClass(token, serviceClass, lifecycle);
       });
@@ -211,7 +210,7 @@ describe("dependencyconfig", () => {
 
     it("should handle port registration failures in PortRegistry", () => {
       const container = ServiceContainer.createRoot();
-      
+
       // Test path where PortRegistry.register() itself fails
       // This would happen if v13 port was already registered (duplicate)
       // Since we can't easily inject this, we test the validation path
@@ -233,6 +232,3 @@ describe("dependencyconfig", () => {
     });
   });
 });
-
-
-

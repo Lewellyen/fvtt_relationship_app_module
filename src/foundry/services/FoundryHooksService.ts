@@ -4,8 +4,7 @@ import type { FoundryHookCallback } from "@/foundry/types";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { portSelectorToken, foundryHooksPortRegistryToken } from "@/foundry/foundrytokens";
-import { err, tryCatch } from "@/utils/result";
-import { getFoundryVersion } from "@/foundry/versioning/versiondetector";
+import { err } from "@/utils/result";
 
 /**
  * Service wrapper for FoundryHooks that automatically selects the appropriate port
@@ -18,32 +17,31 @@ export class FoundryHooksService implements FoundryHooks {
   private readonly portSelector: PortSelector;
   private readonly portRegistry: PortRegistry<FoundryHooks>;
 
-  constructor(
-    portSelector: PortSelector,
-    portRegistry: PortRegistry<FoundryHooks>
-  ) {
+  constructor(portSelector: PortSelector, portRegistry: PortRegistry<FoundryHooks>) {
     this.portSelector = portSelector;
     this.portRegistry = portRegistry;
   }
 
   /**
    * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version.
+   *
    * @returns Result containing the port or an error if no compatible port can be selected
    */
   private getPort(): Result<FoundryHooks, string> {
     if (this.port === null) {
-      const versionResult = tryCatch(
-        () => getFoundryVersion(),
-        (e) => `Cannot detect Foundry version: ${e instanceof Error ? e.message : String(e)}`
-      );
-      if (!versionResult.ok) {
-        return err(`Failed to detect Foundry version: ${versionResult.error}`);
-      }
+      // Get factories (not instances) to avoid eager instantiation
+      const factories = this.portRegistry.getFactories();
 
-      const portResult = this.portRegistry.createForVersion(versionResult.value);
+      // Use PortSelector with factory-based selection
+      const portResult = this.portSelector.selectPortFromFactories(factories);
       if (!portResult.ok) {
         return err(`Failed to select FoundryHooks port: ${portResult.error}`);
       }
+
       this.port = portResult.value;
     }
     return { ok: true, value: this.port };

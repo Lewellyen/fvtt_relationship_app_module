@@ -29,7 +29,8 @@ export interface MockGameOptions {
  */
 export function createMockGame(options: MockGameOptions = {}): typeof game {
   const journalEntries = options.journal?.contents || [];
-  const journalGet = options.journal?.get || ((id: string) => journalEntries.find((e) => e.id === id));
+  const journalGet =
+    options.journal?.get || ((id: string) => journalEntries.find((e) => e.id === id));
 
   // Explizit prüfen ob version gesetzt ist (inkl. empty string)
   const version = options.version !== undefined ? options.version : "13.291";
@@ -126,10 +127,10 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
     off: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
   };
 
-  const mockJournalService: JournalVisibilityService = {
+  const mockJournalService = {
     processJournalDirectory: vi.fn(),
     getHiddenJournalEntries: vi.fn().mockReturnValue({ ok: true as const, value: [] }),
-  };
+  } as unknown as JournalVisibilityService;
 
   const defaults: Record<symbol, unknown> = {
     [loggerToken]: mockLogger,
@@ -152,4 +153,3 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
     getMockJournalService: () => mockJournalService,
   };
 }
-

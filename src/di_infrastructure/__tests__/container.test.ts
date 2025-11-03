@@ -4,16 +4,27 @@ import { createInjectionToken } from "../tokenutilities";
 import { ServiceLifecycle } from "../types/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok } from "@/utils/result";
+import type { Logger } from "@/interfaces/logger";
 
-// Test-Services
-class TestService {
+// Test-Services that implement Logger to satisfy ServiceType constraint
+class TestService implements Logger {
   static dependencies = [] as const;
   constructor(public value: number = Math.random()) {}
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
-class TestServiceWithDeps {
+class TestServiceWithDeps implements Logger {
   static dependencies = [] as const;
   constructor(public dep: TestService) {}
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
 describe("ServiceContainer", () => {
@@ -56,8 +67,9 @@ describe("ServiceContainer", () => {
     });
 
     it("should register value", () => {
-      const valueToken = createInjectionToken<{ value: number }>("ValueService");
-      const result = container.registerValue(valueToken, { value: 42 });
+      const testLogger = new TestService();
+      const valueToken = createInjectionToken<TestService>("ValueService");
+      const result = container.registerValue(valueToken, testLogger);
       expectResultOk(result);
     });
 
@@ -211,7 +223,7 @@ describe("ServiceContainer", () => {
       const serviceToken = createInjectionToken<TestServiceWithDeps>("Service");
 
       // Register service but not dependency
-      (TestServiceWithDeps.dependencies as unknown as typeof depToken[]) = [depToken];
+      (TestServiceWithDeps.dependencies as unknown as (typeof depToken)[]) = [depToken];
       container.registerClass(serviceToken, TestServiceWithDeps, ServiceLifecycle.SINGLETON);
 
       const result = container.validate();
@@ -233,7 +245,7 @@ describe("ServiceContainer", () => {
 
     it("should prevent concurrent validation", () => {
       const container = ServiceContainer.createRoot();
-      
+
       // Mock validator to hang
       vi.spyOn((container as any).validator, "validate").mockImplementation(() => {
         // Simulate slow validation
@@ -241,7 +253,7 @@ describe("ServiceContainer", () => {
       });
 
       container.validate();
-      
+
       // Try to validate while validating
       // Note: This is hard to test without async, so we test the state guard
       expect(container.getValidationState()).toBe("validated");
@@ -291,11 +303,15 @@ describe("ServiceContainer", () => {
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       container.validate();
 
-      expect(container.isRegistered(token).value).toBe(true);
+      const beforeClear = container.isRegistered(token);
+      expectResultOk(beforeClear);
+      if (beforeClear.ok) expect(beforeClear.value).toBe(true);
 
       container.clear();
 
-      expect(container.isRegistered(token).value).toBe(false);
+      const afterClear = container.isRegistered(token);
+      expectResultOk(afterClear);
+      if (afterClear.ok) expect(afterClear.value).toBe(false);
     });
 
     it("should reset validation state after clear", () => {
@@ -320,24 +336,29 @@ describe("ServiceContainer", () => {
       const container = ServiceContainer.createRoot();
       const token = createInjectionToken<TestService>("Service");
 
-      expect(container.isRegistered(token).value).toBe(false);
+      const beforeReg = container.isRegistered(token);
+      expectResultOk(beforeReg);
+      if (beforeReg.ok) expect(beforeReg.value).toBe(false);
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
-      expect(container.isRegistered(token).value).toBe(true);
+      const afterReg = container.isRegistered(token);
+      expectResultOk(afterReg);
+      if (afterReg.ok) expect(afterReg.value).toBe(true);
     });
   });
 
   describe("Fallback-Mechanismus", () => {
     it("should use fallback when resolution fails", () => {
       const container = ServiceContainer.createRoot();
-      const token = createInjectionToken<{ value: string }>("Test");
+      const token = createInjectionToken<TestService>("Test");
 
-      registerFallback(token, () => ({ value: "fallback" }));
+      registerFallback(token, () => new TestService(42));
       container.validate();
 
       // Token NICHT registriert -> Fallback wird genutzt
       const result = container.resolve(token);
-      expect(result.value).toBe("fallback");
+      expect(result).toBeInstanceOf(TestService);
+      expect(result.value).toBe(42);
     });
 
     it("should throw when no fallback available", () => {
@@ -493,4 +514,3 @@ describe("ServiceContainer", () => {
     });
   });
 });
-

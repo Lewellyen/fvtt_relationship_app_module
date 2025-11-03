@@ -3,8 +3,15 @@ import type { Result } from "@/types/result";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
-import type { ModuleApi } from "@/core/module-api";
+import type { ModuleApi, ModuleApiTokens, TokenInfo } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
+import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
+import {
+  foundryGameToken,
+  foundryHooksToken,
+  foundryDocumentToken,
+  foundryUIToken,
+} from "@/foundry/foundrytokens";
 
 /**
  * CompositionRoot
@@ -22,11 +29,28 @@ export class CompositionRoot {
 
   /**
    * Erstellt den ServiceContainer und führt Basis-Registrierungen aus.
+   * Misst Performance für Diagnose-Zwecke.
    * @returns Result mit initialisiertem Container oder Fehlermeldung
    */
   bootstrap(): Result<ServiceContainer, string> {
+    // Performance-Messung starten
+    performance.mark("bootstrap-start");
+
     const container = ServiceContainer.createRoot();
     const configured = configureDependencies(container);
+
+    // Performance-Messung beenden
+    performance.mark("bootstrap-end");
+    performance.measure("bootstrap-duration", "bootstrap-start", "bootstrap-end");
+
+    // Log Performance (nur in Development/Debug-Mode sinnvoll)
+    const measure = performance.getEntriesByName("bootstrap-duration")[0];
+    if (measure) {
+      console.debug(
+        `${MODULE_CONSTANTS.LOG_PREFIX} Bootstrap completed in ${measure.duration.toFixed(2)}ms`
+      );
+    }
+
     if (configured.ok) {
       this.container = container;
       return { ok: true, value: container };
@@ -35,7 +59,8 @@ export class CompositionRoot {
   }
 
   /**
-   * Exponiert die öffentliche Modul-API (nur resolve) unter game.modules.get(MODULE_ID).api.
+   * Exponiert die öffentliche Modul-API unter game.modules.get(MODULE_ID).api.
+   * Stellt resolve(), getAvailableTokens() und tokens bereit.
    * Darf erst nach erfolgreichem Bootstrap aufgerufen werden.
    * @throws Fehler, wenn das Foundry-Modul-Objekt nicht verfügbar ist
    */
@@ -49,10 +74,48 @@ export class CompositionRoot {
     if (!mod) {
       throw new Error(`${MODULE_CONSTANTS.LOG_PREFIX} Module not available to expose API`);
     }
+
+    // Type-safe token collection
+    const wellKnownTokens: ModuleApiTokens = {
+      loggerToken,
+      journalVisibilityServiceToken,
+      foundryGameToken,
+      foundryHooksToken,
+      foundryDocumentToken,
+      foundryUIToken,
+    };
+
     const api: ModuleApi = {
       resolve: <TServiceType extends ServiceType>(token: InjectionToken<TServiceType>) =>
         container.resolve<TServiceType>(token),
+
+      getAvailableTokens: (): Map<symbol, TokenInfo> => {
+        const tokenMap = new Map<symbol, TokenInfo>();
+
+        // Add well-known tokens with their registration status
+        const tokenEntries: Array<[string, InjectionToken<ServiceType>]> = [
+          ["loggerToken", loggerToken],
+          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
+          ["foundryGameToken", foundryGameToken],
+          ["foundryHooksToken", foundryHooksToken],
+          ["foundryDocumentToken", foundryDocumentToken],
+          ["foundryUIToken", foundryUIToken],
+        ];
+
+        for (const [, token] of tokenEntries) {
+          const isRegisteredResult = container.isRegistered(token);
+          tokenMap.set(token, {
+            description: String(token).replace("Symbol(", "").replace(")", ""),
+            isRegistered: isRegisteredResult.ok ? isRegisteredResult.value : false,
+          });
+        }
+
+        return tokenMap;
+      },
+
+      tokens: wellKnownTokens,
     };
+
     // Type-safe assignment thanks to Module augmentation in global.d.ts
     mod.api = api;
   }

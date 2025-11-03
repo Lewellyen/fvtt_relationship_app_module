@@ -2,9 +2,8 @@ import type { Result } from "@/types/result";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
-import { err, tryCatch } from "@/utils/result";
+import { err } from "@/utils/result";
 import { portSelectorToken, foundryUIPortRegistryToken } from "@/foundry/foundrytokens";
-import { getFoundryVersion } from "@/foundry/versioning/versiondetector";
 
 /**
  * Service wrapper for FoundryUI that automatically selects the appropriate port
@@ -24,22 +23,24 @@ export class FoundryUIService implements FoundryUI {
 
   /**
    * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version.
+   *
    * @returns Result containing the port or an error if no compatible port can be selected
    */
   private getPort(): Result<FoundryUI, string> {
     if (this.port === null) {
-      const versionResult = tryCatch(
-        () => getFoundryVersion(),
-        (e) => `Cannot detect Foundry version: ${e instanceof Error ? e.message : String(e)}`
-      );
-      if (!versionResult.ok) {
-        return err(`Failed to detect Foundry version: ${versionResult.error}`);
-      }
+      // Get factories (not instances) to avoid eager instantiation
+      const factories = this.portRegistry.getFactories();
 
-      const portResult = this.portRegistry.createForVersion(versionResult.value);
+      // Use PortSelector with factory-based selection
+      const portResult = this.portSelector.selectPortFromFactories(factories);
       if (!portResult.ok) {
         return err(`Failed to select FoundryUI port: ${portResult.error}`);
       }
+
       this.port = portResult.value;
     }
     return { ok: true, value: this.port };

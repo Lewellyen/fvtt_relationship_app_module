@@ -39,6 +39,28 @@ export class PortRegistry<T> {
   }
 
   /**
+   * Gets the factory map without instantiating ports.
+   * Use with PortSelector.selectPortFromFactories() for safe lazy instantiation.
+   *
+   * @returns Map of version numbers to factory functions (NOT instances)
+   *
+   * @example
+   * ```typescript
+   * const registry = new PortRegistry<FoundryGame>();
+   * registry.register(13, () => new FoundryGamePortV13());
+   * registry.register(14, () => new FoundryGamePortV14());
+   *
+   * const factories = registry.getFactories();
+   * const selector = new PortSelector();
+   * const result = selector.selectPortFromFactories(factories);
+   * // Only compatible port is instantiated
+   * ```
+   */
+  getFactories(): Map<number, PortFactory<T>> {
+    return new Map(this.factories);
+  }
+
+  /**
    * Creates all registered ports. Used for port selection.
    * @returns Map of version numbers to port instances
    */
@@ -51,6 +73,15 @@ export class PortRegistry<T> {
   }
 
   /**
+   * Gets available port instances for version selection.
+   * Alias for createAll() with clearer semantics for PortSelector usage.
+   * @returns Map of version numbers to port instances
+   */
+  getAvailablePorts(): Map<number, T> {
+    return this.createAll();
+  }
+
+  /**
    * Creates only the port for the specified version or the highest compatible version.
    * More efficient than createAll() when only one port is needed.
    * @param version - The target Foundry version
@@ -59,7 +90,7 @@ export class PortRegistry<T> {
   createForVersion(version: number): Result<T, string> {
     // Find highest compatible version (<= target version)
     const compatibleVersions = Array.from(this.factories.keys())
-      .filter(v => v <= version)
+      .filter((v) => v <= version)
       .sort((a, b) => b - a);
 
     if (compatibleVersions.length === 0) {
@@ -70,7 +101,13 @@ export class PortRegistry<T> {
     }
 
     const selectedVersion = compatibleVersions[0];
-    const factory = this.factories.get(selectedVersion)!;
+    if (selectedVersion === undefined) {
+      return err("No compatible version found");
+    }
+    const factory = this.factories.get(selectedVersion);
+    if (!factory) {
+      return err(`Factory not found for version ${selectedVersion}`);
+    }
     return ok(factory());
   }
 
@@ -89,6 +126,6 @@ export class PortRegistry<T> {
    */
   getHighestVersion(): number | undefined {
     const versions = this.getAvailableVersions();
-    return versions.length > 0 ? versions[versions.length - 1] : undefined;
+    return versions.length > 0 ? versions[versions.length - 1]! : undefined;
   }
 }

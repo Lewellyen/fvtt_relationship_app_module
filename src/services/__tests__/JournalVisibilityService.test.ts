@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { JournalVisibilityService } from "../JournalVisibilityService";
-import type { FoundryGame, FoundryDocument, FoundryUI } from "@/foundry/interfaces/FoundryGame";
+import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
+import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
+import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { Logger } from "@/interfaces/logger";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import { MODULE_CONSTANTS } from "@/constants";
@@ -16,13 +18,16 @@ describe("JournalVisibilityService", () => {
 
   beforeEach(() => {
     mockGame = {
-      getJournalEntries: vi.fn().mockReturnValue(ok<FoundryJournalEntry[], string>([])),
+      getJournalEntries: vi.fn().mockReturnValue(ok([])),
+      getJournalEntryById: vi.fn().mockReturnValue(ok(null)),
     };
     mockDocument = {
-      getFlag: vi.fn().mockReturnValue(ok<boolean | null, string>(null)),
+      getFlag: vi.fn().mockReturnValue(ok(null)),
+      setFlag: vi.fn().mockResolvedValue(ok(undefined)),
     };
     mockUI = {
-      removeJournalElement: vi.fn().mockReturnValue(ok<void, string>(undefined)),
+      removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
+      findElement: vi.fn().mockReturnValue(ok(null)),
     };
     mockLogger = {
       debug: vi.fn(),
@@ -37,16 +42,16 @@ describe("JournalVisibilityService", () => {
 
   describe("getHiddenJournalEntries", () => {
     it("should return hidden journal entries", () => {
-      const journal1: FoundryJournalEntry = {
+      const journal1 = {
         id: "journal-1",
         name: "Hidden Journal",
         getFlag: vi.fn(),
-      };
-      const journal2: FoundryJournalEntry = {
+      } as unknown as FoundryJournalEntry;
+      const journal2 = {
         id: "journal-2",
         name: "Visible Journal",
         getFlag: vi.fn(),
-      };
+      } as unknown as FoundryJournalEntry;
 
       mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal1, journal2]));
       mockDocument.getFlag = vi
@@ -63,11 +68,11 @@ describe("JournalVisibilityService", () => {
     });
 
     it("should return empty array when no hidden entries", () => {
-      const journal: FoundryJournalEntry = {
+      const journal = {
         id: "journal-1",
         name: "Visible Journal",
         getFlag: vi.fn(),
-      };
+      } as unknown as FoundryJournalEntry;
 
       mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
       mockDocument.getFlag = vi.fn().mockReturnValue(ok(false));
@@ -90,11 +95,11 @@ describe("JournalVisibilityService", () => {
     });
 
     it("should ignore entries where getFlag fails", () => {
-      const journal: FoundryJournalEntry = {
+      const journal = {
         id: "journal-1",
         name: "Journal",
         getFlag: vi.fn(),
-      };
+      } as unknown as FoundryJournalEntry;
 
       mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
       mockDocument.getFlag = vi.fn().mockReturnValue(err("Flag error"));
@@ -109,11 +114,11 @@ describe("JournalVisibilityService", () => {
 
   describe("processJournalDirectory", () => {
     it("should hide hidden entries", () => {
-      const journal: FoundryJournalEntry = {
+      const journal = {
         id: "journal-1",
         name: "Hidden Journal",
         getFlag: vi.fn(),
-      };
+      } as unknown as FoundryJournalEntry;
 
       mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
       mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
@@ -146,11 +151,11 @@ describe("JournalVisibilityService", () => {
     });
 
     it("should log warning when removeJournalElement fails", () => {
-      const journal: FoundryJournalEntry = {
+      const journal = {
         id: "journal-1",
         name: "Hidden Journal",
         getFlag: vi.fn(),
-      };
+      } as unknown as FoundryJournalEntry;
 
       mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
       mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
@@ -166,16 +171,16 @@ describe("JournalVisibilityService", () => {
     });
 
     it("should process multiple hidden entries", () => {
-      const journal1: FoundryJournalEntry = {
+      const journal1 = {
         id: "journal-1",
         name: "Hidden 1",
         getFlag: vi.fn(),
-      };
-      const journal2: FoundryJournalEntry = {
+      } as unknown as FoundryJournalEntry;
+      const journal2 = {
         id: "journal-2",
         name: "Hidden 2",
         getFlag: vi.fn(),
-      };
+      } as unknown as FoundryJournalEntry;
 
       mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal1, journal2]));
       mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
@@ -191,11 +196,11 @@ describe("JournalVisibilityService", () => {
     });
 
     it("should use default name when journal name is missing", () => {
-      const journal: FoundryJournalEntry = {
+      const journal = {
         id: "journal-1",
         name: undefined,
         getFlag: vi.fn(),
-      };
+      } as unknown as FoundryJournalEntry;
 
       mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
       mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
@@ -214,4 +219,3 @@ describe("JournalVisibilityService", () => {
     });
   });
 });
-

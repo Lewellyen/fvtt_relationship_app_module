@@ -59,7 +59,7 @@ describe("Result Utilities", () => {
   describe("Transformations", () => {
     it("map() should transform Ok value", () => {
       const result = ok(5);
-      const doubled = map(result, (x) => x * 2);
+      const doubled = map(result, (x: number) => x * 2);
       expect(doubled.ok).toBe(true);
       if (doubled.ok) {
         expect(doubled.value).toBe(10);
@@ -68,7 +68,7 @@ describe("Result Utilities", () => {
 
     it("map() should leave Err unchanged", () => {
       const result = err("error");
-      const mapped = map(result, (x) => x * 2);
+      const mapped = map(result, (x: never) => x * 2);
       expect(mapped.ok).toBe(false);
       if (!mapped.ok) {
         expect(mapped.error).toBe("error");
@@ -109,7 +109,7 @@ describe("Result Utilities", () => {
 
     it("andThen() should short-circuit on Err", () => {
       const result = err("initial error");
-      const chained = andThen(result, (x) => ok(x * 2));
+      const chained = andThen(result, (x: never) => ok(x * 2));
       expect(chained.ok).toBe(false);
       if (!chained.ok) {
         expect(chained.error).toBe("initial error");
@@ -152,9 +152,9 @@ describe("Result Utilities", () => {
 
     it("getOrThrow() should use custom error converter", () => {
       const result = err("error");
-      expect(() =>
-        getOrThrow(result, (err) => new Error(`Custom: ${err}`))
-      ).toThrow("Custom: error");
+      expect(() => getOrThrow(result, (err) => new Error(`Custom: ${err}`))).toThrow(
+        "Custom: error"
+      );
     });
   });
 
@@ -249,7 +249,7 @@ describe("Result Utilities", () => {
   describe("Async Operations", () => {
     it("asyncMap() should transform async Result", async () => {
       const asyncResult = Promise.resolve(ok(5));
-      const doubled = await asyncMap(asyncResult, (x) => Promise.resolve(x * 2));
+      const doubled = await asyncMap(asyncResult, (x: number) => Promise.resolve(x * 2));
       expect(doubled.ok).toBe(true);
       if (doubled.ok) {
         expect(doubled.value).toBe(10);
@@ -258,7 +258,7 @@ describe("Result Utilities", () => {
 
     it("asyncMap() should handle sync transform", async () => {
       const asyncResult = Promise.resolve(ok(5));
-      const doubled = await asyncMap(asyncResult, (x) => x * 2);
+      const doubled = await asyncMap(asyncResult, (x: number) => x * 2);
       expect(doubled.ok).toBe(true);
       if (doubled.ok) {
         expect(doubled.value).toBe(10);
@@ -267,7 +267,7 @@ describe("Result Utilities", () => {
 
     it("asyncMap() should leave Err unchanged", async () => {
       const asyncResult = Promise.resolve(err("error"));
-      const mapped = await asyncMap(asyncResult, (x) => x * 2);
+      const mapped = await asyncMap(asyncResult, (x: never) => x * 2);
       expect(mapped.ok).toBe(false);
       if (!mapped.ok) {
         expect(mapped.error).toBe("error");
@@ -276,9 +276,7 @@ describe("Result Utilities", () => {
 
     it("asyncAndThen() should chain async Results", async () => {
       const asyncResult = Promise.resolve(ok(5));
-      const chained = await asyncAndThen(asyncResult, (x) =>
-        Promise.resolve(ok(x * 2))
-      );
+      const chained = await asyncAndThen(asyncResult, (x: number) => Promise.resolve(ok(x * 2)));
       expect(chained.ok).toBe(true);
       if (chained.ok) {
         expect(chained.value).toBe(10);
@@ -287,9 +285,7 @@ describe("Result Utilities", () => {
 
     it("asyncAndThen() should short-circuit on Err", async () => {
       const asyncResult = Promise.resolve(err("error"));
-      const chained = await asyncAndThen(asyncResult, (x) =>
-        Promise.resolve(ok(x * 2))
-      );
+      const chained = await asyncAndThen(asyncResult, (x: never) => Promise.resolve(ok(x * 2)));
       expect(chained.ok).toBe(false);
       if (!chained.ok) {
         expect(chained.error).toBe("error");
@@ -315,11 +311,7 @@ describe("Result Utilities", () => {
     });
 
     it("asyncAll() should combine async Results", async () => {
-      const asyncResults = [
-        Promise.resolve(ok(1)),
-        Promise.resolve(ok(2)),
-        Promise.resolve(ok(3)),
-      ];
+      const asyncResults = [Promise.resolve(ok(1)), Promise.resolve(ok(2)), Promise.resolve(ok(3))];
       const combined = await asyncAll(asyncResults);
       expect(combined.ok).toBe(true);
       if (combined.ok) {
@@ -341,5 +333,3 @@ describe("Result Utilities", () => {
     });
   });
 });
-
-

@@ -3,9 +3,15 @@ import { ServiceRegistry } from "../ServiceRegistry";
 import { createInjectionToken } from "../../tokenutilities";
 import { ServiceLifecycle } from "../../types/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import type { Logger } from "@/interfaces/logger";
 
-class TestService {
+class TestService implements Logger {
   static dependencies = [] as const;
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
 }
 
 describe("ServiceRegistry", () => {
@@ -45,24 +51,28 @@ describe("ServiceRegistry", () => {
 
     it("should register value (not function)", () => {
       const registry = new ServiceRegistry();
-      const token = createInjectionToken<{ value: number }>("ValueService");
+      const testInstance = new TestService();
+      const token = createInjectionToken<TestService>("ValueService");
 
-      const result = registry.registerValue(token, { value: 42 });
+      const result = registry.registerValue(token, testInstance);
       expectResultOk(result);
 
       const registration = registry.getRegistration(token);
       expect(registration?.providerType).toBe("value");
-      expect(registration?.value).toEqual({ value: 42 });
+      expect(registration?.value).toBe(testInstance);
       expect(registration?.lifecycle).toBe(ServiceLifecycle.SINGLETON);
     });
 
     it("should reject function as value", () => {
       const registry = new ServiceRegistry();
-      const token = createInjectionToken<() => void>("FunctionValue");
+      const token = createInjectionToken<TestService>("FunctionValue");
 
-      const result = registry.registerValue(token, (() => {}) as never);
+      // Try to register a function instead of a plain value
+      const result = registry.registerValue(token, (() => {}) as any);
       expectResultErr(result);
-      expect(result.error.code).toBe("InvalidOperation");
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+      }
     });
 
     it("should register alias", () => {
@@ -159,7 +169,7 @@ describe("ServiceRegistry", () => {
       const token = createInjectionToken<TestService>("Service");
 
       // Service mit Dependencies registrieren
-      (TestService.dependencies as unknown as typeof depToken[]) = [depToken];
+      (TestService.dependencies as unknown as (typeof depToken)[]) = [depToken];
       registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
 
       const cloned = registry.clone();
@@ -191,4 +201,3 @@ describe("ServiceRegistry", () => {
     });
   });
 });
-

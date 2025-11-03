@@ -105,6 +105,26 @@
 ### Upgrade-Hinweise
 - Keine besonderen Maßnahmen erforderlich
 
+## [0.0.13] - 2025-11-03
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Port-Lazy-Instantiation: Verhindert Crashes durch v14-Ports auf v13
+- jQuery-Kompatibilität: extractHtmlElement() für v10-13
+- Bootstrap-Graceful-Degradation: Keine Exception mehr
+- API-Typsicherheit: ModuleApiTokens mit konkreten Generics
+- Tests: 317/317 passed, Coverage: 93.6%"
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.0.12] - 2025-11-02
 ### Hinzugefügt
 - Test-Suite

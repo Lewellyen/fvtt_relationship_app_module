@@ -3,12 +3,12 @@ import type { ServiceType } from "@/types/servicetypeindex";
 
 /**
  * Cache for service instances (Singleton and Scoped lifecycles).
- * 
+ *
  * Responsibilities:
  * - Store and retrieve service instances by token
  * - Provide access to all instances for disposal
  * - Simple get/set/has/clear operations
- * 
+ *
  * Note: This class does NOT handle disposal logic - that's ScopeManager's responsibility.
  */
 export class InstanceCache {
@@ -16,7 +16,7 @@ export class InstanceCache {
 
   /**
    * Retrieves a cached service instance.
-   * 
+   *
    * @template TServiceType - The type of service to retrieve
    * @param token - The injection token identifying the service
    * @returns The cached instance or undefined if not found
@@ -29,7 +29,7 @@ export class InstanceCache {
 
   /**
    * Stores a service instance in the cache.
-   * 
+   *
    * @template TServiceType - The type of service to store
    * @param token - The injection token identifying the service
    * @param instance - The service instance to cache
@@ -43,7 +43,7 @@ export class InstanceCache {
 
   /**
    * Checks if a service instance is cached.
-   * 
+   *
    * @template TServiceType - The type of service to check
    * @param token - The injection token identifying the service
    * @returns True if the instance is cached, false otherwise
@@ -63,11 +63,10 @@ export class InstanceCache {
   /**
    * Returns all cached instances for disposal purposes.
    * Used by ScopeManager to dispose Disposable services.
-   * 
+   *
    * @returns A map of all cached instances
    */
   getAllInstances(): Map<InjectionToken<ServiceType>, ServiceType> {
     return new Map(this.instances);
   }
 }
-

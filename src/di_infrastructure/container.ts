@@ -5,7 +5,7 @@ import type { ServiceDependencies } from "./types/servicedependencies";
 import type { ContainerValidationState } from "./types/containervalidationstate";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import type { ServiceType } from "@/types/servicetypeindex";
-import { ok, err, isErr, isOk } from "@/utils/result";
+import { ok, err, isOk } from "@/utils/result";
 import type { Result } from "@/types/result";
 import type { Container } from "@/di_infrastructure/interfaces/container";
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
@@ -47,7 +47,7 @@ export function registerFallback<T extends ServiceType>(
 
 /**
  * Dependency injection container (Facade pattern).
- * 
+ *
  * Delegates to specialized components:
  * - ServiceRegistry: manages registrations
  * - ContainerValidator: validates dependencies
@@ -94,7 +94,7 @@ export class ServiceContainer implements Container {
 
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
-   * 
+   *
    * This constructor is private to:
    * - Enforce factory pattern usage
    * - Prevent constructor throws (Result-Contract-breaking)
@@ -125,12 +125,12 @@ export class ServiceContainer implements Container {
 
   /**
    * Creates a new root container.
-   * 
+   *
    * This is the preferred way to create containers.
    * All components are created fresh for the root container.
-   * 
+   *
    * @returns A new root ServiceContainer
-   * 
+   *
    * @example
    * ```typescript
    * const container = ServiceContainer.createRoot();
@@ -144,15 +144,8 @@ export class ServiceContainer implements Container {
     const cache = new InstanceCache();
     const scopeManager = new ScopeManager("root", null, cache);
     const resolver = new ServiceResolver(registry, cache, null, "root");
-    
-    return new ServiceContainer(
-      registry,
-      validator,
-      cache,
-      resolver,
-      scopeManager,
-      "registering"
-    );
+
+    return new ServiceContainer(registry, validator, cache, resolver, scopeManager, "registering");
   }
 
   /**
@@ -297,27 +290,27 @@ export class ServiceContainer implements Container {
 
   /**
    * Creates a child scope container.
-   * 
+   *
    * Child containers:
    * - Inherit parent registrations (cloned)
    * - Can add their own registrations
    * - Must call validate() before resolving
    * - Share parent's singleton instances
    * - Have isolated scoped instances
-   * 
+   *
    * @param name - Optional custom name for the scope
    * @returns Result with child container or error
-   * 
+   *
    * @example
    * ```typescript
    * const parent = ServiceContainer.createRoot();
    * parent.registerClass(LoggerToken, Logger, SINGLETON);
    * parent.validate();
-   * 
+   *
    * const child = parent.createScope("request").value!;
    * child.registerClass(RequestToken, RequestContext, SCOPED);
    * child.validate();
-   * 
+   *
    * const logger = child.resolve(LoggerToken);   // From parent (shared)
    * const ctx = child.resolve(RequestToken);      // From child (isolated)
    * ```
@@ -429,18 +422,18 @@ export class ServiceContainer implements Container {
    */
   dispose(): Result<void, ContainerError> {
     const result = this.scopeManager.dispose();
-    
+
     // Reset validation state after disposal (per review feedback)
     if (result.ok) {
       this.validationState = "registering";
     }
-    
+
     return result;
   }
 
   /**
    * Clear all registrations and instances.
-   * 
+   *
    * IMPORTANT: Resets validation state (per review feedback).
    */
   clear(): Result<void, never> {

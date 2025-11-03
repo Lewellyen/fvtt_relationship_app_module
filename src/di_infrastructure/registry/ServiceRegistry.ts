@@ -7,16 +7,16 @@ import type { ServiceDependencies } from "../types/servicedependencies";
 import { ServiceLifecycle } from "../types/servicelifecycle";
 import type { ContainerError } from "../interfaces/containererror";
 import { ServiceRegistration } from "../types/serviceregistration";
-import { ok, err } from "@/utils/result";
+import { ok, err, isErr } from "@/utils/result";
 
 /**
  * Registry for service registrations.
- * 
+ *
  * Responsibilities:
  * - Manage service registrations (add, retrieve, check existence)
  * - Validate registrations (no duplicates, valid values)
  * - Support cloning for child containers
- * 
+ *
  * This class does NOT handle:
  * - Service resolution (that's ServiceResolver's job)
  * - Dependency validation (that's ContainerValidator's job)
@@ -26,7 +26,7 @@ export class ServiceRegistry {
 
   /**
    * Registers a service class with automatic dependency injection.
-   * 
+   *
    * @template TServiceType - The type of service to register
    * @param token - The injection token identifying this service
    * @param serviceClass - The class to instantiate
@@ -48,23 +48,24 @@ export class ServiceRegistry {
 
     const dependencies = (serviceClass as any).dependencies ?? [];
 
-    const registration = new ServiceRegistration(
+    // Use static factory method for validation
+    const registrationResult = ServiceRegistration.createClass(
       lifecycle,
       dependencies,
-      "class",
-      serviceClass,     // Store the class itself
-      undefined,        // factory
-      undefined,        // value
-      undefined         // aliasTarget
+      serviceClass
     );
 
-    this.registrations.set(token, registration);
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+
+    this.registrations.set(token, registrationResult.value);
     return ok(undefined);
   }
 
   /**
    * Registers a factory function for creating service instances.
-   * 
+   *
    * @template TServiceType - The type of service this factory creates
    * @param token - The injection token identifying this service
    * @param factory - Factory function that creates instances
@@ -86,23 +87,20 @@ export class ServiceRegistry {
       });
     }
 
-    const registration = new ServiceRegistration(
-      lifecycle,
-      dependencies,
-      "factory",
-      undefined,        // serviceClass
-      factory,          // Store the factory function
-      undefined,        // value
-      undefined         // aliasTarget
-    );
+    // Use static factory method for validation
+    const registrationResult = ServiceRegistration.createFactory(lifecycle, dependencies, factory);
 
-    this.registrations.set(token, registration);
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+
+    this.registrations.set(token, registrationResult.value);
     return ok(undefined);
   }
 
   /**
    * Registers a constant value (always SINGLETON lifecycle).
-   * 
+   *
    * @template TServiceType - The type of value to register
    * @param token - The injection token identifying this value
    * @param value - The value to register
@@ -120,33 +118,20 @@ export class ServiceRegistry {
       });
     }
 
-    // Runtime check: values must not be functions or classes
-    if (typeof value === "function") {
-      return err({
-        code: "InvalidOperation",
-        message:
-          "registerValue() only accepts plain values, not classes or functions. Use registerClass() or registerFactory() instead.",
-        tokenDescription: String(token),
-      });
+    // Use static factory method for validation (includes function check)
+    const registrationResult = ServiceRegistration.createValue(value);
+
+    if (isErr(registrationResult)) {
+      return registrationResult;
     }
 
-    const registration = new ServiceRegistration(
-      ServiceLifecycle.SINGLETON,
-      [],
-      "value",
-      undefined,        // serviceClass
-      undefined,        // factory
-      value,            // Store the value
-      undefined         // aliasTarget
-    );
-
-    this.registrations.set(token, registration);
+    this.registrations.set(token, registrationResult.value);
     return ok(undefined);
   }
 
   /**
    * Registers an alias that points to another token.
-   * 
+   *
    * @template TServiceType - The type of service
    * @param aliasToken - The alias token
    * @param targetToken - The token to resolve instead
@@ -164,24 +149,20 @@ export class ServiceRegistry {
       });
     }
 
-    // Alias resolution is handled by ServiceResolver
-    const registration = new ServiceRegistration(
-      ServiceLifecycle.SINGLETON,
-      [targetToken],
-      "alias",
-      undefined,        // serviceClass
-      undefined,        // factory
-      undefined,        // value
-      targetToken       // Store alias target
-    );
+    // Use static factory method for validation
+    const registrationResult = ServiceRegistration.createAlias(targetToken);
 
-    this.registrations.set(aliasToken, registration);
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+
+    this.registrations.set(aliasToken, registrationResult.value);
     return ok(undefined);
   }
 
   /**
    * Retrieves a service registration.
-   * 
+   *
    * @template TServiceType - The type of service
    * @param token - The injection token identifying the service
    * @returns The registration or undefined if not found
@@ -195,7 +176,7 @@ export class ServiceRegistry {
   /**
    * Returns all registrations.
    * Used by ContainerValidator for dependency validation.
-   * 
+   *
    * @returns Map of all registrations
    */
   getAllRegistrations(): Map<InjectionToken<ServiceType>, ServiceRegistration> {
@@ -204,7 +185,7 @@ export class ServiceRegistry {
 
   /**
    * Checks if a service is registered.
-   * 
+   *
    * @template TServiceType - The type of service
    * @param token - The injection token to check
    * @returns True if registered, false otherwise
@@ -223,21 +204,20 @@ export class ServiceRegistry {
 
   /**
    * Creates a deep clone of this registry for child containers.
-   * 
+   *
    * Important: Creates a new Map instance with cloned ServiceRegistration objects
    * to prevent child containers from mutating parent registrations.
-   * 
+   *
    * @returns A new ServiceRegistry with cloned registrations
    */
   clone(): ServiceRegistry {
     const clonedRegistry = new ServiceRegistry();
-    
+
     // Create new Map with cloned ServiceRegistration objects
     for (const [token, registration] of this.registrations.entries()) {
       clonedRegistry.registrations.set(token, registration.clone());
     }
-    
+
     return clonedRegistry;
   }
 }
-

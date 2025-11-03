@@ -93,6 +93,40 @@ Foundry Adapter Layer (Services → Ports → Foundry API)
 
 📖 **Detaillierte Dokumentation**: Siehe [ARCHITECTURE.md](./ARCHITECTURE.md)
 
+### Architektur-Garantien
+
+#### Port-Adapter: Lazy Instantiation
+
+Das Modul verhindert Crashes durch inkompatible Port-Versionen:
+
+- ✅ Nur der kompatible Port wird instantiiert
+- ✅ Neuere Ports (v14+) werden auf v13 nie aufgerufen
+- ✅ Automatische Fallback-Selektion (v14 → v13)
+
+#### Hook-Kompatibilität
+
+Foundry-Hooks werden sowohl im alten (jQuery) als auch neuen Format (HTMLElement) unterstützt:
+
+- ✅ v10-12: jQuery-Wrapper werden automatisch extrahiert
+- ✅ v13+: Native HTMLElement direkt verwendet
+- ✅ Keine manuelle Anpassung nötig
+
+#### Type-Safe Public API
+
+Die Modul-API behält volle Typ-Information:
+
+```typescript
+const api = game.modules.get('fvtt_relationship_app_module').api;
+
+// logger hat Typ Logger (nicht ServiceType)
+const logger = api.resolve(api.tokens.loggerToken);
+logger.info("Type-safe!"); // Autocomplete funktioniert
+
+// game hat Typ FoundryGame (nicht ServiceType)
+const game = api.resolve(api.tokens.foundryGameToken);
+const journals = game.getJournalEntries(); // Type-safe!
+```
+
 ---
 
 ## 🔧 Konfiguration

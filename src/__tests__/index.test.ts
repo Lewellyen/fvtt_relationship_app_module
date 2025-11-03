@@ -20,4 +20,3 @@ describe("index.ts", () => {
     await expect(import("../index")).resolves.toBeDefined();
   });
 });
-
