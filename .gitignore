@@ -5,6 +5,8 @@ node_modules
 !.prettierrc
 !.stylelintrc.json
 !.editorconfig
+!.github
+!.github/**/*
 backup
 backup/**/*
 coverage
