@@ -38,7 +38,7 @@ Ein Foundry VTT Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken
 
 - Node.js 18+ 
 - npm oder pnpm
-- Foundry VTT 13+
+- Foundry VTT 13+ ⚠️ **Mindestversion beachten!**
 
 ### Setup
 
@@ -91,7 +91,9 @@ Foundry Adapter Layer (Services → Ports → Foundry API)
 - **Result Pattern**: Explizite Fehlerbehandlung ohne Exceptions
 - **Dependency Injection**: ServiceContainer mit Singleton/Transient/Scoped Lifecycles
 
-📖 **Detaillierte Dokumentation**: Siehe [ARCHITECTURE.md](./ARCHITECTURE.md)
+📖 **Detaillierte Dokumentation**: 
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Architektur-Details
+- [API.md](./docs/API.md) - Öffentliche API für andere Module
 
 ### Architektur-Garantien
 
@@ -148,6 +150,36 @@ Strict Mode ist aktiviert (`tsconfig.json`):
   "strictNullChecks": true,
   "noImplicitAny": true
 }
+```
+
+### Log-Level zur Laufzeit ändern
+
+Für Debugging in Production können Sie das Log-Level dynamisch anpassen:
+
+**Methode 1: Foundry UI (Empfohlen)**
+1. Einstellungen → Module-Konfiguration
+2. "Beziehungsnetzwerke für Foundry" → "Log Level"
+3. Wähle gewünschtes Level:
+   - **DEBUG**: Alle Logs (für Debugging/Fehlersuche)
+   - **INFO**: Standard-Logs (Default)
+   - **WARN**: Nur Warnungen und Fehler
+   - **ERROR**: Nur kritische Fehler
+4. **Sofort aktiv** (kein Reload nötig!)
+
+**Methode 2: Browser-Console (Schnell-Zugriff)**
+```javascript
+// Console öffnen (F12)
+const api = game.modules.get('fvtt_relationship_app_module').api;
+
+// DEBUG aktivieren (0=DEBUG, 1=INFO, 2=WARN, 3=ERROR)
+api.resolve(api.tokens.loggerToken).setMinLevel(0);
+
+// Oder über Settings-API (persistiert Änderung)
+await api.resolve(api.tokens.foundrySettingsToken).set(
+  'fvtt_relationship_app_module', 
+  'logLevel', 
+  0
+);
 ```
 
 ---

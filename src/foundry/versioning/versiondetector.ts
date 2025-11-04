@@ -3,29 +3,58 @@
  * Extracts the major version number from Foundry's version string.
  */
 
+import type { Result } from "@/types/result";
+import { ok, err } from "@/utils/result";
+
 /**
  * Gets the major version number of the currently running Foundry VTT instance.
- * @returns The major version number (e.g., 13 for "13.348")
- * @throws Error if game is not available or version cannot be determined
+ * Returns a Result for proper error handling.
+ *
+ * @returns Result with major version number (e.g., 13 for "13.348") or error message
+ *
+ * @example
+ * ```typescript
+ * const versionResult = getFoundryVersionResult();
+ * if (versionResult.ok) {
+ *   console.log(`Foundry version: ${versionResult.value}`);
+ * } else {
+ *   console.error(`Version detection failed: ${versionResult.error}`);
+ * }
+ * ```
  */
-export function getFoundryVersion(): number {
+export function getFoundryVersionResult(): Result<number, string> {
   if (typeof game === "undefined") {
-    throw new Error("Foundry game object is not available or version cannot be determined");
+    return err("Foundry game object is not available or version cannot be determined");
   }
 
   // game.version is typed as string by fvtt-types
   // Format is "{major}.{minor}" (e.g., "13.348")
   const versionString = game.version;
   if (!versionString) {
-    throw new Error("Foundry version is not available on the game object");
+    return err("Foundry version is not available on the game object");
   }
+
   const match = versionString.match(/^(\d+)/);
-
   if (!match) {
-    throw new Error(`Could not parse Foundry version from: ${versionString}`);
+    return err(`Could not parse Foundry version from: ${versionString}`);
   }
 
-  return Number.parseInt(match[1]!, 10);
+  return ok(Number.parseInt(match[1]!, 10));
+}
+
+/**
+ * Gets the major version number of the currently running Foundry VTT instance.
+ *
+ * @deprecated Use getFoundryVersionResult() for proper error handling with Result pattern
+ * @returns The major version number (e.g., 13 for "13.348")
+ * @throws Error if game is not available or version cannot be determined
+ */
+export function getFoundryVersion(): number {
+  const result = getFoundryVersionResult();
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  return result.value;
 }
 
 /**
@@ -33,9 +62,6 @@ export function getFoundryVersion(): number {
  * @returns The major version number or undefined if not available
  */
 export function tryGetFoundryVersion(): number | undefined {
-  try {
-    return getFoundryVersion();
-  } catch {
-    return undefined;
-  }
+  const result = getFoundryVersionResult();
+  return result.ok ? result.value : undefined;
 }

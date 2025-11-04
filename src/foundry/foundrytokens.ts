@@ -9,6 +9,7 @@ import type { FoundryGame } from "./interfaces/FoundryGame";
 import type { FoundryHooks } from "./interfaces/FoundryHooks";
 import type { FoundryDocument } from "./interfaces/FoundryDocument";
 import type { FoundryUI } from "./interfaces/FoundryUI";
+import type { FoundrySettings } from "./interfaces/FoundrySettings";
 import type { PortSelector } from "./versioning/portselector";
 import type { PortRegistry } from "./versioning/portregistry";
 
@@ -65,3 +66,15 @@ export const foundryDocumentPortRegistryToken: InjectionToken<PortRegistry<Found
  */
 export const foundryUIPortRegistryToken: InjectionToken<PortRegistry<FoundryUI>> =
   createInjectionToken<PortRegistry<FoundryUI>>("FoundryUIPortRegistry");
+
+/**
+ * Injection token for FoundrySettings service.
+ */
+export const foundrySettingsToken: InjectionToken<FoundrySettings> =
+  createInjectionToken<FoundrySettings>("FoundrySettings");
+
+/**
+ * Injection token for FoundrySettings PortRegistry.
+ */
+export const foundrySettingsPortRegistryToken: InjectionToken<PortRegistry<FoundrySettings>> =
+  createInjectionToken<PortRegistry<FoundrySettings>>("FoundrySettingsPortRegistry");

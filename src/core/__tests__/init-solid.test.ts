@@ -189,5 +189,80 @@ describe("init-solid Bootstrap", () => {
       consoleErrorSpy.mockRestore();
       cleanup();
     });
+
+    it("should show version-specific error for Foundry v12", async () => {
+      vi.resetModules();
+
+      const mockUI = createMockUI();
+      const cleanup = withFoundryGlobals({
+        game: { version: "12.331" } as any,
+        Hooks: createMockHooks(),
+        ui: mockUI,
+      });
+
+      // Mock configureDependencies to fail with PORT_SELECTION_FAILED
+      vi.doMock("@/config/dependencyconfig", () => ({
+        configureDependencies: vi.fn().mockReturnValue({
+          ok: false,
+          error: "Bootstrap failed: PORT_SELECTION_FAILED - No compatible port found",
+        }),
+      }));
+
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await import("@/core/init-solid");
+
+      // Should show version-specific error
+      expect(mockUI.notifications?.error).toHaveBeenCalledWith(
+        expect.stringContaining("benötigt mindestens Foundry VTT Version 13"),
+        { permanent: true }
+      );
+      expect(mockUI.notifications?.error).toHaveBeenCalledWith(
+        expect.stringContaining("Ihre Version: 12"),
+        { permanent: true }
+      );
+
+      consoleErrorSpy.mockRestore();
+      cleanup();
+    });
+
+    it("should NOT show version error for PORT_SELECTION_FAILED on v13", async () => {
+      vi.resetModules();
+
+      const mockUI = createMockUI();
+      const cleanup = withFoundryGlobals({
+        game: { version: "13.291" } as any,
+        Hooks: createMockHooks(),
+        ui: mockUI,
+      });
+
+      // Mock configureDependencies to fail with PORT_SELECTION_FAILED
+      vi.doMock("@/config/dependencyconfig", () => ({
+        configureDependencies: vi.fn().mockReturnValue({
+          ok: false,
+          error: "Bootstrap failed: PORT_SELECTION_FAILED",
+        }),
+      }));
+
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await import("@/core/init-solid");
+
+      // Should show generic error, not version-specific
+      expect(mockUI.notifications?.error).toHaveBeenCalledWith(
+        expect.stringContaining("failed to initialize"),
+        { permanent: true }
+      );
+
+      // Should NOT show version-specific message
+      const errorCalls = (mockUI.notifications?.error as any).mock.calls;
+      const versionSpecificCall = errorCalls.find((call: any) =>
+        call[0].includes("benötigt mindestens")
+      );
+      expect(versionSpecificCall).toBeUndefined();
+
+      consoleErrorSpy.mockRestore();
+      cleanup();
+    });
   });
 });

@@ -1,3 +1,5 @@
+import type { LogLevel } from "@/config/environment";
+
 /**
  * Logging interface for dependency injection.
  * Provides structured logging methods for different severity levels.
@@ -10,12 +12,20 @@
  * @example
  * ```typescript
  * const logger: Logger = container.resolve(loggerToken);
+ * logger.setMinLevel(LogLevel.INFO);
  * logger.info("Application started");
  * logger.error("An error occurred", error);
  * logger.debug("User data:", user, { additional: "context" });
  * ```
  */
 export interface Logger {
+  /**
+   * Sets the minimum log level. Messages below this level will be ignored.
+   * Optional - not all logger implementations support runtime level changes.
+   * @param level - Minimum log level
+   */
+  setMinLevel?(level: LogLevel): void;
+
   /**
    * Log a general message to the console
    * @param message - The message to log

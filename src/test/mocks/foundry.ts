@@ -81,9 +81,9 @@ export function createMockJournalEntry(
  */
 export function createMockHooks(): typeof Hooks {
   return {
-    on: vi.fn(),
+    on: vi.fn().mockReturnValue(1),
     off: vi.fn(),
-    once: vi.fn(),
+    once: vi.fn().mockReturnValue(1),
     call: vi.fn(),
     callAll: vi.fn(),
   } as unknown as typeof Hooks;
@@ -123,7 +123,8 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
   };
 
   const mockHooks: FoundryHooks = {
-    on: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
+    on: vi.fn().mockReturnValue({ ok: true as const, value: 1 }),
+    once: vi.fn().mockReturnValue({ ok: true as const, value: 1 }),
     off: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
   };
 

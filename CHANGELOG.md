@@ -105,6 +105,22 @@
 ### Upgrade-Hinweise
 - Keine besonderen Maßnahmen erforderlich
 
+## [0.0.15] - 2025-11-04
+### Hinzugefügt
+- Logger-Setting hinzugefügt inklusive Service, Foundryport, Token und Api
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.0.14] - 2025-11-03
 ### Hinzugefügt
 - Keine Einträge

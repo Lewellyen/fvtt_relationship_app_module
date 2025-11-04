@@ -26,6 +26,9 @@ export const MODULE_CONSTANTS = {
     INIT: "init",
     READY: "ready",
   },
+  SETTINGS: {
+    LOG_LEVEL: "logLevel",
+  },
   DEFAULTS: {
     UNKNOWN_NAME: "Unknown",
   },

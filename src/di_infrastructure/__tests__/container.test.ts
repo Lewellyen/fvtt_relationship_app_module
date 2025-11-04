@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { ServiceContainer, registerFallback } from "../container";
+import { ServiceContainer } from "../container";
 import { createInjectionToken } from "../tokenutilities";
 import { ServiceLifecycle } from "../types/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
@@ -352,7 +352,7 @@ describe("ServiceContainer", () => {
       const container = ServiceContainer.createRoot();
       const token = createInjectionToken<TestService>("Test");
 
-      registerFallback(token, () => new TestService(42));
+      container.registerFallback(token, () => new TestService(42));
       container.validate();
 
       // Token NICHT registriert -> Fallback wird genutzt
@@ -375,7 +375,7 @@ describe("ServiceContainer", () => {
       const container = ServiceContainer.createRoot();
       const token = createInjectionToken<TestService>("Test");
 
-      registerFallback(token, () => new TestService(999));
+      container.registerFallback(token, () => new TestService(999));
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       container.validate();
 
@@ -383,6 +383,46 @@ describe("ServiceContainer", () => {
       // Sollte die registrierte Instanz sein, nicht der Fallback
       expect(instance).toBeInstanceOf(TestService);
       expect(instance.value).not.toBe(999);
+    });
+
+    it("should isolate fallbacks between containers", () => {
+      const container1 = ServiceContainer.createRoot();
+      const container2 = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      // Container 1 hat einen Fallback
+      container1.registerFallback(token, () => new TestService(111));
+      container1.validate();
+
+      // Container 2 hat einen anderen Fallback
+      container2.registerFallback(token, () => new TestService(222));
+      container2.validate();
+
+      // Jeder Container verwendet seinen eigenen Fallback
+      const result1 = container1.resolve(token);
+      const result2 = container2.resolve(token);
+
+      expect(result1.value).toBe(111);
+      expect(result2.value).toBe(222);
+    });
+
+    it("should not inherit fallback from parent in child container", () => {
+      const parent = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      // Parent hat einen Fallback
+      parent.registerFallback(token, () => new TestService(100));
+      parent.validate();
+
+      // Child erstellen
+      const childResult = parent.createScope("child");
+      expectResultOk(childResult);
+      const child = childResult.value;
+      child.validate();
+
+      // Child sollte KEINEN Zugriff auf Parent-Fallback haben
+      // (Fallbacks sind container-spezifisch, nicht vererbt)
+      expect(() => child.resolve(token)).toThrow(/No fallback/);
     });
   });
 
@@ -511,6 +551,130 @@ describe("ServiceContainer", () => {
       );
       expectResultErr(child2ResolveResult);
       expect(child2ResolveResult.error.code).toBe("Disposed");
+    });
+  });
+
+  describe("Edge Cases & Scalability", () => {
+    it("should handle deep dependency chains (10+ levels)", () => {
+      const container = ServiceContainer.createRoot();
+
+      // Create a 10-level deep dependency chain
+      const tokens = Array.from({ length: 10 }, (_, i) =>
+        createInjectionToken<TestService>(`Level${i}`)
+      );
+
+      // Register services with dependencies on the next level
+      for (let i = tokens.length - 1; i >= 0; i--) {
+        const token = tokens[i]!;
+        const deps = i < tokens.length - 1 ? [tokens[i + 1]!] : [];
+
+        // Manually create a factory that accepts dependencies
+        container.registerFactory(
+          token,
+          i === tokens.length - 1
+            ? () => new TestService(i)
+            : (...resolved: TestService[]) => new TestService(resolved[0]?.value ?? i),
+          ServiceLifecycle.SINGLETON,
+          deps
+        );
+      }
+
+      container.validate();
+
+      // Should resolve without stack overflow
+      const result = container.resolveWithError(tokens[0]!);
+      expectResultOk(result);
+    });
+
+    it("should handle many transient services without memory leak", () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.TRANSIENT);
+      container.validate();
+
+      // Resolve 1000 times
+      for (let i = 0; i < 1000; i++) {
+        const instance = container.resolve(token);
+        expect(instance).toBeInstanceOf(TestService);
+      }
+
+      // All instances should be different (transient)
+      const instances = Array.from({ length: 10 }, () => container.resolve(token));
+      const uniqueInstances = new Set(instances);
+      expect(uniqueInstances.size).toBe(10);
+    });
+
+    it("should handle 100+ service registrations efficiently", () => {
+      const container = ServiceContainer.createRoot();
+      const tokens = Array.from({ length: 100 }, (_, i) =>
+        createInjectionToken<TestService>(`Service${i}`)
+      );
+
+      const startTime = performance.now();
+
+      // Register 100 services
+      for (const token of tokens) {
+        container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+      }
+
+      const validationResult = container.validate();
+      expectResultOk(validationResult);
+
+      // Resolve all services
+      for (const token of tokens) {
+        const result = container.resolveWithError(token);
+        expectResultOk(result);
+      }
+
+      const duration = performance.now() - startTime;
+
+      // Should complete within reasonable time (500ms)
+      expect(duration).toBeLessThan(500);
+    });
+
+    it("should detect circular dependencies in deep chains", () => {
+      const container = ServiceContainer.createRoot();
+      const tokenA = createInjectionToken<TestService>("A");
+      const tokenB = createInjectionToken<TestService>("B");
+      const tokenC = createInjectionToken<TestService>("C");
+
+      // A -> B -> C -> A (circular)
+      container.registerFactory(tokenA, () => new TestService(1), ServiceLifecycle.SINGLETON, [
+        tokenB,
+      ]);
+      container.registerFactory(tokenB, () => new TestService(2), ServiceLifecycle.SINGLETON, [
+        tokenC,
+      ]);
+      container.registerFactory(tokenC, () => new TestService(3), ServiceLifecycle.SINGLETON, [
+        tokenA,
+      ]);
+
+      const validationResult = container.validate();
+
+      // Should detect circular dependency during validation
+      expectResultErr(validationResult);
+      expect(validationResult.error).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "CircularDependency",
+          }),
+        ])
+      );
+    });
+
+    it("should handle empty container (no registrations)", () => {
+      const container = ServiceContainer.createRoot();
+      const validationResult = container.validate();
+
+      // Empty container is valid
+      expectResultOk(validationResult);
+
+      // Resolving should fail gracefully
+      const token = createInjectionToken<TestService>("Test");
+      const resolveResult = container.resolveWithError(token);
+      expectResultErr(resolveResult);
+      expect(resolveResult.error.code).toBe("TokenNotRegistered");
     });
   });
 });

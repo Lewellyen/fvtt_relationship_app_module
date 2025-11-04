@@ -10,6 +10,26 @@ import { ServiceRegistration } from "../types/serviceregistration";
 import { ok, err, isErr } from "@/utils/result";
 
 /**
+ * Type for service classes that declare their dependencies.
+ */
+type ServiceClassWithDependencies<T extends ServiceType> = ServiceClass<T> & {
+  dependencies?: ReadonlyArray<InjectionToken<ServiceType>>;
+};
+
+/**
+ * Type guard to check if a service class has a dependencies property.
+ *
+ * @template T - The service type
+ * @param cls - The service class to check
+ * @returns True if the class has a dependencies property
+ */
+function hasDependencies<T extends ServiceType>(
+  cls: ServiceClass<T>
+): cls is ServiceClassWithDependencies<T> {
+  return "dependencies" in cls;
+}
+
+/**
  * Registry for service registrations.
  *
  * Responsibilities:
@@ -23,6 +43,23 @@ import { ok, err, isErr } from "@/utils/result";
  */
 export class ServiceRegistry {
   private registrations = new Map<InjectionToken<ServiceType>, ServiceRegistration>();
+  private lifecycleIndex = new Map<ServiceLifecycle, Set<InjectionToken<ServiceType>>>();
+
+  /**
+   * Updates the lifecycle index when a service is registered.
+   *
+   * @param token - The injection token
+   * @param lifecycle - The service lifecycle
+   */
+  private updateLifecycleIndex(
+    token: InjectionToken<ServiceType>,
+    lifecycle: ServiceLifecycle
+  ): void {
+    if (!this.lifecycleIndex.has(lifecycle)) {
+      this.lifecycleIndex.set(lifecycle, new Set());
+    }
+    this.lifecycleIndex.get(lifecycle)!.add(token);
+  }
 
   /**
    * Registers a service class with automatic dependency injection.
@@ -46,7 +83,7 @@ export class ServiceRegistry {
       });
     }
 
-    const dependencies = (serviceClass as any).dependencies ?? [];
+    const dependencies = hasDependencies(serviceClass) ? (serviceClass.dependencies ?? []) : [];
 
     // Use static factory method for validation
     const registrationResult = ServiceRegistration.createClass(
@@ -60,6 +97,7 @@ export class ServiceRegistry {
     }
 
     this.registrations.set(token, registrationResult.value);
+    this.updateLifecycleIndex(token, lifecycle);
     return ok(undefined);
   }
 
@@ -95,6 +133,7 @@ export class ServiceRegistry {
     }
 
     this.registrations.set(token, registrationResult.value);
+    this.updateLifecycleIndex(token, lifecycle);
     return ok(undefined);
   }
 
@@ -126,6 +165,7 @@ export class ServiceRegistry {
     }
 
     this.registrations.set(token, registrationResult.value);
+    this.updateLifecycleIndex(token, ServiceLifecycle.SINGLETON); // Values are always SINGLETON
     return ok(undefined);
   }
 
@@ -184,6 +224,20 @@ export class ServiceRegistry {
   }
 
   /**
+   * Returns all registrations for a specific lifecycle.
+   * More efficient than filtering getAllRegistrations() when only one lifecycle is needed.
+   *
+   * @param lifecycle - The lifecycle to query
+   * @returns Array of registrations with the specified lifecycle
+   */
+  getRegistrationsByLifecycle(lifecycle: ServiceLifecycle): ServiceRegistration[] {
+    const tokens = this.lifecycleIndex.get(lifecycle) ?? new Set();
+    return Array.from(tokens)
+      .map((token) => this.registrations.get(token))
+      .filter((reg): reg is ServiceRegistration => reg !== undefined);
+  }
+
+  /**
    * Checks if a service is registered.
    *
    * @template TServiceType - The type of service
@@ -200,6 +254,7 @@ export class ServiceRegistry {
    */
   clear(): void {
     this.registrations.clear();
+    this.lifecycleIndex.clear();
   }
 
   /**
@@ -216,6 +271,11 @@ export class ServiceRegistry {
     // Create new Map with cloned ServiceRegistration objects
     for (const [token, registration] of this.registrations.entries()) {
       clonedRegistry.registrations.set(token, registration.clone());
+    }
+
+    // Clone lifecycle index
+    for (const [lifecycle, tokens] of this.lifecycleIndex.entries()) {
+      clonedRegistry.lifecycleIndex.set(lifecycle, new Set(tokens));
     }
 
     return clonedRegistry;

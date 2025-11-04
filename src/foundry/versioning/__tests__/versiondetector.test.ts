@@ -1,7 +1,12 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { getFoundryVersion, tryGetFoundryVersion } from "../versiondetector";
+import {
+  getFoundryVersion,
+  tryGetFoundryVersion,
+  getFoundryVersionResult,
+} from "../versiondetector";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame } from "@/test/mocks/foundry";
+import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
 describe("versiondetector", () => {
   afterEach(() => {
@@ -150,6 +155,121 @@ describe("versiondetector", () => {
         const result = tryGetFoundryVersion();
         expect(result).toBeUndefined();
         cleanup();
+      });
+    });
+
+    describe("getFoundryVersionResult (Result Pattern)", () => {
+      describe("Success Cases", () => {
+        it("should return Ok with version 13", () => {
+          const cleanup = withFoundryGlobals({
+            game: createMockGame({ version: "13.291" }),
+          });
+
+          const result = getFoundryVersionResult();
+          expectResultOk(result);
+          expect(result.value).toBe(13);
+
+          cleanup();
+        });
+
+        it("should return Ok with version 14", () => {
+          const cleanup = withFoundryGlobals({
+            game: createMockGame({ version: "14.0" }),
+          });
+
+          const result = getFoundryVersionResult();
+          expectResultOk(result);
+          expect(result.value).toBe(14);
+
+          cleanup();
+        });
+
+        it("should parse version with patch number", () => {
+          const cleanup = withFoundryGlobals({
+            game: createMockGame({ version: "13.348.2" }),
+          });
+
+          const result = getFoundryVersionResult();
+          expectResultOk(result);
+          expect(result.value).toBe(13);
+
+          cleanup();
+        });
+      });
+
+      describe("Error Cases", () => {
+        it("should return Err when game is undefined", () => {
+          vi.stubGlobal("game", undefined);
+
+          const result = getFoundryVersionResult();
+          expectResultErr(result);
+          expect(result.error).toContain("Foundry game object is not available");
+
+          vi.unstubAllGlobals();
+        });
+
+        it("should return Err when game.version is undefined", () => {
+          const mockGame = createMockGame();
+          Object.defineProperty(mockGame, "version", {
+            value: undefined,
+            writable: true,
+            configurable: true,
+          });
+
+          const cleanup = withFoundryGlobals({
+            game: mockGame,
+          });
+
+          const result = getFoundryVersionResult();
+          expectResultErr(result);
+          expect(result.error).toContain("Foundry version is not available");
+
+          cleanup();
+        });
+
+        it("should return Err when game.version is empty string", () => {
+          const mockGame = createMockGame({ version: "" });
+          const cleanup = withFoundryGlobals({
+            game: mockGame,
+          });
+
+          const result = getFoundryVersionResult();
+          expectResultErr(result);
+          expect(result.error).toContain("Foundry version is not available");
+
+          cleanup();
+        });
+
+        it("should return Err when game.version contains non-numeric characters", () => {
+          const cleanup = withFoundryGlobals({
+            game: createMockGame({ version: "abc" }),
+          });
+
+          const result = getFoundryVersionResult();
+          expectResultErr(result);
+          expect(result.error).toContain("Could not parse Foundry version");
+
+          cleanup();
+        });
+
+        it("should return Err when game.version is null", () => {
+          const mockGame = createMockGame();
+          Object.defineProperty(mockGame, "version", {
+            value: null,
+            writable: true,
+            configurable: true,
+          });
+
+          const cleanup = withFoundryGlobals({
+            game: mockGame,
+          });
+
+          const result = getFoundryVersionResult();
+          expectResultErr(result);
+          expect(result.error).toContain("Foundry version is not available");
+
+          cleanup();
+        });
       });
     });
   });

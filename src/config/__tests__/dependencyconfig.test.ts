@@ -8,10 +8,13 @@ import {
   foundryDocumentToken,
   foundryUIToken,
   foundryGamePortRegistryToken,
+  foundrySettingsToken,
+  foundrySettingsPortRegistryToken,
 } from "@/foundry/foundrytokens";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { err } from "@/utils/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import { ENV, LogLevel } from "@/config/environment";
 
 describe("dependencyconfig", () => {
   describe("Success Path", () => {
@@ -217,6 +220,73 @@ describe("dependencyconfig", () => {
       const result = configureDependencies(container);
       expectResultOk(result);
     });
+
+    it("should handle FoundrySettings registry registration failure", () => {
+      const container = ServiceContainer.createRoot();
+
+      const registerValueSpy = vi.spyOn(container, "registerValue").mockImplementation((token) => {
+        if (token === foundrySettingsPortRegistryToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "Settings registry failed",
+          });
+        }
+        return Reflect.apply(ServiceContainer.prototype.registerValue, container, [
+          token,
+          {} as never,
+        ]);
+      });
+
+      const result = configureDependencies(container);
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("FoundrySettings PortRegistry");
+      }
+
+      registerValueSpy.mockRestore();
+    });
+
+    it("should handle FoundrySettings service registration failure", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
+
+      vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
+        if (token === foundrySettingsToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "Settings service failed",
+          });
+        }
+        return originalRegisterClass(token, serviceClass, lifecycle);
+      });
+
+      const result = configureDependencies(container);
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("FoundrySettings service");
+      }
+    });
+
+    it("should handle FoundryGame service registration failure", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
+
+      vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
+        if (token === foundryGameToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "FoundryGame registration failed",
+          });
+        }
+        return originalRegisterClass(token, serviceClass, lifecycle);
+      });
+
+      const result = configureDependencies(container);
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("FoundryGame");
+      }
+    });
   });
 
   describe("Validation", () => {
@@ -229,6 +299,58 @@ describe("dependencyconfig", () => {
       // Validation sollte erfolgreich sein
       const validationResult = container.validate();
       expect(validationResult.ok).toBe(true);
+    });
+  });
+
+  describe("Logger Configuration", () => {
+    it("should configure logger with ENV.logLevel", () => {
+      const container = ServiceContainer.createRoot();
+      const originalLogLevel = ENV.logLevel;
+
+      // Set to ERROR level
+      (ENV as any).logLevel = LogLevel.ERROR;
+
+      const result = configureDependencies(container);
+      expectResultOk(result);
+
+      const logger = container.resolve(loggerToken) as ConsoleLoggerService;
+
+      // Debug should be suppressed
+      const debugSpy = vi.spyOn(console, "debug");
+      logger.debug("test debug");
+      expect(debugSpy).not.toHaveBeenCalled();
+
+      // Error should be shown
+      const errorSpy = vi.spyOn(console, "error");
+      logger.error("test error");
+      expect(errorSpy).toHaveBeenCalled();
+
+      // Restore
+      (ENV as any).logLevel = originalLogLevel;
+      debugSpy.mockRestore();
+      errorSpy.mockRestore();
+    });
+
+    it("should respect DEBUG level from ENV", () => {
+      const container = ServiceContainer.createRoot();
+      const originalLogLevel = ENV.logLevel;
+
+      // Set to DEBUG level
+      (ENV as any).logLevel = LogLevel.DEBUG;
+
+      const result = configureDependencies(container);
+      expectResultOk(result);
+
+      const logger = container.resolve(loggerToken) as ConsoleLoggerService;
+
+      // Debug should be shown
+      const debugSpy = vi.spyOn(console, "debug");
+      logger.debug("test debug");
+      expect(debugSpy).toHaveBeenCalled();
+
+      // Restore
+      (ENV as any).logLevel = originalLogLevel;
+      debugSpy.mockRestore();
     });
   });
 });

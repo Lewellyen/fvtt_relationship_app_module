@@ -24,11 +24,9 @@ describe("FoundryDocumentService", () => {
     };
 
     mockRegistry = new PortRegistry<FoundryDocument>();
-    // FIX: Use new getFactories() API instead of getAvailablePorts()
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
     mockSelector = new PortSelector();
-    // FIX: Use new selectPortFromFactories() API instead of selectPort()
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundryDocumentService(mockSelector, mockRegistry);
@@ -68,7 +66,7 @@ describe("FoundryDocumentService", () => {
       const result = failingService.getFlag(document, "scope", "key");
 
       expectResultErr(result);
-      expect(result.error).toContain("Port selection failed");
+      expect(result.error.message).toContain("Port selection failed");
     });
   });
 
@@ -107,7 +105,7 @@ describe("FoundryDocumentService", () => {
       const result = await service.setFlag(document, "scope", "key", "value");
 
       expectResultErr(result);
-      expect(result.error).toContain("Async error");
+      expect(result.error.message).toContain("Async error");
     });
   });
 
@@ -125,7 +123,7 @@ describe("FoundryDocumentService", () => {
       const result = failingService.getFlag(document, "scope", "key");
 
       expectResultErr(result);
-      expect(result.error).toContain("No compatible port");
+      expect(result.error.message).toContain("No compatible port");
     });
   });
 });

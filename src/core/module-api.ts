@@ -6,6 +6,7 @@ import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
+import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 
 /**
  * Information about a registered service token.
@@ -29,6 +30,7 @@ export interface ModuleApiTokens {
   foundryHooksToken: InjectionToken<FoundryHooks>;
   foundryDocumentToken: InjectionToken<FoundryDocument>;
   foundryUIToken: InjectionToken<FoundryUI>;
+  foundrySettingsToken: InjectionToken<FoundrySettings>;
 }
 
 /**

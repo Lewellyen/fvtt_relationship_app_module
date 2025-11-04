@@ -21,31 +21,6 @@ import { ScopeManager } from "./scope/ScopeManager";
 type FallbackFactory<T extends ServiceType> = () => T;
 
 /**
- * Global registry of fallback factories for known tokens.
- * Used when container resolution fails and a fallback is available.
- */
-const fallbackFactories = new Map<symbol, FallbackFactory<ServiceType>>();
-
-/**
- * Register a fallback factory for a specific token.
- * This will be used when container.resolve() fails for that token.
- *
- * @param token - The injection token
- * @param factory - Factory function that creates a fallback instance
- *
- * @example
- * ```typescript
- * registerFallback(UserServiceToken, () => new DefaultUserService());
- * ```
- */
-export function registerFallback<T extends ServiceType>(
-  token: InjectionToken<T>,
-  factory: FallbackFactory<T>
-): void {
-  fallbackFactories.set(token, factory as FallbackFactory<ServiceType>);
-}
-
-/**
  * Dependency injection container (Facade pattern).
  *
  * Delegates to specialized components:
@@ -91,6 +66,7 @@ export class ServiceContainer implements Container {
   private resolver: ServiceResolver;
   private scopeManager: ScopeManager;
   private validationState: ContainerValidationState;
+  private fallbackFactories = new Map<symbol, FallbackFactory<ServiceType>>();
 
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
@@ -396,7 +372,7 @@ export class ServiceContainer implements Container {
     }
 
     // Try fallback factory
-    const fallback = fallbackFactories.get(token);
+    const fallback = this.fallbackFactories.get(token);
     if (fallback) {
       return fallback() as TServiceType;
     }
@@ -415,6 +391,25 @@ export class ServiceContainer implements Container {
     token: InjectionToken<TServiceType>
   ): Result<boolean, never> {
     return ok(this.registry.has(token));
+  }
+
+  /**
+   * Register a fallback factory for a specific token.
+   * This will be used when resolve() fails for that token.
+   *
+   * @param token - The injection token
+   * @param factory - Factory function that creates a fallback instance
+   *
+   * @example
+   * ```typescript
+   * container.registerFallback(UserServiceToken, () => new DefaultUserService());
+   * ```
+   */
+  registerFallback<TServiceType extends ServiceType>(
+    token: InjectionToken<TServiceType>,
+    factory: FallbackFactory<TServiceType>
+  ): void {
+    this.fallbackFactories.set(token, factory as FallbackFactory<ServiceType>);
   }
 
   /**

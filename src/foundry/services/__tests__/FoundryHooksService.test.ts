@@ -19,16 +19,15 @@ describe("FoundryHooksService", () => {
     });
 
     mockPort = {
-      on: vi.fn().mockReturnValue(ok(undefined)),
+      on: vi.fn().mockReturnValue(ok(1)),
+      once: vi.fn().mockReturnValue(ok(1)),
       off: vi.fn().mockReturnValue(ok(undefined)),
     };
 
     mockRegistry = new PortRegistry<FoundryHooks>();
-    // FIX: Use new getFactories() API instead of getAvailablePorts()
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
     mockSelector = new PortSelector();
-    // FIX: Use new selectPortFromFactories() API instead of selectPort()
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundryHooksService(mockSelector, mockRegistry);
@@ -68,7 +67,7 @@ describe("FoundryHooksService", () => {
       const result = failingService.on("init", callback);
 
       expectResultErr(result);
-      expect(result.error).toContain("Port selection failed");
+      expect(result.error.message).toContain("Port selection failed");
     });
   });
 
@@ -94,7 +93,7 @@ describe("FoundryHooksService", () => {
       const result = service.on("init", callback);
 
       expectResultErr(result);
-      expect(result.error).toContain("Hook registration failed");
+      expect(result.error.message).toContain("Hook registration failed");
     });
   });
 
@@ -124,7 +123,7 @@ describe("FoundryHooksService", () => {
       const result = failingService.on("init", callback);
 
       expectResultErr(result);
-      expect(result.error).toContain("No compatible port");
+      expect(result.error.message).toContain("No compatible port");
     });
   });
 });

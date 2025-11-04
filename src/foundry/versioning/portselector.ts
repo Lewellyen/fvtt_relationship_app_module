@@ -1,8 +1,11 @@
 import type { Result } from "@/types/result";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { err, ok } from "@/utils/result";
-import { getFoundryVersion } from "./versiondetector";
+import { getFoundryVersionResult } from "./versiondetector";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
+import { ENV } from "@/config/environment";
+import { PERFORMANCE_MARKS } from "@/core/performance-constants";
+import { MODULE_CONSTANTS } from "@/constants";
 
 /**
  * Factory function type for creating port instances.
@@ -46,19 +49,28 @@ export class PortSelector {
     factories: Map<number, PortFactory<T>>,
     foundryVersion?: number
   ): Result<T, FoundryError> {
+    // Performance tracking (only in debug/performance mode)
+    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
+      performance.mark(PERFORMANCE_MARKS.PORT_SELECTION_START);
+    }
+
     // Use central version detection
     let version: number;
-    try {
-      version = foundryVersion ?? getFoundryVersion();
-    } catch (error) {
-      return err(
-        createFoundryError(
-          "PORT_SELECTION_FAILED",
-          "Could not determine Foundry version",
-          undefined,
-          error
-        )
-      );
+    if (foundryVersion !== undefined) {
+      version = foundryVersion;
+    } else {
+      const versionResult = getFoundryVersionResult();
+      if (!versionResult.ok) {
+        return err(
+          createFoundryError(
+            "PORT_SELECTION_FAILED",
+            "Could not determine Foundry version",
+            undefined,
+            versionResult.error
+          )
+        );
+      }
+      version = versionResult.value;
     }
 
     // Find highest compatible factory (<= Foundry version)
@@ -89,10 +101,11 @@ export class PortSelector {
     }
 
     // CRITICAL: Only now instantiate the selected port
+    let result: Result<T, FoundryError>;
     try {
-      return ok(selectedFactory());
+      result = ok(selectedFactory());
     } catch (error) {
-      return err(
+      result = err(
         createFoundryError(
           "PORT_SELECTION_FAILED",
           `Failed to instantiate port v${selectedVersion}`,
@@ -101,69 +114,24 @@ export class PortSelector {
         )
       );
     }
-  }
 
-  /**
-   * Selects the appropriate port from available ports based on Foundry version.
-   * Returns the highest available port version that is <= the Foundry version.
-   *
-   * @deprecated Use selectPortFromFactories() with PortRegistry.getFactories()
-   * This method accepts pre-instantiated ports which can cause crashes.
-   *
-   * @template T - The port type
-   * @param availablePorts - Map of version numbers to port implementations
-   * @param foundryVersion - Optional Foundry version (will be detected if not provided)
-   * @returns Result containing the selected port or an error message
-   *
-   * @example
-   * ```typescript
-   * const ports = new Map([
-   *   [13, new FoundryGamePortV13()],
-   *   [14, new FoundryGamePortV14()]
-   * ]);
-   * const selector = new PortSelector();
-   * const result = selector.selectPort(ports);
-   * // On Foundry v14: selects v14 port
-   * // On Foundry v13: selects v13 port
-   * ```
-   */
-  selectPort<T>(availablePorts: Map<number, T>, foundryVersion?: number): Result<T, string> {
-    // Detect Foundry version if not provided
-    let version: number;
-    try {
-      version = foundryVersion ?? getFoundryVersion();
-    } catch (error) {
-      return err(
-        `Could not determine Foundry version: ${error instanceof Error ? error.message : String(error)}`
+    // Performance tracking end
+    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
+      performance.mark(PERFORMANCE_MARKS.PORT_SELECTION_END);
+      performance.measure(
+        PERFORMANCE_MARKS.PORT_SELECTION_DURATION,
+        PERFORMANCE_MARKS.PORT_SELECTION_START,
+        PERFORMANCE_MARKS.PORT_SELECTION_END
       );
-    }
 
-    // Find the highest available port that is <= Foundry version
-    let selectedPort: T | undefined;
-    let selectedVersion = -1;
-
-    for (const [portVersion, port] of availablePorts.entries()) {
-      // Ignore ports with version higher than Foundry version
-      if (portVersion > version) {
-        continue;
-      }
-
-      // Select the highest compatible port
-      if (portVersion > selectedVersion) {
-        selectedVersion = portVersion;
-        selectedPort = port;
+      const measure = performance.getEntriesByName(PERFORMANCE_MARKS.PORT_SELECTION_DURATION)[0];
+      if (measure && ENV.enableDebugMode) {
+        console.debug(
+          `${MODULE_CONSTANTS.LOG_PREFIX} Port selection completed in ${measure.duration.toFixed(2)}ms (selected: v${selectedVersion})`
+        );
       }
     }
 
-    if (selectedPort === undefined) {
-      const availableVersions = Array.from(availablePorts.keys())
-        .sort((a, b) => a - b)
-        .join(", ");
-      return err(
-        `No compatible port found for Foundry version ${version}. Available ports: ${availableVersions || "none"}`
-      );
-    }
-
-    return ok(selectedPort);
+    return result;
   }
 }

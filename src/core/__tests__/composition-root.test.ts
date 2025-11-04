@@ -3,6 +3,7 @@ import { CompositionRoot } from "../composition-root";
 import { expectResultOk } from "@/test/utils/test-helpers";
 import { loggerToken } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
+import { PERFORMANCE_MARKS } from "../performance-constants";
 
 describe("CompositionRoot", () => {
   beforeEach(() => {
@@ -26,21 +27,79 @@ describe("CompositionRoot", () => {
 
       expectResultOk(result);
     });
+
+    it("should record performance marks using constants when debug mode enabled", async () => {
+      // Mock ENV to enable debug mode
+      const envModule = await import("@/config/environment");
+      vi.spyOn(envModule, "ENV", "get").mockReturnValue({
+        isDevelopment: true,
+        isProduction: false,
+        logLevel: 0,
+        enablePerformanceTracking: true,
+        enableDebugMode: true,
+      });
+
+      const root = new CompositionRoot();
+
+      // Clear previous marks
+      performance.clearMarks();
+      performance.clearMeasures();
+
+      root.bootstrap();
+
+      // Verify performance marks were created
+      const marks = performance.getEntriesByType("mark");
+      const measures = performance.getEntriesByType("measure");
+
+      expect(marks.some((m) => m.name === PERFORMANCE_MARKS.BOOTSTRAP_START)).toBe(true);
+      expect(marks.some((m) => m.name === PERFORMANCE_MARKS.BOOTSTRAP_END)).toBe(true);
+      expect(measures.some((m) => m.name === PERFORMANCE_MARKS.BOOTSTRAP_DURATION)).toBe(true);
+    });
+
+    it("should skip performance tracking when debug mode disabled", async () => {
+      // Mock ENV to disable debug mode
+      const envModule = await import("@/config/environment");
+      vi.spyOn(envModule, "ENV", "get").mockReturnValue({
+        isDevelopment: false,
+        isProduction: true,
+        logLevel: 1,
+        enablePerformanceTracking: false,
+        enableDebugMode: false,
+      });
+
+      const root = new CompositionRoot();
+
+      // Clear previous marks
+      performance.clearMarks();
+      performance.clearMeasures();
+
+      const marksCountBefore = performance.getEntriesByType("mark").length;
+      root.bootstrap();
+      const marksCountAfter = performance.getEntriesByType("mark").length;
+
+      // No new marks should be created
+      expect(marksCountAfter).toBe(marksCountBefore);
+    });
   });
 
-  describe("getContainerOrThrow", () => {
-    it("should return container after bootstrap", () => {
+  describe("getContainer", () => {
+    it("should return ok Result with container after bootstrap", () => {
       const root = new CompositionRoot();
       root.bootstrap();
 
-      const container = root.getContainerOrThrow();
-      expect(container).toBeDefined();
+      const result = root.getContainer();
+      expectResultOk(result);
+      expect(result.value).toBeDefined();
     });
 
-    it("should throw before bootstrap", () => {
+    it("should return err Result before bootstrap", () => {
       const root = new CompositionRoot();
 
-      expect(() => root.getContainerOrThrow()).toThrow("Container not initialized");
+      const result = root.getContainer();
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("Container not initialized");
+      }
     });
   });
 
@@ -92,12 +151,12 @@ describe("CompositionRoot", () => {
     it("should provide fully configured container", () => {
       const root = new CompositionRoot();
       const bootstrapResult = root.bootstrap();
-
       expectResultOk(bootstrapResult);
 
-      const container = root.getContainerOrThrow();
-      const logger = container.resolve(loggerToken);
+      const containerResult = root.getContainer();
+      expectResultOk(containerResult);
 
+      const logger = containerResult.value.resolve(loggerToken);
       expect(logger).toBeInstanceOf(ConsoleLoggerService);
     });
 

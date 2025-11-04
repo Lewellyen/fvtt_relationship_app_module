@@ -47,15 +47,21 @@ export class FoundryHooksService implements FoundryHooks {
     return { ok: true, value: this.port };
   }
 
-  on(hookName: string, callback: FoundryHookCallback): Result<void, FoundryError> {
+  on(hookName: string, callback: FoundryHookCallback): Result<number, FoundryError> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.on(hookName, callback);
   }
 
-  off(hookName: string, callback: FoundryHookCallback): Result<void, FoundryError> {
+  once(hookName: string, callback: FoundryHookCallback): Result<number, FoundryError> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
-    return portResult.value.off(hookName, callback);
+    return portResult.value.once(hookName, callback);
+  }
+
+  off(hookName: string, callbackOrId: FoundryHookCallback | number): Result<void, FoundryError> {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.off(hookName, callbackOrId);
   }
 }

@@ -26,4 +26,12 @@ export interface FoundryUI {
    * @returns Result containing the found element or null, or a FoundryError
    */
   findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, FoundryError>;
+
+  /**
+   * Shows a UI notification to the user.
+   * @param message - The message to display
+   * @param type - Notification type ("info" | "warning" | "error")
+   * @returns Result indicating success or a FoundryError
+   */
+  notify(message: string, type: "info" | "warning" | "error"): Result<void, FoundryError>;
 }

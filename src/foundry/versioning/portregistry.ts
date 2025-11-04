@@ -61,24 +61,19 @@ export class PortRegistry<T> {
   }
 
   /**
-   * Creates all registered ports. Used for port selection.
+   * Gets available port instances by instantiating all factories.
+   *
+   * @deprecated Use getFactories() with PortSelector.selectPortFromFactories() instead.
+   * This method instantiates all ports eagerly, which may cause crashes on incompatible Foundry versions.
+   *
    * @returns Map of version numbers to port instances
    */
-  createAll(): Map<number, T> {
+  getAvailablePorts(): Map<number, T> {
     const ports = new Map<number, T>();
     for (const [version, factory] of this.factories.entries()) {
       ports.set(version, factory());
     }
     return ports;
-  }
-
-  /**
-   * Gets available port instances for version selection.
-   * Alias for createAll() with clearer semantics for PortSelector usage.
-   * @returns Map of version numbers to port instances
-   */
-  getAvailablePorts(): Map<number, T> {
-    return this.createAll();
   }
 
   /**

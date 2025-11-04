@@ -99,15 +99,20 @@ describe("ModuleHookRegistrar", () => {
     it("should log error when hook registration fails", () => {
       const mockContainer = createMockContainer();
       const mockHooks = mockContainer.resolve(foundryHooksToken) as any;
-      mockHooks.on.mockReturnValue({ ok: false as const, error: "Hook failed" });
+      mockHooks.on.mockReturnValue({
+        ok: false as const,
+        error: { code: "OPERATION_FAILED", message: "Hook failed" },
+      });
 
       const registrar = new ModuleHookRegistrar();
       registrar.registerAll(mockContainer as never);
 
       const mockLogger = mockContainer.resolve(loggerToken) as any;
-      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining("Failed to register"));
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY)
+        expect.stringContaining("Failed to register"),
+        expect.objectContaining({
+          code: "OPERATION_FAILED",
+        })
       );
     });
   });

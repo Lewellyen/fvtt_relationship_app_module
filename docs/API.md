@@ -1,133 +1,94 @@
-# Public API Documentation
+# API-Dokumentation
 
-Die Public API des Beziehungsnetzwerke-Moduls erlaubt externen Scripts und Makros den Zugriff auf zentrale Services über Dependency Injection.
+Beziehungsnetzwerke für Foundry VTT - Öffentliche API
 
 ---
 
-## 🔌 API-Zugriff
+## 📖 Übersicht
 
-Das Modul exponiert seine API unter `game.modules.get(MODULE_ID).api`:
+Dieses Modul stellt eine öffentliche API unter `game.modules.get('fvtt_relationship_app_module').api` bereit, die es anderen Modulen und Makros ermöglicht, mit dem Beziehungsnetzwerk-System zu interagieren.
+
+### ⚠️ Anforderungen
+
+- **Foundry VTT Version 13+** (Mindestversion)
+- Ältere Versionen (v10-12) werden nicht unterstützt
+
+---
+
+## 🚀 Getting Started
+
+### Zugriff auf die Modul-API
 
 ```typescript
+// API-Objekt abrufen
 const api = game.modules.get('fvtt_relationship_app_module').api;
-```
 
----
-
-## 📦 Verfügbare Methoden
-
-### `resolve<T>(token: InjectionToken<T>): T`
-
-Löst einen Service anhand seines Injection-Tokens auf.
-
-**Parameter:**
-- `token: InjectionToken<T>` - Der Injection-Token des gewünschten Services
-
-**Rückgabe:**
-- `T` - Die Service-Instanz
-
-**Wirft:**
-- `Error` - Wenn der Service nicht registriert ist oder nicht aufgelöst werden kann
-
----
-
-### `getAvailableTokens(): Map<symbol, TokenInfo>`
-
-Liefert alle verfügbaren Service-Tokens mit Metadaten.
-
-**Rückgabe:**
-- `Map<symbol, TokenInfo>` - Map von Token-Symbols zu ihren Informationen
-  - `description: string` - Name des Tokens (z.B. "Logger")
-  - `isRegistered: boolean` - Ob der Service registriert ist
-
-**Verwendung:**
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-const tokens = api.getAvailableTokens();
-
-console.log("Available services:");
-for (const [token, info] of tokens.entries()) {
-  console.log(`- ${info.description} (registered: ${info.isRegistered})`);
+if (!api) {
+  console.error('Relationship App Module nicht aktiviert');
+  return;
 }
-```
 
----
-
-### `tokens: { ... }`
-
-Direkt verfügbare Referenzen zu häufig genutzten Tokens.
-**Kein Import nötig!**
-
-**Verfügbare Tokens:**
-- `loggerToken` - Logger-Service
-- `journalVisibilityServiceToken` - Journal-Visibility-Service
-- `foundryGameToken` - Foundry Game Abstraction
-- `foundryHooksToken` - Foundry Hooks Abstraction
-- `foundryDocumentToken` - Foundry Document Abstraction
-- `foundryUIToken` - Foundry UI Abstraction
-
-**Verwendung:**
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-
-// ✅ Einfach: Tokens direkt aus API nutzen (kein Import nötig!)
+// Services über Tokens auflösen
 const logger = api.resolve(api.tokens.loggerToken);
-const game = api.resolve(api.tokens.foundryGameToken);
-
-logger.info('Hello from external script!');
+logger.info('Hello from external module!');
 ```
 
----
+### TypeScript-Unterstützung
 
-## 🎯 Verfügbare Services
-
-### Zwei Wege zum Zugriff auf Services
-
-#### **Weg 1: Direkt über `api.tokens` (Empfohlen - kein Import nötig!)**
+Für TypeScript-Projekte steht vollständige Typisierung zur Verfügung:
 
 ```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
+import type { ModuleApi } from '@/core/module-api';
 
-// ✅ Tokens sind direkt in der API verfügbar
-const logger = api.resolve(api.tokens.loggerToken);
-const game = api.resolve(api.tokens.foundryGameToken);
-
-logger.info('Hello from external script!');
-```
-
-#### **Weg 2: Tokens entdecken mit `getAvailableTokens()`**
-
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-
-// Alle verfügbaren Services auflisten
-const availableTokens = api.getAvailableTokens();
-console.log("Available services:");
-for (const [token, info] of availableTokens.entries()) {
-  console.log(`- ${info.description} (registered: ${info.isRegistered})`);
-  
-  if (info.isRegistered) {
-    const service = api.resolve(token);
-    // Service nutzen...
+declare global {
+  interface Game {
+    modules: Map<string, Module & { api?: ModuleApi }>;
   }
 }
+
+// Jetzt mit voller Type-Safety
+const api = game.modules.get('fvtt_relationship_app_module')?.api;
+const logger = api?.resolve(api.tokens.loggerToken);
 ```
 
 ---
 
-### Logger Service
+## 🔑 Verfügbare Tokens
 
-**Zugriff (ohne Import):**
+Die API stellt folgende Injection-Tokens bereit:
+
+| Token | Service-Typ | Beschreibung |
+|-------|-------------|--------------|
+| `loggerToken` | `Logger` | Logging-Service für strukturierte Logs |
+| `journalVisibilityServiceToken` | `JournalVisibilityService` | Verwaltung versteckter Journal-Einträge |
+| `foundryGameToken` | `FoundryGame` | Zugriff auf Foundry Game API (journal entries) |
+| `foundryHooksToken` | `FoundryHooks` | Foundry Hook-System |
+| `foundryDocumentToken` | `FoundryDocument` | Foundry Document API (flags, etc.) |
+| `foundryUIToken` | `FoundryUI` | Foundry UI-Manipulationen |
+| `foundrySettingsToken` | `FoundrySettings` | Foundry Settings-System (Runtime-Konfiguration) |
+
+### Token-Informationen abrufen
+
 ```typescript
 const api = game.modules.get('fvtt_relationship_app_module').api;
-const logger = api.resolve(api.tokens.loggerToken);
 
-logger.info('Hello from external script!');
-logger.error('An error occurred', errorObject);
-logger.debug('Debug information', { user: 'John', action: 'login' });
+// Alle verfügbaren Tokens auflisten
+const tokens = api.getAvailableTokens();
+
+for (const [symbol, info] of tokens) {
+  console.log(`Token: ${info.description}`);
+  console.log(`Registered: ${info.isRegistered}`);
+}
 ```
 
-**Interface:**
+---
+
+## 📚 Service-Interfaces
+
+### Logger
+
+Strukturiertes Logging mit verschiedenen Log-Levels.
+
 ```typescript
 interface Logger {
   log(message: string, ...optionalParams: unknown[]): void;
@@ -138,131 +99,203 @@ interface Logger {
 }
 ```
 
+**Beispiel**:
+
+```typescript
+const logger = api.resolve(api.tokens.loggerToken);
+
+logger.info('Modul-Initialisierung gestartet');
+logger.debug('Debug-Informationen', { userId: '123', context: 'test' });
+logger.error('Fehler aufgetreten', new Error('Something went wrong'));
+```
+
 ---
 
-### Journal Visibility Service
+### FoundryGame
 
-**Import:**
+Zugriff auf Foundry Game-API (versionssicher über Port-Adapter).
+
 ```typescript
-import { journalVisibilityServiceToken } from './modules/fvtt_relationship_app_module/dist/tokens/tokenindex.js';
+interface FoundryGame {
+  getJournalEntries(): Result<FoundryJournalEntry[], FoundryError>;
+  getJournalEntryById(id: string): Result<FoundryJournalEntry | null, FoundryError>;
+}
 ```
 
-**Verwendung:**
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-const journalService = api.resolve(journalVisibilityServiceToken);
+**Beispiel**:
 
-// Hole alle versteckten Journal-Einträge
-const hiddenJournals = journalService.getHiddenJournalEntries();
-if (hiddenJournals.ok) {
-  console.log(`Found ${hiddenJournals.value.length} hidden journals`);
+```typescript
+const gameService = api.resolve(api.tokens.foundryGameToken);
+
+const journalsResult = gameService.getJournalEntries();
+if (journalsResult.ok) {
+  console.log(`Gefunden: ${journalsResult.value.length} Journal-Einträge`);
+} else {
+  console.error(`Fehler: ${journalsResult.error.message}`);
+}
+```
+
+---
+
+### FoundryHooks
+
+Foundry Hook-System (versionssicher).
+
+**Basiert auf**: [Foundry VTT v13 Hooks API](https://foundryvtt.com/api/classes/foundry.helpers.Hooks.html)
+
+```typescript
+interface FoundryHooks {
+  on(hook: string, fn: Function): Result<number, FoundryError>;
+  once(hook: string, fn: Function): Result<number, FoundryError>;
+  off(hook: string, callbackOrId: Function | number): Result<void, FoundryError>;
+}
+```
+
+**Beispiel - Hook registrieren und mit ID deregistrieren**:
+
+```typescript
+const hooksService = api.resolve(api.tokens.foundryHooksToken);
+
+// Register hook and get ID
+const hookResult = hooksService.on('updateActor', (actor, updateData, options, userId) => {
+  console.log(`Actor ${actor.name} wurde aktualisiert`);
+});
+
+if (hookResult.ok) {
+  const hookId = hookResult.value;
+  console.log(`Hook registered with ID: ${hookId}`);
+  
+  // Later: Unregister by ID
+  hooksService.off('updateActor', hookId);
+} else {
+  console.error(`Hook-Registrierung fehlgeschlagen: ${hookResult.error.message}`);
+}
+```
+
+**Beispiel - One-time Hook**:
+
+```typescript
+const hooksService = api.resolve(api.tokens.foundryHooksToken);
+
+// Register one-time hook (automatically unregisters after first execution)
+hooksService.once('ready', () => {
+  console.log('Fired only once!');
+});
+```
+
+---
+
+### FoundryDocument
+
+Foundry Document API (Flags, etc.).
+
+```typescript
+interface FoundryDocument {
+  getFlag<T>(document: unknown, scope: string, key: string): Result<T | undefined, FoundryError>;
+  setFlag(document: unknown, scope: string, key: string, value: unknown): Promise<Result<void, FoundryError>>;
+}
+```
+
+**Beispiel**:
+
+```typescript
+const documentService = api.resolve(api.tokens.foundryDocumentToken);
+
+// Flag lesen
+const flagResult = documentService.getFlag<boolean>(
+  journalEntry,
+  'fvtt_relationship_app_module',
+  'hidden'
+);
+
+if (flagResult.ok && flagResult.value === true) {
+  console.log('Journal-Eintrag ist versteckt');
 }
 
-// Verarbeite Journal-Directory HTML
-const htmlElement = document.querySelector('.journal-directory');
-journalService.processJournalDirectory(htmlElement);
+// Flag setzen
+await documentService.setFlag(
+  journalEntry,
+  'fvtt_relationship_app_module',
+  'hidden',
+  true
+);
 ```
 
-**Interface:**
+---
+
+### FoundrySettings
+
+Zugriff auf Foundry Settings-System (versionssicher).
+
+**Basiert auf**: [Foundry VTT v13 Settings API](https://foundryvtt.com/article/settings/)
+
+```typescript
+interface FoundrySettings {
+  register<T>(namespace: string, key: string, config: SettingConfig<T>): Result<void, FoundryError>;
+  get<T>(namespace: string, key: string): Result<T, FoundryError>;
+  set<T>(namespace: string, key: string, value: T): Promise<Result<void, FoundryError>>;
+}
+```
+
+**Beispiel - Log-Level ändern**:
+
+```typescript
+const api = game.modules.get('fvtt_relationship_app_module').api;
+const settings = api.resolve(api.tokens.foundrySettingsToken);
+
+// Log-Level abrufen
+const currentLevel = settings.get<number>('fvtt_relationship_app_module', 'logLevel');
+if (currentLevel.ok) {
+  console.log(`Current log level: ${currentLevel.value}`);
+}
+
+// Log-Level setzen (triggert onChange-Callback)
+await settings.set('fvtt_relationship_app_module', 'logLevel', 0); // DEBUG
+```
+
+**UI-Integration**:
+
+Das Modul bietet eine Log-Level-Einstellung in den Foundry-Moduleinstellungen:
+
+1. Einstellungen → Module-Konfiguration
+2. "Relationship App" → "Log Level"
+3. Wähle: DEBUG / INFO / WARN / ERROR
+4. Änderungen werden **sofort wirksam** (kein Reload nötig)
+
+**Verfügbare Scopes** (v13+):
+- `world`: Für alle Nutzer in der Welt gültig
+- `client`: Browser-/gerätespezifisch
+- `user`: Nutzerspezifisch innerhalb einer Welt
+
+---
+
+### JournalVisibilityService
+
+Verwaltung von versteckten Journal-Einträgen.
+
 ```typescript
 interface JournalVisibilityService {
-  getHiddenJournalEntries(): Result<FoundryJournalEntry[], string>;
+  getHiddenJournalEntries(): Result<FoundryJournalEntry[], FoundryError>;
   processJournalDirectory(htmlElement: HTMLElement): void;
 }
 ```
 
----
+**Beispiel**:
 
-### Foundry Abstraction Services
-
-Die folgenden Services bieten versionssichere Abstraktionen für Foundry VTT APIs.
-
-**Alle nutzen `api.tokens` - kein Import nötig!**
-
-#### FoundryGame Service
-
-**Verwendung:**
 ```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-const foundryGame = api.resolve(api.tokens.foundryGameToken);
+const visibilityService = api.resolve(api.tokens.journalVisibilityServiceToken);
 
-// Alle Journal-Einträge holen
-const journals = foundryGame.getJournalEntries();
-if (journals.ok) {
-  journals.value.forEach(j => console.log(j.name));
-}
-
-// Spezifischen Journal-Eintrag holen
-const journal = foundryGame.getJournalEntryById('abc123');
-if (journal.ok && journal.value) {
-  console.log(journal.value.name);
-}
-```
-
-#### FoundryHooks Service
-
-**Verwendung:**
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-const foundryHooks = api.resolve(api.tokens.foundryHooksToken);
-
-// Hook registrieren
-const hookResult = foundryHooks.on('renderJournalDirectory', (app, html) => {
-  console.log('Journal directory rendered!');
-});
-
-if (!hookResult.ok) {
-  console.error('Failed to register hook:', hookResult.error);
-}
-```
-
-#### FoundryDocument Service
-
-**Verwendung:**
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-const foundryDocument = api.resolve(api.tokens.foundryDocumentToken);
-
-// Flag lesen
-const journal = game.journal.get('abc123');
-const flagResult = foundryDocument.getFlag(journal, 'my-module', 'my-flag');
-if (flagResult.ok) {
-  console.log('Flag value:', flagResult.value);
-}
-
-// Flag setzen
-const setResult = await foundryDocument.setFlag(journal, 'my-module', 'my-flag', true);
-if (!setResult.ok) {
-  console.error('Failed to set flag:', setResult.error);
-}
-```
-
-#### FoundryUI Service
-
-**Verwendung:**
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-const foundryUI = api.resolve(api.tokens.foundryUIToken);
-
-// Element aus UI entfernen
-const container = document.querySelector('.journal-directory');
-const removeResult = foundryUI.removeJournalElement('journal-id', 'Journal Name', container);
-if (removeResult.ok) {
-  console.log('Element removed successfully');
-}
-
-// Element finden
-const elementResult = foundryUI.findElement(container, '.journal-entry[data-id="abc123"]');
-if (elementResult.ok && elementResult.value) {
-  console.log('Element found:', elementResult.value);
+const hiddenResult = visibilityService.getHiddenJournalEntries();
+if (hiddenResult.ok) {
+  console.log(`${hiddenResult.value.length} versteckte Journal-Einträge gefunden`);
 }
 ```
 
 ---
 
-## 🔄 Result Pattern
+## 🔄 Result-Pattern
 
-Alle API-Methoden, die fehlschlagen können, geben einen `Result<T, E>` zurück:
+Alle API-Methoden, die fehlschlagen können, geben ein `Result<T, E>` zurück:
 
 ```typescript
 type Result<T, E> = 
@@ -270,197 +303,164 @@ type Result<T, E> =
   | { ok: false; error: E };
 ```
 
-### Verwendung mit Type Guards
+### Result-Handling
 
 ```typescript
-const result = foundryGame.getJournalEntries();
-
+// Beispiel 1: Einfache Prüfung
+const result = gameService.getJournalEntries();
 if (result.ok) {
-  // TypeScript weiß: result.value ist FoundryJournalEntry[]
-  const journals = result.value;
-  journals.forEach(j => console.log(j.name));
+  // Erfolg: result.value ist verfügbar
+  console.log(result.value);
 } else {
-  // TypeScript weiß: result.error ist string
-  console.error('Error:', result.error);
+  // Fehler: result.error ist verfügbar
+  console.error(result.error);
 }
-```
 
-### Pattern Matching
-
-```typescript
-import { match } from './modules/fvtt_relationship_app_module/dist/utils/result.js';
-
-const result = foundryGame.getJournalEntryById('abc123');
+// Beispiel 2: Mit match-Utility
+import { match } from '@/utils/result';
 
 match(result, {
-  onOk: (journal) => {
-    if (journal) {
-      console.log('Found:', journal.name);
-    } else {
-      console.log('Not found');
-    }
-  },
-  onErr: (error) => {
-    console.error('Error:', error);
-  }
+  onOk: (entries) => console.log(`Gefunden: ${entries.length}`),
+  onErr: (error) => console.error(`Fehler: ${error.message}`)
 });
+
+// Beispiel 3: Mit unwrapOr
+import { unwrapOr } from '@/utils/result';
+
+const entries = unwrapOr(result, []); // Fallback auf leeres Array
 ```
 
 ---
 
-## 🛠️ Erweiterte Nutzung
+## 🎯 Anwendungsbeispiele
 
-### Token Discovery - Alle Services auflisten
-
-```typescript
-Hooks.on('ready', () => {
-  const api = game.modules.get('fvtt_relationship_app_module').api;
-  
-  console.log("=== Available Services ===");
-  const tokens = api.getAvailableTokens();
-  
-  for (const [token, info] of tokens.entries()) {
-    console.log(`✓ ${info.description}`);
-    console.log(`  - Registered: ${info.isRegistered}`);
-    console.log(`  - Token: ${String(token)}`);
-  }
-});
-```
-
-### Custom Token erstellen
-
-Falls Sie eigene Services registrieren möchten (fortgeschrittene Nutzung):
+### Beispiel 1: Eigenes Makro mit Logging
 
 ```typescript
-import { createInjectionToken } from './modules/fvtt_relationship_app_module/dist/di_infrastructure/tokenutilities.js';
+// Makro: "Log Actors"
+const api = game.modules.get('fvtt_relationship_app_module').api;
+const logger = api.resolve(api.tokens.loggerToken);
 
-interface MyCustomService {
-  doSomething(): void;
+logger.info('Makro gestartet', { user: game.user.name });
+
+for (const actor of game.actors) {
+  logger.debug('Actor gefunden', { 
+    name: actor.name, 
+    type: actor.type 
+  });
 }
 
-const myServiceToken = createInjectionToken<MyCustomService>('MyCustomService');
+logger.info('Makro abgeschlossen', { count: game.actors.size });
+```
 
-// HINWEIS: Direkte Container-Manipulation ist nicht über die Public API möglich.
-// Die API ist bewusst auf resolve() und getAvailableTokens() beschränkt, 
-// um Stabilität zu gewährleisten.
+### Beispiel 2: Journal-Einträge filtern
+
+```typescript
+const api = game.modules.get('fvtt_relationship_app_module').api;
+const gameService = api.resolve(api.tokens.foundryGameToken);
+const documentService = api.resolve(api.tokens.foundryDocumentToken);
+
+const journalsResult = gameService.getJournalEntries();
+if (!journalsResult.ok) {
+  ui.notifications.error('Fehler beim Laden der Journal-Einträge');
+  return;
+}
+
+const hiddenJournals = [];
+for (const journal of journalsResult.value) {
+  const flagResult = documentService.getFlag<boolean>(
+    journal,
+    'fvtt_relationship_app_module',
+    'hidden'
+  );
+  
+  if (flagResult.ok && flagResult.value === true) {
+    hiddenJournals.push(journal);
+  }
+}
+
+console.log(`Versteckte Journal-Einträge: ${hiddenJournals.length}`);
+```
+
+### Beispiel 3: Hook-Registration in anderem Modul
+
+```typescript
+Hooks.once('ready', () => {
+  const api = game.modules.get('fvtt_relationship_app_module')?.api;
+  if (!api) return;
+
+  const hooksService = api.resolve(api.tokens.foundryHooksToken);
+  const logger = api.resolve(api.tokens.loggerToken);
+
+  const hookResult = hooksService.on('createJournalEntry', (journal, options, userId) => {
+    logger.info('Neuer Journal-Eintrag erstellt', {
+      name: journal.name,
+      id: journal.id,
+      userId
+    });
+  });
+
+  if (!hookResult.ok) {
+    console.error('Hook-Registration fehlgeschlagen');
+  }
+});
 ```
 
 ---
 
 ## ⚠️ Wichtige Hinweise
 
-### 1. API-Verfügbarkeit
+### Modul-Verfügbarkeit prüfen
 
-Die API ist erst nach dem `init`-Hook von Foundry verfügbar:
-
-```typescript
-Hooks.on('init', () => {
-  const api = game.modules.get('fvtt_relationship_app_module').api;
-  // API ist jetzt verfügbar
-});
-```
-
-### 2. Singleton Services
-
-Die meisten Services sind Singletons. Mehrfache `resolve()`-Aufrufe geben **dieselbe Instanz** zurück:
+Prüfen Sie immer, ob das Modul aktiviert ist:
 
 ```typescript
-const logger1 = api.resolve(loggerToken);
-const logger2 = api.resolve(loggerToken);
-// logger1 === logger2 (true)
+const api = game.modules.get('fvtt_relationship_app_module')?.api;
+if (!api) {
+  console.warn('Relationship App Module nicht verfügbar');
+  return;
+}
 ```
 
-### 3. Versionssicherheit
+### Result-Pattern verwenden
 
-Die Foundry-Abstraktions-Services (`FoundryGame`, `FoundryHooks`, etc.) passen sich automatisch an die laufende Foundry-Version an. Sie müssen sich nicht um Versionsunterschiede kümmern.
+Verwenden Sie immer das Result-Pattern für Fehlerbehandlung:
+
+```typescript
+// ❌ FALSCH: Annehmen, dass es funktioniert
+const entries = gameService.getJournalEntries().value;
+
+// ✅ RICHTIG: Result prüfen
+const result = gameService.getJournalEntries();
+if (result.ok) {
+  const entries = result.value;
+  // ... weiter arbeiten
+} else {
+  console.error(result.error.message);
+}
+```
+
+### Versionssicherheit
+
+Die API ist versionssicher durch das Port-Adapter-Pattern. Services funktionieren auf allen unterstützten Foundry-Versionen (v13+).
 
 ---
 
-## 📚 Weitere Ressourcen
+## 🔗 Weitere Ressourcen
 
-- **Architektur:** Siehe [BOOTFLOW.md](./BOOTFLOW.md)
-- **Entwickler-Dokumentation:** Siehe [README.md](../README.md)
-- **JSDoc-Konventionen:** Siehe [jsdoc-styleguide.md](./jsdoc-styleguide.md)
-
----
-
-## 🔧 Beispiel: Komplettes Makro
-
-### Beispiel 1: Service Discovery
-
-```typescript
-// Makro: Alle verfügbaren Services auflisten
-Hooks.on('ready', () => {
-  const api = game.modules.get('fvtt_relationship_app_module').api;
-  const logger = api.resolve(api.tokens.loggerToken);
-  
-  logger.info('=== Module Services ===');
-  
-  const tokens = api.getAvailableTokens();
-  for (const [token, info] of tokens.entries()) {
-    logger.info(`✓ ${info.description} (${info.isRegistered ? 'ready' : 'not registered'})`);
-  }
-});
-```
-
-### Beispiel 2: Versteckte Journals analysieren
-
-```typescript
-// Makro: Versteckte Journals finden und Details loggen
-Hooks.on('ready', () => {
-  const api = game.modules.get('fvtt_relationship_app_module').api;
-  
-  // ✅ Kein Import nötig - Tokens direkt aus API
-  const logger = api.resolve(api.tokens.loggerToken);
-  const journalService = api.resolve(api.tokens.journalVisibilityServiceToken);
-  
-  logger.info('Starting hidden journal analysis');
-  
-  const hiddenResult = journalService.getHiddenJournalEntries();
-  
-  if (hiddenResult.ok) {
-    const count = hiddenResult.value.length;
-    logger.info(`Found ${count} hidden journal(s)`);
-    
-    hiddenResult.value.forEach(journal => {
-      logger.debug(`Hidden journal: ${journal.name} (ID: ${journal.id})`);
-    });
-  } else {
-    logger.error('Failed to get hidden journals:', hiddenResult.error);
-  }
-});
-```
-
-### Beispiel 3: Foundry Hooks mit Abstraktion
-
-```typescript
-// Makro: Hook mit versionssicherer Abstraktion registrieren
-Hooks.on('init', () => {
-  const api = game.modules.get('fvtt_relationship_app_module').api;
-  const foundryHooks = api.resolve(api.tokens.foundryHooksToken);
-  const logger = api.resolve(api.tokens.loggerToken);
-  
-  const hookResult = foundryHooks.on('updateActor', (actor, changes, options, userId) => {
-    logger.info(`Actor updated: ${actor.name}`, { changes, userId });
-  });
-  
-  if (!hookResult.ok) {
-    logger.error('Failed to register hook:', hookResult.error);
-  }
-});
-```
+- [README.md](../README.md) - Modul-Übersicht
+- [ARCHITECTURE.md](../ARCHITECTURE.md) - Architektur-Details
+- [GitHub Repository](#) - Source Code
 
 ---
 
-## 🆘 Support
+## 💬 Support
 
 Bei Fragen oder Problemen:
-- **Email:** forenadmin.tir@gmail.com
-- **Discord:** lewellyen
+- Discord: `lewellyen`
+- Email: forenadmin.tir@gmail.com
 
 ---
 
-**Letzte Aktualisierung:** November 2025  
-**Version:** 0.0.12
-
-
+**Version**: 0.0.14  
+**Letzte Aktualisierung**: 2025-01-03

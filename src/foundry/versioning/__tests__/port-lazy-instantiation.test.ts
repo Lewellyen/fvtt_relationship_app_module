@@ -2,8 +2,10 @@ import { describe, it, expect, vi } from "vitest";
 import { PortSelector } from "../portselector";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
+import { ok, err } from "@/utils/result";
+
 vi.mock("../versiondetector", () => ({
-  getFoundryVersion: vi.fn().mockReturnValue(13),
+  getFoundryVersionResult: vi.fn(),
 }));
 
 describe("PortSelector - Lazy Instantiation", () => {
@@ -89,8 +91,8 @@ describe("PortSelector - Lazy Instantiation", () => {
   });
 
   it("should use getFoundryVersion when version not provided", async () => {
-    const { getFoundryVersion } = await import("../versiondetector");
-    vi.mocked(getFoundryVersion).mockReturnValue(13);
+    const { getFoundryVersionResult } = await import("../versiondetector");
+    vi.mocked(getFoundryVersionResult).mockReturnValue(ok(13));
 
     const v13Factory = vi.fn(() => ({ version: 13 }));
     const factories = new Map([[13, v13Factory]]);
@@ -100,14 +102,12 @@ describe("PortSelector - Lazy Instantiation", () => {
 
     expectResultOk(result);
     expect(result.value.version).toBe(13);
-    expect(getFoundryVersion).toHaveBeenCalled();
+    expect(getFoundryVersionResult).toHaveBeenCalled();
   });
 
   it("should handle version detection errors", async () => {
-    const { getFoundryVersion } = await import("../versiondetector");
-    vi.mocked(getFoundryVersion).mockImplementation(() => {
-      throw new Error("Version detection failed");
-    });
+    const { getFoundryVersionResult } = await import("../versiondetector");
+    vi.mocked(getFoundryVersionResult).mockReturnValue(err("Version detection failed"));
 
     const factories = new Map([[13, () => ({ version: 13 })]]);
 

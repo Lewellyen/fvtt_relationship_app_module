@@ -49,6 +49,9 @@ const MODULE_CONSTANTS = {
     INIT: "init",
     READY: "ready"
   },
+  SETTINGS: {
+    LOG_LEVEL: "logLevel"
+  },
   DEFAULTS: {
     UNKNOWN_NAME: "Unknown"
   }
@@ -156,6 +159,8 @@ const foundryGamePortRegistryToken = createInjectionToken("FoundryGamePortRegist
 const foundryHooksPortRegistryToken = createInjectionToken("FoundryHooksPortRegistry");
 const foundryDocumentPortRegistryToken = createInjectionToken("FoundryDocumentPortRegistry");
 const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry");
+const foundrySettingsToken = createInjectionToken("FoundrySettings");
+const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
 const loggerToken = createInjectionToken("Logger");
 const journalVisibilityServiceToken = createInjectionToken(
   "JournalVisibilityService"
@@ -300,9 +305,26 @@ const _ServiceRegistration = class _ServiceRegistration {
 };
 __name(_ServiceRegistration, "ServiceRegistration");
 let ServiceRegistration = _ServiceRegistration;
+function hasDependencies(cls) {
+  return "dependencies" in cls;
+}
+__name(hasDependencies, "hasDependencies");
 const _ServiceRegistry = class _ServiceRegistry {
   constructor() {
     this.registrations = /* @__PURE__ */ new Map();
+    this.lifecycleIndex = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Updates the lifecycle index when a service is registered.
+   *
+   * @param token - The injection token
+   * @param lifecycle - The service lifecycle
+   */
+  updateLifecycleIndex(token, lifecycle) {
+    if (!this.lifecycleIndex.has(lifecycle)) {
+      this.lifecycleIndex.set(lifecycle, /* @__PURE__ */ new Set());
+    }
+    this.lifecycleIndex.get(lifecycle).add(token);
   }
   /**
    * Registers a service class with automatic dependency injection.
@@ -321,7 +343,7 @@ const _ServiceRegistry = class _ServiceRegistry {
         tokenDescription: String(token)
       });
     }
-    const dependencies = serviceClass.dependencies ?? [];
+    const dependencies = hasDependencies(serviceClass) ? serviceClass.dependencies ?? [] : [];
     const registrationResult = ServiceRegistration.createClass(
       lifecycle,
       dependencies,
@@ -331,6 +353,7 @@ const _ServiceRegistry = class _ServiceRegistry {
       return registrationResult;
     }
     this.registrations.set(token, registrationResult.value);
+    this.updateLifecycleIndex(token, lifecycle);
     return ok(void 0);
   }
   /**
@@ -356,6 +379,7 @@ const _ServiceRegistry = class _ServiceRegistry {
       return registrationResult;
     }
     this.registrations.set(token, registrationResult.value);
+    this.updateLifecycleIndex(token, lifecycle);
     return ok(void 0);
   }
   /**
@@ -379,6 +403,7 @@ const _ServiceRegistry = class _ServiceRegistry {
       return registrationResult;
     }
     this.registrations.set(token, registrationResult.value);
+    this.updateLifecycleIndex(token, ServiceLifecycle.SINGLETON);
     return ok(void 0);
   }
   /**
@@ -424,6 +449,17 @@ const _ServiceRegistry = class _ServiceRegistry {
     return new Map(this.registrations);
   }
   /**
+   * Returns all registrations for a specific lifecycle.
+   * More efficient than filtering getAllRegistrations() when only one lifecycle is needed.
+   *
+   * @param lifecycle - The lifecycle to query
+   * @returns Array of registrations with the specified lifecycle
+   */
+  getRegistrationsByLifecycle(lifecycle) {
+    const tokens = this.lifecycleIndex.get(lifecycle) ?? /* @__PURE__ */ new Set();
+    return Array.from(tokens).map((token) => this.registrations.get(token)).filter((reg) => reg !== void 0);
+  }
+  /**
    * Checks if a service is registered.
    *
    * @template TServiceType - The type of service
@@ -439,6 +475,7 @@ const _ServiceRegistry = class _ServiceRegistry {
    */
   clear() {
     this.registrations.clear();
+    this.lifecycleIndex.clear();
   }
   /**
    * Creates a deep clone of this registry for child containers.
@@ -452,6 +489,9 @@ const _ServiceRegistry = class _ServiceRegistry {
     const clonedRegistry = new _ServiceRegistry();
     for (const [token, registration] of this.registrations.entries()) {
       clonedRegistry.registrations.set(token, registration.clone());
+    }
+    for (const [lifecycle, tokens] of this.lifecycleIndex.entries()) {
+      clonedRegistry.lifecycleIndex.set(lifecycle, new Set(tokens));
     }
     return clonedRegistry;
   }
@@ -975,11 +1015,6 @@ const _ScopeManager = class _ScopeManager {
 };
 __name(_ScopeManager, "ScopeManager");
 let ScopeManager = _ScopeManager;
-const fallbackFactories = /* @__PURE__ */ new Map();
-function registerFallback(token, factory) {
-  fallbackFactories.set(token, factory);
-}
-__name(registerFallback, "registerFallback");
 const _ServiceContainer = class _ServiceContainer {
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
@@ -997,6 +1032,7 @@ const _ServiceContainer = class _ServiceContainer {
    * @param validationState - Initial validation state
    */
   constructor(registry, validator, cache, resolver, scopeManager, validationState) {
+    this.fallbackFactories = /* @__PURE__ */ new Map();
     this.registry = registry;
     this.validator = validator;
     this.cache = cache;
@@ -1227,7 +1263,7 @@ const _ServiceContainer = class _ServiceContainer {
     if (isOk(result)) {
       return result.value;
     }
-    const fallback = fallbackFactories.get(token);
+    const fallback = this.fallbackFactories.get(token);
     if (fallback) {
       return fallback();
     }
@@ -1240,6 +1276,21 @@ const _ServiceContainer = class _ServiceContainer {
    */
   isRegistered(token) {
     return ok(this.registry.has(token));
+  }
+  /**
+   * Register a fallback factory for a specific token.
+   * This will be used when resolve() fails for that token.
+   *
+   * @param token - The injection token
+   * @param factory - Factory function that creates a fallback instance
+   *
+   * @example
+   * ```typescript
+   * container.registerFallback(UserServiceToken, () => new DefaultUserService());
+   * ```
+   */
+  registerFallback(token, factory) {
+    this.fallbackFactories.set(token, factory);
   }
   /**
    * Dispose container and all children.
@@ -1265,7 +1316,31 @@ const _ServiceContainer = class _ServiceContainer {
 };
 __name(_ServiceContainer, "ServiceContainer");
 let ServiceContainer = _ServiceContainer;
+var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
+  LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
+  LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
+  LogLevel2[LogLevel2["WARN"] = 2] = "WARN";
+  LogLevel2[LogLevel2["ERROR"] = 3] = "ERROR";
+  return LogLevel2;
+})(LogLevel || {});
+const ENV = {
+  isDevelopment: false,
+  isProduction: true,
+  logLevel: false ? 0 : 1,
+  enablePerformanceTracking: false,
+  enableDebugMode: false
+};
 const _ConsoleLoggerService = class _ConsoleLoggerService {
+  constructor() {
+    this.minLevel = LogLevel.INFO;
+  }
+  /**
+   * Sets the minimum log level. Messages below this level will be ignored.
+   * @param level - Minimum log level
+   */
+  setMinLevel(level) {
+    this.minLevel = level;
+  }
   /**
    * Log a message to console
    * @param message - Message to log
@@ -1280,6 +1355,7 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
    * @param optionalParams - Additional data to log (e.g., error objects, stack traces)
    */
   error(message, ...optionalParams) {
+    if (LogLevel.ERROR < this.minLevel) return;
     console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
   }
   /**
@@ -1288,6 +1364,7 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
    * @param optionalParams - Additional data to log
    */
   warn(message, ...optionalParams) {
+    if (LogLevel.WARN < this.minLevel) return;
     console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
   }
   /**
@@ -1296,6 +1373,7 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
    * @param optionalParams - Additional data to log
    */
   info(message, ...optionalParams) {
+    if (LogLevel.INFO < this.minLevel) return;
     console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
   }
   /**
@@ -1304,6 +1382,7 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
    * @param optionalParams - Additional data to log (useful for inspecting complex objects)
    */
   debug(message, ...optionalParams) {
+    if (LogLevel.DEBUG < this.minLevel) return;
     console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
   }
 };
@@ -1316,6 +1395,16 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     this.document = document2;
     this.ui = ui2;
     this.logger = logger;
+  }
+  /**
+   * Sanitizes a string for safe use in log messages.
+   * Escapes HTML entities to prevent log injection or display issues.
+   *
+   * @param input - The string to sanitize
+   * @returns HTML-safe string
+   */
+  sanitizeForLog(input) {
+    return input.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
   }
   /**
    * Gets journal entries marked as hidden via module flag.
@@ -1336,10 +1425,23 @@ const _JournalVisibilityService = class _JournalVisibilityService {
           hidden.push(journal);
         }
       } else {
-        this.logger.warn(`Failed to read hidden flag for journal "${journal.name ?? journal.id}"`, {
-          errorCode: flagResult.error.code,
-          errorMessage: flagResult.error.message
-        });
+        const journalIdentifier = journal.name ?? journal.id;
+        this.logger.warn(
+          `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
+          {
+            errorCode: flagResult.error.code,
+            errorMessage: flagResult.error.message
+          }
+        );
+        if (flagResult.error.code === "ACCESS_DENIED") {
+          const notifyResult = this.ui.notify(
+            "Some journal entries could not be accessed due to permissions",
+            "warning"
+          );
+          if (!notifyResult.ok) {
+            this.logger.warn("Failed to show UI notification", notifyResult.error);
+          }
+        }
       }
     }
     return { ok: true, value: hidden };
@@ -1356,25 +1458,20 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         this.hideEntries(hidden, htmlElement);
       }, "onOk"),
       onErr: /* @__PURE__ */ __name((error) => {
-        this.logger.error(`Error getting hidden journal entries: ${error}`);
+        this.logger.error("Error getting hidden journal entries", error);
       }, "onErr")
     });
   }
   hideEntries(entries, html) {
     for (const journal of entries) {
-      const removeResult = this.ui.removeJournalElement(
-        journal.id,
-        journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
-        html
-      );
+      const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
+      const removeResult = this.ui.removeJournalElement(journal.id, journalName, html);
       match(removeResult, {
         onOk: /* @__PURE__ */ __name(() => {
-          this.logger.debug(
-            `Removing journal entry: ${journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME}`
-          );
+          this.logger.debug(`Removing journal entry: ${this.sanitizeForLog(journalName)}`);
         }, "onOk"),
         onErr: /* @__PURE__ */ __name((error) => {
-          this.logger.warn(`Error removing journal entry: ${error}`);
+          this.logger.warn("Error removing journal entry", error);
         }, "onErr")
       });
     }
@@ -1388,27 +1485,32 @@ _JournalVisibilityService.dependencies = [
   loggerToken
 ];
 let JournalVisibilityService = _JournalVisibilityService;
-function getFoundryVersion() {
+function getFoundryVersionResult() {
   if (typeof game === "undefined") {
-    throw new Error("Foundry game object is not available or version cannot be determined");
+    return err("Foundry game object is not available or version cannot be determined");
   }
   const versionString = game.version;
   if (!versionString) {
-    throw new Error("Foundry version is not available on the game object");
+    return err("Foundry version is not available on the game object");
   }
   const match2 = versionString.match(/^(\d+)/);
   if (!match2) {
-    throw new Error(`Could not parse Foundry version from: ${versionString}`);
+    return err(`Could not parse Foundry version from: ${versionString}`);
   }
-  return Number.parseInt(match2[1], 10);
+  return ok(Number.parseInt(match2[1], 10));
+}
+__name(getFoundryVersionResult, "getFoundryVersionResult");
+function getFoundryVersion() {
+  const result = getFoundryVersionResult();
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  return result.value;
 }
 __name(getFoundryVersion, "getFoundryVersion");
 function tryGetFoundryVersion() {
-  try {
-    return getFoundryVersion();
-  } catch {
-    return void 0;
-  }
+  const result = getFoundryVersionResult();
+  return result.ok ? result.value : void 0;
 }
 __name(tryGetFoundryVersion, "tryGetFoundryVersion");
 function createFoundryError(code, message, details, cause) {
@@ -1419,6 +1521,14 @@ function isFoundryError(error) {
   return typeof error === "object" && error !== null && "code" in error && "message" in error && typeof error.code === "string" && typeof error.message === "string";
 }
 __name(isFoundryError, "isFoundryError");
+const PERFORMANCE_MARKS = {
+  BOOTSTRAP_START: "bootstrap-start",
+  BOOTSTRAP_END: "bootstrap-end",
+  BOOTSTRAP_DURATION: "bootstrap-duration",
+  PORT_SELECTION_START: "port-selection-start",
+  PORT_SELECTION_END: "port-selection-end",
+  PORT_SELECTION_DURATION: "port-selection-duration"
+};
 const _PortSelector = class _PortSelector {
   /**
    * Selects and instantiates the appropriate port from factories.
@@ -1445,18 +1555,25 @@ const _PortSelector = class _PortSelector {
    * ```
    */
   selectPortFromFactories(factories, foundryVersion) {
+    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
+      performance.mark(PERFORMANCE_MARKS.PORT_SELECTION_START);
+    }
     let version;
-    try {
-      version = foundryVersion ?? getFoundryVersion();
-    } catch (error) {
-      return err(
-        createFoundryError(
-          "PORT_SELECTION_FAILED",
-          "Could not determine Foundry version",
-          void 0,
-          error
-        )
-      );
+    if (foundryVersion !== void 0) {
+      version = foundryVersion;
+    } else {
+      const versionResult = getFoundryVersionResult();
+      if (!versionResult.ok) {
+        return err(
+          createFoundryError(
+            "PORT_SELECTION_FAILED",
+            "Could not determine Foundry version",
+            void 0,
+            versionResult.error
+          )
+        );
+      }
+      version = versionResult.value;
     }
     let selectedFactory;
     let selectedVersion = -1;
@@ -1479,10 +1596,11 @@ const _PortSelector = class _PortSelector {
         )
       );
     }
+    let result;
     try {
-      return ok(selectedFactory());
+      result = ok(selectedFactory());
     } catch (error) {
-      return err(
+      result = err(
         createFoundryError(
           "PORT_SELECTION_FAILED",
           `Failed to instantiate port v${selectedVersion}`,
@@ -1491,58 +1609,21 @@ const _PortSelector = class _PortSelector {
         )
       );
     }
-  }
-  /**
-   * Selects the appropriate port from available ports based on Foundry version.
-   * Returns the highest available port version that is <= the Foundry version.
-   *
-   * @deprecated Use selectPortFromFactories() with PortRegistry.getFactories()
-   * This method accepts pre-instantiated ports which can cause crashes.
-   *
-   * @template T - The port type
-   * @param availablePorts - Map of version numbers to port implementations
-   * @param foundryVersion - Optional Foundry version (will be detected if not provided)
-   * @returns Result containing the selected port or an error message
-   *
-   * @example
-   * ```typescript
-   * const ports = new Map([
-   *   [13, new FoundryGamePortV13()],
-   *   [14, new FoundryGamePortV14()]
-   * ]);
-   * const selector = new PortSelector();
-   * const result = selector.selectPort(ports);
-   * // On Foundry v14: selects v14 port
-   * // On Foundry v13: selects v13 port
-   * ```
-   */
-  selectPort(availablePorts, foundryVersion) {
-    let version;
-    try {
-      version = foundryVersion ?? getFoundryVersion();
-    } catch (error) {
-      return err(
-        `Could not determine Foundry version: ${error instanceof Error ? error.message : String(error)}`
+    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
+      performance.mark(PERFORMANCE_MARKS.PORT_SELECTION_END);
+      performance.measure(
+        PERFORMANCE_MARKS.PORT_SELECTION_DURATION,
+        PERFORMANCE_MARKS.PORT_SELECTION_START,
+        PERFORMANCE_MARKS.PORT_SELECTION_END
       );
-    }
-    let selectedPort;
-    let selectedVersion = -1;
-    for (const [portVersion, port] of availablePorts.entries()) {
-      if (portVersion > version) {
-        continue;
-      }
-      if (portVersion > selectedVersion) {
-        selectedVersion = portVersion;
-        selectedPort = port;
+      const measure = performance.getEntriesByName(PERFORMANCE_MARKS.PORT_SELECTION_DURATION)[0];
+      if (measure && ENV.enableDebugMode) {
+        console.debug(
+          `${MODULE_CONSTANTS.LOG_PREFIX} Port selection completed in ${measure.duration.toFixed(2)}ms (selected: v${selectedVersion})`
+        );
       }
     }
-    if (selectedPort === void 0) {
-      const availableVersions = Array.from(availablePorts.keys()).sort((a, b) => a - b).join(", ");
-      return err(
-        `No compatible port found for Foundry version ${version}. Available ports: ${availableVersions || "none"}`
-      );
-    }
-    return ok(selectedPort);
+    return result;
   }
 };
 __name(_PortSelector, "PortSelector");
@@ -1593,23 +1674,19 @@ const _PortRegistry = class _PortRegistry {
     return new Map(this.factories);
   }
   /**
-   * Creates all registered ports. Used for port selection.
+   * Gets available port instances by instantiating all factories.
+   *
+   * @deprecated Use getFactories() with PortSelector.selectPortFromFactories() instead.
+   * This method instantiates all ports eagerly, which may cause crashes on incompatible Foundry versions.
+   *
    * @returns Map of version numbers to port instances
    */
-  createAll() {
+  getAvailablePorts() {
     const ports = /* @__PURE__ */ new Map();
     for (const [version, factory] of this.factories.entries()) {
       ports.set(version, factory());
     }
     return ports;
-  }
-  /**
-   * Gets available port instances for version selection.
-   * Alias for createAll() with clearer semantics for PortSelector usage.
-   * @returns Map of version numbers to port instances
-   */
-  getAvailablePorts() {
-    return this.createAll();
   }
   /**
    * Creates only the port for the specified version or the highest compatible version.
@@ -1725,10 +1802,15 @@ const _FoundryHooksService = class _FoundryHooksService {
     if (!portResult.ok) return portResult;
     return portResult.value.on(hookName, callback);
   }
-  off(hookName, callback) {
+  once(hookName, callback) {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
-    return portResult.value.off(hookName, callback);
+    return portResult.value.once(hookName, callback);
+  }
+  off(hookName, callbackOrId) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.off(hookName, callbackOrId);
   }
 };
 __name(_FoundryHooksService, "FoundryHooksService");
@@ -1810,10 +1892,60 @@ const _FoundryUIService = class _FoundryUIService {
     if (!portResult.ok) return portResult;
     return portResult.value.findElement(container, selector);
   }
+  notify(message, type) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.notify(message, type);
+  }
 };
 __name(_FoundryUIService, "FoundryUIService");
 _FoundryUIService.dependencies = [portSelectorToken, foundryUIPortRegistryToken];
 let FoundryUIService = _FoundryUIService;
+const _FoundrySettingsService = class _FoundrySettingsService {
+  constructor(portSelector, portRegistry) {
+    this.port = null;
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version.
+   *
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
+   */
+  getPort() {
+    if (this.port === null) {
+      const factories = this.portRegistry.getFactories();
+      const portResult = this.portSelector.selectPortFromFactories(factories);
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  register(namespace, key, config) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.register(namespace, key, config);
+  }
+  get(namespace, key) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.get(namespace, key);
+  }
+  async set(namespace, key, value) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.set(namespace, key, value);
+  }
+};
+__name(_FoundrySettingsService, "FoundrySettingsService");
+_FoundrySettingsService.dependencies = [portSelectorToken, foundrySettingsPortRegistryToken];
+let FoundrySettingsService = _FoundrySettingsService;
 var util;
 (function(util2) {
   util2.assertEqual = (_) => {
@@ -5982,21 +6114,32 @@ function sanitizeHtml(text) {
 }
 __name(sanitizeHtml, "sanitizeHtml");
 const _FoundryGamePortV13 = class _FoundryGamePortV13 {
+  constructor() {
+    this.cachedEntries = null;
+    this.cacheVersion = -1;
+  }
   getJournalEntries() {
     if (typeof game === "undefined" || !game?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));
     }
-    return tryCatch(
-      () => {
-        const entries = Array.from(game.journal.contents);
-        const validationResult = validateJournalEntries(entries);
-        if (!validationResult.ok) {
-          throw new Error(validationResult.error.message);
-        }
-        return entries;
-      },
-      (error) => createFoundryError("OPERATION_FAILED", "Failed to get journal entries", void 0, error)
+    const currentVersion = game.journal._source?.version ?? Date.now();
+    if (this.cachedEntries !== null && this.cacheVersion === currentVersion) {
+      return { ok: true, value: this.cachedEntries };
+    }
+    const entries = tryCatch(
+      () => Array.from(game.journal.contents),
+      (error) => createFoundryError("OPERATION_FAILED", "Failed to access journal entries", void 0, error)
     );
+    if (!entries.ok) {
+      return entries;
+    }
+    const validationResult = validateJournalEntries(entries.value);
+    if (!validationResult.ok) {
+      return validationResult;
+    }
+    this.cachedEntries = validationResult.value;
+    this.cacheVersion = currentVersion;
+    return { ok: true, value: this.cachedEntries };
   }
   getJournalEntryById(id) {
     if (typeof game === "undefined" || !game?.journal) {
@@ -6025,7 +6168,11 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
         if (typeof Hooks === "undefined") {
           throw new Error("Foundry Hooks API is not available");
         }
-        Hooks.on(hookName, callback);
+        const hookId = Hooks.on(
+          hookName,
+          callback
+        );
+        return hookId;
       },
       (error) => createFoundryError(
         "OPERATION_FAILED",
@@ -6035,7 +6182,27 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
       )
     );
   }
-  off(hookName, callback) {
+  once(hookName, callback) {
+    return tryCatch(
+      () => {
+        if (typeof Hooks === "undefined") {
+          throw new Error("Foundry Hooks API is not available");
+        }
+        const hookId = Hooks.once(
+          hookName,
+          callback
+        );
+        return hookId;
+      },
+      (error) => createFoundryError(
+        "OPERATION_FAILED",
+        `Failed to register one-time hook ${hookName}`,
+        { hookName },
+        error
+      )
+    );
+  }
+  off(hookName, callbackOrId) {
     return tryCatch(
       () => {
         if (typeof Hooks === "undefined") {
@@ -6043,8 +6210,9 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
         }
         Hooks.off(
           hookName,
-          callback
+          callbackOrId
         );
+        return void 0;
       },
       (error) => createFoundryError(
         "OPERATION_FAILED",
@@ -6116,9 +6284,94 @@ const _FoundryUIPortV13 = class _FoundryUIPortV13 {
     const element = container.querySelector(selector);
     return ok(element);
   }
+  notify(message, type) {
+    if (typeof ui === "undefined" || !ui?.notifications) {
+      return err(createFoundryError("API_NOT_AVAILABLE", "Foundry UI notifications not available"));
+    }
+    try {
+      switch (type) {
+        case "info":
+          ui.notifications.info(message);
+          break;
+        case "warning":
+          ui.notifications.warn(message);
+          break;
+        case "error":
+          ui.notifications.error(message);
+          break;
+      }
+      return ok(void 0);
+    } catch (error) {
+      return err(
+        createFoundryError(
+          "OPERATION_FAILED",
+          "Failed to show notification",
+          { message, type },
+          error
+        )
+      );
+    }
+  }
 };
 __name(_FoundryUIPortV13, "FoundryUIPortV13");
 let FoundryUIPortV13 = _FoundryUIPortV13;
+const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
+  register(namespace, key, config) {
+    if (typeof game === "undefined" || !game?.settings) {
+      return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
+    }
+    return tryCatch(
+      () => {
+        game.settings.register(
+          namespace,
+          key,
+          config
+        );
+        return void 0;
+      },
+      (error) => createFoundryError(
+        "OPERATION_FAILED",
+        `Failed to register setting ${namespace}.${key}`,
+        { namespace, key },
+        error
+      )
+    );
+  }
+  get(namespace, key) {
+    if (typeof game === "undefined" || !game?.settings) {
+      return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
+    }
+    return tryCatch(
+      () => game.settings.get(namespace, key),
+      (error) => createFoundryError(
+        "OPERATION_FAILED",
+        `Failed to get setting ${namespace}.${key}`,
+        { namespace, key },
+        error
+      )
+    );
+  }
+  async set(namespace, key, value) {
+    if (typeof game === "undefined" || !game?.settings) {
+      return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
+    }
+    return fromPromise(
+      game.settings.set(
+        namespace,
+        key,
+        value
+      ).then(() => void 0),
+      (error) => createFoundryError(
+        "OPERATION_FAILED",
+        `Failed to set setting ${namespace}.${key}`,
+        { namespace, key, value },
+        error
+      )
+    );
+  }
+};
+__name(_FoundrySettingsPortV13, "FoundrySettingsPortV13");
+let FoundrySettingsPortV13 = _FoundrySettingsPortV13;
 function registerPortToRegistry(registry, version, factory, portName, errors) {
   const result = registry.register(version, factory);
   if (isErr(result)) {
@@ -6127,7 +6380,7 @@ function registerPortToRegistry(registry, version, factory, portName, errors) {
 }
 __name(registerPortToRegistry, "registerPortToRegistry");
 function configureDependencies(container) {
-  registerFallback(loggerToken, () => new ConsoleLoggerService());
+  container.registerFallback(loggerToken, () => new ConsoleLoggerService());
   const loggerResult = container.registerClass(
     loggerToken,
     ConsoleLoggerService,
@@ -6178,6 +6431,14 @@ function configureDependencies(container) {
     "FoundryUI",
     portRegistrationErrors
   );
+  const settingsPortRegistry = new PortRegistry();
+  registerPortToRegistry(
+    settingsPortRegistry,
+    13,
+    () => new FoundrySettingsPortV13(),
+    "FoundrySettings",
+    portRegistrationErrors
+  );
   if (portRegistrationErrors.length > 0) {
     return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
   }
@@ -6209,6 +6470,15 @@ function configureDependencies(container) {
   const uiRegistryResult = container.registerValue(foundryUIPortRegistryToken, uiPortRegistry);
   if (isErr(uiRegistryResult)) {
     return err(`Failed to register FoundryUI PortRegistry: ${uiRegistryResult.error.message}`);
+  }
+  const settingsRegistryResult = container.registerValue(
+    foundrySettingsPortRegistryToken,
+    settingsPortRegistry
+  );
+  if (isErr(settingsRegistryResult)) {
+    return err(
+      `Failed to register FoundrySettings PortRegistry: ${settingsRegistryResult.error.message}`
+    );
   }
   const gameServiceResult = container.registerClass(
     foundryGameToken,
@@ -6244,6 +6514,16 @@ function configureDependencies(container) {
   if (isErr(uiServiceResult)) {
     return err(`Failed to register FoundryUI service: ${uiServiceResult.error.message}`);
   }
+  const settingsServiceResult = container.registerClass(
+    foundrySettingsToken,
+    FoundrySettingsService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(settingsServiceResult)) {
+    return err(
+      `Failed to register FoundrySettings service: ${settingsServiceResult.error.message}`
+    );
+  }
   const journalVisibilityResult = container.registerClass(
     journalVisibilityServiceToken,
     JournalVisibilityService,
@@ -6259,6 +6539,10 @@ function configureDependencies(container) {
     const errorMessages = validateResult.error.map((e) => e.message).join(", ");
     return err(`Validation failed: ${errorMessages}`);
   }
+  const loggerInstance = container.resolve(loggerToken);
+  if (loggerInstance.setMinLevel) {
+    loggerInstance.setMinLevel(ENV.logLevel);
+  }
   return ok(void 0);
 }
 __name(configureDependencies, "configureDependencies");
@@ -6272,16 +6556,24 @@ const _CompositionRoot = class _CompositionRoot {
    * @returns Result mit initialisiertem Container oder Fehlermeldung
    */
   bootstrap() {
-    performance.mark("bootstrap-start");
+    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
+      performance.mark(PERFORMANCE_MARKS.BOOTSTRAP_START);
+    }
     const container = ServiceContainer.createRoot();
     const configured = configureDependencies(container);
-    performance.mark("bootstrap-end");
-    performance.measure("bootstrap-duration", "bootstrap-start", "bootstrap-end");
-    const measure = performance.getEntriesByName("bootstrap-duration")[0];
-    if (measure) {
-      console.debug(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Bootstrap completed in ${measure.duration.toFixed(2)}ms`
+    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
+      performance.mark(PERFORMANCE_MARKS.BOOTSTRAP_END);
+      performance.measure(
+        PERFORMANCE_MARKS.BOOTSTRAP_DURATION,
+        PERFORMANCE_MARKS.BOOTSTRAP_START,
+        PERFORMANCE_MARKS.BOOTSTRAP_END
       );
+      const measure = performance.getEntriesByName(PERFORMANCE_MARKS.BOOTSTRAP_DURATION)[0];
+      if (measure && ENV.enableDebugMode) {
+        console.debug(
+          `${MODULE_CONSTANTS.LOG_PREFIX} Bootstrap completed in ${measure.duration.toFixed(2)}ms`
+        );
+      }
     }
     if (configured.ok) {
       this.container = container;
@@ -6296,7 +6588,11 @@ const _CompositionRoot = class _CompositionRoot {
    * @throws Fehler, wenn das Foundry-Modul-Objekt nicht verfügbar ist
    */
   exposeToModuleApi() {
-    const container = this.getContainerOrThrow();
+    const containerResult = this.getContainer();
+    if (!containerResult.ok) {
+      throw new Error(containerResult.error);
+    }
+    const container = containerResult.value;
     if (typeof game === "undefined" || !game?.modules) {
       throw new Error(`${MODULE_CONSTANTS.LOG_PREFIX} Game modules not available`);
     }
@@ -6310,7 +6606,8 @@ const _CompositionRoot = class _CompositionRoot {
       foundryGameToken,
       foundryHooksToken,
       foundryDocumentToken,
-      foundryUIToken
+      foundryUIToken,
+      foundrySettingsToken
     };
     const api = {
       resolve: /* @__PURE__ */ __name((token) => container.resolve(token), "resolve"),
@@ -6322,7 +6619,8 @@ const _CompositionRoot = class _CompositionRoot {
           ["foundryGameToken", foundryGameToken],
           ["foundryHooksToken", foundryHooksToken],
           ["foundryDocumentToken", foundryDocumentToken],
-          ["foundryUIToken", foundryUIToken]
+          ["foundryUIToken", foundryUIToken],
+          ["foundrySettingsToken", foundrySettingsToken]
         ];
         for (const [, token] of tokenEntries) {
           const isRegisteredResult = container.isRegistered(token);
@@ -6338,20 +6636,22 @@ const _CompositionRoot = class _CompositionRoot {
     mod.api = api;
   }
   /**
-   * Liefert den initialisierten Container oder wirft einen Fehler, wenn noch nicht verfügbar.
-   * @throws Fehler, wenn bootstrap noch nicht erfolgreich war
+   * Liefert den initialisierten Container als Result.
+   * @returns Result mit Container oder Fehlermeldung
    */
-  getContainerOrThrow() {
+  getContainer() {
     if (!this.container) {
-      throw new Error(`${MODULE_CONSTANTS.LOG_PREFIX} Container not initialized`);
+      return { ok: false, error: `${MODULE_CONSTANTS.LOG_PREFIX} Container not initialized` };
     }
-    return this.container;
+    return { ok: true, value: this.container };
   }
 };
 __name(_CompositionRoot, "CompositionRoot");
 let CompositionRoot = _CompositionRoot;
 function isJQueryObject(value) {
-  return value !== null && typeof value === "object" && "length" in value && typeof value.length === "number" && value.length > 0 && "0" in value;
+  if (value === null || typeof value !== "object") return false;
+  const obj = value;
+  return "length" in obj && typeof obj.length === "number" && obj.length > 0 && "0" in obj;
 }
 __name(isJQueryObject, "isJQueryObject");
 const _ModuleHookRegistrar = class _ModuleHookRegistrar {
@@ -6377,7 +6677,12 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
     );
     if (!hookResult.ok) {
       logger.error(
-        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook: ${hookResult.error}`
+        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook: ${hookResult.error.message}`,
+        {
+          code: hookResult.error.code,
+          details: hookResult.error.details,
+          cause: hookResult.error.cause
+        }
       );
     }
   }
@@ -6397,13 +6702,16 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
     if (isJQueryObject(html) && html[0] instanceof HTMLElement) {
       return html[0];
     }
-    if (html && typeof html === "object" && "get" in html && typeof html.get === "function") {
-      try {
-        const element = html.get(0);
-        if (element instanceof HTMLElement) {
-          return element;
+    if (html && typeof html === "object" && "get" in html) {
+      const obj = html;
+      if (typeof obj.get === "function") {
+        try {
+          const element = obj.get(0);
+          if (element instanceof HTMLElement) {
+            return element;
+          }
+        } catch {
         }
-      } catch {
       }
     }
     return null;
@@ -6411,8 +6719,54 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
 };
 __name(_ModuleHookRegistrar, "ModuleHookRegistrar");
 let ModuleHookRegistrar = _ModuleHookRegistrar;
+const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
+  /**
+   * Registers all module settings.
+   * Must be called during or after the 'init' hook.
+   *
+   * @param container DI-Container with registered services
+   */
+  registerAll(container) {
+    const settings = container.resolve(foundrySettingsToken);
+    const logger = container.resolve(loggerToken);
+    const result = settings.register(
+      MODULE_CONSTANTS.MODULE.ID,
+      MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+      {
+        name: "Log Level",
+        hint: "Mindest-Log-Level für Modul-Ausgaben. DEBUG zeigt alle Logs, ERROR nur kritische Fehler.",
+        scope: "world",
+        config: true,
+        type: Number,
+        choices: {
+          [LogLevel.DEBUG]: "DEBUG (Alle Logs - für Debugging)",
+          [LogLevel.INFO]: "INFO (Standard)",
+          [LogLevel.WARN]: "WARN (Nur Warnungen und Fehler)",
+          [LogLevel.ERROR]: "ERROR (Nur kritische Fehler)"
+        },
+        default: LogLevel.INFO,
+        onChange: /* @__PURE__ */ __name((value) => {
+          if (logger.setMinLevel) {
+            logger.setMinLevel(value);
+            logger.info(`Log-Level geändert zu: ${LogLevel[value]}`);
+          }
+        }, "onChange")
+      }
+    );
+    if (!result.ok) {
+      logger.error("Failed to register log level setting", result.error);
+    }
+  }
+};
+__name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
+let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
 function initializeFoundryModule() {
-  const logger = root.getContainerOrThrow().resolve(loggerToken);
+  const containerResult = root.getContainer();
+  if (!containerResult.ok) {
+    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${containerResult.error}`);
+    return;
+  }
+  const logger = containerResult.value.resolve(loggerToken);
   if (typeof Hooks === "undefined") {
     logger.warn("Foundry Hooks API not available - module initialization skipped");
     return;
@@ -6420,7 +6774,22 @@ function initializeFoundryModule() {
   Hooks.on("init", () => {
     logger.info("init-phase");
     root.exposeToModuleApi();
-    new ModuleHookRegistrar().registerAll(root.getContainerOrThrow());
+    const initContainerResult = root.getContainer();
+    if (!initContainerResult.ok) {
+      logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
+      return;
+    }
+    new ModuleSettingsRegistrar().registerAll(initContainerResult.value);
+    const settings = initContainerResult.value.resolve(foundrySettingsToken);
+    const logLevelResult = settings.get(
+      MODULE_CONSTANTS.MODULE.ID,
+      MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
+    );
+    if (logLevelResult.ok && logger.setMinLevel) {
+      logger.setMinLevel(logLevelResult.value);
+      logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+    }
+    new ModuleHookRegistrar().registerAll(initContainerResult.value);
     logger.info("init-phase completed");
   });
   Hooks.on("ready", () => {
@@ -6438,7 +6807,20 @@ const bootstrapOk = isOk(bootstrapResult);
 if (!bootstrapOk) {
   console.error(`${MODULE_CONSTANTS.LOG_PREFIX} bootstrap failed`);
   console.error(bootstrapResult.error);
-  if (typeof ui !== "undefined" && ui?.notifications) {
+  let isOldFoundryVersion = false;
+  if (typeof bootstrapResult.error === "string" && bootstrapResult.error.includes("PORT_SELECTION_FAILED")) {
+    const foundryVersion = tryGetFoundryVersion();
+    if (foundryVersion !== void 0 && foundryVersion < 13) {
+      isOldFoundryVersion = true;
+      if (typeof ui !== "undefined" && ui?.notifications) {
+        ui.notifications.error(
+          `${MODULE_CONSTANTS.MODULE.NAME} benötigt mindestens Foundry VTT Version 13. Ihre Version: ${foundryVersion}. Bitte aktualisieren Sie Foundry VTT.`,
+          { permanent: true }
+        );
+      }
+    }
+  }
+  if (!isOldFoundryVersion && typeof ui !== "undefined" && ui?.notifications) {
     ui.notifications?.error(
       `${MODULE_CONSTANTS.MODULE.NAME} failed to initialize. Check console for details.`,
       { permanent: true }

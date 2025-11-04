@@ -21,6 +21,7 @@ module.exports = [
       ...typescript.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-deprecated': 'warn', // Warn on usage of @deprecated methods
       'prefer-const': 'error',
       'eqeqeq': ['error', 'always'],
 

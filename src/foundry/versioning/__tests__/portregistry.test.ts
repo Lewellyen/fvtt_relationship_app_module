@@ -44,30 +44,42 @@ describe("PortRegistry", () => {
     });
   });
 
-  describe("createAll", () => {
-    it("should create all registered ports", () => {
+  describe("getFactories", () => {
+    it("should return all registered factory functions", () => {
       const registry = new PortRegistry<string>();
 
       registry.register(13, () => "port-13");
       registry.register(14, () => "port-14");
 
-      const ports = registry.createAll();
-      expect(ports.size).toBe(2);
-      expect(ports.get(13)).toBe("port-13");
-      expect(ports.get(14)).toBe("port-14");
+      const factories = registry.getFactories();
+      expect(factories.size).toBe(2);
+
+      // Execute factories to verify they work
+      const port13 = factories.get(13)!();
+      const port14 = factories.get(14)!();
+      expect(port13).toBe("port-13");
+      expect(port14).toBe("port-14");
     });
 
-    it("should call factory functions", () => {
+    it("should return factories that can be called multiple times", () => {
       const registry = new PortRegistry<{ value: number }>();
       let callCount = 0;
 
       registry.register(13, () => {
         callCount++;
-        return { value: 42 };
+        return { value: callCount };
       });
 
-      registry.createAll();
-      expect(callCount).toBe(1);
+      const factories = registry.getFactories();
+      const factory = factories.get(13)!;
+
+      // Call factory multiple times
+      const result1 = factory();
+      const result2 = factory();
+
+      expect(result1.value).toBe(1);
+      expect(result2.value).toBe(2);
+      expect(callCount).toBe(2);
     });
   });
 

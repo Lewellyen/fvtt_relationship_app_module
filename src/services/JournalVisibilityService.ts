@@ -30,6 +30,22 @@ export class JournalVisibilityService {
   ) {}
 
   /**
+   * Sanitizes a string for safe use in log messages.
+   * Escapes HTML entities to prevent log injection or display issues.
+   *
+   * @param input - The string to sanitize
+   * @returns HTML-safe string
+   */
+  private sanitizeForLog(input: string): string {
+    return input
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  /**
    * Gets journal entries marked as hidden via module flag.
    * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
@@ -52,10 +68,26 @@ export class JournalVisibilityService {
         }
       } else {
         // Log flag read errors for diagnosis without interrupting processing
-        this.logger.warn(`Failed to read hidden flag for journal "${journal.name ?? journal.id}"`, {
-          errorCode: flagResult.error.code,
-          errorMessage: flagResult.error.message,
-        });
+        const journalIdentifier = journal.name ?? journal.id;
+        this.logger.warn(
+          `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
+          {
+            errorCode: flagResult.error.code,
+            errorMessage: flagResult.error.message,
+          }
+        );
+
+        // Show UI notification for critical errors (e.g., permission issues)
+        if (flagResult.error.code === "ACCESS_DENIED") {
+          const notifyResult = this.ui.notify(
+            "Some journal entries could not be accessed due to permissions",
+            "warning"
+          );
+          if (!notifyResult.ok) {
+            this.logger.warn("Failed to show UI notification", notifyResult.error);
+          }
+        }
+
         // Continue processing other entries
       }
     }
@@ -76,26 +108,21 @@ export class JournalVisibilityService {
         this.hideEntries(hidden, htmlElement);
       },
       onErr: (error) => {
-        this.logger.error(`Error getting hidden journal entries: ${error}`);
+        this.logger.error("Error getting hidden journal entries", error);
       },
     });
   }
 
   private hideEntries(entries: FoundryJournalEntry[], html: HTMLElement): void {
     for (const journal of entries) {
-      const removeResult = this.ui.removeJournalElement(
-        journal.id,
-        journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
-        html
-      );
+      const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
+      const removeResult = this.ui.removeJournalElement(journal.id, journalName, html);
       match(removeResult, {
         onOk: () => {
-          this.logger.debug(
-            `Removing journal entry: ${journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME}`
-          );
+          this.logger.debug(`Removing journal entry: ${this.sanitizeForLog(journalName)}`);
         },
         onErr: (error) => {
-          this.logger.warn(`Error removing journal entry: ${error}`);
+          this.logger.warn("Error removing journal entry", error);
         },
       });
     }

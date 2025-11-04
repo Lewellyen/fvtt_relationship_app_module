@@ -1,4 +1,4 @@
-import { ServiceContainer, registerFallback } from "@/di_infrastructure/container";
+import { ServiceContainer } from "@/di_infrastructure/container";
 import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { JournalVisibilityService } from "@/services/JournalVisibilityService";
@@ -6,16 +6,19 @@ import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import { ok, err, isErr } from "@/utils/result";
 import type { Result } from "@/types/result";
 import type { Logger } from "@/interfaces/logger";
+import { ENV } from "@/config/environment";
 import {
   foundryGameToken,
   foundryHooksToken,
   foundryDocumentToken,
   foundryUIToken,
+  foundrySettingsToken,
   portSelectorToken,
   foundryGamePortRegistryToken,
   foundryHooksPortRegistryToken,
   foundryDocumentPortRegistryToken,
   foundryUIPortRegistryToken,
+  foundrySettingsPortRegistryToken,
 } from "@/foundry/foundrytokens";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
@@ -23,14 +26,17 @@ import { FoundryGameService } from "@/foundry/services/FoundryGameService";
 import { FoundryHooksService } from "@/foundry/services/FoundryHooksService";
 import { FoundryDocumentService } from "@/foundry/services/FoundryDocumentService";
 import { FoundryUIService } from "@/foundry/services/FoundryUIService";
+import { FoundrySettingsService } from "@/foundry/services/FoundrySettingsService";
 import { FoundryGamePortV13 } from "@/foundry/ports/v13/FoundryGamePort";
 import { FoundryHooksPortV13 } from "@/foundry/ports/v13/FoundryHooksPort";
 import { FoundryDocumentPortV13 } from "@/foundry/ports/v13/FoundryDocumentPort";
 import { FoundryUIPortV13 } from "@/foundry/ports/v13/FoundryUIPort";
+import { FoundrySettingsPortV13 } from "@/foundry/ports/v13/FoundrySettingsPort";
 import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
+import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 
 /**
  * Helper function for port registration.
@@ -77,7 +83,7 @@ function registerPortToRegistry<T>(
  */
 export function configureDependencies(container: ServiceContainer): Result<void, string> {
   // Register fallback factories for services that should always be available
-  registerFallback<Logger>(loggerToken, () => new ConsoleLoggerService());
+  container.registerFallback<Logger>(loggerToken, () => new ConsoleLoggerService());
 
   // Register logger
   const loggerResult = container.registerClass(
@@ -141,6 +147,15 @@ export function configureDependencies(container: ServiceContainer): Result<void,
     portRegistrationErrors
   );
 
+  const settingsPortRegistry = new PortRegistry<FoundrySettings>();
+  registerPortToRegistry(
+    settingsPortRegistry,
+    13,
+    () => new FoundrySettingsPortV13(),
+    "FoundrySettings",
+    portRegistrationErrors
+  );
+
   // Return early if any port registration failed
   if (portRegistrationErrors.length > 0) {
     return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
@@ -177,6 +192,16 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   const uiRegistryResult = container.registerValue(foundryUIPortRegistryToken, uiPortRegistry);
   if (isErr(uiRegistryResult)) {
     return err(`Failed to register FoundryUI PortRegistry: ${uiRegistryResult.error.message}`);
+  }
+
+  const settingsRegistryResult = container.registerValue(
+    foundrySettingsPortRegistryToken,
+    settingsPortRegistry
+  );
+  if (isErr(settingsRegistryResult)) {
+    return err(
+      `Failed to register FoundrySettings PortRegistry: ${settingsRegistryResult.error.message}`
+    );
   }
 
   // Register Foundry Services using registerClass (with static dependencies)
@@ -222,6 +247,18 @@ export function configureDependencies(container: ServiceContainer): Result<void,
     return err(`Failed to register FoundryUI service: ${uiServiceResult.error.message}`);
   }
 
+  const settingsServiceResult = container.registerClass(
+    foundrySettingsToken,
+    FoundrySettingsService,
+    ServiceLifecycle.SINGLETON
+  );
+
+  if (isErr(settingsServiceResult)) {
+    return err(
+      `Failed to register FoundrySettings service: ${settingsServiceResult.error.message}`
+    );
+  }
+
   const journalVisibilityResult = container.registerClass(
     journalVisibilityServiceToken,
     JournalVisibilityService,
@@ -239,6 +276,12 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   if (isErr(validateResult)) {
     const errorMessages = validateResult.error.map((e) => e.message).join(", ");
     return err(`Validation failed: ${errorMessages}`);
+  }
+
+  // Phase 3: Configure logger with ENV settings
+  const loggerInstance = container.resolve(loggerToken);
+  if (loggerInstance.setMinLevel) {
+    loggerInstance.setMinLevel(ENV.logLevel);
   }
 
   return ok(undefined);

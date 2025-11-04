@@ -9,14 +9,10 @@ import type { ServiceContainer } from "@/di_infrastructure/container";
  * jQuery objects are array-like with numeric index and length property.
  */
 function isJQueryObject(value: unknown): value is { [index: number]: HTMLElement; length: number } {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    "length" in value &&
-    typeof (value as any).length === "number" &&
-    (value as any).length > 0 &&
-    "0" in value
-  );
+  if (value === null || typeof value !== "object") return false;
+
+  const obj = value as Record<string, unknown>;
+  return "length" in obj && typeof obj.length === "number" && obj.length > 0 && "0" in obj;
 }
 
 /**
@@ -53,7 +49,12 @@ export class ModuleHookRegistrar {
 
     if (!hookResult.ok) {
       logger.error(
-        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook: ${hookResult.error}`
+        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook: ${hookResult.error.message}`,
+        {
+          code: hookResult.error.code,
+          details: hookResult.error.details,
+          cause: hookResult.error.cause,
+        }
       );
     }
   }
@@ -79,19 +80,17 @@ export class ModuleHookRegistrar {
     }
 
     // Case 3: jQuery with .get() method (additional safety)
-    if (
-      html &&
-      typeof html === "object" &&
-      "get" in html &&
-      typeof (html as any).get === "function"
-    ) {
-      try {
-        const element = (html as any).get(0);
-        if (element instanceof HTMLElement) {
-          return element;
+    if (html && typeof html === "object" && "get" in html) {
+      const obj = html as Record<string, unknown>;
+      if (typeof obj.get === "function") {
+        try {
+          const element = (obj.get as (index: number) => unknown)(0);
+          if (element instanceof HTMLElement) {
+            return element;
+          }
+        } catch {
+          // Ignore get() errors
         }
-      } catch {
-        // Ignore get() errors
       }
     }
 

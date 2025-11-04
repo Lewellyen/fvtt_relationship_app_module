@@ -61,4 +61,10 @@ export class FoundryUIService implements FoundryUI {
     if (!portResult.ok) return portResult;
     return portResult.value.findElement(container, selector);
   }
+
+  notify(message: string, type: "info" | "warning" | "error"): Result<void, FoundryError> {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.notify(message, type);
+  }
 }

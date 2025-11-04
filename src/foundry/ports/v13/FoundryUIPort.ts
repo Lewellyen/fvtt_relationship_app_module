@@ -32,12 +32,53 @@ export class FoundryUIPortV13 implements FoundryUI {
       );
     }
 
-    element.remove();
-    return ok(undefined);
+    try {
+      element.remove();
+      return ok(undefined);
+    } catch (error) {
+      return err(
+        createFoundryError(
+          "OPERATION_FAILED",
+          "Failed to remove element from DOM",
+          { journalName, journalId: safeId },
+          error
+        )
+      );
+    }
   }
 
   findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, FoundryError> {
     const element = container.querySelector(selector) as HTMLElement | null;
     return ok(element);
+  }
+
+  notify(message: string, type: "info" | "warning" | "error"): Result<void, FoundryError> {
+    if (typeof ui === "undefined" || !ui?.notifications) {
+      return err(createFoundryError("API_NOT_AVAILABLE", "Foundry UI notifications not available"));
+    }
+
+    try {
+      switch (type) {
+        case "info":
+          ui.notifications.info(message);
+          break;
+        case "warning":
+          ui.notifications.warn(message);
+          break;
+        case "error":
+          ui.notifications.error(message);
+          break;
+      }
+      return ok(undefined);
+    } catch (error) {
+      return err(
+        createFoundryError(
+          "OPERATION_FAILED",
+          "Failed to show notification",
+          { message, type },
+          error
+        )
+      );
+    }
   }
 }

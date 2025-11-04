@@ -5,21 +5,33 @@ import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 /**
  * Interface for Foundry's hook system.
  * Abstracts hook registration and management.
+ *
+ * Based on Foundry VTT v13 Hooks API:
+ * https://foundryvtt.com/api/classes/foundry.helpers.Hooks.html
  */
 export interface FoundryHooks {
   /**
    * Registers a callback for a hook event.
    * @param hookName - The name of the hook to register for (e.g., "init", "ready", "renderJournalDirectory")
    * @param callback - The callback function to execute when the hook fires
-   * @returns Result indicating success or a FoundryError
+   * @returns Result with hook ID for deregistration, or FoundryError
    */
-  on(hookName: string, callback: FoundryHookCallback): Result<void, FoundryError>;
+  on(hookName: string, callback: FoundryHookCallback): Result<number, FoundryError>;
+
+  /**
+   * Registers a one-time callback for a hook event.
+   * The callback will be automatically unregistered after first execution.
+   * @param hookName - The name of the hook to register for
+   * @param callback - The callback function to execute when the hook fires
+   * @returns Result with hook ID, or FoundryError
+   */
+  once(hookName: string, callback: FoundryHookCallback): Result<number, FoundryError>;
 
   /**
    * Unregisters a callback from a hook event.
    * @param hookName - The name of the hook
-   * @param callback - The callback function to unregister
-   * @returns Result indicating success or a FoundryError
+   * @param callbackOrId - The callback function or hook ID to unregister
+   * @returns Result indicating success or FoundryError
    */
-  off(hookName: string, callback: FoundryHookCallback): Result<void, FoundryError>;
+  off(hookName: string, callbackOrId: FoundryHookCallback | number): Result<void, FoundryError>;
 }

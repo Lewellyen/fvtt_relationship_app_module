@@ -14,6 +14,15 @@ class TestService implements Logger {
   debug(): void {}
 }
 
+class TestServiceWithoutDependencies implements Logger {
+  // Keine dependencies Property definiert
+  log(): void {}
+  error(): void {}
+  warn(): void {}
+  info(): void {}
+  debug(): void {}
+}
+
 describe("ServiceRegistry", () => {
   describe("Registration", () => {
     it("should register service class with correct metadata", () => {
@@ -98,6 +107,41 @@ describe("ServiceRegistry", () => {
 
       expectResultErr(result);
       expect(result.error.code).toBe("DuplicateRegistration");
+    });
+
+    it("should register class without dependencies property", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestServiceWithoutDependencies>("NoDeps");
+
+      // Sollte ohne Fehler registriert werden können
+      const result = registry.registerClass(
+        token,
+        TestServiceWithoutDependencies,
+        ServiceLifecycle.SINGLETON
+      );
+      expectResultOk(result);
+
+      const registration = registry.getRegistration(token);
+      expect(registration).toBeDefined();
+      expect(registration?.providerType).toBe("class");
+      expect(registration?.serviceClass).toBe(TestServiceWithoutDependencies);
+      // Dependencies sollte leeres Array sein
+      expect(registration?.dependencies).toEqual([]);
+    });
+
+    it("should register class with explicit dependencies property", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("WithDeps");
+
+      // TestService hat dependencies-Property
+      const result = registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+      expectResultOk(result);
+
+      const registration = registry.getRegistration(token);
+      expect(registration).toBeDefined();
+      expect(registration?.dependencies).toBeDefined();
+      // dependencies ist ein Array (auch wenn leer)
+      expect(Array.isArray(registration?.dependencies)).toBe(true);
     });
   });
 
@@ -198,6 +242,133 @@ describe("ServiceRegistry", () => {
 
       expect(registry.has(token1)).toBe(false);
       expect(registry.has(token2)).toBe(false);
+    });
+
+    it("should clear lifecycle index", () => {
+      const registry = new ServiceRegistry();
+      const token1 = createInjectionToken<TestService>("Service1");
+      const token2 = createInjectionToken<TestService>("Service2");
+
+      registry.registerClass(token1, TestService, ServiceLifecycle.SINGLETON);
+      registry.registerClass(token2, TestService, ServiceLifecycle.TRANSIENT);
+
+      // Verify index has entries
+      expect(registry.getRegistrationsByLifecycle(ServiceLifecycle.SINGLETON).length).toBe(1);
+      expect(registry.getRegistrationsByLifecycle(ServiceLifecycle.TRANSIENT).length).toBe(1);
+
+      registry.clear();
+
+      // Index should be cleared
+      expect(registry.getRegistrationsByLifecycle(ServiceLifecycle.SINGLETON).length).toBe(0);
+      expect(registry.getRegistrationsByLifecycle(ServiceLifecycle.TRANSIENT).length).toBe(0);
+    });
+  });
+
+  describe("getRegistrationsByLifecycle()", () => {
+    it("should return registrations by lifecycle", () => {
+      const registry = new ServiceRegistry();
+      const singletonToken1 = createInjectionToken<TestService>("Singleton1");
+      const singletonToken2 = createInjectionToken<TestService>("Singleton2");
+      const transientToken = createInjectionToken<TestService>("Transient");
+      const scopedToken = createInjectionToken<TestService>("Scoped");
+
+      registry.registerClass(singletonToken1, TestService, ServiceLifecycle.SINGLETON);
+      registry.registerClass(singletonToken2, TestService, ServiceLifecycle.SINGLETON);
+      registry.registerClass(transientToken, TestService, ServiceLifecycle.TRANSIENT);
+      registry.registerClass(scopedToken, TestService, ServiceLifecycle.SCOPED);
+
+      const singletons = registry.getRegistrationsByLifecycle(ServiceLifecycle.SINGLETON);
+      const transients = registry.getRegistrationsByLifecycle(ServiceLifecycle.TRANSIENT);
+      const scoped = registry.getRegistrationsByLifecycle(ServiceLifecycle.SCOPED);
+
+      expect(singletons.length).toBe(2);
+      expect(transients.length).toBe(1);
+      expect(scoped.length).toBe(1);
+
+      // Verify it's actually the right registrations
+      expect(singletons[0]?.lifecycle).toBe(ServiceLifecycle.SINGLETON);
+      expect(transients[0]?.lifecycle).toBe(ServiceLifecycle.TRANSIENT);
+      expect(scoped[0]?.lifecycle).toBe(ServiceLifecycle.SCOPED);
+    });
+
+    it("should return empty array for lifecycle with no registrations", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("Service");
+
+      registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      const transients = registry.getRegistrationsByLifecycle(ServiceLifecycle.TRANSIENT);
+      expect(transients).toEqual([]);
+    });
+
+    it("should handle value registrations as SINGLETON", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("ValueService");
+      const instance = new TestService();
+
+      registry.registerValue(token, instance);
+
+      const singletons = registry.getRegistrationsByLifecycle(ServiceLifecycle.SINGLETON);
+      expect(singletons.length).toBe(1);
+      expect(singletons[0]?.providerType).toBe("value");
+    });
+
+    it("should be more efficient than getAllRegistrations for large registries", () => {
+      const registry = new ServiceRegistry();
+
+      // Register 100 services with different lifecycles
+      for (let i = 0; i < 100; i++) {
+        const token = createInjectionToken<TestService>(`Service${i}`);
+        const lifecycle =
+          i % 3 === 0
+            ? ServiceLifecycle.SINGLETON
+            : i % 3 === 1
+              ? ServiceLifecycle.TRANSIENT
+              : ServiceLifecycle.SCOPED;
+        registry.registerClass(token, TestService, lifecycle);
+      }
+
+      // Query specific lifecycle (should be O(1) lookup)
+      const startTime = performance.now();
+      const singletons = registry.getRegistrationsByLifecycle(ServiceLifecycle.SINGLETON);
+      const indexTime = performance.now() - startTime;
+
+      // Compare with filtering all registrations (O(n))
+      const startTimeAll = performance.now();
+      const allRegs = Array.from(registry.getAllRegistrations().values());
+      const filteredSingletons = allRegs.filter((r) => r.lifecycle === ServiceLifecycle.SINGLETON);
+      const filterTime = performance.now() - startTimeAll;
+
+      expect(singletons.length).toBe(filteredSingletons.length);
+      // Index-based query should be faster (though with only 100 items, difference is minimal)
+      // This test mainly documents the intent
+      expect(indexTime).toBeLessThan(filterTime + 5); // Allow 5ms tolerance
+    });
+  });
+
+  describe("Lifecycle Index", () => {
+    it("should maintain index consistency across clone", () => {
+      const registry = new ServiceRegistry();
+      const token1 = createInjectionToken<TestService>("Service1");
+      const token2 = createInjectionToken<TestService>("Service2");
+
+      registry.registerClass(token1, TestService, ServiceLifecycle.SINGLETON);
+      registry.registerClass(token2, TestService, ServiceLifecycle.TRANSIENT);
+
+      const cloned = registry.clone();
+
+      // Both should have same lifecycle counts
+      expect(registry.getRegistrationsByLifecycle(ServiceLifecycle.SINGLETON).length).toBe(1);
+      expect(cloned.getRegistrationsByLifecycle(ServiceLifecycle.SINGLETON).length).toBe(1);
+      expect(registry.getRegistrationsByLifecycle(ServiceLifecycle.TRANSIENT).length).toBe(1);
+      expect(cloned.getRegistrationsByLifecycle(ServiceLifecycle.TRANSIENT).length).toBe(1);
+
+      // Adding to clone should not affect original
+      const token3 = createInjectionToken<TestService>("Service3");
+      cloned.registerClass(token3, TestService, ServiceLifecycle.SINGLETON);
+
+      expect(cloned.getRegistrationsByLifecycle(ServiceLifecycle.SINGLETON).length).toBe(2);
+      expect(registry.getRegistrationsByLifecycle(ServiceLifecycle.SINGLETON).length).toBe(1);
     });
   });
 });

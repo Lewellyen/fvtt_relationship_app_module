@@ -11,7 +11,10 @@ import {
   foundryHooksToken,
   foundryDocumentToken,
   foundryUIToken,
+  foundrySettingsToken,
 } from "@/foundry/foundrytokens";
+import { PERFORMANCE_MARKS } from "@/core/performance-constants";
+import { ENV } from "@/config/environment";
 
 /**
  * CompositionRoot
@@ -33,22 +36,29 @@ export class CompositionRoot {
    * @returns Result mit initialisiertem Container oder Fehlermeldung
    */
   bootstrap(): Result<ServiceContainer, string> {
-    // Performance-Messung starten
-    performance.mark("bootstrap-start");
+    // Performance-Messung starten (nur in Debug-Mode)
+    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
+      performance.mark(PERFORMANCE_MARKS.BOOTSTRAP_START);
+    }
 
     const container = ServiceContainer.createRoot();
     const configured = configureDependencies(container);
 
-    // Performance-Messung beenden
-    performance.mark("bootstrap-end");
-    performance.measure("bootstrap-duration", "bootstrap-start", "bootstrap-end");
-
-    // Log Performance (nur in Development/Debug-Mode sinnvoll)
-    const measure = performance.getEntriesByName("bootstrap-duration")[0];
-    if (measure) {
-      console.debug(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Bootstrap completed in ${measure.duration.toFixed(2)}ms`
+    // Performance-Messung beenden und loggen (nur in Debug-Mode)
+    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
+      performance.mark(PERFORMANCE_MARKS.BOOTSTRAP_END);
+      performance.measure(
+        PERFORMANCE_MARKS.BOOTSTRAP_DURATION,
+        PERFORMANCE_MARKS.BOOTSTRAP_START,
+        PERFORMANCE_MARKS.BOOTSTRAP_END
       );
+
+      const measure = performance.getEntriesByName(PERFORMANCE_MARKS.BOOTSTRAP_DURATION)[0];
+      if (measure && ENV.enableDebugMode) {
+        console.debug(
+          `${MODULE_CONSTANTS.LOG_PREFIX} Bootstrap completed in ${measure.duration.toFixed(2)}ms`
+        );
+      }
     }
 
     if (configured.ok) {
@@ -65,7 +75,12 @@ export class CompositionRoot {
    * @throws Fehler, wenn das Foundry-Modul-Objekt nicht verfügbar ist
    */
   exposeToModuleApi(): void {
-    const container = this.getContainerOrThrow();
+    const containerResult = this.getContainer();
+    if (!containerResult.ok) {
+      throw new Error(containerResult.error);
+    }
+    const container = containerResult.value;
+
     // game.modules is typed as ModuleCollection (Map<string, Module>) by fvtt-types
     if (typeof game === "undefined" || !game?.modules) {
       throw new Error(`${MODULE_CONSTANTS.LOG_PREFIX} Game modules not available`);
@@ -83,6 +98,7 @@ export class CompositionRoot {
       foundryHooksToken,
       foundryDocumentToken,
       foundryUIToken,
+      foundrySettingsToken,
     };
 
     const api: ModuleApi = {
@@ -100,6 +116,7 @@ export class CompositionRoot {
           ["foundryHooksToken", foundryHooksToken],
           ["foundryDocumentToken", foundryDocumentToken],
           ["foundryUIToken", foundryUIToken],
+          ["foundrySettingsToken", foundrySettingsToken],
         ];
 
         for (const [, token] of tokenEntries) {
@@ -121,13 +138,13 @@ export class CompositionRoot {
   }
 
   /**
-   * Liefert den initialisierten Container oder wirft einen Fehler, wenn noch nicht verfügbar.
-   * @throws Fehler, wenn bootstrap noch nicht erfolgreich war
+   * Liefert den initialisierten Container als Result.
+   * @returns Result mit Container oder Fehlermeldung
    */
-  getContainerOrThrow(): ServiceContainer {
+  getContainer(): Result<ServiceContainer, string> {
     if (!this.container) {
-      throw new Error(`${MODULE_CONSTANTS.LOG_PREFIX} Container not initialized`);
+      return { ok: false, error: `${MODULE_CONSTANTS.LOG_PREFIX} Container not initialized` };
     }
-    return this.container;
+    return { ok: true, value: this.container };
   }
 }

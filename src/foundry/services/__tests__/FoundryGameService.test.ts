@@ -24,11 +24,9 @@ describe("FoundryGameService", () => {
     };
 
     mockRegistry = new PortRegistry<FoundryGame>();
-    // FIX: Use new getFactories() API instead of getAvailablePorts()
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
     mockSelector = new PortSelector();
-    // FIX: Use new selectPortFromFactories() API instead of selectPort()
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundryGameService(mockSelector, mockRegistry);
@@ -98,7 +96,7 @@ describe("FoundryGameService", () => {
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
-      expect(result.error).toContain("Port selection failed");
+      expect(result.error.message).toContain("Port selection failed");
     });
   });
 

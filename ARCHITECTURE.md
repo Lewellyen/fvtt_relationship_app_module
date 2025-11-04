@@ -96,27 +96,29 @@ const port = selector.selectPortFromFactories(factories); // Nur kompatiblen Por
 
 **Problem:** Foundry-Hooks wechselten von jQuery zu nativen DOM-Elementen.
 
-**Lösung:** `ModuleHookRegistrar.extractHtmlElement()` behandelt beide Formate:
+**Lösung:** `ModuleHookRegistrar.extractHtmlElement()` behandelt beide Formate für maximale Kompatibilität:
 
 ```typescript
 private extractHtmlElement(html: unknown): HTMLElement | null {
   // Case 1: Native HTMLElement (v13+)
   if (html instanceof HTMLElement) return html;
   
-  // Case 2: jQuery {0: HTMLElement, length: 1} (v10-12)
+  // Case 2: jQuery {0: HTMLElement, length: 1} (Legacy-Kompatibilität)
   if (isJQueryObject(html)) return html[0];
   
-  // Case 3: jQuery.get(0) method
+  // Case 3: jQuery.get(0) method (Legacy-Kompatibilität)
   if (hasGetMethod(html)) return html.get(0);
   
   return null;
 }
 ```
 
+**Hinweis:** Die jQuery-Kompatibilitätslogik ist vorhanden, aber dieses Modul **unterstützt offiziell nur Foundry VTT v13+**. Für ältere Versionen (v10-12) wird eine separate Legacy-Version benötigt.
+
 **Test-Coverage:**
-- ✅ Native HTMLElement
-- ✅ jQuery mit Index-Zugriff
-- ✅ jQuery mit `.get()` Methode
+- ✅ Native HTMLElement (v13+)
+- ✅ jQuery mit Index-Zugriff (Legacy)
+- ✅ jQuery mit `.get()` Methode (Legacy)
 - ✅ Ungültige Formate (Error-Logging)
 
 ### Child-Scope Registrierungen (NEU)

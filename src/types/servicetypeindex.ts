@@ -6,6 +6,7 @@ import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
+import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 import type { PortSelector } from "@/foundry/versioning/portselector";
 import type { PortRegistry } from "@/foundry/versioning/portregistry";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
@@ -26,9 +27,11 @@ export type ServiceType =
   | FoundryHooks
   | FoundryDocument
   | FoundryUI
+  | FoundrySettings
   | PortSelector
   | PortRegistry<FoundryGame>
   | PortRegistry<FoundryHooks>
   | PortRegistry<FoundryDocument>
   | PortRegistry<FoundryUI>
+  | PortRegistry<FoundrySettings>
   | JournalVisibilityService;
