@@ -7,6 +7,8 @@ import type { ServiceRegistration } from "../types/serviceregistration";
 import { InstanceCache } from "../cache/InstanceCache";
 import { ServiceLifecycle } from "../types/servicelifecycle";
 import { ok, err } from "@/utils/result";
+import { MetricsCollector } from "@/observability/metrics-collector";
+import { ENV } from "@/config/environment";
 
 /**
  * Resolves service instances based on lifecycle and registration.
@@ -46,14 +48,24 @@ export class ServiceResolver {
   resolve<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>
   ): Result<TServiceType, ContainerError> {
+    const startTime = ENV.enablePerformanceTracking ? performance.now() : 0;
+
     // Check if service is registered
     const registration = this.registry.getRegistration(token);
     if (!registration) {
-      return err({
+      const error: ContainerError = {
         code: "TokenNotRegistered",
         message: `Service ${String(token)} not registered`,
         tokenDescription: String(token),
-      });
+      };
+      const result = err(error);
+
+      if (ENV.enablePerformanceTracking) {
+        const duration = performance.now() - startTime;
+        MetricsCollector.getInstance().recordResolution(token, duration, false);
+      }
+
+      return result;
     }
 
     // Handle alias resolution
@@ -62,23 +74,35 @@ export class ServiceResolver {
     }
 
     // Resolve based on lifecycle (all methods already return Result)
+    let result: Result<TServiceType, ContainerError>;
+
     switch (registration.lifecycle) {
       case ServiceLifecycle.SINGLETON:
-        return this.resolveSingleton(token, registration);
+        result = this.resolveSingleton(token, registration);
+        break;
 
       case ServiceLifecycle.TRANSIENT:
-        return this.resolveTransient(token, registration);
+        result = this.resolveTransient(token, registration);
+        break;
 
       case ServiceLifecycle.SCOPED:
-        return this.resolveScoped(token, registration);
+        result = this.resolveScoped(token, registration);
+        break;
 
       default:
-        return err({
+        result = err({
           code: "InvalidLifecycle",
           message: `Invalid service lifecycle: ${String(registration.lifecycle)}`,
           tokenDescription: String(token),
         });
     }
+
+    if (ENV.enablePerformanceTracking) {
+      const duration = performance.now() - startTime;
+      MetricsCollector.getInstance().recordResolution(token, duration, result.ok);
+    }
+
+    return result;
   }
 
   /**
@@ -220,15 +244,36 @@ export class ServiceResolver {
 
   /**
    * Resolves a Scoped service.
+   * 
+   * ⚠️ IMPORTANT: Scoped services can ONLY be resolved in child containers.
+   * Attempting to resolve a scoped service in the root container will return
+   * a ScopeRequired error.
    *
    * Strategy:
    * - Must be in child scope (not root)
    * - One instance per scope (cached)
+   * - Each child scope gets its own isolated instance
+   * 
+   * Use createScope() to create a child container before resolving scoped services.
    *
    * @template TServiceType - The type of service
    * @param token - The injection token
    * @param registration - The service registration
-   * @returns Result with scoped instance
+   * @returns Result with scoped instance or ScopeRequired error
+   * 
+   * @example
+   * ```typescript
+   * // ❌ WRONG: Trying to resolve scoped service in root
+   * const root = ServiceContainer.createRoot();
+   * root.registerClass(RequestToken, RequestContext, SCOPED);
+   * root.validate();
+   * const result = root.resolve(RequestToken); // Error: ScopeRequired
+   * 
+   * // ✅ CORRECT: Create child scope first
+   * const child = root.createScope("request").value!;
+   * child.validate(); // Child must validate separately
+   * const ctx = child.resolve(RequestToken); // OK
+   * ```
    */
   private resolveScoped<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>,
@@ -238,7 +283,7 @@ export class ServiceResolver {
     if (this.parentResolver === null) {
       return err({
         code: "ScopeRequired",
-        message: `Scoped service ${String(token)} requires a scope container`,
+        message: `Scoped service ${String(token)} requires a scope container. Use createScope() to create a child container first.`,
         tokenDescription: String(token),
       });
     }

@@ -5,28 +5,41 @@ import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { tryCatch, err } from "@/utils/result";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 import { validateJournalEntries } from "@/foundry/validation/schemas";
+import { validateJournalId } from "@/foundry/validation/input-validators";
+import { MODULE_CONSTANTS } from "@/constants";
+import { MetricsCollector } from "@/observability/metrics-collector";
+import { ENV } from "@/config/environment";
 
 /**
  * v13 implementation of FoundryGame interface.
  * Encapsulates Foundry v13-specific game API access.
  *
- * Performance optimization: Caches validated journal entries to avoid expensive
- * Zod validation on every call. Cache is invalidated when journal collection changes.
+ * Performance optimization: Caches validated journal entries with TTL-based invalidation
+ * to avoid expensive Valibot validation on every call. Cache expires after 5 seconds.
  */
 export class FoundryGamePortV13 implements FoundryGame {
   private cachedEntries: FoundryJournalEntry[] | null = null;
-  private cacheVersion = -1;
+  private lastCheckTimestamp = 0;
+  private readonly cacheTtlMs = MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS;
 
   getJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
     if (typeof game === "undefined" || !game?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));
     }
 
-    // Check if cache is valid
-    // Use timestamp as version if _source.version is not available
-    const currentVersion = (game.journal as any)._source?.version ?? Date.now();
-    if (this.cachedEntries !== null && this.cacheVersion === currentVersion) {
+    const now = Date.now();
+    const cacheAge = now - this.lastCheckTimestamp;
+
+    // Check TTL-based cache validity
+    if (this.cachedEntries !== null && cacheAge < this.cacheTtlMs) {
+      if (ENV.enablePerformanceTracking) {
+        MetricsCollector.getInstance().recordCacheAccess(true);
+      }
       return { ok: true, value: this.cachedEntries };
+    }
+
+    if (ENV.enablePerformanceTracking) {
+      MetricsCollector.getInstance().recordCacheAccess(false);
     }
 
     // game.journal is typed as DocumentCollection<JournalEntry> by fvtt-types
@@ -41,35 +54,53 @@ export class FoundryGamePortV13 implements FoundryGame {
       return entries;
     }
 
-    // Validate entries to ensure they have expected structure (expensive, only once per version)
+    // Validate entries to ensure they have expected structure (expensive, cached for TTL duration)
+    // IMPORTANT: Use validation as guard only, keep original Foundry objects with prototypes
     const validationResult = validateJournalEntries(entries.value);
     if (!validationResult.ok) {
       // Return validation error directly (preserves VALIDATION_FAILED code and details)
       return validationResult;
     }
 
-    // Update cache
-    this.cachedEntries = validationResult.value as FoundryJournalEntry[];
-    this.cacheVersion = currentVersion;
+    // Update cache with ORIGINAL entries (preserving Foundry prototypes like sheet.render, update, etc.)
+    // Do NOT cache validationResult.value as it strips prototypes
+    this.cachedEntries = entries.value;
+    this.lastCheckTimestamp = now;
 
     return { ok: true, value: this.cachedEntries };
   }
 
+  /**
+   * Invalidates the journal entries cache.
+   * Forces the next getJournalEntries() call to fetch and validate fresh data.
+   */
+  invalidateCache(): void {
+    this.cachedEntries = null;
+    this.lastCheckTimestamp = 0;
+  }
+
   getJournalEntryById(id: string): Result<FoundryJournalEntry | null, FoundryError> {
+    // Validate input
+    const validationResult = validateJournalId(id);
+    if (!validationResult.ok) {
+      return validationResult;
+    }
+
     if (typeof game === "undefined" || !game?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));
     }
+
     return tryCatch(
       () => {
         // game.journal.get() is typed by fvtt-types and returns JournalEntry | undefined
-        const entry = game.journal.get(id);
+        const entry = game.journal.get(validationResult.value);
         return entry ?? null;
       },
       (error) =>
         createFoundryError(
           "OPERATION_FAILED",
-          `Failed to get journal entry by ID ${id}`,
-          { id },
+          `Failed to get journal entry by ID ${validationResult.value}`,
+          { id: validationResult.value },
           error
         )
     );

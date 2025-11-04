@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.1.0] - 2025-11-04
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Zahlreiche Absicherungen und Optimierungen
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.0.9] - 2025-10-29
 ### Hinzugefügt
 - Keine Einträge

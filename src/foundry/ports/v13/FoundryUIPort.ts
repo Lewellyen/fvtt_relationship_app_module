@@ -18,8 +18,9 @@ export class FoundryUIPortV13 implements FoundryUI {
     // Sanitize ID to prevent CSS injection
     const safeId = sanitizeId(journalId);
 
+    // Support both selectors: Foundry v13 uses data-document-id, older versions used data-entry-id
     const element = html.querySelector(
-      `li.directory-item[data-entry-id="${safeId}"]`
+      `li.directory-item[data-document-id="${safeId}"], li.directory-item[data-entry-id="${safeId}"]`
     ) as HTMLElement | null;
 
     if (!element) {

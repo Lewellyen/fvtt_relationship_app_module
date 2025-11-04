@@ -65,6 +65,21 @@ export function createFoundryError(
 }
 
 /**
+ * Type guard helper for error-like objects.
+ */
+interface ErrorLike {
+  code?: unknown;
+  message?: unknown;
+}
+
+/**
+ * Checks if an object has error-like properties.
+ */
+function isErrorLike(obj: unknown): obj is ErrorLike {
+  return typeof obj === "object" && obj !== null;
+}
+
+/**
  * Type guard to check if an error is a FoundryError.
  *
  * @param error - Error to check
@@ -78,12 +93,12 @@ export function createFoundryError(
  * ```
  */
 export function isFoundryError(error: unknown): error is FoundryError {
+  if (!isErrorLike(error)) return false;
+
   return (
-    typeof error === "object" &&
-    error !== null &&
     "code" in error &&
     "message" in error &&
-    typeof (error as any).code === "string" &&
-    typeof (error as any).message === "string"
+    typeof error.code === "string" &&
+    typeof error.message === "string"
   );
 }

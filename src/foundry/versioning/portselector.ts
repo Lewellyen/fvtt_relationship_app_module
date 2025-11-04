@@ -6,6 +6,7 @@ import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 import { ENV } from "@/config/environment";
 import { PERFORMANCE_MARKS } from "@/core/performance-constants";
 import { MODULE_CONSTANTS } from "@/constants";
+import { MetricsCollector } from "@/observability/metrics-collector";
 
 /**
  * Factory function type for creating port instances.
@@ -51,7 +52,7 @@ export class PortSelector {
   ): Result<T, FoundryError> {
     // Performance tracking (only in debug/performance mode)
     if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.PORT_SELECTION_START);
+      performance.mark(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START);
     }
 
     // Use central version detection
@@ -75,7 +76,7 @@ export class PortSelector {
 
     // Find highest compatible factory (<= Foundry version)
     let selectedFactory: PortFactory<T> | undefined;
-    let selectedVersion = -1;
+    let selectedVersion: number = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
 
     for (const [portVersion, factory] of factories.entries()) {
       if (portVersion > version) {
@@ -91,6 +92,12 @@ export class PortSelector {
       const availableVersions = Array.from(factories.keys())
         .sort((a, b) => a - b)
         .join(", ");
+
+      // Track port selection failure
+      if (ENV.enablePerformanceTracking) {
+        MetricsCollector.getInstance().recordPortSelectionFailure(version);
+      }
+
       return err(
         createFoundryError(
           "PORT_SELECTION_FAILED",
@@ -105,6 +112,11 @@ export class PortSelector {
     try {
       result = ok(selectedFactory());
     } catch (error) {
+      // Track instantiation failure
+      if (ENV.enablePerformanceTracking) {
+        MetricsCollector.getInstance().recordPortSelectionFailure(version);
+      }
+
       result = err(
         createFoundryError(
           "PORT_SELECTION_FAILED",
@@ -117,18 +129,31 @@ export class PortSelector {
 
     // Performance tracking end
     if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.PORT_SELECTION_END);
+      performance.mark(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END);
       performance.measure(
-        PERFORMANCE_MARKS.PORT_SELECTION_DURATION,
-        PERFORMANCE_MARKS.PORT_SELECTION_START,
-        PERFORMANCE_MARKS.PORT_SELECTION_END
+        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION,
+        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START,
+        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END
       );
 
-      const measure = performance.getEntriesByName(PERFORMANCE_MARKS.PORT_SELECTION_DURATION)[0];
+      // Get the latest measurement entry (not the first one which could be stale)
+      const entries = performance.getEntriesByName(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION);
+      const measure = entries.at(-1);
+      
       if (measure && ENV.enableDebugMode) {
         console.debug(
           `${MODULE_CONSTANTS.LOG_PREFIX} Port selection completed in ${measure.duration.toFixed(2)}ms (selected: v${selectedVersion})`
         );
+      }
+
+      // Clean up performance marks/measures to prevent memory leaks
+      performance.clearMarks(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START);
+      performance.clearMarks(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END);
+      performance.clearMeasures(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION);
+
+      // Record port selection metrics
+      if (result.ok) {
+        MetricsCollector.getInstance().recordPortSelection(selectedVersion);
       }
     }
 

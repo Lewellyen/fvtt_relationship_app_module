@@ -24,6 +24,7 @@ function generateScopeId(): string {
  * - Generate scope names
  * - Dispose instances (including Disposable pattern support)
  * - Cascade disposal to children
+ * - Enforce maximum scope depth (stack overflow protection)
  *
  * Design:
  * - NO dependency on ServiceResolver (avoids circular dependency)
@@ -31,14 +32,22 @@ function generateScopeId(): string {
  * - Disposal order: children first, then instances (critical!)
  */
 export class ScopeManager {
+  private readonly MAX_SCOPE_DEPTH = 10; // Prevent deep nesting and potential stack overflow
   private children = new Set<ScopeManager>();
   private disposed = false;
+  private readonly depth: number;
+  private readonly scopeId: string; // Unique correlation ID for tracing
 
   constructor(
     private readonly scopeName: string,
     private readonly parent: ScopeManager | null,
-    private readonly cache: InstanceCache
-  ) {}
+    private readonly cache: InstanceCache,
+    depth: number = 0
+  ) {
+    this.depth = depth;
+    // Generate unique correlation ID for this scope (useful for logging/tracing)
+    this.scopeId = `${scopeName}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }
 
   /**
    * Creates a child scope manager.
@@ -47,7 +56,7 @@ export class ScopeManager {
    * to avoid circular dependency with ServiceResolver.
    *
    * @param name - Optional custom name for the scope
-   * @returns Result with child scope data or error if disposed
+   * @returns Result with child scope data or error if disposed or max depth exceeded
    */
   createChild(
     name?: string
@@ -59,6 +68,14 @@ export class ScopeManager {
       });
     }
 
+    // Check maximum scope depth (stack overflow protection)
+    if (this.depth >= this.MAX_SCOPE_DEPTH) {
+      return err({
+        code: "MaxScopeDepthExceeded",
+        message: `Maximum scope depth of ${this.MAX_SCOPE_DEPTH} exceeded. Current depth: ${this.depth}`,
+      });
+    }
+
     // Build hierarchical scope name
     const uniqueId = name ?? `scope-${generateScopeId()}`;
     const childScopeName = `${this.scopeName}.${uniqueId}`;
@@ -66,8 +83,8 @@ export class ScopeManager {
     // Create new cache for child
     const childCache = new InstanceCache();
 
-    // Create child manager
-    const childManager = new ScopeManager(childScopeName, this, childCache);
+    // Create child manager with incremented depth
+    const childManager = new ScopeManager(childScopeName, this, childCache, this.depth + 1);
 
     // Only add to children set AFTER successful creation
     this.children.add(childManager);
@@ -205,5 +222,23 @@ export class ScopeManager {
    */
   getScopeName(): string {
     return this.scopeName;
+  }
+
+  /**
+   * Gets the unique correlation ID for this scope.
+   * 
+   * Useful for tracing and logging in distributed/concurrent scenarios.
+   * Each scope gets a unique ID combining name, timestamp, and random string.
+   *
+   * @returns The unique scope ID (e.g., "root-1730761234567-abc123")
+   * 
+   * @example
+   * ```typescript
+   * const scope = container.createScope("request").value!;
+   * logger.info(`[${scope.getScopeId()}] Processing request`);
+   * ```
+   */
+  getScopeId(): string {
+    return this.scopeId;
   }
 }

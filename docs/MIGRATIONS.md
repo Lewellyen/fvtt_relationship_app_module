@@ -4,6 +4,39 @@ Dieser Guide hilft dir beim Upgrade zwischen Major- und Minor-Versionen des Modu
 
 ---
 
+## 🔮 Geplante Änderungen (Version 1.0.0)
+
+Die folgenden Breaking Changes sind für Version 1.0.0 geplant:
+
+### 1. MetricsCollector API-Änderung
+
+**Aktuell (0.0.x)**:
+```typescript
+const metrics = MetricsCollector.getInstance();
+```
+
+**Geplant (1.0.0)**:
+```typescript
+const api = game.modules.get('fvtt_relationship_app_module').api;
+const metrics = api.resolve(api.tokens.metricsCollectorToken);
+```
+
+**Begründung**: Singleton-Pattern wird durch DI ersetzt für bessere Testbarkeit.
+
+### 2. ServiceRegistration Type-Änderung
+
+**Aktuell**: Interface mit optionalen Properties  
+**Geplant**: Discriminated Union für Type-Safety
+
+Dies ist eine interne Änderung und betrifft nur direkte Container-Erweiterungen.
+
+### 3. Minimale Node.js-Version
+
+**Aktuell**: Node.js 18+  
+**Geplant**: Node.js 20+ (LTS)
+
+---
+
 ## v0.0.14 → v0.0.15 (Aktuell)
 
 ### 🚨 Breaking Changes

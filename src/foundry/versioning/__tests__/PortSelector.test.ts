@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { PortSelector } from "../portselector";
-import { getFoundryVersionResult } from "../versiondetector";
+import { getFoundryVersionResult, resetVersionCache } from "../versiondetector";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok, err } from "@/utils/result";
 
 vi.mock("../versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
+  resetVersionCache: vi.fn(),
 }));
 
 describe("PortSelector", () => {
@@ -18,6 +19,7 @@ describe("PortSelector", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    resetVersionCache(); // Clear version cache for test isolation
   });
 
   describe("selectPortFromFactories", () => {

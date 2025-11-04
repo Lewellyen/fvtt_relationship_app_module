@@ -97,6 +97,38 @@ describe("FoundryHooksService", () => {
     });
   });
 
+  describe("once delegation", () => {
+    it("should delegate to port", () => {
+      const callback = vi.fn();
+      mockPort.once = vi.fn().mockReturnValue(ok(2));
+
+      const result = service.once("renderJournalDirectory", callback);
+
+      expectResultOk(result);
+      expect(mockPort.once).toHaveBeenCalledWith("renderJournalDirectory", callback);
+      expect(result.value).toBe(2);
+    });
+
+    it("should NOT track once-hooks (auto-cleanup by Foundry)", () => {
+      const callback = vi.fn();
+      mockPort.once = vi.fn().mockReturnValue(ok(42));
+
+      const hookId = service.once("testHook", callback);
+      expectResultOk(hookId);
+      expect(hookId.value).toBe(42);
+
+      // Mock global Hooks for disposal
+      const mockHooksOff = vi.fn();
+      vi.stubGlobal("Hooks", { off: mockHooksOff });
+
+      // Dispose should NOT try to remove once-hooks (they auto-remove)
+      service.dispose();
+
+      // once-hook should NOT be in the off() calls
+      expect(mockHooksOff).not.toHaveBeenCalledWith("testHook", expect.anything());
+    });
+  });
+
   describe("off delegation", () => {
     it("should delegate to port", () => {
       const callback = vi.fn();

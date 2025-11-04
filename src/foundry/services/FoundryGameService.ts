@@ -2,6 +2,7 @@ import type { Result } from "@/types/result";
 import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
 import type { PortSelector } from "@/foundry/versioning/portselector";
 import type { PortRegistry } from "@/foundry/versioning/portregistry";
 import { portSelectorToken, foundryGamePortRegistryToken } from "@/foundry/foundrytokens";
@@ -9,8 +10,10 @@ import { portSelectorToken, foundryGamePortRegistryToken } from "@/foundry/found
 /**
  * Service wrapper for FoundryGame that automatically selects the appropriate port
  * based on the current Foundry version.
+ *
+ * Implements Disposable for resource cleanup consistency.
  */
-export class FoundryGameService implements FoundryGame {
+export class FoundryGameService implements FoundryGame, Disposable {
   static dependencies = [portSelectorToken, foundryGamePortRegistryToken] as const;
 
   private port: FoundryGame | null = null;
@@ -57,5 +60,13 @@ export class FoundryGameService implements FoundryGame {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.getJournalEntryById(id);
+  }
+
+  /**
+   * Cleans up resources.
+   * Resets the port reference to allow garbage collection.
+   */
+  dispose(): void {
+    this.port = null;
   }
 }

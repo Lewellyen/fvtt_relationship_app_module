@@ -1,6 +1,7 @@
 import type { Result } from "@/types/result";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { portSelectorToken, foundryUIPortRegistryToken } from "@/foundry/foundrytokens";
@@ -8,8 +9,10 @@ import { portSelectorToken, foundryUIPortRegistryToken } from "@/foundry/foundry
 /**
  * Service wrapper for FoundryUI that automatically selects the appropriate port
  * based on the current Foundry version.
+ *
+ * Implements Disposable for resource cleanup consistency.
  */
-export class FoundryUIService implements FoundryUI {
+export class FoundryUIService implements FoundryUI, Disposable {
   static dependencies = [portSelectorToken, foundryUIPortRegistryToken] as const;
 
   private port: FoundryUI | null = null;
@@ -66,5 +69,13 @@ export class FoundryUIService implements FoundryUI {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.notify(message, type);
+  }
+
+  /**
+   * Cleans up resources.
+   * Resets the port reference to allow garbage collection.
+   */
+  dispose(): void {
+    this.port = null;
   }
 }

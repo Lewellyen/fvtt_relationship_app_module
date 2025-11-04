@@ -15,30 +15,82 @@ import type { PortRegistry } from "./versioning/portregistry";
 
 /**
  * Injection token for FoundryGame service.
+ *
+ * Provides access to Foundry's game API, specifically journal entries.
+ * Automatically selects version-appropriate port implementation.
+ *
+ * @example
+ * ```typescript
+ * const game = container.resolve(foundryGameToken);
+ * const entries = game.getJournalEntries();
+ * if (entries.ok) {
+ *   console.log(`Found ${entries.value.length} journal entries`);
+ * }
+ * ```
  */
 export const foundryGameToken: InjectionToken<FoundryGame> =
   createInjectionToken<FoundryGame>("FoundryGame");
 
 /**
  * Injection token for FoundryHooks service.
+ *
+ * Provides access to Foundry's hook system for event registration.
+ * Automatically selects version-appropriate port implementation.
+ *
+ * @example
+ * ```typescript
+ * const hooks = container.resolve(foundryHooksToken);
+ * hooks.on("renderJournalDirectory", (app, html) => {
+ *   console.log("Journal directory rendered");
+ * });
+ * ```
  */
 export const foundryHooksToken: InjectionToken<FoundryHooks> =
   createInjectionToken<FoundryHooks>("FoundryHooks");
 
 /**
  * Injection token for FoundryDocument service.
+ *
+ * Provides access to Foundry's document API for flag management.
+ * Automatically selects version-appropriate port implementation.
+ *
+ * @example
+ * ```typescript
+ * const doc = container.resolve(foundryDocumentToken);
+ * const flag = doc.getFlag(journal, "my-module", "my-flag");
+ * if (flag.ok) {
+ *   console.log("Flag value:", flag.value);
+ * }
+ * ```
  */
 export const foundryDocumentToken: InjectionToken<FoundryDocument> =
   createInjectionToken<FoundryDocument>("FoundryDocument");
 
 /**
  * Injection token for FoundryUI service.
+ *
+ * Provides access to Foundry's UI manipulation API for notifications
+ * and DOM element management.
+ *
+ * @example
+ * ```typescript
+ * const ui = container.resolve(foundryUIToken);
+ * ui.notify("Operation successful", "info");
+ * ```
  */
 export const foundryUIToken: InjectionToken<FoundryUI> =
   createInjectionToken<FoundryUI>("FoundryUI");
 
 /**
  * Injection token for PortSelector.
+ *
+ * Selects the appropriate port implementation based on the current
+ * Foundry VTT version. Uses factory-based selection to prevent crashes
+ * from incompatible port constructors.
+ *
+ * @remarks
+ * This is a core infrastructure service used internally by Foundry services.
+ * Typically not accessed directly by application code.
  */
 export const portSelectorToken: InjectionToken<PortSelector> =
   createInjectionToken<PortSelector>("PortSelector");
@@ -69,6 +121,18 @@ export const foundryUIPortRegistryToken: InjectionToken<PortRegistry<FoundryUI>>
 
 /**
  * Injection token for FoundrySettings service.
+ *
+ * Provides access to Foundry's settings system for module configuration.
+ * Automatically selects version-appropriate port implementation.
+ *
+ * @example
+ * ```typescript
+ * const settings = container.resolve(foundrySettingsToken);
+ * const logLevel = settings.get("my-module", "logLevel");
+ * if (logLevel.ok) {
+ *   console.log("Current log level:", logLevel.value);
+ * }
+ * ```
  */
 export const foundrySettingsToken: InjectionToken<FoundrySettings> =
   createInjectionToken<FoundrySettings>("FoundrySettings");

@@ -1,6 +1,7 @@
 import type { Result } from "@/types/result";
 import type { FoundrySettings, SettingConfig } from "@/foundry/interfaces/FoundrySettings";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
 import type { PortSelector } from "@/foundry/versioning/portselector";
 import type { PortRegistry } from "@/foundry/versioning/portregistry";
 import { portSelectorToken, foundrySettingsPortRegistryToken } from "@/foundry/foundrytokens";
@@ -8,8 +9,10 @@ import { portSelectorToken, foundrySettingsPortRegistryToken } from "@/foundry/f
 /**
  * Service wrapper for FoundrySettings that automatically selects the appropriate port
  * based on the current Foundry version.
+ *
+ * Implements Disposable for resource cleanup consistency.
  */
-export class FoundrySettingsService implements FoundrySettings {
+export class FoundrySettingsService implements FoundrySettings, Disposable {
   static dependencies = [portSelectorToken, foundrySettingsPortRegistryToken] as const;
 
   private port: FoundrySettings | null = null;
@@ -62,5 +65,13 @@ export class FoundrySettingsService implements FoundrySettings {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     return portResult.value.set(namespace, key, value);
+  }
+
+  /**
+   * Cleans up resources.
+   * Resets the port reference to allow garbage collection.
+   */
+  dispose(): void {
+    this.port = null;
   }
 }

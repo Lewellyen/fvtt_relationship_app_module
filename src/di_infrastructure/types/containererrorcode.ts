@@ -25,4 +25,7 @@ export type ContainerErrorCode =
   | "InvalidOperation" // General invalid operation error
   | "NotValidated" // Container must be validated before resolving
   | "AliasTargetNotFound" // Alias points to a token that is not registered
-  | "PartialDisposal"; // Some child scopes failed to dispose properly
+  | "PartialDisposal" // Some child scopes failed to dispose properly
+  | "MaxRegistrationsExceeded" // Maximum number of service registrations exceeded (DoS protection)
+  | "MaxScopeDepthExceeded" // Maximum scope hierarchy depth exceeded (stack overflow protection)
+  | "InvalidFactory"; // Factory is not a valid function

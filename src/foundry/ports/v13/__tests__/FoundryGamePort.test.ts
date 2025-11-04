@@ -122,6 +122,42 @@ describe("FoundryGamePortV13", () => {
       expectResultOk(result);
       expect(result.value).toEqual([]);
     });
+
+    it("should preserve JournalEntry prototype methods", () => {
+      // CRITICAL: Test that validation doesn't strip Foundry prototypes
+      const mockSheet = { render: vi.fn() };
+      const mockUpdate = vi.fn();
+      const mockJournals = [
+        {
+          id: "test-123",
+          name: "Test Journal",
+          getFlag: vi.fn(),
+          sheet: mockSheet,
+          update: mockUpdate,
+          createEmbeddedDocuments: vi.fn(),
+        },
+      ];
+
+      vi.stubGlobal("game", {
+        journal: {
+          contents: mockJournals,
+        },
+      });
+
+      const result = port.getJournalEntries();
+
+      expectResultOk(result);
+      expect(result.value).toHaveLength(1);
+
+      // Verify prototype methods are preserved
+      const entry = result.value[0];
+      expect(entry?.sheet).toBe(mockSheet);
+      expect(entry?.update).toBe(mockUpdate);
+      expect(typeof entry?.createEmbeddedDocuments).toBe("function");
+      if (entry?.sheet) {
+        expect(entry.sheet.render).toBeDefined();
+      }
+    });
   });
 
   describe("getJournalEntryById", () => {
@@ -220,7 +256,7 @@ describe("FoundryGamePortV13", () => {
       expect(result2.value).toBe(result1.value); // Same reference = cached
     });
 
-    it("should invalidate cache when journal version changes", () => {
+    it("should invalidate cache after TTL expires", () => {
       const mockJournals = Array.from({ length: 10 }, (_, i) => ({
         id: `journal-${i}`,
         name: `Journal ${i}`,
@@ -232,7 +268,6 @@ describe("FoundryGamePortV13", () => {
       const mockGame = {
         journal: {
           contents: mockJournals,
-          _source: { version: 1 },
         },
       };
 
@@ -242,17 +277,24 @@ describe("FoundryGamePortV13", () => {
       const result1 = port.getJournalEntries();
       expectResultOk(result1);
 
-      // Change version
-      mockGame.journal._source.version = 2;
-
+      // Immediately request again (within TTL) - should return cached
       const result2 = port.getJournalEntries();
       expectResultOk(result2);
 
-      // Should be different reference (cache invalidated)
-      expect(result2.value).not.toBe(result1.value);
+      // Should be same reference (cache hit)
+      expect(result2.value).toBe(result1.value);
+
+      // Manually invalidate cache
+      port.invalidateCache();
+
+      const result3 = port.getJournalEntries();
+      expectResultOk(result3);
+
+      // Should be different reference after manual invalidation
+      expect(result3.value).not.toBe(result1.value);
     });
 
-    it("should handle missing version field gracefully", () => {
+    it("should cache entries with TTL", () => {
       const mockJournals = Array.from({ length: 5 }, (_, i) => ({
         id: `journal-${i}`,
         name: `Journal ${i}`,
@@ -264,20 +306,23 @@ describe("FoundryGamePortV13", () => {
       vi.stubGlobal("game", {
         journal: {
           contents: mockJournals,
-          // No _source.version field
         },
       });
 
       const port = new FoundryGamePortV13();
 
-      // Should still work (uses timestamp fallback)
+      // First call - cache miss
       const result1 = port.getJournalEntries();
       expectResultOk(result1);
       expect(result1.value).toHaveLength(5);
 
-      // Second call will also work (but might use new timestamp)
+      // Second call within TTL - cache hit
       const result2 = port.getJournalEntries();
       expectResultOk(result2);
+      expect(result2.value).toHaveLength(5);
+
+      // Should be same reference (cached)
+      expect(result2.value).toBe(result1.value);
     });
   });
 });

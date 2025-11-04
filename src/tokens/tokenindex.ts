@@ -3,13 +3,35 @@ import type { Logger } from "@/interfaces/logger";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
 
 /**
- * Token for resolving Logger service instances.
- * Used to inject logging functionality throughout the application.
+ * Injection token for the application logger service.
+ *
+ * Resolves to ConsoleLoggerService, providing structured logging
+ * with configurable log levels (DEBUG, INFO, WARN, ERROR).
+ *
+ * @example
+ * ```typescript
+ * const logger = container.resolve(loggerToken);
+ * logger.info("Application started");
+ * logger.error("Error occurred", { code: 500, details: error });
+ * ```
  */
 export const loggerToken = createInjectionToken<Logger>("Logger");
 
 /**
- * Token for resolving the JournalVisibilityService.
+ * Injection token for the JournalVisibilityService.
+ *
+ * Manages visibility of journal entries based on module flags.
+ * Handles hiding/showing entries in the Foundry UI and processes
+ * journal directory rendering.
+ *
+ * @example
+ * ```typescript
+ * const service = container.resolve(journalVisibilityServiceToken);
+ * const hidden = service.getHiddenJournalEntries();
+ * if (hidden.ok) {
+ *   console.log(`Found ${hidden.value.length} hidden entries`);
+ * }
+ * ```
  */
 export const journalVisibilityServiceToken = createInjectionToken<JournalVisibilityService>(
   "JournalVisibilityService"

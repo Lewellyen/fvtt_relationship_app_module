@@ -147,9 +147,10 @@ describe("init-solid Bootstrap", () => {
       // FIXED: Sollte NICHT mehr werfen (graceful degradation)
       await expect(import("@/core/init-solid")).resolves.toBeDefined();
 
-      // Sollte Fehler zur Console loggen
-      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("bootstrap failed"));
-      expect(consoleErrorSpy).toHaveBeenCalledWith("Test bootstrap error");
+      // Sollte Fehler zur Console loggen (BootstrapErrorHandler nutzt console.group)
+      // Error wird mit "Component:", "Error:", "Metadata:" geloggt
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith("Error:", "Test bootstrap error");
 
       // Sollte UI-Notification zeigen
       expect(mockUI.notifications?.error).toHaveBeenCalledWith(

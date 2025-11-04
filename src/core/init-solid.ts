@@ -7,6 +7,7 @@ import { ModuleSettingsRegistrar } from "@/core/module-settings-registrar";
 import { tryGetFoundryVersion } from "@/foundry/versioning/versiondetector";
 import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import { LogLevel } from "@/config/environment";
+import { BootstrapErrorHandler } from "@/core/bootstrap-error-handler";
 
 /**
  * Boot-Orchestrierung für das Modul.
@@ -83,8 +84,13 @@ const bootstrapResult = root.bootstrap();
 const bootstrapOk = isOk(bootstrapResult);
 
 if (!bootstrapOk) {
-  console.error(`${MODULE_CONSTANTS.LOG_PREFIX} bootstrap failed`);
-  console.error(bootstrapResult.error);
+  BootstrapErrorHandler.logError(bootstrapResult.error, {
+    phase: "bootstrap",
+    component: "CompositionRoot",
+    metadata: {
+      foundryVersion: tryGetFoundryVersion(),
+    },
+  });
 
   // Check if error is due to old Foundry version
   let isOldFoundryVersion = false;

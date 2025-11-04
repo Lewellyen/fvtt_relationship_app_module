@@ -14,6 +14,32 @@ describe("FoundryUIPortV13", () => {
   });
 
   describe("removeJournalElement", () => {
+    it("should find element with data-document-id (Foundry v13)", () => {
+      const html = document.createElement("div");
+      html.innerHTML = `
+        <ul class="directory-list">
+          <li class="directory-item" data-document-id="abc123">Test Entry</li>
+        </ul>
+      `;
+
+      const result = port.removeJournalElement("abc123", "Test", html);
+      expectResultOk(result);
+      expect(html.querySelector('[data-document-id="abc123"]')).toBeNull();
+    });
+
+    it("should find element with data-entry-id (legacy fallback)", () => {
+      const html = document.createElement("div");
+      html.innerHTML = `
+        <ul class="directory-list">
+          <li class="directory-item" data-entry-id="xyz789">Test Entry</li>
+        </ul>
+      `;
+
+      const result = port.removeJournalElement("xyz789", "Test", html);
+      expectResultOk(result);
+      expect(html.querySelector('[data-entry-id="xyz789"]')).toBeNull();
+    });
+
     it("should remove journal element successfully", () => {
       const { container, element } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-123">Journal Entry</li>`,

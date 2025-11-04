@@ -67,6 +67,7 @@ export class ServiceContainer implements Container {
   private scopeManager: ScopeManager;
   private validationState: ContainerValidationState;
   private fallbackFactories = new Map<symbol, FallbackFactory<ServiceType>>();
+  private validationPromise: Promise<Result<void, ContainerError[]>> | null = null;
 
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
@@ -174,6 +175,15 @@ export class ServiceContainer implements Container {
       });
     }
 
+    // Validate factory parameter
+    if (!factory || typeof factory !== "function") {
+      return err({
+        code: "InvalidFactory",
+        message: "Factory must be a function",
+        tokenDescription: String(token),
+      });
+    }
+
     return this.registry.registerFactory(token, factory, lifecycle, dependencies);
   }
 
@@ -262,6 +272,62 @@ export class ServiceContainer implements Container {
    */
   getValidationState(): ContainerValidationState {
     return this.validationState;
+  }
+
+  /**
+   * Async-safe validation for concurrent environments.
+   *
+   * Prevents race conditions when multiple callers validate simultaneously
+   * by ensuring only one validation runs at a time.
+   *
+   * @returns Promise resolving to validation result
+   *
+   * @example
+   * ```typescript
+   * const container = ServiceContainer.createRoot();
+   * // ... register services
+   * await container.validateAsync(); // Safe for concurrent calls
+   * ```
+   */
+  async validateAsync(): Promise<Result<void, ContainerError[]>> {
+    // Return immediately if already validated
+    if (this.validationState === "validated") {
+      return ok(undefined);
+    }
+
+    // Wait for ongoing validation
+    if (this.validationPromise !== null) {
+      return this.validationPromise;
+    }
+
+    // Validation already in progress (sync)
+    if (this.validationState === "validating") {
+      return err([
+        {
+          code: "InvalidOperation",
+          message: "Validation already in progress",
+        },
+      ]);
+    }
+
+    this.validationState = "validating";
+
+    this.validationPromise = Promise.resolve().then(() => {
+      const result = this.validator.validate(this.registry);
+
+      if (result.ok) {
+        this.validationState = "validated";
+      } else {
+        this.validationState = "registering";
+      }
+
+      return result;
+    });
+
+    const result = await this.validationPromise;
+    this.validationPromise = null;
+
+    return result;
   }
 
   /**

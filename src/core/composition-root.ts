@@ -3,7 +3,7 @@ import type { Result } from "@/types/result";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
-import type { ModuleApi, ModuleApiTokens, TokenInfo } from "@/core/module-api";
+import type { ModuleApi, ModuleApiTokens, TokenInfo, HealthStatus } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
 import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/foundry/foundrytokens";
 import { PERFORMANCE_MARKS } from "@/core/performance-constants";
 import { ENV } from "@/config/environment";
+import { MetricsCollector } from "@/observability/metrics-collector";
 
 /**
  * CompositionRoot
@@ -38,7 +39,7 @@ export class CompositionRoot {
   bootstrap(): Result<ServiceContainer, string> {
     // Performance-Messung starten (nur in Debug-Mode)
     if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.BOOTSTRAP_START);
+      performance.mark(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START);
     }
 
     const container = ServiceContainer.createRoot();
@@ -46,19 +47,27 @@ export class CompositionRoot {
 
     // Performance-Messung beenden und loggen (nur in Debug-Mode)
     if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.BOOTSTRAP_END);
+      performance.mark(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END);
       performance.measure(
-        PERFORMANCE_MARKS.BOOTSTRAP_DURATION,
-        PERFORMANCE_MARKS.BOOTSTRAP_START,
-        PERFORMANCE_MARKS.BOOTSTRAP_END
+        PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION,
+        PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START,
+        PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END
       );
 
-      const measure = performance.getEntriesByName(PERFORMANCE_MARKS.BOOTSTRAP_DURATION)[0];
+      // Get the latest measurement entry (not the first one which could be stale)
+      const entries = performance.getEntriesByName(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION);
+      const measure = entries.at(-1);
+      
       if (measure && ENV.enableDebugMode) {
         console.debug(
           `${MODULE_CONSTANTS.LOG_PREFIX} Bootstrap completed in ${measure.duration.toFixed(2)}ms`
         );
       }
+
+      // Clean up performance marks/measures to prevent memory leaks
+      performance.clearMarks(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START);
+      performance.clearMarks(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END);
+      performance.clearMeasures(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION);
     }
 
     if (configured.ok) {
@@ -102,6 +111,8 @@ export class CompositionRoot {
     };
 
     const api: ModuleApi = {
+      version: "1.0.0",
+
       resolve: <TServiceType extends ServiceType>(token: InjectionToken<TServiceType>) =>
         container.resolve<TServiceType>(token),
 
@@ -131,6 +142,37 @@ export class CompositionRoot {
       },
 
       tokens: wellKnownTokens,
+
+      getMetrics: () => MetricsCollector.getInstance().getSnapshot(),
+
+      getHealth: (): HealthStatus => {
+        const containerValidated = this.container?.getValidationState() === "validated";
+        const metrics = MetricsCollector.getInstance().getSnapshot();
+        const hasPortSelections = Object.keys(metrics.portSelections).length > 0;
+        const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
+
+        // Determine overall status
+        let status: "healthy" | "degraded" | "unhealthy";
+        if (!containerValidated) {
+          status = "unhealthy";
+        } else if (hasPortFailures || metrics.resolutionErrors > 0) {
+          status = "degraded";
+        } else {
+          status = "healthy";
+        }
+
+        return {
+          status,
+          checks: {
+            containerValidated,
+            portsSelected: hasPortSelections,
+            lastError: hasPortFailures
+              ? `Port selection failures detected for versions: ${Object.keys(metrics.portSelectionFailures).join(", ")}`
+              : null,
+          },
+          timestamp: new Date().toISOString(),
+        };
+      },
     };
 
     // Type-safe assignment thanks to Module augmentation in global.d.ts

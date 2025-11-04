@@ -9,6 +9,7 @@ import { MODULE_CONSTANTS } from "@/constants";
 import { match } from "@/utils/result";
 import { foundryGameToken, foundryDocumentToken, foundryUIToken } from "@/foundry/foundrytokens";
 import { loggerToken } from "@/tokens/tokenindex";
+import { sanitizeHtml } from "@/foundry/validation/schemas";
 
 /**
  * Service for managing journal entry visibility based on module flags.
@@ -32,17 +33,14 @@ export class JournalVisibilityService {
   /**
    * Sanitizes a string for safe use in log messages.
    * Escapes HTML entities to prevent log injection or display issues.
+   * 
+   * Delegates to sanitizeHtml for robust DOM-based sanitization.
    *
    * @param input - The string to sanitize
    * @returns HTML-safe string
    */
   private sanitizeForLog(input: string): string {
-    return input
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+    return sanitizeHtml(input);
   }
 
   /**

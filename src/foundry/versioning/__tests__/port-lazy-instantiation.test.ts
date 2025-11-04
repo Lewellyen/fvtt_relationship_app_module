@@ -6,6 +6,8 @@ import { ok, err } from "@/utils/result";
 
 vi.mock("../versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
+  resetVersionCache: vi.fn(),
+  tryGetFoundryVersion: vi.fn(),
 }));
 
 describe("PortSelector - Lazy Instantiation", () => {

@@ -3,6 +3,7 @@ import {
   getFoundryVersion,
   tryGetFoundryVersion,
   getFoundryVersionResult,
+  resetVersionCache,
 } from "../versiondetector";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame } from "@/test/mocks/foundry";
@@ -11,6 +12,7 @@ import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 describe("versiondetector", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    resetVersionCache(); // Clear version cache for test isolation
   });
 
   describe("getFoundryVersion", () => {

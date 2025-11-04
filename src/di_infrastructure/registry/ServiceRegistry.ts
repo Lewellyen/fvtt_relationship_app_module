@@ -36,12 +36,14 @@ function hasDependencies<T extends ServiceType>(
  * - Manage service registrations (add, retrieve, check existence)
  * - Validate registrations (no duplicates, valid values)
  * - Support cloning for child containers
+ * - Enforce registration limits (DoS protection)
  *
  * This class does NOT handle:
  * - Service resolution (that's ServiceResolver's job)
  * - Dependency validation (that's ContainerValidator's job)
  */
 export class ServiceRegistry {
+  private readonly MAX_REGISTRATIONS = 10000; // DoS protection: prevent unlimited registrations
   private registrations = new Map<InjectionToken<ServiceType>, ServiceRegistration>();
   private lifecycleIndex = new Map<ServiceLifecycle, Set<InjectionToken<ServiceType>>>();
 
@@ -75,6 +77,15 @@ export class ServiceRegistry {
     serviceClass: ServiceClass<TServiceType>,
     lifecycle: ServiceLifecycle
   ): Result<void, ContainerError> {
+    // Check registration limit (DoS protection)
+    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
+      return err({
+        code: "MaxRegistrationsExceeded",
+        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
+        tokenDescription: String(token),
+      });
+    }
+
     if (this.registrations.has(token)) {
       return err({
         code: "DuplicateRegistration",
@@ -117,6 +128,15 @@ export class ServiceRegistry {
     lifecycle: ServiceLifecycle,
     dependencies: ServiceDependencies
   ): Result<void, ContainerError> {
+    // Check registration limit (DoS protection)
+    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
+      return err({
+        code: "MaxRegistrationsExceeded",
+        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
+        tokenDescription: String(token),
+      });
+    }
+
     if (this.registrations.has(token)) {
       return err({
         code: "DuplicateRegistration",
@@ -149,6 +169,15 @@ export class ServiceRegistry {
     token: InjectionToken<TServiceType>,
     value: TServiceType
   ): Result<void, ContainerError> {
+    // Check registration limit (DoS protection)
+    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
+      return err({
+        code: "MaxRegistrationsExceeded",
+        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
+        tokenDescription: String(token),
+      });
+    }
+
     if (this.registrations.has(token)) {
       return err({
         code: "DuplicateRegistration",
@@ -181,6 +210,15 @@ export class ServiceRegistry {
     aliasToken: InjectionToken<TServiceType>,
     targetToken: InjectionToken<TServiceType>
   ): Result<void, ContainerError> {
+    // Check registration limit (DoS protection)
+    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
+      return err({
+        code: "MaxRegistrationsExceeded",
+        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
+        tokenDescription: String(aliasToken),
+      });
+    }
+
     if (this.registrations.has(aliasToken)) {
       return err({
         code: "DuplicateRegistration",

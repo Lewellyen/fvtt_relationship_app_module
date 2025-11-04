@@ -28,7 +28,8 @@ export default defineConfig(() => {
       outDir: "dist",
       assetsDir: "assets",
       sourcemap: true,
-      minify: false, // Minification deaktiviert
+      minify: false, // Minification disabled for Foundry compatibility (keepNames not fully reliable)
+      // Alternative: Use esbuild minify with keepNames in production after testing
       rollupOptions: {
         input: {
           main: resolve(__dirname, "src/index.ts"),

@@ -19,8 +19,14 @@ export default [
     rules: {
       ...typescript.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': 'error',
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-deprecated': 'warn', // Warn on usage of @deprecated methods
+      '@typescript-eslint/explicit-function-return-type': ['warn', {
+        allowExpressions: true,
+        allowTypedFunctionExpressions: true,
+        allowHigherOrderFunctions: true,
+        allowDirectConstAssertionInArrowFunctions: true,
+      }],
       'prefer-const': 'error',
       'eqeqeq': ['error', 'always'],
 

@@ -7,6 +7,7 @@ import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
+import type { MetricsSnapshot } from "@/observability/metrics-collector";
 
 /**
  * Information about a registered service token.
@@ -34,6 +35,26 @@ export interface ModuleApiTokens {
 }
 
 /**
+ * Health status information for the module.
+ * Provides diagnostic information about module state.
+ */
+export interface HealthStatus {
+  /** Overall health status */
+  status: "healthy" | "degraded" | "unhealthy";
+  /** Individual health checks */
+  checks: {
+    /** Whether DI container is validated and ready */
+    containerValidated: boolean;
+    /** Whether Foundry ports have been selected */
+    portsSelected: boolean;
+    /** Last error encountered (if any) */
+    lastError: string | null;
+  };
+  /** Timestamp of health check */
+  timestamp: string;
+}
+
+/**
  * Public API exposed to external scripts and modules.
  * Provides controlled access to the DI container.
  *
@@ -42,6 +63,13 @@ export interface ModuleApiTokens {
  * @example
  * ```typescript
  * const api = game.modules.get('fvtt_relationship_app_module').api;
+ *
+ * // Check API version
+ * console.log(`API version: ${api.version}`);
+ *
+ * // Check health status
+ * const health = api.getHealth();
+ * console.log(`Module status: ${health.status}`);
  *
  * // Option 1: Use exported tokens
  * const logger = api.resolve(api.tokens.loggerToken);
@@ -54,6 +82,15 @@ export interface ModuleApiTokens {
  * ```
  */
 export interface ModuleApi {
+  /**
+   * API version following semantic versioning (MAJOR.MINOR.PATCH).
+   * Breaking changes increment MAJOR, new features increment MINOR, bugfixes increment PATCH.
+   * 
+   * Version History:
+   * - 1.0.0: Initial public API
+   */
+  readonly version: "1.0.0";
+
   /**
    * Resolves a service from the DI container.
    * @param token - The injection token identifying the service
@@ -101,4 +138,42 @@ export interface ModuleApi {
    * ```
    */
   tokens: ModuleApiTokens;
+
+  /**
+   * Gets a snapshot of performance metrics.
+   *
+   * Available when VITE_ENABLE_PERF_TRACKING is enabled.
+   * Provides insights into container resolution performance,
+   * cache hit rates, and port selection statistics.
+   *
+   * @returns Current metrics snapshot
+   *
+   * @example
+   * ```typescript
+   * const api = game.modules.get('fvtt_relationship_app_module').api;
+   * const metrics = api.getMetrics();
+   * console.table(metrics);
+   * ```
+   */
+  getMetrics: () => MetricsSnapshot;
+
+  /**
+   * Gets module health status.
+   * 
+   * Provides diagnostic information about module state, useful for
+   * troubleshooting and monitoring.
+   *
+   * @returns Health status with checks and overall status
+   * 
+   * @example
+   * ```typescript
+   * const api = game.modules.get('fvtt_relationship_app_module').api;
+   * const health = api.getHealth();
+   * 
+   * if (health.status !== 'healthy') {
+   *   console.warn('Module is not healthy:', health.checks);
+   * }
+   * ```
+   */
+  getHealth: () => HealthStatus;
 }

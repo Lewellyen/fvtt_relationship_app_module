@@ -31,5 +31,8 @@ export const MODULE_CONSTANTS = {
   },
   DEFAULTS: {
     UNKNOWN_NAME: "Unknown",
+    NO_VERSION_SELECTED: -1,
+    CACHE_NOT_INITIALIZED: -1,
+    CACHE_TTL_MS: 5000,
   },
 } as const;

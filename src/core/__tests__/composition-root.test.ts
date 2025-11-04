@@ -3,7 +3,6 @@ import { CompositionRoot } from "../composition-root";
 import { expectResultOk } from "@/test/utils/test-helpers";
 import { loggerToken } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
-import { PERFORMANCE_MARKS } from "../performance-constants";
 
 describe("CompositionRoot", () => {
   beforeEach(() => {
@@ -41,19 +40,18 @@ describe("CompositionRoot", () => {
 
       const root = new CompositionRoot();
 
-      // Clear previous marks
-      performance.clearMarks();
-      performance.clearMeasures();
+      // Spy on console.debug to verify performance logging happened
+      const consoleDebugSpy = vi.spyOn(console, "debug");
 
       root.bootstrap();
 
-      // Verify performance marks were created
-      const marks = performance.getEntriesByType("mark");
-      const measures = performance.getEntriesByType("measure");
+      // Verify performance logging occurred (marks are cleaned up after measurement)
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Bootstrap completed in")
+      );
+      expect(consoleDebugSpy).toHaveBeenCalledWith(expect.stringContaining("ms"));
 
-      expect(marks.some((m) => m.name === PERFORMANCE_MARKS.BOOTSTRAP_START)).toBe(true);
-      expect(marks.some((m) => m.name === PERFORMANCE_MARKS.BOOTSTRAP_END)).toBe(true);
-      expect(measures.some((m) => m.name === PERFORMANCE_MARKS.BOOTSTRAP_DURATION)).toBe(true);
+      consoleDebugSpy.mockRestore();
     });
 
     it("should skip performance tracking when debug mode disabled", async () => {

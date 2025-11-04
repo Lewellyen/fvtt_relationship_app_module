@@ -1,26 +1,32 @@
-import { z } from "zod";
+import * as v from "valibot";
 import type { Result } from "@/types/result";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { ok, err } from "@/utils/result";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
- * Zod schema for JournalEntry validation.
+ * Valibot schema for JournalEntry validation.
  * Validates that objects from Foundry API conform to expected structure.
  */
-// eslint-disable-next-line @typescript-eslint/naming-convention -- Zod schemas use PascalCase
-export const JournalEntrySchema = z.object({
-  id: z.string(),
-  name: z.string().optional(),
-  flags: z.record(z.unknown()).optional(),
-  getFlag: z.function().optional(),
-  setFlag: z.function().optional(),
+// eslint-disable-next-line @typescript-eslint/naming-convention -- Schemas use PascalCase
+export const JournalEntrySchema = v.object({
+  id: v.string(),
+  name: v.optional(v.string()),
+  flags: v.optional(v.record(v.string(), v.unknown())),
+  getFlag: v.optional(
+    v.custom<(scope: string, key: string) => unknown>((val) => typeof val === "function")
+  ),
+  setFlag: v.optional(
+    v.custom<(scope: string, key: string, value: unknown) => Promise<unknown>>(
+      (val) => typeof val === "function"
+    )
+  ),
 });
 
 /**
  * Type for validated journal entries.
  */
-export type ValidatedJournalEntry = z.infer<typeof JournalEntrySchema>;
+export type ValidatedJournalEntry = v.InferOutput<typeof JournalEntrySchema>;
 
 /**
  * Validates an array of journal entries against the schema.
@@ -40,14 +46,20 @@ export type ValidatedJournalEntry = z.infer<typeof JournalEntrySchema>;
 export function validateJournalEntries(
   entries: unknown[]
 ): Result<ValidatedJournalEntry[], FoundryError> {
-  try {
-    const validated = z.array(JournalEntrySchema).parse(entries);
-    return ok(validated);
-  } catch (error) {
+  const result = v.safeParse(v.array(JournalEntrySchema), entries);
+
+  if (!result.success) {
     return err(
-      createFoundryError("VALIDATION_FAILED", "Journal entry validation failed", undefined, error)
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Journal entry validation failed",
+        undefined,
+        result.issues
+      )
     );
   }
+
+  return ok(result.output);
 }
 
 /**
