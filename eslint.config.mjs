@@ -1,16 +1,15 @@
-const typescript = require('@typescript-eslint/eslint-plugin');
-const typescriptParser = require('@typescript-eslint/parser');
-const sveltePlugin = require('eslint-plugin-svelte');
-const svelteParser = require('svelte-eslint-parser');
+import typescript from '@typescript-eslint/eslint-plugin';
+import typescriptParser from '@typescript-eslint/parser';
+import sveltePlugin from 'eslint-plugin-svelte';
+import svelteParser from 'svelte-eslint-parser';
 
-module.exports = [
+export default [
   {
     files: ['**/*.{ts,js}'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
         project: './tsconfig.json',
-        tsconfigRootDir: __dirname,
         sourceType: 'module'
       }
     },
@@ -114,4 +113,5 @@ module.exports = [
       'eqeqeq': 'off' // Deaktiviert für absichtlichen Patch
     }
   }
-]; 
+];
+

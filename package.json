@@ -12,7 +12,7 @@
     "build:dev": "vite build --mode development",
     "dev": "vite build --watch --mode development",
     "check-all": "npm run type-check && npm run svelte-check && npm run lint && npm run css-lint && npm run format && npm run check:encoding",
-    "lint": "eslint --config eslint.config.cjs --no-ignore \"src/**/*.{ts,js,svelte}\" --fix",
+    "lint": "eslint --config eslint.config.mjs --no-ignore \"src/**/*.{ts,js,svelte}\" --fix",
     "css-lint": "stylelint \"styles/**/*.css\" --fix",
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch",
