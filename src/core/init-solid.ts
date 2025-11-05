@@ -29,7 +29,14 @@ function initializeFoundryModule(): void {
     return;
   }
 
-  const logger = containerResult.value.resolve(loggerToken);
+  const loggerResult = containerResult.value.resolveWithError(loggerToken);
+  if (!loggerResult.ok) {
+    console.error(
+      `${MODULE_CONSTANTS.LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`
+    );
+    return;
+  }
+  const logger = loggerResult.value;
 
   // Guard: Ensure Foundry Hooks API is available
   if (typeof Hooks === "undefined") {
@@ -51,15 +58,18 @@ function initializeFoundryModule(): void {
     new ModuleSettingsRegistrar().registerAll(initContainerResult.value);
 
     // Configure logger with current setting value
-    const settings = initContainerResult.value.resolve(foundrySettingsToken);
-    const logLevelResult = settings.get<number>(
-      MODULE_CONSTANTS.MODULE.ID,
-      MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
-    );
+    const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
+    if (settingsResult.ok) {
+      const settings = settingsResult.value;
+      const logLevelResult = settings.get<number>(
+        MODULE_CONSTANTS.MODULE.ID,
+        MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
+      );
 
-    if (logLevelResult.ok && logger.setMinLevel) {
-      logger.setMinLevel(logLevelResult.value as LogLevel);
-      logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+      if (logLevelResult.ok && logger.setMinLevel) {
+        logger.setMinLevel(logLevelResult.value as LogLevel);
+        logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+      }
     }
 
     // Register module hooks

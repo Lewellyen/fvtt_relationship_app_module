@@ -4,6 +4,9 @@
  * ⚠️ WICHTIG: Dieser Polyfill ist ein Legacy-Patch für die Cytoscape-Bibliothek.
  * NIEMALS ÄNDERN - könnte das Verhalten der Cytoscape-Integration beeinträchtigen.
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Legacy polyfill: `any` required for low-level Object.assign patching
+
 // Patch Object.assign only once and keep original semantics wherever possible
 const originalAssignRef = Object.assign as any;
 if (!(originalAssignRef && originalAssignRef.__cy_careful_patch)) {

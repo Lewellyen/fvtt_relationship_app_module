@@ -5,6 +5,16 @@ import { tryCatch, err, fromPromise } from "@/utils/result";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
+ * Type-safe interface for Foundry Settings with dynamic namespaces.
+ * Avoids 'any' while working around fvtt-types namespace restrictions.
+ */
+interface DynamicSettingsApi {
+  register<T>(namespace: string, key: string, config: SettingConfig<T>): void;
+  get<T>(namespace: string, key: string): T;
+  set<T>(namespace: string, key: string, value: T): Promise<T>;
+}
+
+/**
  * v13 implementation of FoundrySettings interface.
  * Encapsulates Foundry v13-specific settings API access.
  *
@@ -25,14 +35,10 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
 
     return tryCatch(
       () => {
-        // game.settings.register is typed by fvtt-types
-        // Type assertion needed: fvtt-types restricts namespace to "core",
-        // but modules can register their own namespaces
-        (game.settings.register as (ns: string, key: string, cfg: any) => void)(
-          namespace,
-          key,
-          config
-        );
+        // Type-safe cast for dynamic namespaces
+        // Foundry's Settings API supports module namespaces, but fvtt-types
+        // restricts namespace to "core" only
+        (game.settings as DynamicSettingsApi).register(namespace, key, config);
         return undefined;
       },
       (error) =>

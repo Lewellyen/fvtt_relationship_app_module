@@ -8,16 +8,16 @@ import { err } from "@/utils/result";
 
 /**
  * Retries an async operation with exponential backoff.
- * 
+ *
  * Useful for handling transient failures in external APIs (e.g., Foundry API calls).
- * 
+ *
  * @template SuccessType - The success type of the operation
  * @template ErrorType - The error type of the operation
  * @param fn - Async function that returns a Result
  * @param maxAttempts - Maximum number of attempts (default: 3)
  * @param delayMs - Base delay in milliseconds between attempts (default: 100)
  * @returns Promise resolving to the Result (success or last error)
- * 
+ *
  * @example
  * ```typescript
  * const result = await withRetry(
@@ -25,7 +25,7 @@ import { err } from "@/utils/result";
  *   3, // Max 3 attempts
  *   100 // Start with 100ms delay, then 200ms, 300ms
  * );
- * 
+ *
  * if (result.ok) {
  *   console.log('Success after retry:', result.value);
  * } else {
@@ -62,13 +62,13 @@ export async function withRetry<SuccessType, ErrorType>(
 /**
  * Retries a synchronous operation.
  * Similar to withRetry but for sync functions.
- * 
+ *
  * @template SuccessType - The success type
  * @template ErrorType - The error type
  * @param fn - Function that returns a Result
  * @param maxAttempts - Maximum number of attempts (default: 3)
  * @returns The Result (success or last error)
- * 
+ *
  * @example
  * ```typescript
  * const result = withRetrySy nc(
@@ -95,4 +95,3 @@ export function withRetrySync<SuccessType, ErrorType>(
 
   return err(lastError!);
 }
-

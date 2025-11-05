@@ -1,6 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import type { Snippet } from "svelte";
 
+  interface Props {
+    children?: Snippet;
+  }
+
+  let { children }: Props = $props();
   let error: Error | null = $state(null);
 
   onMount(() => {
@@ -32,13 +38,11 @@
           <pre>{error.stack}</pre>
         </details>
       {/if}
-      <button class="error-boundary__retry" onclick={resetError}>
-        Erneut versuchen
-      </button>
+      <button class="error-boundary__retry" onclick={resetError}> Erneut versuchen </button>
     </div>
   </div>
 {:else}
-  <slot />
+  {@render children?.()}
 {/if}
 
 <style>
@@ -109,4 +113,3 @@
     background: #b91c1c;
   }
 </style>
-

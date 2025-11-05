@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for testing invalid service classes
+
 import { describe, it, expect } from "vitest";
 import { ServiceRegistry } from "../ServiceRegistry";
 import { createInjectionToken } from "../../tokenutilities";
@@ -96,6 +99,22 @@ describe("ServiceRegistry", () => {
       const registration = registry.getRegistration(aliasToken);
       expect(registration?.providerType).toBe("alias");
       expect(registration?.aliasTarget).toBe(targetToken);
+    });
+
+    it("should reject duplicate alias registration", () => {
+      const registry = new ServiceRegistry();
+      const targetToken = createInjectionToken<TestService>("Target");
+      const aliasToken = createInjectionToken<TestService>("Alias");
+
+      registry.registerClass(targetToken, TestService, ServiceLifecycle.SINGLETON);
+      registry.registerAlias(aliasToken, targetToken);
+
+      // Try to register same alias again
+      const result = registry.registerAlias(aliasToken, targetToken);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DuplicateRegistration");
+      expect(result.error.message).toContain("already registered");
     });
 
     it("should reject duplicate registration", () => {

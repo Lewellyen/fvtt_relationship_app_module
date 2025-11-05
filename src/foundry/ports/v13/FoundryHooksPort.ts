@@ -6,6 +6,16 @@ import { tryCatch } from "@/utils/result";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
+ * Type-safe interface for Foundry Hooks with dynamic hook names.
+ * Avoids 'any' while working around fvtt-types strict hook name typing.
+ */
+interface DynamicHooksApi {
+  on(hookName: string, callback: (...args: unknown[]) => unknown): number;
+  once(hookName: string, callback: (...args: unknown[]) => unknown): number;
+  off(hookName: string, callbackOrId: number | ((...args: unknown[]) => unknown)): void;
+}
+
+/**
  * v13 implementation of FoundryHooks interface.
  * Encapsulates Foundry v13-specific hook system access.
  *
@@ -19,14 +29,10 @@ export class FoundryHooksPortV13 implements FoundryHooks {
         if (typeof Hooks === "undefined") {
           throw new Error("Foundry Hooks API is not available");
         }
-        // Type assertion needed: Our abstraction accepts any hook name (string),
-        // but fvtt-types Hooks.on() expects specific hook names (union type).
-        // This is intentional to keep our abstraction layer flexible.
-        // Foundry Hooks.on returns hook ID
-        const hookId = (Hooks.on as (hook: string, fn: (...args: any[]) => any) => number)(
-          hookName,
-          callback
-        );
+        // Type-safe cast for dynamic hook names
+        // Foundry's Hooks API supports dynamic hook names, but fvtt-types
+        // has strict keyof HookConfig typing that doesn't allow runtime strings
+        const hookId = (Hooks as DynamicHooksApi).on(hookName, callback);
         return hookId;
       },
       (error) =>
@@ -45,14 +51,10 @@ export class FoundryHooksPortV13 implements FoundryHooks {
         if (typeof Hooks === "undefined") {
           throw new Error("Foundry Hooks API is not available");
         }
-        // Type assertion needed: Our abstraction accepts any hook name (string),
-        // but fvtt-types Hooks.once() expects specific hook names (union type).
-        // This is intentional to keep our abstraction layer flexible.
-        // Foundry Hooks.once returns hook ID
-        const hookId = (Hooks.once as (hook: string, fn: (...args: any[]) => any) => number)(
-          hookName,
-          callback
-        );
+        // Type-safe cast for dynamic hook names
+        // Foundry's Hooks API supports dynamic hook names, but fvtt-types
+        // has strict keyof HookConfig typing that doesn't allow runtime strings
+        const hookId = (Hooks as DynamicHooksApi).once(hookName, callback);
         return hookId;
       },
       (error) =>
@@ -71,14 +73,10 @@ export class FoundryHooksPortV13 implements FoundryHooks {
         if (typeof Hooks === "undefined") {
           throw new Error("Foundry Hooks API is not available");
         }
-        // Type assertion needed: Our abstraction accepts any hook name (string),
-        // but fvtt-types Hooks.off() expects specific hook names (union type).
-        // This is intentional to keep our abstraction layer flexible.
-        // Foundry Hooks.off accepts hook ID or function
-        (Hooks.off as (hook: string, fn: number | ((...args: any[]) => any)) => void)(
-          hookName,
-          callbackOrId
-        );
+        // Type-safe cast for dynamic hook names
+        // Foundry's Hooks API supports dynamic hook names, but fvtt-types
+        // has strict keyof HookConfig typing that doesn't allow runtime strings
+        (Hooks as DynamicHooksApi).off(hookName, callbackOrId);
         return undefined;
       },
       (error) =>

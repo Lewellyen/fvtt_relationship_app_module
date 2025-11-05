@@ -1,6 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for mocking game.modules and ENV
+
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CompositionRoot } from "../composition-root";
 import { expectResultOk } from "@/test/utils/test-helpers";
+import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
 import { loggerToken } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 
@@ -154,7 +158,7 @@ describe("CompositionRoot", () => {
       const containerResult = root.getContainer();
       expectResultOk(containerResult);
 
-      const logger = containerResult.value.resolve(loggerToken);
+      const logger = containerResult.value.resolve(markAsApiSafe(loggerToken));
       expect(logger).toBeInstanceOf(ConsoleLoggerService);
     });
 
@@ -197,6 +201,37 @@ describe("CompositionRoot", () => {
       // Verify tokens can be used with resolve
       const logger = mod.api.resolve(tokens.loggerToken);
       expect(logger).toBeDefined();
+    });
+
+    it("should report healthy status when container is validated", () => {
+      const root = new CompositionRoot();
+      root.bootstrap();
+      root.exposeToModuleApi();
+
+      const mod = (game as any).modules.get("fvtt_relationship_app_module");
+      const health = mod.api.getHealth();
+
+      expect(health.status).toBe("healthy");
+      expect(health.checks.containerValidated).toBe(true);
+      expect(health.timestamp).toBeDefined();
+    });
+
+    it("should report degraded status when resolution errors exist", async () => {
+      const root = new CompositionRoot();
+      root.bootstrap();
+      root.exposeToModuleApi();
+
+      // Simulate resolution error by recording it in metrics
+      const metricsModule = await import("@/observability/metrics-collector");
+      const tokensModule = await import("@/di_infrastructure/tokenutilities");
+      const token = tokensModule.createInjectionToken("TestError");
+      metricsModule.MetricsCollector.getInstance().recordResolution(token, 0, false);
+
+      const mod = (game as any).modules.get("fvtt_relationship_app_module");
+      const health = mod.api.getHealth();
+
+      expect(health.status).toBe("degraded");
+      expect(health.checks.containerValidated).toBe(true);
     });
   });
 });

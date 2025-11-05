@@ -8,6 +8,16 @@ import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { portSelectorToken, foundryHooksPortRegistryToken } from "@/foundry/foundrytokens";
 
 /**
+ * Type-safe interface for Foundry Hooks with dynamic hook names.
+ * Allows calling Hooks.off() with runtime-determined hook names without using 'any'.
+ */
+interface DynamicHooksApi {
+  off(hookName: string, callback: (...args: unknown[]) => unknown): void;
+  on(hookName: string, callback: (...args: unknown[]) => unknown): number;
+  once(hookName: string, callback: (...args: unknown[]) => unknown): number;
+}
+
+/**
  * Service wrapper for FoundryHooks that automatically selects the appropriate port
  * based on the current Foundry version.
  *
@@ -71,7 +81,7 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
   once(hookName: string, callback: FoundryHookCallback): Result<number, FoundryError> {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
-    
+
     // once() hooks are automatically deregistered by Foundry after firing
     // No tracking needed - they clean themselves up
     return portResult.value.once(hookName, callback);
@@ -103,9 +113,10 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
       for (const [hookId, callback] of hookMap) {
         try {
           if (typeof Hooks !== "undefined") {
-            // Foundry's Hooks.off has strict types - use type assertion for dynamic hook names
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (Hooks as any).off(hookName, callback);
+            // Type-safe cast for dynamic hook names
+            // Foundry's Hooks API supports dynamic hook names, but fvtt-types
+            // has strict keyof HookConfig typing that doesn't allow runtime strings
+            (Hooks as DynamicHooksApi).off(hookName, callback);
           }
         } catch (error) {
           console.warn(`Failed to unregister hook ${hookName} (ID: ${hookId}):`, error);

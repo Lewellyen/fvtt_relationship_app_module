@@ -1,7 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for mocking FoundrySettings and Logger
+
 import { describe, it, expect, vi } from "vitest";
 import { ModuleSettingsRegistrar } from "../module-settings-registrar";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
+import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
 import { loggerToken } from "@/tokens/tokenindex";
 import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import { MODULE_CONSTANTS } from "@/constants";
@@ -15,7 +19,7 @@ describe("ModuleSettingsRegistrar", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
 
-      const mockSettings = container.resolve(foundrySettingsToken) as any;
+      const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
       const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
 
       const registrar = new ModuleSettingsRegistrar();
@@ -37,7 +41,7 @@ describe("ModuleSettingsRegistrar", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
 
-      const mockSettings = container.resolve(foundrySettingsToken) as any;
+      const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
       let onChangeCallback: ((value: number) => void) | undefined;
 
       vi.spyOn(mockSettings, "register").mockImplementation((ns, key, config: any) => {
@@ -45,7 +49,7 @@ describe("ModuleSettingsRegistrar", () => {
         return ok(undefined);
       });
 
-      const mockLogger = container.resolve(loggerToken) as Logger;
+      const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
       const setMinLevelSpy = vi.spyOn(mockLogger, "setMinLevel" as any);
       const infoSpy = vi.spyOn(mockLogger, "info");
 
@@ -65,7 +69,7 @@ describe("ModuleSettingsRegistrar", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
 
-      const mockSettings = container.resolve(foundrySettingsToken) as any;
+      const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
       let onChangeCallback: ((value: number) => void) | undefined;
 
       vi.spyOn(mockSettings, "register").mockImplementation((ns, key, config: any) => {
@@ -73,7 +77,7 @@ describe("ModuleSettingsRegistrar", () => {
         return ok(undefined);
       });
 
-      const mockLogger = container.resolve(loggerToken) as Logger;
+      const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
       // Remove setMinLevel
       delete (mockLogger as any).setMinLevel;
 
@@ -88,12 +92,12 @@ describe("ModuleSettingsRegistrar", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
 
-      const mockSettings = container.resolve(foundrySettingsToken) as any;
+      const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
       vi.spyOn(mockSettings, "register").mockReturnValue(
         err({ code: "OPERATION_FAILED", message: "Registration failed" })
       );
 
-      const mockLogger = container.resolve(loggerToken);
+      const mockLogger = container.resolve(markAsApiSafe(loggerToken));
       const errorSpy = vi.spyOn(mockLogger, "error");
 
       const registrar = new ModuleSettingsRegistrar();
@@ -111,7 +115,7 @@ describe("ModuleSettingsRegistrar", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
 
-      const mockSettings = container.resolve(foundrySettingsToken) as any;
+      const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
       const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
 
       const registrar = new ModuleSettingsRegistrar();

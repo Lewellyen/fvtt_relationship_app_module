@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for mocking container.resolve() responses
+
 import { describe, it, expect, vi } from "vitest";
 import { ModuleHookRegistrar } from "../module-hook-registrar";
 import { createMockContainer } from "@/test/mocks/foundry";
@@ -13,13 +16,14 @@ describe("ModuleHookRegistrar", () => {
 
       registrar.registerAll(mockContainer as never);
 
-      // Sollte alle Services auflösen
-      expect(mockContainer.resolve).toHaveBeenCalledWith(foundryHooksToken);
-      expect(mockContainer.resolve).toHaveBeenCalledWith(loggerToken);
-      expect(mockContainer.resolve).toHaveBeenCalledWith(journalVisibilityServiceToken);
+      // Sollte alle Services auflösen via resolveWithError()
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(foundryHooksToken);
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(loggerToken);
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(journalVisibilityServiceToken);
 
       // Sollte Hook registrieren
-      const mockHooks = mockContainer.resolve(foundryHooksToken) as any;
+      const hooksResult = mockContainer.resolveWithError(foundryHooksToken);
+      const mockHooks = (hooksResult as any).value as any;
       expect(mockHooks.on).toHaveBeenCalledWith(
         MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
         expect.any(Function)
@@ -33,7 +37,8 @@ describe("ModuleHookRegistrar", () => {
       registrar.registerAll(mockContainer as never);
 
       // Hook-Callback extrahieren
-      const mockHooks = mockContainer.resolve(foundryHooksToken) as any;
+      const hooksResult = mockContainer.resolveWithError(foundryHooksToken);
+      const mockHooks = (hooksResult as any).value as any;
       const hooksOnMock = mockHooks.on as ReturnType<typeof vi.fn>;
       const hookCall = hooksOnMock.mock.calls.find(
         ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
@@ -48,7 +53,8 @@ describe("ModuleHookRegistrar", () => {
       hookCallback!(mockApp, mockHtml);
 
       // processJournalDirectory sollte aufgerufen werden
-      const mockJournalService = mockContainer.resolve(journalVisibilityServiceToken) as any;
+      const journalResult = mockContainer.resolveWithError(journalVisibilityServiceToken);
+      const mockJournalService = (journalResult as any).value as any;
       expect(mockJournalService.processJournalDirectory).toHaveBeenCalledWith(mockHtml);
     });
 
@@ -58,7 +64,7 @@ describe("ModuleHookRegistrar", () => {
 
       registrar.registerAll(mockContainer as never);
 
-      const mockHooks = mockContainer.resolve(foundryHooksToken) as any;
+      const mockHooks = mockContainer.getMockHooks() as any;
       const hooksOnMock = mockHooks.on as ReturnType<typeof vi.fn>;
       const hookCall = hooksOnMock.mock.calls.find(
         ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
@@ -68,7 +74,7 @@ describe("ModuleHookRegistrar", () => {
       const mockHtml = document.createElement("div");
       hookCallback!({}, mockHtml);
 
-      const mockLogger = mockContainer.resolve(loggerToken) as any;
+      const mockLogger = mockContainer.getMockLogger();
       expect(mockLogger.debug).toHaveBeenCalledWith(
         expect.stringContaining(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY)
       );
@@ -80,7 +86,7 @@ describe("ModuleHookRegistrar", () => {
 
       registrar.registerAll(mockContainer as never);
 
-      const mockHooks = mockContainer.resolve(foundryHooksToken) as any;
+      const mockHooks = mockContainer.getMockHooks() as any;
       const hooksOnMock = mockHooks.on as ReturnType<typeof vi.fn>;
       const hookCall = hooksOnMock.mock.calls.find(
         ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
@@ -90,7 +96,7 @@ describe("ModuleHookRegistrar", () => {
       // Callback mit null HTML aufrufen
       hookCallback!({}, null as unknown as HTMLElement);
 
-      const mockLogger = mockContainer.resolve(loggerToken) as any;
+      const mockLogger = mockContainer.getMockLogger();
       expect(mockLogger.error).toHaveBeenCalledWith(
         "Failed to get HTMLElement from hook - incompatible format"
       );
@@ -98,7 +104,7 @@ describe("ModuleHookRegistrar", () => {
 
     it("should log error when hook registration fails", () => {
       const mockContainer = createMockContainer();
-      const mockHooks = mockContainer.resolve(foundryHooksToken) as any;
+      const mockHooks = mockContainer.getMockHooks() as any;
       mockHooks.on.mockReturnValue({
         ok: false as const,
         error: { code: "OPERATION_FAILED", message: "Hook failed" },
@@ -107,7 +113,7 @@ describe("ModuleHookRegistrar", () => {
       const registrar = new ModuleHookRegistrar();
       registrar.registerAll(mockContainer as never);
 
-      const mockLogger = mockContainer.resolve(loggerToken) as any;
+      const mockLogger = mockContainer.getMockLogger();
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.stringContaining("Failed to register"),
         expect.objectContaining({
@@ -124,7 +130,7 @@ describe("ModuleHookRegistrar", () => {
 
       registrar.registerAll(mockContainer as never);
 
-      const mockHooks = mockContainer.resolve(foundryHooksToken) as any;
+      const mockHooks = mockContainer.getMockHooks() as any;
       const hookCallback = mockHooks.on.mock.calls.find(
         ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
       )?.[1];
@@ -138,7 +144,7 @@ describe("ModuleHookRegistrar", () => {
 
       hookCallback({}, jQueryMock);
 
-      const mockJournalService = mockContainer.resolve(journalVisibilityServiceToken) as any;
+      const mockJournalService = mockContainer.getMockJournalService();
       expect(mockJournalService.processJournalDirectory).toHaveBeenCalledWith(realElement);
     });
 
@@ -148,7 +154,7 @@ describe("ModuleHookRegistrar", () => {
 
       registrar.registerAll(mockContainer as never);
 
-      const mockHooks = mockContainer.resolve(foundryHooksToken) as any;
+      const mockHooks = mockContainer.getMockHooks() as any;
       const hookCallback = mockHooks.on.mock.calls.find(
         ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
       )?.[1];
@@ -160,7 +166,7 @@ describe("ModuleHookRegistrar", () => {
 
       hookCallback({}, jQueryMock);
 
-      const mockJournalService = mockContainer.resolve(journalVisibilityServiceToken) as any;
+      const mockJournalService = mockContainer.getMockJournalService();
       expect(mockJournalService.processJournalDirectory).toHaveBeenCalledWith(realElement);
     });
 
@@ -170,7 +176,7 @@ describe("ModuleHookRegistrar", () => {
 
       registrar.registerAll(mockContainer as never);
 
-      const mockHooks = mockContainer.resolve(foundryHooksToken) as any;
+      const mockHooks = mockContainer.getMockHooks() as any;
       const hookCallback = mockHooks.on.mock.calls.find(
         ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
       )?.[1];
@@ -178,7 +184,7 @@ describe("ModuleHookRegistrar", () => {
       const nativeElement = document.createElement("div");
       hookCallback({}, nativeElement);
 
-      const mockJournalService = mockContainer.resolve(journalVisibilityServiceToken) as any;
+      const mockJournalService = mockContainer.getMockJournalService();
       expect(mockJournalService.processJournalDirectory).toHaveBeenCalledWith(nativeElement);
     });
 
@@ -188,14 +194,14 @@ describe("ModuleHookRegistrar", () => {
 
       registrar.registerAll(mockContainer as never);
 
-      const mockHooks = mockContainer.resolve(foundryHooksToken) as any;
+      const mockHooks = mockContainer.getMockHooks() as any;
       const hookCallback = mockHooks.on.mock.calls.find(
         ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
       )?.[1];
 
       hookCallback({}, { invalid: "object" });
 
-      const mockLogger = mockContainer.resolve(loggerToken) as any;
+      const mockLogger = mockContainer.getMockLogger();
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.stringContaining("Failed to get HTMLElement from hook")
       );

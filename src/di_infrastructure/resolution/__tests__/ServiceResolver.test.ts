@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for testing error scenarios with invalid types
+
 import { describe, it, expect } from "vitest";
 import { ServiceResolver } from "../ServiceResolver";
 import { ServiceRegistry } from "../../registry/ServiceRegistry";

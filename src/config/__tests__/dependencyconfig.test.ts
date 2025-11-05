@@ -1,6 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for mocking ENV and container methods
+
 import { describe, it, expect, vi } from "vitest";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "../dependencyconfig";
+import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
 import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
 import {
   foundryGameToken,
@@ -54,7 +58,7 @@ describe("dependencyconfig", () => {
       container.clear();
 
       // resolve() sollte Fallback nutzen (von configureDependencies gesetzt)
-      const logger = container.resolve(loggerToken);
+      const logger = container.resolve(markAsApiSafe(loggerToken));
       expect(logger).toBeInstanceOf(ConsoleLoggerService);
     });
 
@@ -82,7 +86,7 @@ describe("dependencyconfig", () => {
       registerValueSpy.mockRestore();
 
       // Fallback wurde VOR dem Fehler registriert und muss weiterhin greifen
-      const logger = container.resolve(loggerToken);
+      const logger = container.resolve(markAsApiSafe(loggerToken));
       expect(logger).toBeInstanceOf(ConsoleLoggerService);
     });
   });
@@ -313,7 +317,7 @@ describe("dependencyconfig", () => {
       const result = configureDependencies(container);
       expectResultOk(result);
 
-      const logger = container.resolve(loggerToken) as ConsoleLoggerService;
+      const logger = container.resolve(markAsApiSafe(loggerToken)) as ConsoleLoggerService;
 
       // Debug should be suppressed
       const debugSpy = vi.spyOn(console, "debug");
@@ -341,7 +345,7 @@ describe("dependencyconfig", () => {
       const result = configureDependencies(container);
       expectResultOk(result);
 
-      const logger = container.resolve(loggerToken) as ConsoleLoggerService;
+      const logger = container.resolve(markAsApiSafe(loggerToken)) as ConsoleLoggerService;
 
       // Debug should be shown
       const debugSpy = vi.spyOn(console, "debug");

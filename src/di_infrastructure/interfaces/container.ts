@@ -1,5 +1,6 @@
 import type { ServiceType } from "@/types/servicetypeindex";
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
+import type { ApiSafeToken } from "@/di_infrastructure/types/api-safe-token";
 import type { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import type { ServiceClass } from "@/di_infrastructure/types/serviceclass";
 import type { FactoryFunction } from "@/di_infrastructure/types/servicefactory";
@@ -151,14 +152,18 @@ export interface Container {
   ): Result<import("@/di_infrastructure/container").ServiceContainer, ContainerError>;
 
   /**
-   * Resolve a service instance directly from the container.
-   * Uses fallback factory if container resolution fails and a fallback is registered.
+   * Resolve a service instance directly from the container (throws on failure).
    *
-   * @param token - The injection token identifying the service
+   * **FOR EXTERNAL API USE ONLY**
+   *
+   * Only accepts ApiSafeToken types (tokens marked via markAsApiSafe()).
+   * Internal code must use resolveWithError() for Result-based error handling.
+   *
+   * @param token - An API-safe injection token
    * @returns The resolved service instance
-   * @throws Error if container resolution fails and no fallback is registered
+   * @throws Error if token is not API-safe or resolution fails
    */
-  resolve<TServiceType extends ServiceType>(token: InjectionToken<TServiceType>): TServiceType;
+  resolve<TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>): TServiceType;
 
   /**
    * Resolve a service instance from the container with explicit error handling.
@@ -179,11 +184,29 @@ export interface Container {
   ): Result<boolean, never>;
 
   /**
-   * Dispose this container and all child containers.
+   * Synchronously dispose this container and all child containers.
    * Cascades disposal to all children in the scope hierarchy.
+   *
+   * Use this for scenarios where async disposal is not possible (e.g., browser unload).
+   * For normal cleanup, prefer disposeAsync() which handles async disposal properly.
+   *
    * @returns Result indicating success or any disposal errors
    */
   dispose(): Result<void, ContainerError>;
+
+  /**
+   * Asynchronously dispose this container and all child containers.
+   * Cascades disposal to all children in the scope hierarchy.
+   *
+   * This is the preferred disposal method as it properly handles services that
+   * implement AsyncDisposable, allowing for proper cleanup of resources like
+   * database connections, file handles, or network sockets.
+   *
+   * Falls back to synchronous disposal for services implementing only Disposable.
+   *
+   * @returns Promise with Result indicating success or any disposal errors
+   */
+  disposeAsync(): Promise<Result<void, ContainerError>>;
 
   /**
    * Clear all service registrations and instances.

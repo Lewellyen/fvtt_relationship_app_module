@@ -4,19 +4,19 @@ import { LogLevel } from "@/config/environment";
 
 /**
  * JSON-based logger implementation for structured logging.
- * 
+ *
  * Outputs logs as JSON objects for easy parsing by log aggregation systems
  * (e.g., Elasticsearch, Splunk, CloudWatch).
- * 
+ *
  * Use this logger when machine-readable logs are needed instead of human-readable console output.
  *
  * @implements {Logger}
- * 
+ *
  * @example
  * ```typescript
  * // In dependencyconfig.ts:
  * container.registerClass(loggerToken, JsonLogger, ServiceLifecycle.SINGLETON);
- * 
+ *
  * // Output example:
  * {
  *   "timestamp": "2025-11-04T21:30:00.000Z",
@@ -41,7 +41,7 @@ export class JsonLogger implements Logger {
 
   /**
    * Internal method to output a JSON log entry.
-   * 
+   *
    * @param level - Log level
    * @param message - Log message
    * @param params - Additional data to include
@@ -108,4 +108,3 @@ export class JsonLogger implements Logger {
     this.logJson("debug", message, optionalParams);
   }
 }
-

@@ -1,4 +1,4 @@
-import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
+import type { ApiSafeToken } from "@/di_infrastructure/types/api-safe-token";
 import type { ServiceType } from "@/types/servicetypeindex";
 import type { Logger } from "@/interfaces/logger";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
@@ -21,17 +21,23 @@ export interface TokenInfo {
 }
 
 /**
- * Type-safe token collection with concrete generics.
- * Preserves type information when using api.resolve().
+ * Type-safe token collection for external modules.
+ *
+ * All tokens are branded as ApiSafeToken, allowing external modules
+ * to use both:
+ * - api.resolve() (exception-based, throws on error)
+ * - api.resolveWithError() (Result-based, explicit error handling)
+ *
+ * Internal code cannot use these with container.resolve() due to type enforcement.
  */
 export interface ModuleApiTokens {
-  loggerToken: InjectionToken<Logger>;
-  journalVisibilityServiceToken: InjectionToken<JournalVisibilityService>;
-  foundryGameToken: InjectionToken<FoundryGame>;
-  foundryHooksToken: InjectionToken<FoundryHooks>;
-  foundryDocumentToken: InjectionToken<FoundryDocument>;
-  foundryUIToken: InjectionToken<FoundryUI>;
-  foundrySettingsToken: InjectionToken<FoundrySettings>;
+  loggerToken: ApiSafeToken<Logger>;
+  journalVisibilityServiceToken: ApiSafeToken<JournalVisibilityService>;
+  foundryGameToken: ApiSafeToken<FoundryGame>;
+  foundryHooksToken: ApiSafeToken<FoundryHooks>;
+  foundryDocumentToken: ApiSafeToken<FoundryDocument>;
+  foundryUIToken: ApiSafeToken<FoundryUI>;
+  foundrySettingsToken: ApiSafeToken<FoundrySettings>;
 }
 
 /**
@@ -85,19 +91,38 @@ export interface ModuleApi {
   /**
    * API version following semantic versioning (MAJOR.MINOR.PATCH).
    * Breaking changes increment MAJOR, new features increment MINOR, bugfixes increment PATCH.
-   * 
+   *
    * Version History:
    * - 1.0.0: Initial public API
    */
   readonly version: "1.0.0";
 
   /**
-   * Resolves a service from the DI container.
-   * @param token - The injection token identifying the service
+   * Resolves a service from the DI container (throws on failure).
+   *
+   * **For external modules:** Exception-based error handling.
+   *
+   * Only accepts ApiSafeToken types (available via api.tokens).
+   * This ensures external modules use tokens that have been explicitly exposed
+   * and prevents internal token leakage.
+   *
+   * @param token - An API-safe injection token from api.tokens
    * @returns The resolved service instance
-   * @throws Error if service is not registered or cannot be resolved
+   * @throws Error if token is not API-safe or resolution fails
+   *
+   * @example
+   * ```typescript
+   * const api = game.modules.get('fvtt_relationship_app_module').api;
+   *
+   * try {
+   *   const logger = api.resolve(api.tokens.loggerToken);
+   *   logger.info("Success");
+   * } catch (error) {
+   *   console.error("Failed:", error);
+   * }
+   * ```
    */
-  resolve: <TServiceType extends ServiceType>(token: InjectionToken<TServiceType>) => TServiceType;
+  resolve: <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType;
 
   /**
    * Lists all registered service tokens with their descriptions.
@@ -159,17 +184,17 @@ export interface ModuleApi {
 
   /**
    * Gets module health status.
-   * 
+   *
    * Provides diagnostic information about module state, useful for
    * troubleshooting and monitoring.
    *
    * @returns Health status with checks and overall status
-   * 
+   *
    * @example
    * ```typescript
    * const api = game.modules.get('fvtt_relationship_app_module').api;
    * const health = api.getHealth();
-   * 
+   *
    * if (health.status !== 'healthy') {
    *   console.warn('Module is not healthy:', health.checks);
    * }

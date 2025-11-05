@@ -8,17 +8,17 @@ import type { ContainerError } from "@/di_infrastructure/interfaces/containererr
 
 /**
  * Sanitizes container errors for production use.
- * 
+ *
  * In production mode, removes potentially sensitive information like:
  * - Token descriptions (might reveal internal architecture)
  * - Error causes (might contain stack traces or system details)
  * - Detailed metadata
- * 
+ *
  * In development mode, returns error unchanged for debugging.
  *
  * @param error - The container error to sanitize
  * @returns Sanitized error safe for production logging
- * 
+ *
  * @example
  * ```typescript
  * const result = container.resolve(token);
@@ -44,7 +44,7 @@ export function sanitizeErrorForProduction(error: ContainerError): ContainerErro
 
 /**
  * Sanitizes a generic error message for production.
- * 
+ *
  * Removes stack traces and detailed error messages in production.
  *
  * @param message - The error message to sanitize
@@ -58,4 +58,3 @@ export function sanitizeMessageForProduction(message: string): string {
   // In production, return generic message
   return "An error occurred";
 }
-

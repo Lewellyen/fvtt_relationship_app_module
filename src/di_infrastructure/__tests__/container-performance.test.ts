@@ -1,8 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { ServiceContainer } from "../container";
 import { createInjectionToken } from "../tokenutilities";
+import { markAsApiSafe } from "../types/api-safe-token";
 import { ServiceLifecycle } from "../types/servicelifecycle";
 import type { Logger } from "@/interfaces/logger";
+
+// Helper for tests: Wrap tokens for resolve() testing (simulates external API usage)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const testResolve = <T>(container: ServiceContainer, token: any): T => {
+  return container.resolve(markAsApiSafe(token)) as T;
+};
 
 // Simple test service that implements Logger to satisfy ServiceType constraint
 class TestService implements Logger {
@@ -22,19 +29,14 @@ describe("Container Performance", () => {
     // Register 1000 services
     const tokens = Array.from({ length: 1000 }, (_, i) => {
       const token = createInjectionToken<TestService>(`Service${i}`);
-      container.registerFactory(
-        token,
-        () => new TestService(i),
-        ServiceLifecycle.SINGLETON,
-        []
-      );
+      container.registerFactory(token, () => new TestService(i), ServiceLifecycle.SINGLETON, []);
       return token;
     });
 
     container.validate();
 
     const start = performance.now();
-    tokens.forEach((token) => container.resolve(token));
+    tokens.forEach((token) => testResolve<TestService>(container, token));
     const duration = performance.now() - start;
 
     expect(duration).toBeLessThan(100);
@@ -52,12 +54,7 @@ describe("Container Performance", () => {
 
     tokens.forEach((token, i) => {
       const deps = i > 0 ? [tokens[i - 1]!] : [];
-      container.registerFactory(
-        token,
-        () => new TestService(i),
-        ServiceLifecycle.SINGLETON,
-        deps
-      );
+      container.registerFactory(token, () => new TestService(i), ServiceLifecycle.SINGLETON, deps);
     });
 
     const start = performance.now();
@@ -83,7 +80,7 @@ describe("Container Performance", () => {
       const result = parent.createScope(`child${i}`);
       return result.ok ? result.value : null;
     }).filter((c): c is ServiceContainer => c !== null);
-    
+
     children.forEach((child) => child.dispose());
     const duration = performance.now() - start;
 
@@ -139,7 +136,7 @@ describe("Container Performance", () => {
     const start = performance.now();
     // Resolve 1000 transient instances
     for (let i = 0; i < 1000; i++) {
-      container.resolve(token);
+      testResolve<TestService>(container, token);
     }
     const duration = performance.now() - start;
 
@@ -158,12 +155,7 @@ describe("Container Performance", () => {
     // Each service depends on the previous one
     tokens.forEach((token, i) => {
       const deps = i > 0 ? [tokens[i - 1]!] : [];
-      container.registerFactory(
-        token,
-        () => new TestService(i),
-        ServiceLifecycle.SINGLETON,
-        deps
-      );
+      container.registerFactory(token, () => new TestService(i), ServiceLifecycle.SINGLETON, deps);
     });
 
     const validateStart = performance.now();
@@ -174,10 +166,9 @@ describe("Container Performance", () => {
     expect(validateDuration).toBeLessThan(10);
 
     const resolveStart = performance.now();
-    container.resolve(tokens[tokens.length - 1]!);
+    testResolve<TestService>(container, tokens[tokens.length - 1]!);
     const resolveDuration = performance.now() - resolveStart;
 
     expect(resolveDuration).toBeLessThan(5);
   });
 });
-

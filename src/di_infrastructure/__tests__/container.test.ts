@@ -1,10 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for type manipulation in edge case tests
+
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ServiceContainer } from "../container";
 import { createInjectionToken } from "../tokenutilities";
+import { markAsApiSafe } from "../types/api-safe-token";
 import { ServiceLifecycle } from "../types/servicelifecycle";
+import type { ServiceType } from "@/types/servicetypeindex";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok } from "@/utils/result";
 import type { Logger } from "@/interfaces/logger";
+
+// Helper for tests: Wrap tokens for resolve() testing (simulates external API usage)
+// In production, only composition-root marks tokens as API-safe
+
+const testResolve = <T extends ServiceType>(container: ServiceContainer, token: any): T => {
+  return container.resolve(markAsApiSafe(token));
+};
 
 // Test-Services that implement Logger to satisfy ServiceType constraint
 class TestService implements Logger {
@@ -105,8 +117,8 @@ describe("ServiceContainer", () => {
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       container.validate();
 
-      const instance1 = container.resolve(token);
-      const instance2 = container.resolve(token);
+      const instance1 = testResolve<TestService>(container, token);
+      const instance2 = testResolve<TestService>(container, token);
 
       expect(instance1).toBe(instance2);
       expect(instance1.value).toBe(instance2.value);
@@ -125,8 +137,8 @@ describe("ServiceContainer", () => {
 
       child.validate();
 
-      const parentInstance = parent.resolve(token);
-      const childInstance = child.resolve(token);
+      const parentInstance = testResolve<TestService>(parent, token);
+      const childInstance = testResolve<TestService>(child, token);
 
       expect(parentInstance).toBe(childInstance);
     });
@@ -140,8 +152,8 @@ describe("ServiceContainer", () => {
       container.registerClass(token, TestService, ServiceLifecycle.TRANSIENT);
       container.validate();
 
-      const instance1 = container.resolve(token);
-      const instance2 = container.resolve(token);
+      const instance1 = testResolve<TestService>(container, token);
+      const instance2 = testResolve<TestService>(container, token);
 
       expect(instance1).not.toBe(instance2);
       expect(instance1.value).not.toBe(instance2.value);
@@ -173,8 +185,8 @@ describe("ServiceContainer", () => {
       const child = childResult.value;
       child.validate();
 
-      const instance1 = child.resolve(token);
-      const instance2 = child.resolve(token);
+      const instance1 = testResolve<TestService>(child, token);
+      const instance2 = testResolve<TestService>(child, token);
 
       expect(instance1).toBe(instance2);
     });
@@ -196,8 +208,8 @@ describe("ServiceContainer", () => {
       const child2 = child2Result.value;
       child2.validate();
 
-      const instance1 = child1.resolve(token);
-      const instance2 = child2.resolve(token);
+      const instance1 = testResolve<TestService>(child1, token);
+      const instance2 = testResolve<TestService>(child2, token);
 
       expect(instance1).not.toBe(instance2);
     });
@@ -279,7 +291,7 @@ describe("ServiceContainer", () => {
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       container.validate();
 
-      const instance = container.resolve(token);
+      const instance = testResolve<TestService>(container, token);
       expect(instance).toBeInstanceOf(TestService);
     });
 
@@ -356,7 +368,7 @@ describe("ServiceContainer", () => {
       container.validate();
 
       // Token NICHT registriert -> Fallback wird genutzt
-      const result = container.resolve(token);
+      const result = testResolve<TestService>(container, token);
       expect(result).toBeInstanceOf(TestService);
       expect(result.value).toBe(42);
     });
@@ -367,8 +379,8 @@ describe("ServiceContainer", () => {
       container.validate();
 
       // Kein Fallback -> Exception
-      expect(() => container.resolve(token)).toThrow();
-      expect(() => container.resolve(token)).toThrow(/No fallback/);
+      expect(() => testResolve(container, token)).toThrow();
+      expect(() => testResolve(container, token)).toThrow(/No fallback/);
     });
 
     it("should prefer registered service over fallback", () => {
@@ -379,7 +391,7 @@ describe("ServiceContainer", () => {
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       container.validate();
 
-      const instance = container.resolve(token);
+      const instance = testResolve<TestService>(container, token);
       // Sollte die registrierte Instanz sein, nicht der Fallback
       expect(instance).toBeInstanceOf(TestService);
       expect(instance.value).not.toBe(999);
@@ -399,8 +411,8 @@ describe("ServiceContainer", () => {
       container2.validate();
 
       // Jeder Container verwendet seinen eigenen Fallback
-      const result1 = container1.resolve(token);
-      const result2 = container2.resolve(token);
+      const result1 = testResolve<TestService>(container1, token);
+      const result2 = testResolve<TestService>(container2, token);
 
       expect(result1.value).toBe(111);
       expect(result2.value).toBe(222);
@@ -422,7 +434,7 @@ describe("ServiceContainer", () => {
 
       // Child sollte KEINEN Zugriff auf Parent-Fallback haben
       // (Fallbacks sind container-spezifisch, nicht vererbt)
-      expect(() => child.resolve(token)).toThrow(/No fallback/);
+      expect(() => testResolve(child, token)).toThrow(/No fallback/);
     });
   });
 
@@ -447,6 +459,19 @@ describe("ServiceContainer", () => {
       container.dispose();
 
       const result = container.resolveWithError(token);
+      expectResultErr(result);
+      expect(result.error.code).toBe("Disposed");
+    });
+
+    it("should fail registerAlias on disposed container", () => {
+      const container = ServiceContainer.createRoot();
+      const targetToken = createInjectionToken<TestService>("Target");
+      const aliasToken = createInjectionToken<TestService>("Alias");
+
+      container.registerClass(targetToken, TestService, ServiceLifecycle.SINGLETON);
+      container.dispose();
+
+      const result = container.registerAlias(aliasToken, targetToken);
       expectResultErr(result);
       expect(result.error.code).toBe("Disposed");
     });
@@ -492,8 +517,8 @@ describe("ServiceContainer", () => {
       const child = childResult.value;
       child.validate();
 
-      const parentInstance = parent.resolve(token);
-      const childInstance = child.resolve(token);
+      const parentInstance = testResolve<TestService>(parent, token);
+      const childInstance = testResolve<TestService>(child, token);
 
       expect(parentInstance).toBe(childInstance);
     });
@@ -514,11 +539,11 @@ describe("ServiceContainer", () => {
       child.validate();
 
       // Child kann beide auflösen
-      expect(child.resolve(parentToken)).toBeInstanceOf(TestService);
-      expect(child.resolve(childToken)).toBeInstanceOf(TestService);
+      expect(testResolve<TestService>(child, parentToken)).toBeInstanceOf(TestService);
+      expect(testResolve<TestService>(child, childToken)).toBeInstanceOf(TestService);
 
       // Parent kann nur sein eigenes auflösen
-      expect(parent.resolve(parentToken)).toBeInstanceOf(TestService);
+      expect(testResolve<TestService>(parent, parentToken)).toBeInstanceOf(TestService);
       const childResolveResult = parent.resolveWithError(childToken);
       expectResultErr(childResolveResult);
     });
@@ -595,12 +620,14 @@ describe("ServiceContainer", () => {
 
       // Resolve 1000 times
       for (let i = 0; i < 1000; i++) {
-        const instance = container.resolve(token);
+        const instance = testResolve<TestService>(container, token);
         expect(instance).toBeInstanceOf(TestService);
       }
 
       // All instances should be different (transient)
-      const instances = Array.from({ length: 10 }, () => container.resolve(token));
+      const instances = Array.from({ length: 10 }, () =>
+        testResolve<TestService>(container, token)
+      );
       const uniqueInstances = new Set(instances);
       expect(uniqueInstances.size).toBe(10);
     });
@@ -675,6 +702,33 @@ describe("ServiceContainer", () => {
       const resolveResult = container.resolveWithError(token);
       expectResultErr(resolveResult);
       expect(resolveResult.error.code).toBe("TokenNotRegistered");
+    });
+  });
+
+  describe("Async Validation", () => {
+    it("should validate asynchronously without blocking", async () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      const result = await container.validateAsync();
+      expectResultOk(result);
+      expect(container.getValidationState()).toBe("validated");
+    });
+
+    it("should set validation state correctly during async validation", async () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // State should be validating during validation
+      const validationPromise = container.validateAsync();
+      expect(container.getValidationState()).toBe("validating");
+
+      await validationPromise;
+      expect(container.getValidationState()).toBe("validated");
     });
   });
 });

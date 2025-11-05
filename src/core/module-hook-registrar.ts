@@ -1,7 +1,6 @@
 import { MODULE_CONSTANTS } from "@/constants";
 import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
-import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 
 /**
@@ -27,9 +26,19 @@ export class ModuleHookRegistrar {
    * @param container DI-Container mit final gebundenen Ports und Services
    */
   registerAll(container: ServiceContainer): void {
-    const foundryHooks = container.resolve<FoundryHooks>(foundryHooksToken);
-    const logger = container.resolve(loggerToken);
-    const journalVisibility = container.resolve(journalVisibilityServiceToken);
+    const foundryHooksResult = container.resolveWithError(foundryHooksToken);
+    const loggerResult = container.resolveWithError(loggerToken);
+    const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
+
+    // Early return if any resolution failed
+    if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok) {
+      console.error("Failed to resolve required services for hook registration");
+      return;
+    }
+
+    const foundryHooks = foundryHooksResult.value;
+    const logger = loggerResult.value;
+    const journalVisibility = journalVisibilityResult.value;
 
     const hookResult = foundryHooks.on(
       MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,

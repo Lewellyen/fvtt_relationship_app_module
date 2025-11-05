@@ -6,6 +6,7 @@ declare module "*.hbs" {
 
 declare module "*.svelte" {
   import type { ComponentType, SvelteComponent } from "svelte";
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
   const component: ComponentType<SvelteComponent<Record<string, unknown>>>;
   export default component;
 }

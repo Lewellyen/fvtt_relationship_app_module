@@ -244,7 +244,7 @@ export class ServiceResolver {
 
   /**
    * Resolves a Scoped service.
-   * 
+   *
    * ⚠️ IMPORTANT: Scoped services can ONLY be resolved in child containers.
    * Attempting to resolve a scoped service in the root container will return
    * a ScopeRequired error.
@@ -253,14 +253,14 @@ export class ServiceResolver {
    * - Must be in child scope (not root)
    * - One instance per scope (cached)
    * - Each child scope gets its own isolated instance
-   * 
+   *
    * Use createScope() to create a child container before resolving scoped services.
    *
    * @template TServiceType - The type of service
    * @param token - The injection token
    * @param registration - The service registration
    * @returns Result with scoped instance or ScopeRequired error
-   * 
+   *
    * @example
    * ```typescript
    * // ❌ WRONG: Trying to resolve scoped service in root
@@ -268,7 +268,7 @@ export class ServiceResolver {
    * root.registerClass(RequestToken, RequestContext, SCOPED);
    * root.validate();
    * const result = root.resolve(RequestToken); // Error: ScopeRequired
-   * 
+   *
    * // ✅ CORRECT: Create child scope first
    * const child = root.createScope("request").value!;
    * child.validate(); // Child must validate separately

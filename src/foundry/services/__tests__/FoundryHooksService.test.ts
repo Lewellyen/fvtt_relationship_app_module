@@ -139,6 +139,29 @@ describe("FoundryHooksService", () => {
       expectResultOk(result);
       expect(mockPort.off).toHaveBeenCalledWith("init", callback);
     });
+
+    it("should remove hook from tracking when off() is called with hookId", () => {
+      const callback = vi.fn();
+
+      // Register hook
+      mockPort.on = vi.fn().mockReturnValue(ok(1));
+      service.on("init", callback);
+
+      // Remove hook by hookId
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", 1);
+
+      expectResultOk(result);
+      expect(mockPort.off).toHaveBeenCalledWith("init", 1);
+
+      // Dispose should not try to remove the already-removed hook
+      const mockHooksOff = vi.fn();
+      vi.stubGlobal("Hooks", { off: mockHooksOff });
+      service.dispose();
+
+      // The hook should have been removed from tracking
+      expect(mockHooksOff).not.toHaveBeenCalledWith("init", callback);
+    });
   });
 
   describe("Version Detection Failures", () => {
@@ -156,6 +179,58 @@ describe("FoundryHooksService", () => {
 
       expectResultErr(result);
       expect(result.error.message).toContain("No compatible port");
+    });
+  });
+
+  describe("dispose error handling", () => {
+    it("should handle Hooks.off() errors gracefully during disposal", () => {
+      const callback = vi.fn();
+      mockPort.on = vi.fn().mockReturnValue(ok(1));
+      service.on("init", callback);
+
+      // Mock Hooks.off to throw
+      const mockHooksOff = vi.fn().mockImplementation(() => {
+        throw new Error("Hooks.off failed");
+      });
+      vi.stubGlobal("Hooks", { off: mockHooksOff });
+
+      // Should not throw - errors are caught and logged
+      expect(() => service.dispose()).not.toThrow();
+      expect(mockHooksOff).toHaveBeenCalled();
+    });
+
+    it("should handle undefined Hooks API during disposal", () => {
+      const callback = vi.fn();
+      mockPort.on = vi.fn().mockReturnValue(ok(1));
+      service.on("init", callback);
+
+      // Simulate Hooks not available
+      vi.stubGlobal("Hooks", undefined);
+
+      // Should not throw
+      expect(() => service.dispose()).not.toThrow();
+    });
+
+    it("should clear all registered hooks during disposal", () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+      const callback3 = vi.fn();
+
+      mockPort.on = vi.fn().mockReturnValue(ok(1));
+      service.on("init", callback1);
+      service.on("ready", callback2);
+      service.on("renderJournalDirectory", callback3);
+
+      const mockHooksOff = vi.fn();
+      vi.stubGlobal("Hooks", { off: mockHooksOff });
+
+      service.dispose();
+
+      // Should try to unregister all 3 hooks
+      expect(mockHooksOff).toHaveBeenCalledTimes(3);
+      expect(mockHooksOff).toHaveBeenCalledWith("init", callback1);
+      expect(mockHooksOff).toHaveBeenCalledWith("ready", callback2);
+      expect(mockHooksOff).toHaveBeenCalledWith("renderJournalDirectory", callback3);
     });
   });
 });

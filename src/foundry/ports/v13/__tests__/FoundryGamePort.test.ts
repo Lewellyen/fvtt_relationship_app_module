@@ -155,6 +155,7 @@ describe("FoundryGamePortV13", () => {
       expect(entry?.update).toBe(mockUpdate);
       expect(typeof entry?.createEmbeddedDocuments).toBe("function");
       if (entry?.sheet) {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         expect(entry.sheet.render).toBeDefined();
       }
     });

@@ -33,7 +33,7 @@ export class JournalVisibilityService {
   /**
    * Sanitizes a string for safe use in log messages.
    * Escapes HTML entities to prevent log injection or display issues.
-   * 
+   *
    * Delegates to sanitizeHtml for robust DOM-based sanitization.
    *
    * @param input - The string to sanitize

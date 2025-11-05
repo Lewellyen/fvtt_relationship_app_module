@@ -18,8 +18,17 @@ export class ModuleSettingsRegistrar {
    * @param container DI-Container with registered services
    */
   registerAll(container: ServiceContainer): void {
-    const settings = container.resolve(foundrySettingsToken);
-    const logger = container.resolve(loggerToken);
+    const settingsResult = container.resolveWithError(foundrySettingsToken);
+    const loggerResult = container.resolveWithError(loggerToken);
+
+    // Early return if any resolution failed
+    if (!settingsResult.ok || !loggerResult.ok) {
+      console.error("Failed to resolve required services for settings registration");
+      return;
+    }
+
+    const settings = settingsResult.value;
+    const logger = loggerResult.value;
 
     // Register log level setting
     const result = settings.register(

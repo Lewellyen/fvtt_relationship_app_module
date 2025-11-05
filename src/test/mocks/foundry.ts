@@ -113,7 +113,13 @@ export function createMockHTMLElement(tagName = "div"): HTMLElement {
  * Mock-Container für ModuleHookRegistrar Tests
  * Verwendet resolve-Spies statt echten Container-Resolution
  */
-export function createMockContainer(overrides: Partial<Record<symbol, unknown>> = {}) {
+export function createMockContainer(overrides: Partial<Record<symbol, unknown>> = {}): {
+  resolve: ReturnType<typeof vi.fn>;
+  resolveWithError: ReturnType<typeof vi.fn>;
+  getMockLogger: () => Logger;
+  getMockHooks: () => FoundryHooks;
+  getMockJournalService: () => JournalVisibilityService;
+} {
   const mockLogger: Logger = {
     debug: vi.fn(),
     error: vi.fn(),
@@ -147,6 +153,12 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
         throw new Error(`Token not mocked: ${String(token)}`);
       }
       return services[token];
+    }),
+    resolveWithError: vi.fn((token: symbol) => {
+      if (!services[token]) {
+        return { ok: false as const, error: { code: "NotFound", message: "Token not mocked" } };
+      }
+      return { ok: true as const, value: services[token] };
     }),
     // Expose mocked services for assertions
     getMockLogger: () => mockLogger,

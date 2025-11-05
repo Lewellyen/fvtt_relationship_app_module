@@ -3,6 +3,8 @@ import { PortSelector } from "../portselector";
 import { getFoundryVersionResult, resetVersionCache } from "../versiondetector";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok, err } from "@/utils/result";
+import { ENV } from "@/config/environment";
+import { MetricsCollector } from "@/observability/metrics-collector";
 
 vi.mock("../versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -205,6 +207,105 @@ describe("PortSelector", () => {
       expect(result.error.code).toBe("PORT_SELECTION_FAILED");
       expect(result.error.message).toContain("Failed to instantiate port v13");
       expect(result.error.cause).toBeInstanceOf(Error);
+    });
+  });
+
+  describe("Performance Tracking", () => {
+    let originalEnablePerf: boolean;
+    let originalEnableDebug: boolean;
+
+    beforeEach(() => {
+      originalEnablePerf = ENV.enablePerformanceTracking;
+      originalEnableDebug = ENV.enableDebugMode;
+      MetricsCollector.getInstance().reset();
+    });
+
+    afterEach(() => {
+      ENV.enablePerformanceTracking = originalEnablePerf;
+      ENV.enableDebugMode = originalEnableDebug;
+      MetricsCollector.getInstance().reset();
+    });
+
+    it("should record port selection metrics when performance tracking enabled", () => {
+      ENV.enablePerformanceTracking = true;
+      const factories = new Map([[13, () => "port-v13"]]);
+
+      selector.selectPortFromFactories(factories, 13);
+
+      const metrics = MetricsCollector.getInstance().getSnapshot();
+      expect(metrics.portSelections[13]).toBe(1);
+    });
+
+    it("should record port selection failure metrics", () => {
+      ENV.enablePerformanceTracking = true;
+      const factories = new Map<number, () => string>([
+        [
+          13,
+          () => {
+            throw new Error("Instantiation failed");
+          },
+        ],
+      ]);
+
+      selector.selectPortFromFactories(factories, 13);
+
+      const metrics = MetricsCollector.getInstance().getSnapshot();
+      expect(metrics.portSelectionFailures[13]).toBe(1);
+    });
+
+    it("should NOT record metrics when performance tracking disabled", () => {
+      ENV.enablePerformanceTracking = false;
+      const factories = new Map([[13, () => "port-v13"]]);
+
+      selector.selectPortFromFactories(factories, 13);
+
+      const metrics = MetricsCollector.getInstance().getSnapshot();
+      expect(metrics.portSelections[13]).toBeUndefined();
+    });
+
+    it("should log debug message when debug mode enabled", () => {
+      ENV.enableDebugMode = true;
+      ENV.enablePerformanceTracking = true;
+      const consoleSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+
+      const factories = new Map([[13, () => "port-v13"]]);
+      selector.selectPortFromFactories(factories, 13);
+
+      expect(consoleSpy).toHaveBeenCalled();
+      const debugCall = consoleSpy.mock.calls[0]?.[0];
+      expect(debugCall).toContain("Port selection completed");
+      expect(debugCall).toContain("v13");
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should NOT log debug when debug mode disabled", () => {
+      ENV.enableDebugMode = false;
+      ENV.enablePerformanceTracking = true;
+      const consoleSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+
+      const factories = new Map([[13, () => "port-v13"]]);
+      selector.selectPortFromFactories(factories, 13);
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should clean up performance marks after measurement", () => {
+      ENV.enablePerformanceTracking = true;
+      const clearMarksSpy = vi.spyOn(performance, "clearMarks");
+      const clearMeasuresSpy = vi.spyOn(performance, "clearMeasures");
+
+      const factories = new Map([[13, () => "port-v13"]]);
+      selector.selectPortFromFactories(factories, 13);
+
+      // Should clean up marks and measures
+      expect(clearMarksSpy).toHaveBeenCalled();
+      expect(clearMeasuresSpy).toHaveBeenCalled();
+
+      clearMarksSpy.mockRestore();
+      clearMeasuresSpy.mockRestore();
     });
   });
 });

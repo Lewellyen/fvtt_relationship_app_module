@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-deprecated */
+// Test file: Testing deprecated `getFoundryVersion()` to ensure backward compatibility
+
 import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   getFoundryVersion,

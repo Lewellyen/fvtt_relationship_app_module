@@ -137,9 +137,11 @@ export class PortSelector {
       );
 
       // Get the latest measurement entry (not the first one which could be stale)
-      const entries = performance.getEntriesByName(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION);
+      const entries = performance.getEntriesByName(
+        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION
+      );
       const measure = entries.at(-1);
-      
+
       if (measure && ENV.enableDebugMode) {
         console.debug(
           `${MODULE_CONSTANTS.LOG_PREFIX} Port selection completed in ${measure.duration.toFixed(2)}ms (selected: v${selectedVersion})`

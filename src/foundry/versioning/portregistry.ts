@@ -5,6 +5,7 @@
 
 import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/result";
+import { createFoundryError, type FoundryError } from "@/foundry/errors/FoundryErrors";
 
 export type PortFactory<T> = () => T;
 
@@ -22,9 +23,15 @@ export class PortRegistry<T> {
    * @param factory - Factory function that creates the port instance
    * @returns Result indicating success or duplicate registration error
    */
-  register(version: number, factory: PortFactory<T>): Result<void, string> {
+  register(version: number, factory: PortFactory<T>): Result<void, FoundryError> {
     if (this.factories.has(version)) {
-      return err(`PortRegistry: version ${version} already registered`);
+      return err(
+        createFoundryError(
+          "PORT_REGISTRY_ERROR",
+          `Port for version ${version} already registered`,
+          { version }
+        )
+      );
     }
     this.factories.set(version, factory);
     return ok(undefined);
@@ -82,26 +89,34 @@ export class PortRegistry<T> {
    * @param version - The target Foundry version
    * @returns Result containing the port instance or error
    */
-  createForVersion(version: number): Result<T, string> {
+  createForVersion(version: number): Result<T, FoundryError> {
     // Find highest compatible version (<= target version)
     const compatibleVersions = Array.from(this.factories.keys())
       .filter((v) => v <= version)
       .sort((a, b) => b - a);
 
     if (compatibleVersions.length === 0) {
-      const availableVersions = this.getAvailableVersions().join(", ");
+      const availableVersions = this.getAvailableVersions().join(", ") || "none";
       return err(
-        `No compatible port for Foundry v${version}. Available ports: ${availableVersions || "none"}`
+        createFoundryError(
+          "PORT_NOT_FOUND",
+          `No compatible port for Foundry v${version}. Available ports: ${availableVersions}`,
+          { version, availableVersions }
+        )
       );
     }
 
     const selectedVersion = compatibleVersions[0];
     if (selectedVersion === undefined) {
-      return err("No compatible version found");
+      return err(createFoundryError("PORT_NOT_FOUND", "No compatible version found", { version }));
     }
     const factory = this.factories.get(selectedVersion);
     if (!factory) {
-      return err(`Factory not found for version ${selectedVersion}`);
+      return err(
+        createFoundryError("PORT_NOT_FOUND", `Factory not found for version ${selectedVersion}`, {
+          selectedVersion,
+        })
+      );
     }
     return ok(factory());
   }

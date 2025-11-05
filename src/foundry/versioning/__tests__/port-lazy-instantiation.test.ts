@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for testing port instantiation crashes
+
 import { describe, it, expect, vi } from "vitest";
 import { PortSelector } from "../portselector";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";

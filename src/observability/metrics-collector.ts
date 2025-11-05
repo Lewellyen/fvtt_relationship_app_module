@@ -107,7 +107,7 @@ export class MetricsCollector {
 
   /**
    * Records a port selection failure.
-   * 
+   *
    * Useful for tracking when no compatible port is available for a version.
    *
    * @param version - The Foundry version for which port selection failed

@@ -6,7 +6,7 @@ describe("PortRegistry", () => {
   describe("register", () => {
     it("should register port factory", () => {
       const registry = new PortRegistry<string>();
-      const factory = () => "port-instance";
+      const factory = (): string => "port-instance";
 
       const result = registry.register(13, factory);
       expectResultOk(result);
@@ -14,14 +14,15 @@ describe("PortRegistry", () => {
 
     it("should reject duplicate version registration", () => {
       const registry = new PortRegistry<string>();
-      const factory1 = () => "port-1";
-      const factory2 = () => "port-2";
+      const factory1 = (): string => "port-1";
+      const factory2 = (): string => "port-2";
 
       registry.register(13, factory1);
       const result = registry.register(13, factory2);
 
       expectResultErr(result);
-      expect(result.error).toContain("already registered");
+      expect(result.error.message).toContain("already registered");
+      expect(result.error.code).toBe("PORT_REGISTRY_ERROR");
     });
   });
 
@@ -114,8 +115,9 @@ describe("PortRegistry", () => {
 
       const result = registry.createForVersion(13);
       expectResultErr(result);
-      expect(result.error).toContain("No compatible port");
-      expect(result.error).toContain("13");
+      expect(result.error.message).toContain("No compatible port");
+      expect(result.error.message).toContain("13");
+      expect(result.error.code).toBe("PORT_NOT_FOUND");
     });
 
     it("should handle empty registry", () => {
@@ -123,7 +125,8 @@ describe("PortRegistry", () => {
 
       const result = registry.createForVersion(13);
       expectResultErr(result);
-      expect(result.error).toContain("none");
+      expect(result.error.message).toContain("none");
+      expect(result.error.code).toBe("PORT_NOT_FOUND");
     });
   });
 

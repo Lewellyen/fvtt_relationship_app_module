@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for testing invalid registration scenarios
+
 import { describe, it, expect } from "vitest";
 import { ServiceRegistration } from "../serviceregistration";
 import { ServiceLifecycle } from "../servicelifecycle";
@@ -43,7 +46,7 @@ describe("ServiceRegistration", () => {
 
   describe("createFactory() Factory Method", () => {
     it("should create valid factory registration", () => {
-      const factory = () => new TestService();
+      const factory = (): TestService => new TestService();
       const result = ServiceRegistration.createFactory(ServiceLifecycle.TRANSIENT, [], factory);
 
       expect(result.ok).toBe(true);
@@ -151,7 +154,7 @@ describe("ServiceRegistration", () => {
     });
 
     it("should clone factory registration", () => {
-      const factory = () => new TestService();
+      const factory = (): TestService => new TestService();
       const result = ServiceRegistration.createFactory(ServiceLifecycle.TRANSIENT, [], factory);
 
       expect(result.ok).toBe(true);

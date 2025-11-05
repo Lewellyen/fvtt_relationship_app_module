@@ -39,7 +39,7 @@ function detectFoundryVersion(): Result<number, string> {
 /**
  * Gets the major version number of the currently running Foundry VTT instance.
  * Returns a Result for proper error handling.
- * 
+ *
  * Performance: Version is cached after first detection to avoid repeated game.version access.
  *
  * @returns Result with major version number (e.g., 13 for "13.348") or error message
@@ -62,8 +62,13 @@ export function getFoundryVersionResult(): Result<number, string> {
 }
 
 /**
- * Resets the version cache. For testing purposes only.
+ * Resets the version cache.
+ *
+ * @internal For testing purposes only.
+ *
  * Should be called in test cleanup (afterEach) to ensure test isolation.
+ * DO NOT use in production code - version detection is intentionally cached
+ * for performance reasons.
  */
 export function resetVersionCache(): void {
   cachedVersion = null;

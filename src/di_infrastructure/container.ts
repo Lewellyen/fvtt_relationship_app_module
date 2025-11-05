@@ -3,6 +3,8 @@ import type { FactoryFunction } from "./types/servicefactory";
 import type { ServiceClass } from "./types/serviceclass";
 import type { ServiceDependencies } from "./types/servicedependencies";
 import type { ContainerValidationState } from "./types/containervalidationstate";
+import type { ApiSafeToken } from "./types/api-safe-token";
+import { isApiSafeTokenRuntime } from "./types/api-safe-token";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import type { ServiceType } from "@/types/servicetypeindex";
 import { ok, err, isOk } from "@/utils/result";
@@ -428,9 +430,74 @@ export class ServiceContainer implements Container {
   }
 
   /**
-   * Resolve service (throwing version with fallback support).
+   * Resolves a service instance (throws on failure).
+   *
+   * **🎯 FOR EXTERNAL API USE ONLY**
+   *
+   * This method is designed for the public ModuleApi to provide
+   * exception-based error handling for external Foundry VTT modules.
+   *
+   * **Enforcement (Defense-in-Depth):**
+   * - **Compile-Time:** Only accepts ApiSafeToken types
+   * - **Runtime:** Validates token has API_SAFE_RUNTIME_MARKER (always active)
+   *
+   * Internal code MUST use `resolveWithError()` for Result-based error handling.
+   *
+   * @param token - An API-safe injection token (from api.tokens)
+   * @returns The resolved service instance
+   * @throws {Error} If token is not API-safe or resolution fails
+   *
+   * @example External Module Usage
+   * ```typescript
+   * const api = game.modules.get('fvtt_relationship_app_module').api;
+   *
+   * try {
+   *   const logger = api.resolve(api.tokens.loggerToken);
+   *   logger.info("Success");
+   * } catch (error) {
+   *   console.error("Failed:", error);
+   * }
+   * ```
+   *
+   * @example Internal Code (WRONG - Use resolveWithError)
+   * ```typescript
+   * // ❌ TypeScript Error + Runtime Error
+   * const logger = container.resolve(loggerToken);
+   *
+   * // ✅ CORRECT
+   * const result = container.resolveWithError(loggerToken);
+   * if (result.ok) {
+   *   result.value.info("Success");
+   * }
+   * ```
    */
-  resolve<TServiceType extends ServiceType>(token: InjectionToken<TServiceType>): TServiceType {
+  resolve<TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>): TServiceType;
+
+  /**
+   * @deprecated Internal code must use resolveWithError()
+   * @internal This overload prevents direct calls with non-branded tokens
+   */
+  resolve<TServiceType extends ServiceType>(token: InjectionToken<TServiceType>): never;
+
+  // Implementation (unified for both overloads)
+  resolve<TServiceType extends ServiceType>(
+    token: InjectionToken<TServiceType> | ApiSafeToken<TServiceType>
+  ): TServiceType {
+    // 🛡️ RUNTIME GUARD (always active for defense-in-depth)
+    if (!isApiSafeTokenRuntime(token)) {
+      throw new Error(
+        `API Boundary Violation: resolve() called with non-API-safe token: ${String(token)}.\n` +
+          `This token was not marked via markAsApiSafe().\n` +
+          `\n` +
+          `Internal code MUST use resolveWithError() instead:\n` +
+          `  const result = container.resolveWithError(${String(token)});\n` +
+          `  if (result.ok) { /* use result.value */ }\n` +
+          `\n` +
+          `Only the public ModuleApi should expose resolve() for external modules.`
+      );
+    }
+
+    // Standard resolution via Result pattern
     const result = this.resolveWithError(token);
 
     if (isOk(result)) {
@@ -443,7 +510,7 @@ export class ServiceContainer implements Container {
       return fallback() as TServiceType;
     }
 
-    // No fallback - throw
+    // No fallback - throw with context
     throw new Error(
       `Cannot resolve ${String(token)}: ${result.error.message}. ` +
         `No fallback factory registered for this token.`
@@ -479,10 +546,51 @@ export class ServiceContainer implements Container {
   }
 
   /**
-   * Dispose container and all children.
+   * Synchronously dispose container and all children.
+   *
+   * Use this for scenarios where async disposal is not possible (e.g., browser unload).
+   * For normal cleanup, prefer disposeAsync() which handles async disposal properly.
+   *
+   * @returns Result indicating success or disposal error
    */
   dispose(): Result<void, ContainerError> {
     const result = this.scopeManager.dispose();
+
+    // Reset validation state after disposal (per review feedback)
+    if (result.ok) {
+      this.validationState = "registering";
+    }
+
+    return result;
+  }
+
+  /**
+   * Asynchronously dispose container and all children.
+   *
+   * This is the preferred disposal method as it properly handles services that
+   * implement AsyncDisposable, allowing for proper cleanup of resources like
+   * database connections, file handles, or network sockets.
+   *
+   * Falls back to synchronous disposal for services implementing only Disposable.
+   *
+   * @returns Promise with Result indicating success or disposal error
+   *
+   * @example
+   * ```typescript
+   * // Preferred: async disposal
+   * const result = await container.disposeAsync();
+   * if (result.ok) {
+   *   console.log("Container disposed successfully");
+   * }
+   *
+   * // Browser unload (sync required)
+   * window.addEventListener('beforeunload', () => {
+   *   container.dispose();  // Sync fallback
+   * });
+   * ```
+   */
+  async disposeAsync(): Promise<Result<void, ContainerError>> {
+    const result = await this.scopeManager.disposeAsync();
 
     // Reset validation state after disposal (per review feedback)
     if (result.ok) {

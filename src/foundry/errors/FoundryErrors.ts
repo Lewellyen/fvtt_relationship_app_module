@@ -8,6 +8,8 @@ export type FoundryErrorCode =
   | "NOT_FOUND" // Entity not found by ID
   | "ACCESS_DENIED" // Permission denied
   | "PORT_SELECTION_FAILED" // Port selection/instantiation failed
+  | "PORT_REGISTRY_ERROR" // Port registry duplicate registration
+  | "PORT_NOT_FOUND" // No compatible port found for version
   | "OPERATION_FAILED"; // General operation failure
 
 /**

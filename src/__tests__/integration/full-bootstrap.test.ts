@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for mocking game.modules
+
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { CompositionRoot } from "@/core/composition-root";
 import { loggerToken } from "@/tokens/tokenindex";
@@ -50,10 +53,14 @@ describe("Integration: Full Bootstrap", () => {
     expect(containerResult.ok).toBe(true);
 
     if (containerResult.ok) {
-      const logger = containerResult.value.resolve(loggerToken);
-      expect(logger).toBeDefined();
-      expect(typeof logger.info).toBe("function");
-      expect(typeof logger.error).toBe("function");
+      const loggerResult = containerResult.value.resolveWithError(loggerToken);
+      expect(loggerResult.ok).toBe(true);
+      if (loggerResult.ok) {
+        const logger = loggerResult.value;
+        expect(logger).toBeDefined();
+        expect(typeof logger.info).toBe("function");
+        expect(typeof logger.error).toBe("function");
+      }
     }
   });
 
@@ -93,10 +100,14 @@ describe("Integration: Full Bootstrap", () => {
 
     const containerResult = root.getContainer();
     if (containerResult.ok) {
-      const game = containerResult.value.resolve(foundryGameToken);
-      expect(game).toBeDefined();
-      expect(typeof game.getJournalEntries).toBe("function");
-      expect(typeof game.getJournalEntryById).toBe("function");
+      const gameResult = containerResult.value.resolveWithError(foundryGameToken);
+      expect(gameResult.ok).toBe(true);
+      if (gameResult.ok) {
+        const game = gameResult.value;
+        expect(game).toBeDefined();
+        expect(typeof game.getJournalEntries).toBe("function");
+        expect(typeof game.getJournalEntryById).toBe("function");
+      }
     }
   });
 

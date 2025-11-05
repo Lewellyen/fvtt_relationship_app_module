@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for mocking Foundry document objects
+
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { FoundryDocumentPortV13 } from "../FoundryDocumentPort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";

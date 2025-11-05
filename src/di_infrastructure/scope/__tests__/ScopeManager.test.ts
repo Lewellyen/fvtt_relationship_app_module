@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Test file: `any` needed for testing Disposable instances
+
 import { describe, it, expect } from "vitest";
 import { ScopeManager } from "../ScopeManager";
 import { InstanceCache } from "../../cache/InstanceCache";
@@ -275,6 +278,100 @@ describe("ScopeManager", () => {
       const result = manager.dispose();
       expectResultErr(result);
       expect(result.error.code).toBe("DisposalFailed");
+    });
+
+    it("should handle async disposable instances that throw", async () => {
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("root", null, cache);
+
+      class FailingAsyncDisposable implements Logger {
+        async disposeAsync(): Promise<void> {
+          throw new Error("Async disposal failed");
+        }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      const token = Symbol("FailingAsyncDisposable");
+      cache.set(token, new FailingAsyncDisposable());
+
+      const result = await manager.disposeAsync();
+      expectResultErr(result);
+      expect(result.error.code).toBe("DisposalFailed");
+      expect(result.error.message).toContain("Async disposal failed");
+    });
+
+    it("should handle mixed sync and async disposables with errors", async () => {
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("root", null, cache);
+
+      class FailingSyncDisposable implements Logger {
+        dispose(): void {
+          throw new Error("Sync disposal failed");
+        }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      class FailingAsyncDisposable implements Logger {
+        async disposeAsync(): Promise<void> {
+          throw new Error("Async disposal failed");
+        }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      const token1 = Symbol("FailingSync");
+      const token2 = Symbol("FailingAsync");
+      cache.set(token1, new FailingSyncDisposable());
+      cache.set(token2, new FailingAsyncDisposable());
+
+      // disposeAsync should handle both sync and async failures
+      const result = await manager.disposeAsync();
+      expectResultErr(result);
+      expect(result.error.code).toBe("DisposalFailed");
+    });
+
+    it("should prefer async dispose when both sync and async are available", async () => {
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("root", null, cache);
+
+      let syncDisposeCalled = false;
+      let asyncDisposeCalled = false;
+
+      class DisposableWithBoth implements Logger {
+        dispose(): void {
+          syncDisposeCalled = true;
+        }
+        async disposeAsync(): Promise<void> {
+          asyncDisposeCalled = true;
+        }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      const token = Symbol("DisposableWithBoth");
+      cache.set(token, new DisposableWithBoth());
+
+      const result = await manager.disposeAsync();
+
+      expectResultOk(result);
+      // Async dispose should be preferred
+      expect(asyncDisposeCalled).toBe(true);
+      // Sync dispose should not be called when async is available
+      expect(syncDisposeCalled).toBe(false);
     });
   });
 });

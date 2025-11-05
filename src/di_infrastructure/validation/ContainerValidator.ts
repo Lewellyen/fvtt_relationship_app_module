@@ -14,10 +14,14 @@ import { ok, err } from "@/utils/result";
  * - Validate alias targets exist
  *
  * Design:
- * - Stateless: can be shared between parent and child containers
+ * - STATEFUL: Maintains cache for performance optimization
+ * - Cache is cleared on each validate() call for fresh validation
  * - Returns aggregated errors for comprehensive feedback
  * - Can be extended later with granular validator components
- * - Performance optimization: Caches validated sub-graphs for large dependency trees
+ * - Performance optimization: Caches validated sub-graphs for large dependency trees (>500 services)
+ *
+ * Note: While this class has internal state, it can be shared between parent and child containers
+ * because the cache is cleared on each validation run, preventing stale state issues.
  */
 export class ContainerValidator {
   // Performance optimization: Cache for validated sub-graphs

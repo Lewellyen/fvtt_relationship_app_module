@@ -3,6 +3,7 @@ import type { Result } from "@/types/result";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
+import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
 import type { ModuleApi, ModuleApiTokens, TokenInfo, HealthStatus } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
 import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
@@ -57,7 +58,7 @@ export class CompositionRoot {
       // Get the latest measurement entry (not the first one which could be stale)
       const entries = performance.getEntriesByName(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION);
       const measure = entries.at(-1);
-      
+
       if (measure && ENV.enableDebugMode) {
         console.debug(
           `${MODULE_CONSTANTS.LOG_PREFIX} Bootstrap completed in ${measure.duration.toFixed(2)}ms`
@@ -99,22 +100,23 @@ export class CompositionRoot {
       throw new Error(`${MODULE_CONSTANTS.LOG_PREFIX} Module not available to expose API`);
     }
 
-    // Type-safe token collection
+    // Type-safe token collection - mark all tokens as API-safe for external consumption
     const wellKnownTokens: ModuleApiTokens = {
-      loggerToken,
-      journalVisibilityServiceToken,
-      foundryGameToken,
-      foundryHooksToken,
-      foundryDocumentToken,
-      foundryUIToken,
-      foundrySettingsToken,
+      loggerToken: markAsApiSafe(loggerToken),
+      journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
+      foundryGameToken: markAsApiSafe(foundryGameToken),
+      foundryHooksToken: markAsApiSafe(foundryHooksToken),
+      foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
+      foundryUIToken: markAsApiSafe(foundryUIToken),
+      foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
     };
 
     const api: ModuleApi = {
       version: "1.0.0",
 
-      resolve: <TServiceType extends ServiceType>(token: InjectionToken<TServiceType>) =>
-        container.resolve<TServiceType>(token),
+      // Bind container.resolve() directly (already typed as ApiSafeToken in ModuleApi interface)
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- API boundary: External modules use resolve()
+      resolve: container.resolve.bind(container),
 
       getAvailableTokens: (): Map<symbol, TokenInfo> => {
         const tokenMap = new Map<symbol, TokenInfo>();

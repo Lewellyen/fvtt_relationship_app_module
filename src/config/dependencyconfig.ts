@@ -279,9 +279,12 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   }
 
   // Phase 3: Configure logger with ENV settings
-  const loggerInstance = container.resolve(loggerToken);
-  if (loggerInstance.setMinLevel) {
-    loggerInstance.setMinLevel(ENV.logLevel);
+  const resolvedLoggerResult = container.resolveWithError(loggerToken);
+  if (resolvedLoggerResult.ok) {
+    const loggerInstance = resolvedLoggerResult.value;
+    if (loggerInstance.setMinLevel) {
+      loggerInstance.setMinLevel(ENV.logLevel);
+    }
   }
 
   return ok(undefined);
