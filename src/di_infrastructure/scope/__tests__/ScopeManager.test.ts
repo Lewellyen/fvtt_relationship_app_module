@@ -72,6 +72,78 @@ describe("ScopeManager", () => {
 
       expect(childResult.value.scopeName).toBe("root.custom");
     });
+
+    it("should fail when max depth exceeded", () => {
+      const cache = new InstanceCache();
+      let manager = new ScopeManager("root", null, cache, 0);
+
+      // Create nested scopes up to max depth
+      for (let i = 0; i < 10; i++) {
+        const childResult = manager.createChild(`level${i}`);
+        expectResultOk(childResult);
+        manager = childResult.value.manager;
+      }
+
+      // Next child should fail
+      const result = manager.createChild("should-fail");
+      expectResultErr(result);
+      expect(result.error.code).toBe("MaxScopeDepthExceeded");
+      expect(result.error.message).toContain("Maximum scope depth");
+    });
+
+    it("should return scope name via getScopeName()", () => {
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("test-scope", null, cache);
+
+      expect(manager.getScopeName()).toBe("test-scope");
+    });
+
+    it("should return unique scope ID via getScopeId()", () => {
+      const cache1 = new InstanceCache();
+      const manager1 = new ScopeManager("root", null, cache1);
+
+      const cache2 = new InstanceCache();
+      const manager2 = new ScopeManager("root", null, cache2);
+
+      const id1 = manager1.getScopeId();
+      const id2 = manager2.getScopeId();
+
+      expect(id1).toBeDefined();
+      expect(id2).toBeDefined();
+      expect(id1).not.toBe(id2);
+      expect(id1).toContain("root-");
+      expect(id2).toContain("root-");
+    });
+
+    it("should generate scope ID with timestamp and random component", () => {
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("test", null, cache);
+
+      const scopeId = manager.getScopeId();
+      expect(scopeId).toMatch(/^test-\d+-[a-z0-9]+$/);
+    });
+
+    it("should fallback to timestamp+random when crypto.randomUUID fails", () => {
+      // Mock crypto.randomUUID by stubbing the method
+      const originalRandomUUID = crypto.randomUUID;
+      crypto.randomUUID = () => {
+        throw new Error("crypto.randomUUID not available");
+      };
+
+      try {
+        const cache = new InstanceCache();
+        const manager = new ScopeManager("root", null, cache);
+
+        const childResult = manager.createChild();
+        expectResultOk(childResult);
+
+        // Should have generated a scope name with fallback format (timestamp-random)
+        expect(childResult.value.scopeName).toMatch(/^root\.scope-\d+-\d+(\.\d+)?$/);
+      } finally {
+        // Restore original crypto.randomUUID
+        crypto.randomUUID = originalRandomUUID;
+      }
+    });
   });
 
   describe("Disposal", () => {
@@ -372,6 +444,107 @@ describe("ScopeManager", () => {
       expect(asyncDisposeCalled).toBe(true);
       // Sync dispose should not be called when async is available
       expect(syncDisposeCalled).toBe(false);
+    });
+  });
+
+  describe("Child Disposal Error Handling", () => {
+    it("should collect child disposal errors (sync)", () => {
+      const parentCache = new InstanceCache();
+      const parentManager = new ScopeManager("parent", null, parentCache);
+
+      // Create two children
+      const child1Result = parentManager.createChild("child1");
+      expectResultOk(child1Result);
+      const child1 = child1Result.value.manager;
+
+      const child2Result = parentManager.createChild("child2");
+      expectResultOk(child2Result);
+      const child2 = child2Result.value.manager;
+
+      // Add a failing disposable to child1
+      const failingDisposable = {
+        dispose() {
+          throw new Error("Disposal failed");
+        },
+      };
+      child1Result.value.cache.set(Symbol("Failing"), failingDisposable);
+
+      // Dispose parent - should collect child1 error
+      const result = parentManager.dispose();
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("PartialDisposal");
+      expect(result.error.message).toContain("1 child scope");
+      expect(result.error.details).toBeDefined();
+      expect(result.error.details).toHaveLength(1);
+      expect(result.error.details[0].scopeName).toBe("parent.child1");
+    });
+
+    it("should collect child disposal errors (async)", async () => {
+      const parentCache = new InstanceCache();
+      const parentManager = new ScopeManager("parent", null, parentCache);
+
+      // Create two children
+      const child1Result = parentManager.createChild("child1");
+      expectResultOk(child1Result);
+      const child1 = child1Result.value.manager;
+
+      const child2Result = parentManager.createChild("child2");
+      expectResultOk(child2Result);
+      const child2 = child2Result.value.manager;
+
+      // Add a failing async disposable to child1
+      const failingAsyncDisposable = {
+        async disposeAsync() {
+          throw new Error("Async disposal failed");
+        },
+      };
+      child1Result.value.cache.set(Symbol("FailingAsync"), failingAsyncDisposable);
+
+      // Dispose parent async - should collect child1 error
+      const result = await parentManager.disposeAsync();
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("PartialDisposal");
+      expect(result.error.message).toContain("1 child scope");
+      expect(result.error.details).toBeDefined();
+      expect(result.error.details).toHaveLength(1);
+      expect(result.error.details[0].scopeName).toBe("parent.child1");
+    });
+
+    it("should remove child from parent on disposal", () => {
+      const parentCache = new InstanceCache();
+      const parentManager = new ScopeManager("parent", null, parentCache);
+
+      const childResult = parentManager.createChild("child");
+      expectResultOk(childResult);
+      const child = childResult.value.manager;
+
+      // Child should be in parent's children set
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((parentManager as any).children.has(child)).toBe(true);
+
+      // Dispose child
+      child.dispose();
+
+      // Child should be removed from parent's children set
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((parentManager as any).children.has(child)).toBe(false);
+    });
+
+    it("should fail double disposal (async)", async () => {
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("test", null, cache);
+
+      // First disposal
+      await manager.disposeAsync();
+
+      // Second disposal should fail
+      const result = await manager.disposeAsync();
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("Disposed");
+      expect(result.error.message).toContain("already disposed");
     });
   });
 });

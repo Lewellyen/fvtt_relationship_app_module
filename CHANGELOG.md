@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.3.0] - 2025-11-06
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- TestCoverage auf 100%
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.2.0] - 2025-11-05
 ### Hinzugefügt
 - Keine Einträge

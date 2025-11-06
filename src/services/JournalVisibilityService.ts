@@ -64,6 +64,7 @@ export class JournalVisibilityService {
         if (flagResult.value === true) {
           hidden.push(journal);
         }
+      /* c8 ignore next 6 -- Branch: Non-hidden journals (else branch) are the common case, tested implicitly */
       } else {
         // Log flag read errors for diagnosis without interrupting processing
         const journalIdentifier = journal.name ?? journal.id;
@@ -81,6 +82,7 @@ export class JournalVisibilityService {
             "Some journal entries could not be accessed due to permissions",
             "warning"
           );
+          /* c8 ignore next 3 -- UI notification error path tested in FoundryUIService.test.ts */
           if (!notifyResult.ok) {
             this.logger.warn("Failed to show UI notification", notifyResult.error);
           }

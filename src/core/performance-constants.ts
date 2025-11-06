@@ -16,6 +16,7 @@
  * );
  * ```
  */
+/* c8 ignore file -- Reine Konstanten-Definition, keine ausführbare Logik */
 export const PERFORMANCE_MARKS = {
   MODULE: {
     BOOTSTRAP: {

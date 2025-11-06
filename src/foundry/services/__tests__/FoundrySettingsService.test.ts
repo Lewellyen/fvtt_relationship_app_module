@@ -112,4 +112,20 @@ describe("FoundrySettingsService", () => {
       expect(mockPort.set).toHaveBeenCalledWith("test-module", "testKey", 999);
     });
   });
+
+  describe("dispose", () => {
+    it("should reset port reference for garbage collection", () => {
+      // Trigger port initialization
+      service.get("test-module", "testKey");
+
+      // Dispose should reset port
+      service.dispose();
+
+      // After dispose, port should be re-initialized on next call
+      const selectSpy = vi.spyOn(mockSelector, "selectPortFromFactories");
+      service.get("test-module", "testKey");
+      expect(selectSpy).toHaveBeenCalled();
+    });
+  });
+
 });

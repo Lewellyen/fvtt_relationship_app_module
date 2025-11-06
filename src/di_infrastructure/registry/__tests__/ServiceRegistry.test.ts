@@ -117,12 +117,47 @@ describe("ServiceRegistry", () => {
       expect(result.error.message).toContain("already registered");
     });
 
-    it("should reject duplicate registration", () => {
+    it("should reject duplicate registration for registerClass", () => {
       const registry = new ServiceRegistry();
       const token = createInjectionToken<TestService>("Duplicate");
 
       registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       const result = registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DuplicateRegistration");
+    });
+
+    it("should reject duplicate registration for registerFactory", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("DuplicateFactory");
+
+      registry.registerFactory(token, () => new TestService(), ServiceLifecycle.SINGLETON, []);
+      const result = registry.registerFactory(token, () => new TestService(), ServiceLifecycle.SINGLETON, []);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DuplicateRegistration");
+    });
+
+    it("should reject duplicate registration for registerValue", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("DuplicateValue");
+
+      registry.registerValue(token, new TestService());
+      const result = registry.registerValue(token, new TestService());
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DuplicateRegistration");
+    });
+
+    it("should reject duplicate registration for registerAlias", () => {
+      const registry = new ServiceRegistry();
+      const targetToken = createInjectionToken<TestService>("Target");
+      const aliasToken = createInjectionToken<TestService>("DuplicateAlias");
+
+      registry.registerClass(targetToken, TestService, ServiceLifecycle.SINGLETON);
+      registry.registerAlias(aliasToken, targetToken);
+      const result = registry.registerAlias(aliasToken, targetToken);
 
       expectResultErr(result);
       expect(result.error.code).toBe("DuplicateRegistration");
@@ -161,6 +196,31 @@ describe("ServiceRegistry", () => {
       expect(registration?.dependencies).toBeDefined();
       // dependencies ist ein Array (auch wenn leer)
       expect(Array.isArray(registration?.dependencies)).toBe(true);
+    });
+
+    it("should handle class with undefined dependencies property", () => {
+      class ServiceWithUndefinedDeps implements Logger {
+        static dependencies: any = undefined; // Explicitly set to undefined
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<ServiceWithUndefinedDeps>("UndefinedDeps");
+
+      // Should fallback to empty array when dependencies is undefined
+      const result = registry.registerClass(
+        token,
+        ServiceWithUndefinedDeps,
+        ServiceLifecycle.SINGLETON
+      );
+      expectResultOk(result);
+
+      const registration = registry.getRegistration(token);
+      expect(registration?.dependencies).toEqual([]);
     });
   });
 
@@ -390,4 +450,101 @@ describe("ServiceRegistry", () => {
       expect(registry.getRegistrationsByLifecycle(ServiceLifecycle.SINGLETON).length).toBe(1);
     });
   });
+
+  describe("MAX_REGISTRATIONS Limit (DoS Protection)", () => {
+    const MAX_REGISTRATIONS = 10000;
+
+    it("should reject registerClass when MAX_REGISTRATIONS exceeded", () => {
+      const registry = new ServiceRegistry();
+
+      // Fill up to MAX_REGISTRATIONS
+      for (let i = 0; i < MAX_REGISTRATIONS; i++) {
+        const token = createInjectionToken<TestService>(`Service${i}`);
+        const result = registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+        expectResultOk(result);
+      }
+
+      // Next registration should fail
+      const overflowToken = createInjectionToken<TestService>("Overflow");
+      const result = registry.registerClass(overflowToken, TestService, ServiceLifecycle.SINGLETON);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("MaxRegistrationsExceeded");
+      expect(result.error.message).toContain("10000");
+    });
+
+    it("should reject registerFactory when MAX_REGISTRATIONS exceeded", () => {
+      const registry = new ServiceRegistry();
+
+      // Fill up to MAX_REGISTRATIONS
+      for (let i = 0; i < MAX_REGISTRATIONS; i++) {
+        const token = createInjectionToken<TestService>(`Service${i}`);
+        const result = registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+        expectResultOk(result);
+      }
+
+      // Next factory registration should fail
+      const overflowToken = createInjectionToken<TestService>("OverflowFactory");
+      const result = registry.registerFactory(
+        overflowToken,
+        () => new TestService(),
+        ServiceLifecycle.SINGLETON,
+        []
+      );
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("MaxRegistrationsExceeded");
+      expect(result.error.message).toContain("10000");
+    });
+
+    it("should reject registerValue when MAX_REGISTRATIONS exceeded", () => {
+      const registry = new ServiceRegistry();
+
+      // Fill up to MAX_REGISTRATIONS
+      for (let i = 0; i < MAX_REGISTRATIONS; i++) {
+        const token = createInjectionToken<TestService>(`Service${i}`);
+        const result = registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+        expectResultOk(result);
+      }
+
+      // Next value registration should fail
+      const overflowToken = createInjectionToken<TestService>("OverflowValue");
+      const result = registry.registerValue(overflowToken, new TestService());
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("MaxRegistrationsExceeded");
+      expect(result.error.message).toContain("10000");
+    });
+
+    it("should reject registerAlias when MAX_REGISTRATIONS exceeded", () => {
+      const registry = new ServiceRegistry();
+
+      // Fill up to MAX_REGISTRATIONS
+      for (let i = 0; i < MAX_REGISTRATIONS; i++) {
+        const token = createInjectionToken<TestService>(`Service${i}`);
+        const result = registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+        expectResultOk(result);
+      }
+
+      // Register target for alias
+      const targetToken = createInjectionToken<TestService>("Target");
+      registry.clear(); // Clear to make room for target
+      registry.registerClass(targetToken, TestService, ServiceLifecycle.SINGLETON);
+
+      // Fill again to MAX_REGISTRATIONS
+      for (let i = 0; i < MAX_REGISTRATIONS - 1; i++) {
+        const token = createInjectionToken<TestService>(`Service${i}`);
+        registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+      }
+
+      // Next alias registration should fail
+      const overflowToken = createInjectionToken<TestService>("OverflowAlias");
+      const result = registry.registerAlias(overflowToken, targetToken);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("MaxRegistrationsExceeded");
+      expect(result.error.message).toContain("10000");
+    });
+  });
+
 });

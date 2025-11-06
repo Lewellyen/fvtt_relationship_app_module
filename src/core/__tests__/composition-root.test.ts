@@ -233,5 +233,35 @@ describe("CompositionRoot", () => {
       expect(health.status).toBe("degraded");
       expect(health.checks.containerValidated).toBe(true);
     });
+
+    it("should report degraded status when port selection failures exist", async () => {
+      const root = new CompositionRoot();
+      root.bootstrap();
+      root.exposeToModuleApi();
+
+      // Simulate port selection failure
+      const metricsModule = await import("@/observability/metrics-collector");
+      metricsModule.MetricsCollector.getInstance().recordPortSelectionFailure("12.331");
+
+      const mod = (game as any).modules.get("fvtt_relationship_app_module");
+      const health = mod.api.getHealth();
+
+      expect(health.status).toBe("degraded");
+      expect(health.checks.lastError).toBeDefined();
+      expect(health.checks.lastError).toContain("Port selection failures");
+      expect(health.checks.lastError).toContain("12.331");
+    });
+
+    it("should include port selection information in health check", () => {
+      const root = new CompositionRoot();
+      root.bootstrap();
+      root.exposeToModuleApi();
+
+      const mod = (game as any).modules.get("fvtt_relationship_app_module");
+      const health = mod.api.getHealth();
+
+      expect(health.checks.portsSelected).toBeDefined();
+      expect(typeof health.checks.portsSelected).toBe("boolean");
+    });
   });
 });

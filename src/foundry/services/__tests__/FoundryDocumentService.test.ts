@@ -126,4 +126,38 @@ describe("FoundryDocumentService", () => {
       expect(result.error.message).toContain("No compatible port");
     });
   });
+
+  describe("dispose", () => {
+    it("should reset port reference for garbage collection", () => {
+      const document = { getFlag: vi.fn() };
+      // Trigger port initialization
+      service.getFlag(document, "scope", "key");
+
+      // Dispose should reset port
+      service.dispose();
+
+      // After dispose, port should be re-initialized on next call
+      const selectSpy = vi.spyOn(mockSelector, "selectPortFromFactories");
+      service.getFlag(document, "scope", "key");
+      expect(selectSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe("Port Error Branches", () => {
+    it("should handle port selection failure in setFlag", async () => {
+      const failingSelector = new PortSelector();
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed in setFlag",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
+      const failingService = new FoundryDocumentService(failingSelector, mockRegistry);
+
+      const document = { setFlag: vi.fn() };
+      const result = await failingService.setFlag(document, "scope", "key", "value");
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+  });
 });

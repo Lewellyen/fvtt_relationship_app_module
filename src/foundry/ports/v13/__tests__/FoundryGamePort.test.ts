@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { FoundryGamePortV13 } from "../FoundryGamePort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import { ENV } from "@/config/environment";
+import { MetricsCollector } from "@/observability/metrics-collector";
 
 describe("FoundryGamePortV13", () => {
   let port: FoundryGamePortV13;
@@ -326,4 +328,5 @@ describe("FoundryGamePortV13", () => {
       expect(result2.value).toBe(result1.value);
     });
   });
+
 });

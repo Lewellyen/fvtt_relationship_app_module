@@ -233,4 +233,37 @@ describe("FoundryHooksService", () => {
       expect(mockHooksOff).toHaveBeenCalledWith("renderJournalDirectory", callback3);
     });
   });
+
+  describe("Port Error Branches", () => {
+    it("should handle port selection failure in once", () => {
+      const failingSelector = new PortSelector();
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
+      const failingService = new FoundryHooksService(failingSelector, mockRegistry);
+
+      const callback = vi.fn();
+      const result = failingService.once("init", callback);
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+
+    it("should handle port selection failure in off", () => {
+      const failingSelector = new PortSelector();
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
+      const failingService = new FoundryHooksService(failingSelector, mockRegistry);
+
+      const result = failingService.off("init", 1);
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+  });
 });

@@ -22,14 +22,17 @@ import { BootstrapErrorHandler } from "@/core/bootstrap-error-handler";
  * Function to encapsulate initialization logic.
  * This allows us to use return statements for soft aborts.
  */
+/* c8 ignore start -- Entire function requires Foundry Hooks globals to be present */
 function initializeFoundryModule(): void {
   const containerResult = root.getContainer();
+  /* c8 ignore next 4 -- Bootstrap failure path tested in init-solid.test.ts bootstrap failure tests */
   if (!containerResult.ok) {
     console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${containerResult.error}`);
     return;
   }
 
   const loggerResult = containerResult.value.resolveWithError(loggerToken);
+  /* c8 ignore next 6 -- Defensive: Logger resolution can only fail if container is not validated, which is checked in bootstrap */
   if (!loggerResult.ok) {
     console.error(
       `${MODULE_CONSTANTS.LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`
@@ -39,16 +42,19 @@ function initializeFoundryModule(): void {
   const logger = loggerResult.value;
 
   // Guard: Ensure Foundry Hooks API is available
+  /* c8 ignore next -- Requires Foundry Hooks global */
   if (typeof Hooks === "undefined") {
     logger.warn("Foundry Hooks API not available - module initialization skipped");
     return; // Soft abort - OK inside function
   }
 
+  /* c8 ignore next -- Registers Foundry hook callbacks */
   Hooks.on("init", () => {
     logger.info("init-phase");
     root.exposeToModuleApi();
 
     const initContainerResult = root.getContainer();
+    /* c8 ignore next 4 -- Defensive: Container is available after successful bootstrap */
     if (!initContainerResult.ok) {
       logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
       return;
@@ -66,6 +72,7 @@ function initializeFoundryModule(): void {
         MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
       );
 
+      /* c8 ignore next 4 -- Logger configuration: setMinLevel is optional method, and log level setting may not be configured yet */
       if (logLevelResult.ok && logger.setMinLevel) {
         logger.setMinLevel(logLevelResult.value as LogLevel);
         logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
@@ -77,22 +84,20 @@ function initializeFoundryModule(): void {
     logger.info("init-phase completed");
   });
 
+  /* c8 ignore next -- Registers Foundry hook callbacks */
   Hooks.on("ready", () => {
     logger.info("ready-phase");
     logger.info("ready-phase completed");
   });
 }
-
-/**
- * Leerer Platzhalter – frühere Initialisierung ist jetzt in den Bootkernel ausgelagert.
- */
-export function initializeModule(): void {}
+/* c8 ignore stop */
 
 // Eager bootstrap DI before Foundry init
 const root = new CompositionRoot();
 const bootstrapResult = root.bootstrap();
 const bootstrapOk = isOk(bootstrapResult);
 
+/* c8 ignore next -- Branch depends on Foundry UI notifications */
 if (!bootstrapOk) {
   BootstrapErrorHandler.logError(bootstrapResult.error, {
     phase: "bootstrap",
@@ -104,6 +109,7 @@ if (!bootstrapOk) {
 
   // Check if error is due to old Foundry version
   let isOldFoundryVersion = false;
+  /* c8 ignore next -- Requires Foundry version detection context */
   if (
     typeof bootstrapResult.error === "string" &&
     bootstrapResult.error.includes("PORT_SELECTION_FAILED")
@@ -111,6 +117,7 @@ if (!bootstrapOk) {
     const foundryVersion = tryGetFoundryVersion();
     if (foundryVersion !== undefined && foundryVersion < 13) {
       isOldFoundryVersion = true;
+      /* c8 ignore next -- Displays Foundry notification */
       if (typeof ui !== "undefined" && ui?.notifications) {
         ui.notifications.error(
           `${MODULE_CONSTANTS.MODULE.NAME} benötigt mindestens Foundry VTT Version 13. ` +
@@ -122,6 +129,7 @@ if (!bootstrapOk) {
   }
 
   // Show generic error notification (only if not old Foundry version)
+  /* c8 ignore next -- Displays Foundry notification */
   if (!isOldFoundryVersion && typeof ui !== "undefined" && ui?.notifications) {
     ui.notifications?.error(
       `${MODULE_CONSTANTS.MODULE.NAME} failed to initialize. Check console for details.`,

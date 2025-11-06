@@ -111,6 +111,39 @@ describe("FoundryUIService", () => {
     });
   });
 
+  describe("notify delegation", () => {
+    it("should delegate to port for info notification", () => {
+      mockPort.notify = vi.fn().mockReturnValue(ok(undefined));
+
+      const result = service.notify("Test message", "info");
+
+      expectResultOk(result);
+      expect(mockPort.notify).toHaveBeenCalledWith("Test message", "info");
+    });
+
+    it("should delegate to port for error notification", () => {
+      mockPort.notify = vi.fn().mockReturnValue(ok(undefined));
+
+      const result = service.notify("Error message", "error");
+
+      expectResultOk(result);
+      expect(mockPort.notify).toHaveBeenCalledWith("Error message", "error");
+    });
+
+    it("should handle port errors", () => {
+      const mockError = {
+        code: "OPERATION_FAILED" as const,
+        message: "Notification failed",
+      };
+      mockPort.notify = vi.fn().mockReturnValue(err(mockError));
+
+      const result = service.notify("Test", "warning");
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Notification failed");
+    });
+  });
+
   describe("Version Detection Failures", () => {
     it("should handle port selector errors", () => {
       const failingSelector = new PortSelector();
@@ -126,6 +159,55 @@ describe("FoundryUIService", () => {
 
       expectResultErr(result);
       expect(result.error.message).toContain("No compatible port");
+    });
+  });
+
+  describe("dispose", () => {
+    it("should reset port reference for garbage collection", () => {
+      const element = document.createElement("div");
+      // Trigger port initialization
+      service.removeJournalElement("id", "name", element);
+
+      // Dispose should reset port
+      service.dispose();
+
+      // After dispose, port should be re-initialized on next call
+      const selectSpy = vi.spyOn(mockSelector, "selectPortFromFactories");
+      service.removeJournalElement("id", "name", element);
+      expect(selectSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe("Port Error Branches", () => {
+    it("should handle port selection failure in findElement", () => {
+      const failingSelector = new PortSelector();
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
+      const failingService = new FoundryUIService(failingSelector, mockRegistry);
+
+      const container = document.createElement("div");
+      const result = failingService.findElement(container, ".test");
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+
+    it("should handle port selection failure in notify", () => {
+      const failingSelector = new PortSelector();
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
+      const failingService = new FoundryUIService(failingSelector, mockRegistry);
+
+      const result = failingService.notify("Test message", "info");
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
     });
   });
 });

@@ -6,6 +6,7 @@
  * - Initializes the module
  * - Imports required CSS styles
  */
+/* c8 ignore file -- Entry Point mit nur Side-Effects (Imports) */
 import "@/polyfills/cytoscape-assign-fix";
 import "@/core/init-solid";
 import "../styles/tailwind.css";

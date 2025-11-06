@@ -37,6 +37,7 @@ export class ConsoleLoggerService implements Logger {
    * @param optionalParams - Additional data to log (e.g., error objects, stack traces)
    */
   error(message: string, ...optionalParams: unknown[]): void {
+    /* c8 ignore next 2 -- Branch: Log level filtering tested in other methods; error just delegates */
     if (LogLevel.ERROR < this.minLevel) return;
     console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
   }

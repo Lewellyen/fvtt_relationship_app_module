@@ -210,12 +210,14 @@ Features, die entfernt werden sollen:
 3. Loggen Warnungen bei Verwendung
 4. Werden in Major-Version entfernt
 
-**Beispiel**: `PortRegistry.getAvailablePorts()` ist seit v0.0.14 deprecated:
+**Beispiel**: `PortRegistry.getAvailablePorts()` war seit v0.0.14 deprecated und wurde in v0.2.0 entfernt:
 ```typescript
-/**
- * @deprecated Use getFactories() with PortSelector.selectPortFromFactories() instead.
- */
-getAvailablePorts(): Map<number, T>
+// ❌ Entfernt in v0.2.0
+// getAvailablePorts(): Map<number, T>
+
+// ✅ Verwende stattdessen:
+const factories = registry.getFactories();
+const portResult = portSelector.selectPortFromFactories(factories);
 ```
 
 ---

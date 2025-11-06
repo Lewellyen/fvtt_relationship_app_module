@@ -99,11 +99,39 @@ describe("ServiceContainer", () => {
       expect(result.error.code).toBe("DuplicateRegistration");
     });
 
-    it("should reject registration after validation", () => {
+    it("should reject registration after validation for registerClass", () => {
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       container.validate();
       const newToken = createInjectionToken<TestService>("NewService");
       const result = container.registerClass(newToken, TestService, ServiceLifecycle.SINGLETON);
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidOperation");
+    });
+
+    it("should reject registration after validation for registerFactory", () => {
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+      container.validate();
+      const newToken = createInjectionToken<TestService>("NewFactory");
+      const result = container.registerFactory(newToken, () => new TestService(), ServiceLifecycle.SINGLETON, []);
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidOperation");
+    });
+
+    it("should reject registration after validation for registerValue", () => {
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+      container.validate();
+      const newToken = createInjectionToken<TestService>("NewValue");
+      const result = container.registerValue(newToken, new TestService());
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidOperation");
+    });
+
+    it("should reject registration after validation for registerAlias", () => {
+      const targetToken = createInjectionToken<TestService>("AliasTarget");
+      container.registerClass(targetToken, TestService, ServiceLifecycle.SINGLETON);
+      container.validate();
+      const aliasToken = createInjectionToken<TestService>("NewAlias");
+      const result = container.registerAlias(aliasToken, targetToken);
       expectResultErr(result);
       expect(result.error.code).toBe("InvalidOperation");
     });
@@ -730,5 +758,36 @@ describe("ServiceContainer", () => {
       await validationPromise;
       expect(container.getValidationState()).toBe("validated");
     });
+
+    it("should reset validationState on validation failure (sync)", () => {
+      const container = ServiceContainer.createRoot();
+      const tokenA = createInjectionToken<TestService>("ServiceA");
+      const tokenB = createInjectionToken<TestService>("ServiceB");
+
+      // Register service A that depends on non-existent service B
+      container.registerFactory(tokenA, () => new TestService(), ServiceLifecycle.SINGLETON, [tokenB]);
+
+      const result = container.validate();
+
+      expectResultErr(result);
+      // State should be reset to "registering"
+      expect(container.getValidationState()).toBe("registering");
+    });
+
+    it("should reset validationState on validation failure (async)", async () => {
+      const container = ServiceContainer.createRoot();
+      const tokenA = createInjectionToken<TestService>("ServiceA");
+      const tokenB = createInjectionToken<TestService>("ServiceB");
+
+      // Register service A that depends on non-existent service B
+      container.registerFactory(tokenA, () => new TestService(), ServiceLifecycle.SINGLETON, [tokenB]);
+
+      const result = await container.validateAsync();
+
+      expectResultErr(result);
+      // State should be reset to "registering"
+      expect(container.getValidationState()).toBe("registering");
+    });
   });
+
 });

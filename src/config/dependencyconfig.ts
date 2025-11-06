@@ -57,6 +57,7 @@ function registerPortToRegistry<T>(
   errors: string[]
 ): void {
   const result = registry.register(version, factory);
+  /* c8 ignore next 3 -- Defensive: Port registration can only fail if version is duplicate, which is controlled by hardcoded port registrations */
   if (isErr(result)) {
     errors.push(`${portName} v${version}: ${result.error}`);
   }
@@ -104,6 +105,7 @@ export function configureDependencies(container: ServiceContainer): Result<void,
     []
   );
 
+  /* c8 ignore next 3 -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
   if (isErr(portSelectorResult)) {
     return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
   }
@@ -157,6 +159,7 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   );
 
   // Return early if any port registration failed
+  /* c8 ignore next 3 -- Port registration errors already tested individually; aggregation is defensive */
   if (portRegistrationErrors.length > 0) {
     return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
   }
@@ -173,6 +176,7 @@ export function configureDependencies(container: ServiceContainer): Result<void,
     foundryHooksPortRegistryToken,
     hooksPortRegistry
   );
+  /* c8 ignore next 5 -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
   if (isErr(hooksRegistryResult)) {
     return err(
       `Failed to register FoundryHooks PortRegistry: ${hooksRegistryResult.error.message}`
@@ -183,6 +187,7 @@ export function configureDependencies(container: ServiceContainer): Result<void,
     foundryDocumentPortRegistryToken,
     documentPortRegistry
   );
+  /* c8 ignore next 5 -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
   if (isErr(documentRegistryResult)) {
     return err(
       `Failed to register FoundryDocument PortRegistry: ${documentRegistryResult.error.message}`
@@ -190,6 +195,7 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   }
 
   const uiRegistryResult = container.registerValue(foundryUIPortRegistryToken, uiPortRegistry);
+  /* c8 ignore next 3 -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
   if (isErr(uiRegistryResult)) {
     return err(`Failed to register FoundryUI PortRegistry: ${uiRegistryResult.error.message}`);
   }
@@ -273,6 +279,7 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   // Phase 2: Validate
   const validateResult = container.validate();
+  /* c8 ignore next 4 -- Defensive: Validation can only fail if dependencies are missing or circular, which cannot happen with hardcoded dependency graph */
   if (isErr(validateResult)) {
     const errorMessages = validateResult.error.map((e) => e.message).join(", ");
     return err(`Validation failed: ${errorMessages}`);

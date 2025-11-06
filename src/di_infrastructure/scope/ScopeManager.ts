@@ -11,6 +11,7 @@ import { ok, err, tryCatch, isErr } from "@/utils/result";
  */
 function generateScopeId(): string {
   try {
+    /* c8 ignore next -- Delegates to browser crypto implementation */
     return crypto.randomUUID();
   } catch {
     return Date.now() + "-" + Math.random();

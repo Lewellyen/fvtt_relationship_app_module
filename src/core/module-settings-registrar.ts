@@ -22,6 +22,7 @@ export class ModuleSettingsRegistrar {
     const loggerResult = container.resolveWithError(loggerToken);
 
     // Early return if any resolution failed
+    /* c8 ignore next 4 -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
     if (!settingsResult.ok || !loggerResult.ok) {
       console.error("Failed to resolve required services for settings registration");
       return;

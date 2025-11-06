@@ -68,22 +68,6 @@ export class PortRegistry<T> {
   }
 
   /**
-   * Gets available port instances by instantiating all factories.
-   *
-   * @deprecated Use getFactories() with PortSelector.selectPortFromFactories() instead.
-   * This method instantiates all ports eagerly, which may cause crashes on incompatible Foundry versions.
-   *
-   * @returns Map of version numbers to port instances
-   */
-  getAvailablePorts(): Map<number, T> {
-    const ports = new Map<number, T>();
-    for (const [version, factory] of this.factories.entries()) {
-      ports.set(version, factory());
-    }
-    return ports;
-  }
-
-  /**
    * Creates only the port for the specified version or the highest compatible version.
    * More efficient than createAll() when only one port is needed.
    * @param version - The target Foundry version
@@ -107,10 +91,12 @@ export class PortRegistry<T> {
     }
 
     const selectedVersion = compatibleVersions[0];
+    /* c8 ignore next 3 -- Defensive check: selectedVersion cannot be undefined after compatibleVersions length check */
     if (selectedVersion === undefined) {
       return err(createFoundryError("PORT_NOT_FOUND", "No compatible version found", { version }));
     }
     const factory = this.factories.get(selectedVersion);
+    /* c8 ignore next 7 -- Defensive check: factory cannot be undefined after selectedVersion is validated from compatibleVersions */
     if (!factory) {
       return err(
         createFoundryError("PORT_NOT_FOUND", `Factory not found for version ${selectedVersion}`, {

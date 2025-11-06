@@ -9,6 +9,7 @@
  * This ensures proper display of German text (ä, ö, ü, ß) and prevents mojibake.
  * Configure your editor to use UTF-8 encoding for all .ts, .js, and .svelte files.
  */
+/* c8 ignore file -- Reine Konstanten-Definition, keine ausführbare Logik */
 export const MODULE_CONSTANTS = {
   MODULE: {
     ID: "fvtt_relationship_app_module",

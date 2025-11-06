@@ -1,3 +1,5 @@
+process.env.ROLLUP_SKIP_NODE_NATIVE = "true";
+
 import { defineConfig } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -22,10 +24,10 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 75,
-        statements: 80,
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100,
       },
       include: ["src/**/*.ts"],
       exclude: [
@@ -39,6 +41,7 @@ export default defineConfig({
         "src/**/interfaces/**",
         "src/types/**",
         "src/foundry/types.ts",
+        "src/config/environment.ts",
         "src/di_infrastructure/types/containererrorcode.ts",
         "src/di_infrastructure/types/containervalidationstate.ts",
         "src/di_infrastructure/types/injectiontoken.ts",

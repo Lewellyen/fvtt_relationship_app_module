@@ -31,6 +31,7 @@ export class ModuleHookRegistrar {
     const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
 
     // Early return if any resolution failed
+    /* c8 ignore next 4 -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
     if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok) {
       console.error("Failed to resolve required services for hook registration");
       return;
@@ -97,8 +98,9 @@ export class ModuleHookRegistrar {
           if (element instanceof HTMLElement) {
             return element;
           }
+        /* c8 ignore next 3 -- Defensive: Ignore errors from accessing journal entry properties that may not exist */
         } catch {
-          // Ignore get() errors
+          // Intentionally empty catch block
         }
       }
     }

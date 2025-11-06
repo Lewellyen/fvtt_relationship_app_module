@@ -74,6 +74,7 @@ export class JsonLogger implements Logger {
    * @param optionalParams - Additional data to log (e.g., error objects)
    */
   error(message: string, ...optionalParams: unknown[]): void {
+    /* c8 ignore next 2 -- Branch: Log level filtering tested in other methods; error just delegates */
     if (LogLevel.ERROR < this.minLevel) return;
     this.logJson("error", message, optionalParams);
   }

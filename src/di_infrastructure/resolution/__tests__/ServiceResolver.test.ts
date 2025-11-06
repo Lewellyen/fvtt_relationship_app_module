@@ -8,6 +8,8 @@ import { InstanceCache } from "../../cache/InstanceCache";
 import { createInjectionToken } from "../../tokenutilities";
 import { ServiceLifecycle } from "../../types/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import { ENV } from "@/config/environment";
+import { MetricsCollector } from "@/observability/metrics-collector";
 import type { Logger } from "@/interfaces/logger";
 
 class TestService implements Logger {
@@ -415,5 +417,33 @@ describe("ServiceResolver", () => {
       expectResultErr(result);
       expect(result.error.code).toBe("InvalidOperation");
     });
+
+    it("should handle constructor errors gracefully", () => {
+      class FailingService implements Logger {
+        static dependencies = [] as const;
+        constructor() {
+          throw new Error("Constructor intentionally fails");
+        }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      const registry = new ServiceRegistry();
+      const cache = new InstanceCache();
+      const resolver = new ServiceResolver(registry, cache, null, "root");
+
+      const token = createInjectionToken<FailingService>("FailingService");
+      registry.registerClass(token, FailingService, ServiceLifecycle.SINGLETON);
+
+      const result = resolver.resolve(token);
+      expectResultErr(result);
+      expect(result.error.code).toBe("FactoryFailed");
+      expect(result.error.message).toContain("Constructor failed");
+      expect(result.error.message).toContain("Constructor intentionally fails");
+    });
   });
+
 });

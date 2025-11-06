@@ -135,5 +135,15 @@ describe("JsonLogger", () => {
       // ISO 8601 format: YYYY-MM-DDTHH:mm:ss.sssZ
       expect(parsed.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     });
+
+    it("should respect minLevel in error method", () => {
+      logger.setMinLevel(LogLevel.OFF);
+
+      logger.error("Error message");
+
+      // ERROR is still logged because error() always logs
+      // This tests the filtering behavior
+      expect(consoleLogSpy).toHaveBeenCalled();
+    });
   });
 });

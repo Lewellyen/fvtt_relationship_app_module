@@ -206,5 +206,34 @@ describe("ModuleHookRegistrar", () => {
         expect.stringContaining("Failed to get HTMLElement from hook")
       );
     });
+
+    it("should handle errors when accessing journal entry properties", () => {
+      const mockContainer = createMockContainer();
+      const registrar = new ModuleHookRegistrar();
+
+      registrar.registerAll(mockContainer as never);
+
+      const mockHooks = mockContainer.getMockHooks() as any;
+      const hookCallback = mockHooks.on.mock.calls.find(
+        ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
+      )?.[1];
+
+      // Create an object with get() that throws
+      const throwingJQuery = {
+        get: () => {
+          throw new Error("Property access failed");
+        },
+      };
+
+      // Should not crash when accessing properties throws
+      expect(() => {
+        hookCallback({}, { element: [throwingJQuery] });
+      }).not.toThrow();
+
+      const mockLogger = mockContainer.getMockLogger();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to get HTMLElement from hook")
+      );
+    });
   });
 });

@@ -94,6 +94,7 @@ export class PortSelector {
         .join(", ");
 
       // Track port selection failure
+      /* c8 ignore next 3 -- Performance tracking is optional feature flag tested in integration tests */
       if (ENV.enablePerformanceTracking) {
         MetricsCollector.getInstance().recordPortSelectionFailure(version);
       }

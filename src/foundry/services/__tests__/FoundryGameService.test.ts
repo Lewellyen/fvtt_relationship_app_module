@@ -147,4 +147,36 @@ describe("FoundryGameService", () => {
       expect(mockPort.getJournalEntryById).toHaveBeenCalledWith("journal-1");
     });
   });
+
+  describe("dispose", () => {
+    it("should reset port reference for garbage collection", () => {
+      // Trigger port initialization
+      service.getJournalEntries();
+
+      // Dispose should reset port
+      service.dispose();
+
+      // After dispose, port should be re-initialized on next call
+      const selectSpy = vi.spyOn(mockSelector, "selectPortFromFactories");
+      service.getJournalEntries();
+      expect(selectSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe("Port Error Branches", () => {
+    it("should handle port selection failure in getJournalEntryById", () => {
+      const failingSelector = new PortSelector();
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
+      const failingService = new FoundryGameService(failingSelector, mockRegistry);
+
+      const result = failingService.getJournalEntryById("test-id");
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+  });
 });

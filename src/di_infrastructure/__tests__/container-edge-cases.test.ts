@@ -108,6 +108,65 @@ describe("ServiceContainer - Edge Cases", () => {
   });
 
   describe("Disposal", () => {
+    it("should reject registerClass on disposed container", () => {
+      const container = ServiceContainer.createRoot();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const token = createInjectionToken<any>("Service");
+      
+      container.dispose();
+      
+      const result = container.registerClass(token, class {}, ServiceLifecycle.SINGLETON);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("Disposed");
+      }
+    });
+
+    it("should reject registerFactory on disposed container", () => {
+      const container = ServiceContainer.createRoot();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const token = createInjectionToken<any>("Factory");
+      
+      container.dispose();
+      
+      const result = container.registerFactory(token, () => ({}), ServiceLifecycle.SINGLETON, []);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("Disposed");
+      }
+    });
+
+    it("should reject registerValue on disposed container", () => {
+      const container = ServiceContainer.createRoot();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const token = createInjectionToken<any>("Value");
+      
+      container.dispose();
+      
+      const result = container.registerValue(token, {});
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("Disposed");
+      }
+    });
+
+    it("should reject registerAlias on disposed container", () => {
+      const container = ServiceContainer.createRoot();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const targetToken = createInjectionToken<any>("Target");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const aliasToken = createInjectionToken<any>("Alias");
+      
+      container.registerClass(targetToken, class {}, ServiceLifecycle.SINGLETON);
+      container.dispose();
+      
+      const result = container.registerAlias(aliasToken, targetToken);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("Disposed");
+      }
+    });
+
     it("should clean up all registered hooks on dispose (sync)", () => {
       const container = ServiceContainer.createRoot();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

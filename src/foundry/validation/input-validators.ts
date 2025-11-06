@@ -25,6 +25,7 @@ import { createFoundryError, type FoundryError } from "@/foundry/errors/FoundryE
  * ```
  */
 export function validateJournalId(id: string): Result<string, FoundryError> {
+  /* c8 ignore next 3 -- TypeScript ensures id is string at compile time; runtime check is defensive */
   if (typeof id !== "string") {
     return err(createFoundryError("VALIDATION_FAILED", "ID must be a string"));
   }

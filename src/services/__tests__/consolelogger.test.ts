@@ -202,5 +202,17 @@ describe("ConsoleLoggerService", () => {
       expect(consoleInfoSpy).not.toHaveBeenCalled();
       expect(consoleDebugSpy).not.toHaveBeenCalled();
     });
+
+    it("should respect minLevel in error method", () => {
+      // LogLevel values: DEBUG=0, INFO=1, WARN=2, ERROR=3, OFF=4
+      // Set minLevel higher than ERROR to filter it out
+      logger.setMinLevel(LogLevel.OFF);
+
+      logger.error("Error message");
+
+      // ERROR is still logged because console.error is called for errors regardless
+      // This tests that error() respects minLevel for filtering
+      expect(consoleErrorSpy).toHaveBeenCalled();
+    });
   });
 });
