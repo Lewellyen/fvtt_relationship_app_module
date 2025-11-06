@@ -455,11 +455,9 @@ describe("ScopeManager", () => {
       // Create two children
       const child1Result = parentManager.createChild("child1");
       expectResultOk(child1Result);
-      const child1 = child1Result.value.manager;
 
       const child2Result = parentManager.createChild("child2");
       expectResultOk(child2Result);
-      const child2 = child2Result.value.manager;
 
       // Add a failing disposable to child1
       const failingDisposable = {
@@ -467,7 +465,7 @@ describe("ScopeManager", () => {
           throw new Error("Disposal failed");
         },
       };
-      child1Result.value.cache.set(Symbol("Failing"), failingDisposable);
+      child1Result.value.cache.set(Symbol("Failing"), failingDisposable as any);
 
       // Dispose parent - should collect child1 error
       const result = parentManager.dispose();
@@ -476,8 +474,11 @@ describe("ScopeManager", () => {
       expect(result.error.code).toBe("PartialDisposal");
       expect(result.error.message).toContain("1 child scope");
       expect(result.error.details).toBeDefined();
-      expect(result.error.details).toHaveLength(1);
-      expect(result.error.details[0].scopeName).toBe("parent.child1");
+      expect(Array.isArray(result.error.details)).toBe(true);
+      if (Array.isArray(result.error.details)) {
+        expect(result.error.details).toHaveLength(1);
+        expect(result.error.details[0].scopeName).toBe("parent.child1");
+      }
     });
 
     it("should collect child disposal errors (async)", async () => {
@@ -487,11 +488,9 @@ describe("ScopeManager", () => {
       // Create two children
       const child1Result = parentManager.createChild("child1");
       expectResultOk(child1Result);
-      const child1 = child1Result.value.manager;
 
       const child2Result = parentManager.createChild("child2");
       expectResultOk(child2Result);
-      const child2 = child2Result.value.manager;
 
       // Add a failing async disposable to child1
       const failingAsyncDisposable = {
@@ -499,7 +498,7 @@ describe("ScopeManager", () => {
           throw new Error("Async disposal failed");
         },
       };
-      child1Result.value.cache.set(Symbol("FailingAsync"), failingAsyncDisposable);
+      child1Result.value.cache.set(Symbol("FailingAsync"), failingAsyncDisposable as any);
 
       // Dispose parent async - should collect child1 error
       const result = await parentManager.disposeAsync();
@@ -508,8 +507,11 @@ describe("ScopeManager", () => {
       expect(result.error.code).toBe("PartialDisposal");
       expect(result.error.message).toContain("1 child scope");
       expect(result.error.details).toBeDefined();
-      expect(result.error.details).toHaveLength(1);
-      expect(result.error.details[0].scopeName).toBe("parent.child1");
+      expect(Array.isArray(result.error.details)).toBe(true);
+      if (Array.isArray(result.error.details)) {
+        expect(result.error.details).toHaveLength(1);
+        expect(result.error.details[0].scopeName).toBe("parent.child1");
+      }
     });
 
     it("should remove child from parent on disposal", () => {
@@ -521,14 +523,14 @@ describe("ScopeManager", () => {
       const child = childResult.value.manager;
 
       // Child should be in parent's children set
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       expect((parentManager as any).children.has(child)).toBe(true);
 
       // Dispose child
       child.dispose();
 
       // Child should be removed from parent's children set
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       expect((parentManager as any).children.has(child)).toBe(false);
     });
 

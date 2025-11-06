@@ -133,7 +133,12 @@ describe("ServiceRegistry", () => {
       const token = createInjectionToken<TestService>("DuplicateFactory");
 
       registry.registerFactory(token, () => new TestService(), ServiceLifecycle.SINGLETON, []);
-      const result = registry.registerFactory(token, () => new TestService(), ServiceLifecycle.SINGLETON, []);
+      const result = registry.registerFactory(
+        token,
+        () => new TestService(),
+        ServiceLifecycle.SINGLETON,
+        []
+      );
 
       expectResultErr(result);
       expect(result.error.code).toBe("DuplicateRegistration");
@@ -546,5 +551,4 @@ describe("ServiceRegistry", () => {
       expect(result.error.message).toContain("10000");
     });
   });
-
 });

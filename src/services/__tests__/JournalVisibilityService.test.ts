@@ -427,5 +427,4 @@ describe("JournalVisibilityService", () => {
       expect(mockDocument.getFlag).not.toHaveBeenCalled();
     });
   });
-
 });

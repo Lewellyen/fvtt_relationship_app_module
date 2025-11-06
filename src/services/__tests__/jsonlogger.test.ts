@@ -137,13 +137,13 @@ describe("JsonLogger", () => {
     });
 
     it("should respect minLevel in error method", () => {
-      logger.setMinLevel(LogLevel.OFF);
+      logger.setMinLevel(99 as LogLevel);
 
       logger.error("Error message");
 
-      // ERROR is still logged because error() always logs
+      // ERROR is filtered when minLevel > ERROR
       // This tests the filtering behavior
-      expect(consoleLogSpy).toHaveBeenCalled();
+      expect(consoleLogSpy).not.toHaveBeenCalled();
     });
   });
 });

@@ -28,9 +28,7 @@ describe("BootstrapErrorHandler", () => {
       expect(consoleGroupSpy).toHaveBeenCalledTimes(1);
       expect(consoleGroupEndSpy).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith("Error:", error);
-      expect(consoleGroupSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Error in bootstrap")
-      );
+      expect(consoleGroupSpy).toHaveBeenCalledWith(expect.stringContaining("Error in bootstrap"));
     });
 
     it("should log error with component", () => {
@@ -128,9 +126,7 @@ describe("BootstrapErrorHandler", () => {
       BootstrapErrorHandler.logError(error, context);
 
       // Should not call console.error with "Metadata:"
-      const metadataCall = consoleErrorSpy.mock.calls.find(
-        (call) => call[0] === "Metadata:"
-      );
+      const metadataCall = consoleErrorSpy.mock.calls.find((call) => call[0] === "Metadata:");
       expect(metadataCall).toBeUndefined();
     });
 

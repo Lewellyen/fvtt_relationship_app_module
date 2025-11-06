@@ -69,13 +69,11 @@ describe("tokenutilities", () => {
     });
 
     it("should create tokens that preserve type information", () => {
-      const loggerToken = createInjectionToken<Logger>("Logger");
+      const token = createInjectionToken<Logger>("Logger");
 
       // TypeScript should enforce type safety
       // This test ensures the token maintains its generic type
-      const _testType: typeof loggerToken = createInjectionToken<Logger>("Logger");
-      expect(typeof _testType).toBe("symbol");
+      expect(typeof token).toBe("symbol");
     });
   });
 });
-

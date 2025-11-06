@@ -241,7 +241,7 @@ describe("CompositionRoot", () => {
 
       // Simulate port selection failure
       const metricsModule = await import("@/observability/metrics-collector");
-      metricsModule.MetricsCollector.getInstance().recordPortSelectionFailure("12.331");
+      metricsModule.MetricsCollector.getInstance().recordPortSelectionFailure(12.331);
 
       const mod = (game as any).modules.get("fvtt_relationship_app_module");
       const health = mod.api.getHealth();

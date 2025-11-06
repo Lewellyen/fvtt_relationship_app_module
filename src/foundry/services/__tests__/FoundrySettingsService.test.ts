@@ -127,5 +127,4 @@ describe("FoundrySettingsService", () => {
       expect(selectSpy).toHaveBeenCalled();
     });
   });
-
 });

@@ -169,6 +169,16 @@ const loggerToken = createInjectionToken("Logger");
 const journalVisibilityServiceToken = createInjectionToken(
   "JournalVisibilityService"
 );
+const apiSafeTokens = /* @__PURE__ */ new Set();
+function markAsApiSafe(token) {
+  apiSafeTokens.add(token);
+  return token;
+}
+__name(markAsApiSafe, "markAsApiSafe");
+function isApiSafeTokenRuntime(token) {
+  return apiSafeTokens.has(token);
+}
+__name(isApiSafeTokenRuntime, "isApiSafeTokenRuntime");
 var ServiceLifecycle = /* @__PURE__ */ ((ServiceLifecycle2) => {
   ServiceLifecycle2["SINGLETON"] = "singleton";
   ServiceLifecycle2["TRANSIENT"] = "transient";
@@ -771,7 +781,7 @@ const _MetricsCollector = class _MetricsCollector {
   }
   /**
    * Records a port selection failure.
-   * 
+   *
    * Useful for tracking when no compatible port is available for a version.
    *
    * @param version - The Foundry version for which port selection failed
@@ -856,11 +866,11 @@ var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
   return LogLevel2;
 })(LogLevel || {});
 const ENV = {
-  isDevelopment: false,
-  isProduction: true,
-  logLevel: false ? 0 : 1,
-  enablePerformanceTracking: false,
-  enableDebugMode: false
+  isDevelopment: true,
+  isProduction: false,
+  logLevel: true ? 0 : 1,
+  enablePerformanceTracking: true,
+  enableDebugMode: true
 };
 const _ServiceResolver = class _ServiceResolver {
   constructor(registry, cache, parentResolver, scopeName) {
@@ -912,6 +922,7 @@ const _ServiceResolver = class _ServiceResolver {
       case ServiceLifecycle.SCOPED:
         result = this.resolveScoped(token, registration);
         break;
+      /* c8 ignore next 6 -- Defensive: ServiceLifecycle enum ensures only valid values; this default is unreachable */
       default:
         result = err({
           code: "InvalidLifecycle",
@@ -1032,7 +1043,7 @@ const _ServiceResolver = class _ServiceResolver {
   }
   /**
    * Resolves a Scoped service.
-   * 
+   *
    * ⚠️ IMPORTANT: Scoped services can ONLY be resolved in child containers.
    * Attempting to resolve a scoped service in the root container will return
    * a ScopeRequired error.
@@ -1041,14 +1052,14 @@ const _ServiceResolver = class _ServiceResolver {
    * - Must be in child scope (not root)
    * - One instance per scope (cached)
    * - Each child scope gets its own isolated instance
-   * 
+   *
    * Use createScope() to create a child container before resolving scoped services.
    *
    * @template TServiceType - The type of service
    * @param token - The injection token
    * @param registration - The service registration
    * @returns Result with scoped instance or ScopeRequired error
-   * 
+   *
    * @example
    * ```typescript
    * // ❌ WRONG: Trying to resolve scoped service in root
@@ -1056,7 +1067,7 @@ const _ServiceResolver = class _ServiceResolver {
    * root.registerClass(RequestToken, RequestContext, SCOPED);
    * root.validate();
    * const result = root.resolve(RequestToken); // Error: ScopeRequired
-   * 
+   *
    * // ✅ CORRECT: Create child scope first
    * const child = root.createScope("request").value!;
    * child.validate(); // Child must validate separately
@@ -1183,7 +1194,56 @@ const _ScopeManager = class _ScopeManager {
     return ok(void 0);
   }
   /**
-   * Disposes all instances in the cache that implement Disposable.
+   * Asynchronously disposes this scope and all child scopes.
+   *
+   * Preferred method for cleanup as it properly handles async dispose operations.
+   * Falls back to sync dispose() for services that only implement Disposable.
+   *
+   * Disposal order (critical):
+   * 1. Recursively dispose all children (async)
+   * 2. Dispose instances in this scope (async or sync)
+   * 3. Clear instance cache
+   * 4. Remove from parent's children set
+   *
+   * @returns Promise with Result indicating success or disposal error
+   */
+  async disposeAsync() {
+    if (this.disposed) {
+      return err({
+        code: "Disposed",
+        message: `Scope already disposed: ${this.scopeName}`
+      });
+    }
+    this.disposed = true;
+    const childDisposalErrors = [];
+    for (const child of this.children) {
+      const childResult = await child.disposeAsync();
+      if (isErr(childResult)) {
+        childDisposalErrors.push({
+          scopeName: child.scopeName,
+          error: childResult.error
+        });
+      }
+    }
+    const disposeResult = await this.disposeInstancesAsync();
+    if (!disposeResult.ok) {
+      return disposeResult;
+    }
+    this.cache.clear();
+    if (this.parent !== null) {
+      this.parent.children.delete(this);
+    }
+    if (childDisposalErrors.length > 0) {
+      return err({
+        code: "PartialDisposal",
+        message: `Failed to dispose ${childDisposalErrors.length} child scope(s)`,
+        details: childDisposalErrors
+      });
+    }
+    return ok(void 0);
+  }
+  /**
+   * Disposes all instances in the cache that implement Disposable (sync).
    *
    * @returns Result indicating success or disposal error
    */
@@ -1208,17 +1268,59 @@ const _ScopeManager = class _ScopeManager {
     return ok(void 0);
   }
   /**
-   * Type guard to check if an instance implements the Disposable pattern.
+   * Disposes all instances in the cache that implement Disposable or AsyncDisposable (async).
+   * Prefers async disposal when available, falls back to sync.
    *
-   * Checks for:
-   * - dispose() method (function)
-   * - Future: Symbol.dispose support
+   * @returns Promise with Result indicating success or disposal error
+   */
+  async disposeInstancesAsync() {
+    const instances = this.cache.getAllInstances();
+    for (const [token, instance2] of instances.entries()) {
+      if (this.isAsyncDisposable(instance2)) {
+        try {
+          await instance2.disposeAsync();
+        } catch (error) {
+          return err({
+            code: "DisposalFailed",
+            message: `Error disposing service ${String(token)}: ${String(error)}`,
+            tokenDescription: String(token),
+            cause: error
+          });
+        }
+      } else if (this.isDisposable(instance2)) {
+        const result = tryCatch(
+          () => instance2.dispose(),
+          (error) => ({
+            code: "DisposalFailed",
+            message: `Error disposing service ${String(token)}: ${String(error)}`,
+            tokenDescription: String(token),
+            cause: error
+          })
+        );
+        if (isErr(result)) {
+          return result;
+        }
+      }
+    }
+    return ok(void 0);
+  }
+  /**
+   * Type guard to check if an instance implements the Disposable pattern.
    *
    * @param instance - The service instance to check
    * @returns True if instance has dispose() method
    */
   isDisposable(instance2) {
     return "dispose" in instance2 && typeof instance2.dispose === "function";
+  }
+  /**
+   * Type guard to check if an instance implements the AsyncDisposable pattern.
+   *
+   * @param instance - The service instance to check
+   * @returns True if instance has disposeAsync() method
+   */
+  isAsyncDisposable(instance2) {
+    return "disposeAsync" in instance2 && typeof instance2.disposeAsync === "function";
   }
   /**
    * Checks if this scope is disposed.
@@ -1238,12 +1340,12 @@ const _ScopeManager = class _ScopeManager {
   }
   /**
    * Gets the unique correlation ID for this scope.
-   * 
+   *
    * Useful for tracing and logging in distributed/concurrent scenarios.
    * Each scope gets a unique ID combining name, timestamp, and random string.
    *
    * @returns The unique scope ID (e.g., "root-1730761234567-abc123")
-   * 
+   *
    * @example
    * ```typescript
    * const scope = container.createScope("request").value!;
@@ -1548,10 +1650,20 @@ const _ServiceContainer = class _ServiceContainer {
     }
     return this.resolver.resolve(token);
   }
-  /**
-   * Resolve service (throwing version with fallback support).
-   */
+  // Implementation (unified for both overloads)
   resolve(token) {
+    if (!isApiSafeTokenRuntime(token)) {
+      throw new Error(
+        `API Boundary Violation: resolve() called with non-API-safe token: ${String(token)}.
+This token was not marked via markAsApiSafe().
+
+Internal code MUST use resolveWithError() instead:
+  const result = container.resolveWithError(${String(token)});
+  if (result.ok) { /* use result.value */ }
+
+Only the public ModuleApi should expose resolve() for external modules.`
+      );
+    }
     const result = this.resolveWithError(token);
     if (isOk(result)) {
       return result.value;
@@ -1586,10 +1698,47 @@ const _ServiceContainer = class _ServiceContainer {
     this.fallbackFactories.set(token, factory);
   }
   /**
-   * Dispose container and all children.
+   * Synchronously dispose container and all children.
+   *
+   * Use this for scenarios where async disposal is not possible (e.g., browser unload).
+   * For normal cleanup, prefer disposeAsync() which handles async disposal properly.
+   *
+   * @returns Result indicating success or disposal error
    */
   dispose() {
     const result = this.scopeManager.dispose();
+    if (result.ok) {
+      this.validationState = "registering";
+    }
+    return result;
+  }
+  /**
+   * Asynchronously dispose container and all children.
+   *
+   * This is the preferred disposal method as it properly handles services that
+   * implement AsyncDisposable, allowing for proper cleanup of resources like
+   * database connections, file handles, or network sockets.
+   *
+   * Falls back to synchronous disposal for services implementing only Disposable.
+   *
+   * @returns Promise with Result indicating success or disposal error
+   *
+   * @example
+   * ```typescript
+   * // Preferred: async disposal
+   * const result = await container.disposeAsync();
+   * if (result.ok) {
+   *   console.log("Container disposed successfully");
+   * }
+   *
+   * // Browser unload (sync required)
+   * window.addEventListener('beforeunload', () => {
+   *   container.dispose();  // Sync fallback
+   * });
+   * ```
+   */
+  async disposeAsync() {
+    const result = await this.scopeManager.disposeAsync();
     if (result.ok) {
       this.validationState = "registering";
     }
@@ -8565,7 +8714,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
   /**
    * Sanitizes a string for safe use in log messages.
    * Escapes HTML entities to prevent log injection or display issues.
-   * 
+   *
    * Delegates to sanitizeHtml for robust DOM-based sanitization.
    *
    * @param input - The string to sanitize
@@ -8808,7 +8957,9 @@ const _PortSelector = class _PortSelector {
         PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START,
         PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END
       );
-      const entries2 = performance.getEntriesByName(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION);
+      const entries2 = performance.getEntriesByName(
+        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION
+      );
       const measure = entries2.at(-1);
       if (measure && ENV.enableDebugMode) {
         console.debug(
@@ -8839,7 +8990,13 @@ const _PortRegistry = class _PortRegistry {
    */
   register(version, factory) {
     if (this.factories.has(version)) {
-      return err(`PortRegistry: version ${version} already registered`);
+      return err(
+        createFoundryError(
+          "PORT_REGISTRY_ERROR",
+          `Port for version ${version} already registered`,
+          { version }
+        )
+      );
     }
     this.factories.set(version, factory);
     return ok(void 0);
@@ -8873,21 +9030,6 @@ const _PortRegistry = class _PortRegistry {
     return new Map(this.factories);
   }
   /**
-   * Gets available port instances by instantiating all factories.
-   *
-   * @deprecated Use getFactories() with PortSelector.selectPortFromFactories() instead.
-   * This method instantiates all ports eagerly, which may cause crashes on incompatible Foundry versions.
-   *
-   * @returns Map of version numbers to port instances
-   */
-  getAvailablePorts() {
-    const ports = /* @__PURE__ */ new Map();
-    for (const [version, factory] of this.factories.entries()) {
-      ports.set(version, factory());
-    }
-    return ports;
-  }
-  /**
    * Creates only the port for the specified version or the highest compatible version.
    * More efficient than createAll() when only one port is needed.
    * @param version - The target Foundry version
@@ -8896,18 +9038,26 @@ const _PortRegistry = class _PortRegistry {
   createForVersion(version) {
     const compatibleVersions = Array.from(this.factories.keys()).filter((v) => v <= version).sort((a, b) => b - a);
     if (compatibleVersions.length === 0) {
-      const availableVersions = this.getAvailableVersions().join(", ");
+      const availableVersions = this.getAvailableVersions().join(", ") || "none";
       return err(
-        `No compatible port for Foundry v${version}. Available ports: ${availableVersions || "none"}`
+        createFoundryError(
+          "PORT_NOT_FOUND",
+          `No compatible port for Foundry v${version}. Available ports: ${availableVersions}`,
+          { version, availableVersions }
+        )
       );
     }
     const selectedVersion = compatibleVersions[0];
     if (selectedVersion === void 0) {
-      return err("No compatible version found");
+      return err(createFoundryError("PORT_NOT_FOUND", "No compatible version found", { version }));
     }
     const factory = this.factories.get(selectedVersion);
     if (!factory) {
-      return err(`Factory not found for version ${selectedVersion}`);
+      return err(
+        createFoundryError("PORT_NOT_FOUND", `Factory not found for version ${selectedVersion}`, {
+          selectedVersion
+        })
+      );
     }
     return ok(factory());
   }
@@ -9324,10 +9474,7 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
         if (typeof Hooks === "undefined") {
           throw new Error("Foundry Hooks API is not available");
         }
-        const hookId = Hooks.on(
-          hookName,
-          callback
-        );
+        const hookId = Hooks.on(hookName, callback);
         return hookId;
       },
       (error) => createFoundryError(
@@ -9344,10 +9491,7 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
         if (typeof Hooks === "undefined") {
           throw new Error("Foundry Hooks API is not available");
         }
-        const hookId = Hooks.once(
-          hookName,
-          callback
-        );
+        const hookId = Hooks.once(hookName, callback);
         return hookId;
       },
       (error) => createFoundryError(
@@ -9364,10 +9508,7 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
         if (typeof Hooks === "undefined") {
           throw new Error("Foundry Hooks API is not available");
         }
-        Hooks.off(
-          hookName,
-          callbackOrId
-        );
+        Hooks.off(hookName, callbackOrId);
         return void 0;
       },
       (error) => createFoundryError(
@@ -9489,11 +9630,7 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
     }
     return tryCatch(
       () => {
-        game.settings.register(
-          namespace,
-          key,
-          config2
-        );
+        game.settings.register(namespace, key, config2);
         return void 0;
       },
       (error) => createFoundryError(
@@ -9706,9 +9843,12 @@ function configureDependencies(container) {
     const errorMessages = validateResult.error.map((e) => e.message).join(", ");
     return err(`Validation failed: ${errorMessages}`);
   }
-  const loggerInstance = container.resolve(loggerToken);
-  if (loggerInstance.setMinLevel) {
-    loggerInstance.setMinLevel(ENV.logLevel);
+  const resolvedLoggerResult = container.resolveWithError(loggerToken);
+  if (resolvedLoggerResult.ok) {
+    const loggerInstance = resolvedLoggerResult.value;
+    if (loggerInstance.setMinLevel) {
+      loggerInstance.setMinLevel(ENV.logLevel);
+    }
   }
   return ok(void 0);
 }
@@ -9758,6 +9898,7 @@ const _CompositionRoot = class _CompositionRoot {
    * Darf erst nach erfolgreichem Bootstrap aufgerufen werden.
    * @throws Fehler, wenn das Foundry-Modul-Objekt nicht verfügbar ist
    */
+  /* c8 ignore next -- Requires Foundry game module globals */
   exposeToModuleApi() {
     const containerResult = this.getContainer();
     if (!containerResult.ok) {
@@ -9772,17 +9913,19 @@ const _CompositionRoot = class _CompositionRoot {
       throw new Error(`${MODULE_CONSTANTS.LOG_PREFIX} Module not available to expose API`);
     }
     const wellKnownTokens = {
-      loggerToken,
-      journalVisibilityServiceToken,
-      foundryGameToken,
-      foundryHooksToken,
-      foundryDocumentToken,
-      foundryUIToken,
-      foundrySettingsToken
+      loggerToken: markAsApiSafe(loggerToken),
+      journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
+      foundryGameToken: markAsApiSafe(foundryGameToken),
+      foundryHooksToken: markAsApiSafe(foundryHooksToken),
+      foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
+      foundryUIToken: markAsApiSafe(foundryUIToken),
+      foundrySettingsToken: markAsApiSafe(foundrySettingsToken)
     };
     const api = {
       version: "1.0.0",
-      resolve: /* @__PURE__ */ __name((token) => container.resolve(token), "resolve"),
+      // Bind container.resolve() directly (already typed as ApiSafeToken in ModuleApi interface)
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- API boundary: External modules use resolve()
+      resolve: container.resolve.bind(container),
       getAvailableTokens: /* @__PURE__ */ __name(() => {
         const tokenMap = /* @__PURE__ */ new Map();
         const tokenEntries = [
@@ -9798,6 +9941,7 @@ const _CompositionRoot = class _CompositionRoot {
           const isRegisteredResult = container.isRegistered(token);
           tokenMap.set(token, {
             description: String(token).replace("Symbol(", "").replace(")", ""),
+            /* c8 ignore next -- isRegistered never fails; ok check is defensive */
             isRegistered: isRegisteredResult.ok ? isRegisteredResult.value : false
           });
         }
@@ -9856,9 +10000,16 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
    * @param container DI-Container mit final gebundenen Ports und Services
    */
   registerAll(container) {
-    const foundryHooks = container.resolve(foundryHooksToken);
-    const logger = container.resolve(loggerToken);
-    const journalVisibility = container.resolve(journalVisibilityServiceToken);
+    const foundryHooksResult = container.resolveWithError(foundryHooksToken);
+    const loggerResult = container.resolveWithError(loggerToken);
+    const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
+    if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok) {
+      console.error("Failed to resolve required services for hook registration");
+      return;
+    }
+    const foundryHooks = foundryHooksResult.value;
+    const logger = loggerResult.value;
+    const journalVisibility = journalVisibilityResult.value;
     const hookResult = foundryHooks.on(
       MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
       (app, html) => {
@@ -9923,8 +10074,14 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
    * @param container DI-Container with registered services
    */
   registerAll(container) {
-    const settings = container.resolve(foundrySettingsToken);
-    const logger = container.resolve(loggerToken);
+    const settingsResult = container.resolveWithError(foundrySettingsToken);
+    const loggerResult = container.resolveWithError(loggerToken);
+    if (!settingsResult.ok || !loggerResult.ok) {
+      console.error("Failed to resolve required services for settings registration");
+      return;
+    }
+    const settings = settingsResult.value;
+    const logger = loggerResult.value;
     const result = settings.register(
       MODULE_CONSTANTS.MODULE.ID,
       MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
@@ -9987,7 +10144,14 @@ function initializeFoundryModule() {
     console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${containerResult.error}`);
     return;
   }
-  const logger = containerResult.value.resolve(loggerToken);
+  const loggerResult = containerResult.value.resolveWithError(loggerToken);
+  if (!loggerResult.ok) {
+    console.error(
+      `${MODULE_CONSTANTS.LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`
+    );
+    return;
+  }
+  const logger = loggerResult.value;
   if (typeof Hooks === "undefined") {
     logger.warn("Foundry Hooks API not available - module initialization skipped");
     return;
@@ -10001,14 +10165,17 @@ function initializeFoundryModule() {
       return;
     }
     new ModuleSettingsRegistrar().registerAll(initContainerResult.value);
-    const settings = initContainerResult.value.resolve(foundrySettingsToken);
-    const logLevelResult = settings.get(
-      MODULE_CONSTANTS.MODULE.ID,
-      MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
-    );
-    if (logLevelResult.ok && logger.setMinLevel) {
-      logger.setMinLevel(logLevelResult.value);
-      logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+    const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
+    if (settingsResult.ok) {
+      const settings = settingsResult.value;
+      const logLevelResult = settings.get(
+        MODULE_CONSTANTS.MODULE.ID,
+        MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
+      );
+      if (logLevelResult.ok && logger.setMinLevel) {
+        logger.setMinLevel(logLevelResult.value);
+        logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+      }
     }
     new ModuleHookRegistrar().registerAll(initContainerResult.value);
     logger.info("init-phase completed");
@@ -10019,9 +10186,6 @@ function initializeFoundryModule() {
   });
 }
 __name(initializeFoundryModule, "initializeFoundryModule");
-function initializeModule() {
-}
-__name(initializeModule, "initializeModule");
 const root = new CompositionRoot();
 const bootstrapResult = root.bootstrap();
 const bootstrapOk = isOk(bootstrapResult);

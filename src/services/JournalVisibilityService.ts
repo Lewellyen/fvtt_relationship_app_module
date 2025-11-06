@@ -64,7 +64,7 @@ export class JournalVisibilityService {
         if (flagResult.value === true) {
           hidden.push(journal);
         }
-      /* c8 ignore next 6 -- Branch: Non-hidden journals (else branch) are the common case, tested implicitly */
+        /* c8 ignore next 6 -- Branch: Non-hidden journals (else branch) are the common case, tested implicitly */
       } else {
         // Log flag read errors for diagnosis without interrupting processing
         const journalIdentifier = journal.name ?? journal.id;

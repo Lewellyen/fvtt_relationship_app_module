@@ -112,7 +112,12 @@ describe("ServiceContainer", () => {
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       container.validate();
       const newToken = createInjectionToken<TestService>("NewFactory");
-      const result = container.registerFactory(newToken, () => new TestService(), ServiceLifecycle.SINGLETON, []);
+      const result = container.registerFactory(
+        newToken,
+        () => new TestService(),
+        ServiceLifecycle.SINGLETON,
+        []
+      );
       expectResultErr(result);
       expect(result.error.code).toBe("InvalidOperation");
     });
@@ -765,7 +770,9 @@ describe("ServiceContainer", () => {
       const tokenB = createInjectionToken<TestService>("ServiceB");
 
       // Register service A that depends on non-existent service B
-      container.registerFactory(tokenA, () => new TestService(), ServiceLifecycle.SINGLETON, [tokenB]);
+      container.registerFactory(tokenA, () => new TestService(), ServiceLifecycle.SINGLETON, [
+        tokenB,
+      ]);
 
       const result = container.validate();
 
@@ -780,7 +787,9 @@ describe("ServiceContainer", () => {
       const tokenB = createInjectionToken<TestService>("ServiceB");
 
       // Register service A that depends on non-existent service B
-      container.registerFactory(tokenA, () => new TestService(), ServiceLifecycle.SINGLETON, [tokenB]);
+      container.registerFactory(tokenA, () => new TestService(), ServiceLifecycle.SINGLETON, [
+        tokenB,
+      ]);
 
       const result = await container.validateAsync();
 
@@ -789,5 +798,4 @@ describe("ServiceContainer", () => {
       expect(container.getValidationState()).toBe("registering");
     });
   });
-
 });

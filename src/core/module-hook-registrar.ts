@@ -98,7 +98,7 @@ export class ModuleHookRegistrar {
           if (element instanceof HTMLElement) {
             return element;
           }
-        /* c8 ignore next 3 -- Defensive: Ignore errors from accessing journal entry properties that may not exist */
+          /* c8 ignore next 3 -- Defensive: Ignore errors from accessing journal entry properties that may not exist */
         } catch {
           // Intentionally empty catch block
         }

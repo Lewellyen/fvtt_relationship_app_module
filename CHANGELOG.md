@@ -8,6 +8,23 @@
 
 ### Fehlerbehebungen
 
+## [0.4.0] - 2025-11-06
+### Hinzugefügt
+- .env.example hinzugefügt
+- Auditdokumentation angelegt.
+
+### Geändert
+- Testing verbessert
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.3.0] - 2025-11-06
 ### Hinzugefügt
 - Keine Einträge

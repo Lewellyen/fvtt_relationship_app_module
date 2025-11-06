@@ -262,13 +262,13 @@ export class ServiceContainer implements Container {
 
     const result = this.validator.validate(this.registry);
 
-      if (result.ok) {
-        this.validationState = "validated";
-      } else {
-        this.validationState = "registering";
-      }
+    if (result.ok) {
+      this.validationState = "validated";
+    } else {
+      this.validationState = "registering";
+    }
 
-      return result;
+    return result;
   }
 
   /**

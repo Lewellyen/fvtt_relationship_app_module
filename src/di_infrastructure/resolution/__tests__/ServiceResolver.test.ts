@@ -8,8 +8,6 @@ import { InstanceCache } from "../../cache/InstanceCache";
 import { createInjectionToken } from "../../tokenutilities";
 import { ServiceLifecycle } from "../../types/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-import { ENV } from "@/config/environment";
-import { MetricsCollector } from "@/observability/metrics-collector";
 import type { Logger } from "@/interfaces/logger";
 
 class TestService implements Logger {
@@ -445,5 +443,4 @@ describe("ServiceResolver", () => {
       expect(result.error.message).toContain("Constructor intentionally fails");
     });
   });
-
 });
