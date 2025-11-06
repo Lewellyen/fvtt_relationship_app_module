@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.5.3] - 2025-11-06
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- CI/CD Node auf 20/22 erhöht statt wie vorher 18/20
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.5.2] - 2025-11-06
 ### Hinzugefügt
 - Keine Einträge
