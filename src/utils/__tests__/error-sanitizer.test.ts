@@ -16,6 +16,7 @@ describe("Error Sanitizer", () => {
         logLevel: 0,
         enablePerformanceTracking: false,
         enableDebugMode: true,
+        performanceSamplingRate: 1.0,
       });
 
       const error: ContainerError = {
@@ -40,6 +41,7 @@ describe("Error Sanitizer", () => {
         logLevel: 1,
         enablePerformanceTracking: false,
         enableDebugMode: false,
+        performanceSamplingRate: 0.01,
       });
 
       const error: ContainerError = {
@@ -67,6 +69,7 @@ describe("Error Sanitizer", () => {
         logLevel: 1,
         enablePerformanceTracking: false,
         enableDebugMode: false,
+        performanceSamplingRate: 0.01,
       });
 
       const error: ContainerError = {
@@ -89,6 +92,7 @@ describe("Error Sanitizer", () => {
         logLevel: 0,
         enablePerformanceTracking: false,
         enableDebugMode: true,
+        performanceSamplingRate: 1.0,
       });
 
       const message = "Detailed error: Failed to connect to database at localhost:5432";
@@ -105,6 +109,7 @@ describe("Error Sanitizer", () => {
         logLevel: 1,
         enablePerformanceTracking: false,
         enableDebugMode: false,
+        performanceSamplingRate: 0.01,
       });
 
       const message = "Sensitive internal error with stack trace...";

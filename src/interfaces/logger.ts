@@ -60,4 +60,24 @@ export interface Logger {
    * @param optionalParams - Additional data to log (useful for inspecting objects)
    */
   debug(message: string, ...optionalParams: unknown[]): void;
+
+  /**
+   * Creates a scoped logger that automatically includes a trace ID in all log messages.
+   * Useful for correlating log entries across related operations.
+   *
+   * Optional: Not all logger implementations need to support trace IDs.
+   *
+   * @param traceId - Unique trace ID to include in log messages
+   * @returns A new Logger instance that includes the trace ID in all messages
+   *
+   * @example
+   * ```typescript
+   * const traceId = generateTraceId();
+   * const tracedLogger = logger.withTraceId?.(traceId);
+   *
+   * tracedLogger?.info('Starting operation'); // [trace-123-abc] Starting operation
+   * tracedLogger?.error('Operation failed'); // [trace-123-abc] Operation failed
+   * ```
+   */
+  withTraceId?(traceId: string): Logger;
 }

@@ -78,14 +78,43 @@ export class PortSelector {
       version = versionResult.value;
     }
 
-    // Find highest compatible factory (<= Foundry version)
+    /**
+     * Version Matching Algorithm: Find highest compatible port
+     *
+     * Strategy: Greedy selection of the newest compatible port version
+     *
+     * Rules:
+     * 1. Never select a port with version > current Foundry version
+     *    (prevents using APIs that don't exist yet)
+     * 2. Select the highest port version that is <= Foundry version
+     *    (use the newest compatible implementation)
+     *
+     * Example Scenarios:
+     * - Foundry v13 + Ports [v12, v13, v14] → Select v13 (exact match)
+     * - Foundry v14 + Ports [v12, v13] → Select v13 (fallback to highest compatible)
+     * - Foundry v13 + Ports [v14, v15] → ERROR (no compatible port, all too new)
+     * - Foundry v20 + Ports [v13, v14] → Select v14 (future-proof fallback)
+     *
+     * Time Complexity: O(n) where n = number of registered ports
+     * Space Complexity: O(1)
+     *
+     * Note: This algorithm assumes ports are forward-compatible within reason.
+     * A v13 port should work on v14+ unless breaking API changes occur.
+     */
     let selectedFactory: PortFactory<T> | undefined;
     let selectedVersion: number = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
 
+    // Linear search for highest compatible version
+    // Could be optimized with sorted array + binary search, but n is typically small (2-5 ports)
     for (const [portVersion, factory] of factories.entries()) {
+      // Rule 1: Skip ports newer than current Foundry version
+      // These ports may use APIs that don't exist yet → runtime crashes
       if (portVersion > version) {
-        continue; // Ignore incompatible versions
+        continue; // Incompatible (too new)
       }
+
+      // Rule 2: Greedy selection - always prefer higher version numbers
+      // Track the highest compatible version seen so far
       if (portVersion > selectedVersion) {
         selectedVersion = portVersion;
         selectedFactory = factory;

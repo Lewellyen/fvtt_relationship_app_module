@@ -166,6 +166,65 @@ describe("FoundryHooksService", () => {
       // The hook should have been removed from tracking
       expect(mockHooksOff).not.toHaveBeenCalledWith("init", callback);
     });
+
+    it("should remove hook from tracking when off() is called with callback function", () => {
+      const callback = vi.fn();
+
+      // Register hook
+      mockPort.on = vi.fn().mockReturnValue(ok(42));
+      service.on("init", callback);
+
+      // Remove hook by callback (not hookId)
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", callback);
+
+      expectResultOk(result);
+      expect(mockPort.off).toHaveBeenCalledWith("init", callback);
+
+      // Dispose should not try to remove the already-removed hook
+      const mockHooksOff = vi.fn();
+      vi.stubGlobal("Hooks", { off: mockHooksOff });
+      service.dispose();
+
+      // The hook should have been removed from tracking (no duplicate deregistration)
+      expect(mockHooksOff).not.toHaveBeenCalledWith("init", callback);
+    });
+
+    it("should cleanup both registeredHooks and callbackToIdMap when off() is called with callback", () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+
+      // Register multiple hooks
+      mockPort.on = vi.fn().mockReturnValueOnce(ok(1)).mockReturnValueOnce(ok(2));
+      service.on("init", callback1);
+      service.on("ready", callback2);
+
+      // Remove callback1 by callback (not hookId)
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", callback1);
+
+      expectResultOk(result);
+
+      // Dispose should only try to remove callback2 (callback1 was already removed)
+      const mockHooksOff = vi.fn();
+      vi.stubGlobal("Hooks", { off: mockHooksOff });
+      service.dispose();
+
+      expect(mockHooksOff).toHaveBeenCalledTimes(1);
+      expect(mockHooksOff).toHaveBeenCalledWith("ready", callback2);
+      expect(mockHooksOff).not.toHaveBeenCalledWith("init", callback1);
+    });
+
+    it("should handle off() with callback that was never registered", () => {
+      const unknownCallback = vi.fn();
+
+      // Try to remove a callback that was never registered
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", unknownCallback);
+
+      // Should succeed (port handled it) but nothing to clean up from tracking
+      expectResultOk(result);
+    });
   });
 
   describe("Version Detection Failures", () => {

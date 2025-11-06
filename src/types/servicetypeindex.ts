@@ -11,6 +11,10 @@ import type { PortSelector } from "@/foundry/versioning/portselector";
 import type { PortRegistry } from "@/foundry/versioning/portregistry";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
 import type { MetricsCollector } from "@/observability/metrics-collector";
+import type { FoundryI18n } from "@/foundry/interfaces/FoundryI18n";
+import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
+import type { LocalI18nService } from "@/services/LocalI18nService";
+import type { I18nFacadeService } from "@/services/I18nFacadeService";
 
 /**
  * Union type representing all registered service types in the application.
@@ -35,5 +39,9 @@ export type ServiceType =
   | PortRegistry<FoundryDocument>
   | PortRegistry<FoundryUI>
   | PortRegistry<FoundrySettings>
+  | PortRegistry<FoundryI18n>
   | JournalVisibilityService
-  | MetricsCollector;
+  | MetricsCollector
+  | FoundryI18nService
+  | LocalI18nService
+  | I18nFacadeService;

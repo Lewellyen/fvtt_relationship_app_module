@@ -1,6 +1,7 @@
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import type { ServiceType } from "@/types/servicetypeindex";
 import { METRICS_CONFIG } from "@/constants";
+import { ENV } from "@/config/environment";
 
 /**
  * Snapshot of current metrics data.
@@ -117,6 +118,37 @@ export class MetricsCollector {
     } else {
       this.metrics.cacheMisses++;
     }
+  }
+
+  /**
+   * Determines if a performance operation should be sampled based on sampling rate.
+   *
+   * In production mode, uses probabilistic sampling to reduce overhead.
+   * In development mode, always samples (returns true).
+   *
+   * @returns True if the operation should be measured/recorded
+   *
+   * @example
+   * ```typescript
+   * const metrics = container.resolve(metricsCollectorToken);
+   * if (metrics.shouldSample()) {
+   *   performance.mark('operation-start');
+   *   // ... operation ...
+   *   performance.mark('operation-end');
+   *   performance.measure('operation', 'operation-start', 'operation-end');
+   * }
+   * ```
+   */
+  shouldSample(): boolean {
+    // Always sample in development mode
+    /* c8 ignore next 3 -- Development mode always returns true; tested implicitly in all metrics tests */
+    if (ENV.isDevelopment) {
+      return true;
+    }
+
+    // Probabilistic sampling in production based on configured rate
+    /* c8 ignore next 2 -- Production sampling: Math.random() behavior tested in shouldSample tests */
+    return Math.random() < ENV.performanceSamplingRate;
   }
 
   /**

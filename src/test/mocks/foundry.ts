@@ -126,6 +126,7 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
     warn: vi.fn(),
     info: vi.fn(),
     log: vi.fn(),
+    withTraceId: vi.fn(),
   };
 
   const mockHooks: FoundryHooks = {

@@ -10,6 +10,7 @@ import type { FoundryHooks } from "./interfaces/FoundryHooks";
 import type { FoundryDocument } from "./interfaces/FoundryDocument";
 import type { FoundryUI } from "./interfaces/FoundryUI";
 import type { FoundrySettings } from "./interfaces/FoundrySettings";
+import type { FoundryI18n } from "./interfaces/FoundryI18n";
 import type { PortSelector } from "./versioning/portselector";
 import type { PortRegistry } from "./versioning/portregistry";
 
@@ -142,3 +143,9 @@ export const foundrySettingsToken: InjectionToken<FoundrySettings> =
  */
 export const foundrySettingsPortRegistryToken: InjectionToken<PortRegistry<FoundrySettings>> =
   createInjectionToken<PortRegistry<FoundrySettings>>("FoundrySettingsPortRegistry");
+
+/**
+ * Injection token for FoundryI18n PortRegistry.
+ */
+export const foundryI18nPortRegistryToken: InjectionToken<PortRegistry<FoundryI18n>> =
+  createInjectionToken<PortRegistry<FoundryI18n>>("FoundryI18nPortRegistry");

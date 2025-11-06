@@ -3,6 +3,9 @@ import {
   loggerToken,
   journalVisibilityServiceToken,
   metricsCollectorToken,
+  foundryI18nToken,
+  localI18nToken,
+  i18nFacadeToken,
 } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { JournalVisibilityService } from "@/services/JournalVisibilityService";
@@ -18,6 +21,7 @@ import {
   foundryDocumentToken,
   foundryUIToken,
   foundrySettingsToken,
+  foundryI18nPortRegistryToken,
   portSelectorToken,
   foundryGamePortRegistryToken,
   foundryHooksPortRegistryToken,
@@ -32,16 +36,21 @@ import { FoundryHooksService } from "@/foundry/services/FoundryHooksService";
 import { FoundryDocumentService } from "@/foundry/services/FoundryDocumentService";
 import { FoundryUIService } from "@/foundry/services/FoundryUIService";
 import { FoundrySettingsService } from "@/foundry/services/FoundrySettingsService";
+import { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
+import { LocalI18nService } from "@/services/LocalI18nService";
+import { I18nFacadeService } from "@/services/I18nFacadeService";
 import { FoundryGamePortV13 } from "@/foundry/ports/v13/FoundryGamePort";
 import { FoundryHooksPortV13 } from "@/foundry/ports/v13/FoundryHooksPort";
 import { FoundryDocumentPortV13 } from "@/foundry/ports/v13/FoundryDocumentPort";
 import { FoundryUIPortV13 } from "@/foundry/ports/v13/FoundryUIPort";
 import { FoundrySettingsPortV13 } from "@/foundry/ports/v13/FoundrySettingsPort";
+import { FoundryI18nPortV13 } from "@/foundry/ports/v13/FoundryI18nPort";
 import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
+import type { FoundryI18n } from "@/foundry/interfaces/FoundryI18n";
 
 /**
  * Helper function for port registration.
@@ -135,6 +144,7 @@ function createPortRegistries(): Result<
     documentPortRegistry: PortRegistry<FoundryDocument>;
     uiPortRegistry: PortRegistry<FoundryUI>;
     settingsPortRegistry: PortRegistry<FoundrySettings>;
+    i18nPortRegistry: PortRegistry<FoundryI18n>;
   },
   string
 > {
@@ -185,6 +195,15 @@ function createPortRegistries(): Result<
     portRegistrationErrors
   );
 
+  const i18nPortRegistry = new PortRegistry<FoundryI18n>();
+  registerPortToRegistry(
+    i18nPortRegistry,
+    13,
+    () => new FoundryI18nPortV13(),
+    "FoundryI18n",
+    portRegistrationErrors
+  );
+
   // Return early if any port registration failed
   /* c8 ignore next 3 -- Port registration errors already tested individually; aggregation is defensive */
   if (portRegistrationErrors.length > 0) {
@@ -197,6 +216,7 @@ function createPortRegistries(): Result<
     documentPortRegistry,
     uiPortRegistry,
     settingsPortRegistry,
+    i18nPortRegistry,
   });
 }
 
@@ -227,6 +247,7 @@ function registerPortInfrastructure(container: ServiceContainer): Result<void, s
     documentPortRegistry,
     uiPortRegistry,
     settingsPortRegistry,
+    i18nPortRegistry,
   } = portsResult.value;
 
   const gameRegistryResult = container.registerValue(
@@ -273,6 +294,15 @@ function registerPortInfrastructure(container: ServiceContainer): Result<void, s
     return err(
       `Failed to register FoundrySettings PortRegistry: ${settingsRegistryResult.error.message}`
     );
+  }
+
+  const i18nRegistryResult = container.registerValue(
+    foundryI18nPortRegistryToken,
+    i18nPortRegistry
+  );
+  /* c8 ignore next 3 -- Defensive: PortRegistry value registration cannot fail; tested in other registry registrations */
+  if (isErr(i18nRegistryResult)) {
+    return err(`Failed to register FoundryI18n PortRegistry: ${i18nRegistryResult.error.message}`);
   }
 
   return ok(undefined);
@@ -353,6 +383,46 @@ function registerFoundryServices(container: ServiceContainer): Result<void, stri
 }
 
 /**
+ * Registers i18n services (Foundry, Local, and Facade).
+ */
+function registerI18nServices(container: ServiceContainer): Result<void, string> {
+  // Register FoundryI18nService
+  const foundryI18nResult = container.registerClass(
+    foundryI18nToken,
+    FoundryI18nService,
+    ServiceLifecycle.SINGLETON
+  );
+  /* c8 ignore next 3 -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
+  if (isErr(foundryI18nResult)) {
+    return err(`Failed to register FoundryI18nService: ${foundryI18nResult.error.message}`);
+  }
+
+  // Register LocalI18nService
+  const localI18nResult = container.registerClass(
+    localI18nToken,
+    LocalI18nService,
+    ServiceLifecycle.SINGLETON
+  );
+  /* c8 ignore next 3 -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
+  if (isErr(localI18nResult)) {
+    return err(`Failed to register LocalI18nService: ${localI18nResult.error.message}`);
+  }
+
+  // Register I18nFacadeService
+  const facadeResult = container.registerClass(
+    i18nFacadeToken,
+    I18nFacadeService,
+    ServiceLifecycle.SINGLETON
+  );
+  /* c8 ignore next 3 -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
+  if (isErr(facadeResult)) {
+    return err(`Failed to register I18nFacadeService: ${facadeResult.error.message}`);
+  }
+
+  return ok(undefined);
+}
+
+/**
  * Validates the container configuration.
  */
 function validateContainer(container: ServiceContainer): Result<void, string> {
@@ -405,6 +475,10 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   const foundryServicesResult = registerFoundryServices(container);
   if (isErr(foundryServicesResult)) return foundryServicesResult;
+
+  const i18nServicesResult = registerI18nServices(container);
+  /* c8 ignore next -- Error propagation: registerI18nServices failure tested in sub-function */
+  if (isErr(i18nServicesResult)) return i18nServicesResult;
 
   const validationResult = validateContainer(container);
   /* c8 ignore next -- Error propagation: validateContainer failure tested in sub-function */

@@ -284,4 +284,15 @@ describe("MetricsCollector", () => {
       expect(snapshot.cacheHitRate).toBeCloseTo(66.66, 1);
     });
   });
+
+  describe("shouldSample", () => {
+    it("should always return true in development mode", () => {
+      const collector = new MetricsCollector();
+
+      // In development mode (ENV.isDevelopment is true), shouldSample always returns true
+      const result = collector.shouldSample();
+
+      expect(result).toBe(true);
+    });
+  });
 });

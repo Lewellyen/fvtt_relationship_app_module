@@ -254,8 +254,8 @@ export function sanitizeHtml(text: string): string {
 export const FoundryApplicationSchema = v.object({
   // Application should have a string ID
   id: v.string(),
-  // Application should have object property
-  object: v.optional(v.any()),
+  // Application should have object property (typed as record instead of any)
+  object: v.optional(v.record(v.string(), v.unknown())),
   // Application should have options property
   options: v.optional(v.record(v.string(), v.unknown())),
 });

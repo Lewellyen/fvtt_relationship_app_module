@@ -128,15 +128,39 @@ export class ContainerValidator {
   /**
    * Recursively checks for cycles starting from a specific token.
    *
-   * Uses DFS with visiting/visited sets to detect back edges (cycles).
-   * Performance optimization: Uses Set cache to skip already-validated sub-graphs.
+   * **Algorithm: Depth-First Search (DFS) with Three-Color Marking**
+   *
+   * Three states for each node (token):
+   * - WHITE (unvisited): Not in `visiting` or `visited` sets
+   * - GRAY (visiting): In `visiting` set (currently in DFS recursion stack)
+   * - BLACK (visited): In `visited` set (fully processed, all descendants checked)
+   *
+   * Cycle Detection:
+   * - If we encounter a GRAY node during traversal, we've found a back edge → cycle
+   * - GRAY nodes represent the current path from root to current node
+   * - Encountering a GRAY node means we're trying to visit an ancestor → circular dependency
+   *
+   * Performance Optimization:
+   * - `validatedSubgraphs` cache prevents redundant traversals of already-validated subtrees
+   * - Crucial for large dependency graphs (>500 services)
+   * - BLACK nodes can be safely skipped (all their descendants are cycle-free)
+   *
+   * Time Complexity: O(V + E) where V = number of services, E = number of dependencies
+   * Space Complexity: O(V) for visiting/visited sets + O(D) for recursion depth D
    *
    * @param registry - The service registry
-   * @param token - Current token being checked
-   * @param visiting - Set of tokens in current DFS path
-   * @param visited - Set of tokens already fully processed
-   * @param path - Current path for error reporting
+   * @param token - Current token being checked (current node in DFS)
+   * @param visiting - GRAY nodes: tokens currently in the DFS recursion stack
+   * @param visited - BLACK nodes: tokens fully processed in this validation run
+   * @param path - Current dependency path for error reporting (stack trace)
    * @returns ContainerError if cycle detected, null otherwise
+   *
+   * @example
+   * Cycle A → B → C → A will be detected when:
+   * 1. Start at A (mark GRAY)
+   * 2. Visit B (mark GRAY)
+   * 3. Visit C (mark GRAY)
+   * 4. Try to visit A → A is GRAY → Back edge detected → Cycle!
    */
   private checkCycleForToken(
     registry: ServiceRegistry,
@@ -145,7 +169,9 @@ export class ContainerValidator {
     visited: Set<InjectionToken<ServiceType>>,
     path: InjectionToken<ServiceType>[]
   ): ContainerError | null {
-    // Cycle detected: token is already in current path
+    // GRAY node encountered: Back edge detected → Cycle exists
+    // This token is already in the current DFS path (visiting set)
+    // Example: A → B → C → A (when we reach A again from C)
     if (visiting.has(token)) {
       const cyclePath = [...path, token].map(String).join(" → ");
       return {
@@ -156,35 +182,43 @@ export class ContainerValidator {
     }
 
     // Performance optimization: Skip already validated sub-graphs
+    // This token and all its descendants have been proven cycle-free
+    // Avoids redundant traversals in DAGs with shared dependencies
     if (this.validatedSubgraphs.has(token)) {
       return null;
     }
 
-    // Already fully processed this token in current validation run
+    // BLACK node: Already fully processed in this validation run
+    // All descendants of this token have been checked (no cycle below it)
+    // Cross edge or forward edge in DFS terminology
     /* c8 ignore next 3 -- Visited check for graph traversal; tested via circular dependency tests */
     if (visited.has(token)) {
       return null;
     }
 
-    // Mark as visiting and add to path
+    // Mark as GRAY: Add to current DFS path
+    // This token is now being visited (in recursion stack)
     visiting.add(token);
     path.push(token);
 
-    // Check all dependencies
+    // DFS: Recursively check all dependencies (children in dependency graph)
+    // If any child has a cycle, propagate error up immediately
     const registration = registry.getRegistration(token);
     if (registration) {
       for (const dep of registration.dependencies) {
         const error = this.checkCycleForToken(registry, dep, visiting, visited, path);
-        if (error) return error;
+        if (error) return error; // Short-circuit: Stop on first cycle found
       }
     }
 
-    // Done visiting this token - mark as validated
+    // Mark as BLACK: All descendants checked, no cycles found
+    // Remove from GRAY set (no longer in active DFS path)
+    // Add to BLACK set (fully processed, can be safely skipped in future)
     visiting.delete(token);
     path.pop();
     visited.add(token);
-    this.validatedSubgraphs.add(token); // Cache for performance
+    this.validatedSubgraphs.add(token); // Cache for performance (persists across validation runs)
 
-    return null;
+    return null; // No cycle found in this subtree
   }
 }

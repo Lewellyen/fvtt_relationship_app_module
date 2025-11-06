@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
-import { withRetry, withRetrySync } from "../retry";
+import { withRetry, withRetrySync, type RetryOptions } from "../retry";
 import { ok, err } from "../result";
+
+// Structured error type for testing
+interface StructuredError {
+  code: "OPERATION_FAILED" | "VALIDATION_ERROR";
+  message: string;
+  attempt?: number;
+}
 
 describe("Retry Utilities", () => {
   describe("withRetry (async)", () => {
@@ -204,6 +211,185 @@ describe("Retry Utilities", () => {
         expect(result.error).toContain("maxAttempts must be >= 1");
       }
       expect(fn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("mapException for structured error types", () => {
+    describe("withRetry (async)", () => {
+      it("should use mapException to convert thrown exceptions to structured error type", async () => {
+        const fn = vi.fn().mockRejectedValue(new Error("Network timeout"));
+
+        const options: RetryOptions<StructuredError> = {
+          maxAttempts: 2,
+          delayMs: 10,
+          mapException: (error, attempt) => ({
+            code: "OPERATION_FAILED" as const,
+            message: `Attempt ${attempt} failed: ${String(error)}`,
+            attempt,
+          }),
+        };
+
+        const result = await withRetry(fn, options);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.code).toBe("OPERATION_FAILED");
+          expect(result.error.message).toContain("Attempt 2 failed");
+          expect(result.error.message).toContain("Network timeout");
+          expect(result.error.attempt).toBe(2);
+        }
+      });
+
+      it("should use mapException for invalid maxAttempts error", async () => {
+        const fn = vi.fn().mockResolvedValue(ok(42));
+
+        const options: RetryOptions<StructuredError> = {
+          maxAttempts: 0,
+          mapException: (error, attempt) => ({
+            code: "VALIDATION_ERROR" as const,
+            message: `Validation failed (attempt ${attempt}): ${String(error)}`,
+          }),
+        };
+
+        const result = await withRetry(fn, options);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.code).toBe("VALIDATION_ERROR");
+          expect(result.error.message).toContain("maxAttempts must be >= 1");
+        }
+        expect(fn).not.toHaveBeenCalled();
+      });
+
+      it("should preserve Result errors without calling mapException", async () => {
+        const structuredError: StructuredError = {
+          code: "OPERATION_FAILED" as const,
+          message: "Original error from Result",
+        };
+        const fn = vi.fn().mockResolvedValue(err(structuredError));
+
+        const mapExceptionMock = vi.fn((error, attempt) => ({
+          code: "OPERATION_FAILED" as const,
+          message: `Mapped: ${String(error)}`,
+          attempt,
+        }));
+
+        const options: RetryOptions<StructuredError> = {
+          maxAttempts: 2,
+          delayMs: 10,
+          mapException: mapExceptionMock,
+        };
+
+        const result = await withRetry(fn, options);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          // Should be the original error, not mapped
+          expect(result.error.message).toBe("Original error from Result");
+        }
+        // mapException should NOT be called for Result errors (only for exceptions)
+        expect(mapExceptionMock).not.toHaveBeenCalled();
+      });
+
+      it("should work with legacy API (backward compatibility)", async () => {
+        const fn = vi.fn().mockRejectedValue(new Error("Legacy error"));
+
+        // Legacy API: (fn, maxAttempts, delayMs)
+        const result = await withRetry(fn, 2, 10);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          // Legacy API uses unsafe 'as ErrorType' cast
+          expect(result.error).toBeInstanceOf(Error);
+        }
+        expect(fn).toHaveBeenCalledTimes(2);
+      });
+
+      it("should apply backoffFactor correctly", async () => {
+        const fn = vi.fn().mockResolvedValue(err("Error"));
+        const start = Date.now();
+
+        const options: RetryOptions<string> = {
+          maxAttempts: 3,
+          delayMs: 100,
+          backoffFactor: 2, // Exponential: 100 * 1^2 = 100ms, 100 * 2^2 = 400ms
+        };
+
+        await withRetry(fn, options);
+
+        const duration = Date.now() - start;
+
+        // 1st attempt: immediate
+        // 2nd attempt: +100ms (100 * 1^2)
+        // 3rd attempt: +400ms (100 * 2^2)
+        // Total: ~500ms
+        expect(duration).toBeGreaterThanOrEqual(490);
+        expect(duration).toBeLessThan(600);
+      });
+    });
+
+    describe("withRetrySync", () => {
+      it("should use mapException to convert thrown exceptions to structured error type", () => {
+        const fn = vi.fn().mockImplementation(() => {
+          throw new Error("Parse error");
+        });
+
+        const options: Omit<RetryOptions<StructuredError>, "delayMs" | "backoffFactor"> = {
+          maxAttempts: 2,
+          mapException: (error, attempt) => ({
+            code: "OPERATION_FAILED" as const,
+            message: `Attempt ${attempt} failed: ${String(error)}`,
+            attempt,
+          }),
+        };
+
+        const result = withRetrySync(fn, options);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.code).toBe("OPERATION_FAILED");
+          expect(result.error.message).toContain("Attempt 2 failed");
+          expect(result.error.message).toContain("Parse error");
+          expect(result.error.attempt).toBe(2);
+        }
+      });
+
+      it("should use mapException for invalid maxAttempts error", () => {
+        const fn = vi.fn().mockReturnValue(ok(42));
+
+        const options: Omit<RetryOptions<StructuredError>, "delayMs" | "backoffFactor"> = {
+          maxAttempts: -1,
+          mapException: (error, attempt) => ({
+            code: "VALIDATION_ERROR" as const,
+            message: `Validation failed (attempt ${attempt}): ${String(error)}`,
+          }),
+        };
+
+        const result = withRetrySync(fn, options);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.code).toBe("VALIDATION_ERROR");
+          expect(result.error.message).toContain("maxAttempts must be >= 1");
+        }
+        expect(fn).not.toHaveBeenCalled();
+      });
+
+      it("should work with legacy API (backward compatibility)", () => {
+        const fn = vi.fn().mockImplementation(() => {
+          throw new Error("Legacy sync error");
+        });
+
+        // Legacy API: (fn, maxAttempts)
+        const result = withRetrySync(fn, 2);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          // Legacy API uses unsafe 'as ErrorType' cast
+          expect(result.error).toBeInstanceOf(Error);
+        }
+        expect(fn).toHaveBeenCalledTimes(2);
+      });
     });
   });
 });

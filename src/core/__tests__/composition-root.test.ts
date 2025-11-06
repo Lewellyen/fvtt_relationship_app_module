@@ -40,6 +40,7 @@ describe("CompositionRoot", () => {
         logLevel: 0,
         enablePerformanceTracking: true,
         enableDebugMode: true,
+        performanceSamplingRate: 1.0,
       });
 
       const root = new CompositionRoot();
@@ -67,6 +68,7 @@ describe("CompositionRoot", () => {
         logLevel: 1,
         enablePerformanceTracking: false,
         enableDebugMode: false,
+        performanceSamplingRate: 0.01,
       });
 
       const root = new CompositionRoot();

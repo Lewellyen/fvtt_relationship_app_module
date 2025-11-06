@@ -1,5 +1,6 @@
 import type { InjectionToken } from "../types/injectiontoken";
 import type { ServiceType } from "@/types/servicetypeindex";
+import type { MetricsCollector } from "@/observability/metrics-collector";
 
 /**
  * Cache for service instances (Singleton and Scoped lifecycles).
@@ -8,11 +9,23 @@ import type { ServiceType } from "@/types/servicetypeindex";
  * - Store and retrieve service instances by token
  * - Provide access to all instances for disposal
  * - Simple get/set/has/clear operations
+ * - Track cache hits/misses for observability (when MetricsCollector is injected)
  *
  * Note: This class does NOT handle disposal logic - that's ScopeManager's responsibility.
  */
 export class InstanceCache {
   private instances = new Map<InjectionToken<ServiceType>, ServiceType>();
+  private metricsCollector: MetricsCollector | null = null;
+
+  /**
+   * Injects the MetricsCollector for cache hit/miss tracking.
+   * Called after container validation to enable observability.
+   *
+   * @param collector - The metrics collector instance
+   */
+  setMetricsCollector(collector: MetricsCollector): void {
+    this.metricsCollector = collector;
+  }
 
   /**
    * Retrieves a cached service instance.
@@ -24,6 +37,9 @@ export class InstanceCache {
   get<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>
   ): TServiceType | undefined {
+    const hasInstance = this.instances.has(token);
+    // Track cache access for observability (hit = instance found, miss = not found)
+    this.metricsCollector?.recordCacheAccess(hasInstance);
     return this.instances.get(token) as TServiceType | undefined;
   }
 
@@ -49,7 +65,10 @@ export class InstanceCache {
    * @returns True if the instance is cached, false otherwise
    */
   has<TServiceType extends ServiceType>(token: InjectionToken<TServiceType>): boolean {
-    return this.instances.has(token);
+    const hasInstance = this.instances.has(token);
+    // Track cache access for observability (hit = instance found, miss = not found)
+    this.metricsCollector?.recordCacheAccess(hasInstance);
+    return hasInstance;
   }
 
   /**

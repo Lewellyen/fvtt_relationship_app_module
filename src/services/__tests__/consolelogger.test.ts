@@ -215,4 +215,126 @@ describe("ConsoleLoggerService", () => {
       expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe("withTraceId", () => {
+    it("should create a traced logger that prefixes messages with trace ID", () => {
+      const traceId = "trace-123-abc";
+      const tracedLogger = logger.withTraceId(traceId);
+
+      tracedLogger.info("Test message");
+
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Test message`
+      );
+    });
+
+    it("should include trace ID in all log methods", () => {
+      logger.setMinLevel(LogLevel.DEBUG); // Enable all log levels
+      const traceId = "trace-456-def";
+      const tracedLogger = logger.withTraceId(traceId);
+
+      tracedLogger.log("Log message");
+      tracedLogger.error("Error message");
+      tracedLogger.warn("Warn message");
+      tracedLogger.info("Info message");
+      tracedLogger.debug("Debug message");
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Log message`
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Error message`
+      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Warn message`
+      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Info message`
+      );
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Debug message`
+      );
+    });
+
+    it("should preserve additional parameters in traced logs", () => {
+      const traceId = "trace-789-ghi";
+      const tracedLogger = logger.withTraceId(traceId);
+      const errorObj = new Error("Test error");
+      const dataObj = { key: "value" };
+
+      tracedLogger.error("Error with object", errorObj);
+      tracedLogger.info("Info with data", dataObj);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Error with object`,
+        errorObj
+      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Info with data`,
+        dataObj
+      );
+    });
+
+    it("should respect log level filtering in traced logger", () => {
+      logger.setMinLevel(LogLevel.WARN);
+      const traceId = "trace-abc-123";
+      const tracedLogger = logger.withTraceId(traceId);
+
+      tracedLogger.debug("Debug message");
+      tracedLogger.info("Info message");
+      tracedLogger.warn("Warn message");
+
+      expect(consoleDebugSpy).not.toHaveBeenCalled();
+      expect(consoleInfoSpy).not.toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalled();
+    });
+
+    it("should allow nested trace IDs", () => {
+      const traceId1 = "trace-1";
+      const traceId2 = "trace-2";
+      const tracedLogger1 = logger.withTraceId(traceId1);
+      const tracedLogger2 = tracedLogger1.withTraceId?.(traceId2);
+
+      tracedLogger2?.info("Nested trace");
+
+      // Nested trace IDs should be combined
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId1}/${traceId2}] Nested trace`
+      );
+    });
+
+    it("should create independent traced logger instances", () => {
+      const traceId1 = "trace-aaa";
+      const traceId2 = "trace-bbb";
+      const tracedLogger1 = logger.withTraceId(traceId1);
+      const tracedLogger2 = logger.withTraceId(traceId2);
+
+      tracedLogger1.info("Message 1");
+      tracedLogger2.info("Message 2");
+
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
+        1,
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId1}] Message 1`
+      );
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
+        2,
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId2}] Message 2`
+      );
+    });
+
+    it("should allow setting min level on traced logger", () => {
+      const traceId = "trace-level-test";
+      const tracedLogger = logger.withTraceId(traceId);
+
+      tracedLogger.setMinLevel?.(LogLevel.ERROR);
+      tracedLogger.info("Info message");
+      tracedLogger.error("Error message");
+
+      // Info should be filtered, error should be shown
+      expect(consoleInfoSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Error message`
+      );
+    });
+  });
 });

@@ -36,6 +36,7 @@ describe("JournalVisibilityService", () => {
       warn: vi.fn(),
       info: vi.fn(),
       log: vi.fn(),
+      withTraceId: vi.fn(),
     };
 
     service = new JournalVisibilityService(mockGame, mockDocument, mockUI, mockLogger);

@@ -30,6 +30,8 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
   private readonly portSelector: PortSelector;
   private readonly portRegistry: PortRegistry<FoundryHooks>;
   private registeredHooks = new Map<string, Map<number, FoundryHookCallback>>();
+  // Bidirectional mapping: callback function -> hook ID (for off() with callback variant)
+  private callbackToIdMap = new Map<FoundryHookCallback, { hookName: string; id: number }>();
 
   constructor(portSelector: PortSelector, portRegistry: PortRegistry<FoundryHooks>) {
     this.portSelector = portSelector;
@@ -68,11 +70,12 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
     const result = portResult.value.on(hookName, callback);
 
     if (result.ok) {
-      // Track registered hook for cleanup
+      // Track registered hook for cleanup (both directions)
       if (!this.registeredHooks.has(hookName)) {
         this.registeredHooks.set(hookName, new Map());
       }
       this.registeredHooks.get(hookName)!.set(result.value, callback);
+      this.callbackToIdMap.set(callback, { hookName, id: result.value });
     }
 
     return result;
@@ -93,11 +96,29 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
 
     const result = portResult.value.off(hookName, callbackOrId);
 
-    if (result.ok && typeof callbackOrId === "number") {
-      // Remove from tracked hooks
-      const hooks = this.registeredHooks.get(hookName);
-      if (hooks) {
-        hooks.delete(callbackOrId);
+    if (result.ok) {
+      // Remove from tracked hooks (handle both ID and callback variants)
+      if (typeof callbackOrId === "number") {
+        // ID variant: remove by ID
+        const hooks = this.registeredHooks.get(hookName);
+        if (hooks) {
+          const callback = hooks.get(callbackOrId);
+          hooks.delete(callbackOrId);
+          // Clean up bidirectional mapping
+          if (callback) {
+            this.callbackToIdMap.delete(callback);
+          }
+        }
+      } else {
+        // Callback variant: lookup ID via callbackToIdMap
+        const hookInfo = this.callbackToIdMap.get(callbackOrId);
+        if (hookInfo) {
+          const hooks = this.registeredHooks.get(hookInfo.hookName);
+          if (hooks) {
+            hooks.delete(hookInfo.id);
+          }
+          this.callbackToIdMap.delete(callbackOrId);
+        }
       }
     }
 
@@ -125,6 +146,7 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
     }
 
     this.registeredHooks.clear();
+    this.callbackToIdMap.clear();
     this.port = null;
   }
 }

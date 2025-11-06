@@ -198,14 +198,21 @@ const foundryDocumentPortRegistryToken = createInjectionToken("FoundryDocumentPo
 const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry");
 const foundrySettingsToken = createInjectionToken("FoundrySettings");
 const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
+const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
 const loggerToken = createInjectionToken("Logger");
 const metricsCollectorToken = createInjectionToken("MetricsCollector");
 const journalVisibilityServiceToken = createInjectionToken(
   "JournalVisibilityService"
 );
+const foundryI18nToken = createInjectionToken("FoundryI18nService");
+const localI18nToken = createInjectionToken("LocalI18nService");
+const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 var tokenindex = /* @__PURE__ */ Object.freeze({
   __proto__: null,
+  foundryI18nToken,
+  i18nFacadeToken,
   journalVisibilityServiceToken,
+  localI18nToken,
   loggerToken,
   metricsCollectorToken,
   portSelectorToken
@@ -734,15 +741,39 @@ const _ContainerValidator = class _ContainerValidator {
   /**
    * Recursively checks for cycles starting from a specific token.
    *
-   * Uses DFS with visiting/visited sets to detect back edges (cycles).
-   * Performance optimization: Uses Set cache to skip already-validated sub-graphs.
+   * **Algorithm: Depth-First Search (DFS) with Three-Color Marking**
+   *
+   * Three states for each node (token):
+   * - WHITE (unvisited): Not in `visiting` or `visited` sets
+   * - GRAY (visiting): In `visiting` set (currently in DFS recursion stack)
+   * - BLACK (visited): In `visited` set (fully processed, all descendants checked)
+   *
+   * Cycle Detection:
+   * - If we encounter a GRAY node during traversal, we've found a back edge → cycle
+   * - GRAY nodes represent the current path from root to current node
+   * - Encountering a GRAY node means we're trying to visit an ancestor → circular dependency
+   *
+   * Performance Optimization:
+   * - `validatedSubgraphs` cache prevents redundant traversals of already-validated subtrees
+   * - Crucial for large dependency graphs (>500 services)
+   * - BLACK nodes can be safely skipped (all their descendants are cycle-free)
+   *
+   * Time Complexity: O(V + E) where V = number of services, E = number of dependencies
+   * Space Complexity: O(V) for visiting/visited sets + O(D) for recursion depth D
    *
    * @param registry - The service registry
-   * @param token - Current token being checked
-   * @param visiting - Set of tokens in current DFS path
-   * @param visited - Set of tokens already fully processed
-   * @param path - Current path for error reporting
+   * @param token - Current token being checked (current node in DFS)
+   * @param visiting - GRAY nodes: tokens currently in the DFS recursion stack
+   * @param visited - BLACK nodes: tokens fully processed in this validation run
+   * @param path - Current dependency path for error reporting (stack trace)
    * @returns ContainerError if cycle detected, null otherwise
+   *
+   * @example
+   * Cycle A → B → C → A will be detected when:
+   * 1. Start at A (mark GRAY)
+   * 2. Visit B (mark GRAY)
+   * 3. Visit C (mark GRAY)
+   * 4. Try to visit A → A is GRAY → Back edge detected → Cycle!
    */
   checkCycleForToken(registry, token, visiting, visited, path) {
     if (visiting.has(token)) {
@@ -780,6 +811,16 @@ let ContainerValidator = _ContainerValidator;
 const _InstanceCache = class _InstanceCache {
   constructor() {
     this.instances = /* @__PURE__ */ new Map();
+    this.metricsCollector = null;
+  }
+  /**
+   * Injects the MetricsCollector for cache hit/miss tracking.
+   * Called after container validation to enable observability.
+   *
+   * @param collector - The metrics collector instance
+   */
+  setMetricsCollector(collector) {
+    this.metricsCollector = collector;
   }
   /**
    * Retrieves a cached service instance.
@@ -789,6 +830,8 @@ const _InstanceCache = class _InstanceCache {
    * @returns The cached instance or undefined if not found
    */
   get(token) {
+    const hasInstance = this.instances.has(token);
+    this.metricsCollector?.recordCacheAccess(hasInstance);
     return this.instances.get(token);
   }
   /**
@@ -809,7 +852,9 @@ const _InstanceCache = class _InstanceCache {
    * @returns True if the instance is cached, false otherwise
    */
   has(token) {
-    return this.instances.has(token);
+    const hasInstance = this.instances.has(token);
+    this.metricsCollector?.recordCacheAccess(hasInstance);
+    return hasInstance;
   }
   /**
    * Clears all cached instances.
@@ -842,7 +887,9 @@ const ENV = {
   isProduction: false,
   logLevel: true ? 0 : 1,
   enablePerformanceTracking: true,
-  enableDebugMode: true
+  enableDebugMode: true,
+  // 1% sampling in production, 100% in development
+  performanceSamplingRate: false ? parseFloat("0.01") : 1
 };
 const _ServiceResolver = class _ServiceResolver {
   constructor(registry, cache, parentResolver, scopeName) {
@@ -1522,7 +1569,7 @@ const _ServiceContainer = class _ServiceContainer {
     return result;
   }
   /**
-   * Injects MetricsCollector into resolver after validation.
+   * Injects MetricsCollector into resolver and cache after validation.
    * This enables performance tracking without circular dependencies during bootstrap.
    */
   async injectMetricsCollector() {
@@ -1535,6 +1582,7 @@ const _ServiceContainer = class _ServiceContainer {
     const metricsResult = this.resolveWithError(metricsCollectorToken2);
     if (metricsResult.ok) {
       this.resolver.setMetricsCollector(metricsResult.value);
+      this.cache.setMetricsCollector(metricsResult.value);
     }
   }
   /**
@@ -1801,6 +1849,38 @@ Only the public ModuleApi should expose resolve() for external modules.`
 };
 __name(_ServiceContainer, "ServiceContainer");
 let ServiceContainer = _ServiceContainer;
+const _TracedLogger = class _TracedLogger {
+  constructor(baseLogger, traceId) {
+    this.baseLogger = baseLogger;
+    this.traceId = traceId;
+  }
+  formatMessage(message2) {
+    return `[${this.traceId}] ${message2}`;
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(this.formatMessage(message2), ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(this.formatMessage(message2), ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(this.formatMessage(message2), ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(this.formatMessage(message2), ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(this.formatMessage(message2), ...optionalParams);
+  }
+  withTraceId(newTraceId) {
+    return new _TracedLogger(this.baseLogger, `${this.traceId}/${newTraceId}`);
+  }
+};
+__name(_TracedLogger, "TracedLogger");
+let TracedLogger = _TracedLogger;
 const _ConsoleLoggerService = class _ConsoleLoggerService {
   constructor() {
     this.minLevel = LogLevel.INFO;
@@ -1855,6 +1935,25 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
   debug(message2, ...optionalParams) {
     if (LogLevel.DEBUG < this.minLevel) return;
     console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  /**
+   * Creates a scoped logger that includes a trace ID in all log messages.
+   * The trace ID helps correlate log entries across related operations.
+   *
+   * @param traceId - Unique trace ID to include in log messages
+   * @returns A new Logger instance that includes the trace ID in all messages
+   *
+   * @example
+   * ```typescript
+   * import { generateTraceId } from '@/utils/trace';
+   *
+   * const traceId = generateTraceId();
+   * const tracedLogger = logger.withTraceId(traceId);
+   * tracedLogger.info('Operation started'); // [1234567890-abc123] Operation started
+   * ```
+   */
+  withTraceId(traceId) {
+    return new TracedLogger(this, traceId);
   }
 };
 __name(_ConsoleLoggerService, "ConsoleLoggerService");
@@ -8834,8 +8933,8 @@ __name(sanitizeHtml, "sanitizeHtml");
 const FoundryApplicationSchema = /* @__PURE__ */ object({
   // Application should have a string ID
   id: /* @__PURE__ */ string(),
-  // Application should have object property
-  object: /* @__PURE__ */ optional(/* @__PURE__ */ any()),
+  // Application should have object property (typed as record instead of any)
+  object: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ unknown())),
   // Application should have options property
   options: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ unknown()))
 });
@@ -9024,6 +9123,31 @@ const _MetricsCollector = class _MetricsCollector {
     } else {
       this.metrics.cacheMisses++;
     }
+  }
+  /**
+   * Determines if a performance operation should be sampled based on sampling rate.
+   *
+   * In production mode, uses probabilistic sampling to reduce overhead.
+   * In development mode, always samples (returns true).
+   *
+   * @returns True if the operation should be measured/recorded
+   *
+   * @example
+   * ```typescript
+   * const metrics = container.resolve(metricsCollectorToken);
+   * if (metrics.shouldSample()) {
+   *   performance.mark('operation-start');
+   *   // ... operation ...
+   *   performance.mark('operation-end');
+   *   performance.measure('operation', 'operation-start', 'operation-end');
+   * }
+   * ```
+   */
+  shouldSample() {
+    if (ENV.isDevelopment) {
+      return true;
+    }
+    return Math.random() < ENV.performanceSamplingRate;
   }
   /**
    * Gets a snapshot of current metrics.
@@ -9428,6 +9552,7 @@ const _FoundryHooksService = class _FoundryHooksService {
   constructor(portSelector, portRegistry) {
     this.port = null;
     this.registeredHooks = /* @__PURE__ */ new Map();
+    this.callbackToIdMap = /* @__PURE__ */ new Map();
     this.portSelector = portSelector;
     this.portRegistry = portRegistry;
   }
@@ -9460,6 +9585,7 @@ const _FoundryHooksService = class _FoundryHooksService {
         this.registeredHooks.set(hookName, /* @__PURE__ */ new Map());
       }
       this.registeredHooks.get(hookName).set(result.value, callback);
+      this.callbackToIdMap.set(callback, { hookName, id: result.value });
     }
     return result;
   }
@@ -9472,10 +9598,25 @@ const _FoundryHooksService = class _FoundryHooksService {
     const portResult = this.getPort();
     if (!portResult.ok) return portResult;
     const result = portResult.value.off(hookName, callbackOrId);
-    if (result.ok && typeof callbackOrId === "number") {
-      const hooks = this.registeredHooks.get(hookName);
-      if (hooks) {
-        hooks.delete(callbackOrId);
+    if (result.ok) {
+      if (typeof callbackOrId === "number") {
+        const hooks = this.registeredHooks.get(hookName);
+        if (hooks) {
+          const callback = hooks.get(callbackOrId);
+          hooks.delete(callbackOrId);
+          if (callback) {
+            this.callbackToIdMap.delete(callback);
+          }
+        }
+      } else {
+        const hookInfo = this.callbackToIdMap.get(callbackOrId);
+        if (hookInfo) {
+          const hooks = this.registeredHooks.get(hookInfo.hookName);
+          if (hooks) {
+            hooks.delete(hookInfo.id);
+          }
+          this.callbackToIdMap.delete(callbackOrId);
+        }
       }
     }
     return result;
@@ -9497,6 +9638,7 @@ const _FoundryHooksService = class _FoundryHooksService {
       }
     }
     this.registeredHooks.clear();
+    this.callbackToIdMap.clear();
     this.port = null;
   }
 };
@@ -9663,6 +9805,251 @@ const _FoundrySettingsService = class _FoundrySettingsService {
 __name(_FoundrySettingsService, "FoundrySettingsService");
 _FoundrySettingsService.dependencies = [portSelectorToken, foundrySettingsPortRegistryToken];
 let FoundrySettingsService = _FoundrySettingsService;
+const _FoundryI18nService = class _FoundryI18nService {
+  constructor(portSelector, portRegistry) {
+    this.port = null;
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   *
+   * @returns Result containing the port or error if no compatible port can be selected
+   */
+  getPort() {
+    if (this.port === null) {
+      const factories = this.portRegistry.getFactories();
+      const portResult = this.portSelector.selectPortFromFactories(factories);
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  localize(key) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.localize(key);
+  }
+  format(key, data) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.format(key, data);
+  }
+  has(key) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.has(key);
+  }
+};
+__name(_FoundryI18nService, "FoundryI18nService");
+_FoundryI18nService.dependencies = [portSelectorToken, foundryI18nPortRegistryToken];
+let FoundryI18nService = _FoundryI18nService;
+const _LocalI18nService = class _LocalI18nService {
+  constructor() {
+    this.translations = /* @__PURE__ */ new Map();
+    this.currentLocale = "en";
+    this.detectLocale();
+  }
+  /**
+   * Detects browser locale and sets current language.
+   * Falls back to 'en' if detection fails.
+   */
+  detectLocale() {
+    if (typeof navigator !== "undefined" && navigator.language) {
+      const lang = navigator.language.split("-")[0];
+      this.currentLocale = lang ?? "en";
+    }
+  }
+  /**
+   * Loads translations from a JSON object.
+   * Useful for testing or pre-loaded translation data.
+   *
+   * @param translations - Object with key-value pairs
+   *
+   * @example
+   * ```typescript
+   * const i18n = new LocalI18nService();
+   * i18n.loadTranslations({
+   *   "MODULE.SETTINGS.enableFeature": "Enable Feature",
+   *   "MODULE.WELCOME": "Welcome, {name}!"
+   * });
+   * ```
+   */
+  loadTranslations(translations) {
+    for (const [key, value2] of Object.entries(translations)) {
+      this.translations.set(key, value2);
+    }
+  }
+  /**
+   * Translates a key using local translations.
+   *
+   * @param key - Translation key
+   * @returns Result with translated string (or key itself if not found)
+   *
+   * @example
+   * ```typescript
+   * const result = i18n.translate("MODULE.SETTINGS.enableFeature");
+   * if (result.ok) {
+   *   console.log(result.value); // "Enable Feature" or key if not found
+   * }
+   * ```
+   */
+  translate(key) {
+    const value2 = this.translations.get(key);
+    return ok(value2 ?? key);
+  }
+  /**
+   * Formats a string with placeholders.
+   * Simple implementation: replaces `{key}` with values from data object.
+   *
+   * @param key - Translation key
+   * @param data - Object with placeholder values
+   * @returns Result with formatted string
+   *
+   * @example
+   * ```typescript
+   * // Translation: "Welcome, {name}!"
+   * const result = i18n.format("MODULE.WELCOME", { name: "Alice" });
+   * if (result.ok) {
+   *   console.log(result.value); // "Welcome, Alice!"
+   * }
+   * ```
+   */
+  format(key, data) {
+    const template = this.translations.get(key) ?? key;
+    let formatted = template;
+    for (const [placeholder, value2] of Object.entries(data)) {
+      const regex2 = new RegExp(`\\{${placeholder}\\}`, "g");
+      formatted = formatted.replace(regex2, String(value2));
+    }
+    return ok(formatted);
+  }
+  /**
+   * Checks if a translation key exists.
+   *
+   * @param key - Translation key to check
+   * @returns Result with boolean
+   */
+  has(key) {
+    return ok(this.translations.has(key));
+  }
+  /**
+   * Gets the current locale.
+   *
+   * @returns Current locale string (e.g., "en", "de")
+   */
+  getCurrentLocale() {
+    return this.currentLocale;
+  }
+  /**
+   * Sets the current locale.
+   * Note: Changing locale requires reloading translations for the new language.
+   *
+   * @param locale - Locale code (e.g., "en", "de", "fr")
+   */
+  setLocale(locale) {
+    this.currentLocale = locale;
+  }
+};
+__name(_LocalI18nService, "LocalI18nService");
+_LocalI18nService.dependencies = [];
+let LocalI18nService = _LocalI18nService;
+const _I18nFacadeService = class _I18nFacadeService {
+  constructor(foundryI18n, localI18n) {
+    this.foundryI18n = foundryI18n;
+    this.localI18n = localI18n;
+  }
+  /**
+   * Translates a key using Foundry i18n → Local i18n → Fallback.
+   *
+   * @param key - Translation key
+   * @param fallback - Optional fallback string (defaults to key itself)
+   * @returns Translated string or fallback
+   *
+   * @example
+   * ```typescript
+   * // With fallback
+   * const text = i18n.translate("MODULE.UNKNOWN_KEY", "Default Text");
+   * console.log(text); // "Default Text"
+   *
+   * // Without fallback (returns key)
+   * const text2 = i18n.translate("MODULE.UNKNOWN_KEY");
+   * console.log(text2); // "MODULE.UNKNOWN_KEY"
+   * ```
+   */
+  translate(key, fallback2) {
+    const foundryResult = this.foundryI18n.localize(key);
+    if (foundryResult.ok && foundryResult.value !== key) {
+      return foundryResult.value;
+    }
+    const localResult = this.localI18n.translate(key);
+    if (localResult.ok && localResult.value !== key) {
+      return localResult.value;
+    }
+    return fallback2 ?? key;
+  }
+  /**
+   * Formats a string with placeholders.
+   *
+   * @param key - Translation key
+   * @param data - Object with placeholder values
+   * @param fallback - Optional fallback string
+   * @returns Formatted string or fallback
+   *
+   * @example
+   * ```typescript
+   * const text = i18n.format("MODULE.WELCOME", { name: "Alice" }, "Welcome!");
+   * console.log(text); // "Welcome, Alice!" or "Welcome!"
+   * ```
+   */
+  format(key, data, fallback2) {
+    const foundryResult = this.foundryI18n.format(key, data);
+    if (foundryResult.ok && foundryResult.value !== key) {
+      return foundryResult.value;
+    }
+    const localResult = this.localI18n.format(key, data);
+    if (localResult.ok && localResult.value !== key) {
+      return localResult.value;
+    }
+    return fallback2 ?? key;
+  }
+  /**
+   * Checks if a translation key exists in either i18n system.
+   *
+   * @param key - Translation key to check
+   * @returns True if key exists in Foundry or local i18n
+   */
+  has(key) {
+    const foundryResult = this.foundryI18n.has(key);
+    if (foundryResult.ok && foundryResult.value) {
+      return true;
+    }
+    const localResult = this.localI18n.has(key);
+    return localResult.ok && localResult.value;
+  }
+  /**
+   * Loads local translations from a JSON object.
+   * Useful for initializing translations on module startup.
+   *
+   * @param translations - Object with key-value pairs
+   *
+   * @example
+   * ```typescript
+   * i18n.loadLocalTranslations({
+   *   "MODULE.SETTINGS.enableFeature": "Enable Feature",
+   *   "MODULE.WELCOME": "Welcome, {name}!"
+   * });
+   * ```
+   */
+  loadLocalTranslations(translations) {
+    this.localI18n.loadTranslations(translations);
+  }
+};
+__name(_I18nFacadeService, "I18nFacadeService");
+_I18nFacadeService.dependencies = [foundryI18nToken, localI18nToken];
+let I18nFacadeService = _I18nFacadeService;
 function validateJournalId(id) {
   if (typeof id !== "string") {
     return err(createFoundryError("VALIDATION_FAILED", "ID must be a string"));
@@ -9985,6 +10372,67 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
 };
 __name(_FoundrySettingsPortV13, "FoundrySettingsPortV13");
 let FoundrySettingsPortV13 = _FoundrySettingsPortV13;
+const _FoundryI18nPortV13 = class _FoundryI18nPortV13 {
+  /**
+   * Localizes a translation key using Foundry's i18n system.
+   *
+   * @param key - Translation key
+   * @returns Result with translated string (returns key itself if not found)
+   */
+  localize(key) {
+    try {
+      if (typeof game === "undefined" || !game?.i18n) {
+        return ok(key);
+      }
+      const translated = game.i18n.localize(key);
+      return ok(translated);
+    } catch {
+      return ok(key);
+    }
+  }
+  /**
+   * Formats a translation key with placeholder values.
+   *
+   * @param key - Translation key
+   * @param data - Object with placeholder values
+   * @returns Result with formatted string
+   */
+  format(key, data) {
+    try {
+      if (typeof game === "undefined" || !game?.i18n) {
+        return ok(key);
+      }
+      const stringData = {};
+      for (const [k, v] of Object.entries(data)) {
+        stringData[k] = String(v);
+      }
+      const formatted = game.i18n.format(key, stringData);
+      return ok(formatted);
+    } catch {
+      return ok(key);
+    }
+  }
+  /**
+   * Checks if a translation key exists.
+   *
+   * @param key - Translation key to check
+   * @returns Result with boolean indicating existence
+   */
+  has(key) {
+    try {
+      if (typeof game === "undefined" || !game?.i18n) {
+        return ok(false);
+      }
+      const exists = game.i18n.has(key);
+      return ok(exists);
+    } catch {
+      return ok(false);
+    }
+  }
+};
+__name(_FoundryI18nPortV13, "FoundryI18nPortV13");
+_FoundryI18nPortV13.dependencies = [];
+let FoundryI18nPortV13 = _FoundryI18nPortV13;
 function registerPortToRegistry(registry, version, factory, portName, errors) {
   const result = registry.register(version, factory);
   if (isErr(result)) {
@@ -10058,6 +10506,14 @@ function createPortRegistries() {
     "FoundrySettings",
     portRegistrationErrors
   );
+  const i18nPortRegistry = new PortRegistry();
+  registerPortToRegistry(
+    i18nPortRegistry,
+    13,
+    () => new FoundryI18nPortV13(),
+    "FoundryI18n",
+    portRegistrationErrors
+  );
   if (portRegistrationErrors.length > 0) {
     return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
   }
@@ -10066,7 +10522,8 @@ function createPortRegistries() {
     hooksPortRegistry,
     documentPortRegistry,
     uiPortRegistry,
-    settingsPortRegistry
+    settingsPortRegistry,
+    i18nPortRegistry
   });
 }
 __name(createPortRegistries, "createPortRegistries");
@@ -10086,7 +10543,8 @@ function registerPortInfrastructure(container) {
     hooksPortRegistry,
     documentPortRegistry,
     uiPortRegistry,
-    settingsPortRegistry
+    settingsPortRegistry,
+    i18nPortRegistry
   } = portsResult.value;
   const gameRegistryResult = container.registerValue(
     foundryGamePortRegistryToken,
@@ -10125,6 +10583,13 @@ function registerPortInfrastructure(container) {
     return err(
       `Failed to register FoundrySettings PortRegistry: ${settingsRegistryResult.error.message}`
     );
+  }
+  const i18nRegistryResult = container.registerValue(
+    foundryI18nPortRegistryToken,
+    i18nPortRegistry
+  );
+  if (isErr(i18nRegistryResult)) {
+    return err(`Failed to register FoundryI18n PortRegistry: ${i18nRegistryResult.error.message}`);
   }
   return ok(void 0);
 }
@@ -10187,6 +10652,34 @@ function registerFoundryServices(container) {
   return ok(void 0);
 }
 __name(registerFoundryServices, "registerFoundryServices");
+function registerI18nServices(container) {
+  const foundryI18nResult = container.registerClass(
+    foundryI18nToken,
+    FoundryI18nService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(foundryI18nResult)) {
+    return err(`Failed to register FoundryI18nService: ${foundryI18nResult.error.message}`);
+  }
+  const localI18nResult = container.registerClass(
+    localI18nToken,
+    LocalI18nService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(localI18nResult)) {
+    return err(`Failed to register LocalI18nService: ${localI18nResult.error.message}`);
+  }
+  const facadeResult = container.registerClass(
+    i18nFacadeToken,
+    I18nFacadeService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(facadeResult)) {
+    return err(`Failed to register I18nFacadeService: ${facadeResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerI18nServices, "registerI18nServices");
 function validateContainer(container) {
   const validateResult = container.validate();
   if (isErr(validateResult)) {
@@ -10214,6 +10707,8 @@ function configureDependencies(container) {
   if (isErr(portInfraResult)) return portInfraResult;
   const foundryServicesResult = registerFoundryServices(container);
   if (isErr(foundryServicesResult)) return foundryServicesResult;
+  const i18nServicesResult = registerI18nServices(container);
+  if (isErr(i18nServicesResult)) return i18nServicesResult;
   const validationResult = validateContainer(container);
   if (isErr(validationResult)) return validationResult;
   configureLogger(container);
@@ -10340,7 +10835,7 @@ const _CompositionRoot = class _CompositionRoot {
           portSelectionFailures: {},
           cacheHitRate: 0
         };
-        const hasPortSelections = Object.keys(metrics.portSelections).length > 0;
+        const hasPortSelections = Object.keys(metrics.portSelections).length > 0 || containerValidated;
         const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
         let status;
         if (!containerValidated) {
@@ -10510,32 +11005,49 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
   registerAll(container) {
     const settingsResult = container.resolveWithError(foundrySettingsToken);
     const loggerResult = container.resolveWithError(loggerToken);
-    if (!settingsResult.ok || !loggerResult.ok) {
+    const i18nResult = container.resolveWithError(i18nFacadeToken);
+    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok) {
       console.error("Failed to resolve required services for settings registration");
       return;
     }
     const settings = settingsResult.value;
     const logger = loggerResult.value;
+    const i18n = i18nResult.value;
     const result = settings.register(
       MODULE_CONSTANTS.MODULE.ID,
       MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
       {
-        name: "Log Level",
-        hint: "Mindest-Log-Level für Modul-Ausgaben. DEBUG zeigt alle Logs, ERROR nur kritische Fehler.",
+        name: i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"),
+        hint: i18n.translate(
+          "MODULE.SETTINGS.logLevel.hint",
+          "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors."
+        ),
         scope: "world",
         config: true,
         type: Number,
         choices: {
-          [LogLevel.DEBUG]: "DEBUG (Alle Logs - für Debugging)",
-          [LogLevel.INFO]: "INFO (Standard)",
-          [LogLevel.WARN]: "WARN (Nur Warnungen und Fehler)",
-          [LogLevel.ERROR]: "ERROR (Nur kritische Fehler)"
+          [LogLevel.DEBUG]: i18n.translate(
+            "MODULE.SETTINGS.logLevel.choices.debug",
+            "DEBUG (All logs - for debugging)"
+          ),
+          [LogLevel.INFO]: i18n.translate(
+            "MODULE.SETTINGS.logLevel.choices.info",
+            "INFO (Standard)"
+          ),
+          [LogLevel.WARN]: i18n.translate(
+            "MODULE.SETTINGS.logLevel.choices.warn",
+            "WARN (Warnings and errors only)"
+          ),
+          [LogLevel.ERROR]: i18n.translate(
+            "MODULE.SETTINGS.logLevel.choices.error",
+            "ERROR (Critical errors only)"
+          )
         },
         default: LogLevel.INFO,
         onChange: /* @__PURE__ */ __name((value2) => {
           if (logger.setMinLevel) {
             logger.setMinLevel(value2);
-            logger.info(`Log-Level geändert zu: ${LogLevel[value2]}`);
+            logger.info(`Log level changed to: ${LogLevel[value2]}`);
           }
         }, "onChange")
       }

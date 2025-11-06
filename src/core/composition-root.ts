@@ -183,7 +183,10 @@ export class CompositionRoot {
               portSelectionFailures: {},
               cacheHitRate: 0,
             };
-        const hasPortSelections = Object.keys(metrics.portSelections).length > 0;
+        // Fallback to containerValidated when performance tracking is disabled (production mode)
+        // If container is validated, ports must have been selected successfully
+        const hasPortSelections =
+          Object.keys(metrics.portSelections).length > 0 || containerValidated;
         const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
 
         // Determine overall status

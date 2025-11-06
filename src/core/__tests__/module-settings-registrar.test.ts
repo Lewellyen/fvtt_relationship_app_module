@@ -62,7 +62,7 @@ describe("ModuleSettingsRegistrar", () => {
 
       // Logger should be reconfigured
       expect(setMinLevelSpy).toHaveBeenCalledWith(LogLevel.DEBUG);
-      expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining("Log-Level geändert"));
+      expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining("Log level changed to"));
     });
 
     it("should handle logger without setMinLevel gracefully", () => {

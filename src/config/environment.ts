@@ -28,6 +28,14 @@ export interface EnvironmentConfig {
 
   /** Enable debug mode features (verbose logging, performance marks, etc.) */
   enableDebugMode: boolean;
+
+  /**
+   * Performance sampling rate for production environments (0.0 to 1.0).
+   * 0.01 = 1% sampling, 1.0 = 100% sampling.
+   * Reduces performance overhead in production by only tracking a percentage of operations.
+   * @default 0.01 (1% sampling in production)
+   */
+  performanceSamplingRate: number;
 }
 
 /**
@@ -40,4 +48,9 @@ export const ENV: EnvironmentConfig = {
   logLevel: import.meta.env.MODE === "development" ? LogLevel.DEBUG : LogLevel.INFO,
   enablePerformanceTracking: import.meta.env.VITE_ENABLE_PERF_TRACKING === "true",
   enableDebugMode: import.meta.env.MODE === "development",
+  // 1% sampling in production, 100% in development
+  performanceSamplingRate:
+    import.meta.env.MODE === "production"
+      ? parseFloat(import.meta.env.VITE_PERF_SAMPLING_RATE ?? "0.01")
+      : 1.0,
 };

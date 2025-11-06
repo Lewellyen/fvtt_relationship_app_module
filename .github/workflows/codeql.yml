@@ -1,0 +1,72 @@
+name: "CodeQL Security Analysis"
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run CodeQL analysis weekly (Wednesdays at 03:00 UTC)
+    - cron: '0 3 * * 3'
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    name: Analyze TypeScript/JavaScript
+    runs-on: ubuntu-latest
+    permissions:
+      # Required for all workflows
+      security-events: write
+      # Required for workflows in private repositories
+      contents: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript']
+        # CodeQL supports: 'cpp', 'csharp', 'go', 'java', 'javascript', 'python', 'ruby', 'swift'
+        # For TypeScript/JavaScript, use 'javascript'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Install dependencies before CodeQL analysis to improve detection
+      - name: Install dependencies
+        run: npm ci
+
+      # Initializes the CodeQL tools for scanning
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # Specify additional queries to run (optional)
+          queries: +security-and-quality
+          # CodeQL config file (optional)
+          # config-file: ./.github/codeql/codeql-config.yml
+
+      # Autobuild attempts to build any compiled languages (not needed for JS/TS)
+      # For JavaScript/TypeScript, CodeQL performs static analysis without building
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      # Perform CodeQL Analysis
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+          # Upload SARIF file for later inspection
+          upload: true
+
+      # Optional: Output summary
+      - name: CodeQL Summary
+        if: always()
+        run: echo "CodeQL analysis completed for ${{ matrix.language }}"
+

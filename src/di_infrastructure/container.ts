@@ -275,7 +275,7 @@ export class ServiceContainer implements Container {
   }
 
   /**
-   * Injects MetricsCollector into resolver after validation.
+   * Injects MetricsCollector into resolver and cache after validation.
    * This enables performance tracking without circular dependencies during bootstrap.
    */
   private async injectMetricsCollector(): Promise<void> {
@@ -284,6 +284,7 @@ export class ServiceContainer implements Container {
     const metricsResult = this.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
       this.resolver.setMetricsCollector(metricsResult.value);
+      this.cache.setMetricsCollector(metricsResult.value);
     }
   }
 

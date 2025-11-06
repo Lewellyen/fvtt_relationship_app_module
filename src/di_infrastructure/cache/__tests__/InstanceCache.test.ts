@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { InstanceCache } from "../InstanceCache";
 import { createInjectionToken } from "../../tokenutilities";
 import type { Logger } from "@/interfaces/logger";
+import type { MetricsCollector } from "@/observability/metrics-collector";
 
 class TestService implements Logger {
   value = 42;
@@ -211,6 +212,104 @@ describe("InstanceCache", () => {
       expect(instances.has(token1)).toBe(true);
       expect(instances.has(token2)).toBe(true);
       expect(instances.has(token3)).toBe(false);
+    });
+  });
+
+  describe("metrics tracking", () => {
+    it("should track cache hit when getting existing instance", () => {
+      const cache = new InstanceCache();
+      const token = createInjectionToken<TestService>("TestService");
+      const instance = new TestService();
+
+      const mockMetrics: MetricsCollector = {
+        recordCacheAccess: vi.fn(),
+      } as unknown as MetricsCollector;
+
+      cache.setMetricsCollector(mockMetrics);
+      cache.set(token, instance);
+      cache.get(token);
+
+      expect(mockMetrics.recordCacheAccess).toHaveBeenCalledWith(true);
+    });
+
+    it("should track cache miss when getting non-existent instance", () => {
+      const cache = new InstanceCache();
+      const token = createInjectionToken<TestService>("TestService");
+
+      const mockMetrics: MetricsCollector = {
+        recordCacheAccess: vi.fn(),
+      } as unknown as MetricsCollector;
+
+      cache.setMetricsCollector(mockMetrics);
+      cache.get(token);
+
+      expect(mockMetrics.recordCacheAccess).toHaveBeenCalledWith(false);
+    });
+
+    it("should track cache hit when checking existing instance with has()", () => {
+      const cache = new InstanceCache();
+      const token = createInjectionToken<TestService>("TestService");
+      const instance = new TestService();
+
+      const mockMetrics: MetricsCollector = {
+        recordCacheAccess: vi.fn(),
+      } as unknown as MetricsCollector;
+
+      cache.setMetricsCollector(mockMetrics);
+      cache.set(token, instance);
+      cache.has(token);
+
+      expect(mockMetrics.recordCacheAccess).toHaveBeenCalledWith(true);
+    });
+
+    it("should track cache miss when checking non-existent instance with has()", () => {
+      const cache = new InstanceCache();
+      const token = createInjectionToken<TestService>("TestService");
+
+      const mockMetrics: MetricsCollector = {
+        recordCacheAccess: vi.fn(),
+      } as unknown as MetricsCollector;
+
+      cache.setMetricsCollector(mockMetrics);
+      cache.has(token);
+
+      expect(mockMetrics.recordCacheAccess).toHaveBeenCalledWith(false);
+    });
+
+    it("should not throw when MetricsCollector is not set", () => {
+      const cache = new InstanceCache();
+      const token = createInjectionToken<TestService>("TestService");
+      const instance = new TestService();
+
+      cache.set(token, instance);
+
+      expect(() => cache.get(token)).not.toThrow();
+      expect(() => cache.has(token)).not.toThrow();
+    });
+
+    it("should track multiple cache accesses correctly", () => {
+      const cache = new InstanceCache();
+      const token1 = createInjectionToken<TestService>("Service1");
+      const token2 = createInjectionToken<TestService>("Service2");
+      const instance1 = new TestService();
+
+      const mockMetrics: MetricsCollector = {
+        recordCacheAccess: vi.fn(),
+      } as unknown as MetricsCollector;
+
+      cache.setMetricsCollector(mockMetrics);
+      cache.set(token1, instance1);
+
+      cache.get(token1); // hit
+      cache.get(token2); // miss
+      cache.has(token1); // hit
+      cache.has(token2); // miss
+
+      expect(mockMetrics.recordCacheAccess).toHaveBeenCalledTimes(4);
+      expect(mockMetrics.recordCacheAccess).toHaveBeenNthCalledWith(1, true);
+      expect(mockMetrics.recordCacheAccess).toHaveBeenNthCalledWith(2, false);
+      expect(mockMetrics.recordCacheAccess).toHaveBeenNthCalledWith(3, true);
+      expect(mockMetrics.recordCacheAccess).toHaveBeenNthCalledWith(4, false);
     });
   });
 });

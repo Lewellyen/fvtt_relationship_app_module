@@ -3,6 +3,50 @@ import { MODULE_CONSTANTS } from "../constants";
 import { LogLevel } from "@/config/environment";
 
 /**
+ * Traced logger wrapper that includes a trace ID in all log messages.
+ * Decorates an existing logger to add trace ID prefixes.
+ */
+class TracedLogger implements Logger {
+  constructor(
+    private readonly baseLogger: Logger,
+    private readonly traceId: string
+  ) {}
+
+  private formatMessage(message: string): string {
+    return `[${this.traceId}] ${message}`;
+  }
+
+  setMinLevel(level: LogLevel): void {
+    this.baseLogger.setMinLevel?.(level);
+  }
+
+  log(message: string, ...optionalParams: unknown[]): void {
+    this.baseLogger.log(this.formatMessage(message), ...optionalParams);
+  }
+
+  error(message: string, ...optionalParams: unknown[]): void {
+    this.baseLogger.error(this.formatMessage(message), ...optionalParams);
+  }
+
+  warn(message: string, ...optionalParams: unknown[]): void {
+    this.baseLogger.warn(this.formatMessage(message), ...optionalParams);
+  }
+
+  info(message: string, ...optionalParams: unknown[]): void {
+    this.baseLogger.info(this.formatMessage(message), ...optionalParams);
+  }
+
+  debug(message: string, ...optionalParams: unknown[]): void {
+    this.baseLogger.debug(this.formatMessage(message), ...optionalParams);
+  }
+
+  withTraceId(newTraceId: string): Logger {
+    // Nested trace IDs: combine them
+    return new TracedLogger(this.baseLogger, `${this.traceId}/${newTraceId}`);
+  }
+}
+
+/**
  * Console-based implementation of the Logger interface.
  * Writes log messages to the browser console with support for interactive object inspection.
  * Supports configurable minimum log level for filtering.
@@ -70,5 +114,25 @@ export class ConsoleLoggerService implements Logger {
   debug(message: string, ...optionalParams: unknown[]): void {
     if (LogLevel.DEBUG < this.minLevel) return;
     console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
+  }
+
+  /**
+   * Creates a scoped logger that includes a trace ID in all log messages.
+   * The trace ID helps correlate log entries across related operations.
+   *
+   * @param traceId - Unique trace ID to include in log messages
+   * @returns A new Logger instance that includes the trace ID in all messages
+   *
+   * @example
+   * ```typescript
+   * import { generateTraceId } from '@/utils/trace';
+   *
+   * const traceId = generateTraceId();
+   * const tracedLogger = logger.withTraceId(traceId);
+   * tracedLogger.info('Operation started'); // [1234567890-abc123] Operation started
+   * ```
+   */
+  withTraceId(traceId: string): Logger {
+    return new TracedLogger(this, traceId);
   }
 }
