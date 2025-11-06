@@ -118,6 +118,7 @@ export class ServiceResolver {
 
     if (ENV.enablePerformanceTracking) {
       const duration = performance.now() - startTime;
+      /* c8 ignore next -- Optional chaining is defensive: metricsCollector is always injected via constructor */
       this.metricsCollector?.recordResolution(token, duration, result.ok);
     }
 
