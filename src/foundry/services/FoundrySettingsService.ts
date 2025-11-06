@@ -74,6 +74,11 @@ export class FoundrySettingsService implements FoundrySettings, Disposable {
    * Resets the port reference to allow garbage collection.
    */
   dispose(): void {
+    // Dispose port if it implements Disposable interface
+    /* c8 ignore next 3 -- Defensive: Ports do not currently implement dispose(); reserved for future extensions */
+    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+      (this.port as unknown as Disposable).dispose();
+    }
     this.port = null;
   }
 }

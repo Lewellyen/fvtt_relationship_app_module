@@ -38,17 +38,102 @@ logger.info('Hello from external module!');
 Für TypeScript-Projekte steht vollständige Typisierung zur Verfügung:
 
 ```typescript
-import type { ModuleApi } from '@/core/module-api';
-
+// Option 1: Global Declaration (empfohlen für eigene Module)
 declare global {
   interface Game {
-    modules: Map<string, Module & { api?: ModuleApi }>;
+    modules: Map<string, {
+      active: boolean;
+      api?: {
+        version: string;
+        resolve<T>(token: symbol): T;
+        resolveWithError<T>(token: symbol): Result<T, ContainerError>;
+        getAvailableTokens(): Map<symbol, TokenInfo>;
+        getMetrics(): MetricsSnapshot;
+        getHealth(): HealthStatus;
+        tokens: {
+          loggerToken: symbol;
+          journalVisibilityServiceToken: symbol;
+          foundryGameToken: symbol;
+          foundryHooksToken: symbol;
+          foundryDocumentToken: symbol;
+          foundryUIToken: symbol;
+          foundrySettingsToken: symbol;
+        };
+      };
+    }>;
   }
 }
 
-// Jetzt mit voller Type-Safety
+// Option 2: Type-Safe API Access
+const mod = game.modules.get('fvtt_relationship_app_module');
+if (mod?.active && mod.api) {
+  const logger = mod.api.resolve(mod.api.tokens.loggerToken);
+  logger.info('Type-safe!');
+}
+
+// Option 3: Mit Result-Pattern (empfohlen für Fehlerbehandlung)
 const api = game.modules.get('fvtt_relationship_app_module')?.api;
-const logger = api?.resolve(api.tokens.loggerToken);
+const loggerResult = api?.resolveWithError(api.tokens.loggerToken);
+if (loggerResult?.ok) {
+  loggerResult.value.info('Sicher mit Result-Pattern');
+}
+```
+
+### TypeScript Type Definitions
+
+Vollständige Type Definitions für externe Module:
+
+```typescript
+// Result Pattern Types
+type Ok<T> = { ok: true; value: T };
+type Err<E> = { ok: false; error: E };
+type Result<T, E> = Ok<T> | Err<E>;
+
+// Container Error
+interface ContainerError {
+  code: string;
+  message: string;
+  cause?: unknown;
+  tokenDescription?: string;
+  details?: unknown;
+  stack?: string;
+  timestamp?: number;
+  containerScope?: string;
+}
+
+// Foundry Error
+interface FoundryError {
+  code: string;
+  message: string;
+  details?: unknown;
+  cause?: unknown;
+}
+
+// Token Info
+interface TokenInfo {
+  description: string;
+  isRegistered: boolean;
+}
+
+// Metrics Snapshot
+interface MetricsSnapshot {
+  containerResolutions: number;
+  resolutionErrors: number;
+  avgResolutionTimeMs: number;
+  portSelections: Record<number, number>;
+  portSelectionFailures: Record<number, number>;
+  cacheHitRate: number;
+}
+
+// Health Status
+interface HealthStatus {
+  status: "healthy" | "degraded" | "unhealthy";
+  timestamp: number;
+  checks: {
+    containerValidated: boolean;
+    lastError?: string;
+  };
+}
 ```
 
 ---
@@ -443,6 +528,97 @@ if (result.ok) {
 ### Versionssicherheit
 
 Die API ist versionssicher durch das Port-Adapter-Pattern. Services funktionieren auf allen unterstützten Foundry-Versionen (v13+).
+
+---
+
+## 🛡️ Error-Handling Best Practices
+
+### 1. Immer Result-Pattern verwenden
+
+```typescript
+// ❌ FALSCH: Exceptions werfen/fangen
+try {
+  const logger = api.resolve(api.tokens.loggerToken);
+} catch (error) {
+  // resolve() wirft nur bei API-Boundary-Violations
+}
+
+// ✅ RICHTIG: resolveWithError() für Result-Pattern
+const loggerResult = api.resolveWithError(api.tokens.loggerToken);
+if (loggerResult.ok) {
+  const logger = loggerResult.value;
+  logger.info('Success');
+} else {
+  console.error('Failed to resolve logger:', loggerResult.error);
+}
+```
+
+### 2. Fehler-Details loggen
+
+```typescript
+const result = gameService.getJournalEntries();
+if (!result.ok) {
+  // Logge vollständige Error-Details für Debugging
+  console.error('Error details:', {
+    code: result.error.code,
+    message: result.error.message,
+    details: result.error.details,
+    stack: result.error.stack, // Falls vorhanden
+    timestamp: result.error.timestamp, // Falls vorhanden
+  });
+}
+```
+
+### 3. Graceful Degradation
+
+```typescript
+const api = game.modules.get('fvtt_relationship_app_module')?.api;
+if (!api) {
+  console.warn('Relationship App nicht verfügbar - verwende Fallback');
+  // Fallback-Logik
+  return;
+}
+
+const loggerResult = api.resolveWithError(api.tokens.loggerToken);
+const logger = loggerResult.ok ? loggerResult.value : {
+  info: console.log,
+  error: console.error,
+  // ... minimal logger fallback
+};
+```
+
+### 4. Async Error-Handling
+
+```typescript
+const settingsService = api.resolve(api.tokens.foundrySettingsToken);
+
+// Set-Operation ist async - await und Result prüfen
+const setResult = await settingsService.set('my-module', 'myKey', 'myValue');
+if (!setResult.ok) {
+  console.error('Setting konnte nicht gespeichert werden:', setResult.error.message);
+  ui.notifications.error('Einstellungen konnten nicht gespeichert werden');
+}
+```
+
+### 5. Container Error Codes
+
+Die wichtigsten Error Codes:
+
+| Code | Bedeutung | Handling |
+|------|-----------|----------|
+| `TokenNotRegistered` | Service nicht registriert | Modul-Abhängigkeiten prüfen |
+| `FactoryFailed` | Service-Erstellung fehlgeschlagen | Logs prüfen, Foundry-Version checken |
+| `InvalidOperation` | Ungültige Operation | API-Dokumentation prüfen |
+| `Disposed` | Container wurde disposed | Modul neu laden |
+
+### 6. Foundry Error Codes
+
+| Code | Bedeutung | Handling |
+|------|-----------|----------|
+| `API_NOT_AVAILABLE` | Foundry API nicht verfügbar | Zu früh aufgerufen (vor init Hook) |
+| `VALIDATION_FAILED` | Eingabe-Validierung fehlgeschlagen | Daten prüfen |
+| `OPERATION_FAILED` | Foundry-Operation fehlgeschlagen | Foundry-Logs prüfen |
+| `PORT_SELECTION_FAILED` | Keine kompatible Version | Foundry-Version prüfen |
 
 ---
 

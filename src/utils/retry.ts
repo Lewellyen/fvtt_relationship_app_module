@@ -38,25 +38,41 @@ export async function withRetry<SuccessType, ErrorType>(
   maxAttempts: number = 3,
   delayMs: number = 100
 ): Promise<Result<SuccessType, ErrorType>> {
-  let lastError: ErrorType;
+  // Validate maxAttempts to prevent undefined errors
+  if (maxAttempts < 1) {
+    return err("maxAttempts must be >= 1" as ErrorType);
+  }
+
+  let lastError: ErrorType | undefined;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const result = await fn();
+    try {
+      // Wrap fn() in try/catch to handle thrown errors (breaks Result-Pattern)
+      const result = await fn();
 
-    if (result.ok) {
-      return result;
-    }
+      if (result.ok) {
+        return result;
+      }
 
-    lastError = result.error;
+      lastError = result.error;
 
-    // Don't sleep after last attempt
-    if (attempt < maxAttempts) {
-      // Exponential backoff: delay * attempt (100ms, 200ms, 300ms, ...)
-      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+      // Don't sleep after last attempt
+      if (attempt < maxAttempts) {
+        // Exponential backoff: delay * attempt (100ms, 200ms, 300ms, ...)
+        await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+      }
+    } catch (error) {
+      // Handle exception-based code that breaks Result-Pattern
+      lastError = error as ErrorType;
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+      }
     }
   }
 
-  return err(lastError!);
+  // lastError is always defined here (at least one attempt was made)
+  return err(lastError as ErrorType);
 }
 
 /**
@@ -81,17 +97,29 @@ export function withRetrySync<SuccessType, ErrorType>(
   fn: () => Result<SuccessType, ErrorType>,
   maxAttempts: number = 3
 ): Result<SuccessType, ErrorType> {
-  let lastError: ErrorType;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const result = fn();
-
-    if (result.ok) {
-      return result;
-    }
-
-    lastError = result.error;
+  // Validate maxAttempts to prevent undefined errors
+  if (maxAttempts < 1) {
+    return err("maxAttempts must be >= 1" as ErrorType);
   }
 
-  return err(lastError!);
+  let lastError: ErrorType | undefined;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      // Wrap fn() in try/catch to handle thrown errors (breaks Result-Pattern)
+      const result = fn();
+
+      if (result.ok) {
+        return result;
+      }
+
+      lastError = result.error;
+    } catch (error) {
+      // Handle exception-based code that breaks Result-Pattern
+      lastError = error as ErrorType;
+    }
+  }
+
+  // lastError is always defined here (at least one attempt was made)
+  return err(lastError as ErrorType);
 }

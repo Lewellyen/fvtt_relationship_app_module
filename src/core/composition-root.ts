@@ -6,7 +6,11 @@ import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
 import type { ModuleApi, ModuleApiTokens, TokenInfo, HealthStatus } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
-import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
+import {
+  loggerToken,
+  journalVisibilityServiceToken,
+  metricsCollectorToken,
+} from "@/tokens/tokenindex";
 import {
   foundryGameToken,
   foundryHooksToken,
@@ -16,7 +20,6 @@ import {
 } from "@/foundry/foundrytokens";
 import { PERFORMANCE_MARKS } from "@/core/performance-constants";
 import { ENV } from "@/config/environment";
-import { MetricsCollector } from "@/observability/metrics-collector";
 
 /**
  * CompositionRoot
@@ -113,7 +116,7 @@ export class CompositionRoot {
     };
 
     const api: ModuleApi = {
-      version: "1.0.0",
+      version: MODULE_CONSTANTS.API.VERSION,
 
       // Bind container.resolve() directly (already typed as ApiSafeToken in ModuleApi interface)
       // eslint-disable-next-line @typescript-eslint/no-deprecated -- API boundary: External modules use resolve()
@@ -147,12 +150,39 @@ export class CompositionRoot {
 
       tokens: wellKnownTokens,
 
-      getMetrics: () => MetricsCollector.getInstance().getSnapshot(),
+      getMetrics: () => {
+        const metricsResult = container.resolveWithError(metricsCollectorToken);
+        /* c8 ignore next 11 -- Defensive: MetricsCollector is always registered; fallback returns empty metrics */
+        if (!metricsResult.ok) {
+          return {
+            containerResolutions: 0,
+            resolutionErrors: 0,
+            avgResolutionTimeMs: 0,
+            portSelections: {},
+            portSelectionFailures: {},
+            cacheHitRate: 0,
+          };
+        }
+        return metricsResult.value.getSnapshot();
+      },
 
       getHealth: (): HealthStatus => {
         /* c8 ignore next -- Container is always validated after bootstrap, unhealthy path requires internal state manipulation */
         const containerValidated = this.container?.getValidationState() === "validated";
-        const metrics = MetricsCollector.getInstance().getSnapshot();
+
+        // Get metrics via DI
+        const metricsResult = container.resolveWithError(metricsCollectorToken);
+        /* c8 ignore next 10 -- Defensive: MetricsCollector fallback when resolution fails; always succeeds in practice */
+        const metrics = metricsResult.ok
+          ? metricsResult.value.getSnapshot()
+          : {
+              containerResolutions: 0,
+              resolutionErrors: 0,
+              avgResolutionTimeMs: 0,
+              portSelections: {},
+              portSelectionFailures: {},
+              cacheHitRate: 0,
+            };
         const hasPortSelections = Object.keys(metrics.portSelections).length > 0;
         const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
 

@@ -33,6 +33,19 @@ if (!(originalAssignRef && originalAssignRef.__cy_careful_patch)) {
   patched.__cy_careful_patch = true;
   Object.assign = patched;
 }
+const HOOK_THROTTLE_WINDOW_MS = 100;
+const VALIDATION_CONSTRAINTS = {
+  /** Maximum length for IDs and keys */
+  MAX_ID_LENGTH: 100,
+  /** Maximum length for names */
+  MAX_NAME_LENGTH: 100,
+  /** Maximum length for flag keys */
+  MAX_FLAG_KEY_LENGTH: 100
+};
+const METRICS_CONFIG = {
+  /** Size of circular buffer for resolution times */
+  RESOLUTION_TIMES_BUFFER_SIZE: 100
+};
 const MODULE_CONSTANTS = {
   MODULE: {
     ID: "fvtt_relationship_app_module",
@@ -53,6 +66,17 @@ const MODULE_CONSTANTS = {
   SETTINGS: {
     LOG_LEVEL: "logLevel"
   },
+  API: {
+    /**
+     * Public API version for external module consumption.
+     * Follows semantic versioning: MAJOR.MINOR.PATCH
+     *
+     * MAJOR: Breaking changes to public API
+     * MINOR: New features, backwards-compatible
+     * PATCH: Bug fixes, backwards-compatible
+     */
+    VERSION: "1.0.0"
+  },
   DEFAULTS: {
     UNKNOWN_NAME: "Unknown",
     NO_VERSION_SELECTED: -1,
@@ -60,6 +84,15 @@ const MODULE_CONSTANTS = {
     CACHE_TTL_MS: 5e3
   }
 };
+Object.freeze(MODULE_CONSTANTS);
+Object.freeze(MODULE_CONSTANTS.MODULE);
+Object.freeze(MODULE_CONSTANTS.API);
+Object.freeze(MODULE_CONSTANTS.FLAGS);
+Object.freeze(MODULE_CONSTANTS.HOOKS);
+Object.freeze(MODULE_CONSTANTS.SETTINGS);
+Object.freeze(MODULE_CONSTANTS.DEFAULTS);
+Object.freeze(VALIDATION_CONSTRAINTS);
+Object.freeze(METRICS_CONFIG);
 function ok(value2) {
   return { ok: true, value: value2 };
 }
@@ -166,9 +199,78 @@ const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry")
 const foundrySettingsToken = createInjectionToken("FoundrySettings");
 const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
 const loggerToken = createInjectionToken("Logger");
+const metricsCollectorToken = createInjectionToken("MetricsCollector");
 const journalVisibilityServiceToken = createInjectionToken(
   "JournalVisibilityService"
 );
+var tokenindex = /* @__PURE__ */ Object.freeze({
+  __proto__: null,
+  journalVisibilityServiceToken,
+  loggerToken,
+  metricsCollectorToken,
+  portSelectorToken
+});
+const scriptRel = "modulepreload";
+const assetsURL = /* @__PURE__ */ __name(function(dep) {
+  return "/" + dep;
+}, "assetsURL");
+const seen = {};
+const __vitePreload = /* @__PURE__ */ __name(function preload(baseModule, deps, importerUrl) {
+  let promise2 = Promise.resolve();
+  if (deps && deps.length > 0) {
+    let allSettled2 = function(promises$2) {
+      return Promise.all(promises$2.map((p) => Promise.resolve(p).then((value$1) => ({
+        status: "fulfilled",
+        value: value$1
+      }), (reason) => ({
+        status: "rejected",
+        reason
+      }))));
+    };
+    var allSettled = allSettled2;
+    __name(allSettled2, "allSettled");
+    const links = document.getElementsByTagName("link");
+    const cspNonceMeta = document.querySelector("meta[property=csp-nonce]");
+    const cspNonce = cspNonceMeta?.nonce || cspNonceMeta?.getAttribute("nonce");
+    promise2 = allSettled2(deps.map((dep) => {
+      dep = assetsURL(dep, importerUrl);
+      if (dep in seen) return;
+      seen[dep] = true;
+      const isCss = dep.endsWith(".css");
+      const cssSelector = isCss ? '[rel="stylesheet"]' : "";
+      if (!!importerUrl) for (let i$1 = links.length - 1; i$1 >= 0; i$1--) {
+        const link$1 = links[i$1];
+        if (link$1.href === dep && (!isCss || link$1.rel === "stylesheet")) return;
+      }
+      else if (document.querySelector(`link[href="${dep}"]${cssSelector}`)) return;
+      const link = document.createElement("link");
+      link.rel = isCss ? "stylesheet" : scriptRel;
+      if (!isCss) link.as = "script";
+      link.crossOrigin = "";
+      link.href = dep;
+      if (cspNonce) link.setAttribute("nonce", cspNonce);
+      document.head.appendChild(link);
+      if (isCss) return new Promise((res, rej) => {
+        link.addEventListener("load", res);
+        link.addEventListener("error", () => rej(/* @__PURE__ */ new Error(`Unable to preload CSS for ${dep}`)));
+      });
+    }));
+  }
+  function handlePreloadError(err$2) {
+    const e$1 = new Event("vite:preloadError", { cancelable: true });
+    e$1.payload = err$2;
+    window.dispatchEvent(e$1);
+    if (!e$1.defaultPrevented) throw err$2;
+  }
+  __name(handlePreloadError, "handlePreloadError");
+  return promise2.then((res) => {
+    for (const item of res || []) {
+      if (item.status !== "rejected") continue;
+      handlePreloadError(item.reason);
+    }
+    return baseModule().catch(handlePreloadError);
+  });
+}, "preload");
 const apiSafeTokens = /* @__PURE__ */ new Set();
 function markAsApiSafe(token) {
   apiSafeTokens.add(token);
@@ -728,136 +830,6 @@ const _InstanceCache = class _InstanceCache {
 };
 __name(_InstanceCache, "InstanceCache");
 let InstanceCache = _InstanceCache;
-const _MetricsCollector = class _MetricsCollector {
-  constructor() {
-    this.metrics = {
-      containerResolutions: 0,
-      resolutionErrors: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      portSelections: /* @__PURE__ */ new Map(),
-      portSelectionFailures: /* @__PURE__ */ new Map()
-    };
-    this.resolutionTimes = new Float64Array(100);
-    this.resolutionTimesIndex = 0;
-    this.resolutionTimesCount = 0;
-    this.MAX_RESOLUTION_TIMES = 100;
-  }
-  /**
-   * Gets the singleton instance of MetricsCollector.
-   *
-   * @returns The singleton MetricsCollector instance
-   */
-  static getInstance() {
-    if (!this.instance) {
-      this.instance = new _MetricsCollector();
-    }
-    return this.instance;
-  }
-  /**
-   * Records a service resolution attempt.
-   *
-   * @param token - The injection token that was resolved
-   * @param durationMs - Time taken to resolve in milliseconds
-   * @param success - Whether resolution succeeded
-   */
-  recordResolution(token, durationMs, success) {
-    this.metrics.containerResolutions++;
-    if (!success) {
-      this.metrics.resolutionErrors++;
-    }
-    this.resolutionTimes[this.resolutionTimesIndex] = durationMs;
-    this.resolutionTimesIndex = (this.resolutionTimesIndex + 1) % this.MAX_RESOLUTION_TIMES;
-    this.resolutionTimesCount = Math.min(this.resolutionTimesCount + 1, this.MAX_RESOLUTION_TIMES);
-  }
-  /**
-   * Records a port selection event.
-   *
-   * @param version - The Foundry version for which a port was selected
-   */
-  recordPortSelection(version) {
-    const count = this.metrics.portSelections.get(version) ?? 0;
-    this.metrics.portSelections.set(version, count + 1);
-  }
-  /**
-   * Records a port selection failure.
-   *
-   * Useful for tracking when no compatible port is available for a version.
-   *
-   * @param version - The Foundry version for which port selection failed
-   */
-  recordPortSelectionFailure(version) {
-    const count = this.metrics.portSelectionFailures.get(version) ?? 0;
-    this.metrics.portSelectionFailures.set(version, count + 1);
-  }
-  /**
-   * Records a cache access (hit or miss).
-   *
-   * @param hit - True if cache hit, false if cache miss
-   */
-  recordCacheAccess(hit) {
-    if (hit) {
-      this.metrics.cacheHits++;
-    } else {
-      this.metrics.cacheMisses++;
-    }
-  }
-  /**
-   * Gets a snapshot of current metrics.
-   *
-   * @returns Immutable snapshot of metrics data
-   */
-  getSnapshot() {
-    let sum = 0;
-    for (let i = 0; i < this.resolutionTimesCount; i++) {
-      sum += this.resolutionTimes[i];
-    }
-    const avgTime = this.resolutionTimesCount > 0 ? sum / this.resolutionTimesCount : 0;
-    const totalCacheAccess = this.metrics.cacheHits + this.metrics.cacheMisses;
-    const cacheHitRate = totalCacheAccess > 0 ? this.metrics.cacheHits / totalCacheAccess * 100 : 0;
-    return {
-      containerResolutions: this.metrics.containerResolutions,
-      resolutionErrors: this.metrics.resolutionErrors,
-      avgResolutionTimeMs: avgTime,
-      portSelections: Object.fromEntries(this.metrics.portSelections),
-      portSelectionFailures: Object.fromEntries(this.metrics.portSelectionFailures),
-      cacheHitRate
-    };
-  }
-  /**
-   * Logs a formatted metrics summary to the console.
-   * Uses console.table() for easy-to-read tabular output.
-   */
-  logSummary() {
-    const snapshot = this.getSnapshot();
-    console.table({
-      "Total Resolutions": snapshot.containerResolutions,
-      Errors: snapshot.resolutionErrors,
-      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
-      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
-    });
-  }
-  /**
-   * Resets all collected metrics.
-   * Useful for testing or starting fresh measurements.
-   */
-  reset() {
-    this.metrics = {
-      containerResolutions: 0,
-      resolutionErrors: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      portSelections: /* @__PURE__ */ new Map(),
-      portSelectionFailures: /* @__PURE__ */ new Map()
-    };
-    this.resolutionTimes = new Float64Array(100);
-    this.resolutionTimesIndex = 0;
-    this.resolutionTimesCount = 0;
-  }
-};
-__name(_MetricsCollector, "MetricsCollector");
-_MetricsCollector.instance = null;
-let MetricsCollector = _MetricsCollector;
 var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
   LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
   LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
@@ -878,6 +850,16 @@ const _ServiceResolver = class _ServiceResolver {
     this.cache = cache;
     this.parentResolver = parentResolver;
     this.scopeName = scopeName;
+    this.metricsCollector = null;
+  }
+  /**
+   * Sets the MetricsCollector for performance tracking.
+   * Called by ServiceContainer after validation.
+   *
+   * @param collector - The metrics collector instance
+   */
+  setMetricsCollector(collector) {
+    this.metricsCollector = collector;
   }
   /**
    * Resolves a service by token.
@@ -896,15 +878,20 @@ const _ServiceResolver = class _ServiceResolver {
     const startTime = ENV.enablePerformanceTracking ? performance.now() : 0;
     const registration = this.registry.getRegistration(token);
     if (!registration) {
+      const stack = new Error().stack;
       const error = {
         code: "TokenNotRegistered",
         message: `Service ${String(token)} not registered`,
-        tokenDescription: String(token)
+        tokenDescription: String(token),
+        ...stack !== void 0 && { stack },
+        // Only include stack if defined
+        timestamp: Date.now(),
+        containerScope: this.scopeName
       };
       const result2 = err(error);
       if (ENV.enablePerformanceTracking) {
         const duration = performance.now() - startTime;
-        MetricsCollector.getInstance().recordResolution(token, duration, false);
+        this.metricsCollector?.recordResolution(token, duration, false);
       }
       return result2;
     }
@@ -932,7 +919,7 @@ const _ServiceResolver = class _ServiceResolver {
     }
     if (ENV.enablePerformanceTracking) {
       const duration = performance.now() - startTime;
-      MetricsCollector.getInstance().recordResolution(token, duration, result.ok);
+      this.metricsCollector?.recordResolution(token, duration, result.ok);
     }
     return result;
   }
@@ -1358,6 +1345,25 @@ const _ScopeManager = class _ScopeManager {
 };
 __name(_ScopeManager, "ScopeManager");
 let ScopeManager = _ScopeManager;
+const _TimeoutError = class _TimeoutError extends Error {
+  constructor(timeoutMs) {
+    super(`Operation timed out after ${timeoutMs}ms`);
+    this.name = "TimeoutError";
+  }
+};
+__name(_TimeoutError, "TimeoutError");
+let TimeoutError = _TimeoutError;
+function withTimeout(promise2, timeoutMs) {
+  return Promise.race([
+    promise2,
+    new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new TimeoutError(timeoutMs));
+      }, timeoutMs);
+    })
+  ]);
+}
+__name(withTimeout, "withTimeout");
 const _ServiceContainer = class _ServiceContainer {
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
@@ -1509,10 +1515,27 @@ const _ServiceContainer = class _ServiceContainer {
     const result = this.validator.validate(this.registry);
     if (result.ok) {
       this.validationState = "validated";
+      void this.injectMetricsCollector();
     } else {
       this.validationState = "registering";
     }
     return result;
+  }
+  /**
+   * Injects MetricsCollector into resolver after validation.
+   * This enables performance tracking without circular dependencies during bootstrap.
+   */
+  async injectMetricsCollector() {
+    const { metricsCollectorToken: metricsCollectorToken2 } = await __vitePreload(async () => {
+      const { metricsCollectorToken: metricsCollectorToken3 } = await Promise.resolve().then(function() {
+        return tokenindex;
+      });
+      return { metricsCollectorToken: metricsCollectorToken3 };
+    }, true ? void 0 : void 0);
+    const metricsResult = this.resolveWithError(metricsCollectorToken2);
+    if (metricsResult.ok) {
+      this.resolver.setMetricsCollector(metricsResult.value);
+    }
   }
   /**
    * Get validation state.
@@ -1521,11 +1544,12 @@ const _ServiceContainer = class _ServiceContainer {
     return this.validationState;
   }
   /**
-   * Async-safe validation for concurrent environments.
+   * Async-safe validation for concurrent environments with timeout.
    *
    * Prevents race conditions when multiple callers validate simultaneously
    * by ensuring only one validation runs at a time.
    *
+   * @param timeoutMs - Timeout in milliseconds (default: 30000 = 30 seconds)
    * @returns Promise resolving to validation result
    *
    * @example
@@ -1533,9 +1557,10 @@ const _ServiceContainer = class _ServiceContainer {
    * const container = ServiceContainer.createRoot();
    * // ... register services
    * await container.validateAsync(); // Safe for concurrent calls
+   * await container.validateAsync(5000); // With 5 second timeout
    * ```
    */
-  async validateAsync() {
+  async validateAsync(timeoutMs = 3e4) {
     if (this.validationState === "validated") {
       return ok(void 0);
     }
@@ -1551,18 +1576,36 @@ const _ServiceContainer = class _ServiceContainer {
       ]);
     }
     this.validationState = "validating";
-    this.validationPromise = Promise.resolve().then(() => {
-      const result2 = this.validator.validate(this.registry);
-      if (result2.ok) {
+    const validationTask = Promise.resolve().then(() => {
+      const result = this.validator.validate(this.registry);
+      if (result.ok) {
         this.validationState = "validated";
       } else {
         this.validationState = "registering";
       }
-      return result2;
+      return result;
     });
-    const result = await this.validationPromise;
-    this.validationPromise = null;
-    return result;
+    try {
+      this.validationPromise = withTimeout(validationTask, timeoutMs);
+      const result = await this.validationPromise;
+      if (result.ok) {
+        await this.injectMetricsCollector();
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof TimeoutError) {
+        this.validationState = "registering";
+        return err([
+          {
+            code: "InvalidOperation",
+            message: `Validation timed out after ${timeoutMs}ms`
+          }
+        ]);
+      }
+      throw error;
+    } finally {
+      this.validationPromise = null;
+    }
   }
   /**
    * Creates a child scope container.
@@ -8694,6 +8737,90 @@ function validateJournalEntries(entries2) {
   return ok(result.output);
 }
 __name(validateJournalEntries, "validateJournalEntries");
+function validateSettingValue(key, value2, expectedType, choices) {
+  if (expectedType === "string" && typeof value2 !== "string") {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `Setting ${key}: Expected string, got ${typeof value2}`,
+        { key, value: value2, expectedType }
+      )
+    );
+  }
+  if (expectedType === "number" && typeof value2 !== "number") {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `Setting ${key}: Expected number, got ${typeof value2}`,
+        { key, value: value2, expectedType }
+      )
+    );
+  }
+  if (expectedType === "boolean" && typeof value2 !== "boolean") {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `Setting ${key}: Expected boolean, got ${typeof value2}`,
+        { key, value: value2, expectedType }
+      )
+    );
+  }
+  if (choices && expectedType === "string") {
+    if (!choices.includes(value2)) {
+      return err(
+        createFoundryError(
+          "VALIDATION_FAILED",
+          `Setting ${key}: Invalid value "${value2}". Allowed: ${choices.join(", ")}`,
+          { key, value: value2, choices }
+        )
+      );
+    }
+  }
+  return ok(value2);
+}
+__name(validateSettingValue, "validateSettingValue");
+function validateSettingConfig(namespace, key, config2) {
+  if (!namespace || typeof namespace !== "string") {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Invalid setting namespace: must be non-empty string",
+        {
+          namespace,
+          key
+        }
+      )
+    );
+  }
+  if (!key || typeof key !== "string") {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Invalid setting key: must be non-empty string", {
+        namespace,
+        key
+      })
+    );
+  }
+  if (!config2 || typeof config2 !== "object") {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Invalid setting config: must be object", {
+        namespace,
+        key
+      })
+    );
+  }
+  const configObj = config2;
+  if (configObj.scope && !["world", "client", "user"].includes(configObj.scope)) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `Invalid setting scope: "${configObj.scope}". Allowed: world, client, user`,
+        { namespace, key, scope: configObj.scope }
+      )
+    );
+  }
+  return ok(config2);
+}
+__name(validateSettingConfig, "validateSettingConfig");
 function sanitizeId(id) {
   return id.replace(/[^a-zA-Z0-9-_]/g, "");
 }
@@ -8704,6 +8831,39 @@ function sanitizeHtml(text) {
   return div.innerHTML;
 }
 __name(sanitizeHtml, "sanitizeHtml");
+const FoundryApplicationSchema = /* @__PURE__ */ object({
+  // Application should have a string ID
+  id: /* @__PURE__ */ string(),
+  // Application should have object property
+  object: /* @__PURE__ */ optional(/* @__PURE__ */ any()),
+  // Application should have options property
+  options: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ unknown()))
+});
+function validateHookApp(app) {
+  if (app === null || app === void 0) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Hook app parameter is null or undefined",
+        void 0,
+        void 0
+      )
+    );
+  }
+  const result = /* @__PURE__ */ safeParse(FoundryApplicationSchema, app);
+  if (!result.success) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Hook app parameter validation failed",
+        void 0,
+        result.issues
+      )
+    );
+  }
+  return ok(result.output);
+}
+__name(validateHookApp, "validateHookApp");
 const _JournalVisibilityService = class _JournalVisibilityService {
   constructor(game2, document2, ui2, logger) {
     this.game = game2;
@@ -8802,6 +8962,125 @@ _JournalVisibilityService.dependencies = [
   loggerToken
 ];
 let JournalVisibilityService = _JournalVisibilityService;
+const _MetricsCollector = class _MetricsCollector {
+  constructor() {
+    this.metrics = {
+      containerResolutions: 0,
+      resolutionErrors: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      portSelections: /* @__PURE__ */ new Map(),
+      portSelectionFailures: /* @__PURE__ */ new Map()
+    };
+    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
+    this.resolutionTimesIndex = 0;
+    this.resolutionTimesCount = 0;
+    this.MAX_RESOLUTION_TIMES = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
+  }
+  /**
+   * Records a service resolution attempt.
+   *
+   * @param token - The injection token that was resolved
+   * @param durationMs - Time taken to resolve in milliseconds
+   * @param success - Whether resolution succeeded
+   */
+  recordResolution(token, durationMs, success) {
+    this.metrics.containerResolutions++;
+    if (!success) {
+      this.metrics.resolutionErrors++;
+    }
+    this.resolutionTimes[this.resolutionTimesIndex] = durationMs;
+    this.resolutionTimesIndex = (this.resolutionTimesIndex + 1) % this.MAX_RESOLUTION_TIMES;
+    this.resolutionTimesCount = Math.min(this.resolutionTimesCount + 1, this.MAX_RESOLUTION_TIMES);
+  }
+  /**
+   * Records a port selection event.
+   *
+   * @param version - The Foundry version for which a port was selected
+   */
+  recordPortSelection(version) {
+    const count = this.metrics.portSelections.get(version) ?? 0;
+    this.metrics.portSelections.set(version, count + 1);
+  }
+  /**
+   * Records a port selection failure.
+   *
+   * Useful for tracking when no compatible port is available for a version.
+   *
+   * @param version - The Foundry version for which port selection failed
+   */
+  recordPortSelectionFailure(version) {
+    const count = this.metrics.portSelectionFailures.get(version) ?? 0;
+    this.metrics.portSelectionFailures.set(version, count + 1);
+  }
+  /**
+   * Records a cache access (hit or miss).
+   *
+   * @param hit - True if cache hit, false if cache miss
+   */
+  recordCacheAccess(hit) {
+    if (hit) {
+      this.metrics.cacheHits++;
+    } else {
+      this.metrics.cacheMisses++;
+    }
+  }
+  /**
+   * Gets a snapshot of current metrics.
+   *
+   * @returns Immutable snapshot of metrics data
+   */
+  getSnapshot() {
+    let sum = 0;
+    for (let i = 0; i < this.resolutionTimesCount; i++) {
+      sum += this.resolutionTimes[i];
+    }
+    const avgTime = this.resolutionTimesCount > 0 ? sum / this.resolutionTimesCount : 0;
+    const totalCacheAccess = this.metrics.cacheHits + this.metrics.cacheMisses;
+    const cacheHitRate = totalCacheAccess > 0 ? this.metrics.cacheHits / totalCacheAccess * 100 : 0;
+    return {
+      containerResolutions: this.metrics.containerResolutions,
+      resolutionErrors: this.metrics.resolutionErrors,
+      avgResolutionTimeMs: avgTime,
+      portSelections: Object.fromEntries(this.metrics.portSelections),
+      portSelectionFailures: Object.fromEntries(this.metrics.portSelectionFailures),
+      cacheHitRate
+    };
+  }
+  /**
+   * Logs a formatted metrics summary to the console.
+   * Uses console.table() for easy-to-read tabular output.
+   */
+  logSummary() {
+    const snapshot = this.getSnapshot();
+    console.table({
+      "Total Resolutions": snapshot.containerResolutions,
+      Errors: snapshot.resolutionErrors,
+      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
+      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
+    });
+  }
+  /**
+   * Resets all collected metrics.
+   * Useful for testing or starting fresh measurements.
+   */
+  reset() {
+    this.metrics = {
+      containerResolutions: 0,
+      resolutionErrors: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      portSelections: /* @__PURE__ */ new Map(),
+      portSelectionFailures: /* @__PURE__ */ new Map()
+    };
+    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
+    this.resolutionTimesIndex = 0;
+    this.resolutionTimesCount = 0;
+  }
+};
+__name(_MetricsCollector, "MetricsCollector");
+_MetricsCollector.dependencies = [];
+let MetricsCollector = _MetricsCollector;
 let cachedVersion = null;
 function detectFoundryVersion() {
   if (typeof game === "undefined") {
@@ -8865,6 +9144,9 @@ const LEGACY_PERFORMANCE_MARKS = {
   PORT_SELECTION_DURATION: PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION
 };
 const _PortSelector = class _PortSelector {
+  constructor(metricsCollector) {
+    this.metricsCollector = metricsCollector;
+  }
   /**
    * Selects and instantiates the appropriate port from factories.
    *
@@ -8924,7 +9206,12 @@ const _PortSelector = class _PortSelector {
     if (selectedFactory === void 0) {
       const availableVersions = Array.from(factories.keys()).sort((a, b) => a - b).join(", ");
       if (ENV.enablePerformanceTracking) {
-        MetricsCollector.getInstance().recordPortSelectionFailure(version);
+        this.metricsCollector.recordPortSelectionFailure(version);
+      }
+      if (ENV.isProduction) {
+        console.error(
+          `[${MODULE_CONSTANTS.MODULE.ID}] CRITICAL: No compatible port found for Foundry v${version}. Available versions: ${availableVersions}`
+        );
       }
       return err(
         createFoundryError(
@@ -8939,7 +9226,13 @@ const _PortSelector = class _PortSelector {
       result = ok(selectedFactory());
     } catch (error) {
       if (ENV.enablePerformanceTracking) {
-        MetricsCollector.getInstance().recordPortSelectionFailure(version);
+        this.metricsCollector.recordPortSelectionFailure(version);
+      }
+      if (ENV.isProduction) {
+        console.error(
+          `[${MODULE_CONSTANTS.MODULE.ID}] CRITICAL: Port v${selectedVersion} instantiation failed for Foundry v${version}`,
+          error
+        );
       }
       result = err(
         createFoundryError(
@@ -8970,13 +9263,14 @@ const _PortSelector = class _PortSelector {
       performance.clearMarks(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END);
       performance.clearMeasures(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION);
       if (result.ok) {
-        MetricsCollector.getInstance().recordPortSelection(selectedVersion);
+        this.metricsCollector.recordPortSelection(selectedVersion);
       }
     }
     return result;
   }
 };
 __name(_PortSelector, "PortSelector");
+_PortSelector.dependencies = [metricsCollectorToken];
 let PortSelector = _PortSelector;
 const _PortRegistry = class _PortRegistry {
   constructor() {
@@ -9118,9 +9412,12 @@ const _FoundryGameService = class _FoundryGameService {
   }
   /**
    * Cleans up resources.
-   * Resets the port reference to allow garbage collection.
+   * Disposes the port if it implements Disposable, then resets the reference.
    */
   dispose() {
+    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+      this.port.dispose();
+    }
     this.port = null;
   }
 };
@@ -9247,6 +9544,9 @@ const _FoundryDocumentService = class _FoundryDocumentService {
    * Resets the port reference to allow garbage collection.
    */
   dispose() {
+    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+      this.port.dispose();
+    }
     this.port = null;
   }
 };
@@ -9299,6 +9599,9 @@ const _FoundryUIService = class _FoundryUIService {
    * Resets the port reference to allow garbage collection.
    */
   dispose() {
+    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+      this.port.dispose();
+    }
     this.port = null;
   }
 };
@@ -9351,6 +9654,9 @@ const _FoundrySettingsService = class _FoundrySettingsService {
    * Resets the port reference to allow garbage collection.
    */
   dispose() {
+    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+      this.port.dispose();
+    }
     this.port = null;
   }
 };
@@ -9364,8 +9670,13 @@ function validateJournalId(id) {
   if (id.length === 0) {
     return err(createFoundryError("VALIDATION_FAILED", "ID cannot be empty"));
   }
-  if (id.length > 100) {
-    return err(createFoundryError("VALIDATION_FAILED", "ID too long (max 100 characters)"));
+  if (id.length > VALIDATION_CONSTRAINTS.MAX_ID_LENGTH) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `ID too long (max ${VALIDATION_CONSTRAINTS.MAX_ID_LENGTH} characters)`
+      )
+    );
   }
   if (!/^[a-zA-Z0-9-_]+$/.test(id)) {
     return err(
@@ -9390,7 +9701,7 @@ function validateJournalName(name) {
 }
 __name(validateJournalName, "validateJournalName");
 function validateFlagKey(key) {
-  if (typeof key !== "string" || key.length === 0 || key.length > 100) {
+  if (typeof key !== "string" || key.length === 0 || key.length > VALIDATION_CONSTRAINTS.MAX_FLAG_KEY_LENGTH) {
     return err(createFoundryError("VALIDATION_FAILED", "Invalid flag key length"));
   }
   if (!/^[a-zA-Z0-9_]+$/.test(key)) {
@@ -9412,13 +9723,7 @@ const _FoundryGamePortV13 = class _FoundryGamePortV13 {
     const now = Date.now();
     const cacheAge = now - this.lastCheckTimestamp;
     if (this.cachedEntries !== null && cacheAge < this.cacheTtlMs) {
-      if (ENV.enablePerformanceTracking) {
-        MetricsCollector.getInstance().recordCacheAccess(true);
-      }
       return { ok: true, value: this.cachedEntries };
-    }
-    if (ENV.enablePerformanceTracking) {
-      MetricsCollector.getInstance().recordCacheAccess(false);
     }
     const entries2 = tryCatch(
       () => Array.from(game.journal.contents),
@@ -9625,6 +9930,10 @@ __name(_FoundryUIPortV13, "FoundryUIPortV13");
 let FoundryUIPortV13 = _FoundryUIPortV13;
 const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
   register(namespace, key, config2) {
+    const configValidation = validateSettingConfig(namespace, key, config2);
+    if (!configValidation.ok) {
+      return err(configValidation.error);
+    }
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
@@ -9683,8 +9992,19 @@ function registerPortToRegistry(registry, version, factory, portName, errors) {
   }
 }
 __name(registerPortToRegistry, "registerPortToRegistry");
-function configureDependencies(container) {
+function registerFallbacks(container) {
   container.registerFallback(loggerToken, () => new ConsoleLoggerService());
+}
+__name(registerFallbacks, "registerFallbacks");
+function registerCoreServices(container) {
+  const metricsResult = container.registerClass(
+    metricsCollectorToken,
+    MetricsCollector,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(metricsResult)) {
+    return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
+  }
   const loggerResult = container.registerClass(
     loggerToken,
     ConsoleLoggerService,
@@ -9693,15 +10013,10 @@ function configureDependencies(container) {
   if (isErr(loggerResult)) {
     return err(`Failed to register logger: ${loggerResult.error.message}`);
   }
-  const portSelectorResult = container.registerFactory(
-    portSelectorToken,
-    () => new PortSelector(),
-    ServiceLifecycle.SINGLETON,
-    []
-  );
-  if (isErr(portSelectorResult)) {
-    return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
-  }
+  return ok(void 0);
+}
+__name(registerCoreServices, "registerCoreServices");
+function createPortRegistries() {
   const portRegistrationErrors = [];
   const gamePortRegistry = new PortRegistry();
   registerPortToRegistry(
@@ -9746,6 +10061,33 @@ function configureDependencies(container) {
   if (portRegistrationErrors.length > 0) {
     return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
   }
+  return ok({
+    gamePortRegistry,
+    hooksPortRegistry,
+    documentPortRegistry,
+    uiPortRegistry,
+    settingsPortRegistry
+  });
+}
+__name(createPortRegistries, "createPortRegistries");
+function registerPortInfrastructure(container) {
+  const portSelectorResult = container.registerClass(
+    portSelectorToken,
+    PortSelector,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(portSelectorResult)) {
+    return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
+  }
+  const portsResult = createPortRegistries();
+  if (isErr(portsResult)) return portsResult;
+  const {
+    gamePortRegistry,
+    hooksPortRegistry,
+    documentPortRegistry,
+    uiPortRegistry,
+    settingsPortRegistry
+  } = portsResult.value;
   const gameRegistryResult = container.registerValue(
     foundryGamePortRegistryToken,
     gamePortRegistry
@@ -9784,6 +10126,10 @@ function configureDependencies(container) {
       `Failed to register FoundrySettings PortRegistry: ${settingsRegistryResult.error.message}`
     );
   }
+  return ok(void 0);
+}
+__name(registerPortInfrastructure, "registerPortInfrastructure");
+function registerFoundryServices(container) {
   const gameServiceResult = container.registerClass(
     foundryGameToken,
     FoundryGameService,
@@ -9838,11 +10184,19 @@ function configureDependencies(container) {
       `Failed to register JournalVisibility service: ${journalVisibilityResult.error.message}`
     );
   }
+  return ok(void 0);
+}
+__name(registerFoundryServices, "registerFoundryServices");
+function validateContainer(container) {
   const validateResult = container.validate();
   if (isErr(validateResult)) {
     const errorMessages = validateResult.error.map((e) => e.message).join(", ");
     return err(`Validation failed: ${errorMessages}`);
   }
+  return ok(void 0);
+}
+__name(validateContainer, "validateContainer");
+function configureLogger(container) {
   const resolvedLoggerResult = container.resolveWithError(loggerToken);
   if (resolvedLoggerResult.ok) {
     const loggerInstance = resolvedLoggerResult.value;
@@ -9850,6 +10204,19 @@ function configureDependencies(container) {
       loggerInstance.setMinLevel(ENV.logLevel);
     }
   }
+}
+__name(configureLogger, "configureLogger");
+function configureDependencies(container) {
+  registerFallbacks(container);
+  const coreResult = registerCoreServices(container);
+  if (isErr(coreResult)) return coreResult;
+  const portInfraResult = registerPortInfrastructure(container);
+  if (isErr(portInfraResult)) return portInfraResult;
+  const foundryServicesResult = registerFoundryServices(container);
+  if (isErr(foundryServicesResult)) return foundryServicesResult;
+  const validationResult = validateContainer(container);
+  if (isErr(validationResult)) return validationResult;
+  configureLogger(container);
   return ok(void 0);
 }
 __name(configureDependencies, "configureDependencies");
@@ -9922,7 +10289,7 @@ const _CompositionRoot = class _CompositionRoot {
       foundrySettingsToken: markAsApiSafe(foundrySettingsToken)
     };
     const api = {
-      version: "1.0.0",
+      version: MODULE_CONSTANTS.API.VERSION,
       // Bind container.resolve() directly (already typed as ApiSafeToken in ModuleApi interface)
       // eslint-disable-next-line @typescript-eslint/no-deprecated -- API boundary: External modules use resolve()
       resolve: container.resolve.bind(container),
@@ -9948,10 +10315,31 @@ const _CompositionRoot = class _CompositionRoot {
         return tokenMap;
       }, "getAvailableTokens"),
       tokens: wellKnownTokens,
-      getMetrics: /* @__PURE__ */ __name(() => MetricsCollector.getInstance().getSnapshot(), "getMetrics"),
+      getMetrics: /* @__PURE__ */ __name(() => {
+        const metricsResult = container.resolveWithError(metricsCollectorToken);
+        if (!metricsResult.ok) {
+          return {
+            containerResolutions: 0,
+            resolutionErrors: 0,
+            avgResolutionTimeMs: 0,
+            portSelections: {},
+            portSelectionFailures: {},
+            cacheHitRate: 0
+          };
+        }
+        return metricsResult.value.getSnapshot();
+      }, "getMetrics"),
       getHealth: /* @__PURE__ */ __name(() => {
         const containerValidated = this.container?.getValidationState() === "validated";
-        const metrics = MetricsCollector.getInstance().getSnapshot();
+        const metricsResult = container.resolveWithError(metricsCollectorToken);
+        const metrics = metricsResult.ok ? metricsResult.value.getSnapshot() : {
+          containerResolutions: 0,
+          resolutionErrors: 0,
+          avgResolutionTimeMs: 0,
+          portSelections: {},
+          portSelectionFailures: {},
+          cacheHitRate: 0
+        };
         const hasPortSelections = Object.keys(metrics.portSelections).length > 0;
         const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
         let status;
@@ -9988,6 +10376,39 @@ const _CompositionRoot = class _CompositionRoot {
 };
 __name(_CompositionRoot, "CompositionRoot");
 let CompositionRoot = _CompositionRoot;
+function throttle(fn, windowMs) {
+  let isThrottled = false;
+  return /* @__PURE__ */ __name(function throttled(...args2) {
+    if (!isThrottled) {
+      fn(...args2);
+      isThrottled = true;
+      setTimeout(() => {
+        isThrottled = false;
+      }, windowMs);
+    }
+  }, "throttled");
+}
+__name(throttle, "throttle");
+function debounce(fn, delayMs) {
+  let timeoutId = null;
+  const debounced = /* @__PURE__ */ __name(function(...args2) {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      fn(...args2);
+      timeoutId = null;
+    }, delayMs);
+  }, "debounced");
+  debounced.cancel = function() {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+  return debounced;
+}
+__name(debounce, "debounce");
 function isJQueryObject(value2) {
   if (value2 === null || typeof value2 !== "object") return false;
   const obj = value2;
@@ -10010,17 +10431,30 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
     const foundryHooks = foundryHooksResult.value;
     const logger = loggerResult.value;
     const journalVisibility = journalVisibilityResult.value;
+    const throttledCallback = throttle((app, html) => {
+      logger.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
+      const appValidation = validateHookApp(app);
+      if (!appValidation.ok) {
+        logger.error(
+          `Invalid app parameter in ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
+          {
+            code: appValidation.error.code,
+            message: appValidation.error.message,
+            details: appValidation.error.details
+          }
+        );
+        return;
+      }
+      const htmlElement = this.extractHtmlElement(html);
+      if (!htmlElement) {
+        logger.error("Failed to get HTMLElement from hook - incompatible format");
+        return;
+      }
+      journalVisibility.processJournalDirectory(htmlElement);
+    }, HOOK_THROTTLE_WINDOW_MS);
     const hookResult = foundryHooks.on(
       MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
-      (app, html) => {
-        logger.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
-        const htmlElement = this.extractHtmlElement(html);
-        if (!htmlElement) {
-          logger.error("Failed to get HTMLElement from hook - incompatible format");
-          return;
-        }
-        journalVisibility.processJournalDirectory(htmlElement);
-      }
+      throttledCallback
     );
     if (!hookResult.ok) {
       logger.error(

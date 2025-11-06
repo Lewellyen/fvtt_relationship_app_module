@@ -11,12 +11,26 @@
 
   onMount(() => {
     const handleError = (e: ErrorEvent) => {
+      // Log to console BEFORE preventDefault to preserve stack traces for debugging
+      console.error("[ErrorBoundary] Caught error:", e.error);
       error = e.error;
       e.preventDefault(); // Prevent browser default error handling
     };
 
+    const handleUnhandledRejection = (e: PromiseRejectionEvent) => {
+      // Log unhandled promise rejections
+      console.error("[ErrorBoundary] Unhandled promise rejection:", e.reason);
+      error = e.reason instanceof Error ? e.reason : new Error(String(e.reason));
+      e.preventDefault(); // Prevent browser default handling
+    };
+
     window.addEventListener("error", handleError);
-    return () => window.removeEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener("error", handleError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
   });
 
   function resetError() {

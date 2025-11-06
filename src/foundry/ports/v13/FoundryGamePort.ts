@@ -7,8 +7,6 @@ import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 import { validateJournalEntries } from "@/foundry/validation/schemas";
 import { validateJournalId } from "@/foundry/validation/input-validators";
 import { MODULE_CONSTANTS } from "@/constants";
-import { MetricsCollector } from "@/observability/metrics-collector";
-import { ENV } from "@/config/environment";
 
 /**
  * v13 implementation of FoundryGame interface.
@@ -32,17 +30,11 @@ export class FoundryGamePortV13 implements FoundryGame {
 
     // Check TTL-based cache validity
     if (this.cachedEntries !== null && cacheAge < this.cacheTtlMs) {
-      /* c8 ignore next 3 -- Performance tracking is optional feature flag tested in integration tests */
-      if (ENV.enablePerformanceTracking) {
-        MetricsCollector.getInstance().recordCacheAccess(true);
-      }
+      // Cache hit - return cached entries
       return { ok: true, value: this.cachedEntries };
     }
 
-    /* c8 ignore next 3 -- Performance tracking is optional feature flag tested in integration tests */
-    if (ENV.enablePerformanceTracking) {
-      MetricsCollector.getInstance().recordCacheAccess(false);
-    }
+    // Cache miss - fetch fresh entries
 
     // game.journal is typed as DocumentCollection<JournalEntry> by fvtt-types
     // DocumentCollection.contents is an array of the stored documents

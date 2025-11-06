@@ -1,5 +1,6 @@
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import type { ServiceType } from "@/types/servicetypeindex";
+import { METRICS_CONFIG } from "@/constants";
 
 /**
  * Snapshot of current metrics data.
@@ -21,7 +22,7 @@ export interface MetricsSnapshot {
 }
 
 /**
- * Singleton metrics collector for observability and performance tracking.
+ * Metrics collector for observability and performance tracking.
  *
  * Collects performance metrics for:
  * - Container service resolutions
@@ -30,13 +31,11 @@ export interface MetricsSnapshot {
  *
  * Metrics are only collected when ENV.enablePerformanceTracking is true.
  *
- * @remarks
- * This is a singleton to ensure metrics are collected across the entire
- * application lifecycle. Access via MetricsCollector.getInstance().
+ * Now managed via Dependency Injection as a Singleton service.
  *
  * @example
  * ```typescript
- * const collector = MetricsCollector.getInstance();
+ * const collector = container.resolve(metricsCollectorToken);
  * collector.recordResolution(token, 2.5, true);
  *
  * const snapshot = collector.getSnapshot();
@@ -44,7 +43,7 @@ export interface MetricsSnapshot {
  * ```
  */
 export class MetricsCollector {
-  private static instance: MetricsCollector | null = null;
+  static dependencies = [] as const;
 
   private metrics = {
     containerResolutions: 0,
@@ -56,23 +55,13 @@ export class MetricsCollector {
   };
 
   // Circular buffer for resolution times (more efficient than array shift)
-  private resolutionTimes = new Float64Array(100);
+  private resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
   private resolutionTimesIndex = 0;
   private resolutionTimesCount = 0;
-  private readonly MAX_RESOLUTION_TIMES = 100;
+  private readonly MAX_RESOLUTION_TIMES = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
 
-  private constructor() {}
-
-  /**
-   * Gets the singleton instance of MetricsCollector.
-   *
-   * @returns The singleton MetricsCollector instance
-   */
-  static getInstance(): MetricsCollector {
-    if (!this.instance) {
-      this.instance = new MetricsCollector();
-    }
-    return this.instance;
+  constructor() {
+    // Public constructor for DI
   }
 
   /**
@@ -187,7 +176,7 @@ export class MetricsCollector {
       portSelections: new Map(),
       portSelectionFailures: new Map(),
     };
-    this.resolutionTimes = new Float64Array(100);
+    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
     this.resolutionTimesIndex = 0;
     this.resolutionTimesCount = 0;
   }

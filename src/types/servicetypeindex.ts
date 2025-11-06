@@ -10,6 +10,7 @@ import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 import type { PortSelector } from "@/foundry/versioning/portselector";
 import type { PortRegistry } from "@/foundry/versioning/portregistry";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
+import type { MetricsCollector } from "@/observability/metrics-collector";
 
 /**
  * Union type representing all registered service types in the application.
@@ -34,4 +35,5 @@ export type ServiceType =
   | PortRegistry<FoundryDocument>
   | PortRegistry<FoundryUI>
   | PortRegistry<FoundrySettings>
-  | JournalVisibilityService;
+  | JournalVisibilityService
+  | MetricsCollector;

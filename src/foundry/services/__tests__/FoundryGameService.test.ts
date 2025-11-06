@@ -4,7 +4,11 @@ import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { ok, err } from "@/utils/result";
-import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import {
+  expectResultOk,
+  expectResultErr,
+  createMockMetricsCollector,
+} from "@/test/utils/test-helpers";
 
 describe("FoundryGameService", () => {
   let service: FoundryGameService;
@@ -26,7 +30,7 @@ describe("FoundryGameService", () => {
     mockRegistry = new PortRegistry<FoundryGame>();
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
-    mockSelector = new PortSelector();
+    mockSelector = new PortSelector(createMockMetricsCollector());
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundryGameService(mockSelector, mockRegistry);
@@ -54,7 +58,7 @@ describe("FoundryGameService", () => {
 
     it("should propagate port selection errors", () => {
       // Create new service with failing selector
-      const failingSelector = new PortSelector();
+      const failingSelector = new PortSelector(createMockMetricsCollector());
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",
@@ -71,7 +75,7 @@ describe("FoundryGameService", () => {
 
   describe("Version Detection Failures", () => {
     it("should handle port selector errors", () => {
-      const failingSelector = new PortSelector();
+      const failingSelector = new PortSelector(createMockMetricsCollector());
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "No compatible port found",
@@ -86,7 +90,7 @@ describe("FoundryGameService", () => {
     });
 
     it("should handle port selection returning no port", () => {
-      const failingSelector = new PortSelector();
+      const failingSelector = new PortSelector(createMockMetricsCollector());
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",
@@ -103,7 +107,7 @@ describe("FoundryGameService", () => {
   describe("Registry Lookup Errors", () => {
     it("should handle empty port registry", () => {
       const emptyRegistry = new PortRegistry<FoundryGame>();
-      const failingSelector = new PortSelector();
+      const failingSelector = new PortSelector(createMockMetricsCollector());
       const failingService = new FoundryGameService(failingSelector, emptyRegistry);
 
       const result = failingService.getJournalEntries();
@@ -165,7 +169,7 @@ describe("FoundryGameService", () => {
 
   describe("Port Error Branches", () => {
     it("should handle port selection failure in getJournalEntryById", () => {
-      const failingSelector = new PortSelector();
+      const failingSelector = new PortSelector(createMockMetricsCollector());
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",

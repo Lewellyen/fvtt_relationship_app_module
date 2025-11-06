@@ -1,6 +1,7 @@
 import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/result";
 import { createFoundryError, type FoundryError } from "@/foundry/errors/FoundryErrors";
+import { VALIDATION_CONSTRAINTS } from "@/constants";
 
 /**
  * Validates a journal entry ID.
@@ -10,7 +11,7 @@ import { createFoundryError, type FoundryError } from "@/foundry/errors/FoundryE
  *
  * Rules:
  * - Must be a non-empty string
- * - Maximum 100 characters
+ * - Maximum 100 characters (VALIDATION_CONSTRAINTS.MAX_ID_LENGTH)
  * - Only alphanumeric characters, hyphens, and underscores
  *
  * @param id - Journal entry ID to validate
@@ -34,8 +35,13 @@ export function validateJournalId(id: string): Result<string, FoundryError> {
     return err(createFoundryError("VALIDATION_FAILED", "ID cannot be empty"));
   }
 
-  if (id.length > 100) {
-    return err(createFoundryError("VALIDATION_FAILED", "ID too long (max 100 characters)"));
+  if (id.length > VALIDATION_CONSTRAINTS.MAX_ID_LENGTH) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `ID too long (max ${VALIDATION_CONSTRAINTS.MAX_ID_LENGTH} characters)`
+      )
+    );
   }
 
   if (!/^[a-zA-Z0-9-_]+$/.test(id)) {
@@ -78,14 +84,18 @@ export function validateJournalName(name: string): Result<string, FoundryError> 
  *
  * Rules:
  * - Must be a non-empty string
- * - Maximum 100 characters
+ * - Maximum 100 characters (VALIDATION_CONSTRAINTS.MAX_ID_LENGTH)
  * - Only alphanumeric characters and underscores
  *
  * @param key - Flag key to validate
  * @returns Result with validated key or FoundryError
  */
 export function validateFlagKey(key: string): Result<string, FoundryError> {
-  if (typeof key !== "string" || key.length === 0 || key.length > 100) {
+  if (
+    typeof key !== "string" ||
+    key.length === 0 ||
+    key.length > VALIDATION_CONSTRAINTS.MAX_FLAG_KEY_LENGTH
+  ) {
     return err(createFoundryError("VALIDATION_FAILED", "Invalid flag key length"));
   }
 

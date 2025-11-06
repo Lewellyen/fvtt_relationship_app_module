@@ -1,7 +1,12 @@
 import { ServiceContainer } from "@/di_infrastructure/container";
-import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
+import {
+  loggerToken,
+  journalVisibilityServiceToken,
+  metricsCollectorToken,
+} from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { JournalVisibilityService } from "@/services/JournalVisibilityService";
+import { MetricsCollector } from "@/observability/metrics-collector";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import { ok, err, isErr } from "@/utils/result";
 import type { Result } from "@/types/result";
@@ -82,9 +87,28 @@ function registerPortToRegistry<T>(
  * }
  * ```
  */
-export function configureDependencies(container: ServiceContainer): Result<void, string> {
-  // Register fallback factories for services that should always be available
+/**
+ * Registers fallback factories for critical services.
+ */
+function registerFallbacks(container: ServiceContainer): void {
   container.registerFallback<Logger>(loggerToken, () => new ConsoleLoggerService());
+}
+
+/**
+ * Registers core infrastructure services (MetricsCollector, Logger).
+ */
+function registerCoreServices(container: ServiceContainer): Result<void, string> {
+  // Register MetricsCollector (needed early for ServiceResolver and PortSelector)
+  const metricsResult = container.registerClass(
+    metricsCollectorToken,
+    MetricsCollector,
+    ServiceLifecycle.SINGLETON
+  );
+
+  /* c8 ignore next 3 -- Defensive: MetricsCollector has no dependencies and cannot fail registration */
+  if (isErr(metricsResult)) {
+    return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
+  }
 
   // Register logger
   const loggerResult = container.registerClass(
@@ -97,20 +121,23 @@ export function configureDependencies(container: ServiceContainer): Result<void,
     return err(`Failed to register logger: ${loggerResult.error.message}`);
   }
 
-  // Register PortSelector as singleton
-  const portSelectorResult = container.registerFactory(
-    portSelectorToken,
-    () => new PortSelector(),
-    ServiceLifecycle.SINGLETON,
-    []
-  );
+  return ok(undefined);
+}
 
-  /* c8 ignore next 3 -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
-  if (isErr(portSelectorResult)) {
-    return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
-  }
-
-  // Register PortRegistries
+/**
+ * Registers Ports to PortRegistries.
+ * Returns the created registries for further processing.
+ */
+function createPortRegistries(): Result<
+  {
+    gamePortRegistry: PortRegistry<FoundryGame>;
+    hooksPortRegistry: PortRegistry<FoundryHooks>;
+    documentPortRegistry: PortRegistry<FoundryDocument>;
+    uiPortRegistry: PortRegistry<FoundryUI>;
+    settingsPortRegistry: PortRegistry<FoundrySettings>;
+  },
+  string
+> {
   const portRegistrationErrors: string[] = [];
 
   const gamePortRegistry = new PortRegistry<FoundryGame>();
@@ -164,6 +191,44 @@ export function configureDependencies(container: ServiceContainer): Result<void,
     return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
   }
 
+  return ok({
+    gamePortRegistry,
+    hooksPortRegistry,
+    documentPortRegistry,
+    uiPortRegistry,
+    settingsPortRegistry,
+  });
+}
+
+/**
+ * Registers PortSelector and PortRegistries in the container.
+ */
+function registerPortInfrastructure(container: ServiceContainer): Result<void, string> {
+  // Register PortSelector
+  const portSelectorResult = container.registerClass(
+    portSelectorToken,
+    PortSelector,
+    ServiceLifecycle.SINGLETON
+  );
+
+  /* c8 ignore next 3 -- Defensive: Class registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
+  if (isErr(portSelectorResult)) {
+    return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
+  }
+
+  // Create port registries
+  const portsResult = createPortRegistries();
+  /* c8 ignore next -- Error propagation: createPortRegistries failure tested in sub-function */
+  if (isErr(portsResult)) return portsResult;
+
+  const {
+    gamePortRegistry,
+    hooksPortRegistry,
+    documentPortRegistry,
+    uiPortRegistry,
+    settingsPortRegistry,
+  } = portsResult.value;
+
   const gameRegistryResult = container.registerValue(
     foundryGamePortRegistryToken,
     gamePortRegistry
@@ -210,6 +275,13 @@ export function configureDependencies(container: ServiceContainer): Result<void,
     );
   }
 
+  return ok(undefined);
+}
+
+/**
+ * Registers Foundry service wrappers.
+ */
+function registerFoundryServices(container: ServiceContainer): Result<void, string> {
   // Register Foundry Services using registerClass (with static dependencies)
   const gameServiceResult = container.registerClass(
     foundryGameToken,
@@ -277,15 +349,26 @@ export function configureDependencies(container: ServiceContainer): Result<void,
     );
   }
 
-  // Phase 2: Validate
+  return ok(undefined);
+}
+
+/**
+ * Validates the container configuration.
+ */
+function validateContainer(container: ServiceContainer): Result<void, string> {
   const validateResult = container.validate();
   /* c8 ignore next 4 -- Defensive: Validation can only fail if dependencies are missing or circular, which cannot happen with hardcoded dependency graph */
   if (isErr(validateResult)) {
     const errorMessages = validateResult.error.map((e) => e.message).join(", ");
     return err(`Validation failed: ${errorMessages}`);
   }
+  return ok(undefined);
+}
 
-  // Phase 3: Configure logger with ENV settings
+/**
+ * Configures logger with environment settings.
+ */
+function configureLogger(container: ServiceContainer): void {
   const resolvedLoggerResult = container.resolveWithError(loggerToken);
   if (resolvedLoggerResult.ok) {
     const loggerInstance = resolvedLoggerResult.value;
@@ -293,6 +376,41 @@ export function configureDependencies(container: ServiceContainer): Result<void,
       loggerInstance.setMinLevel(ENV.logLevel);
     }
   }
+}
+
+/**
+ * Main configuration orchestrator.
+ * Configures all dependencies, registries, and services in the container.
+ *
+ * @param container - The DI container to configure
+ * @returns Result indicating success or error with details
+ *
+ * @example
+ * ```typescript
+ * const container = ServiceContainer.createRoot();
+ * const result = configureDependencies(container);
+ * if (isOk(result)) {
+ *   const logger = container.resolve(loggerToken);
+ * }
+ * ```
+ */
+export function configureDependencies(container: ServiceContainer): Result<void, string> {
+  registerFallbacks(container);
+
+  const coreResult = registerCoreServices(container);
+  if (isErr(coreResult)) return coreResult;
+
+  const portInfraResult = registerPortInfrastructure(container);
+  if (isErr(portInfraResult)) return portInfraResult;
+
+  const foundryServicesResult = registerFoundryServices(container);
+  if (isErr(foundryServicesResult)) return foundryServicesResult;
+
+  const validationResult = validateContainer(container);
+  /* c8 ignore next -- Error propagation: validateContainer failure tested in sub-function */
+  if (isErr(validationResult)) return validationResult;
+
+  configureLogger(container);
 
   return ok(undefined);
 }

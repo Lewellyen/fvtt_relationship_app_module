@@ -12,6 +12,8 @@ import type { ContainerErrorCode } from "@/di_infrastructure/types/containererro
  *   code: "TokenNotRegistered",
  *   message: "Service LoggerToken was not registered",
  *   tokenDescription: "LoggerToken",
+ *   timestamp: Date.now(),
+ *   containerScope: "root",
  * };
  * ```
  */
@@ -30,4 +32,13 @@ export interface ContainerError {
 
   /** Optional additional error context (e.g., failed children in PartialDisposal) */
   details?: unknown;
+
+  /** Optional stack trace for error origin tracking */
+  stack?: string;
+
+  /** Optional timestamp when error occurred (milliseconds since epoch) */
+  timestamp?: number;
+
+  /** Optional container scope where error occurred (e.g., "root", "child-1") */
+  containerScope?: string;
 }

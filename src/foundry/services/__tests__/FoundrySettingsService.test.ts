@@ -4,7 +4,11 @@ import type { FoundrySettings, SettingConfig } from "@/foundry/interfaces/Foundr
 import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { ok, err } from "@/utils/result";
-import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import {
+  expectResultOk,
+  expectResultErr,
+  createMockMetricsCollector,
+} from "@/test/utils/test-helpers";
 
 describe("FoundrySettingsService", () => {
   let service: FoundrySettingsService;
@@ -27,7 +31,7 @@ describe("FoundrySettingsService", () => {
     mockRegistry = new PortRegistry<FoundrySettings>();
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
-    mockSelector = new PortSelector();
+    mockSelector = new PortSelector(createMockMetricsCollector());
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundrySettingsService(mockSelector, mockRegistry);

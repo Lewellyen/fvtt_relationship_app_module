@@ -11,11 +11,18 @@ vi.mock("../versiondetector", () => ({
   resetVersionCache: vi.fn(),
 }));
 
+// Mock MetricsCollector for tests
+function createMockMetricsCollector(): MetricsCollector {
+  return new MetricsCollector();
+}
+
 describe("PortSelector", () => {
   let selector: PortSelector;
+  let mockMetrics: MetricsCollector;
 
   beforeEach(() => {
-    selector = new PortSelector();
+    mockMetrics = createMockMetricsCollector();
+    selector = new PortSelector(mockMetrics);
     vi.clearAllMocks();
   });
 
@@ -217,13 +224,13 @@ describe("PortSelector", () => {
     beforeEach(() => {
       originalEnablePerf = ENV.enablePerformanceTracking;
       originalEnableDebug = ENV.enableDebugMode;
-      MetricsCollector.getInstance().reset();
+      mockMetrics.reset();
     });
 
     afterEach(() => {
       ENV.enablePerformanceTracking = originalEnablePerf;
       ENV.enableDebugMode = originalEnableDebug;
-      MetricsCollector.getInstance().reset();
+      mockMetrics.reset();
     });
 
     it("should record port selection metrics when performance tracking enabled", () => {
@@ -232,7 +239,7 @@ describe("PortSelector", () => {
 
       selector.selectPortFromFactories(factories, 13);
 
-      const metrics = MetricsCollector.getInstance().getSnapshot();
+      const metrics = mockMetrics.getSnapshot();
       expect(metrics.portSelections[13]).toBe(1);
     });
 
@@ -249,7 +256,7 @@ describe("PortSelector", () => {
 
       selector.selectPortFromFactories(factories, 13);
 
-      const metrics = MetricsCollector.getInstance().getSnapshot();
+      const metrics = mockMetrics.getSnapshot();
       expect(metrics.portSelectionFailures[13]).toBe(1);
     });
 
@@ -259,7 +266,7 @@ describe("PortSelector", () => {
 
       selector.selectPortFromFactories(factories, 13);
 
-      const metrics = MetricsCollector.getInstance().getSnapshot();
+      const metrics = mockMetrics.getSnapshot();
       expect(metrics.portSelections[13]).toBeUndefined();
     });
 

@@ -63,6 +63,149 @@ export function validateJournalEntries(
 }
 
 /**
+ * Valibot schema for validating setting values based on their type.
+ * Provides type-safe validation for Foundry settings.
+ */
+
+/**
+ * Validates a setting value against expected types and constraints.
+ *
+ * @param key - Setting key for error messages
+ * @param value - Value to validate
+ * @param expectedType - Expected type (string, number, boolean, or specific values)
+ * @param choices - Optional array of allowed values
+ * @returns Result with validated value or FoundryError
+ *
+ * @example
+ * ```typescript
+ * // Validate log level
+ * const result = validateSettingValue("logLevel", "DEBUG", "string", ["DEBUG", "INFO", "WARN", "ERROR"]);
+ * if (result.ok) {
+ *   // value is valid
+ * }
+ * ```
+ */
+export function validateSettingValue(
+  key: string,
+  value: unknown,
+  expectedType: "string" | "number" | "boolean",
+  choices?: readonly string[]
+): Result<unknown, FoundryError> {
+  // Type validation
+  if (expectedType === "string" && typeof value !== "string") {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `Setting ${key}: Expected string, got ${typeof value}`,
+        { key, value, expectedType }
+      )
+    );
+  }
+
+  if (expectedType === "number" && typeof value !== "number") {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `Setting ${key}: Expected number, got ${typeof value}`,
+        { key, value, expectedType }
+      )
+    );
+  }
+
+  if (expectedType === "boolean" && typeof value !== "boolean") {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `Setting ${key}: Expected boolean, got ${typeof value}`,
+        { key, value, expectedType }
+      )
+    );
+  }
+
+  // Choice validation (only for strings)
+  if (choices && expectedType === "string") {
+    if (!choices.includes(value as string)) {
+      return err(
+        createFoundryError(
+          "VALIDATION_FAILED",
+          `Setting ${key}: Invalid value "${value}". Allowed: ${choices.join(", ")}`,
+          { key, value, choices }
+        )
+      );
+    }
+  }
+
+  return ok(value);
+}
+
+/**
+ * Validates setting registration config.
+ *
+ * @param namespace - Module namespace
+ * @param key - Setting key
+ * @param config - Setting configuration object
+ * @returns Result with validated config or FoundryError
+ */
+export function validateSettingConfig(
+  namespace: string,
+  key: string,
+  config: unknown
+): Result<unknown, FoundryError> {
+  // Namespace validation
+  if (!namespace || typeof namespace !== "string") {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Invalid setting namespace: must be non-empty string",
+        {
+          namespace,
+          key,
+        }
+      )
+    );
+  }
+
+  // Key validation
+  if (!key || typeof key !== "string") {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Invalid setting key: must be non-empty string", {
+        namespace,
+        key,
+      })
+    );
+  }
+
+  // Config validation
+  if (!config || typeof config !== "object") {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Invalid setting config: must be object", {
+        namespace,
+        key,
+      })
+    );
+  }
+
+  // Type assertion: config is now guaranteed to be object
+  const configObj = config as Record<string, unknown>;
+
+  // Scope validation (if provided)
+  if (configObj.scope && !["world", "client", "user"].includes(configObj.scope as string)) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `Invalid setting scope: "${configObj.scope}". Allowed: world, client, user`,
+        { namespace, key, scope: configObj.scope }
+      )
+    );
+  }
+
+  return ok(config);
+}
+
+// Re-export SettingConfig type for convenience
+export type { SettingConfig } from "@/foundry/interfaces/FoundrySettings";
+
+/**
  * Sanitizes a string for use in HTML/CSS selectors.
  * Removes all characters except alphanumeric, hyphens, and underscores.
  * Prevents CSS injection attacks.
@@ -101,4 +244,67 @@ export function sanitizeHtml(text: string): string {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+/**
+ * Valibot schema for validating Foundry Application objects in hooks.
+ * Validates minimal required properties for safe hook processing.
+ */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- Schemas use PascalCase
+export const FoundryApplicationSchema = v.object({
+  // Application should have a string ID
+  id: v.string(),
+  // Application should have object property
+  object: v.optional(v.any()),
+  // Application should have options property
+  options: v.optional(v.record(v.string(), v.unknown())),
+});
+
+/**
+ * Type for validated Foundry Application.
+ */
+export type ValidatedFoundryApplication = v.InferOutput<typeof FoundryApplicationSchema>;
+
+/**
+ * Validates a hook app parameter.
+ *
+ * @param app - Unknown app object to validate
+ * @returns Result with validated app or FoundryError
+ *
+ * @example
+ * ```typescript
+ * const result = validateHookApp(app);
+ * if (result.ok) {
+ *   // app is validated and safe to use
+ * }
+ * ```
+ */
+export function validateHookApp(app: unknown): Result<ValidatedFoundryApplication, FoundryError> {
+  // Null/undefined check
+  if (app === null || app === undefined) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Hook app parameter is null or undefined",
+        undefined,
+        undefined
+      )
+    );
+  }
+
+  const result = v.safeParse(FoundryApplicationSchema, app);
+
+  /* c8 ignore next 9 -- Valibot validation error path tested via integration tests; detailed validation logic tested in Valibot library */
+  if (!result.success) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Hook app parameter validation failed",
+        undefined,
+        result.issues
+      )
+    );
+  }
+
+  return ok(result.output);
 }

@@ -2,7 +2,13 @@
 // Test file: `any` needed for testing invalid journal entry types
 
 import { describe, it, expect } from "vitest";
-import { validateJournalEntries, sanitizeId, sanitizeHtml } from "../schemas";
+import {
+  validateJournalEntries,
+  sanitizeId,
+  sanitizeHtml,
+  validateSettingValue,
+  validateSettingConfig,
+} from "../schemas";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
 describe("Journal Entry Validation", () => {
@@ -108,6 +114,154 @@ describe("Sanitization", () => {
     it("should prevent event handler injection", () => {
       expect(sanitizeHtml('<img src="x" onerror="alert(1)">')).toContain("&lt;img");
       expect(sanitizeHtml('<a href="javascript:alert(1)">click</a>')).toContain("&lt;a");
+    });
+  });
+});
+
+describe("Setting Validation", () => {
+  describe("validateSettingValue", () => {
+    describe("string type", () => {
+      it("should accept valid string", () => {
+        const result = validateSettingValue("testKey", "value", "string");
+        expectResultOk(result);
+        expect(result.value).toBe("value");
+      });
+
+      it("should reject non-string when expecting string", () => {
+        const result = validateSettingValue("testKey", 123, "string");
+        expectResultErr(result);
+        expect(result.error.code).toBe("VALIDATION_FAILED");
+        expect(result.error.message).toContain("Expected string");
+      });
+
+      it("should validate choices for string", () => {
+        const result = validateSettingValue("testKey", "option1", "string", ["option1", "option2"]);
+        expectResultOk(result);
+      });
+
+      it("should reject invalid choice", () => {
+        const result = validateSettingValue("testKey", "option3", "string", ["option1", "option2"]);
+        expectResultErr(result);
+        expect(result.error.message).toContain("Invalid value");
+        expect(result.error.message).toContain("option1, option2");
+      });
+    });
+
+    describe("number type", () => {
+      it("should accept valid number", () => {
+        const result = validateSettingValue("testKey", 42, "number");
+        expectResultOk(result);
+        expect(result.value).toBe(42);
+      });
+
+      it("should reject non-number when expecting number", () => {
+        const result = validateSettingValue("testKey", "not a number", "number");
+        expectResultErr(result);
+        expect(result.error.code).toBe("VALIDATION_FAILED");
+        expect(result.error.message).toContain("Expected number");
+      });
+    });
+
+    describe("boolean type", () => {
+      it("should accept valid boolean true", () => {
+        const result = validateSettingValue("testKey", true, "boolean");
+        expectResultOk(result);
+        expect(result.value).toBe(true);
+      });
+
+      it("should accept valid boolean false", () => {
+        const result = validateSettingValue("testKey", false, "boolean");
+        expectResultOk(result);
+        expect(result.value).toBe(false);
+      });
+
+      it("should reject non-boolean when expecting boolean", () => {
+        const result = validateSettingValue("testKey", "true", "boolean");
+        expectResultErr(result);
+        expect(result.error.code).toBe("VALIDATION_FAILED");
+        expect(result.error.message).toContain("Expected boolean");
+      });
+    });
+  });
+
+  describe("validateSettingConfig", () => {
+    it("should accept valid config", () => {
+      const config = { scope: "world" as const, default: "value" };
+      const result = validateSettingConfig("myModule", "myKey", config);
+      expectResultOk(result);
+      expect(result.value).toEqual(config);
+    });
+
+    it("should reject empty namespace", () => {
+      const config = { scope: "world" as const };
+      const result = validateSettingConfig("", "myKey", config);
+      expectResultErr(result);
+      expect(result.error.message).toContain("Invalid setting namespace");
+    });
+
+    it("should reject non-string namespace", () => {
+      const config = { scope: "world" as const };
+      const result = validateSettingConfig(123 as any, "myKey", config);
+      expectResultErr(result);
+      expect(result.error.message).toContain("Invalid setting namespace");
+    });
+
+    it("should reject empty key", () => {
+      const config = { scope: "world" as const };
+      const result = validateSettingConfig("myModule", "", config);
+      expectResultErr(result);
+      expect(result.error.message).toContain("Invalid setting key");
+    });
+
+    it("should reject non-string key", () => {
+      const config = { scope: "world" as const };
+      const result = validateSettingConfig("myModule", 123 as any, config);
+      expectResultErr(result);
+      expect(result.error.message).toContain("Invalid setting key");
+    });
+
+    it("should reject non-object config", () => {
+      const result = validateSettingConfig("myModule", "myKey", "not an object" as any);
+      expectResultErr(result);
+      expect(result.error.message).toContain("Invalid setting config");
+    });
+
+    it("should reject null config", () => {
+      const result = validateSettingConfig("myModule", "myKey", null as any);
+      expectResultErr(result);
+      expect(result.error.message).toContain("Invalid setting config");
+    });
+
+    it("should accept valid scope: world", () => {
+      const config = { scope: "world" as const };
+      const result = validateSettingConfig("myModule", "myKey", config);
+      expectResultOk(result);
+    });
+
+    it("should accept valid scope: client", () => {
+      const config = { scope: "client" as const };
+      const result = validateSettingConfig("myModule", "myKey", config);
+      expectResultOk(result);
+    });
+
+    it("should accept valid scope: user", () => {
+      const config = { scope: "user" as const };
+      const result = validateSettingConfig("myModule", "myKey", config);
+      expectResultOk(result);
+    });
+
+    it("should reject invalid scope", () => {
+      const config = { scope: "invalid" as any };
+      const result = validateSettingConfig("myModule", "myKey", config);
+      expectResultErr(result);
+      expect(result.error.message).toContain("Invalid setting scope");
+      expect(result.error.message).toContain("world, client, user");
+    });
+
+    it("should accept config without scope", () => {
+      const config = { default: "value" };
+      const result = validateSettingConfig("myModule", "myKey", config);
+      expectResultOk(result);
     });
   });
 });

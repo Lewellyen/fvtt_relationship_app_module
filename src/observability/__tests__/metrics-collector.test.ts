@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { MetricsCollector } from "../metrics-collector";
 import { createInjectionToken } from "@/di_infrastructure/tokenutilities";
 import type { Logger } from "@/interfaces/logger";
@@ -7,20 +7,15 @@ describe("MetricsCollector", () => {
   let collector: MetricsCollector;
 
   beforeEach(() => {
-    collector = MetricsCollector.getInstance();
-    collector.reset(); // Clean state for each test
+    collector = new MetricsCollector();
   });
 
-  afterEach(() => {
-    collector.reset(); // Clean up after tests
-  });
+  describe("DI Integration", () => {
+    it("should create independent instances", () => {
+      const instance1 = new MetricsCollector();
+      const instance2 = new MetricsCollector();
 
-  describe("Singleton Pattern", () => {
-    it("should return the same instance", () => {
-      const instance1 = MetricsCollector.getInstance();
-      const instance2 = MetricsCollector.getInstance();
-
-      expect(instance1).toBe(instance2);
+      expect(instance1).not.toBe(instance2);
     });
   });
 

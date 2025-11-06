@@ -1,6 +1,7 @@
 import { createInjectionToken } from "@/di_infrastructure/tokenutilities";
 import type { Logger } from "@/interfaces/logger";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
+import type { MetricsCollector } from "@/observability/metrics-collector";
 
 /**
  * Injection token for the application logger service.
@@ -16,6 +17,22 @@ import type { JournalVisibilityService } from "@/services/JournalVisibilityServi
  * ```
  */
 export const loggerToken = createInjectionToken<Logger>("Logger");
+
+/**
+ * Injection token for the MetricsCollector service.
+ *
+ * Provides observability and performance tracking for the DI container.
+ * Collects metrics about service resolutions, port selections, and cache performance.
+ *
+ * @example
+ * ```typescript
+ * const metrics = container.resolve(metricsCollectorToken);
+ * metrics.recordResolution(someToken, 2.5, true);
+ * const snapshot = metrics.getSnapshot();
+ * console.table(snapshot);
+ * ```
+ */
+export const metricsCollectorToken = createInjectionToken<MetricsCollector>("MetricsCollector");
 
 /**
  * Injection token for the JournalVisibilityService.

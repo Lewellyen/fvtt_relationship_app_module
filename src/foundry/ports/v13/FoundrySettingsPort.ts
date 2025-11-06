@@ -3,6 +3,7 @@ import type { FoundrySettings, SettingConfig } from "@/foundry/interfaces/Foundr
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { tryCatch, err, fromPromise } from "@/utils/result";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
+import { validateSettingConfig } from "@/foundry/validation/schemas";
 
 /**
  * Type-safe interface for Foundry Settings with dynamic namespaces.
@@ -29,6 +30,13 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
     key: string,
     config: SettingConfig<T>
   ): Result<void, FoundryError> {
+    // Validate config before attempting registration
+    const configValidation = validateSettingConfig(namespace, key, config);
+    /* c8 ignore next 3 -- Error propagation: validateSettingConfig tested in schemas.test.ts */
+    if (!configValidation.ok) {
+      return err(configValidation.error);
+    }
+
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }

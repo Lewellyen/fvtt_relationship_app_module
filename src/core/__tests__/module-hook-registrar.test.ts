@@ -48,7 +48,7 @@ describe("ModuleHookRegistrar", () => {
       expect(hookCallback).toBeDefined();
 
       // Callback mit Mock-HTMLElement aufrufen
-      const mockApp = {};
+      const mockApp = { id: "journal-directory", object: {}, options: {} };
       const mockHtml = document.createElement("div");
       hookCallback!(mockApp, mockHtml);
 
@@ -72,7 +72,8 @@ describe("ModuleHookRegistrar", () => {
       const hookCallback = hookCall?.[1] as ((app: unknown, html: HTMLElement) => void) | undefined;
 
       const mockHtml = document.createElement("div");
-      hookCallback!({}, mockHtml);
+      const mockApp = { id: "journal-directory", object: {}, options: {} };
+      hookCallback!(mockApp, mockHtml);
 
       const mockLogger = mockContainer.getMockLogger();
       expect(mockLogger.debug).toHaveBeenCalledWith(
@@ -94,7 +95,8 @@ describe("ModuleHookRegistrar", () => {
       const hookCallback = hookCall?.[1] as ((app: unknown, html: unknown) => void) | undefined;
 
       // Callback mit null HTML aufrufen
-      hookCallback!({}, null as unknown as HTMLElement);
+      const mockApp = { id: "journal-directory", object: {}, options: {} };
+      hookCallback!(mockApp, null as unknown as HTMLElement);
 
       const mockLogger = mockContainer.getMockLogger();
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -123,6 +125,107 @@ describe("ModuleHookRegistrar", () => {
     });
   });
 
+  describe("app parameter validation", () => {
+    it("should reject null app parameter", () => {
+      const mockContainer = createMockContainer();
+      const registrar = new ModuleHookRegistrar();
+
+      registrar.registerAll(mockContainer as never);
+
+      const mockHooks = mockContainer.getMockHooks() as any;
+      const hookCallback = mockHooks.on.mock.calls.find(
+        ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
+      )?.[1];
+
+      const mockHtml = document.createElement("div");
+      hookCallback(null, mockHtml);
+
+      const mockLogger = mockContainer.getMockLogger();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid app parameter"),
+        expect.any(Object)
+      );
+
+      // Should NOT process when app is invalid
+      const mockJournalService = mockContainer.getMockJournalService();
+      expect(mockJournalService.processJournalDirectory).not.toHaveBeenCalled();
+    });
+
+    it("should reject undefined app parameter", () => {
+      const mockContainer = createMockContainer();
+      const registrar = new ModuleHookRegistrar();
+
+      registrar.registerAll(mockContainer as never);
+
+      const mockHooks = mockContainer.getMockHooks() as any;
+      const hookCallback = mockHooks.on.mock.calls.find(
+        ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
+      )?.[1];
+
+      const mockHtml = document.createElement("div");
+      hookCallback(undefined, mockHtml);
+
+      const mockLogger = mockContainer.getMockLogger();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid app parameter"),
+        expect.any(Object)
+      );
+    });
+
+    it("should reject app parameter without required id property", () => {
+      const mockContainer = createMockContainer();
+      const registrar = new ModuleHookRegistrar();
+
+      registrar.registerAll(mockContainer as never);
+
+      const mockHooks = mockContainer.getMockHooks() as any;
+      const hookCallback = mockHooks.on.mock.calls.find(
+        ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
+      )?.[1];
+
+      const invalidApp = { object: {}, options: {} }; // Missing 'id'
+      const mockHtml = document.createElement("div");
+      hookCallback(invalidApp, mockHtml);
+
+      const mockLogger = mockContainer.getMockLogger();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid app parameter"),
+        expect.any(Object)
+      );
+
+      // Should NOT process when app is invalid
+      const mockJournalService = mockContainer.getMockJournalService();
+      expect(mockJournalService.processJournalDirectory).not.toHaveBeenCalled();
+    });
+
+    it("should accept valid app parameter", () => {
+      const mockContainer = createMockContainer();
+      const registrar = new ModuleHookRegistrar();
+
+      registrar.registerAll(mockContainer as never);
+
+      const mockHooks = mockContainer.getMockHooks() as any;
+      const hookCallback = mockHooks.on.mock.calls.find(
+        ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
+      )?.[1];
+
+      const validApp = { id: "journal-directory", object: {}, options: {} };
+      const mockHtml = document.createElement("div");
+      hookCallback(validApp, mockHtml);
+
+      const mockLogger = mockContainer.getMockLogger();
+      // Should NOT log app validation error
+      expect(mockLogger.error).not.toHaveBeenCalledWith(
+        expect.stringContaining("Invalid app parameter"),
+        expect.any(Object)
+      );
+
+      // Should process when app is valid
+      const mockJournalService = mockContainer.getMockJournalService();
+      expect(mockJournalService.processJournalDirectory).toHaveBeenCalledWith(mockHtml);
+    });
+  });
+
   describe("jQuery compatibility", () => {
     it("should extract HTMLElement from jQuery object (numeric index)", () => {
       const mockContainer = createMockContainer();
@@ -142,7 +245,8 @@ describe("ModuleHookRegistrar", () => {
       const jQueryMock: any = { length: 1 };
       jQueryMock[0] = realElement; // Numeric index assigned separately to avoid naming-convention lint error
 
-      hookCallback({}, jQueryMock);
+      const mockApp = { id: "journal-directory", object: {}, options: {} };
+      hookCallback(mockApp, jQueryMock);
 
       const mockJournalService = mockContainer.getMockJournalService();
       expect(mockJournalService.processJournalDirectory).toHaveBeenCalledWith(realElement);
@@ -164,7 +268,8 @@ describe("ModuleHookRegistrar", () => {
         get: (index: number) => (index === 0 ? realElement : null),
       };
 
-      hookCallback({}, jQueryMock);
+      const mockApp = { id: "journal-directory", object: {}, options: {} };
+      hookCallback(mockApp, jQueryMock);
 
       const mockJournalService = mockContainer.getMockJournalService();
       expect(mockJournalService.processJournalDirectory).toHaveBeenCalledWith(realElement);
@@ -182,7 +287,8 @@ describe("ModuleHookRegistrar", () => {
       )?.[1];
 
       const nativeElement = document.createElement("div");
-      hookCallback({}, nativeElement);
+      const mockApp = { id: "journal-directory", object: {}, options: {} };
+      hookCallback(mockApp, nativeElement);
 
       const mockJournalService = mockContainer.getMockJournalService();
       expect(mockJournalService.processJournalDirectory).toHaveBeenCalledWith(nativeElement);
@@ -199,7 +305,8 @@ describe("ModuleHookRegistrar", () => {
         ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
       )?.[1];
 
-      hookCallback({}, { invalid: "object" });
+      const mockApp = { id: "journal-directory", object: {}, options: {} };
+      hookCallback(mockApp, { invalid: "object" });
 
       const mockLogger = mockContainer.getMockLogger();
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -226,8 +333,9 @@ describe("ModuleHookRegistrar", () => {
       };
 
       // Should not crash when accessing properties throws
+      const mockApp = { id: "journal-directory", object: {}, options: {} };
       expect(() => {
-        hookCallback({}, { element: [throwingJQuery] });
+        hookCallback(mockApp, { element: [throwingJQuery] });
       }).not.toThrow();
 
       const mockLogger = mockContainer.getMockLogger();

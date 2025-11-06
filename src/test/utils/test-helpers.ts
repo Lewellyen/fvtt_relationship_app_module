@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 import type { Result, Ok, Err } from "@/types/result";
 import { createMockGame, createMockHooks, createMockUI } from "../mocks/foundry";
+import { MetricsCollector } from "@/observability/metrics-collector";
 
 /**
  * Type-safe Result assertion helpers
@@ -91,4 +92,12 @@ export function createMockDOM(
   }
 
   return { container };
+}
+
+/**
+ * Creates a mock MetricsCollector for testing.
+ * @returns A new MetricsCollector instance
+ */
+export function createMockMetricsCollector(): MetricsCollector {
+  return new MetricsCollector();
 }

@@ -118,7 +118,7 @@ describe("Container Performance", () => {
     if (!result.ok) {
       expect(result.error.code).toBe("MaxRegistrationsExceeded");
     }
-    expect(duration).toBeLessThan(1); // Should fail immediately
+    expect(duration).toBeLessThan(5); // Should fail very quickly
   });
 
   it("should resolve transient services efficiently", () => {

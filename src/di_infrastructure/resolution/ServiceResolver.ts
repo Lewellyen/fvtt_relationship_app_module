@@ -7,7 +7,7 @@ import type { ServiceRegistration } from "../types/serviceregistration";
 import { InstanceCache } from "../cache/InstanceCache";
 import { ServiceLifecycle } from "../types/servicelifecycle";
 import { ok, err } from "@/utils/result";
-import { MetricsCollector } from "@/observability/metrics-collector";
+import type { MetricsCollector } from "@/observability/metrics-collector";
 import { ENV } from "@/config/environment";
 
 /**
@@ -23,14 +23,27 @@ import { ENV } from "@/config/environment";
  * - Works with Result pattern (no throws)
  * - Wraps factory errors in FactoryFailedError
  * - Parent resolver for Singleton sharing across scopes
+ * - MetricsCollector injected after container validation for performance tracking
  */
 export class ServiceResolver {
+  private metricsCollector: MetricsCollector | null = null;
+
   constructor(
     private readonly registry: ServiceRegistry,
     private readonly cache: InstanceCache,
     private readonly parentResolver: ServiceResolver | null,
     private readonly scopeName: string
   ) {}
+
+  /**
+   * Sets the MetricsCollector for performance tracking.
+   * Called by ServiceContainer after validation.
+   *
+   * @param collector - The metrics collector instance
+   */
+  setMetricsCollector(collector: MetricsCollector): void {
+    this.metricsCollector = collector;
+  }
 
   /**
    * Resolves a service by token.
@@ -53,17 +66,21 @@ export class ServiceResolver {
     // Check if service is registered
     const registration = this.registry.getRegistration(token);
     if (!registration) {
+      const stack = new Error().stack;
       const error: ContainerError = {
         code: "TokenNotRegistered",
         message: `Service ${String(token)} not registered`,
         tokenDescription: String(token),
+        ...(stack !== undefined && { stack }), // Only include stack if defined
+        timestamp: Date.now(),
+        containerScope: this.scopeName,
       };
       const result = err(error);
 
       /* c8 ignore next 4 -- Performance tracking is optional feature flag tested in integration tests */
       if (ENV.enablePerformanceTracking) {
         const duration = performance.now() - startTime;
-        MetricsCollector.getInstance().recordResolution(token, duration, false);
+        this.metricsCollector?.recordResolution(token, duration, false);
       }
 
       return result;
@@ -101,7 +118,7 @@ export class ServiceResolver {
 
     if (ENV.enablePerformanceTracking) {
       const duration = performance.now() - startTime;
-      MetricsCollector.getInstance().recordResolution(token, duration, result.ok);
+      this.metricsCollector?.recordResolution(token, duration, result.ok);
     }
 
     return result;

@@ -71,6 +71,62 @@ describe("Retry Utilities", () => {
       // Only 1 attempt, no delay
       expect(duration).toBeLessThan(100);
     });
+
+    it("should handle thrown exceptions (breaks Result-Pattern)", async () => {
+      const fn = vi.fn().mockRejectedValue(new Error("Network error"));
+
+      const result = await withRetry(fn, 3, 10);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBeInstanceOf(Error);
+        expect((result.error as Error).message).toBe("Network error");
+      }
+      expect(fn).toHaveBeenCalledTimes(3);
+    });
+
+    it("should handle fn() that throws on some attempts", async () => {
+      let attempts = 0;
+      const fn = vi.fn().mockImplementation(async () => {
+        attempts++;
+        if (attempts < 2) {
+          throw new Error("Temporary error");
+        }
+        return ok("Success after exception");
+      });
+
+      const result = await withRetry(fn, 3, 10);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Success after exception");
+      }
+      expect(fn).toHaveBeenCalledTimes(2);
+    });
+
+    it("should reject maxAttempts < 1", async () => {
+      const fn = vi.fn().mockResolvedValue(ok(42));
+
+      const result = await withRetry(fn, 0, 10);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("maxAttempts must be >= 1");
+      }
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("should reject negative maxAttempts", async () => {
+      const fn = vi.fn().mockResolvedValue(ok(42));
+
+      const result = await withRetry(fn, -5, 10);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("maxAttempts must be >= 1");
+      }
+      expect(fn).not.toHaveBeenCalled();
+    });
   });
 
   describe("withRetrySync", () => {
@@ -121,6 +177,33 @@ describe("Retry Utilities", () => {
 
       expect(fn).toHaveBeenCalledTimes(3);
       expect(result.ok).toBe(false);
+    });
+
+    it("should handle thrown exceptions in sync mode", () => {
+      const fn = vi.fn().mockImplementation(() => {
+        throw new Error("Sync error");
+      });
+
+      const result = withRetrySync(fn, 3);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBeInstanceOf(Error);
+        expect((result.error as Error).message).toBe("Sync error");
+      }
+      expect(fn).toHaveBeenCalledTimes(3);
+    });
+
+    it("should reject maxAttempts < 1 in sync mode", () => {
+      const fn = vi.fn().mockReturnValue(ok(42));
+
+      const result = withRetrySync(fn, 0);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("maxAttempts must be >= 1");
+      }
+      expect(fn).not.toHaveBeenCalled();
     });
   });
 });

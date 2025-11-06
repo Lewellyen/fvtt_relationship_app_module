@@ -3,7 +3,11 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { PortSelector } from "../portselector";
-import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import {
+  expectResultOk,
+  expectResultErr,
+  createMockMetricsCollector,
+} from "@/test/utils/test-helpers";
 
 import { ok, err } from "@/utils/result";
 
@@ -29,7 +33,7 @@ describe("PortSelector - Lazy Instantiation", () => {
       [14, v14Factory],
     ]);
 
-    const selector = new PortSelector();
+    const selector = new PortSelector(createMockMetricsCollector());
     const result = selector.selectPortFromFactories(factories, 13);
 
     expectResultOk(result);
@@ -46,7 +50,7 @@ describe("PortSelector - Lazy Instantiation", () => {
     });
 
     const factories = new Map([[14, crashingFactory]]);
-    const selector = new PortSelector();
+    const selector = new PortSelector(createMockMetricsCollector());
 
     const result = selector.selectPortFromFactories(factories, 14);
 
@@ -66,7 +70,7 @@ describe("PortSelector - Lazy Instantiation", () => {
       [14, v14Factory],
     ]);
 
-    const selector = new PortSelector();
+    const selector = new PortSelector(createMockMetricsCollector());
     const result = selector.selectPortFromFactories(factories, 13);
 
     expectResultOk(result);
@@ -84,7 +88,7 @@ describe("PortSelector - Lazy Instantiation", () => {
       [15, v15Factory],
     ]);
 
-    const selector = new PortSelector();
+    const selector = new PortSelector(createMockMetricsCollector());
     const result = selector.selectPortFromFactories(factories, 13);
 
     expectResultErr(result);
@@ -102,7 +106,7 @@ describe("PortSelector - Lazy Instantiation", () => {
     const v13Factory = vi.fn(() => ({ version: 13 }));
     const factories = new Map([[13, v13Factory]]);
 
-    const selector = new PortSelector();
+    const selector = new PortSelector(createMockMetricsCollector());
     const result = selector.selectPortFromFactories(factories);
 
     expectResultOk(result);
@@ -116,7 +120,7 @@ describe("PortSelector - Lazy Instantiation", () => {
 
     const factories = new Map([[13, () => ({ version: 13 })]]);
 
-    const selector = new PortSelector();
+    const selector = new PortSelector(createMockMetricsCollector());
     const result = selector.selectPortFromFactories(factories);
 
     expectResultErr(result);

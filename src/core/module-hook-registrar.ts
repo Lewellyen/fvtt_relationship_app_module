@@ -1,7 +1,9 @@
-import { MODULE_CONSTANTS } from "@/constants";
+import { MODULE_CONSTANTS, HOOK_THROTTLE_WINDOW_MS } from "@/constants";
 import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
 import type { ServiceContainer } from "@/di_infrastructure/container";
+import { validateHookApp } from "@/foundry/validation/schemas";
+import { throttle } from "@/utils/throttle";
 
 /**
  * Type guard for jQuery objects.
@@ -41,20 +43,38 @@ export class ModuleHookRegistrar {
     const logger = loggerResult.value;
     const journalVisibility = journalVisibilityResult.value;
 
+    // Throttle hook callback to prevent excessive calls (e.g. rapid directory refreshes)
+    // HOOK_THROTTLE_WINDOW_MS allows ~10 calls/second max
+    const throttledCallback = throttle((app: unknown, html: unknown) => {
+      logger.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
+
+      // Validate app parameter
+      const appValidation = validateHookApp(app);
+      if (!appValidation.ok) {
+        logger.error(
+          `Invalid app parameter in ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
+          {
+            code: appValidation.error.code,
+            message: appValidation.error.message,
+            details: appValidation.error.details,
+          }
+        );
+        return;
+      }
+
+      // FIX: Extract HTMLElement from either jQuery or native DOM
+      const htmlElement = this.extractHtmlElement(html);
+      if (!htmlElement) {
+        logger.error("Failed to get HTMLElement from hook - incompatible format");
+        return;
+      }
+
+      journalVisibility.processJournalDirectory(htmlElement);
+    }, HOOK_THROTTLE_WINDOW_MS);
+
     const hookResult = foundryHooks.on(
       MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
-      (app, html) => {
-        logger.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
-
-        // FIX: Extract HTMLElement from either jQuery or native DOM
-        const htmlElement = this.extractHtmlElement(html);
-        if (!htmlElement) {
-          logger.error("Failed to get HTMLElement from hook - incompatible format");
-          return;
-        }
-
-        journalVisibility.processJournalDirectory(htmlElement);
-      }
+      throttledCallback
     );
 
     if (!hookResult.ok) {

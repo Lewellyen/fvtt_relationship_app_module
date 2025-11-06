@@ -16,6 +16,7 @@ import { ContainerValidator } from "./validation/ContainerValidator";
 import { InstanceCache } from "./cache/InstanceCache";
 import { ServiceResolver } from "./resolution/ServiceResolver";
 import { ScopeManager } from "./scope/ScopeManager";
+import { withTimeout, TimeoutError } from "@/utils/promise-timeout";
 
 /**
  * Fallback factory function type for creating service instances when container resolution fails.
@@ -264,11 +265,26 @@ export class ServiceContainer implements Container {
 
     if (result.ok) {
       this.validationState = "validated";
+      // Inject MetricsCollector into resolver after validation (if available)
+      void this.injectMetricsCollector();
     } else {
       this.validationState = "registering";
     }
 
     return result;
+  }
+
+  /**
+   * Injects MetricsCollector into resolver after validation.
+   * This enables performance tracking without circular dependencies during bootstrap.
+   */
+  private async injectMetricsCollector(): Promise<void> {
+    // Dynamic import to avoid circular dependency during module loading
+    const { metricsCollectorToken } = await import("../tokens/tokenindex.js");
+    const metricsResult = this.resolveWithError(metricsCollectorToken);
+    if (metricsResult.ok) {
+      this.resolver.setMetricsCollector(metricsResult.value);
+    }
   }
 
   /**
@@ -279,11 +295,12 @@ export class ServiceContainer implements Container {
   }
 
   /**
-   * Async-safe validation for concurrent environments.
+   * Async-safe validation for concurrent environments with timeout.
    *
    * Prevents race conditions when multiple callers validate simultaneously
    * by ensuring only one validation runs at a time.
    *
+   * @param timeoutMs - Timeout in milliseconds (default: 30000 = 30 seconds)
    * @returns Promise resolving to validation result
    *
    * @example
@@ -291,9 +308,10 @@ export class ServiceContainer implements Container {
    * const container = ServiceContainer.createRoot();
    * // ... register services
    * await container.validateAsync(); // Safe for concurrent calls
+   * await container.validateAsync(5000); // With 5 second timeout
    * ```
    */
-  async validateAsync(): Promise<Result<void, ContainerError[]>> {
+  async validateAsync(timeoutMs: number = 30000): Promise<Result<void, ContainerError[]>> {
     // Return immediately if already validated
     /* c8 ignore next 3 -- Fast-path optimization; tested in sync validate() */
     if (this.validationState === "validated") {
@@ -319,7 +337,8 @@ export class ServiceContainer implements Container {
 
     this.validationState = "validating";
 
-    this.validationPromise = Promise.resolve().then(() => {
+    // Create validation task
+    const validationTask = Promise.resolve().then(() => {
       const result = this.validator.validate(this.registry);
 
       if (result.ok) {
@@ -331,11 +350,34 @@ export class ServiceContainer implements Container {
       return result;
     });
 
-    const result = await this.validationPromise;
-    /* c8 ignore next -- State cleanup always executed; null assignment is cleanup logic not business logic */
-    this.validationPromise = null;
+    // Wrap validation with timeout
+    try {
+      this.validationPromise = withTimeout(validationTask, timeoutMs);
+      const result = await this.validationPromise;
 
-    return result;
+      // Inject MetricsCollector if validation succeeded
+      if (result.ok) {
+        await this.injectMetricsCollector();
+      }
+
+      return result;
+      /* c8 ignore next 12 -- Timeout handling requires precise race condition setup; difficult to test reliably */
+    } catch (error) {
+      // Handle timeout
+      if (error instanceof TimeoutError) {
+        this.validationState = "registering";
+        return err([
+          {
+            code: "InvalidOperation",
+            message: `Validation timed out after ${timeoutMs}ms`,
+          },
+        ]);
+      }
+      throw error; // Re-throw unexpected errors
+    } finally {
+      /* c8 ignore next -- State cleanup always executed; null assignment is cleanup logic not business logic */
+      this.validationPromise = null;
+    }
   }
 
   /**

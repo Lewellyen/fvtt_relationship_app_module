@@ -221,13 +221,17 @@ describe("CompositionRoot", () => {
       root.bootstrap();
       root.exposeToModuleApi();
 
-      // Simulate resolution error by recording it in metrics
-      const metricsModule = await import("@/observability/metrics-collector");
-      const tokensModule = await import("@/di_infrastructure/tokenutilities");
-      const token = tokensModule.createInjectionToken("TestError");
-      metricsModule.MetricsCollector.getInstance().recordResolution(token, 0, false);
-
+      // Simulate resolution error by recording it in metrics via DI
       const mod = (game as any).modules.get("fvtt_relationship_app_module");
+      const container = root.getContainer();
+      if (!container.ok) throw new Error("Container not bootstrapped");
+      const { metricsCollectorToken } = await import("@/tokens/tokenindex");
+      const tokensModule = await import("@/di_infrastructure/tokenutilities");
+      const metricsResult = container.value.resolveWithError(metricsCollectorToken);
+      if (!metricsResult.ok) throw new Error("MetricsCollector not resolved");
+      const token = tokensModule.createInjectionToken("TestError");
+      metricsResult.value.recordResolution(token, 0, false);
+
       const health = mod.api.getHealth();
 
       expect(health.status).toBe("degraded");
@@ -239,11 +243,15 @@ describe("CompositionRoot", () => {
       root.bootstrap();
       root.exposeToModuleApi();
 
-      // Simulate port selection failure
-      const metricsModule = await import("@/observability/metrics-collector");
-      metricsModule.MetricsCollector.getInstance().recordPortSelectionFailure(12.331);
-
+      // Simulate port selection failure via DI
       const mod = (game as any).modules.get("fvtt_relationship_app_module");
+      const container = root.getContainer();
+      if (!container.ok) throw new Error("Container not bootstrapped");
+      const { metricsCollectorToken } = await import("@/tokens/tokenindex");
+      const metricsResult = container.value.resolveWithError(metricsCollectorToken);
+      if (!metricsResult.ok) throw new Error("MetricsCollector not resolved");
+      metricsResult.value.recordPortSelectionFailure(12.331);
+
       const health = mod.api.getHealth();
 
       expect(health.status).toBe("degraded");
