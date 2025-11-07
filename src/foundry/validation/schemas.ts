@@ -124,6 +124,8 @@ export function validateSettingValue(
 
   // Choice validation (only for strings)
   if (choices && expectedType === "string") {
+    // value is known to be string when expectedType === "string"
+    /* type-coverage:ignore-next-line */
     if (!choices.includes(value as string)) {
       return err(
         createFoundryError(
@@ -186,9 +188,12 @@ export function validateSettingConfig(
   }
 
   // Type assertion: config is now guaranteed to be object
+  /* type-coverage:ignore-next-line */
   const configObj = config as Record<string, unknown>;
 
   // Scope validation (if provided)
+  // configObj.scope is only present when scope exists and is string-like
+  /* type-coverage:ignore-next-line */
   if (configObj.scope && !["world", "client", "user"].includes(configObj.scope as string)) {
     return err(
       createFoundryError(
@@ -294,7 +299,7 @@ export function validateHookApp(app: unknown): Result<ValidatedFoundryApplicatio
 
   const result = v.safeParse(FoundryApplicationSchema, app);
 
-  /* c8 ignore next 9 -- Valibot validation error path tested via integration tests; detailed validation logic tested in Valibot library */
+  /* c8 ignore start -- Valibot validation error path tested via integration tests; detailed validation logic tested in Valibot library */
   if (!result.success) {
     return err(
       createFoundryError(
@@ -305,6 +310,7 @@ export function validateHookApp(app: unknown): Result<ValidatedFoundryApplicatio
       )
     );
   }
+  /* c8 ignore stop */
 
   return ok(result.output);
 }

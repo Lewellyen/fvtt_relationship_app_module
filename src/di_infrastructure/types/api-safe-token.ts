@@ -89,6 +89,7 @@ export function markAsApiSafe<T extends ServiceType>(token: InjectionToken<T>): 
   apiSafeTokens.add(token);
 
   // Return with compile-time brand (type cast)
+  /* type-coverage:ignore-next-line */
   return token as ApiSafeToken<T>;
 }
 

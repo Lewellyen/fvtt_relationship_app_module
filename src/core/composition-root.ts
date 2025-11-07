@@ -63,9 +63,11 @@ export class CompositionRoot {
       const measure = entries.at(-1);
 
       if (measure && ENV.enableDebugMode) {
-        console.debug(
-          `${MODULE_CONSTANTS.LOG_PREFIX} Bootstrap completed in ${measure.duration.toFixed(2)}ms`
-        );
+        // Use logger from container if available (container is validated at this point)
+        const loggerResult = container.resolveWithError(loggerToken);
+        if (loggerResult.ok) {
+          loggerResult.value.debug(`Bootstrap completed in ${measure.duration.toFixed(2)}ms`);
+        }
       }
 
       // Clean up performance marks/measures to prevent memory leaks
@@ -152,7 +154,7 @@ export class CompositionRoot {
 
       getMetrics: () => {
         const metricsResult = container.resolveWithError(metricsCollectorToken);
-        /* c8 ignore next 11 -- Defensive: MetricsCollector is always registered; fallback returns empty metrics */
+        /* c8 ignore start -- Defensive: MetricsCollector is always registered; fallback returns empty metrics */
         if (!metricsResult.ok) {
           return {
             containerResolutions: 0,
@@ -163,6 +165,7 @@ export class CompositionRoot {
             cacheHitRate: 0,
           };
         }
+        /* c8 ignore stop */
         return metricsResult.value.getSnapshot();
       },
 
@@ -172,7 +175,7 @@ export class CompositionRoot {
 
         // Get metrics via DI
         const metricsResult = container.resolveWithError(metricsCollectorToken);
-        /* c8 ignore next 10 -- Defensive: MetricsCollector fallback when resolution fails; always succeeds in practice */
+        /* c8 ignore start -- Defensive: MetricsCollector fallback when resolution fails; always succeeds in practice */
         const metrics = metricsResult.ok
           ? metricsResult.value.getSnapshot()
           : {
@@ -183,6 +186,7 @@ export class CompositionRoot {
               portSelectionFailures: {},
               cacheHitRate: 0,
             };
+        /* c8 ignore stop */
         // Fallback to containerValidated when performance tracking is disabled (production mode)
         // If container is validated, ports must have been selected successfully
         const hasPortSelections =
@@ -191,10 +195,11 @@ export class CompositionRoot {
 
         // Determine overall status
         let status: "healthy" | "degraded" | "unhealthy";
-        /* c8 ignore next 3 -- Container is always validated after bootstrap; unhealthy status requires internal manipulation */
+        /* c8 ignore start -- Container is always validated after bootstrap; unhealthy status requires internal manipulation */
         if (!containerValidated) {
           status = "unhealthy";
         } else if (hasPortFailures || metrics.resolutionErrors > 0) {
+          /* c8 ignore stop */
           status = "degraded";
         } else {
           status = "healthy";

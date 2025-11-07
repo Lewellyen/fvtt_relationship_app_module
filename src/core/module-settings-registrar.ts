@@ -23,11 +23,21 @@ export class ModuleSettingsRegistrar {
     const i18nResult = container.resolveWithError(i18nFacadeToken);
 
     // Early return if any resolution failed
-    /* c8 ignore next 4 -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
+    /* c8 ignore start -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
     if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok) {
-      console.error("Failed to resolve required services for settings registration");
+      // Use logger if available, otherwise fallback to console
+      if (loggerResult.ok) {
+        loggerResult.value.error("DI resolution failed in ModuleSettingsRegistrar", {
+          settingsResolved: settingsResult.ok,
+          i18nResolved: i18nResult.ok,
+        });
+      } else {
+        // Fallback only if logger itself failed to resolve
+        console.error("Failed to resolve required services for settings registration");
+      }
       return;
     }
+    /* c8 ignore stop */
 
     const settings = settingsResult.value;
     const logger = loggerResult.value;

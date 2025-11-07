@@ -141,14 +141,16 @@ export class MetricsCollector {
    */
   shouldSample(): boolean {
     // Always sample in development mode
-    /* c8 ignore next 3 -- Development mode always returns true; tested implicitly in all metrics tests */
+    /* c8 ignore start -- Development mode always returns true; tested implicitly in all metrics tests */
     if (ENV.isDevelopment) {
       return true;
     }
+    /* c8 ignore stop */
 
     // Probabilistic sampling in production based on configured rate
-    /* c8 ignore next 2 -- Production sampling: Math.random() behavior tested in shouldSample tests */
+    /* c8 ignore start -- Production sampling: Math.random() behavior tested in shouldSample tests */
     return Math.random() < ENV.performanceSamplingRate;
+    /* c8 ignore stop */
   }
 
   /**
@@ -160,6 +162,8 @@ export class MetricsCollector {
     // Calculate average from circular buffer
     let sum = 0;
     for (let i = 0; i < this.resolutionTimesCount; i++) {
+      // Entries up to resolutionTimesCount are explicitly written before incrementing the counter
+      /* type-coverage:ignore-next-line */
       sum += this.resolutionTimes[i]!;
     }
     const avgTime = this.resolutionTimesCount > 0 ? sum / this.resolutionTimesCount : 0;

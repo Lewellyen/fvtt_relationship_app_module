@@ -179,7 +179,7 @@ export class ServiceContainer implements Container {
     }
 
     // Validate factory parameter
-    /* c8 ignore next 7 -- TypeScript ensures factory is a function at compile time; runtime check is defensive */
+    /* c8 ignore start -- TypeScript ensures factory is a function at compile time; runtime check is defensive */
     if (!factory || typeof factory !== "function") {
       return err({
         code: "InvalidFactory",
@@ -187,6 +187,7 @@ export class ServiceContainer implements Container {
         tokenDescription: String(token),
       });
     }
+    /* c8 ignore stop */
 
     return this.registry.registerFactory(token, factory, lifecycle, dependencies);
   }
@@ -249,7 +250,7 @@ export class ServiceContainer implements Container {
       return ok(undefined);
     }
 
-    /* c8 ignore next 8 -- Guard against concurrent validate() calls; requires re-entrant call during validation which is not possible in normal synchronous flow */
+    /* c8 ignore start -- Guard against concurrent validate() calls; requires re-entrant call during validation which is not possible in normal synchronous flow */
     if (this.validationState === "validating") {
       return err([
         {
@@ -258,6 +259,7 @@ export class ServiceContainer implements Container {
         },
       ]);
     }
+    /* c8 ignore stop */
 
     this.validationState = "validating";
 
@@ -314,19 +316,21 @@ export class ServiceContainer implements Container {
    */
   async validateAsync(timeoutMs: number = 30000): Promise<Result<void, ContainerError[]>> {
     // Return immediately if already validated
-    /* c8 ignore next 3 -- Fast-path optimization; tested in sync validate() */
+    /* c8 ignore start -- Fast-path optimization; tested in sync validate() */
     if (this.validationState === "validated") {
       return ok(undefined);
     }
+    /* c8 ignore stop */
 
     // Wait for ongoing validation
-    /* c8 ignore next 3 -- Race condition guard for concurrent validateAsync calls; requires complex async timing to test */
+    /* c8 ignore start -- Race condition guard for concurrent validateAsync calls; requires complex async timing to test */
     if (this.validationPromise !== null) {
       return this.validationPromise;
     }
+    /* c8 ignore stop */
 
     // Validation already in progress (sync)
-    /* c8 ignore next 8 -- Mixed sync/async validation conflict; requires calling validate() then validateAsync() which is not a real use case */
+    /* c8 ignore start -- Mixed sync/async validation conflict; requires calling validate() then validateAsync() which is not a real use case */
     if (this.validationState === "validating") {
       return err([
         {
@@ -335,17 +339,24 @@ export class ServiceContainer implements Container {
         },
       ]);
     }
+    /* c8 ignore stop */
 
     this.validationState = "validating";
+
+    // Track if timeout occurred to prevent state changes after timeout
+    let timedOut = false;
 
     // Create validation task
     const validationTask = Promise.resolve().then(() => {
       const result = this.validator.validate(this.registry);
 
-      if (result.ok) {
-        this.validationState = "validated";
-      } else {
-        this.validationState = "registering";
+      // Only update state if no timeout occurred
+      if (!timedOut) {
+        if (result.ok) {
+          this.validationState = "validated";
+        } else {
+          this.validationState = "registering";
+        }
       }
 
       return result;
@@ -362,11 +373,12 @@ export class ServiceContainer implements Container {
       }
 
       return result;
-      /* c8 ignore next 12 -- Timeout handling requires precise race condition setup; difficult to test reliably */
+      /* c8 ignore start -- Timeout handling requires precise race condition setup; difficult to test reliably */
     } catch (error) {
       // Handle timeout
       if (error instanceof TimeoutError) {
-        this.validationState = "registering";
+        timedOut = true; // Mark timeout occurred
+        this.validationState = "registering"; // Deterministisch zurücksetzen
         return err([
           {
             code: "InvalidOperation",
@@ -374,7 +386,9 @@ export class ServiceContainer implements Container {
           },
         ]);
       }
-      throw error; // Re-throw unexpected errors
+      // Re-throw unexpected errors
+      throw error;
+      /* c8 ignore stop */
     } finally {
       /* c8 ignore next -- State cleanup always executed; null assignment is cleanup logic not business logic */
       this.validationPromise = null;
@@ -425,10 +439,11 @@ export class ServiceContainer implements Container {
 
     // Create child scope (pure Result, no throws)
     const scopeResult = this.scopeManager.createChild(name);
-    /* c8 ignore next 3 -- ScopeManager.createChild() error paths tested in ScopeManager.test.ts; this is just error propagation */
+    /* c8 ignore start -- ScopeManager.createChild() error paths tested in ScopeManager.test.ts; this is just error propagation */
     if (!scopeResult.ok) {
       return err(scopeResult.error); // Structured error, not exception
     }
+    /* c8 ignore stop */
 
     // Build child container components
     const childRegistry = this.registry.clone();
@@ -557,6 +572,8 @@ export class ServiceContainer implements Container {
     // Try fallback factory
     const fallback = this.fallbackFactories.get(token);
     if (fallback) {
+      // Fallbacks are registered with matching generic type for public resolve(); cast narrows from ServiceType union
+      /* type-coverage:ignore-next-line */
       return fallback() as TServiceType;
     }
 

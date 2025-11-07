@@ -26,10 +26,11 @@ import { VALIDATION_CONSTRAINTS } from "@/constants";
  * ```
  */
 export function validateJournalId(id: string): Result<string, FoundryError> {
-  /* c8 ignore next 3 -- TypeScript ensures id is string at compile time; runtime check is defensive */
+  /* c8 ignore start -- TypeScript ensures id is string at compile time; runtime check is defensive */
   if (typeof id !== "string") {
     return err(createFoundryError("VALIDATION_FAILED", "ID must be a string"));
   }
+  /* c8 ignore stop */
 
   if (id.length === 0) {
     return err(createFoundryError("VALIDATION_FAILED", "ID cannot be empty"));

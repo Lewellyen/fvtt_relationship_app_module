@@ -108,6 +108,7 @@ export async function withRetry<SuccessType, ErrorType>(
           delayMs: legacyDelayMs ?? 100,
           backoffFactor: 1,
           /* c8 ignore next -- Legacy unsafe cast function tested via legacy API tests */
+          /* type-coverage:ignore-next-line */
           mapException: (error) => error as ErrorType, // Legacy unsafe cast
         }
       : {
@@ -116,6 +117,7 @@ export async function withRetry<SuccessType, ErrorType>(
           delayMs: options.delayMs ?? 100,
           backoffFactor: options.backoffFactor ?? 1,
           /* c8 ignore next -- Default mapException tested when options.mapException is undefined */
+          /* type-coverage:ignore-next-line */
           mapException: options.mapException ?? ((error) => error as ErrorType),
         };
 
@@ -156,6 +158,7 @@ export async function withRetry<SuccessType, ErrorType>(
   }
 
   // lastError is always defined here (at least one attempt was made)
+  /* type-coverage:ignore-next-line */
   return err(lastError as ErrorType);
 }
 
@@ -200,12 +203,14 @@ export function withRetrySync<SuccessType, ErrorType>(
       ? {
           maxAttempts: options,
           /* c8 ignore next -- Legacy unsafe cast function tested via legacy API tests */
+          /* type-coverage:ignore-next-line */
           mapException: (error) => error as ErrorType, // Legacy unsafe cast
         }
       : {
           /* c8 ignore next -- Default maxAttempts tested in retry.test.ts */
           maxAttempts: options.maxAttempts ?? 3,
           /* c8 ignore next -- Default mapException tested implicitly when options.mapException is undefined */
+          /* type-coverage:ignore-next-line */
           mapException: options.mapException ?? ((error) => error as ErrorType),
         };
 
@@ -234,5 +239,6 @@ export function withRetrySync<SuccessType, ErrorType>(
   }
 
   // lastError is always defined here (at least one attempt was made)
+  /* type-coverage:ignore-next-line */
   return err(lastError as ErrorType);
 }

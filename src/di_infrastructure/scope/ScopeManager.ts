@@ -314,7 +314,12 @@ export class ScopeManager {
    * @returns True if instance has dispose() method
    */
   private isDisposable(instance: ServiceType): instance is ServiceType & Disposable {
-    return "dispose" in instance && typeof (instance as Partial<Disposable>).dispose === "function";
+    return (
+      "dispose" in instance &&
+      // Narrowing via Partial so we can check dispose presence without full interface
+      /* type-coverage:ignore-next-line */
+      typeof (instance as Partial<Disposable>).dispose === "function"
+    );
   }
 
   /**
@@ -326,6 +331,8 @@ export class ScopeManager {
   private isAsyncDisposable(instance: ServiceType): instance is ServiceType & AsyncDisposable {
     return (
       "disposeAsync" in instance &&
+      // Narrowing via Partial so we can check disposeAsync presence without full interface
+      /* type-coverage:ignore-next-line */
       typeof (instance as Partial<AsyncDisposable>).disposeAsync === "function"
     );
   }

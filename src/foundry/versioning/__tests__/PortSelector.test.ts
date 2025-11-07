@@ -1,28 +1,31 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { PortSelector } from "../portselector";
 import { getFoundryVersionResult, resetVersionCache } from "../versiondetector";
-import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import {
+  expectResultOk,
+  expectResultErr,
+  createMockMetricsCollector,
+  createMockLogger,
+} from "@/test/utils/test-helpers";
 import { ok, err } from "@/utils/result";
 import { ENV } from "@/config/environment";
-import { MetricsCollector } from "@/observability/metrics-collector";
+import type { MetricsCollector } from "@/observability/metrics-collector";
+import type { Logger } from "@/interfaces/logger";
 
 vi.mock("../versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
   resetVersionCache: vi.fn(),
 }));
 
-// Mock MetricsCollector for tests
-function createMockMetricsCollector(): MetricsCollector {
-  return new MetricsCollector();
-}
-
 describe("PortSelector", () => {
   let selector: PortSelector;
   let mockMetrics: MetricsCollector;
+  let mockLogger: Logger;
 
   beforeEach(() => {
     mockMetrics = createMockMetricsCollector();
-    selector = new PortSelector(mockMetrics);
+    mockLogger = createMockLogger();
+    selector = new PortSelector(mockMetrics, mockLogger);
     vi.clearAllMocks();
   });
 
@@ -273,30 +276,27 @@ describe("PortSelector", () => {
     it("should log debug message when debug mode enabled", () => {
       ENV.enableDebugMode = true;
       ENV.enablePerformanceTracking = true;
-      const consoleSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
 
       const factories = new Map([[13, () => "port-v13"]]);
       selector.selectPortFromFactories(factories, 13);
 
-      expect(consoleSpy).toHaveBeenCalled();
-      const debugCall = consoleSpy.mock.calls[0]?.[0];
+      // Logger should have been called with debug message
+      expect(mockLogger.debug).toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Test spy access
+      const debugCall = (mockLogger.debug as any).mock.calls[0]?.[0];
       expect(debugCall).toContain("Port selection completed");
       expect(debugCall).toContain("v13");
-
-      consoleSpy.mockRestore();
     });
 
     it("should NOT log debug when debug mode disabled", () => {
       ENV.enableDebugMode = false;
       ENV.enablePerformanceTracking = true;
-      const consoleSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
 
       const factories = new Map([[13, () => "port-v13"]]);
       selector.selectPortFromFactories(factories, 13);
 
-      expect(consoleSpy).not.toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
+      // Logger debug should not have been called when debug mode is off
+      expect(mockLogger.debug).not.toHaveBeenCalled();
     });
 
     it("should clean up performance marks after measurement", () => {

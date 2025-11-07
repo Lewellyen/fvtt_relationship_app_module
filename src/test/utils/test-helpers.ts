@@ -2,6 +2,7 @@ import { vi } from "vitest";
 import type { Result, Ok, Err } from "@/types/result";
 import { createMockGame, createMockHooks, createMockUI } from "../mocks/foundry";
 import { MetricsCollector } from "@/observability/metrics-collector";
+import type { Logger } from "@/interfaces/logger";
 
 /**
  * Type-safe Result assertion helpers
@@ -100,4 +101,18 @@ export function createMockDOM(
  */
 export function createMockMetricsCollector(): MetricsCollector {
   return new MetricsCollector();
+}
+
+/**
+ * Creates a mock Logger for testing.
+ * @returns A mock Logger with spy functions
+ */
+export function createMockLogger(): Logger {
+  return {
+    log: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+  };
 }

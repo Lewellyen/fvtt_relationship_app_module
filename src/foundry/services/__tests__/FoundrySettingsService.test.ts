@@ -8,6 +8,7 @@ import {
   expectResultOk,
   expectResultErr,
   createMockMetricsCollector,
+  createMockLogger,
 } from "@/test/utils/test-helpers";
 
 describe("FoundrySettingsService", () => {
@@ -31,7 +32,7 @@ describe("FoundrySettingsService", () => {
     mockRegistry = new PortRegistry<FoundrySettings>();
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
-    mockSelector = new PortSelector(createMockMetricsCollector());
+    mockSelector = new PortSelector(createMockMetricsCollector(), createMockLogger());
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundrySettingsService(mockSelector, mockRegistry);

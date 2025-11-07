@@ -191,10 +191,11 @@ export class ContainerValidator {
     // BLACK node: Already fully processed in this validation run
     // All descendants of this token have been checked (no cycle below it)
     // Cross edge or forward edge in DFS terminology
-    /* c8 ignore next 3 -- Visited check for graph traversal; tested via circular dependency tests */
+    /* c8 ignore start -- Visited check for graph traversal; tested via circular dependency tests */
     if (visited.has(token)) {
       return null;
     }
+    /* c8 ignore stop */
 
     // Mark as GRAY: Add to current DFS path
     // This token is now being visited (in recursion stack)

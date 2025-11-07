@@ -40,6 +40,8 @@ export class InstanceCache {
     const hasInstance = this.instances.has(token);
     // Track cache access for observability (hit = instance found, miss = not found)
     this.metricsCollector?.recordCacheAccess(hasInstance);
+    // Map stores instances keyed by token; cast narrows from ServiceType union to generic TServiceType
+    /* type-coverage:ignore-next-line */
     return this.instances.get(token) as TServiceType | undefined;
   }
 

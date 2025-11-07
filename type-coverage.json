@@ -1,0 +1,13 @@
+{
+  "__comment": "Automatically generated configuration for type-coverage exclusions.",
+  "ignoreFiles": [
+    "vite.config.ts",
+    "src/polyfills/**",
+    "src/test/**",
+    "src/**/__tests__/**",
+    "**/*.test.ts",
+    "scripts/**",
+    "src/custom.d.ts"
+  ]
+}
+

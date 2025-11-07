@@ -25,20 +25,22 @@ import { BootstrapErrorHandler } from "@/core/bootstrap-error-handler";
 /* c8 ignore start -- Entire function requires Foundry Hooks globals to be present */
 function initializeFoundryModule(): void {
   const containerResult = root.getContainer();
-  /* c8 ignore next 4 -- Bootstrap failure path tested in init-solid.test.ts bootstrap failure tests */
+  /* c8 ignore start -- Bootstrap failure path tested in init-solid.test.ts bootstrap failure tests */
   if (!containerResult.ok) {
     console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${containerResult.error}`);
     return;
   }
+  /* c8 ignore stop */
 
   const loggerResult = containerResult.value.resolveWithError(loggerToken);
-  /* c8 ignore next 6 -- Defensive: Logger resolution can only fail if container is not validated, which is checked in bootstrap */
+  /* c8 ignore start -- Defensive: Logger resolution can only fail if container is not validated, which is checked in bootstrap */
   if (!loggerResult.ok) {
     console.error(
       `${MODULE_CONSTANTS.LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`
     );
     return;
   }
+  /* c8 ignore stop */
   const logger = loggerResult.value;
 
   // Guard: Ensure Foundry Hooks API is available
@@ -54,11 +56,12 @@ function initializeFoundryModule(): void {
     root.exposeToModuleApi();
 
     const initContainerResult = root.getContainer();
-    /* c8 ignore next 4 -- Defensive: Container is available after successful bootstrap */
+    /* c8 ignore start -- Defensive: Container is available after successful bootstrap */
     if (!initContainerResult.ok) {
       logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
       return;
     }
+    /* c8 ignore stop */
 
     // Register module settings (must be done before settings are read)
     new ModuleSettingsRegistrar().registerAll(initContainerResult.value);
@@ -72,11 +75,12 @@ function initializeFoundryModule(): void {
         MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
       );
 
-      /* c8 ignore next 4 -- Logger configuration: setMinLevel is optional method, and log level setting may not be configured yet */
+      /* c8 ignore start -- Logger configuration: setMinLevel is optional method, and log level setting may not be configured yet */
       if (logLevelResult.ok && logger.setMinLevel) {
         logger.setMinLevel(logLevelResult.value as LogLevel);
         logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
       }
+      /* c8 ignore stop */
     }
 
     // Register module hooks

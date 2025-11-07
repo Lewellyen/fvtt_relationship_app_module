@@ -3,9 +3,11 @@ import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { FoundryHookCallback } from "@/foundry/types";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
+import type { Logger } from "@/interfaces/logger";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { portSelectorToken, foundryHooksPortRegistryToken } from "@/foundry/foundrytokens";
+import { loggerToken } from "@/tokens/tokenindex";
 
 /**
  * Type-safe interface for Foundry Hooks with dynamic hook names.
@@ -24,18 +26,24 @@ interface DynamicHooksApi {
  * Implements Disposable to clean up registered hooks when the container is disposed.
  */
 export class FoundryHooksService implements FoundryHooks, Disposable {
-  static dependencies = [portSelectorToken, foundryHooksPortRegistryToken] as const;
+  static dependencies = [portSelectorToken, foundryHooksPortRegistryToken, loggerToken] as const;
 
   private port: FoundryHooks | null = null;
   private readonly portSelector: PortSelector;
   private readonly portRegistry: PortRegistry<FoundryHooks>;
+  private readonly logger: Logger;
   private registeredHooks = new Map<string, Map<number, FoundryHookCallback>>();
   // Bidirectional mapping: callback function -> hook ID (for off() with callback variant)
   private callbackToIdMap = new Map<FoundryHookCallback, { hookName: string; id: number }>();
 
-  constructor(portSelector: PortSelector, portRegistry: PortRegistry<FoundryHooks>) {
+  constructor(
+    portSelector: PortSelector,
+    portRegistry: PortRegistry<FoundryHooks>,
+    logger: Logger
+  ) {
     this.portSelector = portSelector;
     this.portRegistry = portRegistry;
+    this.logger = logger;
   }
 
   /**
@@ -74,6 +82,8 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
       if (!this.registeredHooks.has(hookName)) {
         this.registeredHooks.set(hookName, new Map());
       }
+      // Hook map is created above when missing; bang assertion is safe
+      /* type-coverage:ignore-next-line */
       this.registeredHooks.get(hookName)!.set(result.value, callback);
       this.callbackToIdMap.set(callback, { hookName, id: result.value });
     }
@@ -140,7 +150,7 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
             (Hooks as DynamicHooksApi).off(hookName, callback);
           }
         } catch (error) {
-          console.warn(`Failed to unregister hook ${hookName} (ID: ${hookId}):`, error);
+          this.logger.warn("Failed to unregister hook", { hookName, hookId, error });
         }
       }
     }

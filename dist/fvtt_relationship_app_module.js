@@ -882,6 +882,11 @@ var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
   LogLevel2[LogLevel2["ERROR"] = 3] = "ERROR";
   return LogLevel2;
 })(LogLevel || {});
+function parseSamplingRate(envValue, fallback2) {
+  const raw = parseFloat(envValue ?? String(fallback2));
+  return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback2;
+}
+__name(parseSamplingRate, "parseSamplingRate");
 const ENV = {
   isDevelopment: true,
   isProduction: false,
@@ -889,7 +894,7 @@ const ENV = {
   enablePerformanceTracking: true,
   enableDebugMode: true,
   // 1% sampling in production, 100% in development
-  performanceSamplingRate: false ? parseFloat("0.01") : 1
+  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1
 };
 const _ServiceResolver = class _ServiceResolver {
   constructor(registry, cache, parentResolver, scopeName) {
@@ -956,7 +961,7 @@ const _ServiceResolver = class _ServiceResolver {
       case ServiceLifecycle.SCOPED:
         result = this.resolveScoped(token, registration);
         break;
-      /* c8 ignore next 6 -- Defensive: ServiceLifecycle enum ensures only valid values; this default is unreachable */
+      /* c8 ignore start -- Defensive: ServiceLifecycle enum ensures only valid values; this default is unreachable */
       default:
         result = err({
           code: "InvalidLifecycle",
@@ -1345,7 +1350,9 @@ const _ScopeManager = class _ScopeManager {
    * @returns True if instance has dispose() method
    */
   isDisposable(instance2) {
-    return "dispose" in instance2 && typeof instance2.dispose === "function";
+    return "dispose" in instance2 && // Narrowing via Partial so we can check dispose presence without full interface
+    /* type-coverage:ignore-next-line */
+    typeof instance2.dispose === "function";
   }
   /**
    * Type guard to check if an instance implements the AsyncDisposable pattern.
@@ -1354,7 +1361,9 @@ const _ScopeManager = class _ScopeManager {
    * @returns True if instance has disposeAsync() method
    */
   isAsyncDisposable(instance2) {
-    return "disposeAsync" in instance2 && typeof instance2.disposeAsync === "function";
+    return "disposeAsync" in instance2 && // Narrowing via Partial so we can check disposeAsync presence without full interface
+    /* type-coverage:ignore-next-line */
+    typeof instance2.disposeAsync === "function";
   }
   /**
    * Checks if this scope is disposed.
@@ -1401,13 +1410,19 @@ const _TimeoutError = class _TimeoutError extends Error {
 __name(_TimeoutError, "TimeoutError");
 let TimeoutError = _TimeoutError;
 function withTimeout(promise2, timeoutMs) {
+  let timeoutHandle = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new TimeoutError(timeoutMs));
+    }, timeoutMs);
+  });
   return Promise.race([
-    promise2,
-    new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new TimeoutError(timeoutMs));
-      }, timeoutMs);
-    })
+    promise2.finally(() => {
+      if (timeoutHandle !== null) {
+        clearTimeout(timeoutHandle);
+      }
+    }),
+    timeoutPromise
   ]);
 }
 __name(withTimeout, "withTimeout");
@@ -1624,12 +1639,15 @@ const _ServiceContainer = class _ServiceContainer {
       ]);
     }
     this.validationState = "validating";
+    let timedOut = false;
     const validationTask = Promise.resolve().then(() => {
       const result = this.validator.validate(this.registry);
-      if (result.ok) {
-        this.validationState = "validated";
-      } else {
-        this.validationState = "registering";
+      if (!timedOut) {
+        if (result.ok) {
+          this.validationState = "validated";
+        } else {
+          this.validationState = "registering";
+        }
       }
       return result;
     });
@@ -1642,6 +1660,7 @@ const _ServiceContainer = class _ServiceContainer {
       return result;
     } catch (error) {
       if (error instanceof TimeoutError) {
+        timedOut = true;
         this.validationState = "registering";
         return err([
           {
@@ -8992,6 +9011,8 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     const hidden = [];
     for (const journal of allEntriesResult.value) {
       const flagResult = this.document.getFlag(
+        // Journal entries from Foundry provide getFlag; cast retains narrow interface
+        /* type-coverage:ignore-next-line */
         journal,
         MODULE_CONSTANTS.MODULE.ID,
         MODULE_CONSTANTS.FLAGS.HIDDEN
@@ -9006,6 +9027,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
           `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
           {
             errorCode: flagResult.error.code,
+            /* c8 ignore stop */
             errorMessage: flagResult.error.message
           }
         );
@@ -9268,8 +9290,9 @@ const LEGACY_PERFORMANCE_MARKS = {
   PORT_SELECTION_DURATION: PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION
 };
 const _PortSelector = class _PortSelector {
-  constructor(metricsCollector) {
+  constructor(metricsCollector, logger) {
     this.metricsCollector = metricsCollector;
+    this.logger = logger;
   }
   /**
    * Selects and instantiates the appropriate port from factories.
@@ -9332,11 +9355,10 @@ const _PortSelector = class _PortSelector {
       if (ENV.enablePerformanceTracking) {
         this.metricsCollector.recordPortSelectionFailure(version);
       }
-      if (ENV.isProduction) {
-        console.error(
-          `[${MODULE_CONSTANTS.MODULE.ID}] CRITICAL: No compatible port found for Foundry v${version}. Available versions: ${availableVersions}`
-        );
-      }
+      this.logger.error("No compatible port found", {
+        foundryVersion: version,
+        availableVersions
+      });
       return err(
         createFoundryError(
           "PORT_SELECTION_FAILED",
@@ -9352,12 +9374,11 @@ const _PortSelector = class _PortSelector {
       if (ENV.enablePerformanceTracking) {
         this.metricsCollector.recordPortSelectionFailure(version);
       }
-      if (ENV.isProduction) {
-        console.error(
-          `[${MODULE_CONSTANTS.MODULE.ID}] CRITICAL: Port v${selectedVersion} instantiation failed for Foundry v${version}`,
-          error
-        );
-      }
+      this.logger.error("Port instantiation failed", {
+        selectedVersion,
+        foundryVersion: version,
+        error
+      });
       result = err(
         createFoundryError(
           "PORT_SELECTION_FAILED",
@@ -9379,8 +9400,8 @@ const _PortSelector = class _PortSelector {
       );
       const measure = entries2.at(-1);
       if (measure && ENV.enableDebugMode) {
-        console.debug(
-          `${MODULE_CONSTANTS.LOG_PREFIX} Port selection completed in ${measure.duration.toFixed(2)}ms (selected: v${selectedVersion})`
+        this.logger.debug(
+          `Port selection completed in ${measure.duration.toFixed(2)}ms (selected: v${selectedVersion})`
         );
       }
       performance.clearMarks(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START);
@@ -9394,7 +9415,7 @@ const _PortSelector = class _PortSelector {
   }
 };
 __name(_PortSelector, "PortSelector");
-_PortSelector.dependencies = [metricsCollectorToken];
+_PortSelector.dependencies = [metricsCollectorToken, loggerToken];
 let PortSelector = _PortSelector;
 const _PortRegistry = class _PortRegistry {
   constructor() {
@@ -9549,12 +9570,13 @@ __name(_FoundryGameService, "FoundryGameService");
 _FoundryGameService.dependencies = [portSelectorToken, foundryGamePortRegistryToken];
 let FoundryGameService = _FoundryGameService;
 const _FoundryHooksService = class _FoundryHooksService {
-  constructor(portSelector, portRegistry) {
+  constructor(portSelector, portRegistry, logger) {
     this.port = null;
     this.registeredHooks = /* @__PURE__ */ new Map();
     this.callbackToIdMap = /* @__PURE__ */ new Map();
     this.portSelector = portSelector;
     this.portRegistry = portRegistry;
+    this.logger = logger;
   }
   /**
    * Lazy-loads the appropriate port based on Foundry version.
@@ -9633,7 +9655,7 @@ const _FoundryHooksService = class _FoundryHooksService {
             Hooks.off(hookName, callback);
           }
         } catch (error) {
-          console.warn(`Failed to unregister hook ${hookName} (ID: ${hookId}):`, error);
+          this.logger.warn("Failed to unregister hook", { hookName, hookId, error });
         }
       }
     }
@@ -9643,7 +9665,7 @@ const _FoundryHooksService = class _FoundryHooksService {
   }
 };
 __name(_FoundryHooksService, "FoundryHooksService");
-_FoundryHooksService.dependencies = [portSelectorToken, foundryHooksPortRegistryToken];
+_FoundryHooksService.dependencies = [portSelectorToken, foundryHooksPortRegistryToken, loggerToken];
 let FoundryHooksService = _FoundryHooksService;
 const _FoundryDocumentService = class _FoundryDocumentService {
   constructor(portSelector, portRegistry) {
@@ -10342,7 +10364,10 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
     return tryCatch(
-      () => game.settings.get(namespace, key),
+      () => (
+        /* type-coverage:ignore-next-line */
+        game.settings.get(namespace, key)
+      ),
       (error) => createFoundryError(
         "OPERATION_FAILED",
         `Failed to get setting ${namespace}.${key}`,
@@ -10356,6 +10381,7 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
     return fromPromise(
+      /* type-coverage:ignore-next-line */
       game.settings.set(
         namespace,
         key,
@@ -10740,9 +10766,10 @@ const _CompositionRoot = class _CompositionRoot {
       const entries2 = performance.getEntriesByName(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION);
       const measure = entries2.at(-1);
       if (measure && ENV.enableDebugMode) {
-        console.debug(
-          `${MODULE_CONSTANTS.LOG_PREFIX} Bootstrap completed in ${measure.duration.toFixed(2)}ms`
-        );
+        const loggerResult = container.resolveWithError(loggerToken);
+        if (loggerResult.ok) {
+          loggerResult.value.debug(`Bootstrap completed in ${measure.duration.toFixed(2)}ms`);
+        }
       }
       performance.clearMarks(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START);
       performance.clearMarks(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END);
@@ -10920,7 +10947,14 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
     const loggerResult = container.resolveWithError(loggerToken);
     const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
     if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok) {
-      console.error("Failed to resolve required services for hook registration");
+      if (loggerResult.ok) {
+        loggerResult.value.error("DI resolution failed in ModuleHookRegistrar", {
+          foundryHooksResolved: foundryHooksResult.ok,
+          journalVisibilityResolved: journalVisibilityResult.ok
+        });
+      } else {
+        console.error("Failed to resolve required services for hook registration");
+      }
       return;
     }
     const foundryHooks = foundryHooksResult.value;
@@ -11007,7 +11041,14 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     const loggerResult = container.resolveWithError(loggerToken);
     const i18nResult = container.resolveWithError(i18nFacadeToken);
     if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok) {
-      console.error("Failed to resolve required services for settings registration");
+      if (loggerResult.ok) {
+        loggerResult.value.error("DI resolution failed in ModuleSettingsRegistrar", {
+          settingsResolved: settingsResult.ok,
+          i18nResolved: i18nResult.ok
+        });
+      } else {
+        console.error("Failed to resolve required services for settings registration");
+      }
       return;
     }
     const settings = settingsResult.value;

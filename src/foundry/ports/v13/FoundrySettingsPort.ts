@@ -32,10 +32,11 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
   ): Result<void, FoundryError> {
     // Validate config before attempting registration
     const configValidation = validateSettingConfig(namespace, key, config);
-    /* c8 ignore next 3 -- Error propagation: validateSettingConfig tested in schemas.test.ts */
+    /* c8 ignore start -- Error propagation: validateSettingConfig tested in schemas.test.ts */
     if (!configValidation.ok) {
       return err(configValidation.error);
     }
+    /* c8 ignore stop */
 
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
@@ -46,6 +47,7 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
         // Type-safe cast for dynamic namespaces
         // Foundry's Settings API supports module namespaces, but fvtt-types
         // restricts namespace to "core" only
+        /* type-coverage:ignore-next-line */
         (game.settings as DynamicSettingsApi).register(namespace, key, config);
         return undefined;
       },
@@ -65,7 +67,9 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
     }
 
     return tryCatch(
-      () => (game.settings.get as (ns: string, key: string) => unknown)(namespace, key) as T,
+      () =>
+        /* type-coverage:ignore-next-line */
+        (game.settings.get as (ns: string, key: string) => unknown)(namespace, key) as T,
       (error) =>
         createFoundryError(
           "OPERATION_FAILED",
@@ -82,6 +86,7 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
     }
 
     return fromPromise(
+      /* type-coverage:ignore-next-line */
       (game.settings.set as (ns: string, key: string, val: unknown) => Promise<unknown>)(
         namespace,
         key,

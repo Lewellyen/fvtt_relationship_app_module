@@ -37,12 +37,22 @@ export class TimeoutError extends Error {
  * ```
  */
 export function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeoutHandle: NodeJS.Timeout | null = null;
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new TimeoutError(timeoutMs));
+    }, timeoutMs);
+  });
+
   return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => {
-        reject(new TimeoutError(timeoutMs));
-      }, timeoutMs);
+    promise.finally(() => {
+      // Clear timeout when promise settles (either resolves or rejects)
+      // This prevents the timeout from firing after the promise is already settled
+      if (timeoutHandle !== null) {
+        clearTimeout(timeoutHandle);
+      }
     }),
+    timeoutPromise,
   ]);
 }

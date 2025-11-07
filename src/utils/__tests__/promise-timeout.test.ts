@@ -99,6 +99,40 @@ describe("Promise Timeout Utilities", () => {
         expect((error as TimeoutError).name).toBe("TimeoutError");
       }
     });
+
+    it("should clear timeout and not cause unhandled rejection when promise resolves early", async () => {
+      // Setup: Track unhandled rejections
+      const unhandledRejections: unknown[] = [];
+      const rejectionHandler = (event: PromiseRejectionEvent): void => {
+        unhandledRejections.push(event.reason);
+      };
+      globalThis.addEventListener("unhandledrejection", rejectionHandler);
+
+      try {
+        // Promise that resolves quickly
+        const promise = new Promise((resolve) => {
+          setTimeout(() => resolve("success"), 100);
+        });
+
+        const resultPromise = withTimeout(promise, 1000);
+
+        // Advance time to resolve promise (but before timeout)
+        vi.advanceTimersByTime(100);
+        const result = await resultPromise;
+        expect(result).toBe("success");
+
+        // Now advance past the timeout point to ensure timer was cleared
+        vi.advanceTimersByTime(1000);
+
+        // Run all pending timers/promises
+        await vi.runAllTimersAsync();
+
+        // Verify no unhandled rejections occurred
+        expect(unhandledRejections).toHaveLength(0);
+      } finally {
+        globalThis.removeEventListener("unhandledrejection", rejectionHandler);
+      }
+    });
   });
 
   describe("TimeoutError", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { LogLevel } from "../environment";
+import { LogLevel, parseSamplingRate } from "../environment";
 
 describe("Environment Configuration", () => {
   beforeEach(() => {
@@ -59,6 +59,54 @@ describe("Environment Configuration", () => {
       if (ENV.isProduction) {
         expect(ENV.isDevelopment).toBe(false);
       }
+    });
+  });
+
+  describe("parseSamplingRate", () => {
+    it("should parse valid sampling rate", () => {
+      expect(parseSamplingRate("0.5", 0.01)).toBe(0.5);
+      expect(parseSamplingRate("0.01", 0.01)).toBe(0.01);
+      expect(parseSamplingRate("1.0", 0.01)).toBe(1.0);
+      expect(parseSamplingRate("0", 0.01)).toBe(0);
+    });
+
+    it("should clamp values above 1.0", () => {
+      expect(parseSamplingRate("1.5", 0.01)).toBe(1.0);
+      expect(parseSamplingRate("2.0", 0.01)).toBe(1.0);
+      expect(parseSamplingRate("100", 0.01)).toBe(1.0);
+    });
+
+    it("should clamp negative values to 0", () => {
+      expect(parseSamplingRate("-0.5", 0.01)).toBe(0);
+      expect(parseSamplingRate("-1.0", 0.01)).toBe(0);
+      expect(parseSamplingRate("-100", 0.01)).toBe(0);
+    });
+
+    it("should return fallback for NaN", () => {
+      expect(parseSamplingRate("invalid", 0.01)).toBe(0.01);
+      expect(parseSamplingRate("abc", 0.5)).toBe(0.5);
+      expect(parseSamplingRate("", 0.75)).toBe(0.75);
+    });
+
+    it("should return fallback for undefined", () => {
+      expect(parseSamplingRate(undefined, 0.01)).toBe(0.01);
+      expect(parseSamplingRate(undefined, 0.5)).toBe(0.5);
+    });
+
+    it("should return fallback for Infinity", () => {
+      expect(parseSamplingRate("Infinity", 0.01)).toBe(0.01);
+      expect(parseSamplingRate("-Infinity", 0.01)).toBe(0.01);
+    });
+
+    it("should handle edge case values", () => {
+      expect(parseSamplingRate("0.0", 0.01)).toBe(0);
+      expect(parseSamplingRate("1.0", 0.01)).toBe(1.0);
+      expect(parseSamplingRate("0.999999", 0.01)).toBeCloseTo(0.999999);
+    });
+
+    it("should handle scientific notation", () => {
+      expect(parseSamplingRate("1e-2", 0.01)).toBe(0.01);
+      expect(parseSamplingRate("5e-1", 0.01)).toBe(0.5);
     });
   });
 });

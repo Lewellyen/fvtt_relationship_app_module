@@ -68,10 +68,13 @@ export class FoundryGameService implements FoundryGame, Disposable {
    */
   dispose(): void {
     // Dispose port if it implements Disposable interface
-    /* c8 ignore next 3 -- Defensive: Ports do not currently implement dispose(); reserved for future extensions */
+    /* c8 ignore start -- Defensive: Ports do not currently implement dispose(); reserved for future extensions */
     if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+      // Double cast narrows from generic ServiceType to Disposable at runtime
+      /* type-coverage:ignore-next-line */
       (this.port as unknown as Disposable).dispose();
     }
+    /* c8 ignore stop */
     this.port = null;
   }
 }

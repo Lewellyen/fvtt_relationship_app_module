@@ -71,10 +71,11 @@ function registerPortToRegistry<T>(
   errors: string[]
 ): void {
   const result = registry.register(version, factory);
-  /* c8 ignore next 3 -- Defensive: Port registration can only fail if version is duplicate, which is controlled by hardcoded port registrations */
+  /* c8 ignore start -- Defensive: Port registration can only fail if version is duplicate, which is controlled by hardcoded port registrations */
   if (isErr(result)) {
     errors.push(`${portName} v${version}: ${result.error}`);
   }
+  /* c8 ignore stop */
 }
 
 /**
@@ -105,6 +106,14 @@ function registerFallbacks(container: ServiceContainer): void {
 
 /**
  * Registers core infrastructure services (MetricsCollector, Logger).
+ *
+ * CRITICAL INITIALIZATION ORDER:
+ * 1. MetricsCollector (no dependencies) - needed by ServiceResolver and PortSelector
+ * 2. Logger (no dependencies) - needed by PortSelector and all services
+ * 3. PortSelector (deps: [metricsCollectorToken, loggerToken]) - auto-resolved after both
+ *
+ * This order ensures no circular dependencies and that Logger is available
+ * for all console.* replacements in PortSelector and other services.
  */
 function registerCoreServices(container: ServiceContainer): Result<void, string> {
   // Register MetricsCollector (needed early for ServiceResolver and PortSelector)
@@ -114,12 +123,13 @@ function registerCoreServices(container: ServiceContainer): Result<void, string>
     ServiceLifecycle.SINGLETON
   );
 
-  /* c8 ignore next 3 -- Defensive: MetricsCollector has no dependencies and cannot fail registration */
+  /* c8 ignore start -- Defensive: MetricsCollector has no dependencies and cannot fail registration */
   if (isErr(metricsResult)) {
     return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
   }
+  /* c8 ignore stop */
 
-  // Register logger
+  // Register logger (needed by PortSelector and all services for structured logging)
   const loggerResult = container.registerClass(
     loggerToken,
     ConsoleLoggerService,
@@ -205,10 +215,11 @@ function createPortRegistries(): Result<
   );
 
   // Return early if any port registration failed
-  /* c8 ignore next 3 -- Port registration errors already tested individually; aggregation is defensive */
+  /* c8 ignore start -- Port registration errors already tested individually; aggregation is defensive */
   if (portRegistrationErrors.length > 0) {
     return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
   }
+  /* c8 ignore stop */
 
   return ok({
     gamePortRegistry,
@@ -231,10 +242,11 @@ function registerPortInfrastructure(container: ServiceContainer): Result<void, s
     ServiceLifecycle.SINGLETON
   );
 
-  /* c8 ignore next 3 -- Defensive: Class registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
+  /* c8 ignore start -- Defensive: Class registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
   if (isErr(portSelectorResult)) {
     return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
   }
+  /* c8 ignore stop */
 
   // Create port registries
   const portsResult = createPortRegistries();
@@ -262,29 +274,32 @@ function registerPortInfrastructure(container: ServiceContainer): Result<void, s
     foundryHooksPortRegistryToken,
     hooksPortRegistry
   );
-  /* c8 ignore next 5 -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
+  /* c8 ignore start -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
   if (isErr(hooksRegistryResult)) {
     return err(
       `Failed to register FoundryHooks PortRegistry: ${hooksRegistryResult.error.message}`
     );
   }
+  /* c8 ignore stop */
 
   const documentRegistryResult = container.registerValue(
     foundryDocumentPortRegistryToken,
     documentPortRegistry
   );
-  /* c8 ignore next 5 -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
+  /* c8 ignore start -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
   if (isErr(documentRegistryResult)) {
     return err(
       `Failed to register FoundryDocument PortRegistry: ${documentRegistryResult.error.message}`
     );
   }
+  /* c8 ignore stop */
 
   const uiRegistryResult = container.registerValue(foundryUIPortRegistryToken, uiPortRegistry);
-  /* c8 ignore next 3 -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
+  /* c8 ignore start -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
   if (isErr(uiRegistryResult)) {
     return err(`Failed to register FoundryUI PortRegistry: ${uiRegistryResult.error.message}`);
   }
+  /* c8 ignore stop */
 
   const settingsRegistryResult = container.registerValue(
     foundrySettingsPortRegistryToken,
@@ -300,10 +315,11 @@ function registerPortInfrastructure(container: ServiceContainer): Result<void, s
     foundryI18nPortRegistryToken,
     i18nPortRegistry
   );
-  /* c8 ignore next 3 -- Defensive: PortRegistry value registration cannot fail; tested in other registry registrations */
+  /* c8 ignore start -- Defensive: PortRegistry value registration cannot fail; tested in other registry registrations */
   if (isErr(i18nRegistryResult)) {
     return err(`Failed to register FoundryI18n PortRegistry: ${i18nRegistryResult.error.message}`);
   }
+  /* c8 ignore stop */
 
   return ok(undefined);
 }
@@ -392,10 +408,11 @@ function registerI18nServices(container: ServiceContainer): Result<void, string>
     FoundryI18nService,
     ServiceLifecycle.SINGLETON
   );
-  /* c8 ignore next 3 -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
+  /* c8 ignore start -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
   if (isErr(foundryI18nResult)) {
     return err(`Failed to register FoundryI18nService: ${foundryI18nResult.error.message}`);
   }
+  /* c8 ignore stop */
 
   // Register LocalI18nService
   const localI18nResult = container.registerClass(
@@ -403,10 +420,11 @@ function registerI18nServices(container: ServiceContainer): Result<void, string>
     LocalI18nService,
     ServiceLifecycle.SINGLETON
   );
-  /* c8 ignore next 3 -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
+  /* c8 ignore start -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
   if (isErr(localI18nResult)) {
     return err(`Failed to register LocalI18nService: ${localI18nResult.error.message}`);
   }
+  /* c8 ignore stop */
 
   // Register I18nFacadeService
   const facadeResult = container.registerClass(
@@ -414,10 +432,11 @@ function registerI18nServices(container: ServiceContainer): Result<void, string>
     I18nFacadeService,
     ServiceLifecycle.SINGLETON
   );
-  /* c8 ignore next 3 -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
+  /* c8 ignore start -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
   if (isErr(facadeResult)) {
     return err(`Failed to register I18nFacadeService: ${facadeResult.error.message}`);
   }
+  /* c8 ignore stop */
 
   return ok(undefined);
 }
@@ -427,11 +446,12 @@ function registerI18nServices(container: ServiceContainer): Result<void, string>
  */
 function validateContainer(container: ServiceContainer): Result<void, string> {
   const validateResult = container.validate();
-  /* c8 ignore next 4 -- Defensive: Validation can only fail if dependencies are missing or circular, which cannot happen with hardcoded dependency graph */
+  /* c8 ignore start -- Defensive: Validation can only fail if dependencies are missing or circular, which cannot happen with hardcoded dependency graph */
   if (isErr(validateResult)) {
     const errorMessages = validateResult.error.map((e) => e.message).join(", ");
     return err(`Validation failed: ${errorMessages}`);
   }
+  /* c8 ignore stop */
   return ok(undefined);
 }
 

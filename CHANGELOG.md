@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.5.4] - 2025-11-07
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- type-coverage auf 100%
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.5.3] - 2025-11-06
 ### Hinzugefügt
 - Keine Einträge

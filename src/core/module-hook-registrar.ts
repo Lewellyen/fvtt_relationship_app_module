@@ -12,6 +12,8 @@ import { throttle } from "@/utils/throttle";
 function isJQueryObject(value: unknown): value is { [index: number]: HTMLElement; length: number } {
   if (value === null || typeof value !== "object") return false;
 
+  // Narrow generic object to indexable record for property checks
+  /* type-coverage:ignore-next-line */
   const obj = value as Record<string, unknown>;
   return "length" in obj && typeof obj.length === "number" && obj.length > 0 && "0" in obj;
 }
@@ -33,11 +35,21 @@ export class ModuleHookRegistrar {
     const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
 
     // Early return if any resolution failed
-    /* c8 ignore next 4 -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
+    /* c8 ignore start -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
     if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok) {
-      console.error("Failed to resolve required services for hook registration");
+      // Use logger if available, otherwise fallback to console
+      if (loggerResult.ok) {
+        loggerResult.value.error("DI resolution failed in ModuleHookRegistrar", {
+          foundryHooksResolved: foundryHooksResult.ok,
+          journalVisibilityResolved: journalVisibilityResult.ok,
+        });
+      } else {
+        // Fallback only if logger itself failed to resolve
+        console.error("Failed to resolve required services for hook registration");
+      }
       return;
     }
+    /* c8 ignore stop */
 
     const foundryHooks = foundryHooksResult.value;
     const logger = loggerResult.value;
@@ -111,17 +123,21 @@ export class ModuleHookRegistrar {
 
     // Case 3: jQuery with .get() method (additional safety)
     if (html && typeof html === "object" && "get" in html) {
+      // Casting to Record enables type-safe access to get() helper for jQuery-like objects
       const obj = html as Record<string, unknown>;
       if (typeof obj.get === "function") {
         try {
+          // jQuery get returns unknown; treat as index-based accessor for HTMLElement lookup
+          /* type-coverage:ignore-next-line */
           const element = (obj.get as (index: number) => unknown)(0);
           if (element instanceof HTMLElement) {
             return element;
           }
-          /* c8 ignore next 3 -- Defensive: Ignore errors from accessing journal entry properties that may not exist */
+          /* c8 ignore start -- Defensive: Ignore errors from accessing journal entry properties that may not exist */
         } catch {
           // Intentionally empty catch block
         }
+        /* c8 ignore stop */
       }
     }
 

@@ -21,17 +21,19 @@ export class FoundryI18nPortV13 implements FoundryI18n {
    */
   localize(key: string): Result<string, FoundryError> {
     try {
-      /* c8 ignore next 3 -- Requires Foundry game globals; tested in integration tests */
+      /* c8 ignore start -- Requires Foundry game globals; tested in integration tests */
       if (typeof game === "undefined" || !game?.i18n) {
         return ok(key); // Graceful degradation: return key as-is
       }
+      /* c8 ignore stop */
 
       /* c8 ignore next -- Foundry API call; tested in integration tests */
       const translated = game.i18n.localize(key);
       return ok(translated);
     } catch {
-      /* c8 ignore next 7 -- Defensive error handling; game.i18n.localize rarely throws */
+      /* c8 ignore start -- Defensive error handling; game.i18n.localize rarely throws */
       return ok(key); // Fallback: return key on error
+      /* c8 ignore stop */
     }
   }
 
@@ -44,10 +46,11 @@ export class FoundryI18nPortV13 implements FoundryI18n {
    */
   format(key: string, data: Record<string, unknown>): Result<string, FoundryError> {
     try {
-      /* c8 ignore next 3 -- Requires Foundry game globals; tested in integration tests */
+      /* c8 ignore start -- Requires Foundry game globals; tested in integration tests */
       if (typeof game === "undefined" || !game?.i18n) {
         return ok(key); // Graceful degradation
       }
+      /* c8 ignore stop */
 
       // Convert unknown values to strings for Foundry's type requirements
       const stringData: Record<string, string> = {};
@@ -59,8 +62,9 @@ export class FoundryI18nPortV13 implements FoundryI18n {
       const formatted = game.i18n.format(key, stringData);
       return ok(formatted);
     } catch {
-      /* c8 ignore next 7 -- Defensive error handling; game.i18n.format rarely throws */
+      /* c8 ignore start -- Defensive error handling; game.i18n.format rarely throws */
       return ok(key); // Fallback: return key on error
+      /* c8 ignore stop */
     }
   }
 
@@ -72,17 +76,19 @@ export class FoundryI18nPortV13 implements FoundryI18n {
    */
   has(key: string): Result<boolean, FoundryError> {
     try {
-      /* c8 ignore next 3 -- Requires Foundry game globals; tested in integration tests */
+      /* c8 ignore start -- Requires Foundry game globals; tested in integration tests */
       if (typeof game === "undefined" || !game?.i18n) {
         return ok(false); // No game.i18n available → key doesn't exist
       }
+      /* c8 ignore stop */
 
       /* c8 ignore next -- Foundry API call; tested in integration tests */
       const exists = game.i18n.has(key);
       return ok(exists);
     } catch {
-      /* c8 ignore next 7 -- Defensive error handling */
+      /* c8 ignore start -- Defensive error handling */
       return ok(false); // Fallback: assume key doesn't exist on error
+      /* c8 ignore stop */
     }
   }
 }

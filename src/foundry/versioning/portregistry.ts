@@ -91,12 +91,14 @@ export class PortRegistry<T> {
     }
 
     const selectedVersion = compatibleVersions[0];
-    /* c8 ignore next 3 -- Defensive check: selectedVersion cannot be undefined after compatibleVersions length check */
+    /* c8 ignore start -- Defensive check: selectedVersion cannot be undefined after compatibleVersions length check */
     if (selectedVersion === undefined) {
       return err(createFoundryError("PORT_NOT_FOUND", "No compatible version found", { version }));
     }
+    /* c8 ignore stop */
+    // Version list is sorted descending; index 0 exists so subsequent factory lookup is safe
     const factory = this.factories.get(selectedVersion);
-    /* c8 ignore next 7 -- Defensive check: factory cannot be undefined after selectedVersion is validated from compatibleVersions */
+    /* c8 ignore start -- Defensive check: factory cannot be undefined after selectedVersion is validated from compatibleVersions */
     if (!factory) {
       return err(
         createFoundryError("PORT_NOT_FOUND", `Factory not found for version ${selectedVersion}`, {
@@ -104,6 +106,7 @@ export class PortRegistry<T> {
         })
       );
     }
+    /* c8 ignore stop */
     return ok(factory());
   }
 
@@ -122,6 +125,8 @@ export class PortRegistry<T> {
    */
   getHighestVersion(): number | undefined {
     const versions = this.getAvailableVersions();
+    // getAvailableVersions returns a sorted array; when non-empty last element is defined
+    /* type-coverage:ignore-next-line */
     return versions.length > 0 ? versions[versions.length - 1]! : undefined;
   }
 }

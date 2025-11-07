@@ -39,6 +39,8 @@ export function getTraceTimestamp(traceId: string): number | null {
     return null;
   }
 
+  // parts[0] is defined because we bail out when array length isn't exactly two
+  /* type-coverage:ignore-next-line */
   const timestamp = parseInt(parts[0]!, 10);
   return isNaN(timestamp) ? null : timestamp;
 }

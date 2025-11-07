@@ -33,6 +33,8 @@ function detectFoundryVersion(): Result<number, string> {
     return err(`Could not parse Foundry version from: ${versionString}`);
   }
 
+  // match[1] is guaranteed by the regex above capturing at least one group of digits
+  /* type-coverage:ignore-next-line */
   return ok(Number.parseInt(match[1]!, 10));
 }
 

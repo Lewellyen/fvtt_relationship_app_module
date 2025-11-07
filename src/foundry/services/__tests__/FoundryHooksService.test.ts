@@ -4,10 +4,12 @@ import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { ok, err } from "@/utils/result";
+import type { Logger } from "@/interfaces/logger";
 import {
   expectResultOk,
   expectResultErr,
   createMockMetricsCollector,
+  createMockLogger,
 } from "@/test/utils/test-helpers";
 
 describe("FoundryHooksService", () => {
@@ -15,12 +17,15 @@ describe("FoundryHooksService", () => {
   let mockRegistry: PortRegistry<FoundryHooks>;
   let mockSelector: PortSelector;
   let mockPort: FoundryHooks;
+  let mockLogger: Logger;
 
   beforeEach(() => {
     // Mock game object for version detection
     vi.stubGlobal("game", {
       version: "13.291",
     });
+
+    mockLogger = createMockLogger();
 
     mockPort = {
       on: vi.fn().mockReturnValue(ok(1)),
@@ -31,10 +36,10 @@ describe("FoundryHooksService", () => {
     mockRegistry = new PortRegistry<FoundryHooks>();
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
-    mockSelector = new PortSelector(createMockMetricsCollector());
+    mockSelector = new PortSelector(createMockMetricsCollector(), mockLogger);
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
-    service = new FoundryHooksService(mockSelector, mockRegistry);
+    service = new FoundryHooksService(mockSelector, mockRegistry, mockLogger);
   });
 
   afterEach(() => {
@@ -59,13 +64,13 @@ describe("FoundryHooksService", () => {
     });
 
     it("should propagate port selection errors", () => {
-      const failingSelector = new PortSelector(createMockMetricsCollector());
+      const failingSelector = new PortSelector(createMockMetricsCollector(), mockLogger);
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryHooksService(failingSelector, mockRegistry);
+      const failingService = new FoundryHooksService(failingSelector, mockRegistry, mockLogger);
 
       const callback = vi.fn();
       const result = failingService.on("init", callback);
@@ -229,13 +234,13 @@ describe("FoundryHooksService", () => {
 
   describe("Version Detection Failures", () => {
     it("should handle port selector errors", () => {
-      const failingSelector = new PortSelector(createMockMetricsCollector());
+      const failingSelector = new PortSelector(createMockMetricsCollector(), mockLogger);
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "No compatible port found",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryHooksService(failingSelector, mockRegistry);
+      const failingService = new FoundryHooksService(failingSelector, mockRegistry, mockLogger);
 
       const callback = vi.fn();
       const result = failingService.on("init", callback);
@@ -299,13 +304,13 @@ describe("FoundryHooksService", () => {
 
   describe("Port Error Branches", () => {
     it("should handle port selection failure in once", () => {
-      const failingSelector = new PortSelector(createMockMetricsCollector());
+      const failingSelector = new PortSelector(createMockMetricsCollector(), mockLogger);
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryHooksService(failingSelector, mockRegistry);
+      const failingService = new FoundryHooksService(failingSelector, mockRegistry, mockLogger);
 
       const callback = vi.fn();
       const result = failingService.once("init", callback);
@@ -315,13 +320,13 @@ describe("FoundryHooksService", () => {
     });
 
     it("should handle port selection failure in off", () => {
-      const failingSelector = new PortSelector(createMockMetricsCollector());
+      const failingSelector = new PortSelector(createMockMetricsCollector(), mockLogger);
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryHooksService(failingSelector, mockRegistry);
+      const failingService = new FoundryHooksService(failingSelector, mockRegistry, mockLogger);
 
       const result = failingService.off("init", 1);
 

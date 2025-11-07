@@ -134,6 +134,20 @@ describe("Retry Utilities", () => {
       }
       expect(fn).not.toHaveBeenCalled();
     });
+
+    it("should use default mapException when options object provided without mapException", async () => {
+      const fn = vi.fn().mockRejectedValue(new Error("Network timeout"));
+
+      const result = await withRetry(fn, { maxAttempts: 2, delayMs: 10 });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        // Default mapException casts error as ErrorType (Error in this case)
+        expect(result.error).toBeInstanceOf(Error);
+        expect((result.error as Error).message).toBe("Network timeout");
+      }
+      expect(fn).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("withRetrySync", () => {
@@ -211,6 +225,22 @@ describe("Retry Utilities", () => {
         expect(result.error).toContain("maxAttempts must be >= 1");
       }
       expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("should use default mapException when options object provided without mapException", () => {
+      const fn = vi.fn().mockImplementation(() => {
+        throw new Error("Sync parse error");
+      });
+
+      const result = withRetrySync(fn, { maxAttempts: 2 });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        // Default mapException casts error as ErrorType (Error in this case)
+        expect(result.error).toBeInstanceOf(Error);
+        expect((result.error as Error).message).toBe("Sync parse error");
+      }
+      expect(fn).toHaveBeenCalledTimes(2);
     });
   });
 

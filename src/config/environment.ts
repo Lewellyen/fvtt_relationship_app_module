@@ -39,6 +39,21 @@ export interface EnvironmentConfig {
 }
 
 /**
+ * Safely parses a sampling rate from an environment variable.
+ * Ensures the value is a valid number between 0 and 1.
+ *
+ * @param envValue - Environment variable value to parse
+ * @param fallback - Fallback value if parsing fails
+ * @returns Valid sampling rate between 0.0 and 1.0
+ * @internal Exported for testing
+ */
+export function parseSamplingRate(envValue: string | undefined, fallback: number): number {
+  const raw = parseFloat(envValue ?? String(fallback));
+  // Check if valid number and clamp to [0, 1] range
+  return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback;
+}
+
+/**
  * Current environment configuration.
  * Reads from Vite environment variables (import.meta.env).
  */
@@ -51,6 +66,6 @@ export const ENV: EnvironmentConfig = {
   // 1% sampling in production, 100% in development
   performanceSamplingRate:
     import.meta.env.MODE === "production"
-      ? parseFloat(import.meta.env.VITE_PERF_SAMPLING_RATE ?? "0.01")
+      ? parseSamplingRate(import.meta.env.VITE_PERF_SAMPLING_RATE, 0.01)
       : 1.0,
 };

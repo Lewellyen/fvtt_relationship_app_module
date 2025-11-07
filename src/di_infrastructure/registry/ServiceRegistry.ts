@@ -60,6 +60,8 @@ export class ServiceRegistry {
     if (!this.lifecycleIndex.has(lifecycle)) {
       this.lifecycleIndex.set(lifecycle, new Set());
     }
+    // Set is created above when absent; bang is safe for subsequent access
+    /* type-coverage:ignore-next-line */
     this.lifecycleIndex.get(lifecycle)!.add(token);
   }
 
@@ -103,10 +105,11 @@ export class ServiceRegistry {
       serviceClass
     );
 
-    /* c8 ignore next 3 -- ServiceRegistration.createClass validation tested in serviceregistration.test.ts; error propagation complex to test */
+    /* c8 ignore start -- ServiceRegistration.createClass validation tested in serviceregistration.test.ts; error propagation complex to test */
     if (isErr(registrationResult)) {
       return registrationResult;
     }
+    /* c8 ignore stop */
 
     this.registrations.set(token, registrationResult.value);
     this.updateLifecycleIndex(token, lifecycle);
@@ -149,10 +152,11 @@ export class ServiceRegistry {
     // Use static factory method for validation
     const registrationResult = ServiceRegistration.createFactory(lifecycle, dependencies, factory);
 
-    /* c8 ignore next 3 -- ServiceRegistration.createFactory validation tested in serviceregistration.test.ts; error propagation complex to test */
+    /* c8 ignore start -- ServiceRegistration.createFactory validation tested in serviceregistration.test.ts; error propagation complex to test */
     if (isErr(registrationResult)) {
       return registrationResult;
     }
+    /* c8 ignore stop */
 
     this.registrations.set(token, registrationResult.value);
     this.updateLifecycleIndex(token, lifecycle);
@@ -191,10 +195,11 @@ export class ServiceRegistry {
     // Use static factory method for validation (includes function check)
     const registrationResult = ServiceRegistration.createValue(value);
 
-    /* c8 ignore next 3 -- ServiceRegistration.createValue validation tested in serviceregistration.test.ts; error propagation complex to test */
+    /* c8 ignore start -- ServiceRegistration.createValue validation tested in serviceregistration.test.ts; error propagation complex to test */
     if (isErr(registrationResult)) {
       return registrationResult;
     }
+    /* c8 ignore stop */
 
     this.registrations.set(token, registrationResult.value);
     this.updateLifecycleIndex(token, ServiceLifecycle.SINGLETON); // Values are always SINGLETON
@@ -233,10 +238,11 @@ export class ServiceRegistry {
     // Use static factory method for validation
     const registrationResult = ServiceRegistration.createAlias(targetToken);
 
-    /* c8 ignore next 3 -- ServiceRegistration.createAlias validation tested in serviceregistration.test.ts; error propagation complex to test */
+    /* c8 ignore start -- ServiceRegistration.createAlias validation tested in serviceregistration.test.ts; error propagation complex to test */
     if (isErr(registrationResult)) {
       return registrationResult;
     }
+    /* c8 ignore stop */
 
     this.registrations.set(aliasToken, registrationResult.value);
     return ok(undefined);

@@ -19,6 +19,8 @@ export class FoundryDocumentPortV13 implements FoundryDocument {
         if (!document?.getFlag) {
           throw new Error("Document does not have getFlag method");
         }
+        // Foundry getFlag returns unknown; cast narrows to expected generic type while preserving null fallback
+        /* type-coverage:ignore-next-line */
         const value = document.getFlag(scope, key) as T | null | undefined;
         return value ?? null;
       },

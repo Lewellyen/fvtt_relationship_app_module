@@ -7,7 +7,8 @@ import { ENV } from "@/config/environment";
 import { PERFORMANCE_MARKS } from "@/core/performance-constants";
 import { MODULE_CONSTANTS } from "@/constants";
 import type { MetricsCollector } from "@/observability/metrics-collector";
-import { metricsCollectorToken } from "@/tokens/tokenindex";
+import type { Logger } from "@/interfaces/logger";
+import { metricsCollectorToken, loggerToken } from "@/tokens/tokenindex";
 
 /**
  * Factory function type for creating port instances.
@@ -23,9 +24,12 @@ export type PortFactory<T> = () => T;
  * - Never uses ports with version number higher than current Foundry version
  */
 export class PortSelector {
-  static dependencies = [metricsCollectorToken] as const;
+  static dependencies = [metricsCollectorToken, loggerToken] as const;
 
-  constructor(private readonly metricsCollector: MetricsCollector) {}
+  constructor(
+    private readonly metricsCollector: MetricsCollector,
+    private readonly logger: Logger
+  ) {}
   /**
    * Selects and instantiates the appropriate port from factories.
    *
@@ -127,18 +131,17 @@ export class PortSelector {
         .join(", ");
 
       // Track port selection failure
-      /* c8 ignore next 3 -- Performance tracking is optional feature flag tested in integration tests */
+      /* c8 ignore start -- Performance tracking is optional feature flag tested in integration tests */
       if (ENV.enablePerformanceTracking) {
         this.metricsCollector.recordPortSelectionFailure(version);
       }
+      /* c8 ignore stop */
 
-      // Log critical error in production for diagnostics
-      /* c8 ignore next 5 -- Production logging only active when ENV.isProduction is true (not in tests) */
-      if (ENV.isProduction) {
-        console.error(
-          `[${MODULE_CONSTANTS.MODULE.ID}] CRITICAL: No compatible port found for Foundry v${version}. Available versions: ${availableVersions}`
-        );
-      }
+      // Log critical error for diagnostics
+      this.logger.error("No compatible port found", {
+        foundryVersion: version,
+        availableVersions,
+      });
 
       return err(
         createFoundryError(
@@ -159,14 +162,12 @@ export class PortSelector {
         this.metricsCollector.recordPortSelectionFailure(version);
       }
 
-      // Log critical error in production for diagnostics
-      /* c8 ignore next 6 -- Production logging only active when ENV.isProduction is true (not in tests) */
-      if (ENV.isProduction) {
-        console.error(
-          `[${MODULE_CONSTANTS.MODULE.ID}] CRITICAL: Port v${selectedVersion} instantiation failed for Foundry v${version}`,
-          error
-        );
-      }
+      // Log critical error for diagnostics
+      this.logger.error("Port instantiation failed", {
+        selectedVersion,
+        foundryVersion: version,
+        error,
+      });
 
       result = err(
         createFoundryError(
@@ -194,8 +195,8 @@ export class PortSelector {
       const measure = entries.at(-1);
 
       if (measure && ENV.enableDebugMode) {
-        console.debug(
-          `${MODULE_CONSTANTS.LOG_PREFIX} Port selection completed in ${measure.duration.toFixed(2)}ms (selected: v${selectedVersion})`
+        this.logger.debug(
+          `Port selection completed in ${measure.duration.toFixed(2)}ms (selected: v${selectedVersion})`
         );
       }
 
