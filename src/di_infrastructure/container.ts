@@ -277,16 +277,23 @@ export class ServiceContainer implements Container {
   }
 
   /**
-   * Injects MetricsCollector into resolver and cache after validation.
+   * Injects MetricsCollector and EnvironmentConfig into resolver and cache after validation.
    * This enables performance tracking without circular dependencies during bootstrap.
    */
   private async injectMetricsCollector(): Promise<void> {
     // Dynamic import to avoid circular dependency during module loading
-    const { metricsCollectorToken } = await import("../tokens/tokenindex.js");
+    const { metricsCollectorToken, environmentConfigToken } = await import(
+      "../tokens/tokenindex.js"
+    );
     const metricsResult = this.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
       this.resolver.setMetricsCollector(metricsResult.value);
       this.cache.setMetricsCollector(metricsResult.value);
+    }
+
+    const envResult = this.resolveWithError(environmentConfigToken);
+    if (envResult.ok) {
+      this.resolver.setEnvironmentConfig(envResult.value);
     }
   }
 

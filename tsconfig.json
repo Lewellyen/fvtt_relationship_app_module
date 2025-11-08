@@ -33,7 +33,9 @@
     "src/**/*.svelte",
     "src/**/*.svelte.ts",
     "templates/**/*.hbs",
-    "vite.config.ts"
-, "programming_learning_examples"  ],
+    "vite.config.ts",
+    "svelte.config.js",
+    "programming_learning_examples"
+  ],
   "exclude": ["node_modules/**/*"]
 }

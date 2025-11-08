@@ -1,7 +1,8 @@
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import type { ServiceType } from "@/types/servicetypeindex";
 import { METRICS_CONFIG } from "@/constants";
-import { ENV } from "@/config/environment";
+import type { EnvironmentConfig } from "@/config/environment";
+import { environmentConfigToken } from "@/tokens/tokenindex";
 
 /**
  * Snapshot of current metrics data.
@@ -44,7 +45,7 @@ export interface MetricsSnapshot {
  * ```
  */
 export class MetricsCollector {
-  static dependencies = [] as const;
+  static dependencies = [environmentConfigToken] as const;
 
   private metrics = {
     containerResolutions: 0,
@@ -61,8 +62,8 @@ export class MetricsCollector {
   private resolutionTimesCount = 0;
   private readonly MAX_RESOLUTION_TIMES = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
 
-  constructor() {
-    // Public constructor for DI
+  constructor(private readonly env: EnvironmentConfig) {
+    // ENV injected via DI for better testability and DIP compliance
   }
 
   /**
@@ -142,14 +143,14 @@ export class MetricsCollector {
   shouldSample(): boolean {
     // Always sample in development mode
     /* c8 ignore start -- Development mode always returns true; tested implicitly in all metrics tests */
-    if (ENV.isDevelopment) {
+    if (this.env.isDevelopment) {
       return true;
     }
     /* c8 ignore stop */
 
     // Probabilistic sampling in production based on configured rate
     /* c8 ignore start -- Production sampling: Math.random() behavior tested in shouldSample tests */
-    return Math.random() < ENV.performanceSamplingRate;
+    return Math.random() < this.env.performanceSamplingRate;
     /* c8 ignore stop */
   }
 

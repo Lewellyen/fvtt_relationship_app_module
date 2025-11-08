@@ -33,8 +33,8 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
   private readonly portRegistry: PortRegistry<FoundryHooks>;
   private readonly logger: Logger;
   private registeredHooks = new Map<string, Map<number, FoundryHookCallback>>();
-  // Bidirectional mapping: callback function -> hook ID (for off() with callback variant)
-  private callbackToIdMap = new Map<FoundryHookCallback, { hookName: string; id: number }>();
+  // Bidirectional mapping: callback function -> array of hook registrations (supports reused callbacks)
+  private callbackToIdMap = new Map<FoundryHookCallback, Array<{ hookName: string; id: number }>>();
 
   constructor(
     portSelector: PortSelector,
@@ -61,7 +61,11 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
       const factories = this.portRegistry.getFactories();
 
       // Use PortSelector with factory-based selection
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        undefined,
+        "FoundryHooks"
+      );
       if (!portResult.ok) {
         return portResult;
       }
@@ -85,7 +89,11 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
       // Hook map is created above when missing; bang assertion is safe
       /* type-coverage:ignore-next-line */
       this.registeredHooks.get(hookName)!.set(result.value, callback);
-      this.callbackToIdMap.set(callback, { hookName, id: result.value });
+
+      // Support multiple registrations of the same callback
+      const existing = this.callbackToIdMap.get(callback) || [];
+      existing.push({ hookName, id: result.value });
+      this.callbackToIdMap.set(callback, existing);
     }
 
     return result;
@@ -114,20 +122,43 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
         if (hooks) {
           const callback = hooks.get(callbackOrId);
           hooks.delete(callbackOrId);
-          // Clean up bidirectional mapping
+          // Clean up bidirectional mapping - remove only this specific registration
           if (callback) {
-            this.callbackToIdMap.delete(callback);
+            const hookInfos = this.callbackToIdMap.get(callback);
+            if (hookInfos) {
+              const filtered = hookInfos.filter(
+                (info) => !(info.hookName === hookName && info.id === callbackOrId)
+              );
+              if (filtered.length === 0) {
+                this.callbackToIdMap.delete(callback);
+              } else {
+                this.callbackToIdMap.set(callback, filtered);
+              }
+            }
           }
         }
       } else {
-        // Callback variant: lookup ID via callbackToIdMap
-        const hookInfo = this.callbackToIdMap.get(callbackOrId);
-        if (hookInfo) {
-          const hooks = this.registeredHooks.get(hookInfo.hookName);
+        // Callback variant: lookup all registrations for this hookName via callbackToIdMap
+        const hookInfos = this.callbackToIdMap.get(callbackOrId);
+        if (hookInfos) {
+          // Find all registrations for this specific hookName
+          const matchingInfos = hookInfos.filter((info) => info.hookName === hookName);
+
+          // Remove from registeredHooks
+          const hooks = this.registeredHooks.get(hookName);
           if (hooks) {
-            hooks.delete(hookInfo.id);
+            for (const info of matchingInfos) {
+              hooks.delete(info.id);
+            }
           }
-          this.callbackToIdMap.delete(callbackOrId);
+
+          // Update callbackToIdMap - keep registrations for other hooks
+          const filtered = hookInfos.filter((info) => info.hookName !== hookName);
+          if (filtered.length === 0) {
+            this.callbackToIdMap.delete(callbackOrId);
+          } else {
+            this.callbackToIdMap.set(callbackOrId, filtered);
+          }
         }
       }
     }
@@ -140,17 +171,22 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
    * Called automatically when the container is disposed.
    */
   dispose(): void {
-    for (const [hookName, hookMap] of this.registeredHooks) {
-      for (const [hookId, callback] of hookMap) {
+    // Iterate through all callbacks and their registrations
+    for (const [callback, hookInfos] of this.callbackToIdMap) {
+      for (const info of hookInfos) {
         try {
           if (typeof Hooks !== "undefined") {
             // Type-safe cast for dynamic hook names
             // Foundry's Hooks API supports dynamic hook names, but fvtt-types
             // has strict keyof HookConfig typing that doesn't allow runtime strings
-            (Hooks as DynamicHooksApi).off(hookName, callback);
+            (Hooks as DynamicHooksApi).off(info.hookName, callback);
           }
         } catch (error) {
-          this.logger.warn("Failed to unregister hook", { hookName, hookId, error });
+          this.logger.warn("Failed to unregister hook", {
+            hookName: info.hookName,
+            hookId: info.id,
+            error,
+          });
         }
       }
     }

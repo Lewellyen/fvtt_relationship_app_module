@@ -3,7 +3,7 @@
  * Prevents leaking sensitive information in error messages.
  */
 
-import { ENV } from "@/config/environment";
+import type { EnvironmentConfig } from "@/config/environment";
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
 
 /**
@@ -16,6 +16,7 @@ import type { ContainerError } from "@/di_infrastructure/interfaces/containererr
  *
  * In development mode, returns error unchanged for debugging.
  *
+ * @param env - Environment configuration (injected for DIP compliance)
  * @param error - The container error to sanitize
  * @returns Sanitized error safe for production logging
  *
@@ -23,14 +24,17 @@ import type { ContainerError } from "@/di_infrastructure/interfaces/containererr
  * ```typescript
  * const result = container.resolve(token);
  * if (!result.ok) {
- *   const safeError = sanitizeErrorForProduction(result.error);
+ *   const safeError = sanitizeErrorForProduction(env, result.error);
  *   ui.notifications.error(safeError.message);
  * }
  * ```
  */
-export function sanitizeErrorForProduction(error: ContainerError): ContainerError {
+export function sanitizeErrorForProduction(
+  env: EnvironmentConfig,
+  error: ContainerError
+): ContainerError {
   // In development, return full error details for debugging
-  if (!ENV.isProduction) {
+  if (!env.isProduction) {
     return error;
   }
 
@@ -47,11 +51,12 @@ export function sanitizeErrorForProduction(error: ContainerError): ContainerErro
  *
  * Removes stack traces and detailed error messages in production.
  *
+ * @param env - Environment configuration (injected for DIP compliance)
  * @param message - The error message to sanitize
  * @returns Sanitized message
  */
-export function sanitizeMessageForProduction(message: string): string {
-  if (!ENV.isProduction) {
+export function sanitizeMessageForProduction(env: EnvironmentConfig, message: string): string {
+  if (!env.isProduction) {
     return message;
   }
 

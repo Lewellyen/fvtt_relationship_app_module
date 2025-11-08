@@ -44,7 +44,7 @@ export const MODULE_CONSTANTS = {
     AUTHOR_EMAIL: "forenadmin.tir@gmail.com",
     AUTHOR_DISCORD: "lewellyen",
   },
-  LOG_PREFIX: "Foundry VTT Relationship App Module |",
+  LOG_PREFIX: "Relationship App |",
   FLAGS: {
     HIDDEN: "hidden",
   },

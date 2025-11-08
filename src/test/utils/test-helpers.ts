@@ -3,6 +3,8 @@ import type { Result, Ok, Err } from "@/types/result";
 import { createMockGame, createMockHooks, createMockUI } from "../mocks/foundry";
 import { MetricsCollector } from "@/observability/metrics-collector";
 import type { Logger } from "@/interfaces/logger";
+import type { EnvironmentConfig } from "@/config/environment";
+import { LogLevel } from "@/config/environment";
 
 /**
  * Type-safe Result assertion helpers
@@ -96,11 +98,31 @@ export function createMockDOM(
 }
 
 /**
+ * Creates a mock EnvironmentConfig for testing.
+ * @param overrides - Optional overrides for specific config values
+ * @returns A mock EnvironmentConfig
+ */
+export function createMockEnvironmentConfig(
+  overrides?: Partial<EnvironmentConfig>
+): EnvironmentConfig {
+  return {
+    isDevelopment: true,
+    isProduction: false,
+    logLevel: LogLevel.DEBUG,
+    enablePerformanceTracking: true,
+    enableDebugMode: true,
+    performanceSamplingRate: 1.0,
+    ...overrides,
+  };
+}
+
+/**
  * Creates a mock MetricsCollector for testing.
+ * @param env - Optional EnvironmentConfig (uses mock if not provided)
  * @returns A new MetricsCollector instance
  */
-export function createMockMetricsCollector(): MetricsCollector {
-  return new MetricsCollector();
+export function createMockMetricsCollector(env?: EnvironmentConfig): MetricsCollector {
+  return new MetricsCollector(env ?? createMockEnvironmentConfig());
 }
 
 /**

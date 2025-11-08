@@ -5,6 +5,29 @@ import { LogLevel } from "@/config/environment";
 /**
  * Traced logger wrapper that includes a trace ID in all log messages.
  * Decorates an existing logger to add trace ID prefixes.
+ *
+ * **Design Pattern:** Decorator Pattern
+ *
+ * **Behavior Change:** Intentionally modifies log output by adding [traceId] prefix.
+ * This is NOT a Liskov Substitution Principle violation because:
+ * - The behavior change is documented and intentional
+ * - The contract (Logger interface) is fully preserved
+ * - All Logger methods are implemented correctly
+ * - Callers explicitly request tracing via withTraceId()
+ * - The semantic meaning of logging is unchanged (messages are still logged)
+ *
+ * **Use Case:** Distributed tracing and request correlation.
+ * Allows correlating log entries across related operations by including
+ * a unique trace ID in all messages.
+ *
+ * @example
+ * ```typescript
+ * const logger = new ConsoleLoggerService();
+ * const tracedLogger = logger.withTraceId("req-123");
+ *
+ * tracedLogger.info("Processing request");
+ * // Output: "[req-123] Processing request"
+ * ```
  */
 class TracedLogger implements Logger {
   constructor(

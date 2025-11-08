@@ -3,12 +3,12 @@ import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { err, ok } from "@/utils/result";
 import { getFoundryVersionResult } from "./versiondetector";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
-import { ENV } from "@/config/environment";
-import { PERFORMANCE_MARKS } from "@/core/performance-constants";
 import { MODULE_CONSTANTS } from "@/constants";
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import type { Logger } from "@/interfaces/logger";
-import { metricsCollectorToken, loggerToken } from "@/tokens/tokenindex";
+import type { EnvironmentConfig } from "@/config/environment";
+import { metricsCollectorToken, loggerToken, environmentConfigToken } from "@/tokens/tokenindex";
+import { withPerformanceTracking } from "@/utils/performance-utils";
 
 /**
  * Factory function type for creating port instances.
@@ -24,11 +24,12 @@ export type PortFactory<T> = () => T;
  * - Never uses ports with version number higher than current Foundry version
  */
 export class PortSelector {
-  static dependencies = [metricsCollectorToken, loggerToken] as const;
+  static dependencies = [metricsCollectorToken, loggerToken, environmentConfigToken] as const;
 
   constructor(
     private readonly metricsCollector: MetricsCollector,
-    private readonly logger: Logger
+    private readonly logger: Logger,
+    private readonly env: EnvironmentConfig
   ) {}
   /**
    * Selects and instantiates the appropriate port from factories.
@@ -56,161 +57,141 @@ export class PortSelector {
    */
   selectPortFromFactories<T>(
     factories: Map<number, PortFactory<T>>,
-    foundryVersion?: number
+    foundryVersion?: number,
+    adapterName?: string
   ): Result<T, FoundryError> {
-    // Performance tracking (only in debug/performance mode)
-    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START);
-    }
+    return withPerformanceTracking(
+      this.env,
+      this.metricsCollector,
+      () => {
+        // Use central version detection
+        let version: number;
+        if (foundryVersion !== undefined) {
+          version = foundryVersion;
+        } else {
+          const versionResult = getFoundryVersionResult();
+          if (!versionResult.ok) {
+            const result = err(
+              createFoundryError(
+                "PORT_SELECTION_FAILED",
+                "Could not determine Foundry version",
+                undefined,
+                versionResult.error
+              )
+            );
+            return {
+              result,
+              selectedVersion: MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED,
+            };
+          }
+          version = versionResult.value;
+        }
 
-    // Use central version detection
-    let version: number;
-    if (foundryVersion !== undefined) {
-      version = foundryVersion;
-    } else {
-      const versionResult = getFoundryVersionResult();
-      if (!versionResult.ok) {
-        return err(
-          createFoundryError(
-            "PORT_SELECTION_FAILED",
-            "Could not determine Foundry version",
-            undefined,
-            versionResult.error
-          )
-        );
+        /**
+         * Version Matching Algorithm: Find highest compatible port
+         *
+         * Strategy: Greedy selection of the newest compatible port version
+         *
+         * Rules:
+         * 1. Never select a port with version > current Foundry version
+         *    (prevents using APIs that don't exist yet)
+         * 2. Select the highest port version that is <= Foundry version
+         *    (use the newest compatible implementation)
+         *
+         * Example Scenarios:
+         * - Foundry v13 + Ports [v12, v13, v14] → Select v13 (exact match)
+         * - Foundry v14 + Ports [v12, v13] → Select v13 (fallback to highest compatible)
+         * - Foundry v13 + Ports [v14, v15] → ERROR (no compatible port, all too new)
+         * - Foundry v20 + Ports [v13, v14] → Select v14 (future-proof fallback)
+         *
+         * Time Complexity: O(n) where n = number of registered ports
+         * Space Complexity: O(1)
+         *
+         * Note: This algorithm assumes ports are forward-compatible within reason.
+         * A v13 port should work on v14+ unless breaking API changes occur.
+         */
+        let selectedFactory: PortFactory<T> | undefined;
+        let selectedVersion: number = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
+
+        // Linear search for highest compatible version
+        // Could be optimized with sorted array + binary search, but n is typically small (2-5 ports)
+        for (const [portVersion, factory] of factories.entries()) {
+          // Rule 1: Skip ports newer than current Foundry version
+          // These ports may use APIs that don't exist yet → runtime crashes
+          if (portVersion > version) {
+            continue; // Incompatible (too new)
+          }
+
+          // Rule 2: Greedy selection - always prefer higher version numbers
+          // Track the highest compatible version seen so far
+          if (portVersion > selectedVersion) {
+            selectedVersion = portVersion;
+            selectedFactory = factory;
+          }
+        }
+
+        if (selectedFactory === undefined) {
+          const availableVersions = Array.from(factories.keys())
+            .sort((a, b) => a - b)
+            .join(", ");
+
+          // Track port selection failure
+          this.metricsCollector.recordPortSelectionFailure(version);
+
+          // Log critical error for diagnostics
+          this.logger.error("No compatible port found", {
+            foundryVersion: version,
+            availableVersions,
+          });
+
+          const result = err(
+            createFoundryError(
+              "PORT_SELECTION_FAILED",
+              `No compatible port found for Foundry version ${version}`,
+              { version, availableVersions: availableVersions || "none" }
+            )
+          );
+          return { result, selectedVersion: MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED };
+        }
+
+        // CRITICAL: Only now instantiate the selected port
+        let result: Result<T, FoundryError>;
+        try {
+          result = ok(selectedFactory());
+        } catch (error) {
+          // Track instantiation failure
+          this.metricsCollector.recordPortSelectionFailure(version);
+
+          // Log critical error for diagnostics
+          this.logger.error("Port instantiation failed", {
+            selectedVersion,
+            foundryVersion: version,
+            error,
+          });
+
+          result = err(
+            createFoundryError(
+              "PORT_SELECTION_FAILED",
+              `Failed to instantiate port v${selectedVersion}`,
+              { selectedVersion },
+              error
+            )
+          );
+        }
+
+        return { result, selectedVersion };
+      },
+      (duration, { result, selectedVersion }) => {
+        // Log debug message if successful and debug mode is enabled
+        if (result && result.ok) {
+          if (this.env.enableDebugMode) {
+            this.logger.debug(
+              `Port selection completed in ${duration.toFixed(2)}ms (selected: v${selectedVersion}${adapterName ? ` for ${adapterName}` : ""})`
+            );
+          }
+          this.metricsCollector.recordPortSelection(selectedVersion);
+        }
       }
-      version = versionResult.value;
-    }
-
-    /**
-     * Version Matching Algorithm: Find highest compatible port
-     *
-     * Strategy: Greedy selection of the newest compatible port version
-     *
-     * Rules:
-     * 1. Never select a port with version > current Foundry version
-     *    (prevents using APIs that don't exist yet)
-     * 2. Select the highest port version that is <= Foundry version
-     *    (use the newest compatible implementation)
-     *
-     * Example Scenarios:
-     * - Foundry v13 + Ports [v12, v13, v14] → Select v13 (exact match)
-     * - Foundry v14 + Ports [v12, v13] → Select v13 (fallback to highest compatible)
-     * - Foundry v13 + Ports [v14, v15] → ERROR (no compatible port, all too new)
-     * - Foundry v20 + Ports [v13, v14] → Select v14 (future-proof fallback)
-     *
-     * Time Complexity: O(n) where n = number of registered ports
-     * Space Complexity: O(1)
-     *
-     * Note: This algorithm assumes ports are forward-compatible within reason.
-     * A v13 port should work on v14+ unless breaking API changes occur.
-     */
-    let selectedFactory: PortFactory<T> | undefined;
-    let selectedVersion: number = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
-
-    // Linear search for highest compatible version
-    // Could be optimized with sorted array + binary search, but n is typically small (2-5 ports)
-    for (const [portVersion, factory] of factories.entries()) {
-      // Rule 1: Skip ports newer than current Foundry version
-      // These ports may use APIs that don't exist yet → runtime crashes
-      if (portVersion > version) {
-        continue; // Incompatible (too new)
-      }
-
-      // Rule 2: Greedy selection - always prefer higher version numbers
-      // Track the highest compatible version seen so far
-      if (portVersion > selectedVersion) {
-        selectedVersion = portVersion;
-        selectedFactory = factory;
-      }
-    }
-
-    if (selectedFactory === undefined) {
-      const availableVersions = Array.from(factories.keys())
-        .sort((a, b) => a - b)
-        .join(", ");
-
-      // Track port selection failure
-      /* c8 ignore start -- Performance tracking is optional feature flag tested in integration tests */
-      if (ENV.enablePerformanceTracking) {
-        this.metricsCollector.recordPortSelectionFailure(version);
-      }
-      /* c8 ignore stop */
-
-      // Log critical error for diagnostics
-      this.logger.error("No compatible port found", {
-        foundryVersion: version,
-        availableVersions,
-      });
-
-      return err(
-        createFoundryError(
-          "PORT_SELECTION_FAILED",
-          `No compatible port found for Foundry version ${version}`,
-          { version, availableVersions: availableVersions || "none" }
-        )
-      );
-    }
-
-    // CRITICAL: Only now instantiate the selected port
-    let result: Result<T, FoundryError>;
-    try {
-      result = ok(selectedFactory());
-    } catch (error) {
-      // Track instantiation failure
-      if (ENV.enablePerformanceTracking) {
-        this.metricsCollector.recordPortSelectionFailure(version);
-      }
-
-      // Log critical error for diagnostics
-      this.logger.error("Port instantiation failed", {
-        selectedVersion,
-        foundryVersion: version,
-        error,
-      });
-
-      result = err(
-        createFoundryError(
-          "PORT_SELECTION_FAILED",
-          `Failed to instantiate port v${selectedVersion}`,
-          { selectedVersion },
-          error
-        )
-      );
-    }
-
-    // Performance tracking end
-    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END);
-      performance.measure(
-        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION,
-        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START,
-        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END
-      );
-
-      // Get the latest measurement entry (not the first one which could be stale)
-      const entries = performance.getEntriesByName(
-        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION
-      );
-      const measure = entries.at(-1);
-
-      if (measure && ENV.enableDebugMode) {
-        this.logger.debug(
-          `Port selection completed in ${measure.duration.toFixed(2)}ms (selected: v${selectedVersion})`
-        );
-      }
-
-      // Clean up performance marks/measures to prevent memory leaks
-      performance.clearMarks(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START);
-      performance.clearMarks(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END);
-      performance.clearMeasures(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION);
-
-      // Record port selection metrics
-      if (result.ok) {
-        this.metricsCollector.recordPortSelection(selectedVersion);
-      }
-    }
-
-    return result;
+    ).result;
   }
 }

@@ -39,7 +39,11 @@ export class FoundryUIService implements FoundryUI, Disposable {
       const factories = this.portRegistry.getFactories();
 
       // Use PortSelector with factory-based selection
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        undefined,
+        "FoundryUI"
+      );
       if (!portResult.ok) {
         return portResult;
       }

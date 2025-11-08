@@ -6,10 +6,14 @@ import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
 import type { ModuleApi, ModuleApiTokens, TokenInfo, HealthStatus } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
+import type { EnvironmentConfig } from "@/config/environment";
+import type { MetricsCollector } from "@/observability/metrics-collector";
 import {
   loggerToken,
   journalVisibilityServiceToken,
   metricsCollectorToken,
+  environmentConfigToken,
+  moduleHealthServiceToken,
 } from "@/tokens/tokenindex";
 import {
   foundryGameToken,
@@ -18,8 +22,7 @@ import {
   foundryUIToken,
   foundrySettingsToken,
 } from "@/foundry/foundrytokens";
-import { PERFORMANCE_MARKS } from "@/core/performance-constants";
-import { ENV } from "@/config/environment";
+import { withPerformanceTracking } from "@/utils/performance-utils";
 
 /**
  * CompositionRoot
@@ -41,40 +44,51 @@ export class CompositionRoot {
    * @returns Result mit initialisiertem Container oder Fehlermeldung
    */
   bootstrap(): Result<ServiceContainer, string> {
-    // Performance-Messung starten (nur in Debug-Mode)
-    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START);
-    }
-
     const container = ServiceContainer.createRoot();
-    const configured = configureDependencies(container);
 
-    // Performance-Messung beenden und loggen (nur in Debug-Mode)
-    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END);
-      performance.measure(
-        PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION,
-        PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START,
-        PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END
-      );
+    // Get environment config and metrics collector for performance tracking
+    // ENV and MetricsCollector may not be available yet during early bootstrap
+    let env: EnvironmentConfig | null = null;
+    let metricsCollector: MetricsCollector | null = null;
 
-      // Get the latest measurement entry (not the first one which could be stale)
-      const entries = performance.getEntriesByName(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION);
-      const measure = entries.at(-1);
+    const envResult = container.resolveWithError(environmentConfigToken);
+    /* c8 ignore start -- ENV is always available in normal operation */
+    if (envResult.ok) {
+      env = envResult.value;
+    }
+    /* c8 ignore stop */
 
-      if (measure && ENV.enableDebugMode) {
+    const metricsResult = container.resolveWithError(metricsCollectorToken);
+    /* c8 ignore start -- MetricsCollector is always available in normal operation */
+    if (metricsResult.ok) {
+      metricsCollector = metricsResult.value;
+    }
+    /* c8 ignore stop */
+
+    // Use default ENV if not available yet
+    const effectiveEnv = env ?? {
+      enablePerformanceTracking: false,
+      isDevelopment: false,
+      isProduction: true,
+      enableDebugMode: false,
+      logLevel: 1,
+      performanceSamplingRate: 0,
+    };
+
+    const configured = withPerformanceTracking(
+      effectiveEnv,
+      metricsCollector,
+      () => configureDependencies(container),
+      /* c8 ignore start -- onComplete callback is only called when performance tracking is enabled and sampling passes */
+      (duration) => {
         // Use logger from container if available (container is validated at this point)
         const loggerResult = container.resolveWithError(loggerToken);
         if (loggerResult.ok) {
-          loggerResult.value.debug(`Bootstrap completed in ${measure.duration.toFixed(2)}ms`);
+          loggerResult.value.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
         }
       }
-
-      // Clean up performance marks/measures to prevent memory leaks
-      performance.clearMarks(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START);
-      performance.clearMarks(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END);
-      performance.clearMeasures(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION);
-    }
+      /* c8 ignore stop */
+    );
 
     if (configured.ok) {
       this.container = container;
@@ -170,52 +184,23 @@ export class CompositionRoot {
       },
 
       getHealth: (): HealthStatus => {
-        /* c8 ignore next -- Container is always validated after bootstrap, unhealthy path requires internal state manipulation */
-        const containerValidated = this.container?.getValidationState() === "validated";
-
-        // Get metrics via DI
-        const metricsResult = container.resolveWithError(metricsCollectorToken);
-        /* c8 ignore start -- Defensive: MetricsCollector fallback when resolution fails; always succeeds in practice */
-        const metrics = metricsResult.ok
-          ? metricsResult.value.getSnapshot()
-          : {
-              containerResolutions: 0,
-              resolutionErrors: 0,
-              avgResolutionTimeMs: 0,
-              portSelections: {},
-              portSelectionFailures: {},
-              cacheHitRate: 0,
-            };
-        /* c8 ignore stop */
-        // Fallback to containerValidated when performance tracking is disabled (production mode)
-        // If container is validated, ports must have been selected successfully
-        const hasPortSelections =
-          Object.keys(metrics.portSelections).length > 0 || containerValidated;
-        const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
-
-        // Determine overall status
-        let status: "healthy" | "degraded" | "unhealthy";
-        /* c8 ignore start -- Container is always validated after bootstrap; unhealthy status requires internal manipulation */
-        if (!containerValidated) {
-          status = "unhealthy";
-        } else if (hasPortFailures || metrics.resolutionErrors > 0) {
-          /* c8 ignore stop */
-          status = "degraded";
-        } else {
-          status = "healthy";
+        // Delegate to ModuleHealthService for health checks
+        const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
+        /* c8 ignore start -- Defensive: ModuleHealthService fallback when resolution fails */
+        if (!healthServiceResult.ok) {
+          // Fallback health status if service cannot be resolved
+          return {
+            status: "unhealthy",
+            checks: {
+              containerValidated: false,
+              portsSelected: false,
+              lastError: "ModuleHealthService not available",
+            },
+            timestamp: new Date().toISOString(),
+          };
         }
-
-        return {
-          status,
-          checks: {
-            containerValidated,
-            portsSelected: hasPortSelections,
-            lastError: hasPortFailures
-              ? `Port selection failures detected for versions: ${Object.keys(metrics.portSelectionFailures).join(", ")}`
-              : null,
-          },
-          timestamp: new Date().toISOString(),
-        };
+        /* c8 ignore stop */
+        return healthServiceResult.value.getHealth();
       },
     };
 

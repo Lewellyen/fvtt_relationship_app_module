@@ -6,10 +6,13 @@ import {
   foundryI18nToken,
   localI18nToken,
   i18nFacadeToken,
+  environmentConfigToken,
+  moduleHealthServiceToken,
 } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { JournalVisibilityService } from "@/services/JournalVisibilityService";
 import { MetricsCollector } from "@/observability/metrics-collector";
+import { ModuleHealthService } from "@/core/module-health-service";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import { ok, err, isErr } from "@/utils/result";
 import type { Result } from "@/types/result";
@@ -105,17 +108,28 @@ function registerFallbacks(container: ServiceContainer): void {
 }
 
 /**
- * Registers core infrastructure services (MetricsCollector, Logger).
+ * Registers core infrastructure services (EnvironmentConfig, MetricsCollector, Logger, ModuleHealthService).
  *
  * CRITICAL INITIALIZATION ORDER:
- * 1. MetricsCollector (no dependencies) - needed by ServiceResolver and PortSelector
- * 2. Logger (no dependencies) - needed by PortSelector and all services
- * 3. PortSelector (deps: [metricsCollectorToken, loggerToken]) - auto-resolved after both
+ * 1. EnvironmentConfig (no dependencies) - needed by MetricsCollector and PortSelector
+ * 2. MetricsCollector (deps: [environmentConfigToken]) - needed by ServiceResolver and PortSelector
+ * 3. Logger (no dependencies) - needed by PortSelector and all services
+ * 4. ModuleHealthService (deps: [container, metricsCollectorToken]) - special case with container self-reference
+ * 5. PortSelector (deps: [metricsCollectorToken, loggerToken, environmentConfigToken]) - auto-resolved after all
  *
  * This order ensures no circular dependencies and that Logger is available
  * for all console.* replacements in PortSelector and other services.
  */
 function registerCoreServices(container: ServiceContainer): Result<void, string> {
+  // Register EnvironmentConfig (needed by MetricsCollector and PortSelector)
+  const envResult = container.registerValue(environmentConfigToken, ENV);
+
+  /* c8 ignore start -- Defensive: Value registration can only fail if token is duplicate */
+  if (isErr(envResult)) {
+    return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
+  }
+  /* c8 ignore stop */
+
   // Register MetricsCollector (needed early for ServiceResolver and PortSelector)
   const metricsResult = container.registerClass(
     metricsCollectorToken,
@@ -139,6 +153,28 @@ function registerCoreServices(container: ServiceContainer): Result<void, string>
   if (isErr(loggerResult)) {
     return err(`Failed to register logger: ${loggerResult.error.message}`);
   }
+
+  // Register ModuleHealthService with factory (special case: needs container reference)
+  const healthResult = container.registerFactory(
+    moduleHealthServiceToken,
+    () => {
+      const metricsResult = container.resolveWithError(metricsCollectorToken);
+      /* c8 ignore start -- Defensive: MetricsCollector is always registered at this point */
+      if (!metricsResult.ok) {
+        throw new Error("MetricsCollector not available for ModuleHealthService");
+      }
+      /* c8 ignore stop */
+      return new ModuleHealthService(container, metricsResult.value);
+    },
+    ServiceLifecycle.SINGLETON,
+    [metricsCollectorToken]
+  );
+
+  /* c8 ignore start -- Defensive: Factory registration can only fail if token is duplicate */
+  if (isErr(healthResult)) {
+    return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
+  }
+  /* c8 ignore stop */
 
   return ok(undefined);
 }

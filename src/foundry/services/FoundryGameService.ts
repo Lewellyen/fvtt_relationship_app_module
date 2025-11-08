@@ -40,7 +40,11 @@ export class FoundryGameService implements FoundryGame, Disposable {
       const factories = this.portRegistry.getFactories();
 
       // Use PortSelector with factory-based selection
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        undefined,
+        "FoundryGame"
+      );
       if (!portResult.ok) {
         return portResult;
       }

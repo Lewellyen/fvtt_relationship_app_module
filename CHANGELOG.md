@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.6.0] - 2025-11-08
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Utilities in Services umgewandelt (ENV)
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.5.4] - 2025-11-07
 ### Hinzugefügt
 - Keine Einträge

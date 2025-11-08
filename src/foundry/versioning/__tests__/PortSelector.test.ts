@@ -6,11 +6,12 @@ import {
   expectResultErr,
   createMockMetricsCollector,
   createMockLogger,
+  createMockEnvironmentConfig,
 } from "@/test/utils/test-helpers";
 import { ok, err } from "@/utils/result";
-import { ENV } from "@/config/environment";
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import type { Logger } from "@/interfaces/logger";
+import type { EnvironmentConfig } from "@/config/environment";
 
 vi.mock("../versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -21,11 +22,13 @@ describe("PortSelector", () => {
   let selector: PortSelector;
   let mockMetrics: MetricsCollector;
   let mockLogger: Logger;
+  let mockEnv: EnvironmentConfig;
 
   beforeEach(() => {
-    mockMetrics = createMockMetricsCollector();
+    mockEnv = createMockEnvironmentConfig();
+    mockMetrics = createMockMetricsCollector(mockEnv);
     mockLogger = createMockLogger();
-    selector = new PortSelector(mockMetrics, mockLogger);
+    selector = new PortSelector(mockMetrics, mockLogger, mockEnv);
     vi.clearAllMocks();
   });
 
@@ -221,33 +224,25 @@ describe("PortSelector", () => {
   });
 
   describe("Performance Tracking", () => {
-    let originalEnablePerf: boolean;
-    let originalEnableDebug: boolean;
-
-    beforeEach(() => {
-      originalEnablePerf = ENV.enablePerformanceTracking;
-      originalEnableDebug = ENV.enableDebugMode;
-      mockMetrics.reset();
-    });
-
-    afterEach(() => {
-      ENV.enablePerformanceTracking = originalEnablePerf;
-      ENV.enableDebugMode = originalEnableDebug;
-      mockMetrics.reset();
-    });
+    // No longer need to mock ENV globally, we create separate instances with different configs
 
     it("should record port selection metrics when performance tracking enabled", () => {
-      ENV.enablePerformanceTracking = true;
+      const perfEnv = createMockEnvironmentConfig({ enablePerformanceTracking: true });
+      const perfMetrics = createMockMetricsCollector(perfEnv);
+      const perfSelector = new PortSelector(perfMetrics, mockLogger, perfEnv);
+
       const factories = new Map([[13, () => "port-v13"]]);
+      perfSelector.selectPortFromFactories(factories, 13);
 
-      selector.selectPortFromFactories(factories, 13);
-
-      const metrics = mockMetrics.getSnapshot();
+      const metrics = perfMetrics.getSnapshot();
       expect(metrics.portSelections[13]).toBe(1);
     });
 
     it("should record port selection failure metrics", () => {
-      ENV.enablePerformanceTracking = true;
+      const perfEnv = createMockEnvironmentConfig({ enablePerformanceTracking: true });
+      const perfMetrics = createMockMetricsCollector(perfEnv);
+      const perfSelector = new PortSelector(perfMetrics, mockLogger, perfEnv);
+
       const factories = new Map<number, () => string>([
         [
           13,
@@ -257,62 +252,113 @@ describe("PortSelector", () => {
         ],
       ]);
 
-      selector.selectPortFromFactories(factories, 13);
+      perfSelector.selectPortFromFactories(factories, 13);
 
-      const metrics = mockMetrics.getSnapshot();
+      const metrics = perfMetrics.getSnapshot();
       expect(metrics.portSelectionFailures[13]).toBe(1);
     });
 
     it("should NOT record metrics when performance tracking disabled", () => {
-      ENV.enablePerformanceTracking = false;
+      const noPerfEnv = createMockEnvironmentConfig({ enablePerformanceTracking: false });
+      const noPerfMetrics = createMockMetricsCollector(noPerfEnv);
+      const noPerfSelector = new PortSelector(noPerfMetrics, mockLogger, noPerfEnv);
+
       const factories = new Map([[13, () => "port-v13"]]);
+      noPerfSelector.selectPortFromFactories(factories, 13);
 
-      selector.selectPortFromFactories(factories, 13);
-
-      const metrics = mockMetrics.getSnapshot();
+      const metrics = noPerfMetrics.getSnapshot();
       expect(metrics.portSelections[13]).toBeUndefined();
     });
 
     it("should log debug message when debug mode enabled", () => {
-      ENV.enableDebugMode = true;
-      ENV.enablePerformanceTracking = true;
+      const debugEnv = createMockEnvironmentConfig({
+        enablePerformanceTracking: true,
+        enableDebugMode: true,
+      });
+      const debugMetrics = createMockMetricsCollector(debugEnv);
+      const debugLogger = createMockLogger();
+      const debugSelector = new PortSelector(debugMetrics, debugLogger, debugEnv);
 
       const factories = new Map([[13, () => "port-v13"]]);
-      selector.selectPortFromFactories(factories, 13);
+      debugSelector.selectPortFromFactories(factories, 13);
 
       // Logger should have been called with debug message
-      expect(mockLogger.debug).toHaveBeenCalled();
+      expect(debugLogger.debug).toHaveBeenCalled();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Test spy access
-      const debugCall = (mockLogger.debug as any).mock.calls[0]?.[0];
+      const debugCall = (debugLogger.debug as any).mock.calls[0]?.[0];
       expect(debugCall).toContain("Port selection completed");
       expect(debugCall).toContain("v13");
     });
 
-    it("should NOT log debug when debug mode disabled", () => {
-      ENV.enableDebugMode = false;
-      ENV.enablePerformanceTracking = true;
+    it("should include adapter name in debug log when provided", () => {
+      const debugEnv = createMockEnvironmentConfig({
+        enablePerformanceTracking: true,
+        enableDebugMode: true,
+      });
+      const debugMetrics = createMockMetricsCollector(debugEnv);
+      const debugLogger = createMockLogger();
+      const debugSelector = new PortSelector(debugMetrics, debugLogger, debugEnv);
 
       const factories = new Map([[13, () => "port-v13"]]);
-      selector.selectPortFromFactories(factories, 13);
+      debugSelector.selectPortFromFactories(factories, 13, "FoundryHooks");
 
-      // Logger debug should not have been called when debug mode is off
-      expect(mockLogger.debug).not.toHaveBeenCalled();
+      // Logger should have been called with debug message including adapter name
+      expect(debugLogger.debug).toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Test spy access
+      const debugCall = (debugLogger.debug as any).mock.calls[0]?.[0];
+      expect(debugCall).toContain("Port selection completed");
+      expect(debugCall).toContain("v13");
+      expect(debugCall).toContain("for FoundryHooks");
     });
 
-    it("should clean up performance marks after measurement", () => {
-      ENV.enablePerformanceTracking = true;
-      const clearMarksSpy = vi.spyOn(performance, "clearMarks");
-      const clearMeasuresSpy = vi.spyOn(performance, "clearMeasures");
+    it("should not include adapter name in debug log when not provided", () => {
+      const debugEnv = createMockEnvironmentConfig({
+        enablePerformanceTracking: true,
+        enableDebugMode: true,
+      });
+      const debugMetrics = createMockMetricsCollector(debugEnv);
+      const debugLogger = createMockLogger();
+      const debugSelector = new PortSelector(debugMetrics, debugLogger, debugEnv);
 
       const factories = new Map([[13, () => "port-v13"]]);
-      selector.selectPortFromFactories(factories, 13);
+      debugSelector.selectPortFromFactories(factories, 13);
 
-      // Should clean up marks and measures
-      expect(clearMarksSpy).toHaveBeenCalled();
-      expect(clearMeasuresSpy).toHaveBeenCalled();
+      // Logger should have been called with debug message without "for" keyword
+      expect(debugLogger.debug).toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Test spy access
+      const debugCall = (debugLogger.debug as any).mock.calls[0]?.[0];
+      expect(debugCall).toContain("Port selection completed");
+      expect(debugCall).toContain("v13");
+      expect(debugCall).not.toContain("for");
+    });
 
-      clearMarksSpy.mockRestore();
-      clearMeasuresSpy.mockRestore();
+    it("should NOT log debug when debug mode disabled", () => {
+      const noDebugEnv = createMockEnvironmentConfig({
+        enablePerformanceTracking: true,
+        enableDebugMode: false,
+      });
+      const noDebugMetrics = createMockMetricsCollector(noDebugEnv);
+      const noDebugLogger = createMockLogger();
+      const noDebugSelector = new PortSelector(noDebugMetrics, noDebugLogger, noDebugEnv);
+
+      const factories = new Map([[13, () => "port-v13"]]);
+      noDebugSelector.selectPortFromFactories(factories, 13);
+
+      // Logger debug should not have been called when debug mode is off
+      expect(noDebugLogger.debug).not.toHaveBeenCalled();
+    });
+
+    it("should track performance metrics when enabled", () => {
+      const perfEnv = createMockEnvironmentConfig({ enablePerformanceTracking: true });
+      const perfMetrics = createMockMetricsCollector(perfEnv);
+      const perfSelector = new PortSelector(perfMetrics, mockLogger, perfEnv);
+
+      const factories = new Map([[13, () => "port-v13"]]);
+      perfSelector.selectPortFromFactories(factories, 13);
+
+      // Verify metrics were recorded
+      const metrics = perfMetrics.getSnapshot();
+      expect(metrics.portSelections[13]).toBe(1);
     });
   });
 });

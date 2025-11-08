@@ -10,6 +10,7 @@ import {
   expectResultErr,
   createMockMetricsCollector,
   createMockLogger,
+  createMockEnvironmentConfig,
 } from "@/test/utils/test-helpers";
 
 describe("FoundryHooksService", () => {
@@ -36,7 +37,8 @@ describe("FoundryHooksService", () => {
     mockRegistry = new PortRegistry<FoundryHooks>();
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
-    mockSelector = new PortSelector(createMockMetricsCollector(), mockLogger);
+    const mockEnv = createMockEnvironmentConfig();
+    mockSelector = new PortSelector(createMockMetricsCollector(mockEnv), mockLogger, mockEnv);
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundryHooksService(mockSelector, mockRegistry, mockLogger);
@@ -64,7 +66,12 @@ describe("FoundryHooksService", () => {
     });
 
     it("should propagate port selection errors", () => {
-      const failingSelector = new PortSelector(createMockMetricsCollector(), mockLogger);
+      const mockEnv = createMockEnvironmentConfig();
+      const failingSelector = new PortSelector(
+        createMockMetricsCollector(mockEnv),
+        mockLogger,
+        mockEnv
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",
@@ -234,7 +241,12 @@ describe("FoundryHooksService", () => {
 
   describe("Version Detection Failures", () => {
     it("should handle port selector errors", () => {
-      const failingSelector = new PortSelector(createMockMetricsCollector(), mockLogger);
+      const mockEnv = createMockEnvironmentConfig();
+      const failingSelector = new PortSelector(
+        createMockMetricsCollector(mockEnv),
+        mockLogger,
+        mockEnv
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "No compatible port found",
@@ -304,7 +316,12 @@ describe("FoundryHooksService", () => {
 
   describe("Port Error Branches", () => {
     it("should handle port selection failure in once", () => {
-      const failingSelector = new PortSelector(createMockMetricsCollector(), mockLogger);
+      const mockEnv = createMockEnvironmentConfig();
+      const failingSelector = new PortSelector(
+        createMockMetricsCollector(mockEnv),
+        mockLogger,
+        mockEnv
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",
@@ -320,7 +337,12 @@ describe("FoundryHooksService", () => {
     });
 
     it("should handle port selection failure in off", () => {
-      const failingSelector = new PortSelector(createMockMetricsCollector(), mockLogger);
+      const mockEnv = createMockEnvironmentConfig();
+      const failingSelector = new PortSelector(
+        createMockMetricsCollector(mockEnv),
+        mockLogger,
+        mockEnv
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",

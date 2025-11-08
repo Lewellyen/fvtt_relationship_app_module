@@ -5,6 +5,8 @@ import type { MetricsCollector } from "@/observability/metrics-collector";
 import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import type { LocalI18nService } from "@/services/LocalI18nService";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
+import type { EnvironmentConfig } from "@/config/environment";
+import type { ModuleHealthService } from "@/core/module-health-service";
 
 /**
  * Injection token for the application logger service.
@@ -103,6 +105,49 @@ export const localI18nToken = createInjectionToken<LocalI18nService>("LocalI18nS
  * ```
  */
 export const i18nFacadeToken = createInjectionToken<I18nFacadeService>("I18nFacadeService");
+
+/**
+ * Injection token for the EnvironmentConfig.
+ *
+ * Provides access to environment configuration (development/production mode,
+ * log levels, performance tracking settings, etc.).
+ *
+ * Injecting ENV as a service improves testability and follows DIP
+ * (Dependency Inversion Principle) by depending on abstraction rather than
+ * concrete global state.
+ *
+ * @example
+ * ```typescript
+ * export class MyService {
+ *   static dependencies = [environmentConfigToken] as const;
+ *
+ *   constructor(private readonly env: EnvironmentConfig) {}
+ *
+ *   doSomething() {
+ *     if (this.env.isDevelopment) {
+ *       // Development-specific logic
+ *     }
+ *   }
+ * }
+ * ```
+ */
+export const environmentConfigToken = createInjectionToken<EnvironmentConfig>("EnvironmentConfig");
+
+/**
+ * Injection token for the ModuleHealthService.
+ *
+ * Provides module health monitoring and diagnostics.
+ * Checks container validation, port selection, and metrics for health assessment.
+ *
+ * @example
+ * ```typescript
+ * const healthService = container.resolve(moduleHealthServiceToken);
+ * const health = healthService.getHealth();
+ * console.log(`Module status: ${health.status}`);
+ * ```
+ */
+export const moduleHealthServiceToken =
+  createInjectionToken<ModuleHealthService>("ModuleHealthService");
 
 /**
  * Re-export port-related tokens for convenience.

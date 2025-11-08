@@ -2,6 +2,17 @@ import type { Result } from "@/types/result";
 import { ok } from "@/utils/result";
 
 /**
+ * Escapes special regex characters in a string.
+ * Prevents regex injection when using user-provided strings in RegExp.
+ *
+ * @param str - String to escape
+ * @returns Escaped string safe for use in RegExp
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
  * Local, Foundry-independent internationalization service.
  *
  * Provides fallback translations from JSON files when Foundry's i18n is unavailable.
@@ -98,8 +109,10 @@ export class LocalI18nService {
     let formatted = template;
 
     // Simple placeholder replacement: {key} → value
+    // Escape placeholder to prevent regex injection with special characters
     for (const [placeholder, value] of Object.entries(data)) {
-      const regex = new RegExp(`\\{${placeholder}\\}`, "g");
+      const escapedPlaceholder = escapeRegex(placeholder);
+      const regex = new RegExp(`\\{${escapedPlaceholder}\\}`, "g");
       formatted = formatted.replace(regex, String(value));
     }
 

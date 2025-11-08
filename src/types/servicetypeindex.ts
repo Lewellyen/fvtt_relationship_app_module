@@ -15,6 +15,8 @@ import type { FoundryI18n } from "@/foundry/interfaces/FoundryI18n";
 import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import type { LocalI18nService } from "@/services/LocalI18nService";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
+import type { ModuleHealthService } from "@/core/module-health-service";
+import type { EnvironmentConfig } from "@/config/environment";
 
 /**
  * Union type representing all registered service types in the application.
@@ -44,4 +46,6 @@ export type ServiceType =
   | MetricsCollector
   | FoundryI18nService
   | LocalI18nService
-  | I18nFacadeService;
+  | I18nFacadeService
+  | ModuleHealthService
+  | EnvironmentConfig;

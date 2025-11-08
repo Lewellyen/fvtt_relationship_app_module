@@ -8,7 +8,8 @@ import { InstanceCache } from "../cache/InstanceCache";
 import { ServiceLifecycle } from "../types/servicelifecycle";
 import { ok, err } from "@/utils/result";
 import type { MetricsCollector } from "@/observability/metrics-collector";
-import { ENV } from "@/config/environment";
+import type { EnvironmentConfig } from "@/config/environment";
+import { withPerformanceTracking } from "@/utils/performance-utils";
 
 /**
  * Resolves service instances based on lifecycle and registration.
@@ -27,6 +28,7 @@ import { ENV } from "@/config/environment";
  */
 export class ServiceResolver {
   private metricsCollector: MetricsCollector | null = null;
+  private env: EnvironmentConfig | null = null;
 
   constructor(
     private readonly registry: ServiceRegistry,
@@ -46,6 +48,16 @@ export class ServiceResolver {
   }
 
   /**
+   * Sets the EnvironmentConfig for performance tracking.
+   * Called by ServiceContainer after validation.
+   *
+   * @param env - The environment configuration instance
+   */
+  setEnvironmentConfig(env: EnvironmentConfig): void {
+    this.env = env;
+  }
+
+  /**
    * Resolves a service by token.
    *
    * Handles:
@@ -61,72 +73,75 @@ export class ServiceResolver {
   resolve<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>
   ): Result<TServiceType, ContainerError> {
-    const startTime = ENV.enablePerformanceTracking ? performance.now() : 0;
+    // Use default ENV if not injected yet (during bootstrap)
+    const env = this.env ?? {
+      enablePerformanceTracking: false,
+      isDevelopment: false,
+      isProduction: true,
+      enableDebugMode: false,
+      logLevel: 1,
+      performanceSamplingRate: 0,
+    };
 
-    // Check if service is registered
-    const registration = this.registry.getRegistration(token);
-    if (!registration) {
-      const stack = new Error().stack;
-      const error: ContainerError = {
-        code: "TokenNotRegistered",
-        message: `Service ${String(token)} not registered`,
-        tokenDescription: String(token),
-        ...(stack !== undefined && { stack }), // Only include stack if defined
-        timestamp: Date.now(),
-        containerScope: this.scopeName,
-      };
-      const result = err(error);
+    return withPerformanceTracking(
+      env,
+      this.metricsCollector,
+      () => {
+        // Check if service is registered
+        const registration = this.registry.getRegistration(token);
+        if (!registration) {
+          const stack = new Error().stack;
+          const error: ContainerError = {
+            code: "TokenNotRegistered",
+            message: `Service ${String(token)} not registered`,
+            tokenDescription: String(token),
+            ...(stack !== undefined && { stack }), // Only include stack if defined
+            timestamp: Date.now(),
+            containerScope: this.scopeName,
+          };
+          return err(error);
+        }
 
-      /* c8 ignore start -- Performance tracking is optional feature flag tested in integration tests */
-      if (ENV.enablePerformanceTracking) {
-        const duration = performance.now() - startTime;
-        this.metricsCollector?.recordResolution(token, duration, false);
+        // Handle alias resolution
+        if (registration.providerType === "alias" && registration.aliasTarget) {
+          // aliasTarget is defined in this branch and shares generic type by construction
+          /* type-coverage:ignore-next-line */
+          return this.resolve(registration.aliasTarget as InjectionToken<TServiceType>);
+        }
+
+        // Resolve based on lifecycle (all methods already return Result)
+        let result: Result<TServiceType, ContainerError>;
+
+        switch (registration.lifecycle) {
+          case ServiceLifecycle.SINGLETON:
+            result = this.resolveSingleton(token, registration);
+            break;
+
+          case ServiceLifecycle.TRANSIENT:
+            result = this.resolveTransient(token, registration);
+            break;
+
+          case ServiceLifecycle.SCOPED:
+            result = this.resolveScoped(token, registration);
+            break;
+
+          /* c8 ignore start -- Defensive: ServiceLifecycle enum ensures only valid values; this default is unreachable */
+          default:
+            result = err({
+              code: "InvalidLifecycle",
+              message: `Invalid service lifecycle: ${String(registration.lifecycle)}`,
+              tokenDescription: String(token),
+            });
+          /* c8 ignore stop */
+        }
+
+        return result;
+      },
+      (duration, result) => {
+        /* c8 ignore next -- Optional chaining is defensive: metricsCollector is always injected via constructor */
+        this.metricsCollector?.recordResolution(token, duration, result.ok);
       }
-      /* c8 ignore stop */
-
-      return result;
-    }
-
-    // Handle alias resolution
-    if (registration.providerType === "alias" && registration.aliasTarget) {
-      // aliasTarget is defined in this branch and shares generic type by construction
-      /* type-coverage:ignore-next-line */
-      return this.resolve(registration.aliasTarget as InjectionToken<TServiceType>);
-    }
-
-    // Resolve based on lifecycle (all methods already return Result)
-    let result: Result<TServiceType, ContainerError>;
-
-    switch (registration.lifecycle) {
-      case ServiceLifecycle.SINGLETON:
-        result = this.resolveSingleton(token, registration);
-        break;
-
-      case ServiceLifecycle.TRANSIENT:
-        result = this.resolveTransient(token, registration);
-        break;
-
-      case ServiceLifecycle.SCOPED:
-        result = this.resolveScoped(token, registration);
-        break;
-
-      /* c8 ignore start -- Defensive: ServiceLifecycle enum ensures only valid values; this default is unreachable */
-      default:
-        result = err({
-          code: "InvalidLifecycle",
-          message: `Invalid service lifecycle: ${String(registration.lifecycle)}`,
-          tokenDescription: String(token),
-        });
-      /* c8 ignore stop */
-    }
-
-    if (ENV.enablePerformanceTracking) {
-      const duration = performance.now() - startTime;
-      /* c8 ignore next -- Optional chaining is defensive: metricsCollector is always injected via constructor */
-      this.metricsCollector?.recordResolution(token, duration, result.ok);
-    }
-
-    return result;
+    );
   }
 
   /**

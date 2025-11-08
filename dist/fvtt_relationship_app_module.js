@@ -54,7 +54,7 @@ const MODULE_CONSTANTS = {
     AUTHOR_EMAIL: "forenadmin.tir@gmail.com",
     AUTHOR_DISCORD: "lewellyen"
   },
-  LOG_PREFIX: "Foundry VTT Relationship App Module |",
+  LOG_PREFIX: "Relationship App |",
   FLAGS: {
     HIDDEN: "hidden"
   },
@@ -207,14 +207,18 @@ const journalVisibilityServiceToken = createInjectionToken(
 const foundryI18nToken = createInjectionToken("FoundryI18nService");
 const localI18nToken = createInjectionToken("LocalI18nService");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
+const environmentConfigToken = createInjectionToken("EnvironmentConfig");
+const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
 var tokenindex = /* @__PURE__ */ Object.freeze({
   __proto__: null,
+  environmentConfigToken,
   foundryI18nToken,
   i18nFacadeToken,
   journalVisibilityServiceToken,
   localI18nToken,
   loggerToken,
   metricsCollectorToken,
+  moduleHealthServiceToken,
   portSelectorToken
 });
 const scriptRel = "modulepreload";
@@ -875,27 +879,32 @@ const _InstanceCache = class _InstanceCache {
 };
 __name(_InstanceCache, "InstanceCache");
 let InstanceCache = _InstanceCache;
-var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
-  LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
-  LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
-  LogLevel2[LogLevel2["WARN"] = 2] = "WARN";
-  LogLevel2[LogLevel2["ERROR"] = 3] = "ERROR";
-  return LogLevel2;
-})(LogLevel || {});
-function parseSamplingRate(envValue, fallback2) {
-  const raw = parseFloat(envValue ?? String(fallback2));
-  return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback2;
+function withPerformanceTracking(env, metricsCollector, operation, onComplete) {
+  if (!env.enablePerformanceTracking || !metricsCollector?.shouldSample()) {
+    return operation();
+  }
+  const startTime = performance.now();
+  const result = operation();
+  const duration = performance.now() - startTime;
+  if (onComplete) {
+    onComplete(duration, result);
+  }
+  return result;
 }
-__name(parseSamplingRate, "parseSamplingRate");
-const ENV = {
-  isDevelopment: true,
-  isProduction: false,
-  logLevel: true ? 0 : 1,
-  enablePerformanceTracking: true,
-  enableDebugMode: true,
-  // 1% sampling in production, 100% in development
-  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1
-};
+__name(withPerformanceTracking, "withPerformanceTracking");
+async function withPerformanceTrackingAsync(env, metricsCollector, operation, onComplete) {
+  if (!env.enablePerformanceTracking || !metricsCollector?.shouldSample()) {
+    return operation();
+  }
+  const startTime = performance.now();
+  const result = await operation();
+  const duration = performance.now() - startTime;
+  if (onComplete) {
+    onComplete(duration, result);
+  }
+  return result;
+}
+__name(withPerformanceTrackingAsync, "withPerformanceTrackingAsync");
 const _ServiceResolver = class _ServiceResolver {
   constructor(registry, cache, parentResolver, scopeName) {
     this.registry = registry;
@@ -903,6 +912,7 @@ const _ServiceResolver = class _ServiceResolver {
     this.parentResolver = parentResolver;
     this.scopeName = scopeName;
     this.metricsCollector = null;
+    this.env = null;
   }
   /**
    * Sets the MetricsCollector for performance tracking.
@@ -912,6 +922,15 @@ const _ServiceResolver = class _ServiceResolver {
    */
   setMetricsCollector(collector) {
     this.metricsCollector = collector;
+  }
+  /**
+   * Sets the EnvironmentConfig for performance tracking.
+   * Called by ServiceContainer after validation.
+   *
+   * @param env - The environment configuration instance
+   */
+  setEnvironmentConfig(env) {
+    this.env = env;
   }
   /**
    * Resolves a service by token.
@@ -927,53 +946,60 @@ const _ServiceResolver = class _ServiceResolver {
    * @returns Result with service instance or error
    */
   resolve(token) {
-    const startTime = ENV.enablePerformanceTracking ? performance.now() : 0;
-    const registration = this.registry.getRegistration(token);
-    if (!registration) {
-      const stack = new Error().stack;
-      const error = {
-        code: "TokenNotRegistered",
-        message: `Service ${String(token)} not registered`,
-        tokenDescription: String(token),
-        ...stack !== void 0 && { stack },
-        // Only include stack if defined
-        timestamp: Date.now(),
-        containerScope: this.scopeName
-      };
-      const result2 = err(error);
-      if (ENV.enablePerformanceTracking) {
-        const duration = performance.now() - startTime;
-        this.metricsCollector?.recordResolution(token, duration, false);
+    const env = this.env ?? {
+      enablePerformanceTracking: false,
+      isDevelopment: false,
+      isProduction: true,
+      enableDebugMode: false,
+      logLevel: 1,
+      performanceSamplingRate: 0
+    };
+    return withPerformanceTracking(
+      env,
+      this.metricsCollector,
+      () => {
+        const registration = this.registry.getRegistration(token);
+        if (!registration) {
+          const stack = new Error().stack;
+          const error = {
+            code: "TokenNotRegistered",
+            message: `Service ${String(token)} not registered`,
+            tokenDescription: String(token),
+            ...stack !== void 0 && { stack },
+            // Only include stack if defined
+            timestamp: Date.now(),
+            containerScope: this.scopeName
+          };
+          return err(error);
+        }
+        if (registration.providerType === "alias" && registration.aliasTarget) {
+          return this.resolve(registration.aliasTarget);
+        }
+        let result;
+        switch (registration.lifecycle) {
+          case ServiceLifecycle.SINGLETON:
+            result = this.resolveSingleton(token, registration);
+            break;
+          case ServiceLifecycle.TRANSIENT:
+            result = this.resolveTransient(token, registration);
+            break;
+          case ServiceLifecycle.SCOPED:
+            result = this.resolveScoped(token, registration);
+            break;
+          /* c8 ignore start -- Defensive: ServiceLifecycle enum ensures only valid values; this default is unreachable */
+          default:
+            result = err({
+              code: "InvalidLifecycle",
+              message: `Invalid service lifecycle: ${String(registration.lifecycle)}`,
+              tokenDescription: String(token)
+            });
+        }
+        return result;
+      },
+      (duration, result) => {
+        this.metricsCollector?.recordResolution(token, duration, result.ok);
       }
-      return result2;
-    }
-    if (registration.providerType === "alias" && registration.aliasTarget) {
-      return this.resolve(registration.aliasTarget);
-    }
-    let result;
-    switch (registration.lifecycle) {
-      case ServiceLifecycle.SINGLETON:
-        result = this.resolveSingleton(token, registration);
-        break;
-      case ServiceLifecycle.TRANSIENT:
-        result = this.resolveTransient(token, registration);
-        break;
-      case ServiceLifecycle.SCOPED:
-        result = this.resolveScoped(token, registration);
-        break;
-      /* c8 ignore start -- Defensive: ServiceLifecycle enum ensures only valid values; this default is unreachable */
-      default:
-        result = err({
-          code: "InvalidLifecycle",
-          message: `Invalid service lifecycle: ${String(registration.lifecycle)}`,
-          tokenDescription: String(token)
-        });
-    }
-    if (ENV.enablePerformanceTracking) {
-      const duration = performance.now() - startTime;
-      this.metricsCollector?.recordResolution(token, duration, result.ok);
-    }
-    return result;
+    );
   }
   /**
    * Instantiates a service based on registration type.
@@ -1584,20 +1610,24 @@ const _ServiceContainer = class _ServiceContainer {
     return result;
   }
   /**
-   * Injects MetricsCollector into resolver and cache after validation.
+   * Injects MetricsCollector and EnvironmentConfig into resolver and cache after validation.
    * This enables performance tracking without circular dependencies during bootstrap.
    */
   async injectMetricsCollector() {
-    const { metricsCollectorToken: metricsCollectorToken2 } = await __vitePreload(async () => {
-      const { metricsCollectorToken: metricsCollectorToken3 } = await Promise.resolve().then(function() {
+    const { metricsCollectorToken: metricsCollectorToken2, environmentConfigToken: environmentConfigToken2 } = await __vitePreload(async () => {
+      const { metricsCollectorToken: metricsCollectorToken3, environmentConfigToken: environmentConfigToken3 } = await Promise.resolve().then(function() {
         return tokenindex;
       });
-      return { metricsCollectorToken: metricsCollectorToken3 };
+      return { metricsCollectorToken: metricsCollectorToken3, environmentConfigToken: environmentConfigToken3 };
     }, true ? void 0 : void 0);
     const metricsResult = this.resolveWithError(metricsCollectorToken2);
     if (metricsResult.ok) {
       this.resolver.setMetricsCollector(metricsResult.value);
       this.cache.setMetricsCollector(metricsResult.value);
+    }
+    const envResult = this.resolveWithError(environmentConfigToken2);
+    if (envResult.ok) {
+      this.resolver.setEnvironmentConfig(envResult.value);
     }
   }
   /**
@@ -1868,6 +1898,27 @@ Only the public ModuleApi should expose resolve() for external modules.`
 };
 __name(_ServiceContainer, "ServiceContainer");
 let ServiceContainer = _ServiceContainer;
+var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
+  LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
+  LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
+  LogLevel2[LogLevel2["WARN"] = 2] = "WARN";
+  LogLevel2[LogLevel2["ERROR"] = 3] = "ERROR";
+  return LogLevel2;
+})(LogLevel || {});
+function parseSamplingRate(envValue, fallback2) {
+  const raw = parseFloat(envValue ?? String(fallback2));
+  return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback2;
+}
+__name(parseSamplingRate, "parseSamplingRate");
+const ENV = {
+  isDevelopment: true,
+  isProduction: false,
+  logLevel: true ? 0 : 1,
+  enablePerformanceTracking: true,
+  enableDebugMode: true,
+  // 1% sampling in production, 100% in development
+  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1
+};
 const _TracedLogger = class _TracedLogger {
   constructor(baseLogger, traceId) {
     this.baseLogger = baseLogger;
@@ -9084,7 +9135,8 @@ _JournalVisibilityService.dependencies = [
 ];
 let JournalVisibilityService = _JournalVisibilityService;
 const _MetricsCollector = class _MetricsCollector {
-  constructor() {
+  constructor(env) {
+    this.env = env;
     this.metrics = {
       containerResolutions: 0,
       resolutionErrors: 0,
@@ -9166,10 +9218,10 @@ const _MetricsCollector = class _MetricsCollector {
    * ```
    */
   shouldSample() {
-    if (ENV.isDevelopment) {
+    if (this.env.isDevelopment) {
       return true;
     }
-    return Math.random() < ENV.performanceSamplingRate;
+    return Math.random() < this.env.performanceSamplingRate;
   }
   /**
    * Gets a snapshot of current metrics.
@@ -9225,8 +9277,60 @@ const _MetricsCollector = class _MetricsCollector {
   }
 };
 __name(_MetricsCollector, "MetricsCollector");
-_MetricsCollector.dependencies = [];
+_MetricsCollector.dependencies = [environmentConfigToken];
 let MetricsCollector = _MetricsCollector;
+const _ModuleHealthService = class _ModuleHealthService {
+  constructor(container, metricsCollector) {
+    this.container = container;
+    this.metricsCollector = metricsCollector;
+  }
+  /**
+   * Gets the current health status of the module.
+   *
+   * Health is determined by:
+   * - Container validation state (must be "validated")
+   * - Port selection success (at least one port selected)
+   * - Resolution errors (none expected)
+   *
+   * @returns HealthStatus with overall status, individual checks, and timestamp
+   *
+   * @example
+   * ```typescript
+   * const healthService = container.resolve(moduleHealthServiceToken);
+   * const health = healthService.getHealth();
+   *
+   * if (health.status !== 'healthy') {
+   *   console.warn('Module is not healthy:', health.checks);
+   * }
+   * ```
+   */
+  getHealth() {
+    const containerValidated = this.container.getValidationState() === "validated";
+    const metrics = this.metricsCollector.getSnapshot();
+    const hasPortSelections = Object.keys(metrics.portSelections).length > 0 || containerValidated;
+    const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
+    let status;
+    if (!containerValidated) {
+      status = "unhealthy";
+    } else if (hasPortFailures || metrics.resolutionErrors > 0) {
+      status = "degraded";
+    } else {
+      status = "healthy";
+    }
+    return {
+      status,
+      checks: {
+        containerValidated,
+        portsSelected: hasPortSelections,
+        lastError: hasPortFailures ? `Port selection failures detected for versions: ${Object.keys(metrics.portSelectionFailures).join(", ")}` : null
+      },
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }
+};
+__name(_ModuleHealthService, "ModuleHealthService");
+_ModuleHealthService.dependencies = [metricsCollectorToken];
+let ModuleHealthService = _ModuleHealthService;
 let cachedVersion = null;
 function detectFoundryVersion() {
   if (typeof game === "undefined") {
@@ -9267,32 +9371,11 @@ function tryGetFoundryVersion() {
   return result.ok ? result.value : void 0;
 }
 __name(tryGetFoundryVersion, "tryGetFoundryVersion");
-const PERFORMANCE_MARKS = {
-  MODULE: {
-    BOOTSTRAP: {
-      START: "module:bootstrap:start",
-      END: "module:bootstrap:end",
-      DURATION: "module:bootstrap:duration"
-    },
-    PORT_SELECTION: {
-      START: "module:port-selection:start",
-      END: "module:port-selection:end",
-      DURATION: "module:port-selection:duration"
-    }
-  }
-};
-const LEGACY_PERFORMANCE_MARKS = {
-  BOOTSTRAP_START: PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START,
-  BOOTSTRAP_END: PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END,
-  BOOTSTRAP_DURATION: PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION,
-  PORT_SELECTION_START: PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START,
-  PORT_SELECTION_END: PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END,
-  PORT_SELECTION_DURATION: PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION
-};
 const _PortSelector = class _PortSelector {
-  constructor(metricsCollector, logger) {
+  constructor(metricsCollector, logger, env) {
     this.metricsCollector = metricsCollector;
     this.logger = logger;
+    this.env = env;
   }
   /**
    * Selects and instantiates the appropriate port from factories.
@@ -9318,104 +9401,95 @@ const _PortSelector = class _PortSelector {
    * // On Foundry v14: creates v14 port
    * ```
    */
-  selectPortFromFactories(factories, foundryVersion) {
-    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START);
-    }
-    let version;
-    if (foundryVersion !== void 0) {
-      version = foundryVersion;
-    } else {
-      const versionResult = getFoundryVersionResult();
-      if (!versionResult.ok) {
-        return err(
-          createFoundryError(
-            "PORT_SELECTION_FAILED",
-            "Could not determine Foundry version",
-            void 0,
-            versionResult.error
-          )
-        );
+  selectPortFromFactories(factories, foundryVersion, adapterName) {
+    return withPerformanceTracking(
+      this.env,
+      this.metricsCollector,
+      () => {
+        let version;
+        if (foundryVersion !== void 0) {
+          version = foundryVersion;
+        } else {
+          const versionResult = getFoundryVersionResult();
+          if (!versionResult.ok) {
+            const result2 = err(
+              createFoundryError(
+                "PORT_SELECTION_FAILED",
+                "Could not determine Foundry version",
+                void 0,
+                versionResult.error
+              )
+            );
+            return {
+              result: result2,
+              selectedVersion: MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED
+            };
+          }
+          version = versionResult.value;
+        }
+        let selectedFactory;
+        let selectedVersion = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
+        for (const [portVersion, factory] of factories.entries()) {
+          if (portVersion > version) {
+            continue;
+          }
+          if (portVersion > selectedVersion) {
+            selectedVersion = portVersion;
+            selectedFactory = factory;
+          }
+        }
+        if (selectedFactory === void 0) {
+          const availableVersions = Array.from(factories.keys()).sort((a, b) => a - b).join(", ");
+          this.metricsCollector.recordPortSelectionFailure(version);
+          this.logger.error("No compatible port found", {
+            foundryVersion: version,
+            availableVersions
+          });
+          const result2 = err(
+            createFoundryError(
+              "PORT_SELECTION_FAILED",
+              `No compatible port found for Foundry version ${version}`,
+              { version, availableVersions: availableVersions || "none" }
+            )
+          );
+          return { result: result2, selectedVersion: MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED };
+        }
+        let result;
+        try {
+          result = ok(selectedFactory());
+        } catch (error) {
+          this.metricsCollector.recordPortSelectionFailure(version);
+          this.logger.error("Port instantiation failed", {
+            selectedVersion,
+            foundryVersion: version,
+            error
+          });
+          result = err(
+            createFoundryError(
+              "PORT_SELECTION_FAILED",
+              `Failed to instantiate port v${selectedVersion}`,
+              { selectedVersion },
+              error
+            )
+          );
+        }
+        return { result, selectedVersion };
+      },
+      (duration, { result, selectedVersion }) => {
+        if (result && result.ok) {
+          if (this.env.enableDebugMode) {
+            this.logger.debug(
+              `Port selection completed in ${duration.toFixed(2)}ms (selected: v${selectedVersion}${adapterName ? ` for ${adapterName}` : ""})`
+            );
+          }
+          this.metricsCollector.recordPortSelection(selectedVersion);
+        }
       }
-      version = versionResult.value;
-    }
-    let selectedFactory;
-    let selectedVersion = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
-    for (const [portVersion, factory] of factories.entries()) {
-      if (portVersion > version) {
-        continue;
-      }
-      if (portVersion > selectedVersion) {
-        selectedVersion = portVersion;
-        selectedFactory = factory;
-      }
-    }
-    if (selectedFactory === void 0) {
-      const availableVersions = Array.from(factories.keys()).sort((a, b) => a - b).join(", ");
-      if (ENV.enablePerformanceTracking) {
-        this.metricsCollector.recordPortSelectionFailure(version);
-      }
-      this.logger.error("No compatible port found", {
-        foundryVersion: version,
-        availableVersions
-      });
-      return err(
-        createFoundryError(
-          "PORT_SELECTION_FAILED",
-          `No compatible port found for Foundry version ${version}`,
-          { version, availableVersions: availableVersions || "none" }
-        )
-      );
-    }
-    let result;
-    try {
-      result = ok(selectedFactory());
-    } catch (error) {
-      if (ENV.enablePerformanceTracking) {
-        this.metricsCollector.recordPortSelectionFailure(version);
-      }
-      this.logger.error("Port instantiation failed", {
-        selectedVersion,
-        foundryVersion: version,
-        error
-      });
-      result = err(
-        createFoundryError(
-          "PORT_SELECTION_FAILED",
-          `Failed to instantiate port v${selectedVersion}`,
-          { selectedVersion },
-          error
-        )
-      );
-    }
-    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END);
-      performance.measure(
-        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION,
-        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START,
-        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END
-      );
-      const entries2 = performance.getEntriesByName(
-        PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION
-      );
-      const measure = entries2.at(-1);
-      if (measure && ENV.enableDebugMode) {
-        this.logger.debug(
-          `Port selection completed in ${measure.duration.toFixed(2)}ms (selected: v${selectedVersion})`
-        );
-      }
-      performance.clearMarks(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.START);
-      performance.clearMarks(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.END);
-      performance.clearMeasures(PERFORMANCE_MARKS.MODULE.PORT_SELECTION.DURATION);
-      if (result.ok) {
-        this.metricsCollector.recordPortSelection(selectedVersion);
-      }
-    }
-    return result;
+    ).result;
   }
 };
 __name(_PortSelector, "PortSelector");
-_PortSelector.dependencies = [metricsCollectorToken, loggerToken];
+_PortSelector.dependencies = [metricsCollectorToken, loggerToken, environmentConfigToken];
 let PortSelector = _PortSelector;
 const _PortRegistry = class _PortRegistry {
   constructor() {
@@ -9537,7 +9611,11 @@ const _FoundryGameService = class _FoundryGameService {
   getPort() {
     if (this.port === null) {
       const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundryGame"
+      );
       if (!portResult.ok) {
         return portResult;
       }
@@ -9590,7 +9668,11 @@ const _FoundryHooksService = class _FoundryHooksService {
   getPort() {
     if (this.port === null) {
       const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundryHooks"
+      );
       if (!portResult.ok) {
         return portResult;
       }
@@ -9607,7 +9689,9 @@ const _FoundryHooksService = class _FoundryHooksService {
         this.registeredHooks.set(hookName, /* @__PURE__ */ new Map());
       }
       this.registeredHooks.get(hookName).set(result.value, callback);
-      this.callbackToIdMap.set(callback, { hookName, id: result.value });
+      const existing = this.callbackToIdMap.get(callback) || [];
+      existing.push({ hookName, id: result.value });
+      this.callbackToIdMap.set(callback, existing);
     }
     return result;
   }
@@ -9627,17 +9711,35 @@ const _FoundryHooksService = class _FoundryHooksService {
           const callback = hooks.get(callbackOrId);
           hooks.delete(callbackOrId);
           if (callback) {
-            this.callbackToIdMap.delete(callback);
+            const hookInfos = this.callbackToIdMap.get(callback);
+            if (hookInfos) {
+              const filtered = hookInfos.filter(
+                (info) => !(info.hookName === hookName && info.id === callbackOrId)
+              );
+              if (filtered.length === 0) {
+                this.callbackToIdMap.delete(callback);
+              } else {
+                this.callbackToIdMap.set(callback, filtered);
+              }
+            }
           }
         }
       } else {
-        const hookInfo = this.callbackToIdMap.get(callbackOrId);
-        if (hookInfo) {
-          const hooks = this.registeredHooks.get(hookInfo.hookName);
+        const hookInfos = this.callbackToIdMap.get(callbackOrId);
+        if (hookInfos) {
+          const matchingInfos = hookInfos.filter((info) => info.hookName === hookName);
+          const hooks = this.registeredHooks.get(hookName);
           if (hooks) {
-            hooks.delete(hookInfo.id);
+            for (const info of matchingInfos) {
+              hooks.delete(info.id);
+            }
           }
-          this.callbackToIdMap.delete(callbackOrId);
+          const filtered = hookInfos.filter((info) => info.hookName !== hookName);
+          if (filtered.length === 0) {
+            this.callbackToIdMap.delete(callbackOrId);
+          } else {
+            this.callbackToIdMap.set(callbackOrId, filtered);
+          }
         }
       }
     }
@@ -9648,14 +9750,18 @@ const _FoundryHooksService = class _FoundryHooksService {
    * Called automatically when the container is disposed.
    */
   dispose() {
-    for (const [hookName, hookMap] of this.registeredHooks) {
-      for (const [hookId, callback] of hookMap) {
+    for (const [callback, hookInfos] of this.callbackToIdMap) {
+      for (const info of hookInfos) {
         try {
           if (typeof Hooks !== "undefined") {
-            Hooks.off(hookName, callback);
+            Hooks.off(info.hookName, callback);
           }
         } catch (error) {
-          this.logger.warn("Failed to unregister hook", { hookName, hookId, error });
+          this.logger.warn("Failed to unregister hook", {
+            hookName: info.hookName,
+            hookId: info.id,
+            error
+          });
         }
       }
     }
@@ -9685,7 +9791,11 @@ const _FoundryDocumentService = class _FoundryDocumentService {
   getPort() {
     if (this.port === null) {
       const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundryDocument"
+      );
       if (!portResult.ok) {
         return portResult;
       }
@@ -9735,7 +9845,11 @@ const _FoundryUIService = class _FoundryUIService {
   getPort() {
     if (this.port === null) {
       const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundryUI"
+      );
       if (!portResult.ok) {
         return portResult;
       }
@@ -9790,7 +9904,11 @@ const _FoundrySettingsService = class _FoundrySettingsService {
   getPort() {
     if (this.port === null) {
       const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundrySettings"
+      );
       if (!portResult.ok) {
         return portResult;
       }
@@ -9841,7 +9959,11 @@ const _FoundryI18nService = class _FoundryI18nService {
   getPort() {
     if (this.port === null) {
       const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundryI18n"
+      );
       if (!portResult.ok) {
         return portResult;
       }
@@ -9868,6 +9990,10 @@ const _FoundryI18nService = class _FoundryI18nService {
 __name(_FoundryI18nService, "FoundryI18nService");
 _FoundryI18nService.dependencies = [portSelectorToken, foundryI18nPortRegistryToken];
 let FoundryI18nService = _FoundryI18nService;
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+__name(escapeRegex, "escapeRegex");
 const _LocalI18nService = class _LocalI18nService {
   constructor() {
     this.translations = /* @__PURE__ */ new Map();
@@ -9943,7 +10069,8 @@ const _LocalI18nService = class _LocalI18nService {
     const template = this.translations.get(key) ?? key;
     let formatted = template;
     for (const [placeholder, value2] of Object.entries(data)) {
-      const regex2 = new RegExp(`\\{${placeholder}\\}`, "g");
+      const escapedPlaceholder = escapeRegex(placeholder);
+      const regex2 = new RegExp(`\\{${escapedPlaceholder}\\}`, "g");
       formatted = formatted.replace(regex2, String(value2));
     }
     return ok(formatted);
@@ -10471,6 +10598,10 @@ function registerFallbacks(container) {
 }
 __name(registerFallbacks, "registerFallbacks");
 function registerCoreServices(container) {
+  const envResult = container.registerValue(environmentConfigToken, ENV);
+  if (isErr(envResult)) {
+    return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
+  }
   const metricsResult = container.registerClass(
     metricsCollectorToken,
     MetricsCollector,
@@ -10486,6 +10617,21 @@ function registerCoreServices(container) {
   );
   if (isErr(loggerResult)) {
     return err(`Failed to register logger: ${loggerResult.error.message}`);
+  }
+  const healthResult = container.registerFactory(
+    moduleHealthServiceToken,
+    () => {
+      const metricsResult2 = container.resolveWithError(metricsCollectorToken);
+      if (!metricsResult2.ok) {
+        throw new Error("MetricsCollector not available for ModuleHealthService");
+      }
+      return new ModuleHealthService(container, metricsResult2.value);
+    },
+    ServiceLifecycle.SINGLETON,
+    [metricsCollectorToken]
+  );
+  if (isErr(healthResult)) {
+    return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
   }
   return ok(void 0);
 }
@@ -10751,30 +10897,38 @@ const _CompositionRoot = class _CompositionRoot {
    * @returns Result mit initialisiertem Container oder Fehlermeldung
    */
   bootstrap() {
-    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START);
-    }
     const container = ServiceContainer.createRoot();
-    const configured = configureDependencies(container);
-    if (ENV.enableDebugMode || ENV.enablePerformanceTracking) {
-      performance.mark(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END);
-      performance.measure(
-        PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION,
-        PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START,
-        PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END
-      );
-      const entries2 = performance.getEntriesByName(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION);
-      const measure = entries2.at(-1);
-      if (measure && ENV.enableDebugMode) {
+    let env = null;
+    let metricsCollector = null;
+    const envResult = container.resolveWithError(environmentConfigToken);
+    if (envResult.ok) {
+      env = envResult.value;
+    }
+    const metricsResult = container.resolveWithError(metricsCollectorToken);
+    if (metricsResult.ok) {
+      metricsCollector = metricsResult.value;
+    }
+    const effectiveEnv = env ?? {
+      enablePerformanceTracking: false,
+      isDevelopment: false,
+      isProduction: true,
+      enableDebugMode: false,
+      logLevel: 1,
+      performanceSamplingRate: 0
+    };
+    const configured = withPerformanceTracking(
+      effectiveEnv,
+      metricsCollector,
+      () => configureDependencies(container),
+      /* c8 ignore start -- onComplete callback is only called when performance tracking is enabled and sampling passes */
+      (duration) => {
         const loggerResult = container.resolveWithError(loggerToken);
         if (loggerResult.ok) {
-          loggerResult.value.debug(`Bootstrap completed in ${measure.duration.toFixed(2)}ms`);
+          loggerResult.value.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
         }
       }
-      performance.clearMarks(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.START);
-      performance.clearMarks(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.END);
-      performance.clearMeasures(PERFORMANCE_MARKS.MODULE.BOOTSTRAP.DURATION);
-    }
+      /* c8 ignore stop */
+    );
     if (configured.ok) {
       this.container = container;
       return { ok: true, value: container };
@@ -10852,35 +11006,19 @@ const _CompositionRoot = class _CompositionRoot {
         return metricsResult.value.getSnapshot();
       }, "getMetrics"),
       getHealth: /* @__PURE__ */ __name(() => {
-        const containerValidated = this.container?.getValidationState() === "validated";
-        const metricsResult = container.resolveWithError(metricsCollectorToken);
-        const metrics = metricsResult.ok ? metricsResult.value.getSnapshot() : {
-          containerResolutions: 0,
-          resolutionErrors: 0,
-          avgResolutionTimeMs: 0,
-          portSelections: {},
-          portSelectionFailures: {},
-          cacheHitRate: 0
-        };
-        const hasPortSelections = Object.keys(metrics.portSelections).length > 0 || containerValidated;
-        const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
-        let status;
-        if (!containerValidated) {
-          status = "unhealthy";
-        } else if (hasPortFailures || metrics.resolutionErrors > 0) {
-          status = "degraded";
-        } else {
-          status = "healthy";
+        const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
+        if (!healthServiceResult.ok) {
+          return {
+            status: "unhealthy",
+            checks: {
+              containerValidated: false,
+              portsSelected: false,
+              lastError: "ModuleHealthService not available"
+            },
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          };
         }
-        return {
-          status,
-          checks: {
-            containerValidated,
-            portsSelected: hasPortSelections,
-            lastError: hasPortFailures ? `Port selection failures detected for versions: ${Object.keys(metrics.portSelectionFailures).join(", ")}` : null
-          },
-          timestamp: (/* @__PURE__ */ new Date()).toISOString()
-        };
+        return healthServiceResult.value.getHealth();
       }, "getHealth")
     };
     mod.api = api;

@@ -36,7 +36,11 @@ export class FoundrySettingsService implements FoundrySettings, Disposable {
   private getPort(): Result<FoundrySettings, FoundryError> {
     if (this.port === null) {
       const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        undefined,
+        "FoundrySettings"
+      );
       if (!portResult.ok) {
         return portResult;
       }

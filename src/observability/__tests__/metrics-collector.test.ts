@@ -2,20 +2,39 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { MetricsCollector } from "../metrics-collector";
 import { createInjectionToken } from "@/di_infrastructure/tokenutilities";
 import type { Logger } from "@/interfaces/logger";
+import type { EnvironmentConfig } from "@/config/environment";
+import { LogLevel } from "@/config/environment";
+import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 
 describe("MetricsCollector", () => {
   let collector: MetricsCollector;
+  let mockEnv: EnvironmentConfig;
 
   beforeEach(() => {
-    collector = new MetricsCollector();
+    mockEnv = {
+      isDevelopment: true,
+      isProduction: false,
+      logLevel: LogLevel.DEBUG,
+      enablePerformanceTracking: true,
+      enableDebugMode: true,
+      performanceSamplingRate: 1.0,
+    };
+    collector = new MetricsCollector(mockEnv);
   });
 
   describe("DI Integration", () => {
     it("should create independent instances", () => {
-      const instance1 = new MetricsCollector();
-      const instance2 = new MetricsCollector();
+      const instance1 = new MetricsCollector(mockEnv);
+      const instance2 = new MetricsCollector(mockEnv);
 
       expect(instance1).not.toBe(instance2);
+    });
+
+    it("should have environmentConfigToken in dependencies", () => {
+      // Dependencies is an array of tokens (symbols), not objects
+      expect(MetricsCollector.dependencies).toHaveLength(1);
+      expect(MetricsCollector.dependencies[0]).toBeDefined();
+      expect(String(MetricsCollector.dependencies[0])).toContain("EnvironmentConfig");
     });
   });
 
@@ -287,9 +306,10 @@ describe("MetricsCollector", () => {
 
   describe("shouldSample", () => {
     it("should always return true in development mode", () => {
-      const collector = new MetricsCollector();
+      const devEnv = createMockEnvironmentConfig({ isDevelopment: true });
+      const collector = new MetricsCollector(devEnv);
 
-      // In development mode (ENV.isDevelopment is true), shouldSample always returns true
+      // In development mode (env.isDevelopment is true), shouldSample always returns true
       const result = collector.shouldSample();
 
       expect(result).toBe(true);

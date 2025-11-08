@@ -31,7 +31,11 @@ export class FoundryI18nService implements FoundryI18n {
   private getPort(): Result<FoundryI18n, FoundryError> {
     if (this.port === null) {
       const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(factories);
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        undefined,
+        "FoundryI18n"
+      );
       if (!portResult.ok) {
         return portResult;
       }
