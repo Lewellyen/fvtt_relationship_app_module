@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.6.1] - 2025-11-08
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Im Container-Resolver war ein c8 ignore nicht richtig gesetzt.
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.6.0] - 2025-11-08
 ### Hinzugefügt
 - Keine Einträge

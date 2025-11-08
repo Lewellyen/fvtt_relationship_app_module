@@ -137,10 +137,11 @@ export class ServiceResolver {
 
         return result;
       },
+      /* c8 ignore start -- Optional chaining is defensive: metricsCollector is always injected via constructor */
       (duration, result) => {
-        /* c8 ignore next -- Optional chaining is defensive: metricsCollector is always injected via constructor */
         this.metricsCollector?.recordResolution(token, duration, result.ok);
       }
+      /* c8 ignore stop */
     );
   }
 
