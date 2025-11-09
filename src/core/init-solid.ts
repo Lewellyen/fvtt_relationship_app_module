@@ -4,6 +4,7 @@ import {
   loggerToken,
   moduleSettingsRegistrarToken,
   moduleHookRegistrarToken,
+  moduleApiInitializerToken,
 } from "@/tokens/tokenindex";
 import { CompositionRoot } from "@/core/composition-root";
 import { tryGetFoundryVersion } from "@/foundry/versioning/versiondetector";
@@ -55,12 +56,29 @@ function initializeFoundryModule(): void {
   /* c8 ignore next -- Registers Foundry hook callbacks */
   Hooks.on("init", () => {
     logger.info("init-phase");
-    root.exposeToModuleApi();
 
     const initContainerResult = root.getContainer();
     /* c8 ignore start -- Defensive: Container is available after successful bootstrap */
     if (!initContainerResult.ok) {
       logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
+      return;
+    }
+    /* c8 ignore stop */
+
+    // Expose Module API via DI-Service
+    const apiInitializerResult =
+      initContainerResult.value.resolveWithError(moduleApiInitializerToken);
+    /* c8 ignore start -- Defensive: ModuleApiInitializer resolution can only fail if container validation failed */
+    if (!apiInitializerResult.ok) {
+      logger.error(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
+      return;
+    }
+    /* c8 ignore stop */
+
+    const exposeResult = apiInitializerResult.value.expose(initContainerResult.value);
+    /* c8 ignore start -- Defensive: API exposition can only fail if game.modules is unavailable (tested in module-api-initializer.test.ts) */
+    if (!exposeResult.ok) {
+      logger.error(`Failed to expose API: ${exposeResult.error}`);
       return;
     }
     /* c8 ignore stop */

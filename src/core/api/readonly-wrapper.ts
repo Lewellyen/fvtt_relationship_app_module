@@ -27,6 +27,7 @@ export function createReadOnlyWrapper<T extends object>(
   return new Proxy(service, {
     get(target, prop, receiver: unknown) {
       // Allow whitelisted methods only
+      /* type-coverage:ignore-next-line -- Proxy trap: prop (string | symbol) must be narrowed to keyof T for includes() check */
       if (allowedMethods.includes(prop as keyof T)) {
         const value: unknown = Reflect.get(target, prop, receiver);
 

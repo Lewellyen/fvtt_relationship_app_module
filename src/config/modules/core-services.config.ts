@@ -9,11 +9,13 @@ import {
   metricsSamplerToken,
   loggerToken,
   moduleHealthServiceToken,
+  moduleApiInitializerToken,
 } from "@/tokens/tokenindex";
 import { ENV } from "@/config/environment";
 import { MetricsCollector } from "@/observability/metrics-collector";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { ModuleHealthService } from "@/core/module-health-service";
+import { ModuleApiInitializer } from "@/core/api/module-api-initializer";
 
 /**
  * Registers core infrastructure services.
@@ -24,12 +26,14 @@ import { ModuleHealthService } from "@/core/module-health-service";
  * - MetricsRecorder/MetricsSampler (aliases to MetricsCollector)
  * - Logger (singleton, self-configuring with EnvironmentConfig)
  * - ModuleHealthService (singleton, with container self-reference)
+ * - ModuleApiInitializer (singleton, handles API exposition)
  *
  * INITIALIZATION ORDER:
  * 1. EnvironmentConfig (no dependencies)
  * 2. MetricsCollector (deps: [environmentConfigToken])
  * 3. Logger (deps: [environmentConfigToken])
  * 4. ModuleHealthService (deps: [container, metricsCollectorToken])
+ * 5. ModuleApiInitializer (no dependencies)
  *
  * @param container - The service container to register services in
  * @returns Result indicating success or error with details
@@ -84,6 +88,16 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
 
   if (isErr(healthResult)) {
     return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
+  }
+
+  // Register ModuleApiInitializer (no dependencies, handles API exposition)
+  const apiInitResult = container.registerClass(
+    moduleApiInitializerToken,
+    ModuleApiInitializer,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(apiInitResult)) {
+    return err(`Failed to register ModuleApiInitializer: ${apiInitResult.error.message}`);
   }
 
   return ok(undefined);

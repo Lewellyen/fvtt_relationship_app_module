@@ -29,7 +29,7 @@ graph TD
     C -->|Error| D[BootstrapErrorHandler]
     D --> E[UI Notification & Abort]
     C -->|Success| F[Foundry 'init' Hook]
-    F --> G[exposeToModuleApi]
+    F --> G[ModuleApiInitializer.expose]
     G --> H[Register Settings]
     H --> I[Configure Logger]
     I --> J[Register Module Hooks]
@@ -206,22 +206,31 @@ if (!bootstrapOk) {
 Hooks.on("init", () => {
   logger.info("init-phase");
   
-  // 1. Expose Public API
-  root.exposeToModuleApi();
+  // 1. Expose Public API via ModuleApiInitializer (DI-Service)
+  const apiInitializer = container.resolveWithError(moduleApiInitializerToken);
+  if (apiInitializer.ok) {
+    const exposeResult = apiInitializer.value.expose(container);
+    if (!exposeResult.ok) {
+      logger.error(`Failed to expose API: ${exposeResult.error}`);
+      return;
+    }
+  }
   // → game.modules.get(MODULE_ID).api.resolve()
   // → game.modules.get(MODULE_ID).api.tokens
   // → game.modules.get(MODULE_ID).api.getMetrics()
   // → game.modules.get(MODULE_ID).api.getHealth()
 ```
 
-**Public API:**
+**Public API (via ModuleApiInitializer):**
+
+**Verantwortlich:** `ModuleApiInitializer` (DI-Service, registriert in `core-services.config.ts`)
 
 ```typescript
 // Verfügbar unter: game.modules.get(MODULE_ID).api
 const api: ModuleApi = {
   version: "1.0.0",
   
-  // Service Resolution
+  // Service Resolution (mit Deprecation-Check + ReadOnly-Wrapping)
   resolve: <T>(token: ApiSafeToken<T>) => T,
   
   // Token Registry
@@ -342,7 +351,7 @@ Module Load
 [...] Waiting for Foundry init
     ↓
 [Foundry Time] Hooks.on("init", ...)
-    ├─ root.exposeToModuleApi()
+    ├─ ModuleApiInitializer.expose(container)
     ├─ ModuleSettingsRegistrar.registerAll()
     ├─ Configure Logger with User-Setting
     └─ ModuleHookRegistrar.registerAll()
@@ -760,7 +769,7 @@ container.dispose();
 │                                                             │
 │ ┌─────────────────────────────────────────────────────────┐│
 │ │ Hooks.on("init", () => {                                ││
-│ │   ├─ root.exposeToModuleApi()                           ││
+│ │   ├─ ModuleApiInitializer.expose(container)             ││
 │ │   │  └─ game.modules.get(MODULE_ID).api = { ... }       ││
 │ │   ├─ ModuleSettingsRegistrar.registerAll()             ││
 │ │   │  └─ Register Log-Level-Setting                      ││

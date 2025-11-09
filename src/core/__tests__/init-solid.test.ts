@@ -4,7 +4,6 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
-import { CompositionRoot } from "../composition-root";
 import { ModuleHookRegistrar } from "../module-hook-registrar";
 import { MODULE_CONSTANTS } from "@/constants";
 
@@ -36,8 +35,11 @@ describe("init-solid Bootstrap", () => {
 
       // Spies VOR dem Import setzen (für Callback-Execution)
       // WICHTIG: Spy auf Prototype setzen, damit er die Instanz-Methode erfasst
-      vi.spyOn(CompositionRoot.prototype, "exposeToModuleApi");
       vi.spyOn(ModuleHookRegistrar.prototype, "registerAll");
+
+      // Spy auf ModuleApiInitializer.expose() (call-through, nicht mocked)
+      const moduleApiInitializerModule = await import("@/core/api/module-api-initializer");
+      vi.spyOn(moduleApiInitializerModule.ModuleApiInitializer.prototype, "expose");
 
       // Dynamic import NACH Mock-Setup
       await import("@/core/init-solid");
@@ -53,8 +55,14 @@ describe("init-solid Bootstrap", () => {
 
       expect(initCallback).toBeDefined();
 
+      // Prüfen dass expose-Spy existiert
+      expect(moduleApiInitializerModule.ModuleApiInitializer.prototype.expose).toBeDefined();
+
       // Callback ausführen -> sollte Phase 2 triggern
       initCallback!();
+
+      // Prüfen dass API expose wurde
+      expect(moduleApiInitializerModule.ModuleApiInitializer.prototype.expose).toHaveBeenCalled();
 
       // Prüfen dass Phase-2-Methoden aufgerufen wurden
       // Da Spies nach vi.resetModules() nicht funktionieren, prüfen wir Seiteneffekte:

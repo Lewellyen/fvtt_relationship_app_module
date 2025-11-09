@@ -227,6 +227,9 @@ const moduleHookRegistrarToken = createInjectionToken(
   "ModuleHookRegistrar"
 );
 const renderJournalDirectoryHookToken = createInjectionToken("RenderJournalDirectoryHook");
+const moduleApiInitializerToken = createInjectionToken(
+  "ModuleApiInitializer"
+);
 var tokenindex = /* @__PURE__ */ Object.freeze({
   __proto__: null,
   environmentConfigToken,
@@ -238,6 +241,7 @@ var tokenindex = /* @__PURE__ */ Object.freeze({
   metricsCollectorToken,
   metricsRecorderToken,
   metricsSamplerToken,
+  moduleApiInitializerToken,
   moduleHealthServiceToken,
   moduleHookRegistrarToken,
   moduleSettingsRegistrarToken,
@@ -2297,6 +2301,186 @@ const _ModuleHealthService = class _ModuleHealthService {
 __name(_ModuleHealthService, "ModuleHealthService");
 _ModuleHealthService.dependencies = [metricsCollectorToken];
 let ModuleHealthService = _ModuleHealthService;
+const deprecationMetadata = /* @__PURE__ */ new Map();
+function markAsDeprecated(token, reason, replacement, removedInVersion) {
+  const apiSafeToken = markAsApiSafe(token);
+  deprecationMetadata.set(apiSafeToken, {
+    reason,
+    replacement: replacement ? String(replacement) : null,
+    removedInVersion,
+    warningShown: false
+  });
+  return apiSafeToken;
+}
+__name(markAsDeprecated, "markAsDeprecated");
+function getDeprecationInfo(token) {
+  if (!token || typeof token !== "symbol") {
+    return null;
+  }
+  return deprecationMetadata.get(token) || null;
+}
+__name(getDeprecationInfo, "getDeprecationInfo");
+function createReadOnlyWrapper(service, allowedMethods) {
+  return new Proxy(service, {
+    get(target, prop, receiver) {
+      if (allowedMethods.includes(prop)) {
+        const value2 = Reflect.get(target, prop, receiver);
+        if (typeof value2 === "function") {
+          return value2.bind(target);
+        }
+        return value2;
+      }
+      throw new Error(
+        `Property "${String(prop)}" is not accessible via Public API. Only these methods are allowed: ${allowedMethods.map(String).join(", ")}`
+      );
+    },
+    set() {
+      throw new Error("Cannot modify services via Public API (read-only)");
+    },
+    deleteProperty() {
+      throw new Error("Cannot delete properties via Public API (read-only)");
+    }
+  });
+}
+__name(createReadOnlyWrapper, "createReadOnlyWrapper");
+function createPublicLogger(logger) {
+  return createReadOnlyWrapper(logger, [
+    "log",
+    "debug",
+    "info",
+    "warn",
+    "error",
+    "withTraceId"
+    // Decorator pattern for trace context
+  ]);
+}
+__name(createPublicLogger, "createPublicLogger");
+function createPublicI18n(i18n) {
+  return createReadOnlyWrapper(i18n, ["translate", "format", "has"]);
+}
+__name(createPublicI18n, "createPublicI18n");
+function createApiTokens() {
+  return {
+    loggerToken: markAsApiSafe(loggerToken),
+    journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
+    foundryGameToken: markAsApiSafe(foundryGameToken),
+    foundryHooksToken: markAsApiSafe(foundryHooksToken),
+    foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
+    foundryUIToken: markAsApiSafe(foundryUIToken),
+    foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
+    i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
+    foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken)
+  };
+}
+__name(createApiTokens, "createApiTokens");
+const _ModuleApiInitializer = class _ModuleApiInitializer {
+  /**
+   * Exposes the module's public API to game.modules.get(MODULE_ID).api
+   *
+   * @param container - Initialized and validated ServiceContainer
+   * @returns Result<void, string> - Ok if successful, Err with error message
+   */
+  expose(container) {
+    if (typeof game === "undefined" || !game?.modules) {
+      return err("Game modules not available - API cannot be exposed");
+    }
+    const mod = game.modules.get(MODULE_CONSTANTS.MODULE.ID);
+    if (!mod) {
+      return err(`Module '${MODULE_CONSTANTS.MODULE.ID}' not found in game.modules`);
+    }
+    const wellKnownTokens = createApiTokens();
+    const apiSafeLoggerToken = markAsApiSafe(loggerToken);
+    const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
+    const resolveImpl = /* @__PURE__ */ __name((token) => {
+      const deprecationInfo = getDeprecationInfo(token);
+      if (deprecationInfo && !deprecationInfo.warningShown) {
+        const replacementInfo = deprecationInfo.replacement ? `Use "${deprecationInfo.replacement}" instead.
+` : "";
+        console.warn(
+          `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
+Reason: ${deprecationInfo.reason}
+` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
+        );
+        deprecationInfo.warningShown = true;
+      }
+      const service = container.resolve(token);
+      if (token === apiSafeLoggerToken) {
+        const logger = service;
+        const wrappedLogger = createPublicLogger(logger);
+        return wrappedLogger;
+      }
+      if (token === apiSafeI18nToken) {
+        const i18n = service;
+        const wrappedI18n = createPublicI18n(i18n);
+        return wrappedI18n;
+      }
+      return service;
+    }, "resolveImpl");
+    const api = {
+      version: MODULE_CONSTANTS.API.VERSION,
+      // Overloaded resolve method (implementation uses helper)
+      resolve: resolveImpl,
+      getAvailableTokens: /* @__PURE__ */ __name(() => {
+        const tokenMap = /* @__PURE__ */ new Map();
+        const tokenEntries = [
+          ["loggerToken", loggerToken],
+          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
+          ["foundryGameToken", foundryGameToken],
+          ["foundryHooksToken", foundryHooksToken],
+          ["foundryDocumentToken", foundryDocumentToken],
+          ["foundryUIToken", foundryUIToken],
+          ["foundrySettingsToken", foundrySettingsToken],
+          ["i18nFacadeToken", i18nFacadeToken],
+          ["foundryJournalFacadeToken", foundryJournalFacadeToken]
+        ];
+        for (const [, token] of tokenEntries) {
+          const isRegisteredResult = container.isRegistered(token);
+          tokenMap.set(token, {
+            description: String(token).replace("Symbol(", "").replace(")", ""),
+            /* c8 ignore next -- isRegistered never fails; ok check is defensive */
+            isRegistered: isRegisteredResult.ok ? isRegisteredResult.value : false
+          });
+        }
+        return tokenMap;
+      }, "getAvailableTokens"),
+      tokens: wellKnownTokens,
+      getMetrics: /* @__PURE__ */ __name(() => {
+        const metricsResult = container.resolveWithError(metricsCollectorToken);
+        if (!metricsResult.ok) {
+          return {
+            containerResolutions: 0,
+            resolutionErrors: 0,
+            avgResolutionTimeMs: 0,
+            portSelections: {},
+            portSelectionFailures: {},
+            cacheHitRate: 0
+          };
+        }
+        return metricsResult.value.getSnapshot();
+      }, "getMetrics"),
+      getHealth: /* @__PURE__ */ __name(() => {
+        const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
+        if (!healthServiceResult.ok) {
+          return {
+            status: "unhealthy",
+            checks: {
+              containerValidated: false,
+              portsSelected: false,
+              lastError: "ModuleHealthService not available"
+            },
+            timestamp: (/* @__PURE__ */ new Date()).toISOString()
+          };
+        }
+        return healthServiceResult.value.getHealth();
+      }, "getHealth")
+    };
+    mod.api = api;
+    return ok(void 0);
+  }
+};
+__name(_ModuleApiInitializer, "ModuleApiInitializer");
+_ModuleApiInitializer.dependencies = [];
+let ModuleApiInitializer = _ModuleApiInitializer;
 function registerCoreServices(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
@@ -2334,6 +2518,14 @@ function registerCoreServices(container) {
   );
   if (isErr(healthResult)) {
     return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
+  }
+  const apiInitResult = container.registerClass(
+    moduleApiInitializerToken,
+    ModuleApiInitializer,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(apiInitResult)) {
+    return err(`Failed to register ModuleApiInitializer: ${apiInitResult.error.message}`);
   }
   return ok(void 0);
 }
@@ -11654,94 +11846,6 @@ const _CompositionRoot = class _CompositionRoot {
     return { ok: false, error: configured.error };
   }
   /**
-   * Exponiert die öffentliche Modul-API unter game.modules.get(MODULE_ID).api.
-   * Stellt resolve(), getAvailableTokens() und tokens bereit.
-   * Darf erst nach erfolgreichem Bootstrap aufgerufen werden.
-   * @throws Fehler, wenn das Foundry-Modul-Objekt nicht verfügbar ist
-   */
-  /* c8 ignore next -- Requires Foundry game module globals */
-  exposeToModuleApi() {
-    const containerResult = this.getContainer();
-    if (!containerResult.ok) {
-      throw new Error(containerResult.error);
-    }
-    const container = containerResult.value;
-    if (typeof game === "undefined" || !game?.modules) {
-      throw new Error(`${MODULE_CONSTANTS.LOG_PREFIX} Game modules not available`);
-    }
-    const mod = game.modules.get(MODULE_CONSTANTS.MODULE.ID);
-    if (!mod) {
-      throw new Error(`${MODULE_CONSTANTS.LOG_PREFIX} Module not available to expose API`);
-    }
-    const wellKnownTokens = {
-      loggerToken: markAsApiSafe(loggerToken),
-      journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
-      foundryGameToken: markAsApiSafe(foundryGameToken),
-      foundryHooksToken: markAsApiSafe(foundryHooksToken),
-      foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
-      foundryUIToken: markAsApiSafe(foundryUIToken),
-      foundrySettingsToken: markAsApiSafe(foundrySettingsToken)
-    };
-    const api = {
-      version: MODULE_CONSTANTS.API.VERSION,
-      // Bind container.resolve() directly (already typed as ApiSafeToken in ModuleApi interface)
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- API boundary: External modules use resolve()
-      resolve: container.resolve.bind(container),
-      getAvailableTokens: /* @__PURE__ */ __name(() => {
-        const tokenMap = /* @__PURE__ */ new Map();
-        const tokenEntries = [
-          ["loggerToken", loggerToken],
-          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
-          ["foundryGameToken", foundryGameToken],
-          ["foundryHooksToken", foundryHooksToken],
-          ["foundryDocumentToken", foundryDocumentToken],
-          ["foundryUIToken", foundryUIToken],
-          ["foundrySettingsToken", foundrySettingsToken]
-        ];
-        for (const [, token] of tokenEntries) {
-          const isRegisteredResult = container.isRegistered(token);
-          tokenMap.set(token, {
-            description: String(token).replace("Symbol(", "").replace(")", ""),
-            /* c8 ignore next -- isRegistered never fails; ok check is defensive */
-            isRegistered: isRegisteredResult.ok ? isRegisteredResult.value : false
-          });
-        }
-        return tokenMap;
-      }, "getAvailableTokens"),
-      tokens: wellKnownTokens,
-      getMetrics: /* @__PURE__ */ __name(() => {
-        const metricsResult = container.resolveWithError(metricsCollectorToken);
-        if (!metricsResult.ok) {
-          return {
-            containerResolutions: 0,
-            resolutionErrors: 0,
-            avgResolutionTimeMs: 0,
-            portSelections: {},
-            portSelectionFailures: {},
-            cacheHitRate: 0
-          };
-        }
-        return metricsResult.value.getSnapshot();
-      }, "getMetrics"),
-      getHealth: /* @__PURE__ */ __name(() => {
-        const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
-        if (!healthServiceResult.ok) {
-          return {
-            status: "unhealthy",
-            checks: {
-              containerValidated: false,
-              portsSelected: false,
-              lastError: "ModuleHealthService not available"
-            },
-            timestamp: (/* @__PURE__ */ new Date()).toISOString()
-          };
-        }
-        return healthServiceResult.value.getHealth();
-      }, "getHealth")
-    };
-    mod.api = api;
-  }
-  /**
    * Liefert den initialisierten Container als Result.
    * @returns Result mit Container oder Fehlermeldung
    */
@@ -11799,10 +11903,19 @@ function initializeFoundryModule() {
   }
   Hooks.on("init", () => {
     logger.info("init-phase");
-    root.exposeToModuleApi();
     const initContainerResult = root.getContainer();
     if (!initContainerResult.ok) {
       logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
+      return;
+    }
+    const apiInitializerResult = initContainerResult.value.resolveWithError(moduleApiInitializerToken);
+    if (!apiInitializerResult.ok) {
+      logger.error(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
+      return;
+    }
+    const exposeResult = apiInitializerResult.value.expose(initContainerResult.value);
+    if (!exposeResult.ok) {
+      logger.error(`Failed to expose API: ${exposeResult.error}`);
       return;
     }
     const settingsRegistrarResult = initContainerResult.value.resolveWithError(

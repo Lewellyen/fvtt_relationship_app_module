@@ -312,6 +312,11 @@ export const renderJournalDirectoryHookToken = createInjectionToken<
   import("@/core/hooks/render-journal-directory-hook").RenderJournalDirectoryHook
 >("RenderJournalDirectoryHook");
 
+export const moduleApiInitializerToken =
+  createInjectionToken<import("@/core/api/module-api-initializer").ModuleApiInitializer>(
+    "ModuleApiInitializer"
+  );
+
 /**
  * Re-export port-related tokens for convenience.
  * These are defined in @/foundry/foundrytokens but exported here for easier access.

@@ -3,7 +3,7 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { CompositionRoot } from "@/core/composition-root";
-import { loggerToken } from "@/tokens/tokenindex";
+import { loggerToken, moduleApiInitializerToken } from "@/tokens/tokenindex";
 import { foundryGameToken } from "@/foundry/foundrytokens";
 
 describe("Integration: Full Bootstrap", () => {
@@ -68,20 +68,41 @@ describe("Integration: Full Bootstrap", () => {
     const root = new CompositionRoot();
     root.bootstrap();
 
-    expect(() => root.exposeToModuleApi()).not.toThrow();
+    // Resolve and use ModuleApiInitializer
+    const containerResult = root.getContainer();
+    expect(containerResult.ok).toBe(true);
 
-    const mod = (global as any).game.modules.get("fvtt_relationship_app_module");
-    expect(mod.api).toBeDefined();
-    expect(typeof mod.api.resolve).toBe("function");
-    expect(typeof mod.api.getAvailableTokens).toBe("function");
-    expect(typeof mod.api.getMetrics).toBe("function");
-    expect(mod.api.tokens).toBeDefined();
+    if (containerResult.ok) {
+      const initializerResult = containerResult.value.resolveWithError(moduleApiInitializerToken);
+      expect(initializerResult.ok).toBe(true);
+
+      if (initializerResult.ok) {
+        const exposeResult = initializerResult.value.expose(containerResult.value);
+        expect(exposeResult.ok).toBe(true);
+
+        const mod = (global as any).game.modules.get("fvtt_relationship_app_module");
+        expect(mod.api).toBeDefined();
+        expect(typeof mod.api.resolve).toBe("function");
+        expect(typeof mod.api.getAvailableTokens).toBe("function");
+        expect(typeof mod.api.getMetrics).toBe("function");
+        expect(mod.api.tokens).toBeDefined();
+      }
+    }
   });
 
   it("should expose metrics API", () => {
     const root = new CompositionRoot();
     root.bootstrap();
-    root.exposeToModuleApi();
+
+    // Resolve and use ModuleApiInitializer
+    const containerResult = root.getContainer();
+    if (!containerResult.ok) throw new Error("Container not bootstrapped");
+
+    const initializerResult = containerResult.value.resolveWithError(moduleApiInitializerToken);
+    if (!initializerResult.ok) throw new Error("ModuleApiInitializer not resolved");
+
+    const exposeResult = initializerResult.value.expose(containerResult.value);
+    expect(exposeResult.ok).toBe(true);
 
     const mod = (global as any).game.modules.get("fvtt_relationship_app_module");
     const metrics = mod.api.getMetrics();

@@ -19,11 +19,13 @@ export interface DeprecationInfo {
 }
 
 /**
- * WeakMap to store deprecation metadata for tokens.
- * Symbols cannot have properties, so we use a WeakMap.
+ * Map to store deprecation metadata for tokens.
+ * Symbols are used as keys directly (Map supports symbol keys natively).
+ *
+ * Memory: Tokens are singletons (defined once in tokenindex.ts), so no memory leak risk.
+ * Using Map instead of WeakMap for 100% type-coverage (no any-casts needed).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const deprecationMetadata: WeakMap<any, DeprecationInfo> = new WeakMap<any, DeprecationInfo>();
+const deprecationMetadata = new Map<symbol, DeprecationInfo>();
 
 /**
  * Marks an injection token as deprecated with metadata.
@@ -65,9 +67,8 @@ export function markAsDeprecated<T extends ServiceType>(
 ): ApiSafeToken<T> {
   const apiSafeToken = markAsApiSafe(token);
 
-  // Store deprecation metadata in WeakMap (symbols cannot have properties)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  deprecationMetadata.set(apiSafeToken as any, {
+  // Store deprecation metadata in Map (symbols are valid keys)
+  deprecationMetadata.set(apiSafeToken, {
     reason,
     replacement: replacement ? String(replacement) : null,
     removedInVersion,
@@ -88,6 +89,5 @@ export function getDeprecationInfo(token: unknown): DeprecationInfo | null {
   if (!token || typeof token !== "symbol") {
     return null;
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return deprecationMetadata.get(token as any) || null;
+  return deprecationMetadata.get(token) || null;
 }

@@ -37,6 +37,8 @@ This document records all intentional gaps in the TypeScript type coverage repor
 | `src/core/module-hook-registrar.ts` | Treat jQuery-like objects as indexable when extracting DOM nodes. |
 | `src/foundry/versioning/portregistry.ts` | Read highest registered version after sorting non-empty arrays. |
 | `src/di_infrastructure/container.ts` | Invoke registered fallback factory with the target service type. |
+| `src/core/api/module-api-initializer.ts` (4 casts) | Generic type narrowing: Token comparison guarantees service type, but TypeScript cannot infer `TServiceType` from runtime checks. |
+| `src/core/api/readonly-wrapper.ts` (1 cast) | Proxy trap: `prop` (string \| symbol) must be narrowed to `keyof T` for `includes()` check. |
 
 Each inline exclusion is paired with a descriptive comment in code referencing the invariant that justifies the cast or assertion. Automated tests covering these paths are located beside the relevant modules (e.g. `PortSelector.test.ts`, `FoundryHooksService.test.ts`, `retry.test.ts`).
 

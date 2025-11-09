@@ -27,6 +27,7 @@ import type { ObservabilityRegistry } from "@/observability/observability-regist
 import type { ModuleSettingsRegistrar } from "@/core/module-settings-registrar";
 import type { ModuleHookRegistrar } from "@/core/module-hook-registrar";
 import type { RenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
+import type { ModuleApiInitializer } from "@/core/api/module-api-initializer";
 
 /**
  * Union type representing all registered service types in the application.
@@ -68,4 +69,5 @@ export type ServiceType =
   | ObservabilityRegistry
   | ModuleSettingsRegistrar
   | ModuleHookRegistrar
-  | RenderJournalDirectoryHook;
+  | RenderJournalDirectoryHook
+  | ModuleApiInitializer;

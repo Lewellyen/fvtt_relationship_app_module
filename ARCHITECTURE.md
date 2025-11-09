@@ -17,9 +17,11 @@ Das Modul folgt einer klaren Schichtentrennung mit unidirektionalen Abhängigkei
 ```
 ┌─────────────────────────────────────────────────┐
 │  Core Layer (Bootstrap & Orchestration)         │
-│  • init-solid.ts                                │
-│  • composition-root.ts                          │
-│  • module-hook-registrar.ts                     │
+│  • init-solid.ts (Orchestrator)                 │
+│  • composition-root.ts (DI Bootstrap)           │
+│  • module-api-initializer.ts (API Exposition)   │
+│  • module-hook-registrar.ts (Hook Registration) │
+│  • module-settings-registrar.ts (Settings)      │
 └──────────────────┬──────────────────────────────┘
                    │
                    ▼
@@ -352,6 +354,11 @@ const root = new CompositionRoot();
 const bootstrapResult = root.bootstrap();
 // → Erstellt ServiceContainer
 // → Registriert alle Dependencies (modular)
+
+// In Foundry 'init' Hook:
+const apiInitializer = container.resolve(moduleApiInitializerToken);
+apiInitializer.expose(container);
+// → Exponiert game.modules.get(MODULE_ID).api
 // → Validiert Container
 ```
 
@@ -463,10 +470,15 @@ Deutsche Umlaute (ä, ö, ü, ß) müssen korrekt dargestellt werden.
 ## Abhängigkeitsdiagramm
 
 ```
-CompositionRoot
+CompositionRoot (bootstrap)
     │
     ├─▶ ServiceContainer
     │       │
+    │
+ModuleApiInitializer (expose)
+    │
+    ├─▶ game.modules.get(MODULE_ID).api
+    │
     │       ├─▶ Logger (Singleton, mit Fallback)
     │       │
     │       ├─▶ PortSelector (Singleton)
