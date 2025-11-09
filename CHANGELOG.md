@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.7.1] - 2025-11-09
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- falscher Toolaufruf in ci.yml gefixt.
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.7.0] - 2025-11-09
 ### Hinzugefügt
 - Keine Einträge
