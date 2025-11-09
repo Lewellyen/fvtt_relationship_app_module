@@ -52,8 +52,8 @@ export class ObservabilityRegistry {
         );
         this.metrics.recordPortSelection(event.selectedVersion);
       } else {
-      /* c8 ignore stop */
-      /* c8 ignore start -- Error path: Port selection failure only occurs in edge cases (no compatible ports) */
+        /* c8 ignore stop */
+        /* c8 ignore start -- Error path: Port selection failure only occurs in edge cases (no compatible ports) */
         this.logger.error("Port selection failed", {
           foundryVersion: event.foundryVersion,
           availableVersions: event.availableVersions,

@@ -28,6 +28,7 @@
 | [DOKUMENTATIONS_UPDATES_2025-11-09.md](./DOKUMENTATIONS_UPDATES_2025-11-09.md) | Update-Log für v0.8.0 ⭐ NEU | Alle Entwickler |
 | [CONFIGURATION.md](./CONFIGURATION.md) | Environment & Settings | Alle Entwickler |
 | [API.md](./API.md) | Öffentliche Modul-API | Externe Consumer (ab 1.0.0) |
+| [API-CHANGELOG.md](./API-CHANGELOG.md) | API-Änderungshistorie ⭐ NEU | Externe Consumer (ab 1.0.0) |
 
 ---
 

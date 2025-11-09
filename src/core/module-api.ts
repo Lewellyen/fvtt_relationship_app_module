@@ -8,6 +8,8 @@ import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 import type { MetricsSnapshot } from "@/observability/metrics-collector";
+import type { I18nFacadeService } from "@/services/I18nFacadeService";
+import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
 
 /**
  * Information about a registered service token.
@@ -18,6 +20,21 @@ export interface TokenInfo {
   description: string;
   /** Whether the service is currently registered */
   isRegistered: boolean;
+}
+
+/**
+ * Deprecation metadata for tokens.
+ * Used by markAsDeprecated() to track deprecated API tokens.
+ */
+export interface DeprecationInfo {
+  /** Reason why the token is deprecated */
+  reason: string;
+  /** Replacement token description (if available) */
+  replacement: string | null;
+  /** Version in which the token will be removed */
+  removedInVersion: string;
+  /** Whether the deprecation warning has been shown */
+  warningShown: boolean;
 }
 
 /**
@@ -38,6 +55,8 @@ export interface ModuleApiTokens {
   foundryDocumentToken: ApiSafeToken<FoundryDocument>;
   foundryUIToken: ApiSafeToken<FoundryUI>;
   foundrySettingsToken: ApiSafeToken<FoundrySettings>;
+  i18nFacadeToken: ApiSafeToken<I18nFacadeService>;
+  foundryJournalFacadeToken: ApiSafeToken<FoundryJournalFacade>;
 }
 
 /**

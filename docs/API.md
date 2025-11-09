@@ -378,6 +378,86 @@ if (hiddenResult.ok) {
 
 ---
 
+### I18nFacadeService
+
+Internationalisierungs-Service mit Foundry + Local Fallback.
+
+```typescript
+interface I18nFacadeService {
+  translate(key: string, data?: Record<string, unknown>): Result<string, string>;
+  format(key: string, data?: Record<string, unknown>): Result<string, string>;
+  has(key: string): Result<boolean, string>;
+}
+```
+
+**Beispiel - Übersetzung abrufen**:
+
+```typescript
+const api = game.modules.get('fvtt_relationship_app_module').api;
+const i18n = api.resolve(api.tokens.i18nFacadeToken);
+
+// Einfache Übersetzung
+const greetingResult = i18n.translate("myModule.greeting");
+if (greetingResult.ok) {
+  console.log(greetingResult.value); // "Hallo Welt"
+}
+
+// Mit Platzhaltern
+const messageResult = i18n.format("myModule.welcome", { name: "Andreas" });
+if (messageResult.ok) {
+  console.log(messageResult.value); // "Willkommen, Andreas!"
+}
+
+// Prüfen ob Key existiert
+const hasResult = i18n.has("myModule.greeting");
+if (hasResult.ok && hasResult.value) {
+  console.log("Übersetzung vorhanden");
+}
+```
+
+**Fallback-Strategie**:
+1. Foundry i18n System (primär)
+2. Lokales i18n System (fallback)
+3. Key selbst (last resort)
+
+---
+
+### FoundryJournalFacade
+
+Facade für generische Journal-Operations.
+
+```typescript
+interface FoundryJournalFacade {
+  getHiddenJournalEntries(): Result<FoundryJournalEntry[], FoundryError>;
+  // Weitere Methoden verfügbar via FoundryGame, FoundryDocument, FoundryUI
+}
+```
+
+**Beispiel - Versteckte Journals abrufen**:
+
+```typescript
+const api = game.modules.get('fvtt_relationship_app_module').api;
+const journalFacade = api.resolve(api.tokens.foundryJournalFacadeToken);
+
+const hiddenResult = journalFacade.getHiddenJournalEntries();
+if (hiddenResult.ok) {
+  console.log(`Gefunden: ${hiddenResult.value.length} versteckte Journals`);
+  
+  hiddenResult.value.forEach(journal => {
+    console.log(`- ${journal.name} (ID: ${journal.id})`);
+  });
+} else {
+  console.error(`Fehler: ${hiddenResult.error.message}`);
+}
+```
+
+**Use Case**:
+- Externes Modul möchte auf versteckte Journals zugreifen
+- Zentrale Facade statt direkter Foundry-API-Zugriff
+- Result-Pattern für sichere Fehlerbehandlung
+
+---
+
 ## 🔄 Result-Pattern
 
 Alle API-Methoden, die fehlschlagen können, geben ein `Result<T, E>` zurück:
@@ -622,10 +702,58 @@ Die wichtigsten Error Codes:
 
 ---
 
+## 🔒 API-Sicherheit & Deprecation
+
+### ReadOnly-Wrapper
+
+Sensible Services werden automatisch mit ReadOnly-Wrappern geschützt:
+
+**Logger:**
+- ✅ Erlaubt: `log()`, `debug()`, `info()`, `warn()`, `error()`, `withTraceId()`
+- ❌ Blockiert: `setMinLevel()` und alle anderen Konfigurationsmethoden
+
+**I18n:**
+- ✅ Erlaubt: `translate()`, `format()`, `has()`
+- ❌ Blockiert: Alle internen Properties und nicht-öffentliche Methoden
+
+```typescript
+const api = game.modules.get('fvtt_relationship_app_module').api;
+const logger = api.resolve(api.tokens.loggerToken);
+
+logger.info("OK");           // ✅ Funktioniert
+logger.setMinLevel(0);       // ❌ Error: "Property setMinLevel is not accessible"
+```
+
+### Deprecation-Mechanismus
+
+Deprecated Tokens zeigen automatisch Warnungen bei der ersten Verwendung:
+
+```typescript
+// Beispiel-Warning:
+// [fvtt_relationship_app_module] DEPRECATED: Token "oldLoggerToken" is deprecated.
+// Reason: Use enhanced logger v2 with better performance
+// Use "loggerToken" instead.
+// This token will be removed in version 2.0.0.
+```
+
+**Eigenschaften:**
+- Einmalige Warnung pro Session (kein Spam)
+- Klare Migrationshinweise
+- Token bleibt funktional während Deprecation-Phase
+- Mindestens 1 Major-Version Vorlaufzeit
+
+**API-Changelog:**
+- Alle API-Änderungen dokumentiert in [API-CHANGELOG.md](./API-CHANGELOG.md)
+- Separates Changelog für Public API (unabhängig von internen Änderungen)
+- Kategorien: Added, Changed, Deprecated, Removed, Breaking Changes
+
+---
+
 ## 🔗 Weitere Ressourcen
 
 - [README.md](../README.md) - Modul-Übersicht
 - [ARCHITECTURE.md](../ARCHITECTURE.md) - Architektur-Details
+- [API-CHANGELOG.md](./API-CHANGELOG.md) - API-Änderungshistorie
 - [GitHub Repository](#) - Source Code
 
 ---
@@ -638,5 +766,5 @@ Bei Fragen oder Problemen:
 
 ---
 
-**Version**: 0.0.14  
-**Letzte Aktualisierung**: 2025-01-03
+**Version**: 0.8.0  
+**Letzte Aktualisierung**: 2025-11-09

@@ -3,9 +3,13 @@ import type { Result } from "@/types/result";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
-import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
+import { markAsApiSafe, type ApiSafeToken } from "@/di_infrastructure/types/api-safe-token";
+import { getDeprecationInfo } from "@/di_infrastructure/types/deprecated-token";
+import { createPublicLogger, createPublicI18n } from "@/core/api/public-api-wrappers";
 import type { ModuleApi, ModuleApiTokens, TokenInfo, HealthStatus } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
+import type { Logger } from "@/interfaces/logger";
+import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import { ENV } from "@/config/environment";
 import { BootstrapPerformanceTracker } from "@/observability/bootstrap-performance-tracker";
 import {
@@ -13,6 +17,7 @@ import {
   journalVisibilityServiceToken,
   metricsCollectorToken,
   moduleHealthServiceToken,
+  i18nFacadeToken,
 } from "@/tokens/tokenindex";
 import {
   foundryGameToken,
@@ -20,6 +25,7 @@ import {
   foundryDocumentToken,
   foundryUIToken,
   foundrySettingsToken,
+  foundryJournalFacadeToken,
 } from "@/foundry/foundrytokens";
 
 /**
@@ -104,14 +110,54 @@ export class CompositionRoot {
       foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
       foundryUIToken: markAsApiSafe(foundryUIToken),
       foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
+      i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
+      foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken),
     };
 
     const api: ModuleApi = {
       version: MODULE_CONSTANTS.API.VERSION,
 
-      // Bind container.resolve() directly (already typed as ApiSafeToken in ModuleApi interface)
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- API boundary: External modules use resolve()
-      resolve: container.resolve.bind(container),
+      // Resolve with deprecation warning and read-only wrapping support
+
+      resolve: <TServiceType extends ServiceType>(
+        token: ApiSafeToken<TServiceType>
+      ): TServiceType => {
+        // Check for deprecation metadata
+        const deprecationInfo = getDeprecationInfo(token);
+        if (deprecationInfo && !deprecationInfo.warningShown) {
+          /* c8 ignore start -- Optional replacement info: Tested in deprecated-token.test.ts */
+          const replacementInfo = deprecationInfo.replacement
+            ? `Use "${deprecationInfo.replacement}" instead.\n`
+            : "";
+          /* c8 ignore stop */
+          console.warn(
+            `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.\n` +
+              `Reason: ${deprecationInfo.reason}\n` +
+              replacementInfo +
+              `This token will be removed in version ${deprecationInfo.removedInVersion}.`
+          );
+          deprecationInfo.warningShown = true; // Only warn once per session
+        }
+
+        // Resolve service from container
+        const service = container.resolve(token);
+
+        // Apply read-only wrappers for sensitive services
+        const apiSafeLoggerToken = markAsApiSafe(loggerToken);
+        const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
+
+        if (token === apiSafeLoggerToken) {
+          return createPublicLogger(service as Logger) as unknown as TServiceType;
+        }
+
+        if (token === apiSafeI18nToken) {
+          return createPublicI18n(service as I18nFacadeService) as unknown as TServiceType;
+        }
+
+        // Default: Return original service for read-only services
+        // (FoundryGame, FoundryDocument, FoundryUI, etc.)
+        return service;
+      },
 
       getAvailableTokens: (): Map<symbol, TokenInfo> => {
         const tokenMap = new Map<symbol, TokenInfo>();
@@ -125,6 +171,8 @@ export class CompositionRoot {
           ["foundryDocumentToken", foundryDocumentToken],
           ["foundryUIToken", foundryUIToken],
           ["foundrySettingsToken", foundrySettingsToken],
+          ["i18nFacadeToken", i18nFacadeToken],
+          ["foundryJournalFacadeToken", foundryJournalFacadeToken],
         ];
 
         for (const [, token] of tokenEntries) {

@@ -186,6 +186,54 @@ src/
 
 ## Architecture Guidelines
 
+### Public API Development
+
+Änderungen an der Public API (`game.modules.get(MODULE_ID).api`) erfordern besondere Sorgfalt:
+
+**1. Tokens exponieren (src/core/composition-root.ts)**
+```typescript
+import { newServiceToken } from "@/tokens/tokenindex";
+
+const wellKnownTokens: ModuleApiTokens = {
+  // ... existing tokens
+  newServiceToken: markAsApiSafe(newServiceToken),
+};
+```
+
+**2. Type-Definition erweitern (src/core/module-api.ts)**
+```typescript
+export interface ModuleApiTokens {
+  // ... existing tokens
+  newServiceToken: ApiSafeToken<NewService>;
+}
+```
+
+**3. API-CHANGELOG.md aktualisieren**
+- Alle API-Änderungen in `[Unreleased]` dokumentieren
+- Bei Release: Unreleased → neue API-Version umbenennen
+- Separates Changelog für API-Transparenz
+
+**4. Deprecation-Mechanismus (ab 1.0.0)**
+```typescript
+// Token als deprecated markieren
+const oldTokenSafe = markAsDeprecated(
+  oldToken,
+  "Use newToken for better performance",
+  newToken,
+  "2.0.0" // Version in der Token entfernt wird
+);
+```
+
+**5. ReadOnly-Wrapper (für sensible Services)**
+- Logger und I18n sind automatisch geprotected
+- Neue sensible Services: Wrapper in `public-api-wrappers.ts` erstellen
+
+**API-Regeln:**
+- Breaking Changes nur mit ≥1 Major-Version Vorlaufzeit (ab 1.0.0)
+- Pre-1.0.0: Breaking Changes erlaubt (Pre-Release Phase)
+- Immer Tests für API-Änderungen schreiben
+- Dokumentation in API.md aktualisieren
+
 ### Port-Adapter-Pattern
 
 Für neue Foundry-Versionen:

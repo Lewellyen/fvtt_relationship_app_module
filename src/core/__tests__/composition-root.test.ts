@@ -226,10 +226,20 @@ describe("CompositionRoot", () => {
       expect(tokens.foundryHooksToken).toBeDefined();
       expect(tokens.foundryDocumentToken).toBeDefined();
       expect(tokens.foundryUIToken).toBeDefined();
+      expect(tokens.foundrySettingsToken).toBeDefined();
+      expect(tokens.i18nFacadeToken).toBeDefined();
+      expect(tokens.foundryJournalFacadeToken).toBeDefined();
 
       // Verify tokens can be used with resolve
       const logger = mod.api.resolve(tokens.loggerToken);
       expect(logger).toBeDefined();
+
+      // Verify new tokens can be resolved
+      const i18n = mod.api.resolve(tokens.i18nFacadeToken);
+      expect(i18n).toBeDefined();
+
+      const journalFacade = mod.api.resolve(tokens.foundryJournalFacadeToken);
+      expect(journalFacade).toBeDefined();
     });
 
     it("should report healthy status when container is validated", () => {
@@ -299,6 +309,78 @@ describe("CompositionRoot", () => {
 
       expect(health.checks.portsSelected).toBeDefined();
       expect(typeof health.checks.portsSelected).toBe("boolean");
+    });
+
+    it("should show deprecation warning for deprecated token on first resolve", async () => {
+      const root = new CompositionRoot();
+      root.bootstrap();
+
+      // Create a deprecated token manually for testing (null replacement)
+      const { markAsDeprecated } = await import("@/di_infrastructure/types/deprecated-token");
+      const { loggerToken } = await import("@/tokens/tokenindex");
+      const deprecatedLoggerToken = markAsDeprecated(
+        loggerToken,
+        "Test deprecation reason",
+        null, // No replacement available
+        "2.0.0"
+      );
+
+      root.exposeToModuleApi();
+
+      const mod = (game as any).modules.get("fvtt_relationship_app_module");
+
+      // Spy on console.warn
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      // First resolve should show warning (without replacement)
+      const logger1 = mod.api.resolve(deprecatedLoggerToken);
+      expect(logger1).toBeDefined();
+      expect(warnSpy).toHaveBeenCalledOnce();
+      const warningMsg = warnSpy.mock.calls?.[0]?.[0];
+      expect(warningMsg).toBeDefined();
+      expect(warningMsg).toContain("DEPRECATED");
+      expect(warningMsg).toContain("Test deprecation reason");
+      expect(warningMsg).not.toContain('Use "'); // No replacement
+      expect(warningMsg).toContain("2.0.0");
+
+      // Second resolve should NOT show warning again (warningShown = true)
+      warnSpy.mockClear();
+      const logger2 = mod.api.resolve(deprecatedLoggerToken);
+      expect(logger2).toBeDefined();
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
+
+    it("should resolve deprecated token normally despite warning", async () => {
+      const root = new CompositionRoot();
+      root.bootstrap();
+
+      const { markAsDeprecated } = await import("@/di_infrastructure/types/deprecated-token");
+      const { loggerToken } = await import("@/tokens/tokenindex");
+      const deprecatedLoggerToken = markAsDeprecated(loggerToken, "Test", null, "2.0.0");
+
+      root.exposeToModuleApi();
+
+      const mod = (game as any).modules.get("fvtt_relationship_app_module");
+
+      // Suppress console.warn but capture it
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      // Resolve should work despite deprecation
+      const logger = mod.api.resolve(deprecatedLoggerToken);
+      expect(logger).toBeDefined();
+      expect(typeof logger.info).toBe("function");
+      expect(typeof logger.error).toBe("function");
+
+      // Verify warning included "no replacement" message (null replacement)
+      expect(warnSpy).toHaveBeenCalled();
+      const warningMessage = warnSpy.mock.calls?.[0]?.[0];
+      expect(warningMessage).toBeDefined();
+      expect(warningMessage).not.toContain('Use "');
+      expect(warningMessage).toContain("2.0.0");
+
+      warnSpy.mockRestore();
     });
   });
 });
