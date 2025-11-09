@@ -325,4 +325,107 @@ describe("ModuleApiInitializer", () => {
       }).toThrow("Cannot modify");
     });
   });
+
+  describe("API - resolveWithError", () => {
+    beforeEach(() => {
+      const result = initializer.expose(container);
+      expectResultOk(result);
+    });
+
+    it("should resolve services with Result pattern", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+
+      const loggerResult = mod.api.resolveWithError(mod.api.tokens.loggerToken);
+      expect(loggerResult.ok).toBe(true);
+      if (loggerResult.ok) {
+        expect(loggerResult.value).toBeDefined();
+        expect(typeof loggerResult.value.info).toBe("function");
+      }
+    });
+
+    it("should apply readonly wrapper to logger via resolveWithError", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+
+      const loggerResult = mod.api.resolveWithError(mod.api.tokens.loggerToken);
+      expect(loggerResult.ok).toBe(true);
+
+      if (loggerResult.ok) {
+        const logger = loggerResult.value;
+        // Logging should work
+        expect(() => logger.info("test")).not.toThrow();
+        // setMinLevel should be blocked
+        expect(() => (logger as any).setMinLevel(0)).toThrow("setMinLevel");
+      }
+    });
+
+    it("should apply readonly wrapper to i18n via resolveWithError", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+
+      const i18nResult = mod.api.resolveWithError(mod.api.tokens.i18nFacadeToken);
+      expect(i18nResult.ok).toBe(true);
+
+      if (i18nResult.ok) {
+        const i18n = i18nResult.value;
+        // Read methods should work
+        expect(() => i18n.translate("test")).not.toThrow();
+        // Internal properties should be blocked
+        expect(() => {
+          (i18n as any).internalState = {};
+        }).toThrow("Cannot modify");
+      }
+    });
+
+    it("should show deprecation warning for deprecated token", async () => {
+      const { markAsDeprecated } = await import("@/di_infrastructure/types/deprecated-token");
+      const { loggerToken } = await import("@/tokens/tokenindex");
+      const deprecatedLoggerToken = markAsDeprecated(
+        loggerToken,
+        "Test deprecation",
+        null,
+        "2.0.0"
+      );
+
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const result = mod.api.resolveWithError(deprecatedLoggerToken);
+      expect(result.ok).toBe(true);
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
+
+    it("should resolve non-wrapped services (FoundryGame, etc.)", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+
+      // Resolve a non-wrapped service (FoundryGame doesn't get wrapped)
+      const foundryGameResult = mod.api.resolveWithError(mod.api.tokens.foundryGameToken);
+      expect(foundryGameResult.ok).toBe(true);
+      if (foundryGameResult.ok) {
+        expect(foundryGameResult.value).toBeDefined();
+        expect(typeof foundryGameResult.value.getJournalEntries).toBe("function");
+      }
+    });
+
+    it("should return err Result for unregistered token", async () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+
+      // Create a token that is NOT registered
+      const { createInjectionToken } = await import("@/di_infrastructure/tokenutilities");
+      const { markAsApiSafe } = await import("@/di_infrastructure/types/api-safe-token");
+
+      // Use 'any' as type parameter - we're testing unregistered token error handling
+      // Type constraints don't matter for this specific test scenario
+      const unregisteredToken = markAsApiSafe(createInjectionToken<any>("UnregisteredService"));
+
+      const result = mod.api.resolveWithError(unregisteredToken);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBeDefined();
+        expect(result.error.code).toBeDefined();
+        expect(result.error.message).toBeDefined();
+      }
+    });
+  });
 });

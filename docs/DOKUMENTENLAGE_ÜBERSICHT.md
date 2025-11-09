@@ -2,7 +2,7 @@
 
 **Model:** Claude Sonnet 4.5  
 **Datum:** 2025-11-09  
-**Stand:** Version 0.8.0  
+**Stand:** Version 0.10.0  
 **Gesamt:** 72+ Markdown-Dateien
 
 ---

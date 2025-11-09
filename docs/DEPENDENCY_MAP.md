@@ -1,10 +1,10 @@
 # Dependency Map - FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-09 (v0.8.0)  
+**Aktualisiert:** 2025-11-09 (v0.10.0)  
 **Zweck:** Detaillierte Abhängigkeits-Visualisierung für Refactoring  
 **Model:** Claude Sonnet 4.5  
-**Projekt-Status:** Version 0.8.0 (Pre-Release)  
+**Projekt-Status:** Version 0.10.0 (Pre-Release)  
 **Breaking Changes:** ✅ Erlaubt - Aggressives Refactoring erwünscht!  
 **Legacy-Codes:** ❌ Sofort eliminieren  
 **Versioning:** Siehe [VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md)

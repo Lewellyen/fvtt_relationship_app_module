@@ -2418,8 +2418,38 @@ Reason: ${deprecationInfo.reason}
     }, "resolveImpl");
     const api = {
       version: MODULE_CONSTANTS.API.VERSION,
-      // Overloaded resolve method (implementation uses helper)
+      // Overloaded resolve method (throws on error)
       resolve: resolveImpl,
+      // Result-Pattern method (safe, never throws)
+      resolveWithError: /* @__PURE__ */ __name((token) => {
+        const deprecationInfo = getDeprecationInfo(token);
+        if (deprecationInfo && !deprecationInfo.warningShown) {
+          const replacementInfo = deprecationInfo.replacement ? `Use "${deprecationInfo.replacement}" instead.
+` : "";
+          console.warn(
+            `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
+Reason: ${deprecationInfo.reason}
+` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
+          );
+          deprecationInfo.warningShown = true;
+        }
+        const result = container.resolveWithError(token);
+        if (!result.ok) {
+          return result;
+        }
+        const service = result.value;
+        if (token === apiSafeLoggerToken) {
+          const logger = service;
+          const wrappedLogger = createPublicLogger(logger);
+          return ok(wrappedLogger);
+        }
+        if (token === apiSafeI18nToken) {
+          const i18n = service;
+          const wrappedI18n = createPublicI18n(i18n);
+          return ok(wrappedI18n);
+        }
+        return ok(service);
+      }, "resolveWithError"),
       getAvailableTokens: /* @__PURE__ */ __name(() => {
         const tokenMap = /* @__PURE__ */ new Map();
         const tokenEntries = [

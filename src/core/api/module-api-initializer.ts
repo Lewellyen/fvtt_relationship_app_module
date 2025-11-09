@@ -11,6 +11,7 @@ import type { ModuleApi, TokenInfo, HealthStatus } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
 import type { Logger } from "@/interfaces/logger";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
+import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
 import {
   loggerToken,
   journalVisibilityServiceToken,
@@ -123,8 +124,60 @@ export class ModuleApiInitializer {
     const api: ModuleApi = {
       version: MODULE_CONSTANTS.API.VERSION,
 
-      // Overloaded resolve method (implementation uses helper)
+      // Overloaded resolve method (throws on error)
       resolve: resolveImpl,
+
+      // Result-Pattern method (safe, never throws)
+      resolveWithError: <TServiceType extends ServiceType>(
+        token: ApiSafeToken<TServiceType>
+      ): Result<TServiceType, ContainerError> => {
+        // Check for deprecation metadata (same as resolve)
+        const deprecationInfo = getDeprecationInfo(token);
+        if (deprecationInfo && !deprecationInfo.warningShown) {
+          /* c8 ignore start -- Optional replacement info: Tested in deprecated-token.test.ts */
+          const replacementInfo = deprecationInfo.replacement
+            ? `Use "${deprecationInfo.replacement}" instead.\n`
+            : "";
+          /* c8 ignore stop */
+          console.warn(
+            `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.\n` +
+              `Reason: ${deprecationInfo.reason}\n` +
+              replacementInfo +
+              `This token will be removed in version ${deprecationInfo.removedInVersion}.`
+          );
+          deprecationInfo.warningShown = true;
+        }
+
+        // Resolve with Result-Pattern (never throws)
+        const result = container.resolveWithError(token);
+
+        // Apply wrappers if resolution succeeded
+        if (!result.ok) {
+          return result; // Return error as-is
+        }
+
+        const service = result.value;
+
+        // Apply read-only wrappers for sensitive services
+        if (token === apiSafeLoggerToken) {
+          /* type-coverage:ignore-next-line -- Generic type narrowing: token === loggerToken guarantees service is Logger */
+          const logger: Logger = service as Logger;
+          const wrappedLogger: Logger = createPublicLogger(logger);
+          /* type-coverage:ignore-next-line -- Generic return: wrappedLogger (Logger) must be cast to generic TServiceType */
+          return ok(wrappedLogger as TServiceType);
+        }
+
+        if (token === apiSafeI18nToken) {
+          /* type-coverage:ignore-next-line -- Generic type narrowing: token === i18nToken guarantees service is I18nFacadeService */
+          const i18n: I18nFacadeService = service as I18nFacadeService;
+          const wrappedI18n: I18nFacadeService = createPublicI18n(i18n);
+          /* type-coverage:ignore-next-line -- Generic return: wrappedI18n must be cast to generic TServiceType */
+          return ok(wrappedI18n as TServiceType);
+        }
+
+        // Default: Return wrapped in Result
+        return ok(service);
+      },
 
       getAvailableTokens: (): Map<symbol, TokenInfo> => {
         const tokenMap = new Map<symbol, TokenInfo>();

@@ -1,7 +1,7 @@
 # Projektanalyse: FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-09 (v0.8.0)  
+**Aktualisiert:** 2025-11-09 (v0.10.0)  
 **Zweck:** Grundlage für Refactoring-Planungen  
 **Model:** Claude Sonnet 4.5
 
@@ -24,7 +24,7 @@
 
 Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection**, **Port-Adapter-Pattern** für Foundry VTT-Versionskompatiblität und **Result-Pattern** für fehlerfreies Error Handling.
 
-**Status:** Version 0.8.0 (Pre-Release Phase)  
+**Status:** Version 0.10.0 (Pre-Release Phase)  
 **Breaking Changes:** ✅ Erlaubt - Aggressives Refactoring erwünscht!  
 **Legacy-Codes:** ❌ Eliminieren (sofortige Entfernung erlaubt)  
 **Ab Version 1.0.0:** Breaking Changes mit Deprecation-Strategie & Migrationspfad

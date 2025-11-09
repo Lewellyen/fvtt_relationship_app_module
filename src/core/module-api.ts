@@ -10,6 +10,8 @@ import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 import type { MetricsSnapshot } from "@/observability/metrics-collector";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
+import type { Result } from "@/types/result";
+import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
 
 /**
  * Information about a registered service token.
@@ -142,6 +144,46 @@ export interface ModuleApi {
    * ```
    */
   resolve: <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType;
+
+  /**
+   * Resolves a service by its injection token with Result-Pattern (never throws).
+   *
+   * **Recommended for:**
+   * - Custom/optional services that might not be registered
+   * - When explicit error handling is required
+   * - When you want to avoid try-catch blocks
+   *
+   * **Well-known tokens** (loggerToken, foundryGameToken, etc.) are guaranteed to resolve successfully.
+   *
+   * @param token - API-safe injection token (marked via markAsApiSafe)
+   * @returns Result with service instance or error details
+   *
+   * @example Safe Resolution with Error Handling
+   * ```typescript
+   * const api = game.modules.get('fvtt_relationship_app_module').api;
+   * const result = api.resolveWithError(api.tokens.loggerToken);
+   *
+   * if (result.ok) {
+   *   result.value.info('Logger available');
+   * } else {
+   *   console.error('Failed to resolve:', result.error.message);
+   * }
+   * ```
+   *
+   * @example Optional Service Resolution
+   * ```typescript
+   * const customResult = api.resolveWithError(customToken);
+   * if (customResult.ok) {
+   *   customResult.value.doSomething();
+   * } else {
+   *   console.warn('Optional service not available, using fallback');
+   *   // Fallback logic
+   * }
+   * ```
+   */
+  resolveWithError: <TServiceType extends ServiceType>(
+    token: ApiSafeToken<TServiceType>
+  ) => Result<TServiceType, ContainerError>;
 
   /**
    * Lists all registered service tokens with their descriptions.

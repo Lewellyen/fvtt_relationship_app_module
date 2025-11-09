@@ -5,7 +5,7 @@
 Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Moduls.
 
 **Datum:** 2025-11-09  
-**Stand:** Version 0.8.0  
+**Stand:** Version 0.10.0  
 **Detaillierte Analyse:** Siehe [PROJECT_ANALYSIS.md](./docs/PROJECT_ANALYSIS.md)
 
 ---

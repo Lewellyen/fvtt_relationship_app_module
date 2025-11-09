@@ -2,7 +2,7 @@
 
 **Model:** Claude Sonnet 4.5  
 **Datum:** 2025-11-09  
-**Projekt:** FVTT Relationship App Module v0.8.0
+**Projekt:** FVTT Relationship App Module v0.10.0
 
 ---
 

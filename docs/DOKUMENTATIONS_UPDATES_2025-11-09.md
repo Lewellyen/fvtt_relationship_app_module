@@ -2,7 +2,7 @@
 
 **Model:** Claude Sonnet 4.5  
 **Datum:** 2025-11-09  
-**Version:** 0.8.0
+**Version:** 0.10.0
 
 ---
 
@@ -261,14 +261,14 @@ class ModuleHookRegistrar {
 ### Haupt-Dokumentation
 
 - ✅ `ARCHITECTURE.md` - Observability & Modular Config hinzugefügt
-- ✅ `docs/BOOTFLOW.md` - Bereits aktualisiert (Version 0.8.0)
+- ✅ `docs/BOOTFLOW.md` - Bereits aktualisiert (Version 0.10.0)
 - ✅ `docs/adr/0006-observability-strategy.md` - Update 2025-11-09 hinzugefügt
 
 ### Weitere betroffene Dokumente
 
 - `docs/PROJECT_ANALYSIS.md` - Sollte neue Services dokumentieren
 - `docs/DEPENDENCY_MAP.md` - Sollte neue Dependencies zeigen
-- `README.md` - Version auf 0.8.0 aktualisieren
+- `README.md` - Version auf 0.10.0 aktualisieren
 
 ---
 

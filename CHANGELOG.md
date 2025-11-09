@@ -293,6 +293,37 @@
 ### Upgrade-Hinweise
 - Keine besonderen Maßnahmen erforderlich
 
+## [0.11.0] - 2025-11-09
+### Hinzugefügt
+- **Public API: resolveWithError()**: Result-Pattern Alternative zu resolve() ([Details](docs/API.md#service-auflösung-resolve-vs-resolvewitherror))
+- Gibt `Result<T, ContainerError>` zurück
+- Wirft nie Exceptions (vollständig Result-Pattern konform)
+- Empfohlen für optionale/custom Services
+- Unterstützt Deprecation-Warnings und ReadOnly-Wrapper
+- Vollständige Test-Coverage (23 Tests für ModuleApiInitializer)
+
+### Geändert
+- **Dokumentation**: Versionsaktualisierung von 0.8.0 auf 0.10.0 in 17 Dokumenten ([Details](docs/DOKUMENTATIONS_UPDATES_2025-11-09.md))
+- README.md, ARCHITECTURE.md, BOOTFLOW.md aktualisiert
+- Alle Hauptdokumentationen (API.md, INDEX.md, PROJECT_ANALYSIS.md, etc.)
+- Release-Roadmap und Versioning-Strategy
+- Testing- und Quick-Reference-Guides
+- Konsistente Versionsinformationen im gesamten Projekt
+
+### Fehlerbehebungen
+- **init-solid.ts**: Fehlerhaftes `/* c8 ignore stop */` ohne korrespondierendes `start` entfernt
+- Verhinderte Coverage-Messung für init/ready Hooks
+- Coverage wiederhergestellt: 63.88% → 100%
+- **module-api-initializer.ts**: Coverage für Default-Path (non-wrapped Services) wiederhergestellt
+- Test für FoundryGame-Token-Resolution hinzugefügt
+- 99.13% → 100% Coverage
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.10.0] - 2025-11-09
 ### Hinzugefügt
 - **ModuleApiInitializer**: Separater DI-Service für API-Exposition ([Details](src/core/api/module-api-initializer.ts))

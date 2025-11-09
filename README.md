@@ -2,7 +2,7 @@
 
 Ein Foundry VTT Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken zwischen Akteuren und anderen Entitäten.
 
-**Version:** 0.8.0 (Pre-Release)  
+**Version:** 0.10.0 (Pre-Release)  
 **Status:** ✅ Aktive Entwicklung - Aggressives Refactoring erwünscht!  
 **Foundry VTT:** v13+ (siehe `module.json`)
 
@@ -299,7 +299,7 @@ Probleme melden: [GitHub Issues](URL-hier-einfügen)
 
 Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Versionshistorie.
 
-### Version 0.8.0 (Aktuell - In Entwicklung)
+### Version 0.10.0 (Aktuell - In Entwicklung)
 - ObservabilityRegistry & Self-Registration Pattern
 - Modular Config Structure (7 thematische Module)
 - Self-Configuring Services

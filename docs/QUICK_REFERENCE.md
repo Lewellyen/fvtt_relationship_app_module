@@ -2,7 +2,7 @@
 
 **Model:** Claude Sonnet 4.5  
 **Datum:** 2025-11-09  
-**Projekt-Status:** Version 0.8.0 (Pre-Release)  
+**Projekt-Status:** Version 0.10.0 (Pre-Release)  
 **Breaking Changes:** ✅ Erlaubt - Aggressives Refactoring erwünscht!  
 **Legacy-Codes:** ❌ Sofort eliminieren (kein Deprecation nötig)  
 **Ab 1.0.0:** Deprecation-Strategie mit Migrationspfad verpflichtend

@@ -23,7 +23,7 @@ Beispiel: 1.2.3
 
 ## 🚀 Phase 1: Pre-Release (Version 0.x.x)
 
-**Aktueller Status:** Version 0.8.0
+**Aktueller Status:** Version 0.10.0
 
 ### Philosophie
 

@@ -65,7 +65,7 @@ Initial Public API Release
 ### Compatibility
 
 - **Foundry VTT:** v13+ (tested with v13.291)
-- **Module Version:** 0.8.0+
+- **Module Version:** 0.10.0+
 - **API Version:** 1.0.0
 
 ### Use Cases

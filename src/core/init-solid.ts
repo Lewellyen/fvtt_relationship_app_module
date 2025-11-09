@@ -133,7 +133,6 @@ function initializeFoundryModule(): void {
     logger.info("ready-phase completed");
   });
 }
-/* c8 ignore stop */
 
 // Eager bootstrap DI before Foundry init
 const root = new CompositionRoot();

@@ -28,9 +28,17 @@ if (!api) {
   return;
 }
 
-// Services über Tokens auflösen
+// Option 1: resolve() - Guaranteed Return (throws on error)
 const logger = api.resolve(api.tokens.loggerToken);
 logger.info('Hello from external module!');
+
+// Option 2: resolveWithError() - Result-Pattern (safe, never throws)
+const loggerResult = api.resolveWithError(api.tokens.loggerToken);
+if (loggerResult.ok) {
+  loggerResult.value.info('Safe with Result-Pattern');
+} else {
+  console.error('Failed to resolve logger:', loggerResult.error);
+}
 ```
 
 ### TypeScript-Unterstützung
@@ -45,8 +53,8 @@ declare global {
       active: boolean;
       api?: {
         version: string;
-        resolve<T>(token: symbol): T;
-        resolveWithError<T>(token: symbol): Result<T, ContainerError>;
+        resolve<T>(token: symbol): T; // Throws on error
+        resolveWithError<T>(token: symbol): Result<T, ContainerError>; // Never throws
         getAvailableTokens(): Map<symbol, TokenInfo>;
         getMetrics(): MetricsSnapshot;
         getHealth(): HealthStatus;
@@ -58,24 +66,28 @@ declare global {
           foundryDocumentToken: symbol;
           foundryUIToken: symbol;
           foundrySettingsToken: symbol;
+          i18nFacadeToken: symbol;
+          foundryJournalFacadeToken: symbol;
         };
       };
     }>;
   }
 }
 
-// Option 2: Type-Safe API Access
+// Option 2: resolve() - Clean Code (empfohlen für well-known tokens)
 const mod = game.modules.get('fvtt_relationship_app_module');
 if (mod?.active && mod.api) {
   const logger = mod.api.resolve(mod.api.tokens.loggerToken);
   logger.info('Type-safe!');
 }
 
-// Option 3: Mit Result-Pattern (empfohlen für Fehlerbehandlung)
+// Option 3: resolveWithError() - Result-Pattern (empfohlen für optionale Services)
 const api = game.modules.get('fvtt_relationship_app_module')?.api;
 const loggerResult = api?.resolveWithError(api.tokens.loggerToken);
 if (loggerResult?.ok) {
   loggerResult.value.info('Sicher mit Result-Pattern');
+} else {
+  console.error('Logger not available:', loggerResult.error.message);
 }
 ```
 
@@ -135,6 +147,89 @@ interface HealthStatus {
   };
 }
 ```
+
+---
+
+## 🔧 Service-Auflösung: resolve() vs. resolveWithError()
+
+Die API bietet **zwei Methoden** zur Service-Auflösung:
+
+### `resolve<T>(token): T` - Guaranteed Return
+
+**Wann verwenden:**
+- ✅ Well-known tokens (loggerToken, foundryGameToken, etc.)
+- ✅ Services die garantiert registriert sind
+- ✅ Clean Code ohne Result-Checks gewünscht
+
+**Verhalten:**
+- Gibt Service **direkt** zurück
+- **Wirft Exception** bei Fehler
+- Externe Module müssen `try-catch` nutzen
+
+**Beispiel:**
+```typescript
+const api = game.modules.get('fvtt_relationship_app_module').api;
+
+try {
+  const logger = api.resolve(api.tokens.loggerToken);
+  logger.info('Hello World'); // Clean code
+} catch (error) {
+  console.error('Failed:', error);
+}
+```
+
+---
+
+### `resolveWithError<T>(token): Result<T, ContainerError>` - Result-Pattern
+
+**Wann verwenden:**
+- ✅ Custom/optionale Services
+- ✅ Wenn explizite Fehlerbehandlung gewünscht
+- ✅ Wenn try-catch vermieden werden soll
+- ✅ Wenn Result-Pattern bevorzugt wird
+
+**Verhalten:**
+- Gibt **Result** zurück (ok/error)
+- **Wirft nie** eine Exception
+- Type-safe error handling
+
+**Beispiel:**
+```typescript
+const api = game.modules.get('fvtt_relationship_app_module').api;
+
+const loggerResult = api.resolveWithError(api.tokens.loggerToken);
+
+if (loggerResult.ok) {
+  loggerResult.value.info('Logger verfügbar');
+} else {
+  console.error('Fehler:', loggerResult.error.code, loggerResult.error.message);
+  // Fallback-Logik
+  console.log('Using fallback logger');
+}
+```
+
+**Error-Struktur:**
+```typescript
+interface ContainerError {
+  code: string;              // z.B. "SERVICE_NOT_REGISTERED"
+  message: string;           // Human-readable Fehlermeldung
+  tokenDescription?: string; // Name des fehlenden Tokens
+  details?: unknown;         // Zusätzliche Debug-Info
+  stack?: string;            // Stack-Trace (falls verfügbar)
+}
+```
+
+---
+
+### Vergleich
+
+| Aspekt | `resolve()` | `resolveWithError()` |
+|--------|-------------|----------------------|
+| **Rückgabe** | `T` (direkt) | `Result<T, ContainerError>` |
+| **Bei Fehler** | Throws Exception | Returns `{ ok: false, error }` |
+| **Error Handling** | `try-catch` nötig | `if (result.ok)` check |
+| **Empfohlen für** | Well-known tokens | Custom/optionale Services |
+| **Code-Stil** | Clean, kurz | Explicit, safe |
 
 ---
 
@@ -766,5 +861,5 @@ Bei Fragen oder Problemen:
 
 ---
 
-**Version**: 0.8.0  
+**Version**: 0.10.0  
 **Letzte Aktualisierung**: 2025-11-09

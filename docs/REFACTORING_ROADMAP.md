@@ -1,8 +1,8 @@
-# Refactoring Roadmap - Version 0.8.0 → 1.0.0
+# Refactoring Roadmap - Version 0.10.0 → 1.0.0
 
 **Model:** Claude Sonnet 4.5  
 **Datum:** 2025-11-09  
-**Stand:** Version 0.8.0  
+**Stand:** Version 0.10.0  
 **Ziel:** Clean Architecture vor 1.0.0-Release  
 **Gesamt-Aufwand:** ~12-20h (Top 4 Refactorings)
 
