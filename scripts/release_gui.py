@@ -680,13 +680,32 @@ class ReleaseGUI:
                             "Es sind keine Änderungen zum Committen vorhanden.\nMöchten Sie trotzdem fortfahren?"):
                             return
                     
-                    commit_message = f"[Release] Version {new_version}"
+                    # Conventional Commits: release: v{version}
+                    commit_message = f"release: v{new_version}"
                     
                     # Füge Commit-Bemerkung hinzu, falls vorhanden
                     if remark:
-                        commit_message += f" -> {remark}"
+                        commit_message += f" - {remark}"
                     
-                    commit_message += "\n\n- Aktualisierte Konstanten-Dateien\n- Neue Release-Notes und Changelog"
+                    commit_message += "\n\n"
+                    
+                    # Füge strukturierte Changelog-Sektionen hinzu
+                    if added and added.strip():
+                        commit_message += "### Hinzugefügt\n" + added + "\n\n"
+                    if changed and changed.strip():
+                        commit_message += "### Geändert\n" + changed + "\n\n"
+                    if fixed and fixed.strip():
+                        commit_message += "### Fehlerbehebungen\n" + fixed + "\n\n"
+                    if known and known.strip():
+                        commit_message += "### Bekannte Probleme\n" + known + "\n\n"
+                    if upgrade and upgrade.strip():
+                        commit_message += "### Upgrade-Hinweise\n" + upgrade + "\n\n"
+                    
+                    # Füge Release-Metadaten hinzu
+                    commit_message += "---\n"
+                    commit_message += "- Aktualisierte Konstanten-Dateien\n"
+                    commit_message += "- Neue Release-Notes und Changelog"
+                    
                     if not run_command(f'git commit -m "{commit_message}"'):
                         raise Exception("Git commit fehlgeschlagen")
                 print("  OK Git commit erfolgreich" + (" (simuliert)" if test_mode else ""))
@@ -694,13 +713,30 @@ class ReleaseGUI:
             # 9. Git-Tag erstellen
             if self.git_tag_var.get():
                 print("\n9. Git-Tag erstellen...")
-                tag_message = f"Release Version {new_version}"
+                tag_message = f"Release v{new_version}"
                 
                 # Füge Commit-Bemerkung hinzu, falls vorhanden
                 if remark:
-                    tag_message += f" -> {remark}"
+                    tag_message += f" - {remark}"
                 
-                tag_message += "\n\n- Aktualisierte Konstanten-Dateien\n- Neue Release-Notes und Changelog"
+                tag_message += "\n\n"
+                
+                # Füge strukturierte Changelog-Sektionen hinzu (wie beim Commit)
+                if added and added.strip():
+                    tag_message += "### Hinzugefügt\n" + added + "\n\n"
+                if changed and changed.strip():
+                    tag_message += "### Geändert\n" + changed + "\n\n"
+                if fixed and fixed.strip():
+                    tag_message += "### Fehlerbehebungen\n" + fixed + "\n\n"
+                if known and known.strip():
+                    tag_message += "### Bekannte Probleme\n" + known + "\n\n"
+                if upgrade and upgrade.strip():
+                    tag_message += "### Upgrade-Hinweise\n" + upgrade + "\n\n"
+                
+                tag_message += "---\n"
+                tag_message += "- Aktualisierte Konstanten-Dateien\n"
+                tag_message += "- Neue Release-Notes und Changelog"
+                
                 if not test_mode:
                     if not run_command(f'git tag -f -a v{new_version} -m "{tag_message}"'):
                         raise Exception("Git tag fehlgeschlagen")

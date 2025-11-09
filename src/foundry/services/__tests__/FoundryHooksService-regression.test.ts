@@ -3,6 +3,7 @@
  * Tests edge cases with callback reuse across multiple hooks
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FoundryHooksService } from "../FoundryHooksService";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
@@ -11,6 +12,8 @@ import { PortSelector } from "@/foundry/versioning/portselector";
 import { ok } from "@/utils/functional/result";
 import type { Logger } from "@/interfaces/logger";
 import { expectResultOk, createMockLogger } from "@/test/utils/test-helpers";
+import { PortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
+import type { ObservabilityRegistry } from "@/observability/observability-registry";
 
 describe("FoundryHooksService - Regression Tests", () => {
   let service: FoundryHooksService;
@@ -36,7 +39,11 @@ describe("FoundryHooksService - Regression Tests", () => {
     mockRegistry = new PortRegistry<FoundryHooks>();
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
-    mockSelector = new PortSelector();
+    const mockEventEmitter = new PortSelectionEventEmitter();
+    const mockObservability: ObservabilityRegistry = {
+      registerPortSelector: vi.fn(),
+    } as any;
+    mockSelector = new PortSelector(mockEventEmitter, mockObservability);
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundryHooksService(mockSelector, mockRegistry, mockLogger);

@@ -161,7 +161,7 @@ Alle Tests angepasst für:
 
 - [ADR-0006: Observability Strategy](0006-observability-strategy.md)
 - [ADR-0002: Custom DI Container](0002-custom-di-container-instead-of-tsyringe.md)
-- [Audit 3 Finding 2.3](../development/Audit/Audit_3.md#23-inkonsequente-nutzung-des-logger-interfaces)
+- Audit 3 Finding 2.3 (historisch, Archiv entfernt)
 
 ## Date
 

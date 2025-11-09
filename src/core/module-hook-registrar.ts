@@ -1,6 +1,6 @@
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "@/core/hooks/hook-registrar.interface";
-import { RenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
+import { renderJournalDirectoryHookToken } from "@/tokens/tokenindex";
 
 /**
  * ModuleHookRegistrar
@@ -12,12 +12,19 @@ import { RenderJournalDirectoryHook } from "@/core/hooks/render-journal-director
  * - Easy to add new hooks without modifying this class
  * - Each hook can be tested in isolation
  * - Clear separation of concerns
+ * - Full DI architecture: Hooks injected as dependencies
  */
 export class ModuleHookRegistrar {
-  private hooks: HookRegistrar[] = [
-    new RenderJournalDirectoryHook(),
-    // Add new hooks here
-  ];
+  static dependencies = [renderJournalDirectoryHookToken] as const;
+
+  private hooks: HookRegistrar[];
+
+  constructor(renderJournalHook: HookRegistrar) {
+    this.hooks = [
+      renderJournalHook,
+      // Add new hooks here as constructor parameters
+    ];
+  }
 
   /**
    * Registers all hooks with Foundry VTT.

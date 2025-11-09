@@ -22,6 +22,11 @@ import type { ModuleHealthService } from "@/core/module-health-service";
 import type { EnvironmentConfig } from "@/config/environment";
 import type { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
 import type { RetryService } from "@/services/RetryService";
+import type { PortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
+import type { ObservabilityRegistry } from "@/observability/observability-registry";
+import type { ModuleSettingsRegistrar } from "@/core/module-settings-registrar";
+import type { ModuleHookRegistrar } from "@/core/module-hook-registrar";
+import type { RenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
 
 /**
  * Union type representing all registered service types in the application.
@@ -58,4 +63,9 @@ export type ServiceType =
   | ModuleHealthService
   | EnvironmentConfig
   | PerformanceTrackingService
-  | RetryService;
+  | RetryService
+  | PortSelectionEventEmitter
+  | ObservabilityRegistry
+  | ModuleSettingsRegistrar
+  | ModuleHookRegistrar
+  | RenderJournalDirectoryHook;

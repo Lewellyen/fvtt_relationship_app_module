@@ -225,6 +225,94 @@ export const performanceTrackingServiceToken = createInjectionToken<PerformanceT
 export const retryServiceToken = createInjectionToken<RetryService>("RetryService");
 
 /**
+ * Injection token for the PortSelectionEventEmitter.
+ *
+ * Provides event emission infrastructure for PortSelector observability.
+ * Registered as TRANSIENT - each service gets its own instance.
+ *
+ * @example
+ * ```typescript
+ * class PortSelector {
+ *   constructor(emitter: PortSelectionEventEmitter) {
+ *     this.emitter = emitter;
+ *   }
+ * }
+ * ```
+ */
+export const portSelectionEventEmitterToken = createInjectionToken<
+  import("@/foundry/versioning/port-selection-events").PortSelectionEventEmitter
+>("PortSelectionEventEmitter");
+
+/**
+ * Injection token for the ObservabilityRegistry.
+ *
+ * Central registry for self-registering observable services.
+ * Services register themselves at construction time for automatic observability.
+ *
+ * @example
+ * ```typescript
+ * class PortSelector {
+ *   constructor(observability: ObservabilityRegistry) {
+ *     observability.registerPortSelector(this);
+ *   }
+ * }
+ * ```
+ */
+export const observabilityRegistryToken =
+  createInjectionToken<import("@/observability/observability-registry").ObservabilityRegistry>(
+    "ObservabilityRegistry"
+  );
+
+/**
+ * Injection token for the ModuleSettingsRegistrar.
+ *
+ * Manages registration of all Foundry module settings.
+ * Must be called during or after the 'init' hook.
+ *
+ * @example
+ * ```typescript
+ * const settingsRegistrar = container.resolve(moduleSettingsRegistrarToken);
+ * settingsRegistrar.registerAll(container);
+ * ```
+ */
+export const moduleSettingsRegistrarToken =
+  createInjectionToken<import("@/core/module-settings-registrar").ModuleSettingsRegistrar>(
+    "ModuleSettingsRegistrar"
+  );
+
+/**
+ * Injection token for the ModuleHookRegistrar.
+ *
+ * Manages registration of all Foundry hooks using Strategy Pattern.
+ * Hooks are injected as dependencies for full DI architecture.
+ *
+ * @example
+ * ```typescript
+ * const hookRegistrar = container.resolve(moduleHookRegistrarToken);
+ * hookRegistrar.registerAll(container);
+ * ```
+ */
+export const moduleHookRegistrarToken =
+  createInjectionToken<import("@/core/module-hook-registrar").ModuleHookRegistrar>(
+    "ModuleHookRegistrar"
+  );
+
+/**
+ * Injection token for the RenderJournalDirectoryHook.
+ *
+ * Hook that triggers when journal directory is rendered.
+ * Registered via DI to enable proper dependency injection.
+ *
+ * @example
+ * ```typescript
+ * const hook = container.resolve(renderJournalDirectoryHookToken);
+ * ```
+ */
+export const renderJournalDirectoryHookToken = createInjectionToken<
+  import("@/core/hooks/render-journal-directory-hook").RenderJournalDirectoryHook
+>("RenderJournalDirectoryHook");
+
+/**
  * Re-export port-related tokens for convenience.
  * These are defined in @/foundry/foundrytokens but exported here for easier access.
  */

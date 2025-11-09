@@ -4,6 +4,10 @@
 
 Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Moduls.
 
+**Datum:** 2025-11-09  
+**Stand:** Version 0.8.0  
+**Detaillierte Analyse:** Siehe [PROJECT_ANALYSIS.md](./docs/PROJECT_ANALYSIS.md)
+
 ---
 
 ## Schichtenarchitektur
@@ -347,16 +351,60 @@ gamePortRegistry.register(14, () => new FoundryGamePortV14()); // NEU
 const root = new CompositionRoot();
 const bootstrapResult = root.bootstrap();
 // → Erstellt ServiceContainer
-// → Registriert alle Dependencies
+// → Registriert alle Dependencies (modular)
 // → Validiert Container
+```
+
+**Modular Config Structure:**
+
+Die DI-Konfiguration ist in thematische Module aufgeteilt:
+
+```typescript
+// src/config/dependencyconfig.ts (Orchestrator)
+export function configureDependencies(container: ServiceContainer) {
+  registerFallbacks(container);
+  
+  // Orchestriere thematische Config-Module
+  registerCoreServices(container);        // Logger, Metrics, Environment
+  registerObservability(container);       // NEW: EventEmitter, ObservabilityRegistry
+  registerUtilityServices(container);     // Performance, Retry
+  registerPortInfrastructure(container);  // PortSelector, PortRegistries
+  registerFoundryServices(container);     // FoundryGame, Hooks, Document, UI
+  registerI18nServices(container);        // I18n Services
+  registerRegistrars(container);          // NEW: DI-managed Registrars
+  
+  validateContainer(container);
+  return ok(undefined);
+}
+```
+
+**Self-Configuring Services:**
+
+Services konfigurieren sich selbst via Constructor-Dependencies:
+
+```typescript
+// Logger mit EnvironmentConfig-Dependency
+class ConsoleLoggerService {
+  static dependencies = [environmentConfigToken] as const;
+  
+  constructor(env: EnvironmentConfig) {
+    this.minLevel = env.logLevel;  // Self-configuring!
+  }
+}
 ```
 
 ### Phase 2: Foundry init Hook
 
 ```typescript
 Hooks.on("init", () => {
-  root.exposeToModuleApi();           // API unter game.modules.get().api
-  new ModuleHookRegistrar().registerAll();  // Hooks registrieren
+  root.exposeToModuleApi();  // API unter game.modules.get().api
+  
+  // Registrars werden via DI aufgelöst
+  const settingsRegistrar = container.resolveWithError(moduleSettingsRegistrarToken);
+  settingsRegistrar.value.registerAll(container);
+  
+  const hookRegistrar = container.resolveWithError(moduleHookRegistrarToken);
+  hookRegistrar.value.registerAll(container);
 });
 ```
 
@@ -470,14 +518,127 @@ if (typeof Hooks === "undefined") {
 
 ---
 
+## Observability & Self-Registration Pattern
+
+### Self-Registration
+
+Services registrieren sich **automatisch** für Observability im Constructor:
+
+```typescript
+class PortSelector {
+  static dependencies = [
+    portSelectionEventEmitterToken,
+    observabilityRegistryToken
+  ] as const;
+  
+  constructor(
+    private eventEmitter: PortSelectionEventEmitter,
+    observability: ObservabilityRegistry
+  ) {
+    // Self-registration: Service meldet sich selbst an
+    observability.registerPortSelector(this);
+  }
+  
+  selectPort() {
+    // Events werden automatisch zu Logger/Metrics geroutet
+    this.eventEmitter.emit({ type: "success", ... });
+  }
+}
+```
+
+**Vorteile:**
+- ✅ Kein manuelles Wiring nötig
+- ✅ Service-Erstellung = automatische Observability
+- ✅ Erweiterbar ohne Code-Änderungen
+- ✅ Type-Safe via `ObservableService<TEvent>`
+
+### ObservabilityRegistry
+
+Zentraler Hub für Observable Services:
+
+```typescript
+class ObservabilityRegistry {
+  static dependencies = [loggerToken, metricsRecorderToken] as const;
+  
+  registerPortSelector(service: ObservableService<PortSelectionEvent>) {
+    service.onEvent((event) => {
+      if (event.type === "success") {
+        this.logger.debug(`Port v${event.selectedVersion} selected`);
+        this.metrics.recordPortSelection(event.selectedVersion);
+      }
+    });
+  }
+  
+  // Future: Add more registration methods for other observable services
+  // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
+}
+```
+
+---
+
+## Modular Configuration Structure
+
+### Config-Module nach Themen
+
+```
+src/config/
+├── dependencyconfig.ts                (Orchestrator)
+├── modules/
+│   ├── core-services.config.ts        (Logger, Metrics, Environment)
+│   ├── observability.config.ts        (EventEmitter, ObservabilityRegistry)
+│   ├── port-infrastructure.config.ts  (PortSelector, PortRegistries)
+│   ├── foundry-services.config.ts     (FoundryGame, Hooks, Document, UI)
+│   ├── utility-services.config.ts     (Performance, Retry)
+│   ├── i18n-services.config.ts        (I18n Services)
+│   └── registrars.config.ts           (ModuleSettingsRegistrar, ModuleHookRegistrar)
+```
+
+**Vorteile:**
+- ✅ Jedes Modul < 200 Zeilen
+- ✅ Klare thematische Trennung
+- ✅ Einfach erweiterbar
+- ✅ Übersichtlicher Orchestrator
+
+---
+
 ## Weiterführende Dokumentation
 
 - **TypeScript Configuration**: `tsconfig.json` - Strict Mode aktiviert
 - **DI Infrastructure**: `src/di_infrastructure/` - Container-Implementierung
 - **Foundry Adapter**: `src/foundry/` - Port-Pattern-Implementierung
 - **Core**: `src/core/` - Bootstrap und Orchestrierung
+- **Observability**: `src/observability/` - Self-Registration Pattern
 
 ---
 
-**Letzte Aktualisierung**: 2025-01-06
+---
+
+## 📚 Weiterführende Dokumente
+
+### High-Level (dieses Dokument)
+- Architektur-Überblick
+- Port-Adapter-Pattern
+- Result Pattern
+- DI-Container-Grundlagen
+
+### Deep-Dive (detaillierte Analysen)
+- **[PROJECT_ANALYSIS.md](./docs/PROJECT_ANALYSIS.md)** - Vollständige Service-Analyse (19 Services)
+- **[DEPENDENCY_MAP.md](./docs/DEPENDENCY_MAP.md)** - Detaillierte Dependency-Hierarchie
+- **[BOOTFLOW.md](./docs/BOOTFLOW.md)** - Bootstrap-Prozess im Detail
+- **[QUICK_REFERENCE.md](./docs/QUICK_REFERENCE.md)** - Entwickler-Schnellreferenz
+
+### Entwicklung
+- **[VERSIONING_STRATEGY.md](./docs/VERSIONING_STRATEGY.md)** - Breaking Changes & Deprecation
+- **[TESTING.md](./docs/TESTING.md)** - Test-Strategie
+- **[API.md](./docs/API.md)** - Öffentliche API
+
+### ADRs (Architecture Decision Records)
+- [ADR-0001: Result Pattern](./docs/adr/0001-use-result-pattern-instead-of-exceptions.md)
+- [ADR-0002: Custom DI Container](./docs/adr/0002-custom-di-container-instead-of-tsyringe.md)
+- [ADR-0003: Port-Adapter-Pattern](./docs/adr/0003-port-adapter-for-foundry-version-compatibility.md)
+- [Alle ADRs](./docs/adr/)
+
+---
+
+**Letzte Aktualisierung:** 2025-11-09
 

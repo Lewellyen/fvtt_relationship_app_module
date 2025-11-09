@@ -97,6 +97,7 @@ def update_documentation(new_version, date):
     
     # Erstelle neue [Unreleased] Sektion mit allen 5 Abschnitten
     new_unreleased = """## [Unreleased]
+
 ### Hinzugefügt
 
 ### Geändert
@@ -127,7 +128,7 @@ def update_documentation(new_version, date):
                 sections[section] = section_content
     
     # Erstelle Release Notes für diese Version
-    release_notes_dir = Path("docs/development/foundry/releases")
+    release_notes_dir = Path("docs/releases")
     release_notes_dir.mkdir(exist_ok=True, parents=True)
     release_notes_path = release_notes_dir / f"v{new_version}.md"
     

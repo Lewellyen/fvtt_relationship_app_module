@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { PortSelector } from "../portselector";
 import { getFoundryVersionResult, resetVersionCache } from "../versiondetector";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok, err } from "@/utils/functional/result";
 import type { PortSelectionEvent } from "../port-selection-events";
+import { PortSelectionEventEmitter } from "../port-selection-events";
+import type { ObservabilityRegistry } from "@/observability/observability-registry";
 
 vi.mock("../versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -13,9 +16,16 @@ vi.mock("../versiondetector", () => ({
 describe("PortSelector", () => {
   let selector: PortSelector;
   let capturedEvents: PortSelectionEvent[];
+  let mockEventEmitter: PortSelectionEventEmitter;
+  let mockObservability: ObservabilityRegistry;
 
   beforeEach(() => {
-    selector = new PortSelector();
+    mockEventEmitter = new PortSelectionEventEmitter();
+    mockObservability = {
+      registerPortSelector: vi.fn(),
+    } as any;
+
+    selector = new PortSelector(mockEventEmitter, mockObservability);
     capturedEvents = [];
     // Subscribe to events for testing
     selector.onEvent((event) => capturedEvents.push(event));

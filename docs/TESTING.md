@@ -41,12 +41,15 @@ npm test -- container.test.ts
 
 Das Projekt hat definierte Mindest-Coverage-Anforderungen:
 
-| Metrik | Minimum |
-|--------|---------|
-| Lines | 80% |
-| Functions | 80% |
-| Branches | 75% |
-| Statements | 80% |
+| Metrik | Ziel | Aktuell (v0.8.0) |
+|--------|------|------------------|
+| Lines | 100% | ✅ 100% |
+| Functions | 100% | ✅ 100% |
+| Branches | 100% | ✅ 100% |
+| Statements | 100% | ✅ 100% |
+| Type Coverage | 100% | ✅ 100% (8617/8617) |
+
+**Status:** ✅ Alle Coverage-Ziele erreicht!
 
 **Überprüfung:**
 

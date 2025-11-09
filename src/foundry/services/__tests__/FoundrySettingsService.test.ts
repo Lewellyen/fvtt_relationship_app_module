@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FoundrySettingsService } from "../FoundrySettingsService";
 import type { FoundrySettings, SettingConfig } from "@/foundry/interfaces/FoundrySettings";
@@ -5,6 +6,8 @@ import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { ok, err } from "@/utils/functional/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import { PortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
+import type { ObservabilityRegistry } from "@/observability/observability-registry";
 
 describe("FoundrySettingsService", () => {
   let service: FoundrySettingsService;
@@ -27,7 +30,11 @@ describe("FoundrySettingsService", () => {
     mockRegistry = new PortRegistry<FoundrySettings>();
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
-    mockSelector = new PortSelector();
+    const mockEventEmitter = new PortSelectionEventEmitter();
+    const mockObservability: ObservabilityRegistry = {
+      registerPortSelector: vi.fn(),
+    } as any;
+    mockSelector = new PortSelector(mockEventEmitter, mockObservability);
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundrySettingsService(mockSelector, mockRegistry);

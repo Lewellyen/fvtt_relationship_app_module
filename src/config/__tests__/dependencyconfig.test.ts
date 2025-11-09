@@ -115,7 +115,7 @@ describe("dependencyconfig", () => {
       const result = configureDependencies(container);
       expectResultErr(result);
       if (!result.ok) {
-        expect(result.error).toContain("Failed to register logger");
+        expect(result.error).toContain("Failed to register Logger");
       }
 
       registerClassSpy.mockRestore();

@@ -4,8 +4,10 @@ import { err, ok } from "@/utils/functional/result";
 import { getFoundryVersionResult } from "./versiondetector";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 import { MODULE_CONSTANTS } from "@/constants";
-import { PortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
+import type { PortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
 import type { PortSelectionEventCallback } from "@/foundry/versioning/port-selection-events";
+import type { ObservabilityRegistry } from "@/observability/observability-registry";
+import { portSelectionEventEmitterToken, observabilityRegistryToken } from "@/tokens/tokenindex";
 
 /**
  * Factory function type for creating port instances.
@@ -21,16 +23,20 @@ export type PortFactory<T> = () => T;
  * - Never uses ports with version number higher than current Foundry version
  *
  * **Observability:**
- * - Emits events for success/failure instead of direct logging/metrics
- * - Zero dependencies for improved testability and separation of concerns
- * - Observers can subscribe to events for logging, metrics, etc.
+ * - Emits events for success/failure via injected EventEmitter
+ * - Self-registers with ObservabilityRegistry for automatic logging/metrics
+ * - Conforms to DI architecture: EventEmitter as TRANSIENT service
  */
 export class PortSelector {
-  static dependencies = [] as const;
+  static dependencies = [portSelectionEventEmitterToken, observabilityRegistryToken] as const;
 
-  private readonly eventEmitter = new PortSelectionEventEmitter();
-
-  constructor() {}
+  constructor(
+    private readonly eventEmitter: PortSelectionEventEmitter,
+    observability: ObservabilityRegistry
+  ) {
+    // Self-register for observability
+    observability.registerPortSelector(this);
+  }
 
   /**
    * Subscribe to port selection events.

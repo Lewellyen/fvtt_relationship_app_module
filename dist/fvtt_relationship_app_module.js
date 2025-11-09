@@ -216,6 +216,17 @@ const performanceTrackingServiceToken = createInjectionToken(
   "PerformanceTrackingService"
 );
 const retryServiceToken = createInjectionToken("RetryService");
+const portSelectionEventEmitterToken = createInjectionToken("PortSelectionEventEmitter");
+const observabilityRegistryToken = createInjectionToken(
+  "ObservabilityRegistry"
+);
+const moduleSettingsRegistrarToken = createInjectionToken(
+  "ModuleSettingsRegistrar"
+);
+const moduleHookRegistrarToken = createInjectionToken(
+  "ModuleHookRegistrar"
+);
+const renderJournalDirectoryHookToken = createInjectionToken("RenderJournalDirectoryHook");
 var tokenindex = /* @__PURE__ */ Object.freeze({
   __proto__: null,
   environmentConfigToken,
@@ -228,8 +239,13 @@ var tokenindex = /* @__PURE__ */ Object.freeze({
   metricsRecorderToken,
   metricsSamplerToken,
   moduleHealthServiceToken,
+  moduleHookRegistrarToken,
+  moduleSettingsRegistrarToken,
+  observabilityRegistryToken,
   performanceTrackingServiceToken,
+  portSelectionEventEmitterToken,
   portSelectorToken,
+  renderJournalDirectoryHookToken,
   retryServiceToken
 });
 const scriptRel = "modulepreload";
@@ -1347,7 +1363,6 @@ const _ScopeManager = class _ScopeManager {
    */
   isDisposable(instance2) {
     return "dispose" in instance2 && // Narrowing via Partial so we can check dispose presence without full interface
-    /* type-coverage:ignore-next-line */
     typeof instance2.dispose === "function";
   }
   /**
@@ -2004,8 +2019,12 @@ const _TracedLogger = class _TracedLogger {
 __name(_TracedLogger, "TracedLogger");
 let TracedLogger = _TracedLogger;
 const _ConsoleLoggerService = class _ConsoleLoggerService {
-  constructor() {
-    this.minLevel = LogLevel.INFO;
+  /**
+   * Creates a new ConsoleLoggerService.
+   * @param env - Environment configuration (provides initial log level)
+   */
+  constructor(env) {
+    this.minLevel = env.logLevel;
   }
   /**
    * Sets the minimum log level. Messages below this level will be ignored.
@@ -2079,8 +2098,631 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
   }
 };
 __name(_ConsoleLoggerService, "ConsoleLoggerService");
-_ConsoleLoggerService.dependencies = [];
+_ConsoleLoggerService.dependencies = [environmentConfigToken];
 let ConsoleLoggerService = _ConsoleLoggerService;
+const _MetricsCollector = class _MetricsCollector {
+  constructor(env) {
+    this.env = env;
+    this.metrics = {
+      containerResolutions: 0,
+      resolutionErrors: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      portSelections: /* @__PURE__ */ new Map(),
+      portSelectionFailures: /* @__PURE__ */ new Map()
+    };
+    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
+    this.resolutionTimesIndex = 0;
+    this.resolutionTimesCount = 0;
+    this.MAX_RESOLUTION_TIMES = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
+  }
+  /**
+   * Records a service resolution attempt.
+   *
+   * @param token - The injection token that was resolved
+   * @param durationMs - Time taken to resolve in milliseconds
+   * @param success - Whether resolution succeeded
+   */
+  recordResolution(token, durationMs, success) {
+    this.metrics.containerResolutions++;
+    if (!success) {
+      this.metrics.resolutionErrors++;
+    }
+    this.resolutionTimes[this.resolutionTimesIndex] = durationMs;
+    this.resolutionTimesIndex = (this.resolutionTimesIndex + 1) % this.MAX_RESOLUTION_TIMES;
+    this.resolutionTimesCount = Math.min(this.resolutionTimesCount + 1, this.MAX_RESOLUTION_TIMES);
+  }
+  /**
+   * Records a port selection event.
+   *
+   * @param version - The Foundry version for which a port was selected
+   */
+  recordPortSelection(version) {
+    const count = this.metrics.portSelections.get(version) ?? 0;
+    this.metrics.portSelections.set(version, count + 1);
+  }
+  /**
+   * Records a port selection failure.
+   *
+   * Useful for tracking when no compatible port is available for a version.
+   *
+   * @param version - The Foundry version for which port selection failed
+   */
+  recordPortSelectionFailure(version) {
+    const count = this.metrics.portSelectionFailures.get(version) ?? 0;
+    this.metrics.portSelectionFailures.set(version, count + 1);
+  }
+  /**
+   * Records a cache access (hit or miss).
+   *
+   * @param hit - True if cache hit, false if cache miss
+   */
+  recordCacheAccess(hit) {
+    if (hit) {
+      this.metrics.cacheHits++;
+    } else {
+      this.metrics.cacheMisses++;
+    }
+  }
+  /**
+   * Determines if a performance operation should be sampled based on sampling rate.
+   *
+   * In production mode, uses probabilistic sampling to reduce overhead.
+   * In development mode, always samples (returns true).
+   *
+   * @returns True if the operation should be measured/recorded
+   *
+   * @example
+   * ```typescript
+   * const metrics = container.resolve(metricsCollectorToken);
+   * if (metrics.shouldSample()) {
+   *   performance.mark('operation-start');
+   *   // ... operation ...
+   *   performance.mark('operation-end');
+   *   performance.measure('operation', 'operation-start', 'operation-end');
+   * }
+   * ```
+   */
+  shouldSample() {
+    if (this.env.isDevelopment) {
+      return true;
+    }
+    return Math.random() < this.env.performanceSamplingRate;
+  }
+  /**
+   * Gets a snapshot of current metrics.
+   *
+   * @returns Immutable snapshot of metrics data
+   */
+  getSnapshot() {
+    let sum = 0;
+    for (let i = 0; i < this.resolutionTimesCount; i++) {
+      sum += this.resolutionTimes[i];
+    }
+    const avgTime = this.resolutionTimesCount > 0 ? sum / this.resolutionTimesCount : 0;
+    const totalCacheAccess = this.metrics.cacheHits + this.metrics.cacheMisses;
+    const cacheHitRate = totalCacheAccess > 0 ? this.metrics.cacheHits / totalCacheAccess * 100 : 0;
+    return {
+      containerResolutions: this.metrics.containerResolutions,
+      resolutionErrors: this.metrics.resolutionErrors,
+      avgResolutionTimeMs: avgTime,
+      portSelections: Object.fromEntries(this.metrics.portSelections),
+      portSelectionFailures: Object.fromEntries(this.metrics.portSelectionFailures),
+      cacheHitRate
+    };
+  }
+  /**
+   * Logs a formatted metrics summary to the console.
+   * Uses console.table() for easy-to-read tabular output.
+   */
+  logSummary() {
+    const snapshot = this.getSnapshot();
+    console.table({
+      "Total Resolutions": snapshot.containerResolutions,
+      Errors: snapshot.resolutionErrors,
+      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
+      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
+    });
+  }
+  /**
+   * Resets all collected metrics.
+   * Useful for testing or starting fresh measurements.
+   */
+  reset() {
+    this.metrics = {
+      containerResolutions: 0,
+      resolutionErrors: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      portSelections: /* @__PURE__ */ new Map(),
+      portSelectionFailures: /* @__PURE__ */ new Map()
+    };
+    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
+    this.resolutionTimesIndex = 0;
+    this.resolutionTimesCount = 0;
+  }
+};
+__name(_MetricsCollector, "MetricsCollector");
+_MetricsCollector.dependencies = [environmentConfigToken];
+let MetricsCollector = _MetricsCollector;
+const _ModuleHealthService = class _ModuleHealthService {
+  constructor(container, metricsCollector) {
+    this.container = container;
+    this.metricsCollector = metricsCollector;
+  }
+  /**
+   * Gets the current health status of the module.
+   *
+   * Health is determined by:
+   * - Container validation state (must be "validated")
+   * - Port selection success (at least one port selected)
+   * - Resolution errors (none expected)
+   *
+   * @returns HealthStatus with overall status, individual checks, and timestamp
+   *
+   * @example
+   * ```typescript
+   * const healthService = container.resolve(moduleHealthServiceToken);
+   * const health = healthService.getHealth();
+   *
+   * if (health.status !== 'healthy') {
+   *   console.warn('Module is not healthy:', health.checks);
+   * }
+   * ```
+   */
+  getHealth() {
+    const containerValidated = this.container.getValidationState() === "validated";
+    const metrics = this.metricsCollector.getSnapshot();
+    const hasPortSelections = Object.keys(metrics.portSelections).length > 0 || containerValidated;
+    const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
+    let status;
+    if (!containerValidated) {
+      status = "unhealthy";
+    } else if (hasPortFailures || metrics.resolutionErrors > 0) {
+      status = "degraded";
+    } else {
+      status = "healthy";
+    }
+    return {
+      status,
+      checks: {
+        containerValidated,
+        portsSelected: hasPortSelections,
+        lastError: hasPortFailures ? `Port selection failures detected for versions: ${Object.keys(metrics.portSelectionFailures).join(", ")}` : null
+      },
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }
+};
+__name(_ModuleHealthService, "ModuleHealthService");
+_ModuleHealthService.dependencies = [metricsCollectorToken];
+let ModuleHealthService = _ModuleHealthService;
+function registerCoreServices(container) {
+  const envResult = container.registerValue(environmentConfigToken, ENV);
+  if (isErr(envResult)) {
+    return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
+  }
+  const metricsResult = container.registerClass(
+    metricsCollectorToken,
+    MetricsCollector,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(metricsResult)) {
+    return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
+  }
+  container.registerAlias(metricsRecorderToken, metricsCollectorToken);
+  container.registerAlias(metricsSamplerToken, metricsCollectorToken);
+  const loggerResult = container.registerClass(
+    loggerToken,
+    ConsoleLoggerService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(loggerResult)) {
+    return err(`Failed to register Logger: ${loggerResult.error.message}`);
+  }
+  const healthResult = container.registerFactory(
+    moduleHealthServiceToken,
+    () => {
+      const metricsResult2 = container.resolveWithError(metricsCollectorToken);
+      if (!metricsResult2.ok) {
+        throw new Error("MetricsCollector not available for ModuleHealthService");
+      }
+      return new ModuleHealthService(container, metricsResult2.value);
+    },
+    ServiceLifecycle.SINGLETON,
+    [metricsCollectorToken]
+  );
+  if (isErr(healthResult)) {
+    return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerCoreServices, "registerCoreServices");
+const _PortSelectionEventEmitter = class _PortSelectionEventEmitter {
+  constructor() {
+    this.subscribers = [];
+  }
+  /**
+   * Subscribe to port selection events.
+   *
+   * @param callback - Function to call when events are emitted
+   * @returns Unsubscribe function
+   */
+  subscribe(callback) {
+    this.subscribers.push(callback);
+    return () => {
+      const index = this.subscribers.indexOf(callback);
+      if (index !== -1) {
+        this.subscribers.splice(index, 1);
+      }
+    };
+  }
+  /**
+   * Emit a port selection event to all subscribers.
+   *
+   * Events are dispatched synchronously.
+   *
+   * @param event - The event to emit
+   */
+  emit(event) {
+    for (const subscriber of this.subscribers) {
+      try {
+        subscriber(event);
+      } catch (error) {
+        console.error("PortSelectionEventEmitter: Subscriber error", error);
+      }
+    }
+  }
+  /**
+   * Remove all subscribers.
+   * Useful for cleanup in tests.
+   */
+  clear() {
+    this.subscribers = [];
+  }
+  /**
+   * Get current subscriber count.
+   * Useful for testing and diagnostics.
+   */
+  getSubscriberCount() {
+    return this.subscribers.length;
+  }
+};
+__name(_PortSelectionEventEmitter, "PortSelectionEventEmitter");
+let PortSelectionEventEmitter = _PortSelectionEventEmitter;
+const _ObservabilityRegistry = class _ObservabilityRegistry {
+  constructor(logger, metrics) {
+    this.logger = logger;
+    this.metrics = metrics;
+  }
+  /**
+   * Register a PortSelector for observability.
+   * Wires event emission to logging and metrics.
+   *
+   * @param service - Observable service that emits PortSelectionEvents
+   */
+  registerPortSelector(service) {
+    service.onEvent((event) => {
+      if (event.type === "success") {
+        const adapterSuffix = event.adapterName ? ` for ${event.adapterName}` : "";
+        this.logger.debug(
+          `Port v${event.selectedVersion} selected in ${event.durationMs.toFixed(2)}ms${adapterSuffix}`
+        );
+        this.metrics.recordPortSelection(event.selectedVersion);
+      } else {
+        this.logger.error("Port selection failed", {
+          foundryVersion: event.foundryVersion,
+          availableVersions: event.availableVersions,
+          adapterName: event.adapterName
+        });
+        this.metrics.recordPortSelectionFailure(event.foundryVersion);
+      }
+    });
+  }
+  // Future: Add more registration methods for other observable services
+  // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
+};
+__name(_ObservabilityRegistry, "ObservabilityRegistry");
+_ObservabilityRegistry.dependencies = [loggerToken, metricsRecorderToken];
+let ObservabilityRegistry = _ObservabilityRegistry;
+function registerObservability(container) {
+  const emitterResult = container.registerFactory(
+    portSelectionEventEmitterToken,
+    () => new PortSelectionEventEmitter(),
+    ServiceLifecycle.TRANSIENT,
+    []
+    // No dependencies
+  );
+  if (isErr(emitterResult)) {
+    return err(`Failed to register PortSelectionEventEmitter: ${emitterResult.error.message}`);
+  }
+  const registryResult = container.registerClass(
+    observabilityRegistryToken,
+    ObservabilityRegistry,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(registryResult)) {
+    return err(`Failed to register ObservabilityRegistry: ${registryResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerObservability, "registerObservability");
+let cachedVersion = null;
+function detectFoundryVersion() {
+  if (typeof game === "undefined") {
+    return err("Foundry game object is not available or version cannot be determined");
+  }
+  const versionString = game.version;
+  if (!versionString) {
+    return err("Foundry version is not available on the game object");
+  }
+  const match2 = versionString.match(/^(\d+)/);
+  if (!match2) {
+    return err(`Could not parse Foundry version from: ${versionString}`);
+  }
+  return ok(Number.parseInt(match2[1], 10));
+}
+__name(detectFoundryVersion, "detectFoundryVersion");
+function getFoundryVersionResult() {
+  if (cachedVersion === null) {
+    cachedVersion = detectFoundryVersion();
+  }
+  return cachedVersion;
+}
+__name(getFoundryVersionResult, "getFoundryVersionResult");
+function resetVersionCache() {
+  cachedVersion = null;
+}
+__name(resetVersionCache, "resetVersionCache");
+function tryGetFoundryVersion() {
+  const result = getFoundryVersionResult();
+  return result.ok ? result.value : void 0;
+}
+__name(tryGetFoundryVersion, "tryGetFoundryVersion");
+function createFoundryError(code, message2, details, cause) {
+  return { code, message: message2, details, cause };
+}
+__name(createFoundryError, "createFoundryError");
+function isErrorLike(obj) {
+  return typeof obj === "object" && obj !== null;
+}
+__name(isErrorLike, "isErrorLike");
+function isFoundryError(error) {
+  if (!isErrorLike(error)) return false;
+  return "code" in error && "message" in error && typeof error.code === "string" && typeof error.message === "string";
+}
+__name(isFoundryError, "isFoundryError");
+const _PortSelector = class _PortSelector {
+  constructor(eventEmitter, observability) {
+    this.eventEmitter = eventEmitter;
+    observability.registerPortSelector(this);
+  }
+  /**
+   * Subscribe to port selection events.
+   *
+   * Allows observers to be notified of port selection success/failure for
+   * logging, metrics, and other observability concerns.
+   *
+   * @param callback - Function to call when port selection events occur
+   * @returns Unsubscribe function
+   *
+   * @example
+   * ```typescript
+   * const selector = new PortSelector();
+   * const unsubscribe = selector.onEvent((event) => {
+   *   if (event.type === 'success') {
+   *     console.log(`Port v${event.selectedVersion} selected`);
+   *   }
+   * });
+   * ```
+   */
+  onEvent(callback) {
+    return this.eventEmitter.subscribe(callback);
+  }
+  /**
+   * Selects and instantiates the appropriate port from factories.
+   *
+   * CRITICAL: Works with factory map to avoid eager instantiation.
+   * Only the selected factory is executed, preventing crashes from
+   * incompatible constructors accessing unavailable APIs.
+   *
+   * @template T - The port type
+   * @param factories - Map of version numbers to port factories
+   * @param foundryVersion - Optional version override (uses getFoundryVersion() if not provided)
+   * @returns Result with instantiated port or error
+   *
+   * @example
+   * ```typescript
+   * const factories = new Map([
+   *   [13, () => new FoundryGamePortV13()],
+   *   [14, () => new FoundryGamePortV14()]
+   * ]);
+   * const selector = new PortSelector();
+   * const result = selector.selectPortFromFactories(factories);
+   * // On Foundry v13: creates only v13 port (v14 factory never called)
+   * // On Foundry v14: creates v14 port
+   * ```
+   */
+  selectPortFromFactories(factories, foundryVersion, adapterName) {
+    const startTime = performance.now();
+    let version;
+    if (foundryVersion !== void 0) {
+      version = foundryVersion;
+    } else {
+      const versionResult = getFoundryVersionResult();
+      if (!versionResult.ok) {
+        return err(
+          createFoundryError(
+            "PORT_SELECTION_FAILED",
+            "Could not determine Foundry version",
+            void 0,
+            versionResult.error
+          )
+        );
+      }
+      version = versionResult.value;
+    }
+    let selectedFactory;
+    let selectedVersion = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
+    for (const [portVersion, factory] of factories.entries()) {
+      if (portVersion > version) {
+        continue;
+      }
+      if (portVersion > selectedVersion) {
+        selectedVersion = portVersion;
+        selectedFactory = factory;
+      }
+    }
+    if (selectedFactory === void 0) {
+      const availableVersions = Array.from(factories.keys()).sort((a, b) => a - b).join(", ");
+      const error = createFoundryError(
+        "PORT_SELECTION_FAILED",
+        `No compatible port found for Foundry version ${version}`,
+        { version, availableVersions: availableVersions || "none" }
+      );
+      this.eventEmitter.emit({
+        type: "failure",
+        foundryVersion: version,
+        availableVersions,
+        adapterName,
+        error
+      });
+      return err(error);
+    }
+    try {
+      const port = selectedFactory();
+      const durationMs = performance.now() - startTime;
+      this.eventEmitter.emit({
+        type: "success",
+        selectedVersion,
+        foundryVersion: version,
+        adapterName,
+        durationMs
+      });
+      return ok(port);
+    } catch (error) {
+      const foundryError = createFoundryError(
+        "PORT_SELECTION_FAILED",
+        `Failed to instantiate port v${selectedVersion}`,
+        { selectedVersion },
+        error
+      );
+      this.eventEmitter.emit({
+        type: "failure",
+        foundryVersion: version,
+        availableVersions: Array.from(factories.keys()).sort((a, b) => a - b).join(", "),
+        adapterName,
+        error: foundryError
+      });
+      return err(foundryError);
+    }
+  }
+};
+__name(_PortSelector, "PortSelector");
+_PortSelector.dependencies = [portSelectionEventEmitterToken, observabilityRegistryToken];
+let PortSelector = _PortSelector;
+const _PortRegistry = class _PortRegistry {
+  constructor() {
+    this.factories = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Registers a port factory for a specific Foundry version.
+   * @param version - The Foundry version this port supports
+   * @param factory - Factory function that creates the port instance
+   * @returns Result indicating success or duplicate registration error
+   */
+  register(version, factory) {
+    if (this.factories.has(version)) {
+      return err(
+        createFoundryError(
+          "PORT_REGISTRY_ERROR",
+          `Port for version ${version} already registered`,
+          { version }
+        )
+      );
+    }
+    this.factories.set(version, factory);
+    return ok(void 0);
+  }
+  /**
+   * Gets all registered port versions.
+   * @returns Array of registered version numbers, sorted ascending
+   */
+  getAvailableVersions() {
+    return Array.from(this.factories.keys()).sort((a, b) => a - b);
+  }
+  /**
+   * Gets the factory map without instantiating ports.
+   * Use with PortSelector.selectPortFromFactories() for safe lazy instantiation.
+   *
+   * @returns Map of version numbers to factory functions (NOT instances)
+   *
+   * @example
+   * ```typescript
+   * const registry = new PortRegistry<FoundryGame>();
+   * registry.register(13, () => new FoundryGamePortV13());
+   * registry.register(14, () => new FoundryGamePortV14());
+   *
+   * const factories = registry.getFactories();
+   * const selector = new PortSelector();
+   * const result = selector.selectPortFromFactories(factories);
+   * // Only compatible port is instantiated
+   * ```
+   */
+  getFactories() {
+    return new Map(this.factories);
+  }
+  /**
+   * Creates only the port for the specified version or the highest compatible version.
+   * More efficient than createAll() when only one port is needed.
+   * @param version - The target Foundry version
+   * @returns Result containing the port instance or error
+   */
+  createForVersion(version) {
+    const compatibleVersions = Array.from(this.factories.keys()).filter((v) => v <= version).sort((a, b) => b - a);
+    if (compatibleVersions.length === 0) {
+      const availableVersions = this.getAvailableVersions().join(", ") || "none";
+      return err(
+        createFoundryError(
+          "PORT_NOT_FOUND",
+          `No compatible port for Foundry v${version}. Available ports: ${availableVersions}`,
+          { version, availableVersions }
+        )
+      );
+    }
+    const selectedVersion = compatibleVersions[0];
+    if (selectedVersion === void 0) {
+      return err(createFoundryError("PORT_NOT_FOUND", "No compatible version found", { version }));
+    }
+    const factory = this.factories.get(selectedVersion);
+    if (!factory) {
+      return err(
+        createFoundryError("PORT_NOT_FOUND", `Factory not found for version ${selectedVersion}`, {
+          selectedVersion
+        })
+      );
+    }
+    return ok(factory());
+  }
+  /**
+   * Checks if a port is registered for a specific version.
+   * @param version - The version to check
+   * @returns True if a port is registered for this version
+   */
+  hasVersion(version) {
+    return this.factories.has(version);
+  }
+  /**
+   * Gets the highest registered port version.
+   * @returns The highest version number or undefined if no ports are registered
+   */
+  getHighestVersion() {
+    const versions = this.getAvailableVersions();
+    return versions.length > 0 ? versions[versions.length - 1] : void 0;
+  }
+};
+__name(_PortRegistry, "PortRegistry");
+let PortRegistry = _PortRegistry;
 var store;
 function setGlobalConfig(config2) {
   store = { ...store, ...config2 };
@@ -8917,19 +9559,6 @@ function unwrap(schema) {
   return schema.wrapped;
 }
 __name(unwrap, "unwrap");
-function createFoundryError(code, message2, details, cause) {
-  return { code, message: message2, details, cause };
-}
-__name(createFoundryError, "createFoundryError");
-function isErrorLike(obj) {
-  return typeof obj === "object" && obj !== null;
-}
-__name(isErrorLike, "isErrorLike");
-function isFoundryError(error) {
-  if (!isErrorLike(error)) return false;
-  return "code" in error && "message" in error && typeof error.code === "string" && typeof error.message === "string";
-}
-__name(isFoundryError, "isFoundryError");
 const JournalEntrySchema = /* @__PURE__ */ object({
   id: /* @__PURE__ */ string(),
   name: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
@@ -9085,1507 +9714,6 @@ function validateHookApp(app) {
   return ok(result.output);
 }
 __name(validateHookApp, "validateHookApp");
-const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(facade, logger) {
-    this.facade = facade;
-    this.logger = logger;
-  }
-  /**
-   * Sanitizes a string for safe use in log messages.
-   * Escapes HTML entities to prevent log injection or display issues.
-   *
-   * Delegates to sanitizeHtml for robust DOM-based sanitization.
-   *
-   * @param input - The string to sanitize
-   * @returns HTML-safe string
-   */
-  sanitizeForLog(input) {
-    return sanitizeHtml(input);
-  }
-  /**
-   * Gets journal entries marked as hidden via module flag.
-   * Logs warnings for entries where flag reading fails to aid diagnosis.
-   */
-  getHiddenJournalEntries() {
-    const allEntriesResult = this.facade.getJournalEntries();
-    if (!allEntriesResult.ok) return allEntriesResult;
-    const hidden = [];
-    for (const journal of allEntriesResult.value) {
-      const flagResult = this.facade.getEntryFlag(journal, MODULE_CONSTANTS.FLAGS.HIDDEN);
-      if (flagResult.ok) {
-        if (flagResult.value === true) {
-          hidden.push(journal);
-        }
-      } else {
-        const journalIdentifier = journal.name ?? journal.id;
-        this.logger.warn(
-          `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
-          {
-            errorCode: flagResult.error.code,
-            /* c8 ignore stop */
-            errorMessage: flagResult.error.message
-          }
-        );
-      }
-    }
-    return { ok: true, value: hidden };
-  }
-  /**
-   * Processes journal directory HTML to hide flagged entries.
-   */
-  processJournalDirectory(htmlElement) {
-    this.logger.debug("Processing journal directory for hidden entries");
-    const hiddenResult = this.getHiddenJournalEntries();
-    match(hiddenResult, {
-      onOk: /* @__PURE__ */ __name((hidden) => {
-        this.logger.debug(`Found ${hidden.length} hidden journal entries`);
-        this.hideEntries(hidden, htmlElement);
-      }, "onOk"),
-      onErr: /* @__PURE__ */ __name((error) => {
-        this.logger.error("Error getting hidden journal entries", error);
-      }, "onErr")
-    });
-  }
-  hideEntries(entries2, html) {
-    for (const journal of entries2) {
-      const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
-      const removeResult = this.facade.removeJournalElement(journal.id, journalName, html);
-      match(removeResult, {
-        onOk: /* @__PURE__ */ __name(() => {
-          this.logger.debug(`Removing journal entry: ${this.sanitizeForLog(journalName)}`);
-        }, "onOk"),
-        onErr: /* @__PURE__ */ __name((error) => {
-          this.logger.warn("Error removing journal entry", error);
-        }, "onErr")
-      });
-    }
-  }
-};
-__name(_JournalVisibilityService, "JournalVisibilityService");
-_JournalVisibilityService.dependencies = [foundryJournalFacadeToken, loggerToken];
-let JournalVisibilityService = _JournalVisibilityService;
-const _MetricsCollector = class _MetricsCollector {
-  constructor(env) {
-    this.env = env;
-    this.metrics = {
-      containerResolutions: 0,
-      resolutionErrors: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      portSelections: /* @__PURE__ */ new Map(),
-      portSelectionFailures: /* @__PURE__ */ new Map()
-    };
-    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
-    this.resolutionTimesIndex = 0;
-    this.resolutionTimesCount = 0;
-    this.MAX_RESOLUTION_TIMES = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
-  }
-  /**
-   * Records a service resolution attempt.
-   *
-   * @param token - The injection token that was resolved
-   * @param durationMs - Time taken to resolve in milliseconds
-   * @param success - Whether resolution succeeded
-   */
-  recordResolution(token, durationMs, success) {
-    this.metrics.containerResolutions++;
-    if (!success) {
-      this.metrics.resolutionErrors++;
-    }
-    this.resolutionTimes[this.resolutionTimesIndex] = durationMs;
-    this.resolutionTimesIndex = (this.resolutionTimesIndex + 1) % this.MAX_RESOLUTION_TIMES;
-    this.resolutionTimesCount = Math.min(this.resolutionTimesCount + 1, this.MAX_RESOLUTION_TIMES);
-  }
-  /**
-   * Records a port selection event.
-   *
-   * @param version - The Foundry version for which a port was selected
-   */
-  recordPortSelection(version) {
-    const count = this.metrics.portSelections.get(version) ?? 0;
-    this.metrics.portSelections.set(version, count + 1);
-  }
-  /**
-   * Records a port selection failure.
-   *
-   * Useful for tracking when no compatible port is available for a version.
-   *
-   * @param version - The Foundry version for which port selection failed
-   */
-  recordPortSelectionFailure(version) {
-    const count = this.metrics.portSelectionFailures.get(version) ?? 0;
-    this.metrics.portSelectionFailures.set(version, count + 1);
-  }
-  /**
-   * Records a cache access (hit or miss).
-   *
-   * @param hit - True if cache hit, false if cache miss
-   */
-  recordCacheAccess(hit) {
-    if (hit) {
-      this.metrics.cacheHits++;
-    } else {
-      this.metrics.cacheMisses++;
-    }
-  }
-  /**
-   * Determines if a performance operation should be sampled based on sampling rate.
-   *
-   * In production mode, uses probabilistic sampling to reduce overhead.
-   * In development mode, always samples (returns true).
-   *
-   * @returns True if the operation should be measured/recorded
-   *
-   * @example
-   * ```typescript
-   * const metrics = container.resolve(metricsCollectorToken);
-   * if (metrics.shouldSample()) {
-   *   performance.mark('operation-start');
-   *   // ... operation ...
-   *   performance.mark('operation-end');
-   *   performance.measure('operation', 'operation-start', 'operation-end');
-   * }
-   * ```
-   */
-  shouldSample() {
-    if (this.env.isDevelopment) {
-      return true;
-    }
-    return Math.random() < this.env.performanceSamplingRate;
-  }
-  /**
-   * Gets a snapshot of current metrics.
-   *
-   * @returns Immutable snapshot of metrics data
-   */
-  getSnapshot() {
-    let sum = 0;
-    for (let i = 0; i < this.resolutionTimesCount; i++) {
-      sum += this.resolutionTimes[i];
-    }
-    const avgTime = this.resolutionTimesCount > 0 ? sum / this.resolutionTimesCount : 0;
-    const totalCacheAccess = this.metrics.cacheHits + this.metrics.cacheMisses;
-    const cacheHitRate = totalCacheAccess > 0 ? this.metrics.cacheHits / totalCacheAccess * 100 : 0;
-    return {
-      containerResolutions: this.metrics.containerResolutions,
-      resolutionErrors: this.metrics.resolutionErrors,
-      avgResolutionTimeMs: avgTime,
-      portSelections: Object.fromEntries(this.metrics.portSelections),
-      portSelectionFailures: Object.fromEntries(this.metrics.portSelectionFailures),
-      cacheHitRate
-    };
-  }
-  /**
-   * Logs a formatted metrics summary to the console.
-   * Uses console.table() for easy-to-read tabular output.
-   */
-  logSummary() {
-    const snapshot = this.getSnapshot();
-    console.table({
-      "Total Resolutions": snapshot.containerResolutions,
-      Errors: snapshot.resolutionErrors,
-      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
-      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
-    });
-  }
-  /**
-   * Resets all collected metrics.
-   * Useful for testing or starting fresh measurements.
-   */
-  reset() {
-    this.metrics = {
-      containerResolutions: 0,
-      resolutionErrors: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      portSelections: /* @__PURE__ */ new Map(),
-      portSelectionFailures: /* @__PURE__ */ new Map()
-    };
-    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
-    this.resolutionTimesIndex = 0;
-    this.resolutionTimesCount = 0;
-  }
-};
-__name(_MetricsCollector, "MetricsCollector");
-_MetricsCollector.dependencies = [environmentConfigToken];
-let MetricsCollector = _MetricsCollector;
-const _ModuleHealthService = class _ModuleHealthService {
-  constructor(container, metricsCollector) {
-    this.container = container;
-    this.metricsCollector = metricsCollector;
-  }
-  /**
-   * Gets the current health status of the module.
-   *
-   * Health is determined by:
-   * - Container validation state (must be "validated")
-   * - Port selection success (at least one port selected)
-   * - Resolution errors (none expected)
-   *
-   * @returns HealthStatus with overall status, individual checks, and timestamp
-   *
-   * @example
-   * ```typescript
-   * const healthService = container.resolve(moduleHealthServiceToken);
-   * const health = healthService.getHealth();
-   *
-   * if (health.status !== 'healthy') {
-   *   console.warn('Module is not healthy:', health.checks);
-   * }
-   * ```
-   */
-  getHealth() {
-    const containerValidated = this.container.getValidationState() === "validated";
-    const metrics = this.metricsCollector.getSnapshot();
-    const hasPortSelections = Object.keys(metrics.portSelections).length > 0 || containerValidated;
-    const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
-    let status;
-    if (!containerValidated) {
-      status = "unhealthy";
-    } else if (hasPortFailures || metrics.resolutionErrors > 0) {
-      status = "degraded";
-    } else {
-      status = "healthy";
-    }
-    return {
-      status,
-      checks: {
-        containerValidated,
-        portsSelected: hasPortSelections,
-        lastError: hasPortFailures ? `Port selection failures detected for versions: ${Object.keys(metrics.portSelectionFailures).join(", ")}` : null
-      },
-      timestamp: (/* @__PURE__ */ new Date()).toISOString()
-    };
-  }
-};
-__name(_ModuleHealthService, "ModuleHealthService");
-_ModuleHealthService.dependencies = [metricsCollectorToken];
-let ModuleHealthService = _ModuleHealthService;
-const _PerformanceTrackingService = class _PerformanceTrackingService extends PerformanceTrackerImpl {
-  constructor(env, sampler) {
-    super(env, sampler);
-  }
-};
-__name(_PerformanceTrackingService, "PerformanceTrackingService");
-_PerformanceTrackingService.dependencies = [environmentConfigToken, metricsSamplerToken];
-let PerformanceTrackingService = _PerformanceTrackingService;
-const _RetryService = class _RetryService {
-  constructor(logger, metricsCollector) {
-    this.logger = logger;
-    this.metricsCollector = metricsCollector;
-  }
-  /**
-   * Retries an async operation with exponential backoff.
-   *
-   * Useful for handling transient failures in external APIs (e.g., Foundry API calls).
-   *
-   * @template SuccessType - The success type of the operation
-   * @template ErrorType - The error type of the operation
-   * @param fn - Async function that returns a Result
-   * @param options - Retry configuration options (or legacy: maxAttempts number)
-   * @param legacyDelayMs - Legacy parameter for backward compatibility
-   * @returns Promise resolving to the Result (success or last error)
-   *
-   * @example
-   * ```typescript
-   * // New API with mapException (recommended for structured error types)
-   * const result = await retryService.retry(
-   *   () => foundryApi.fetchData(),
-   *   {
-   *     maxAttempts: 3,
-   *     delayMs: 100,
-   *     operationName: "fetchData",
-   *     mapException: (error, attempt) => ({
-   *       code: 'OPERATION_FAILED' as const,
-   *       message: `Attempt ${attempt} failed: ${String(error)}`
-   *     })
-   *   }
-   * );
-   *
-   * // Legacy API (backward compatible)
-   * const result = await retryService.retry(
-   *   () => foundryApi.fetchData(),
-   *   3, // maxAttempts
-   *   100 // delayMs
-   * );
-   * ```
-   */
-  async retry(fn, options = 3, legacyDelayMs) {
-    const opts = typeof options === "number" ? {
-      maxAttempts: options,
-      /* c8 ignore next -- Legacy API: delayMs default tested via other retry tests */
-      delayMs: legacyDelayMs ?? 100,
-      backoffFactor: 1,
-      /* c8 ignore next 2 -- Legacy unsafe cast function tested via legacy API tests */
-      /* type-coverage:ignore-next-line */
-      mapException: /* @__PURE__ */ __name((error) => error, "mapException"),
-      // Legacy unsafe cast
-      operationName: void 0
-    } : {
-      /* c8 ignore next -- Modern API: maxAttempts default tested in "should use default maxAttempts of 3" */
-      maxAttempts: options.maxAttempts ?? 3,
-      delayMs: options.delayMs ?? 100,
-      backoffFactor: options.backoffFactor ?? 1,
-      /* c8 ignore next 2 -- Default mapException tested when options.mapException is undefined */
-      /* type-coverage:ignore-next-line */
-      mapException: options.mapException ?? ((error) => error),
-      operationName: options.operationName ?? void 0
-    };
-    if (opts.maxAttempts < 1) {
-      return err(opts.mapException("maxAttempts must be >= 1", 0));
-    }
-    let lastError;
-    const startTime = performance.now();
-    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
-      try {
-        const result = await fn();
-        if (result.ok) {
-          if (attempt > 1 && opts.operationName) {
-            const duration = performance.now() - startTime;
-            this.logger.debug(
-              `Retry succeeded for "${opts.operationName}" after ${attempt} attempts (${duration.toFixed(2)}ms)`
-            );
-          }
-          return result;
-        }
-        lastError = result.error;
-        if (opts.operationName) {
-          this.logger.debug(
-            `Retry attempt ${attempt}/${opts.maxAttempts} failed for "${opts.operationName}"`,
-            { error: lastError }
-          );
-        }
-        if (attempt < opts.maxAttempts) {
-          const delay = opts.delayMs * Math.pow(attempt, opts.backoffFactor);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      } catch (error) {
-        lastError = opts.mapException(error, attempt);
-        if (opts.operationName) {
-          this.logger.warn(
-            `Retry attempt ${attempt}/${opts.maxAttempts} threw exception for "${opts.operationName}"`,
-            { error }
-          );
-        }
-        if (attempt < opts.maxAttempts) {
-          const delay = opts.delayMs * Math.pow(attempt, opts.backoffFactor);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      }
-    }
-    if (opts.operationName) {
-      const duration = performance.now() - startTime;
-      this.logger.warn(
-        `All retry attempts exhausted for "${opts.operationName}" after ${opts.maxAttempts} attempts (${duration.toFixed(2)}ms)`
-      );
-    }
-    return err(lastError);
-  }
-  /**
-   * Retries a synchronous operation.
-   * Similar to retry but for sync functions.
-   *
-   * @template SuccessType - The success type
-   * @template ErrorType - The error type
-   * @param fn - Function that returns a Result
-   * @param options - Retry configuration options (or legacy: maxAttempts number)
-   * @returns The Result (success or last error)
-   *
-   * @example
-   * ```typescript
-   * // New API with mapException (recommended for structured error types)
-   * const result = retryService.retrySync(
-   *   () => parseData(input),
-   *   {
-   *     maxAttempts: 3,
-   *     operationName: "parseData",
-   *     mapException: (error, attempt) => ({
-   *       code: 'PARSE_FAILED' as const,
-   *       message: `Parse attempt ${attempt} failed: ${String(error)}`
-   *     })
-   *   }
-   * );
-   *
-   * // Legacy API (backward compatible)
-   * const result = retryService.retrySync(
-   *   () => parseData(input),
-   *   3 // maxAttempts
-   * );
-   * ```
-   */
-  retrySync(fn, options = 3) {
-    const opts = typeof options === "number" ? {
-      maxAttempts: options,
-      /* c8 ignore next 2 -- Legacy unsafe cast function tested via legacy API tests */
-      /* type-coverage:ignore-next-line */
-      mapException: /* @__PURE__ */ __name((error) => error, "mapException"),
-      // Legacy unsafe cast
-      operationName: void 0
-    } : {
-      /* c8 ignore next -- Default maxAttempts tested in retry.test.ts */
-      maxAttempts: options.maxAttempts ?? 3,
-      /* c8 ignore next 2 -- Default mapException tested implicitly when options.mapException is undefined */
-      /* type-coverage:ignore-next-line */
-      mapException: options.mapException ?? ((error) => error),
-      operationName: options.operationName ?? void 0
-    };
-    if (opts.maxAttempts < 1) {
-      return err(opts.mapException("maxAttempts must be >= 1", 0));
-    }
-    let lastError;
-    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
-      try {
-        const result = fn();
-        if (result.ok) {
-          if (attempt > 1 && opts.operationName) {
-            this.logger.debug(
-              `Retry succeeded for "${opts.operationName}" after ${attempt} attempts`
-            );
-          }
-          return result;
-        }
-        lastError = result.error;
-        if (opts.operationName) {
-          this.logger.debug(
-            `Retry attempt ${attempt}/${opts.maxAttempts} failed for "${opts.operationName}"`,
-            { error: lastError }
-          );
-        }
-      } catch (error) {
-        lastError = opts.mapException(error, attempt);
-        if (opts.operationName) {
-          this.logger.warn(
-            `Retry attempt ${attempt}/${opts.maxAttempts} threw exception for "${opts.operationName}"`,
-            { error }
-          );
-        }
-      }
-    }
-    if (opts.operationName) {
-      this.logger.warn(
-        `All retry attempts exhausted for "${opts.operationName}" after ${opts.maxAttempts} attempts`
-      );
-    }
-    return err(lastError);
-  }
-};
-__name(_RetryService, "RetryService");
-_RetryService.dependencies = [loggerToken, metricsCollectorToken];
-let RetryService = _RetryService;
-let cachedVersion = null;
-function detectFoundryVersion() {
-  if (typeof game === "undefined") {
-    return err("Foundry game object is not available or version cannot be determined");
-  }
-  const versionString = game.version;
-  if (!versionString) {
-    return err("Foundry version is not available on the game object");
-  }
-  const match2 = versionString.match(/^(\d+)/);
-  if (!match2) {
-    return err(`Could not parse Foundry version from: ${versionString}`);
-  }
-  return ok(Number.parseInt(match2[1], 10));
-}
-__name(detectFoundryVersion, "detectFoundryVersion");
-function getFoundryVersionResult() {
-  if (cachedVersion === null) {
-    cachedVersion = detectFoundryVersion();
-  }
-  return cachedVersion;
-}
-__name(getFoundryVersionResult, "getFoundryVersionResult");
-function resetVersionCache() {
-  cachedVersion = null;
-}
-__name(resetVersionCache, "resetVersionCache");
-function tryGetFoundryVersion() {
-  const result = getFoundryVersionResult();
-  return result.ok ? result.value : void 0;
-}
-__name(tryGetFoundryVersion, "tryGetFoundryVersion");
-const _PortSelectionEventEmitter = class _PortSelectionEventEmitter {
-  constructor() {
-    this.subscribers = [];
-  }
-  /**
-   * Subscribe to port selection events.
-   *
-   * @param callback - Function to call when events are emitted
-   * @returns Unsubscribe function
-   */
-  subscribe(callback) {
-    this.subscribers.push(callback);
-    return () => {
-      const index = this.subscribers.indexOf(callback);
-      if (index !== -1) {
-        this.subscribers.splice(index, 1);
-      }
-    };
-  }
-  /**
-   * Emit a port selection event to all subscribers.
-   *
-   * Events are dispatched synchronously.
-   *
-   * @param event - The event to emit
-   */
-  emit(event) {
-    for (const subscriber of this.subscribers) {
-      try {
-        subscriber(event);
-      } catch (error) {
-        console.error("PortSelectionEventEmitter: Subscriber error", error);
-      }
-    }
-  }
-  /**
-   * Remove all subscribers.
-   * Useful for cleanup in tests.
-   */
-  clear() {
-    this.subscribers = [];
-  }
-  /**
-   * Get current subscriber count.
-   * Useful for testing and diagnostics.
-   */
-  getSubscriberCount() {
-    return this.subscribers.length;
-  }
-};
-__name(_PortSelectionEventEmitter, "PortSelectionEventEmitter");
-let PortSelectionEventEmitter = _PortSelectionEventEmitter;
-const _PortSelector = class _PortSelector {
-  constructor() {
-    this.eventEmitter = new PortSelectionEventEmitter();
-  }
-  /**
-   * Subscribe to port selection events.
-   *
-   * Allows observers to be notified of port selection success/failure for
-   * logging, metrics, and other observability concerns.
-   *
-   * @param callback - Function to call when port selection events occur
-   * @returns Unsubscribe function
-   *
-   * @example
-   * ```typescript
-   * const selector = new PortSelector();
-   * const unsubscribe = selector.onEvent((event) => {
-   *   if (event.type === 'success') {
-   *     console.log(`Port v${event.selectedVersion} selected`);
-   *   }
-   * });
-   * ```
-   */
-  onEvent(callback) {
-    return this.eventEmitter.subscribe(callback);
-  }
-  /**
-   * Selects and instantiates the appropriate port from factories.
-   *
-   * CRITICAL: Works with factory map to avoid eager instantiation.
-   * Only the selected factory is executed, preventing crashes from
-   * incompatible constructors accessing unavailable APIs.
-   *
-   * @template T - The port type
-   * @param factories - Map of version numbers to port factories
-   * @param foundryVersion - Optional version override (uses getFoundryVersion() if not provided)
-   * @returns Result with instantiated port or error
-   *
-   * @example
-   * ```typescript
-   * const factories = new Map([
-   *   [13, () => new FoundryGamePortV13()],
-   *   [14, () => new FoundryGamePortV14()]
-   * ]);
-   * const selector = new PortSelector();
-   * const result = selector.selectPortFromFactories(factories);
-   * // On Foundry v13: creates only v13 port (v14 factory never called)
-   * // On Foundry v14: creates v14 port
-   * ```
-   */
-  selectPortFromFactories(factories, foundryVersion, adapterName) {
-    const startTime = performance.now();
-    let version;
-    if (foundryVersion !== void 0) {
-      version = foundryVersion;
-    } else {
-      const versionResult = getFoundryVersionResult();
-      if (!versionResult.ok) {
-        return err(
-          createFoundryError(
-            "PORT_SELECTION_FAILED",
-            "Could not determine Foundry version",
-            void 0,
-            versionResult.error
-          )
-        );
-      }
-      version = versionResult.value;
-    }
-    let selectedFactory;
-    let selectedVersion = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
-    for (const [portVersion, factory] of factories.entries()) {
-      if (portVersion > version) {
-        continue;
-      }
-      if (portVersion > selectedVersion) {
-        selectedVersion = portVersion;
-        selectedFactory = factory;
-      }
-    }
-    if (selectedFactory === void 0) {
-      const availableVersions = Array.from(factories.keys()).sort((a, b) => a - b).join(", ");
-      const error = createFoundryError(
-        "PORT_SELECTION_FAILED",
-        `No compatible port found for Foundry version ${version}`,
-        { version, availableVersions: availableVersions || "none" }
-      );
-      this.eventEmitter.emit({
-        type: "failure",
-        foundryVersion: version,
-        availableVersions,
-        adapterName,
-        error
-      });
-      return err(error);
-    }
-    try {
-      const port = selectedFactory();
-      const durationMs = performance.now() - startTime;
-      this.eventEmitter.emit({
-        type: "success",
-        selectedVersion,
-        foundryVersion: version,
-        adapterName,
-        durationMs
-      });
-      return ok(port);
-    } catch (error) {
-      const foundryError = createFoundryError(
-        "PORT_SELECTION_FAILED",
-        `Failed to instantiate port v${selectedVersion}`,
-        { selectedVersion },
-        error
-      );
-      this.eventEmitter.emit({
-        type: "failure",
-        foundryVersion: version,
-        availableVersions: Array.from(factories.keys()).sort((a, b) => a - b).join(", "),
-        adapterName,
-        error: foundryError
-      });
-      return err(foundryError);
-    }
-  }
-};
-__name(_PortSelector, "PortSelector");
-_PortSelector.dependencies = [];
-let PortSelector = _PortSelector;
-const _PortRegistry = class _PortRegistry {
-  constructor() {
-    this.factories = /* @__PURE__ */ new Map();
-  }
-  /**
-   * Registers a port factory for a specific Foundry version.
-   * @param version - The Foundry version this port supports
-   * @param factory - Factory function that creates the port instance
-   * @returns Result indicating success or duplicate registration error
-   */
-  register(version, factory) {
-    if (this.factories.has(version)) {
-      return err(
-        createFoundryError(
-          "PORT_REGISTRY_ERROR",
-          `Port for version ${version} already registered`,
-          { version }
-        )
-      );
-    }
-    this.factories.set(version, factory);
-    return ok(void 0);
-  }
-  /**
-   * Gets all registered port versions.
-   * @returns Array of registered version numbers, sorted ascending
-   */
-  getAvailableVersions() {
-    return Array.from(this.factories.keys()).sort((a, b) => a - b);
-  }
-  /**
-   * Gets the factory map without instantiating ports.
-   * Use with PortSelector.selectPortFromFactories() for safe lazy instantiation.
-   *
-   * @returns Map of version numbers to factory functions (NOT instances)
-   *
-   * @example
-   * ```typescript
-   * const registry = new PortRegistry<FoundryGame>();
-   * registry.register(13, () => new FoundryGamePortV13());
-   * registry.register(14, () => new FoundryGamePortV14());
-   *
-   * const factories = registry.getFactories();
-   * const selector = new PortSelector();
-   * const result = selector.selectPortFromFactories(factories);
-   * // Only compatible port is instantiated
-   * ```
-   */
-  getFactories() {
-    return new Map(this.factories);
-  }
-  /**
-   * Creates only the port for the specified version or the highest compatible version.
-   * More efficient than createAll() when only one port is needed.
-   * @param version - The target Foundry version
-   * @returns Result containing the port instance or error
-   */
-  createForVersion(version) {
-    const compatibleVersions = Array.from(this.factories.keys()).filter((v) => v <= version).sort((a, b) => b - a);
-    if (compatibleVersions.length === 0) {
-      const availableVersions = this.getAvailableVersions().join(", ") || "none";
-      return err(
-        createFoundryError(
-          "PORT_NOT_FOUND",
-          `No compatible port for Foundry v${version}. Available ports: ${availableVersions}`,
-          { version, availableVersions }
-        )
-      );
-    }
-    const selectedVersion = compatibleVersions[0];
-    if (selectedVersion === void 0) {
-      return err(createFoundryError("PORT_NOT_FOUND", "No compatible version found", { version }));
-    }
-    const factory = this.factories.get(selectedVersion);
-    if (!factory) {
-      return err(
-        createFoundryError("PORT_NOT_FOUND", `Factory not found for version ${selectedVersion}`, {
-          selectedVersion
-        })
-      );
-    }
-    return ok(factory());
-  }
-  /**
-   * Checks if a port is registered for a specific version.
-   * @param version - The version to check
-   * @returns True if a port is registered for this version
-   */
-  hasVersion(version) {
-    return this.factories.has(version);
-  }
-  /**
-   * Gets the highest registered port version.
-   * @returns The highest version number or undefined if no ports are registered
-   */
-  getHighestVersion() {
-    const versions = this.getAvailableVersions();
-    return versions.length > 0 ? versions[versions.length - 1] : void 0;
-  }
-};
-__name(_PortRegistry, "PortRegistry");
-let PortRegistry = _PortRegistry;
-const _PortSelectionObserver = class _PortSelectionObserver {
-  constructor(logger, metrics) {
-    this.logger = logger;
-    this.metrics = metrics;
-  }
-  /**
-   * Handle a port selection event.
-   *
-   * Performs appropriate logging and metrics recording based on event type.
-   *
-   * @param event - The port selection event to handle
-   */
-  handleEvent(event) {
-    if (event.type === "success") {
-      this.handleSuccess(event);
-    } else {
-      this.handleFailure(event);
-    }
-  }
-  /**
-   * Handle successful port selection.
-   *
-   * Logs debug message and records metrics.
-   */
-  handleSuccess(event) {
-    this.logger.debug(
-      `Port selection completed in ${event.durationMs.toFixed(2)}ms (selected: v${event.selectedVersion}${event.adapterName ? ` for ${event.adapterName}` : ""})`
-    );
-    this.metrics.recordPortSelection(event.selectedVersion);
-  }
-  /**
-   * Handle failed port selection.
-   *
-   * Logs error and records failure metrics.
-   */
-  handleFailure(event) {
-    this.logger.error("No compatible port found", {
-      foundryVersion: event.foundryVersion,
-      availableVersions: event.availableVersions,
-      adapterName: event.adapterName
-    });
-    this.metrics.recordPortSelectionFailure(event.foundryVersion);
-  }
-};
-__name(_PortSelectionObserver, "PortSelectionObserver");
-let PortSelectionObserver = _PortSelectionObserver;
-const _FoundryGameService = class _FoundryGameService {
-  constructor(portSelector, portRegistry) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundryGame"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-  getJournalEntries() {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.getJournalEntries();
-  }
-  getJournalEntryById(id) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.getJournalEntryById(id);
-  }
-  /**
-   * Cleans up resources.
-   * Disposes the port if it implements Disposable, then resets the reference.
-   */
-  dispose() {
-    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
-      this.port.dispose();
-    }
-    this.port = null;
-  }
-};
-__name(_FoundryGameService, "FoundryGameService");
-_FoundryGameService.dependencies = [portSelectorToken, foundryGamePortRegistryToken];
-let FoundryGameService = _FoundryGameService;
-const _FoundryHooksService = class _FoundryHooksService {
-  constructor(portSelector, portRegistry, logger) {
-    this.port = null;
-    this.registeredHooks = /* @__PURE__ */ new Map();
-    this.callbackToIdMap = /* @__PURE__ */ new Map();
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-    this.logger = logger;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundryHooks"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-  on(hookName, callback) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    const result = portResult.value.on(hookName, callback);
-    if (result.ok) {
-      if (!this.registeredHooks.has(hookName)) {
-        this.registeredHooks.set(hookName, /* @__PURE__ */ new Map());
-      }
-      this.registeredHooks.get(hookName).set(result.value, callback);
-      const existing = this.callbackToIdMap.get(callback) || [];
-      existing.push({ hookName, id: result.value });
-      this.callbackToIdMap.set(callback, existing);
-    }
-    return result;
-  }
-  once(hookName, callback) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.once(hookName, callback);
-  }
-  off(hookName, callbackOrId) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    const result = portResult.value.off(hookName, callbackOrId);
-    if (result.ok) {
-      if (typeof callbackOrId === "number") {
-        const hooks = this.registeredHooks.get(hookName);
-        if (hooks) {
-          const callback = hooks.get(callbackOrId);
-          hooks.delete(callbackOrId);
-          if (callback) {
-            const hookInfos = this.callbackToIdMap.get(callback);
-            if (hookInfos) {
-              const filtered = hookInfos.filter(
-                (info) => !(info.hookName === hookName && info.id === callbackOrId)
-              );
-              if (filtered.length === 0) {
-                this.callbackToIdMap.delete(callback);
-              } else {
-                this.callbackToIdMap.set(callback, filtered);
-              }
-            }
-          }
-        }
-      } else {
-        const hookInfos = this.callbackToIdMap.get(callbackOrId);
-        if (hookInfos) {
-          const matchingInfos = hookInfos.filter((info) => info.hookName === hookName);
-          const hooks = this.registeredHooks.get(hookName);
-          if (hooks) {
-            for (const info of matchingInfos) {
-              hooks.delete(info.id);
-            }
-          }
-          const filtered = hookInfos.filter((info) => info.hookName !== hookName);
-          if (filtered.length === 0) {
-            this.callbackToIdMap.delete(callbackOrId);
-          } else {
-            this.callbackToIdMap.set(callbackOrId, filtered);
-          }
-        }
-      }
-    }
-    return result;
-  }
-  /**
-   * Cleans up all registered hooks.
-   * Called automatically when the container is disposed.
-   */
-  dispose() {
-    for (const [callback, hookInfos] of this.callbackToIdMap) {
-      for (const info of hookInfos) {
-        try {
-          if (typeof Hooks !== "undefined") {
-            Hooks.off(info.hookName, callback);
-          }
-        } catch (error) {
-          this.logger.warn("Failed to unregister hook", {
-            hookName: info.hookName,
-            hookId: info.id,
-            error
-          });
-        }
-      }
-    }
-    this.registeredHooks.clear();
-    this.callbackToIdMap.clear();
-    this.port = null;
-  }
-};
-__name(_FoundryHooksService, "FoundryHooksService");
-_FoundryHooksService.dependencies = [portSelectorToken, foundryHooksPortRegistryToken, loggerToken];
-let FoundryHooksService = _FoundryHooksService;
-const _FoundryDocumentService = class _FoundryDocumentService {
-  constructor(portSelector, portRegistry) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundryDocument"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-  getFlag(document2, scope, key) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.getFlag(document2, scope, key);
-  }
-  async setFlag(document2, scope, key, value2) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return await portResult.value.setFlag(document2, scope, key, value2);
-  }
-  /**
-   * Cleans up resources.
-   * Resets the port reference to allow garbage collection.
-   */
-  dispose() {
-    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
-      this.port.dispose();
-    }
-    this.port = null;
-  }
-};
-__name(_FoundryDocumentService, "FoundryDocumentService");
-_FoundryDocumentService.dependencies = [portSelectorToken, foundryDocumentPortRegistryToken];
-let FoundryDocumentService = _FoundryDocumentService;
-const _FoundryUIService = class _FoundryUIService {
-  constructor(portSelector, portRegistry) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundryUI"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-  removeJournalElement(journalId, journalName, html) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.removeJournalElement(journalId, journalName, html);
-  }
-  findElement(container, selector) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.findElement(container, selector);
-  }
-  notify(message2, type) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.notify(message2, type);
-  }
-  /**
-   * Cleans up resources.
-   * Resets the port reference to allow garbage collection.
-   */
-  dispose() {
-    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
-      this.port.dispose();
-    }
-    this.port = null;
-  }
-};
-__name(_FoundryUIService, "FoundryUIService");
-_FoundryUIService.dependencies = [portSelectorToken, foundryUIPortRegistryToken];
-let FoundryUIService = _FoundryUIService;
-const _FoundrySettingsService = class _FoundrySettingsService {
-  constructor(portSelector, portRegistry) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundrySettings"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-  register(namespace, key, config2) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.register(namespace, key, config2);
-  }
-  get(namespace, key) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.get(namespace, key);
-  }
-  async set(namespace, key, value2) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.set(namespace, key, value2);
-  }
-  /**
-   * Cleans up resources.
-   * Resets the port reference to allow garbage collection.
-   */
-  dispose() {
-    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
-      this.port.dispose();
-    }
-    this.port = null;
-  }
-};
-__name(_FoundrySettingsService, "FoundrySettingsService");
-_FoundrySettingsService.dependencies = [portSelectorToken, foundrySettingsPortRegistryToken];
-let FoundrySettingsService = _FoundrySettingsService;
-const _FoundryI18nService = class _FoundryI18nService {
-  constructor(portSelector, portRegistry) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   *
-   * @returns Result containing the port or error if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundryI18n"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-  localize(key) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.localize(key);
-  }
-  format(key, data) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.format(key, data);
-  }
-  has(key) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.has(key);
-  }
-};
-__name(_FoundryI18nService, "FoundryI18nService");
-_FoundryI18nService.dependencies = [portSelectorToken, foundryI18nPortRegistryToken];
-let FoundryI18nService = _FoundryI18nService;
-const _FoundryJournalFacade = class _FoundryJournalFacade {
-  constructor(game2, document2, ui2) {
-    this.game = game2;
-    this.document = document2;
-    this.ui = ui2;
-  }
-  /**
-   * Get all journal entries from Foundry.
-   *
-   * Delegates to FoundryGame.getJournalEntries().
-   */
-  getJournalEntries() {
-    return this.game.getJournalEntries();
-  }
-  /**
-   * Get a module flag from a journal entry.
-   *
-   * Delegates to FoundryDocument.getFlag() with module scope.
-   *
-   * @template T - The flag value type
-   * @param entry - The journal entry object
-   * @param key - The flag key
-   */
-  getEntryFlag(entry, key) {
-    return this.document.getFlag(
-      // Journal entries from Foundry provide getFlag; cast retains narrow interface
-      /* type-coverage:ignore-next-line */
-      entry,
-      MODULE_CONSTANTS.MODULE.ID,
-      key
-    );
-  }
-  /**
-   * Remove a journal element from the UI.
-   *
-   * Delegates to FoundryUI.removeJournalElement().
-   *
-   * @param id - Journal entry ID
-   * @param name - Journal entry name (for logging)
-   * @param html - HTML container element
-   */
-  removeJournalElement(id, name, html) {
-    return this.ui.removeJournalElement(id, name, html);
-  }
-};
-__name(_FoundryJournalFacade, "FoundryJournalFacade");
-_FoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
-let FoundryJournalFacade = _FoundryJournalFacade;
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-__name(escapeRegex, "escapeRegex");
-const _LocalI18nService = class _LocalI18nService {
-  constructor() {
-    this.translations = /* @__PURE__ */ new Map();
-    this.currentLocale = "en";
-    this.detectLocale();
-  }
-  /**
-   * Detects browser locale and sets current language.
-   * Falls back to 'en' if detection fails.
-   */
-  detectLocale() {
-    if (typeof navigator !== "undefined" && navigator.language) {
-      const lang = navigator.language.split("-")[0];
-      this.currentLocale = lang ?? "en";
-    }
-  }
-  /**
-   * Loads translations from a JSON object.
-   * Useful for testing or pre-loaded translation data.
-   *
-   * @param translations - Object with key-value pairs
-   *
-   * @example
-   * ```typescript
-   * const i18n = new LocalI18nService();
-   * i18n.loadTranslations({
-   *   "MODULE.SETTINGS.enableFeature": "Enable Feature",
-   *   "MODULE.WELCOME": "Welcome, {name}!"
-   * });
-   * ```
-   */
-  loadTranslations(translations) {
-    for (const [key, value2] of Object.entries(translations)) {
-      this.translations.set(key, value2);
-    }
-  }
-  /**
-   * Translates a key using local translations.
-   *
-   * @param key - Translation key
-   * @returns Result with translated string (or key itself if not found)
-   *
-   * @example
-   * ```typescript
-   * const result = i18n.translate("MODULE.SETTINGS.enableFeature");
-   * if (result.ok) {
-   *   console.log(result.value); // "Enable Feature" or key if not found
-   * }
-   * ```
-   */
-  translate(key) {
-    const value2 = this.translations.get(key);
-    return ok(value2 ?? key);
-  }
-  /**
-   * Formats a string with placeholders.
-   * Simple implementation: replaces `{key}` with values from data object.
-   *
-   * @param key - Translation key
-   * @param data - Object with placeholder values
-   * @returns Result with formatted string
-   *
-   * @example
-   * ```typescript
-   * // Translation: "Welcome, {name}!"
-   * const result = i18n.format("MODULE.WELCOME", { name: "Alice" });
-   * if (result.ok) {
-   *   console.log(result.value); // "Welcome, Alice!"
-   * }
-   * ```
-   */
-  format(key, data) {
-    const template = this.translations.get(key) ?? key;
-    let formatted = template;
-    for (const [placeholder, value2] of Object.entries(data)) {
-      const escapedPlaceholder = escapeRegex(placeholder);
-      const regex2 = new RegExp(`\\{${escapedPlaceholder}\\}`, "g");
-      formatted = formatted.replace(regex2, String(value2));
-    }
-    return ok(formatted);
-  }
-  /**
-   * Checks if a translation key exists.
-   *
-   * @param key - Translation key to check
-   * @returns Result with boolean
-   */
-  has(key) {
-    return ok(this.translations.has(key));
-  }
-  /**
-   * Gets the current locale.
-   *
-   * @returns Current locale string (e.g., "en", "de")
-   */
-  getCurrentLocale() {
-    return this.currentLocale;
-  }
-  /**
-   * Sets the current locale.
-   * Note: Changing locale requires reloading translations for the new language.
-   *
-   * @param locale - Locale code (e.g., "en", "de", "fr")
-   */
-  setLocale(locale) {
-    this.currentLocale = locale;
-  }
-};
-__name(_LocalI18nService, "LocalI18nService");
-_LocalI18nService.dependencies = [];
-let LocalI18nService = _LocalI18nService;
-const _I18nFacadeService = class _I18nFacadeService {
-  constructor(foundryI18n, localI18n) {
-    this.foundryI18n = foundryI18n;
-    this.localI18n = localI18n;
-  }
-  /**
-   * Translates a key using Foundry i18n → Local i18n → Fallback.
-   *
-   * @param key - Translation key
-   * @param fallback - Optional fallback string (defaults to key itself)
-   * @returns Translated string or fallback
-   *
-   * @example
-   * ```typescript
-   * // With fallback
-   * const text = i18n.translate("MODULE.UNKNOWN_KEY", "Default Text");
-   * console.log(text); // "Default Text"
-   *
-   * // Without fallback (returns key)
-   * const text2 = i18n.translate("MODULE.UNKNOWN_KEY");
-   * console.log(text2); // "MODULE.UNKNOWN_KEY"
-   * ```
-   */
-  translate(key, fallback2) {
-    const foundryResult = this.foundryI18n.localize(key);
-    if (foundryResult.ok && foundryResult.value !== key) {
-      return foundryResult.value;
-    }
-    const localResult = this.localI18n.translate(key);
-    if (localResult.ok && localResult.value !== key) {
-      return localResult.value;
-    }
-    return fallback2 ?? key;
-  }
-  /**
-   * Formats a string with placeholders.
-   *
-   * @param key - Translation key
-   * @param data - Object with placeholder values
-   * @param fallback - Optional fallback string
-   * @returns Formatted string or fallback
-   *
-   * @example
-   * ```typescript
-   * const text = i18n.format("MODULE.WELCOME", { name: "Alice" }, "Welcome!");
-   * console.log(text); // "Welcome, Alice!" or "Welcome!"
-   * ```
-   */
-  format(key, data, fallback2) {
-    const foundryResult = this.foundryI18n.format(key, data);
-    if (foundryResult.ok && foundryResult.value !== key) {
-      return foundryResult.value;
-    }
-    const localResult = this.localI18n.format(key, data);
-    if (localResult.ok && localResult.value !== key) {
-      return localResult.value;
-    }
-    return fallback2 ?? key;
-  }
-  /**
-   * Checks if a translation key exists in either i18n system.
-   *
-   * @param key - Translation key to check
-   * @returns True if key exists in Foundry or local i18n
-   */
-  has(key) {
-    const foundryResult = this.foundryI18n.has(key);
-    if (foundryResult.ok && foundryResult.value) {
-      return true;
-    }
-    const localResult = this.localI18n.has(key);
-    return localResult.ok && localResult.value;
-  }
-  /**
-   * Loads local translations from a JSON object.
-   * Useful for initializing translations on module startup.
-   *
-   * @param translations - Object with key-value pairs
-   *
-   * @example
-   * ```typescript
-   * i18n.loadLocalTranslations({
-   *   "MODULE.SETTINGS.enableFeature": "Enable Feature",
-   *   "MODULE.WELCOME": "Welcome, {name}!"
-   * });
-   * ```
-   */
-  loadLocalTranslations(translations) {
-    this.localI18n.loadTranslations(translations);
-  }
-};
-__name(_I18nFacadeService, "I18nFacadeService");
-_I18nFacadeService.dependencies = [foundryI18nToken, localI18nToken];
-let I18nFacadeService = _I18nFacadeService;
 function validateJournalId(id) {
   if (typeof id !== "string") {
     return err(createFoundryError("VALIDATION_FAILED", "ID must be a string"));
@@ -10980,57 +10108,6 @@ function registerPortToRegistry(registry, version, factory, portName, errors) {
   }
 }
 __name(registerPortToRegistry, "registerPortToRegistry");
-function registerFallbacks(container) {
-  container.registerFallback(loggerToken, () => new ConsoleLoggerService());
-}
-__name(registerFallbacks, "registerFallbacks");
-function registerCoreServices(container) {
-  const envResult = container.registerValue(environmentConfigToken, ENV);
-  if (isErr(envResult)) {
-    return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
-  }
-  const metricsResult = container.registerClass(
-    metricsCollectorToken,
-    MetricsCollector,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(metricsResult)) {
-    return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
-  }
-  const recorderAliasResult = container.registerAlias(metricsRecorderToken, metricsCollectorToken);
-  if (isErr(recorderAliasResult)) {
-    return err(`Failed to register MetricsRecorder alias: ${recorderAliasResult.error.message}`);
-  }
-  const samplerAliasResult = container.registerAlias(metricsSamplerToken, metricsCollectorToken);
-  if (isErr(samplerAliasResult)) {
-    return err(`Failed to register MetricsSampler alias: ${samplerAliasResult.error.message}`);
-  }
-  const loggerResult = container.registerClass(
-    loggerToken,
-    ConsoleLoggerService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(loggerResult)) {
-    return err(`Failed to register logger: ${loggerResult.error.message}`);
-  }
-  const healthResult = container.registerFactory(
-    moduleHealthServiceToken,
-    () => {
-      const metricsResult2 = container.resolveWithError(metricsCollectorToken);
-      if (!metricsResult2.ok) {
-        throw new Error("MetricsCollector not available for ModuleHealthService");
-      }
-      return new ModuleHealthService(container, metricsResult2.value);
-    },
-    ServiceLifecycle.SINGLETON,
-    [metricsCollectorToken]
-  );
-  if (isErr(healthResult)) {
-    return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
-  }
-  return ok(void 0);
-}
-__name(registerCoreServices, "registerCoreServices");
 function createPortRegistries() {
   const portRegistrationErrors = [];
   const gamePortRegistry = new PortRegistry();
@@ -11103,13 +10180,6 @@ function registerPortInfrastructure(container) {
   if (isErr(portSelectorResult)) {
     return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
   }
-  const portSelectorResolve = container.resolveWithError(portSelectorToken);
-  const loggerResult = container.resolveWithError(loggerToken);
-  const recorderResult = container.resolveWithError(metricsRecorderToken);
-  if (portSelectorResolve.ok && loggerResult.ok && recorderResult.ok) {
-    const observer = new PortSelectionObserver(loggerResult.value, recorderResult.value);
-    portSelectorResolve.value.onEvent((event) => observer.handleEvent(event));
-  }
   const portsResult = createPortRegistries();
   if (isErr(portsResult)) return portsResult;
   const {
@@ -11168,6 +10238,485 @@ function registerPortInfrastructure(container) {
   return ok(void 0);
 }
 __name(registerPortInfrastructure, "registerPortInfrastructure");
+const _FoundryGameService = class _FoundryGameService {
+  constructor(portSelector, portRegistry) {
+    this.port = null;
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version.
+   *
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
+   */
+  getPort() {
+    if (this.port === null) {
+      const factories = this.portRegistry.getFactories();
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundryGame"
+      );
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  getJournalEntries() {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.getJournalEntries();
+  }
+  getJournalEntryById(id) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.getJournalEntryById(id);
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then resets the reference.
+   */
+  dispose() {
+    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+      this.port.dispose();
+    }
+    this.port = null;
+  }
+};
+__name(_FoundryGameService, "FoundryGameService");
+_FoundryGameService.dependencies = [portSelectorToken, foundryGamePortRegistryToken];
+let FoundryGameService = _FoundryGameService;
+const _FoundryHooksService = class _FoundryHooksService {
+  constructor(portSelector, portRegistry, logger) {
+    this.port = null;
+    this.registeredHooks = /* @__PURE__ */ new Map();
+    this.callbackToIdMap = /* @__PURE__ */ new Map();
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+    this.logger = logger;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version.
+   *
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
+   */
+  getPort() {
+    if (this.port === null) {
+      const factories = this.portRegistry.getFactories();
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundryHooks"
+      );
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  on(hookName, callback) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    const result = portResult.value.on(hookName, callback);
+    if (result.ok) {
+      if (!this.registeredHooks.has(hookName)) {
+        this.registeredHooks.set(hookName, /* @__PURE__ */ new Map());
+      }
+      this.registeredHooks.get(hookName).set(result.value, callback);
+      const existing = this.callbackToIdMap.get(callback) || [];
+      existing.push({ hookName, id: result.value });
+      this.callbackToIdMap.set(callback, existing);
+    }
+    return result;
+  }
+  once(hookName, callback) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.once(hookName, callback);
+  }
+  off(hookName, callbackOrId) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    const result = portResult.value.off(hookName, callbackOrId);
+    if (result.ok) {
+      if (typeof callbackOrId === "number") {
+        const hooks = this.registeredHooks.get(hookName);
+        if (hooks) {
+          const callback = hooks.get(callbackOrId);
+          hooks.delete(callbackOrId);
+          if (callback) {
+            const hookInfos = this.callbackToIdMap.get(callback);
+            if (hookInfos) {
+              const filtered = hookInfos.filter(
+                (info) => !(info.hookName === hookName && info.id === callbackOrId)
+              );
+              if (filtered.length === 0) {
+                this.callbackToIdMap.delete(callback);
+              } else {
+                this.callbackToIdMap.set(callback, filtered);
+              }
+            }
+          }
+        }
+      } else {
+        const hookInfos = this.callbackToIdMap.get(callbackOrId);
+        if (hookInfos) {
+          const matchingInfos = hookInfos.filter((info) => info.hookName === hookName);
+          const hooks = this.registeredHooks.get(hookName);
+          if (hooks) {
+            for (const info of matchingInfos) {
+              hooks.delete(info.id);
+            }
+          }
+          const filtered = hookInfos.filter((info) => info.hookName !== hookName);
+          if (filtered.length === 0) {
+            this.callbackToIdMap.delete(callbackOrId);
+          } else {
+            this.callbackToIdMap.set(callbackOrId, filtered);
+          }
+        }
+      }
+    }
+    return result;
+  }
+  /**
+   * Cleans up all registered hooks.
+   * Called automatically when the container is disposed.
+   */
+  dispose() {
+    for (const [callback, hookInfos] of this.callbackToIdMap) {
+      for (const info of hookInfos) {
+        try {
+          if (typeof Hooks !== "undefined") {
+            Hooks.off(info.hookName, callback);
+          }
+        } catch (error) {
+          this.logger.warn("Failed to unregister hook", {
+            hookName: info.hookName,
+            hookId: info.id,
+            error
+          });
+        }
+      }
+    }
+    this.registeredHooks.clear();
+    this.callbackToIdMap.clear();
+    this.port = null;
+  }
+};
+__name(_FoundryHooksService, "FoundryHooksService");
+_FoundryHooksService.dependencies = [portSelectorToken, foundryHooksPortRegistryToken, loggerToken];
+let FoundryHooksService = _FoundryHooksService;
+const _FoundryDocumentService = class _FoundryDocumentService {
+  constructor(portSelector, portRegistry) {
+    this.port = null;
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version.
+   *
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
+   */
+  getPort() {
+    if (this.port === null) {
+      const factories = this.portRegistry.getFactories();
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundryDocument"
+      );
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  getFlag(document2, scope, key) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.getFlag(document2, scope, key);
+  }
+  async setFlag(document2, scope, key, value2) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return await portResult.value.setFlag(document2, scope, key, value2);
+  }
+  /**
+   * Cleans up resources.
+   * Resets the port reference to allow garbage collection.
+   */
+  dispose() {
+    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+      this.port.dispose();
+    }
+    this.port = null;
+  }
+};
+__name(_FoundryDocumentService, "FoundryDocumentService");
+_FoundryDocumentService.dependencies = [portSelectorToken, foundryDocumentPortRegistryToken];
+let FoundryDocumentService = _FoundryDocumentService;
+const _FoundryUIService = class _FoundryUIService {
+  constructor(portSelector, portRegistry) {
+    this.port = null;
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version.
+   *
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
+   */
+  getPort() {
+    if (this.port === null) {
+      const factories = this.portRegistry.getFactories();
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundryUI"
+      );
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  removeJournalElement(journalId, journalName, html) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.removeJournalElement(journalId, journalName, html);
+  }
+  findElement(container, selector) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.findElement(container, selector);
+  }
+  notify(message2, type) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.notify(message2, type);
+  }
+  /**
+   * Cleans up resources.
+   * Resets the port reference to allow garbage collection.
+   */
+  dispose() {
+    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+      this.port.dispose();
+    }
+    this.port = null;
+  }
+};
+__name(_FoundryUIService, "FoundryUIService");
+_FoundryUIService.dependencies = [portSelectorToken, foundryUIPortRegistryToken];
+let FoundryUIService = _FoundryUIService;
+const _FoundrySettingsService = class _FoundrySettingsService {
+  constructor(portSelector, portRegistry) {
+    this.port = null;
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version.
+   *
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
+   */
+  getPort() {
+    if (this.port === null) {
+      const factories = this.portRegistry.getFactories();
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundrySettings"
+      );
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  register(namespace, key, config2) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.register(namespace, key, config2);
+  }
+  get(namespace, key) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.get(namespace, key);
+  }
+  async set(namespace, key, value2) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.set(namespace, key, value2);
+  }
+  /**
+   * Cleans up resources.
+   * Resets the port reference to allow garbage collection.
+   */
+  dispose() {
+    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+      this.port.dispose();
+    }
+    this.port = null;
+  }
+};
+__name(_FoundrySettingsService, "FoundrySettingsService");
+_FoundrySettingsService.dependencies = [portSelectorToken, foundrySettingsPortRegistryToken];
+let FoundrySettingsService = _FoundrySettingsService;
+const _FoundryJournalFacade = class _FoundryJournalFacade {
+  constructor(game2, document2, ui2) {
+    this.game = game2;
+    this.document = document2;
+    this.ui = ui2;
+  }
+  /**
+   * Get all journal entries from Foundry.
+   *
+   * Delegates to FoundryGame.getJournalEntries().
+   */
+  getJournalEntries() {
+    return this.game.getJournalEntries();
+  }
+  /**
+   * Get a module flag from a journal entry.
+   *
+   * Delegates to FoundryDocument.getFlag() with module scope.
+   *
+   * @template T - The flag value type
+   * @param entry - The journal entry object
+   * @param key - The flag key
+   */
+  getEntryFlag(entry, key) {
+    return this.document.getFlag(
+      // Journal entries from Foundry provide getFlag; cast retains narrow interface
+      /* type-coverage:ignore-next-line */
+      entry,
+      MODULE_CONSTANTS.MODULE.ID,
+      key
+    );
+  }
+  /**
+   * Remove a journal element from the UI.
+   *
+   * Delegates to FoundryUI.removeJournalElement().
+   *
+   * @param id - Journal entry ID
+   * @param name - Journal entry name (for logging)
+   * @param html - HTML container element
+   */
+  removeJournalElement(id, name, html) {
+    return this.ui.removeJournalElement(id, name, html);
+  }
+};
+__name(_FoundryJournalFacade, "FoundryJournalFacade");
+_FoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
+let FoundryJournalFacade = _FoundryJournalFacade;
+const _JournalVisibilityService = class _JournalVisibilityService {
+  constructor(facade, logger) {
+    this.facade = facade;
+    this.logger = logger;
+  }
+  /**
+   * Sanitizes a string for safe use in log messages.
+   * Escapes HTML entities to prevent log injection or display issues.
+   *
+   * Delegates to sanitizeHtml for robust DOM-based sanitization.
+   *
+   * @param input - The string to sanitize
+   * @returns HTML-safe string
+   */
+  sanitizeForLog(input) {
+    return sanitizeHtml(input);
+  }
+  /**
+   * Gets journal entries marked as hidden via module flag.
+   * Logs warnings for entries where flag reading fails to aid diagnosis.
+   */
+  getHiddenJournalEntries() {
+    const allEntriesResult = this.facade.getJournalEntries();
+    if (!allEntriesResult.ok) return allEntriesResult;
+    const hidden = [];
+    for (const journal of allEntriesResult.value) {
+      const flagResult = this.facade.getEntryFlag(journal, MODULE_CONSTANTS.FLAGS.HIDDEN);
+      if (flagResult.ok) {
+        if (flagResult.value === true) {
+          hidden.push(journal);
+        }
+      } else {
+        const journalIdentifier = journal.name ?? journal.id;
+        this.logger.warn(
+          `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
+          {
+            errorCode: flagResult.error.code,
+            /* c8 ignore stop */
+            errorMessage: flagResult.error.message
+          }
+        );
+      }
+    }
+    return { ok: true, value: hidden };
+  }
+  /**
+   * Processes journal directory HTML to hide flagged entries.
+   */
+  processJournalDirectory(htmlElement) {
+    this.logger.debug("Processing journal directory for hidden entries");
+    const hiddenResult = this.getHiddenJournalEntries();
+    match(hiddenResult, {
+      onOk: /* @__PURE__ */ __name((hidden) => {
+        this.logger.debug(`Found ${hidden.length} hidden journal entries`);
+        this.hideEntries(hidden, htmlElement);
+      }, "onOk"),
+      onErr: /* @__PURE__ */ __name((error) => {
+        this.logger.error("Error getting hidden journal entries", error);
+      }, "onErr")
+    });
+  }
+  hideEntries(entries2, html) {
+    for (const journal of entries2) {
+      const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
+      const removeResult = this.facade.removeJournalElement(journal.id, journalName, html);
+      match(removeResult, {
+        onOk: /* @__PURE__ */ __name(() => {
+          this.logger.debug(`Removing journal entry: ${this.sanitizeForLog(journalName)}`);
+        }, "onOk"),
+        onErr: /* @__PURE__ */ __name((error) => {
+          this.logger.warn("Error removing journal entry", error);
+        }, "onErr")
+      });
+    }
+  }
+};
+__name(_JournalVisibilityService, "JournalVisibilityService");
+_JournalVisibilityService.dependencies = [foundryJournalFacadeToken, loggerToken];
+let JournalVisibilityService = _JournalVisibilityService;
 function registerFoundryServices(container) {
   const gameServiceResult = container.registerClass(
     foundryGameToken,
@@ -11234,6 +10783,217 @@ function registerFoundryServices(container) {
   return ok(void 0);
 }
 __name(registerFoundryServices, "registerFoundryServices");
+const _PerformanceTrackingService = class _PerformanceTrackingService extends PerformanceTrackerImpl {
+  constructor(env, sampler) {
+    super(env, sampler);
+  }
+};
+__name(_PerformanceTrackingService, "PerformanceTrackingService");
+_PerformanceTrackingService.dependencies = [environmentConfigToken, metricsSamplerToken];
+let PerformanceTrackingService = _PerformanceTrackingService;
+const _RetryService = class _RetryService {
+  constructor(logger, metricsCollector) {
+    this.logger = logger;
+    this.metricsCollector = metricsCollector;
+  }
+  /**
+   * Retries an async operation with exponential backoff.
+   *
+   * Useful for handling transient failures in external APIs (e.g., Foundry API calls).
+   *
+   * @template SuccessType - The success type of the operation
+   * @template ErrorType - The error type of the operation
+   * @param fn - Async function that returns a Result
+   * @param options - Retry configuration options (or legacy: maxAttempts number)
+   * @param legacyDelayMs - Legacy parameter for backward compatibility
+   * @returns Promise resolving to the Result (success or last error)
+   *
+   * @example
+   * ```typescript
+   * // New API with mapException (recommended for structured error types)
+   * const result = await retryService.retry(
+   *   () => foundryApi.fetchData(),
+   *   {
+   *     maxAttempts: 3,
+   *     delayMs: 100,
+   *     operationName: "fetchData",
+   *     mapException: (error, attempt) => ({
+   *       code: 'OPERATION_FAILED' as const,
+   *       message: `Attempt ${attempt} failed: ${String(error)}`
+   *     })
+   *   }
+   * );
+   *
+   * // Legacy API (backward compatible)
+   * const result = await retryService.retry(
+   *   () => foundryApi.fetchData(),
+   *   3, // maxAttempts
+   *   100 // delayMs
+   * );
+   * ```
+   */
+  async retry(fn, options = 3, legacyDelayMs) {
+    const opts = typeof options === "number" ? {
+      maxAttempts: options,
+      /* c8 ignore next -- Legacy API: delayMs default tested via other retry tests */
+      delayMs: legacyDelayMs ?? 100,
+      backoffFactor: 1,
+      /* c8 ignore next 2 -- Legacy unsafe cast function tested via legacy API tests */
+      /* type-coverage:ignore-next-line */
+      mapException: /* @__PURE__ */ __name((error) => error, "mapException"),
+      // Legacy unsafe cast
+      operationName: void 0
+    } : {
+      /* c8 ignore next -- Modern API: maxAttempts default tested in "should use default maxAttempts of 3" */
+      maxAttempts: options.maxAttempts ?? 3,
+      delayMs: options.delayMs ?? 100,
+      backoffFactor: options.backoffFactor ?? 1,
+      /* c8 ignore next 2 -- Default mapException tested when options.mapException is undefined */
+      /* type-coverage:ignore-next-line */
+      mapException: options.mapException ?? ((error) => error),
+      operationName: options.operationName ?? void 0
+    };
+    if (opts.maxAttempts < 1) {
+      return err(opts.mapException("maxAttempts must be >= 1", 0));
+    }
+    let lastError;
+    const startTime = performance.now();
+    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
+      try {
+        const result = await fn();
+        if (result.ok) {
+          if (attempt > 1 && opts.operationName) {
+            const duration = performance.now() - startTime;
+            this.logger.debug(
+              `Retry succeeded for "${opts.operationName}" after ${attempt} attempts (${duration.toFixed(2)}ms)`
+            );
+          }
+          return result;
+        }
+        lastError = result.error;
+        if (opts.operationName) {
+          this.logger.debug(
+            `Retry attempt ${attempt}/${opts.maxAttempts} failed for "${opts.operationName}"`,
+            { error: lastError }
+          );
+        }
+        if (attempt < opts.maxAttempts) {
+          const delay = opts.delayMs * Math.pow(attempt, opts.backoffFactor);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      } catch (error) {
+        lastError = opts.mapException(error, attempt);
+        if (opts.operationName) {
+          this.logger.warn(
+            `Retry attempt ${attempt}/${opts.maxAttempts} threw exception for "${opts.operationName}"`,
+            { error }
+          );
+        }
+        if (attempt < opts.maxAttempts) {
+          const delay = opts.delayMs * Math.pow(attempt, opts.backoffFactor);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
+    if (opts.operationName) {
+      const duration = performance.now() - startTime;
+      this.logger.warn(
+        `All retry attempts exhausted for "${opts.operationName}" after ${opts.maxAttempts} attempts (${duration.toFixed(2)}ms)`
+      );
+    }
+    return err(lastError);
+  }
+  /**
+   * Retries a synchronous operation.
+   * Similar to retry but for sync functions.
+   *
+   * @template SuccessType - The success type
+   * @template ErrorType - The error type
+   * @param fn - Function that returns a Result
+   * @param options - Retry configuration options (or legacy: maxAttempts number)
+   * @returns The Result (success or last error)
+   *
+   * @example
+   * ```typescript
+   * // New API with mapException (recommended for structured error types)
+   * const result = retryService.retrySync(
+   *   () => parseData(input),
+   *   {
+   *     maxAttempts: 3,
+   *     operationName: "parseData",
+   *     mapException: (error, attempt) => ({
+   *       code: 'PARSE_FAILED' as const,
+   *       message: `Parse attempt ${attempt} failed: ${String(error)}`
+   *     })
+   *   }
+   * );
+   *
+   * // Legacy API (backward compatible)
+   * const result = retryService.retrySync(
+   *   () => parseData(input),
+   *   3 // maxAttempts
+   * );
+   * ```
+   */
+  retrySync(fn, options = 3) {
+    const opts = typeof options === "number" ? {
+      maxAttempts: options,
+      /* c8 ignore next 2 -- Legacy unsafe cast function tested via legacy API tests */
+      /* type-coverage:ignore-next-line */
+      mapException: /* @__PURE__ */ __name((error) => error, "mapException"),
+      // Legacy unsafe cast
+      operationName: void 0
+    } : {
+      /* c8 ignore next -- Default maxAttempts tested in retry.test.ts */
+      maxAttempts: options.maxAttempts ?? 3,
+      /* c8 ignore next 2 -- Default mapException tested implicitly when options.mapException is undefined */
+      /* type-coverage:ignore-next-line */
+      mapException: options.mapException ?? ((error) => error),
+      operationName: options.operationName ?? void 0
+    };
+    if (opts.maxAttempts < 1) {
+      return err(opts.mapException("maxAttempts must be >= 1", 0));
+    }
+    let lastError;
+    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
+      try {
+        const result = fn();
+        if (result.ok) {
+          if (attempt > 1 && opts.operationName) {
+            this.logger.debug(
+              `Retry succeeded for "${opts.operationName}" after ${attempt} attempts`
+            );
+          }
+          return result;
+        }
+        lastError = result.error;
+        if (opts.operationName) {
+          this.logger.debug(
+            `Retry attempt ${attempt}/${opts.maxAttempts} failed for "${opts.operationName}"`,
+            { error: lastError }
+          );
+        }
+      } catch (error) {
+        lastError = opts.mapException(error, attempt);
+        if (opts.operationName) {
+          this.logger.warn(
+            `Retry attempt ${attempt}/${opts.maxAttempts} threw exception for "${opts.operationName}"`,
+            { error }
+          );
+        }
+      }
+    }
+    if (opts.operationName) {
+      this.logger.warn(
+        `All retry attempts exhausted for "${opts.operationName}" after ${opts.maxAttempts} attempts`
+      );
+    }
+    return err(lastError);
+  }
+};
+__name(_RetryService, "RetryService");
+_RetryService.dependencies = [loggerToken, metricsCollectorToken];
+let RetryService = _RetryService;
 function registerUtilityServices(container) {
   const perfTrackingResult = container.registerClass(
     performanceTrackingServiceToken,
@@ -11256,6 +11016,260 @@ function registerUtilityServices(container) {
   return ok(void 0);
 }
 __name(registerUtilityServices, "registerUtilityServices");
+const _FoundryI18nService = class _FoundryI18nService {
+  constructor(portSelector, portRegistry) {
+    this.port = null;
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   *
+   * @returns Result containing the port or error if no compatible port can be selected
+   */
+  getPort() {
+    if (this.port === null) {
+      const factories = this.portRegistry.getFactories();
+      const portResult = this.portSelector.selectPortFromFactories(
+        factories,
+        void 0,
+        "FoundryI18n"
+      );
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  localize(key) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.localize(key);
+  }
+  format(key, data) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.format(key, data);
+  }
+  has(key) {
+    const portResult = this.getPort();
+    if (!portResult.ok) return portResult;
+    return portResult.value.has(key);
+  }
+};
+__name(_FoundryI18nService, "FoundryI18nService");
+_FoundryI18nService.dependencies = [portSelectorToken, foundryI18nPortRegistryToken];
+let FoundryI18nService = _FoundryI18nService;
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+__name(escapeRegex, "escapeRegex");
+const _LocalI18nService = class _LocalI18nService {
+  constructor() {
+    this.translations = /* @__PURE__ */ new Map();
+    this.currentLocale = "en";
+    this.detectLocale();
+  }
+  /**
+   * Detects browser locale and sets current language.
+   * Falls back to 'en' if detection fails.
+   */
+  detectLocale() {
+    if (typeof navigator !== "undefined" && navigator.language) {
+      const lang = navigator.language.split("-")[0];
+      this.currentLocale = lang ?? "en";
+    }
+  }
+  /**
+   * Loads translations from a JSON object.
+   * Useful for testing or pre-loaded translation data.
+   *
+   * @param translations - Object with key-value pairs
+   *
+   * @example
+   * ```typescript
+   * const i18n = new LocalI18nService();
+   * i18n.loadTranslations({
+   *   "MODULE.SETTINGS.enableFeature": "Enable Feature",
+   *   "MODULE.WELCOME": "Welcome, {name}!"
+   * });
+   * ```
+   */
+  loadTranslations(translations) {
+    for (const [key, value2] of Object.entries(translations)) {
+      this.translations.set(key, value2);
+    }
+  }
+  /**
+   * Translates a key using local translations.
+   *
+   * @param key - Translation key
+   * @returns Result with translated string (or key itself if not found)
+   *
+   * @example
+   * ```typescript
+   * const result = i18n.translate("MODULE.SETTINGS.enableFeature");
+   * if (result.ok) {
+   *   console.log(result.value); // "Enable Feature" or key if not found
+   * }
+   * ```
+   */
+  translate(key) {
+    const value2 = this.translations.get(key);
+    return ok(value2 ?? key);
+  }
+  /**
+   * Formats a string with placeholders.
+   * Simple implementation: replaces `{key}` with values from data object.
+   *
+   * @param key - Translation key
+   * @param data - Object with placeholder values
+   * @returns Result with formatted string
+   *
+   * @example
+   * ```typescript
+   * // Translation: "Welcome, {name}!"
+   * const result = i18n.format("MODULE.WELCOME", { name: "Alice" });
+   * if (result.ok) {
+   *   console.log(result.value); // "Welcome, Alice!"
+   * }
+   * ```
+   */
+  format(key, data) {
+    const template = this.translations.get(key) ?? key;
+    let formatted = template;
+    for (const [placeholder, value2] of Object.entries(data)) {
+      const escapedPlaceholder = escapeRegex(placeholder);
+      const regex2 = new RegExp(`\\{${escapedPlaceholder}\\}`, "g");
+      formatted = formatted.replace(regex2, String(value2));
+    }
+    return ok(formatted);
+  }
+  /**
+   * Checks if a translation key exists.
+   *
+   * @param key - Translation key to check
+   * @returns Result with boolean
+   */
+  has(key) {
+    return ok(this.translations.has(key));
+  }
+  /**
+   * Gets the current locale.
+   *
+   * @returns Current locale string (e.g., "en", "de")
+   */
+  getCurrentLocale() {
+    return this.currentLocale;
+  }
+  /**
+   * Sets the current locale.
+   * Note: Changing locale requires reloading translations for the new language.
+   *
+   * @param locale - Locale code (e.g., "en", "de", "fr")
+   */
+  setLocale(locale) {
+    this.currentLocale = locale;
+  }
+};
+__name(_LocalI18nService, "LocalI18nService");
+_LocalI18nService.dependencies = [];
+let LocalI18nService = _LocalI18nService;
+const _I18nFacadeService = class _I18nFacadeService {
+  constructor(foundryI18n, localI18n) {
+    this.foundryI18n = foundryI18n;
+    this.localI18n = localI18n;
+  }
+  /**
+   * Translates a key using Foundry i18n → Local i18n → Fallback.
+   *
+   * @param key - Translation key
+   * @param fallback - Optional fallback string (defaults to key itself)
+   * @returns Translated string or fallback
+   *
+   * @example
+   * ```typescript
+   * // With fallback
+   * const text = i18n.translate("MODULE.UNKNOWN_KEY", "Default Text");
+   * console.log(text); // "Default Text"
+   *
+   * // Without fallback (returns key)
+   * const text2 = i18n.translate("MODULE.UNKNOWN_KEY");
+   * console.log(text2); // "MODULE.UNKNOWN_KEY"
+   * ```
+   */
+  translate(key, fallback2) {
+    const foundryResult = this.foundryI18n.localize(key);
+    if (foundryResult.ok && foundryResult.value !== key) {
+      return foundryResult.value;
+    }
+    const localResult = this.localI18n.translate(key);
+    if (localResult.ok && localResult.value !== key) {
+      return localResult.value;
+    }
+    return fallback2 ?? key;
+  }
+  /**
+   * Formats a string with placeholders.
+   *
+   * @param key - Translation key
+   * @param data - Object with placeholder values
+   * @param fallback - Optional fallback string
+   * @returns Formatted string or fallback
+   *
+   * @example
+   * ```typescript
+   * const text = i18n.format("MODULE.WELCOME", { name: "Alice" }, "Welcome!");
+   * console.log(text); // "Welcome, Alice!" or "Welcome!"
+   * ```
+   */
+  format(key, data, fallback2) {
+    const foundryResult = this.foundryI18n.format(key, data);
+    if (foundryResult.ok && foundryResult.value !== key) {
+      return foundryResult.value;
+    }
+    const localResult = this.localI18n.format(key, data);
+    if (localResult.ok && localResult.value !== key) {
+      return localResult.value;
+    }
+    return fallback2 ?? key;
+  }
+  /**
+   * Checks if a translation key exists in either i18n system.
+   *
+   * @param key - Translation key to check
+   * @returns True if key exists in Foundry or local i18n
+   */
+  has(key) {
+    const foundryResult = this.foundryI18n.has(key);
+    if (foundryResult.ok && foundryResult.value) {
+      return true;
+    }
+    const localResult = this.localI18n.has(key);
+    return localResult.ok && localResult.value;
+  }
+  /**
+   * Loads local translations from a JSON object.
+   * Useful for initializing translations on module startup.
+   *
+   * @param translations - Object with key-value pairs
+   *
+   * @example
+   * ```typescript
+   * i18n.loadLocalTranslations({
+   *   "MODULE.SETTINGS.enableFeature": "Enable Feature",
+   *   "MODULE.WELCOME": "Welcome, {name}!"
+   * });
+   * ```
+   */
+  loadLocalTranslations(translations) {
+    this.localI18n.loadTranslations(translations);
+  }
+};
+__name(_I18nFacadeService, "I18nFacadeService");
+_I18nFacadeService.dependencies = [foundryI18nToken, localI18nToken];
+let I18nFacadeService = _I18nFacadeService;
 function registerI18nServices(container) {
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
@@ -11284,6 +11298,297 @@ function registerI18nServices(container) {
   return ok(void 0);
 }
 __name(registerI18nServices, "registerI18nServices");
+const logLevelSetting = {
+  key: MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+  createConfig(i18n, logger) {
+    return {
+      name: i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"),
+      hint: i18n.translate(
+        "MODULE.SETTINGS.logLevel.hint",
+        "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors."
+      ),
+      scope: "world",
+      config: true,
+      type: Number,
+      choices: {
+        [LogLevel.DEBUG]: i18n.translate(
+          "MODULE.SETTINGS.logLevel.choices.debug",
+          "DEBUG (All logs - for debugging)"
+        ),
+        [LogLevel.INFO]: i18n.translate("MODULE.SETTINGS.logLevel.choices.info", "INFO (Standard)"),
+        [LogLevel.WARN]: i18n.translate(
+          "MODULE.SETTINGS.logLevel.choices.warn",
+          "WARN (Warnings and errors only)"
+        ),
+        [LogLevel.ERROR]: i18n.translate(
+          "MODULE.SETTINGS.logLevel.choices.error",
+          "ERROR (Critical errors only)"
+        )
+      },
+      default: LogLevel.INFO,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        if (logger.setMinLevel) {
+          logger.setMinLevel(value2);
+          logger.info(`Log level changed to: ${LogLevel[value2]}`);
+        }
+      }, "onChange")
+    };
+  }
+};
+const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
+  constructor() {
+    this.settings = // Add new setting types here
+    [
+      logLevelSetting
+      // Add new settings here
+    ];
+  }
+  /**
+   * Registers all module settings.
+   * Must be called during or after the 'init' hook.
+   *
+   * @param container - DI container with registered services
+   */
+  registerAll(container) {
+    const settingsResult = container.resolveWithError(foundrySettingsToken);
+    const loggerResult = container.resolveWithError(loggerToken);
+    const i18nResult = container.resolveWithError(i18nFacadeToken);
+    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok) {
+      if (loggerResult.ok) {
+        loggerResult.value.error("DI resolution failed in ModuleSettingsRegistrar", {
+          settingsResolved: settingsResult.ok,
+          i18nResolved: i18nResult.ok
+        });
+      } else {
+        console.error("Failed to resolve required services for settings registration");
+      }
+      return;
+    }
+    const foundrySettings = settingsResult.value;
+    const logger = loggerResult.value;
+    const i18n = i18nResult.value;
+    for (const setting of this.settings) {
+      const config2 = setting.createConfig(i18n, logger);
+      const result = foundrySettings.register(MODULE_CONSTANTS.MODULE.ID, setting.key, config2);
+      if (!result.ok) {
+        logger.error(`Failed to register ${setting.key} setting`, result.error);
+      }
+    }
+  }
+};
+__name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
+_ModuleSettingsRegistrar.dependencies = [];
+let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
+const _ModuleHookRegistrar = class _ModuleHookRegistrar {
+  constructor(renderJournalHook) {
+    this.hooks = [
+      renderJournalHook
+      // Add new hooks here as constructor parameters
+    ];
+  }
+  /**
+   * Registers all hooks with Foundry VTT.
+   * @param container - DI container with registered services
+   */
+  registerAll(container) {
+    for (const hook of this.hooks) {
+      const result = hook.register(container);
+      if (!result.ok) {
+        console.error(`Failed to register hook: ${result.error.message}`);
+      }
+    }
+  }
+  /**
+   * Dispose all hooks.
+   * Called when the module is disabled or reloaded.
+   */
+  /* c8 ignore start -- Lifecycle method: Called when module is disabled; not testable in unit tests */
+  disposeAll() {
+    for (const hook of this.hooks) {
+      hook.dispose();
+    }
+  }
+  /* c8 ignore stop */
+};
+__name(_ModuleHookRegistrar, "ModuleHookRegistrar");
+_ModuleHookRegistrar.dependencies = [renderJournalDirectoryHookToken];
+let ModuleHookRegistrar = _ModuleHookRegistrar;
+function throttle(fn, windowMs) {
+  let isThrottled = false;
+  return /* @__PURE__ */ __name(function throttled(...args2) {
+    if (!isThrottled) {
+      fn(...args2);
+      isThrottled = true;
+      setTimeout(() => {
+        isThrottled = false;
+      }, windowMs);
+    }
+  }, "throttled");
+}
+__name(throttle, "throttle");
+function debounce(fn, delayMs) {
+  let timeoutId = null;
+  const debounced = /* @__PURE__ */ __name(function(...args2) {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      fn(...args2);
+      timeoutId = null;
+    }, delayMs);
+  }, "debounced");
+  debounced.cancel = function() {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+  return debounced;
+}
+__name(debounce, "debounce");
+function isJQueryObject(value2) {
+  if (value2 === null || typeof value2 !== "object") return false;
+  const obj = value2;
+  return "length" in obj && typeof obj.length === "number" && obj.length > 0 && "0" in obj;
+}
+__name(isJQueryObject, "isJQueryObject");
+function extractHtmlElement(html) {
+  if (html instanceof HTMLElement) {
+    return html;
+  }
+  if (isJQueryObject(html) && html[0] instanceof HTMLElement) {
+    return html[0];
+  }
+  if (html && typeof html === "object" && "get" in html) {
+    const obj = html;
+    if (typeof obj.get === "function") {
+      try {
+        const element = obj.get(0);
+        if (element instanceof HTMLElement) {
+          return element;
+        }
+      } catch {
+      }
+    }
+  }
+  return null;
+}
+__name(extractHtmlElement, "extractHtmlElement");
+const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
+  constructor() {
+    this.unsubscribe = null;
+  }
+  register(container) {
+    const foundryHooksResult = container.resolveWithError(foundryHooksToken);
+    const loggerResult = container.resolveWithError(loggerToken);
+    const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
+    if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok) {
+      if (loggerResult.ok) {
+        loggerResult.value.error("DI resolution failed in RenderJournalDirectoryHook", {
+          foundryHooksResolved: foundryHooksResult.ok,
+          journalVisibilityResolved: journalVisibilityResult.ok
+        });
+      }
+      return err(new Error("Failed to resolve required services for RenderJournalDirectoryHook"));
+    }
+    const foundryHooks = foundryHooksResult.value;
+    const logger = loggerResult.value;
+    const journalVisibility = journalVisibilityResult.value;
+    const throttledCallback = throttle((app, html) => {
+      logger.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
+      const appValidation = validateHookApp(app);
+      if (!appValidation.ok) {
+        logger.error(
+          `Invalid app parameter in ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
+          {
+            code: appValidation.error.code,
+            message: appValidation.error.message,
+            details: appValidation.error.details
+          }
+        );
+        return;
+      }
+      const htmlElement = extractHtmlElement(html);
+      if (!htmlElement) {
+        logger.error("Failed to get HTMLElement from hook - incompatible format");
+        return;
+      }
+      journalVisibility.processJournalDirectory(htmlElement);
+    }, HOOK_THROTTLE_WINDOW_MS);
+    const hookResult = foundryHooks.on(
+      MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
+      throttledCallback
+    );
+    if (!hookResult.ok) {
+      logger.error(
+        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook: ${hookResult.error.message}`,
+        {
+          code: hookResult.error.code,
+          details: hookResult.error.details,
+          cause: hookResult.error.cause
+        }
+      );
+      return err(new Error(`Hook registration failed: ${hookResult.error.message}`));
+    }
+    return ok(void 0);
+  }
+  /* c8 ignore start -- Lifecycle method: Called when module is disabled; cleanup logic not testable in unit tests */
+  dispose() {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
+    }
+  }
+  /* c8 ignore stop */
+};
+__name(_RenderJournalDirectoryHook, "RenderJournalDirectoryHook");
+let RenderJournalDirectoryHook = _RenderJournalDirectoryHook;
+function registerRegistrars(container) {
+  const renderJournalHookResult = container.registerClass(
+    renderJournalDirectoryHookToken,
+    RenderJournalDirectoryHook,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(renderJournalHookResult)) {
+    return err(
+      `Failed to register RenderJournalDirectoryHook: ${renderJournalHookResult.error.message}`
+    );
+  }
+  const hookRegistrarResult = container.registerClass(
+    moduleHookRegistrarToken,
+    ModuleHookRegistrar,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(hookRegistrarResult)) {
+    return err(`Failed to register ModuleHookRegistrar: ${hookRegistrarResult.error.message}`);
+  }
+  const settingsRegistrarResult = container.registerClass(
+    moduleSettingsRegistrarToken,
+    ModuleSettingsRegistrar,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(settingsRegistrarResult)) {
+    return err(
+      `Failed to register ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
+    );
+  }
+  return ok(void 0);
+}
+__name(registerRegistrars, "registerRegistrars");
+function registerFallbacks(container) {
+  container.registerFallback(loggerToken, () => {
+    const fallbackConfig = {
+      logLevel: LogLevel.DEBUG,
+      isDevelopment: false,
+      isProduction: false,
+      enablePerformanceTracking: false,
+      enableDebugMode: true,
+      performanceSamplingRate: 1
+    };
+    return new ConsoleLoggerService(fallbackConfig);
+  });
+}
+__name(registerFallbacks, "registerFallbacks");
 function validateContainer(container) {
   const validateResult = container.validate();
   if (isErr(validateResult)) {
@@ -11293,20 +11598,12 @@ function validateContainer(container) {
   return ok(void 0);
 }
 __name(validateContainer, "validateContainer");
-function configureLogger(container) {
-  const resolvedLoggerResult = container.resolveWithError(loggerToken);
-  if (resolvedLoggerResult.ok) {
-    const loggerInstance = resolvedLoggerResult.value;
-    if (loggerInstance.setMinLevel) {
-      loggerInstance.setMinLevel(ENV.logLevel);
-    }
-  }
-}
-__name(configureLogger, "configureLogger");
 function configureDependencies(container) {
   registerFallbacks(container);
   const coreResult = registerCoreServices(container);
   if (isErr(coreResult)) return coreResult;
+  const observabilityResult = registerObservability(container);
+  if (isErr(observabilityResult)) return observabilityResult;
   const utilityResult = registerUtilityServices(container);
   if (isErr(utilityResult)) return utilityResult;
   const portInfraResult = registerPortInfrastructure(container);
@@ -11315,9 +11612,10 @@ function configureDependencies(container) {
   if (isErr(foundryServicesResult)) return foundryServicesResult;
   const i18nServicesResult = registerI18nServices(container);
   if (isErr(i18nServicesResult)) return i18nServicesResult;
+  const registrarsResult = registerRegistrars(container);
+  if (isErr(registrarsResult)) return registrarsResult;
   const validationResult = validateContainer(container);
   if (isErr(validationResult)) return validationResult;
-  configureLogger(container);
   return ok(void 0);
 }
 __name(configureDependencies, "configureDependencies");
@@ -11456,249 +11754,6 @@ const _CompositionRoot = class _CompositionRoot {
 };
 __name(_CompositionRoot, "CompositionRoot");
 let CompositionRoot = _CompositionRoot;
-function throttle(fn, windowMs) {
-  let isThrottled = false;
-  return /* @__PURE__ */ __name(function throttled(...args2) {
-    if (!isThrottled) {
-      fn(...args2);
-      isThrottled = true;
-      setTimeout(() => {
-        isThrottled = false;
-      }, windowMs);
-    }
-  }, "throttled");
-}
-__name(throttle, "throttle");
-function debounce(fn, delayMs) {
-  let timeoutId = null;
-  const debounced = /* @__PURE__ */ __name(function(...args2) {
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-    }
-    timeoutId = setTimeout(() => {
-      fn(...args2);
-      timeoutId = null;
-    }, delayMs);
-  }, "debounced");
-  debounced.cancel = function() {
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
-  };
-  return debounced;
-}
-__name(debounce, "debounce");
-function isJQueryObject(value2) {
-  if (value2 === null || typeof value2 !== "object") return false;
-  const obj = value2;
-  return "length" in obj && typeof obj.length === "number" && obj.length > 0 && "0" in obj;
-}
-__name(isJQueryObject, "isJQueryObject");
-function extractHtmlElement(html) {
-  if (html instanceof HTMLElement) {
-    return html;
-  }
-  if (isJQueryObject(html) && html[0] instanceof HTMLElement) {
-    return html[0];
-  }
-  if (html && typeof html === "object" && "get" in html) {
-    const obj = html;
-    if (typeof obj.get === "function") {
-      try {
-        const element = obj.get(0);
-        if (element instanceof HTMLElement) {
-          return element;
-        }
-      } catch {
-      }
-    }
-  }
-  return null;
-}
-__name(extractHtmlElement, "extractHtmlElement");
-const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
-  constructor() {
-    this.unsubscribe = null;
-  }
-  register(container) {
-    const foundryHooksResult = container.resolveWithError(foundryHooksToken);
-    const loggerResult = container.resolveWithError(loggerToken);
-    const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
-    if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok) {
-      if (loggerResult.ok) {
-        loggerResult.value.error("DI resolution failed in RenderJournalDirectoryHook", {
-          foundryHooksResolved: foundryHooksResult.ok,
-          journalVisibilityResolved: journalVisibilityResult.ok
-        });
-      }
-      return err(new Error("Failed to resolve required services for RenderJournalDirectoryHook"));
-    }
-    const foundryHooks = foundryHooksResult.value;
-    const logger = loggerResult.value;
-    const journalVisibility = journalVisibilityResult.value;
-    const throttledCallback = throttle((app, html) => {
-      logger.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
-      const appValidation = validateHookApp(app);
-      if (!appValidation.ok) {
-        logger.error(
-          `Invalid app parameter in ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
-          {
-            code: appValidation.error.code,
-            message: appValidation.error.message,
-            details: appValidation.error.details
-          }
-        );
-        return;
-      }
-      const htmlElement = extractHtmlElement(html);
-      if (!htmlElement) {
-        logger.error("Failed to get HTMLElement from hook - incompatible format");
-        return;
-      }
-      journalVisibility.processJournalDirectory(htmlElement);
-    }, HOOK_THROTTLE_WINDOW_MS);
-    const hookResult = foundryHooks.on(
-      MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
-      throttledCallback
-    );
-    if (!hookResult.ok) {
-      logger.error(
-        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook: ${hookResult.error.message}`,
-        {
-          code: hookResult.error.code,
-          details: hookResult.error.details,
-          cause: hookResult.error.cause
-        }
-      );
-      return err(new Error(`Hook registration failed: ${hookResult.error.message}`));
-    }
-    return ok(void 0);
-  }
-  /* c8 ignore start -- Lifecycle method: Called when module is disabled; cleanup logic not testable in unit tests */
-  dispose() {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-      this.unsubscribe = null;
-    }
-  }
-  /* c8 ignore stop */
-};
-__name(_RenderJournalDirectoryHook, "RenderJournalDirectoryHook");
-let RenderJournalDirectoryHook = _RenderJournalDirectoryHook;
-const _ModuleHookRegistrar = class _ModuleHookRegistrar {
-  constructor() {
-    this.hooks = [
-      new RenderJournalDirectoryHook()
-      // Add new hooks here
-    ];
-  }
-  /**
-   * Registers all hooks with Foundry VTT.
-   * @param container - DI container with registered services
-   */
-  registerAll(container) {
-    for (const hook of this.hooks) {
-      const result = hook.register(container);
-      if (!result.ok) {
-        console.error(`Failed to register hook: ${result.error.message}`);
-      }
-    }
-  }
-  /**
-   * Dispose all hooks.
-   * Called when the module is disabled or reloaded.
-   */
-  /* c8 ignore start -- Lifecycle method: Called when module is disabled; not testable in unit tests */
-  disposeAll() {
-    for (const hook of this.hooks) {
-      hook.dispose();
-    }
-  }
-  /* c8 ignore stop */
-};
-__name(_ModuleHookRegistrar, "ModuleHookRegistrar");
-let ModuleHookRegistrar = _ModuleHookRegistrar;
-const logLevelSetting = {
-  key: MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
-  createConfig(i18n, logger) {
-    return {
-      name: i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.logLevel.hint",
-        "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors."
-      ),
-      scope: "world",
-      config: true,
-      type: Number,
-      choices: {
-        [LogLevel.DEBUG]: i18n.translate(
-          "MODULE.SETTINGS.logLevel.choices.debug",
-          "DEBUG (All logs - for debugging)"
-        ),
-        [LogLevel.INFO]: i18n.translate("MODULE.SETTINGS.logLevel.choices.info", "INFO (Standard)"),
-        [LogLevel.WARN]: i18n.translate(
-          "MODULE.SETTINGS.logLevel.choices.warn",
-          "WARN (Warnings and errors only)"
-        ),
-        [LogLevel.ERROR]: i18n.translate(
-          "MODULE.SETTINGS.logLevel.choices.error",
-          "ERROR (Critical errors only)"
-        )
-      },
-      default: LogLevel.INFO,
-      onChange: /* @__PURE__ */ __name((value2) => {
-        if (logger.setMinLevel) {
-          logger.setMinLevel(value2);
-          logger.info(`Log level changed to: ${LogLevel[value2]}`);
-        }
-      }, "onChange")
-    };
-  }
-};
-const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
-  constructor() {
-    this.settings = // Add new setting types here
-    [
-      logLevelSetting
-      // Add new settings here
-    ];
-  }
-  /**
-   * Registers all module settings.
-   * Must be called during or after the 'init' hook.
-   *
-   * @param container - DI container with registered services
-   */
-  registerAll(container) {
-    const settingsResult = container.resolveWithError(foundrySettingsToken);
-    const loggerResult = container.resolveWithError(loggerToken);
-    const i18nResult = container.resolveWithError(i18nFacadeToken);
-    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok) {
-      if (loggerResult.ok) {
-        loggerResult.value.error("DI resolution failed in ModuleSettingsRegistrar", {
-          settingsResolved: settingsResult.ok,
-          i18nResolved: i18nResult.ok
-        });
-      } else {
-        console.error("Failed to resolve required services for settings registration");
-      }
-      return;
-    }
-    const foundrySettings = settingsResult.value;
-    const logger = loggerResult.value;
-    const i18n = i18nResult.value;
-    for (const setting of this.settings) {
-      const config2 = setting.createConfig(i18n, logger);
-      const result = foundrySettings.register(MODULE_CONSTANTS.MODULE.ID, setting.key, config2);
-      if (!result.ok) {
-        logger.error(`Failed to register ${setting.key} setting`, result.error);
-      }
-    }
-  }
-};
-__name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
-let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
 const _BootstrapErrorHandler = class _BootstrapErrorHandler {
   /**
    * Logs an error with structured context in the browser console.
@@ -11750,7 +11805,16 @@ function initializeFoundryModule() {
       logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
       return;
     }
-    new ModuleSettingsRegistrar().registerAll(initContainerResult.value);
+    const settingsRegistrarResult = initContainerResult.value.resolveWithError(
+      moduleSettingsRegistrarToken
+    );
+    if (!settingsRegistrarResult.ok) {
+      logger.error(
+        `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
+      );
+      return;
+    }
+    settingsRegistrarResult.value.registerAll(initContainerResult.value);
     const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
     if (settingsResult.ok) {
       const settings = settingsResult.value;
@@ -11763,7 +11827,12 @@ function initializeFoundryModule() {
         logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
       }
     }
-    new ModuleHookRegistrar().registerAll(initContainerResult.value);
+    const hookRegistrarResult = initContainerResult.value.resolveWithError(moduleHookRegistrarToken);
+    if (!hookRegistrarResult.ok) {
+      logger.error(`Failed to resolve ModuleHookRegistrar: ${hookRegistrarResult.error.message}`);
+      return;
+    }
+    hookRegistrarResult.value.registerAll(initContainerResult.value);
     logger.info("init-phase completed");
   });
   Hooks.on("ready", () => {

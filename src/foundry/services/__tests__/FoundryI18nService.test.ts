@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FoundryI18nService } from "../FoundryI18nService";
 import type { FoundryI18n } from "@/foundry/interfaces/FoundryI18n";
@@ -5,6 +6,8 @@ import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { ok, err } from "@/utils/functional/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import { PortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
+import type { ObservabilityRegistry } from "@/observability/observability-registry";
 
 describe("FoundryI18nService", () => {
   let service: FoundryI18nService;
@@ -27,7 +30,11 @@ describe("FoundryI18nService", () => {
     mockRegistry = new PortRegistry<FoundryI18n>();
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
-    mockSelector = new PortSelector();
+    const mockEventEmitter = new PortSelectionEventEmitter();
+    const mockObservability: ObservabilityRegistry = {
+      registerPortSelector: vi.fn(),
+    } as any;
+    mockSelector = new PortSelector(mockEventEmitter, mockObservability);
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundryI18nService(mockSelector, mockRegistry);
@@ -56,7 +63,11 @@ describe("FoundryI18nService", () => {
     });
 
     it("should propagate port selection errors", () => {
-      const failingSelector = new PortSelector();
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: ObservabilityRegistry = {
+        registerPortSelector: vi.fn(),
+      } as any;
+      const failingSelector = new PortSelector(mockEventEmitter, mockObservability);
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",
@@ -108,7 +119,11 @@ describe("FoundryI18nService", () => {
     });
 
     it("should handle port selection failure in format", () => {
-      const failingSelector = new PortSelector();
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: ObservabilityRegistry = {
+        registerPortSelector: vi.fn(),
+      } as any;
+      const failingSelector = new PortSelector(mockEventEmitter, mockObservability);
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",
@@ -144,7 +159,11 @@ describe("FoundryI18nService", () => {
     });
 
     it("should handle port selection failure in has", () => {
-      const failingSelector = new PortSelector();
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: ObservabilityRegistry = {
+        registerPortSelector: vi.fn(),
+      } as any;
+      const failingSelector = new PortSelector(mockEventEmitter, mockObservability);
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",

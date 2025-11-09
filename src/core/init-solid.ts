@@ -1,9 +1,11 @@
 import { MODULE_CONSTANTS } from "../constants";
 import { isOk } from "@/utils/functional/result";
-import { loggerToken } from "@/tokens/tokenindex";
+import {
+  loggerToken,
+  moduleSettingsRegistrarToken,
+  moduleHookRegistrarToken,
+} from "@/tokens/tokenindex";
 import { CompositionRoot } from "@/core/composition-root";
-import { ModuleHookRegistrar } from "@/core/module-hook-registrar";
-import { ModuleSettingsRegistrar } from "@/core/module-settings-registrar";
 import { tryGetFoundryVersion } from "@/foundry/versioning/versiondetector";
 import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import { LogLevel } from "@/config/environment";
@@ -64,7 +66,18 @@ function initializeFoundryModule(): void {
     /* c8 ignore stop */
 
     // Register module settings (must be done before settings are read)
-    new ModuleSettingsRegistrar().registerAll(initContainerResult.value);
+    const settingsRegistrarResult = initContainerResult.value.resolveWithError(
+      moduleSettingsRegistrarToken
+    );
+    /* c8 ignore start -- Defensive: Registrar resolution can only fail if container validation failed */
+    if (!settingsRegistrarResult.ok) {
+      logger.error(
+        `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
+      );
+      return;
+    }
+    /* c8 ignore stop */
+    settingsRegistrarResult.value.registerAll(initContainerResult.value);
 
     // Configure logger with current setting value
     const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
@@ -84,7 +97,15 @@ function initializeFoundryModule(): void {
     }
 
     // Register module hooks
-    new ModuleHookRegistrar().registerAll(initContainerResult.value);
+    const hookRegistrarResult =
+      initContainerResult.value.resolveWithError(moduleHookRegistrarToken);
+    /* c8 ignore start -- Defensive: Registrar resolution can only fail if container validation failed */
+    if (!hookRegistrarResult.ok) {
+      logger.error(`Failed to resolve ModuleHookRegistrar: ${hookRegistrarResult.error.message}`);
+      return;
+    }
+    /* c8 ignore stop */
+    hookRegistrarResult.value.registerAll(initContainerResult.value);
     logger.info("init-phase completed");
   });
 

@@ -1,7 +1,7 @@
 # ADR-0006: Observability Strategy (Logging, Metrics, Error Tracking)
 
 **Status**: Accepted  
-**Datum**: 2025-11-06  
+**Datum**: 2025-11-06 (Updated: 2025-11-09)  
 **Entscheider**: Andreas Rothe  
 **Technischer Kontext**: Production Debugging, Performance Monitoring, Error Diagnosis
 
@@ -393,6 +393,179 @@ Falls manuelle Log-Collection zu aufwändig wird:
 - MetricsCollector: `src/observability/metrics-collector.ts`
 - Error Sanitizer: `src/observability/error-sanitizer.ts`
 - ErrorBoundary: `src/svelte/ErrorBoundary.svelte`
+
+## Update 2025-11-09: Self-Registration Pattern & ObservabilityRegistry
+
+### Problem
+
+Die bisherige Observer-Pattern-Implementierung hatte Nachteile:
+- **Manuelle Verdrahtung**: Jeder neue Observable Service musste manuell in `configureDependencies()` verdrahtet werden
+- **Zentraler Bottleneck**: Eine `PortSelectionObserver`-Klasse für alle Events
+- **Schwer erweiterbar**: Neue Observable Services erforderten Code-Änderungen an mehreren Stellen
+
+### Lösung: ObservabilityRegistry mit Self-Registration
+
+**Konzept:**
+```typescript
+// 1. Service registriert sich selbst im Constructor
+class PortSelector {
+  static dependencies = [
+    portSelectionEventEmitterToken,
+    observabilityRegistryToken
+  ] as const;
+
+  constructor(
+    private eventEmitter: PortSelectionEventEmitter,
+    observability: ObservabilityRegistry
+  ) {
+    // Self-Registration: Keine manuelle Verdrahtung nötig!
+    observability.registerPortSelector(this);
+  }
+
+  selectPort() {
+    // Events werden automatisch geroutet
+    this.eventEmitter.emit({ type: "success", ... });
+  }
+}
+
+// 2. ObservabilityRegistry routet Events zu Logger/Metrics
+class ObservabilityRegistry {
+  static dependencies = [loggerToken, metricsRecorderToken] as const;
+
+  registerPortSelector(service: ObservableService<PortSelectionEvent>) {
+    service.onEvent((event) => {
+      if (event.type === "success") {
+        this.logger.debug(`Port v${event.selectedVersion} selected`);
+        this.metrics.recordPortSelection(event.selectedVersion);
+      }
+    });
+  }
+}
+```
+
+**Vorteile:**
+- ✅ **Kein manuelles Wiring**: Service-Erstellung = automatische Observability
+- ✅ **DI-managed**: EventEmitter als TRANSIENT Service für Testability
+- ✅ **Erweiterbar**: Neue Observable Services fügen nur `registerXxx()` Methode hinzu
+- ✅ **Type-Safe**: `ObservableService<TEvent>` Interface
+- ✅ **Zentrale Kontrolle**: Ein Registry-Service für alle Observability-Concerns
+
+**Implementierung:**
+
+Datei: `src/observability/observability-registry.ts`
+
+```typescript
+export interface ObservableService<TEvent = unknown> {
+  onEvent(callback: (event: TEvent) => void): () => void;
+}
+
+export class ObservabilityRegistry {
+  static dependencies = [loggerToken, metricsRecorderToken] as const;
+
+  constructor(
+    private readonly logger: Logger,
+    private readonly metrics: MetricsRecorder
+  ) {}
+
+  registerPortSelector(service: ObservableService<PortSelectionEvent>): void {
+    service.onEvent((event) => {
+      if (event.type === "success") {
+        const adapterSuffix = event.adapterName ? ` for ${event.adapterName}` : "";
+        this.logger.debug(
+          `Port v${event.selectedVersion} selected in ${event.durationMs.toFixed(2)}ms${adapterSuffix}`
+        );
+        this.metrics.recordPortSelection(event.selectedVersion);
+      } else {
+        this.logger.error("Port selection failed", {
+          foundryVersion: event.foundryVersion,
+          availableVersions: event.availableVersions,
+          adapterName: event.adapterName,
+        });
+        this.metrics.recordPortSelectionFailure(event.foundryVersion);
+      }
+    });
+  }
+
+  // Zukünftige Observable Services:
+  // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
+}
+```
+
+### DI-Konfiguration
+
+**Modular Config Structure:**
+
+Die DI-Konfiguration wurde in thematische Module aufgeteilt:
+
+```
+src/config/
+├── dependencyconfig.ts                (Orchestrator)
+├── modules/
+│   ├── core-services.config.ts        (Logger, Metrics, Environment)
+│   ├── observability.config.ts        (NEW: EventEmitter, ObservabilityRegistry)
+│   ├── utility-services.config.ts     (Performance, Retry)
+│   ├── port-infrastructure.config.ts  (PortSelector, PortRegistries)
+│   ├── foundry-services.config.ts     (FoundryGame, Hooks, Document, UI)
+│   ├── i18n-services.config.ts        (I18n Services)
+│   └── registrars.config.ts           (NEW: ModuleSettingsRegistrar, ModuleHookRegistrar)
+```
+
+**Observability Config (`src/config/modules/observability.config.ts`):**
+
+```typescript
+export function registerObservability(container: ServiceContainer): Result<void, string> {
+  // EventEmitter als TRANSIENT für Testability
+  const emitterResult = container.registerFactory(
+    portSelectionEventEmitterToken,
+    () => new PortSelectionEventEmitter(),
+    ServiceLifecycle.TRANSIENT,
+    []
+  );
+
+  // ObservabilityRegistry als SINGLETON
+  const registryResult = container.registerClass(
+    observabilityRegistryToken,
+    ObservabilityRegistry,
+    ServiceLifecycle.SINGLETON,
+    [loggerToken, metricsRecorderToken]
+  );
+
+  return ok(undefined);
+}
+```
+
+### Self-Configuring Services
+
+Services konfigurieren sich jetzt selbst via Constructor-Dependencies:
+
+```typescript
+// Logger erhält EnvironmentConfig als Dependency
+class ConsoleLoggerService {
+  static dependencies = [environmentConfigToken] as const;
+
+  constructor(env: EnvironmentConfig) {
+    this.minLevel = env.logLevel;  // Self-configuring!
+  }
+}
+```
+
+**Keine manuelle `configureLogger()` Funktion mehr nötig!**
+
+### Dateien
+
+- **NEW**: `src/observability/observability-registry.ts`
+- **NEW**: `src/config/modules/observability.config.ts`
+- **NEW**: `src/config/modules/registrars.config.ts`
+- **REFACTORED**: `src/config/dependencyconfig.ts` → Orchestrator
+- **UPDATED**: `src/foundry/versioning/portselector.ts` → Self-Registration
+- **UPDATED**: `src/services/consolelogger.ts` → Self-Configuring
+
+### Vorteile der Modularisierung
+
+- ✅ Jedes Config-Modul < 200 Zeilen
+- ✅ Klare thematische Trennung
+- ✅ Einfach erweiterbar
+- ✅ Übersichtlicher Orchestrator
 
 ## Verwandte ADRs
 

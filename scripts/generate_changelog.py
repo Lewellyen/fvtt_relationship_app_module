@@ -9,7 +9,7 @@ from pathlib import Path
 def main():
     root = Path(__file__).parent.parent
     changelog_path = root / "CHANGELOG.md"
-    release_dir = root / "docs/development/foundry/releases"
+    release_dir = root / "docs/releases"
 
     # Lese Header bis Unreleased
     text = changelog_path.read_text(encoding='utf-8')
@@ -20,7 +20,7 @@ def main():
     header = header.rstrip() + "\n\n"
 
     # Neuer Unreleased-Block
-    unreleased_block = "## [Unreleased]\n\n### Hinzugefügt\n\n### Geändert\n\n### Fehlerbehebungen\n\n"
+    unreleased_block = "## [Unreleased]\n\n### Hinzugefügt\n\n### Geändert\n\n### Fehlerbehebungen\n\n### Bekannte Probleme\n\n### Upgrade-Hinweise\n\n"
 
     # Sammle Releases (absteigend nach Version)
     sections = []

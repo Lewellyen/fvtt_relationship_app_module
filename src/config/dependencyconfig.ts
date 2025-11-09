@@ -1,577 +1,47 @@
 import { ServiceContainer } from "@/di_infrastructure/container";
-import {
-  loggerToken,
-  journalVisibilityServiceToken,
-  metricsCollectorToken,
-  metricsRecorderToken,
-  metricsSamplerToken,
-  foundryI18nToken,
-  localI18nToken,
-  i18nFacadeToken,
-  environmentConfigToken,
-  moduleHealthServiceToken,
-  performanceTrackingServiceToken,
-  retryServiceToken,
-} from "@/tokens/tokenindex";
-import { ConsoleLoggerService } from "@/services/consolelogger";
-import { JournalVisibilityService } from "@/services/JournalVisibilityService";
-import { MetricsCollector } from "@/observability/metrics-collector";
-import { ModuleHealthService } from "@/core/module-health-service";
-import { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
-import { RetryService } from "@/services/RetryService";
-import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import { ok, err, isErr } from "@/utils/functional/result";
 import type { Result } from "@/types/result";
 import type { Logger } from "@/interfaces/logger";
-import { ENV } from "@/config/environment";
-import {
-  foundryGameToken,
-  foundryHooksToken,
-  foundryDocumentToken,
-  foundryUIToken,
-  foundrySettingsToken,
-  foundryI18nPortRegistryToken,
-  foundryJournalFacadeToken,
-  portSelectorToken,
-  foundryGamePortRegistryToken,
-  foundryHooksPortRegistryToken,
-  foundryDocumentPortRegistryToken,
-  foundryUIPortRegistryToken,
-  foundrySettingsPortRegistryToken,
-} from "@/foundry/foundrytokens";
-import { PortSelector } from "@/foundry/versioning/portselector";
-import { PortRegistry } from "@/foundry/versioning/portregistry";
-import { PortSelectionObserver } from "@/foundry/versioning/port-selection-observer";
-import { FoundryGameService } from "@/foundry/services/FoundryGameService";
-import { FoundryHooksService } from "@/foundry/services/FoundryHooksService";
-import { FoundryDocumentService } from "@/foundry/services/FoundryDocumentService";
-import { FoundryUIService } from "@/foundry/services/FoundryUIService";
-import { FoundrySettingsService } from "@/foundry/services/FoundrySettingsService";
-import { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
-import { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade";
-import { LocalI18nService } from "@/services/LocalI18nService";
-import { I18nFacadeService } from "@/services/I18nFacadeService";
-import { FoundryGamePortV13 } from "@/foundry/ports/v13/FoundryGamePort";
-import { FoundryHooksPortV13 } from "@/foundry/ports/v13/FoundryHooksPort";
-import { FoundryDocumentPortV13 } from "@/foundry/ports/v13/FoundryDocumentPort";
-import { FoundryUIPortV13 } from "@/foundry/ports/v13/FoundryUIPort";
-import { FoundrySettingsPortV13 } from "@/foundry/ports/v13/FoundrySettingsPort";
-import { FoundryI18nPortV13 } from "@/foundry/ports/v13/FoundryI18nPort";
-import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
-import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
-import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
-import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
-import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
-import type { FoundryI18n } from "@/foundry/interfaces/FoundryI18n";
+import { loggerToken } from "@/tokens/tokenindex";
+import { ConsoleLoggerService } from "@/services/consolelogger";
+import { LogLevel } from "@/config/environment";
+import type { EnvironmentConfig } from "@/config/environment";
 
-/**
- * Helper function for port registration.
- * Reduces duplication when registering multiple ports.
- *
- * @template T - The port type
- * @param registry - The port registry to register to
- * @param version - The Foundry version this port supports
- * @param factory - Factory function that creates the port instance
- * @param portName - Name of the port (for error messages)
- * @param errors - Array to collect error messages
- */
-function registerPortToRegistry<T>(
-  registry: PortRegistry<T>,
-  version: number,
-  factory: () => T,
-  portName: string,
-  errors: string[]
-): void {
-  const result = registry.register(version, factory);
-  /* c8 ignore start -- Defensive: Port registration can only fail if version is duplicate, which is controlled by hardcoded port registrations */
-  if (isErr(result)) {
-    errors.push(`${portName} v${version}: ${result.error}`);
-  }
-  /* c8 ignore stop */
-}
+// Import config modules
+import { registerCoreServices } from "@/config/modules/core-services.config";
+import { registerObservability } from "@/config/modules/observability.config";
+import { registerPortInfrastructure } from "@/config/modules/port-infrastructure.config";
+import { registerFoundryServices } from "@/config/modules/foundry-services.config";
+import { registerUtilityServices } from "@/config/modules/utility-services.config";
+import { registerI18nServices } from "@/config/modules/i18n-services.config";
+import { registerRegistrars } from "@/config/modules/registrars.config";
 
-/**
- * Configures all dependency injection mappings for the application.
- * This is the central place where tokens are connected to their factories.
- *
- * Also registers fallback factories for critical services that should always be available
- * even if container resolution fails.
- *
- * @param container - The service container to configure
- * @returns Result indicating success or configuration errors
- *
- * @example
- * ```typescript
- * const container = ServiceContainer.createRoot();
- * const result = configureDependencies(container);
- * if (isOk(result)) {
- *   const logger = container.resolve(loggerToken); // Direct resolution with fallback
- * }
- * ```
- */
 /**
  * Registers fallback factories for critical services.
+ * Fallbacks are used when normal resolution fails.
  */
 function registerFallbacks(container: ServiceContainer): void {
-  container.registerFallback<Logger>(loggerToken, () => new ConsoleLoggerService());
-}
-
-/**
- * Registers core infrastructure services (EnvironmentConfig, MetricsCollector, Logger, ModuleHealthService).
- *
- * CRITICAL INITIALIZATION ORDER:
- * 1. EnvironmentConfig (no dependencies) - needed by MetricsCollector
- * 2. MetricsCollector (deps: [environmentConfigToken]) - needed by ServiceResolver
- * 3. MetricsRecorder/MetricsSampler (aliases to MetricsCollector) - segregated interfaces
- * 4. Logger (no dependencies) - needed by all services
- * 5. ModuleHealthService (deps: [container, metricsCollectorToken]) - special case with container self-reference
- *
- * Note: PortSelector now has zero dependencies and uses event-based observability.
- */
-function registerCoreServices(container: ServiceContainer): Result<void, string> {
-  // Register EnvironmentConfig (needed by MetricsCollector and PortSelector)
-  const envResult = container.registerValue(environmentConfigToken, ENV);
-
-  /* c8 ignore start -- Defensive: Value registration can only fail if token is duplicate */
-  if (isErr(envResult)) {
-    return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  // Register MetricsCollector (needed early for ServiceResolver and PortSelector)
-  const metricsResult = container.registerClass(
-    metricsCollectorToken,
-    MetricsCollector,
-    ServiceLifecycle.SINGLETON
-  );
-
-  /* c8 ignore start -- Defensive: MetricsCollector has no dependencies and cannot fail registration */
-  if (isErr(metricsResult)) {
-    return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  // Register segregated interface aliases for MetricsCollector (Interface Segregation Principle)
-  // This allows services to depend on only the interface they need
-  const recorderAliasResult = container.registerAlias(metricsRecorderToken, metricsCollectorToken);
-  /* c8 ignore start -- Defensive: Alias registration can only fail if token is duplicate */
-  if (isErr(recorderAliasResult)) {
-    return err(`Failed to register MetricsRecorder alias: ${recorderAliasResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  const samplerAliasResult = container.registerAlias(metricsSamplerToken, metricsCollectorToken);
-  /* c8 ignore start -- Defensive: Alias registration can only fail if token is duplicate */
-  if (isErr(samplerAliasResult)) {
-    return err(`Failed to register MetricsSampler alias: ${samplerAliasResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  // Register logger (needed by PortSelector and all services for structured logging)
-  const loggerResult = container.registerClass(
-    loggerToken,
-    ConsoleLoggerService,
-    ServiceLifecycle.SINGLETON
-  );
-
-  if (isErr(loggerResult)) {
-    return err(`Failed to register logger: ${loggerResult.error.message}`);
-  }
-
-  // Register ModuleHealthService with factory (special case: needs container reference)
-  const healthResult = container.registerFactory(
-    moduleHealthServiceToken,
-    () => {
-      const metricsResult = container.resolveWithError(metricsCollectorToken);
-      /* c8 ignore start -- Defensive: MetricsCollector is always registered at this point */
-      if (!metricsResult.ok) {
-        throw new Error("MetricsCollector not available for ModuleHealthService");
-      }
-      /* c8 ignore stop */
-      return new ModuleHealthService(container, metricsResult.value);
-    },
-    ServiceLifecycle.SINGLETON,
-    [metricsCollectorToken]
-  );
-
-  /* c8 ignore start -- Defensive: Factory registration can only fail if token is duplicate */
-  if (isErr(healthResult)) {
-    return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  return ok(undefined);
-}
-
-/**
- * Registers Ports to PortRegistries.
- * Returns the created registries for further processing.
- */
-function createPortRegistries(): Result<
-  {
-    gamePortRegistry: PortRegistry<FoundryGame>;
-    hooksPortRegistry: PortRegistry<FoundryHooks>;
-    documentPortRegistry: PortRegistry<FoundryDocument>;
-    uiPortRegistry: PortRegistry<FoundryUI>;
-    settingsPortRegistry: PortRegistry<FoundrySettings>;
-    i18nPortRegistry: PortRegistry<FoundryI18n>;
-  },
-  string
-> {
-  const portRegistrationErrors: string[] = [];
-
-  const gamePortRegistry = new PortRegistry<FoundryGame>();
-  registerPortToRegistry(
-    gamePortRegistry,
-    13,
-    () => new FoundryGamePortV13(),
-    "FoundryGame",
-    portRegistrationErrors
-  );
-
-  const hooksPortRegistry = new PortRegistry<FoundryHooks>();
-  registerPortToRegistry(
-    hooksPortRegistry,
-    13,
-    () => new FoundryHooksPortV13(),
-    "FoundryHooks",
-    portRegistrationErrors
-  );
-
-  const documentPortRegistry = new PortRegistry<FoundryDocument>();
-  registerPortToRegistry(
-    documentPortRegistry,
-    13,
-    () => new FoundryDocumentPortV13(),
-    "FoundryDocument",
-    portRegistrationErrors
-  );
-
-  const uiPortRegistry = new PortRegistry<FoundryUI>();
-  registerPortToRegistry(
-    uiPortRegistry,
-    13,
-    () => new FoundryUIPortV13(),
-    "FoundryUI",
-    portRegistrationErrors
-  );
-
-  const settingsPortRegistry = new PortRegistry<FoundrySettings>();
-  registerPortToRegistry(
-    settingsPortRegistry,
-    13,
-    () => new FoundrySettingsPortV13(),
-    "FoundrySettings",
-    portRegistrationErrors
-  );
-
-  const i18nPortRegistry = new PortRegistry<FoundryI18n>();
-  registerPortToRegistry(
-    i18nPortRegistry,
-    13,
-    () => new FoundryI18nPortV13(),
-    "FoundryI18n",
-    portRegistrationErrors
-  );
-
-  // Return early if any port registration failed
-  /* c8 ignore start -- Port registration errors already tested individually; aggregation is defensive */
-  if (portRegistrationErrors.length > 0) {
-    return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
-  }
-  /* c8 ignore stop */
-
-  return ok({
-    gamePortRegistry,
-    hooksPortRegistry,
-    documentPortRegistry,
-    uiPortRegistry,
-    settingsPortRegistry,
-    i18nPortRegistry,
+  container.registerFallback<Logger>(loggerToken, (): Logger => {
+    // Fallback without EnvironmentConfig - DEBUG-Level for maximum transparency
+    const fallbackConfig: EnvironmentConfig = {
+      logLevel: LogLevel.DEBUG,
+      isDevelopment: false,
+      isProduction: false,
+      enablePerformanceTracking: false,
+      enableDebugMode: true,
+      performanceSamplingRate: 1.0,
+    };
+    return new ConsoleLoggerService(fallbackConfig);
   });
 }
 
 /**
- * Registers PortSelector and PortRegistries in the container.
- *
- * **Observability:**
- * - PortSelector has zero dependencies (improved testability)
- * - PortSelectionObserver subscribes to PortSelector events for logging/metrics
- * - Observer pattern decouples port selection from observability concerns
- */
-function registerPortInfrastructure(container: ServiceContainer): Result<void, string> {
-  // Register PortSelector (no dependencies)
-  const portSelectorResult = container.registerClass(
-    portSelectorToken,
-    PortSelector,
-    ServiceLifecycle.SINGLETON
-  );
-
-  /* c8 ignore start -- Defensive: Class registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
-  if (isErr(portSelectorResult)) {
-    return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  // Wire up observability: Create observer and subscribe to PortSelector events
-  // This is optional - only wire if all dependencies are available
-  const portSelectorResolve = container.resolveWithError(portSelectorToken);
-  const loggerResult = container.resolveWithError(loggerToken);
-  const recorderResult = container.resolveWithError(metricsRecorderToken);
-
-  /* c8 ignore start -- Defensive: Observer wiring is optional; only wire if all dependencies available */
-  if (portSelectorResolve.ok && loggerResult.ok && recorderResult.ok) {
-    const observer = new PortSelectionObserver(loggerResult.value, recorderResult.value);
-    portSelectorResolve.value.onEvent((event) => observer.handleEvent(event));
-  }
-  /* c8 ignore stop */
-
-  // Create port registries
-  const portsResult = createPortRegistries();
-  /* c8 ignore next -- Error propagation: createPortRegistries failure tested in sub-function */
-  if (isErr(portsResult)) return portsResult;
-
-  const {
-    gamePortRegistry,
-    hooksPortRegistry,
-    documentPortRegistry,
-    uiPortRegistry,
-    settingsPortRegistry,
-    i18nPortRegistry,
-  } = portsResult.value;
-
-  const gameRegistryResult = container.registerValue(
-    foundryGamePortRegistryToken,
-    gamePortRegistry
-  );
-  if (isErr(gameRegistryResult)) {
-    return err(`Failed to register FoundryGame PortRegistry: ${gameRegistryResult.error.message}`);
-  }
-
-  const hooksRegistryResult = container.registerValue(
-    foundryHooksPortRegistryToken,
-    hooksPortRegistry
-  );
-  /* c8 ignore start -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
-  if (isErr(hooksRegistryResult)) {
-    return err(
-      `Failed to register FoundryHooks PortRegistry: ${hooksRegistryResult.error.message}`
-    );
-  }
-  /* c8 ignore stop */
-
-  const documentRegistryResult = container.registerValue(
-    foundryDocumentPortRegistryToken,
-    documentPortRegistry
-  );
-  /* c8 ignore start -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
-  if (isErr(documentRegistryResult)) {
-    return err(
-      `Failed to register FoundryDocument PortRegistry: ${documentRegistryResult.error.message}`
-    );
-  }
-  /* c8 ignore stop */
-
-  const uiRegistryResult = container.registerValue(foundryUIPortRegistryToken, uiPortRegistry);
-  /* c8 ignore start -- Defensive: Value registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
-  if (isErr(uiRegistryResult)) {
-    return err(`Failed to register FoundryUI PortRegistry: ${uiRegistryResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  const settingsRegistryResult = container.registerValue(
-    foundrySettingsPortRegistryToken,
-    settingsPortRegistry
-  );
-  if (isErr(settingsRegistryResult)) {
-    return err(
-      `Failed to register FoundrySettings PortRegistry: ${settingsRegistryResult.error.message}`
-    );
-  }
-
-  const i18nRegistryResult = container.registerValue(
-    foundryI18nPortRegistryToken,
-    i18nPortRegistry
-  );
-  /* c8 ignore start -- Defensive: PortRegistry value registration cannot fail; tested in other registry registrations */
-  if (isErr(i18nRegistryResult)) {
-    return err(`Failed to register FoundryI18n PortRegistry: ${i18nRegistryResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  return ok(undefined);
-}
-
-/**
- * Registers Foundry service wrappers.
- */
-function registerFoundryServices(container: ServiceContainer): Result<void, string> {
-  // Register Foundry Services using registerClass (with static dependencies)
-  const gameServiceResult = container.registerClass(
-    foundryGameToken,
-    FoundryGameService,
-    ServiceLifecycle.SINGLETON
-  );
-
-  if (isErr(gameServiceResult)) {
-    return err(`Failed to register FoundryGame service: ${gameServiceResult.error.message}`);
-  }
-
-  const hooksServiceResult = container.registerClass(
-    foundryHooksToken,
-    FoundryHooksService,
-    ServiceLifecycle.SINGLETON
-  );
-
-  if (isErr(hooksServiceResult)) {
-    return err(`Failed to register FoundryHooks service: ${hooksServiceResult.error.message}`);
-  }
-
-  const documentServiceResult = container.registerClass(
-    foundryDocumentToken,
-    FoundryDocumentService,
-    ServiceLifecycle.SINGLETON
-  );
-
-  if (isErr(documentServiceResult)) {
-    return err(
-      `Failed to register FoundryDocument service: ${documentServiceResult.error.message}`
-    );
-  }
-
-  const uiServiceResult = container.registerClass(
-    foundryUIToken,
-    FoundryUIService,
-    ServiceLifecycle.SINGLETON
-  );
-
-  if (isErr(uiServiceResult)) {
-    return err(`Failed to register FoundryUI service: ${uiServiceResult.error.message}`);
-  }
-
-  const settingsServiceResult = container.registerClass(
-    foundrySettingsToken,
-    FoundrySettingsService,
-    ServiceLifecycle.SINGLETON
-  );
-
-  if (isErr(settingsServiceResult)) {
-    return err(
-      `Failed to register FoundrySettings service: ${settingsServiceResult.error.message}`
-    );
-  }
-
-  // Register FoundryJournalFacade (combines Game, Document, UI for journal operations)
-  // Must be registered BEFORE JournalVisibilityService which depends on it
-  const journalFacadeResult = container.registerClass(
-    foundryJournalFacadeToken,
-    FoundryJournalFacade,
-    ServiceLifecycle.SINGLETON
-  );
-
-  /* c8 ignore start -- Defensive: FoundryJournalFacade registration cannot fail with valid dependencies */
-  if (isErr(journalFacadeResult)) {
-    return err(`Failed to register FoundryJournalFacade: ${journalFacadeResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  const journalVisibilityResult = container.registerClass(
-    journalVisibilityServiceToken,
-    JournalVisibilityService,
-    ServiceLifecycle.SINGLETON
-  );
-
-  if (isErr(journalVisibilityResult)) {
-    return err(
-      `Failed to register JournalVisibility service: ${journalVisibilityResult.error.message}`
-    );
-  }
-
-  return ok(undefined);
-}
-
-/**
- * Registers utility services (PerformanceTracking, Retry).
- */
-function registerUtilityServices(container: ServiceContainer): Result<void, string> {
-  // Register PerformanceTrackingService
-  const perfTrackingResult = container.registerClass(
-    performanceTrackingServiceToken,
-    PerformanceTrackingService,
-    ServiceLifecycle.SINGLETON
-  );
-  /* c8 ignore start -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
-  if (isErr(perfTrackingResult)) {
-    return err(
-      `Failed to register PerformanceTrackingService: ${perfTrackingResult.error.message}`
-    );
-  }
-  /* c8 ignore stop */
-
-  // Register RetryService
-  const retryServiceResult = container.registerClass(
-    retryServiceToken,
-    RetryService,
-    ServiceLifecycle.SINGLETON
-  );
-  /* c8 ignore start -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
-  if (isErr(retryServiceResult)) {
-    return err(`Failed to register RetryService: ${retryServiceResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  return ok(undefined);
-}
-
-/**
- * Registers i18n services (Foundry, Local, and Facade).
- */
-function registerI18nServices(container: ServiceContainer): Result<void, string> {
-  // Register FoundryI18nService
-  const foundryI18nResult = container.registerClass(
-    foundryI18nToken,
-    FoundryI18nService,
-    ServiceLifecycle.SINGLETON
-  );
-  /* c8 ignore start -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
-  if (isErr(foundryI18nResult)) {
-    return err(`Failed to register FoundryI18nService: ${foundryI18nResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  // Register LocalI18nService
-  const localI18nResult = container.registerClass(
-    localI18nToken,
-    LocalI18nService,
-    ServiceLifecycle.SINGLETON
-  );
-  /* c8 ignore start -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
-  if (isErr(localI18nResult)) {
-    return err(`Failed to register LocalI18nService: ${localI18nResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  // Register I18nFacadeService
-  const facadeResult = container.registerClass(
-    i18nFacadeToken,
-    I18nFacadeService,
-    ServiceLifecycle.SINGLETON
-  );
-  /* c8 ignore start -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
-  if (isErr(facadeResult)) {
-    return err(`Failed to register I18nFacadeService: ${facadeResult.error.message}`);
-  }
-  /* c8 ignore stop */
-
-  return ok(undefined);
-}
-
-/**
  * Validates the container configuration.
+ * Ensures all dependencies are resolvable and no circular dependencies exist.
  */
 function validateContainer(container: ServiceContainer): Result<void, string> {
   const validateResult = container.validate();
-  /* c8 ignore start -- Defensive: Validation can only fail if dependencies are missing or circular, which cannot happen with hardcoded dependency graph */
+  /* c8 ignore start -- Defensive: Validation can only fail if dependencies are missing or circular */
   if (isErr(validateResult)) {
     const errorMessages = validateResult.error.map((e) => e.message).join(", ");
     return err(`Validation failed: ${errorMessages}`);
@@ -581,24 +51,29 @@ function validateContainer(container: ServiceContainer): Result<void, string> {
 }
 
 /**
- * Configures logger with environment settings.
- */
-function configureLogger(container: ServiceContainer): void {
-  const resolvedLoggerResult = container.resolveWithError(loggerToken);
-  if (resolvedLoggerResult.ok) {
-    const loggerInstance = resolvedLoggerResult.value;
-    if (loggerInstance.setMinLevel) {
-      loggerInstance.setMinLevel(ENV.logLevel);
-    }
-  }
-}
-
-/**
- * Main configuration orchestrator.
- * Configures all dependencies, registries, and services in the container.
+ * Configures all dependency injection mappings for the application.
  *
- * @param container - The DI container to configure
- * @returns Result indicating success or error with details
+ * RESPONSIBILITY: Orchestrate registration of all service modules.
+ *
+ * DESIGN PRINCIPLES:
+ * - Services are self-configuring via constructor dependencies
+ * - Observability uses self-registration pattern
+ * - No manual wiring - all connections via DI
+ * - Modular config files by domain
+ *
+ * REGISTRATION ORDER:
+ * 1. Fallbacks (Logger emergency fallback)
+ * 2. Core Services (Logger, Metrics, Environment, ModuleHealth)
+ * 3. Observability (EventEmitter, ObservabilityRegistry)
+ * 4. Utility Services (Performance, Retry)
+ * 5. Port Infrastructure (PortSelector, PortRegistries)
+ * 6. Foundry Services (Game, Hooks, Document, UI, Settings, Journal)
+ * 7. I18n Services (FoundryI18n, LocalI18n, I18nFacade)
+ * 8. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
+ * 9. Validation (Check dependency graph)
+ *
+ * @param container - The service container to configure
+ * @returns Result indicating success or configuration errors
  *
  * @example
  * ```typescript
@@ -612,28 +87,39 @@ function configureLogger(container: ServiceContainer): void {
 export function configureDependencies(container: ServiceContainer): Result<void, string> {
   registerFallbacks(container);
 
+  // Register all service modules in order
   const coreResult = registerCoreServices(container);
+  /* c8 ignore next -- Error propagation: Core services failure tested in sub-module */
   if (isErr(coreResult)) return coreResult;
 
+  const observabilityResult = registerObservability(container);
+  /* c8 ignore next -- Error propagation: Observability failure tested in sub-module */
+  if (isErr(observabilityResult)) return observabilityResult;
+
   const utilityResult = registerUtilityServices(container);
-  /* c8 ignore next -- Error propagation: registerUtilityServices failure tested in sub-function */
+  /* c8 ignore next -- Error propagation: Utility services failure tested in sub-module */
   if (isErr(utilityResult)) return utilityResult;
 
   const portInfraResult = registerPortInfrastructure(container);
+  /* c8 ignore next -- Error propagation: Port infrastructure failure tested in sub-module */
   if (isErr(portInfraResult)) return portInfraResult;
 
   const foundryServicesResult = registerFoundryServices(container);
+  /* c8 ignore next -- Error propagation: Foundry services failure tested in sub-module */
   if (isErr(foundryServicesResult)) return foundryServicesResult;
 
   const i18nServicesResult = registerI18nServices(container);
-  /* c8 ignore next -- Error propagation: registerI18nServices failure tested in sub-function */
+  /* c8 ignore next -- Error propagation: I18n services failure tested in sub-module */
   if (isErr(i18nServicesResult)) return i18nServicesResult;
 
-  const validationResult = validateContainer(container);
-  /* c8 ignore next -- Error propagation: validateContainer failure tested in sub-function */
-  if (isErr(validationResult)) return validationResult;
+  const registrarsResult = registerRegistrars(container);
+  /* c8 ignore next -- Error propagation: Registrars failure tested in sub-module */
+  if (isErr(registrarsResult)) return registrarsResult;
 
-  configureLogger(container);
+  // Validate container configuration
+  const validationResult = validateContainer(container);
+  /* c8 ignore next -- Error propagation: Validation failure tested in validateContainer */
+  if (isErr(validationResult)) return validationResult;
 
   return ok(undefined);
 }

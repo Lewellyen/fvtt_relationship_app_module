@@ -8,6 +8,52 @@
 
 ### Fehlerbehebungen
 
+### Bekannte Probleme
+
+### Upgrade-Hinweise
+
+## [0.8.0] - 2025-11-09
+### Hinzugefügt
+- **ObservabilityRegistry**: Neuer zentraler Hub für Self-Registration Pattern ([Details](docs/adr/0006-observability-strategy.md#update-2025-11-09-self-registration-pattern--observabilityregistry))
+- **Modular Config Structure**: DI-Konfiguration in 7 thematische Module aufgeteilt ([Details](docs/DOKUMENTATIONS_UPDATES_2025-11-09.md#2-modular-config-structure))
+- `core-services.config.ts` - Logger, Metrics, Environment
+- `observability.config.ts` - EventEmitter, ObservabilityRegistry
+- `port-infrastructure.config.ts` - PortSelector, PortRegistries
+- `foundry-services.config.ts` - FoundryGame, Hooks, Document, UI
+- `utility-services.config.ts` - Performance, Retry
+- `i18n-services.config.ts` - I18n Services
+- `registrars.config.ts` - ModuleSettingsRegistrar, ModuleHookRegistrar
+- **Self-Registration Pattern**: Services registrieren sich automatisch für Observability im Constructor ([Details](docs/BOOTFLOW.md#observability--self-registration))
+- **ObservableService Interface**: Type-Safe Event-System für Observable Services
+
+### Geändert
+- **Self-Configuring Services**: Logger konfiguriert sich selbst via `EnvironmentConfig` Dependency ([Details](docs/DOKUMENTATIONS_UPDATES_2025-11-09.md#3-self-configuring-services))
+- **DI-Managed Registrars**: `ModuleSettingsRegistrar` und `ModuleHookRegistrar` werden via DI aufgelöst statt mit `new` instantiiert ([Details](docs/DOKUMENTATIONS_UPDATES_2025-11-09.md#4-di-managed-registrars))
+- **PortSelectionEventEmitter**: Als TRANSIENT Service für bessere Testability ([Details](ARCHITECTURE.md#observability--self-registration-pattern))
+- **dependencyconfig.ts**: Jetzt Orchestrator statt monolithische Config-Datei (150 statt 400+ Zeilen)
+- **Release-Tool Commits**: Verwenden jetzt Conventional Commits Format (`release: v{version}`) mit strukturierten Changelog-Sektionen
+- **Release-Tool Pfade**: Korrigiert zu `docs/releases/` (vorher fehlerhafter Pfad)
+- **CONTRIBUTING.md**: Aktualisiert mit Conventional Commits, Changelog Guidelines, aktuellem Release-Prozess und Modular Config Structure
+- **README.md**: Version auf 0.8.0, neue Architektur-Patterns dokumentiert
+- **INDEX.md**: Version auf 0.8.0, neue Dokumentation verlinkt
+- **QUICK_REFERENCE.md**: Neue Services & Tokens hinzugefügt (ObservabilityRegistry, EventEmitter, Registrars)
+- **PROJECT_ANALYSIS.md**: 5 neue Services dokumentiert (Nr. 17-21)
+- **DEPENDENCY_MAP.md**: Neue Dependencies und Services in Dependency-Tree eingetragen
+- **TESTING.md**: Coverage-Requirements auf 100% aktualisiert
+- **DOKUMENTENLAGE_ÜBERSICHT.md**: Version auf 0.8.0
+- **VERSIONING_STRATEGY.md**: Aktueller Status auf 0.8.0
+- **REFACTORING_ROADMAP.md**: Version auf 0.8.0, Modular Config als umgesetzt markiert
+
+### Fehlerbehebungen
+- **PortSelector Events**: Events werden jetzt korrekt abonniert und geloggt (ursprünglicher Bug: Events wurden emittiert aber nicht abonniert)
+- **Metriken**: Port-Selection-Metriken werden wieder erfasst
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.7.1] - 2025-11-09
 ### Hinzugefügt
 - Keine Einträge

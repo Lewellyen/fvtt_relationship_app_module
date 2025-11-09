@@ -18,9 +18,11 @@ import { logLevelSetting } from "@/core/settings/log-level-setting";
  * - Clear separation between registration logic and setting configuration
  */
 export class ModuleSettingsRegistrar {
+  static dependencies = [] as const;
+
   // Array of setting definitions with their specific types preserved
   private settings: readonly SettingDefinition<LogLevel>[] =
-  // Add new setting types here
+    // Add new setting types here
     [
       logLevelSetting,
       // Add new settings here

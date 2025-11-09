@@ -1,0 +1,1304 @@
+# Projektanalyse: FVTT Relationship App Module
+
+**Erstellungsdatum:** 2025-11-09  
+**Aktualisiert:** 2025-11-09 (v0.8.0)  
+**Zweck:** Grundlage für Refactoring-Planungen  
+**Model:** Claude Sonnet 4.5
+
+---
+
+## 📋 Inhaltsverzeichnis
+
+1. [Übersicht](#übersicht)
+2. [Services](#services)
+3. [Utilities](#utilities)
+4. [Foundry Adapter (Ports & Services)](#foundry-adapter-ports--services)
+5. [Infrastruktur-Komponenten](#infrastruktur-komponenten)
+6. [Dependency Map](#dependency-map)
+7. [Architektur-Analyse](#architektur-analyse)
+8. [Refactoring-Empfehlungen](#refactoring-empfehlungen)
+
+---
+
+## Übersicht
+
+Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection**, **Port-Adapter-Pattern** für Foundry VTT-Versionskompatiblität und **Result-Pattern** für fehlerfreies Error Handling.
+
+**Status:** Version 0.8.0 (Pre-Release Phase)  
+**Breaking Changes:** ✅ Erlaubt - Aggressives Refactoring erwünscht!  
+**Legacy-Codes:** ❌ Eliminieren (sofortige Entfernung erlaubt)  
+**Ab Version 1.0.0:** Breaking Changes mit Deprecation-Strategie & Migrationspfad
+
+### Architektur-Prinzipien
+
+- **Clean Architecture**: Klare Schichtentrennung (Core → Services → Foundry Adapters)
+- **Dependency Injection**: Custom DI-Container mit automatischer Dependency Resolution
+- **Modular Config Structure**: DI-Konfiguration in 7 thematische Module aufgeteilt ⭐ NEW v0.8.0
+- **Port-Adapter-Pattern**: Version-agnostische Foundry-Integration (v13, v14+)
+- **Result Pattern**: Keine Exceptions, type-safe Error Handling
+- **Interface Segregation**: Segregierte Interfaces (z.B. MetricsRecorder/MetricsSampler)
+- **Self-Registration Pattern**: Services registrieren sich automatisch für Observability ⭐ NEW v0.8.0
+- **Observer Pattern**: Event-basierte Observability (PortSelector)
+
+---
+
+## Services
+
+### Core Services
+
+#### 1. ConsoleLoggerService
+**Datei:** `src/services/consolelogger.ts`  
+**Zweck:** Console-basierter Logger mit Trace-ID-Support  
+**Abhängigkeiten:** ⭐ UPDATED v0.8.0
+- `EnvironmentConfig` - Self-Configuring: Logger konfiguriert sich selbst beim Instantiieren
+- Verwendet: `MODULE_CONSTANTS`, `LogLevel`
+
+**Features:**
+- Log-Level-Filtering (DEBUG, INFO, WARN, ERROR)
+- Trace-ID-Support via `withTraceId()` (Decorator Pattern)
+- Nested Trace-IDs für hierarchisches Tracing
+
+**Design Pattern:** Decorator Pattern (TracedLogger)
+
+---
+
+#### 2. I18nFacadeService
+**Datei:** `src/services/I18nFacadeService.ts`  
+**Zweck:** Facade für Foundry i18n mit lokalem Fallback  
+**Abhängigkeiten:**
+- `FoundryI18nService` (foundryI18nToken)
+- `LocalI18nService` (localI18nToken)
+
+**Features:**
+- Strategie: Foundry-First → Local Fallback → Key Fallback
+- Format-Support für Placeholder-Ersetzung
+- `has()` prüft beide i18n-Systeme
+
+**Design Pattern:** Facade Pattern, Strategy Pattern
+
+---
+
+#### 3. JournalVisibilityService
+**Datei:** `src/services/JournalVisibilityService.ts`  
+**Zweck:** Business-Logik für versteckte Journal-Einträge  
+**Abhängigkeiten:**
+- `FoundryJournalFacade` (foundryJournalFacadeToken)
+- `Logger` (loggerToken)
+
+**Features:**
+- Filterung von Journals via Module-Flags
+- HTML-Sanitization für sichere Log-Ausgabe
+- UI-Manipulation (entfernt DOM-Elemente)
+
+**Dependency Reduction:** 4 → 2 Dependencies via Facade Pattern (50% Reduktion)
+
+---
+
+#### 4. LocalI18nService
+**Datei:** `src/services/LocalI18nService.ts`  
+**Zweck:** Foundry-unabhängiges i18n-System  
+**Abhängigkeiten:** Keine
+
+**Features:**
+- Browser Locale Detection (`navigator.language`)
+- JSON-basierte Translations
+- Regex-Injection-Protection bei Placeholder-Ersetzung
+- Lazy-Loading von Translation-Files
+
+---
+
+#### 5. PerformanceTrackingService
+**Datei:** `src/services/PerformanceTrackingService.ts`  
+**Zweck:** DI-fähiger Performance Tracker  
+**Abhängigkeiten:**
+- `EnvironmentConfig` (environmentConfigToken)
+- `MetricsSampler` (metricsSamplerToken)
+
+**Features:**
+- Extends `PerformanceTrackerImpl` (Code-Reuse mit Bootstrap-Tracker)
+- Sampling-basiertes Tracking (Production: konfigurierbar)
+- Callback-Support für Metrics-Collection
+
+---
+
+#### 6. RetryService
+**Datei:** `src/services/RetryService.ts`  
+**Zweck:** Retry-Logik mit Exponential Backoff  
+**Abhängigkeiten:**
+- `Logger` (loggerToken)
+- `MetricsCollector` (metricsCollectorToken)
+
+**Features:**
+- Async & Sync Retry-Varianten
+- Exponential Backoff (konfigurierbar)
+- Exception Mapping (safe `as` cast via mapException)
+- Legacy API-Support (backwards compatible)
+
+---
+
+### Foundry Services (Version-Agnostic Wrappers)
+
+#### 7. FoundryDocumentService
+**Datei:** `src/foundry/services/FoundryDocumentService.ts`  
+**Zweck:** Wrapper für Foundry Document API  
+**Abhängigkeiten:**
+- `PortSelector` (portSelectorToken)
+- `PortRegistry<FoundryDocument>` (foundryDocumentPortRegistryToken)
+
+**Features:**
+- Lazy Port Loading (verhindert Version-Inkompatibilitäten)
+- `getFlag()`, `setFlag()` Delegation
+- Disposable (Cleanup bei Container-Dispose)
+
+---
+
+#### 8. FoundryGameService
+**Datei:** `src/foundry/services/FoundryGameService.ts`  
+**Zweck:** Wrapper für Foundry Game API  
+**Abhängigkeiten:**
+- `PortSelector` (portSelectorToken)
+- `PortRegistry<FoundryGame>` (foundryGamePortRegistryToken)
+
+**Features:**
+- Journal Entry Management
+- Lazy Port Loading
+- Disposable
+
+---
+
+#### 9. FoundryHooksService
+**Datei:** `src/foundry/services/FoundryHooksService.ts`  
+**Zweck:** Wrapper für Foundry Hooks API mit Lifecycle Management  
+**Abhängigkeiten:**
+- `PortSelector` (portSelectorToken)
+- `PortRegistry<FoundryHooks>` (foundryHooksPortRegistryToken)
+- `Logger` (loggerToken)
+
+**Features:**
+- Bidirectional Hook Tracking (hookName ↔ callback ↔ id)
+- Auto-Cleanup bei Container-Dispose
+- Support für reused callbacks
+- `once()` Hooks (auto-cleanup durch Foundry)
+
+---
+
+#### 10. FoundryI18nService
+**Datei:** `src/foundry/services/FoundryI18nService.ts`  
+**Zweck:** Wrapper für Foundry i18n API  
+**Abhängigkeiten:**
+- `PortSelector` (portSelectorToken)
+- `PortRegistry<FoundryI18n>` (foundryI18nPortRegistryToken)
+
+**Features:**
+- `localize()`, `format()`, `has()`
+- Lazy Port Loading
+
+---
+
+#### 11. FoundrySettingsService
+**Datei:** `src/foundry/services/FoundrySettingsService.ts`  
+**Zweck:** Wrapper für Foundry Settings API  
+**Abhängigkeiten:**
+- `PortSelector` (portSelectorToken)
+- `PortRegistry<FoundrySettings>` (foundrySettingsPortRegistryToken)
+
+**Features:**
+- `register()`, `get()`, `set()`
+- Disposable
+
+---
+
+#### 12. FoundryUIService
+**Datei:** `src/foundry/services/FoundryUIService.ts`  
+**Zweck:** Wrapper für Foundry UI API  
+**Abhängigkeiten:**
+- `PortSelector` (portSelectorToken)
+- `PortRegistry<FoundryUI>` (foundryUIPortRegistryToken)
+
+**Features:**
+- DOM-Manipulation (`removeJournalElement`, `findElement`)
+- UI-Notifications (`notify`)
+- Disposable
+
+---
+
+### Observability Services
+
+#### 13. MetricsCollector
+**Datei:** `src/observability/metrics-collector.ts`  
+**Zweck:** Zentrale Metrics-Sammlung  
+**Abhängigkeiten:**
+- `EnvironmentConfig` (environmentConfigToken)
+
+**Implementiert:**
+- `MetricsRecorder` (Interface Segregation)
+- `MetricsSampler` (Interface Segregation)
+
+**Features:**
+- Circular Buffer für Resolution Times (O(1) statt O(n))
+- Cache Hit Rate Tracking
+- Port Selection Tracking
+- Sampling-Support (Production: konfigurierbar)
+- `getSnapshot()`, `logSummary()`, `reset()`
+
+---
+
+#### 14. PerformanceTrackerImpl (Base Class)
+**Datei:** `src/observability/performance-tracker-impl.ts`  
+**Zweck:** Shared Base Class für Performance Tracking  
+**Abhängigkeiten:**
+- `EnvironmentConfig`
+- `MetricsSampler`
+
+**Features:**
+- `track()` (sync)
+- `trackAsync()` (async)
+- Callback-basiertes Result-Handling
+
+**Verwendung:**
+- `PerformanceTrackingService` (DI-enabled)
+- `BootstrapPerformanceTracker` (Bootstrap-Phase, kein DI)
+
+---
+
+#### 15. BootstrapPerformanceTracker
+**Datei:** `src/observability/bootstrap-performance-tracker.ts`  
+**Zweck:** Performance Tracking während Bootstrap (kein DI verfügbar)  
+**Abhängigkeiten:**
+- `EnvironmentConfig` (direkt, nicht via DI)
+- `MetricsSampler | null` (optional, da noch nicht verfügbar)
+
+**Features:**
+- Extends `PerformanceTrackerImpl`
+- Null-safe MetricsSampler-Handling
+
+---
+
+### Core Infrastructure Services
+
+#### 16. ModuleHealthService
+**Datei:** `src/core/module-health-service.ts`  
+**Zweck:** Health-Checks für Modul-API  
+**Abhängigkeiten:**
+- `ServiceContainer` (Self-Reference!)
+- `MetricsCollector` (metricsCollectorToken)
+
+**Features:**
+- Container Validation Check
+- Port Selection Status
+- Foundry-Availability Check
+- Timestamp & Status Reporting
+
+**Special:** Container Self-Reference (registered via Factory)
+
+---
+
+#### 17. ObservabilityRegistry ⭐ NEW v0.8.0
+**Datei:** `src/observability/observability-registry.ts`  
+**Zweck:** Zentraler Hub für Self-Registration Pattern  
+**Abhängigkeiten:**
+- `Logger` (loggerToken)
+- `MetricsRecorder` (metricsRecorderToken)
+
+**Features:**
+- Self-Registration: Services registrieren sich selbst im Constructor
+- Event-Routing: Routet Events zu Logger & Metrics
+- Type-Safe: `ObservableService<TEvent>` Interface
+- Erweiterbar: Neue Observable Services via `registerXxx()` Methoden
+
+**Design Pattern:** Observer Pattern, Registry Pattern
+
+**Siehe:** [ADR-0006 Update](./adr/0006-observability-strategy.md#update-2025-11-09-self-registration-pattern--observabilityregistry)
+
+---
+
+#### 18. PortSelectionEventEmitter ⭐ NEW v0.8.0
+**Datei:** `src/foundry/versioning/port-selection-events.ts`  
+**Zweck:** Event-Emitter für PortSelector-Events  
+**Abhängigkeiten:** Keine  
+**Lifecycle:** TRANSIENT (neue Instanz pro Resolution)
+
+**Features:**
+- Listener-Management (add/remove)
+- Type-Safe Events: `PortSelectionEvent` Union Type
+- Cleanup-Support via Unsubscribe-Funktion
+
+**Design Pattern:** Event Emitter Pattern
+
+---
+
+#### 19. ModuleSettingsRegistrar ⭐ NEW v0.8.0
+**Datei:** `src/core/module-settings-registrar.ts`  
+**Zweck:** Registrierung von Modul-Settings in Foundry  
+**Abhängigkeiten:** ⭐ UPDATED (DI-managed)
+- `FoundrySettings` (foundrySettingsToken)
+- `Logger` (loggerToken)
+- `I18nFacadeService` (i18nFacadeToken)
+
+**Features:**
+- Registriert Log-Level-Setting
+- onChange-Callback für dynamische Logger-Konfiguration
+- Result-Pattern für Fehlerbehandlung
+
+---
+
+#### 20. ModuleHookRegistrar ⭐ NEW v0.8.0
+**Datei:** `src/core/module-hook-registrar.ts`  
+**Zweck:** Registrierung von Foundry-Hook-Handlern  
+**Abhängigkeiten:** ⭐ UPDATED (DI-managed)
+- `RenderJournalDirectoryHook` (renderJournalDirectoryHookToken)
+
+**Features:**
+- Hook-Registrierung via DI
+- Erweiterbar: Neue Hooks via Constructor-Dependencies
+- Clean Separation: Jeder Hook als eigene Klasse
+
+---
+
+#### 21. RenderJournalDirectoryHook ⭐ NEW v0.8.0
+**Datei:** `src/core/hooks/render-journal-directory-hook.ts`  
+**Zweck:** Spezifischer Hook-Handler für Journal-Directory-Rendering  
+**Abhängigkeiten:**
+- `FoundryHooksService` (foundryHooksToken)
+- `Logger` (loggerToken)
+- `JournalVisibilityService` (journalVisibilityServiceToken)
+
+**Features:**
+- Eigenständige Hook-Registrierung
+- Implements `HookRegistrar` Interface
+- Result-Pattern für Fehlerbehandlung
+- Unsubscribe-Support via `dispose()`
+
+**Design Pattern:** Strategy Pattern
+
+---
+
+## Utilities
+
+### Functional Utilities
+
+#### 1. Result Pattern Utilities
+**Datei:** `src/utils/functional/result.ts`  
+**Zweck:** Functional Error Handling ohne Exceptions  
+**Abhängigkeiten:** Keine
+
+**Funktionen:**
+- `ok()`, `err()` - Result Constructors
+- `isOk()`, `isErr()` - Type Guards
+- `map()`, `mapError()` - Transformationen
+- `andThen()` - Chaining (flatMap)
+- `unwrapOr()`, `unwrapOrElse()` - Safe Unwrapping
+- `getOrThrow()` - Unsafe Unwrapping (Legacy-Support)
+- `tryCatch()` - Exception Wrapping
+- `all()` - Kombination mehrerer Results
+- `match()` - Pattern Matching
+- `lift()` - Function Lifting
+- **Async-Varianten:** `asyncMap()`, `asyncAndThen()`, `fromPromise()`, `asyncAll()`
+
+**Design:** Functional Programming, Monad-Pattern
+
+---
+
+### Async Utilities
+
+#### 2. Promise Timeout Utility
+**Datei:** `src/utils/async/promise-timeout.ts`  
+**Zweck:** Timeout-Wrapping für Promises  
+**Abhängigkeiten:** Keine
+
+**Funktionen:**
+- `withTimeout()` - Promise mit Timeout
+- `TimeoutError` - Custom Error für Timeouts
+
+**Features:**
+- Auto-Cleanup via `finally()`
+- `Promise.race()` für Timeout-Handling
+
+---
+
+### Event Utilities
+
+#### 3. Throttle & Debounce
+**Datei:** `src/utils/events/throttle.ts`  
+**Zweck:** Rate-Limiting für High-Frequency Events  
+**Abhängigkeiten:** Keine
+
+**Funktionen:**
+- `throttle()` - First-Call-Execution, dann Window-Blocking
+- `debounce()` - Execution nach Inaktivitäts-Periode
+  - Mit `cancel()` Support
+
+---
+
+### Observability Utilities
+
+#### 4. Trace Utilities
+**Datei:** `src/utils/observability/trace.ts`  
+**Zweck:** Trace-ID-Generierung für Distributed Tracing  
+**Abhängigkeiten:** Keine
+
+**Funktionen:**
+- `generateTraceId()` - Format: `{timestamp}-{random}`
+- `getTraceTimestamp()` - Extrahiert Timestamp aus Trace-ID
+
+---
+
+### Security Utilities
+
+#### 5. Error Sanitizer
+**Datei:** `src/utils/security/error-sanitizer.ts`  
+**Zweck:** Production-safe Error Messages  
+**Abhängigkeiten:**
+- `EnvironmentConfig`
+
+**Funktionen:**
+- `sanitizeErrorForProduction()` - Entfernt sensitive ContainerError-Details
+- `sanitizeMessageForProduction()` - Generic Message Sanitization
+
+**Features:**
+- Development: Full Details
+- Production: Generic Messages
+
+---
+
+## Foundry Adapter (Ports & Services)
+
+### Port-Adapter-Pattern
+
+Das Projekt verwendet **Port-Adapter-Pattern** für Foundry-Version-Kompatibilität:
+
+```
+Service Layer (Version-Agnostic)
+    ↓
+Port Selector (Version Detection & Selection)
+    ↓
+Port Registry (Version → Port Mapping)
+    ↓
+Ports (Version-Specific Foundry API Calls)
+```
+
+---
+
+### Port Implementations (v13)
+
+**Versionskompatibilität (module.json):**
+```json
+"compatibility": {
+  "minimum": 13,
+  "verified": 13,
+  "maximum": 13
+}
+```
+
+**Aktueller Stand:**
+- ✅ Foundry v13 Ports vollständig implementiert (requirement erfüllt)
+- ⏳ Foundry v14 in Entwicklung (API noch nicht verfügbar)
+- 🎯 v14 Ports werden benötigt **WENN** `compatibility.maximum` auf 14 erhöht wird
+- ✅ Port-Infrastruktur bereit für künftige Versionen
+
+**Port-Strategie:**
+- Ports sind nur für Hauptversionen zwischen `minimum` und `maximum` in module.json notwendig
+- Aktuell: `minimum: 13, maximum: 13` → nur v13 Port erforderlich ✅
+- Bei v14-Support: `maximum: 14` setzen → v14 Ports implementieren
+
+**Implementierte v13 Ports:**
+
+1. **FoundryGamePortV13** (`src/foundry/ports/v13/FoundryGamePort.ts`)
+   - Journal Entry Access
+   - `game.journal` API
+
+2. **FoundryHooksPortV13** (`src/foundry/ports/v13/FoundryHooksPort.ts`)
+   - Hook Registration (`Hooks.on()`, `Hooks.once()`)
+   - Hook Deregistration (`Hooks.off()`)
+
+3. **FoundryDocumentPortV13** (`src/foundry/ports/v13/FoundryDocumentPort.ts`)
+   - Document Flag Management (`getFlag()`, `setFlag()`)
+
+4. **FoundryUIPortV13** (`src/foundry/ports/v13/FoundryUIPort.ts`)
+   - DOM Manipulation
+   - UI Notifications
+
+5. **FoundrySettingsPortV13** (`src/foundry/ports/v13/FoundrySettingsPort.ts`)
+   - Settings Registration & Access
+   - `game.settings` API
+
+6. **FoundryI18nPortV13** (`src/foundry/ports/v13/FoundryI18nPort.ts`)
+   - i18n API (`game.i18n.localize()`, `game.i18n.format()`)
+
+---
+
+### Facades
+
+#### FoundryJournalFacade
+**Datei:** `src/foundry/facades/foundry-journal-facade.ts`  
+**Zweck:** Facade für Journal-Operations (kombiniert Game, Document, UI)  
+**Abhängigkeiten:**
+- `FoundryGameService` (foundryGameToken)
+- `FoundryDocumentService` (foundryDocumentToken)
+- `FoundryUIService` (foundryUIToken)
+
+**Reduziert Abhängigkeiten:** JournalVisibilityService von 4 → 2 (50% Reduktion)
+
+---
+
+### Zukunftssicherheit & Erweiterbarkeit
+
+Das Port-Adapter-Pattern wurde mit Blick auf zukünftige Foundry-Versionen entwickelt:
+
+**Design-Entscheidungen für Erweiterbarkeit:**
+1. **Factory-basierte Port-Registration**: Neue Versionen können hinzugefügt werden ohne bestehendes Code zu ändern
+2. **Automatische Version-Detection**: `PortSelector` erkennt Foundry-Version zur Laufzeit
+3. **Fallback-Strategie**: Bei fehlenden Ports automatischer Fallback auf ältere Versionen
+4. **Lazy Port Loading**: Verhindert Crashes durch inkompatible API-Aufrufe
+5. **Generic PortRegistry<T>**: Unterstützt beliebige Port-Typen und Versionen
+
+**Beispiel: v14 Port hinzufügen (nach API-Release):**
+```typescript
+// 1. Port implementieren
+class FoundryGamePortV14 implements FoundryGame {
+  // v14-spezifische Implementierung
+}
+
+// 2. In PortRegistry registrieren (dependencyconfig.ts)
+registerPortToRegistry(
+  gamePortRegistry,
+  14,  // Version Number
+  () => new FoundryGamePortV14(),  // Factory
+  "FoundryGame",
+  portRegistrationErrors
+);
+
+// 3. Fertig! PortSelector wählt automatisch v14 bei Foundry v14+
+```
+
+**Migration-Path für neue Versionen:**
+- Bestehender Code: Keine Änderungen notwendig
+- Service Layer: Version-agnostisch (keine Breaking Changes)
+- Port Layer: Nur neue Port-Klassen hinzufügen
+- Tests: Port-Selection-Tests erweitern
+
+---
+
+### Version Selection Infrastructure
+
+#### PortSelector
+**Datei:** `src/foundry/versioning/portselector.ts`  
+**Zweck:** Automatische Port-Selektion basierend auf Foundry-Version  
+**Abhängigkeiten:** Keine (Zero-Dependency Design!)
+
+**Features:**
+- Factory-basierte Port-Instantiation (verhindert Crashes)
+- Fallback-Strategie (v14 → v13 Fallback)
+- Event-basierte Observability (Observer Pattern)
+- `onEvent()` für externe Logger/Metrics-Integration
+
+**Design:** 
+- Observer Pattern (Event Emitter)
+- Strategy Pattern (Factory-basiert)
+
+---
+
+#### PortRegistry
+**Datei:** `src/foundry/versioning/portregistry.ts`  
+**Zweck:** Registry für Port-Factories nach Version  
+**Abhängigkeiten:** Keine
+
+**Features:**
+- `register()` - Port Factory Registrierung
+- `getFactories()` - Alle registrierten Factories
+- `getFactory()` - Specific Version Factory
+- Generic Type Support `<T>`
+
+---
+
+#### PortSelectionObserver
+**Datei:** `src/foundry/versioning/port-selection-observer.ts`  
+**Zweck:** Observer für PortSelector-Events (Logging, Metrics)  
+**Abhängigkeiten:**
+- `Logger`
+- `MetricsRecorder`
+
+**Features:**
+- Event-Handler für Success/Failure
+- Metrics Recording
+- Structured Logging
+
+---
+
+## Infrastruktur-Komponenten
+
+### Dependency Injection Container
+
+#### ServiceContainer
+**Datei:** `src/di_infrastructure/container.ts`  
+**Zweck:** Custom DI-Container (Facade Pattern)  
+**Abhängigkeiten:**
+- `ServiceRegistry` (Registration Management)
+- `ContainerValidator` (Dependency Validation)
+- `InstanceCache` (Singleton/Transient Cache)
+- `ServiceResolver` (Dependency Resolution)
+- `ScopeManager` (Scope & Disposal Management)
+
+**Features:**
+- `registerClass()`, `registerFactory()`, `registerValue()`, `registerAlias()`
+- `resolve()`, `resolveWithError()`, `resolveAsync()`
+- `validate()` - Dependency Graph Validation
+- `createScope()` - Child Container Creation
+- `dispose()` - Cascading Cleanup (Parent → Children)
+- Fallback Factories für kritische Services
+- Timeout-Protection (RESOLUTION_TIMEOUT_MS)
+
+**Design:**
+- Facade Pattern (delegiert an spezialisierte Komponenten)
+- Factory Pattern (createRoot)
+- Template Method Pattern (lazy resolution)
+
+---
+
+#### ServiceRegistry
+**Datei:** `src/di_infrastructure/registry/ServiceRegistry.ts`  
+**Zweck:** Service-Registrierungen verwalten  
+**Abhängigkeiten:** Keine
+
+**Features:**
+- Token → Registration Mapping
+- Lifecycle Management (SINGLETON, TRANSIENT, SCOPED)
+- Validation (duplicate, missing dependencies)
+
+---
+
+#### ContainerValidator
+**Datei:** `src/di_infrastructure/validation/ContainerValidator.ts`  
+**Zweck:** Dependency Graph Validation  
+**Abhängigkeiten:** Keine
+
+**Features:**
+- Missing Dependency Detection
+- Circular Dependency Detection (DFS-based)
+- Validation Caching
+
+---
+
+#### InstanceCache
+**Datei:** `src/di_infrastructure/cache/InstanceCache.ts`  
+**Zweck:** Singleton/Scoped Instance Caching  
+**Abhängigkeiten:** Keine
+
+**Features:**
+- `get()`, `set()`, `has()`, `clear()`
+- Metrics Recording (Cache Hit/Miss)
+
+---
+
+#### ServiceResolver
+**Datei:** `src/di_infrastructure/resolution/ServiceResolver.ts`  
+**Zweck:** Service-Auflösung & Instantiation  
+**Abhängigkeiten:**
+- `ServiceRegistry`
+- `InstanceCache`
+- `MetricsCollector` (optional, für Metrics)
+
+**Features:**
+- Recursive Dependency Resolution
+- Lifecycle-aware Caching
+- Metrics Recording (Resolution Time, Success/Failure)
+
+---
+
+#### ScopeManager
+**Datei:** `src/di_infrastructure/scope/ScopeManager.ts`  
+**Zweck:** Scope-Hierarchie & Cascading Disposal  
+**Abhängigkeiten:** Keine
+
+**Features:**
+- Parent-Child Tracking
+- Cascading Dispose (Parent → All Children)
+- Disposable Service Cleanup
+
+---
+
+### Core Bootstrap
+
+#### CompositionRoot
+**Datei:** `src/core/composition-root.ts`  
+**Zweck:** Bootstrap-Kernel für DI-Container  
+**Abhängigkeiten:**
+- `ServiceContainer`
+- `configureDependencies()`
+
+**Features:**
+- `bootstrap()` - Container Initialization & Configuration
+- `exposeToModuleApi()` - Public API Exposure (`game.modules.get(MODULE_ID).api`)
+- Performance Tracking (via BootstrapPerformanceTracker)
+
+**Lifecycle:**
+1. Bootstrap (Container erstellen)
+2. configureDependencies (Registrierungen)
+3. exposeToModuleApi (Public API)
+
+---
+
+#### Dependency Configuration
+**Datei:** `src/config/dependencyconfig.ts`  
+**Zweck:** Zentrale DI-Konfiguration  
+**Abhängigkeiten:**
+- Alle Services & Infrastructure-Komponenten
+
+**Features:**
+- `configureDependencies()` - Orchestriert alle Registrierungen
+- Port Registry Setup (v13 Ports)
+- Fallback Registration (Logger)
+- Service Registration (Core, Foundry, Utility, i18n)
+- Validation & Logger-Konfiguration
+
+**Registrierungs-Reihenfolge (kritisch!):**
+1. **Core Infrastructure**: ENV → MetricsCollector → Logger → ModuleHealthService
+2. **Utility Services**: PerformanceTracking, Retry
+3. **Port Infrastructure**: PortSelector → Port Registries → Ports
+4. **Foundry Services**: Game, Hooks, Document, UI, Settings, i18n
+5. **Facades**: FoundryJournalFacade
+6. **Business Services**: JournalVisibilityService
+7. **i18n Services**: Foundry i18n → Local i18n → i18n Facade
+8. **Validation**
+
+---
+
+## Dependency Map
+
+### Visual Dependency Graph
+
+```mermaid
+graph TD
+    %% Core Infrastructure
+    ENV[EnvironmentConfig]
+    METRICS[MetricsCollector]
+    LOGGER[ConsoleLoggerService]
+    HEALTH[ModuleHealthService]
+    
+    %% Utility Services
+    PERF[PerformanceTrackingService]
+    RETRY[RetryService]
+    
+    %% Port Infrastructure
+    PORT_SELECTOR[PortSelector]
+    PORT_REGISTRY[PortRegistry]
+    PORT_OBSERVER[PortSelectionObserver]
+    
+    %% Foundry Services
+    FOUNDRY_GAME[FoundryGameService]
+    FOUNDRY_HOOKS[FoundryHooksService]
+    FOUNDRY_DOC[FoundryDocumentService]
+    FOUNDRY_UI[FoundryUIService]
+    FOUNDRY_SETTINGS[FoundrySettingsService]
+    FOUNDRY_I18N[FoundryI18nService]
+    
+    %% Facades
+    JOURNAL_FACADE[FoundryJournalFacade]
+    I18N_FACADE[I18nFacadeService]
+    
+    %% Business Services
+    JOURNAL_VIS[JournalVisibilityService]
+    LOCAL_I18N[LocalI18nService]
+    
+    %% Dependencies
+    METRICS --> ENV
+    LOGGER --> ENV
+    HEALTH --> METRICS
+    
+    PERF --> ENV
+    PERF --> METRICS
+    
+    RETRY --> LOGGER
+    RETRY --> METRICS
+    
+    PORT_OBSERVER --> LOGGER
+    PORT_OBSERVER --> METRICS
+    
+    FOUNDRY_GAME --> PORT_SELECTOR
+    FOUNDRY_GAME --> PORT_REGISTRY
+    
+    FOUNDRY_HOOKS --> PORT_SELECTOR
+    FOUNDRY_HOOKS --> PORT_REGISTRY
+    FOUNDRY_HOOKS --> LOGGER
+    
+    FOUNDRY_DOC --> PORT_SELECTOR
+    FOUNDRY_DOC --> PORT_REGISTRY
+    
+    FOUNDRY_UI --> PORT_SELECTOR
+    FOUNDRY_UI --> PORT_REGISTRY
+    
+    FOUNDRY_SETTINGS --> PORT_SELECTOR
+    FOUNDRY_SETTINGS --> PORT_REGISTRY
+    
+    FOUNDRY_I18N --> PORT_SELECTOR
+    FOUNDRY_I18N --> PORT_REGISTRY
+    
+    JOURNAL_FACADE --> FOUNDRY_GAME
+    JOURNAL_FACADE --> FOUNDRY_DOC
+    JOURNAL_FACADE --> FOUNDRY_UI
+    
+    JOURNAL_VIS --> JOURNAL_FACADE
+    JOURNAL_VIS --> LOGGER
+    
+    I18N_FACADE --> FOUNDRY_I18N
+    I18N_FACADE --> LOCAL_I18N
+    
+    LOCAL_I18N --> ENV
+```
+
+---
+
+### Dependency Matrix
+
+| Service | Dependencies | Dependents |
+|---------|-------------|------------|
+| **EnvironmentConfig** | - | MetricsCollector, Logger, PerformanceTracking, LocalI18n, ErrorSanitizer |
+| **MetricsCollector** | ENV | ModuleHealthService, PortObserver, Retry, PerformanceTracking |
+| **ConsoleLoggerService** | ENV | FoundryHooksService, JournalVisibility, Retry, PortObserver |
+| **ModuleHealthService** | Container, Metrics | CompositionRoot (API) |
+| **PerformanceTrackingService** | ENV, Metrics | - |
+| **RetryService** | Logger, Metrics | - |
+| **PortSelector** | - | Alle Foundry Services |
+| **PortRegistry** | - | Alle Foundry Services |
+| **PortSelectionObserver** | Logger, Metrics | - |
+| **FoundryGameService** | PortSelector, PortRegistry | FoundryJournalFacade |
+| **FoundryHooksService** | PortSelector, PortRegistry, Logger | - |
+| **FoundryDocumentService** | PortSelector, PortRegistry | FoundryJournalFacade |
+| **FoundryUIService** | PortSelector, PortRegistry | FoundryJournalFacade |
+| **FoundrySettingsService** | PortSelector, PortRegistry | - |
+| **FoundryI18nService** | PortSelector, PortRegistry | I18nFacadeService |
+| **FoundryJournalFacade** | Game, Document, UI | JournalVisibilityService |
+| **JournalVisibilityService** | JournalFacade, Logger | - |
+| **LocalI18nService** | ENV | I18nFacadeService |
+| **I18nFacadeService** | FoundryI18n, LocalI18n | - |
+
+---
+
+### Dependency Depth Analysis
+
+**Level 0 (No Dependencies):**
+- EnvironmentConfig (CONFIG)
+- PortSelector
+- PortRegistry
+- Result Utilities
+- Async Utilities (Promise Timeout)
+- Event Utilities (Throttle, Debounce)
+- Trace Utilities
+
+**Level 1 (1 Dependency):**
+- MetricsCollector → ENV
+- ConsoleLoggerService → ENV
+- LocalI18nService → ENV
+- Error Sanitizer → ENV
+
+**Level 2 (2 Dependencies):**
+- PerformanceTrackingService → ENV, Metrics
+- RetryService → Logger, Metrics
+- PortSelectionObserver → Logger, Metrics
+- ModuleHealthService → Container, Metrics
+
+**Level 3 (3 Dependencies):**
+- Alle Foundry Services → PortSelector, PortRegistry, (optional Logger)
+- FoundryJournalFacade → Game, Document, UI
+
+**Level 4 (4 Dependencies):**
+- JournalVisibilityService → JournalFacade, Logger
+- I18nFacadeService → FoundryI18n, LocalI18n
+
+---
+
+## Architektur-Analyse
+
+### Stärken
+
+1. **Clean Architecture**: Klare Schichtentrennung
+   - Core (DI, Infrastructure)
+   - Services (Business Logic)
+   - Foundry Adapters (Port-Adapter-Pattern)
+
+2. **Result Pattern**: Konsistente, type-safe Error Handling ohne Exceptions
+
+3. **Dependency Injection**: 
+   - Testbarkeit (Mocking)
+   - Loose Coupling
+   - Automatic Dependency Resolution
+
+4. **Port-Adapter-Pattern**: 
+   - Version-Kompatibilität (v13, v14+)
+   - Factory-basierte Lazy Loading (verhindert Crashes)
+
+5. **Interface Segregation**: 
+   - `MetricsRecorder` / `MetricsSampler`
+   - Segregierte Foundry-Interfaces
+
+6. **Observer Pattern**: 
+   - PortSelector Event-basiert (Zero Dependencies)
+   - Decoupling von Observability
+
+7. **Facade Pattern**: 
+   - FoundryJournalFacade (4 → 2 Dependencies)
+   - I18nFacadeService (Foundry + Local Fallback)
+
+8. **Performance Optimizations**:
+   - Circular Buffer für Metrics (O(1))
+   - Lazy Port Loading
+   - Sampling-basiertes Performance Tracking
+
+9. **Code-Reuse**:
+   - `PerformanceTrackerImpl` (shared base class)
+   - Utility-Functions (Result, Async, Events)
+
+10. **Zukunftssicherheit**:
+   - Port-Adapter-Pattern für beliebige Foundry-Versionen
+   - Vorbereitet für v14+ (aktuell in Entwicklung)
+   - Fallback-Strategie verhindert Breaking Changes
+   - Factory-basierte Port-Registration ermöglicht einfache Erweiterung
+
+---
+
+### Schwächen & Verbesserungspotenziale
+
+#### 1. **Vorbereitung für zukünftige Foundry-Versionen**
+**Status:** ✅ **Projekt ist vorbereitet!**  
+**Kontext:** Foundry VTT v14 ist aktuell in Entwicklung (Stand: Nov 2025), API noch nicht veröffentlicht  
+**Versionskompatibilität:** Definiert in `module.json` (`compatibility.minimum/maximum`)
+
+**Aktueller Stand (module.json):**
+```json
+"compatibility": { "minimum": 13, "verified": 13, "maximum": 13 }
+```
+→ **Nur v13 Ports erforderlich** ✅ (vorhanden)
+
+**Architektur-Vorbereitung:**
+- ✅ Port-Adapter-Pattern implementiert
+- ✅ Factory-basierte Lazy Loading
+- ✅ Automatische Version-Detection
+- ✅ Fallback-Strategie (v14 → v13)
+- ✅ PortRegistry unterstützt beliebige Versionen
+
+**v14-Support aktivieren (sobald API verfügbar):**
+- [ ] Foundry v14 API-Änderungen analysieren
+- [ ] v14 Ports implementieren (6 Port-Typen)
+- [ ] `module.json` aktualisieren: `"maximum": 14`
+- [ ] Port-Selection-Tests erweitern
+- [ ] Integration-Tests mit v13/v14-Fallback
+
+**Geschätzter Aufwand:** ~8-16h (nach API-Release + module.json Update)
+
+---
+
+#### 2. **ModuleHealthService: Container Self-Reference**
+**Problem:** `ModuleHealthService` hat Self-Reference zum Container  
+**Impact:** Tight Coupling, Service Locator Anti-Pattern Risk  
+**Status:** ✅ **Breaking Changes erlaubt** (Pre-Release 0.x.x)
+
+**Refactoring (JETZT MÖGLICH):**
+- [x] **Health-Check-Registry implementieren** (empfohlen)
+  - Eliminiert Container-Reference komplett
+  - Bessere Testbarkeit
+  - Erweiterbar ohne Code-Änderungen
+  - Aufwand: ~4-6h
+- [ ] Alternative: Health-Checks via Event-System (Observer Pattern)
+
+**Empfehlung:** Sofort umsetzen (vor 1.0.0-Release)
+
+---
+
+#### 3. **Error Sanitizer: Hohe ENV-Coupling**
+**Problem:** `sanitizeErrorForProduction()` braucht ENV-Injection  
+**Impact:** Erhöht Dependency-Tree-Tiefe
+
+**Refactoring:**
+- [ ] Überlegen: ENV-Check via Static Flag statt Injection
+- [ ] Oder: Separate Production/Development Sanitizer-Klassen (Strategy Pattern)
+
+---
+
+#### 4. **Trace Utilities: Kein Integration mit Logger**
+**Problem:** `generateTraceId()` ist standalone, Logger hat `withTraceId()`  
+**Impact:** Trace-ID muss manuell generiert und gepasst werden
+
+**Refactoring:**
+- [ ] Logger-Method: `logger.trace(() => { ... })` auto-generiert Trace-ID
+- [ ] Oder: Trace-Context-Manager (Thread-Local-Storage Pattern)
+
+---
+
+#### 5. **Foundry Services: Duplizierter Lazy-Loading-Code**
+**Problem:** Alle 6 Foundry Services haben identischen `getPort()` Code  
+**Impact:** Code-Duplikation, Wartbarkeit
+
+**Refactoring:**
+- [ ] Base Class: `FoundryServiceBase<T>` mit `getPort()` Template Method
+- [ ] Oder: Decorator-Pattern: `withLazyPort(service)`
+
+**Beispiel:**
+```typescript
+abstract class FoundryServiceBase<T> {
+  private port: T | null = null;
+  
+  constructor(
+    private portSelector: PortSelector,
+    private portRegistry: PortRegistry<T>
+  ) {}
+  
+  protected getPort(): Result<T, FoundryError> {
+    if (this.port === null) {
+      const factories = this.portRegistry.getFactories();
+      const result = this.portSelector.selectPortFromFactories(factories);
+      if (!result.ok) return result;
+      this.port = result.value;
+    }
+    return { ok: true, value: this.port };
+  }
+}
+
+// Usage
+class FoundryGameService extends FoundryServiceBase<FoundryGame> {
+  getJournalEntries() {
+    const port = this.getPort();
+    if (!port.ok) return port;
+    return port.value.getJournalEntries();
+  }
+}
+```
+
+---
+
+#### 6. **I18n-Services: Doppelte Translation-Logik**
+**Problem:** I18nFacadeService hat Fallback-Logik in `translate()` und `format()`  
+**Impact:** Code-Duplikation
+
+**Refactoring:**
+- [ ] Private Helper: `tryTranslate(key, translator1, translator2, fallback)`
+- [ ] Oder: Chain-of-Responsibility-Pattern
+
+---
+
+#### 7. **Result Utilities: Fehlende Type-Coverage-Suppressions**
+**Problem:** Viele `/* type-coverage:ignore-next-line */` Comments  
+**Impact:** Type Safety Risk
+
+**Refactoring:**
+- [ ] Review: Sind alle Type-Casts wirklich notwendig?
+- [ ] Überlegen: Generics-Constraints verschärfen
+
+---
+
+#### 8. **Retry-Service: Legacy API Support**
+**Problem:** `retry()` hat backwards-compatible Signatur mit `| number`  
+**Impact:** API-Komplexität, Type Safety Risk  
+**Status:** ✅ **Breaking Changes erlaubt** (Pre-Release 0.x.x)
+
+**Refactoring (JETZT MÖGLICH):**
+- [x] **Legacy API entfernen** (empfohlen)
+  - Nur noch Options-Object-Signatur
+  - Bessere Type Safety
+  - Simplify API
+  - Aufwand: ~1-2h
+- [ ] Alternative: Deprecation-Warning hinzufügen
+
+**Empfehlung:** Sofort umsetzen (vor 1.0.0-Release)
+
+---
+
+#### 9. **Container: Lange Methode `configureDependencies()`**
+**Problem:** 640 Zeilen, viele Subfunctions  
+**Impact:** Wartbarkeit
+
+**Refactoring:**
+- [x] **BEREITS REFACTORED**: Subfunctions extrahiert (registerCoreServices, etc.)
+- [ ] Überlegen: Separate Config-Klassen pro Service-Kategorie
+
+---
+
+#### 10. **Metrics: Keine Persistierung**
+**Problem:** Metrics gehen bei Browser-Reload verloren  
+**Impact:** Keine Langzeit-Analyse
+
+**Refactoring:**
+- [ ] Metrics Persistierung (LocalStorage, IndexedDB)
+- [ ] Metrics Export (JSON, CSV)
+- [ ] Metrics Dashboard (Optional)
+
+---
+
+## Refactoring-Empfehlungen
+
+### Priorität: HOCH (Sofort umsetzbar)
+
+#### 1. Base Class für Foundry Services (Code-Deduplication)
+**Ziel:** Eliminiere duplizierte `getPort()` Logik  
+**Aufwand:** ~2-4h  
+**Impact:** Wartbarkeit ↑, Code-Duplikation ↓  
+**Breaking Changes:** Minimal (nur Implementation)
+
+**Umsetzung:**
+1. Erstelle `FoundryServiceBase<T>` Abstract Class
+2. Migriere alle 6 Foundry Services zu Base Class
+3. Tests aktualisieren
+
+---
+
+#### 2. Health-Check-Registry (Container Self-Reference eliminieren)
+**Ziel:** Eliminiere Container Self-Reference, bessere Architektur  
+**Aufwand:** ~4-6h  
+**Impact:** Architecture Cleanliness ↑, Testbarkeit ↑↑  
+**Breaking Changes:** ✅ **Erlaubt (Pre-Release)**
+
+**Umsetzung:**
+1. `HealthCheckRegistry` implementieren
+2. `ModuleHealthService` refactoren (keine Container-Reference)
+3. Health-Checks registrieren (Container, Ports, Foundry, Metrics)
+4. Tests erweitern
+
+**Vorher (Status Quo):**
+```typescript
+class ModuleHealthService {
+  constructor(
+    private container: ServiceContainer,  // ❌ Tight Coupling
+    private metrics: MetricsCollector
+  ) {}
+}
+```
+
+**Nachher (Refactored):**
+```typescript
+class ModuleHealthService {
+  constructor(
+    private registry: HealthCheckRegistry,  // ✅ Loose Coupling
+    private metrics: MetricsCollector
+  ) {}
+}
+```
+
+---
+
+#### 3. Trace-Context-Manager
+**Ziel:** Auto-Trace-ID-Generation  
+**Aufwand:** ~4-8h  
+**Impact:** Developer Experience ↑, Trace Correlation ↑  
+**Breaking Changes:** Minimal (additive API)
+
+**Umsetzung:**
+1. `TraceContext` Singleton/Service
+2. `logger.trace(() => { ... })` Method
+3. Auto-Trace-ID-Propagation via Async Context
+
+---
+
+### Priorität: MITTEL (Nächste Iteration)
+
+#### 4. Retry-Service: Legacy API entfernen
+**Ziel:** Simplify API, bessere Type Safety  
+**Aufwand:** ~1-2h  
+**Impact:** Type Safety ↑, API Simplicity ↑  
+**Breaking Changes:** ✅ **Erlaubt (Pre-Release 0.x.x)**  
+**Legacy-Code-Strategie:** ❌ Sofort entfernen (kein Deprecation-Zeitraum nötig)
+
+**Umsetzung:**
+1. Entferne `retry(fn, maxAttempts: number, delayMs: number)` Signatur komplett
+2. Nur noch `retry(fn, options: RetryOptions)` erlauben
+3. Entferne Legacy-API-Tests
+4. Alle Call-Sites migrieren (Breaking Change akzeptabel)
+
+**Nach 1.0.0:** Solche Changes würden Deprecation-Zeitraum erfordern (siehe [VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md))
+
+---
+
+#### 5. I18n-Facade-Refactoring (Chain of Responsibility)
+**Ziel:** Eliminiere Translation-Fallback-Duplikation  
+**Aufwand:** ~2-4h  
+**Impact:** Wartbarkeit ↑  
+**Breaking Changes:** Keine (nur Implementation)
+
+---
+
+#### 6. Metrics Persistierung
+**Ziel:** Langzeit-Metriken  
+**Aufwand:** ~4-8h  
+**Impact:** Observability ↑  
+**Breaking Changes:** Keine (additive Feature)
+
+---
+
+### Priorität: WARTEND
+
+#### 7. Foundry v14 Ports (sobald API verfügbar + module.json Update)
+**Ziel:** Support für neue Foundry-Version  
+**Status:** ⏳ **Wartend auf Foundry v14 API-Release**  
+**Trigger:** `module.json` → `compatibility.maximum` auf 14 erhöhen  
+**Aufwand:** ~8-16h (nach API-Veröffentlichung)  
+**Impact:** Foundry v14 Support ↑
+
+**Vorbereitung abgeschlossen:**
+- ✅ Port-Adapter-Infrastruktur vorhanden
+- ✅ Automatische Version-Detection
+- ✅ PortRegistry unterstützt neue Versionen
+- ✅ Fallback auf v13 konfiguriert
+- ✅ v13 Ports vollständig implementiert (aktuelles `maximum: 13`)
+
+**Umsetzung (nach v14-Release):**
+1. Foundry v14 API-Änderungen analysieren
+2. v14 Ports implementieren (6 Port-Typen)
+3. **`module.json` aktualisieren:** `"maximum": 14`
+4. Port-Selection-Tests erweitern
+5. Integration-Tests mit v13/v14-Fallback validieren
+
+---
+
+#### 8. Error Sanitizer: Strategy Pattern
+**Ziel:** Reduce ENV Coupling  
+**Aufwand:** ~2-4h  
+**Impact:** Testability ↑
+
+---
+
+#### 9. Dependency Config: Separate Config Classes
+**Ziel:** Verbesserte Modularität  
+**Aufwand:** ~4-8h  
+**Impact:** Wartbarkeit ↑ (aber niedrige Priorität, da bereits refactored)
+
+---
+
+## Fazit
+
+Das Projekt zeigt eine **professionelle, moderne Architektur** mit:
+- ✅ Clean Architecture
+- ✅ Type-Safe Error Handling (Result Pattern)
+- ✅ Dependency Injection
+- ✅ Port-Adapter-Pattern
+- ✅ Observability (Metrics, Logging, Tracing)
+
+**Hauptverbesserungspotenziale (sofort umsetzbar):**
+1. 🔴 **Base Class für Foundry Services** (Code-Duplikation, ~2-4h)
+2. 🔴 **Health-Check-Registry** (Container Self-Reference, ~4-6h)
+3. 🟡 **Trace-Context-Manager** (Developer Experience, ~4-8h)
+4. 🟡 **Retry-Service Legacy API entfernen** (Type Safety, ~1-2h)
+5. 🟢 **Metrics Persistierung** (Nice-to-Have, ~4-8h)
+6. ⏳ **v14 Ports** (wartet auf Foundry v14 API-Release, ~8-16h)
+
+**Gesamt-Aufwand Top 4:** ~12-20h (vor 1.0.0-Release empfohlen)
+
+---
+
+**Gesamt-Bewertung:** 
+- **Architektur-Qualität:** ⭐⭐⭐⭐⭐ (5/5)
+- **Code-Qualität:** ⭐⭐⭐⭐ (4/5)
+- **Testbarkeit:** ⭐⭐⭐⭐⭐ (5/5)
+- **Wartbarkeit:** ⭐⭐⭐⭐ (4/5)
+- **Performance:** ⭐⭐⭐⭐⭐ (5/5)
+
+**Empfehlung:** 
+1. **Sofort (vor 1.0.0):** Base Class Refactoring + Health-Check-Registry (~6-10h)
+2. **Nächste Iteration:** Trace-Context-Manager + Retry-Service Legacy API (~5-10h)
+3. **Bei Bedarf:** Metrics Persistierung (~4-8h)
+4. **Nach API-Release:** v14 Ports (~8-16h)
+
+**Begründung:** 
+- ✅ **Version 0.x.x:** Aggressives Refactoring erwünscht, Legacy-Codes eliminieren
+- ⚠️ **Ab Version 1.x.x:** Breaking Changes mit Deprecation-Strategie & Migrationspfad
+- 🎯 **Jetzt handeln:** Saubere Architektur vor 1.0.0-Release etablieren
+
+**Siehe auch:** [Versioning-Strategie](./VERSIONING_STRATEGY.md)
+

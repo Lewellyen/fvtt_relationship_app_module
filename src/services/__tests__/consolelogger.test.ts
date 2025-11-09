@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ConsoleLoggerService } from "../consolelogger";
 import { MODULE_CONSTANTS } from "@/constants";
 import { LogLevel } from "@/config/environment";
+import type { EnvironmentConfig } from "@/config/environment";
 
 describe("ConsoleLoggerService", () => {
   let logger: ConsoleLoggerService;
@@ -10,9 +11,11 @@ describe("ConsoleLoggerService", () => {
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
   let consoleInfoSpy: ReturnType<typeof vi.spyOn>;
   let consoleDebugSpy: ReturnType<typeof vi.spyOn>;
+  let mockEnv: EnvironmentConfig;
 
   beforeEach(() => {
-    logger = new ConsoleLoggerService();
+    mockEnv = { logLevel: LogLevel.INFO } as EnvironmentConfig;
+    logger = new ConsoleLoggerService(mockEnv);
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});

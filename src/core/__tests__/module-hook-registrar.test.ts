@@ -7,12 +7,14 @@ import { createMockContainer } from "@/test/mocks/foundry";
 import { MODULE_CONSTANTS } from "@/constants";
 import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
+import { RenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
 
 describe("ModuleHookRegistrar", () => {
   describe("registerAll", () => {
     it("should resolve all required services and register hook", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -32,7 +34,8 @@ describe("ModuleHookRegistrar", () => {
 
     it("should call processJournalDirectory when hook fires", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -60,7 +63,8 @@ describe("ModuleHookRegistrar", () => {
 
     it("should log debug message when hook fires", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -83,7 +87,8 @@ describe("ModuleHookRegistrar", () => {
 
     it("should log error when HTMLElement is invalid", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -112,7 +117,8 @@ describe("ModuleHookRegistrar", () => {
         error: { code: "OPERATION_FAILED", message: "Hook failed" },
       });
 
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
       registrar.registerAll(mockContainer as never);
 
       const mockLogger = mockContainer.getMockLogger();
@@ -128,7 +134,8 @@ describe("ModuleHookRegistrar", () => {
   describe("app parameter validation", () => {
     it("should reject null app parameter", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -153,7 +160,8 @@ describe("ModuleHookRegistrar", () => {
 
     it("should reject undefined app parameter", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -174,7 +182,8 @@ describe("ModuleHookRegistrar", () => {
 
     it("should reject app parameter without required id property", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -200,7 +209,8 @@ describe("ModuleHookRegistrar", () => {
 
     it("should accept valid app parameter", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -229,7 +239,8 @@ describe("ModuleHookRegistrar", () => {
   describe("jQuery compatibility", () => {
     it("should extract HTMLElement from jQuery object (numeric index)", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -254,7 +265,8 @@ describe("ModuleHookRegistrar", () => {
 
     it("should extract HTMLElement from jQuery with .get() method", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -277,7 +289,8 @@ describe("ModuleHookRegistrar", () => {
 
     it("should handle native HTMLElement (Foundry v13+)", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -296,7 +309,8 @@ describe("ModuleHookRegistrar", () => {
 
     it("should log error for invalid html argument", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 
@@ -316,7 +330,8 @@ describe("ModuleHookRegistrar", () => {
 
     it("should handle errors when accessing journal entry properties", () => {
       const mockContainer = createMockContainer();
-      const registrar = new ModuleHookRegistrar();
+      const realHook = new RenderJournalDirectoryHook();
+      const registrar = new ModuleHookRegistrar(realHook);
 
       registrar.registerAll(mockContainer as never);
 

@@ -317,7 +317,6 @@ export class ScopeManager {
     return (
       "dispose" in instance &&
       // Narrowing via Partial so we can check dispose presence without full interface
-      /* type-coverage:ignore-next-line */
       typeof (instance as Partial<Disposable>).dispose === "function"
     );
   }

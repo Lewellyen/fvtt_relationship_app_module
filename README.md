@@ -2,6 +2,10 @@
 
 Ein Foundry VTT Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken zwischen Akteuren und anderen Entitäten.
 
+**Version:** 0.8.0 (Pre-Release)  
+**Status:** ✅ Aktive Entwicklung - Aggressives Refactoring erwünscht!  
+**Foundry VTT:** v13+ (siehe `module.json`)
+
 ---
 
 ## 📋 Features
@@ -92,6 +96,10 @@ Foundry Adapter Layer (Services → Ports → Foundry API)
 - **Dependency Injection**: ServiceContainer mit Singleton/Transient/Scoped Lifecycles
 
 📖 **Detaillierte Dokumentation**: 
+- [PROJECT_ANALYSIS.md](./docs/PROJECT_ANALYSIS.md) - Vollständige Projektanalyse ⭐
+- [VERSIONING_STRATEGY.md](./docs/VERSIONING_STRATEGY.md) - Versioning & Breaking Changes ⭐ **NEU**
+- [DEPENDENCY_MAP.md](./docs/DEPENDENCY_MAP.md) - Service-Dependencies & Refactoring
+- [QUICK_REFERENCE.md](./docs/QUICK_REFERENCE.md) - Schnellreferenz für Entwickler
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Architektur-Details
 - [API.md](./docs/API.md) - Öffentliche API für andere Module
 
@@ -218,9 +226,11 @@ npm run test:watch
 - **Prettier** - Code Formatting
 
 ### Architecture
-- **Custom DI Container** - Dependency Injection
-- **Result Pattern** - Fehlerbehandlung
-- **Port-Adapter Pattern** - Multi-Version-Support
+- **Custom DI Container** - Dependency Injection mit Modular Config Structure
+- **Result Pattern** - Fehlerbehandlung ohne Exceptions
+- **Port-Adapter Pattern** - Multi-Version-Support (lazy instantiation)
+- **Self-Registration Pattern** - Observability via Self-Registration
+- **Type-Safe Tokens** - API-Safe Injection Tokens
 
 ---
 
@@ -246,6 +256,20 @@ npm run test:watch
 - **Result Pattern**: Alle externen Interaktionen geben `Result<T, E>` zurück
 - **No throw**: Verwende `Result` statt Exceptions für erwartbare Fehler
 - **UTF-8**: Alle Dateien in UTF-8 ohne BOM
+
+### Versioning & Breaking Changes
+
+**Aktuell (0.x.x):**
+- ✅ Breaking Changes erlaubt
+- ✅ Aggressives Refactoring erwünscht
+- ✅ Legacy-Codes sofort entfernen
+
+**Ab 1.0.0:**
+- ⚠️ Breaking Changes mit Deprecation-Strategie
+- 📋 Migrationspfad verpflichtend
+- 🔔 Deprecated-Zeitraum ≥1 Main-Version
+
+Siehe [VERSIONING_STRATEGY.md](./docs/VERSIONING_STRATEGY.md) für Details.
 
 ---
 
@@ -273,11 +297,21 @@ Probleme melden: [GitHub Issues](URL-hier-einfügen)
 
 ## 📝 Changelog
 
-### Version 0.0.11 (Aktuell)
-- Initiale Entwicklungsversion
-- Journal-Entry-Verstecken-Feature
-- Port-Adapter-Pattern für Multi-Version-Support
-- Clean Architecture mit DI
+Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Versionshistorie.
+
+### Version 0.8.0 (Aktuell - In Entwicklung)
+- ObservabilityRegistry & Self-Registration Pattern
+- Modular Config Structure (7 thematische Module)
+- Self-Configuring Services
+- DI-Managed Registrars
+- Conventional Commits im Release-Tool
+
+### Version 0.7.1
+- Bug-Fix: ci.yml Tool-Aufruf korrigiert
+
+### Version 0.7.0
+- Utilities zu Services umgebaut
+- DI-Infrastruktur erweitert
 
 ---
 

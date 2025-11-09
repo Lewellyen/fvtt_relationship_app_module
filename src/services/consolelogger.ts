@@ -1,6 +1,8 @@
 import type { Logger } from "@/interfaces/logger";
 import { MODULE_CONSTANTS } from "../constants";
 import { LogLevel } from "@/config/environment";
+import type { EnvironmentConfig } from "@/config/environment";
+import { environmentConfigToken } from "@/tokens/tokenindex";
 
 /**
  * Traced logger wrapper that includes a trace ID in all log messages.
@@ -74,11 +76,22 @@ class TracedLogger implements Logger {
  * Writes log messages to the browser console with support for interactive object inspection.
  * Supports configurable minimum log level for filtering.
  *
+ * Self-configuring: Receives EnvironmentConfig as dependency and initializes
+ * log level from environment configuration.
+ *
  * @implements {Logger}
  */
 export class ConsoleLoggerService implements Logger {
-  static dependencies = [] as const;
-  private minLevel: LogLevel = LogLevel.INFO;
+  static dependencies = [environmentConfigToken] as const;
+  private minLevel: LogLevel;
+
+  /**
+   * Creates a new ConsoleLoggerService.
+   * @param env - Environment configuration (provides initial log level)
+   */
+  constructor(env: EnvironmentConfig) {
+    this.minLevel = env.logLevel;
+  }
 
   /**
    * Sets the minimum log level. Messages below this level will be ignored.

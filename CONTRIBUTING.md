@@ -39,6 +39,7 @@ git checkout -b fix/my-bugfix
 - Schreibe sauberen, gut dokumentierten Code
 - Folge den bestehenden Code-Konventionen
 - Füge Tests für neue Features hinzu
+- **Wichtig**: Aktualisiere die `[Unreleased]` Sektion in `CHANGELOG.md` mit deinen Änderungen (siehe [Changelog Guidelines](#changelog-guidelines))
 
 ### 3. Code-Qualität prüfen
 
@@ -70,14 +71,42 @@ npm run test:watch
 
 ### 5. Commit erstellen
 
-Verwende aussagekräftige Commit-Messages im Format:
+Verwende **Conventional Commits** Format:
 
 ```
 feat: Add user authentication
+feat(api): Add new endpoint for relationships
 fix: Resolve journal loading issue
+fix(port-selector): Subscribe to events correctly
 docs: Update API documentation
+docs(adr): Add ADR for observability strategy
 test: Add tests for hook registration
 refactor: Improve port selection logic
+refactor(config): Split into modular structure
+chore: Update dependencies
+chore(deps): Bump vite to 5.0
+ci: Update GitHub Actions workflow
+```
+
+**Format:** `<type>[optional scope]: <description>`
+
+**Verfügbare Types:**
+- `feat` - Neues Feature
+- `fix` - Bug-Fix
+- `docs` - Dokumentation
+- `refactor` - Code-Refactoring (keine Features/Fixes)
+- `test` - Tests hinzufügen/ändern
+- `chore` - Wartungsarbeiten, Build, Dependencies
+- `ci` - CI/CD Änderungen
+- `perf` - Performance-Verbesserungen
+- `style` - Code-Formatierung (keine funktionalen Änderungen)
+- `release` - Release-Commits (automatisch via Release-Tool)
+
+**Optional: Breaking Changes markieren:**
+```
+feat(api)!: change response format
+
+BREAKING CHANGE: API now returns array instead of object
 ```
 
 ### 6. Pull Request erstellen
@@ -138,15 +167,21 @@ Konfiguriere deinen Editor:
 
 ```
 src/
-├── core/                  # Bootstrap & Orchestrierung
-├── di_infrastructure/     # Dependency Injection Container
-├── foundry/              # Foundry-Adapter (Ports & Services)
-│   ├── interfaces/       # Port-Interfaces
-│   ├── ports/v13/        # v13-spezifische Implementierungen
-│   └── services/         # Version-agnostische Service-Wrapper
-├── services/             # Business Logic Services
-├── utils/                # Utilities (Result-Pattern, etc.)
-└── types/                # Gemeinsame Type Definitions
+├── config/               # DI-Konfiguration
+│   ├── dependencyconfig.ts       # Orchestrator
+│   └── modules/                  # Thematische Config-Module
+├── core/                 # Bootstrap & Orchestrierung
+├── di_infrastructure/    # Dependency Injection Container
+├── foundry/             # Foundry-Adapter (Ports & Services)
+│   ├── interfaces/      # Port-Interfaces
+│   ├── ports/v13/       # v13-spezifische Implementierungen
+│   ├── services/        # Version-agnostische Service-Wrapper
+│   └── versioning/      # PortSelector, PortRegistry
+├── observability/       # Observability (Metrics, Registry, Tracking)
+├── services/            # Business Logic Services
+├── tokens/              # Injection Tokens (tokenindex.ts)
+├── types/               # Gemeinsame Type Definitions
+└── utils/               # Utilities (Result-Pattern, etc.)
 ```
 
 ## Architecture Guidelines
@@ -157,8 +192,27 @@ Für neue Foundry-Versionen:
 
 1. Interface in `foundry/interfaces/` definieren
 2. Port in `foundry/ports/v{version}/` implementieren
-3. In `dependencyconfig.ts` registrieren
+3. In entsprechendem Config-Modul unter `src/config/modules/` registrieren (z.B. `foundry-services.config.ts`)
 4. Keine Änderungen an Services nötig! 🎉
+
+### Modular Config Structure
+
+DI-Konfiguration ist in thematische Module aufgeteilt:
+
+```
+src/config/
+├── dependencyconfig.ts                (Orchestrator)
+├── modules/
+│   ├── core-services.config.ts        (Logger, Metrics, Environment)
+│   ├── observability.config.ts        (EventEmitter, ObservabilityRegistry)
+│   ├── port-infrastructure.config.ts  (PortSelector, PortRegistries)
+│   ├── foundry-services.config.ts     (FoundryGame, Hooks, Document, UI)
+│   ├── utility-services.config.ts     (Performance, Retry)
+│   ├── i18n-services.config.ts        (I18n Services)
+│   └── registrars.config.ts           (ModuleSettingsRegistrar, ModuleHookRegistrar)
+```
+
+**Neue Services in das passende thematische Modul einfügen!**
 
 ### Dependency Injection
 
@@ -192,13 +246,74 @@ match(result, {
 });
 ```
 
+## Changelog Guidelines
+
+**Wichtig:** Die `[Unreleased]` Sektion in `CHANGELOG.md` muss aktuell gehalten werden!
+
+### Bei jeder Änderung:
+
+1. Öffne `CHANGELOG.md`
+2. Füge deine Änderung in die passende Kategorie unter `[Unreleased]` ein:
+   - **Hinzugefügt** - Neue Features
+   - **Geändert** - Änderungen an bestehender Funktionalität
+   - **Fehlerbehebungen** - Bug-Fixes
+   - **Bekannte Probleme** - Bekannte Bugs/Einschränkungen
+   - **Upgrade-Hinweise** - Breaking Changes
+
+### Format:
+
+```markdown
+### Hinzugefügt
+- **Feature Name**: Kurze Beschreibung ([Details](docs/pfad/zur/dok.md#anchor))
+
+### Geändert
+- **Komponente**: Was wurde geändert ([Details](docs/pfad/zur/dok.md))
+
+### Fehlerbehebungen
+- **Bug**: Was wurde gefixt (ursprüngliches Problem beschreiben)
+```
+
+**Best Practices:**
+- ✅ Bold für Hauptthemen
+- ✅ Kurze, prägnante Beschreibung
+- ✅ Link zu weiterführender Dokumentation (ADRs, Architecture Docs, etc.)
+- ✅ Bei Bug-Fixes: Ursprüngliches Problem erwähnen
+
+### Beispiel:
+
+```markdown
+### Hinzugefügt
+- **ObservabilityRegistry**: Neuer zentraler Hub für Self-Registration Pattern ([Details](docs/adr/0006-observability-strategy.md))
+
+### Fehlerbehebungen
+- **PortSelector Events**: Events werden jetzt korrekt abonniert und geloggt (Bug: Events wurden emittiert aber nicht abonniert)
+```
+
 ## Release Process
 
-1. Version in `package.json` und `module.json` erhöhen
-2. Changelog in `docs/development/foundry/releases/` erstellen
-3. `npm run build` ausführen
-4. Git Tag erstellen: `git tag v0.0.15`
-5. Push mit Tags: `git push --tags`
+**Für Maintainer:** Releases werden mit dem Python-Release-Tool erstellt.
+
+### Automatisierter Workflow:
+
+```bash
+# Release-Tool starten
+python scripts/release_gui.py
+```
+
+Das Tool:
+1. ✅ Liest aktuelle Version aus `scripts/constants.cjs`
+2. ✅ Zeigt GUI zur Version-Auswahl (Major/Minor/Patch)
+3. ✅ Öffnet Modal mit vorbefüllten Changelog-Sektionen (aus `[Unreleased]`)
+4. ✅ Erlaubt Bearbeitung + optionale Commit-Bemerkung
+5. ✅ Aktualisiert automatisch:
+   - `scripts/constants.cjs`, `module.json`, `package.json`, `package-lock.json`
+   - `CHANGELOG.md` (Unreleased → neue Version)
+   - `docs/releases/v{version}.md` (Release Notes)
+6. ✅ Erstellt Conventional Commits: `release: v{version}`
+7. ✅ Erstellt Git-Tag mit strukturierter Message
+8. ✅ Pushed alles zu GitHub
+
+**Manuelle Schritte nicht mehr nötig!** Das Tool automatisiert den kompletten Release-Prozess.
 
 ## Getting Help
 
