@@ -4,7 +4,7 @@
  */
 
 import type { Result } from "@/types/result";
-import { ok, err } from "@/utils/result";
+import { ok, err } from "@/utils/functional/result";
 
 /**
  * Cached version result to avoid repeated game.version access.
@@ -74,21 +74,6 @@ export function getFoundryVersionResult(): Result<number, string> {
  */
 export function resetVersionCache(): void {
   cachedVersion = null;
-}
-
-/**
- * Gets the major version number of the currently running Foundry VTT instance.
- *
- * @deprecated Use getFoundryVersionResult() for proper error handling with Result pattern
- * @returns The major version number (e.g., 13 for "13.348")
- * @throws Error if game is not available or version cannot be determined
- */
-export function getFoundryVersion(): number {
-  const result = getFoundryVersionResult();
-  if (!result.ok) {
-    throw new Error(result.error);
-  }
-  return result.value;
 }
 
 /**

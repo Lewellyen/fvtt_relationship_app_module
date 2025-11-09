@@ -199,8 +199,11 @@ const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry")
 const foundrySettingsToken = createInjectionToken("FoundrySettings");
 const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
 const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
+const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
 const loggerToken = createInjectionToken("Logger");
 const metricsCollectorToken = createInjectionToken("MetricsCollector");
+const metricsRecorderToken = createInjectionToken("MetricsRecorder");
+const metricsSamplerToken = createInjectionToken("MetricsSampler");
 const journalVisibilityServiceToken = createInjectionToken(
   "JournalVisibilityService"
 );
@@ -209,6 +212,10 @@ const localI18nToken = createInjectionToken("LocalI18nService");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 const environmentConfigToken = createInjectionToken("EnvironmentConfig");
 const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
+const performanceTrackingServiceToken = createInjectionToken(
+  "PerformanceTrackingService"
+);
+const retryServiceToken = createInjectionToken("RetryService");
 var tokenindex = /* @__PURE__ */ Object.freeze({
   __proto__: null,
   environmentConfigToken,
@@ -218,8 +225,12 @@ var tokenindex = /* @__PURE__ */ Object.freeze({
   localI18nToken,
   loggerToken,
   metricsCollectorToken,
+  metricsRecorderToken,
+  metricsSamplerToken,
   moduleHealthServiceToken,
-  portSelectorToken
+  performanceTrackingServiceToken,
+  portSelectorToken,
+  retryServiceToken
 });
 const scriptRel = "modulepreload";
 const assetsURL = /* @__PURE__ */ __name(function(dep) {
@@ -879,58 +890,23 @@ const _InstanceCache = class _InstanceCache {
 };
 __name(_InstanceCache, "InstanceCache");
 let InstanceCache = _InstanceCache;
-function withPerformanceTracking(env, metricsCollector, operation, onComplete) {
-  if (!env.enablePerformanceTracking || !metricsCollector?.shouldSample()) {
-    return operation();
-  }
-  const startTime = performance.now();
-  const result = operation();
-  const duration = performance.now() - startTime;
-  if (onComplete) {
-    onComplete(duration, result);
-  }
-  return result;
-}
-__name(withPerformanceTracking, "withPerformanceTracking");
-async function withPerformanceTrackingAsync(env, metricsCollector, operation, onComplete) {
-  if (!env.enablePerformanceTracking || !metricsCollector?.shouldSample()) {
-    return operation();
-  }
-  const startTime = performance.now();
-  const result = await operation();
-  const duration = performance.now() - startTime;
-  if (onComplete) {
-    onComplete(duration, result);
-  }
-  return result;
-}
-__name(withPerformanceTrackingAsync, "withPerformanceTrackingAsync");
 const _ServiceResolver = class _ServiceResolver {
-  constructor(registry, cache, parentResolver, scopeName) {
+  constructor(registry, cache, parentResolver, scopeName, performanceTracker) {
     this.registry = registry;
     this.cache = cache;
     this.parentResolver = parentResolver;
     this.scopeName = scopeName;
+    this.performanceTracker = performanceTracker;
     this.metricsCollector = null;
-    this.env = null;
   }
   /**
-   * Sets the MetricsCollector for performance tracking.
+   * Sets the MetricsCollector for metrics recording.
    * Called by ServiceContainer after validation.
    *
    * @param collector - The metrics collector instance
    */
   setMetricsCollector(collector) {
     this.metricsCollector = collector;
-  }
-  /**
-   * Sets the EnvironmentConfig for performance tracking.
-   * Called by ServiceContainer after validation.
-   *
-   * @param env - The environment configuration instance
-   */
-  setEnvironmentConfig(env) {
-    this.env = env;
   }
   /**
    * Resolves a service by token.
@@ -941,22 +917,14 @@ const _ServiceResolver = class _ServiceResolver {
    * - Parent delegation for Singletons
    * - Factory error wrapping
    *
+   * Performance tracking is handled by the injected PerformanceTracker.
+   *
    * @template TServiceType - The type of service to resolve
    * @param token - The injection token identifying the service
    * @returns Result with service instance or error
    */
   resolve(token) {
-    const env = this.env ?? {
-      enablePerformanceTracking: false,
-      isDevelopment: false,
-      isProduction: true,
-      enableDebugMode: false,
-      logLevel: 1,
-      performanceSamplingRate: 0
-    };
-    return withPerformanceTracking(
-      env,
-      this.metricsCollector,
+    return this.performanceTracker.track(
       () => {
         const registration = this.registry.getRegistration(token);
         if (!registration) {
@@ -996,9 +964,11 @@ const _ServiceResolver = class _ServiceResolver {
         }
         return result;
       },
+      /* c8 ignore start -- Optional chaining is defensive: metricsCollector is always injected via constructor */
       (duration, result) => {
         this.metricsCollector?.recordResolution(token, duration, result.ok);
       }
+      /* c8 ignore stop */
     );
   }
   /**
@@ -1388,7 +1358,6 @@ const _ScopeManager = class _ScopeManager {
    */
   isAsyncDisposable(instance2) {
     return "disposeAsync" in instance2 && // Narrowing via Partial so we can check disposeAsync presence without full interface
-    /* type-coverage:ignore-next-line */
     typeof instance2.disposeAsync === "function";
   }
   /**
@@ -1452,6 +1421,104 @@ function withTimeout(promise2, timeoutMs) {
   ]);
 }
 __name(withTimeout, "withTimeout");
+var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
+  LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
+  LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
+  LogLevel2[LogLevel2["WARN"] = 2] = "WARN";
+  LogLevel2[LogLevel2["ERROR"] = 3] = "ERROR";
+  return LogLevel2;
+})(LogLevel || {});
+function parseSamplingRate(envValue, fallback2) {
+  const raw = parseFloat(envValue ?? String(fallback2));
+  return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback2;
+}
+__name(parseSamplingRate, "parseSamplingRate");
+const ENV = {
+  isDevelopment: true,
+  isProduction: false,
+  logLevel: true ? 0 : 1,
+  enablePerformanceTracking: true,
+  enableDebugMode: true,
+  // 1% sampling in production, 100% in development
+  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1
+};
+const _PerformanceTrackerImpl = class _PerformanceTrackerImpl {
+  /**
+   * Creates a performance tracker implementation.
+   *
+   * @param env - Environment configuration for tracking settings
+   * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
+   */
+  constructor(env, sampler) {
+    this.env = env;
+    this.sampler = sampler;
+  }
+  /**
+   * Tracks synchronous operation execution time.
+   *
+   * Only measures when:
+   * 1. Performance tracking is enabled (env.enablePerformanceTracking)
+   * 2. MetricsCollector is available
+   * 3. Sampling check passes (metricsCollector.shouldSample())
+   *
+   * @template T - Return type of the operation
+   * @param operation - Function to execute and measure
+   * @param onComplete - Optional callback invoked with duration and result
+   * @returns Result of the operation
+   */
+  track(operation, onComplete) {
+    if (!this.env.enablePerformanceTracking || !this.sampler?.shouldSample()) {
+      return operation();
+    }
+    const startTime = performance.now();
+    const result = operation();
+    const duration = performance.now() - startTime;
+    if (onComplete) {
+      onComplete(duration, result);
+    }
+    return result;
+  }
+  /**
+   * Tracks asynchronous operation execution time.
+   *
+   * Only measures when:
+   * 1. Performance tracking is enabled (env.enablePerformanceTracking)
+   * 2. MetricsCollector is available
+   * 3. Sampling check passes (metricsCollector.shouldSample())
+   *
+   * @template T - Return type of the async operation
+   * @param operation - Async function to execute and measure
+   * @param onComplete - Optional callback invoked with duration and result
+   * @returns Promise resolving to the operation result
+   */
+  async trackAsync(operation, onComplete) {
+    if (!this.env.enablePerformanceTracking || !this.sampler?.shouldSample()) {
+      return operation();
+    }
+    const startTime = performance.now();
+    const result = await operation();
+    const duration = performance.now() - startTime;
+    if (onComplete) {
+      onComplete(duration, result);
+    }
+    return result;
+  }
+};
+__name(_PerformanceTrackerImpl, "PerformanceTrackerImpl");
+let PerformanceTrackerImpl = _PerformanceTrackerImpl;
+const _BootstrapPerformanceTracker = class _BootstrapPerformanceTracker extends PerformanceTrackerImpl {
+  /**
+   * Creates a bootstrap performance tracker.
+   *
+   * @param env - Environment configuration for tracking settings
+   * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
+   */
+  constructor(env, sampler) {
+    super(env, sampler);
+  }
+};
+__name(_BootstrapPerformanceTracker, "BootstrapPerformanceTracker");
+let BootstrapPerformanceTracker = _BootstrapPerformanceTracker;
 const _ServiceContainer = class _ServiceContainer {
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
@@ -1484,6 +1551,10 @@ const _ServiceContainer = class _ServiceContainer {
    * This is the preferred way to create containers.
    * All components are created fresh for the root container.
    *
+   * **Bootstrap Performance Tracking:**
+   * Uses BootstrapPerformanceTracker with ENV and null MetricsCollector.
+   * MetricsCollector is injected later via setMetricsCollector() after validation.
+   *
    * @returns A new root ServiceContainer
    *
    * @example
@@ -1498,7 +1569,8 @@ const _ServiceContainer = class _ServiceContainer {
     const validator = new ContainerValidator();
     const cache = new InstanceCache();
     const scopeManager = new ScopeManager("root", null, cache);
-    const resolver = new ServiceResolver(registry, cache, null, "root");
+    const performanceTracker = new BootstrapPerformanceTracker(ENV, null);
+    const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
     return new _ServiceContainer(registry, validator, cache, resolver, scopeManager, "registering");
   }
   /**
@@ -1610,24 +1682,23 @@ const _ServiceContainer = class _ServiceContainer {
     return result;
   }
   /**
-   * Injects MetricsCollector and EnvironmentConfig into resolver and cache after validation.
-   * This enables performance tracking without circular dependencies during bootstrap.
+   * Injects MetricsCollector into resolver and cache after validation.
+   * This enables metrics recording without circular dependencies during bootstrap.
+   *
+   * Note: EnvironmentConfig is already injected via BootstrapPerformanceTracker
+   * during container creation, so only MetricsCollector needs to be injected here.
    */
   async injectMetricsCollector() {
-    const { metricsCollectorToken: metricsCollectorToken2, environmentConfigToken: environmentConfigToken2 } = await __vitePreload(async () => {
-      const { metricsCollectorToken: metricsCollectorToken3, environmentConfigToken: environmentConfigToken3 } = await Promise.resolve().then(function() {
+    const { metricsCollectorToken: metricsCollectorToken2 } = await __vitePreload(async () => {
+      const { metricsCollectorToken: metricsCollectorToken3 } = await Promise.resolve().then(function() {
         return tokenindex;
       });
-      return { metricsCollectorToken: metricsCollectorToken3, environmentConfigToken: environmentConfigToken3 };
+      return { metricsCollectorToken: metricsCollectorToken3 };
     }, true ? void 0 : void 0);
     const metricsResult = this.resolveWithError(metricsCollectorToken2);
     if (metricsResult.ok) {
       this.resolver.setMetricsCollector(metricsResult.value);
       this.cache.setMetricsCollector(metricsResult.value);
-    }
-    const envResult = this.resolveWithError(environmentConfigToken2);
-    if (envResult.ok) {
-      this.resolver.setEnvironmentConfig(envResult.value);
     }
   }
   /**
@@ -1751,12 +1822,14 @@ const _ServiceContainer = class _ServiceContainer {
     const childRegistry = this.registry.clone();
     const childCache = scopeResult.value.cache;
     const childManager = scopeResult.value.manager;
+    const childPerformanceTracker = new BootstrapPerformanceTracker(ENV, null);
     const childResolver = new ServiceResolver(
       childRegistry,
       childCache,
       this.resolver,
       // Parent resolver for singleton delegation
-      scopeResult.value.scopeName
+      scopeResult.value.scopeName,
+      childPerformanceTracker
     );
     const child = new _ServiceContainer(
       childRegistry,
@@ -1898,27 +1971,6 @@ Only the public ModuleApi should expose resolve() for external modules.`
 };
 __name(_ServiceContainer, "ServiceContainer");
 let ServiceContainer = _ServiceContainer;
-var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
-  LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
-  LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
-  LogLevel2[LogLevel2["WARN"] = 2] = "WARN";
-  LogLevel2[LogLevel2["ERROR"] = 3] = "ERROR";
-  return LogLevel2;
-})(LogLevel || {});
-function parseSamplingRate(envValue, fallback2) {
-  const raw = parseFloat(envValue ?? String(fallback2));
-  return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback2;
-}
-__name(parseSamplingRate, "parseSamplingRate");
-const ENV = {
-  isDevelopment: true,
-  isProduction: false,
-  logLevel: true ? 0 : 1,
-  enablePerformanceTracking: true,
-  enableDebugMode: true,
-  // 1% sampling in production, 100% in development
-  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1
-};
 const _TracedLogger = class _TracedLogger {
   constructor(baseLogger, traceId) {
     this.baseLogger = baseLogger;
@@ -9034,10 +9086,8 @@ function validateHookApp(app) {
 }
 __name(validateHookApp, "validateHookApp");
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(game2, document2, ui2, logger) {
-    this.game = game2;
-    this.document = document2;
-    this.ui = ui2;
+  constructor(facade, logger) {
+    this.facade = facade;
     this.logger = logger;
   }
   /**
@@ -9057,17 +9107,11 @@ const _JournalVisibilityService = class _JournalVisibilityService {
    * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
   getHiddenJournalEntries() {
-    const allEntriesResult = this.game.getJournalEntries();
+    const allEntriesResult = this.facade.getJournalEntries();
     if (!allEntriesResult.ok) return allEntriesResult;
     const hidden = [];
     for (const journal of allEntriesResult.value) {
-      const flagResult = this.document.getFlag(
-        // Journal entries from Foundry provide getFlag; cast retains narrow interface
-        /* type-coverage:ignore-next-line */
-        journal,
-        MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.FLAGS.HIDDEN
-      );
+      const flagResult = this.facade.getEntryFlag(journal, MODULE_CONSTANTS.FLAGS.HIDDEN);
       if (flagResult.ok) {
         if (flagResult.value === true) {
           hidden.push(journal);
@@ -9082,15 +9126,6 @@ const _JournalVisibilityService = class _JournalVisibilityService {
             errorMessage: flagResult.error.message
           }
         );
-        if (flagResult.error.code === "ACCESS_DENIED") {
-          const notifyResult = this.ui.notify(
-            "Some journal entries could not be accessed due to permissions",
-            "warning"
-          );
-          if (!notifyResult.ok) {
-            this.logger.warn("Failed to show UI notification", notifyResult.error);
-          }
-        }
       }
     }
     return { ok: true, value: hidden };
@@ -9114,7 +9149,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
   hideEntries(entries2, html) {
     for (const journal of entries2) {
       const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
-      const removeResult = this.ui.removeJournalElement(journal.id, journalName, html);
+      const removeResult = this.facade.removeJournalElement(journal.id, journalName, html);
       match(removeResult, {
         onOk: /* @__PURE__ */ __name(() => {
           this.logger.debug(`Removing journal entry: ${this.sanitizeForLog(journalName)}`);
@@ -9127,12 +9162,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
   }
 };
 __name(_JournalVisibilityService, "JournalVisibilityService");
-_JournalVisibilityService.dependencies = [
-  foundryGameToken,
-  foundryDocumentToken,
-  foundryUIToken,
-  loggerToken
-];
+_JournalVisibilityService.dependencies = [foundryJournalFacadeToken, loggerToken];
 let JournalVisibilityService = _JournalVisibilityService;
 const _MetricsCollector = class _MetricsCollector {
   constructor(env) {
@@ -9331,6 +9361,217 @@ const _ModuleHealthService = class _ModuleHealthService {
 __name(_ModuleHealthService, "ModuleHealthService");
 _ModuleHealthService.dependencies = [metricsCollectorToken];
 let ModuleHealthService = _ModuleHealthService;
+const _PerformanceTrackingService = class _PerformanceTrackingService extends PerformanceTrackerImpl {
+  constructor(env, sampler) {
+    super(env, sampler);
+  }
+};
+__name(_PerformanceTrackingService, "PerformanceTrackingService");
+_PerformanceTrackingService.dependencies = [environmentConfigToken, metricsSamplerToken];
+let PerformanceTrackingService = _PerformanceTrackingService;
+const _RetryService = class _RetryService {
+  constructor(logger, metricsCollector) {
+    this.logger = logger;
+    this.metricsCollector = metricsCollector;
+  }
+  /**
+   * Retries an async operation with exponential backoff.
+   *
+   * Useful for handling transient failures in external APIs (e.g., Foundry API calls).
+   *
+   * @template SuccessType - The success type of the operation
+   * @template ErrorType - The error type of the operation
+   * @param fn - Async function that returns a Result
+   * @param options - Retry configuration options (or legacy: maxAttempts number)
+   * @param legacyDelayMs - Legacy parameter for backward compatibility
+   * @returns Promise resolving to the Result (success or last error)
+   *
+   * @example
+   * ```typescript
+   * // New API with mapException (recommended for structured error types)
+   * const result = await retryService.retry(
+   *   () => foundryApi.fetchData(),
+   *   {
+   *     maxAttempts: 3,
+   *     delayMs: 100,
+   *     operationName: "fetchData",
+   *     mapException: (error, attempt) => ({
+   *       code: 'OPERATION_FAILED' as const,
+   *       message: `Attempt ${attempt} failed: ${String(error)}`
+   *     })
+   *   }
+   * );
+   *
+   * // Legacy API (backward compatible)
+   * const result = await retryService.retry(
+   *   () => foundryApi.fetchData(),
+   *   3, // maxAttempts
+   *   100 // delayMs
+   * );
+   * ```
+   */
+  async retry(fn, options = 3, legacyDelayMs) {
+    const opts = typeof options === "number" ? {
+      maxAttempts: options,
+      /* c8 ignore next -- Legacy API: delayMs default tested via other retry tests */
+      delayMs: legacyDelayMs ?? 100,
+      backoffFactor: 1,
+      /* c8 ignore next 2 -- Legacy unsafe cast function tested via legacy API tests */
+      /* type-coverage:ignore-next-line */
+      mapException: /* @__PURE__ */ __name((error) => error, "mapException"),
+      // Legacy unsafe cast
+      operationName: void 0
+    } : {
+      /* c8 ignore next -- Modern API: maxAttempts default tested in "should use default maxAttempts of 3" */
+      maxAttempts: options.maxAttempts ?? 3,
+      delayMs: options.delayMs ?? 100,
+      backoffFactor: options.backoffFactor ?? 1,
+      /* c8 ignore next 2 -- Default mapException tested when options.mapException is undefined */
+      /* type-coverage:ignore-next-line */
+      mapException: options.mapException ?? ((error) => error),
+      operationName: options.operationName ?? void 0
+    };
+    if (opts.maxAttempts < 1) {
+      return err(opts.mapException("maxAttempts must be >= 1", 0));
+    }
+    let lastError;
+    const startTime = performance.now();
+    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
+      try {
+        const result = await fn();
+        if (result.ok) {
+          if (attempt > 1 && opts.operationName) {
+            const duration = performance.now() - startTime;
+            this.logger.debug(
+              `Retry succeeded for "${opts.operationName}" after ${attempt} attempts (${duration.toFixed(2)}ms)`
+            );
+          }
+          return result;
+        }
+        lastError = result.error;
+        if (opts.operationName) {
+          this.logger.debug(
+            `Retry attempt ${attempt}/${opts.maxAttempts} failed for "${opts.operationName}"`,
+            { error: lastError }
+          );
+        }
+        if (attempt < opts.maxAttempts) {
+          const delay = opts.delayMs * Math.pow(attempt, opts.backoffFactor);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      } catch (error) {
+        lastError = opts.mapException(error, attempt);
+        if (opts.operationName) {
+          this.logger.warn(
+            `Retry attempt ${attempt}/${opts.maxAttempts} threw exception for "${opts.operationName}"`,
+            { error }
+          );
+        }
+        if (attempt < opts.maxAttempts) {
+          const delay = opts.delayMs * Math.pow(attempt, opts.backoffFactor);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
+    if (opts.operationName) {
+      const duration = performance.now() - startTime;
+      this.logger.warn(
+        `All retry attempts exhausted for "${opts.operationName}" after ${opts.maxAttempts} attempts (${duration.toFixed(2)}ms)`
+      );
+    }
+    return err(lastError);
+  }
+  /**
+   * Retries a synchronous operation.
+   * Similar to retry but for sync functions.
+   *
+   * @template SuccessType - The success type
+   * @template ErrorType - The error type
+   * @param fn - Function that returns a Result
+   * @param options - Retry configuration options (or legacy: maxAttempts number)
+   * @returns The Result (success or last error)
+   *
+   * @example
+   * ```typescript
+   * // New API with mapException (recommended for structured error types)
+   * const result = retryService.retrySync(
+   *   () => parseData(input),
+   *   {
+   *     maxAttempts: 3,
+   *     operationName: "parseData",
+   *     mapException: (error, attempt) => ({
+   *       code: 'PARSE_FAILED' as const,
+   *       message: `Parse attempt ${attempt} failed: ${String(error)}`
+   *     })
+   *   }
+   * );
+   *
+   * // Legacy API (backward compatible)
+   * const result = retryService.retrySync(
+   *   () => parseData(input),
+   *   3 // maxAttempts
+   * );
+   * ```
+   */
+  retrySync(fn, options = 3) {
+    const opts = typeof options === "number" ? {
+      maxAttempts: options,
+      /* c8 ignore next 2 -- Legacy unsafe cast function tested via legacy API tests */
+      /* type-coverage:ignore-next-line */
+      mapException: /* @__PURE__ */ __name((error) => error, "mapException"),
+      // Legacy unsafe cast
+      operationName: void 0
+    } : {
+      /* c8 ignore next -- Default maxAttempts tested in retry.test.ts */
+      maxAttempts: options.maxAttempts ?? 3,
+      /* c8 ignore next 2 -- Default mapException tested implicitly when options.mapException is undefined */
+      /* type-coverage:ignore-next-line */
+      mapException: options.mapException ?? ((error) => error),
+      operationName: options.operationName ?? void 0
+    };
+    if (opts.maxAttempts < 1) {
+      return err(opts.mapException("maxAttempts must be >= 1", 0));
+    }
+    let lastError;
+    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
+      try {
+        const result = fn();
+        if (result.ok) {
+          if (attempt > 1 && opts.operationName) {
+            this.logger.debug(
+              `Retry succeeded for "${opts.operationName}" after ${attempt} attempts`
+            );
+          }
+          return result;
+        }
+        lastError = result.error;
+        if (opts.operationName) {
+          this.logger.debug(
+            `Retry attempt ${attempt}/${opts.maxAttempts} failed for "${opts.operationName}"`,
+            { error: lastError }
+          );
+        }
+      } catch (error) {
+        lastError = opts.mapException(error, attempt);
+        if (opts.operationName) {
+          this.logger.warn(
+            `Retry attempt ${attempt}/${opts.maxAttempts} threw exception for "${opts.operationName}"`,
+            { error }
+          );
+        }
+      }
+    }
+    if (opts.operationName) {
+      this.logger.warn(
+        `All retry attempts exhausted for "${opts.operationName}" after ${opts.maxAttempts} attempts`
+      );
+    }
+    return err(lastError);
+  }
+};
+__name(_RetryService, "RetryService");
+_RetryService.dependencies = [loggerToken, metricsCollectorToken];
+let RetryService = _RetryService;
 let cachedVersion = null;
 function detectFoundryVersion() {
   if (typeof game === "undefined") {
@@ -9358,24 +9599,88 @@ function resetVersionCache() {
   cachedVersion = null;
 }
 __name(resetVersionCache, "resetVersionCache");
-function getFoundryVersion() {
-  const result = getFoundryVersionResult();
-  if (!result.ok) {
-    throw new Error(result.error);
-  }
-  return result.value;
-}
-__name(getFoundryVersion, "getFoundryVersion");
 function tryGetFoundryVersion() {
   const result = getFoundryVersionResult();
   return result.ok ? result.value : void 0;
 }
 __name(tryGetFoundryVersion, "tryGetFoundryVersion");
+const _PortSelectionEventEmitter = class _PortSelectionEventEmitter {
+  constructor() {
+    this.subscribers = [];
+  }
+  /**
+   * Subscribe to port selection events.
+   *
+   * @param callback - Function to call when events are emitted
+   * @returns Unsubscribe function
+   */
+  subscribe(callback) {
+    this.subscribers.push(callback);
+    return () => {
+      const index = this.subscribers.indexOf(callback);
+      if (index !== -1) {
+        this.subscribers.splice(index, 1);
+      }
+    };
+  }
+  /**
+   * Emit a port selection event to all subscribers.
+   *
+   * Events are dispatched synchronously.
+   *
+   * @param event - The event to emit
+   */
+  emit(event) {
+    for (const subscriber of this.subscribers) {
+      try {
+        subscriber(event);
+      } catch (error) {
+        console.error("PortSelectionEventEmitter: Subscriber error", error);
+      }
+    }
+  }
+  /**
+   * Remove all subscribers.
+   * Useful for cleanup in tests.
+   */
+  clear() {
+    this.subscribers = [];
+  }
+  /**
+   * Get current subscriber count.
+   * Useful for testing and diagnostics.
+   */
+  getSubscriberCount() {
+    return this.subscribers.length;
+  }
+};
+__name(_PortSelectionEventEmitter, "PortSelectionEventEmitter");
+let PortSelectionEventEmitter = _PortSelectionEventEmitter;
 const _PortSelector = class _PortSelector {
-  constructor(metricsCollector, logger, env) {
-    this.metricsCollector = metricsCollector;
-    this.logger = logger;
-    this.env = env;
+  constructor() {
+    this.eventEmitter = new PortSelectionEventEmitter();
+  }
+  /**
+   * Subscribe to port selection events.
+   *
+   * Allows observers to be notified of port selection success/failure for
+   * logging, metrics, and other observability concerns.
+   *
+   * @param callback - Function to call when port selection events occur
+   * @returns Unsubscribe function
+   *
+   * @example
+   * ```typescript
+   * const selector = new PortSelector();
+   * const unsubscribe = selector.onEvent((event) => {
+   *   if (event.type === 'success') {
+   *     console.log(`Port v${event.selectedVersion} selected`);
+   *   }
+   * });
+   * ```
+   */
+  onEvent(callback) {
+    return this.eventEmitter.subscribe(callback);
   }
   /**
    * Selects and instantiates the appropriate port from factories.
@@ -9402,94 +9707,82 @@ const _PortSelector = class _PortSelector {
    * ```
    */
   selectPortFromFactories(factories, foundryVersion, adapterName) {
-    return withPerformanceTracking(
-      this.env,
-      this.metricsCollector,
-      () => {
-        let version;
-        if (foundryVersion !== void 0) {
-          version = foundryVersion;
-        } else {
-          const versionResult = getFoundryVersionResult();
-          if (!versionResult.ok) {
-            const result2 = err(
-              createFoundryError(
-                "PORT_SELECTION_FAILED",
-                "Could not determine Foundry version",
-                void 0,
-                versionResult.error
-              )
-            );
-            return {
-              result: result2,
-              selectedVersion: MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED
-            };
-          }
-          version = versionResult.value;
-        }
-        let selectedFactory;
-        let selectedVersion = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
-        for (const [portVersion, factory] of factories.entries()) {
-          if (portVersion > version) {
-            continue;
-          }
-          if (portVersion > selectedVersion) {
-            selectedVersion = portVersion;
-            selectedFactory = factory;
-          }
-        }
-        if (selectedFactory === void 0) {
-          const availableVersions = Array.from(factories.keys()).sort((a, b) => a - b).join(", ");
-          this.metricsCollector.recordPortSelectionFailure(version);
-          this.logger.error("No compatible port found", {
-            foundryVersion: version,
-            availableVersions
-          });
-          const result2 = err(
-            createFoundryError(
-              "PORT_SELECTION_FAILED",
-              `No compatible port found for Foundry version ${version}`,
-              { version, availableVersions: availableVersions || "none" }
-            )
-          );
-          return { result: result2, selectedVersion: MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED };
-        }
-        let result;
-        try {
-          result = ok(selectedFactory());
-        } catch (error) {
-          this.metricsCollector.recordPortSelectionFailure(version);
-          this.logger.error("Port instantiation failed", {
-            selectedVersion,
-            foundryVersion: version,
-            error
-          });
-          result = err(
-            createFoundryError(
-              "PORT_SELECTION_FAILED",
-              `Failed to instantiate port v${selectedVersion}`,
-              { selectedVersion },
-              error
-            )
-          );
-        }
-        return { result, selectedVersion };
-      },
-      (duration, { result, selectedVersion }) => {
-        if (result && result.ok) {
-          if (this.env.enableDebugMode) {
-            this.logger.debug(
-              `Port selection completed in ${duration.toFixed(2)}ms (selected: v${selectedVersion}${adapterName ? ` for ${adapterName}` : ""})`
-            );
-          }
-          this.metricsCollector.recordPortSelection(selectedVersion);
-        }
+    const startTime = performance.now();
+    let version;
+    if (foundryVersion !== void 0) {
+      version = foundryVersion;
+    } else {
+      const versionResult = getFoundryVersionResult();
+      if (!versionResult.ok) {
+        return err(
+          createFoundryError(
+            "PORT_SELECTION_FAILED",
+            "Could not determine Foundry version",
+            void 0,
+            versionResult.error
+          )
+        );
       }
-    ).result;
+      version = versionResult.value;
+    }
+    let selectedFactory;
+    let selectedVersion = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
+    for (const [portVersion, factory] of factories.entries()) {
+      if (portVersion > version) {
+        continue;
+      }
+      if (portVersion > selectedVersion) {
+        selectedVersion = portVersion;
+        selectedFactory = factory;
+      }
+    }
+    if (selectedFactory === void 0) {
+      const availableVersions = Array.from(factories.keys()).sort((a, b) => a - b).join(", ");
+      const error = createFoundryError(
+        "PORT_SELECTION_FAILED",
+        `No compatible port found for Foundry version ${version}`,
+        { version, availableVersions: availableVersions || "none" }
+      );
+      this.eventEmitter.emit({
+        type: "failure",
+        foundryVersion: version,
+        availableVersions,
+        adapterName,
+        error
+      });
+      return err(error);
+    }
+    try {
+      const port = selectedFactory();
+      const durationMs = performance.now() - startTime;
+      this.eventEmitter.emit({
+        type: "success",
+        selectedVersion,
+        foundryVersion: version,
+        adapterName,
+        durationMs
+      });
+      return ok(port);
+    } catch (error) {
+      const foundryError = createFoundryError(
+        "PORT_SELECTION_FAILED",
+        `Failed to instantiate port v${selectedVersion}`,
+        { selectedVersion },
+        error
+      );
+      this.eventEmitter.emit({
+        type: "failure",
+        foundryVersion: version,
+        availableVersions: Array.from(factories.keys()).sort((a, b) => a - b).join(", "),
+        adapterName,
+        error: foundryError
+      });
+      return err(foundryError);
+    }
   }
 };
 __name(_PortSelector, "PortSelector");
-_PortSelector.dependencies = [metricsCollectorToken, loggerToken, environmentConfigToken];
+_PortSelector.dependencies = [];
 let PortSelector = _PortSelector;
 const _PortRegistry = class _PortRegistry {
   constructor() {
@@ -9593,6 +9886,52 @@ const _PortRegistry = class _PortRegistry {
 };
 __name(_PortRegistry, "PortRegistry");
 let PortRegistry = _PortRegistry;
+const _PortSelectionObserver = class _PortSelectionObserver {
+  constructor(logger, metrics) {
+    this.logger = logger;
+    this.metrics = metrics;
+  }
+  /**
+   * Handle a port selection event.
+   *
+   * Performs appropriate logging and metrics recording based on event type.
+   *
+   * @param event - The port selection event to handle
+   */
+  handleEvent(event) {
+    if (event.type === "success") {
+      this.handleSuccess(event);
+    } else {
+      this.handleFailure(event);
+    }
+  }
+  /**
+   * Handle successful port selection.
+   *
+   * Logs debug message and records metrics.
+   */
+  handleSuccess(event) {
+    this.logger.debug(
+      `Port selection completed in ${event.durationMs.toFixed(2)}ms (selected: v${event.selectedVersion}${event.adapterName ? ` for ${event.adapterName}` : ""})`
+    );
+    this.metrics.recordPortSelection(event.selectedVersion);
+  }
+  /**
+   * Handle failed port selection.
+   *
+   * Logs error and records failure metrics.
+   */
+  handleFailure(event) {
+    this.logger.error("No compatible port found", {
+      foundryVersion: event.foundryVersion,
+      availableVersions: event.availableVersions,
+      adapterName: event.adapterName
+    });
+    this.metrics.recordPortSelectionFailure(event.foundryVersion);
+  }
+};
+__name(_PortSelectionObserver, "PortSelectionObserver");
+let PortSelectionObserver = _PortSelectionObserver;
 const _FoundryGameService = class _FoundryGameService {
   constructor(portSelector, portRegistry) {
     this.port = null;
@@ -9990,6 +10329,54 @@ const _FoundryI18nService = class _FoundryI18nService {
 __name(_FoundryI18nService, "FoundryI18nService");
 _FoundryI18nService.dependencies = [portSelectorToken, foundryI18nPortRegistryToken];
 let FoundryI18nService = _FoundryI18nService;
+const _FoundryJournalFacade = class _FoundryJournalFacade {
+  constructor(game2, document2, ui2) {
+    this.game = game2;
+    this.document = document2;
+    this.ui = ui2;
+  }
+  /**
+   * Get all journal entries from Foundry.
+   *
+   * Delegates to FoundryGame.getJournalEntries().
+   */
+  getJournalEntries() {
+    return this.game.getJournalEntries();
+  }
+  /**
+   * Get a module flag from a journal entry.
+   *
+   * Delegates to FoundryDocument.getFlag() with module scope.
+   *
+   * @template T - The flag value type
+   * @param entry - The journal entry object
+   * @param key - The flag key
+   */
+  getEntryFlag(entry, key) {
+    return this.document.getFlag(
+      // Journal entries from Foundry provide getFlag; cast retains narrow interface
+      /* type-coverage:ignore-next-line */
+      entry,
+      MODULE_CONSTANTS.MODULE.ID,
+      key
+    );
+  }
+  /**
+   * Remove a journal element from the UI.
+   *
+   * Delegates to FoundryUI.removeJournalElement().
+   *
+   * @param id - Journal entry ID
+   * @param name - Journal entry name (for logging)
+   * @param html - HTML container element
+   */
+  removeJournalElement(id, name, html) {
+    return this.ui.removeJournalElement(id, name, html);
+  }
+};
+__name(_FoundryJournalFacade, "FoundryJournalFacade");
+_FoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
+let FoundryJournalFacade = _FoundryJournalFacade;
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -10610,6 +10997,14 @@ function registerCoreServices(container) {
   if (isErr(metricsResult)) {
     return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
   }
+  const recorderAliasResult = container.registerAlias(metricsRecorderToken, metricsCollectorToken);
+  if (isErr(recorderAliasResult)) {
+    return err(`Failed to register MetricsRecorder alias: ${recorderAliasResult.error.message}`);
+  }
+  const samplerAliasResult = container.registerAlias(metricsSamplerToken, metricsCollectorToken);
+  if (isErr(samplerAliasResult)) {
+    return err(`Failed to register MetricsSampler alias: ${samplerAliasResult.error.message}`);
+  }
   const loggerResult = container.registerClass(
     loggerToken,
     ConsoleLoggerService,
@@ -10707,6 +11102,13 @@ function registerPortInfrastructure(container) {
   );
   if (isErr(portSelectorResult)) {
     return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
+  }
+  const portSelectorResolve = container.resolveWithError(portSelectorToken);
+  const loggerResult = container.resolveWithError(loggerToken);
+  const recorderResult = container.resolveWithError(metricsRecorderToken);
+  if (portSelectorResolve.ok && loggerResult.ok && recorderResult.ok) {
+    const observer = new PortSelectionObserver(loggerResult.value, recorderResult.value);
+    portSelectorResolve.value.onEvent((event) => observer.handleEvent(event));
   }
   const portsResult = createPortRegistries();
   if (isErr(portsResult)) return portsResult;
@@ -10811,6 +11213,14 @@ function registerFoundryServices(container) {
       `Failed to register FoundrySettings service: ${settingsServiceResult.error.message}`
     );
   }
+  const journalFacadeResult = container.registerClass(
+    foundryJournalFacadeToken,
+    FoundryJournalFacade,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(journalFacadeResult)) {
+    return err(`Failed to register FoundryJournalFacade: ${journalFacadeResult.error.message}`);
+  }
   const journalVisibilityResult = container.registerClass(
     journalVisibilityServiceToken,
     JournalVisibilityService,
@@ -10824,6 +11234,28 @@ function registerFoundryServices(container) {
   return ok(void 0);
 }
 __name(registerFoundryServices, "registerFoundryServices");
+function registerUtilityServices(container) {
+  const perfTrackingResult = container.registerClass(
+    performanceTrackingServiceToken,
+    PerformanceTrackingService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(perfTrackingResult)) {
+    return err(
+      `Failed to register PerformanceTrackingService: ${perfTrackingResult.error.message}`
+    );
+  }
+  const retryServiceResult = container.registerClass(
+    retryServiceToken,
+    RetryService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(retryServiceResult)) {
+    return err(`Failed to register RetryService: ${retryServiceResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerUtilityServices, "registerUtilityServices");
 function registerI18nServices(container) {
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
@@ -10875,6 +11307,8 @@ function configureDependencies(container) {
   registerFallbacks(container);
   const coreResult = registerCoreServices(container);
   if (isErr(coreResult)) return coreResult;
+  const utilityResult = registerUtilityServices(container);
+  if (isErr(utilityResult)) return utilityResult;
   const portInfraResult = registerPortInfrastructure(container);
   if (isErr(portInfraResult)) return portInfraResult;
   const foundryServicesResult = registerFoundryServices(container);
@@ -10894,31 +11328,17 @@ const _CompositionRoot = class _CompositionRoot {
   /**
    * Erstellt den ServiceContainer und führt Basis-Registrierungen aus.
    * Misst Performance für Diagnose-Zwecke.
+   *
+   * **Performance Tracking:**
+   * Uses BootstrapPerformanceTracker with ENV (direct import) and null MetricsCollector.
+   * MetricsCollector is not yet available during bootstrap phase.
+   *
    * @returns Result mit initialisiertem Container oder Fehlermeldung
    */
   bootstrap() {
     const container = ServiceContainer.createRoot();
-    let env = null;
-    let metricsCollector = null;
-    const envResult = container.resolveWithError(environmentConfigToken);
-    if (envResult.ok) {
-      env = envResult.value;
-    }
-    const metricsResult = container.resolveWithError(metricsCollectorToken);
-    if (metricsResult.ok) {
-      metricsCollector = metricsResult.value;
-    }
-    const effectiveEnv = env ?? {
-      enablePerformanceTracking: false,
-      isDevelopment: false,
-      isProduction: true,
-      enableDebugMode: false,
-      logLevel: 1,
-      performanceSamplingRate: 0
-    };
-    const configured = withPerformanceTracking(
-      effectiveEnv,
-      metricsCollector,
+    const performanceTracker = new BootstrapPerformanceTracker(ENV, null);
+    const configured = performanceTracker.track(
       () => configureDependencies(container),
       /* c8 ignore start -- onComplete callback is only called when performance tracking is enabled and sampling passes */
       (duration) => {
@@ -11075,25 +11495,44 @@ function isJQueryObject(value2) {
   return "length" in obj && typeof obj.length === "number" && obj.length > 0 && "0" in obj;
 }
 __name(isJQueryObject, "isJQueryObject");
-const _ModuleHookRegistrar = class _ModuleHookRegistrar {
-  /**
-   * Registriert alle benötigten Hooks.
-   * @param container DI-Container mit final gebundenen Ports und Services
-   */
-  registerAll(container) {
+function extractHtmlElement(html) {
+  if (html instanceof HTMLElement) {
+    return html;
+  }
+  if (isJQueryObject(html) && html[0] instanceof HTMLElement) {
+    return html[0];
+  }
+  if (html && typeof html === "object" && "get" in html) {
+    const obj = html;
+    if (typeof obj.get === "function") {
+      try {
+        const element = obj.get(0);
+        if (element instanceof HTMLElement) {
+          return element;
+        }
+      } catch {
+      }
+    }
+  }
+  return null;
+}
+__name(extractHtmlElement, "extractHtmlElement");
+const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
+  constructor() {
+    this.unsubscribe = null;
+  }
+  register(container) {
     const foundryHooksResult = container.resolveWithError(foundryHooksToken);
     const loggerResult = container.resolveWithError(loggerToken);
     const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
     if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok) {
       if (loggerResult.ok) {
-        loggerResult.value.error("DI resolution failed in ModuleHookRegistrar", {
+        loggerResult.value.error("DI resolution failed in RenderJournalDirectoryHook", {
           foundryHooksResolved: foundryHooksResult.ok,
           journalVisibilityResolved: journalVisibilityResult.ok
         });
-      } else {
-        console.error("Failed to resolve required services for hook registration");
       }
-      return;
+      return err(new Error("Failed to resolve required services for RenderJournalDirectoryHook"));
     }
     const foundryHooks = foundryHooksResult.value;
     const logger = loggerResult.value;
@@ -11112,7 +11551,7 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
         );
         return;
       }
-      const htmlElement = this.extractHtmlElement(html);
+      const htmlElement = extractHtmlElement(html);
       if (!htmlElement) {
         logger.error("Failed to get HTMLElement from hook - incompatible format");
         return;
@@ -11132,47 +11571,104 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
           cause: hookResult.error.cause
         }
       );
+      return err(new Error(`Hook registration failed: ${hookResult.error.message}`));
+    }
+    return ok(void 0);
+  }
+  /* c8 ignore start -- Lifecycle method: Called when module is disabled; cleanup logic not testable in unit tests */
+  dispose() {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
+    }
+  }
+  /* c8 ignore stop */
+};
+__name(_RenderJournalDirectoryHook, "RenderJournalDirectoryHook");
+let RenderJournalDirectoryHook = _RenderJournalDirectoryHook;
+const _ModuleHookRegistrar = class _ModuleHookRegistrar {
+  constructor() {
+    this.hooks = [
+      new RenderJournalDirectoryHook()
+      // Add new hooks here
+    ];
+  }
+  /**
+   * Registers all hooks with Foundry VTT.
+   * @param container - DI container with registered services
+   */
+  registerAll(container) {
+    for (const hook of this.hooks) {
+      const result = hook.register(container);
+      if (!result.ok) {
+        console.error(`Failed to register hook: ${result.error.message}`);
+      }
     }
   }
   /**
-   * Extracts HTMLElement from hook argument (jQuery or native DOM).
-   *
-   * Foundry v10-12: hooks pass jQuery wrapper objects
-   * Foundry v13+: hooks pass native HTMLElement
-   *
-   * @param html - Hook argument (HTMLElement, jQuery, or unknown)
-   * @returns HTMLElement or null if extraction failed
+   * Dispose all hooks.
+   * Called when the module is disabled or reloaded.
    */
-  extractHtmlElement(html) {
-    if (html instanceof HTMLElement) {
-      return html;
+  /* c8 ignore start -- Lifecycle method: Called when module is disabled; not testable in unit tests */
+  disposeAll() {
+    for (const hook of this.hooks) {
+      hook.dispose();
     }
-    if (isJQueryObject(html) && html[0] instanceof HTMLElement) {
-      return html[0];
-    }
-    if (html && typeof html === "object" && "get" in html) {
-      const obj = html;
-      if (typeof obj.get === "function") {
-        try {
-          const element = obj.get(0);
-          if (element instanceof HTMLElement) {
-            return element;
-          }
-        } catch {
-        }
-      }
-    }
-    return null;
   }
+  /* c8 ignore stop */
 };
 __name(_ModuleHookRegistrar, "ModuleHookRegistrar");
 let ModuleHookRegistrar = _ModuleHookRegistrar;
+const logLevelSetting = {
+  key: MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+  createConfig(i18n, logger) {
+    return {
+      name: i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"),
+      hint: i18n.translate(
+        "MODULE.SETTINGS.logLevel.hint",
+        "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors."
+      ),
+      scope: "world",
+      config: true,
+      type: Number,
+      choices: {
+        [LogLevel.DEBUG]: i18n.translate(
+          "MODULE.SETTINGS.logLevel.choices.debug",
+          "DEBUG (All logs - for debugging)"
+        ),
+        [LogLevel.INFO]: i18n.translate("MODULE.SETTINGS.logLevel.choices.info", "INFO (Standard)"),
+        [LogLevel.WARN]: i18n.translate(
+          "MODULE.SETTINGS.logLevel.choices.warn",
+          "WARN (Warnings and errors only)"
+        ),
+        [LogLevel.ERROR]: i18n.translate(
+          "MODULE.SETTINGS.logLevel.choices.error",
+          "ERROR (Critical errors only)"
+        )
+      },
+      default: LogLevel.INFO,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        if (logger.setMinLevel) {
+          logger.setMinLevel(value2);
+          logger.info(`Log level changed to: ${LogLevel[value2]}`);
+        }
+      }, "onChange")
+    };
+  }
+};
 const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
+  constructor() {
+    this.settings = // Add new setting types here
+    [
+      logLevelSetting
+      // Add new settings here
+    ];
+  }
   /**
    * Registers all module settings.
    * Must be called during or after the 'init' hook.
    *
-   * @param container DI-Container with registered services
+   * @param container - DI container with registered services
    */
   registerAll(container) {
     const settingsResult = container.resolveWithError(foundrySettingsToken);
@@ -11189,50 +11685,15 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       }
       return;
     }
-    const settings = settingsResult.value;
+    const foundrySettings = settingsResult.value;
     const logger = loggerResult.value;
     const i18n = i18nResult.value;
-    const result = settings.register(
-      MODULE_CONSTANTS.MODULE.ID,
-      MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
-      {
-        name: i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"),
-        hint: i18n.translate(
-          "MODULE.SETTINGS.logLevel.hint",
-          "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors."
-        ),
-        scope: "world",
-        config: true,
-        type: Number,
-        choices: {
-          [LogLevel.DEBUG]: i18n.translate(
-            "MODULE.SETTINGS.logLevel.choices.debug",
-            "DEBUG (All logs - for debugging)"
-          ),
-          [LogLevel.INFO]: i18n.translate(
-            "MODULE.SETTINGS.logLevel.choices.info",
-            "INFO (Standard)"
-          ),
-          [LogLevel.WARN]: i18n.translate(
-            "MODULE.SETTINGS.logLevel.choices.warn",
-            "WARN (Warnings and errors only)"
-          ),
-          [LogLevel.ERROR]: i18n.translate(
-            "MODULE.SETTINGS.logLevel.choices.error",
-            "ERROR (Critical errors only)"
-          )
-        },
-        default: LogLevel.INFO,
-        onChange: /* @__PURE__ */ __name((value2) => {
-          if (logger.setMinLevel) {
-            logger.setMinLevel(value2);
-            logger.info(`Log level changed to: ${LogLevel[value2]}`);
-          }
-        }, "onChange")
+    for (const setting of this.settings) {
+      const config2 = setting.createConfig(i18n, logger);
+      const result = foundrySettings.register(MODULE_CONSTANTS.MODULE.ID, setting.key, config2);
+      if (!result.ok) {
+        logger.error(`Failed to register ${setting.key} setting`, result.error);
       }
-    );
-    if (!result.ok) {
-      logger.error("Failed to register log level setting", result.error);
     }
   }
 };

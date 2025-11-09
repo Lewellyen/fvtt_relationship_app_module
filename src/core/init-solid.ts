@@ -1,5 +1,5 @@
 import { MODULE_CONSTANTS } from "../constants";
-import { isOk } from "@/utils/result";
+import { isOk } from "@/utils/functional/result";
 import { loggerToken } from "@/tokens/tokenindex";
 import { CompositionRoot } from "@/core/composition-root";
 import { ModuleHookRegistrar } from "@/core/module-hook-registrar";

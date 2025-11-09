@@ -1,7 +1,7 @@
 import type { Result } from "@/types/result";
 import type { FoundryI18n } from "@/foundry/interfaces/FoundryI18n";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
-import { ok } from "@/utils/result";
+import { ok } from "@/utils/functional/result";
 
 /**
  * Foundry VTT v13+ implementation of the i18n interface.

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { generateTraceId, getTraceTimestamp } from "../trace";
+import { generateTraceId, getTraceTimestamp } from "@/utils/observability/trace";
 
 describe("Trace Utilities", () => {
   describe("generateTraceId", () => {

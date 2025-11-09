@@ -3,7 +3,7 @@ import type { ContainerError } from "../interfaces/containererror";
 import type { ServiceType } from "@/types/servicetypeindex";
 import type { Disposable, AsyncDisposable } from "../interfaces/disposable";
 import { InstanceCache } from "../cache/InstanceCache";
-import { ok, err, tryCatch, isErr } from "@/utils/result";
+import { ok, err, tryCatch, isErr } from "@/utils/functional/result";
 
 /**
  * Helper function to generate unique scope names.
@@ -332,8 +332,7 @@ export class ScopeManager {
     return (
       "disposeAsync" in instance &&
       // Narrowing via Partial so we can check disposeAsync presence without full interface
-      /* type-coverage:ignore-next-line */
-      typeof (instance as Partial<AsyncDisposable>).disposeAsync === "function"
+      typeof (instance as { disposeAsync?: unknown }).disposeAsync === "function"
     );
   }
 

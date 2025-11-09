@@ -1,34 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { JournalVisibilityService } from "../JournalVisibilityService";
-import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
-import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
-import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
+import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
 import type { Logger } from "@/interfaces/logger";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import { MODULE_CONSTANTS } from "@/constants";
-import { ok, err } from "@/utils/result";
+import { ok, err } from "@/utils/functional/result";
 import { createMockDOM } from "@/test/utils/test-helpers";
 
 describe("JournalVisibilityService", () => {
   let service: JournalVisibilityService;
-  let mockGame: FoundryGame;
-  let mockDocument: FoundryDocument;
-  let mockUI: FoundryUI;
+  let mockFacade: FoundryJournalFacade;
   let mockLogger: Logger;
 
   beforeEach(() => {
-    mockGame = {
+    mockFacade = {
       getJournalEntries: vi.fn().mockReturnValue(ok([])),
-      getJournalEntryById: vi.fn().mockReturnValue(ok(null)),
-    };
-    mockDocument = {
-      getFlag: vi.fn().mockReturnValue(ok(null)),
-      setFlag: vi.fn().mockResolvedValue(ok(undefined)),
-    };
-    mockUI = {
+      getEntryFlag: vi.fn().mockReturnValue(ok(null)),
       removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
-      findElement: vi.fn().mockReturnValue(ok(null)),
-      notify: vi.fn().mockReturnValue(ok(undefined)),
     };
     mockLogger = {
       debug: vi.fn(),
@@ -39,7 +27,7 @@ describe("JournalVisibilityService", () => {
       withTraceId: vi.fn(),
     };
 
-    service = new JournalVisibilityService(mockGame, mockDocument, mockUI, mockLogger);
+    service = new JournalVisibilityService(mockFacade, mockLogger);
   });
 
   describe("getHiddenJournalEntries", () => {
@@ -55,8 +43,8 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal1, journal2]));
-      mockDocument.getFlag = vi
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal1, journal2]));
+      mockFacade.getEntryFlag = vi
         .fn()
         .mockReturnValueOnce(ok(true)) // journal1 is hidden
         .mockReturnValueOnce(ok(false)); // journal2 is visible
@@ -76,8 +64,8 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
-      mockDocument.getFlag = vi.fn().mockReturnValue(ok(false));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(false));
 
       const result = service.getHiddenJournalEntries();
       expect(result.ok).toBe(true);
@@ -87,7 +75,7 @@ describe("JournalVisibilityService", () => {
     });
 
     it("should propagate error from getJournalEntries", () => {
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(err("Failed to get entries"));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(err("Failed to get entries"));
 
       const result = service.getHiddenJournalEntries();
       expect(result.ok).toBe(false);
@@ -103,8 +91,8 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
-      mockDocument.getFlag = vi.fn().mockReturnValue(err("Flag error"));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(err("Flag error"));
 
       const result = service.getHiddenJournalEntries();
       expect(result.ok).toBe(true);
@@ -113,44 +101,46 @@ describe("JournalVisibilityService", () => {
       }
     });
 
-    it("should show UI notification on ACCESS_DENIED error", () => {
+    it("should log warning on ACCESS_DENIED error", () => {
       const journal = {
         id: "journal-1",
         name: "Journal",
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
-      mockDocument.getFlag = vi
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
+      mockFacade.getEntryFlag = vi
         .fn()
         .mockReturnValue(err({ code: "ACCESS_DENIED", message: "Permission denied" }));
-      mockUI.notify = vi.fn().mockReturnValue(ok(undefined));
 
       const result = service.getHiddenJournalEntries();
 
       expect(result.ok).toBe(true);
-      expect(mockUI.notify).toHaveBeenCalledWith(
-        expect.stringContaining("could not be accessed"),
-        "warning"
+      // UI notifications removed from facade - only logging remains
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to read hidden flag"),
+        expect.any(Object)
       );
     });
 
-    it("should not show UI notification for non-ACCESS_DENIED errors", () => {
+    it("should log warning for non-ACCESS_DENIED errors", () => {
       const journal = {
         id: "journal-1",
         name: "Journal",
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
-      mockDocument.getFlag = vi
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
+      mockFacade.getEntryFlag = vi
         .fn()
         .mockReturnValue(err({ code: "NOT_FOUND", message: "Flag not found" }));
-      mockUI.notify = vi.fn().mockReturnValue(ok(undefined));
 
       service.getHiddenJournalEntries();
 
-      expect(mockUI.notify).not.toHaveBeenCalled();
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to read hidden flag"),
+        expect.any(Object)
+      );
     });
   });
 
@@ -162,8 +152,8 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
-      mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1">Hidden Journal</li>`
@@ -171,7 +161,7 @@ describe("JournalVisibilityService", () => {
 
       service.processJournalDirectory(container);
 
-      expect(mockUI.removeJournalElement).toHaveBeenCalledWith(
+      expect(mockFacade.removeJournalElement).toHaveBeenCalledWith(
         "journal-1",
         "Hidden Journal",
         container
@@ -181,7 +171,7 @@ describe("JournalVisibilityService", () => {
 
     it("should log error when getHiddenJournalEntries fails", () => {
       const errorMessage = "Error getting entries";
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(err(errorMessage));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(err(errorMessage));
 
       const { container } = createMockDOM(`<div>Content</div>`);
 
@@ -191,7 +181,7 @@ describe("JournalVisibilityService", () => {
         "Error getting hidden journal entries",
         errorMessage
       );
-      expect(mockUI.removeJournalElement).not.toHaveBeenCalled();
+      expect(mockFacade.removeJournalElement).not.toHaveBeenCalled();
     });
 
     it("should log warning when removeJournalElement fails", () => {
@@ -201,10 +191,10 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
-      mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
       const errorMessage = "Element not found";
-      mockUI.removeJournalElement = vi.fn().mockReturnValue(err(errorMessage));
+      mockFacade.removeJournalElement = vi.fn().mockReturnValue(err(errorMessage));
 
       const { container } = createMockDOM(`<div>Content</div>`);
 
@@ -225,8 +215,8 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal1, journal2]));
-      mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal1, journal2]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
 
       const { container } = createMockDOM(`
         <li class="directory-item" data-entry-id="journal-1">Hidden 1</li>
@@ -235,7 +225,7 @@ describe("JournalVisibilityService", () => {
 
       service.processJournalDirectory(container);
 
-      expect(mockUI.removeJournalElement).toHaveBeenCalledTimes(2);
+      expect(mockFacade.removeJournalElement).toHaveBeenCalledTimes(2);
     });
 
     it("should use default name when journal name is missing", () => {
@@ -245,8 +235,8 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
-      mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1"></li>`
@@ -254,7 +244,7 @@ describe("JournalVisibilityService", () => {
 
       service.processJournalDirectory(container);
 
-      expect(mockUI.removeJournalElement).toHaveBeenCalledWith(
+      expect(mockFacade.removeJournalElement).toHaveBeenCalledWith(
         "journal-1",
         MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
         container
@@ -268,8 +258,8 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([xssJournal]));
-      mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([xssJournal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1"></li>`
@@ -289,8 +279,8 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([xssJournal]));
-      mockDocument.getFlag = vi.fn().mockReturnValue(
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([xssJournal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(
         err({
           code: "OPERATION_FAILED" as const,
           message: "Failed to read flag",
@@ -322,8 +312,8 @@ describe("JournalVisibilityService", () => {
         } as unknown as FoundryJournalEntry);
       }
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok(manyJournals));
-      mockDocument.getFlag = vi.fn().mockReturnValue(ok(false));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok(manyJournals));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(false));
 
       const startTime = performance.now();
       service.getHiddenJournalEntries();
@@ -331,7 +321,7 @@ describe("JournalVisibilityService", () => {
 
       // Should complete within 100ms
       expect(duration).toBeLessThan(100);
-      expect(mockGame.getJournalEntries).toHaveBeenCalledTimes(1);
+      expect(mockFacade.getJournalEntries).toHaveBeenCalledTimes(1);
     });
 
     it("should handle malformed journal objects gracefully", () => {
@@ -341,8 +331,8 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([malformedJournal]));
-      mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([malformedJournal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
 
       const result = service.getHiddenJournalEntries();
 
@@ -361,8 +351,8 @@ describe("JournalVisibilityService", () => {
         getFlag: vi.fn(),
       } as unknown as FoundryJournalEntry;
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
-      mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1"></li>`
@@ -373,7 +363,7 @@ describe("JournalVisibilityService", () => {
         service.processJournalDirectory(container);
       }).not.toThrow();
 
-      expect(mockUI.removeJournalElement).toHaveBeenCalled();
+      expect(mockFacade.removeJournalElement).toHaveBeenCalled();
     });
 
     it("should handle mixed success/failure when reading flags", () => {
@@ -395,10 +385,10 @@ describe("JournalVisibilityService", () => {
         },
       ] as unknown as FoundryJournalEntry[];
 
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok(journals));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok(journals));
 
       // Mixed results: first fails, second succeeds with true, third succeeds with false
-      mockDocument.getFlag = vi
+      mockFacade.getEntryFlag = vi
         .fn()
         .mockReturnValueOnce(err({ code: "OPERATION_FAILED" as const, message: "Error" }))
         .mockReturnValueOnce(ok(true))
@@ -417,7 +407,7 @@ describe("JournalVisibilityService", () => {
     });
 
     it("should handle empty journal list", () => {
-      mockGame.getJournalEntries = vi.fn().mockReturnValue(ok([]));
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([]));
 
       const result = service.getHiddenJournalEntries();
 
@@ -425,7 +415,7 @@ describe("JournalVisibilityService", () => {
       if (result.ok) {
         expect(result.value).toHaveLength(0);
       }
-      expect(mockDocument.getFlag).not.toHaveBeenCalled();
+      expect(mockFacade.getEntryFlag).not.toHaveBeenCalled();
     });
   });
 });

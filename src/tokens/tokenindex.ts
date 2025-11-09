@@ -2,11 +2,15 @@ import { createInjectionToken } from "@/di_infrastructure/tokenutilities";
 import type { Logger } from "@/interfaces/logger";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
 import type { MetricsCollector } from "@/observability/metrics-collector";
+import type { MetricsRecorder } from "@/observability/interfaces/metrics-recorder";
+import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
 import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import type { LocalI18nService } from "@/services/LocalI18nService";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import type { EnvironmentConfig } from "@/config/environment";
 import type { ModuleHealthService } from "@/core/module-health-service";
+import type { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
+import type { RetryService } from "@/services/RetryService";
 
 /**
  * Injection token for the application logger service.
@@ -38,6 +42,44 @@ export const loggerToken = createInjectionToken<Logger>("Logger");
  * ```
  */
 export const metricsCollectorToken = createInjectionToken<MetricsCollector>("MetricsCollector");
+
+/**
+ * Injection token for the MetricsRecorder interface.
+ *
+ * Provides minimal recording capability without full MetricsCollector features.
+ * Use this token when you only need to record metrics, not query or sample them.
+ *
+ * **Design:** Implements Interface Segregation Principle - depend on minimal interface.
+ *
+ * @example
+ * ```typescript
+ * class MyService {
+ *   static dependencies = [metricsRecorderToken] as const;
+ *   constructor(private recorder: MetricsRecorder) {}
+ *   // Can record but not query metrics
+ * }
+ * ```
+ */
+export const metricsRecorderToken = createInjectionToken<MetricsRecorder>("MetricsRecorder");
+
+/**
+ * Injection token for the MetricsSampler interface.
+ *
+ * Provides sampling decision capability without full MetricsCollector features.
+ * Use this token when you only need to check if sampling should occur.
+ *
+ * **Design:** Implements Interface Segregation Principle - depend on minimal interface.
+ *
+ * @example
+ * ```typescript
+ * class PerformanceTracker {
+ *   static dependencies = [metricsSamplerToken] as const;
+ *   constructor(private sampler: MetricsSampler) {}
+ *   // Can check sampling but not record or query
+ * }
+ * ```
+ */
+export const metricsSamplerToken = createInjectionToken<MetricsSampler>("MetricsSampler");
 
 /**
  * Injection token for the JournalVisibilityService.
@@ -148,6 +190,39 @@ export const environmentConfigToken = createInjectionToken<EnvironmentConfig>("E
  */
 export const moduleHealthServiceToken =
   createInjectionToken<ModuleHealthService>("ModuleHealthService");
+
+/**
+ * Injection token for the PerformanceTrackingService.
+ *
+ * Provides centralized performance tracking with sampling support.
+ * Automatically injects EnvironmentConfig and MetricsCollector.
+ *
+ * @example
+ * ```typescript
+ * const perfService = container.resolve(performanceTrackingServiceToken);
+ * const result = perfService.track(() => expensiveOperation());
+ * ```
+ */
+export const performanceTrackingServiceToken = createInjectionToken<PerformanceTrackingService>(
+  "PerformanceTrackingService"
+);
+
+/**
+ * Injection token for the RetryService.
+ *
+ * Provides retry operations with exponential backoff and automatic logging.
+ * Automatically injects Logger and MetricsCollector.
+ *
+ * @example
+ * ```typescript
+ * const retryService = container.resolve(retryServiceToken);
+ * const result = await retryService.retry(
+ *   () => fetchData(),
+ *   { maxAttempts: 3, operationName: "fetchData" }
+ * );
+ * ```
+ */
+export const retryServiceToken = createInjectionToken<RetryService>("RetryService");
 
 /**
  * Re-export port-related tokens for convenience.

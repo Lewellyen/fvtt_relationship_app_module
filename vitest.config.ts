@@ -16,6 +16,7 @@ export default defineConfig({
     tsconfigPaths(),
   ],
   test: {
+    watch: false, // Disable watch mode by default (use test:watch for interactive mode)
     environment: "happy-dom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
@@ -39,6 +40,7 @@ export default defineConfig({
         "**/*.spec.ts",
         // Pure type/interface files
         "src/**/interfaces/**",
+        "**/*.interface.ts", // Interface files with no runtime code
         "src/types/**",
         "src/foundry/types.ts",
         "src/config/environment.ts",

@@ -13,6 +13,7 @@ import type { FoundrySettings } from "./interfaces/FoundrySettings";
 import type { FoundryI18n } from "./interfaces/FoundryI18n";
 import type { PortSelector } from "./versioning/portselector";
 import type { PortRegistry } from "./versioning/portregistry";
+import type { FoundryJournalFacade } from "./facades/foundry-journal-facade.interface";
 
 /**
  * Injection token for FoundryGame service.
@@ -149,3 +150,26 @@ export const foundrySettingsPortRegistryToken: InjectionToken<PortRegistry<Found
  */
 export const foundryI18nPortRegistryToken: InjectionToken<PortRegistry<FoundryI18n>> =
   createInjectionToken<PortRegistry<FoundryI18n>>("FoundryI18nPortRegistry");
+
+/**
+ * Injection token for FoundryJournalFacade.
+ *
+ * Facade that combines FoundryGame, FoundryDocument, and FoundryUI
+ * for journal-specific operations.
+ *
+ * **Benefits:**
+ * - Reduces dependency count from 3 services to 1 facade
+ * - Provides cohesive journal-specific API
+ * - Easier to test and mock
+ *
+ * @example
+ * ```typescript
+ * const facade = container.resolve(foundryJournalFacadeToken);
+ * const entries = facade.getJournalEntries();
+ * if (entries.ok) {
+ *   // Process entries
+ * }
+ * ```
+ */
+export const foundryJournalFacadeToken: InjectionToken<FoundryJournalFacade> =
+  createInjectionToken<FoundryJournalFacade>("FoundryJournalFacade");

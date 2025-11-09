@@ -6,10 +6,9 @@ import type { ServiceRegistry } from "../registry/ServiceRegistry";
 import type { ServiceRegistration } from "../types/serviceregistration";
 import { InstanceCache } from "../cache/InstanceCache";
 import { ServiceLifecycle } from "../types/servicelifecycle";
-import { ok, err } from "@/utils/result";
+import { ok, err } from "@/utils/functional/result";
 import type { MetricsCollector } from "@/observability/metrics-collector";
-import type { EnvironmentConfig } from "@/config/environment";
-import { withPerformanceTracking } from "@/utils/performance-utils";
+import type { PerformanceTracker } from "@/interfaces/performance-tracker";
 
 /**
  * Resolves service instances based on lifecycle and registration.
@@ -24,37 +23,28 @@ import { withPerformanceTracking } from "@/utils/performance-utils";
  * - Works with Result pattern (no throws)
  * - Wraps factory errors in FactoryFailedError
  * - Parent resolver for Singleton sharing across scopes
- * - MetricsCollector injected after container validation for performance tracking
+ * - PerformanceTracker injected via constructor (avoids circular dependency)
+ * - MetricsCollector injected after container validation for metrics recording
  */
 export class ServiceResolver {
   private metricsCollector: MetricsCollector | null = null;
-  private env: EnvironmentConfig | null = null;
 
   constructor(
     private readonly registry: ServiceRegistry,
     private readonly cache: InstanceCache,
     private readonly parentResolver: ServiceResolver | null,
-    private readonly scopeName: string
+    private readonly scopeName: string,
+    private readonly performanceTracker: PerformanceTracker
   ) {}
 
   /**
-   * Sets the MetricsCollector for performance tracking.
+   * Sets the MetricsCollector for metrics recording.
    * Called by ServiceContainer after validation.
    *
    * @param collector - The metrics collector instance
    */
   setMetricsCollector(collector: MetricsCollector): void {
     this.metricsCollector = collector;
-  }
-
-  /**
-   * Sets the EnvironmentConfig for performance tracking.
-   * Called by ServiceContainer after validation.
-   *
-   * @param env - The environment configuration instance
-   */
-  setEnvironmentConfig(env: EnvironmentConfig): void {
-    this.env = env;
   }
 
   /**
@@ -66,6 +56,8 @@ export class ServiceResolver {
    * - Parent delegation for Singletons
    * - Factory error wrapping
    *
+   * Performance tracking is handled by the injected PerformanceTracker.
+   *
    * @template TServiceType - The type of service to resolve
    * @param token - The injection token identifying the service
    * @returns Result with service instance or error
@@ -73,19 +65,7 @@ export class ServiceResolver {
   resolve<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>
   ): Result<TServiceType, ContainerError> {
-    // Use default ENV if not injected yet (during bootstrap)
-    const env = this.env ?? {
-      enablePerformanceTracking: false,
-      isDevelopment: false,
-      isProduction: true,
-      enableDebugMode: false,
-      logLevel: 1,
-      performanceSamplingRate: 0,
-    };
-
-    return withPerformanceTracking(
-      env,
-      this.metricsCollector,
+    return this.performanceTracker.track(
       () => {
         // Check if service is registered
         const registration = this.registry.getRegistration(token);

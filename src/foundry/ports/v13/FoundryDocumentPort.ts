@@ -1,7 +1,7 @@
 import type { Result } from "@/types/result";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
-import { fromPromise, tryCatch } from "@/utils/result";
+import { fromPromise, tryCatch } from "@/utils/functional/result";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**

@@ -8,6 +8,22 @@
 
 ### Fehlerbehebungen
 
+## [0.7.0] - 2025-11-09
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Einige Utilities wurden zu Services umgebaut.
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.6.1] - 2025-11-08
 ### Hinzugefügt
 - Keine Einträge

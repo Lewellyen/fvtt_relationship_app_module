@@ -3,18 +3,24 @@ import {
   loggerToken,
   journalVisibilityServiceToken,
   metricsCollectorToken,
+  metricsRecorderToken,
+  metricsSamplerToken,
   foundryI18nToken,
   localI18nToken,
   i18nFacadeToken,
   environmentConfigToken,
   moduleHealthServiceToken,
+  performanceTrackingServiceToken,
+  retryServiceToken,
 } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { JournalVisibilityService } from "@/services/JournalVisibilityService";
 import { MetricsCollector } from "@/observability/metrics-collector";
 import { ModuleHealthService } from "@/core/module-health-service";
+import { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
+import { RetryService } from "@/services/RetryService";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
-import { ok, err, isErr } from "@/utils/result";
+import { ok, err, isErr } from "@/utils/functional/result";
 import type { Result } from "@/types/result";
 import type { Logger } from "@/interfaces/logger";
 import { ENV } from "@/config/environment";
@@ -25,6 +31,7 @@ import {
   foundryUIToken,
   foundrySettingsToken,
   foundryI18nPortRegistryToken,
+  foundryJournalFacadeToken,
   portSelectorToken,
   foundryGamePortRegistryToken,
   foundryHooksPortRegistryToken,
@@ -34,12 +41,14 @@ import {
 } from "@/foundry/foundrytokens";
 import { PortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
+import { PortSelectionObserver } from "@/foundry/versioning/port-selection-observer";
 import { FoundryGameService } from "@/foundry/services/FoundryGameService";
 import { FoundryHooksService } from "@/foundry/services/FoundryHooksService";
 import { FoundryDocumentService } from "@/foundry/services/FoundryDocumentService";
 import { FoundryUIService } from "@/foundry/services/FoundryUIService";
 import { FoundrySettingsService } from "@/foundry/services/FoundrySettingsService";
 import { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
+import { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade";
 import { LocalI18nService } from "@/services/LocalI18nService";
 import { I18nFacadeService } from "@/services/I18nFacadeService";
 import { FoundryGamePortV13 } from "@/foundry/ports/v13/FoundryGamePort";
@@ -111,14 +120,13 @@ function registerFallbacks(container: ServiceContainer): void {
  * Registers core infrastructure services (EnvironmentConfig, MetricsCollector, Logger, ModuleHealthService).
  *
  * CRITICAL INITIALIZATION ORDER:
- * 1. EnvironmentConfig (no dependencies) - needed by MetricsCollector and PortSelector
- * 2. MetricsCollector (deps: [environmentConfigToken]) - needed by ServiceResolver and PortSelector
- * 3. Logger (no dependencies) - needed by PortSelector and all services
- * 4. ModuleHealthService (deps: [container, metricsCollectorToken]) - special case with container self-reference
- * 5. PortSelector (deps: [metricsCollectorToken, loggerToken, environmentConfigToken]) - auto-resolved after all
+ * 1. EnvironmentConfig (no dependencies) - needed by MetricsCollector
+ * 2. MetricsCollector (deps: [environmentConfigToken]) - needed by ServiceResolver
+ * 3. MetricsRecorder/MetricsSampler (aliases to MetricsCollector) - segregated interfaces
+ * 4. Logger (no dependencies) - needed by all services
+ * 5. ModuleHealthService (deps: [container, metricsCollectorToken]) - special case with container self-reference
  *
- * This order ensures no circular dependencies and that Logger is available
- * for all console.* replacements in PortSelector and other services.
+ * Note: PortSelector now has zero dependencies and uses event-based observability.
  */
 function registerCoreServices(container: ServiceContainer): Result<void, string> {
   // Register EnvironmentConfig (needed by MetricsCollector and PortSelector)
@@ -140,6 +148,22 @@ function registerCoreServices(container: ServiceContainer): Result<void, string>
   /* c8 ignore start -- Defensive: MetricsCollector has no dependencies and cannot fail registration */
   if (isErr(metricsResult)) {
     return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
+  }
+  /* c8 ignore stop */
+
+  // Register segregated interface aliases for MetricsCollector (Interface Segregation Principle)
+  // This allows services to depend on only the interface they need
+  const recorderAliasResult = container.registerAlias(metricsRecorderToken, metricsCollectorToken);
+  /* c8 ignore start -- Defensive: Alias registration can only fail if token is duplicate */
+  if (isErr(recorderAliasResult)) {
+    return err(`Failed to register MetricsRecorder alias: ${recorderAliasResult.error.message}`);
+  }
+  /* c8 ignore stop */
+
+  const samplerAliasResult = container.registerAlias(metricsSamplerToken, metricsCollectorToken);
+  /* c8 ignore start -- Defensive: Alias registration can only fail if token is duplicate */
+  if (isErr(samplerAliasResult)) {
+    return err(`Failed to register MetricsSampler alias: ${samplerAliasResult.error.message}`);
   }
   /* c8 ignore stop */
 
@@ -269,9 +293,14 @@ function createPortRegistries(): Result<
 
 /**
  * Registers PortSelector and PortRegistries in the container.
+ *
+ * **Observability:**
+ * - PortSelector has zero dependencies (improved testability)
+ * - PortSelectionObserver subscribes to PortSelector events for logging/metrics
+ * - Observer pattern decouples port selection from observability concerns
  */
 function registerPortInfrastructure(container: ServiceContainer): Result<void, string> {
-  // Register PortSelector
+  // Register PortSelector (no dependencies)
   const portSelectorResult = container.registerClass(
     portSelectorToken,
     PortSelector,
@@ -281,6 +310,19 @@ function registerPortInfrastructure(container: ServiceContainer): Result<void, s
   /* c8 ignore start -- Defensive: Class registration can only fail if token is duplicate or container is in invalid state, which cannot happen during normal bootstrap */
   if (isErr(portSelectorResult)) {
     return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
+  }
+  /* c8 ignore stop */
+
+  // Wire up observability: Create observer and subscribe to PortSelector events
+  // This is optional - only wire if all dependencies are available
+  const portSelectorResolve = container.resolveWithError(portSelectorToken);
+  const loggerResult = container.resolveWithError(loggerToken);
+  const recorderResult = container.resolveWithError(metricsRecorderToken);
+
+  /* c8 ignore start -- Defensive: Observer wiring is optional; only wire if all dependencies available */
+  if (portSelectorResolve.ok && loggerResult.ok && recorderResult.ok) {
+    const observer = new PortSelectionObserver(loggerResult.value, recorderResult.value);
+    portSelectorResolve.value.onEvent((event) => observer.handleEvent(event));
   }
   /* c8 ignore stop */
 
@@ -419,6 +461,20 @@ function registerFoundryServices(container: ServiceContainer): Result<void, stri
     );
   }
 
+  // Register FoundryJournalFacade (combines Game, Document, UI for journal operations)
+  // Must be registered BEFORE JournalVisibilityService which depends on it
+  const journalFacadeResult = container.registerClass(
+    foundryJournalFacadeToken,
+    FoundryJournalFacade,
+    ServiceLifecycle.SINGLETON
+  );
+
+  /* c8 ignore start -- Defensive: FoundryJournalFacade registration cannot fail with valid dependencies */
+  if (isErr(journalFacadeResult)) {
+    return err(`Failed to register FoundryJournalFacade: ${journalFacadeResult.error.message}`);
+  }
+  /* c8 ignore stop */
+
   const journalVisibilityResult = container.registerClass(
     journalVisibilityServiceToken,
     JournalVisibilityService,
@@ -430,6 +486,39 @@ function registerFoundryServices(container: ServiceContainer): Result<void, stri
       `Failed to register JournalVisibility service: ${journalVisibilityResult.error.message}`
     );
   }
+
+  return ok(undefined);
+}
+
+/**
+ * Registers utility services (PerformanceTracking, Retry).
+ */
+function registerUtilityServices(container: ServiceContainer): Result<void, string> {
+  // Register PerformanceTrackingService
+  const perfTrackingResult = container.registerClass(
+    performanceTrackingServiceToken,
+    PerformanceTrackingService,
+    ServiceLifecycle.SINGLETON
+  );
+  /* c8 ignore start -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
+  if (isErr(perfTrackingResult)) {
+    return err(
+      `Failed to register PerformanceTrackingService: ${perfTrackingResult.error.message}`
+    );
+  }
+  /* c8 ignore stop */
+
+  // Register RetryService
+  const retryServiceResult = container.registerClass(
+    retryServiceToken,
+    RetryService,
+    ServiceLifecycle.SINGLETON
+  );
+  /* c8 ignore start -- Defensive: Service registration can only fail if token is duplicate or dependencies are invalid */
+  if (isErr(retryServiceResult)) {
+    return err(`Failed to register RetryService: ${retryServiceResult.error.message}`);
+  }
+  /* c8 ignore stop */
 
   return ok(undefined);
 }
@@ -525,6 +614,10 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   const coreResult = registerCoreServices(container);
   if (isErr(coreResult)) return coreResult;
+
+  const utilityResult = registerUtilityServices(container);
+  /* c8 ignore next -- Error propagation: registerUtilityServices failure tested in sub-function */
+  if (isErr(utilityResult)) return utilityResult;
 
   const portInfraResult = registerPortInfrastructure(container);
   if (isErr(portInfraResult)) return portInfraResult;

@@ -3,15 +3,9 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { PortSelector } from "../portselector";
-import {
-  expectResultOk,
-  expectResultErr,
-  createMockMetricsCollector,
-  createMockLogger,
-  createMockEnvironmentConfig,
-} from "@/test/utils/test-helpers";
+import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
-import { ok, err } from "@/utils/result";
+import { ok, err } from "@/utils/functional/result";
 
 vi.mock("../versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -35,12 +29,7 @@ describe("PortSelector - Lazy Instantiation", () => {
       [14, v14Factory],
     ]);
 
-    const mockEnv = createMockEnvironmentConfig();
-    const selector = new PortSelector(
-      createMockMetricsCollector(mockEnv),
-      createMockLogger(),
-      mockEnv
-    );
+    const selector = new PortSelector();
     const result = selector.selectPortFromFactories(factories, 13);
 
     expectResultOk(result);
@@ -57,12 +46,7 @@ describe("PortSelector - Lazy Instantiation", () => {
     });
 
     const factories = new Map([[14, crashingFactory]]);
-    const mockEnv = createMockEnvironmentConfig();
-    const selector = new PortSelector(
-      createMockMetricsCollector(mockEnv),
-      createMockLogger(),
-      mockEnv
-    );
+    const selector = new PortSelector();
 
     const result = selector.selectPortFromFactories(factories, 14);
 
@@ -82,12 +66,7 @@ describe("PortSelector - Lazy Instantiation", () => {
       [14, v14Factory],
     ]);
 
-    const mockEnv = createMockEnvironmentConfig();
-    const selector = new PortSelector(
-      createMockMetricsCollector(mockEnv),
-      createMockLogger(),
-      mockEnv
-    );
+    const selector = new PortSelector();
     const result = selector.selectPortFromFactories(factories, 13);
 
     expectResultOk(result);
@@ -105,12 +84,7 @@ describe("PortSelector - Lazy Instantiation", () => {
       [15, v15Factory],
     ]);
 
-    const mockEnv = createMockEnvironmentConfig();
-    const selector = new PortSelector(
-      createMockMetricsCollector(mockEnv),
-      createMockLogger(),
-      mockEnv
-    );
+    const selector = new PortSelector();
     const result = selector.selectPortFromFactories(factories, 13);
 
     expectResultErr(result);
@@ -128,12 +102,7 @@ describe("PortSelector - Lazy Instantiation", () => {
     const v13Factory = vi.fn(() => ({ version: 13 }));
     const factories = new Map([[13, v13Factory]]);
 
-    const mockEnv = createMockEnvironmentConfig();
-    const selector = new PortSelector(
-      createMockMetricsCollector(mockEnv),
-      createMockLogger(),
-      mockEnv
-    );
+    const selector = new PortSelector();
     const result = selector.selectPortFromFactories(factories);
 
     expectResultOk(result);
@@ -147,12 +116,7 @@ describe("PortSelector - Lazy Instantiation", () => {
 
     const factories = new Map([[13, () => ({ version: 13 })]]);
 
-    const mockEnv = createMockEnvironmentConfig();
-    const selector = new PortSelector(
-      createMockMetricsCollector(mockEnv),
-      createMockLogger(),
-      mockEnv
-    );
+    const selector = new PortSelector();
     const result = selector.selectPortFromFactories(factories);
 
     expectResultErr(result);

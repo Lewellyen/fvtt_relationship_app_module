@@ -5,7 +5,7 @@ import type { ServiceClass } from "./serviceclass";
 import type { FactoryFunction } from "./servicefactory";
 import type { Result } from "@/types/result";
 import type { ContainerError } from "../interfaces/containererror";
-import { ok, err } from "@/utils/result";
+import { ok, err } from "@/utils/functional/result";
 import { ServiceLifecycle as SL } from "./servicelifecycle";
 
 /**

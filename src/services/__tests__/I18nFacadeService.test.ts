@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { I18nFacadeService } from "../I18nFacadeService";
 import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import type { LocalI18nService } from "../LocalI18nService";
-import { ok, err } from "@/utils/result";
+import { ok, err } from "@/utils/functional/result";
 
 describe("I18nFacadeService", () => {
   let facade: I18nFacadeService;

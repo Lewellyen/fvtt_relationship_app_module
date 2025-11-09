@@ -10,7 +10,7 @@ import { loggerToken } from "@/tokens/tokenindex";
 import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import { MODULE_CONSTANTS } from "@/constants";
 import { LogLevel } from "@/config/environment";
-import { ok, err } from "@/utils/result";
+import { ok, err } from "@/utils/functional/result";
 import type { Logger } from "@/interfaces/logger";
 
 describe("ModuleSettingsRegistrar", () => {
@@ -104,7 +104,7 @@ describe("ModuleSettingsRegistrar", () => {
       registrar.registerAll(container);
 
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to register log level setting",
+        "Failed to register logLevel setting",
         expect.objectContaining({
           code: "OPERATION_FAILED",
         })

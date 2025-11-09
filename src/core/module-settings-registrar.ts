@@ -1,21 +1,36 @@
 import { MODULE_CONSTANTS } from "@/constants";
-import { LogLevel } from "@/config/environment";
 import { loggerToken, i18nFacadeToken } from "@/tokens/tokenindex";
 import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import type { ServiceContainer } from "@/di_infrastructure/container";
+import type { SettingDefinition } from "@/core/settings/setting-definition.interface";
+import type { LogLevel } from "@/config/environment";
+import { logLevelSetting } from "@/core/settings/log-level-setting";
 
 /**
  * ModuleSettingsRegistrar
  *
- * Registers all Foundry module settings during the init hook.
- * Provides onChange handlers for reactive setting updates.
+ * Registers all Foundry module settings using definition-based approach.
+ * Each setting is defined separately for better organization and testability.
+ *
+ * **Design Benefits:**
+ * - Easy to add new settings without modifying this class
+ * - Each setting definition can be tested in isolation
+ * - Clear separation between registration logic and setting configuration
  */
 export class ModuleSettingsRegistrar {
+  // Array of setting definitions with their specific types preserved
+  private settings: readonly SettingDefinition<LogLevel>[] =
+  // Add new setting types here
+    [
+      logLevelSetting,
+      // Add new settings here
+    ];
+
   /**
    * Registers all module settings.
    * Must be called during or after the 'init' hook.
    *
-   * @param container DI-Container with registered services
+   * @param container - DI container with registered services
    */
   registerAll(container: ServiceContainer): void {
     const settingsResult = container.resolveWithError(foundrySettingsToken);
@@ -39,54 +54,18 @@ export class ModuleSettingsRegistrar {
     }
     /* c8 ignore stop */
 
-    const settings = settingsResult.value;
+    const foundrySettings = settingsResult.value;
     const logger = loggerResult.value;
     const i18n = i18nResult.value;
 
-    // Register log level setting
-    const result = settings.register(
-      MODULE_CONSTANTS.MODULE.ID,
-      MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
-      {
-        name: i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"),
-        hint: i18n.translate(
-          "MODULE.SETTINGS.logLevel.hint",
-          "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors."
-        ),
-        scope: "world",
-        config: true,
-        type: Number,
-        choices: {
-          [LogLevel.DEBUG]: i18n.translate(
-            "MODULE.SETTINGS.logLevel.choices.debug",
-            "DEBUG (All logs - for debugging)"
-          ),
-          [LogLevel.INFO]: i18n.translate(
-            "MODULE.SETTINGS.logLevel.choices.info",
-            "INFO (Standard)"
-          ),
-          [LogLevel.WARN]: i18n.translate(
-            "MODULE.SETTINGS.logLevel.choices.warn",
-            "WARN (Warnings and errors only)"
-          ),
-          [LogLevel.ERROR]: i18n.translate(
-            "MODULE.SETTINGS.logLevel.choices.error",
-            "ERROR (Critical errors only)"
-          ),
-        },
-        default: LogLevel.INFO,
-        onChange: (value: number) => {
-          // Dynamically reconfigure logger when setting changes
-          if (logger.setMinLevel) {
-            logger.setMinLevel(value as LogLevel);
-            logger.info(`Log level changed to: ${LogLevel[value]}`);
-          }
-        },
-      }
-    );
+    // Register all settings
+    for (const setting of this.settings) {
+      const config = setting.createConfig(i18n, logger);
+      const result = foundrySettings.register(MODULE_CONSTANTS.MODULE.ID, setting.key, config);
 
-    if (!result.ok) {
-      logger.error("Failed to register log level setting", result.error);
+      if (!result.ok) {
+        logger.error(`Failed to register ${setting.key} setting`, result.error);
+      }
     }
   }
 }

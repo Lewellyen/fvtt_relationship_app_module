@@ -7,7 +7,11 @@ import { ServiceRegistry } from "../../registry/ServiceRegistry";
 import { InstanceCache } from "../../cache/InstanceCache";
 import { createInjectionToken } from "../../tokenutilities";
 import { ServiceLifecycle } from "../../types/servicelifecycle";
-import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import {
+  expectResultOk,
+  expectResultErr,
+  createMockPerformanceTracker,
+} from "@/test/utils/test-helpers";
 import type { Logger } from "@/interfaces/logger";
 
 class TestService implements Logger {
@@ -30,12 +34,25 @@ class TestServiceWithDep implements Logger {
   debug(): void {}
 }
 
+/**
+ * Helper to create a ServiceResolver with mock PerformanceTracker
+ */
+function createTestResolver(
+  registry: ServiceRegistry,
+  cache: InstanceCache,
+  parentResolver: ServiceResolver | null,
+  scopeName: string
+): ServiceResolver {
+  const mockPerformanceTracker = createMockPerformanceTracker();
+  return new ServiceResolver(registry, cache, parentResolver, scopeName, mockPerformanceTracker);
+}
+
 describe("ServiceResolver", () => {
   describe("Resolution", () => {
     it("should resolve registered service", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const token = createInjectionToken<TestService>("Service");
       registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -48,7 +65,7 @@ describe("ServiceResolver", () => {
     it("should fail for unregistered token", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const token = createInjectionToken<TestService>("Unregistered");
 
@@ -62,7 +79,7 @@ describe("ServiceResolver", () => {
     it("should resolve alias to target", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const targetToken = createInjectionToken<TestService>("Target");
       const aliasToken = createInjectionToken<TestService>("Alias");
@@ -78,7 +95,7 @@ describe("ServiceResolver", () => {
     it("should resolve nested aliases", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const targetToken = createInjectionToken<TestService>("Target");
       const alias1Token = createInjectionToken<TestService>("Alias1");
@@ -98,7 +115,7 @@ describe("ServiceResolver", () => {
     it("should return same instance on multiple resolves", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const token = createInjectionToken<TestService>("Singleton");
 
@@ -121,10 +138,10 @@ describe("ServiceResolver", () => {
       // Zuerst registrieren, dann clonen
       parentRegistry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
 
-      const parentResolver = new ServiceResolver(parentRegistry, parentCache, null, "parent");
+      const parentResolver = createTestResolver(parentRegistry, parentCache, null, "parent");
       const childRegistry = parentRegistry.clone();
       const childCache = new InstanceCache();
-      const childResolver = new ServiceResolver(childRegistry, childCache, parentResolver, "child");
+      const childResolver = createTestResolver(childRegistry, childCache, parentResolver, "child");
 
       const parentResult = parentResolver.resolve(token);
       expectResultOk(parentResult);
@@ -139,11 +156,11 @@ describe("ServiceResolver", () => {
     it("should use child-specific singleton when parent doesn't have it", () => {
       const parentRegistry = new ServiceRegistry();
       const parentCache = new InstanceCache();
-      const parentResolver = new ServiceResolver(parentRegistry, parentCache, null, "parent");
+      const parentResolver = createTestResolver(parentRegistry, parentCache, null, "parent");
 
       const childRegistry = parentRegistry.clone();
       const childCache = new InstanceCache();
-      const childResolver = new ServiceResolver(childRegistry, childCache, parentResolver, "child");
+      const childResolver = createTestResolver(childRegistry, childCache, parentResolver, "child");
 
       const token = createInjectionToken<TestService>("ChildSingleton");
 
@@ -165,7 +182,7 @@ describe("ServiceResolver", () => {
     it("should return new instance on each resolve", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const token = createInjectionToken<TestService>("Transient");
 
@@ -186,7 +203,7 @@ describe("ServiceResolver", () => {
     it("should fail when resolved in root scope", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const token = createInjectionToken<TestService>("Scoped");
 
@@ -205,10 +222,10 @@ describe("ServiceResolver", () => {
       // Zuerst registrieren, dann clonen
       parentRegistry.registerClass(token, TestService, ServiceLifecycle.SCOPED);
 
-      const parentResolver = new ServiceResolver(parentRegistry, parentCache, null, "parent");
+      const parentResolver = createTestResolver(parentRegistry, parentCache, null, "parent");
       const childRegistry = parentRegistry.clone();
       const childCache = new InstanceCache();
-      const childResolver = new ServiceResolver(childRegistry, childCache, parentResolver, "child");
+      const childResolver = createTestResolver(childRegistry, childCache, parentResolver, "child");
 
       const result1 = childResolver.resolve(token);
       expectResultOk(result1);
@@ -227,10 +244,10 @@ describe("ServiceResolver", () => {
       // Zuerst registrieren, dann clonen
       parentRegistry.registerClass(token, TestService, ServiceLifecycle.SCOPED);
 
-      const parentResolver = new ServiceResolver(parentRegistry, parentCache, null, "parent");
+      const parentResolver = createTestResolver(parentRegistry, parentCache, null, "parent");
       const child1Registry = parentRegistry.clone();
       const child1Cache = new InstanceCache();
-      const child1Resolver = new ServiceResolver(
+      const child1Resolver = createTestResolver(
         child1Registry,
         child1Cache,
         parentResolver,
@@ -239,7 +256,7 @@ describe("ServiceResolver", () => {
 
       const child2Registry = parentRegistry.clone();
       const child2Cache = new InstanceCache();
-      const child2Resolver = new ServiceResolver(
+      const child2Resolver = createTestResolver(
         child2Registry,
         child2Cache,
         parentResolver,
@@ -260,7 +277,7 @@ describe("ServiceResolver", () => {
     it("should resolve factory function", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const token = createInjectionToken<TestService>("Factory");
 
@@ -274,7 +291,7 @@ describe("ServiceResolver", () => {
     it("should wrap factory errors", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const token = createInjectionToken<TestService>("FailingFactory");
 
@@ -297,7 +314,7 @@ describe("ServiceResolver", () => {
     it("should resolve registered value", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const testInstance = new TestService(42);
       const token = createInjectionToken<TestService>("Value");
@@ -320,7 +337,7 @@ describe("ServiceResolver", () => {
     it("should inject dependencies for class", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const depToken = createInjectionToken<TestService>("Dep");
       const serviceToken = createInjectionToken<TestServiceWithDep>("Service");
@@ -338,7 +355,7 @@ describe("ServiceResolver", () => {
     it("should allow factory to capture dependencies via closure", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const depToken = createInjectionToken<TestService>("Dep");
       const serviceToken = createInjectionToken<TestServiceWithDep>("Service");
@@ -367,7 +384,7 @@ describe("ServiceResolver", () => {
     it("should wrap constructor exceptions", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       class FailingService implements Logger {
         static dependencies = [] as const;
@@ -393,7 +410,7 @@ describe("ServiceResolver", () => {
     it("should return error for invalid registration", () => {
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const token = createInjectionToken<TestService>("Invalid");
 
@@ -431,7 +448,7 @@ describe("ServiceResolver", () => {
 
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
-      const resolver = new ServiceResolver(registry, cache, null, "root");
+      const resolver = createTestResolver(registry, cache, null, "root");
 
       const token = createInjectionToken<FailingService>("FailingService");
       registry.registerClass(token, FailingService, ServiceLifecycle.SINGLETON);

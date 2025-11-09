@@ -7,7 +7,7 @@ import type { ServiceDependencies } from "../types/servicedependencies";
 import { ServiceLifecycle } from "../types/servicelifecycle";
 import type { ContainerError } from "../interfaces/containererror";
 import { ServiceRegistration } from "../types/serviceregistration";
-import { ok, err, isErr } from "@/utils/result";
+import { ok, err, isErr } from "@/utils/functional/result";
 
 /**
  * Type for service classes that declare their dependencies.

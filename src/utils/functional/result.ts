@@ -2,9 +2,9 @@
  * Utility functions for working with the Result pattern.
  * Provides functional error handling with type safety.
  *
- * This module contains only runtime functions - types are imported from "../types/result"
+ * This module contains only runtime functions - types are imported from "@/types/result"
  */
-import type { Ok, Err, Result, AsyncResult } from "../types/result";
+import type { Ok, Err, Result, AsyncResult } from "@/types/result";
 
 /**
  * Creates a successful Result with a value.

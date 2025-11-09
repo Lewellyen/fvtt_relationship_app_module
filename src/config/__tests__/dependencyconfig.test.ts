@@ -16,7 +16,7 @@ import {
   foundrySettingsPortRegistryToken,
 } from "@/foundry/foundrytokens";
 import { ConsoleLoggerService } from "@/services/consolelogger";
-import { err } from "@/utils/result";
+import { err } from "@/utils/functional/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ENV, LogLevel } from "@/config/environment";
 

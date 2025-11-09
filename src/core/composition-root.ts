@@ -6,13 +6,12 @@ import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
 import type { ModuleApi, ModuleApiTokens, TokenInfo, HealthStatus } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
-import type { EnvironmentConfig } from "@/config/environment";
-import type { MetricsCollector } from "@/observability/metrics-collector";
+import { ENV } from "@/config/environment";
+import { BootstrapPerformanceTracker } from "@/observability/bootstrap-performance-tracker";
 import {
   loggerToken,
   journalVisibilityServiceToken,
   metricsCollectorToken,
-  environmentConfigToken,
   moduleHealthServiceToken,
 } from "@/tokens/tokenindex";
 import {
@@ -22,7 +21,6 @@ import {
   foundryUIToken,
   foundrySettingsToken,
 } from "@/foundry/foundrytokens";
-import { withPerformanceTracking } from "@/utils/performance-utils";
 
 /**
  * CompositionRoot
@@ -41,43 +39,20 @@ export class CompositionRoot {
   /**
    * Erstellt den ServiceContainer und führt Basis-Registrierungen aus.
    * Misst Performance für Diagnose-Zwecke.
+   *
+   * **Performance Tracking:**
+   * Uses BootstrapPerformanceTracker with ENV (direct import) and null MetricsCollector.
+   * MetricsCollector is not yet available during bootstrap phase.
+   *
    * @returns Result mit initialisiertem Container oder Fehlermeldung
    */
   bootstrap(): Result<ServiceContainer, string> {
     const container = ServiceContainer.createRoot();
 
-    // Get environment config and metrics collector for performance tracking
-    // ENV and MetricsCollector may not be available yet during early bootstrap
-    let env: EnvironmentConfig | null = null;
-    let metricsCollector: MetricsCollector | null = null;
+    // Track bootstrap performance (no MetricsCollector yet)
+    const performanceTracker = new BootstrapPerformanceTracker(ENV, null);
 
-    const envResult = container.resolveWithError(environmentConfigToken);
-    /* c8 ignore start -- ENV is always available in normal operation */
-    if (envResult.ok) {
-      env = envResult.value;
-    }
-    /* c8 ignore stop */
-
-    const metricsResult = container.resolveWithError(metricsCollectorToken);
-    /* c8 ignore start -- MetricsCollector is always available in normal operation */
-    if (metricsResult.ok) {
-      metricsCollector = metricsResult.value;
-    }
-    /* c8 ignore stop */
-
-    // Use default ENV if not available yet
-    const effectiveEnv = env ?? {
-      enablePerformanceTracking: false,
-      isDevelopment: false,
-      isProduction: true,
-      enableDebugMode: false,
-      logLevel: 1,
-      performanceSamplingRate: 0,
-    };
-
-    const configured = withPerformanceTracking(
-      effectiveEnv,
-      metricsCollector,
+    const configured = performanceTracker.track(
       () => configureDependencies(container),
       /* c8 ignore start -- onComplete callback is only called when performance tracking is enabled and sampling passes */
       (duration) => {

@@ -1,5 +1,5 @@
 import type { Result } from "@/types/result";
-import { ok } from "@/utils/result";
+import { ok } from "@/utils/functional/result";
 
 /**
  * Escapes special regex characters in a string.

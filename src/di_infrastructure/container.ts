@@ -7,7 +7,7 @@ import type { ApiSafeToken } from "./types/api-safe-token";
 import { isApiSafeTokenRuntime } from "./types/api-safe-token";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import type { ServiceType } from "@/types/servicetypeindex";
-import { ok, err, isOk } from "@/utils/result";
+import { ok, err, isOk } from "@/utils/functional/result";
 import type { Result } from "@/types/result";
 import type { Container } from "@/di_infrastructure/interfaces/container";
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
@@ -16,7 +16,9 @@ import { ContainerValidator } from "./validation/ContainerValidator";
 import { InstanceCache } from "./cache/InstanceCache";
 import { ServiceResolver } from "./resolution/ServiceResolver";
 import { ScopeManager } from "./scope/ScopeManager";
-import { withTimeout, TimeoutError } from "@/utils/promise-timeout";
+import { withTimeout, TimeoutError } from "@/utils/async/promise-timeout";
+import { ENV } from "@/config/environment";
+import { BootstrapPerformanceTracker } from "@/observability/bootstrap-performance-tracker";
 
 /**
  * Fallback factory function type for creating service instances when container resolution fails.
@@ -109,6 +111,10 @@ export class ServiceContainer implements Container {
    * This is the preferred way to create containers.
    * All components are created fresh for the root container.
    *
+   * **Bootstrap Performance Tracking:**
+   * Uses BootstrapPerformanceTracker with ENV and null MetricsCollector.
+   * MetricsCollector is injected later via setMetricsCollector() after validation.
+   *
    * @returns A new root ServiceContainer
    *
    * @example
@@ -123,7 +129,10 @@ export class ServiceContainer implements Container {
     const validator = new ContainerValidator();
     const cache = new InstanceCache();
     const scopeManager = new ScopeManager("root", null, cache);
-    const resolver = new ServiceResolver(registry, cache, null, "root");
+
+    // Bootstrap performance tracker (no MetricsCollector yet)
+    const performanceTracker = new BootstrapPerformanceTracker(ENV, null);
+    const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
 
     return new ServiceContainer(registry, validator, cache, resolver, scopeManager, "registering");
   }
@@ -277,23 +286,19 @@ export class ServiceContainer implements Container {
   }
 
   /**
-   * Injects MetricsCollector and EnvironmentConfig into resolver and cache after validation.
-   * This enables performance tracking without circular dependencies during bootstrap.
+   * Injects MetricsCollector into resolver and cache after validation.
+   * This enables metrics recording without circular dependencies during bootstrap.
+   *
+   * Note: EnvironmentConfig is already injected via BootstrapPerformanceTracker
+   * during container creation, so only MetricsCollector needs to be injected here.
    */
   private async injectMetricsCollector(): Promise<void> {
     // Dynamic import to avoid circular dependency during module loading
-    const { metricsCollectorToken, environmentConfigToken } = await import(
-      "../tokens/tokenindex.js"
-    );
+    const { metricsCollectorToken } = await import("../tokens/tokenindex.js");
     const metricsResult = this.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
       this.resolver.setMetricsCollector(metricsResult.value);
       this.cache.setMetricsCollector(metricsResult.value);
-    }
-
-    const envResult = this.resolveWithError(environmentConfigToken);
-    if (envResult.ok) {
-      this.resolver.setEnvironmentConfig(envResult.value);
     }
   }
 
@@ -456,11 +461,15 @@ export class ServiceContainer implements Container {
     const childRegistry = this.registry.clone();
     const childCache = scopeResult.value.cache;
     const childManager = scopeResult.value.manager;
+
+    // Create performance tracker for child (same as root)
+    const childPerformanceTracker = new BootstrapPerformanceTracker(ENV, null);
     const childResolver = new ServiceResolver(
       childRegistry,
       childCache,
       this.resolver, // Parent resolver for singleton delegation
-      scopeResult.value.scopeName
+      scopeResult.value.scopeName,
+      childPerformanceTracker
     );
 
     // Create child using private constructor
@@ -579,8 +588,9 @@ export class ServiceContainer implements Container {
     // Try fallback factory
     const fallback = this.fallbackFactories.get(token);
     if (fallback) {
-      // Fallbacks are registered with matching generic type for public resolve(); cast narrows from ServiceType union
-      /* type-coverage:ignore-next-line */
+      // Fallbacks are registered with matching generic type for public resolve()
+      // Type alignment is ensured by registerFallback at registration time
+      // type-coverage:ignore-next-line -- Type cast required due to Map<symbol, Factory> storage
       return fallback() as TServiceType;
     }
 

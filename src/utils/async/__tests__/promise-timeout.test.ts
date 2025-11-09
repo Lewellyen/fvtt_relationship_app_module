@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { withTimeout, TimeoutError } from "../promise-timeout";
+import { withTimeout, TimeoutError } from "@/utils/async/promise-timeout";
 
 describe("Promise Timeout Utilities", () => {
   beforeEach(() => {

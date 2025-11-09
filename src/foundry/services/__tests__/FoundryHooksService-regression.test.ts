@@ -8,14 +8,9 @@ import { FoundryHooksService } from "../FoundryHooksService";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { PortSelector } from "@/foundry/versioning/portselector";
-import { ok } from "@/utils/result";
+import { ok } from "@/utils/functional/result";
 import type { Logger } from "@/interfaces/logger";
-import {
-  expectResultOk,
-  createMockMetricsCollector,
-  createMockLogger,
-  createMockEnvironmentConfig,
-} from "@/test/utils/test-helpers";
+import { expectResultOk, createMockLogger } from "@/test/utils/test-helpers";
 
 describe("FoundryHooksService - Regression Tests", () => {
   let service: FoundryHooksService;
@@ -41,8 +36,7 @@ describe("FoundryHooksService - Regression Tests", () => {
     mockRegistry = new PortRegistry<FoundryHooks>();
     vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
 
-    const mockEnv = createMockEnvironmentConfig();
-    mockSelector = new PortSelector(createMockMetricsCollector(mockEnv), mockLogger, mockEnv);
+    mockSelector = new PortSelector();
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
     service = new FoundryHooksService(mockSelector, mockRegistry, mockLogger);

@@ -3,7 +3,7 @@ import type { ContainerError } from "../interfaces/containererror";
 import type { InjectionToken } from "../types/injectiontoken";
 import type { ServiceType } from "@/types/servicetypeindex";
 import type { ServiceRegistry } from "../registry/ServiceRegistry";
-import { ok, err } from "@/utils/result";
+import { ok, err } from "@/utils/functional/result";
 
 /**
  * Validates service registrations and dependencies.

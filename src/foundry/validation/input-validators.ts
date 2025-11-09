@@ -1,5 +1,5 @@
 import type { Result } from "@/types/result";
-import { ok, err } from "@/utils/result";
+import { ok, err } from "@/utils/functional/result";
 import { createFoundryError, type FoundryError } from "@/foundry/errors/FoundryErrors";
 import { VALIDATION_CONSTRAINTS } from "@/constants";
 

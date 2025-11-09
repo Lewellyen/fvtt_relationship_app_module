@@ -2,8 +2,11 @@ import { vi } from "vitest";
 import type { Result, Ok, Err } from "@/types/result";
 import { createMockGame, createMockHooks, createMockUI } from "../mocks/foundry";
 import { MetricsCollector } from "@/observability/metrics-collector";
+import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
 import type { Logger } from "@/interfaces/logger";
 import type { EnvironmentConfig } from "@/config/environment";
+import type { PerformanceTracker } from "@/interfaces/performance-tracker";
+import type { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
 import { LogLevel } from "@/config/environment";
 
 /**
@@ -126,6 +129,16 @@ export function createMockMetricsCollector(env?: EnvironmentConfig): MetricsColl
 }
 
 /**
+ * Creates a mock MetricsSampler for testing.
+ * @param env - Optional EnvironmentConfig (uses mock if not provided)
+ * @returns A MetricsCollector instance (implements MetricsSampler interface)
+ */
+export function createMockSampler(env?: EnvironmentConfig): MetricsSampler {
+  // MetricsCollector implements MetricsSampler, so we can use it as a mock
+  return new MetricsCollector(env ?? createMockEnvironmentConfig());
+}
+
+/**
  * Creates a mock Logger for testing.
  * @returns A mock Logger with spy functions
  */
@@ -136,5 +149,51 @@ export function createMockLogger(): Logger {
     warn: vi.fn(),
     info: vi.fn(),
     debug: vi.fn(),
+    setMinLevel: vi.fn(),
   };
+}
+
+/**
+ * Creates a mock PerformanceTracker for testing
+ * @returns Mock implementation of PerformanceTracker interface
+ */
+export function createMockPerformanceTracker(): PerformanceTracker {
+  return {
+    track: vi
+      .fn()
+      .mockImplementation(
+        <T>(operation: () => T, onComplete?: (duration: number, result: T) => void) => {
+          const result = operation();
+          // Call onComplete with mock duration (0ms) if provided
+          if (onComplete) {
+            onComplete(0, result);
+          }
+          return result;
+        }
+      ),
+    trackAsync: vi
+      .fn()
+      .mockImplementation(
+        async <T>(
+          operation: () => Promise<T>,
+          onComplete?: (duration: number, result: T) => void
+        ) => {
+          const result = await operation();
+          // Call onComplete with mock duration (0ms) if provided
+          if (onComplete) {
+            onComplete(0, result);
+          }
+          return result;
+        }
+      ),
+  };
+}
+
+/**
+ * Creates a mock PerformanceTrackingService for testing
+ * @returns Mock implementation of PerformanceTrackingService
+ */
+export function createMockPerformanceTrackingService(): PerformanceTrackingService {
+  // Reuse PerformanceTracker mock as base (same interface)
+  return createMockPerformanceTracker() as unknown as PerformanceTrackingService;
 }

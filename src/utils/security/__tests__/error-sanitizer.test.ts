@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeErrorForProduction, sanitizeMessageForProduction } from "../error-sanitizer";
+import {
+  sanitizeErrorForProduction,
+  sanitizeMessageForProduction,
+} from "@/utils/security/error-sanitizer";
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
 import type { EnvironmentConfig } from "@/config/environment";
 import { LogLevel } from "@/config/environment";

@@ -3,6 +3,8 @@ import type { ServiceType } from "@/types/servicetypeindex";
 import { METRICS_CONFIG } from "@/constants";
 import type { EnvironmentConfig } from "@/config/environment";
 import { environmentConfigToken } from "@/tokens/tokenindex";
+import type { MetricsRecorder } from "@/observability/interfaces/metrics-recorder";
+import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
 
 /**
  * Snapshot of current metrics data.
@@ -26,6 +28,9 @@ export interface MetricsSnapshot {
 /**
  * Metrics collector for observability and performance tracking.
  *
+ * Implements MetricsRecorder and MetricsSampler interfaces to provide
+ * segregated access for different use cases (Interface Segregation Principle).
+ *
  * Collects performance metrics for:
  * - Container service resolutions
  * - Port selections
@@ -44,7 +49,7 @@ export interface MetricsSnapshot {
  * console.log(`Avg resolution time: ${snapshot.avgResolutionTimeMs}ms`);
  * ```
  */
-export class MetricsCollector {
+export class MetricsCollector implements MetricsRecorder, MetricsSampler {
   static dependencies = [environmentConfigToken] as const;
 
   private metrics = {

@@ -1,0 +1,76 @@
+/**
+ * Implementation of FoundryJournalFacade.
+ *
+ * Combines FoundryGame, FoundryDocument, and FoundryUI services
+ * into a unified facade for journal operations.
+ */
+
+import type { Result } from "@/types/result";
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import type { FoundryJournalEntry } from "@/foundry/types";
+import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
+import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
+import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
+import type { FoundryJournalFacade as IFoundryJournalFacade } from "./foundry-journal-facade.interface";
+import { foundryGameToken, foundryDocumentToken, foundryUIToken } from "@/foundry/foundrytokens";
+import { MODULE_CONSTANTS } from "@/constants";
+
+/**
+ * Facade for journal-related Foundry operations.
+ *
+ * **Benefits:**
+ * - Reduces JournalVisibilityService dependencies from 4 to 2 (facade + logger)
+ * - Provides cohesive journal-specific API
+ * - Easier to test (single facade mock instead of 3 service mocks)
+ * - Clear boundary for journal-related operations
+ */
+export class FoundryJournalFacade implements IFoundryJournalFacade {
+  static dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken] as const;
+
+  constructor(
+    private readonly game: FoundryGame,
+    private readonly document: FoundryDocument,
+    private readonly ui: FoundryUI
+  ) {}
+
+  /**
+   * Get all journal entries from Foundry.
+   *
+   * Delegates to FoundryGame.getJournalEntries().
+   */
+  getJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
+    return this.game.getJournalEntries();
+  }
+
+  /**
+   * Get a module flag from a journal entry.
+   *
+   * Delegates to FoundryDocument.getFlag() with module scope.
+   *
+   * @template T - The flag value type
+   * @param entry - The journal entry object
+   * @param key - The flag key
+   */
+  getEntryFlag<T>(entry: unknown, key: string): Result<T | null, FoundryError> {
+    return this.document.getFlag<T>(
+      // Journal entries from Foundry provide getFlag; cast retains narrow interface
+      /* type-coverage:ignore-next-line */
+      entry as { getFlag: (scope: string, key: string) => unknown },
+      MODULE_CONSTANTS.MODULE.ID,
+      key
+    );
+  }
+
+  /**
+   * Remove a journal element from the UI.
+   *
+   * Delegates to FoundryUI.removeJournalElement().
+   *
+   * @param id - Journal entry ID
+   * @param name - Journal entry name (for logging)
+   * @param html - HTML container element
+   */
+  removeJournalElement(id: string, name: string, html: HTMLElement): Result<void, FoundryError> {
+    return this.ui.removeJournalElement(id, name, html);
+  }
+}
