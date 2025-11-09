@@ -12,6 +12,92 @@
 
 ### Upgrade-Hinweise
 
+## [0.11.1] - 2025-11-09
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **generate_changelog.py**: Semantic Versioning Sortierung statt alphabetischer String-Sort
+- Falsche Reihenfolge: 0.1.0 < 0.10.0 < 0.11.0 < 0.2.0 (String-Sort)
+- Korrekte Reihenfolge: 0.1.0 < 0.2.0 < ... < 0.10.0 < 0.11.0 (Semantic-Sort)
+- Implementiert custom `parse_version()` Funktion für tuple-basierte Versionsnummer-Vergleiche
+- Keine externe Dependency auf `packaging` Modul benötigt
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.11.0] - 2025-11-09
+### Hinzugefügt
+- **Public API: resolveWithError()**: Result-Pattern Alternative zu resolve() ([Details](docs/API.md#service-auflösung-resolve-vs-resolvewitherror))
+- Gibt `Result<T, ContainerError>` zurück
+- Wirft nie Exceptions (vollständig Result-Pattern konform)
+- Empfohlen für optionale/custom Services
+- Unterstützt Deprecation-Warnings und ReadOnly-Wrapper
+- Vollständige Test-Coverage (23 Tests für ModuleApiInitializer)
+
+### Geändert
+- **Dokumentation**: Versionsaktualisierung von 0.8.0 auf 0.10.0 in 17 Dokumenten ([Details](docs/DOKUMENTATIONS_UPDATES_2025-11-09.md))
+- README.md, ARCHITECTURE.md, BOOTFLOW.md aktualisiert
+- Alle Hauptdokumentationen (API.md, INDEX.md, PROJECT_ANALYSIS.md, etc.)
+- Release-Roadmap und Versioning-Strategy
+- Testing- und Quick-Reference-Guides
+- Konsistente Versionsinformationen im gesamten Projekt
+
+### Fehlerbehebungen
+- **init-solid.ts**: Fehlerhaftes `/* c8 ignore stop */` ohne korrespondierendes `start` entfernt
+- Verhinderte Coverage-Messung für init/ready Hooks
+- Coverage wiederhergestellt: 63.88% → 100%
+- **module-api-initializer.ts**: Coverage für Default-Path (non-wrapped Services) wiederhergestellt
+- Test für FoundryGame-Token-Resolution hinzugefügt
+- 99.13% → 100% Coverage
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.10.0] - 2025-11-09
+### Hinzugefügt
+- **ModuleApiInitializer**: Separater DI-Service für API-Exposition ([Details](src/core/api/module-api-initializer.ts))
+- Eigenständiger Service statt Methode in CompositionRoot
+- Result-Pattern für sichere API-Exposition
+- Vollständige Test-Coverage (17 Tests)
+- **api-token-config.ts**: Factory für API-Token-Mapping ([Details](src/core/api/api-token-config.ts))
+- Zentralisiert Well-Known-Tokens Creation
+- Verhindert Code-Duplikation
+
+### Geändert
+- **CompositionRoot**: Reduziert auf reine Container-Bootstrap-Verantwortung ([Details](docs/BOOTFLOW.md))
+- Entfernt: `exposeToModuleApi()` Methode (-152 Zeilen)
+- Fokus: Nur `bootstrap()` und `getContainer()`
+- SRP-Konformität: Single Responsibility
+- **init-solid.ts**: Orchestriert ModuleApiInitializer via DI ([Details](src/core/init-solid.ts))
+- Resolve via `resolveWithError(moduleApiInitializerToken)`
+- Result-Pattern für API-Exposition-Fehler
+- **Deprecation-Metadata**: Map statt WeakMap für 100% Type-Coverage ([Details](src/di_infrastructure/types/deprecated-token.ts))
+- Keine `any`-Casts mehr nötig
+- Memory-sicher: Tokens sind Singletons
+- **Type-Coverage**: 100% mit gezielten inline-ignores ([Details](docs/guides/type-coverage-exclusions.md))
+- 5 technisch notwendige Casts (Generic Type Narrowing) mit `type-coverage:ignore-next-line`
+- Kein globales `--ignore-as-assertion` Flag
+- Jeder ignored Cast ist dokumentiert und begründet
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.9.0] - 2025-11-09
 ### Hinzugefügt
 - **Deprecation-Mechanismus**: `markAsDeprecated()` ermöglicht sanfte Breaking Changes mit automatischen Console-Warnings ([Details](docs/API-CHANGELOG.md))
@@ -293,175 +379,12 @@
 ### Upgrade-Hinweise
 - Keine besonderen Maßnahmen erforderlich
 
-## [0.11.0] - 2025-11-09
-### Hinzugefügt
-- **Public API: resolveWithError()**: Result-Pattern Alternative zu resolve() ([Details](docs/API.md#service-auflösung-resolve-vs-resolvewitherror))
-- Gibt `Result<T, ContainerError>` zurück
-- Wirft nie Exceptions (vollständig Result-Pattern konform)
-- Empfohlen für optionale/custom Services
-- Unterstützt Deprecation-Warnings und ReadOnly-Wrapper
-- Vollständige Test-Coverage (23 Tests für ModuleApiInitializer)
-
-### Geändert
-- **Dokumentation**: Versionsaktualisierung von 0.8.0 auf 0.10.0 in 17 Dokumenten ([Details](docs/DOKUMENTATIONS_UPDATES_2025-11-09.md))
-- README.md, ARCHITECTURE.md, BOOTFLOW.md aktualisiert
-- Alle Hauptdokumentationen (API.md, INDEX.md, PROJECT_ANALYSIS.md, etc.)
-- Release-Roadmap und Versioning-Strategy
-- Testing- und Quick-Reference-Guides
-- Konsistente Versionsinformationen im gesamten Projekt
-
-### Fehlerbehebungen
-- **init-solid.ts**: Fehlerhaftes `/* c8 ignore stop */` ohne korrespondierendes `start` entfernt
-- Verhinderte Coverage-Messung für init/ready Hooks
-- Coverage wiederhergestellt: 63.88% → 100%
-- **module-api-initializer.ts**: Coverage für Default-Path (non-wrapped Services) wiederhergestellt
-- Test für FoundryGame-Token-Resolution hinzugefügt
-- 99.13% → 100% Coverage
-
-### Bekannte Probleme
-- Keine bekannten Probleme
-
-### Upgrade-Hinweise
-- Keine besonderen Maßnahmen erforderlich
-
-## [0.10.0] - 2025-11-09
-### Hinzugefügt
-- **ModuleApiInitializer**: Separater DI-Service für API-Exposition ([Details](src/core/api/module-api-initializer.ts))
-- Eigenständiger Service statt Methode in CompositionRoot
-- Result-Pattern für sichere API-Exposition
-- Vollständige Test-Coverage (17 Tests)
-- **api-token-config.ts**: Factory für API-Token-Mapping ([Details](src/core/api/api-token-config.ts))
-- Zentralisiert Well-Known-Tokens Creation
-- Verhindert Code-Duplikation
-
-### Geändert
-- **CompositionRoot**: Reduziert auf reine Container-Bootstrap-Verantwortung ([Details](docs/BOOTFLOW.md))
-- Entfernt: `exposeToModuleApi()` Methode (-152 Zeilen)
-- Fokus: Nur `bootstrap()` und `getContainer()`
-- SRP-Konformität: Single Responsibility
-- **init-solid.ts**: Orchestriert ModuleApiInitializer via DI ([Details](src/core/init-solid.ts))
-- Resolve via `resolveWithError(moduleApiInitializerToken)`
-- Result-Pattern für API-Exposition-Fehler
-- **Deprecation-Metadata**: Map statt WeakMap für 100% Type-Coverage ([Details](src/di_infrastructure/types/deprecated-token.ts))
-- Keine `any`-Casts mehr nötig
-- Memory-sicher: Tokens sind Singletons
-- **Type-Coverage**: 100% mit gezielten inline-ignores ([Details](docs/guides/type-coverage-exclusions.md))
-- 5 technisch notwendige Casts (Generic Type Narrowing) mit `type-coverage:ignore-next-line`
-- Kein globales `--ignore-as-assertion` Flag
-- Jeder ignored Cast ist dokumentiert und begründet
-
-### Fehlerbehebungen
-- Keine Einträge
-
-### Bekannte Probleme
-- Keine bekannten Probleme
-
-### Upgrade-Hinweise
-- Keine besonderen Maßnahmen erforderlich
-
 ## [0.1.0] - 2025-11-04
 ### Hinzugefügt
 - Keine Einträge
 
 ### Geändert
 - Zahlreiche Absicherungen und Optimierungen
-
-### Fehlerbehebungen
-- Keine Einträge
-
-### Bekannte Probleme
-- Keine bekannten Probleme
-
-### Upgrade-Hinweise
-- Keine besonderen Maßnahmen erforderlich
-
-## [0.0.9] - 2025-10-29
-### Hinzugefügt
-- Keine Einträge
-
-### Geändert
-- Verbesserungen am DI-Container mit weiteren Methoden
-- Dokumentation mit JSDoc verbessert
-
-### Fehlerbehebungen
-- Keine Einträge
-
-### Bekannte Probleme
-- Keine bekannten Probleme
-
-### Upgrade-Hinweise
-- Keine besonderen Maßnahmen erforderlich
-
-## [0.0.8] - 2025-10-27
-### Hinzugefügt
-- Einführung Resultpattern
-
-### Geändert
-- Einführung Resultpattern
-
-### Fehlerbehebungen
-- Keine Einträge
-
-### Bekannte Probleme
-- Keine bekannten Probleme
-
-### Upgrade-Hinweise
-- Keine besonderen Maßnahmen erforderlich
-
-## [0.0.7] - 2025-10-27
-### Hinzugefügt
-- Containerstruktur Prototyp
-
-### Geändert
-- Keine Einträge
-
-### Fehlerbehebungen
-- Keine Einträge
-
-### Bekannte Probleme
-- Keine bekannten Probleme
-
-### Upgrade-Hinweise
-- Keine besonderen Maßnahmen erforderlich
-
-## [0.0.6] - 2025-10-26
-### Hinzugefügt
-- Keine Einträge
-
-### Geändert
-- Umbenennungen und Aufräumarbeiten + Dokumentationen hinzugefügt.
-
-### Fehlerbehebungen
-- Keine Einträge
-
-### Bekannte Probleme
-- Keine bekannten Probleme
-
-### Upgrade-Hinweise
-- Keine besonderen Maßnahmen erforderlich
-
-## [0.0.5] - 2025-10-25
-### Hinzugefügt
-- Keine Einträge
-
-### Geändert
-- Basis-Modul-Skelett erstellt
-
-### Fehlerbehebungen
-- Keine Einträge
-
-### Bekannte Probleme
-- Keine bekannten Probleme
-
-### Upgrade-Hinweise
-- Keine besonderen Maßnahmen erforderlich
-
-## [0.0.4] - 2025-10-24
-### Hinzugefügt
-- Keine Einträge
-
-### Geändert
-- Setup-Dev-Umgebung
 
 ### Fehlerbehebungen
 - Keine Einträge
@@ -581,6 +504,103 @@
 
 ### Geändert
 - Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.0.9] - 2025-10-29
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Verbesserungen am DI-Container mit weiteren Methoden
+- Dokumentation mit JSDoc verbessert
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.0.8] - 2025-10-27
+### Hinzugefügt
+- Einführung Resultpattern
+
+### Geändert
+- Einführung Resultpattern
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.0.7] - 2025-10-27
+### Hinzugefügt
+- Containerstruktur Prototyp
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.0.6] - 2025-10-26
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Umbenennungen und Aufräumarbeiten + Dokumentationen hinzugefügt.
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.0.5] - 2025-10-25
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Basis-Modul-Skelett erstellt
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.0.4] - 2025-10-24
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Setup-Dev-Umgebung
 
 ### Fehlerbehebungen
 - Keine Einträge

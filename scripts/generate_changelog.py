@@ -6,6 +6,11 @@ Generiert CHANGELOG.md aus den Release Notes in docs/development/foundry/release
 import re
 from pathlib import Path
 
+def parse_version(version_str):
+    """Parse version string to tuple of ints for semantic comparison."""
+    parts = version_str.lstrip('v').split('.')
+    return tuple(int(p) for p in parts)
+
 def main():
     root = Path(__file__).parent.parent
     changelog_path = root / "CHANGELOG.md"
@@ -22,9 +27,13 @@ def main():
     # Neuer Unreleased-Block
     unreleased_block = "## [Unreleased]\n\n### Hinzugefügt\n\n### Geändert\n\n### Fehlerbehebungen\n\n### Bekannte Probleme\n\n### Upgrade-Hinweise\n\n"
 
-    # Sammle Releases (absteigend nach Version)
+    # Sammle Releases (absteigend nach Semantic Version)
     sections = []
-    for file in sorted(release_dir.glob('v*.md'), reverse=True):
+    release_files = list(release_dir.glob('v*.md'))
+    # Sort by semantic version (not alphabetically!)
+    sorted_files = sorted(release_files, key=lambda f: parse_version(f.stem), reverse=True)
+    
+    for file in sorted_files:
         content = file.read_text(encoding='utf-8').splitlines()
         # Version aus Dateiname
         version = file.stem.lstrip('v')
