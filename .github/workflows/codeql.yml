@@ -3,8 +3,32 @@ name: "CodeQL Security Analysis"
 on:
   push:
     branches: [main, develop]
+    paths:
+      # Source Code
+      - 'src/**'
+      - 'templates/**'
+      - 'styles/**'
+      - 'lang/**'
+      # Config-Dateien die Code-Sicherheit betreffen
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+      - 'vite.config.js'
   pull_request:
     branches: [main, develop]
+    paths:
+      # Source Code
+      - 'src/**'
+      - 'templates/**'
+      - 'styles/**'
+      - 'lang/**'
+      # Config-Dateien die Code-Sicherheit betreffen
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+      - 'vite.config.js'
   schedule:
     # Run CodeQL analysis weekly (Wednesdays at 03:00 UTC)
     - cron: '0 3 * * 3'

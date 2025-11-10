@@ -4,10 +4,16 @@ on:
   # Run security audit on pull requests
   pull_request:
     branches: [main, develop]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
   
   # Run security audit on pushes to main/develop
   push:
     branches: [main, develop]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
   
   # Weekly scheduled audit (Mondays at 9:00 UTC)
   schedule:

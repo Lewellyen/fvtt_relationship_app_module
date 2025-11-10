@@ -21,12 +21,13 @@
   - Uploadet module.zip und module.json für Foundry VTT Installation
 
 ### Geändert
-- **GitHub Actions: CI-Workflow optimiert** (.github/workflows/ci.yml)
-  - **Whitelist-Ansatz mit `paths:`** statt Blacklist mit `paths-ignore:`
-  - CI läuft NUR bei Änderungen in: src/, templates/, styles/, lang/, dist/, module.json, package.json, Config-Dateien
-  - CI läuft NICHT bei: docs/, scripts/, .github/, *.md, LICENSE, etc.
-  - Konsistent mit Release-Tool-Logik (gleiche Whitelist)
-  - Spart CI-Ressourcen und Zeit bei reinen Dokumentations-Commits und Tooling-Updates
+- **GitHub Actions: Alle Workflows optimiert mit Whitelist-Ansatz**
+  - **CI-Workflow** (.github/workflows/ci.yml): Läuft nur bei Code/Config-Änderungen
+  - **Security Audit** (.github/workflows/security.yml): Läuft nur bei package.json/package-lock.json Änderungen
+  - **CodeQL Security Analysis** (.github/workflows/codeql.yml): Läuft nur bei Source-Code-Änderungen
+  - Alle mit `paths:` Whitelist statt Blacklist
+  - Konsistent mit Release-Tool-Logik (gleiche Definition von "Code")
+  - Spart massiv GitHub Actions Minutes bei Doku-Commits und Tooling-Updates
 - **Release-Tool GUI**: Komplett überarbeitet mit intelligentem Modus-System
   - Neue Funktionen in `release_utils.py`: `detect_change_type()`, `get_changed_files_info()`, `is_code_file()`, `is_documentation_file()`
   - **Whitelist-Ansatz**: Prüft ob Änderungen in Code-Verzeichnissen (src/, templates/, styles/, lang/) oder wichtigen Config-Dateien
