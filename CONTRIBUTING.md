@@ -14,7 +14,7 @@ Vielen Dank für dein Interesse, zu diesem Projekt beizutragen! 🎉
 
 ```bash
 # Repository klonen
-git clone <repository-url>
+git clone https://github.com/Lewellyen/fvtt_relationship_app_module.git
 cd fvtt_relationship_app_module
 
 # Dependencies installieren

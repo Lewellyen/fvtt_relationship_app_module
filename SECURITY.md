@@ -2,20 +2,49 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+This project is currently in **pre-release phase (0.x.x)**. Security updates are provided for the latest development version only.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| 0.x.x   | :white_check_mark: |
+| < 0.1.0 | :x:                |
+
+**Note**: Once the project reaches version 1.0.0, a formal versioning and security support policy will be established.
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+If you discover a security vulnerability in this Foundry VTT module, please report it responsibly:
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+### How to Report
+
+1. **Email**: Send details to [forenadmin.tir@googlemail.com](mailto:forenadmin.tir@googlemail.com)
+2. **Subject Line**: Use "SECURITY: [Brief Description]"
+3. **Include**:
+   - Description of the vulnerability
+   - Steps to reproduce
+   - Potential impact
+   - Suggested fix (if available)
+
+### What to Expect
+
+- **Initial Response**: Within 48-72 hours acknowledging receipt
+- **Status Updates**: Weekly updates on investigation progress
+- **Resolution Timeline**: 
+  - Critical vulnerabilities: 7-14 days
+  - High severity: 14-30 days
+  - Medium/Low severity: 30-60 days
+
+### Process
+
+1. We will investigate and validate the reported vulnerability
+2. If accepted, we'll work on a fix and keep you informed
+3. Once fixed, we'll coordinate disclosure timing with you
+4. If declined, we'll explain why the issue doesn't constitute a security vulnerability
+
+### Please Do Not
+
+- Publicly disclose the vulnerability before we've had a chance to address it
+- Exploit the vulnerability beyond what's necessary to demonstrate it
+- Access, modify, or delete data that doesn't belong to you
+
+Thank you for helping keep this project and the Foundry VTT community secure!

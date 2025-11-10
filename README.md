@@ -2,7 +2,7 @@
 
 Ein Foundry VTT Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken zwischen Akteuren und anderen Entitäten.
 
-**Version:** 0.10.0 (Pre-Release)  
+**Version:** 0.11.1 (Pre-Release)  
 **Status:** ✅ Aktive Entwicklung - Aggressives Refactoring erwünscht!  
 **Foundry VTT:** v13+ (siehe `module.json`)
 
@@ -24,7 +24,7 @@ Ein Foundry VTT Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken
 1. Öffne Foundry VTT
 2. Gehe zu **Add-on Modules**
 3. Klicke **Install Module**
-4. Füge die Manifest-URL ein: `<URL zur module.json>`
+4. Füge die Manifest-URL ein: `https://github.com/Lewellyen/fvtt_relationship_app_module/releases/latest/download/module.json`
 5. Klicke **Install**
 
 ### Manuelle Installation
@@ -299,7 +299,15 @@ Probleme melden: [GitHub Issues](URL-hier-einfügen)
 
 Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Versionshistorie.
 
-### Version 0.10.0 (Aktuell - In Entwicklung)
+### Version 0.11.1 (Aktuell - In Entwicklung)
+- Semantic Versioning Sortierung in CHANGELOG.md
+- Korrekte Version-Reihenfolge (nicht alphabetisch)
+
+### Version 0.11.0
+- `resolveWithError()` API für Result-Pattern-Konformität
+- Dokumentation auf 0.10.0 aktualisiert (17 Dokumente)
+
+### Version 0.10.0
 - ObservabilityRegistry & Self-Registration Pattern
 - Modular Config Structure (7 thematische Module)
 - Self-Configuring Services

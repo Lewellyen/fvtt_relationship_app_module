@@ -1,38 +1,65 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
+name: Bug Report
+about: Melde einen Fehler im Beziehungsnetzwerke-Modul
+title: '[BUG] '
+labels: 'bug'
 assignees: ''
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Fehlerbeschreibung
+<!-- Eine klare und präzise Beschreibung des Fehlers -->
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Schritte zur Reproduktion
+<!-- Beschreibe, wie der Fehler reproduziert werden kann -->
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+1. 
+2. 
+3. 
+4. 
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+## Erwartetes Verhalten
+<!-- Was sollte stattdessen passieren? -->
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
 
-**Additional context**
-Add any other context about the problem here.
+## Tatsächliches Verhalten
+<!-- Was passiert stattdessen? -->
+
+
+## Screenshots / Console Logs
+<!-- Falls vorhanden, füge Screenshots oder Console-Logs hinzu (F12 → Console-Tab) -->
+
+
+## Umgebung
+
+**Foundry VTT:**
+- Version: [z.B. v13.330]
+- Betriebssystem: [z.B. Windows 11, macOS 14, Ubuntu 22.04]
+- Browser: [z.B. Chrome 120, Firefox 121, Electron]
+
+**Modul:**
+- Version: [z.B. 0.11.1]
+- Installationsmethode: [Automatisch via Foundry / Manuell / Git Clone]
+
+**Andere Module:**
+- Liste der aktivierten Module (falls relevant):
+  - 
+  - 
+
+**System:**
+- Verwendetes Game System: [z.B. dnd5e, pf2e, custom]
+
+## Modul-Konflikte
+<!-- Tritt der Fehler auch auf, wenn alle anderen Module deaktiviert sind? -->
+
+- [ ] Ich habe den Fehler mit nur diesem Modul aktiviert reproduziert
+- [ ] Der Fehler tritt nur mit bestimmten anderen Modulen auf: 
+
+## Zusätzlicher Kontext
+<!-- Weitere relevante Informationen, z.B. Error Stack Traces, Netzwerk-Logs, etc. -->
+
+
+## Mögliche Lösung
+<!-- Optional: Hast du eine Idee, wie der Fehler behoben werden könnte? -->
+
