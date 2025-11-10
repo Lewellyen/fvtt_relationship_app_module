@@ -3,8 +3,58 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    paths:
+      # Source Code
+      - 'src/**'
+      - 'templates/**'
+      - 'styles/**'
+      - 'lang/**'
+      - 'dist/**'
+      # Wichtige Root-Dateien
+      - 'module.json'
+      - 'package.json'
+      - 'package-lock.json'
+      # Config-Dateien
+      - 'vite.config.ts'
+      - 'vite.config.js'
+      - 'tsconfig.json'
+      - 'eslint.config.mjs'
+      - 'eslint.config.js'
+      - '.eslintrc'
+      - 'prettier.config.js'
+      - '.prettierrc'
+      - 'vitest.config.ts'
+      - 'vitest.config.js'
+      - 'svelte.config.js'
+      - 'tailwind.config.js'
+      - 'postcss.config.js'
   pull_request:
     branches: [main, develop]
+    paths:
+      # Source Code
+      - 'src/**'
+      - 'templates/**'
+      - 'styles/**'
+      - 'lang/**'
+      - 'dist/**'
+      # Wichtige Root-Dateien
+      - 'module.json'
+      - 'package.json'
+      - 'package-lock.json'
+      # Config-Dateien
+      - 'vite.config.ts'
+      - 'vite.config.js'
+      - 'tsconfig.json'
+      - 'eslint.config.mjs'
+      - 'eslint.config.js'
+      - '.eslintrc'
+      - 'prettier.config.js'
+      - '.prettierrc'
+      - 'vitest.config.ts'
+      - 'vitest.config.js'
+      - 'svelte.config.js'
+      - 'tailwind.config.js'
+      - 'postcss.config.js'
 
 jobs:
   test:

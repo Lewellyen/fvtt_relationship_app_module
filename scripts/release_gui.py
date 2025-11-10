@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 from tkinter.scrolledtext import ScrolledText
 import re
 import json
@@ -8,13 +8,17 @@ from pathlib import Path
 import subprocess
 import sys
 from datetime import datetime
-from release_utils import update_version_in_file, run_command, update_documentation, update_metadata, remove_bom_in_paths, write_unreleased_changes, read_unreleased_changes, verify_metadata_update
+from release_utils import (
+    update_version_in_file, run_command, update_documentation, update_metadata, 
+    remove_bom_in_paths, write_unreleased_changes, read_unreleased_changes, 
+    verify_metadata_update, detect_change_type, get_changed_files_info
+)
 
 class ReleaseGUI:
     def __init__(self, root, test_mode=False):
         self.root = root
         self.root.title("Release Manager")
-        self.root.geometry("700x750")  # Noch höher machen
+        self.root.geometry("750x900")  # Höher für neuen Modus-Bereich
         
         # Test-Modus Flag setzen
         self._test_mode = test_mode
@@ -25,30 +29,74 @@ class ReleaseGUI:
         # Hauptframe
         main_frame = ttk.Frame(root, padding="20", style="Main.TFrame")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        main_frame.columnconfigure(1, weight=1)
+        main_frame.columnconfigure(0, weight=1)
         
         # Header
         header_frame = ttk.Frame(main_frame, style="Header.TFrame")
-        header_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
         
         ttk.Label(header_frame, text="Release Manager", style="Header.TLabel").pack(pady=10)
         
+        # ========== NEU: Automatische Erkennung & Modus-Auswahl ==========
+        self.detected_type = detect_change_type()
+        self.changes_info = get_changed_files_info()
+        
+        # Info-Banner mit Erkennungsergebnis
+        self.info_frame = ttk.Frame(main_frame, style="Info.TFrame")
+        self.info_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        
+        self.info_label = tk.Text(self.info_frame, height=4, wrap=tk.WORD, 
+                                  font=("Segoe UI", 10), relief=tk.FLAT,
+                                  state=tk.DISABLED)
+        self.info_label.pack(fill=tk.X, padx=10, pady=10)
+        
+        self.update_info_banner()
+        
+        # Modus-Auswahl
+        mode_frame = ttk.LabelFrame(main_frame, text="Modus auswählen", 
+                                    padding="15", style="Card.TLabelframe")
+        mode_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        self.mode_var = tk.StringVar(value='code' if self.detected_type == 'code' else 'docs')
+        
+        release_radio = ttk.Radiobutton(
+            mode_frame, 
+            text="🚀 Release erstellen (Version hochsetzen, Build, Tag, GitHub Release)",
+            variable=self.mode_var,
+            value='code',
+            command=self.update_ui_for_mode,
+            style="Custom.TRadiobutton"
+        )
+        release_radio.pack(anchor=tk.W, pady=5)
+        
+        docs_radio = ttk.Radiobutton(
+            mode_frame,
+            text="📝 Nur Commit (Dokumentation, keine neue Version)",
+            variable=self.mode_var,
+            value='docs',
+            command=self.update_ui_for_mode,
+            style="Custom.TRadiobutton"
+        )
+        docs_radio.pack(anchor=tk.W, pady=5)
+        
+        # ========== Versionen Frame (nur bei Release-Modus sichtbar) ==========
         # Aktuelle Version aus scripts/constants.cjs lesen
         self.current_version = self.get_current_version()
         
-        # Versionen Frame
-        version_frame = ttk.LabelFrame(main_frame, text="Versionsverwaltung", padding="15", style="Card.TLabelframe")
-        version_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        self.version_frame = ttk.LabelFrame(main_frame, text="Versionsverwaltung", 
+                                           padding="15", style="Card.TLabelframe")
+        self.version_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
         
         # Aktuelle Version
-        current_version_frame = ttk.Frame(version_frame)
+        current_version_frame = ttk.Frame(self.version_frame)
         current_version_frame.pack(fill=tk.X, pady=(0, 15))
         ttk.Label(current_version_frame, text="Aktuelle Version:", style="Bold.TLabel").pack(side=tk.LEFT)
-        self.current_version_label = ttk.Label(current_version_frame, text=self.current_version, style="Version.TLabel")
+        self.current_version_label = ttk.Label(current_version_frame, text=self.current_version, 
+                                              style="Version.TLabel")
         self.current_version_label.pack(side=tk.LEFT, padx=(10, 0))
         
         # Version Controls Frame
-        controls_frame = ttk.Frame(version_frame)
+        controls_frame = ttk.Frame(self.version_frame)
         controls_frame.pack(fill=tk.X, pady=(10, 0))
         
         # Version Eingabefelder
@@ -109,19 +157,13 @@ class ReleaseGUI:
                   command=self.set_patch).pack(side=tk.LEFT, padx=5)
         ttk.Button(quick_frame, text="Reset", style="Reset.TButton", width=8,
                   command=self.reset_version).pack(side=tk.LEFT, padx=5)
-        sync_button = ttk.Button(quick_frame, text="Sync Version", style="Sync.TButton", width=10,
-                  command=self.sync_version_from_module)
-        sync_button.pack(side=tk.LEFT, padx=5)
-        
-        # Tooltip für Sync-Button
-        self.create_tooltip(sync_button, "Synchronisiert die Version aus module.json in constants.cjs")
         
         # Release-Optionen Frame
-        options_frame = ttk.LabelFrame(main_frame, text="Release-Optionen", 
+        self.options_frame = ttk.LabelFrame(main_frame, text="Release-Optionen", 
                                      padding="15", style="Card.TLabelframe")
-        options_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
-        options_frame.columnconfigure(0, weight=1)  # Erste Spalte dehnbar
-        options_frame.columnconfigure(1, weight=1)  # Zweite Spalte dehnbar
+        self.options_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        self.options_frame.columnconfigure(0, weight=1)
+        self.options_frame.columnconfigure(1, weight=1)
         
         # Checkbox-Variablen
         self.update_constants_var = tk.BooleanVar(value=True)
@@ -133,7 +175,7 @@ class ReleaseGUI:
         self.update_docs_var = tk.BooleanVar(value=True)
         self.remove_bom_var = tk.BooleanVar(value=True)
         
-        # Checkboxen in 2x4 Grid (jetzt 7 Optionen)
+        # Checkboxen in 2x4 Grid
         options = [
             ("Konstanten-Datei aktualisieren", self.update_constants_var),
             ("Metadaten aktualisieren", self.run_build_var),
@@ -149,72 +191,62 @@ class ReleaseGUI:
         ]
         
         # Erste Spalte: Hauptoptionen
-        ttk.Label(options_frame, text="Vorbereitung", 
+        ttk.Label(self.options_frame, text="Vorbereitung", 
                  style="Bold.TLabel").grid(row=0, column=0, 
                  sticky=tk.W, pady=(0, 10))
         
         for i, (text, var) in enumerate(options):
-            ttk.Checkbutton(options_frame, text=text, variable=var, 
+            ttk.Checkbutton(self.options_frame, text=text, variable=var, 
                           style="Custom.TCheckbutton").grid(row=i+1, column=0, 
                           sticky=tk.W, pady=5, padx=10)
         
         # Git-Operationen Label
-        ttk.Label(options_frame, text="Git-Operationen", 
+        ttk.Label(self.options_frame, text="Git-Operationen", 
                  style="Bold.TLabel").grid(row=0, column=1, 
                  sticky=tk.W, pady=(0, 10))
         
         # Zweite Spalte: Git-Optionen
         for i, (text, var) in enumerate(git_options):
-            ttk.Checkbutton(options_frame, text=text, variable=var, 
+            ttk.Checkbutton(self.options_frame, text=text, variable=var, 
                           style="Custom.TCheckbutton").grid(row=i+1, column=1, 
                           sticky=tk.W, pady=5, padx=10)
         
-        # Ausführen Button Frame mit mehr Abstand
+        # Ausführen Button Frame
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=5, column=0, columnspan=2, pady=(20, 20))
+        button_frame.grid(row=5, column=0, pady=(20, 20))
         
         self.execute_button = ttk.Button(
             button_frame,
-            text="Ausgewählte Schritte ausführen",
-            command=self.execute_release,
+            text="Ausführen",
+            command=self.execute_action,
             style="Execute.TButton"
         )
         self.execute_button.pack(side=tk.LEFT, padx=5)
         
-        # Override Button
-        self.override_button = ttk.Button(
-            button_frame,
-            text="Override (auf eigenes Risiko)",
-            command=lambda: self.execute_release(override=True),
-            style="Warning.TButton"
-        )
-        self.override_button.pack(side=tk.LEFT, padx=5)
-
         # Test Button
         self.test_button = ttk.Button(
             button_frame,
             text="Testlauf (Simulation)",
-            command=lambda: self.execute_release(test_mode=True),
+            command=lambda: self.execute_action(test_mode=True),
             style="Test.TButton"
         )
         self.test_button.pack(side=tk.LEFT, padx=5)
         
-        # Status Label mit mehr Platz
+        # Status Label
         status_frame = ttk.Frame(main_frame, style="Main.TFrame")
-        status_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
-        self.status_label = ttk.Label(status_frame, text="", style="Status.TLabel", wraplength=650)  # Zeilenumbruch hinzugefügt
+        status_frame.grid(row=6, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        self.status_label = ttk.Label(status_frame, text="", style="Status.TLabel", wraplength=700)
         self.status_label.pack(fill=tk.X, padx=10)
         
-        # Spacer Frame für flexiblen Abstand
+        # Spacer
         spacer = ttk.Frame(main_frame, style="Main.TFrame")
-        spacer.grid(row=7, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        spacer.grid(row=7, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         spacer.rowconfigure(0, weight=1)
         
-        # Bottom Frame für den Beenden Button
+        # Bottom Frame
         bottom_frame = ttk.Frame(main_frame, style="Main.TFrame")
-        bottom_frame.grid(row=8, column=0, columnspan=2, sticky=(tk.S, tk.E, tk.W), pady=(20, 10))
+        bottom_frame.grid(row=8, column=0, sticky=(tk.S, tk.E, tk.W), pady=(20, 10))
         
-        # Beenden Button
         ttk.Button(
             bottom_frame,
             text="Beenden",
@@ -228,12 +260,83 @@ class ReleaseGUI:
         self.minor_var.trace('w', self.validate_input)
         self.patch_var.trace('w', self.validate_input)
         
-        # Initiale Validierung
+        # Initiale UI-Anpassung basierend auf Modus
+        self.update_ui_for_mode()
         self.validate_input()
         
         # Configure grid weights
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
+    
+    def update_info_banner(self):
+        """Aktualisiert das Info-Banner mit Erkennungsergebnis."""
+        self.info_label.config(state=tk.NORMAL)
+        self.info_label.delete("1.0", tk.END)
+        
+        # Alle geänderten Dateien (zur Info)
+        all_files = self.changes_info['code'] + self.changes_info['docs']
+        
+        if self.detected_type == 'docs':
+            # Nur Dokumentation
+            bg_color = "#fff3cd"
+            fg_color = "#856404"
+            title = "ℹ️ Automatische Erkennung: Nur Dokumentations-Änderungen\n"
+            
+            files_text = f"Geänderte Dateien ({len(all_files)} insgesamt):\n"
+            for f in all_files[:10]:  # Zeige bis zu 10 Dateien
+                files_text += f"  • {f}\n"
+            if len(all_files) > 10:
+                files_text += f"  ... und {len(all_files) - 10} weitere\n"
+            
+            files_text += "\n💡 Empfohlen: Nur Commit (keine neue Version)"
+        else:
+            # Code-Änderungen
+            bg_color = "#d4edda"
+            fg_color = "#155724"
+            title = "ℹ️ Automatische Erkennung: Code-Änderungen gefunden\n"
+            
+            files_text = f"Geänderte Code-Dateien ({len(self.changes_info['code'])} Code, {len(self.changes_info['docs'])} Doku/Tooling):\n"
+            # Zeige Code-Dateien zuerst
+            for f in self.changes_info['code'][:7]:
+                files_text += f"  • {f}\n"
+            if len(self.changes_info['code']) > 7:
+                files_text += f"  ... und {len(self.changes_info['code']) - 7} weitere Code-Dateien\n"
+            
+            # Zeige auch Doku-Dateien wenn vorhanden
+            if self.changes_info['docs']:
+                files_text += f"\nPlus Doku/Tooling:\n"
+                for f in self.changes_info['docs'][:3]:
+                    files_text += f"  • {f}\n"
+                if len(self.changes_info['docs']) > 3:
+                    files_text += f"  ... und {len(self.changes_info['docs']) - 3} weitere\n"
+            
+            files_text += "\n💡 Empfohlen: Release erstellen (neue Version)"
+        
+        self.info_label.insert("1.0", title + "\n" + files_text)
+        self.info_label.config(state=tk.DISABLED, bg=bg_color, fg=fg_color)
+    
+    def update_ui_for_mode(self):
+        """Passt UI basierend auf gewähltem Modus an."""
+        is_release = self.mode_var.get() == 'code'
+        
+        # Version-Frame nur bei Release anzeigen
+        if is_release:
+            self.version_frame.grid()
+            self.options_frame.grid()
+            self.execute_button.config(text="Release erstellen")
+            self.root.title("Release Manager - Release Modus")
+            # Git Tag und Version-Updates aktivieren
+            self.git_tag_var.set(True)
+            self.update_constants_var.set(True)
+            self.run_build_var.set(True)
+        else:
+            self.version_frame.grid_remove()
+            self.options_frame.grid_remove()
+            self.execute_button.config(text="Commit erstellen")
+            self.root.title("Release Manager - Dokumentations-Modus")
+        
+        # Validierung neu ausführen (wichtig für Button-Status)
+        self.validate_input()
     
     def setup_styles(self):
         """Konfiguriert die Styles für ein modernes Aussehen."""
@@ -250,6 +353,7 @@ class ReleaseGUI:
         # Hauptframe
         style.configure("Main.TFrame", background=BG_COLOR)
         style.configure("Header.TFrame", background=BG_COLOR)
+        style.configure("Info.TFrame", background=BG_COLOR)
         
         # Header
         style.configure("Header.TLabel", 
@@ -294,25 +398,20 @@ class ReleaseGUI:
                        padding=10,
                        font=("Segoe UI", 11, "bold"),
                        background=PRIMARY_COLOR)
-        style.configure("Warning.TButton",
-                       padding=10,
-                       font=("Segoe UI", 11),
-                       background=WARNING_COLOR)
         style.configure("Test.TButton",
                        padding=10,
                        font=("Segoe UI", 11),
                        background=TEST_COLOR)
-        style.configure("Sync.TButton",
-                       padding=5,
-                       font=("Segoe UI", 9),
-                       background="#9C27B0")
         
         # Entry
         style.configure("Version.TEntry", 
                        font=("Segoe UI", 10))
         
-        # Checkbutton
+        # Checkbutton & Radiobutton
         style.configure("Custom.TCheckbutton", 
+                       font=("Segoe UI", 10),
+                       background=CARD_BG)
+        style.configure("Custom.TRadiobutton",
                        font=("Segoe UI", 10),
                        background=CARD_BG)
         
@@ -340,19 +439,26 @@ class ReleaseGUI:
     
     def validate_input(self, *args):
         """Validiert die Eingaben und aktiviert/deaktiviert den Ausführen-Button."""
+        # Im Dokumentations-Modus keine Versions-Validierung
+        if self.mode_var.get() == 'docs':
+            self.execute_button.state(['!disabled'])
+            self.status_label.config(text="")
+            return
+        
+        # Im Release-Modus: Versions-Validierung
         try:
             new_version = self.get_new_version()
-            self.new_version_label.config(text=new_version)  # Label aktualisieren
+            if hasattr(self, 'new_version_label'):
+                self.new_version_label.config(text=new_version)
             current_parts = [int(x) for x in self.current_version.split('.')]
             new_parts = [int(x) for x in new_version.split('.')]
             
-            # Prüfe, ob die neue Version größer ist
             if new_parts > current_parts:
                 self.execute_button.state(['!disabled'])
                 self.status_label.config(text="")
             else:
                 self.execute_button.state(['disabled'])
-                self.status_label.config(text="Neue Version muss größer als aktuelle Version sein! (Nutze Override für Downgrade)")
+                self.status_label.config(text="Neue Version muss größer als aktuelle Version sein!")
         except ValueError:
             self.execute_button.state(['disabled'])
             self.status_label.config(text="Bitte nur Zahlen eingeben!")
@@ -396,89 +502,88 @@ class ReleaseGUI:
         self.patch_var.set(patch)
         self.validate_input()
     
-    def sync_version_from_module(self):
-        """Synchronisiert die Version aus module.json in constants.cjs."""
-        try:
-            # Lese Version aus module.json
-            module_json_path = Path("module.json")
-            if not module_json_path.exists():
-                messagebox.showerror("Fehler", "module.json nicht gefunden!")
-                return
-            
-            with open(module_json_path, 'r', encoding='utf-8') as f:
-                module_data = json.load(f)
-            
-            module_version = module_data.get('version')
-            if not module_version:
-                messagebox.showerror("Fehler", "Version in module.json nicht gefunden!")
-                return
-            
-            # Bestätigungsdialog
-            if not messagebox.askyesno("Bestätigung", 
-                f"Version aus module.json ({module_version}) in constants.cjs synchronisieren?\n\n"
-                f"Aktuelle Version in constants.cjs: {self.current_version}"):
-                return
-            
-            # Aktualisiere constants.cjs
-            update_version_in_file("scripts/constants.cjs", module_version)
-            
-            # Aktualisiere die Anzeige
-            self.refresh_version_display()
-            
-            messagebox.showinfo("Erfolg", 
-                f"Version erfolgreich synchronisiert!\n\n"
-                f"Neue Version: {module_version}")
-            
-        except Exception as e:
-            messagebox.showerror("Fehler", f"Fehler beim Synchronisieren: {str(e)}")
-    
-    def create_tooltip(self, widget, text):
-        """Erstellt einen Tooltip für ein Widget."""
-        def on_enter(event):
-            tooltip = tk.Toplevel()
-            tooltip.wm_overrideredirect(True)
-            tooltip.wm_geometry(f"+{event.x_root+10}+{event.y_root+10}")
-            label = tk.Label(tooltip, text=text, background="#ffffe0", 
-                           relief="solid", borderwidth=1, font=("Segoe UI", 9))
-            label.pack()
-            widget.tooltip = tooltip
-        
-        def on_leave(event):
-            if hasattr(widget, 'tooltip'):
-                widget.tooltip.destroy()
-                del widget.tooltip
-        
-        widget.bind("<Enter>", on_enter)
-        widget.bind("<Leave>", on_leave)
-    
-    def verify_version_update(self, new_version, file_path):
-        """Überprüft, ob die Version in der angegebenen Datei korrekt aktualisiert wurde."""
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # Suche nach der Version
-            match = re.search(r'MODULE_VERSION:\s*[\'"]([^\'"]+)[\'"]', content)
-            if not match:
-                raise Exception(f"Version in {file_path} nicht gefunden!")
-            
-            actual_version = match.group(1)
-            if actual_version != new_version:
-                raise Exception(f"Version in {file_path} ist {actual_version}, sollte aber {new_version} sein!")
-            
-            return True
-        except Exception as e:
-            print(f"  X Fehler beim Überprüfen von {file_path}: {str(e)}")
-            return False
-
     def refresh_version_display(self):
         """Aktualisiert die Anzeige der aktuellen Version."""
         self.current_version = self.get_current_version()
         self.current_version_label.config(text=self.current_version)
-        self.reset_version()  # Setzt die Eingabefelder auf die neue aktuelle Version
+        self.reset_version()
         self.validate_input()
 
-    def prompt_for_changelog_inputs(self, override=False, test_mode=False):
+    def execute_action(self, test_mode=False):
+        """Hauptfunktion: Führt je nach Modus Release oder Docs-Commit aus."""
+        if self.mode_var.get() == 'docs':
+            self.documentation_commit(test_mode)
+        else:
+            self.execute_release(test_mode)
+    
+    def documentation_commit(self, test_mode=False):
+        """Nur Commit + Push, keine Version, kein Tag."""
+        # Commit-Message abfragen
+        commit_msg = simpledialog.askstring(
+            "Commit-Message",
+            "Beschreibung der Dokumentations-Änderungen:\n(Prefix 'docs:' wird automatisch hinzugefügt)",
+            parent=self.root
+        )
+        
+        if not commit_msg:
+            return
+        
+        # Conventional Commit Format
+        if not commit_msg.startswith("docs:"):
+            commit_msg = f"docs: {commit_msg}"
+        
+        # Bestätigung
+        confirmation = f"Dokumentations-Commit erstellen:\n\n" + \
+                      f"Commit-Message: {commit_msg}\n\n" + \
+                      f"Änderungen:\n"
+        
+        for f in self.changes_info['docs'][:10]:
+            confirmation += f"  • {f}\n"
+        if len(self.changes_info['docs']) > 10:
+            confirmation += f"  ... und {len(self.changes_info['docs']) - 10} weitere\n"
+        
+        confirmation += "\n❌ KEINE neue Version\n"
+        confirmation += "❌ KEIN Git-Tag\n"
+        confirmation += "✅ CHANGELOG Unreleased-Sektion bleibt erhalten"
+        
+        if test_mode:
+            confirmation = "TEST-MODUS: Keine Änderungen werden vorgenommen!\n\n" + confirmation
+        
+        if not messagebox.askyesno("Bestätigung", confirmation):
+            return
+        
+        try:
+            print(f"\n{'TEST: ' if test_mode else ''}Dokumentations-Commit wird erstellt...")
+            print(f"  Commit-Message: {commit_msg}")
+            
+            # Git Operations
+            if not test_mode:
+                print("  Git add...")
+                subprocess.run(['git', 'add', '.'], check=True)
+                
+                print("  Git commit...")
+                subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
+                
+                print("  Git push...")
+                subprocess.run(['git', 'push', 'origin', 'main'], check=True)
+            
+            print("\n✅ Dokumentations-Commit erfolgreich!" + (" (simuliert)" if test_mode else ""))
+            
+            messagebox.showinfo(
+                "✅ Erfolg",
+                f"Dokumentations-Commit {'simuliert' if test_mode else 'erstellt'}!\n\n"
+                f"Commit: {commit_msg}\n\n"
+                f"📝 CHANGELOG.md Unreleased-Sektion bleibt erhalten.\n"
+                f"📦 Keine neue Version erstellt.\n"
+                f"🏷️ Kein Git-Tag erstellt."
+            )
+            
+        except subprocess.CalledProcessError as e:
+            messagebox.showerror("❌ Fehler", f"Git-Operation fehlgeschlagen:\n{str(e)}")
+        except Exception as e:
+            messagebox.showerror("❌ Fehler", f"Fehler beim Commit:\n{str(e)}")
+
+    def prompt_for_changelog_inputs(self, test_mode=False):
         """Zeigt ein Modal zur Eingabe von Changelog-Texten und Commit-Bemerkung."""
         # Lese vorhandene Unreleased-Texte
         existing = read_unreleased_changes("CHANGELOG.md")
@@ -489,30 +594,28 @@ class ReleaseGUI:
         frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
         dialog.columnconfigure(0, weight=1)
         dialog.rowconfigure(0, weight=1)
+        
         # Eingabefelder
         ttk.Label(frame, text="Hinzugefügt:").grid(row=0, column=0, sticky=tk.W)
         added_widget = ScrolledText(frame, width=60, height=4)
         added_widget.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        # Vorbefüllen
         added_widget.insert("1.0", existing.get("added", ""))
+        
         ttk.Label(frame, text="Geändert:").grid(row=2, column=0, sticky=tk.W)
         changed_widget = ScrolledText(frame, width=60, height=4)
         changed_widget.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        # Vorbefüllen
         changed_widget.insert("1.0", existing.get("changed", ""))
+        
         ttk.Label(frame, text="Fehlerbehebungen:").grid(row=4, column=0, sticky=tk.W)
         fixed_widget = ScrolledText(frame, width=60, height=4)
         fixed_widget.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        # Vorbefüllen
         fixed_widget.insert("1.0", existing.get("fixed", ""))
         
-        # Bekannte Probleme
         ttk.Label(frame, text="Bekannte Probleme:").grid(row=6, column=0, sticky=tk.W)
         known_widget = ScrolledText(frame, width=60, height=4)
         known_widget.grid(row=7, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         known_widget.insert("1.0", existing.get("known", ""))
         
-        # Upgrade-Hinweise
         ttk.Label(frame, text="Upgrade-Hinweise:").grid(row=8, column=0, sticky=tk.W)
         upgrade_widget = ScrolledText(frame, width=60, height=4)
         upgrade_widget.grid(row=9, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
@@ -522,9 +625,11 @@ class ReleaseGUI:
         remark_var = tk.StringVar()
         remark_entry = ttk.Entry(frame, textvariable=remark_var, width=60)
         remark_entry.grid(row=11, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        
         # Buttons
         btn_frame = ttk.Frame(frame)
         btn_frame.grid(row=12, column=0, sticky=tk.E)
+        
         def on_ok():
             self._changelog_inputs = {
                 "added": added_widget.get("1.0", tk.END).strip(),
@@ -535,20 +640,24 @@ class ReleaseGUI:
                 "remark": remark_var.get().strip()
             }
             dialog.destroy()
+        
         def on_cancel():
             self._changelog_inputs = None
             dialog.destroy()
+        
         ttk.Button(btn_frame, text="OK", command=on_ok).grid(row=0, column=0, padx=5)
         ttk.Button(btn_frame, text="Abbrechen", command=on_cancel).grid(row=0, column=1)
+        
         self.root.wait_window(dialog)
         return self._changelog_inputs
 
-    def execute_release(self, override=False, test_mode=False):
-        """Führt den Release-Prozess aus."""
-        # Modal zur Eingabe von Changelog-Texten und Commit-Bemerkung
-        inputs = self.prompt_for_changelog_inputs(override, test_mode)
+    def execute_release(self, test_mode=False):
+        """Führt den vollständigen Release-Prozess aus (wie bisher)."""
+        # Modal zur Eingabe von Changelog
+        inputs = self.prompt_for_changelog_inputs(test_mode)
         if inputs is None:
             return
+        
         added = inputs["added"]
         changed = inputs["changed"]
         fixed = inputs["fixed"]
@@ -557,41 +666,13 @@ class ReleaseGUI:
         remark = inputs["remark"]
         new_version = self.get_new_version()
         current_date = datetime.now().strftime("%Y-%m-%d")
+        
         print(f"\nStarte {'Test-' if test_mode else ''}Release-Prozess für Version {new_version}")
         
-        # Erstelle eine Liste der ausgewählten Schritte
-        selected_steps = []
-        if self.update_constants_var.get():
-            selected_steps.append("Konstanten-Datei aktualisieren")
-        if self.run_build_var.get():
-            selected_steps.append("Metadaten aktualisieren")
-        if self.remove_bom_var.get():
-            selected_steps.append("BOM entfernen")
-        if self.update_docs_var.get():
-            selected_steps.append("Dokumentation aktualisieren")
-        if self.git_add_var.get():
-            selected_steps.append("Git: Änderungen stagen")
-        if self.git_commit_var.get():
-            selected_steps.append("Git: Änderungen committen")
-        if self.git_tag_var.get():
-            selected_steps.append("Git: Tag erstellen")
-        if self.git_push_var.get():
-            selected_steps.append("Git: Änderungen hochladen")
-        
-        if not selected_steps:
-            messagebox.showwarning("Warnung", "Bitte wählen Sie mindestens einen Schritt aus!")
-            return
-        
-        # Bestätigungsdialog mit ausgewählten Schritten
-        confirmation = f"Folgende Schritte werden {'simuliert' if test_mode else 'ausgeführt'}:\n\n" + \
-                      "\n".join(f"- {step}" for step in selected_steps)
-        
+        # Bestätigung
+        confirmation = f"Release für Version {new_version} erstellen?\n\n"
         if test_mode:
             confirmation = "TEST-MODUS: Keine Dateien werden geändert!\n\n" + confirmation
-        elif override:
-            confirmation = "WARNUNG: Override-Modus aktiviert!\n" + \
-                         "Die Versionsprüfung wird umgangen. Dies kann zu unerwarteten Problemen führen.\n\n" + \
-                         confirmation
         
         if not messagebox.askyesno("Bestätigung", confirmation):
             return
@@ -600,17 +681,9 @@ class ReleaseGUI:
             # 1. Konstantendatei aktualisieren
             if self.update_constants_var.get():
                 print("\n1. Aktualisiere Version in scripts/constants.cjs...")
-                print(f"  - {'Simuliere Aktualisierung von' if test_mode else 'Aktualisiere'} scripts/constants.cjs")
                 if not test_mode:
                     update_version_in_file("scripts/constants.cjs", new_version)
-
-                # Überprüfe die Aktualisierung
-                if not test_mode:
-                    print("\n   Überprüfe Aktualisierung...")
-                    if not self.verify_version_update(new_version, "scripts/constants.cjs"):
-                        raise Exception("Fehler beim Aktualisieren der constants.cjs!")
                     self.refresh_version_display()
-
                 print("  OK constants.cjs erfolgreich aktualisiert" + (" (simuliert)" if test_mode else ""))
             
             # 2. Metadaten aktualisieren
@@ -618,7 +691,6 @@ class ReleaseGUI:
                 print("\n2. Aktualisiere Metadaten...")
                 if not test_mode:
                     update_metadata(new_version)
-                    print("\n   Überprüfe Metadaten-Aktualisierung...")
                     if not verify_metadata_update(new_version):
                         raise Exception("Fehler beim Aktualisieren der Metadaten!")
                 print("  OK Metadaten erfolgreich aktualisiert" + (" (simuliert)" if test_mode else ""))
@@ -627,32 +699,21 @@ class ReleaseGUI:
             if self.remove_bom_var.get():
                 print("\n3. Entferne BOM aus Projektdateien...")
                 if not test_mode:
-                    remove_bom_in_paths(["src", "dist", "templates", "styles", "system.json", "package.json"])
+                    remove_bom_in_paths(["src", "dist", "templates", "styles", "module.json", "package.json"])
                 print("  OK BOM-Entfernung abgeschlossen" + (" (simuliert)" if test_mode else ""))
             
             # 4. Dokumentation aktualisieren
             if self.update_docs_var.get():
-                self.status_label.config(text="4. Änderungs-Sektion in CHANGELOG.md einfügen...")
-                self.root.update()
-
                 print("\n4. Wende GUI-Änderungen auf CHANGELOG.md an...")
                 if not test_mode:
-                    write_unreleased_changes(
-                        "CHANGELOG.md",
-                        added,
-                        changed,
-                        fixed,
-                        known,
-                        upgrade
-                    )
+                    write_unreleased_changes("CHANGELOG.md", added, changed, fixed, known, upgrade)
                 print("  OK Unreleased-Sektion in CHANGELOG.md aktualisiert" + (" (simuliert)" if test_mode else ""))
 
                 print("\n5. Aktualisiere Dokumentation...")
-                current_date = datetime.now().strftime("%Y-%m-%d")
-                update_documentation(new_version, current_date)
+                if not test_mode:
+                    update_documentation(new_version, current_date)
                 print("  OK Dokumentation erfolgreich aktualisiert" + (" (simuliert)" if test_mode else ""))
 
-                # 6. CHANGELOG.md aus Release-Notes regenerieren
                 print("\n6. Generiere CHANGELOG.md aus Release-Notes...")
                 if not test_mode:
                     if not run_command("python scripts/generate_changelog.py"):
@@ -671,40 +732,16 @@ class ReleaseGUI:
             if self.git_commit_var.get():
                 print("\n8. Git-Änderungen committen...")
                 if not test_mode:
-                    # Prüfe, ob es Änderungen gibt
-                    status = subprocess.run(["git", "status", "--porcelain"], 
-                                         capture_output=True, text=True)
-                    if not status.stdout.strip():
-                        print("  ⚠️ Keine Änderungen zum Committen vorhanden")
-                        if not messagebox.askyesno("Warnung", 
-                            "Es sind keine Änderungen zum Committen vorhanden.\nMöchten Sie trotzdem fortfahren?"):
-                            return
-                    
-                    # Conventional Commits: release: v{version}
                     commit_message = f"release: v{new_version}"
-                    
-                    # Füge Commit-Bemerkung hinzu, falls vorhanden
                     if remark:
                         commit_message += f" - {remark}"
-                    
                     commit_message += "\n\n"
-                    
-                    # Füge strukturierte Changelog-Sektionen hinzu
                     if added and added.strip():
                         commit_message += "### Hinzugefügt\n" + added + "\n\n"
                     if changed and changed.strip():
                         commit_message += "### Geändert\n" + changed + "\n\n"
                     if fixed and fixed.strip():
                         commit_message += "### Fehlerbehebungen\n" + fixed + "\n\n"
-                    if known and known.strip():
-                        commit_message += "### Bekannte Probleme\n" + known + "\n\n"
-                    if upgrade and upgrade.strip():
-                        commit_message += "### Upgrade-Hinweise\n" + upgrade + "\n\n"
-                    
-                    # Füge Release-Metadaten hinzu
-                    commit_message += "---\n"
-                    commit_message += "- Aktualisierte Konstanten-Dateien\n"
-                    commit_message += "- Neue Release-Notes und Changelog"
                     
                     if not run_command(f'git commit -m "{commit_message}"'):
                         raise Exception("Git commit fehlgeschlagen")
@@ -713,31 +750,10 @@ class ReleaseGUI:
             # 9. Git-Tag erstellen
             if self.git_tag_var.get():
                 print("\n9. Git-Tag erstellen...")
-                tag_message = f"Release v{new_version}"
-                
-                # Füge Commit-Bemerkung hinzu, falls vorhanden
-                if remark:
-                    tag_message += f" - {remark}"
-                
-                tag_message += "\n\n"
-                
-                # Füge strukturierte Changelog-Sektionen hinzu (wie beim Commit)
-                if added and added.strip():
-                    tag_message += "### Hinzugefügt\n" + added + "\n\n"
-                if changed and changed.strip():
-                    tag_message += "### Geändert\n" + changed + "\n\n"
-                if fixed and fixed.strip():
-                    tag_message += "### Fehlerbehebungen\n" + fixed + "\n\n"
-                if known and known.strip():
-                    tag_message += "### Bekannte Probleme\n" + known + "\n\n"
-                if upgrade and upgrade.strip():
-                    tag_message += "### Upgrade-Hinweise\n" + upgrade + "\n\n"
-                
-                tag_message += "---\n"
-                tag_message += "- Aktualisierte Konstanten-Dateien\n"
-                tag_message += "- Neue Release-Notes und Changelog"
-                
                 if not test_mode:
+                    tag_message = f"Release v{new_version}"
+                    if remark:
+                        tag_message += f" - {remark}"
                     if not run_command(f'git tag -f -a v{new_version} -m "{tag_message}"'):
                         raise Exception("Git tag fehlgeschlagen")
                 print("  OK Git tag erfolgreich" + (" (simuliert)" if test_mode else ""))
@@ -750,9 +766,9 @@ class ReleaseGUI:
                         raise Exception("Git push fehlgeschlagen")
                 print("  OK Git push erfolgreich" + (" (simuliert)" if test_mode else ""))
             
-            print("\nRelease-Prozess erfolgreich abgeschlossen!" + (" (TEST-MODUS - Keine Änderungen wurden vorgenommen)" if test_mode else ""))
+            print("\nRelease-Prozess erfolgreich abgeschlossen!" + (" (TEST-MODUS)" if test_mode else ""))
             messagebox.showinfo("Erfolg", 
-                              "Test-Simulation erfolgreich!" if test_mode else f"Release für Version {new_version} erfolgreich ausgeführt!")
+                              "Test-Simulation erfolgreich!" if test_mode else f"Release für Version {new_version} erfolgreich!")
         except Exception as e:
             print(f"\nFehler beim Release-Prozess: {str(e)}")
             messagebox.showerror("Fehler", f"Release fehlgeschlagen: {str(e)}")
@@ -766,4 +782,4 @@ def main():
     print("GUI beendet.")
 
 if __name__ == "__main__":
-    main() 
+    main()

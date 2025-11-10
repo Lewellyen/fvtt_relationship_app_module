@@ -3,6 +3,10 @@ import re
 import subprocess
 from pathlib import Path
 import json
+import os
+
+# Projekt-Root bestimmen
+PROJECT_ROOT = Path(__file__).parent.parent
 
 def update_version_in_file(file_path, new_version):
     """Aktualisiert die Version in einer Datei.
@@ -294,4 +298,150 @@ def read_unreleased_changes(changelog_path):
         "fixed": extract("### Fehlerbehebungen"),
         "known": extract("### Bekannte Probleme"),
         "upgrade": extract("### Upgrade-Hinweise")
+    }
+
+def get_changed_files():
+    """
+    Gibt eine Liste aller geänderten Dateien zurück (git status).
+    
+    Returns:
+        list: Liste der geänderten Dateipfade
+    """
+    try:
+        result = subprocess.run(
+            ['git', 'status', '--porcelain'],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            check=False
+        )
+        
+        if result.returncode != 0:
+            return []
+        
+        changed_files = []
+        for line in result.stdout.strip().split('\n'):
+            if line:
+                # Format: " M file.txt" oder "?? file.txt" oder "A  file.txt"
+                filepath = line[3:].strip()
+                if filepath:
+                    changed_files.append(filepath)
+        
+        return changed_files
+    except Exception as e:
+        print(f"Fehler beim Ermitteln geänderter Dateien: {e}")
+        return []
+
+def is_code_file(filepath):
+    """
+    Prüft ob eine Datei zum funktionalen Code des Moduls gehört.
+    
+    Args:
+        filepath (str): Pfad zur Datei
+        
+    Returns:
+        bool: True wenn Code, False wenn Dokumentation/Tooling
+    """
+    # Definiere was als "funktionaler Code" gilt (Whitelist-Ansatz)
+    code_patterns = [
+        'src/',           # Source Code
+        'templates/',     # Handlebars Templates
+        'styles/',        # CSS/SCSS
+        'lang/',          # Übersetzungsdateien
+        'dist/',          # Build-Output (falls committed)
+    ]
+    
+    # Wichtige Root-Dateien die zum funktionalen Code gehören
+    code_root_files = [
+        'module.json',
+        'package.json',
+        'package-lock.json',
+        'vite.config.ts',
+        'vite.config.js',
+        'tsconfig.json',
+        'eslint.config.mjs',
+        'eslint.config.js',
+        '.eslintrc',
+        'prettier.config.js',
+        '.prettierrc',
+        'vitest.config.ts',
+        'vitest.config.js',
+        'svelte.config.js',
+        'tailwind.config.js',
+        'postcss.config.js',
+    ]
+    
+    # Prüfe ob Datei in einem Code-Verzeichnis liegt
+    for pattern in code_patterns:
+        if filepath.startswith(pattern) or pattern in filepath:
+            return True
+    
+    # Prüfe ob es eine wichtige Root-Datei ist
+    for root_file in code_root_files:
+        if filepath == root_file or filepath.endswith(root_file):
+            return True
+    
+    return False
+
+def is_documentation_file(filepath):
+    """
+    Prüft ob eine Datei eine Dokumentations-Datei ist.
+    
+    Args:
+        filepath (str): Pfad zur Datei
+        
+    Returns:
+        bool: True wenn Dokumentation, False wenn Code
+    """
+    # Umgekehrte Logik: Alles was nicht Code ist, ist Doku/Tooling
+    return not is_code_file(filepath)
+
+def detect_change_type():
+    """
+    Erkennt automatisch ob es Code- oder nur Doku-Änderungen gibt.
+    
+    Returns:
+        str: 'code' für Code-Änderungen, 'docs' für nur Dokumentation
+    """
+    changed_files = get_changed_files()
+    
+    if not changed_files:
+        return 'code'  # Keine Änderungen → Default Code-Modus
+    
+    # Prüfe jede Datei
+    has_code_changes = False
+    
+    for filepath in changed_files:
+        if not is_documentation_file(filepath):
+            has_code_changes = True
+            break
+    
+    return 'code' if has_code_changes else 'docs'
+
+def get_changed_files_info():
+    """
+    Gibt detaillierte Informationen über geänderte Dateien.
+    
+    Returns:
+        dict: {
+            'code': [liste von code-dateien],
+            'docs': [liste von doku-dateien],
+            'type': 'code' oder 'docs'
+        }
+    """
+    changed_files = get_changed_files()
+    
+    code_files = []
+    docs_files = []
+    
+    for filepath in changed_files:
+        if is_documentation_file(filepath):
+            docs_files.append(filepath)
+        else:
+            code_files.append(filepath)
+    
+    return {
+        'code': code_files,
+        'docs': docs_files,
+        'type': 'code' if code_files else 'docs'
     } 

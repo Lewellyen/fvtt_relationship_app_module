@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggert bei allen v-Tags (v0.11.1, v1.0.0, etc.)
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run production build
+        run: npm run build
+      
+      - name: Create module ZIP
+        run: |
+          # Erstelle ZIP mit allen nötigen Dateien für Foundry VTT
+          zip -r module.zip \
+            module.json \
+            dist/ \
+            lang/ \
+            styles/ \
+            templates/ \
+            README.md \
+            LICENSE \
+            CHANGELOG.md
+      
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          # Alles mit v0.x.x ist Pre-Release
+          if [[ "${{ github.ref_name }}" =~ ^v0\. ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "Pre-Release erkannt: ${{ github.ref_name }}"
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "Stable Release erkannt: ${{ github.ref_name }}"
+          fi
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body_path: docs/releases/${{ github.ref_name }}.md
+          prerelease: ${{ steps.prerelease.outputs.prerelease }}
+          files: |
+            module.zip
+            module.json
+          draft: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Release Summary
+        run: |
+          echo "## 🎉 Release erfolgreich erstellt!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Type:** ${{ steps.prerelease.outputs.prerelease == 'true' && 'Pre-Release (0.x.x)' || 'Stable Release' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- module.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- module.json" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Manifest:** \`https://github.com/${{ github.repository }}/releases/latest/download/module.json\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Download:** \`https://github.com/${{ github.repository }}/releases/latest/download/module.zip\`" >> $GITHUB_STEP_SUMMARY
+

@@ -3,10 +3,43 @@
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Release-Tool: Automatische Erkennung**: Unterscheidet Code- vs. Dokumentations-Änderungen
+  - Analysiert `git status` und klassifiziert geänderte Dateien automatisch
+  - Info-Banner zeigt Erkennungsergebnis mit Liste geänderter Dateien
+  - Empfiehlt automatisch den passenden Modus (Release vs. Docs-Commit)
+- **Release-Tool: Zwei Modi**:
+  - **Release-Modus**: Version hochsetzen, Build, Tag, GitHub Release (wie bisher)
+  - **Dokumentations-Modus**: Nur Commit + Push, keine neue Version, kein Tag
+  - Unreleased-Sektion im CHANGELOG bleibt bei Doku-Commits erhalten
+  - Sammelt alle Änderungen (inkl. Doku) für den nächsten echten Code-Release
+- **GitHub Actions: Automatischer Release-Workflow** (.github/workflows/release.yml)
+  - Läuft automatisch bei Git-Tags (v*)
+  - Erstellt Production Build (`npm run build`)
+  - Generiert module.zip mit allen Foundry VTT-relevanten Dateien
+  - Erstellt GitHub Release mit Release Notes aus `docs/releases/`
+  - Markiert v0.x.x automatisch als Pre-Release
+  - Uploadet module.zip und module.json für Foundry VTT Installation
 
 ### Geändert
+- **GitHub Actions: CI-Workflow optimiert** (.github/workflows/ci.yml)
+  - **Whitelist-Ansatz mit `paths:`** statt Blacklist mit `paths-ignore:`
+  - CI läuft NUR bei Änderungen in: src/, templates/, styles/, lang/, dist/, module.json, package.json, Config-Dateien
+  - CI läuft NICHT bei: docs/, scripts/, .github/, *.md, LICENSE, etc.
+  - Konsistent mit Release-Tool-Logik (gleiche Whitelist)
+  - Spart CI-Ressourcen und Zeit bei reinen Dokumentations-Commits und Tooling-Updates
+- **Release-Tool GUI**: Komplett überarbeitet mit intelligentem Modus-System
+  - Neue Funktionen in `release_utils.py`: `detect_change_type()`, `get_changed_files_info()`, `is_code_file()`, `is_documentation_file()`
+  - **Whitelist-Ansatz**: Prüft ob Änderungen in Code-Verzeichnissen (src/, templates/, styles/, lang/) oder wichtigen Config-Dateien
+  - Alles andere (docs/, scripts/, .github/, *.md, etc.) wird als Doku/Tooling klassifiziert
+  - Info-Banner mit automatischer Erkennung und Dateiliste
+  - Radio Buttons für Modus-Auswahl (Release vs. Docs)
+  - UI passt sich dynamisch an gewählten Modus an (Version-Controls nur bei Release)
+  - Neue `documentation_commit()` Methode für Doku-Commits ohne Versions-Änderung
 
 ### Fehlerbehebungen
+- **Release-Tool GUI**: Button-Sperre im Dokumentations-Modus entfernt
+  - Versions-Validierung läuft nur im Release-Modus
+  - Im Dokumentations-Modus ist der "Commit erstellen" Button immer aktiv
 
 ### Bekannte Probleme
 
@@ -48,8 +81,19 @@
 - Repository, Bugs und Homepage URLs
 - License: MIT
 - **module.json**: Foundry VTT-spezifische URLs hinzugefügt
-- manifest, download, bugs, changelog URLs
-- Author URL ergänzt
+  - manifest, download, bugs, changelog URLs
+  - Author URL ergänzt
+- **GitHub Actions: CI-Workflow optimiert** (.github/workflows/ci.yml)
+  - `paths-ignore` für Dokumentations-Dateien hinzugefügt
+  - CI läuft NUR bei Code-Änderungen (src/, tests/, package.json, etc.)
+  - CI läuft NICHT bei Doku-Änderungen (docs/, *.md, LICENSE, etc.)
+  - Spart Ressourcen und Zeit bei reinen Dokumentations-Commits
+- **Release-Tool GUI**: Komplett überarbeitet mit neuem Modus-System
+  - Neue Funktionen in release_utils.py: `detect_change_type()`, `get_changed_files_info()`, `is_documentation_file()`
+  - Info-Banner mit automatischer Erkennung und Dateiliste
+  - Radio Buttons für Modus-Auswahl (Release vs. Docs)
+  - UI passt sich dynamisch an gewählten Modus an
+  - Vereinfachte `documentation_commit()` Methode für Doku-Commits
 
 ### Fehlerbehebungen
 - Keine Einträge
