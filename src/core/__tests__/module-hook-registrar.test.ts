@@ -8,13 +8,27 @@ import { MODULE_CONSTANTS } from "@/constants";
 import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
 import { RenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
+import type { Logger } from "@/interfaces/logger";
+
+// Create mock logger
+function createMockLogger(): Logger {
+  return {
+    log: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    withTraceId: vi.fn().mockReturnThis(),
+  };
+}
 
 describe("ModuleHookRegistrar", () => {
   describe("registerAll", () => {
     it("should resolve all required services and register hook", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -35,7 +49,8 @@ describe("ModuleHookRegistrar", () => {
     it("should call processJournalDirectory when hook fires", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -64,7 +79,8 @@ describe("ModuleHookRegistrar", () => {
     it("should log debug message when hook fires", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -79,8 +95,8 @@ describe("ModuleHookRegistrar", () => {
       const mockApp = { id: "journal-directory", object: {}, options: {} };
       hookCallback!(mockApp, mockHtml);
 
-      const mockLogger = mockContainer.getMockLogger();
-      expect(mockLogger.debug).toHaveBeenCalledWith(
+      const containerLogger = mockContainer.getMockLogger();
+      expect(containerLogger.debug).toHaveBeenCalledWith(
         expect.stringContaining(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY)
       );
     });
@@ -88,7 +104,8 @@ describe("ModuleHookRegistrar", () => {
     it("should log error when HTMLElement is invalid", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -103,8 +120,8 @@ describe("ModuleHookRegistrar", () => {
       const mockApp = { id: "journal-directory", object: {}, options: {} };
       hookCallback!(mockApp, null as unknown as HTMLElement);
 
-      const mockLogger = mockContainer.getMockLogger();
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      const containerLogger = mockContainer.getMockLogger();
+      expect(containerLogger.error).toHaveBeenCalledWith(
         "Failed to get HTMLElement from hook - incompatible format"
       );
     });
@@ -118,15 +135,12 @@ describe("ModuleHookRegistrar", () => {
       });
 
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
       registrar.registerAll(mockContainer as never);
 
-      const mockLogger = mockContainer.getMockLogger();
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to register"),
-        expect.objectContaining({
-          code: "OPERATION_FAILED",
-        })
+        expect.stringContaining("Failed to register hook")
       );
     });
   });
@@ -135,7 +149,8 @@ describe("ModuleHookRegistrar", () => {
     it("should reject null app parameter", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -147,8 +162,8 @@ describe("ModuleHookRegistrar", () => {
       const mockHtml = document.createElement("div");
       hookCallback(null, mockHtml);
 
-      const mockLogger = mockContainer.getMockLogger();
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      const containerLogger = mockContainer.getMockLogger();
+      expect(containerLogger.error).toHaveBeenCalledWith(
         expect.stringContaining("Invalid app parameter"),
         expect.any(Object)
       );
@@ -161,7 +176,8 @@ describe("ModuleHookRegistrar", () => {
     it("should reject undefined app parameter", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -173,8 +189,8 @@ describe("ModuleHookRegistrar", () => {
       const mockHtml = document.createElement("div");
       hookCallback(undefined, mockHtml);
 
-      const mockLogger = mockContainer.getMockLogger();
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      const containerLogger = mockContainer.getMockLogger();
+      expect(containerLogger.error).toHaveBeenCalledWith(
         expect.stringContaining("Invalid app parameter"),
         expect.any(Object)
       );
@@ -183,7 +199,8 @@ describe("ModuleHookRegistrar", () => {
     it("should reject app parameter without required id property", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -196,8 +213,8 @@ describe("ModuleHookRegistrar", () => {
       const mockHtml = document.createElement("div");
       hookCallback(invalidApp, mockHtml);
 
-      const mockLogger = mockContainer.getMockLogger();
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      const containerLogger = mockContainer.getMockLogger();
+      expect(containerLogger.error).toHaveBeenCalledWith(
         expect.stringContaining("Invalid app parameter"),
         expect.any(Object)
       );
@@ -210,7 +227,8 @@ describe("ModuleHookRegistrar", () => {
     it("should accept valid app parameter", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -223,9 +241,9 @@ describe("ModuleHookRegistrar", () => {
       const mockHtml = document.createElement("div");
       hookCallback(validApp, mockHtml);
 
-      const mockLogger = mockContainer.getMockLogger();
+      const containerLogger = mockContainer.getMockLogger();
       // Should NOT log app validation error
-      expect(mockLogger.error).not.toHaveBeenCalledWith(
+      expect(containerLogger.error).not.toHaveBeenCalledWith(
         expect.stringContaining("Invalid app parameter"),
         expect.any(Object)
       );
@@ -240,7 +258,8 @@ describe("ModuleHookRegistrar", () => {
     it("should extract HTMLElement from jQuery object (numeric index)", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -266,7 +285,8 @@ describe("ModuleHookRegistrar", () => {
     it("should extract HTMLElement from jQuery with .get() method", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -290,7 +310,8 @@ describe("ModuleHookRegistrar", () => {
     it("should handle native HTMLElement (Foundry v13+)", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -310,7 +331,8 @@ describe("ModuleHookRegistrar", () => {
     it("should log error for invalid html argument", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -322,8 +344,8 @@ describe("ModuleHookRegistrar", () => {
       const mockApp = { id: "journal-directory", object: {}, options: {} };
       hookCallback(mockApp, { invalid: "object" });
 
-      const mockLogger = mockContainer.getMockLogger();
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      const containerLogger = mockContainer.getMockLogger();
+      expect(containerLogger.error).toHaveBeenCalledWith(
         expect.stringContaining("Failed to get HTMLElement from hook")
       );
     });
@@ -331,7 +353,8 @@ describe("ModuleHookRegistrar", () => {
     it("should handle errors when accessing journal entry properties", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const registrar = new ModuleHookRegistrar(realHook);
+      const mockLogger = createMockLogger();
+      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
 
       registrar.registerAll(mockContainer as never);
 
@@ -353,8 +376,8 @@ describe("ModuleHookRegistrar", () => {
         hookCallback(mockApp, { element: [throwingJQuery] });
       }).not.toThrow();
 
-      const mockLogger = mockContainer.getMockLogger();
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      const containerLogger = mockContainer.getMockLogger();
+      expect(containerLogger.error).toHaveBeenCalledWith(
         expect.stringContaining("Failed to get HTMLElement from hook")
       );
     });

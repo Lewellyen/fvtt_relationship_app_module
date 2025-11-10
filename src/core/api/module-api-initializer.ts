@@ -7,7 +7,7 @@ import { markAsApiSafe, type ApiSafeToken } from "@/di_infrastructure/types/api-
 import { getDeprecationInfo } from "@/di_infrastructure/types/deprecated-token";
 import { createPublicLogger, createPublicI18n } from "@/core/api/public-api-wrappers";
 import { createApiTokens } from "@/core/api/api-token-config";
-import type { ModuleApi, TokenInfo, HealthStatus } from "@/core/module-api";
+import type { ModuleApi, TokenInfo, HealthStatus, ModuleApiTokens } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
 import type { Logger } from "@/interfaces/logger";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
@@ -37,7 +37,7 @@ import {
  * Responsibilities:
  * - Create API token collection
  * - Create API object with resolve(), getMetrics(), getHealth(), etc.
- * - Apply deprecation warnings
+ * - Apply deprecation warnings (via console.warn for external visibility)
  * - Apply read-only wrappers for sensitive services
  * - Expose API to game.modules.get(MODULE_ID).api
  *
@@ -47,49 +47,54 @@ export class ModuleApiInitializer {
   static dependencies = [] as const;
 
   /**
-   * Exposes the module's public API to game.modules.get(MODULE_ID).api
+   * Handles deprecation warnings for tokens.
+   * Logs warning to console if token is deprecated and warning hasn't been shown yet.
    *
-   * @param container - Initialized and validated ServiceContainer
-   * @returns Result<void, string> - Ok if successful, Err with error message
+   * Uses console.warn instead of Logger because:
+   * - Deprecation warnings are for external API consumers (not internal logs)
+   * - Should be visible even if Logger is disabled/configured differently
+   * - Follows npm/Node.js convention for deprecation warnings
+   *
+   * @param token - Token to check for deprecation
+   * @private
    */
-  expose(container: ServiceContainer): Result<void, string> {
-    // Guard: Foundry game object available?
-    if (typeof game === "undefined" || !game?.modules) {
-      return err("Game modules not available - API cannot be exposed");
+  private handleDeprecationWarning<TServiceType extends ServiceType>(
+    token: ApiSafeToken<TServiceType>
+  ): void {
+    const deprecationInfo = getDeprecationInfo(token);
+    if (deprecationInfo && !deprecationInfo.warningShown) {
+      /* c8 ignore start -- Optional replacement info: Tested in deprecated-token.test.ts */
+      const replacementInfo = deprecationInfo.replacement
+        ? `Use "${deprecationInfo.replacement}" instead.\n`
+        : "";
+      /* c8 ignore stop */
+      console.warn(
+        `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.\n` +
+          `Reason: ${deprecationInfo.reason}\n` +
+          replacementInfo +
+          `This token will be removed in version ${deprecationInfo.removedInVersion}.`
+      );
+      deprecationInfo.warningShown = true; // Only warn once per session
     }
+  }
 
-    const mod = game.modules.get(MODULE_CONSTANTS.MODULE.ID);
-    if (!mod) {
-      return err(`Module '${MODULE_CONSTANTS.MODULE.ID}' not found in game.modules`);
-    }
-
-    // Create well-known tokens collection
-    const wellKnownTokens = createApiTokens();
-
-    // Create API-safe tokens for type checking
+  /**
+   * Creates the resolve() function for the public API.
+   * Resolves services and applies wrappers (throws on error).
+   *
+   * @param container - ServiceContainer for resolution
+   * @returns Resolve function for ModuleApi
+   * @private
+   */
+  private createResolveFunction(
+    container: ServiceContainer
+  ): <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType {
     const apiSafeLoggerToken = markAsApiSafe(loggerToken);
     const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
 
-    // Helper function for resolve implementation with type-safe wrapping
-    const resolveImpl = <TServiceType extends ServiceType>(
-      token: ApiSafeToken<TServiceType>
-    ): TServiceType => {
-      // Check for deprecation metadata
-      const deprecationInfo = getDeprecationInfo(token);
-      if (deprecationInfo && !deprecationInfo.warningShown) {
-        /* c8 ignore start -- Optional replacement info: Tested in deprecated-token.test.ts */
-        const replacementInfo = deprecationInfo.replacement
-          ? `Use "${deprecationInfo.replacement}" instead.\n`
-          : "";
-        /* c8 ignore stop */
-        console.warn(
-          `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.\n` +
-            `Reason: ${deprecationInfo.reason}\n` +
-            replacementInfo +
-            `This token will be removed in version ${deprecationInfo.removedInVersion}.`
-        );
-        deprecationInfo.warningShown = true; // Only warn once per session
-      }
+    return <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>): TServiceType => {
+      // Handle deprecation warnings
+      this.handleDeprecationWarning(token);
 
       // Resolve service from container
       const service: TServiceType = container.resolve(token);
@@ -119,65 +124,82 @@ export class ModuleApiInitializer {
       // (FoundryGame, FoundryDocument, FoundryUI, etc.)
       return service;
     };
+  }
 
-    // Create API object with overloaded resolve for type-safety
-    const api: ModuleApi = {
+  /**
+   * Creates the resolveWithError() function for the public API.
+   * Resolves services with Result pattern (never throws).
+   *
+   * @param container - ServiceContainer for resolution
+   * @returns ResolveWithError function for ModuleApi
+   * @private
+   */
+  private createResolveWithErrorFunction(
+    container: ServiceContainer
+  ): <TServiceType extends ServiceType>(
+    token: ApiSafeToken<TServiceType>
+  ) => Result<TServiceType, ContainerError> {
+    const apiSafeLoggerToken = markAsApiSafe(loggerToken);
+    const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
+
+    return <TServiceType extends ServiceType>(
+      token: ApiSafeToken<TServiceType>
+    ): Result<TServiceType, ContainerError> => {
+      // Handle deprecation warnings
+      this.handleDeprecationWarning(token);
+
+      // Resolve with Result-Pattern (never throws)
+      const result = container.resolveWithError(token);
+
+      // Apply wrappers if resolution succeeded
+      if (!result.ok) {
+        return result; // Return error as-is
+      }
+
+      const service = result.value;
+
+      // Apply read-only wrappers for sensitive services
+      if (token === apiSafeLoggerToken) {
+        /* type-coverage:ignore-next-line -- Generic type narrowing: token === loggerToken guarantees service is Logger */
+        const logger: Logger = service as Logger;
+        const wrappedLogger: Logger = createPublicLogger(logger);
+        /* type-coverage:ignore-next-line -- Generic return: wrappedLogger (Logger) must be cast to generic TServiceType */
+        return ok(wrappedLogger as TServiceType);
+      }
+
+      if (token === apiSafeI18nToken) {
+        /* type-coverage:ignore-next-line -- Generic type narrowing: token === i18nToken guarantees service is I18nFacadeService */
+        const i18n: I18nFacadeService = service as I18nFacadeService;
+        const wrappedI18n: I18nFacadeService = createPublicI18n(i18n);
+        /* type-coverage:ignore-next-line -- Generic return: wrappedI18n must be cast to generic TServiceType */
+        return ok(wrappedI18n as TServiceType);
+      }
+
+      // Default: Return wrapped in Result
+      return ok(service);
+    };
+  }
+
+  /**
+   * Creates the complete ModuleApi object with all methods.
+   *
+   * @param container - ServiceContainer for service resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Complete ModuleApi object
+   * @private
+   */
+  private createApiObject(
+    container: ServiceContainer,
+    wellKnownTokens: ModuleApiTokens
+  ): ModuleApi {
+    return {
       version: MODULE_CONSTANTS.API.VERSION,
 
       // Overloaded resolve method (throws on error)
-      resolve: resolveImpl,
+      resolve: this.createResolveFunction(container),
 
       // Result-Pattern method (safe, never throws)
-      resolveWithError: <TServiceType extends ServiceType>(
-        token: ApiSafeToken<TServiceType>
-      ): Result<TServiceType, ContainerError> => {
-        // Check for deprecation metadata (same as resolve)
-        const deprecationInfo = getDeprecationInfo(token);
-        if (deprecationInfo && !deprecationInfo.warningShown) {
-          /* c8 ignore start -- Optional replacement info: Tested in deprecated-token.test.ts */
-          const replacementInfo = deprecationInfo.replacement
-            ? `Use "${deprecationInfo.replacement}" instead.\n`
-            : "";
-          /* c8 ignore stop */
-          console.warn(
-            `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.\n` +
-              `Reason: ${deprecationInfo.reason}\n` +
-              replacementInfo +
-              `This token will be removed in version ${deprecationInfo.removedInVersion}.`
-          );
-          deprecationInfo.warningShown = true;
-        }
-
-        // Resolve with Result-Pattern (never throws)
-        const result = container.resolveWithError(token);
-
-        // Apply wrappers if resolution succeeded
-        if (!result.ok) {
-          return result; // Return error as-is
-        }
-
-        const service = result.value;
-
-        // Apply read-only wrappers for sensitive services
-        if (token === apiSafeLoggerToken) {
-          /* type-coverage:ignore-next-line -- Generic type narrowing: token === loggerToken guarantees service is Logger */
-          const logger: Logger = service as Logger;
-          const wrappedLogger: Logger = createPublicLogger(logger);
-          /* type-coverage:ignore-next-line -- Generic return: wrappedLogger (Logger) must be cast to generic TServiceType */
-          return ok(wrappedLogger as TServiceType);
-        }
-
-        if (token === apiSafeI18nToken) {
-          /* type-coverage:ignore-next-line -- Generic type narrowing: token === i18nToken guarantees service is I18nFacadeService */
-          const i18n: I18nFacadeService = service as I18nFacadeService;
-          const wrappedI18n: I18nFacadeService = createPublicI18n(i18n);
-          /* type-coverage:ignore-next-line -- Generic return: wrappedI18n must be cast to generic TServiceType */
-          return ok(wrappedI18n as TServiceType);
-        }
-
-        // Default: Return wrapped in Result
-        return ok(service);
-      },
+      resolveWithError: this.createResolveWithErrorFunction(container),
 
       getAvailableTokens: (): Map<symbol, TokenInfo> => {
         const tokenMap = new Map<symbol, TokenInfo>();
@@ -246,6 +268,30 @@ export class ModuleApiInitializer {
         return healthServiceResult.value.getHealth();
       },
     };
+  }
+
+  /**
+   * Exposes the module's public API to game.modules.get(MODULE_ID).api
+   *
+   * @param container - Initialized and validated ServiceContainer
+   * @returns Result<void, string> - Ok if successful, Err with error message
+   */
+  expose(container: ServiceContainer): Result<void, string> {
+    // Guard: Foundry game object available?
+    if (typeof game === "undefined" || !game?.modules) {
+      return err("Game modules not available - API cannot be exposed");
+    }
+
+    const mod = game.modules.get(MODULE_CONSTANTS.MODULE.ID);
+    if (!mod) {
+      return err(`Module '${MODULE_CONSTANTS.MODULE.ID}' not found in game.modules`);
+    }
+
+    // Create well-known tokens collection
+    const wellKnownTokens = createApiTokens();
+
+    // Create complete API object
+    const api = this.createApiObject(container, wellKnownTokens);
 
     // Expose API to Foundry module
     mod.api = api;

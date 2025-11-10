@@ -24,6 +24,9 @@ Wir verwenden das [MADR-Format](https://adr.github.io/madr/) (Markdown Architect
 | [0005](0005-metrics-collector-singleton-to-di.md) | Accepted | MetricsCollector Singleton → DI-Managed Service | 2025-11-06 |
 | [0006](0006-observability-strategy.md) | Accepted | Observability Strategy (Logging, Metrics, Error Tracking) | 2025-11-06 |
 | [0007](0007-clean-architecture-layering.md) | Accepted | Clean Architecture Layering | 2025-11-06 |
+| [0008](0008-console-vs-logger-interface.md) | Accepted | Console vs. Logger Interface | 2025-11-06 |
+| [0009](0009-bootstrap-di-exceptions.md) | Accepted | Bootstrap DI Exceptions | 2025-11-10 |
+| [0010](0010-bootstrap-logger-evaluation.md) | Proposed | Bootstrap-Logger Evaluation (Not Implemented) | 2025-11-10 |
 
 ## Status-Werte
 

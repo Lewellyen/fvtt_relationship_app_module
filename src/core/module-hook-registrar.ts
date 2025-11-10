@@ -1,6 +1,7 @@
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "@/core/hooks/hook-registrar.interface";
-import { renderJournalDirectoryHookToken } from "@/tokens/tokenindex";
+import type { Logger } from "@/interfaces/logger";
+import { renderJournalDirectoryHookToken, loggerToken } from "@/tokens/tokenindex";
 
 /**
  * ModuleHookRegistrar
@@ -15,11 +16,14 @@ import { renderJournalDirectoryHookToken } from "@/tokens/tokenindex";
  * - Full DI architecture: Hooks injected as dependencies
  */
 export class ModuleHookRegistrar {
-  static dependencies = [renderJournalDirectoryHookToken] as const;
+  static dependencies = [renderJournalDirectoryHookToken, loggerToken] as const;
 
   private hooks: HookRegistrar[];
 
-  constructor(renderJournalHook: HookRegistrar) {
+  constructor(
+    renderJournalHook: HookRegistrar,
+    private readonly logger: Logger
+  ) {
     this.hooks = [
       renderJournalHook,
       // Add new hooks here as constructor parameters
@@ -34,7 +38,7 @@ export class ModuleHookRegistrar {
     for (const hook of this.hooks) {
       const result = hook.register(container);
       if (!result.ok) {
-        console.error(`Failed to register hook: ${result.error.message}`);
+        this.logger.error(`Failed to register hook: ${result.error.message}`);
       }
     }
   }
