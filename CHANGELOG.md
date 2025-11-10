@@ -5,28 +5,42 @@
 ### Hinzugefügt
 
 ### Geändert
-- **GitHub Actions: CI und Release kombiniert** (.github/workflows/ci.yml)
-  - Release-Job in CI-Workflow integriert mit klaren Dependencies: `test` → `build` → `release`
-  - Release läuft nur bei erfolgreichen Tests und Build-Prozess
-  - Separater release.yml Workflow entfernt
-  - **Artifact-Reuse**: Build-Artifacts werden von build-Job zu release-Job weitergereicht
-  - Spart Zeit und Ressourcen: Kein erneutes `npm ci` und `npm run build` im Release-Job
-  - Release-Job läuft nur bei Tag-Push (`v*`), wird bei normalem Push übersprungen
-  - Alle Schritte in einem Workflow-Run sichtbar für einfacheres Debugging
-  - ([Details](docs/adr/) - ADR folgt bei Bedarf)
 
 ### Fehlerbehebungen
-- **GitHub Actions Release-Workflow**: Fehlende `permissions: contents: write` hinzugefügt
-  - Behebt 403-Fehler "Resource not accessible by integration" beim Erstellen von Releases
-  - Default GITHUB_TOKEN hatte keine Berechtigung zum Erstellen von Releases
-- **GitHub Actions: Release-Qualitätssicherung**
-  - Release wird jetzt nur noch nach erfolgreichen CI-Tests erstellt
-  - Vorher: Release-Workflow lief unabhängig, ohne auf CI-Tests zu warten
-  - Jetzt: Release-Job hat `needs: [test, build]` Dependency
 
 ### Bekannte Probleme
 
 ### Upgrade-Hinweise
+
+## [0.12.1] - 2025-11-10
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **GitHub Actions: CI und Release kombiniert** (.github/workflows/ci.yml)
+- Release-Job in CI-Workflow integriert mit klaren Dependencies: `test` → `build` → `release`
+- Release läuft nur bei erfolgreichen Tests und Build-Prozess
+- Separater release.yml Workflow entfernt
+- **Artifact-Reuse**: Build-Artifacts werden von build-Job zu release-Job weitergereicht
+- Spart Zeit und Ressourcen: Kein erneutes `npm ci` und `npm run build` im Release-Job
+- Release-Job läuft nur bei Tag-Push (`v*`), wird bei normalem Push übersprungen
+- Alle Schritte in einem Workflow-Run sichtbar für einfacheres Debugging
+- ([Details](docs/adr/) - ADR folgt bei Bedarf)
+
+### Fehlerbehebungen
+- **GitHub Actions Release-Workflow**: Fehlende `permissions: contents: write` hinzugefügt
+- Behebt 403-Fehler "Resource not accessible by integration" beim Erstellen von Releases
+- Default GITHUB_TOKEN hatte keine Berechtigung zum Erstellen von Releases
+- **GitHub Actions: Release-Qualitätssicherung**
+- Release wird jetzt nur noch nach erfolgreichen CI-Tests erstellt
+- Vorher: Release-Workflow lief unabhängig, ohne auf CI-Tests zu warten
+- Jetzt: Release-Job hat `needs: [test, build]` Dependency
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
 
 ## [0.12.0] - 2025-11-10
 ### Hinzugefügt
