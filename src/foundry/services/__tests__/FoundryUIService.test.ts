@@ -8,12 +8,14 @@ import { ok, err } from "@/utils/functional/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { PortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/observability/observability-registry";
+import type { RetryService } from "@/services/RetryService";
 
 describe("FoundryUIService", () => {
   let service: FoundryUIService;
   let mockRegistry: PortRegistry<FoundryUI>;
   let mockSelector: PortSelector;
   let mockPort: FoundryUI;
+  let mockRetryService: RetryService;
 
   beforeEach(() => {
     // Mock game object for version detection
@@ -25,6 +27,7 @@ describe("FoundryUIService", () => {
       removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
       findElement: vi.fn().mockReturnValue(ok(null)),
       notify: vi.fn().mockReturnValue(ok(undefined)),
+      dispose: vi.fn(),
     };
 
     mockRegistry = new PortRegistry<FoundryUI>();
@@ -37,7 +40,13 @@ describe("FoundryUIService", () => {
     mockSelector = new PortSelector(mockEventEmitter, mockObservability);
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
-    service = new FoundryUIService(mockSelector, mockRegistry);
+    // Mock RetryService - just executes fn directly without retry logic
+    mockRetryService = {
+      retrySync: vi.fn((fn) => fn()),
+      retry: vi.fn((fn) => fn()),
+    } as any;
+
+    service = new FoundryUIService(mockSelector, mockRegistry, mockRetryService);
   });
 
   afterEach(() => {
@@ -72,7 +81,7 @@ describe("FoundryUIService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryUIService(failingSelector, mockRegistry);
+      const failingService = new FoundryUIService(failingSelector, mockRegistry, mockRetryService);
 
       const element = document.createElement("div");
       const result = failingService.removeJournalElement("id", "name", element);
@@ -167,7 +176,7 @@ describe("FoundryUIService", () => {
         message: "No compatible port found",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryUIService(failingSelector, mockRegistry);
+      const failingService = new FoundryUIService(failingSelector, mockRegistry, mockRetryService);
 
       const element = document.createElement("div");
       const result = failingService.removeJournalElement("id", "name", element);
@@ -205,7 +214,7 @@ describe("FoundryUIService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryUIService(failingSelector, mockRegistry);
+      const failingService = new FoundryUIService(failingSelector, mockRegistry, mockRetryService);
 
       const container = document.createElement("div");
       const result = failingService.findElement(container, ".test");
@@ -225,7 +234,7 @@ describe("FoundryUIService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryUIService(failingSelector, mockRegistry);
+      const failingService = new FoundryUIService(failingSelector, mockRegistry, mockRetryService);
 
       const result = failingService.notify("Test message", "info");
 

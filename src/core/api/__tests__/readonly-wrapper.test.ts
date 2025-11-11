@@ -126,5 +126,20 @@ describe("readonly-wrapper", () => {
       // Property access should work if whitelisted
       expect(wrapped.constantValue).toBe(42);
     });
+
+    it("should block Symbol properties (non-string keys)", () => {
+      const mySymbol = Symbol("mySymbol");
+      const service = {
+        normalMethod: () => "OK",
+        [mySymbol]: () => "Symbol method",
+      };
+
+      const wrapped = createReadOnlyWrapper(service, ["normalMethod"]);
+
+      // Symbol property should be blocked (isAllowedKey returns false for symbols)
+      expect(() => {
+        (wrapped as any)[mySymbol]();
+      }).toThrow("is not accessible via Public API");
+    });
   });
 });

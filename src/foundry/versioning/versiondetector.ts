@@ -28,14 +28,12 @@ function detectFoundryVersion(): Result<number, string> {
     return err("Foundry version is not available on the game object");
   }
 
-  const match = versionString.match(/^(\d+)/);
-  if (!match) {
+  const versionStr = versionString.match(/^(\d+)/)?.[1];
+  if (!versionStr) {
     return err(`Could not parse Foundry version from: ${versionString}`);
   }
 
-  // match[1] is guaranteed by the regex above capturing at least one group of digits
-  /* type-coverage:ignore-next-line */
-  return ok(Number.parseInt(match[1]!, 10));
+  return ok(Number.parseInt(versionStr, 10));
 }
 
 /**

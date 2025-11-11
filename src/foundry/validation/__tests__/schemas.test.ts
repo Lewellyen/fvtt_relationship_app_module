@@ -254,8 +254,10 @@ describe("Setting Validation", () => {
       const config = { scope: "invalid" as any };
       const result = validateSettingConfig("myModule", "myKey", config);
       expectResultErr(result);
-      expect(result.error.message).toContain("Invalid setting scope");
-      expect(result.error.message).toContain("world, client, user");
+      expect(result.error.message).toContain("Setting config validation failed");
+      expect(result.error.message).toContain("world");
+      expect(result.error.message).toContain("client");
+      expect(result.error.message).toContain("user");
     });
 
     it("should accept config without scope", () => {

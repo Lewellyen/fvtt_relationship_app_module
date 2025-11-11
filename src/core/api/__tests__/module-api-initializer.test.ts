@@ -192,7 +192,8 @@ describe("ModuleApiInitializer", () => {
     it("should report degraded status when resolution errors exist", async () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      // Simulate resolution error by recording it in metrics
+      // Health checks are now auto-registered during configureDependencies
+      // No need to eagerly resolve them
       const { metricsCollectorToken } = await import("@/tokens/tokenindex");
       const tokensModule = await import("@/di_infrastructure/tokenutilities");
       const metricsResult = container.resolveWithError(metricsCollectorToken);
@@ -209,8 +210,11 @@ describe("ModuleApiInitializer", () => {
     it("should report degraded status when port selection failures exist", async () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      // Simulate port selection failure
+      // Health checks are now auto-registered during configureDependencies
+      // No need to eagerly resolve them
       const { metricsCollectorToken } = await import("@/tokens/tokenindex");
+
+      // Simulate port selection failure
       const metricsResult = container.resolveWithError(metricsCollectorToken);
       if (!metricsResult.ok) throw new Error("MetricsCollector not resolved");
       metricsResult.value.recordPortSelectionFailure(12.331);
@@ -225,6 +229,8 @@ describe("ModuleApiInitializer", () => {
 
     it("should include port selection information", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+
+      // Health checks are now auto-registered during configureDependencies
       const health = mod.api.getHealth();
 
       expect(health.checks.portsSelected).toBeDefined();

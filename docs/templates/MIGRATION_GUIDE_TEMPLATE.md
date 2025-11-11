@@ -173,7 +173,7 @@ Arbeite diese Checkliste ab, um sicherzustellen, dass alle Breaking Changes migr
 ## 📚 Weitere Ressourcen
 
 - [CHANGELOG.md](../CHANGELOG.md) - Vollständiges Change-Log
-- [VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md) - Versioning-Regeln
+- [VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md) - Versioning-Regeln
 - [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) - Architektur-Analyse
 - [API.md](./API.md) - API-Dokumentation
 

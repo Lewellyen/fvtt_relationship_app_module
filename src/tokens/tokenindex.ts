@@ -11,6 +11,9 @@ import type { EnvironmentConfig } from "@/config/environment";
 import type { ModuleHealthService } from "@/core/module-health-service";
 import type { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
 import type { RetryService } from "@/services/RetryService";
+import type { HealthCheckRegistry } from "@/core/health/health-check-registry";
+import type { ContainerHealthCheck } from "@/core/health/container-health-check";
+import type { MetricsHealthCheck } from "@/core/health/metrics-health-check";
 
 /**
  * Injection token for the application logger service.
@@ -190,6 +193,50 @@ export const environmentConfigToken = createInjectionToken<EnvironmentConfig>("E
  */
 export const moduleHealthServiceToken =
   createInjectionToken<ModuleHealthService>("ModuleHealthService");
+
+/**
+ * Injection token for the HealthCheckRegistry.
+ *
+ * Central registry for health checks that can be dynamically registered.
+ * Services implement HealthCheck interface and register themselves.
+ *
+ * @example
+ * ```typescript
+ * const registry = container.resolve(healthCheckRegistryToken);
+ * registry.register(new ContainerHealthCheck(container));
+ * const results = registry.runAll();
+ * ```
+ */
+export const healthCheckRegistryToken =
+  createInjectionToken<HealthCheckRegistry>("HealthCheckRegistry");
+
+/**
+ * Injection token for the ContainerHealthCheck.
+ *
+ * Health check that validates the DI container state.
+ *
+ * @example
+ * ```typescript
+ * const check = container.resolve(containerHealthCheckToken);
+ * const isHealthy = check.check(); // Returns true if container is validated
+ * ```
+ */
+export const containerHealthCheckToken =
+  createInjectionToken<ContainerHealthCheck>("ContainerHealthCheck");
+
+/**
+ * Injection token for the MetricsHealthCheck.
+ *
+ * Health check that validates metrics and port selection status.
+ *
+ * @example
+ * ```typescript
+ * const check = container.resolve(metricsHealthCheckToken);
+ * const isHealthy = check.check(); // Returns true if no port failures
+ * ```
+ */
+export const metricsHealthCheckToken =
+  createInjectionToken<MetricsHealthCheck>("MetricsHealthCheck");
 
 /**
  * Injection token for the PerformanceTrackingService.

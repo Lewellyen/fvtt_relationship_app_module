@@ -10,12 +10,14 @@ import {
   loggerToken,
   moduleHealthServiceToken,
   moduleApiInitializerToken,
+  healthCheckRegistryToken,
 } from "@/tokens/tokenindex";
 import { ENV } from "@/config/environment";
 import { MetricsCollector } from "@/observability/metrics-collector";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { ModuleHealthService } from "@/core/module-health-service";
 import { ModuleApiInitializer } from "@/core/api/module-api-initializer";
+import { HealthCheckRegistry } from "@/core/health/health-check-registry";
 
 /**
  * Registers core infrastructure services.
@@ -25,15 +27,20 @@ import { ModuleApiInitializer } from "@/core/api/module-api-initializer";
  * - MetricsCollector (singleton)
  * - MetricsRecorder/MetricsSampler (aliases to MetricsCollector)
  * - Logger (singleton, self-configuring with EnvironmentConfig)
- * - ModuleHealthService (singleton, with container self-reference)
+ * - HealthCheckRegistry (singleton)
+ * - ContainerHealthCheck (singleton, auto-registered)
+ * - MetricsHealthCheck (singleton, auto-registered)
+ * - ModuleHealthService (singleton, uses HealthCheckRegistry)
  * - ModuleApiInitializer (singleton, handles API exposition)
  *
  * INITIALIZATION ORDER:
  * 1. EnvironmentConfig (no dependencies)
  * 2. MetricsCollector (deps: [environmentConfigToken])
  * 3. Logger (deps: [environmentConfigToken])
- * 4. ModuleHealthService (deps: [container, metricsCollectorToken])
- * 5. ModuleApiInitializer (no dependencies)
+ * 4. HealthCheckRegistry (no dependencies)
+ * 5. ContainerHealthCheck & MetricsHealthCheck (auto-register to registry)
+ * 6. ModuleHealthService (deps: [healthCheckRegistryToken])
+ * 7. ModuleApiInitializer (no dependencies)
  *
  * @param container - The service container to register services in
  * @returns Result indicating success or error with details
@@ -70,22 +77,22 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
     return err(`Failed to register Logger: ${loggerResult.error.message}`);
   }
 
-  // Register ModuleHealthService (special case: needs container reference)
-  const healthResult = container.registerFactory(
-    moduleHealthServiceToken,
-    () => {
-      const metricsResult = container.resolveWithError(metricsCollectorToken);
-      /* c8 ignore start -- Defensive: MetricsCollector is always registered at this point */
-      if (!metricsResult.ok) {
-        throw new Error("MetricsCollector not available for ModuleHealthService");
-      }
-      /* c8 ignore stop */
-      return new ModuleHealthService(container, metricsResult.value);
-    },
-    ServiceLifecycle.SINGLETON,
-    [metricsCollectorToken]
+  // Register HealthCheckRegistry (but don't resolve yet - needs container validation first)
+  const registryResult = container.registerClass(
+    healthCheckRegistryToken,
+    HealthCheckRegistry,
+    ServiceLifecycle.SINGLETON
   );
+  if (isErr(registryResult)) {
+    return err(`Failed to register HealthCheckRegistry: ${registryResult.error.message}`);
+  }
 
+  // Register ModuleHealthService (uses HealthCheckRegistry)
+  const healthResult = container.registerClass(
+    moduleHealthServiceToken,
+    ModuleHealthService,
+    ServiceLifecycle.SINGLETON
+  );
   if (isErr(healthResult)) {
     return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
   }

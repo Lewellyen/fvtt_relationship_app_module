@@ -88,8 +88,7 @@ export function markAsApiSafe<T extends ServiceType>(token: InjectionToken<T>): 
   // Add to Set registry (O(1) lookup)
   apiSafeTokens.add(token);
 
-  // Return with compile-time brand (type cast)
-  /* type-coverage:ignore-next-line */
+  /* type-coverage:ignore-next-line -- Nominal branding: Return with compile-time brand marker (type cast) */
   return token as ApiSafeToken<T>;
 }
 

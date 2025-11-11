@@ -21,47 +21,13 @@ import { throttle } from "@/utils/events/throttle";
 import { ok, err } from "@/utils/functional/result";
 
 /**
- * Type guard for jQuery objects.
- */
-function isJQueryObject(value: unknown): value is { [index: number]: HTMLElement; length: number } {
-  if (value === null || typeof value !== "object") return false;
-  // Narrow generic object to indexable record for property checks
-  /* type-coverage:ignore-next-line */
-  const obj = value as Record<string, unknown>;
-  return "length" in obj && typeof obj.length === "number" && obj.length > 0 && "0" in obj;
-}
-
-/**
- * Extracts HTMLElement from hook argument (jQuery or native DOM).
+ * Extracts HTMLElement from hook argument.
+ *
+ * In Foundry VTT V13+, hooks receive native HTMLElement directly.
+ * jQuery support has been deprecated and is no longer needed.
  */
 function extractHtmlElement(html: unknown): HTMLElement | null {
-  if (html instanceof HTMLElement) {
-    return html;
-  }
-
-  if (isJQueryObject(html) && html[0] instanceof HTMLElement) {
-    return html[0];
-  }
-
-  if (html && typeof html === "object" && "get" in html) {
-    const obj = html as Record<string, unknown>;
-    if (typeof obj.get === "function") {
-      try {
-        // jQuery get returns unknown; treat as index-based accessor for HTMLElement lookup
-        /* type-coverage:ignore-next-line */
-        const element = (obj.get as (index: number) => unknown)(0);
-        if (element instanceof HTMLElement) {
-          return element;
-        }
-        /* c8 ignore start -- Defensive: Ignore errors from accessing journal entry properties that may not exist */
-      } catch {
-        // Ignore
-      }
-      /* c8 ignore stop */
-    }
-  }
-
-  return null;
+  return html instanceof HTMLElement ? html : null;
 }
 
 /**

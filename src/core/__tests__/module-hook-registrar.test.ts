@@ -254,60 +254,8 @@ describe("ModuleHookRegistrar", () => {
     });
   });
 
-  describe("jQuery compatibility", () => {
-    it("should extract HTMLElement from jQuery object (numeric index)", () => {
-      const mockContainer = createMockContainer();
-      const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
-
-      registrar.registerAll(mockContainer as never);
-
-      const mockHooks = mockContainer.getMockHooks() as any;
-      const hookCallback = mockHooks.on.mock.calls.find(
-        ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
-      )?.[1];
-
-      expect(hookCallback).toBeDefined();
-
-      // Simulate jQuery object
-      const realElement = document.createElement("div");
-      const jQueryMock: any = { length: 1 };
-      jQueryMock[0] = realElement; // Numeric index assigned separately to avoid naming-convention lint error
-
-      const mockApp = { id: "journal-directory", object: {}, options: {} };
-      hookCallback(mockApp, jQueryMock);
-
-      const mockJournalService = mockContainer.getMockJournalService();
-      expect(mockJournalService.processJournalDirectory).toHaveBeenCalledWith(realElement);
-    });
-
-    it("should extract HTMLElement from jQuery with .get() method", () => {
-      const mockContainer = createMockContainer();
-      const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
-
-      registrar.registerAll(mockContainer as never);
-
-      const mockHooks = mockContainer.getMockHooks() as any;
-      const hookCallback = mockHooks.on.mock.calls.find(
-        ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
-      )?.[1];
-
-      const realElement = document.createElement("div");
-      const jQueryMock = {
-        get: (index: number) => (index === 0 ? realElement : null),
-      };
-
-      const mockApp = { id: "journal-directory", object: {}, options: {} };
-      hookCallback(mockApp, jQueryMock);
-
-      const mockJournalService = mockContainer.getMockJournalService();
-      expect(mockJournalService.processJournalDirectory).toHaveBeenCalledWith(realElement);
-    });
-
-    it("should handle native HTMLElement (Foundry v13+)", () => {
+  describe("HTML parameter validation", () => {
+    it("should handle native HTMLElement", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
       const mockLogger = createMockLogger();
@@ -343,38 +291,6 @@ describe("ModuleHookRegistrar", () => {
 
       const mockApp = { id: "journal-directory", object: {}, options: {} };
       hookCallback(mockApp, { invalid: "object" });
-
-      const containerLogger = mockContainer.getMockLogger();
-      expect(containerLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to get HTMLElement from hook")
-      );
-    });
-
-    it("should handle errors when accessing journal entry properties", () => {
-      const mockContainer = createMockContainer();
-      const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger);
-
-      registrar.registerAll(mockContainer as never);
-
-      const mockHooks = mockContainer.getMockHooks() as any;
-      const hookCallback = mockHooks.on.mock.calls.find(
-        ([name]: [string]) => name === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
-      )?.[1];
-
-      // Create an object with get() that throws
-      const throwingJQuery = {
-        get: () => {
-          throw new Error("Property access failed");
-        },
-      };
-
-      // Should not crash when accessing properties throws
-      const mockApp = { id: "journal-directory", object: {}, options: {} };
-      expect(() => {
-        hookCallback(mockApp, { element: [throwingJQuery] });
-      }).not.toThrow();
 
       const containerLogger = mockContainer.getMockLogger();
       expect(containerLogger.error).toHaveBeenCalledWith(

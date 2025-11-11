@@ -6,7 +6,7 @@ Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Modu
 
 **Datum:** 2025-11-09  
 **Stand:** Version 0.10.0  
-**Detaillierte Analyse:** Siehe [PROJECT_ANALYSIS.md](./docs/PROJECT_ANALYSIS.md)
+**Detaillierte Analyse:** Siehe [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md)
 
 ---
 
@@ -189,21 +189,34 @@ Versionsspezifische Implementierungen der Interfaces:
 - `FoundryUIPortV13`
 
 #### 3. **Services** (`src/foundry/services/`)
-Version-agnostische Wrapper mit Lazy-Loading:
+Version-agnostische Wrapper die von `FoundryServiceBase` erben:
 ```typescript
-class FoundryGameService implements FoundryGame {
-  private getPort(): Result<FoundryGame, string> {
-    // Wählt automatisch den richtigen Port basierend auf Foundry-Version
-    if (this.port === null) {
-      const ports = this.portRegistry.createAll();
-      const result = this.portSelector.selectPort(ports);
-      if (!result.ok) return err(result.error);
-      this.port = result.value;
-    }
-    return ok(this.port);
+class FoundryGameService extends FoundryServiceBase<FoundryGame> implements FoundryGame {
+  static dependencies = [portSelectorToken, foundryGamePortRegistryToken, retryServiceToken] as const;
+  
+  constructor(portSelector: PortSelector, portRegistry: PortRegistry<FoundryGame>, retryService: RetryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+  
+  getJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
+    return this.withRetry(
+      () => {
+        const portResult = this.getPort("FoundryGame");
+        if (!portResult.ok) return portResult;
+        return portResult.value.getJournalEntries();
+      },
+      "FoundryGame.getJournalEntries"
+    );
   }
 }
 ```
+
+**FoundryServiceBase** (`src/foundry/services/FoundryServiceBase.ts`):
+- Abstract Base Class für alle Foundry Services
+- Eliminiert ~120 Zeilen Code-Duplikation (getPort-Logik)
+- Integrierte Retry-Logik via `withRetry()` und `withRetryAsync()`
+- Automatischer Schutz gegen transiente Foundry API-Fehler
+- Konsistentes Disposal-Pattern via `Disposable`
 
 #### 4. **PortSelector** (`src/foundry/versioning/portselector.ts`)
 Wählt den höchsten kompatiblen Port ≤ Foundry-Version:
@@ -613,6 +626,76 @@ src/config/
 
 ---
 
+## Health-Check-Registry Pattern
+
+### Konzept
+
+Services können sich selbst für Health-Monitoring registrieren:
+
+```typescript
+// 1. Health-Check implementieren
+class ContainerHealthCheck implements HealthCheck {
+  readonly name = "container";
+  
+  constructor(private readonly container: ServiceContainer) {}
+  
+  check(): boolean {
+    return this.container.getValidationState() === "validated";
+  }
+  
+  getDetails(): string | null {
+    const state = this.container.getValidationState();
+    return state !== "validated" ? `Container state: ${state}` : null;
+  }
+}
+
+// 2. Auto-Registrierung via Factory
+container.registerFactory(
+  containerHealthCheckToken,
+  (c) => {
+    const registry = c.resolve(healthCheckRegistryToken);
+    const check = new ContainerHealthCheck(c);
+    registry.value.register(check);
+    return check;
+  },
+  SINGLETON
+);
+
+// 3. ModuleHealthService nutzt Registry
+class ModuleHealthService {
+  constructor(private readonly registry: HealthCheckRegistry) {}
+  
+  getHealth(): HealthStatus {
+    const results = this.registry.runAll();
+    // Aggregiere alle Check-Ergebnisse
+  }
+}
+```
+
+### Vorteile
+
+- **Extensible**: Neue Health-Checks ohne ModuleHealthService-Änderungen
+- **No Circular Dependencies**: ModuleHealthService kennt Container nicht mehr
+- **Testable**: Health-Checks sind isoliert testbar
+- **Modular**: Jeder Check hat eine klare Verantwortung (SRP)
+
+### Implementierte Health-Checks
+
+1. **ContainerHealthCheck**: Validiert DI-Container-Status
+2. **MetricsHealthCheck**: Prüft Port-Selection und Resolution-Errors
+
+Neue Checks können einfach hinzugefügt werden:
+
+```typescript
+class CustomHealthCheck implements HealthCheck {
+  readonly name = "custom";
+  check(): boolean { /* ... */ }
+  getDetails(): string | null { /* ... */ }
+}
+```
+
+---
+
 ## Weiterführende Dokumentation
 
 - **TypeScript Configuration**: `tsconfig.json` - Strict Mode aktiviert
@@ -634,13 +717,13 @@ src/config/
 - DI-Container-Grundlagen
 
 ### Deep-Dive (detaillierte Analysen)
-- **[PROJECT_ANALYSIS.md](./docs/PROJECT_ANALYSIS.md)** - Vollständige Service-Analyse (19 Services)
-- **[DEPENDENCY_MAP.md](./docs/DEPENDENCY_MAP.md)** - Detaillierte Dependency-Hierarchie
+- **[PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md)** - Vollständige Service-Analyse (19 Services)
+- **[DEPENDENCY-MAP.md](./docs/DEPENDENCY-MAP.md)** - Detaillierte Dependency-Hierarchie
 - **[BOOTFLOW.md](./docs/BOOTFLOW.md)** - Bootstrap-Prozess im Detail
-- **[QUICK_REFERENCE.md](./docs/QUICK_REFERENCE.md)** - Entwickler-Schnellreferenz
+- **[QUICK-REFERENCE.md](./docs/QUICK-REFERENCE.md)** - Entwickler-Schnellreferenz
 
 ### Entwicklung
-- **[VERSIONING_STRATEGY.md](./docs/VERSIONING_STRATEGY.md)** - Breaking Changes & Deprecation
+- **[VERSIONING-STRATEGY.md](./docs/VERSIONING-STRATEGY.md)** - Breaking Changes & Deprecation
 - **[TESTING.md](./docs/TESTING.md)** - Test-Strategie
 - **[API.md](./docs/API.md)** - Öffentliche API
 

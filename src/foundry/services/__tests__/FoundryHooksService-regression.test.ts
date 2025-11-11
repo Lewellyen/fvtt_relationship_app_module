@@ -14,6 +14,7 @@ import type { Logger } from "@/interfaces/logger";
 import { expectResultOk, createMockLogger } from "@/test/utils/test-helpers";
 import { PortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/observability/observability-registry";
+import type { RetryService } from "@/services/RetryService";
 
 describe("FoundryHooksService - Regression Tests", () => {
   let service: FoundryHooksService;
@@ -21,6 +22,7 @@ describe("FoundryHooksService - Regression Tests", () => {
   let mockSelector: PortSelector;
   let mockPort: FoundryHooks;
   let mockLogger: Logger;
+  let mockRetryService: RetryService;
 
   beforeEach(() => {
     // Mock game object for version detection
@@ -34,6 +36,7 @@ describe("FoundryHooksService - Regression Tests", () => {
       on: vi.fn().mockReturnValue(ok(1)),
       once: vi.fn().mockReturnValue(ok(1)),
       off: vi.fn().mockReturnValue(ok(undefined)),
+      dispose: vi.fn(),
     };
 
     mockRegistry = new PortRegistry<FoundryHooks>();
@@ -46,7 +49,13 @@ describe("FoundryHooksService - Regression Tests", () => {
     mockSelector = new PortSelector(mockEventEmitter, mockObservability);
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
-    service = new FoundryHooksService(mockSelector, mockRegistry, mockLogger);
+    // Mock RetryService - just executes fn directly without retry logic
+    mockRetryService = {
+      retrySync: vi.fn((fn) => fn()),
+      retry: vi.fn((fn) => fn()),
+    } as any;
+
+    service = new FoundryHooksService(mockSelector, mockRegistry, mockRetryService, mockLogger);
   });
 
   afterEach(() => {

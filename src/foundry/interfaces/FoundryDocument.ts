@@ -1,22 +1,42 @@
 import type { Result } from "@/types/result";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import type * as v from "valibot";
+import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
 
 /**
  * Interface for Foundry document operations.
  * Abstracts flag access and document manipulation.
+ *
+ * Extends Disposable for consistent resource cleanup across all ports.
  */
-export interface FoundryDocument {
+export interface FoundryDocument extends Disposable {
   /**
-   * Gets a flag value from a document.
+   * Gets a flag value from a document with runtime validation.
+   *
+   * SECURITY: Flags are external input and must be validated!
+   * Schema validation prevents injection attacks and type mismatches.
+   *
    * @param document - The Foundry document (e.g., JournalEntry)
    * @param scope - The scope/namespace for the flag (usually the module ID)
    * @param key - The flag key
-   * @returns Result containing the flag value or null, or a FoundryError
+   * @param schema - Valibot schema for runtime validation
+   * @returns Result containing validated flag value or null, or a FoundryError
+   *
+   * @example
+   * ```typescript
+   * import * as v from "valibot";
+   *
+   * const result = document.getFlag(entry, "my-module", "hidden", v.boolean());
+   * if (result.ok && result.value === true) {
+   *   console.log("Entry is hidden");
+   * }
+   * ```
    */
-  getFlag<T = unknown>(
+  getFlag<T>(
     document: { getFlag: (scope: string, key: string) => unknown },
     scope: string,
-    key: string
+    key: string,
+    schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>
   ): Result<T | null, FoundryError>;
 
   /**

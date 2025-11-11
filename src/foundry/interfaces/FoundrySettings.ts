@@ -1,5 +1,7 @@
 import type { Result } from "@/types/result";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import type * as v from "valibot";
+import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
 
 /**
  * Setting configuration for Foundry module settings.
@@ -42,9 +44,11 @@ export interface SettingConfig<T> {
  * Interface for Foundry's settings system.
  * Abstracts setting registration and access.
  *
+ * Extends Disposable for consistent resource cleanup across all ports.
+ *
  * Based on Foundry VTT v13 Settings API.
  */
-export interface FoundrySettings {
+export interface FoundrySettings extends Disposable {
   /**
    * Registers a new module setting.
    * Must be called during 'init' hook or earlier.
@@ -68,21 +72,32 @@ export interface FoundrySettings {
   register<T>(namespace: string, key: string, config: SettingConfig<T>): Result<void, FoundryError>;
 
   /**
-   * Gets the current value of a setting.
+   * Gets the current value of a setting with runtime validation.
+   *
+   * SECURITY: Settings are external input and must be validated!
+   * Schema validation prevents injection attacks and type mismatches.
    *
    * @param namespace - Module ID
    * @param key - Setting key
-   * @returns Result with setting value or FoundryError
+   * @param schema - Valibot schema for runtime validation
+   * @returns Result with validated setting value or FoundryError
    *
    * @example
    * ```typescript
-   * const result = settings.get<number>("my-module", "myKey");
+   * import * as v from "valibot";
+   *
+   * const LogLevelSchema = v.picklist([0, 1, 2, 3]);
+   * const result = settings.get("my-module", "logLevel", LogLevelSchema);
    * if (result.ok) {
-   *   console.log(`Value: ${result.value}`);
+   *   console.log(`Validated log level: ${result.value}`);
    * }
    * ```
    */
-  get<T>(namespace: string, key: string): Result<T, FoundryError>;
+  get<T>(
+    namespace: string,
+    key: string,
+    schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>
+  ): Result<T, FoundryError>;
 
   /**
    * Sets the value of a setting.

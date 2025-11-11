@@ -1,11 +1,14 @@
 import type { Result } from "@/types/result";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
 
 /**
  * Interface for Foundry UI manipulation.
  * Abstracts DOM operations on Foundry's UI elements.
+ *
+ * Extends Disposable for consistent resource cleanup across all ports.
  */
-export interface FoundryUI {
+export interface FoundryUI extends Disposable {
   /**
    * Removes a journal entry element from the journal directory UI.
    * @param journalId - The ID of the journal entry

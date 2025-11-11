@@ -96,10 +96,10 @@ Foundry Adapter Layer (Services → Ports → Foundry API)
 - **Dependency Injection**: ServiceContainer mit Singleton/Transient/Scoped Lifecycles
 
 📖 **Detaillierte Dokumentation**: 
-- [PROJECT_ANALYSIS.md](./docs/PROJECT_ANALYSIS.md) - Vollständige Projektanalyse ⭐
+- [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md) - Vollständige Projektanalyse ⭐
 - [VERSIONING_STRATEGY.md](./docs/VERSIONING_STRATEGY.md) - Versioning & Breaking Changes ⭐ **NEU**
-- [DEPENDENCY_MAP.md](./docs/DEPENDENCY_MAP.md) - Service-Dependencies & Refactoring
-- [QUICK_REFERENCE.md](./docs/QUICK_REFERENCE.md) - Schnellreferenz für Entwickler
+- [DEPENDENCY-MAP.md](./docs/DEPENDENCY-MAP.md) - Service-Dependencies & Refactoring
+- [QUICK-REFERENCE.md](./docs/QUICK-REFERENCE.md) - Schnellreferenz für Entwickler
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Architektur-Details
 - [API.md](./docs/API.md) - Öffentliche API für andere Module
 

@@ -212,6 +212,9 @@ const localI18nToken = createInjectionToken("LocalI18nService");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 const environmentConfigToken = createInjectionToken("EnvironmentConfig");
 const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
+const healthCheckRegistryToken = createInjectionToken("HealthCheckRegistry");
+const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
+const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
 const performanceTrackingServiceToken = createInjectionToken(
   "PerformanceTrackingService"
 );
@@ -232,13 +235,16 @@ const moduleApiInitializerToken = createInjectionToken(
 );
 var tokenindex = /* @__PURE__ */ Object.freeze({
   __proto__: null,
+  containerHealthCheckToken,
   environmentConfigToken,
   foundryI18nToken,
+  healthCheckRegistryToken,
   i18nFacadeToken,
   journalVisibilityServiceToken,
   localI18nToken,
   loggerToken,
   metricsCollectorToken,
+  metricsHealthCheckToken,
   metricsRecorderToken,
   metricsSamplerToken,
   moduleApiInitializerToken,
@@ -346,6 +352,7 @@ const _ServiceRegistration = class _ServiceRegistration {
   }
   /**
    * Creates a class-based registration.
+   * @template TServiceType - The concrete service type
    * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
    * @param dependencies - Array of dependency tokens
    * @param serviceClass - The class to instantiate
@@ -372,6 +379,7 @@ const _ServiceRegistration = class _ServiceRegistration {
   }
   /**
    * Creates a factory-based registration.
+   * @template TServiceType - The concrete service type
    * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
    * @param dependencies - Array of dependency tokens
    * @param factory - Factory function that creates instances
@@ -398,6 +406,7 @@ const _ServiceRegistration = class _ServiceRegistration {
   }
   /**
    * Creates a value-based registration (always SINGLETON).
+   * @template TServiceType - The concrete service type
    * @param value - The value to register
    * @returns Result with registration or validation error
    */
@@ -415,11 +424,20 @@ const _ServiceRegistration = class _ServiceRegistration {
       });
     }
     return ok(
-      new _ServiceRegistration(ServiceLifecycle.SINGLETON, [], "value", void 0, void 0, value2, void 0)
+      new _ServiceRegistration(
+        ServiceLifecycle.SINGLETON,
+        [],
+        "value",
+        void 0,
+        void 0,
+        value2,
+        void 0
+      )
     );
   }
   /**
    * Creates an alias registration (always SINGLETON).
+   * @template TServiceType - The concrete service type
    * @param targetToken - The token to resolve instead
    * @returns Result with registration or validation error
    */
@@ -463,6 +481,90 @@ const _ServiceRegistration = class _ServiceRegistration {
 };
 __name(_ServiceRegistration, "ServiceRegistration");
 let ServiceRegistration = _ServiceRegistration;
+const _TypeSafeRegistrationMap = class _TypeSafeRegistrationMap {
+  constructor() {
+    this.map = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Stores a service registration.
+   *
+   * @template T - The concrete service type
+   * @param token - The injection token identifying the service
+   * @param registration - The service registration metadata
+   */
+  set(token, registration) {
+    this.map.set(token, registration);
+  }
+  /**
+   * Retrieves a service registration.
+   *
+   * Type-safe by design: The token's generic parameter guarantees that the
+   * returned registration matches the expected service type.
+   *
+   * @template T - The concrete service type
+   * @param token - The injection token identifying the service
+   * @returns The service registration or undefined if not found
+   */
+  get(token) {
+    return this.map.get(token);
+  }
+  /**
+   * Checks if a service is registered.
+   *
+   * @param token - The injection token to check
+   * @returns True if the service is registered
+   */
+  has(token) {
+    return this.map.has(token);
+  }
+  /**
+   * Removes a service registration.
+   *
+   * @param token - The injection token identifying the service
+   * @returns True if the service was found and removed
+   */
+  delete(token) {
+    return this.map.delete(token);
+  }
+  /**
+   * Gets the number of registered services.
+   *
+   * @returns The count of registrations
+   */
+  get size() {
+    return this.map.size;
+  }
+  /**
+   * Removes all service registrations.
+   */
+  clear() {
+    this.map.clear();
+  }
+  /**
+   * Returns an iterator of all registration entries.
+   *
+   * @returns Iterator of [token, registration] pairs
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Iterator returns heterogeneous service types
+  entries() {
+    return this.map.entries();
+  }
+  /**
+   * Creates a shallow clone of this map.
+   * Used when child containers inherit registrations from parent.
+   *
+   * @returns A new TypeSafeRegistrationMap with cloned entries
+   */
+  clone() {
+    const cloned = new _TypeSafeRegistrationMap();
+    this.map.forEach((value2, key) => {
+      cloned.map.set(key, value2);
+    });
+    return cloned;
+  }
+};
+__name(_TypeSafeRegistrationMap, "TypeSafeRegistrationMap");
+let TypeSafeRegistrationMap = _TypeSafeRegistrationMap;
 function hasDependencies(cls) {
   return "dependencies" in cls;
 }
@@ -470,7 +572,7 @@ __name(hasDependencies, "hasDependencies");
 const _ServiceRegistry = class _ServiceRegistry {
   constructor() {
     this.MAX_REGISTRATIONS = 1e4;
-    this.registrations = /* @__PURE__ */ new Map();
+    this.registrations = new TypeSafeRegistrationMap();
     this.lifecycleIndex = /* @__PURE__ */ new Map();
   }
   /**
@@ -480,10 +582,12 @@ const _ServiceRegistry = class _ServiceRegistry {
    * @param lifecycle - The service lifecycle
    */
   updateLifecycleIndex(token, lifecycle) {
-    if (!this.lifecycleIndex.has(lifecycle)) {
-      this.lifecycleIndex.set(lifecycle, /* @__PURE__ */ new Set());
+    let tokenSet = this.lifecycleIndex.get(lifecycle);
+    if (!tokenSet) {
+      tokenSet = /* @__PURE__ */ new Set();
+      this.lifecycleIndex.set(lifecycle, tokenSet);
     }
-    this.lifecycleIndex.get(lifecycle).add(token);
+    tokenSet.add(token);
   }
   /**
    * Registers a service class with automatic dependency injection.
@@ -547,7 +651,11 @@ const _ServiceRegistry = class _ServiceRegistry {
         tokenDescription: String(token)
       });
     }
-    const registrationResult = ServiceRegistration.createFactory(lifecycle, dependencies, factory);
+    const registrationResult = ServiceRegistration.createFactory(
+      lifecycle,
+      dependencies,
+      factory
+    );
     if (isErr(registrationResult)) {
       return registrationResult;
     }
@@ -633,7 +741,7 @@ const _ServiceRegistry = class _ServiceRegistry {
    * @returns Map of all registrations
    */
   getAllRegistrations() {
-    return new Map(this.registrations);
+    return new Map(this.registrations.entries());
   }
   /**
    * Returns all registrations for a specific lifecycle.
@@ -675,7 +783,9 @@ const _ServiceRegistry = class _ServiceRegistry {
   clone() {
     const clonedRegistry = new _ServiceRegistry();
     for (const [token, registration] of this.registrations.entries()) {
-      clonedRegistry.registrations.set(token, registration.clone());
+      const typedToken = token;
+      const typedRegistration = registration;
+      clonedRegistry.registrations.set(typedToken, typedRegistration.clone());
     }
     for (const [lifecycle, tokens] of this.lifecycleIndex.entries()) {
       clonedRegistry.lifecycleIndex.set(lifecycle, new Set(tokens));
@@ -2104,6 +2214,49 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
 __name(_ConsoleLoggerService, "ConsoleLoggerService");
 _ConsoleLoggerService.dependencies = [environmentConfigToken];
 let ConsoleLoggerService = _ConsoleLoggerService;
+const _ContainerHealthCheck = class _ContainerHealthCheck {
+  constructor(container) {
+    this.container = container;
+    this.name = "container";
+  }
+  check() {
+    return this.container.getValidationState() === "validated";
+  }
+  getDetails() {
+    const state = this.container.getValidationState();
+    return state !== "validated" ? `Container state: ${state}` : null;
+  }
+  dispose() {
+  }
+};
+__name(_ContainerHealthCheck, "ContainerHealthCheck");
+let ContainerHealthCheck = _ContainerHealthCheck;
+const _MetricsHealthCheck = class _MetricsHealthCheck {
+  constructor(metrics) {
+    this.metrics = metrics;
+    this.name = "metrics";
+  }
+  check() {
+    const snapshot = this.metrics.getSnapshot();
+    const hasPortFailures = Object.keys(snapshot.portSelectionFailures).length > 0;
+    return !hasPortFailures && snapshot.resolutionErrors === 0;
+  }
+  getDetails() {
+    const snapshot = this.metrics.getSnapshot();
+    const failures = Object.keys(snapshot.portSelectionFailures);
+    if (failures.length > 0) {
+      return `Port selection failures: ${failures.join(", ")}`;
+    }
+    if (snapshot.resolutionErrors > 0) {
+      return `Resolution errors: ${snapshot.resolutionErrors}`;
+    }
+    return null;
+  }
+  dispose() {
+  }
+};
+__name(_MetricsHealthCheck, "MetricsHealthCheck");
+let MetricsHealthCheck = _MetricsHealthCheck;
 const _MetricsCollector = class _MetricsCollector {
   constructor(env) {
     this.env = env;
@@ -2199,10 +2352,8 @@ const _MetricsCollector = class _MetricsCollector {
    * @returns Immutable snapshot of metrics data
    */
   getSnapshot() {
-    let sum = 0;
-    for (let i = 0; i < this.resolutionTimesCount; i++) {
-      sum += this.resolutionTimes[i];
-    }
+    const times = this.resolutionTimes.slice(0, this.resolutionTimesCount);
+    const sum = times.reduce((acc, time) => acc + time, 0);
     const avgTime = this.resolutionTimesCount > 0 ? sum / this.resolutionTimesCount : 0;
     const totalCacheAccess = this.metrics.cacheHits + this.metrics.cacheMisses;
     const cacheHitRate = totalCacheAccess > 0 ? this.metrics.cacheHits / totalCacheAccess * 100 : 0;
@@ -2250,17 +2401,18 @@ __name(_MetricsCollector, "MetricsCollector");
 _MetricsCollector.dependencies = [environmentConfigToken];
 let MetricsCollector = _MetricsCollector;
 const _ModuleHealthService = class _ModuleHealthService {
-  constructor(container, metricsCollector) {
-    this.container = container;
-    this.metricsCollector = metricsCollector;
+  constructor(registry) {
+    this.registry = registry;
+    this.healthChecksInitialized = false;
   }
   /**
    * Gets the current health status of the module.
    *
-   * Health is determined by:
-   * - Container validation state (must be "validated")
-   * - Port selection success (at least one port selected)
-   * - Resolution errors (none expected)
+   * Health is determined by running all registered health checks.
+   * Overall status:
+   * - "healthy": All checks pass
+   * - "unhealthy": Container check fails
+   * - "degraded": Other checks fail
    *
    * @returns HealthStatus with overall status, individual checks, and timestamp
    *
@@ -2275,31 +2427,41 @@ const _ModuleHealthService = class _ModuleHealthService {
    * ```
    */
   getHealth() {
-    const containerValidated = this.container.getValidationState() === "validated";
-    const metrics = this.metricsCollector.getSnapshot();
-    const hasPortSelections = Object.keys(metrics.portSelections).length > 0 || containerValidated;
-    const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
+    if (!this.healthChecksInitialized) {
+      this.healthChecksInitialized = true;
+    }
+    const results = this.registry.runAll();
+    const allHealthy = Array.from(results.values()).every((result) => result);
+    const someUnhealthy = Array.from(results.values()).some((result) => !result);
     let status;
-    if (!containerValidated) {
-      status = "unhealthy";
-    } else if (hasPortFailures || metrics.resolutionErrors > 0) {
-      status = "degraded";
+    if (allHealthy) {
+      status = "healthy";
+    } else if (someUnhealthy) {
+      status = results.get("container") === false ? "unhealthy" : "degraded";
     } else {
       status = "healthy";
+    }
+    const checks = this.registry.getAllChecks();
+    let lastError = null;
+    for (const check2 of checks) {
+      const result = results.get(check2.name);
+      if (!result && check2.getDetails) {
+        lastError = check2.getDetails();
+      }
     }
     return {
       status,
       checks: {
-        containerValidated,
-        portsSelected: hasPortSelections,
-        lastError: hasPortFailures ? `Port selection failures detected for versions: ${Object.keys(metrics.portSelectionFailures).join(", ")}` : null
+        containerValidated: results.get("container") ?? true,
+        portsSelected: results.get("metrics") ?? true,
+        lastError
       },
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     };
   }
 };
 __name(_ModuleHealthService, "ModuleHealthService");
-_ModuleHealthService.dependencies = [metricsCollectorToken];
+_ModuleHealthService.dependencies = [healthCheckRegistryToken];
 let ModuleHealthService = _ModuleHealthService;
 const deprecationMetadata = /* @__PURE__ */ new Map();
 function markAsDeprecated(token, reason, replacement, removedInVersion) {
@@ -2320,10 +2482,18 @@ function getDeprecationInfo(token) {
   return deprecationMetadata.get(token) || null;
 }
 __name(getDeprecationInfo, "getDeprecationInfo");
+function isAllowedKey(prop, allowed) {
+  if (typeof prop !== "string") {
+    return false;
+  }
+  const allowedStrings = allowed;
+  return allowedStrings.includes(prop);
+}
+__name(isAllowedKey, "isAllowedKey");
 function createReadOnlyWrapper(service, allowedMethods) {
   return new Proxy(service, {
     get(target, prop, receiver) {
-      if (allowedMethods.includes(prop)) {
+      if (isAllowedKey(prop, allowedMethods)) {
         const value2 = Reflect.get(target, prop, receiver);
         if (typeof value2 === "function") {
           return value2.bind(target);
@@ -2375,34 +2545,43 @@ function createApiTokens() {
 __name(createApiTokens, "createApiTokens");
 const _ModuleApiInitializer = class _ModuleApiInitializer {
   /**
-   * Exposes the module's public API to game.modules.get(MODULE_ID).api
+   * Handles deprecation warnings for tokens.
+   * Logs warning to console if token is deprecated and warning hasn't been shown yet.
    *
-   * @param container - Initialized and validated ServiceContainer
-   * @returns Result<void, string> - Ok if successful, Err with error message
+   * Uses console.warn instead of Logger because:
+   * - Deprecation warnings are for external API consumers (not internal logs)
+   * - Should be visible even if Logger is disabled/configured differently
+   * - Follows npm/Node.js convention for deprecation warnings
+   *
+   * @param token - Token to check for deprecation
+   * @private
    */
-  expose(container) {
-    if (typeof game === "undefined" || !game?.modules) {
-      return err("Game modules not available - API cannot be exposed");
-    }
-    const mod = game.modules.get(MODULE_CONSTANTS.MODULE.ID);
-    if (!mod) {
-      return err(`Module '${MODULE_CONSTANTS.MODULE.ID}' not found in game.modules`);
-    }
-    const wellKnownTokens = createApiTokens();
-    const apiSafeLoggerToken = markAsApiSafe(loggerToken);
-    const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
-    const resolveImpl = /* @__PURE__ */ __name((token) => {
-      const deprecationInfo = getDeprecationInfo(token);
-      if (deprecationInfo && !deprecationInfo.warningShown) {
-        const replacementInfo = deprecationInfo.replacement ? `Use "${deprecationInfo.replacement}" instead.
+  handleDeprecationWarning(token) {
+    const deprecationInfo = getDeprecationInfo(token);
+    if (deprecationInfo && !deprecationInfo.warningShown) {
+      const replacementInfo = deprecationInfo.replacement ? `Use "${deprecationInfo.replacement}" instead.
 ` : "";
-        console.warn(
-          `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
+      console.warn(
+        `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
 Reason: ${deprecationInfo.reason}
 ` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
-        );
-        deprecationInfo.warningShown = true;
-      }
+      );
+      deprecationInfo.warningShown = true;
+    }
+  }
+  /**
+   * Creates the resolve() function for the public API.
+   * Resolves services and applies wrappers (throws on error).
+   *
+   * @param container - ServiceContainer for resolution
+   * @returns Resolve function for ModuleApi
+   * @private
+   */
+  createResolveFunction(container) {
+    const apiSafeLoggerToken = markAsApiSafe(loggerToken);
+    const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
+    return (token) => {
+      this.handleDeprecationWarning(token);
       const service = container.resolve(token);
       if (token === apiSafeLoggerToken) {
         const logger = service;
@@ -2415,41 +2594,54 @@ Reason: ${deprecationInfo.reason}
         return wrappedI18n;
       }
       return service;
-    }, "resolveImpl");
-    const api = {
+    };
+  }
+  /**
+   * Creates the resolveWithError() function for the public API.
+   * Resolves services with Result pattern (never throws).
+   *
+   * @param container - ServiceContainer for resolution
+   * @returns ResolveWithError function for ModuleApi
+   * @private
+   */
+  createResolveWithErrorFunction(container) {
+    const apiSafeLoggerToken = markAsApiSafe(loggerToken);
+    const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
+    return (token) => {
+      this.handleDeprecationWarning(token);
+      const result = container.resolveWithError(token);
+      if (!result.ok) {
+        return result;
+      }
+      const service = result.value;
+      if (token === apiSafeLoggerToken) {
+        const logger = service;
+        const wrappedLogger = createPublicLogger(logger);
+        return ok(wrappedLogger);
+      }
+      if (token === apiSafeI18nToken) {
+        const i18n = service;
+        const wrappedI18n = createPublicI18n(i18n);
+        return ok(wrappedI18n);
+      }
+      return ok(service);
+    };
+  }
+  /**
+   * Creates the complete ModuleApi object with all methods.
+   *
+   * @param container - ServiceContainer for service resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Complete ModuleApi object
+   * @private
+   */
+  createApiObject(container, wellKnownTokens) {
+    return {
       version: MODULE_CONSTANTS.API.VERSION,
       // Overloaded resolve method (throws on error)
-      resolve: resolveImpl,
+      resolve: this.createResolveFunction(container),
       // Result-Pattern method (safe, never throws)
-      resolveWithError: /* @__PURE__ */ __name((token) => {
-        const deprecationInfo = getDeprecationInfo(token);
-        if (deprecationInfo && !deprecationInfo.warningShown) {
-          const replacementInfo = deprecationInfo.replacement ? `Use "${deprecationInfo.replacement}" instead.
-` : "";
-          console.warn(
-            `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
-Reason: ${deprecationInfo.reason}
-` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
-          );
-          deprecationInfo.warningShown = true;
-        }
-        const result = container.resolveWithError(token);
-        if (!result.ok) {
-          return result;
-        }
-        const service = result.value;
-        if (token === apiSafeLoggerToken) {
-          const logger = service;
-          const wrappedLogger = createPublicLogger(logger);
-          return ok(wrappedLogger);
-        }
-        if (token === apiSafeI18nToken) {
-          const i18n = service;
-          const wrappedI18n = createPublicI18n(i18n);
-          return ok(wrappedI18n);
-        }
-        return ok(service);
-      }, "resolveWithError"),
+      resolveWithError: this.createResolveWithErrorFunction(container),
       getAvailableTokens: /* @__PURE__ */ __name(() => {
         const tokenMap = /* @__PURE__ */ new Map();
         const tokenEntries = [
@@ -2504,6 +2696,23 @@ Reason: ${deprecationInfo.reason}
         return healthServiceResult.value.getHealth();
       }, "getHealth")
     };
+  }
+  /**
+   * Exposes the module's public API to game.modules.get(MODULE_ID).api
+   *
+   * @param container - Initialized and validated ServiceContainer
+   * @returns Result<void, string> - Ok if successful, Err with error message
+   */
+  expose(container) {
+    if (typeof game === "undefined" || !game?.modules) {
+      return err("Game modules not available - API cannot be exposed");
+    }
+    const mod = game.modules.get(MODULE_CONSTANTS.MODULE.ID);
+    if (!mod) {
+      return err(`Module '${MODULE_CONSTANTS.MODULE.ID}' not found in game.modules`);
+    }
+    const wellKnownTokens = createApiTokens();
+    const api = this.createApiObject(container, wellKnownTokens);
     mod.api = api;
     return ok(void 0);
   }
@@ -2511,6 +2720,39 @@ Reason: ${deprecationInfo.reason}
 __name(_ModuleApiInitializer, "ModuleApiInitializer");
 _ModuleApiInitializer.dependencies = [];
 let ModuleApiInitializer = _ModuleApiInitializer;
+const _HealthCheckRegistry = class _HealthCheckRegistry {
+  constructor() {
+    this.checks = /* @__PURE__ */ new Map();
+  }
+  register(check2) {
+    this.checks.set(check2.name, check2);
+  }
+  unregister(name) {
+    this.checks.delete(name);
+  }
+  runAll() {
+    const results = /* @__PURE__ */ new Map();
+    for (const [name, check2] of this.checks) {
+      results.set(name, check2.check());
+    }
+    return results;
+  }
+  getCheck(name) {
+    return this.checks.get(name);
+  }
+  getAllChecks() {
+    return Array.from(this.checks.values());
+  }
+  dispose() {
+    for (const check2 of this.checks.values()) {
+      check2.dispose();
+    }
+    this.checks.clear();
+  }
+};
+__name(_HealthCheckRegistry, "HealthCheckRegistry");
+_HealthCheckRegistry.dependencies = [];
+let HealthCheckRegistry = _HealthCheckRegistry;
 function registerCoreServices(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
@@ -2534,17 +2776,18 @@ function registerCoreServices(container) {
   if (isErr(loggerResult)) {
     return err(`Failed to register Logger: ${loggerResult.error.message}`);
   }
-  const healthResult = container.registerFactory(
+  const registryResult = container.registerClass(
+    healthCheckRegistryToken,
+    HealthCheckRegistry,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(registryResult)) {
+    return err(`Failed to register HealthCheckRegistry: ${registryResult.error.message}`);
+  }
+  const healthResult = container.registerClass(
     moduleHealthServiceToken,
-    () => {
-      const metricsResult2 = container.resolveWithError(metricsCollectorToken);
-      if (!metricsResult2.ok) {
-        throw new Error("MetricsCollector not available for ModuleHealthService");
-      }
-      return new ModuleHealthService(container, metricsResult2.value);
-    },
-    ServiceLifecycle.SINGLETON,
-    [metricsCollectorToken]
+    ModuleHealthService,
+    ServiceLifecycle.SINGLETON
   );
   if (isErr(healthResult)) {
     return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
@@ -2678,11 +2921,11 @@ function detectFoundryVersion() {
   if (!versionString) {
     return err("Foundry version is not available on the game object");
   }
-  const match2 = versionString.match(/^(\d+)/);
-  if (!match2) {
+  const versionStr = versionString.match(/^(\d+)/)?.[1];
+  if (!versionStr) {
     return err(`Could not parse Foundry version from: ${versionString}`);
   }
-  return ok(Number.parseInt(match2[1], 10));
+  return ok(Number.parseInt(versionStr, 10));
 }
 __name(detectFoundryVersion, "detectFoundryVersion");
 function getFoundryVersionResult() {
@@ -2940,7 +3183,7 @@ const _PortRegistry = class _PortRegistry {
    */
   getHighestVersion() {
     const versions = this.getAvailableVersions();
-    return versions.length > 0 ? versions[versions.length - 1] : void 0;
+    return versions.at(-1);
   }
 };
 __name(_PortRegistry, "PortRegistry");
@@ -9781,6 +10024,10 @@ function unwrap(schema) {
   return schema.wrapped;
 }
 __name(unwrap, "unwrap");
+function isStringValue(value2, expectedType) {
+  return expectedType === "string" && typeof value2 === "string";
+}
+__name(isStringValue, "isStringValue");
 const JournalEntrySchema = /* @__PURE__ */ object({
   id: /* @__PURE__ */ string(),
   name: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
@@ -9837,7 +10084,7 @@ function validateSettingValue(key, value2, expectedType, choices) {
       )
     );
   }
-  if (choices && expectedType === "string") {
+  if (choices && isStringValue(value2, expectedType)) {
     if (!choices.includes(value2)) {
       return err(
         createFoundryError(
@@ -9851,16 +10098,26 @@ function validateSettingValue(key, value2, expectedType, choices) {
   return ok(value2);
 }
 __name(validateSettingValue, "validateSettingValue");
+const SettingConfigSchema = /* @__PURE__ */ object({
+  name: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+  hint: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+  scope: /* @__PURE__ */ optional(/* @__PURE__ */ picklist(["world", "client", "user"])),
+  config: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
+  type: /* @__PURE__ */ optional(/* @__PURE__ */ any()),
+  // typeof String, Number, Boolean - cannot validate constructors
+  default: /* @__PURE__ */ optional(/* @__PURE__ */ any()),
+  // Default value depends on type
+  choices: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ string())),
+  // Record keys must be string in TS
+  onChange: /* @__PURE__ */ optional(/* @__PURE__ */ custom((val) => typeof val === "function"))
+});
 function validateSettingConfig(namespace, key, config2) {
   if (!namespace || typeof namespace !== "string") {
     return err(
       createFoundryError(
         "VALIDATION_FAILED",
         "Invalid setting namespace: must be non-empty string",
-        {
-          namespace,
-          key
-        }
+        { namespace, key }
       )
     );
   }
@@ -9880,17 +10137,17 @@ function validateSettingConfig(namespace, key, config2) {
       })
     );
   }
-  const configObj = config2;
-  if (configObj.scope && !["world", "client", "user"].includes(configObj.scope)) {
+  const result = /* @__PURE__ */ safeParse(SettingConfigSchema, config2);
+  if (!result.success) {
     return err(
       createFoundryError(
         "VALIDATION_FAILED",
-        `Invalid setting scope: "${configObj.scope}". Allowed: world, client, user`,
-        { namespace, key, scope: configObj.scope }
+        `Setting config validation failed for ${namespace}.${key}: ${result.issues.map((i) => i.message).join(", ")}`,
+        { namespace, key, config: config2, issues: result.issues }
       )
     );
   }
-  return ok(config2);
+  return ok(result.output);
 }
 __name(validateSettingConfig, "validateSettingConfig");
 function sanitizeId(id) {
@@ -10042,6 +10299,12 @@ const _FoundryGamePortV13 = class _FoundryGamePortV13 {
       )
     );
   }
+  /* c8 ignore start -- Lifecycle: Disposal tested indirectly via service disposal tests */
+  dispose() {
+    this.cachedEntries = null;
+    this.lastCheckTimestamp = 0;
+  }
+  /* c8 ignore stop */
 };
 __name(_FoundryGamePortV13, "FoundryGamePortV13");
 let FoundryGamePortV13 = _FoundryGamePortV13;
@@ -10097,25 +10360,46 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
       )
     );
   }
+  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
+  dispose() {
+  }
+  /* c8 ignore stop */
 };
 __name(_FoundryHooksPortV13, "FoundryHooksPortV13");
 let FoundryHooksPortV13 = _FoundryHooksPortV13;
 const _FoundryDocumentPortV13 = class _FoundryDocumentPortV13 {
-  getFlag(document2, scope, key) {
+  getFlag(document2, scope, key, schema) {
     return tryCatch(
       () => {
         if (!document2?.getFlag) {
           throw new Error("Document does not have getFlag method");
         }
-        const value2 = document2.getFlag(scope, key);
-        return value2 ?? null;
+        const rawValue = document2.getFlag(scope, key);
+        if (rawValue === null || rawValue === void 0) {
+          return null;
+        }
+        const parseResult = /* @__PURE__ */ safeParse(schema, rawValue);
+        if (!parseResult.success) {
+          const error = createFoundryError(
+            "VALIDATION_FAILED",
+            `Flag ${scope}.${key} failed validation: ${parseResult.issues.map((i) => i.message).join(", ")}`,
+            { scope, key, rawValue, issues: parseResult.issues }
+          );
+          throw error;
+        }
+        return parseResult.output;
       },
-      (error) => createFoundryError(
-        "OPERATION_FAILED",
-        `Failed to get flag ${scope}.${key}`,
-        { scope, key },
-        error
-      )
+      (error) => {
+        if (error && typeof error === "object" && "code" in error && "message" in error) {
+          return error;
+        }
+        return createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to get flag ${scope}.${key}`,
+          { scope, key },
+          error
+        );
+      }
     );
   }
   async setFlag(document2, scope, key, value2) {
@@ -10134,6 +10418,10 @@ const _FoundryDocumentPortV13 = class _FoundryDocumentPortV13 {
       )
     );
   }
+  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
+  dispose() {
+  }
+  /* c8 ignore stop */
 };
 __name(_FoundryDocumentPortV13, "FoundryDocumentPortV13");
 let FoundryDocumentPortV13 = _FoundryDocumentPortV13;
@@ -10198,6 +10486,10 @@ const _FoundryUIPortV13 = class _FoundryUIPortV13 {
       );
     }
   }
+  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
+  dispose() {
+  }
+  /* c8 ignore stop */
 };
 __name(_FoundryUIPortV13, "FoundryUIPortV13");
 let FoundryUIPortV13 = _FoundryUIPortV13;
@@ -10223,21 +10515,38 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
       )
     );
   }
-  get(namespace, key) {
+  get(namespace, key, schema) {
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
     return tryCatch(
-      () => (
-        /* type-coverage:ignore-next-line */
-        game.settings.get(namespace, key)
-      ),
-      (error) => createFoundryError(
-        "OPERATION_FAILED",
-        `Failed to get setting ${namespace}.${key}`,
-        { namespace, key },
-        error
-      )
+      () => {
+        const rawValue = game.settings.get(
+          namespace,
+          key
+        );
+        const parseResult = /* @__PURE__ */ safeParse(schema, rawValue);
+        if (!parseResult.success) {
+          const error = createFoundryError(
+            "VALIDATION_FAILED",
+            `Setting ${namespace}.${key} failed validation: ${parseResult.issues.map((i) => i.message).join(", ")}`,
+            { namespace, key, rawValue, issues: parseResult.issues }
+          );
+          throw error;
+        }
+        return parseResult.output;
+      },
+      (error) => {
+        if (error && typeof error === "object" && "code" in error && "message" in error) {
+          return error;
+        }
+        return createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to get setting ${namespace}.${key}`,
+          { namespace, key },
+          error
+        );
+      }
     );
   }
   async set(namespace, key, value2) {
@@ -10245,7 +10554,7 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
     return fromPromise(
-      /* type-coverage:ignore-next-line */
+      /* type-coverage:ignore-next-line -- Type widening: fvtt-types restrictive definition, cast safe for dynamic module namespaces */
       game.settings.set(
         namespace,
         key,
@@ -10259,6 +10568,10 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
       )
     );
   }
+  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
+  dispose() {
+  }
+  /* c8 ignore stop */
 };
 __name(_FoundrySettingsPortV13, "FoundrySettingsPortV13");
 let FoundrySettingsPortV13 = _FoundrySettingsPortV13;
@@ -10319,6 +10632,10 @@ const _FoundryI18nPortV13 = class _FoundryI18nPortV13 {
       return ok(false);
     }
   }
+  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
+  dispose() {
+  }
+  /* c8 ignore stop */
 };
 __name(_FoundryI18nPortV13, "FoundryI18nPortV13");
 _FoundryI18nPortV13.dependencies = [];
@@ -10460,11 +10777,12 @@ function registerPortInfrastructure(container) {
   return ok(void 0);
 }
 __name(registerPortInfrastructure, "registerPortInfrastructure");
-const _FoundryGameService = class _FoundryGameService {
-  constructor(portSelector, portRegistry) {
+const _FoundryServiceBase = class _FoundryServiceBase {
+  constructor(portSelector, portRegistry, retryService) {
     this.port = null;
     this.portSelector = portSelector;
     this.portRegistry = portRegistry;
+    this.retryService = retryService;
   }
   /**
    * Lazy-loads the appropriate port based on Foundry version.
@@ -10473,15 +10791,16 @@ const _FoundryGameService = class _FoundryGameService {
    * CRITICAL: This prevents crashes when newer port constructors access
    * APIs not available in the current Foundry version.
    *
+   * @param adapterName - Name for logging purposes (e.g., "FoundryGame")
    * @returns Result containing the port or a FoundryError if no compatible port can be selected
    */
-  getPort() {
+  getPort(adapterName) {
     if (this.port === null) {
       const factories = this.portRegistry.getFactories();
       const portResult = this.portSelector.selectPortFromFactories(
         factories,
         void 0,
-        "FoundryGame"
+        adapterName
       );
       if (!portResult.ok) {
         return portResult;
@@ -10490,72 +10809,144 @@ const _FoundryGameService = class _FoundryGameService {
     }
     return { ok: true, value: this.port };
   }
-  getJournalEntries() {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.getJournalEntries();
+  /**
+   * Executes a Foundry API operation with automatic retry on transient failures.
+   *
+   * Use this for any port method call to handle:
+   * - Race conditions (Foundry not fully initialized)
+   * - Timing issues (DOM/Settings not ready)
+   * - Transient port selection failures
+   *
+   * @template T - The success type
+   * @param fn - Function to execute (should call port methods)
+   * @param operationName - Operation name for logging (e.g., "FoundryGame.getJournalEntries")
+   * @param maxAttempts - Max retry attempts (default: 2 = 1 retry)
+   * @returns Result from operation or mapped error
+   *
+   * @example
+   * ```typescript
+   * getJournalEntries(): Result<Entry[], FoundryError> {
+   *   return this.withRetry(
+   *     () => {
+   *       const portResult = this.getPort("FoundryGame");
+   *       if (!portResult.ok) return portResult;
+   *       return portResult.value.getJournalEntries();
+   *     },
+   *     "FoundryGame.getJournalEntries"
+   *   );
+   * }
+   * ```
+   */
+  /* c8 ignore start -- Tested indirectly via Foundry Services that call this method */
+  withRetry(fn, operationName, maxAttempts = 2) {
+    return this.retryService.retrySync(fn, {
+      maxAttempts,
+      operationName,
+      mapException: /* @__PURE__ */ __name((error) => ({
+        code: "OPERATION_FAILED",
+        message: `${operationName} failed: ${String(error)}`,
+        cause: error instanceof Error ? error : void 0
+      }), "mapException")
+    });
   }
-  getJournalEntryById(id) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.getJournalEntryById(id);
+  /* c8 ignore stop */
+  /**
+   * Async variant of withRetry for async operations.
+   *
+   * @template T - The success type
+   * @param fn - Async function to execute
+   * @param operationName - Operation name for logging
+   * @param maxAttempts - Max retry attempts (default: 2)
+   * @returns Promise resolving to Result
+   *
+   * @example
+   * ```typescript
+   * async setFlag<T>(doc, scope, key, value): Promise<Result<void, FoundryError>> {
+   *   return this.withRetryAsync(
+   *     async () => {
+   *       const portResult = this.getPort("FoundryDocument");
+   *       if (!portResult.ok) return portResult;
+   *       return await portResult.value.setFlag(doc, scope, key, value);
+   *     },
+   *     "FoundryDocument.setFlag"
+   *   );
+   * }
+   * ```
+   */
+  /* c8 ignore start -- Tested indirectly via Foundry Services that call this method */
+  async withRetryAsync(fn, operationName, maxAttempts = 2) {
+    return this.retryService.retry(fn, {
+      maxAttempts,
+      delayMs: 100,
+      // 100ms delay between retries
+      operationName,
+      mapException: /* @__PURE__ */ __name((error) => ({
+        code: "OPERATION_FAILED",
+        message: `${operationName} failed: ${String(error)}`,
+        cause: error instanceof Error ? error : void 0
+      }), "mapException")
+    });
   }
+  /* c8 ignore stop */
   /**
    * Cleans up resources.
    * Disposes the port if it implements Disposable, then resets the reference.
    */
   dispose() {
-    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
+    if (this.port && typeof this.port === "object" && "dispose" in this.port && typeof this.port.dispose === "function") {
       this.port.dispose();
     }
     this.port = null;
   }
 };
+__name(_FoundryServiceBase, "FoundryServiceBase");
+let FoundryServiceBase = _FoundryServiceBase;
+const _FoundryGameService = class _FoundryGameService extends FoundryServiceBase {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+  getJournalEntries() {
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryGame");
+      if (!portResult.ok) return portResult;
+      return portResult.value.getJournalEntries();
+    }, "FoundryGame.getJournalEntries");
+  }
+  getJournalEntryById(id) {
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryGame");
+      if (!portResult.ok) return portResult;
+      return portResult.value.getJournalEntryById(id);
+    }, "FoundryGame.getJournalEntryById");
+  }
+};
 __name(_FoundryGameService, "FoundryGameService");
-_FoundryGameService.dependencies = [portSelectorToken, foundryGamePortRegistryToken];
+_FoundryGameService.dependencies = [
+  portSelectorToken,
+  foundryGamePortRegistryToken,
+  retryServiceToken
+];
 let FoundryGameService = _FoundryGameService;
-const _FoundryHooksService = class _FoundryHooksService {
-  constructor(portSelector, portRegistry, logger) {
-    this.port = null;
+const _FoundryHooksService = class _FoundryHooksService extends FoundryServiceBase {
+  constructor(portSelector, portRegistry, retryService, logger) {
+    super(portSelector, portRegistry, retryService);
     this.registeredHooks = /* @__PURE__ */ new Map();
     this.callbackToIdMap = /* @__PURE__ */ new Map();
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
     this.logger = logger;
   }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundryHooks"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
   on(hookName, callback) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    const result = portResult.value.on(hookName, callback);
+    const result = this.withRetry(() => {
+      const portResult = this.getPort("FoundryHooks");
+      if (!portResult.ok) return portResult;
+      return portResult.value.on(hookName, callback);
+    }, "FoundryHooks.on");
     if (result.ok) {
-      if (!this.registeredHooks.has(hookName)) {
-        this.registeredHooks.set(hookName, /* @__PURE__ */ new Map());
+      let hookMap = this.registeredHooks.get(hookName);
+      if (!hookMap) {
+        hookMap = /* @__PURE__ */ new Map();
+        this.registeredHooks.set(hookName, hookMap);
       }
-      this.registeredHooks.get(hookName).set(result.value, callback);
+      hookMap.set(result.value, callback);
       const existing = this.callbackToIdMap.get(callback) || [];
       existing.push({ hookName, id: result.value });
       this.callbackToIdMap.set(callback, existing);
@@ -10563,14 +10954,18 @@ const _FoundryHooksService = class _FoundryHooksService {
     return result;
   }
   once(hookName, callback) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.once(hookName, callback);
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryHooks");
+      if (!portResult.ok) return portResult;
+      return portResult.value.once(hookName, callback);
+    }, "FoundryHooks.once");
   }
   off(hookName, callbackOrId) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    const result = portResult.value.off(hookName, callbackOrId);
+    const result = this.withRetry(() => {
+      const portResult = this.getPort("FoundryHooks");
+      if (!portResult.ok) return portResult;
+      return portResult.value.off(hookName, callbackOrId);
+    }, "FoundryHooks.off");
     if (result.ok) {
       if (typeof callbackOrId === "number") {
         const hooks = this.registeredHooks.get(hookName);
@@ -10638,179 +11033,100 @@ const _FoundryHooksService = class _FoundryHooksService {
   }
 };
 __name(_FoundryHooksService, "FoundryHooksService");
-_FoundryHooksService.dependencies = [portSelectorToken, foundryHooksPortRegistryToken, loggerToken];
+_FoundryHooksService.dependencies = [
+  portSelectorToken,
+  foundryHooksPortRegistryToken,
+  retryServiceToken,
+  loggerToken
+];
 let FoundryHooksService = _FoundryHooksService;
-const _FoundryDocumentService = class _FoundryDocumentService {
-  constructor(portSelector, portRegistry) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
+const _FoundryDocumentService = class _FoundryDocumentService extends FoundryServiceBase {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
   }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundryDocument"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-  getFlag(document2, scope, key) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.getFlag(document2, scope, key);
+  getFlag(document2, scope, key, schema) {
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return portResult.value.getFlag(document2, scope, key, schema);
+    }, "FoundryDocument.getFlag");
   }
   async setFlag(document2, scope, key, value2) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return await portResult.value.setFlag(document2, scope, key, value2);
-  }
-  /**
-   * Cleans up resources.
-   * Resets the port reference to allow garbage collection.
-   */
-  dispose() {
-    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
-      this.port.dispose();
-    }
-    this.port = null;
+    return this.withRetryAsync(async () => {
+      const portResult = this.getPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.setFlag(document2, scope, key, value2);
+    }, "FoundryDocument.setFlag");
   }
 };
 __name(_FoundryDocumentService, "FoundryDocumentService");
-_FoundryDocumentService.dependencies = [portSelectorToken, foundryDocumentPortRegistryToken];
+_FoundryDocumentService.dependencies = [
+  portSelectorToken,
+  foundryDocumentPortRegistryToken,
+  retryServiceToken
+];
 let FoundryDocumentService = _FoundryDocumentService;
-const _FoundryUIService = class _FoundryUIService {
-  constructor(portSelector, portRegistry) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundryUI"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
+const _FoundryUIService = class _FoundryUIService extends FoundryServiceBase {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
   }
   removeJournalElement(journalId, journalName, html) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.removeJournalElement(journalId, journalName, html);
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.removeJournalElement(journalId, journalName, html);
+    }, "FoundryUI.removeJournalElement");
   }
   findElement(container, selector) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.findElement(container, selector);
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.findElement(container, selector);
+    }, "FoundryUI.findElement");
   }
   notify(message2, type) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.notify(message2, type);
-  }
-  /**
-   * Cleans up resources.
-   * Resets the port reference to allow garbage collection.
-   */
-  dispose() {
-    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
-      this.port.dispose();
-    }
-    this.port = null;
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.notify(message2, type);
+    }, "FoundryUI.notify");
   }
 };
 __name(_FoundryUIService, "FoundryUIService");
-_FoundryUIService.dependencies = [portSelectorToken, foundryUIPortRegistryToken];
+_FoundryUIService.dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken];
 let FoundryUIService = _FoundryUIService;
-const _FoundrySettingsService = class _FoundrySettingsService {
-  constructor(portSelector, portRegistry) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundrySettings"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
+const _FoundrySettingsService = class _FoundrySettingsService extends FoundryServiceBase {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
   }
   register(namespace, key, config2) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.register(namespace, key, config2);
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundrySettings");
+      if (!portResult.ok) return portResult;
+      return portResult.value.register(namespace, key, config2);
+    }, "FoundrySettings.register");
   }
-  get(namespace, key) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.get(namespace, key);
+  get(namespace, key, schema) {
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundrySettings");
+      if (!portResult.ok) return portResult;
+      return portResult.value.get(namespace, key, schema);
+    }, "FoundrySettings.get");
   }
   async set(namespace, key, value2) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.set(namespace, key, value2);
-  }
-  /**
-   * Cleans up resources.
-   * Resets the port reference to allow garbage collection.
-   */
-  dispose() {
-    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
-      this.port.dispose();
-    }
-    this.port = null;
+    return this.withRetryAsync(async () => {
+      const portResult = this.getPort("FoundrySettings");
+      if (!portResult.ok) return portResult;
+      return portResult.value.set(namespace, key, value2);
+    }, "FoundrySettings.set");
   }
 };
 __name(_FoundrySettingsService, "FoundrySettingsService");
-_FoundrySettingsService.dependencies = [portSelectorToken, foundrySettingsPortRegistryToken];
+_FoundrySettingsService.dependencies = [
+  portSelectorToken,
+  foundrySettingsPortRegistryToken,
+  retryServiceToken
+];
 let FoundrySettingsService = _FoundrySettingsService;
 const _FoundryJournalFacade = class _FoundryJournalFacade {
   constructor(game2, document2, ui2) {
@@ -10827,21 +11143,22 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
     return this.game.getJournalEntries();
   }
   /**
-   * Get a module flag from a journal entry.
+   * Get a module flag from a journal entry with runtime validation.
    *
-   * Delegates to FoundryDocument.getFlag() with module scope.
+   * Delegates to FoundryDocument.getFlag() with module scope and schema.
    *
    * @template T - The flag value type
-   * @param entry - The journal entry object
+   * @param entry - The Foundry journal entry
    * @param key - The flag key
+   * @param schema - Valibot schema for validation
    */
-  getEntryFlag(entry, key) {
+  getEntryFlag(entry, key, schema) {
     return this.document.getFlag(
-      // Journal entries from Foundry provide getFlag; cast retains narrow interface
-      /* type-coverage:ignore-next-line */
+      /* type-coverage:ignore-next-line -- Type widening: fvtt-types restrictive scope type, cast necessary for module flags */
       entry,
       MODULE_CONSTANTS.MODULE.ID,
-      key
+      key,
+      schema
     );
   }
   /**
@@ -10860,6 +11177,13 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
 __name(_FoundryJournalFacade, "FoundryJournalFacade");
 _FoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
 let FoundryJournalFacade = _FoundryJournalFacade;
+const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
+  LogLevel.DEBUG,
+  LogLevel.INFO,
+  LogLevel.WARN,
+  LogLevel.ERROR
+]);
+const BOOLEAN_FLAG_SCHEMA = /* @__PURE__ */ boolean();
 const _JournalVisibilityService = class _JournalVisibilityService {
   constructor(facade, logger) {
     this.facade = facade;
@@ -10886,7 +11210,11 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     if (!allEntriesResult.ok) return allEntriesResult;
     const hidden = [];
     for (const journal of allEntriesResult.value) {
-      const flagResult = this.facade.getEntryFlag(journal, MODULE_CONSTANTS.FLAGS.HIDDEN);
+      const flagResult = this.facade.getEntryFlag(
+        journal,
+        MODULE_CONSTANTS.FLAGS.HIDDEN,
+        BOOLEAN_FLAG_SCHEMA
+      );
       if (flagResult.ok) {
         if (flagResult.value === true) {
           hidden.push(journal);
@@ -11026,13 +11354,11 @@ const _RetryService = class _RetryService {
    * @template SuccessType - The success type of the operation
    * @template ErrorType - The error type of the operation
    * @param fn - Async function that returns a Result
-   * @param options - Retry configuration options (or legacy: maxAttempts number)
-   * @param legacyDelayMs - Legacy parameter for backward compatibility
+   * @param options - Retry configuration options
    * @returns Promise resolving to the Result (success or last error)
    *
    * @example
    * ```typescript
-   * // New API with mapException (recommended for structured error types)
    * const result = await retryService.retry(
    *   () => foundryApi.fetchData(),
    *   {
@@ -11045,85 +11371,65 @@ const _RetryService = class _RetryService {
    *     })
    *   }
    * );
-   *
-   * // Legacy API (backward compatible)
-   * const result = await retryService.retry(
-   *   () => foundryApi.fetchData(),
-   *   3, // maxAttempts
-   *   100 // delayMs
-   * );
    * ```
    */
-  async retry(fn, options = 3, legacyDelayMs) {
-    const opts = typeof options === "number" ? {
-      maxAttempts: options,
-      /* c8 ignore next -- Legacy API: delayMs default tested via other retry tests */
-      delayMs: legacyDelayMs ?? 100,
-      backoffFactor: 1,
-      /* c8 ignore next 2 -- Legacy unsafe cast function tested via legacy API tests */
-      /* type-coverage:ignore-next-line */
-      mapException: /* @__PURE__ */ __name((error) => error, "mapException"),
-      // Legacy unsafe cast
-      operationName: void 0
-    } : {
-      /* c8 ignore next -- Modern API: maxAttempts default tested in "should use default maxAttempts of 3" */
-      maxAttempts: options.maxAttempts ?? 3,
-      delayMs: options.delayMs ?? 100,
-      backoffFactor: options.backoffFactor ?? 1,
-      /* c8 ignore next 2 -- Default mapException tested when options.mapException is undefined */
-      /* type-coverage:ignore-next-line */
-      mapException: options.mapException ?? ((error) => error),
-      operationName: options.operationName ?? void 0
-    };
-    if (opts.maxAttempts < 1) {
-      return err(opts.mapException("maxAttempts must be >= 1", 0));
+  async retry(fn, options) {
+    const maxAttempts = options.maxAttempts ?? 3;
+    const delayMs = options.delayMs ?? 100;
+    const backoffFactor = options.backoffFactor ?? 1;
+    const { mapException, operationName } = options;
+    if (maxAttempts < 1) {
+      return err(mapException("maxAttempts must be >= 1", 0));
     }
     let lastError;
     const startTime = performance.now();
-    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const result = await fn();
         if (result.ok) {
-          if (attempt > 1 && opts.operationName) {
+          if (attempt > 1 && operationName) {
             const duration = performance.now() - startTime;
             this.logger.debug(
-              `Retry succeeded for "${opts.operationName}" after ${attempt} attempts (${duration.toFixed(2)}ms)`
+              `Retry succeeded for "${operationName}" after ${attempt} attempts (${duration.toFixed(2)}ms)`
             );
           }
           return result;
         }
         lastError = result.error;
-        if (opts.operationName) {
+        if (attempt === maxAttempts) {
+          break;
+        }
+        if (operationName) {
           this.logger.debug(
-            `Retry attempt ${attempt}/${opts.maxAttempts} failed for "${opts.operationName}"`,
+            `Retry attempt ${attempt}/${maxAttempts} failed for "${operationName}"`,
             { error: lastError }
           );
         }
-        if (attempt < opts.maxAttempts) {
-          const delay = opts.delayMs * Math.pow(attempt, opts.backoffFactor);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
+        const delay = delayMs * Math.pow(attempt, backoffFactor);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       } catch (error) {
-        lastError = opts.mapException(error, attempt);
-        if (opts.operationName) {
+        lastError = mapException(error, attempt);
+        if (attempt === maxAttempts) {
+          break;
+        }
+        if (operationName) {
           this.logger.warn(
-            `Retry attempt ${attempt}/${opts.maxAttempts} threw exception for "${opts.operationName}"`,
+            `Retry attempt ${attempt}/${maxAttempts} threw exception for "${operationName}"`,
             { error }
           );
         }
-        if (attempt < opts.maxAttempts) {
-          const delay = opts.delayMs * Math.pow(attempt, opts.backoffFactor);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
+        const delay = delayMs * Math.pow(attempt, backoffFactor);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
-    if (opts.operationName) {
+    if (operationName) {
       const duration = performance.now() - startTime;
       this.logger.warn(
-        `All retry attempts exhausted for "${opts.operationName}" after ${opts.maxAttempts} attempts (${duration.toFixed(2)}ms)`
+        `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts (${duration.toFixed(2)}ms)`
       );
     }
-    return err(lastError);
+    const finalError = lastError ?? mapException("No attempts made", 0);
+    return err(finalError);
   }
   /**
    * Retries a synchronous operation.
@@ -11132,12 +11438,11 @@ const _RetryService = class _RetryService {
    * @template SuccessType - The success type
    * @template ErrorType - The error type
    * @param fn - Function that returns a Result
-   * @param options - Retry configuration options (or legacy: maxAttempts number)
+   * @param options - Retry configuration options
    * @returns The Result (success or last error)
    *
    * @example
    * ```typescript
-   * // New API with mapException (recommended for structured error types)
    * const result = retryService.retrySync(
    *   () => parseData(input),
    *   {
@@ -11149,68 +11454,54 @@ const _RetryService = class _RetryService {
    *     })
    *   }
    * );
-   *
-   * // Legacy API (backward compatible)
-   * const result = retryService.retrySync(
-   *   () => parseData(input),
-   *   3 // maxAttempts
-   * );
    * ```
    */
-  retrySync(fn, options = 3) {
-    const opts = typeof options === "number" ? {
-      maxAttempts: options,
-      /* c8 ignore next 2 -- Legacy unsafe cast function tested via legacy API tests */
-      /* type-coverage:ignore-next-line */
-      mapException: /* @__PURE__ */ __name((error) => error, "mapException"),
-      // Legacy unsafe cast
-      operationName: void 0
-    } : {
-      /* c8 ignore next -- Default maxAttempts tested in retry.test.ts */
-      maxAttempts: options.maxAttempts ?? 3,
-      /* c8 ignore next 2 -- Default mapException tested implicitly when options.mapException is undefined */
-      /* type-coverage:ignore-next-line */
-      mapException: options.mapException ?? ((error) => error),
-      operationName: options.operationName ?? void 0
-    };
-    if (opts.maxAttempts < 1) {
-      return err(opts.mapException("maxAttempts must be >= 1", 0));
+  retrySync(fn, options) {
+    const maxAttempts = options.maxAttempts ?? 3;
+    const { mapException, operationName } = options;
+    if (maxAttempts < 1) {
+      return err(mapException("maxAttempts must be >= 1", 0));
     }
     let lastError;
-    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const result = fn();
         if (result.ok) {
-          if (attempt > 1 && opts.operationName) {
-            this.logger.debug(
-              `Retry succeeded for "${opts.operationName}" after ${attempt} attempts`
-            );
+          if (attempt > 1 && operationName) {
+            this.logger.debug(`Retry succeeded for "${operationName}" after ${attempt} attempts`);
           }
           return result;
         }
         lastError = result.error;
-        if (opts.operationName) {
+        if (attempt === maxAttempts) {
+          break;
+        }
+        if (operationName) {
           this.logger.debug(
-            `Retry attempt ${attempt}/${opts.maxAttempts} failed for "${opts.operationName}"`,
+            `Retry attempt ${attempt}/${maxAttempts} failed for "${operationName}"`,
             { error: lastError }
           );
         }
       } catch (error) {
-        lastError = opts.mapException(error, attempt);
-        if (opts.operationName) {
+        lastError = mapException(error, attempt);
+        if (attempt === maxAttempts) {
+          break;
+        }
+        if (operationName) {
           this.logger.warn(
-            `Retry attempt ${attempt}/${opts.maxAttempts} threw exception for "${opts.operationName}"`,
+            `Retry attempt ${attempt}/${maxAttempts} threw exception for "${operationName}"`,
             { error }
           );
         }
       }
     }
-    if (opts.operationName) {
+    if (operationName) {
       this.logger.warn(
-        `All retry attempts exhausted for "${opts.operationName}" after ${opts.maxAttempts} attempts`
+        `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts`
       );
     }
-    return err(lastError);
+    const finalError = lastError ?? mapException("No attempts made", 0);
+    return err(finalError);
   }
 };
 __name(_RetryService, "RetryService");
@@ -11238,50 +11529,38 @@ function registerUtilityServices(container) {
   return ok(void 0);
 }
 __name(registerUtilityServices, "registerUtilityServices");
-const _FoundryI18nService = class _FoundryI18nService {
-  constructor(portSelector, portRegistry) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   *
-   * @returns Result containing the port or error if no compatible port can be selected
-   */
-  getPort() {
-    if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        "FoundryI18n"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
+const _FoundryI18nService = class _FoundryI18nService extends FoundryServiceBase {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
   }
   localize(key) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.localize(key);
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryI18n");
+      if (!portResult.ok) return portResult;
+      return portResult.value.localize(key);
+    }, "FoundryI18n.localize");
   }
   format(key, data) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.format(key, data);
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryI18n");
+      if (!portResult.ok) return portResult;
+      return portResult.value.format(key, data);
+    }, "FoundryI18n.format");
   }
   has(key) {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.has(key);
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryI18n");
+      if (!portResult.ok) return portResult;
+      return portResult.value.has(key);
+    }, "FoundryI18n.has");
   }
 };
 __name(_FoundryI18nService, "FoundryI18nService");
-_FoundryI18nService.dependencies = [portSelectorToken, foundryI18nPortRegistryToken];
+_FoundryI18nService.dependencies = [
+  portSelectorToken,
+  foundryI18nPortRegistryToken,
+  retryServiceToken
+];
 let FoundryI18nService = _FoundryI18nService;
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -11549,9 +11828,17 @@ const logLevelSetting = {
       },
       default: LogLevel.INFO,
       onChange: /* @__PURE__ */ __name((value2) => {
+        const validationResult = /* @__PURE__ */ safeParse(LOG_LEVEL_SCHEMA, value2);
+        if (!validationResult.success) {
+          logger.warn(`Invalid log level value received: ${value2}, using default INFO`);
+          if (logger.setMinLevel) {
+            logger.setMinLevel(LogLevel.INFO);
+          }
+          return;
+        }
         if (logger.setMinLevel) {
-          logger.setMinLevel(value2);
-          logger.info(`Log level changed to: ${LogLevel[value2]}`);
+          logger.setMinLevel(validationResult.output);
+          logger.info(`Log level changed to: ${LogLevel[validationResult.output]}`);
         }
       }, "onChange")
     };
@@ -11602,7 +11889,8 @@ __name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
 _ModuleSettingsRegistrar.dependencies = [];
 let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
 const _ModuleHookRegistrar = class _ModuleHookRegistrar {
-  constructor(renderJournalHook) {
+  constructor(renderJournalHook, logger) {
+    this.logger = logger;
     this.hooks = [
       renderJournalHook
       // Add new hooks here as constructor parameters
@@ -11616,7 +11904,7 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
     for (const hook of this.hooks) {
       const result = hook.register(container);
       if (!result.ok) {
-        console.error(`Failed to register hook: ${result.error.message}`);
+        this.logger.error(`Failed to register hook: ${result.error.message}`);
       }
     }
   }
@@ -11633,7 +11921,7 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
   /* c8 ignore stop */
 };
 __name(_ModuleHookRegistrar, "ModuleHookRegistrar");
-_ModuleHookRegistrar.dependencies = [renderJournalDirectoryHookToken];
+_ModuleHookRegistrar.dependencies = [renderJournalDirectoryHookToken, loggerToken];
 let ModuleHookRegistrar = _ModuleHookRegistrar;
 function throttle(fn, windowMs) {
   let isThrottled = false;
@@ -11668,32 +11956,8 @@ function debounce(fn, delayMs) {
   return debounced;
 }
 __name(debounce, "debounce");
-function isJQueryObject(value2) {
-  if (value2 === null || typeof value2 !== "object") return false;
-  const obj = value2;
-  return "length" in obj && typeof obj.length === "number" && obj.length > 0 && "0" in obj;
-}
-__name(isJQueryObject, "isJQueryObject");
 function extractHtmlElement(html) {
-  if (html instanceof HTMLElement) {
-    return html;
-  }
-  if (isJQueryObject(html) && html[0] instanceof HTMLElement) {
-    return html[0];
-  }
-  if (html && typeof html === "object" && "get" in html) {
-    const obj = html;
-    if (typeof obj.get === "function") {
-      try {
-        const element = obj.get(0);
-        if (element instanceof HTMLElement) {
-          return element;
-        }
-      } catch {
-      }
-    }
-  }
-  return null;
+  return html instanceof HTMLElement ? html : null;
 }
 __name(extractHtmlElement, "extractHtmlElement");
 const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
@@ -11838,6 +12102,20 @@ function configureDependencies(container) {
   if (isErr(registrarsResult)) return registrarsResult;
   const validationResult = validateContainer(container);
   if (isErr(validationResult)) return validationResult;
+  const registryRes = container.resolveWithError(healthCheckRegistryToken);
+  const metricsRes = container.resolveWithError(metricsCollectorToken);
+  if (!registryRes.ok) {
+    return err(`Failed to resolve HealthCheckRegistry: ${registryRes.error.message}`);
+  }
+  if (!metricsRes.ok) {
+    return err(`Failed to resolve MetricsCollector: ${metricsRes.error.message}`);
+  }
+  const containerCheck = new ContainerHealthCheck(container);
+  registryRes.value.register(containerCheck);
+  container.registerValue(containerHealthCheckToken, containerCheck);
+  const metricsCheck = new MetricsHealthCheck(metricsRes.value);
+  registryRes.value.register(metricsCheck);
+  container.registerValue(metricsHealthCheckToken, metricsCheck);
   return ok(void 0);
 }
 __name(configureDependencies, "configureDependencies");
@@ -11963,7 +12241,8 @@ function initializeFoundryModule() {
       const settings = settingsResult.value;
       const logLevelResult = settings.get(
         MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
+        MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+        LOG_LEVEL_SCHEMA
       );
       if (logLevelResult.ok && logger.setMinLevel) {
         logger.setMinLevel(logLevelResult.value);

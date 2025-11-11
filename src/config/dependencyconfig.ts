@@ -2,10 +2,20 @@ import { ServiceContainer } from "@/di_infrastructure/container";
 import { ok, err, isErr } from "@/utils/functional/result";
 import type { Result } from "@/types/result";
 import type { Logger } from "@/interfaces/logger";
-import { loggerToken } from "@/tokens/tokenindex";
+import {
+  loggerToken,
+  containerHealthCheckToken,
+  metricsHealthCheckToken,
+  healthCheckRegistryToken,
+  metricsCollectorToken,
+} from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { LogLevel } from "@/config/environment";
 import type { EnvironmentConfig } from "@/config/environment";
+import { ContainerHealthCheck } from "@/core/health/container-health-check";
+import { MetricsHealthCheck } from "@/core/health/metrics-health-check";
+import type { HealthCheckRegistry } from "@/core/health/health-check-registry";
+import type { MetricsCollector } from "@/observability/metrics-collector";
 
 // Import config modules
 import { registerCoreServices } from "@/config/modules/core-services.config";
@@ -120,6 +130,28 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   const validationResult = validateContainer(container);
   /* c8 ignore next -- Error propagation: Validation failure tested in validateContainer */
   if (isErr(validationResult)) return validationResult;
+
+  // After validation: Create and register health checks
+  // This must happen after validation because resolving requires validated container
+  const registryRes = container.resolveWithError(healthCheckRegistryToken);
+  const metricsRes = container.resolveWithError(metricsCollectorToken);
+  /* c8 ignore start -- Defensive: Dependencies are always registered at this point */
+  if (!registryRes.ok) {
+    return err(`Failed to resolve HealthCheckRegistry: ${registryRes.error.message}`);
+  }
+  if (!metricsRes.ok) {
+    return err(`Failed to resolve MetricsCollector: ${metricsRes.error.message}`);
+  }
+  /* c8 ignore stop */
+
+  // Create and register health checks
+  const containerCheck = new ContainerHealthCheck(container);
+  (registryRes.value as HealthCheckRegistry).register(containerCheck);
+  container.registerValue(containerHealthCheckToken, containerCheck);
+
+  const metricsCheck = new MetricsHealthCheck(metricsRes.value as MetricsCollector);
+  (registryRes.value as HealthCheckRegistry).register(metricsCheck);
+  container.registerValue(metricsHealthCheckToken, metricsCheck);
 
   return ok(undefined);
 }

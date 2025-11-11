@@ -15,6 +15,7 @@
 import type { Result } from "@/types/result";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import type { FoundryJournalEntry } from "@/foundry/types";
+import type * as v from "valibot";
 
 /**
  * Facade for journal-related Foundry operations.
@@ -43,13 +44,18 @@ export interface FoundryJournalFacade {
   getJournalEntries(): Result<FoundryJournalEntry[], FoundryError>;
 
   /**
-   * Get a module flag from a journal entry.
+   * Get a module flag from a journal entry with runtime validation.
    *
    * @template T - The flag value type
-   * @param entry - The journal entry object
+   * @param entry - The Foundry journal entry
    * @param key - The flag key
+   * @param schema - Valibot schema for runtime validation
    */
-  getEntryFlag<T>(entry: unknown, key: string): Result<T | null, FoundryError>;
+  getEntryFlag<T>(
+    entry: FoundryJournalEntry,
+    key: string,
+    schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>
+  ): Result<T | null, FoundryError>;
 
   /**
    * Remove a journal element from the UI.

@@ -84,9 +84,7 @@ export class ServiceResolver {
 
         // Handle alias resolution
         if (registration.providerType === "alias" && registration.aliasTarget) {
-          // aliasTarget is defined in this branch and shares generic type by construction
-          /* type-coverage:ignore-next-line */
-          return this.resolve(registration.aliasTarget as InjectionToken<TServiceType>);
+          return this.resolve(registration.aliasTarget);
         }
 
         // Resolve based on lifecycle (all methods already return Result)
@@ -138,7 +136,7 @@ export class ServiceResolver {
    */
   private instantiateService<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>,
-    registration: ServiceRegistration
+    registration: ServiceRegistration<TServiceType>
   ): Result<TServiceType, ContainerError> {
     if (registration.serviceClass) {
       // Class: Resolve all dependencies first
@@ -162,9 +160,7 @@ export class ServiceResolver {
 
       // Instantiate class with resolved dependencies
       try {
-        // registration.serviceClass constructor returns TServiceType by definition; cast narrows union to generic type
-        /* type-coverage:ignore-next-line */
-        return ok(new registration.serviceClass(...resolvedDeps) as TServiceType);
+        return ok(new registration.serviceClass(...resolvedDeps));
       } catch (constructorError) {
         return err({
           code: "FactoryFailed",
@@ -176,9 +172,7 @@ export class ServiceResolver {
     } else if (registration.factory) {
       // Factory: Call directly
       try {
-        // Factory is registered with the correct return type at configuration time
-        /* type-coverage:ignore-next-line */
-        return ok(registration.factory() as TServiceType);
+        return ok(registration.factory());
       } catch (factoryError) {
         return err({
           code: "FactoryFailed",
@@ -189,9 +183,7 @@ export class ServiceResolver {
       }
     } else if (registration.value !== undefined) {
       // Value: Return as-is
-      // registration.value is stored with concrete type during registration
-      /* type-coverage:ignore-next-line */
-      return ok(registration.value as TServiceType);
+      return ok(registration.value);
     } else {
       // Invalid registration
       /* c8 ignore start -- Defensive: ServiceRegistration.create* methods already ensure one of class/factory/value is set */
@@ -221,7 +213,7 @@ export class ServiceResolver {
    */
   private resolveSingleton<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>,
-    registration: ServiceRegistration
+    registration: ServiceRegistration<TServiceType>
   ): Result<TServiceType, ContainerError> {
     // Try parent resolver first for shared singletons
     if (this.parentResolver !== null) {
@@ -253,8 +245,7 @@ export class ServiceResolver {
       this.cache.set(token, instanceResult.value);
     }
 
-    // Cache stores singleton instances keyed by token with concrete type during registration
-    /* type-coverage:ignore-next-line */
+    /* type-coverage:ignore-next-line -- Type narrowing: Cache stores singleton instances keyed by token with concrete type during registration */
     return ok(this.cache.get(token) as TServiceType);
   }
 
@@ -271,7 +262,7 @@ export class ServiceResolver {
    */
   private resolveTransient<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>,
-    registration: ServiceRegistration
+    registration: ServiceRegistration<TServiceType>
   ): Result<TServiceType, ContainerError> {
     return this.instantiateService(token, registration);
   }
@@ -311,7 +302,7 @@ export class ServiceResolver {
    */
   private resolveScoped<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>,
-    registration: ServiceRegistration
+    registration: ServiceRegistration<TServiceType>
   ): Result<TServiceType, ContainerError> {
     // Scoped services require a child scope
     if (this.parentResolver === null) {
@@ -333,8 +324,7 @@ export class ServiceResolver {
       this.cache.set(token, instanceResult.value);
     }
 
-    // Cache stores scoped instances keyed by token with correct generic type
-    /* type-coverage:ignore-next-line */
+    /* type-coverage:ignore-next-line -- Type narrowing: Cache stores scoped instances keyed by token with correct generic type */
     return ok(this.cache.get(token) as TServiceType);
   }
 }

@@ -235,8 +235,7 @@ export function getOrThrow<SuccessType, ErrorType, ThrownError extends Error = E
   toError?: (error: ErrorType) => ThrownError
 ): SuccessType {
   if (result.ok) return result.value;
-  // Safe: when toError is provided it returns ThrownError, otherwise we create an Error which conforms to ThrownError via constraint
-  /* type-coverage:ignore-next-line */
+  /* type-coverage:ignore-next-line -- Type constraint: when toError is provided it returns ThrownError, otherwise Error conforms to ThrownError via constraint */
   const e = toError ? toError(result.error) : (new Error(String(result.error)) as ThrownError);
   throw e;
 }

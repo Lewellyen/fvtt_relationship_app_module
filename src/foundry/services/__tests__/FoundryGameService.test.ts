@@ -8,12 +8,14 @@ import { ok, err } from "@/utils/functional/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { PortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/observability/observability-registry";
+import type { RetryService } from "@/services/RetryService";
 
 describe("FoundryGameService", () => {
   let service: FoundryGameService;
   let mockRegistry: PortRegistry<FoundryGame>;
   let mockSelector: PortSelector;
   let mockPort: FoundryGame;
+  let mockRetryService: RetryService;
 
   beforeEach(() => {
     // Mock game object for version detection
@@ -24,6 +26,7 @@ describe("FoundryGameService", () => {
     mockPort = {
       getJournalEntries: vi.fn().mockReturnValue(ok([])),
       getJournalEntryById: vi.fn().mockReturnValue(ok(null)),
+      dispose: vi.fn(),
     };
 
     mockRegistry = new PortRegistry<FoundryGame>();
@@ -36,7 +39,13 @@ describe("FoundryGameService", () => {
     mockSelector = new PortSelector(mockEventEmitter, mockObservability);
     vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
 
-    service = new FoundryGameService(mockSelector, mockRegistry);
+    // Mock RetryService - just executes fn directly without retry logic
+    mockRetryService = {
+      retrySync: vi.fn((fn) => fn()),
+      retry: vi.fn((fn) => fn()),
+    } as any;
+
+    service = new FoundryGameService(mockSelector, mockRegistry, mockRetryService);
   });
 
   afterEach(() => {
@@ -71,7 +80,11 @@ describe("FoundryGameService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryGameService(failingSelector, mockRegistry);
+      const failingService = new FoundryGameService(
+        failingSelector,
+        mockRegistry,
+        mockRetryService
+      );
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
@@ -92,7 +105,11 @@ describe("FoundryGameService", () => {
         message: "No compatible port found",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryGameService(failingSelector, mockRegistry);
+      const failingService = new FoundryGameService(
+        failingSelector,
+        mockRegistry,
+        mockRetryService
+      );
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
@@ -111,7 +128,11 @@ describe("FoundryGameService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryGameService(failingSelector, mockRegistry);
+      const failingService = new FoundryGameService(
+        failingSelector,
+        mockRegistry,
+        mockRetryService
+      );
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
@@ -127,7 +148,11 @@ describe("FoundryGameService", () => {
         registerPortSelector: vi.fn(),
       } as any;
       const failingSelector = new PortSelector(mockEventEmitter, mockObservability);
-      const failingService = new FoundryGameService(failingSelector, emptyRegistry);
+      const failingService = new FoundryGameService(
+        failingSelector,
+        emptyRegistry,
+        mockRetryService
+      );
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
@@ -198,7 +223,11 @@ describe("FoundryGameService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
-      const failingService = new FoundryGameService(failingSelector, mockRegistry);
+      const failingService = new FoundryGameService(
+        failingSelector,
+        mockRegistry,
+        mockRetryService
+      );
 
       const result = failingService.getJournalEntryById("test-id");
 

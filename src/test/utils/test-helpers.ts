@@ -197,3 +197,23 @@ export function createMockPerformanceTrackingService(): PerformanceTrackingServi
   // Reuse PerformanceTracker mock as base (same interface)
   return createMockPerformanceTracker() as unknown as PerformanceTrackingService;
 }
+
+/**
+ * Creates a minimal dummy service object for DI container test registrations.
+ *
+ * Use this when you need to register test services in the container
+ * without complex mocking. Returns an empty object typed as any to bypass
+ * ServiceType union constraints in test scenarios.
+ *
+ * @returns An empty object for test registrations
+ *
+ * @example
+ * ```typescript
+ * const token = createInjectionToken("test");
+ * container.registerValue(token, createDummyService());
+ * ```
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createDummyService(): any {
+  return {};
+}

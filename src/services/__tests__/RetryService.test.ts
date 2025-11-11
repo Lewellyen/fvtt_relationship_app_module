@@ -8,6 +8,12 @@ import type { Logger } from "@/interfaces/logger";
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import { ok, err } from "@/utils/functional/result";
 
+// Test helper: Simple error mapper for test scenarios
+const simpleErrorMapper = (error: unknown): { code: "TEST_ERROR"; message: string } => ({
+  code: "TEST_ERROR" as const,
+  message: String(error),
+});
+
 describe("RetryService", () => {
   let mockLogger: Logger;
   let mockMetricsCollector: MetricsCollector;
@@ -51,7 +57,7 @@ describe("RetryService", () => {
     it("should return success on first attempt", async () => {
       const fn = vi.fn().mockResolvedValue(ok(42));
 
-      const result = await service.retry(fn, { maxAttempts: 3 });
+      const result = await service.retry(fn, { maxAttempts: 3, mapException: simpleErrorMapper });
 
       expect(result).toEqual(ok(42));
       expect(fn).toHaveBeenCalledTimes(1);
@@ -65,7 +71,11 @@ describe("RetryService", () => {
         .mockResolvedValueOnce(err("error2"))
         .mockResolvedValueOnce(ok(42));
 
-      const result = await service.retry(fn, { maxAttempts: 3, operationName: "testOp" });
+      const result = await service.retry(fn, {
+        maxAttempts: 3,
+        operationName: "testOp",
+        mapException: simpleErrorMapper,
+      });
 
       expect(result).toEqual(ok(42));
       expect(fn).toHaveBeenCalledTimes(3);
@@ -81,7 +91,11 @@ describe("RetryService", () => {
         .mockResolvedValueOnce(err("error2"))
         .mockResolvedValueOnce(err("error3"));
 
-      const result = await service.retry(fn, { maxAttempts: 3, operationName: "testOp" });
+      const result = await service.retry(fn, {
+        maxAttempts: 3,
+        operationName: "testOp",
+        mapException: simpleErrorMapper,
+      });
 
       expect(result).toEqual(err("error3"));
       expect(fn).toHaveBeenCalledTimes(3);
@@ -114,7 +128,11 @@ describe("RetryService", () => {
     it("should log retry attempts when operationName is provided", async () => {
       const fn = vi.fn().mockResolvedValueOnce(err("error1")).mockResolvedValueOnce(ok(42));
 
-      await service.retry(fn, { maxAttempts: 3, operationName: "testOp" });
+      await service.retry(fn, {
+        maxAttempts: 3,
+        operationName: "testOp",
+        mapException: simpleErrorMapper,
+      });
 
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'Retry attempt 1/3 failed for "testOp"',
@@ -125,7 +143,7 @@ describe("RetryService", () => {
     it("should use default maxAttempts of 3", async () => {
       const fn = vi.fn().mockResolvedValue(err("error"));
 
-      await service.retry(fn);
+      await service.retry(fn, { mapException: simpleErrorMapper });
 
       expect(fn).toHaveBeenCalledTimes(3);
     });
@@ -133,18 +151,9 @@ describe("RetryService", () => {
     it("should use default delayMs of 100", async () => {
       const fn = vi.fn().mockResolvedValueOnce(err("error")).mockResolvedValueOnce(ok(42));
 
-      await service.retry(fn, { maxAttempts: 2 });
+      await service.retry(fn, { maxAttempts: 2, mapException: simpleErrorMapper });
 
       expect(setTimeout).toHaveBeenCalledWith(expect.any(Function), 100);
-    });
-
-    it("should support legacy API (maxAttempts as number)", async () => {
-      const fn = vi.fn().mockResolvedValueOnce(err("error")).mockResolvedValueOnce(ok(42));
-
-      const result = await service.retry(fn, 2, 50);
-
-      expect(result).toEqual(ok(42));
-      expect(fn).toHaveBeenCalledTimes(2);
     });
 
     it("should reject when maxAttempts < 1", async () => {
@@ -165,7 +174,7 @@ describe("RetryService", () => {
     it("should NOT log when operationName is not provided", async () => {
       const fn = vi.fn().mockResolvedValueOnce(err("error")).mockResolvedValueOnce(ok(42));
 
-      await service.retry(fn, { maxAttempts: 2 });
+      await service.retry(fn, { maxAttempts: 2, mapException: simpleErrorMapper });
 
       // No logging should happen without operationName
       expect(mockLogger.debug).not.toHaveBeenCalled();
@@ -178,7 +187,8 @@ describe("RetryService", () => {
       await service.retry(fn, {
         maxAttempts: 2,
         delayMs: 100,
-        backoffFactor: 2, // 100 * (1^2) = 100ms
+        backoffFactor: 2,
+        mapException: simpleErrorMapper,
       });
 
       expect(setTimeout).toHaveBeenCalledWith(expect.any(Function), 100);
@@ -189,7 +199,7 @@ describe("RetryService", () => {
     it("should return success on first attempt", () => {
       const fn = vi.fn().mockReturnValue(ok(42));
 
-      const result = service.retrySync(fn, { maxAttempts: 3 });
+      const result = service.retrySync(fn, { maxAttempts: 3, mapException: simpleErrorMapper });
 
       expect(result).toEqual(ok(42));
       expect(fn).toHaveBeenCalledTimes(1);
@@ -203,7 +213,11 @@ describe("RetryService", () => {
         .mockReturnValueOnce(err("error2"))
         .mockReturnValueOnce(ok(42));
 
-      const result = service.retrySync(fn, { maxAttempts: 3, operationName: "testOp" });
+      const result = service.retrySync(fn, {
+        maxAttempts: 3,
+        operationName: "testOp",
+        mapException: simpleErrorMapper,
+      });
 
       expect(result).toEqual(ok(42));
       expect(fn).toHaveBeenCalledTimes(3);
@@ -219,7 +233,11 @@ describe("RetryService", () => {
         .mockReturnValueOnce(err("error2"))
         .mockReturnValueOnce(err("error3"));
 
-      const result = service.retrySync(fn, { maxAttempts: 3, operationName: "testOp" });
+      const result = service.retrySync(fn, {
+        maxAttempts: 3,
+        operationName: "testOp",
+        mapException: simpleErrorMapper,
+      });
 
       expect(result).toEqual(err("error3"));
       expect(fn).toHaveBeenCalledTimes(3);
@@ -250,7 +268,11 @@ describe("RetryService", () => {
     it("should log retry attempts when operationName is provided", () => {
       const fn = vi.fn().mockReturnValueOnce(err("error1")).mockReturnValueOnce(ok(42));
 
-      service.retrySync(fn, { maxAttempts: 3, operationName: "testOp" });
+      service.retrySync(fn, {
+        maxAttempts: 3,
+        operationName: "testOp",
+        mapException: simpleErrorMapper,
+      });
 
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'Retry attempt 1/3 failed for "testOp"',
@@ -261,18 +283,9 @@ describe("RetryService", () => {
     it("should use default maxAttempts of 3", () => {
       const fn = vi.fn().mockReturnValue(err("error"));
 
-      service.retrySync(fn);
+      service.retrySync(fn, { mapException: simpleErrorMapper });
 
       expect(fn).toHaveBeenCalledTimes(3);
-    });
-
-    it("should support legacy API (maxAttempts as number)", () => {
-      const fn = vi.fn().mockReturnValueOnce(err("error")).mockReturnValueOnce(ok(42));
-
-      const result = service.retrySync(fn, 2);
-
-      expect(result).toEqual(ok(42));
-      expect(fn).toHaveBeenCalledTimes(2);
     });
 
     it("should reject when maxAttempts < 1", () => {
@@ -293,7 +306,7 @@ describe("RetryService", () => {
     it("should NOT log when operationName is not provided", () => {
       const fn = vi.fn().mockReturnValueOnce(err("error")).mockReturnValueOnce(ok(42));
 
-      service.retrySync(fn, { maxAttempts: 2 });
+      service.retrySync(fn, { maxAttempts: 2, mapException: simpleErrorMapper });
 
       // No logging should happen without operationName
       expect(mockLogger.debug).not.toHaveBeenCalled();

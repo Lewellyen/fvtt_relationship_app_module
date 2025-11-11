@@ -7,6 +7,7 @@ import { MODULE_CONSTANTS } from "@/constants";
 import { match } from "@/utils/functional/result";
 import { foundryJournalFacadeToken } from "@/foundry/foundrytokens";
 import { loggerToken } from "@/tokens/tokenindex";
+import { BOOLEAN_FLAG_SCHEMA } from "@/foundry/validation/setting-schemas";
 import { sanitizeHtml } from "@/foundry/validation/schemas";
 
 /**
@@ -50,7 +51,11 @@ export class JournalVisibilityService {
     const hidden: FoundryJournalEntry[] = [];
 
     for (const journal of allEntriesResult.value) {
-      const flagResult = this.facade.getEntryFlag<boolean>(journal, MODULE_CONSTANTS.FLAGS.HIDDEN);
+      const flagResult = this.facade.getEntryFlag<boolean>(
+        journal,
+        MODULE_CONSTANTS.FLAGS.HIDDEN,
+        BOOLEAN_FLAG_SCHEMA
+      );
 
       if (flagResult.ok) {
         if (flagResult.value === true) {

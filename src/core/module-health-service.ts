@@ -1,34 +1,34 @@
-import type { ServiceContainer } from "@/di_infrastructure/container";
-import type { MetricsCollector } from "@/observability/metrics-collector";
 import type { HealthStatus } from "@/core/module-api";
-import { metricsCollectorToken } from "@/tokens/tokenindex";
+import type { HealthCheckRegistry } from "@/core/health/health-check-registry";
+import { healthCheckRegistryToken } from "@/tokens/tokenindex";
 
 /**
  * Service for monitoring module health and diagnostics.
  *
+ * Uses Health-Check-Registry Pattern for extensible health monitoring.
+ *
  * Responsibilities:
- * - Check container validation state
- * - Check port selection status
- * - Aggregate metrics for health assessment
- * - Provide structured health status
+ * - Aggregate health checks from registry
+ * - Determine overall health status
+ * - Provide structured health status with details
  *
  * Extracted from CompositionRoot to follow Single Responsibility Principle.
  */
 export class ModuleHealthService {
-  static dependencies = [metricsCollectorToken] as const;
+  static dependencies = [healthCheckRegistryToken] as const;
 
-  constructor(
-    private readonly container: ServiceContainer,
-    private readonly metricsCollector: MetricsCollector
-  ) {}
+  private healthChecksInitialized = false;
+
+  constructor(private readonly registry: HealthCheckRegistry) {}
 
   /**
    * Gets the current health status of the module.
    *
-   * Health is determined by:
-   * - Container validation state (must be "validated")
-   * - Port selection success (at least one port selected)
-   * - Resolution errors (none expected)
+   * Health is determined by running all registered health checks.
+   * Overall status:
+   * - "healthy": All checks pass
+   * - "unhealthy": Container check fails
+   * - "degraded": Other checks fail
    *
    * @returns HealthStatus with overall status, individual checks, and timestamp
    *
@@ -43,37 +43,48 @@ export class ModuleHealthService {
    * ```
    */
   getHealth(): HealthStatus {
-    /* c8 ignore next -- Container is always validated after bootstrap, unhealthy path requires internal state manipulation */
-    const containerValidated = this.container.getValidationState() === "validated";
+    // Lazy initialization: Ensure health checks are registered on first call
+    // This is done lazily because health checks need to be resolved after container validation
+    if (!this.healthChecksInitialized) {
+      this.healthChecksInitialized = true;
+      // Note: Health checks will be registered when their factories execute
+      // This happens automatically when they are resolved for the first time
+    }
 
-    // Get metrics snapshot
-    const metrics = this.metricsCollector.getSnapshot();
-
-    // Fallback to containerValidated when performance tracking is disabled (production mode)
-    // If container is validated, ports must have been selected successfully
-    const hasPortSelections = Object.keys(metrics.portSelections).length > 0 || containerValidated;
-    const hasPortFailures = Object.keys(metrics.portSelectionFailures).length > 0;
+    const results = this.registry.runAll();
 
     // Determine overall status
+    const allHealthy = Array.from(results.values()).every((result) => result);
+    const someUnhealthy = Array.from(results.values()).some((result) => !result);
+
     let status: "healthy" | "degraded" | "unhealthy";
-    /* c8 ignore start -- Container is always validated after bootstrap; unhealthy status requires internal manipulation */
-    if (!containerValidated) {
-      status = "unhealthy";
-    } else if (hasPortFailures || metrics.resolutionErrors > 0) {
-      /* c8 ignore stop */
-      status = "degraded";
-    } else {
+    if (allHealthy) {
       status = "healthy";
+    } else if (someUnhealthy) {
+      // Container check failure = unhealthy, other failures = degraded
+      status = results.get("container") === false ? "unhealthy" : "degraded";
+    } /* c8 ignore start -- Defensive: This branch is logically unreachable (allHealthy is inverse of someUnhealthy) */ else {
+      status = "healthy";
+    }
+    /* c8 ignore stop */
+
+    // Collect details from unhealthy checks
+    const checks = this.registry.getAllChecks();
+    let lastError: string | null = null;
+
+    for (const check of checks) {
+      const result = results.get(check.name);
+      if (!result && check.getDetails) {
+        lastError = check.getDetails();
+      }
     }
 
     return {
       status,
       checks: {
-        containerValidated,
-        portsSelected: hasPortSelections,
-        lastError: hasPortFailures
-          ? `Port selection failures detected for versions: ${Object.keys(metrics.portSelectionFailures).join(", ")}`
-          : null,
+        containerValidated: results.get("container") ?? true,
+        portsSelected: results.get("metrics") ?? true,
+        lastError,
       },
       timestamp: new Date().toISOString(),
     };

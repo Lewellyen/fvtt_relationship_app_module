@@ -791,7 +791,7 @@ export class PersistentMetricsCollector extends MetricsCollector {
 
 ### Dokumentation
 - [ ] CHANGELOG.md aktualisiert
-- [ ] PROJECT_ANALYSIS.md aktualisiert
+- [ ] PROJECT-ANALYSIS.md aktualisiert
 - [ ] QUICK_REFERENCE.md aktualisiert
 - [ ] Neue ADRs für signifikante Änderungen
 
@@ -799,8 +799,8 @@ export class PersistentMetricsCollector extends MetricsCollector {
 
 ## 🔗 Siehe auch
 
-- [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) → Detaillierte Analyse
-- [DEPENDENCY_MAP.md](./DEPENDENCY_MAP.md) → Dependencies & Impact
+- [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → Detaillierte Analyse
+- [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → Dependencies & Impact
 - [VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md) → Breaking Change Rules
 - [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) → Developer Reference
 

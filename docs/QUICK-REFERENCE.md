@@ -13,8 +13,8 @@
 
 | Dokument | Zweck |
 |----------|-------|
-| [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) | Vollständige Projektanalyse mit Refactoring-Empfehlungen |
-| [DEPENDENCY_MAP.md](./DEPENDENCY_MAP.md) | Detaillierte Dependency-Visualisierung |
+| [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) | Vollständige Projektanalyse mit Refactoring-Empfehlungen |
+| [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) | Detaillierte Dependency-Visualisierung |
 | Dieses Dokument | Schnelle Referenz für tägliche Entwicklung |
 
 ---

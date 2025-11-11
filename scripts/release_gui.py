@@ -743,7 +743,11 @@ class ReleaseGUI:
                     if fixed and fixed.strip():
                         commit_message += "### Fehlerbehebungen\n" + fixed + "\n\n"
                     
-                    if not run_command(f'git commit -m "{commit_message}"'):
+                    # Schreibe Commit-Message in temporäre Datei (für lange Messages)
+                    commit_msg_file = Path(".git/COMMIT_EDITMSG_RELEASE")
+                    commit_msg_file.write_text(commit_message, encoding='utf-8')
+                    
+                    if not run_command(f'git commit -F "{commit_msg_file}"'):
                         raise Exception("Git commit fehlgeschlagen")
                 print("  OK Git commit erfolgreich" + (" (simuliert)" if test_mode else ""))
             

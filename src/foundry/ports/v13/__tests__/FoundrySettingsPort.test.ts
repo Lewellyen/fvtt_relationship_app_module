@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { FoundrySettingsPortV13 } from "../FoundrySettingsPort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { SettingConfig } from "@/foundry/interfaces/FoundrySettings";
+import * as v from "valibot";
 
 describe("FoundrySettingsPortV13", () => {
   let port: FoundrySettingsPortV13;
@@ -109,7 +110,7 @@ describe("FoundrySettingsPortV13", () => {
   });
 
   describe("get()", () => {
-    it("should get setting value successfully", () => {
+    it("should get setting value successfully with schema validation", () => {
       const mockGet = vi.fn().mockReturnValue(123);
       vi.stubGlobal("game", {
         settings: {
@@ -117,7 +118,7 @@ describe("FoundrySettingsPortV13", () => {
         },
       });
 
-      const result = port.get<number>("test-module", "testKey");
+      const result = port.get("test-module", "testKey", v.number());
 
       expectResultOk(result);
       expect(result.value).toBe(123);
@@ -127,7 +128,7 @@ describe("FoundrySettingsPortV13", () => {
     it("should return error when game.settings not available", () => {
       vi.stubGlobal("game", undefined);
 
-      const result = port.get<number>("test-module", "testKey");
+      const result = port.get("test-module", "testKey", v.number());
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
@@ -144,11 +145,54 @@ describe("FoundrySettingsPortV13", () => {
         },
       });
 
-      const result = port.get<string>("test-module", "testKey");
+      const result = port.get("test-module", "testKey", v.string());
 
       expectResultErr(result);
       expect(result.error.code).toBe("OPERATION_FAILED");
       expect(result.error.message).toContain("Failed to get setting");
+    });
+
+    it("should validate setting value and return error if validation fails", () => {
+      const mockGet = vi.fn(() => "invalid");
+      vi.stubGlobal("game", {
+        settings: {
+          get: mockGet,
+        },
+      });
+
+      const result = port.get("test-module", "testKey", v.number());
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+      expect(result.error.message).toContain("failed validation");
+    });
+
+    it("should accept valid enum values", () => {
+      const mockGet = vi.fn(() => 1);
+      vi.stubGlobal("game", {
+        settings: {
+          get: mockGet,
+        },
+      });
+
+      const result = port.get("test-module", "logLevel", v.picklist([0, 1, 2, 3]));
+
+      expectResultOk(result);
+      expect(result.value).toBe(1);
+    });
+
+    it("should reject invalid enum values", () => {
+      const mockGet = vi.fn(() => 999);
+      vi.stubGlobal("game", {
+        settings: {
+          get: mockGet,
+        },
+      });
+
+      const result = port.get("test-module", "logLevel", v.picklist([0, 1, 2, 3]));
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("VALIDATION_FAILED");
     });
   });
 

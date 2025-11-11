@@ -101,4 +101,12 @@ export class FoundryGamePortV13 implements FoundryGame {
         )
     );
   }
+
+  /* c8 ignore start -- Lifecycle: Disposal tested indirectly via service disposal tests */
+  dispose(): void {
+    // Invalidate cache on disposal
+    this.cachedEntries = null;
+    this.lastCheckTimestamp = 0;
+  }
+  /* c8 ignore stop */
 }

@@ -47,7 +47,7 @@ fvtt_relationship_app_module/
     │   ├── MIGRATION_GUIDE_TEMPLATE.md ⭐ NEU (heute)
     │   └── DEPRECATION_TEMPLATE.md ⭐ NEU (heute)
     │
-    ├── guides/ (Development Guides) ⭐ UMBENANNT
+    ├── quality-gates/ (Quality Gates Documentation) ⭐ NEU
     │   ├── foundry-di-adapter-guidelines.md ✅
     │   ├── Logger-Availability-Strategy.md ✅
     │   ├── Test-Coverage-Report.md ✅
@@ -196,12 +196,10 @@ fvtt_relationship_app_module/
 
 | Dokument | Status | Zweck |
 |----------|--------|-------|
-| **docs/guides/foundry-di-adapter-guidelines.md** | ✅ | DI-Adapter-Entwicklung |
-| **docs/guides/Logger-Availability-Strategy.md** | ✅ | Logger während Bootstrap |
-| **docs/guides/Dependency-Analysis-Tools-Comparison.md** | ✅ | Tool-Vergleich |
+| **docs/foundry-di-adapter-guidelines.md** | ✅ | DI-Adapter-Entwicklung |
+| **docs/foundry-di-adapter-guidelines.md** | ✅ | Foundry DI-Integration |
 | **docs/jsdoc-styleguide.md** | ✅ | JSDoc-Konventionen |
-| **docs/guides/Begriffserläuterungen.txt** | ✅ | Foundry-Begriffe |
-| **docs/guides/Beispiel Container.md** | ✅ | DI-Container-Beispiele |
+| **docs/quality-gates/** | ✅ ⭐ NEU | Quality Gates Dokumentation |
 
 **Bewertung:** ✅ Good - Entwickler-Support vorhanden
 
@@ -460,7 +458,7 @@ docs/
 ├── *.md (11 Top-Level Docs) ✅ Gut strukturiert
 ├── adr/ ✅ Perfect
 ├── templates/ ⭐ NEU
-├── guides/ ⭐ UMBENANNT (vorher: development/)
+├── quality-gates/ ⭐ NEU (Type/Code/Linter Coverage)
 ├── releases/ ⭐ VERSCHOBEN (vorher: development/foundry/releases/)
 └── archive/ ⭐ NEU (für historische Dokumente)
 ```
@@ -471,7 +469,7 @@ docs/
 ├── *.md (Top-Level: INDEX, PROJECT_ANALYSIS, etc.)
 ├── adr/ (ADRs)
 ├── templates/ (Templates)
-├── guides/ (Development Guides, aktuell "development/")
+├── quality-gates/ (Quality Gates Documentation)
 ├── releases/ (Release-Notes, aktuell "development/foundry/releases/")
 └── archive/ (Historische Audits, aktuell "development/Audit/")
 ```
@@ -511,7 +509,7 @@ docs/
 ### Erledigte Aufgaben (2025-11-09)
 
 1. ✅ **Verzeichnisstruktur umgesetzt**
-   - `docs/guides/` (vorher: `docs/development/`)
+   - `docs/quality-gates/` (NEU: Type/Code/Linter Coverage Docs)
    - `docs/releases/` (vorher: `docs/development/foundry/releases/`)
    - `docs/archive/` (neu erstellt)
 
@@ -564,7 +562,7 @@ docs/
 │
 ├── adr/ (8 ADRs) ✅
 ├── templates/ (2 Templates) ⭐
-├── guides/ (8 Guides) ⭐ UMBENANNT
+├── quality-gates/ (4 Docs) ⭐ NEU
 ├── releases/ (26 Release-Notes) ⭐ VERSCHOBEN
 └── archive/ (Leer) ⭐ NEU
 ```
@@ -588,7 +586,7 @@ git commit -m "docs: Vollständige Projektanalyse und Dokumentations-Restrukturi
 - ARCHITECTURE.md aktualisiert
 - Dokumentations-Index (INDEX.md)
 - Verzeichnisse umstrukturiert:
-  - docs/development/ → docs/guides/
+  - Quality Gates zentral dokumentiert in docs/quality-gates/
   - docs/development/foundry/releases/ → docs/releases/
   - docs/archive/ neu erstellt
 - Templates für Migration Guides (ab 1.0.0)

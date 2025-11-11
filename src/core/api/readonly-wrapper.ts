@@ -1,4 +1,25 @@
 /**
+ * Type guard to check if a property key is in the allowed methods list.
+ * Narrows string | symbol to keyof T by checking against allowed keys.
+ *
+ * Note: Type predicate returns boolean instead of 'prop is keyof T' because
+ * keyof T may include number, which is incompatible with string | symbol parameter.
+ * The actual narrowing happens implicitly through the includes() check.
+ *
+ * @param prop - The property key to check
+ * @param allowed - Array of allowed method keys
+ * @returns True if prop is a string and in the allowed list
+ */
+function isAllowedKey<T>(prop: string | symbol, allowed: (keyof T)[]): boolean {
+  if (typeof prop !== "string") {
+    return false;
+  }
+  /* type-coverage:ignore-next-line -- Type narrowing: (keyof T)[] to string[] safe when T uses string keys */
+  const allowedStrings: string[] = allowed as string[];
+  return allowedStrings.includes(prop);
+}
+
+/**
  * Creates a read-only proxy wrapper for a service.
  *
  * Only allows access to whitelisted methods. Property access and
@@ -27,9 +48,9 @@ export function createReadOnlyWrapper<T extends object>(
   return new Proxy(service, {
     get(target, prop, receiver: unknown) {
       // Allow whitelisted methods only
-      /* type-coverage:ignore-next-line -- Proxy trap: prop (string | symbol) must be narrowed to keyof T for includes() check */
-      if (allowedMethods.includes(prop as keyof T)) {
-        const value: unknown = Reflect.get(target, prop, receiver);
+      if (isAllowedKey(prop, allowedMethods)) {
+        /* type-coverage:ignore-next-line -- Type narrowing: allowedMethods membership ensures prop is keyof T */
+        const value: unknown = Reflect.get(target, prop as keyof T, receiver);
 
         // Bind 'this' context for methods
         if (typeof value === "function") {

@@ -12,10 +12,10 @@
 
 | Dokument | Zweck | Wann lesen? |
 |----------|-------|-------------|
-| **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** | Schnellreferenz für tägliche Entwicklung | ⭐ **START** |
-| **[VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md)** | Breaking Changes & Deprecation-Strategie | ⭐ **VOR REFACTORING** |
-| **[PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md)** | Vollständige Projektanalyse | Architektur verstehen |
-| **[DEPENDENCY_MAP.md](./DEPENDENCY_MAP.md)** | Detaillierte Service-Dependencies | Refactoring planen |
+| **[QUICK-REFERENCE.md](./QUICK-REFERENCE.md)** | Schnellreferenz für tägliche Entwicklung | ⭐ **START** |
+| **[VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md)** | Breaking Changes & Deprecation-Strategie | ⭐ **VOR REFACTORING** |
+| **[PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md)** | Vollständige Projektanalyse | Architektur verstehen |
+| **[DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md)** | Detaillierte Service-Dependencies | Refactoring planen |
 
 ---
 
@@ -37,8 +37,10 @@
 | Dokument | Zweck | Zielgruppe |
 |----------|-------|-----------|
 | [TESTING.md](./TESTING.md) | Test-Strategie & Best Practices | Alle Entwickler |
-| [Test-Suite-Plan.md](./guides/Test-Suite-Plan.md) | Vollständiger Test-Plan | QA, Test-Entwicklung |
-| [Test-Coverage-Report.md](./guides/Test-Coverage-Report.md) | Coverage-Analyse | QA |
+| **[quality-gates/](./quality-gates/README.md)** | Quality Gates & Exclusions ⭐ NEU | Alle Entwickler |
+| → [Type Coverage Exclusions](./quality-gates/type-coverage-exclusions.md) | Type-Safety Casts (25) | TypeScript-Entwicklung |
+| → [Code Coverage Exclusions](./quality-gates/code-coverage-exclusions.md) | c8 ignore Kommentare (201) | Test-Entwicklung |
+| → [Linter Exclusions](./quality-gates/linter-exclusions.md) | eslint-disable Kommentare (94) | Code-Qualität |
 
 ---
 
@@ -63,10 +65,17 @@
 
 | Dokument | Zweck | Zielgruppe |
 |----------|-------|-----------|
-| [foundry-di-adapter-guidelines.md](./guides/foundry-di-adapter-guidelines.md) | DI-Adapter-Entwicklung | Foundry-Integration |
-| [Logger-Availability-Strategy.md](./guides/Logger-Availability-Strategy.md) | Logger-Nutzung während Bootstrap | Infrastructure-Entwicklung |
+| [foundry-di-adapter-guidelines.md](./foundry-di-adapter-guidelines.md) | DI-Adapter-Entwicklung | Foundry-Integration |
 | [jsdoc-styleguide.md](./jsdoc-styleguide.md) | JSDoc-Konventionen | Alle Entwickler |
-| [Dependency-Analysis-Tools-Comparison.md](./guides/Dependency-Analysis-Tools-Comparison.md) | Tool-Vergleich | DevOps |
+
+---
+
+### 🗺️ Planning & Roadmaps
+
+| Dokument | Zweck | Zielgruppe |
+|----------|-------|-----------|
+| [roadmaps/REFACTORING-ROADMAP.md](./roadmaps/REFACTORING-ROADMAP.md) | Refactoring-Tasks bis v1.0.0 | Maintainer |
+| [roadmaps/api-future-tasks.md](./roadmaps/api-future-tasks.md) | API-Tasks für v1.0.0 | Maintainer |
 
 ---
 
@@ -74,16 +83,14 @@
 
 | Dokument | Zweck | Zielgruppe |
 |----------|-------|-----------|
-| [releases/*.md](./releases/) | Release-Notes (v0.0.4 - v0.7.1, 26 Docs) ⭐ | Alle |
-| [Begriffserläuterungen.txt](./guides/Begriffserläuterungen.txt) | Foundry-Begriffe | Neue Entwickler |
+| [releases/*.md](./releases/) | Release-Notes (v0.0.4 - v0.12.2, 31 Docs) ⭐ | Alle |
 
 ---
 
-### 📊 Reports & Type Coverage
+### 📊 Reports & Archives
 
 | Dokument | Zweck | Zielgruppe |
 |----------|-------|-----------|
-| [type-coverage-exclusions.md](./guides/type-coverage-exclusions.md) | Type-Coverage-Ausnahmen | TypeScript-Entwicklung |
 | [archive/](./archive/) | Historische Audits (Archiv) | Historisch |
 
 ---
@@ -91,30 +98,30 @@
 ## 🚀 Quick-Navigation nach Use-Case
 
 ### "Ich will einen neuen Service erstellen"
-1. [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) → "Service-Erstellung Cheat Sheet"
-2. [DEPENDENCY_MAP.md](./DEPENDENCY_MAP.md) → "Dependency Injection Token Registry"
-3. [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) → "Best Practices für neue Services"
+1. [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → "Service-Erstellung Cheat Sheet"
+2. [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → "Dependency Injection Token Registry"
+3. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → "Best Practices für neue Services"
 
 ---
 
 ### "Ich will Refactoring durchführen"
-1. ⭐ **[VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md)** → Pre-Release vs Production Rules
-2. [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) → "Refactoring-Empfehlungen"
-3. [DEPENDENCY_MAP.md](./DEPENDENCY_MAP.md) → "Refactoring-Impact-Analyse"
+1. ⭐ **[VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md)** → Pre-Release vs Production Rules
+2. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → "Refactoring-Empfehlungen"
+3. [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → "Refactoring-Impact-Analyse"
 
 ---
 
 ### "Ich will die Architektur verstehen"
-1. [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) → "Services" & "Infrastruktur"
-2. [DEPENDENCY_MAP.md](./DEPENDENCY_MAP.md) → "Dependency Tree"
+1. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → "Services" & "Infrastruktur"
+2. [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → "Dependency Tree"
 3. [ARCHITECTURE.md](../ARCHITECTURE.md) → Clean Architecture Details
 4. [BOOTFLOW.md](./BOOTFLOW.md) → Bootstrap-Prozess
 
 ---
 
 ### "Ich will einen Port für neue Foundry-Version erstellen"
-1. [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) → "Zukunftssicherheit & Erweiterbarkeit"
-2. [foundry-di-adapter-guidelines.md](./guides/foundry-di-adapter-guidelines.md)
+1. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → "Zukunftssicherheit & Erweiterbarkeit"
+2. [foundry-di-adapter-guidelines.md](./foundry-di-adapter-guidelines.md)
 3. [ADR-0003](./adr/0003-port-adapter-for-foundry-version-compatibility.md) → Port-Adapter-Pattern
 
 **Prozess:**
@@ -128,13 +135,13 @@
 
 ### "Ich will Tests schreiben"
 1. [TESTING.md](./TESTING.md) → Testing-Strategie
-2. [Test-Suite-Plan.md](./development/Test-Suite-Plan.md) → Vollständiger Plan
-3. [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) → "Testing Cheat Sheet"
+2. [quality-gates/](./quality-gates/README.md) → Quality Metrics & Coverage
+3. [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → "Testing Cheat Sheet"
 
 ---
 
 ### "Ich suche Breaking Change Guidelines"
-1. ⭐ **[VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md)** → Vollständige Strategie
+1. ⭐ **[VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md)** → Vollständige Strategie
 2. [templates/DEPRECATION_TEMPLATE.md](./templates/DEPRECATION_TEMPLATE.md) → Code-Templates
 3. [templates/MIGRATION_GUIDE_TEMPLATE.md](./templates/MIGRATION_GUIDE_TEMPLATE.md) → Migration Guide Template
 
@@ -156,14 +163,15 @@
 ### Bei Code-Änderungen
 
 **IMMER aktualisieren:**
-- [ ] [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) - Bei neuen Services/Dependencies
-- [ ] [DEPENDENCY_MAP.md](./DEPENDENCY_MAP.md) - Bei Dependency-Änderungen
-- [ ] [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) - Bei API-Änderungen
+- [ ] [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) - Bei neuen Services/Dependencies
+- [ ] [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) - Bei Dependency-Änderungen
+- [ ] [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) - Bei API-Änderungen
 
 **Manchmal aktualisieren:**
 - [ ] [ARCHITECTURE.md](../ARCHITECTURE.md) - Bei Architektur-Änderungen
 - [ ] [API.md](./API.md) - Bei Public API-Änderungen
 - [ ] [CHANGELOG.md](../CHANGELOG.md) - Bei jedem Release
+- [ ] [quality-gates/README.md](./quality-gates/README.md) - Bei Quality-Metriken-Änderungen
 
 **Nur bei speziellen Änderungen:**
 - [ ] [BOOTFLOW.md](./BOOTFLOW.md) - Bei Bootstrap-Änderungen
@@ -236,9 +244,9 @@ Get-ChildItem -Path docs -Recurse -Filter *.md |
 ## 📅 Wartungs-Plan
 
 ### Monatlich
-- [ ] Aktualisiere PROJECT_ANALYSIS.md (neue Services/Refactorings)
-- [ ] Prüfe DEPENDENCY_MAP.md (neue Dependencies)
-- [ ] Aktualisiere Test-Coverage-Report.md
+- [ ] Aktualisiere PROJECT-ANALYSIS.md (neue Services/Refactorings)
+- [ ] Prüfe DEPENDENCY-MAP.md (neue Dependencies)
+- [ ] Aktualisiere quality-gates/README.md (Quality-Metriken)
 
 ### Vierteljährlich
 - [ ] Review aller ADRs (Status aktualisieren)
@@ -261,9 +269,9 @@ docs/
 ├── *.md                    # Top-Level Docs (Analysis, API, etc.)
 ├── adr/                    # Architecture Decision Records
 ├── templates/              # Templates für Migration Guides, etc.
-├── guides/                 # Development Guides ⭐ UMBENANNT
-├── releases/               # Release-Notes ⭐ VERSCHOBEN
-└── archive/                # Historische Dokumente ⭐ NEU
+├── quality-gates/          # Quality Gates Documentation ⭐ NEU
+├── releases/               # Release-Notes
+└── archive/                # Historische Dokumente
 ```
 
 ---
@@ -284,8 +292,8 @@ Füge das neue Dokument in diesem Index hinzu (passende Kategorie).
 ### Schritt 4: Von anderen Docs verlinken
 
 - README.md: Falls relevant für Übersicht
-- QUICK_REFERENCE.md: Falls Schnellreferenz
-- PROJECT_ANALYSIS.md: Falls Architektur-relevant
+- QUICK-REFERENCE.md: Falls Schnellreferenz
+- PROJECT-ANALYSIS.md: Falls Architektur-relevant
 
 ---
 
@@ -293,12 +301,12 @@ Füge das neue Dokument in diesem Index hinzu (passende Kategorie).
 
 ### Tag 1: Übersicht
 1. [README.md](../README.md) → Features & Setup
-2. [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) → Service-Übersicht
-3. [VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md) → Breaking-Change-Regeln
+2. [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → Service-Übersicht
+3. [VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md) → Breaking-Change-Regeln
 
 ### Tag 2-3: Architektur
-1. [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) → Services & Utilities
-2. [DEPENDENCY_MAP.md](./DEPENDENCY_MAP.md) → Dependency-Tree
+1. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → Services & Utilities
+2. [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → Dependency-Tree
 3. [ARCHITECTURE.md](../ARCHITECTURE.md) → Clean Architecture
 
 ### Tag 4-5: Deep Dive
@@ -309,7 +317,7 @@ Füge das neue Dokument in diesem Index hinzu (passende Kategorie).
 ### Woche 2: Praktische Entwicklung
 1. [CONFIGURATION.md](./CONFIGURATION.md) → Environment-Setup
 2. [jsdoc-styleguide.md](./jsdoc-styleguide.md) → Code-Dokumentation
-3. [foundry-di-adapter-guidelines.md](./guides/foundry-di-adapter-guidelines.md) → Foundry-Integration
+3. [foundry-di-adapter-guidelines.md](./foundry-di-adapter-guidelines.md) → Foundry-Integration
 
 ---
 
@@ -317,12 +325,15 @@ Füge das neue Dokument in diesem Index hinzu (passende Kategorie).
 
 | Kategorie | Anzahl |
 |-----------|-------:|
-| **Top-Level Docs** | 8 |
+| **Top-Level Docs** | 12 |
+| **Roadmaps** | 2 |
 | **ADRs** | 8 |
-| **Development Guides** | 30+ |
+| **Quality Gates** | 4 |
+| **Development Guides** | 2 |
 | **Templates** | 2 |
-| **Audits** | 13 |
-| **Gesamt** | ~60+ Dokumente |
+| **Releases** | 31 |
+| **Archive** | 3 |
+| **Gesamt** | ~64 Dokumente |
 
 ---
 

@@ -5,6 +5,18 @@ import { ok, err } from "@/utils/functional/result";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
+ * Type guard to check if value is string based on expectedType check.
+ * Used after runtime type validation to narrow unknown to string.
+ *
+ * @param value - The value to check
+ * @param expectedType - The expected type
+ * @returns True if expectedType is "string" and value is actually a string
+ */
+function isStringValue(value: unknown, expectedType: string): value is string {
+  return expectedType === "string" && typeof value === "string";
+}
+
+/**
  * Valibot schema for JournalEntry validation.
  * Validates that objects from Foundry API conform to expected structure.
  */
@@ -123,10 +135,8 @@ export function validateSettingValue(
   }
 
   // Choice validation (only for strings)
-  if (choices && expectedType === "string") {
-    // value is known to be string when expectedType === "string"
-    /* type-coverage:ignore-next-line */
-    if (!choices.includes(value as string)) {
+  if (choices && isStringValue(value, expectedType)) {
+    if (!choices.includes(value)) {
       return err(
         createFoundryError(
           "VALIDATION_FAILED",
@@ -141,12 +151,39 @@ export function validateSettingValue(
 }
 
 /**
- * Validates setting registration config.
+ * Valibot schema for Foundry setting configuration.
+ * Validates the structure and types of setting registration config.
+ */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- Schemas use PascalCase
+export const SettingConfigSchema = v.object({
+  name: v.optional(v.string()),
+  hint: v.optional(v.string()),
+  scope: v.optional(v.picklist(["world", "client", "user"])),
+  config: v.optional(v.boolean()),
+  type: v.optional(v.any()), // typeof String, Number, Boolean - cannot validate constructors
+  default: v.optional(v.any()), // Default value depends on type
+  choices: v.optional(v.record(v.string(), v.string())), // Record keys must be string in TS
+  onChange: v.optional(v.custom<(value: unknown) => void>((val) => typeof val === "function")),
+});
+
+/**
+ * Validates setting registration config using Valibot schema.
  *
  * @param namespace - Module namespace
  * @param key - Setting key
  * @param config - Setting configuration object
  * @returns Result with validated config or FoundryError
+ *
+ * @example
+ * ```typescript
+ * const result = validateSettingConfig("my-module", "logLevel", {
+ *   name: "Log Level",
+ *   scope: "world",
+ *   config: true,
+ *   type: Number,
+ *   default: 1
+ * });
+ * ```
  */
 export function validateSettingConfig(
   namespace: string,
@@ -159,10 +196,7 @@ export function validateSettingConfig(
       createFoundryError(
         "VALIDATION_FAILED",
         "Invalid setting namespace: must be non-empty string",
-        {
-          namespace,
-          key,
-        }
+        { namespace, key }
       )
     );
   }
@@ -177,7 +211,7 @@ export function validateSettingConfig(
     );
   }
 
-  // Config validation
+  // Config validation (must be object)
   if (!config || typeof config !== "object") {
     return err(
       createFoundryError("VALIDATION_FAILED", "Invalid setting config: must be object", {
@@ -187,24 +221,20 @@ export function validateSettingConfig(
     );
   }
 
-  // Type assertion: config is now guaranteed to be object
-  /* type-coverage:ignore-next-line */
-  const configObj = config as Record<string, unknown>;
+  // Validate config structure with Valibot
+  const result = v.safeParse(SettingConfigSchema, config);
 
-  // Scope validation (if provided)
-  // configObj.scope is only present when scope exists and is string-like
-  /* type-coverage:ignore-next-line */
-  if (configObj.scope && !["world", "client", "user"].includes(configObj.scope as string)) {
+  if (!result.success) {
     return err(
       createFoundryError(
         "VALIDATION_FAILED",
-        `Invalid setting scope: "${configObj.scope}". Allowed: world, client, user`,
-        { namespace, key, scope: configObj.scope }
+        `Setting config validation failed for ${namespace}.${key}: ${result.issues.map((i) => i.message).join(", ")}`,
+        { namespace, key, config, issues: result.issues }
       )
     );
   }
 
-  return ok(config);
+  return ok(result.output);
 }
 
 // Re-export SettingConfig type for convenience

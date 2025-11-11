@@ -10,6 +10,7 @@ import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import { ok, err } from "@/utils/functional/result";
 import { MODULE_CONSTANTS } from "@/constants";
+import * as v from "valibot";
 
 describe("FoundryJournalFacade", () => {
   let facade: FoundryJournalFacade;
@@ -21,17 +22,20 @@ describe("FoundryJournalFacade", () => {
     mockGame = {
       getJournalEntries: vi.fn(),
       getJournalEntryById: vi.fn(),
+      dispose: vi.fn(),
     };
 
     mockDocument = {
       getFlag: vi.fn(),
       setFlag: vi.fn(),
+      dispose: vi.fn(),
     };
 
     mockUI = {
       removeJournalElement: vi.fn(),
       findElement: vi.fn(),
       notify: vi.fn(),
+      dispose: vi.fn(),
     };
 
     facade = new FoundryJournalFacade(mockGame, mockDocument, mockUI);
@@ -67,17 +71,21 @@ describe("FoundryJournalFacade", () => {
   });
 
   describe("getEntryFlag", () => {
-    it("should delegate to FoundryDocument.getFlag with module scope", () => {
-      const entry = { id: "j1", getFlag: vi.fn() };
+    it("should delegate to FoundryDocument.getFlag with module scope and schema", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const entry = { id: "j1", getFlag: vi.fn() } as any;
       mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
 
-      const result = facade.getEntryFlag<boolean>(entry, "hidden");
+      const result = facade.getEntryFlag<boolean>(entry, "hidden", v.boolean());
 
-      expect(mockDocument.getFlag).toHaveBeenCalledWith(
-        entry,
-        MODULE_CONSTANTS.MODULE.ID,
-        "hidden"
-      );
+      expect(mockDocument.getFlag).toHaveBeenCalled();
+      // Verify document was called with correct arguments
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const calls = (mockDocument.getFlag as any).mock.calls;
+      expect(calls[0][0]).toBe(entry);
+      expect(calls[0][1]).toBe(MODULE_CONSTANTS.MODULE.ID);
+      expect(calls[0][2]).toBe("hidden");
+      expect(calls[0][3]).toBeDefined(); // schema
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value).toBe(true);
@@ -85,11 +93,12 @@ describe("FoundryJournalFacade", () => {
     });
 
     it("should propagate errors from FoundryDocument", () => {
-      const entry = { id: "j1", getFlag: vi.fn() };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const entry = { id: "j1", getFlag: vi.fn() } as any;
       const error = { code: "OPERATION_FAILED" as const, message: "Flag read failed" };
       mockDocument.getFlag = vi.fn().mockReturnValue(err(error));
 
-      const result = facade.getEntryFlag(entry, "hidden");
+      const result = facade.getEntryFlag(entry, "hidden", v.boolean());
 
       expect(result.ok).toBe(false);
       if (!result.ok) {

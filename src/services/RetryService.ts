@@ -45,8 +45,7 @@ export interface RetryOptions<ErrorType> {
   /**
    * Maps exceptions (thrown errors or unknown errors) to the expected ErrorType.
    *
-   * This is required when ErrorType is a structured type (e.g., FoundryError)
-   * to prevent unsafe 'as ErrorType' casts that violate type guarantees.
+   * REQUIRED for type safety. Prevents unsafe 'as ErrorType' casts that violate type guarantees.
    *
    * @param error - The caught exception (unknown type)
    * @param attempt - The current attempt number (1-based)
@@ -66,7 +65,7 @@ export interface RetryOptions<ErrorType> {
    * );
    * ```
    */
-  mapException?: (error: unknown, attempt: number) => ErrorType;
+  mapException: (error: unknown, attempt: number) => ErrorType;
 
   /**
    * Optional operation name for logging purposes.
@@ -119,13 +118,11 @@ export class RetryService {
    * @template SuccessType - The success type of the operation
    * @template ErrorType - The error type of the operation
    * @param fn - Async function that returns a Result
-   * @param options - Retry configuration options (or legacy: maxAttempts number)
-   * @param legacyDelayMs - Legacy parameter for backward compatibility
+   * @param options - Retry configuration options
    * @returns Promise resolving to the Result (success or last error)
    *
    * @example
    * ```typescript
-   * // New API with mapException (recommended for structured error types)
    * const result = await retryService.retry(
    *   () => foundryApi.fetchData(),
    *   {
@@ -138,63 +135,36 @@ export class RetryService {
    *     })
    *   }
    * );
-   *
-   * // Legacy API (backward compatible)
-   * const result = await retryService.retry(
-   *   () => foundryApi.fetchData(),
-   *   3, // maxAttempts
-   *   100 // delayMs
-   * );
    * ```
    */
   async retry<SuccessType, ErrorType>(
     fn: () => Promise<Result<SuccessType, ErrorType>>,
-    options: RetryOptions<ErrorType> | number = 3,
-    legacyDelayMs?: number
+    options: RetryOptions<ErrorType>
   ): Promise<Result<SuccessType, ErrorType>> {
-    // Backward compatibility: handle legacy (maxAttempts, delayMs) signature
-    const opts =
-      typeof options === "number"
-        ? {
-            maxAttempts: options,
-            /* c8 ignore next -- Legacy API: delayMs default tested via other retry tests */
-            delayMs: legacyDelayMs ?? 100,
-            backoffFactor: 1,
-            /* c8 ignore next 2 -- Legacy unsafe cast function tested via legacy API tests */
-            /* type-coverage:ignore-next-line */
-            mapException: (error: unknown) => error as ErrorType, // Legacy unsafe cast
-            operationName: undefined,
-          }
-        : {
-            /* c8 ignore next -- Modern API: maxAttempts default tested in "should use default maxAttempts of 3" */
-            maxAttempts: options.maxAttempts ?? 3,
-            delayMs: options.delayMs ?? 100,
-            backoffFactor: options.backoffFactor ?? 1,
-            /* c8 ignore next 2 -- Default mapException tested when options.mapException is undefined */
-            /* type-coverage:ignore-next-line */
-            mapException: options.mapException ?? ((error: unknown) => error as ErrorType),
-            operationName: options.operationName ?? undefined,
-          };
+    const maxAttempts = options.maxAttempts ?? 3;
+    const delayMs = options.delayMs ?? 100;
+    const backoffFactor = options.backoffFactor ?? 1;
+    const { mapException, operationName } = options;
 
     // Validate maxAttempts to prevent undefined errors
-    if (opts.maxAttempts < 1) {
-      return err(opts.mapException("maxAttempts must be >= 1", 0) satisfies ErrorType as ErrorType);
+    if (maxAttempts < 1) {
+      return err(mapException("maxAttempts must be >= 1", 0));
     }
 
     let lastError: ErrorType | undefined;
     const startTime = performance.now();
 
-    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         // Wrap fn() in try/catch to handle thrown errors (breaks Result-Pattern)
         const result = await fn();
 
         if (result.ok) {
           // Log success if this wasn't the first attempt
-          if (attempt > 1 && opts.operationName) {
+          if (attempt > 1 && operationName) {
             const duration = performance.now() - startTime;
             this.logger.debug(
-              `Retry succeeded for "${opts.operationName}" after ${attempt} attempts (${duration.toFixed(2)}ms)`
+              `Retry succeeded for "${operationName}" after ${attempt} attempts (${duration.toFixed(2)}ms)`
             );
           }
           return result;
@@ -202,51 +172,59 @@ export class RetryService {
 
         lastError = result.error;
 
+        // Last attempt? Return error immediately
+        if (attempt === maxAttempts) {
+          break;
+        }
+
         // Log retry attempt
-        if (opts.operationName) {
+        if (operationName) {
           this.logger.debug(
-            `Retry attempt ${attempt}/${opts.maxAttempts} failed for "${opts.operationName}"`,
+            `Retry attempt ${attempt}/${maxAttempts} failed for "${operationName}"`,
             { error: lastError }
           );
         }
 
-        // Don't sleep after last attempt
-        if (attempt < opts.maxAttempts) {
-          // Exponential backoff: delay * (attempt ^ backoffFactor)
-          const delay = opts.delayMs * Math.pow(attempt, opts.backoffFactor);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
+        // Exponential backoff: delay * (attempt ^ backoffFactor)
+        const delay = delayMs * Math.pow(attempt, backoffFactor);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       } catch (error) {
         // Handle exception-based code that breaks Result-Pattern
         // Use mapException to convert unknown error to ErrorType
-        lastError = opts.mapException(error, attempt);
+        lastError = mapException(error, attempt);
+
+        // Last attempt? Return error immediately
+        if (attempt === maxAttempts) {
+          break;
+        }
 
         // Log exception
-        if (opts.operationName) {
+        if (operationName) {
           this.logger.warn(
-            `Retry attempt ${attempt}/${opts.maxAttempts} threw exception for "${opts.operationName}"`,
+            `Retry attempt ${attempt}/${maxAttempts} threw exception for "${operationName}"`,
             { error }
           );
         }
 
-        if (attempt < opts.maxAttempts) {
-          const delay = opts.delayMs * Math.pow(attempt, opts.backoffFactor);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
+        const delay = delayMs * Math.pow(attempt, backoffFactor);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 
     // Record retry failure metric
-    if (opts.operationName) {
+    if (operationName) {
       const duration = performance.now() - startTime;
       this.logger.warn(
-        `All retry attempts exhausted for "${opts.operationName}" after ${opts.maxAttempts} attempts (${duration.toFixed(2)}ms)`
+        `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts (${duration.toFixed(2)}ms)`
       );
     }
 
-    // lastError is always defined here (at least one attempt was made)
-    /* type-coverage:ignore-next-line */
-    return err(lastError as ErrorType);
+    // TypeScript flow analysis: lastError is guaranteed to be defined here
+    // because the loop always executes at least once (maxAttempts >= 1)
+    // and both try and catch branches assign to lastError
+    /* c8 ignore next 2 -- Defensive: Fallback path cannot occur; maxAttempts >= 1 guarantees at least one assignment */
+    const finalError = lastError ?? mapException("No attempts made", 0);
+    return err(finalError);
   }
 
   /**
@@ -256,12 +234,11 @@ export class RetryService {
    * @template SuccessType - The success type
    * @template ErrorType - The error type
    * @param fn - Function that returns a Result
-   * @param options - Retry configuration options (or legacy: maxAttempts number)
+   * @param options - Retry configuration options
    * @returns The Result (success or last error)
    *
    * @example
    * ```typescript
-   * // New API with mapException (recommended for structured error types)
    * const result = retryService.retrySync(
    *   () => parseData(input),
    *   {
@@ -273,77 +250,63 @@ export class RetryService {
    *     })
    *   }
    * );
-   *
-   * // Legacy API (backward compatible)
-   * const result = retryService.retrySync(
-   *   () => parseData(input),
-   *   3 // maxAttempts
-   * );
    * ```
    */
   retrySync<SuccessType, ErrorType>(
     fn: () => Result<SuccessType, ErrorType>,
-    options: Omit<RetryOptions<ErrorType>, "delayMs" | "backoffFactor"> | number = 3
+    options: Omit<RetryOptions<ErrorType>, "delayMs" | "backoffFactor">
   ): Result<SuccessType, ErrorType> {
-    // Backward compatibility: handle legacy maxAttempts signature
-    const opts =
-      typeof options === "number"
-        ? {
-            maxAttempts: options,
-            /* c8 ignore next 2 -- Legacy unsafe cast function tested via legacy API tests */
-            /* type-coverage:ignore-next-line */
-            mapException: (error: unknown) => error as ErrorType, // Legacy unsafe cast
-            operationName: undefined,
-          }
-        : {
-            /* c8 ignore next -- Default maxAttempts tested in retry.test.ts */
-            maxAttempts: options.maxAttempts ?? 3,
-            /* c8 ignore next 2 -- Default mapException tested implicitly when options.mapException is undefined */
-            /* type-coverage:ignore-next-line */
-            mapException: options.mapException ?? ((error: unknown) => error as ErrorType),
-            operationName: options.operationName ?? undefined,
-          };
+    const maxAttempts = options.maxAttempts ?? 3;
+    const { mapException, operationName } = options;
 
     // Validate maxAttempts to prevent undefined errors
-    if (opts.maxAttempts < 1) {
-      return err(opts.mapException("maxAttempts must be >= 1", 0) satisfies ErrorType as ErrorType);
+    if (maxAttempts < 1) {
+      return err(mapException("maxAttempts must be >= 1", 0));
     }
 
     let lastError: ErrorType | undefined;
 
-    for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         // Wrap fn() in try/catch to handle thrown errors (breaks Result-Pattern)
         const result = fn();
 
         if (result.ok) {
           // Log success if this wasn't the first attempt
-          if (attempt > 1 && opts.operationName) {
-            this.logger.debug(
-              `Retry succeeded for "${opts.operationName}" after ${attempt} attempts`
-            );
+          if (attempt > 1 && operationName) {
+            this.logger.debug(`Retry succeeded for "${operationName}" after ${attempt} attempts`);
           }
           return result;
         }
 
         lastError = result.error;
 
+        // Last attempt? Return error immediately
+        if (attempt === maxAttempts) {
+          break;
+        }
+
         // Log retry attempt
-        if (opts.operationName) {
+        if (operationName) {
           this.logger.debug(
-            `Retry attempt ${attempt}/${opts.maxAttempts} failed for "${opts.operationName}"`,
+            `Retry attempt ${attempt}/${maxAttempts} failed for "${operationName}"`,
             { error: lastError }
           );
         }
       } catch (error) {
         // Handle exception-based code that breaks Result-Pattern
         // Use mapException to convert unknown error to ErrorType
-        lastError = opts.mapException(error, attempt);
+        lastError = mapException(error, attempt);
+
+        // Last attempt? Return error immediately
+        if (attempt === maxAttempts) {
+          break;
+        }
 
         // Log exception
-        if (opts.operationName) {
+        if (operationName) {
           this.logger.warn(
-            `Retry attempt ${attempt}/${opts.maxAttempts} threw exception for "${opts.operationName}"`,
+            `Retry attempt ${attempt}/${maxAttempts} threw exception for "${operationName}"`,
             { error }
           );
         }
@@ -351,14 +314,17 @@ export class RetryService {
     }
 
     // Log retry failure
-    if (opts.operationName) {
+    if (operationName) {
       this.logger.warn(
-        `All retry attempts exhausted for "${opts.operationName}" after ${opts.maxAttempts} attempts`
+        `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts`
       );
     }
 
-    // lastError is always defined here (at least one attempt was made)
-    /* type-coverage:ignore-next-line */
-    return err(lastError as ErrorType);
+    // TypeScript flow analysis: lastError is guaranteed to be defined here
+    // because the loop always executes at least once (maxAttempts >= 1)
+    // and both try and catch branches assign to lastError
+    /* c8 ignore next 2 -- Defensive: Fallback path cannot occur; maxAttempts >= 1 guarantees at least one assignment */
+    const finalError = lastError ?? mapException("No attempts made", 0);
+    return err(finalError);
   }
 }

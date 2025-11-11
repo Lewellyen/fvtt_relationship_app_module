@@ -17,7 +17,7 @@ Die initiale Analyse hatte "fehlende v14 Ports" als Schwäche identifiziert. Die
 
 ## Änderungen in der Dokumentation
 
-### PROJECT_ANALYSIS.md
+### PROJECT-ANALYSIS.md
 
 #### ✅ Stärken erweitert
 - **Neu hinzugefügt:** Punkt 10 "Zukunftssicherheit"
@@ -90,7 +90,7 @@ Die initiale Analyse hatte "fehlende v14 Ports" als Schwäche identifiziert. Die
 
 ---
 
-### DEPENDENCY_MAP.md
+### DEPENDENCY-MAP.md
 
 #### 🔧 Refactoring-Impact #2 erweitert
 
@@ -153,7 +153,7 @@ Die Architektur wurde explizit so designed, dass:
 
 ## Änderungen in der Dokumentation (Update 2)
 
-### PROJECT_ANALYSIS.md
+### PROJECT-ANALYSIS.md
 
 #### 📝 Status-Header hinzugefügt
 ```markdown
@@ -292,7 +292,7 @@ Nachher (aggressiv):
 
 ---
 
-### DEPENDENCY_MAP.md
+### DEPENDENCY-MAP.md
 
 #### 📝 Status-Header hinzugefügt
 ```markdown
@@ -392,7 +392,7 @@ Nachher (aggressiv):
 
 ## Änderungen in der Dokumentation (Update 3)
 
-### PROJECT_ANALYSIS.md
+### PROJECT-ANALYSIS.md
 
 #### 📝 Port Implementations Abschnitt erweitert
 **Hinzugefügt:**
@@ -427,7 +427,7 @@ Nachher (aggressiv):
 
 ---
 
-### DEPENDENCY_MAP.md
+### DEPENDENCY-MAP.md
 
 #### 📝 Refactoring-Impact #2 erweitert
 **Hinzugefügt:**
@@ -511,7 +511,7 @@ v2.0.0: Alte API entfernt (Breaking Change)
 
 ---
 
-### PROJECT_ANALYSIS.md
+### PROJECT-ANALYSIS.md
 
 #### 📝 Status-Header erweitert
 **Vorher:**
@@ -555,7 +555,7 @@ v2.0.0: Alte API entfernt (Breaking Change)
 
 ---
 
-### DEPENDENCY_MAP.md
+### DEPENDENCY-MAP.md
 
 #### 📝 Status-Header erweitert
 **Hinzugefügt:**

@@ -1066,9 +1066,9 @@ class ConsoleLoggerService {
 
 ## 🔗 Siehe auch
 
-- [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) → Service-Details
+- [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → Service-Details
 - [ARCHITECTURE.md](../ARCHITECTURE.md) → Clean Architecture
-- [DEPENDENCY_MAP.md](./DEPENDENCY_MAP.md) → Dependency-Tree
+- [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → Dependency-Tree
 - [API.md](./API.md) → Public API Dokumentation
 
 ---

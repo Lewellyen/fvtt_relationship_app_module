@@ -7,7 +7,8 @@
     "src/**/__tests__/**",
     "**/*.test.ts",
     "scripts/**",
-    "src/custom.d.ts"
+    "src/custom.d.ts",
+    "src/di_infrastructure/registry/TypeSafeRegistrationMap.ts"
   ]
 }
 

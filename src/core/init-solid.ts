@@ -11,6 +11,7 @@ import { tryGetFoundryVersion } from "@/foundry/versioning/versiondetector";
 import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import { LogLevel } from "@/config/environment";
 import { BootstrapErrorHandler } from "@/core/bootstrap-error-handler";
+import { LOG_LEVEL_SCHEMA } from "@/foundry/validation/setting-schemas";
 
 /**
  * Boot-Orchestrierung für das Modul.
@@ -101,14 +102,15 @@ function initializeFoundryModule(): void {
     const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
     if (settingsResult.ok) {
       const settings = settingsResult.value;
-      const logLevelResult = settings.get<number>(
+      const logLevelResult = settings.get(
         MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
+        MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+        LOG_LEVEL_SCHEMA
       );
 
       /* c8 ignore start -- Logger configuration: setMinLevel is optional method, and log level setting may not be configured yet */
       if (logLevelResult.ok && logger.setMinLevel) {
-        logger.setMinLevel(logLevelResult.value as LogLevel);
+        logger.setMinLevel(logLevelResult.value);
         logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
       }
       /* c8 ignore stop */

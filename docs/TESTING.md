@@ -236,6 +236,8 @@ Teste immer:
 
 ## Coverage Exclusions
 
+### File-Level Exclusions (vitest.config.ts)
+
 Folgende Dateien sind von Coverage ausgeschlossen:
 
 - Type-Definitionen (`src/types/**`, `src/**/interfaces/**`)
@@ -245,6 +247,25 @@ Folgende Dateien sind von Coverage ausgeschlossen:
 - Pure Interface Files
 - Polyfills
 - Svelte Components (separate Coverage)
+
+### Inline Exclusions (c8 ignore)
+
+Alle inline Coverage-Ausnahmen sind dokumentiert:
+- **Code Coverage:** Siehe `docs/quality-gates/code-coverage-exclusions.md`
+- **Type Coverage:** Siehe `docs/quality-gates/type-coverage-exclusions.md`
+
+**177** `c8 ignore` Kommentare (alle mit Begründung)  
+**43** `type-coverage:ignore` Kommentare (alle mit Begründung)
+
+**Audit-Befehle:**
+```bash
+# Prüfe ob alle c8 ignore dokumentiert sind (sollte 0 zurückgeben)
+grep -r "c8 ignore$" src/
+grep -r "c8 ignore-next-line$" src/
+
+# Prüfe ob alle type-coverage:ignore dokumentiert sind (sollte 0 zurückgeben)
+grep -r "type-coverage:ignore-next-line$" src/
+```
 
 ---
 

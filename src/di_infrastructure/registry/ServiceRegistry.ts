@@ -8,6 +8,7 @@ import { ServiceLifecycle } from "../types/servicelifecycle";
 import type { ContainerError } from "../interfaces/containererror";
 import { ServiceRegistration } from "../types/serviceregistration";
 import { ok, err, isErr } from "@/utils/functional/result";
+import { TypeSafeRegistrationMap } from "./TypeSafeRegistrationMap";
 
 /**
  * Type for service classes that declare their dependencies.
@@ -44,7 +45,7 @@ function hasDependencies<T extends ServiceType>(
  */
 export class ServiceRegistry {
   private readonly MAX_REGISTRATIONS = 10000; // DoS protection: prevent unlimited registrations
-  private registrations = new Map<InjectionToken<ServiceType>, ServiceRegistration>();
+  private registrations = new TypeSafeRegistrationMap();
   private lifecycleIndex = new Map<ServiceLifecycle, Set<InjectionToken<ServiceType>>>();
 
   /**
@@ -57,12 +58,12 @@ export class ServiceRegistry {
     token: InjectionToken<ServiceType>,
     lifecycle: ServiceLifecycle
   ): void {
-    if (!this.lifecycleIndex.has(lifecycle)) {
-      this.lifecycleIndex.set(lifecycle, new Set());
+    let tokenSet = this.lifecycleIndex.get(lifecycle);
+    if (!tokenSet) {
+      tokenSet = new Set();
+      this.lifecycleIndex.set(lifecycle, tokenSet);
     }
-    // Set is created above when absent; bang is safe for subsequent access
-    /* type-coverage:ignore-next-line */
-    this.lifecycleIndex.get(lifecycle)!.add(token);
+    tokenSet.add(token);
   }
 
   /**
@@ -99,7 +100,7 @@ export class ServiceRegistry {
     const dependencies = hasDependencies(serviceClass) ? (serviceClass.dependencies ?? []) : [];
 
     // Use static factory method for validation
-    const registrationResult = ServiceRegistration.createClass(
+    const registrationResult = ServiceRegistration.createClass<TServiceType>(
       lifecycle,
       dependencies,
       serviceClass
@@ -150,7 +151,11 @@ export class ServiceRegistry {
     }
 
     // Use static factory method for validation
-    const registrationResult = ServiceRegistration.createFactory(lifecycle, dependencies, factory);
+    const registrationResult = ServiceRegistration.createFactory<TServiceType>(
+      lifecycle,
+      dependencies,
+      factory
+    );
 
     /* c8 ignore start -- ServiceRegistration.createFactory validation tested in serviceregistration.test.ts; error propagation complex to test */
     if (isErr(registrationResult)) {
@@ -193,7 +198,7 @@ export class ServiceRegistry {
     }
 
     // Use static factory method for validation (includes function check)
-    const registrationResult = ServiceRegistration.createValue(value);
+    const registrationResult = ServiceRegistration.createValue<TServiceType>(value);
 
     /* c8 ignore start -- ServiceRegistration.createValue validation tested in serviceregistration.test.ts; error propagation complex to test */
     if (isErr(registrationResult)) {
@@ -236,7 +241,7 @@ export class ServiceRegistry {
     }
 
     // Use static factory method for validation
-    const registrationResult = ServiceRegistration.createAlias(targetToken);
+    const registrationResult = ServiceRegistration.createAlias<TServiceType>(targetToken);
 
     /* c8 ignore start -- ServiceRegistration.createAlias validation tested in serviceregistration.test.ts; error propagation complex to test */
     if (isErr(registrationResult)) {
@@ -257,7 +262,7 @@ export class ServiceRegistry {
    */
   getRegistration<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>
-  ): ServiceRegistration | undefined {
+  ): ServiceRegistration<TServiceType> | undefined {
     return this.registrations.get(token);
   }
 
@@ -268,7 +273,7 @@ export class ServiceRegistry {
    * @returns Map of all registrations
    */
   getAllRegistrations(): Map<InjectionToken<ServiceType>, ServiceRegistration> {
-    return new Map(this.registrations); // Defensive copy
+    return new Map(this.registrations.entries()); // Defensive copy
   }
 
   /**
@@ -317,8 +322,11 @@ export class ServiceRegistry {
     const clonedRegistry = new ServiceRegistry();
 
     // Create new Map with cloned ServiceRegistration objects
+    /* type-coverage:ignore-next-line -- Type narrowing: Map.entries() loses generic type information during iteration */
     for (const [token, registration] of this.registrations.entries()) {
-      clonedRegistry.registrations.set(token, registration.clone());
+      const typedToken = token as InjectionToken<ServiceType>;
+      const typedRegistration = registration as ServiceRegistration<ServiceType>;
+      clonedRegistry.registrations.set(typedToken, typedRegistration.clone());
     }
 
     // Clone lifecycle index

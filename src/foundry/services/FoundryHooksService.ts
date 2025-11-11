@@ -2,12 +2,13 @@ import type { Result } from "@/types/result";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { FoundryHookCallback } from "@/foundry/types";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
-import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
 import type { Logger } from "@/interfaces/logger";
-import { PortSelector } from "@/foundry/versioning/portselector";
-import { PortRegistry } from "@/foundry/versioning/portregistry";
+import type { PortSelector } from "@/foundry/versioning/portselector";
+import type { PortRegistry } from "@/foundry/versioning/portregistry";
+import type { RetryService } from "@/services/RetryService";
 import { portSelectorToken, foundryHooksPortRegistryToken } from "@/foundry/foundrytokens";
-import { loggerToken } from "@/tokens/tokenindex";
+import { loggerToken, retryServiceToken } from "@/tokens/tokenindex";
+import { FoundryServiceBase } from "./FoundryServiceBase";
 
 /**
  * Type-safe interface for Foundry Hooks with dynamic hook names.
@@ -23,14 +24,16 @@ interface DynamicHooksApi {
  * Service wrapper for FoundryHooks that automatically selects the appropriate port
  * based on the current Foundry version.
  *
- * Implements Disposable to clean up registered hooks when the container is disposed.
+ * Extends FoundryServiceBase but maintains its own dispose() logic for hook cleanup.
  */
-export class FoundryHooksService implements FoundryHooks, Disposable {
-  static dependencies = [portSelectorToken, foundryHooksPortRegistryToken, loggerToken] as const;
+export class FoundryHooksService extends FoundryServiceBase<FoundryHooks> implements FoundryHooks {
+  static dependencies = [
+    portSelectorToken,
+    foundryHooksPortRegistryToken,
+    retryServiceToken,
+    loggerToken,
+  ] as const;
 
-  private port: FoundryHooks | null = null;
-  private readonly portSelector: PortSelector;
-  private readonly portRegistry: PortRegistry<FoundryHooks>;
   private readonly logger: Logger;
   private registeredHooks = new Map<string, Map<number, FoundryHookCallback>>();
   // Bidirectional mapping: callback function -> array of hook registrations (supports reused callbacks)
@@ -39,56 +42,28 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundryHooks>,
+    retryService: RetryService,
     logger: Logger
   ) {
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
+    super(portSelector, portRegistry, retryService);
     this.logger = logger;
   }
 
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  private getPort(): Result<FoundryHooks, FoundryError> {
-    if (this.port === null) {
-      // Get factories (not instances) to avoid eager instantiation
-      const factories = this.portRegistry.getFactories();
-
-      // Use PortSelector with factory-based selection
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        undefined,
-        "FoundryHooks"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-
   on(hookName: string, callback: FoundryHookCallback): Result<number, FoundryError> {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-
-    const result = portResult.value.on(hookName, callback);
+    const result = this.withRetry(() => {
+      const portResult = this.getPort("FoundryHooks");
+      if (!portResult.ok) return portResult;
+      return portResult.value.on(hookName, callback);
+    }, "FoundryHooks.on");
 
     if (result.ok) {
       // Track registered hook for cleanup (both directions)
-      if (!this.registeredHooks.has(hookName)) {
-        this.registeredHooks.set(hookName, new Map());
+      let hookMap = this.registeredHooks.get(hookName);
+      if (!hookMap) {
+        hookMap = new Map();
+        this.registeredHooks.set(hookName, hookMap);
       }
-      // Hook map is created above when missing; bang assertion is safe
-      /* type-coverage:ignore-next-line */
-      this.registeredHooks.get(hookName)!.set(result.value, callback);
+      hookMap.set(result.value, callback);
 
       // Support multiple registrations of the same callback
       const existing = this.callbackToIdMap.get(callback) || [];
@@ -100,19 +75,21 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
   }
 
   once(hookName: string, callback: FoundryHookCallback): Result<number, FoundryError> {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-
     // once() hooks are automatically deregistered by Foundry after firing
     // No tracking needed - they clean themselves up
-    return portResult.value.once(hookName, callback);
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryHooks");
+      if (!portResult.ok) return portResult;
+      return portResult.value.once(hookName, callback);
+    }, "FoundryHooks.once");
   }
 
   off(hookName: string, callbackOrId: FoundryHookCallback | number): Result<void, FoundryError> {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-
-    const result = portResult.value.off(hookName, callbackOrId);
+    const result = this.withRetry(() => {
+      const portResult = this.getPort("FoundryHooks");
+      if (!portResult.ok) return portResult;
+      return portResult.value.off(hookName, callbackOrId);
+    }, "FoundryHooks.off");
 
     if (result.ok) {
       // Remove from tracked hooks (handle both ID and callback variants)
@@ -170,7 +147,7 @@ export class FoundryHooksService implements FoundryHooks, Disposable {
    * Cleans up all registered hooks.
    * Called automatically when the container is disposed.
    */
-  dispose(): void {
+  override dispose(): void {
     // Iterate through all callbacks and their registrations
     for (const [callback, hookInfos] of this.callbackToIdMap) {
       for (const info of hookInfos) {

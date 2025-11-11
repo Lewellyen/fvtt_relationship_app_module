@@ -112,5 +112,17 @@ describe("Trace Utilities", () => {
 
       expect(timestamp).toBeNull();
     });
+
+    it("should return null when timestamp part is empty", () => {
+      const timestamp = getTraceTimestamp("-abc123de");
+
+      expect(timestamp).toBeNull();
+    });
+
+    it("should return null when random part is empty", () => {
+      const timestamp = getTraceTimestamp("1234567890-");
+
+      expect(timestamp).toBeNull();
+    });
   });
 });

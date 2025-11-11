@@ -166,12 +166,8 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
    */
   getSnapshot(): MetricsSnapshot {
     // Calculate average from circular buffer
-    let sum = 0;
-    for (let i = 0; i < this.resolutionTimesCount; i++) {
-      // Entries up to resolutionTimesCount are explicitly written before incrementing the counter
-      /* type-coverage:ignore-next-line */
-      sum += this.resolutionTimes[i]!;
-    }
+    const times = this.resolutionTimes.slice(0, this.resolutionTimesCount);
+    const sum = times.reduce((acc, time) => acc + time, 0);
     const avgTime = this.resolutionTimesCount > 0 ? sum / this.resolutionTimesCount : 0;
 
     const totalCacheAccess = this.metrics.cacheHits + this.metrics.cacheMisses;

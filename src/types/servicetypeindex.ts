@@ -28,6 +28,9 @@ import type { ModuleSettingsRegistrar } from "@/core/module-settings-registrar";
 import type { ModuleHookRegistrar } from "@/core/module-hook-registrar";
 import type { RenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
 import type { ModuleApiInitializer } from "@/core/api/module-api-initializer";
+import type { ContainerHealthCheck } from "@/core/health/container-health-check";
+import type { MetricsHealthCheck } from "@/core/health/metrics-health-check";
+import type { HealthCheckRegistry } from "@/core/health/health-check-registry";
 
 /**
  * Union type representing all registered service types in the application.
@@ -70,4 +73,7 @@ export type ServiceType =
   | ModuleSettingsRegistrar
   | ModuleHookRegistrar
   | RenderJournalDirectoryHook
-  | ModuleApiInitializer;
+  | ModuleApiInitializer
+  | ContainerHealthCheck
+  | MetricsHealthCheck
+  | HealthCheckRegistry;

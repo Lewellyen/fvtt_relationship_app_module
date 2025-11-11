@@ -88,4 +88,10 @@ export class FoundryHooksPortV13 implements FoundryHooks {
         )
     );
   }
+
+  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
+  dispose(): void {
+    // No resources to clean up
+  }
+  /* c8 ignore stop */
 }

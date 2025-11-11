@@ -133,6 +133,7 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
     on: vi.fn().mockReturnValue({ ok: true as const, value: 1 }),
     once: vi.fn().mockReturnValue({ ok: true as const, value: 1 }),
     off: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
+    dispose: vi.fn(),
   };
 
   const mockJournalService = {

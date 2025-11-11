@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { FoundryDocumentPortV13 } from "../FoundryDocumentPort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import * as v from "valibot";
 
 describe("FoundryDocumentPortV13", () => {
   let port: FoundryDocumentPortV13;
@@ -13,12 +14,12 @@ describe("FoundryDocumentPortV13", () => {
   });
 
   describe("getFlag", () => {
-    it("should get flag value successfully", () => {
+    it("should get flag value successfully with schema validation", () => {
       const document = {
         getFlag: vi.fn(() => "flag-value"),
       };
 
-      const result = port.getFlag(document, "scope", "key");
+      const result = port.getFlag(document, "scope", "key", v.string());
       expectResultOk(result);
       expect(result.value).toBe("flag-value");
       expect(document.getFlag).toHaveBeenCalledWith("scope", "key");
@@ -29,15 +30,56 @@ describe("FoundryDocumentPortV13", () => {
         getFlag: vi.fn(() => undefined),
       };
 
-      const result = port.getFlag(document, "scope", "key");
+      const result = port.getFlag(document, "scope", "key", v.string());
       expectResultOk(result);
       expect(result.value).toBeNull();
+    });
+
+    it("should return null for null flag", () => {
+      const document = {
+        getFlag: vi.fn(() => null),
+      };
+
+      const result = port.getFlag(document, "scope", "key", v.boolean());
+      expectResultOk(result);
+      expect(result.value).toBeNull();
+    });
+
+    it("should validate flag value and return error if validation fails", () => {
+      const document = {
+        getFlag: vi.fn(() => "not-a-number"),
+      };
+
+      const result = port.getFlag(document, "scope", "key", v.number());
+      expectResultErr(result);
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+      expect(result.error.message).toContain("failed validation");
+    });
+
+    it("should accept valid boolean flags", () => {
+      const document = {
+        getFlag: vi.fn(() => true),
+      };
+
+      const result = port.getFlag(document, "scope", "hidden", v.boolean());
+      expectResultOk(result);
+      expect(result.value).toBe(true);
+    });
+
+    it("should reject invalid boolean flags", () => {
+      const document = {
+        getFlag: vi.fn(() => "yes"),
+      };
+
+      const result = port.getFlag(document, "scope", "hidden", v.boolean());
+      expectResultErr(result);
+      expect(result.error.code).toBe("VALIDATION_FAILED");
     });
 
     it("should handle missing getFlag method", () => {
       const document = {} as any;
 
-      const result = port.getFlag(document, "scope", "key");
+      const result = port.getFlag(document, "scope", "key", v.string());
       expectResultErr(result);
       expect(result.error.code).toBe("OPERATION_FAILED");
       expect(result.error.message).toContain("Failed to get flag");
@@ -50,7 +92,7 @@ describe("FoundryDocumentPortV13", () => {
         }),
       };
 
-      const result = port.getFlag(document, "scope", "key");
+      const result = port.getFlag(document, "scope", "key", v.string());
       expectResultErr(result);
       expect(result.error.code).toBe("OPERATION_FAILED");
       expect(result.error.message).toContain("Failed to get flag");

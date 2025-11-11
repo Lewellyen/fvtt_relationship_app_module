@@ -1,5 +1,6 @@
 import type { Result } from "@/types/result";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
 
 /**
  * Interface for Foundry's internationalization (i18n) API.
@@ -9,9 +10,11 @@ import type { FoundryError } from "@/foundry/errors/FoundryErrors";
  * - Testability without Foundry runtime
  * - Result-pattern instead of exceptions
  *
+ * Extends Disposable for consistent resource cleanup across all ports.
+ *
  * @see https://foundryvtt.com/api/Localization.html
  */
-export interface FoundryI18n {
+export interface FoundryI18n extends Disposable {
   /**
    * Localize a string using Foundry's translation system.
    *

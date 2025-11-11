@@ -1,56 +1,28 @@
 import type { Result } from "@/types/result";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
-import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
-import { PortSelector } from "@/foundry/versioning/portselector";
-import { PortRegistry } from "@/foundry/versioning/portregistry";
+import type { PortSelector } from "@/foundry/versioning/portselector";
+import type { PortRegistry } from "@/foundry/versioning/portregistry";
+import type { RetryService } from "@/services/RetryService";
 import { portSelectorToken, foundryUIPortRegistryToken } from "@/foundry/foundrytokens";
+import { retryServiceToken } from "@/tokens/tokenindex";
+import { FoundryServiceBase } from "./FoundryServiceBase";
 
 /**
  * Service wrapper for FoundryUI that automatically selects the appropriate port
  * based on the current Foundry version.
  *
- * Implements Disposable for resource cleanup consistency.
+ * Extends FoundryServiceBase for consistent port selection and retry logic.
  */
-export class FoundryUIService implements FoundryUI, Disposable {
-  static dependencies = [portSelectorToken, foundryUIPortRegistryToken] as const;
+export class FoundryUIService extends FoundryServiceBase<FoundryUI> implements FoundryUI {
+  static dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken] as const;
 
-  private port: FoundryUI | null = null;
-  private readonly portSelector: PortSelector;
-  private readonly portRegistry: PortRegistry<FoundryUI>;
-
-  constructor(portSelector: PortSelector, portRegistry: PortRegistry<FoundryUI>) {
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-  }
-
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
-   *
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  private getPort(): Result<FoundryUI, FoundryError> {
-    if (this.port === null) {
-      // Get factories (not instances) to avoid eager instantiation
-      const factories = this.portRegistry.getFactories();
-
-      // Use PortSelector with factory-based selection
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        undefined,
-        "FoundryUI"
-      );
-      if (!portResult.ok) {
-        return portResult;
-      }
-
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
+  constructor(
+    portSelector: PortSelector,
+    portRegistry: PortRegistry<FoundryUI>,
+    retryService: RetryService
+  ) {
+    super(portSelector, portRegistry, retryService);
   }
 
   removeJournalElement(
@@ -58,36 +30,26 @@ export class FoundryUIService implements FoundryUI, Disposable {
     journalName: string,
     html: HTMLElement
   ): Result<void, FoundryError> {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.removeJournalElement(journalId, journalName, html);
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.removeJournalElement(journalId, journalName, html);
+    }, "FoundryUI.removeJournalElement");
   }
 
   findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, FoundryError> {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.findElement(container, selector);
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.findElement(container, selector);
+    }, "FoundryUI.findElement");
   }
 
   notify(message: string, type: "info" | "warning" | "error"): Result<void, FoundryError> {
-    const portResult = this.getPort();
-    if (!portResult.ok) return portResult;
-    return portResult.value.notify(message, type);
-  }
-
-  /**
-   * Cleans up resources.
-   * Resets the port reference to allow garbage collection.
-   */
-  dispose(): void {
-    // Dispose port if it implements Disposable interface
-    /* c8 ignore start -- Defensive: Ports do not currently implement dispose(); reserved for future extensions */
-    if (this.port && "dispose" in this.port && typeof this.port.dispose === "function") {
-      // Double cast narrows from generic ServiceType to Disposable for runtime cleanup
-      /* type-coverage:ignore-next-line */
-      (this.port as unknown as Disposable).dispose();
-    }
-    /* c8 ignore stop */
-    this.port = null;
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.notify(message, type);
+    }, "FoundryUI.notify");
   }
 }

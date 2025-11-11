@@ -125,8 +125,6 @@ export class PortRegistry<T> {
    */
   getHighestVersion(): number | undefined {
     const versions = this.getAvailableVersions();
-    // getAvailableVersions returns a sorted array; when non-empty last element is defined
-    /* type-coverage:ignore-next-line */
-    return versions.length > 0 ? versions[versions.length - 1]! : undefined;
+    return versions.at(-1);
   }
 }
