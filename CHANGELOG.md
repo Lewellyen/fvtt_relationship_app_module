@@ -12,6 +12,26 @@
 
 ### Upgrade-Hinweise
 
+## [0.12.2] - 2025-11-11
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **GitHub Actions: CI-Workflow Doppelausführung verhindert** (.github/workflows/ci.yml)
+- Tag-Trigger entfernt, da dieser zu doppelten Workflow-Runs führte (Branch-Push + Tag-Push)
+- CI läuft jetzt nur noch bei Branch-Pushes auf main/develop
+- Release-Job prüft via `if`-Bedingung ob ein Tag vorhanden ist
+- **Wichtig**: Bei Releases Branch und Tag zusammen pushen (`git push origin main --tags`)
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.12.1] - 2025-11-10
 ### Hinzugefügt
 - Keine Einträge
