@@ -22,10 +22,11 @@
 ## 📦 Service-Kategorien
 
 ### Core Infrastructure (Layer 2)
-- **MetricsCollector** - Metrics-Sammlung
-- **ConsoleLoggerService** - Logging mit Trace-IDs (Self-Configuring via EnvironmentConfig)
-- **ModuleHealthService** - Health Checks
-- **ObservabilityRegistry** ⭐ NEW - Zentraler Hub für Self-Registration Pattern
+- **MetricsCollector** - Metrics-Sammlung & Observability
+- **ConsoleLoggerService** - Logging mit automatischer Trace-ID-Injection (Factory-basiert)
+- **TraceContext** ⭐ NEW v0.15.0 - Automatische Trace-ID-Propagation & Context Management
+- **ModuleHealthService** - Health Checks mit HealthCheckRegistry
+- **ObservabilityRegistry** - Zentraler Hub für Self-Registration Pattern
 
 ### Foundry Adapters (Layer 3)
 - **PortSelector** - Version-agnostische Port-Selektion (mit Self-Registration)
@@ -47,10 +48,11 @@
 - **I18nFacadeService** - i18n Facade (Foundry + Local)
 - **FoundryJournalFacade** - Journal-Operations-Facade
 
-### Utilities
-- **PerformanceTrackingService** - Performance Tracking
-- **RetryService** - Retry-Logik mit Exponential Backoff
+### Utilities & Services
+- **PerformanceTrackingService** - Performance Tracking mit Sampling
+- **RetryService** - Retry-Logik mit Exponential Backoff (Options-Object-API)
 - **LocalI18nService** - Foundry-unabhängiges i18n
+- **HealthCheckRegistry** - Extensible Health Check System
 
 ---
 
@@ -82,12 +84,14 @@ src/config/
 import { 
   loggerToken, 
   metricsCollectorToken,
+  traceContextToken,                 // ⭐ NEW v0.15.0
   observabilityRegistryToken,        // ⭐ NEW v0.8.0
   portSelectionEventEmitterToken     // ⭐ NEW v0.8.0
 } from "@/tokens/tokenindex";
 
 const logger = container.resolve(loggerToken);
 const metrics = container.resolve(metricsCollectorToken);
+const traceContext = container.resolve(traceContextToken);            // NEW
 const observability = container.resolve(observabilityRegistryToken);  // NEW
 ```
 
@@ -292,19 +296,53 @@ const result = await retryService.retry(
 ```
 
 ### 3. Trace-IDs für Request-Correlation
+
+#### ⭐ NEU: Automatische Trace-ID-Propagation (v0.15.0)
+```typescript
+import { traceContextToken } from "@/tokens/tokenindex";
+
+const traceContext = container.resolve(traceContextToken);
+
+// Automatische Trace-ID-Propagation (empfohlen)
+traceContext.trace(() => {
+  logger.info("Starting operation");      // [auto-generated] Starting operation
+  doSomething();                          // Nested calls sehen gleiche Trace-ID
+  logger.info("Operation completed");     // [auto-generated] Operation completed
+}, { operationName: "myOperation" });
+
+// Async operations
+await traceContext.traceAsync(async () => {
+  logger.info("Async start");
+  const result = await fetchData();
+  logger.info("Async complete");
+}, "custom-trace-id");
+
+// Nested traces (verschiedene IDs)
+traceContext.trace(() => {
+  logger.info("Outer");
+  traceContext.trace(() => {
+    logger.info("Inner");  // Andere Trace-ID
+  });
+  logger.info("Back to outer");
+});
+```
+
+#### Alternative: Explizites withTraceId() (weiterhin vollständig unterstützt)
 ```typescript
 import { generateTraceId } from "@/utils/observability/trace";
 
+// Explizite Trace-ID-Weitergabe via withTraceId()
 const traceId = generateTraceId();
 const tracedLogger = logger.withTraceId(traceId);
 
 tracedLogger.info("Starting operation");
-// [1699876543210-abc123def456] Starting operation
-
-await doSomethingAsync(tracedLogger);  // Pass traced logger down
-
+await doSomethingAsync(tracedLogger);  // Logger weitergeben
 tracedLogger.info("Operation completed");
-// [1699876543210-abc123def456] Operation completed
+
+// Nützlich wenn:
+// - Trace-ID von extern kommt (z.B. HTTP-Header)
+// - Volle Kontrolle über Trace-ID-Lifecycle gewünscht
+// - Logger explizit weitergegeben werden soll
 ```
 
 ---
@@ -396,7 +434,8 @@ if (result.ok) {
 | Service | Dependencies | Layer |
 |---------|--------------|-------|
 | **ENV** | - | 0 (Config) |
-| **Logger** | ENV | 2 (Infrastructure) |
+| **TraceContext** ⭐ NEW | - | 2 (Infrastructure) |
+| **Logger** | ENV, TraceContext (optional) | 2 (Infrastructure) |
 | **Metrics** | ENV | 2 (Infrastructure) |
 | **PortSelector** | - | 3 (Foundry Adapter) |
 | **FoundryGameService** | PortSelector, PortRegistry | 3 (Foundry Adapter) |
@@ -431,33 +470,37 @@ if (result.ok) {
 
 ### Sofort umsetzbar (Breaking Changes erlaubt!)
 
-#### 1. 🔴 Base Class für Foundry Services (HOCH)
+#### 1. ✅ Base Class für Foundry Services (ABGESCHLOSSEN)
 - **Warum:** Code-Duplikation eliminieren (~120 Zeilen)
-- **Aufwand:** 2-4h
-- **Dateien:** `src/foundry/services/*.ts`
-- **Breaking Changes:** Minimal (nur Implementation)
-- **Status:** ✅ Sofort starten
+- **Aufwand:** Bereits umgesetzt
+- **Dateien:** `src/foundry/services/FoundryServiceBase.ts`
+- **Breaking Changes:** Nur Implementation
+- **Status:** ✅ **Implementiert** - Alle Services nutzen FoundryServiceBase
 
-#### 2. 🔴 Health-Check-Registry (HOCH)
+#### 2. ✅ Health-Check-Registry (ABGESCHLOSSEN)
 - **Warum:** Container Self-Reference eliminieren, bessere Architektur
-- **Aufwand:** 4-6h
-- **Dateien:** `src/observability/health/*.ts`, `src/core/module-health-service.ts`
-- **Breaking Changes:** ✅ Erlaubt
-- **Status:** ✅ Sofort starten (vor 1.0.0!)
+- **Aufwand:** Bereits umgesetzt
+- **Dateien:** `src/core/health/health-check-registry.ts`, `src/core/module-health-service.ts`
+- **Breaking Changes:** Umgesetzt
+- **Status:** ✅ **Implementiert** - HealthCheckRegistry-Pattern vollständig implementiert
 
-#### 3. 🟡 Trace-Context-Manager (MITTEL)
-- **Warum:** Developer Experience verbessern
-- **Aufwand:** 4-8h
-- **Dateien:** `src/observability/trace-context.ts`
-- **Breaking Changes:** Minimal (additive API)
-- **Status:** ✅ Nächste Iteration
+#### 3. ✅ Trace-Context-Manager (ABGESCHLOSSEN v0.15.0)
+- **Warum:** Developer Experience verbessern - keine manuelle Trace-ID-Weitergabe mehr nötig
+- **Aufwand:** ~6h (abgeschlossen)
+- **Dateien:** `src/observability/trace/TraceContext.ts`, Logger-Factory-Integration
+- **Breaking Changes:** Keine (additive API, Logger als Factory statt Class)
+- **Status:** ✅ **Implementiert**
+  - TraceContext Service mit `trace()`, `traceAsync()`, `getCurrentTraceId()`
+  - Logger auto-injiziert Trace-IDs aus aktuellem Context
+  - +50 Tests (1026 → 1076) mit dispose() & edge case coverage
+  - `withTraceId()` bleibt vollwertig als explizite Alternative
 
-#### 4. 🟡 Retry-Service Legacy API entfernen (MITTEL)
+#### 4. ✅ Retry-Service API (BEREITS CLEAN)
 - **Warum:** Type Safety verbessern, API vereinfachen
-- **Aufwand:** 1-2h
+- **Aufwand:** Bereits umgesetzt in v0.9.0
 - **Dateien:** `src/services/RetryService.ts`
-- **Breaking Changes:** ✅ Erlaubt
-- **Status:** ✅ Nächste Iteration
+- **Breaking Changes:** Bereits umgesetzt (v0.9.0)
+- **Status:** ✅ **Clean** - Nur noch moderne Options-Object-API vorhanden
 
 ### Später
 
@@ -481,17 +524,21 @@ if (result.ok) {
 ### 📅 Empfohlener Zeitplan (vor 1.0.0)
 
 **Sprint 1 (6-10h):**
-- Base Class für Foundry Services
-- Health-Check-Registry
+- ✅ Base Class für Foundry Services (bereits umgesetzt - FoundryServiceBase existiert)
+- ✅ Health-Check-Registry (bereits umgesetzt - HealthCheckRegistry existiert)
 
-**Sprint 2 (5-10h):**
-- Trace-Context-Manager
-- Retry-Service Legacy API entfernen
+**Sprint 2:**
+- ✅ Trace-Context-Manager (abgeschlossen v0.15.0)
+- ✅ Retry-Service API (bereits clean seit v0.9.0)
 
 **Sprint 3 (optional, 4-8h):**
-- Metrics Persistierung
+- Metrics Persistierung (bei Bedarf)
 
-**Gesamt:** ~15-28h für alle Architektur-Verbesserungen
+**Status:** ✅ **Alle kritischen Refactorings abgeschlossen!**
+- Base Class: ✅ Implementiert
+- Health-Check-Registry: ✅ Implementiert
+- Trace-Context-Manager: ✅ Implementiert v0.15.0
+- Retry-Service API: ✅ Clean
 
 ---
 

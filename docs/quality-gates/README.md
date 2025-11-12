@@ -20,7 +20,7 @@ Diese Dokumentation beschreibt alle Qualitätssicherungs-Ausnahmen (Quality Gate
 | **Type Coverage** | ✅ 100% | 9429 / 9429 | 29 exclusions | [type-coverage-exclusions.md](./type-coverage-exclusions.md) |
 | **ESLint** | ✅ 100% | 0 errors | 94 disables | [linter-exclusions.md](./linter-exclusions.md) |
 | **Code Coverage** | ✅ 100% | 100% Lines/Stmts, 100% Branches, 100% Functions | ~119 lines (101 markers) | [code-coverage-exclusions.md](./code-coverage-exclusions.md) |
-| **Unit Tests** | ✅ 100% | 1026 tests passed | - | `npm test` |
+| **Unit Tests** | ✅ 100% | 1076 tests passed | - | `npm test` |
 
 ---
 

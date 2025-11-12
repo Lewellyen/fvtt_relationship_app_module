@@ -3,6 +3,7 @@ import { MODULE_CONSTANTS } from "../constants";
 import { LogLevel } from "@/config/environment";
 import type { EnvironmentConfig } from "@/config/environment";
 import { environmentConfigToken } from "@/tokens/tokenindex";
+import type { TraceContext } from "@/observability/trace/TraceContext";
 
 /**
  * Traced logger wrapper that includes a trace ID in all log messages.
@@ -79,18 +80,51 @@ class TracedLogger implements Logger {
  * Self-configuring: Receives EnvironmentConfig as dependency and initializes
  * log level from environment configuration.
  *
+ * Optionally supports TraceContext for automatic trace ID injection.
+ * When TraceContext is available and a trace is active, log messages will
+ * automatically include the trace ID without requiring explicit withTraceId() calls.
+ *
  * @implements {Logger}
  */
 export class ConsoleLoggerService implements Logger {
   static dependencies = [environmentConfigToken] as const;
   private minLevel: LogLevel;
+  private traceContext: TraceContext | null = null;
 
   /**
    * Creates a new ConsoleLoggerService.
    * @param env - Environment configuration (provides initial log level)
+   * @param traceContext - Optional TraceContext for automatic trace ID injection
    */
-  constructor(env: EnvironmentConfig) {
+  constructor(env: EnvironmentConfig, traceContext?: TraceContext) {
     this.minLevel = env.logLevel;
+    this.traceContext = traceContext ?? null;
+  }
+
+  /**
+   * Gets the effective trace ID to use for logging.
+   * Returns null if no trace context is active.
+   *
+   * @returns Current trace ID from context, or null
+   * @private
+   */
+  private getContextTraceId(): string | null {
+    return this.traceContext?.getCurrentTraceId() ?? null;
+  }
+
+  /**
+   * Formats a message with trace ID if available from context.
+   *
+   * @param message - Original message
+   * @returns Formatted message with trace ID prefix if context is active
+   * @private
+   */
+  private formatWithContextTrace(message: string): string {
+    const contextTraceId = this.getContextTraceId();
+    if (contextTraceId) {
+      return `[${contextTraceId}] ${message}`;
+    }
+    return message;
   }
 
   /**
@@ -102,17 +136,20 @@ export class ConsoleLoggerService implements Logger {
   }
 
   /**
-   * Log a message to console
+   * Log a message to console.
+   * Automatically includes trace ID from context if available.
    * @param message - Message to log
    * @param optionalParams - Additional data to log (objects will be interactive in browser console)
    */
   log(message: string, ...optionalParams: unknown[]): void {
     // Log has no specific level, always output
-    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
+    const formattedMessage = this.formatWithContextTrace(message);
+    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
 
   /**
-   * Log an error message
+   * Log an error message.
+   * Automatically includes trace ID from context if available.
    * @param message - Error message to log
    * @param optionalParams - Additional data to log (e.g., error objects, stack traces)
    */
@@ -120,42 +157,52 @@ export class ConsoleLoggerService implements Logger {
     /* c8 ignore start -- Branch: Log level filtering tested in other methods; error just delegates */
     if (LogLevel.ERROR < this.minLevel) return;
     /* c8 ignore stop */
-    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
+    const formattedMessage = this.formatWithContextTrace(message);
+    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
 
   /**
-   * Log a warning message
+   * Log a warning message.
+   * Automatically includes trace ID from context if available.
    * @param message - Warning message to log
    * @param optionalParams - Additional data to log
    */
   warn(message: string, ...optionalParams: unknown[]): void {
     if (LogLevel.WARN < this.minLevel) return;
-    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
+    const formattedMessage = this.formatWithContextTrace(message);
+    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
 
   /**
-   * Log an info message
+   * Log an info message.
+   * Automatically includes trace ID from context if available.
    * @param message - Info message to log
    * @param optionalParams - Additional data to log
    */
   info(message: string, ...optionalParams: unknown[]): void {
     if (LogLevel.INFO < this.minLevel) return;
-    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
+    const formattedMessage = this.formatWithContextTrace(message);
+    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
 
   /**
-   * Log a debug message
+   * Log a debug message.
+   * Automatically includes trace ID from context if available.
    * @param message - Debug message to log
    * @param optionalParams - Additional data to log (useful for inspecting complex objects)
    */
   debug(message: string, ...optionalParams: unknown[]): void {
     if (LogLevel.DEBUG < this.minLevel) return;
-    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${message}`, ...optionalParams);
+    const formattedMessage = this.formatWithContextTrace(message);
+    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
 
   /**
    * Creates a scoped logger that includes a trace ID in all log messages.
    * The trace ID helps correlate log entries across related operations.
+   *
+   * Explicit trace IDs from withTraceId() take precedence over automatic
+   * trace IDs from TraceContext.
    *
    * @param traceId - Unique trace ID to include in log messages
    * @returns A new Logger instance that includes the trace ID in all messages

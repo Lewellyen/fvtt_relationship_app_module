@@ -4,6 +4,7 @@ import type { JournalVisibilityService } from "@/services/JournalVisibilityServi
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import type { MetricsRecorder } from "@/observability/interfaces/metrics-recorder";
 import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
+import type { TraceContext } from "@/observability/trace/TraceContext";
 import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import type { LocalI18nService } from "@/services/LocalI18nService";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
@@ -83,6 +84,37 @@ export const metricsRecorderToken = createInjectionToken<MetricsRecorder>("Metri
  * ```
  */
 export const metricsSamplerToken = createInjectionToken<MetricsSampler>("MetricsSampler");
+
+/**
+ * Injection token for the TraceContext service.
+ *
+ * Provides automatic trace ID propagation across nested function calls.
+ * Eliminates the need to manually pass trace IDs through function parameters.
+ *
+ * **Key Features:**
+ * - Automatic trace ID generation
+ * - Context stacking for nested traces
+ * - Support for both sync and async operations
+ * - Integration with Logger for automatic trace ID injection
+ *
+ * @example
+ * ```typescript
+ * const traceContext = container.resolve(traceContextToken);
+ *
+ * // Automatic trace propagation
+ * traceContext.trace(() => {
+ *   logger.info("Starting operation"); // Automatically traced
+ *   doSomething(); // Nested calls see the same trace ID
+ * });
+ *
+ * // Async operation
+ * await traceContext.traceAsync(async () => {
+ *   const result = await fetchData();
+ *   return result;
+ * });
+ * ```
+ */
+export const traceContextToken = createInjectionToken<TraceContext>("TraceContext");
 
 /**
  * Injection token for the JournalVisibilityService.

@@ -8,6 +8,7 @@ import {
   metricsRecorderToken,
   metricsSamplerToken,
   loggerToken,
+  traceContextToken,
   moduleHealthServiceToken,
   moduleApiInitializerToken,
   healthCheckRegistryToken,
@@ -15,6 +16,7 @@ import {
 import { ENV } from "@/config/environment";
 import { MetricsCollector } from "@/observability/metrics-collector";
 import { ConsoleLoggerService } from "@/services/consolelogger";
+import { TraceContext } from "@/observability/trace/TraceContext";
 import { ModuleHealthService } from "@/core/module-health-service";
 import { ModuleApiInitializer } from "@/core/api/module-api-initializer";
 import { HealthCheckRegistry } from "@/core/health/health-check-registry";
@@ -26,7 +28,8 @@ import { HealthCheckRegistry } from "@/core/health/health-check-registry";
  * - EnvironmentConfig (singleton value)
  * - MetricsCollector (singleton)
  * - MetricsRecorder/MetricsSampler (aliases to MetricsCollector)
- * - Logger (singleton, self-configuring with EnvironmentConfig)
+ * - Logger (singleton, self-configuring with EnvironmentConfig, optional TraceContext)
+ * - TraceContext (singleton, deps: [loggerToken])
  * - HealthCheckRegistry (singleton)
  * - ContainerHealthCheck (singleton, auto-registered)
  * - MetricsHealthCheck (singleton, auto-registered)
@@ -36,11 +39,12 @@ import { HealthCheckRegistry } from "@/core/health/health-check-registry";
  * INITIALIZATION ORDER:
  * 1. EnvironmentConfig (no dependencies)
  * 2. MetricsCollector (deps: [environmentConfigToken])
- * 3. Logger (deps: [environmentConfigToken])
- * 4. HealthCheckRegistry (no dependencies)
- * 5. ContainerHealthCheck & MetricsHealthCheck (auto-register to registry)
- * 6. ModuleHealthService (deps: [healthCheckRegistryToken])
- * 7. ModuleApiInitializer (no dependencies)
+ * 3. TraceContext (no dependencies)
+ * 4. Logger (factory with deps: [environmentConfigToken, traceContextToken])
+ * 5. HealthCheckRegistry (no dependencies)
+ * 6. ContainerHealthCheck & MetricsHealthCheck (auto-register to registry)
+ * 7. ModuleHealthService (deps: [healthCheckRegistryToken])
+ * 8. ModuleApiInitializer (no dependencies)
  *
  * @param container - The service container to register services in
  * @returns Result indicating success or error with details
@@ -67,11 +71,41 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
   container.registerAlias(metricsRecorderToken, metricsCollectorToken);
   container.registerAlias(metricsSamplerToken, metricsCollectorToken);
 
-  // Register Logger (self-configuring with EnvironmentConfig dependency)
-  const loggerResult = container.registerClass(
-    loggerToken,
-    ConsoleLoggerService,
+  // Register TraceContext first (no dependencies)
+  // TraceContext must be registered before Logger to avoid circular dependency
+  const traceContextResult = container.registerClass(
+    traceContextToken,
+    TraceContext,
     ServiceLifecycle.SINGLETON
+  );
+  if (isErr(traceContextResult)) {
+    return err(`Failed to register TraceContext: ${traceContextResult.error.message}`);
+  }
+
+  // Register Logger with factory to inject TraceContext
+  // Factory allows optional TraceContext injection after it's created
+  // Must use resolveWithError() to respect API boundaries
+  const loggerResult = container.registerFactory(
+    loggerToken,
+    () => {
+      const envResult = container.resolveWithError(environmentConfigToken);
+      const traceContextResult = container.resolveWithError(traceContextToken);
+
+      if (!envResult.ok) {
+        throw new Error(
+          `Logger factory: Cannot resolve EnvironmentConfig: ${envResult.error.message}`
+        );
+      }
+      if (!traceContextResult.ok) {
+        throw new Error(
+          `Logger factory: Cannot resolve TraceContext: ${traceContextResult.error.message}`
+        );
+      }
+
+      return new ConsoleLoggerService(envResult.value, traceContextResult.value);
+    },
+    ServiceLifecycle.SINGLETON,
+    [environmentConfigToken, traceContextToken]
   );
   if (isErr(loggerResult)) {
     return err(`Failed to register Logger: ${loggerResult.error.message}`);

@@ -12,6 +12,33 @@
 
 ### Upgrade-Hinweise
 
+## [0.15.0] - 2025-11-12
+### Hinzugefügt
+- **TraceContext Service**: Automatische Trace-ID-Propagation für Observability ([Details](docs/QUICK-REFERENCE.md#tracecontext))
+- `trace()` für synchrone Operationen mit automatischer Trace-ID-Generierung
+- `traceAsync()` für asynchrone Operationen
+- `getCurrentTraceId()` für Zugriff auf aktuelle Trace-ID
+- Logger-Integration: Automatische Trace-ID-Injection ohne manuelle Weitergabe
+- Context-Stacking für verschachtelte Traces
+- Implementiert `Disposable` für ordnungsgemäßes Cleanup
+- +50 neue Tests (1026 → 1076)
+- Vollständig kompatibel: Explizites `withTraceId()` bleibt vollwertige Alternative
+
+### Geändert
+- **Logger Factory Registration**: Logger wird jetzt als Factory registriert (statt Class) um TraceContext-Injection zu ermöglichen ([Details](src/config/modules/core-services.config.ts))
+- Factory resolved TraceContext nach dessen Erstellung
+- Verhindert zirkuläre Abhängigkeit Logger ↔ TraceContext
+- Vollständig kompatibel: Logger funktioniert mit und ohne TraceContext
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.14.0] - 2025-11-12
 ### Hinzugefügt
 - **Code Coverage Refactoring - Phase 1, 2 & Defensive Guards**: 88 c8 ignore markers eliminiert (47.8% Reduktion) ([Details](docs/roadmaps/code-coverage-refactoring-roadmap.md))

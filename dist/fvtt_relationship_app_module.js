@@ -211,6 +211,7 @@ const loggerToken = createInjectionToken("Logger");
 const metricsCollectorToken = createInjectionToken("MetricsCollector");
 const metricsRecorderToken = createInjectionToken("MetricsRecorder");
 const metricsSamplerToken = createInjectionToken("MetricsSampler");
+const traceContextToken = createInjectionToken("TraceContext");
 const journalVisibilityServiceToken = createInjectionToken(
   "JournalVisibilityService"
 );
@@ -263,7 +264,8 @@ var tokenindex = /* @__PURE__ */ Object.freeze({
   portSelectionEventEmitterToken,
   portSelectorToken,
   renderJournalDirectoryHookToken,
-  retryServiceToken
+  retryServiceToken,
+  traceContextToken
 });
 const scriptRel = "modulepreload";
 const assetsURL = /* @__PURE__ */ __name(function(dep) {
@@ -2141,9 +2143,36 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
   /**
    * Creates a new ConsoleLoggerService.
    * @param env - Environment configuration (provides initial log level)
+   * @param traceContext - Optional TraceContext for automatic trace ID injection
    */
-  constructor(env) {
+  constructor(env, traceContext) {
+    this.traceContext = null;
     this.minLevel = env.logLevel;
+    this.traceContext = traceContext ?? null;
+  }
+  /**
+   * Gets the effective trace ID to use for logging.
+   * Returns null if no trace context is active.
+   *
+   * @returns Current trace ID from context, or null
+   * @private
+   */
+  getContextTraceId() {
+    return this.traceContext?.getCurrentTraceId() ?? null;
+  }
+  /**
+   * Formats a message with trace ID if available from context.
+   *
+   * @param message - Original message
+   * @returns Formatted message with trace ID prefix if context is active
+   * @private
+   */
+  formatWithContextTrace(message2) {
+    const contextTraceId = this.getContextTraceId();
+    if (contextTraceId) {
+      return `[${contextTraceId}] ${message2}`;
+    }
+    return message2;
   }
   /**
    * Sets the minimum log level. Messages below this level will be ignored.
@@ -2153,52 +2182,65 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
     this.minLevel = level;
   }
   /**
-   * Log a message to console
+   * Log a message to console.
+   * Automatically includes trace ID from context if available.
    * @param message - Message to log
    * @param optionalParams - Additional data to log (objects will be interactive in browser console)
    */
   log(message2, ...optionalParams) {
-    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${message2}`, ...optionalParams);
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
   /**
-   * Log an error message
+   * Log an error message.
+   * Automatically includes trace ID from context if available.
    * @param message - Error message to log
    * @param optionalParams - Additional data to log (e.g., error objects, stack traces)
    */
   error(message2, ...optionalParams) {
     if (LogLevel.ERROR < this.minLevel) return;
-    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${message2}`, ...optionalParams);
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
   /**
-   * Log a warning message
+   * Log a warning message.
+   * Automatically includes trace ID from context if available.
    * @param message - Warning message to log
    * @param optionalParams - Additional data to log
    */
   warn(message2, ...optionalParams) {
     if (LogLevel.WARN < this.minLevel) return;
-    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${message2}`, ...optionalParams);
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
   /**
-   * Log an info message
+   * Log an info message.
+   * Automatically includes trace ID from context if available.
    * @param message - Info message to log
    * @param optionalParams - Additional data to log
    */
   info(message2, ...optionalParams) {
     if (LogLevel.INFO < this.minLevel) return;
-    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${message2}`, ...optionalParams);
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
   /**
-   * Log a debug message
+   * Log a debug message.
+   * Automatically includes trace ID from context if available.
    * @param message - Debug message to log
    * @param optionalParams - Additional data to log (useful for inspecting complex objects)
    */
   debug(message2, ...optionalParams) {
     if (LogLevel.DEBUG < this.minLevel) return;
-    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${message2}`, ...optionalParams);
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
   /**
    * Creates a scoped logger that includes a trace ID in all log messages.
    * The trace ID helps correlate log entries across related operations.
+   *
+   * Explicit trace IDs from withTraceId() take precedence over automatic
+   * trace IDs from TraceContext.
    *
    * @param traceId - Unique trace ID to include in log messages
    * @returns A new Logger instance that includes the trace ID in all messages
@@ -2405,6 +2447,123 @@ const _MetricsCollector = class _MetricsCollector {
 __name(_MetricsCollector, "MetricsCollector");
 _MetricsCollector.dependencies = [environmentConfigToken];
 let MetricsCollector = _MetricsCollector;
+function generateTraceId() {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 10);
+  return `${timestamp}-${random}`;
+}
+__name(generateTraceId, "generateTraceId");
+function getTraceTimestamp(traceId) {
+  const parts = traceId.split("-");
+  if (parts.length !== 2) {
+    return null;
+  }
+  const [timestampStr, randomStr] = parts;
+  if (!timestampStr || !randomStr) {
+    return null;
+  }
+  const timestamp = parseInt(timestampStr, 10);
+  return isNaN(timestamp) ? null : timestamp;
+}
+__name(getTraceTimestamp, "getTraceTimestamp");
+const _TraceContext = class _TraceContext {
+  constructor() {
+    this.currentTraceId = null;
+  }
+  /**
+   * Executes a synchronous function with trace context.
+   *
+   * Automatically generates a trace ID if not provided.
+   * Maintains a context stack for nested traces.
+   * Ensures proper cleanup via try/finally.
+   *
+   * @template T - The return type of the function
+   * @param fn - Function to execute with trace context
+   * @param options - Trace options (trace ID, operation name, metadata)
+   * @returns The result of the function execution
+   *
+   * @example
+   * ```typescript
+   * const result = traceContext.trace(() => {
+   *   logger.info("Processing"); // Automatically traced
+   *   return processData();
+   * });
+   * ```
+   */
+  trace(fn, options) {
+    const opts = typeof options === "string" ? { traceId: options } : options;
+    const traceId = opts?.traceId ?? generateTraceId();
+    const previousTraceId = this.currentTraceId;
+    this.currentTraceId = traceId;
+    try {
+      return fn();
+    } finally {
+      this.currentTraceId = previousTraceId;
+    }
+  }
+  /**
+   * Executes an asynchronous function with trace context.
+   *
+   * Similar to trace() but for async operations.
+   * Automatically generates a trace ID if not provided.
+   * Maintains a context stack for nested traces.
+   * Ensures proper cleanup via try/finally.
+   *
+   * @template T - The return type of the async function
+   * @param fn - Async function to execute with trace context
+   * @param options - Trace options (trace ID, operation name, metadata)
+   * @returns Promise resolving to the result of the function execution
+   *
+   * @example
+   * ```typescript
+   * const result = await traceContext.traceAsync(async () => {
+   *   logger.info("Fetching data"); // Automatically traced
+   *   return await fetchData();
+   * });
+   * ```
+   */
+  async traceAsync(fn, options) {
+    const opts = typeof options === "string" ? { traceId: options } : options;
+    const traceId = opts?.traceId ?? generateTraceId();
+    const previousTraceId = this.currentTraceId;
+    this.currentTraceId = traceId;
+    try {
+      return await fn();
+    } finally {
+      this.currentTraceId = previousTraceId;
+    }
+  }
+  /**
+   * Gets the current trace ID from the context stack.
+   *
+   * Returns null if not currently in a traced context.
+   * Useful for services that need to access the current trace ID
+   * without having it passed as a parameter.
+   *
+   * @returns Current trace ID or null if not in traced context
+   *
+   * @example
+   * ```typescript
+   * const traceId = traceContext.getCurrentTraceId();
+   * if (traceId) {
+   *   console.log(`Current trace: ${traceId}`);
+   * }
+   * ```
+   */
+  getCurrentTraceId() {
+    return this.currentTraceId;
+  }
+  /**
+   * Cleans up resources.
+   * For TraceContext, this resets the current trace ID.
+   */
+  dispose() {
+    this.currentTraceId = null;
+  }
+};
+__name(_TraceContext, "TraceContext");
+_TraceContext.dependencies = [];
+let TraceContext = _TraceContext;
 const _ModuleHealthService = class _ModuleHealthService {
   constructor(registry) {
     this.registry = registry;
@@ -2765,10 +2924,33 @@ function registerCoreServices(container) {
   }
   container.registerAlias(metricsRecorderToken, metricsCollectorToken);
   container.registerAlias(metricsSamplerToken, metricsCollectorToken);
-  const loggerResult = container.registerClass(
-    loggerToken,
-    ConsoleLoggerService,
+  const traceContextResult = container.registerClass(
+    traceContextToken,
+    TraceContext,
     ServiceLifecycle.SINGLETON
+  );
+  if (isErr(traceContextResult)) {
+    return err(`Failed to register TraceContext: ${traceContextResult.error.message}`);
+  }
+  const loggerResult = container.registerFactory(
+    loggerToken,
+    () => {
+      const envResult2 = container.resolveWithError(environmentConfigToken);
+      const traceContextResult2 = container.resolveWithError(traceContextToken);
+      if (!envResult2.ok) {
+        throw new Error(
+          `Logger factory: Cannot resolve EnvironmentConfig: ${envResult2.error.message}`
+        );
+      }
+      if (!traceContextResult2.ok) {
+        throw new Error(
+          `Logger factory: Cannot resolve TraceContext: ${traceContextResult2.error.message}`
+        );
+      }
+      return new ConsoleLoggerService(envResult2.value, traceContextResult2.value);
+    },
+    ServiceLifecycle.SINGLETON,
+    [environmentConfigToken, traceContextToken]
   );
   if (isErr(loggerResult)) {
     return err(`Failed to register Logger: ${loggerResult.error.message}`);

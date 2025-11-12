@@ -3,6 +3,7 @@ import { ConsoleLoggerService } from "../consolelogger";
 import { MODULE_CONSTANTS } from "@/constants";
 import { LogLevel } from "@/config/environment";
 import type { EnvironmentConfig } from "@/config/environment";
+import { TraceContext } from "@/observability/trace/TraceContext";
 
 describe("ConsoleLoggerService", () => {
   let logger: ConsoleLoggerService;
@@ -337,6 +338,154 @@ describe("ConsoleLoggerService", () => {
       expect(consoleInfoSpy).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Error message`
+      );
+    });
+  });
+
+  describe("TraceContext Integration", () => {
+    let traceContext: TraceContext;
+    let loggerWithContext: ConsoleLoggerService;
+
+    beforeEach(() => {
+      traceContext = new TraceContext();
+      loggerWithContext = new ConsoleLoggerService(mockEnv, traceContext);
+    });
+
+    it("should auto-inject trace ID from context when available", () => {
+      traceContext.trace(() => {
+        loggerWithContext.info("Message with auto trace");
+      }, "auto-trace-123");
+
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [auto-trace-123] Message with auto trace`
+      );
+    });
+
+    it("should log normally when no trace context is active", () => {
+      loggerWithContext.info("Message without trace");
+
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} Message without trace`
+      );
+    });
+
+    it("should auto-inject trace ID for all log levels", () => {
+      traceContext.trace(() => {
+        loggerWithContext.log("Log message");
+        loggerWithContext.error("Error message");
+        loggerWithContext.warn("Warn message");
+        loggerWithContext.info("Info message");
+        loggerWithContext.debug("Debug message");
+      }, "multi-level-trace");
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [multi-level-trace] Log message`
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [multi-level-trace] Error message`
+      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [multi-level-trace] Warn message`
+      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [multi-level-trace] Info message`
+      );
+      expect(consoleDebugSpy).not.toHaveBeenCalled(); // LogLevel.INFO filters out DEBUG
+    });
+
+    it("should work correctly with nested traces", () => {
+      traceContext.trace(() => {
+        loggerWithContext.info("Outer message");
+
+        traceContext.trace(() => {
+          loggerWithContext.info("Inner message");
+        }, "inner-trace");
+
+        loggerWithContext.info("Back to outer");
+      }, "outer-trace");
+
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
+        1,
+        `${MODULE_CONSTANTS.LOG_PREFIX} [outer-trace] Outer message`
+      );
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
+        2,
+        `${MODULE_CONSTANTS.LOG_PREFIX} [inner-trace] Inner message`
+      );
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
+        3,
+        `${MODULE_CONSTANTS.LOG_PREFIX} [outer-trace] Back to outer`
+      );
+    });
+
+    it("should work with async traces", async () => {
+      await traceContext.traceAsync(async () => {
+        loggerWithContext.info("Async message");
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        loggerWithContext.info("After delay");
+      }, "async-trace-456");
+
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
+        1,
+        `${MODULE_CONSTANTS.LOG_PREFIX} [async-trace-456] Async message`
+      );
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
+        2,
+        `${MODULE_CONSTANTS.LOG_PREFIX} [async-trace-456] After delay`
+      );
+    });
+
+    it("should work when TraceContext is not injected (backward compatibility)", () => {
+      const loggerWithoutContext = new ConsoleLoggerService(mockEnv);
+
+      loggerWithoutContext.info("Message without context injection");
+
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} Message without context injection`
+      );
+    });
+
+    it("should have both context and explicit trace when using withTraceId inside trace", () => {
+      traceContext.trace(() => {
+        const tracedLogger = loggerWithContext.withTraceId("explicit-trace");
+        tracedLogger.info("Message with explicit trace");
+      }, "context-trace");
+
+      // TracedLogger wraps the base logger which already has context trace
+      // So we get both: [context-trace] from base logger, then [explicit-trace] from TracedLogger
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [context-trace] [explicit-trace] Message with explicit trace`
+      );
+    });
+
+    it("should handle trace context with additional parameters", () => {
+      traceContext.trace(() => {
+        const obj = { data: "value" };
+        loggerWithContext.info("Message with data", obj);
+      }, "trace-with-params");
+
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [trace-with-params] Message with data`,
+        { data: "value" }
+      );
+    });
+
+    it("should restore context correctly after exception", () => {
+      traceContext.trace(() => {
+        try {
+          traceContext.trace(() => {
+            throw new Error("Inner error");
+          }, "inner-error-trace");
+        } catch {
+          // Swallow error
+        }
+
+        // Should be back to outer trace
+        loggerWithContext.info("After error");
+      }, "outer-error-trace");
+
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} [outer-error-trace] After error`
       );
     });
   });

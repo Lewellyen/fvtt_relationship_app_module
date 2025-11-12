@@ -95,22 +95,26 @@ describe("dependencyconfig", () => {
     it("should return error when logger registration fails", () => {
       const container = ServiceContainer.createRoot();
 
-      // Mock registerClass um Fehler zu provozieren
-      const registerClassSpy = vi.spyOn(container, "registerClass").mockImplementation((token) => {
-        if (token === loggerToken) {
-          return err({
-            code: "InvalidOperation",
-            message: "Mocked logger registration failure",
-          });
-        }
-        // Forward call to original method
-        return ServiceContainer.prototype.registerClass.call(
-          container,
-          token as any,
-          {} as any,
-          {} as any
-        );
-      });
+      // Logger is now registered as factory (v0.15.0 for TraceContext integration)
+      // Mock registerFactory instead of registerClass
+      const registerFactorySpy = vi
+        .spyOn(container, "registerFactory")
+        .mockImplementation((token, factory, lifecycle, deps) => {
+          if (token === loggerToken) {
+            return err({
+              code: "InvalidOperation",
+              message: "Mocked logger registration failure",
+            });
+          }
+          // Forward call to original method
+          return ServiceContainer.prototype.registerFactory.call(
+            container,
+            token as any,
+            factory as any,
+            lifecycle as any,
+            deps as any
+          );
+        });
 
       const result = configureDependencies(container);
       expectResultErr(result);
@@ -118,7 +122,7 @@ describe("dependencyconfig", () => {
         expect(result.error).toContain("Failed to register Logger");
       }
 
-      registerClassSpy.mockRestore();
+      registerFactorySpy.mockRestore();
     });
 
     it("should return error when port registry registration fails", () => {
