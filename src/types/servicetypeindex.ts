@@ -32,6 +32,7 @@ import type { ModuleApiInitializer } from "@/core/api/module-api-initializer";
 import type { ContainerHealthCheck } from "@/core/health/container-health-check";
 import type { MetricsHealthCheck } from "@/core/health/metrics-health-check";
 import type { HealthCheckRegistry } from "@/core/health/health-check-registry";
+import type { TranslationHandler } from "@/services/i18n/TranslationHandler.interface";
 
 /**
  * Union type representing all registered service types in the application.
@@ -78,4 +79,5 @@ export type ServiceType =
   | ModuleApiInitializer
   | ContainerHealthCheck
   | MetricsHealthCheck
-  | HealthCheckRegistry;
+  | HealthCheckRegistry
+  | TranslationHandler;

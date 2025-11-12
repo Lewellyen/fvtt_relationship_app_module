@@ -218,6 +218,14 @@ const journalVisibilityServiceToken = createInjectionToken(
 const foundryI18nToken = createInjectionToken("FoundryI18nService");
 const localI18nToken = createInjectionToken("LocalI18nService");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
+const foundryTranslationHandlerToken = createInjectionToken(
+  "FoundryTranslationHandler"
+);
+const localTranslationHandlerToken = createInjectionToken("LocalTranslationHandler");
+const fallbackTranslationHandlerToken = createInjectionToken(
+  "FallbackTranslationHandler"
+);
+const translationHandlerChainToken = createInjectionToken("TranslationHandlerChain");
 const environmentConfigToken = createInjectionToken("EnvironmentConfig");
 const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
 const healthCheckRegistryToken = createInjectionToken("HealthCheckRegistry");
@@ -245,11 +253,14 @@ var tokenindex = /* @__PURE__ */ Object.freeze({
   __proto__: null,
   containerHealthCheckToken,
   environmentConfigToken,
+  fallbackTranslationHandlerToken,
   foundryI18nToken,
+  foundryTranslationHandlerToken,
   healthCheckRegistryToken,
   i18nFacadeToken,
   journalVisibilityServiceToken,
   localI18nToken,
+  localTranslationHandlerToken,
   loggerToken,
   metricsCollectorToken,
   metricsHealthCheckToken,
@@ -265,7 +276,8 @@ var tokenindex = /* @__PURE__ */ Object.freeze({
   portSelectorToken,
   renderJournalDirectoryHookToken,
   retryServiceToken,
-  traceContextToken
+  traceContextToken,
+  translationHandlerChainToken
 });
 const scriptRel = "modulepreload";
 const assetsURL = /* @__PURE__ */ __name(function(dep) {
@@ -11955,12 +11967,12 @@ __name(_LocalI18nService, "LocalI18nService");
 _LocalI18nService.dependencies = [];
 let LocalI18nService = _LocalI18nService;
 const _I18nFacadeService = class _I18nFacadeService {
-  constructor(foundryI18n, localI18n) {
-    this.foundryI18n = foundryI18n;
+  constructor(handlerChain, localI18n) {
+    this.handlerChain = handlerChain;
     this.localI18n = localI18n;
   }
   /**
-   * Translates a key using Foundry i18n → Local i18n → Fallback.
+   * Translates a key using the handler chain: Foundry → Local → Fallback.
    *
    * @param key - Translation key
    * @param fallback - Optional fallback string (defaults to key itself)
@@ -11978,18 +11990,10 @@ const _I18nFacadeService = class _I18nFacadeService {
    * ```
    */
   translate(key, fallback2) {
-    const foundryResult = this.foundryI18n.localize(key);
-    if (foundryResult.ok && foundryResult.value !== key) {
-      return foundryResult.value;
-    }
-    const localResult = this.localI18n.translate(key);
-    if (localResult.ok && localResult.value !== key) {
-      return localResult.value;
-    }
-    return fallback2 ?? key;
+    return this.handlerChain.handle(key, void 0, fallback2) ?? key;
   }
   /**
-   * Formats a string with placeholders.
+   * Formats a string with placeholders using the handler chain.
    *
    * @param key - Translation key
    * @param data - Object with placeholder values
@@ -12003,29 +12007,17 @@ const _I18nFacadeService = class _I18nFacadeService {
    * ```
    */
   format(key, data, fallback2) {
-    const foundryResult = this.foundryI18n.format(key, data);
-    if (foundryResult.ok && foundryResult.value !== key) {
-      return foundryResult.value;
-    }
-    const localResult = this.localI18n.format(key, data);
-    if (localResult.ok && localResult.value !== key) {
-      return localResult.value;
-    }
-    return fallback2 ?? key;
+    return this.handlerChain.handle(key, data, fallback2) ?? key;
   }
   /**
-   * Checks if a translation key exists in either i18n system.
+   * Checks if a translation key exists in the handler chain.
+   * Checks Foundry → Local (Fallback always returns false for has()).
    *
    * @param key - Translation key to check
    * @returns True if key exists in Foundry or local i18n
    */
   has(key) {
-    const foundryResult = this.foundryI18n.has(key);
-    if (foundryResult.ok && foundryResult.value) {
-      return true;
-    }
-    const localResult = this.localI18n.has(key);
-    return localResult.ok && localResult.value;
+    return this.handlerChain.has(key);
   }
   /**
    * Loads local translations from a JSON object.
@@ -12046,8 +12038,89 @@ const _I18nFacadeService = class _I18nFacadeService {
   }
 };
 __name(_I18nFacadeService, "I18nFacadeService");
-_I18nFacadeService.dependencies = [foundryI18nToken, localI18nToken];
+_I18nFacadeService.dependencies = [translationHandlerChainToken, localI18nToken];
 let I18nFacadeService = _I18nFacadeService;
+const _AbstractTranslationHandler = class _AbstractTranslationHandler {
+  constructor() {
+    this.nextHandler = null;
+  }
+  setNext(handler) {
+    this.nextHandler = handler;
+    return handler;
+  }
+  handle(key, data, fallback2) {
+    const result = this.doHandle(key, data, fallback2);
+    if (result !== null) {
+      return result;
+    }
+    if (this.nextHandler) {
+      return this.nextHandler.handle(key, data, fallback2);
+    }
+    return null;
+  }
+  has(key) {
+    if (this.doHas(key)) {
+      return true;
+    }
+    if (this.nextHandler) {
+      return this.nextHandler.has(key);
+    }
+    return false;
+  }
+};
+__name(_AbstractTranslationHandler, "AbstractTranslationHandler");
+let AbstractTranslationHandler = _AbstractTranslationHandler;
+const _FoundryTranslationHandler = class _FoundryTranslationHandler extends AbstractTranslationHandler {
+  constructor(foundryI18n) {
+    super();
+    this.foundryI18n = foundryI18n;
+  }
+  doHandle(key, data, _fallback) {
+    const result = data ? this.foundryI18n.format(key, data) : this.foundryI18n.localize(key);
+    if (result.ok && result.value !== key) {
+      return result.value;
+    }
+    return null;
+  }
+  doHas(key) {
+    const result = this.foundryI18n.has(key);
+    return result.ok && result.value;
+  }
+};
+__name(_FoundryTranslationHandler, "FoundryTranslationHandler");
+_FoundryTranslationHandler.dependencies = [foundryI18nToken];
+let FoundryTranslationHandler = _FoundryTranslationHandler;
+const _LocalTranslationHandler = class _LocalTranslationHandler extends AbstractTranslationHandler {
+  constructor(localI18n) {
+    super();
+    this.localI18n = localI18n;
+  }
+  doHandle(key, data, _fallback) {
+    const result = data ? this.localI18n.format(key, data) : this.localI18n.translate(key);
+    if (result.ok && result.value !== key) {
+      return result.value;
+    }
+    return null;
+  }
+  doHas(key) {
+    const result = this.localI18n.has(key);
+    return result.ok && result.value;
+  }
+};
+__name(_LocalTranslationHandler, "LocalTranslationHandler");
+_LocalTranslationHandler.dependencies = [localI18nToken];
+let LocalTranslationHandler = _LocalTranslationHandler;
+const _FallbackTranslationHandler = class _FallbackTranslationHandler extends AbstractTranslationHandler {
+  doHandle(key, _data, fallback2) {
+    return fallback2 ?? key;
+  }
+  doHas(_key) {
+    return false;
+  }
+};
+__name(_FallbackTranslationHandler, "FallbackTranslationHandler");
+_FallbackTranslationHandler.dependencies = [];
+let FallbackTranslationHandler = _FallbackTranslationHandler;
 function registerI18nServices(container) {
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
@@ -12064,6 +12137,64 @@ function registerI18nServices(container) {
   );
   if (isErr(localI18nResult)) {
     return err(`Failed to register LocalI18nService: ${localI18nResult.error.message}`);
+  }
+  const foundryHandlerResult = container.registerClass(
+    foundryTranslationHandlerToken,
+    FoundryTranslationHandler,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(foundryHandlerResult)) {
+    return err(
+      `Failed to register FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
+    );
+  }
+  const localHandlerResult = container.registerClass(
+    localTranslationHandlerToken,
+    LocalTranslationHandler,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(localHandlerResult)) {
+    return err(`Failed to register LocalTranslationHandler: ${localHandlerResult.error.message}`);
+  }
+  const fallbackHandlerResult = container.registerClass(
+    fallbackTranslationHandlerToken,
+    FallbackTranslationHandler,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(fallbackHandlerResult)) {
+    return err(
+      `Failed to register FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
+    );
+  }
+  const chainResult = container.registerFactory(
+    translationHandlerChainToken,
+    () => {
+      const foundryHandlerResult2 = container.resolveWithError(foundryTranslationHandlerToken);
+      const localHandlerResult2 = container.resolveWithError(localTranslationHandlerToken);
+      const fallbackHandlerResult2 = container.resolveWithError(fallbackTranslationHandlerToken);
+      if (!foundryHandlerResult2.ok) {
+        throw new Error(
+          `Translation chain factory: Cannot resolve FoundryTranslationHandler: ${foundryHandlerResult2.error.message}`
+        );
+      }
+      if (!localHandlerResult2.ok) {
+        throw new Error(
+          `Translation chain factory: Cannot resolve LocalTranslationHandler: ${localHandlerResult2.error.message}`
+        );
+      }
+      if (!fallbackHandlerResult2.ok) {
+        throw new Error(
+          `Translation chain factory: Cannot resolve FallbackTranslationHandler: ${fallbackHandlerResult2.error.message}`
+        );
+      }
+      foundryHandlerResult2.value.setNext(localHandlerResult2.value).setNext(fallbackHandlerResult2.value);
+      return foundryHandlerResult2.value;
+    },
+    ServiceLifecycle.SINGLETON,
+    [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]
+  );
+  if (isErr(chainResult)) {
+    return err(`Failed to register TranslationHandlerChain: ${chainResult.error.message}`);
   }
   const facadeResult = container.registerClass(
     i18nFacadeToken,

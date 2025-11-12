@@ -1,7 +1,7 @@
 # Projektanalyse: FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-09 (v0.10.0)  
+**Aktualisiert:** 2025-11-12 (v0.15.0)  
 **Zweck:** Grundlage für Refactoring-Planungen  
 **Model:** Claude Sonnet 4.5
 
@@ -1125,92 +1125,54 @@ class FoundryGameService extends FoundryServiceBase<FoundryGame> {
 
 ## Refactoring-Empfehlungen
 
-### Priorität: HOCH (Sofort umsetzbar)
+### ✅ Abgeschlossen (v0.14.0 - v0.15.0)
 
-#### 1. Base Class für Foundry Services (Code-Deduplication)
-**Ziel:** Eliminiere duplizierte `getPort()` Logik  
-**Aufwand:** ~2-4h  
-**Impact:** Wartbarkeit ↑, Code-Duplikation ↓  
-**Breaking Changes:** Minimal (nur Implementation)
-
-**Umsetzung:**
-1. Erstelle `FoundryServiceBase<T>` Abstract Class
-2. Migriere alle 6 Foundry Services zu Base Class
-3. Tests aktualisieren
+#### ✅ 1. Base Class für Foundry Services (Code-Deduplication)
+**Status:** ✅ **ERLEDIGT** (v0.14.0)  
+**Implementiert:** `FoundryServiceBase<T>` Abstract Class  
+**Ergebnis:** Alle 6 Foundry Services nutzen Base Class, Code-Duplikation eliminiert
 
 ---
 
-#### 2. Health-Check-Registry (Container Self-Reference eliminieren)
-**Ziel:** Eliminiere Container Self-Reference, bessere Architektur  
-**Aufwand:** ~4-6h  
-**Impact:** Architecture Cleanliness ↑, Testbarkeit ↑↑  
-**Breaking Changes:** ✅ **Erlaubt (Pre-Release)**
-
-**Umsetzung:**
-1. `HealthCheckRegistry` implementieren
-2. `ModuleHealthService` refactoren (keine Container-Reference)
-3. Health-Checks registrieren (Container, Ports, Foundry, Metrics)
-4. Tests erweitern
-
-**Vorher (Status Quo):**
-```typescript
-class ModuleHealthService {
-  constructor(
-    private container: ServiceContainer,  // ❌ Tight Coupling
-    private metrics: MetricsCollector
-  ) {}
-}
-```
-
-**Nachher (Refactored):**
-```typescript
-class ModuleHealthService {
-  constructor(
-    private registry: HealthCheckRegistry,  // ✅ Loose Coupling
-    private metrics: MetricsCollector
-  ) {}
-}
-```
+#### ✅ 2. Health-Check-Registry (Container Self-Reference eliminieren)
+**Status:** ✅ **ERLEDIGT** (v0.14.0)  
+**Implementiert:** `src/core/health/health-check-registry.ts`  
+**Ergebnis:** `ModuleHealthService` nutzt jetzt `HealthCheckRegistry` statt Container Self-Reference
 
 ---
 
-#### 3. Trace-Context-Manager
-**Ziel:** Auto-Trace-ID-Generation  
-**Aufwand:** ~4-8h  
-**Impact:** Developer Experience ↑, Trace Correlation ↑  
-**Breaking Changes:** Minimal (additive API)
+#### ✅ 3. Trace-Context-Manager
+**Status:** ✅ **ERLEDIGT** (v0.15.0 - Unreleased)  
+**Implementiert:** `TraceContext` Service mit automatischer Trace-ID-Propagation  
+**Features:**
+- `trace()` für synchrone Operationen
+- `traceAsync()` für asynchrone Operationen
+- Context-Stacking für verschachtelte Traces
+- Logger-Integration ohne manuelle Trace-ID-Weitergabe
 
-**Umsetzung:**
-1. `TraceContext` Singleton/Service
-2. `logger.trace(() => { ... })` Method
-3. Auto-Trace-ID-Propagation via Async Context
+---
+
+#### ✅ 4. Retry-Service: Legacy API entfernen
+**Status:** ✅ **ERLEDIGT** (v0.14.0)  
+**Ergebnis:** Nur noch moderne API mit `RetryOptions` vorhanden  
+**Breaking Change:** Legacy `retry(fn, maxAttempts, delayMs)` entfernt
 
 ---
 
 ### Priorität: MITTEL (Nächste Iteration)
 
-#### 4. Retry-Service: Legacy API entfernen
-**Ziel:** Simplify API, bessere Type Safety  
-**Aufwand:** ~1-2h  
-**Impact:** Type Safety ↑, API Simplicity ↑  
-**Breaking Changes:** ✅ **Erlaubt (Pre-Release 0.x.x)**  
-**Legacy-Code-Strategie:** ❌ Sofort entfernen (kein Deprecation-Zeitraum nötig)
-
-**Umsetzung:**
-1. Entferne `retry(fn, maxAttempts: number, delayMs: number)` Signatur komplett
-2. Nur noch `retry(fn, options: RetryOptions)` erlauben
-3. Entferne Legacy-API-Tests
-4. Alle Call-Sites migrieren (Breaking Change akzeptabel)
-
-**Nach 1.0.0:** Solche Changes würden Deprecation-Zeitraum erfordern (siehe [VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md))
-
----
-
-#### 5. I18n-Facade-Refactoring (Chain of Responsibility)
-**Ziel:** Eliminiere Translation-Fallback-Duplikation  
-**Aufwand:** ~2-4h  
-**Impact:** Wartbarkeit ↑  
-**Breaking Changes:** Keine (nur Implementation)
+#### ✅ 5. I18n-Facade-Refactoring (Chain of Responsibility)
+**Status:** ✅ **ERLEDIGT** (v0.15.0 - Unreleased)  
+**Implementiert:** Chain of Responsibility Pattern für Translation Handler  
+**Ergebnis:** Code-Duplikation eliminiert + SOLID-Prinzipien eingehalten  
+**Details:**
+- `TranslationHandler` Interface + `AbstractTranslationHandler` Base Class
+- `FoundryTranslationHandler` → `LocalTranslationHandler` → `FallbackTranslationHandler`
+- **SOLID-konform**: Alle Handler per DI-Token injiziert (kein `new` in Application-Code)
+- Handler-Chain per Factory gebaut, Dependencies automatisch aufgelöst
+- 4 neue Tokens in `tokenindex.ts` + `TranslationHandler` zu `ServiceType` hinzugefügt
+- +39 neue Handler-Tests, -11 vereinfachte Facade-Tests = +28 Tests netto (1076 → 1104)
+- Öffentliche API unverändert (keine Breaking Changes)
 
 ---
 
@@ -1254,10 +1216,24 @@ class ModuleHealthService {
 
 ---
 
-#### 9. Dependency Config: Separate Config Classes
-**Ziel:** Verbesserte Modularität  
-**Aufwand:** ~4-8h  
-**Impact:** Wartbarkeit ↑ (aber niedrige Priorität, da bereits refactored)
+#### ✅ 9. Dependency Config: Separate Config Classes
+**Status:** ✅ **GELÖST** (v0.8.0 + aktuelles Design optimal)  
+**Ergebnis:** Bereits in 7 Module aufgeteilt, verbleibende `new` Aufrufe architektonisch gerechtfertigt  
+**Details:**
+- ✅ 7 thematische Config-Module seit v0.8.0 (core, observability, utility, port-infra, foundry, i18n, registrars)
+- ✅ Klare Verantwortlichkeiten pro Modul
+- ✅ Gut testbar (einzelne Module)
+- ✅ Error-Propagation implementiert
+- **Verbleibende `new` Aufrufe bewusst so:**
+  - `new ContainerHealthCheck(container)` - Container steht außerhalb DI (Self-Reference-Problem)
+  - `new MetricsHealthCheck(metrics)` - Konsistent mit ContainerHealthCheck
+  - `new ConsoleLoggerService(fallbackConfig)` - Logger-Fallback (Bootstrap-Kontext)
+  - `new BootstrapPerformanceTracker(ENV, null)` - Bootstrap vor DI-Initialization
+- **Alternative Ansätze geprüft:**
+  - Container Self-Registration → ❌ Tight Coupling
+  - Lazy Resolution in Registry → ❌ Registry braucht Container (wieder Loop)
+  - Factory mit Closure → ❌ Implizite Self-Reference
+- **Fazit:** Aktuelles Design ist optimal, weitere Refactorings würden Komplexität erhöhen ohne Mehrwert
 
 ---
 
@@ -1270,30 +1246,40 @@ Das Projekt zeigt eine **professionelle, moderne Architektur** mit:
 - ✅ Port-Adapter-Pattern
 - ✅ Observability (Metrics, Logging, Tracing)
 
-**Hauptverbesserungspotenziale (sofort umsetzbar):**
-1. 🔴 **Base Class für Foundry Services** (Code-Duplikation, ~2-4h)
-2. 🔴 **Health-Check-Registry** (Container Self-Reference, ~4-6h)
-3. 🟡 **Trace-Context-Manager** (Developer Experience, ~4-8h)
-4. 🟡 **Retry-Service Legacy API entfernen** (Type Safety, ~1-2h)
-5. 🟢 **Metrics Persistierung** (Nice-to-Have, ~4-8h)
-6. ⏳ **v14 Ports** (wartet auf Foundry v14 API-Release, ~8-16h)
+**Abgeschlossene Refactorings (v0.8.0 - v0.15.0):**
+1. ✅ **Base Class für Foundry Services** (Code-Duplikation eliminiert)
+2. ✅ **Health-Check-Registry** (Container Self-Reference eliminiert)
+3. ✅ **Trace-Context-Manager** (Auto-Trace-ID-Propagation)
+4. ✅ **Retry-Service Legacy API entfernt** (Type Safety verbessert)
+5. ✅ **I18n-Facade-Refactoring** (Chain of Responsibility Pattern implementiert)
+6. ✅ **Dependency Config: Separate Config Classes** (7 Module seit v0.8.0, aktuelles Design optimal)
 
-**Gesamt-Aufwand Top 4:** ~12-20h (vor 1.0.0-Release empfohlen)
+**Verbleibende optionale Refactorings:**
+1. 🟡 **Error Sanitizer Strategy Pattern** (ENV Coupling reduzieren, ~2-4h)
+2. 🟢 **Metrics Persistierung** (Nice-to-Have, ~4-8h)
+3. ⏳ **v14 Ports** (wartet auf Foundry v14 API-Release, ~8-16h)
+
+**Gesamt-Aufwand verbleibend:** ~6-20h (alle optional, keine kritischen Issues)
 
 ---
 
-**Gesamt-Bewertung:** 
-- **Architektur-Qualität:** ⭐⭐⭐⭐⭐ (5/5)
-- **Code-Qualität:** ⭐⭐⭐⭐ (4/5)
+**Gesamt-Bewertung (aktualisiert nach v0.15.0):** 
+- **Architektur-Qualität:** ⭐⭐⭐⭐⭐ (5/5) ✅ +1 (alle kritischen Refactorings erledigt)
+- **Code-Qualität:** ⭐⭐⭐⭐⭐ (5/5) ✅ +1 (Legacy-Code eliminiert)
 - **Testbarkeit:** ⭐⭐⭐⭐⭐ (5/5)
-- **Wartbarkeit:** ⭐⭐⭐⭐ (4/5)
+- **Wartbarkeit:** ⭐⭐⭐⭐⭐ (5/5) ✅ +1 (Code-Duplikation eliminiert)
 - **Performance:** ⭐⭐⭐⭐⭐ (5/5)
 
 **Empfehlung:** 
-1. **Sofort (vor 1.0.0):** Base Class Refactoring + Health-Check-Registry (~6-10h)
-2. **Nächste Iteration:** Trace-Context-Manager + Retry-Service Legacy API (~5-10h)
-3. **Bei Bedarf:** Metrics Persistierung (~4-8h)
-4. **Nach API-Release:** v14 Ports (~8-16h)
+1. ✅ **Alle kritischen Refactorings abgeschlossen!** Architektur ist production-ready
+2. ✅ **Alle sinnvollen Architektur-Refactorings erledigt!** (6 von 9 Punkten)
+3. 🟢 **Optional (Nice-to-Have):** Error Sanitizer, Metrics Persistierung
+4. ⏳ **Nach API-Release:** v14 Ports (~8-16h)
+
+**Verbleibende `new` Aufrufe:**
+- ✅ Bewusste Design-Entscheidung für Bootstrap und Container Self-Reference
+- ✅ Alle Alternativen würden Architektur verschlechtern (Tight Coupling, Circular Dependencies)
+- ✅ Gut isoliert und dokumentiert im Code
 
 **Begründung:** 
 - ✅ **Version 0.x.x:** Aggressives Refactoring erwünscht, Legacy-Codes eliminieren

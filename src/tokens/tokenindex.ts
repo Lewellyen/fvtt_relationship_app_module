@@ -8,6 +8,7 @@ import type { TraceContext } from "@/observability/trace/TraceContext";
 import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import type { LocalI18nService } from "@/services/LocalI18nService";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
+import type { TranslationHandler } from "@/services/i18n/TranslationHandler.interface";
 import type { EnvironmentConfig } from "@/config/environment";
 import type { ModuleHealthService } from "@/core/module-health-service";
 import type { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
@@ -182,6 +183,44 @@ export const localI18nToken = createInjectionToken<LocalI18nService>("LocalI18nS
  * ```
  */
 export const i18nFacadeToken = createInjectionToken<I18nFacadeService>("I18nFacadeService");
+
+/**
+ * Injection token for the FoundryTranslationHandler.
+ *
+ * First handler in the translation chain: tries Foundry's i18n first.
+ * Part of the Chain of Responsibility pattern for i18n.
+ */
+export const foundryTranslationHandlerToken = createInjectionToken<TranslationHandler>(
+  "FoundryTranslationHandler"
+);
+
+/**
+ * Injection token for the LocalTranslationHandler.
+ *
+ * Second handler in the translation chain: provides local JSON-based translations.
+ * Part of the Chain of Responsibility pattern for i18n.
+ */
+export const localTranslationHandlerToken =
+  createInjectionToken<TranslationHandler>("LocalTranslationHandler");
+
+/**
+ * Injection token for the FallbackTranslationHandler.
+ *
+ * Final handler in the translation chain: returns fallback or key itself.
+ * Part of the Chain of Responsibility pattern for i18n.
+ */
+export const fallbackTranslationHandlerToken = createInjectionToken<TranslationHandler>(
+  "FallbackTranslationHandler"
+);
+
+/**
+ * Injection token for the TranslationHandlerChain.
+ *
+ * Fully configured chain: Foundry → Local → Fallback.
+ * Built via factory in DI container.
+ */
+export const translationHandlerChainToken =
+  createInjectionToken<TranslationHandler>("TranslationHandlerChain");
 
 /**
  * Injection token for the EnvironmentConfig.
