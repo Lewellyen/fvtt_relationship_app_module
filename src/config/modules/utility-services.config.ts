@@ -26,13 +26,11 @@ export function registerUtilityServices(container: ServiceContainer): Result<voi
     PerformanceTrackingService,
     ServiceLifecycle.SINGLETON
   );
-  /* c8 ignore start -- Defensive: Service registration */
   if (isErr(perfTrackingResult)) {
     return err(
       `Failed to register PerformanceTrackingService: ${perfTrackingResult.error.message}`
     );
   }
-  /* c8 ignore stop */
 
   // Register RetryService
   const retryServiceResult = container.registerClass(
@@ -40,11 +38,9 @@ export function registerUtilityServices(container: ServiceContainer): Result<voi
     RetryService,
     ServiceLifecycle.SINGLETON
   );
-  /* c8 ignore start -- Defensive: Service registration */
   if (isErr(retryServiceResult)) {
     return err(`Failed to register RetryService: ${retryServiceResult.error.message}`);
   }
-  /* c8 ignore stop */
 
   return ok(undefined);
 }

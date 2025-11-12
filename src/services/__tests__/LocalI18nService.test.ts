@@ -46,6 +46,16 @@ describe("LocalI18nService", () => {
 
       expect(fallbackService.getCurrentLocale()).toBe("en");
     });
+
+    it("should fallback to en when language split returns undefined", () => {
+      // Edge case: language is empty string or invalid format
+      vi.stubGlobal("navigator", { language: "" });
+      const fallbackService = new LocalI18nService();
+
+      // Empty string split returns [""], and [0] is "", which is falsy
+      // This triggers the ?? "en" fallback
+      expect(fallbackService.getCurrentLocale()).toBe("en");
+    });
   });
 
   describe("loadTranslations", () => {

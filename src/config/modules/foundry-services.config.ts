@@ -99,11 +99,9 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
     FoundryJournalFacade,
     ServiceLifecycle.SINGLETON
   );
-  /* c8 ignore start -- Defensive: FoundryJournalFacade registration */
   if (isErr(journalFacadeResult)) {
     return err(`Failed to register FoundryJournalFacade: ${journalFacadeResult.error.message}`);
   }
-  /* c8 ignore stop */
 
   // Register JournalVisibilityService
   const journalVisibilityResult = container.registerClass(

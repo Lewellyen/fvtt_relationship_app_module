@@ -61,13 +61,7 @@ export class ServiceRegistration<TServiceType extends ServiceType = ServiceType>
     dependencies: readonly InjectionToken<ServiceType>[],
     serviceClass: ServiceClass<TServiceType>
   ): Result<ServiceRegistration<TServiceType>, ContainerError> {
-    if (!serviceClass) {
-      return err({
-        code: "InvalidOperation",
-        message: "serviceClass is required for class registration",
-      });
-    }
-
+    // Note: serviceClass validation is performed in ServiceRegistry.registerClass before calling this method
     return ok(
       new ServiceRegistration<TServiceType>(
         lifecycle,

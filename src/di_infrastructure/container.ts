@@ -188,7 +188,6 @@ export class ServiceContainer implements Container {
     }
 
     // Validate factory parameter
-    /* c8 ignore start -- TypeScript ensures factory is a function at compile time; runtime check is defensive */
     if (!factory || typeof factory !== "function") {
       return err({
         code: "InvalidFactory",
@@ -196,7 +195,6 @@ export class ServiceContainer implements Container {
         tokenDescription: String(token),
       });
     }
-    /* c8 ignore stop */
 
     return this.registry.registerFactory(token, factory, lifecycle, dependencies);
   }
@@ -451,11 +449,9 @@ export class ServiceContainer implements Container {
 
     // Create child scope (pure Result, no throws)
     const scopeResult = this.scopeManager.createChild(name);
-    /* c8 ignore start -- ScopeManager.createChild() error paths tested in ScopeManager.test.ts; this is just error propagation */
     if (!scopeResult.ok) {
       return err(scopeResult.error); // Structured error, not exception
     }
-    /* c8 ignore stop */
 
     // Build child container components
     const childRegistry = this.registry.clone();

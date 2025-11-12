@@ -55,18 +55,13 @@ export class ModuleHealthService {
 
     // Determine overall status
     const allHealthy = Array.from(results.values()).every((result) => result);
-    const someUnhealthy = Array.from(results.values()).some((result) => !result);
 
-    let status: "healthy" | "degraded" | "unhealthy";
-    if (allHealthy) {
-      status = "healthy";
-    } else if (someUnhealthy) {
-      // Container check failure = unhealthy, other failures = degraded
-      status = results.get("container") === false ? "unhealthy" : "degraded";
-    } /* c8 ignore start -- Defensive: This branch is logically unreachable (allHealthy is inverse of someUnhealthy) */ else {
-      status = "healthy";
-    }
-    /* c8 ignore stop */
+    // Determine health status based on results
+    const status: "healthy" | "degraded" | "unhealthy" = allHealthy
+      ? "healthy"
+      : results.get("container") === false
+        ? "unhealthy"
+        : "degraded";
 
     // Collect details from unhealthy checks
     const checks = this.registry.getAllChecks();

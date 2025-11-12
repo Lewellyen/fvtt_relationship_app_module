@@ -10,6 +10,7 @@ export type FoundryErrorCode =
   | "PORT_SELECTION_FAILED" // Port selection/instantiation failed
   | "PORT_REGISTRY_ERROR" // Port registry duplicate registration
   | "PORT_NOT_FOUND" // No compatible port found for version
+  | "DISPOSED" // Port or service has been disposed
   | "OPERATION_FAILED"; // General operation failure
 
 /**

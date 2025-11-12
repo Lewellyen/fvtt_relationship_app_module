@@ -28,11 +28,9 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
     FoundryI18nService,
     ServiceLifecycle.SINGLETON
   );
-  /* c8 ignore start -- Defensive: Service registration */
   if (isErr(foundryI18nResult)) {
     return err(`Failed to register FoundryI18nService: ${foundryI18nResult.error.message}`);
   }
-  /* c8 ignore stop */
 
   // Register LocalI18nService
   const localI18nResult = container.registerClass(
@@ -40,11 +38,9 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
     LocalI18nService,
     ServiceLifecycle.SINGLETON
   );
-  /* c8 ignore start -- Defensive: Service registration */
   if (isErr(localI18nResult)) {
     return err(`Failed to register LocalI18nService: ${localI18nResult.error.message}`);
   }
-  /* c8 ignore stop */
 
   // Register I18nFacadeService
   const facadeResult = container.registerClass(
@@ -52,11 +48,9 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
     I18nFacadeService,
     ServiceLifecycle.SINGLETON
   );
-  /* c8 ignore start -- Defensive: Service registration */
   if (isErr(facadeResult)) {
     return err(`Failed to register I18nFacadeService: ${facadeResult.error.message}`);
   }
-  /* c8 ignore stop */
 
   return ok(undefined);
 }

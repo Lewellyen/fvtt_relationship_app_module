@@ -26,11 +26,21 @@ interface DynamicSettingsApi {
  * - user: User-specific within a world (new in v13)
  */
 export class FoundrySettingsPortV13 implements FoundrySettings {
+  #disposed = false;
+
   register<T>(
     namespace: string,
     key: string,
     config: SettingConfig<T>
   ): Result<void, FoundryError> {
+    if (this.#disposed) {
+      return err(
+        createFoundryError("DISPOSED", "Cannot register setting on disposed port", {
+          namespace,
+          key,
+        })
+      );
+    }
     // Validate config before attempting registration
     const configValidation = validateSettingConfig(namespace, key, config);
     /* c8 ignore start -- Error propagation: validateSettingConfig tested in schemas.test.ts */
@@ -65,6 +75,11 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
     key: string,
     schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>
   ): Result<T, FoundryError> {
+    if (this.#disposed) {
+      return err(
+        createFoundryError("DISPOSED", "Cannot get setting on disposed port", { namespace, key })
+      );
+    }
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
@@ -109,6 +124,11 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
   }
 
   async set<T>(namespace: string, key: string, value: T): Promise<Result<void, FoundryError>> {
+    if (this.#disposed) {
+      return err(
+        createFoundryError("DISPOSED", "Cannot set setting on disposed port", { namespace, key })
+      );
+    }
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
@@ -130,9 +150,9 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
     );
   }
 
-  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
   dispose(): void {
+    if (this.#disposed) return; // Idempotent
+    this.#disposed = true;
     // No resources to clean up
   }
-  /* c8 ignore stop */
 }

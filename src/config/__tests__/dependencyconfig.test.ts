@@ -357,4 +357,147 @@ describe("dependencyconfig", () => {
       debugSpy.mockRestore();
     });
   });
+
+  describe("Error Propagation", () => {
+    it("should propagate validation errors", () => {
+      const container = ServiceContainer.createRoot();
+
+      // Mock container.validate() to fail
+      vi.spyOn(container, "validate").mockReturnValue(
+        err([
+          {
+            code: "DependencyResolveFailed" as const,
+            message: "Test dependency missing",
+            tokenDescription: "TestToken",
+          },
+        ])
+      );
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      expect(result.error).toContain("Validation failed");
+      expect(result.error).toContain("Test dependency missing");
+    });
+
+    it("should propagate health check resolution errors", () => {
+      const container = ServiceContainer.createRoot();
+
+      // Make validation succeed but health check resolution fail
+      vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
+      vi.spyOn(container, "resolveWithError").mockReturnValueOnce(
+        err({
+          code: "TokenNotRegistered",
+          message: "HealthCheckRegistry not found",
+          tokenDescription: "HealthCheckRegistry",
+        })
+      );
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      expect(result.error).toContain("Failed to resolve HealthCheckRegistry");
+    });
+
+    it("should propagate metrics collector resolution errors", () => {
+      const container = ServiceContainer.createRoot();
+
+      // Make validation succeed and health check registry succeed, but metrics collector fail
+      vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
+      vi.spyOn(container, "resolveWithError")
+        .mockReturnValueOnce({ ok: true, value: {} as any }) // HealthCheckRegistry succeeds
+        .mockReturnValueOnce(
+          err({
+            code: "TokenNotRegistered",
+            message: "MetricsCollector not found",
+            tokenDescription: "MetricsCollector",
+          })
+        );
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      expect(result.error).toContain("Failed to resolve MetricsCollector");
+    });
+  });
+
+  describe("Sub-Module Error Propagation", () => {
+    // These tests cover the error propagation branches in configureDependencies
+    // where sub-module registration functions return errors
+
+    it("should propagate errors from registerObservability", () => {
+      const container = ServiceContainer.createRoot();
+
+      // Mock registerClass to fail for any observability token
+      vi.spyOn(container, "registerClass").mockImplementation((token) => {
+        // Let core services succeed, but fail observability
+        if (String(token).includes("Metrics") || String(token).includes("Performance")) {
+          return err({ code: "InvalidOperation", message: "Observability failed" });
+        }
+        return { ok: true, value: undefined };
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      // Should contain either "Metrics" or "Performance"
+      const hasObservabilityError =
+        result.error.includes("Metrics") || result.error.includes("Performance");
+      expect(hasObservabilityError).toBe(true);
+    });
+
+    it("should propagate errors from registerUtilityServices", () => {
+      const container = ServiceContainer.createRoot();
+
+      vi.spyOn(container, "registerClass").mockImplementation((token) => {
+        // Let core and observability succeed, but fail utility
+        if (String(token).includes("Retry") || String(token).includes("PerformanceTracking")) {
+          return err({ code: "InvalidOperation", message: "Utility service failed" });
+        }
+        return { ok: true, value: undefined };
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      // Should contain either "Retry" or "PerformanceTracking"
+      const hasUtilityError =
+        result.error.includes("Retry") || result.error.includes("PerformanceTracking");
+      expect(hasUtilityError).toBe(true);
+    });
+
+    it("should propagate errors from registerI18nServices", () => {
+      const container = ServiceContainer.createRoot();
+
+      vi.spyOn(container, "registerClass").mockImplementation((token) => {
+        if (String(token).includes("I18n") || String(token).includes("Facade")) {
+          return err({ code: "InvalidOperation", message: "I18n service failed" });
+        }
+        return { ok: true, value: undefined };
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      // Should contain either "I18n" or "Facade"
+      const hasI18nError = result.error.includes("I18n") || result.error.includes("Facade");
+      expect(hasI18nError).toBe(true);
+    });
+
+    it("should propagate errors from registerRegistrars", () => {
+      const container = ServiceContainer.createRoot();
+
+      vi.spyOn(container, "registerClass").mockImplementation((token) => {
+        if (String(token).includes("Registrar")) {
+          return err({ code: "InvalidOperation", message: "Registrar failed" });
+        }
+        return { ok: true, value: undefined };
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      expect(result.error).toContain("Registrar");
+    });
+  });
 });

@@ -1,6 +1,13 @@
 var __defProp = Object.defineProperty;
+var __typeError = (msg) => {
+  throw TypeError(msg);
+};
 var __name = (target, value2) => __defProp(target, "name", { value: value2, configurable: true });
-var _a;
+var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
+var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
+var __privateAdd = (obj, member, value2) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value2);
+var __privateSet = (obj, member, value2, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value2) : member.set(obj, value2), value2);
+var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6;
 const originalAssignRef = Object.assign;
 if (!(originalAssignRef && originalAssignRef.__cy_careful_patch)) {
   const patched = /* @__PURE__ */ __name(function(target, ...sources) {
@@ -359,12 +366,6 @@ const _ServiceRegistration = class _ServiceRegistration {
    * @returns Result with registration or validation error
    */
   static createClass(lifecycle, dependencies, serviceClass) {
-    if (!serviceClass) {
-      return err({
-        code: "InvalidOperation",
-        message: "serviceClass is required for class registration"
-      });
-    }
     return ok(
       new _ServiceRegistration(
         lifecycle,
@@ -611,6 +612,12 @@ const _ServiceRegistry = class _ServiceRegistry {
         code: "DuplicateRegistration",
         message: `Service ${String(token)} already registered`,
         tokenDescription: String(token)
+      });
+    }
+    if (!serviceClass) {
+      return err({
+        code: "InvalidOperation",
+        message: "serviceClass is required for class registration"
       });
     }
     const dependencies = hasDependencies(serviceClass) ? serviceClass.dependencies ?? [] : [];
@@ -1084,21 +1091,19 @@ const _ServiceResolver = class _ServiceResolver {
           case ServiceLifecycle.SCOPED:
             result = this.resolveScoped(token, registration);
             break;
-          /* c8 ignore start -- Defensive: ServiceLifecycle enum ensures only valid values; this default is unreachable */
           default:
+            const _exhaustiveCheck = registration.lifecycle;
             result = err({
               code: "InvalidLifecycle",
-              message: `Invalid service lifecycle: ${String(registration.lifecycle)}`,
+              message: `Invalid service lifecycle: ${String(_exhaustiveCheck)}`,
               tokenDescription: String(token)
             });
         }
         return result;
       },
-      /* c8 ignore start -- Optional chaining is defensive: metricsCollector is always injected via constructor */
       (duration, result) => {
         this.metricsCollector?.recordResolution(token, duration, result.ok);
       }
-      /* c8 ignore stop */
     );
   }
   /**
@@ -2432,15 +2437,7 @@ const _ModuleHealthService = class _ModuleHealthService {
     }
     const results = this.registry.runAll();
     const allHealthy = Array.from(results.values()).every((result) => result);
-    const someUnhealthy = Array.from(results.values()).some((result) => !result);
-    let status;
-    if (allHealthy) {
-      status = "healthy";
-    } else if (someUnhealthy) {
-      status = results.get("container") === false ? "unhealthy" : "degraded";
-    } else {
-      status = "healthy";
-    }
+    const status = allHealthy ? "healthy" : results.get("container") === false ? "unhealthy" : "degraded";
     const checks = this.registry.getAllChecks();
     let lastError = null;
     for (const check2 of checks) {
@@ -3156,17 +3153,7 @@ const _PortRegistry = class _PortRegistry {
       );
     }
     const selectedVersion = compatibleVersions[0];
-    if (selectedVersion === void 0) {
-      return err(createFoundryError("PORT_NOT_FOUND", "No compatible version found", { version }));
-    }
     const factory = this.factories.get(selectedVersion);
-    if (!factory) {
-      return err(
-        createFoundryError("PORT_NOT_FOUND", `Factory not found for version ${selectedVersion}`, {
-          selectedVersion
-        })
-      );
-    }
     return ok(factory());
   }
   /**
@@ -10194,9 +10181,6 @@ function validateHookApp(app) {
 }
 __name(validateHookApp, "validateHookApp");
 function validateJournalId(id) {
-  if (typeof id !== "string") {
-    return err(createFoundryError("VALIDATION_FAILED", "ID must be a string"));
-  }
   if (id.length === 0) {
     return err(createFoundryError("VALIDATION_FAILED", "ID cannot be empty"));
   }
@@ -10242,11 +10226,16 @@ function validateFlagKey(key) {
 __name(validateFlagKey, "validateFlagKey");
 const _FoundryGamePortV13 = class _FoundryGamePortV13 {
   constructor() {
+    __privateAdd(this, _disposed);
+    __privateSet(this, _disposed, false);
     this.cachedEntries = null;
     this.lastCheckTimestamp = 0;
     this.cacheTtlMs = MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS;
   }
   getJournalEntries() {
+    if (__privateGet(this, _disposed)) {
+      return err(createFoundryError("DISPOSED", "Cannot get journal entries on disposed port"));
+    }
     if (typeof game === "undefined" || !game?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));
     }
@@ -10279,6 +10268,9 @@ const _FoundryGamePortV13 = class _FoundryGamePortV13 {
     this.lastCheckTimestamp = 0;
   }
   getJournalEntryById(id) {
+    if (__privateGet(this, _disposed)) {
+      return err(createFoundryError("DISPOSED", "Cannot get journal entry on disposed port"));
+    }
     const validationResult = validateJournalId(id);
     if (!validationResult.ok) {
       return validationResult;
@@ -10299,17 +10291,29 @@ const _FoundryGamePortV13 = class _FoundryGamePortV13 {
       )
     );
   }
-  /* c8 ignore start -- Lifecycle: Disposal tested indirectly via service disposal tests */
   dispose() {
+    if (__privateGet(this, _disposed)) return;
+    __privateSet(this, _disposed, true);
     this.cachedEntries = null;
     this.lastCheckTimestamp = 0;
   }
-  /* c8 ignore stop */
 };
+_disposed = new WeakMap();
 __name(_FoundryGamePortV13, "FoundryGamePortV13");
 let FoundryGamePortV13 = _FoundryGamePortV13;
 const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
+  constructor() {
+    __privateAdd(this, _disposed2, false);
+  }
   on(hookName, callback) {
+    if (__privateGet(this, _disposed2)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot register hook on disposed port", {
+          hookName
+        })
+      };
+    }
     return tryCatch(
       () => {
         if (typeof Hooks === "undefined") {
@@ -10327,6 +10331,14 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
     );
   }
   once(hookName, callback) {
+    if (__privateGet(this, _disposed2)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot register one-time hook on disposed port", {
+          hookName
+        })
+      };
+    }
     return tryCatch(
       () => {
         if (typeof Hooks === "undefined") {
@@ -10344,6 +10356,14 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
     );
   }
   off(hookName, callbackOrId) {
+    if (__privateGet(this, _disposed2)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot unregister hook on disposed port", {
+          hookName
+        })
+      };
+    }
     return tryCatch(
       () => {
         if (typeof Hooks === "undefined") {
@@ -10360,15 +10380,25 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
       )
     );
   }
-  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
   dispose() {
+    if (__privateGet(this, _disposed2)) return;
+    __privateSet(this, _disposed2, true);
   }
-  /* c8 ignore stop */
 };
+_disposed2 = new WeakMap();
 __name(_FoundryHooksPortV13, "FoundryHooksPortV13");
 let FoundryHooksPortV13 = _FoundryHooksPortV13;
 const _FoundryDocumentPortV13 = class _FoundryDocumentPortV13 {
+  constructor() {
+    __privateAdd(this, _disposed3, false);
+  }
   getFlag(document2, scope, key, schema) {
+    if (__privateGet(this, _disposed3)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot get flag on disposed port", { scope, key })
+      };
+    }
     return tryCatch(
       () => {
         if (!document2?.getFlag) {
@@ -10403,6 +10433,12 @@ const _FoundryDocumentPortV13 = class _FoundryDocumentPortV13 {
     );
   }
   async setFlag(document2, scope, key, value2) {
+    if (__privateGet(this, _disposed3)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot set flag on disposed port", { scope, key })
+      };
+    }
     return fromPromise(
       (async () => {
         if (!document2?.setFlag) {
@@ -10418,15 +10454,22 @@ const _FoundryDocumentPortV13 = class _FoundryDocumentPortV13 {
       )
     );
   }
-  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
   dispose() {
+    if (__privateGet(this, _disposed3)) return;
+    __privateSet(this, _disposed3, true);
   }
-  /* c8 ignore stop */
 };
+_disposed3 = new WeakMap();
 __name(_FoundryDocumentPortV13, "FoundryDocumentPortV13");
 let FoundryDocumentPortV13 = _FoundryDocumentPortV13;
 const _FoundryUIPortV13 = class _FoundryUIPortV13 {
+  constructor() {
+    __privateAdd(this, _disposed4, false);
+  }
   removeJournalElement(journalId, journalName, html) {
+    if (__privateGet(this, _disposed4)) {
+      return err(createFoundryError("DISPOSED", "Cannot remove journal element on disposed port"));
+    }
     const safeId = sanitizeId(journalId);
     const element = html.querySelector(
       `li.directory-item[data-document-id="${safeId}"], li.directory-item[data-entry-id="${safeId}"]`
@@ -10455,10 +10498,16 @@ const _FoundryUIPortV13 = class _FoundryUIPortV13 {
     }
   }
   findElement(container, selector) {
+    if (__privateGet(this, _disposed4)) {
+      return err(createFoundryError("DISPOSED", "Cannot find element on disposed port"));
+    }
     const element = container.querySelector(selector);
     return ok(element);
   }
   notify(message2, type) {
+    if (__privateGet(this, _disposed4)) {
+      return err(createFoundryError("DISPOSED", "Cannot show notification on disposed port"));
+    }
     if (typeof ui === "undefined" || !ui?.notifications) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry UI notifications not available"));
     }
@@ -10486,15 +10535,27 @@ const _FoundryUIPortV13 = class _FoundryUIPortV13 {
       );
     }
   }
-  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
   dispose() {
+    if (__privateGet(this, _disposed4)) return;
+    __privateSet(this, _disposed4, true);
   }
-  /* c8 ignore stop */
 };
+_disposed4 = new WeakMap();
 __name(_FoundryUIPortV13, "FoundryUIPortV13");
 let FoundryUIPortV13 = _FoundryUIPortV13;
 const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
+  constructor() {
+    __privateAdd(this, _disposed5, false);
+  }
   register(namespace, key, config2) {
+    if (__privateGet(this, _disposed5)) {
+      return err(
+        createFoundryError("DISPOSED", "Cannot register setting on disposed port", {
+          namespace,
+          key
+        })
+      );
+    }
     const configValidation = validateSettingConfig(namespace, key, config2);
     if (!configValidation.ok) {
       return err(configValidation.error);
@@ -10516,6 +10577,11 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
     );
   }
   get(namespace, key, schema) {
+    if (__privateGet(this, _disposed5)) {
+      return err(
+        createFoundryError("DISPOSED", "Cannot get setting on disposed port", { namespace, key })
+      );
+    }
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
@@ -10550,6 +10616,11 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
     );
   }
   async set(namespace, key, value2) {
+    if (__privateGet(this, _disposed5)) {
+      return err(
+        createFoundryError("DISPOSED", "Cannot set setting on disposed port", { namespace, key })
+      );
+    }
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
@@ -10568,14 +10639,18 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
       )
     );
   }
-  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
   dispose() {
+    if (__privateGet(this, _disposed5)) return;
+    __privateSet(this, _disposed5, true);
   }
-  /* c8 ignore stop */
 };
+_disposed5 = new WeakMap();
 __name(_FoundrySettingsPortV13, "FoundrySettingsPortV13");
 let FoundrySettingsPortV13 = _FoundrySettingsPortV13;
 const _FoundryI18nPortV13 = class _FoundryI18nPortV13 {
+  constructor() {
+    __privateAdd(this, _disposed6, false);
+  }
   /**
    * Localizes a translation key using Foundry's i18n system.
    *
@@ -10583,6 +10658,12 @@ const _FoundryI18nPortV13 = class _FoundryI18nPortV13 {
    * @returns Result with translated string (returns key itself if not found)
    */
   localize(key) {
+    if (__privateGet(this, _disposed6)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot localize on disposed port", { key })
+      };
+    }
     try {
       if (typeof game === "undefined" || !game?.i18n) {
         return ok(key);
@@ -10601,6 +10682,14 @@ const _FoundryI18nPortV13 = class _FoundryI18nPortV13 {
    * @returns Result with formatted string
    */
   format(key, data) {
+    if (__privateGet(this, _disposed6)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot format translation on disposed port", {
+          key
+        })
+      };
+    }
     try {
       if (typeof game === "undefined" || !game?.i18n) {
         return ok(key);
@@ -10622,6 +10711,14 @@ const _FoundryI18nPortV13 = class _FoundryI18nPortV13 {
    * @returns Result with boolean indicating existence
    */
   has(key) {
+    if (__privateGet(this, _disposed6)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot check translation key on disposed port", {
+          key
+        })
+      };
+    }
     try {
       if (typeof game === "undefined" || !game?.i18n) {
         return ok(false);
@@ -10632,11 +10729,12 @@ const _FoundryI18nPortV13 = class _FoundryI18nPortV13 {
       return ok(false);
     }
   }
-  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
   dispose() {
+    if (__privateGet(this, _disposed6)) return;
+    __privateSet(this, _disposed6, true);
   }
-  /* c8 ignore stop */
 };
+_disposed6 = new WeakMap();
 __name(_FoundryI18nPortV13, "FoundryI18nPortV13");
 _FoundryI18nPortV13.dependencies = [];
 let FoundryI18nPortV13 = _FoundryI18nPortV13;
@@ -10837,7 +10935,6 @@ const _FoundryServiceBase = class _FoundryServiceBase {
    * }
    * ```
    */
-  /* c8 ignore start -- Tested indirectly via Foundry Services that call this method */
   withRetry(fn, operationName, maxAttempts = 2) {
     return this.retryService.retrySync(fn, {
       maxAttempts,
@@ -10849,7 +10946,6 @@ const _FoundryServiceBase = class _FoundryServiceBase {
       }), "mapException")
     });
   }
-  /* c8 ignore stop */
   /**
    * Async variant of withRetry for async operations.
    *
@@ -10873,7 +10969,6 @@ const _FoundryServiceBase = class _FoundryServiceBase {
    * }
    * ```
    */
-  /* c8 ignore start -- Tested indirectly via Foundry Services that call this method */
   async withRetryAsync(fn, operationName, maxAttempts = 2) {
     return this.retryService.retry(fn, {
       maxAttempts,
@@ -10887,10 +10982,10 @@ const _FoundryServiceBase = class _FoundryServiceBase {
       }), "mapException")
     });
   }
-  /* c8 ignore stop */
   /**
    * Cleans up resources.
    * Disposes the port if it implements Disposable, then resets the reference.
+   * All ports now implement dispose() with #disposed state guards.
    */
   dispose() {
     if (this.port && typeof this.port === "object" && "dispose" in this.port && typeof this.port.dispose === "function") {
@@ -11428,7 +11523,7 @@ const _RetryService = class _RetryService {
         `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts (${duration.toFixed(2)}ms)`
       );
     }
-    const finalError = lastError ?? mapException("No attempts made", 0);
+    const finalError = lastError;
     return err(finalError);
   }
   /**
@@ -11500,7 +11595,7 @@ const _RetryService = class _RetryService {
         `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts`
       );
     }
-    const finalError = lastError ?? mapException("No attempts made", 0);
+    const finalError = lastError;
     return err(finalError);
   }
 };

@@ -277,6 +277,8 @@ describe("ModuleApiInitializer", () => {
       expect(warningMsg).toContain("DEPRECATED");
       expect(warningMsg).toContain("Test deprecation reason");
       expect(warningMsg).toContain("2.0.0");
+      // Should NOT contain replacement info (null was passed)
+      expect(warningMsg).not.toContain("Use");
 
       // Second resolve should NOT show warning again (warningShown = true)
       warnSpy.mockClear();

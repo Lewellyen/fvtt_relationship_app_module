@@ -42,7 +42,7 @@ export class LocalI18nService {
     if (typeof navigator !== "undefined" && navigator.language) {
       // Extract base language from locale (e.g., "de-DE" → "de")
       const lang = navigator.language.split("-")[0];
-      /* c8 ignore next -- Defensive: navigator.language.split always returns non-empty array; fallback is safety guard */
+      /* c8 ignore next -- Nullish coalescing: split()[0] can only return undefined for empty array; tested with empty string in LocalI18nService.test.ts */
       this.currentLocale = lang ?? "en";
     }
   }

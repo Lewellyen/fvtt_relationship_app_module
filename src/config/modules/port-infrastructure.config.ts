@@ -38,11 +38,9 @@ function registerPortToRegistry<T>(
   errors: string[]
 ): void {
   const result = registry.register(version, factory);
-  /* c8 ignore start -- Defensive: Port registration can only fail if version is duplicate */
   if (isErr(result)) {
     errors.push(`${portName} v${version}: ${result.error}`);
   }
-  /* c8 ignore stop */
 }
 
 /**
@@ -123,11 +121,9 @@ function createPortRegistries(): Result<
   );
 
   // Check for registration errors
-  /* c8 ignore start -- Port registration errors tested individually */
   if (portRegistrationErrors.length > 0) {
     return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
   }
-  /* c8 ignore stop */
 
   return ok({
     gamePortRegistry,
@@ -161,11 +157,9 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
     ServiceLifecycle.SINGLETON
   );
 
-  /* c8 ignore start -- Defensive: Class registration failure */
   if (isErr(portSelectorResult)) {
     return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
   }
-  /* c8 ignore stop */
 
   // Note: Observability handled via self-registration pattern
   // PortSelector registers itself at ObservabilityRegistry in constructor
@@ -173,7 +167,6 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
 
   // Create and register all port registries
   const portsResult = createPortRegistries();
-  /* c8 ignore next -- Error propagation tested in createPortRegistries */
   if (isErr(portsResult)) return portsResult;
 
   const {
@@ -199,34 +192,28 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
     foundryHooksPortRegistryToken,
     hooksPortRegistry
   );
-  /* c8 ignore start -- Defensive: Value registration failure */
   if (isErr(hooksRegistryResult)) {
     return err(
       `Failed to register FoundryHooks PortRegistry: ${hooksRegistryResult.error.message}`
     );
   }
-  /* c8 ignore stop */
 
   // Register FoundryDocument PortRegistry
   const documentRegistryResult = container.registerValue(
     foundryDocumentPortRegistryToken,
     documentPortRegistry
   );
-  /* c8 ignore start -- Defensive: Value registration failure */
   if (isErr(documentRegistryResult)) {
     return err(
       `Failed to register FoundryDocument PortRegistry: ${documentRegistryResult.error.message}`
     );
   }
-  /* c8 ignore stop */
 
   // Register FoundryUI PortRegistry
   const uiRegistryResult = container.registerValue(foundryUIPortRegistryToken, uiPortRegistry);
-  /* c8 ignore start -- Defensive: Value registration failure */
   if (isErr(uiRegistryResult)) {
     return err(`Failed to register FoundryUI PortRegistry: ${uiRegistryResult.error.message}`);
   }
-  /* c8 ignore stop */
 
   // Register FoundrySettings PortRegistry
   const settingsRegistryResult = container.registerValue(
@@ -244,11 +231,9 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
     foundryI18nPortRegistryToken,
     i18nPortRegistry
   );
-  /* c8 ignore start -- Defensive: PortRegistry value registration */
   if (isErr(i18nRegistryResult)) {
     return err(`Failed to register FoundryI18n PortRegistry: ${i18nRegistryResult.error.message}`);
   }
-  /* c8 ignore stop */
 
   return ok(undefined);
 }

@@ -171,4 +171,71 @@ describe("FoundryHooksPortV13", () => {
       expect(mockOff).toHaveBeenCalledWith("testHook", callback);
     });
   });
+
+  describe("disposed state guards", () => {
+    beforeEach(() => {
+      const mockOn = vi.fn().mockReturnValue(1);
+      const mockOnce = vi.fn().mockReturnValue(2);
+      const mockOff = vi.fn();
+      vi.stubGlobal("Hooks", { on: mockOn, once: mockOnce, off: mockOff });
+    });
+
+    it("should prevent registering hooks after disposal", () => {
+      const port = new FoundryHooksPortV13();
+      port.dispose();
+
+      const result = port.on("ready", vi.fn());
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+      expect(result.error.message).toContain("Cannot register hook on disposed port");
+    });
+
+    it("should prevent registering one-time hooks after disposal", () => {
+      const port = new FoundryHooksPortV13();
+      port.dispose();
+
+      const result = port.once("ready", vi.fn());
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+      expect(result.error.message).toContain("Cannot register one-time hook on disposed port");
+    });
+
+    it("should prevent unregistering hooks after disposal", () => {
+      const port = new FoundryHooksPortV13();
+      port.dispose();
+
+      const result = port.off("ready", 123);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+      expect(result.error.message).toContain("Cannot unregister hook on disposed port");
+    });
+
+    it("should be idempotent (can call dispose multiple times)", () => {
+      const port = new FoundryHooksPortV13();
+
+      port.dispose();
+      port.dispose(); // Should not throw
+      port.dispose(); // Still should not throw
+
+      // Port should still be disposed
+      const result = port.on("ready", vi.fn());
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should work normally before disposal", () => {
+      const port = new FoundryHooksPortV13();
+
+      const result1 = port.on("ready", vi.fn());
+      const result2 = port.once("init", vi.fn());
+      const result3 = port.off("ready", 1);
+
+      expectResultOk(result1);
+      expectResultOk(result2);
+      expectResultOk(result3);
+    });
+  });
 });

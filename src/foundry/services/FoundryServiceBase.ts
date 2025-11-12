@@ -95,7 +95,6 @@ export abstract class FoundryServiceBase<TPort> implements Disposable {
    * }
    * ```
    */
-  /* c8 ignore start -- Tested indirectly via Foundry Services that call this method */
   protected withRetry<T>(
     fn: () => Result<T, FoundryError>,
     operationName: string,
@@ -111,7 +110,6 @@ export abstract class FoundryServiceBase<TPort> implements Disposable {
       }),
     });
   }
-  /* c8 ignore stop */
 
   /**
    * Async variant of withRetry for async operations.
@@ -136,7 +134,6 @@ export abstract class FoundryServiceBase<TPort> implements Disposable {
    * }
    * ```
    */
-  /* c8 ignore start -- Tested indirectly via Foundry Services that call this method */
   protected async withRetryAsync<T>(
     fn: () => Promise<Result<T, FoundryError>>,
     operationName: string,
@@ -153,15 +150,14 @@ export abstract class FoundryServiceBase<TPort> implements Disposable {
       }),
     });
   }
-  /* c8 ignore stop */
 
   /**
    * Cleans up resources.
    * Disposes the port if it implements Disposable, then resets the reference.
+   * All ports now implement dispose() with #disposed state guards.
    */
   dispose(): void {
     // Dispose port if it implements Disposable interface
-    /* c8 ignore start -- Defensive: Ports do not currently implement dispose(); reserved for future extensions */
     if (
       this.port &&
       typeof this.port === "object" &&
@@ -171,7 +167,6 @@ export abstract class FoundryServiceBase<TPort> implements Disposable {
       /* type-coverage:ignore-next-line -- Type narrowing: Double cast narrows from generic ServiceType to Disposable at runtime */
       (this.port as unknown as Disposable).dispose();
     }
-    /* c8 ignore stop */
     this.port = null;
   }
 }

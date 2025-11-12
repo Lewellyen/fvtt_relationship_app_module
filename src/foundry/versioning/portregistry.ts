@@ -90,23 +90,11 @@ export class PortRegistry<T> {
       );
     }
 
-    const selectedVersion = compatibleVersions[0];
-    /* c8 ignore start -- Defensive check: selectedVersion cannot be undefined after compatibleVersions length check */
-    if (selectedVersion === undefined) {
-      return err(createFoundryError("PORT_NOT_FOUND", "No compatible version found", { version }));
-    }
-    /* c8 ignore stop */
-    // Version list is sorted descending; index 0 exists so subsequent factory lookup is safe
-    const factory = this.factories.get(selectedVersion);
-    /* c8 ignore start -- Defensive check: factory cannot be undefined after selectedVersion is validated from compatibleVersions */
-    if (!factory) {
-      return err(
-        createFoundryError("PORT_NOT_FOUND", `Factory not found for version ${selectedVersion}`, {
-          selectedVersion,
-        })
-      );
-    }
-    /* c8 ignore stop */
+    // Non-null assertions: guaranteed by compatibleVersions.length > 0 check above
+    /* type-coverage:ignore-next-line -- Non-null assertion: Array[0] guaranteed by length check */
+    const selectedVersion = compatibleVersions[0]!;
+    /* type-coverage:ignore-next-line -- Non-null assertion: Factory guaranteed by compatibleVersions entries */
+    const factory = this.factories.get(selectedVersion)!;
     return ok(factory());
   }
 

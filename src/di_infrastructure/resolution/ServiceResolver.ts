@@ -103,23 +103,22 @@ export class ServiceResolver {
             result = this.resolveScoped(token, registration);
             break;
 
-          /* c8 ignore start -- Defensive: ServiceLifecycle enum ensures only valid values; this default is unreachable */
           default:
+            // TypeScript exhaustive check: ensures all enum values are handled
+            const _exhaustiveCheck: never = registration.lifecycle;
             result = err({
               code: "InvalidLifecycle",
-              message: `Invalid service lifecycle: ${String(registration.lifecycle)}`,
+              message: `Invalid service lifecycle: ${String(_exhaustiveCheck)}`,
               tokenDescription: String(token),
             });
-          /* c8 ignore stop */
         }
 
         return result;
       },
-      /* c8 ignore start -- Optional chaining is defensive: metricsCollector is always injected via constructor */
       (duration, result) => {
+        /* c8 ignore next -- Optional chaining: null metricsCollector tested in ServiceResolver.test.ts "should handle null metricsCollector gracefully" */
         this.metricsCollector?.recordResolution(token, duration, result.ok);
       }
-      /* c8 ignore stop */
     );
   }
 
@@ -144,7 +143,6 @@ export class ServiceResolver {
 
       for (const dep of registration.dependencies) {
         const depResult = this.resolve(dep);
-        /* c8 ignore start -- Dependency resolution failures tested via circular dependency and missing dependency tests */
         if (!depResult.ok) {
           // Return structured error with cause chain
           return err({
@@ -154,7 +152,6 @@ export class ServiceResolver {
             cause: depResult.error,
           });
         }
-        /* c8 ignore stop */
         resolvedDeps.push(depResult.value);
       }
 
@@ -186,13 +183,11 @@ export class ServiceResolver {
       return ok(registration.value);
     } else {
       // Invalid registration
-      /* c8 ignore start -- Defensive: ServiceRegistration.create* methods already ensure one of class/factory/value is set */
       return err({
         code: "InvalidOperation",
         message: `Invalid registration for ${String(token)} - no class, factory, or value`,
         tokenDescription: String(token),
       });
-      /* c8 ignore stop */
     }
   }
 
@@ -225,12 +220,10 @@ export class ServiceResolver {
       }
 
       // Check error code to determine action
-      /* c8 ignore start -- Circular dependency from parent requires complex multi-level dependency setup that's already tested in container.test.ts */
       if (parentResult.error.code === "CircularDependency") {
         // Real circular dependency - propagate as-is
         return parentResult;
       }
-      /* c8 ignore stop */
 
       // TokenNotRegistered or other error -> fallback to own cache
       // This allows child-specific singleton registrations
@@ -316,11 +309,9 @@ export class ServiceResolver {
     // Check cache (one instance per scope)
     if (!this.cache.has(token)) {
       const instanceResult = this.instantiateService(token, registration);
-      /* c8 ignore start -- Error path covered by other instantiation tests; this is just error propagation */
       if (!instanceResult.ok) {
         return instanceResult; // Propagate error
       }
-      /* c8 ignore stop */
       this.cache.set(token, instanceResult.value);
     }
 

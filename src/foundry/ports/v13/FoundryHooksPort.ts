@@ -23,7 +23,17 @@ interface DynamicHooksApi {
  * https://foundryvtt.com/api/classes/foundry.helpers.Hooks.html
  */
 export class FoundryHooksPortV13 implements FoundryHooks {
+  #disposed = false;
+
   on(hookName: string, callback: FoundryHookCallback): Result<number, FoundryError> {
+    if (this.#disposed) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot register hook on disposed port", {
+          hookName,
+        }),
+      };
+    }
     return tryCatch(
       () => {
         if (typeof Hooks === "undefined") {
@@ -46,6 +56,14 @@ export class FoundryHooksPortV13 implements FoundryHooks {
   }
 
   once(hookName: string, callback: FoundryHookCallback): Result<number, FoundryError> {
+    if (this.#disposed) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot register one-time hook on disposed port", {
+          hookName,
+        }),
+      };
+    }
     return tryCatch(
       () => {
         if (typeof Hooks === "undefined") {
@@ -68,6 +86,14 @@ export class FoundryHooksPortV13 implements FoundryHooks {
   }
 
   off(hookName: string, callbackOrId: FoundryHookCallback | number): Result<void, FoundryError> {
+    if (this.#disposed) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot unregister hook on disposed port", {
+          hookName,
+        }),
+      };
+    }
     return tryCatch(
       () => {
         if (typeof Hooks === "undefined") {
@@ -89,9 +115,10 @@ export class FoundryHooksPortV13 implements FoundryHooks {
     );
   }
 
-  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
   dispose(): void {
-    // No resources to clean up
+    if (this.#disposed) return; // Idempotent
+    this.#disposed = true;
+    // Note: Hook cleanup is handled by FoundryHooksService.dispose()
+    // Port remains stateless - it only wraps Foundry API
   }
-  /* c8 ignore stop */
 }

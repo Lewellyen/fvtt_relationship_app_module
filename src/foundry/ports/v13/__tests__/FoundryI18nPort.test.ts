@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FoundryI18nPortV13 } from "../FoundryI18nPort";
-import { expectResultOk } from "@/test/utils/test-helpers";
+import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
 describe("FoundryI18nPortV13", () => {
   let port: FoundryI18nPortV13;
@@ -158,6 +158,58 @@ describe("FoundryI18nPortV13", () => {
   describe("Dependencies", () => {
     it("should have no dependencies", () => {
       expect(FoundryI18nPortV13.dependencies).toEqual([]);
+    });
+  });
+
+  describe("disposed state guards", () => {
+    beforeEach(() => {
+      vi.stubGlobal("game", {
+        i18n: {
+          localize: vi.fn((key: string) => key),
+          format: vi.fn((key: string) => key),
+          has: vi.fn(() => true),
+        },
+      });
+    });
+
+    it("should prevent localize after disposal", () => {
+      const port = new FoundryI18nPortV13();
+      port.dispose();
+
+      const result = port.localize("TEST.KEY");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should prevent format after disposal", () => {
+      const port = new FoundryI18nPortV13();
+      port.dispose();
+
+      const result = port.format("TEST.KEY", { name: "Test" });
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should prevent has after disposal", () => {
+      const port = new FoundryI18nPortV13();
+      port.dispose();
+
+      const result = port.has("TEST.KEY");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should be idempotent", () => {
+      const port = new FoundryI18nPortV13();
+      port.dispose();
+      port.dispose();
+      port.dispose();
+
+      const result = port.localize("TEST");
+      expectResultErr(result);
     });
   });
 });

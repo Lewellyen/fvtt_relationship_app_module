@@ -17,10 +17,10 @@ Diese Dokumentation beschreibt alle Qualitätssicherungs-Ausnahmen (Quality Gate
 | Quality Gate | Status | Coverage | Exclusions | Dokument |
 |--------------|--------|----------|------------|----------|
 | **TypeScript Compilation** | ✅ 100% | No errors | - | `npm run type-check` |
-| **Type Coverage** | ✅ 100% | 9335 / 9335 | 25 casts | [type-coverage-exclusions.md](./type-coverage-exclusions.md) |
+| **Type Coverage** | ✅ 100% | 9429 / 9429 | 29 exclusions | [type-coverage-exclusions.md](./type-coverage-exclusions.md) |
 | **ESLint** | ✅ 100% | 0 errors | 94 disables | [linter-exclusions.md](./linter-exclusions.md) |
-| **Code Coverage** | ✅ 100% | Lines, Branches, Functions, Statements | 201 c8 ignores | [code-coverage-exclusions.md](./code-coverage-exclusions.md) |
-| **Unit Tests** | ✅ 100% | 959 tests passed | - | `npm test` |
+| **Code Coverage** | ✅ 100% | 100% Lines/Stmts, 100% Branches, 100% Functions | ~119 lines (101 markers) | [code-coverage-exclusions.md](./code-coverage-exclusions.md) |
+| **Unit Tests** | ✅ 100% | 1026 tests passed | - | `npm test` |
 
 ---
 
@@ -69,17 +69,23 @@ Diese Dokumentation beschreibt alle Qualitätssicherungs-Ausnahmen (Quality Gate
 **Zweck:** Dokumentiert alle `c8 ignore` Kommentare im Code
 
 **Inhalt:**
-- 201 c8 ignore uses (40 Dateien)
-- Kategorisierung: Defensive Programming, Error Propagation, Foundry Runtime, etc.
-- Begründung für jeden nicht-testbaren Code-Pfad
+- ~201 ignorierte Lines (184 c8 ignore Marker, 35 Dateien)
+- 9 Kategorien mit vollständiger Refactoring-Analyse
+- Priorisierte Refactoring-Roadmap mit Aufwand/Nutzen-Bewertung
+- Refactoring-Potenzial: ~21-29 ignores eliminierbar (~10-15%)
 
 **Wichtigste Kategorien:**
-- Defensive Programming (35): Kann in Praxis nicht fehlschlagen
-- Error Propagation (25): In Sub-Modulen getestet
-- Foundry Runtime (40): Erfordert Foundry VTT Umgebung
-- Module Registration (50): Error-Handling in Config-Modulen
+- Module Registration Error Propagation (52 Lines, 26%): DRY-Prinzip
+- Foundry Runtime Dependencies (45 Lines, 22%): Integration-Points
+- Defensive Programming (38 Lines, 19%): ~4 eliminierbar
+- Port/Service Disposal Methods (14 Lines, 7%): ~14 eliminierbar (Quick Win!)
 
-**Status:** ✅ Alle Exclusions begründet, DRY-Prinzip eingehalten
+**Quick Wins Identifiziert:**
+- ✅ Optional Disposable Interface: ~14 ignores eliminierbar (2-3h)
+- ✅ Default Parameter Tests: ~5 ignores eliminierbar (30min)
+- ✅ Exhaustive Enum Checking: ~2 ignores eliminierbar (1h)
+
+**Status:** ✅ Vollständiger Audit durchgeführt, ~155-172 verbleibende ignores architektonisch gerechtfertigt
 
 ---
 
@@ -128,8 +134,9 @@ const value = something as TargetType;
 
 **Dann:**
 1. ✅ Prüfen: Ist Code wirklich nicht testbar?
-2. ✅ Kategorisieren: Welche der 7 Kategorien?
+2. ✅ Kategorisieren: Welche der 9 Kategorien?
 3. ✅ Dokumentieren: In `code-coverage-exclusions.md` eintragen
+4. ✅ Refactoring: Prüfen ob Code zu "Quick Wins" gehört
 
 ---
 

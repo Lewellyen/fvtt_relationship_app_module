@@ -314,5 +314,63 @@ describe("MetricsCollector", () => {
 
       expect(result).toBe(true);
     });
+
+    it("should sample when Math.random() < samplingRate (production)", () => {
+      const prodEnv = createMockEnvironmentConfig({
+        isDevelopment: false,
+        performanceSamplingRate: 0.7,
+      });
+      const collector = new MetricsCollector(prodEnv);
+
+      // Mock Math.random to return 0.5 (< 0.7 = should sample)
+      vi.spyOn(Math, "random").mockReturnValue(0.5);
+
+      const result = collector.shouldSample();
+
+      expect(result).toBe(true);
+    });
+
+    it("should not sample when Math.random() >= samplingRate (production)", () => {
+      const prodEnv = createMockEnvironmentConfig({
+        isDevelopment: false,
+        performanceSamplingRate: 0.3,
+      });
+      const collector = new MetricsCollector(prodEnv);
+
+      // Mock Math.random to return 0.5 (>= 0.3 = should NOT sample)
+      vi.spyOn(Math, "random").mockReturnValue(0.5);
+
+      const result = collector.shouldSample();
+
+      expect(result).toBe(false);
+    });
+
+    it("should handle edge case: samplingRate = 0", () => {
+      const prodEnv = createMockEnvironmentConfig({
+        isDevelopment: false,
+        performanceSamplingRate: 0,
+      });
+      const collector = new MetricsCollector(prodEnv);
+
+      vi.spyOn(Math, "random").mockReturnValue(0);
+
+      const result = collector.shouldSample();
+
+      expect(result).toBe(false); // 0 < 0 = false
+    });
+
+    it("should handle edge case: samplingRate = 1", () => {
+      const prodEnv = createMockEnvironmentConfig({
+        isDevelopment: false,
+        performanceSamplingRate: 1,
+      });
+      const collector = new MetricsCollector(prodEnv);
+
+      vi.spyOn(Math, "random").mockReturnValue(0.999);
+
+      const result = collector.shouldSample();
+
+      expect(result).toBe(true); // 0.999 < 1 = true
+    });
   });
 });

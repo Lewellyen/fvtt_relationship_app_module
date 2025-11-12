@@ -10,11 +10,16 @@ import { sanitizeId } from "@/foundry/validation/schemas";
  * Encapsulates Foundry v13-specific UI manipulation.
  */
 export class FoundryUIPortV13 implements FoundryUI {
+  #disposed = false;
+
   removeJournalElement(
     journalId: string,
     journalName: string,
     html: HTMLElement
   ): Result<void, FoundryError> {
+    if (this.#disposed) {
+      return err(createFoundryError("DISPOSED", "Cannot remove journal element on disposed port"));
+    }
     // Sanitize ID to prevent CSS injection
     const safeId = sanitizeId(journalId);
 
@@ -49,11 +54,17 @@ export class FoundryUIPortV13 implements FoundryUI {
   }
 
   findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, FoundryError> {
+    if (this.#disposed) {
+      return err(createFoundryError("DISPOSED", "Cannot find element on disposed port"));
+    }
     const element = container.querySelector(selector) as HTMLElement | null;
     return ok(element);
   }
 
   notify(message: string, type: "info" | "warning" | "error"): Result<void, FoundryError> {
+    if (this.#disposed) {
+      return err(createFoundryError("DISPOSED", "Cannot show notification on disposed port"));
+    }
     if (typeof ui === "undefined" || !ui?.notifications) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry UI notifications not available"));
     }
@@ -83,9 +94,9 @@ export class FoundryUIPortV13 implements FoundryUI {
     }
   }
 
-  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
   dispose(): void {
+    if (this.#disposed) return; // Idempotent
+    this.#disposed = true;
     // No resources to clean up
   }
-  /* c8 ignore stop */
 }

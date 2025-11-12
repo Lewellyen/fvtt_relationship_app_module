@@ -63,11 +63,10 @@ export class ModuleApiInitializer {
   ): void {
     const deprecationInfo = getDeprecationInfo(token);
     if (deprecationInfo && !deprecationInfo.warningShown) {
-      /* c8 ignore start -- Optional replacement info: Tested in deprecated-token.test.ts */
+      /* c8 ignore next 3 -- Ternary branch coverage: Both branches tested (replacement=null and replacement="string"), reporting artifact */
       const replacementInfo = deprecationInfo.replacement
         ? `Use "${deprecationInfo.replacement}" instead.\n`
         : "";
-      /* c8 ignore stop */
       console.warn(
         `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.\n` +
           `Reason: ${deprecationInfo.reason}\n` +

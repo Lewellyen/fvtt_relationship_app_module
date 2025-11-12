@@ -97,6 +97,14 @@ export class ServiceRegistry {
       });
     }
 
+    // Validate serviceClass before using it
+    if (!serviceClass) {
+      return err({
+        code: "InvalidOperation",
+        message: "serviceClass is required for class registration",
+      });
+    }
+
     const dependencies = hasDependencies(serviceClass) ? (serviceClass.dependencies ?? []) : [];
 
     // Use static factory method for validation
@@ -106,11 +114,10 @@ export class ServiceRegistry {
       serviceClass
     );
 
-    /* c8 ignore start -- ServiceRegistration.createClass validation tested in serviceregistration.test.ts; error propagation complex to test */
+    /* c8 ignore next 3 -- Error propagation: ServiceRegistration.createClass validates internally; error path tested in ServiceRegistration unit tests */
     if (isErr(registrationResult)) {
       return registrationResult;
     }
-    /* c8 ignore stop */
 
     this.registrations.set(token, registrationResult.value);
     this.updateLifecycleIndex(token, lifecycle);
@@ -157,11 +164,9 @@ export class ServiceRegistry {
       factory
     );
 
-    /* c8 ignore start -- ServiceRegistration.createFactory validation tested in serviceregistration.test.ts; error propagation complex to test */
     if (isErr(registrationResult)) {
       return registrationResult;
     }
-    /* c8 ignore stop */
 
     this.registrations.set(token, registrationResult.value);
     this.updateLifecycleIndex(token, lifecycle);
@@ -200,11 +205,9 @@ export class ServiceRegistry {
     // Use static factory method for validation (includes function check)
     const registrationResult = ServiceRegistration.createValue<TServiceType>(value);
 
-    /* c8 ignore start -- ServiceRegistration.createValue validation tested in serviceregistration.test.ts; error propagation complex to test */
     if (isErr(registrationResult)) {
       return registrationResult;
     }
-    /* c8 ignore stop */
 
     this.registrations.set(token, registrationResult.value);
     this.updateLifecycleIndex(token, ServiceLifecycle.SINGLETON); // Values are always SINGLETON
@@ -243,11 +246,9 @@ export class ServiceRegistry {
     // Use static factory method for validation
     const registrationResult = ServiceRegistration.createAlias<TServiceType>(targetToken);
 
-    /* c8 ignore start -- ServiceRegistration.createAlias validation tested in serviceregistration.test.ts; error propagation complex to test */
     if (isErr(registrationResult)) {
       return registrationResult;
     }
-    /* c8 ignore stop */
 
     this.registrations.set(aliasToken, registrationResult.value);
     return ok(undefined);

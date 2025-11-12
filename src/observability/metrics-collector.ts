@@ -147,16 +147,12 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
    */
   shouldSample(): boolean {
     // Always sample in development mode
-    /* c8 ignore start -- Development mode always returns true; tested implicitly in all metrics tests */
     if (this.env.isDevelopment) {
       return true;
     }
-    /* c8 ignore stop */
 
     // Probabilistic sampling in production based on configured rate
-    /* c8 ignore start -- Production sampling: Math.random() behavior tested in shouldSample tests */
     return Math.random() < this.env.performanceSamplingRate;
-    /* c8 ignore stop */
   }
 
   /**

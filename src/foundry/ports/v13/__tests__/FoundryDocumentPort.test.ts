@@ -145,4 +145,39 @@ describe("FoundryDocumentPortV13", () => {
       expect(result.error.message).toContain("Failed to set flag");
     });
   });
+
+  describe("disposed state guards", () => {
+    it("should prevent getFlag after disposal", () => {
+      const port = new FoundryDocumentPortV13();
+      port.dispose();
+      const doc = { getFlag: vi.fn() };
+
+      const result = port.getFlag(doc, "test", "key", v.string());
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should prevent setFlag after disposal", async () => {
+      const port = new FoundryDocumentPortV13();
+      port.dispose();
+      const doc = { setFlag: vi.fn().mockResolvedValue(undefined) };
+
+      const result = await port.setFlag(doc, "test", "key", "value");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should be idempotent", () => {
+      const port = new FoundryDocumentPortV13();
+      port.dispose();
+      port.dispose();
+      port.dispose();
+
+      const doc = { getFlag: vi.fn() };
+      const result = port.getFlag(doc, "test", "key", v.string());
+      expectResultErr(result);
+    });
+  });
 });

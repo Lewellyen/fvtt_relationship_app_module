@@ -51,12 +51,10 @@ function registerFallbacks(container: ServiceContainer): void {
  */
 function validateContainer(container: ServiceContainer): Result<void, string> {
   const validateResult = container.validate();
-  /* c8 ignore start -- Defensive: Validation can only fail if dependencies are missing or circular */
   if (isErr(validateResult)) {
     const errorMessages = validateResult.error.map((e) => e.message).join(", ");
     return err(`Validation failed: ${errorMessages}`);
   }
-  /* c8 ignore stop */
   return ok(undefined);
 }
 
@@ -99,50 +97,42 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   // Register all service modules in order
   const coreResult = registerCoreServices(container);
-  /* c8 ignore next -- Error propagation: Core services failure tested in sub-module */
   if (isErr(coreResult)) return coreResult;
 
   const observabilityResult = registerObservability(container);
-  /* c8 ignore next -- Error propagation: Observability failure tested in sub-module */
+  /* c8 ignore next 2 -- Error propagation: Tested in registerObservability module tests; deep module mocking too complex */
   if (isErr(observabilityResult)) return observabilityResult;
 
   const utilityResult = registerUtilityServices(container);
-  /* c8 ignore next -- Error propagation: Utility services failure tested in sub-module */
   if (isErr(utilityResult)) return utilityResult;
 
   const portInfraResult = registerPortInfrastructure(container);
-  /* c8 ignore next -- Error propagation: Port infrastructure failure tested in sub-module */
   if (isErr(portInfraResult)) return portInfraResult;
 
   const foundryServicesResult = registerFoundryServices(container);
-  /* c8 ignore next -- Error propagation: Foundry services failure tested in sub-module */
   if (isErr(foundryServicesResult)) return foundryServicesResult;
 
   const i18nServicesResult = registerI18nServices(container);
-  /* c8 ignore next -- Error propagation: I18n services failure tested in sub-module */
+  /* c8 ignore next 2 -- Error propagation: Tested in registerI18nServices module tests; deep module mocking too complex */
   if (isErr(i18nServicesResult)) return i18nServicesResult;
 
   const registrarsResult = registerRegistrars(container);
-  /* c8 ignore next -- Error propagation: Registrars failure tested in sub-module */
   if (isErr(registrarsResult)) return registrarsResult;
 
   // Validate container configuration
   const validationResult = validateContainer(container);
-  /* c8 ignore next -- Error propagation: Validation failure tested in validateContainer */
   if (isErr(validationResult)) return validationResult;
 
   // After validation: Create and register health checks
   // This must happen after validation because resolving requires validated container
   const registryRes = container.resolveWithError(healthCheckRegistryToken);
   const metricsRes = container.resolveWithError(metricsCollectorToken);
-  /* c8 ignore start -- Defensive: Dependencies are always registered at this point */
   if (!registryRes.ok) {
     return err(`Failed to resolve HealthCheckRegistry: ${registryRes.error.message}`);
   }
   if (!metricsRes.ok) {
     return err(`Failed to resolve MetricsCollector: ${metricsRes.error.message}`);
   }
-  /* c8 ignore stop */
 
   // Create and register health checks
   const containerCheck = new ContainerHealthCheck(container);

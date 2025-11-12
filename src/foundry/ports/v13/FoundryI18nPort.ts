@@ -2,6 +2,7 @@ import type { Result } from "@/types/result";
 import type { FoundryI18n } from "@/foundry/interfaces/FoundryI18n";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { ok } from "@/utils/functional/result";
+import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 
 /**
  * Foundry VTT v13+ implementation of the i18n interface.
@@ -11,6 +12,7 @@ import { ok } from "@/utils/functional/result";
  * @implements {FoundryI18n}
  */
 export class FoundryI18nPortV13 implements FoundryI18n {
+  #disposed = false;
   static dependencies = [] as const;
 
   /**
@@ -20,6 +22,12 @@ export class FoundryI18nPortV13 implements FoundryI18n {
    * @returns Result with translated string (returns key itself if not found)
    */
   localize(key: string): Result<string, FoundryError> {
+    if (this.#disposed) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot localize on disposed port", { key }),
+      };
+    }
     try {
       /* c8 ignore start -- Requires Foundry game globals; tested in integration tests */
       if (typeof game === "undefined" || !game?.i18n) {
@@ -45,6 +53,14 @@ export class FoundryI18nPortV13 implements FoundryI18n {
    * @returns Result with formatted string
    */
   format(key: string, data: Record<string, unknown>): Result<string, FoundryError> {
+    if (this.#disposed) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot format translation on disposed port", {
+          key,
+        }),
+      };
+    }
     try {
       /* c8 ignore start -- Requires Foundry game globals; tested in integration tests */
       if (typeof game === "undefined" || !game?.i18n) {
@@ -75,6 +91,14 @@ export class FoundryI18nPortV13 implements FoundryI18n {
    * @returns Result with boolean indicating existence
    */
   has(key: string): Result<boolean, FoundryError> {
+    if (this.#disposed) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot check translation key on disposed port", {
+          key,
+        }),
+      };
+    }
     try {
       /* c8 ignore start -- Requires Foundry game globals; tested in integration tests */
       if (typeof game === "undefined" || !game?.i18n) {
@@ -92,9 +116,9 @@ export class FoundryI18nPortV13 implements FoundryI18n {
     }
   }
 
-  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
   dispose(): void {
+    if (this.#disposed) return; // Idempotent
+    this.#disposed = true;
     // No resources to clean up
   }
-  /* c8 ignore stop */
 }

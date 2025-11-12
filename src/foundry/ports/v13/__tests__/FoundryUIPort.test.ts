@@ -229,4 +229,45 @@ describe("FoundryUIPortV13", () => {
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
     });
   });
+
+  describe("disposed state guards", () => {
+    it("should prevent removing journal elements after disposal", () => {
+      port.dispose();
+      const html = document.createElement("div");
+
+      const result = port.removeJournalElement("test", "Test", html);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should prevent finding elements after disposal", () => {
+      port.dispose();
+      const html = document.createElement("div");
+
+      const result = port.findElement(html, "#test");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should prevent notifications after disposal", () => {
+      vi.stubGlobal("ui", { notifications: { info: vi.fn() } });
+      port.dispose();
+
+      const result = port.notify("Test", "info");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should be idempotent", () => {
+      port.dispose();
+      port.dispose();
+      port.dispose();
+
+      const result = port.notify("Test", "info");
+      expectResultErr(result);
+    });
+  });
 });

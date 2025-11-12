@@ -10,12 +10,20 @@ import * as v from "valibot";
  * Encapsulates Foundry v13-specific document operations.
  */
 export class FoundryDocumentPortV13 implements FoundryDocument {
+  #disposed = false;
+
   getFlag<T>(
     document: { getFlag: (scope: string, key: string) => unknown },
     scope: string,
     key: string,
     schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>
   ): Result<T | null, FoundryError> {
+    if (this.#disposed) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot get flag on disposed port", { scope, key }),
+      };
+    }
     return tryCatch(
       () => {
         if (!document?.getFlag) {
@@ -66,6 +74,12 @@ export class FoundryDocumentPortV13 implements FoundryDocument {
     key: string,
     value: T
   ): Promise<Result<void, FoundryError>> {
+    if (this.#disposed) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot set flag on disposed port", { scope, key }),
+      };
+    }
     return fromPromise<void, FoundryError>(
       (async () => {
         if (!document?.setFlag) {
@@ -83,9 +97,9 @@ export class FoundryDocumentPortV13 implements FoundryDocument {
     );
   }
 
-  /* c8 ignore start -- Lifecycle: No resources to clean up, no-op method */
   dispose(): void {
+    if (this.#disposed) return; // Idempotent
+    this.#disposed = true;
     // No resources to clean up
   }
-  /* c8 ignore stop */
 }

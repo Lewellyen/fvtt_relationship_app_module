@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for testing error scenarios with invalid types
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ServiceResolver } from "../ServiceResolver";
 import { ServiceRegistry } from "../../registry/ServiceRegistry";
 import { InstanceCache } from "../../cache/InstanceCache";
@@ -176,6 +176,41 @@ describe("ServiceResolver", () => {
       // Sollte gleiche Instanz sein
       expect(result1.value).toBe(result2.value);
     });
+
+    it("should propagate circular dependency error from parent", () => {
+      const parentRegistry = new ServiceRegistry();
+      const parentCache = new InstanceCache();
+      const parentResolver = createTestResolver(parentRegistry, parentCache, null, "parent");
+
+      const childRegistry = parentRegistry.clone();
+      const childCache = new InstanceCache();
+      const childResolver = createTestResolver(childRegistry, childCache, parentResolver, "child");
+
+      const token = createInjectionToken<TestService>("CircularSingleton");
+
+      // Register in both parent and child
+      parentRegistry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+      childRegistry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Spy on parent resolver to return circular dependency error
+      vi.spyOn(parentResolver, "resolve").mockImplementation(() => ({
+        ok: false,
+        error: {
+          code: "CircularDependency" as const,
+          message: "Circular dependency detected",
+          tokenDescription: String(token),
+          resolutionStack: [String(token)],
+        },
+      }));
+
+      // Child should propagate the circular dependency error from parent
+      const result = childResolver.resolve(token);
+      expectResultErr(result);
+      expect(result.error.code).toBe("CircularDependency");
+
+      // Restore
+      vi.restoreAllMocks();
+    });
   });
 
   describe("Transient Lifecycle", () => {
@@ -271,6 +306,37 @@ describe("ServiceResolver", () => {
 
       expect(child1Result.value).not.toBe(child2Result.value);
     });
+
+    it("should handle scoped instantiation failure", () => {
+      class FailingScopedService implements Logger {
+        static dependencies = [] as const;
+        constructor() {
+          throw new Error("Scoped service instantiation failed");
+        }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      const parentRegistry = new ServiceRegistry();
+      const parentCache = new InstanceCache();
+      const token = createInjectionToken<FailingScopedService>("FailingScoped");
+
+      // Register as scoped
+      parentRegistry.registerClass(token, FailingScopedService, ServiceLifecycle.SCOPED);
+
+      const parentResolver = createTestResolver(parentRegistry, parentCache, null, "parent");
+      const childRegistry = parentRegistry.clone();
+      const childCache = new InstanceCache();
+      const childResolver = createTestResolver(childRegistry, childCache, parentResolver, "child");
+
+      const result = childResolver.resolve(token);
+      expectResultErr(result);
+      expect(result.error.code).toBe("FactoryFailed");
+      expect(result.error.message).toContain("Scoped service instantiation failed");
+    });
   });
 
   describe("Factory Resolution", () => {
@@ -350,6 +416,24 @@ describe("ServiceResolver", () => {
       const result = resolver.resolve(serviceToken);
       expectResultOk(result);
       expect(result.value.dep).toBeInstanceOf(TestService);
+    });
+
+    it("should fail when class dependency resolution fails", () => {
+      const registry = new ServiceRegistry();
+      const cache = new InstanceCache();
+      const resolver = createTestResolver(registry, cache, null, "root");
+
+      const depToken = createInjectionToken<TestService>("MissingDep");
+      const serviceToken = createInjectionToken<TestServiceWithDep>("Service");
+
+      // Register service with dependency, but don't register the dependency
+      (TestServiceWithDep.dependencies as unknown as (typeof depToken)[]) = [depToken];
+      registry.registerClass(serviceToken, TestServiceWithDep, ServiceLifecycle.SINGLETON);
+
+      const result = resolver.resolve(serviceToken);
+      expectResultErr(result);
+      expect(result.error.code).toBe("DependencyResolveFailed");
+      expect(result.error.message).toContain("Cannot resolve dependency");
     });
 
     it("should allow factory to capture dependencies via closure", () => {
@@ -433,6 +517,33 @@ describe("ServiceResolver", () => {
       expect(result.error.code).toBe("InvalidOperation");
     });
 
+    it("should handle invalid lifecycle enum value", () => {
+      const registry = new ServiceRegistry();
+      const cache = new InstanceCache();
+      const resolver = createTestResolver(registry, cache, null, "root");
+
+      const token = createInjectionToken<TestService>("InvalidLifecycle");
+
+      // Manually create registration with invalid lifecycle (bypassing normal registration)
+      (registry as any).registrations.set(
+        token,
+        new (class {
+          lifecycle = "invalid" as any;
+          dependencies = [];
+          providerType = "class";
+          serviceClass = TestService;
+          factory = undefined;
+          value = undefined;
+          aliasTarget = undefined;
+        })()
+      );
+
+      const result = resolver.resolve(token);
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidLifecycle");
+      expect(result.error.message).toContain("Invalid service lifecycle");
+    });
+
     it("should handle constructor errors gracefully", () => {
       class FailingService implements Logger {
         static dependencies = [] as const;
@@ -458,6 +569,22 @@ describe("ServiceResolver", () => {
       expect(result.error.code).toBe("FactoryFailed");
       expect(result.error.message).toContain("Constructor failed");
       expect(result.error.message).toContain("Constructor intentionally fails");
+    });
+
+    it("should handle null metricsCollector gracefully (optional chaining)", () => {
+      // Create resolver without metricsCollector (pass null)
+      const registry = new ServiceRegistry();
+      const cache = new InstanceCache();
+      const token = createInjectionToken<TestService>("Test");
+
+      // Use createTestResolver (has mock performanceTracker built-in)
+      const resolver = createTestResolver(registry, cache, null, "test");
+
+      registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Should resolve without throwing (metricsCollector?.recordResolution is safe)
+      const result = resolver.resolve(token);
+      expectResultOk(result);
     });
   });
 });

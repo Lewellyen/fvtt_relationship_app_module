@@ -16,11 +16,15 @@ import { MODULE_CONSTANTS } from "@/constants";
  * to avoid expensive Valibot validation on every call. Cache expires after 5 seconds.
  */
 export class FoundryGamePortV13 implements FoundryGame {
+  #disposed = false;
   private cachedEntries: FoundryJournalEntry[] | null = null;
   private lastCheckTimestamp = 0;
   private readonly cacheTtlMs = MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS;
 
   getJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
+    if (this.#disposed) {
+      return err(createFoundryError("DISPOSED", "Cannot get journal entries on disposed port"));
+    }
     if (typeof game === "undefined" || !game?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));
     }
@@ -74,6 +78,9 @@ export class FoundryGamePortV13 implements FoundryGame {
   }
 
   getJournalEntryById(id: string): Result<FoundryJournalEntry | null, FoundryError> {
+    if (this.#disposed) {
+      return err(createFoundryError("DISPOSED", "Cannot get journal entry on disposed port"));
+    }
     // Validate input
     const validationResult = validateJournalId(id);
     /* c8 ignore start -- Input validation tested in input-validators.test.ts */
@@ -102,11 +109,11 @@ export class FoundryGamePortV13 implements FoundryGame {
     );
   }
 
-  /* c8 ignore start -- Lifecycle: Disposal tested indirectly via service disposal tests */
   dispose(): void {
+    if (this.#disposed) return; // Idempotent
+    this.#disposed = true;
     // Invalidate cache on disposal
     this.cachedEntries = null;
     this.lastCheckTimestamp = 0;
   }
-  /* c8 ignore stop */
 }

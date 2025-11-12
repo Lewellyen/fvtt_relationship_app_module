@@ -286,4 +286,58 @@ describe("FoundrySettingsPortV13", () => {
       expect(mockRegister).toHaveBeenCalled();
     });
   });
+
+  describe("disposed state guards", () => {
+    beforeEach(() => {
+      vi.stubGlobal("game", {
+        settings: {
+          register: vi.fn(),
+          get: vi.fn().mockReturnValue("value"),
+          set: vi.fn().mockResolvedValue("value"),
+        },
+      });
+    });
+
+    it("should prevent register after disposal", () => {
+      port.dispose();
+
+      const result = port.register("test", "key", {
+        name: "Test",
+        scope: "world",
+        config: false,
+        type: String,
+        default: "",
+      });
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should prevent get after disposal", () => {
+      port.dispose();
+
+      const result = port.get("test", "key", v.string());
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should prevent set after disposal", async () => {
+      port.dispose();
+
+      const result = await port.set("test", "key", "value");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should be idempotent", () => {
+      port.dispose();
+      port.dispose();
+      port.dispose();
+
+      const result = port.get("test", "key", v.string());
+      expectResultErr(result);
+    });
+  });
 });

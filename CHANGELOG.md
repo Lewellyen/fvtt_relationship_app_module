@@ -12,6 +12,70 @@
 
 ### Upgrade-Hinweise
 
+## [0.14.0] - 2025-11-12
+### Hinzugefügt
+- **Code Coverage Refactoring - Phase 1, 2 & Defensive Guards**: 88 c8 ignore markers eliminiert (47.8% Reduktion) ([Details](docs/roadmaps/code-coverage-refactoring-roadmap.md))
+- **Phase 1 Quick Wins**: 18 markers eliminiert
+- Task 1.1: Disposed State Guards in allen 6 Ports (`#disposed` private field, idempotente `dispose()`, DISPOSED error code)
+- Task 1.2: Default Parameter Tests (LocalI18nService, module-api-initializer)
+- Task 1.3: Exhaustive Enum Checking mit TypeScript `never` type (ServiceResolver)
+- **Phase 2 Optional**: 60 markers eliminiert
+- Task 2.1: TypeScript Compile-Time Checks entfernt (input-validators redundante runtime checks)
+- Task 2.2: Sampling Tests mit Math.random() mocking (metrics-collector production sampling)
+- Task 2.3: withRetry Direct Tests (FoundryServiceBase.test.ts erstellt mit 14 Tests)
+- Task 2.4: Error Propagation Tests (Config modules, ServiceRegistry, ServiceResolver, Container)
+- **Phase 3 Defensive Guards**: 10 markers eliminiert
+- Non-null assertions für TypeScript flow-analysis (RetryService lastError!, portregistry selections!)
+- Logik-Vereinfachung (module-health-service ternary statt if/else/else)
+- **Neue Tests**: 43 Tests hinzugefügt (983 → 1026)
+- **Coverage**: 100% (Lines/Statements), 100% (Branches), 100% (Functions) ✅
+- **Verbleibend**: ~96 markers (architektonisch gerechtfertigt: Foundry Runtime, Lifecycle Methods, Service Resolution guards)
+- **Code Coverage Refactoring Roadmap**: Actionable Plan zur Reduzierung von c8 ignore Kommentaren ([Details](docs/roadmaps/code-coverage-refactoring-roadmap.md))
+- **Phase 1 Quick Wins**: 21 ignores eliminierbar in 5-6h (11.4% Reduktion)
+- **Task 1.1 - Disposed State Guards**: `#disposed` Variable in allen Ports für Defensive Programming
+- Private `#disposed` field verhindert Nutzung nach Disposal
+- Guards in allen public methods mit hilfreichen Error-Messages
+- Idempotente `dispose()` Methode (mehrfach aufrufbar)
+- Eliminiert 14 c8 ignore markers (7% Reduktion)
+- Task 1.2: Default Parameter Tests (5 ignores)
+- Task 1.3: Exhaustive Enum Checking (2 ignores)
+- **Phase 2 Optional**: 60 ignores eliminierbar in 7-9h (32.6% Reduktion)
+- **Task 2.4 - Error Propagation Tests**: Höchster Einzelimpact! 🔥
+- Mock Sub-Modules und teste Orchestration-Logic
+- Verifiziert dass Parent-Module richtig verkabelt sind
+- Eliminiert komplette Category 1 (Module Registration): 52 ignores (28.3%)
+- Revidierte Bewertung: DAMP > DRY für Tests!
+- Task 2.1-2.3: TypeScript Checks, Sampling Tests, withRetry Tests (8 ignores)
+- **Gesamt-Potenzial**: 81 ignores eliminierbar (44.0% Reduktion!)
+- 2 komplette Kategorien eliminierbar nach Phase 2
+- Detaillierte Implementation Steps mit Code-Beispielen
+- Priorisierte Implementierungsreihenfolge mit Milestones
+- Tracking Dashboard für Progress-Monitoring
+
+### Geändert
+- **Code Coverage Refactoring Roadmap v1.2.0**: Verbleibende Lines-Aufschlüsselung präzisiert ([Details](docs/roadmaps/code-coverage-refactoring-roadmap.md#after-phase-2-quick-wins--optional))
+- "Miscellaneous 46 lines" aufgeschlüsselt in 7 konkrete Kategorien
+- Detaillierte Tabelle für 120 verbleibende Lines hinzugefügt
+- Rechnung korrigiert: 45 + 12 + 34 + 8 + 1 + 8 + 12 = 120 ✓
+- 57 lines (48%) absolut legitim, 63 lines (52%) größtenteils legitim
+- **Code Coverage Exclusions Dokumentation**: Vollständiger Audit und Refactoring-Analyse ([Details](docs/quality-gates/code-coverage-exclusions.md))
+- 184 c8 ignore Marker über 35 Dateien vollständig kategorisiert
+- ~201 ignorierte Zeilen in 9 Kategorien aufgeschlüsselt
+- Diskrepanz zwischen Marker-Count und Line-Count geklärt (Start/Stop-Blocks spannen mehrere Zeilen)
+- Refactoring-Potenzial identifiziert: ~21-29 ignores eliminierbar (~10-15%)
+- Quick Wins dokumentiert: Optional Disposable Interface (~14 ignores), Default Parameter Tests (~5 ignores)
+- Priorisierte Refactoring-Roadmap mit Aufwand/Nutzen-Bewertung
+- Verbleibende ~155-172 ignores sind architektonisch gerechtfertigt (Integration-Points, DRY-Prinzip, Defensive Programming)
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.13.1] - 2025-11-11
 ### Hinzugefügt
 - Keine Einträge

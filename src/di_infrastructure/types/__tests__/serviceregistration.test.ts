@@ -29,19 +29,8 @@ describe("ServiceRegistration", () => {
       }
     });
 
-    it("should fail when serviceClass is undefined", () => {
-      const result = ServiceRegistration.createClass(
-        ServiceLifecycle.SINGLETON,
-        [],
-        undefined as any
-      );
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("InvalidOperation");
-        expect(result.error.message).toContain("serviceClass is required");
-      }
-    });
+    // Note: serviceClass validation is now performed in ServiceRegistry.registerClass
+    // createClass() assumes validation has already been done by the caller
   });
 
   describe("createFactory() Factory Method", () => {

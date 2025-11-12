@@ -78,6 +78,19 @@ describe("ServiceContainer", () => {
       expectResultOk(result);
     });
 
+    it("should reject invalid factory parameter", () => {
+      const factoryToken = createInjectionToken<TestService>("InvalidFactoryService");
+      const result = container.registerFactory(
+        factoryToken,
+        null as any,
+        ServiceLifecycle.SINGLETON,
+        []
+      );
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidFactory");
+      expect(result.error.message).toContain("Factory must be a function");
+    });
+
     it("should register value", () => {
       const testLogger = new TestService();
       const valueToken = createInjectionToken<TestService>("ValueService");
@@ -536,6 +549,27 @@ describe("ServiceContainer", () => {
       const result = parent.createScope("child");
       expectResultErr(result);
       expect(result.error.code).toBe("NotValidated");
+    });
+
+    it("should propagate scope manager errors from createScope", () => {
+      // Create a container and validate it
+      const parent = ServiceContainer.createRoot();
+      parent.validate();
+
+      // Try to create child - should fail because max depth is already reached
+      let currentContainer = parent;
+      for (let i = 0; i < 11; i++) {
+        const result = currentContainer.createScope(`child${i}`);
+        if (!result.ok) {
+          expect(result.error.code).toBe("MaxScopeDepthExceeded");
+          return;
+        }
+        currentContainer = result.value;
+        currentContainer.validate();
+      }
+
+      // Should have failed before reaching here
+      expect.fail("Expected createScope to fail with MaxScopeDepthExceeded");
     });
 
     it("should inherit parent registrations", () => {

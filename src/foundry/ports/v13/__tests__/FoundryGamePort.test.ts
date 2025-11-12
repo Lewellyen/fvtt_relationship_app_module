@@ -326,4 +326,57 @@ describe("FoundryGamePortV13", () => {
       expect(result2.value).toBe(result1.value);
     });
   });
+
+  describe("disposed state guards", () => {
+    beforeEach(() => {
+      vi.stubGlobal("game", {
+        journal: {
+          contents: [{ id: "test-1", name: "Test", getFlag: vi.fn() }],
+          get: vi.fn((id: string) => ({ id, name: "Test", getFlag: vi.fn() })),
+        },
+      });
+    });
+
+    it("should prevent getting journal entries after disposal", () => {
+      port.dispose();
+
+      const result = port.getJournalEntries();
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+      expect(result.error.message).toContain("Cannot get journal entries on disposed port");
+    });
+
+    it("should prevent getting journal entry by id after disposal", () => {
+      port.dispose();
+
+      const result = port.getJournalEntryById("test-1");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+      expect(result.error.message).toContain("Cannot get journal entry on disposed port");
+    });
+
+    it("should be idempotent", () => {
+      port.dispose();
+      port.dispose();
+      port.dispose();
+
+      const result = port.getJournalEntries();
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should invalidate cache on disposal", () => {
+      const result1 = port.getJournalEntries();
+      expectResultOk(result1);
+
+      port.dispose();
+
+      // After disposal, cache should be invalidated (tested via getJournalEntries returning DISPOSED error)
+      const result2 = port.getJournalEntries();
+      expectResultErr(result2);
+      expect(result2.error.code).toBe("DISPOSED");
+    });
+  });
 });

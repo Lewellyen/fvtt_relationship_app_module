@@ -42,6 +42,18 @@ describe("ServiceRegistry", () => {
       expect(registration?.lifecycle).toBe(ServiceLifecycle.SINGLETON);
     });
 
+    it("should reject registerClass with null serviceClass", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("NullClass");
+
+      const result = registry.registerClass(token, null as any, ServiceLifecycle.SINGLETON);
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+        expect(result.error.message).toContain("serviceClass is required");
+      }
+    });
+
     it("should register factory with dependencies", () => {
       const registry = new ServiceRegistry();
       const token = createInjectionToken<TestService>("FactoryService");
@@ -59,6 +71,35 @@ describe("ServiceRegistry", () => {
       expect(registration?.providerType).toBe("factory");
       expect(registration?.factory).toBeDefined();
       expect(registration?.dependencies).toEqual([depToken]);
+    });
+
+    it("should reject registerFactory with null factory", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("NullFactory");
+
+      const result = registry.registerFactory(token, null as any, ServiceLifecycle.SINGLETON, []);
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+        expect(result.error.message).toContain("factory is required");
+      }
+    });
+
+    it("should reject registerFactory with undefined factory", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("UndefinedFactory");
+
+      const result = registry.registerFactory(
+        token,
+        undefined as any,
+        ServiceLifecycle.SINGLETON,
+        []
+      );
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+        expect(result.error.message).toContain("factory is required");
+      }
     });
 
     it("should register value (not function)", () => {
@@ -99,6 +140,30 @@ describe("ServiceRegistry", () => {
       const registration = registry.getRegistration(aliasToken);
       expect(registration?.providerType).toBe("alias");
       expect(registration?.aliasTarget).toBe(targetToken);
+    });
+
+    it("should reject registerAlias with null targetToken", () => {
+      const registry = new ServiceRegistry();
+      const aliasToken = createInjectionToken<TestService>("Alias");
+
+      const result = registry.registerAlias(aliasToken, null as any);
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+        expect(result.error.message).toContain("targetToken is required");
+      }
+    });
+
+    it("should reject registerAlias with undefined targetToken", () => {
+      const registry = new ServiceRegistry();
+      const aliasToken = createInjectionToken<TestService>("Alias");
+
+      const result = registry.registerAlias(aliasToken, undefined as any);
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error.code).toBe("InvalidOperation");
+        expect(result.error.message).toContain("targetToken is required");
+      }
     });
 
     it("should reject duplicate alias registration", () => {
@@ -549,6 +614,53 @@ describe("ServiceRegistry", () => {
       expectResultErr(result);
       expect(result.error.code).toBe("MaxRegistrationsExceeded");
       expect(result.error.message).toContain("10000");
+    });
+
+    it("should handle ServiceRegistration.createClass validation errors", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("Test");
+
+      // Pass null/undefined as serviceClass to trigger validation error
+      // @ts-expect-error - Testing runtime validation
+      const result = registry.registerClass(token, null, ServiceLifecycle.SINGLETON);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidOperation");
+    });
+
+    it("should handle ServiceRegistration.createFactory validation errors", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("Test");
+
+      // Pass null/undefined as factory to trigger validation error
+      // @ts-expect-error - Testing runtime validation
+      const result = registry.registerFactory(token, null, ServiceLifecycle.SINGLETON, []);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidOperation");
+    });
+
+    it("should handle ServiceRegistration.createValue validation errors", () => {
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("Test");
+
+      // Pass function as value (not allowed - values must be instances/primitives)
+      const result = registry.registerValue(token, (() => {}) as any);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidOperation");
+    });
+
+    it("should handle ServiceRegistration.createAlias validation errors", () => {
+      const registry = new ServiceRegistry();
+      const aliasToken = createInjectionToken<TestService>("Alias");
+
+      // Pass null/undefined as targetToken
+      // @ts-expect-error - Testing runtime validation
+      const result = registry.registerAlias(aliasToken, null);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidOperation");
     });
   });
 });

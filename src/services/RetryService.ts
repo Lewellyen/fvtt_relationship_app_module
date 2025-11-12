@@ -219,11 +219,11 @@ export class RetryService {
       );
     }
 
-    // TypeScript flow analysis: lastError is guaranteed to be defined here
+    // TypeScript flow analysis: lastError is guaranteed defined after loop
     // because the loop always executes at least once (maxAttempts >= 1)
     // and both try and catch branches assign to lastError
-    /* c8 ignore next 2 -- Defensive: Fallback path cannot occur; maxAttempts >= 1 guarantees at least one assignment */
-    const finalError = lastError ?? mapException("No attempts made", 0);
+    /* type-coverage:ignore-next-line -- Non-null assertion: lastError guaranteed by loop execution */
+    const finalError = lastError!;
     return err(finalError);
   }
 
@@ -320,11 +320,11 @@ export class RetryService {
       );
     }
 
-    // TypeScript flow analysis: lastError is guaranteed to be defined here
+    // TypeScript flow analysis: lastError is guaranteed defined after loop
     // because the loop always executes at least once (maxAttempts >= 1)
     // and both try and catch branches assign to lastError
-    /* c8 ignore next 2 -- Defensive: Fallback path cannot occur; maxAttempts >= 1 guarantees at least one assignment */
-    const finalError = lastError ?? mapException("No attempts made", 0);
+    /* type-coverage:ignore-next-line -- Non-null assertion: lastError guaranteed by loop execution */
+    const finalError = lastError!;
     return err(finalError);
   }
 }

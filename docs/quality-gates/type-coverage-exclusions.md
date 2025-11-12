@@ -29,12 +29,14 @@ This document records all intentional gaps in the TypeScript type coverage repor
 | `src/foundry/services/FoundryServiceBase.ts` (1 cast) | Type narrowing: Double cast narrows from generic ServiceType to Disposable at runtime. |
 | `src/di_infrastructure/container.ts` (1 cast) | Type cast: Invoke registered fallback factory with the target service type. |
 | `src/core/api/module-api-initializer.ts` (8 casts) | Generic type narrowing: Token comparison guarantees service type, but TypeScript cannot infer `TServiceType` from runtime checks. |
+| `src/foundry/versioning/portregistry.ts` (2 assertions) | Non-null assertions: Array[0] and Map.get() guaranteed by length and compatibleVersions checks. |
+| `src/services/RetryService.ts` (2 assertions) | Non-null assertions: lastError guaranteed defined after loop (maxAttempts >= 1). |
 | `src/core/api/readonly-wrapper.ts` (2 casts) | 1) Type narrowing: (keyof T)[] to string[] safe when T uses string keys. 2) Proxy trap: prop to keyof T after allowedMethods membership check. |
 | `src/foundry/facades/foundry-journal-facade.ts` (1 cast) | Type widening: fvtt-types restrictive scope type ("core" only), cast necessary for module flags with module ID scope. |
 
 Each inline exclusion is paired with a descriptive comment in code referencing the invariant that justifies the cast or assertion. Automated tests covering these paths are located beside the relevant modules (e.g. `PortSelector.test.ts`, `FoundryHooksService.test.ts`, `RetryService.test.ts`).
 
-**Total:** 25 inline exclusions across 13 files, all documented with justifications inline using `/* type-coverage:ignore-next-line -- reason */` format.
+**Total:** 29 inline exclusions across 15 files, all documented with justifications inline using `/* type-coverage:ignore-next-line -- reason */` format.
 
 **Eliminiert in früheren Releases:**
 - ✅ jQuery compatibility casts (2) - jQuery support removed
@@ -99,7 +101,7 @@ npm run type-coverage
 
 The script reads `type-coverage.json`, forwards the ignore patterns to `type-coverage`, and enforces 100% type coverage.
 
-**Current Status:** ✅ 100.00% (9335 / 9335)
+**Current Status:** ✅ 100.00% (9429 / 9429)
 
 ---
 
