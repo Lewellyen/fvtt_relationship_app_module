@@ -14,7 +14,11 @@ import type { Result } from "@/types/result";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "./hook-registrar.interface";
 import { MODULE_CONSTANTS, HOOK_THROTTLE_WINDOW_MS } from "@/constants";
-import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
+import {
+  loggerToken,
+  journalVisibilityServiceToken,
+  notificationCenterToken,
+} from "@/tokens/tokenindex";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
 import { validateHookApp } from "@/foundry/validation/schemas";
 import { throttle } from "@/utils/events/throttle";
@@ -40,13 +44,20 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
     const foundryHooksResult = container.resolveWithError(foundryHooksToken);
     const loggerResult = container.resolveWithError(loggerToken);
     const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
+    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
 
     /* c8 ignore start -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
-    if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok) {
+    if (
+      !foundryHooksResult.ok ||
+      !loggerResult.ok ||
+      !journalVisibilityResult.ok ||
+      !notificationCenterResult.ok
+    ) {
       if (loggerResult.ok) {
         loggerResult.value.error("DI resolution failed in RenderJournalDirectoryHook", {
           foundryHooksResolved: foundryHooksResult.ok,
           journalVisibilityResolved: journalVisibilityResult.ok,
+          notificationCenterResolved: notificationCenterResult.ok,
         });
       }
       return err(new Error("Failed to resolve required services for RenderJournalDirectoryHook"));
@@ -56,26 +67,33 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
     const foundryHooks = foundryHooksResult.value;
     const logger = loggerResult.value;
     const journalVisibility = journalVisibilityResult.value;
+    const notificationCenter = notificationCenterResult.value;
 
     const throttledCallback = throttle((app: unknown, html: unknown) => {
       logger.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
 
       const appValidation = validateHookApp(app);
       if (!appValidation.ok) {
-        logger.error(
+        // Log to console only (internal error, no UI notification)
+        notificationCenter.error(
           `Invalid app parameter in ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
-          {
-            code: appValidation.error.code,
-            message: appValidation.error.message,
-            details: appValidation.error.details,
-          }
+          appValidation.error,
+          { channels: ["ConsoleChannel"] }
         );
         return;
       }
 
       const htmlElement = extractHtmlElement(html);
       if (!htmlElement) {
-        logger.error("Failed to get HTMLElement from hook - incompatible format");
+        // Log to console only (internal error, no UI notification)
+        notificationCenter.error(
+          "Failed to get HTMLElement from hook - incompatible format",
+          {
+            code: "INVALID_HTML_ELEMENT",
+            message: "HTMLElement could not be extracted from hook arguments.",
+          },
+          { channels: ["ConsoleChannel"] }
+        );
         return;
       }
 
@@ -88,12 +106,12 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
     );
 
     if (!hookResult.ok) {
-      logger.error(
-        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook: ${hookResult.error.message}`,
+      // Bootstrap error - log to console only (no UI notification)
+      notificationCenter.error(
+        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
+        hookResult.error,
         {
-          code: hookResult.error.code,
-          details: hookResult.error.details,
-          cause: hookResult.error.cause,
+          channels: ["ConsoleChannel"],
         }
       );
       return err(new Error(`Hook registration failed: ${hookResult.error.message}`));

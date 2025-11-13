@@ -136,11 +136,10 @@ function createPortRegistries(): Result<
 }
 
 /**
- * Registers port infrastructure services.
+ * Registers port infrastructure root services.
  *
  * Services registered:
  * - PortSelector (singleton, with EventEmitter and ObservabilityRegistry dependencies)
- * - PortRegistries for all Foundry interfaces (singleton values)
  *
  * OBSERVABILITY: PortSelector self-registers with ObservabilityRegistry for automatic
  * event observation (logging/metrics). No manual wiring needed.
@@ -165,7 +164,18 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
   // PortSelector registers itself at ObservabilityRegistry in constructor
   // No manual wiring needed here
 
-  // Create and register all port registries
+  return ok(undefined);
+}
+
+/**
+ * Registers Foundry port registries (sub-container values).
+ *
+ * Each registry is pre-populated with versioned factories and stored as a singleton value.
+ *
+ * @param container - The service container to register registries in
+ * @returns Result indicating success or error with details
+ */
+export function registerPortRegistries(container: ServiceContainer): Result<void, string> {
   const portsResult = createPortRegistries();
   if (isErr(portsResult)) return portsResult;
 

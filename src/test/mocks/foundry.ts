@@ -2,9 +2,13 @@ import { vi } from "vitest";
 import type { Logger } from "@/interfaces/logger";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
-import { loggerToken } from "@/tokens/tokenindex";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import {
+  loggerToken,
+  journalVisibilityServiceToken,
+  notificationCenterToken,
+} from "@/tokens/tokenindex";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
-import { journalVisibilityServiceToken } from "@/tokens/tokenindex";
 import type { FoundryJournalEntry } from "@/foundry/types";
 
 /**
@@ -119,6 +123,7 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
   getMockLogger: () => Logger;
   getMockHooks: () => FoundryHooks;
   getMockJournalService: () => JournalVisibilityService;
+  getMockNotificationCenter: () => NotificationCenter;
 } {
   const mockLogger: Logger = {
     debug: vi.fn(),
@@ -141,10 +146,22 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
     getHiddenJournalEntries: vi.fn().mockReturnValue({ ok: true as const, value: [] }),
   } as unknown as JournalVisibilityService;
 
+  const mockNotificationCenter = {
+    notify: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
+    debug: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
+    info: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
+    warn: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
+    error: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
+    addChannel: vi.fn(),
+    removeChannel: vi.fn(),
+    getChannelNames: vi.fn().mockReturnValue(["ConsoleChannel", "UIChannel"]),
+  } as unknown as NotificationCenter;
+
   const defaults: Record<symbol, unknown> = {
     [loggerToken]: mockLogger,
     [foundryHooksToken]: mockHooks,
     [journalVisibilityServiceToken]: mockJournalService,
+    [notificationCenterToken]: mockNotificationCenter,
   };
 
   const services = { ...defaults, ...overrides };
@@ -166,5 +183,6 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
     getMockLogger: () => mockLogger,
     getMockHooks: () => mockHooks,
     getMockJournalService: () => mockJournalService,
+    getMockNotificationCenter: () => mockNotificationCenter,
   };
 }

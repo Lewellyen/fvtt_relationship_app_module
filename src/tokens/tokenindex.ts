@@ -1,4 +1,5 @@
 import { createInjectionToken } from "@/di_infrastructure/tokenutilities";
+import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { Logger } from "@/interfaces/logger";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
 import type { MetricsCollector } from "@/observability/metrics-collector";
@@ -9,6 +10,8 @@ import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import type { LocalI18nService } from "@/services/LocalI18nService";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import type { TranslationHandler } from "@/services/i18n/TranslationHandler.interface";
+import type { NotificationChannel } from "@/notifications/notification-channel.interface";
+import type { NotificationCenter as INotificationCenter } from "@/notifications/NotificationCenter";
 import type { EnvironmentConfig } from "@/config/environment";
 import type { ModuleHealthService } from "@/core/module-health-service";
 import type { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
@@ -223,6 +226,32 @@ export const translationHandlerChainToken =
   createInjectionToken<TranslationHandler>("TranslationHandlerChain");
 
 /**
+ * Injection token for the NotificationCenter.
+ *
+ * Central message bus for all application notifications (debug, info, warn, error).
+ * Routes notifications to registered channels (Console, UI, Sentry, etc.).
+ *
+ * @example
+ * ```typescript
+ * const notifications = container.resolve(notificationCenterToken);
+ * notifications.debug("Processing data");
+ * notifications.error("Operation failed", error);
+ * ```
+ */
+export const notificationCenterToken =
+  createInjectionToken<INotificationCenter>("NotificationCenter");
+
+/**
+ * Injection token for ConsoleChannel.
+ */
+export const consoleChannelToken = createInjectionToken<NotificationChannel>("ConsoleChannel");
+
+/**
+ * Injection token for UIChannel.
+ */
+export const uiChannelToken = createInjectionToken<NotificationChannel>("UIChannel");
+
+/**
  * Injection token for the EnvironmentConfig.
  *
  * Provides access to environment configuration (development/production mode,
@@ -308,6 +337,14 @@ export const containerHealthCheckToken =
  */
 export const metricsHealthCheckToken =
   createInjectionToken<MetricsHealthCheck>("MetricsHealthCheck");
+
+/**
+ * Injection token for accessing the ServiceContainer itself.
+ *
+ * Primarily used for infrastructure services (e.g., health checks) that need
+ * direct insight into the container state.
+ */
+export const serviceContainerToken = createInjectionToken<ServiceContainer>("ServiceContainer");
 
 /**
  * Injection token for the PerformanceTrackingService.

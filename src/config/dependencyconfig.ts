@@ -3,27 +3,32 @@ import { ok, err, isErr } from "@/utils/functional/result";
 import type { Result } from "@/types/result";
 import type { Logger } from "@/interfaces/logger";
 import {
+  environmentConfigToken,
   loggerToken,
   containerHealthCheckToken,
   metricsHealthCheckToken,
   healthCheckRegistryToken,
   metricsCollectorToken,
+  serviceContainerToken,
 } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
-import { LogLevel } from "@/config/environment";
+import { ENV, LogLevel } from "@/config/environment";
 import type { EnvironmentConfig } from "@/config/environment";
-import { ContainerHealthCheck } from "@/core/health/container-health-check";
-import { MetricsHealthCheck } from "@/core/health/metrics-health-check";
-import type { HealthCheckRegistry } from "@/core/health/health-check-registry";
-import type { MetricsCollector } from "@/observability/metrics-collector";
+import { DIContainerHealthCheck } from "@/core/health/container-health-check";
+import { DIMetricsHealthCheck } from "@/core/health/metrics-health-check";
+import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 
 // Import config modules
 import { registerCoreServices } from "@/config/modules/core-services.config";
 import { registerObservability } from "@/config/modules/observability.config";
-import { registerPortInfrastructure } from "@/config/modules/port-infrastructure.config";
+import {
+  registerPortInfrastructure,
+  registerPortRegistries,
+} from "@/config/modules/port-infrastructure.config";
 import { registerFoundryServices } from "@/config/modules/foundry-services.config";
 import { registerUtilityServices } from "@/config/modules/utility-services.config";
 import { registerI18nServices } from "@/config/modules/i18n-services.config";
+import { registerNotifications } from "@/config/modules/notifications.config";
 import { registerRegistrars } from "@/config/modules/registrars.config";
 
 /**
@@ -43,6 +48,81 @@ function registerFallbacks(container: ServiceContainer): void {
     };
     return new ConsoleLoggerService(fallbackConfig);
   });
+}
+
+/**
+ * Registers static bootstrap values that already exist outside the container.
+ */
+function registerStaticValues(container: ServiceContainer): Result<void, string> {
+  const envResult = container.registerValue(environmentConfigToken, ENV);
+  if (isErr(envResult)) {
+    return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
+  }
+
+  const containerResult = container.registerValue(serviceContainerToken, container);
+  if (isErr(containerResult)) {
+    return err(`Failed to register ServiceContainer: ${containerResult.error.message}`);
+  }
+
+  return ok(undefined);
+}
+
+/**
+ * Registers sub-container style values (e.g., Foundry Port registries).
+ */
+function registerSubcontainerValues(container: ServiceContainer): Result<void, string> {
+  return registerPortRegistries(container);
+}
+
+/**
+ * Registers loop-prevention health checks with DI metadata.
+ */
+function registerLoopPreventionServices(container: ServiceContainer): Result<void, string> {
+  const containerCheckResult = container.registerClass(
+    containerHealthCheckToken,
+    DIContainerHealthCheck,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(containerCheckResult)) {
+    return err(`Failed to register ContainerHealthCheck: ${containerCheckResult.error.message}`);
+  }
+
+  const metricsCheckResult = container.registerClass(
+    metricsHealthCheckToken,
+    DIMetricsHealthCheck,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(metricsCheckResult)) {
+    return err(`Failed to register MetricsHealthCheck: ${metricsCheckResult.error.message}`);
+  }
+
+  return ok(undefined);
+}
+
+/**
+ * Instantiates loop-prevention services (health checks) after validation.
+ */
+function initializeLoopPreventionValues(container: ServiceContainer): Result<void, string> {
+  const registryRes = container.resolveWithError(healthCheckRegistryToken);
+  const metricsRes = container.resolveWithError(metricsCollectorToken);
+  if (!registryRes.ok) {
+    return err(`Failed to resolve HealthCheckRegistry: ${registryRes.error.message}`);
+  }
+  if (!metricsRes.ok) {
+    return err(`Failed to resolve MetricsCollector: ${metricsRes.error.message}`);
+  }
+
+  const containerCheckResult = container.resolveWithError(containerHealthCheckToken);
+  if (!containerCheckResult.ok) {
+    return err(`Failed to resolve ContainerHealthCheck: ${containerCheckResult.error.message}`);
+  }
+
+  const metricsCheckResult = container.resolveWithError(metricsHealthCheckToken);
+  if (!metricsCheckResult.ok) {
+    return err(`Failed to resolve MetricsHealthCheck: ${metricsCheckResult.error.message}`);
+  }
+
+  return ok(undefined);
 }
 
 /**
@@ -71,14 +151,18 @@ function validateContainer(container: ServiceContainer): Result<void, string> {
  *
  * REGISTRATION ORDER:
  * 1. Fallbacks (Logger emergency fallback)
- * 2. Core Services (Logger, Metrics, Environment, ModuleHealth)
- * 3. Observability (EventEmitter, ObservabilityRegistry)
- * 4. Utility Services (Performance, Retry)
- * 5. Port Infrastructure (PortSelector, PortRegistries)
- * 6. Foundry Services (Game, Hooks, Document, UI, Settings, Journal)
- * 7. I18n Services (FoundryI18n, LocalI18n, I18nFacade)
- * 8. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
- * 9. Validation (Check dependency graph)
+ * 2. Static Values (EnvironmentConfig)
+ * 3. Core Services (Logger, Metrics, ModuleHealth)
+ * 4. Observability (EventEmitter, ObservabilityRegistry)
+ * 5. Utility Services (Performance, Retry)
+ * 6. Port Infrastructure (PortSelector)
+ * 7. Subcontainer Values (Foundry Port Registries)
+ * 8. Foundry Services (Game, Hooks, Document, UI, Settings, Journal)
+ * 9. I18n Services (FoundryI18n, LocalI18n, I18nFacade, TranslationHandlers)
+ * 10. Notifications (NotificationCenter, ConsoleChannel, UIChannel)
+ * 11. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
+ * 12. Validation (Check dependency graph)
+ * 13. Loop-Prevention Services (Health checks referencing validated services)
  *
  * @param container - The service container to configure
  * @returns Result indicating success or configuration errors
@@ -95,6 +179,9 @@ function validateContainer(container: ServiceContainer): Result<void, string> {
 export function configureDependencies(container: ServiceContainer): Result<void, string> {
   registerFallbacks(container);
 
+  const staticValuesResult = registerStaticValues(container);
+  if (isErr(staticValuesResult)) return staticValuesResult;
+
   // Register all service modules in order
   const coreResult = registerCoreServices(container);
   if (isErr(coreResult)) return coreResult;
@@ -107,7 +194,11 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   if (isErr(utilityResult)) return utilityResult;
 
   const portInfraResult = registerPortInfrastructure(container);
+  /* c8 ignore next 2 -- Error propagation tested in registerPortInfrastructure unit tests */
   if (isErr(portInfraResult)) return portInfraResult;
+
+  const subcontainerValuesResult = registerSubcontainerValues(container);
+  if (isErr(subcontainerValuesResult)) return subcontainerValuesResult;
 
   const foundryServicesResult = registerFoundryServices(container);
   if (isErr(foundryServicesResult)) return foundryServicesResult;
@@ -116,32 +207,22 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   /* c8 ignore next 2 -- Error propagation: Tested in registerI18nServices module tests; deep module mocking too complex */
   if (isErr(i18nServicesResult)) return i18nServicesResult;
 
+  const notificationsResult = registerNotifications(container);
+  /* c8 ignore next 2 -- Error propagation: Tested in registerNotifications module tests; deep module mocking too complex */
+  if (isErr(notificationsResult)) return notificationsResult;
+
   const registrarsResult = registerRegistrars(container);
   if (isErr(registrarsResult)) return registrarsResult;
+
+  const loopServiceResult = registerLoopPreventionServices(container);
+  if (isErr(loopServiceResult)) return loopServiceResult;
 
   // Validate container configuration
   const validationResult = validateContainer(container);
   if (isErr(validationResult)) return validationResult;
 
-  // After validation: Create and register health checks
-  // This must happen after validation because resolving requires validated container
-  const registryRes = container.resolveWithError(healthCheckRegistryToken);
-  const metricsRes = container.resolveWithError(metricsCollectorToken);
-  if (!registryRes.ok) {
-    return err(`Failed to resolve HealthCheckRegistry: ${registryRes.error.message}`);
-  }
-  if (!metricsRes.ok) {
-    return err(`Failed to resolve MetricsCollector: ${metricsRes.error.message}`);
-  }
-
-  // Create and register health checks
-  const containerCheck = new ContainerHealthCheck(container);
-  (registryRes.value as HealthCheckRegistry).register(containerCheck);
-  container.registerValue(containerHealthCheckToken, containerCheck);
-
-  const metricsCheck = new MetricsHealthCheck(metricsRes.value as MetricsCollector);
-  (registryRes.value as HealthCheckRegistry).register(metricsCheck);
-  container.registerValue(metricsHealthCheckToken, metricsCheck);
+  const loopPreventionInitResult = initializeLoopPreventionValues(container);
+  if (isErr(loopPreventionInitResult)) return loopPreventionInitResult;
 
   return ok(undefined);
 }

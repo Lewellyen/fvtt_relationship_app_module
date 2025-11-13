@@ -23,7 +23,7 @@
 
 ### Core Infrastructure (Layer 2)
 - **MetricsCollector** - Metrics-Sammlung & Observability
-- **ConsoleLoggerService** - Logging mit automatischer Trace-ID-Injection (Factory-basiert)
+- **ConsoleLoggerService** - Logging mit automatischer Trace-ID-Injection (`DI`-Wrapper mit `static dependencies`)
 - **TraceContext** ⭐ NEW v0.15.0 - Automatische Trace-ID-Propagation & Context Management
 - **ModuleHealthService** - Health Checks mit HealthCheckRegistry
 - **ObservabilityRegistry** - Zentraler Hub für Self-Registration Pattern
@@ -53,6 +53,7 @@
 - **RetryService** - Retry-Logik mit Exponential Backoff (Options-Object-API)
 - **LocalI18nService** - Foundry-unabhängiges i18n
 - **HealthCheckRegistry** - Extensible Health Check System
+- **NotificationCenter** ⭐ – Zentrale Notification-Orchestrierung (Console/UI/erweiterbar)
 
 ---
 
@@ -70,29 +71,37 @@ src/config/
 │   ├── foundry-services.config.ts     (FoundryGame, Hooks, Document, UI)
 │   ├── utility-services.config.ts     (Performance, Retry)
 │   ├── i18n-services.config.ts        (I18n Services)
+│   ├── notifications.config.ts        (NotificationCenter & Channels)
 │   └── registrars.config.ts           (ModuleSettingsRegistrar, ModuleHookRegistrar)
 ```
 
 **Neue Services in das passende thematische Modul einfügen!**
 
+### Value Registration Pipeline (NEU v0.18.0)
+- **Static Values**: `registerStaticValues()` injiziert ENV, den `ServiceContainer` und andere Bootstrap-Konstanten.
+- **Subcontainer Values**: `registerSubcontainerValues()` stellt Foundry Port Registries & vergleichbare Mini-Container bereit.
+- **Loop-Prevention Services**: `registerLoopPreventionServices()` registriert Health-Checks als Klassen; Instanziierung erfolgt erst nach erfolgreicher Container-Validation (`initializeLoopPreventionValues()`).
+
 ---
 
 ## 🔧 Häufig genutzte Tokens
 
-### Logging & Metrics
+### Logging, Metrics & Notifications
 ```typescript
 import { 
   loggerToken, 
   metricsCollectorToken,
   traceContextToken,                 // ⭐ NEW v0.15.0
+  notificationCenterToken,           // ⭐ NEW v0.18.0 (Unreleased)
   observabilityRegistryToken,        // ⭐ NEW v0.8.0
   portSelectionEventEmitterToken     // ⭐ NEW v0.8.0
 } from "@/tokens/tokenindex";
 
 const logger = container.resolve(loggerToken);
 const metrics = container.resolve(metricsCollectorToken);
-const traceContext = container.resolve(traceContextToken);            // NEW
-const observability = container.resolve(observabilityRegistryToken);  // NEW
+const traceContext = container.resolve(traceContextToken);            // NEW v0.15.0
+const notifications = container.resolve(notificationCenterToken);     // NEW v0.18.0
+const observability = container.resolve(observabilityRegistryToken);  // NEW v0.8.0
 ```
 
 ### Foundry Services & Registrars

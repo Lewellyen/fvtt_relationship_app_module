@@ -1,7 +1,12 @@
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "@/core/hooks/hook-registrar.interface";
 import type { Logger } from "@/interfaces/logger";
-import { renderJournalDirectoryHookToken, loggerToken } from "@/tokens/tokenindex";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import {
+  renderJournalDirectoryHookToken,
+  loggerToken,
+  notificationCenterToken,
+} from "@/tokens/tokenindex";
 
 /**
  * ModuleHookRegistrar
@@ -16,13 +21,18 @@ import { renderJournalDirectoryHookToken, loggerToken } from "@/tokens/tokeninde
  * - Full DI architecture: Hooks injected as dependencies
  */
 export class ModuleHookRegistrar {
-  static dependencies = [renderJournalDirectoryHookToken, loggerToken] as const;
+  static dependencies = [
+    renderJournalDirectoryHookToken,
+    loggerToken,
+    notificationCenterToken,
+  ] as const;
 
   private hooks: HookRegistrar[];
 
   constructor(
     renderJournalHook: HookRegistrar,
-    private readonly logger: Logger
+    private readonly logger: Logger,
+    private readonly notificationCenter: NotificationCenter
   ) {
     this.hooks = [
       renderJournalHook,
@@ -38,7 +48,15 @@ export class ModuleHookRegistrar {
     for (const hook of this.hooks) {
       const result = hook.register(container);
       if (!result.ok) {
-        this.logger.error(`Failed to register hook: ${result.error.message}`);
+        // Convert string error to structured format
+        const error = {
+          code: "HOOK_REGISTRATION_FAILED" as const,
+          message: result.error.message,
+        };
+        // Bootstrap error - log to console only (no UI notification)
+        this.notificationCenter.error("Failed to register hook", error, {
+          channels: ["ConsoleChannel"],
+        });
       }
     }
   }

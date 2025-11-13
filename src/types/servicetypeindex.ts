@@ -33,6 +33,9 @@ import type { ContainerHealthCheck } from "@/core/health/container-health-check"
 import type { MetricsHealthCheck } from "@/core/health/metrics-health-check";
 import type { HealthCheckRegistry } from "@/core/health/health-check-registry";
 import type { TranslationHandler } from "@/services/i18n/TranslationHandler.interface";
+import type { NotificationChannel } from "@/notifications/notification-channel.interface";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import type { ServiceContainer } from "@/di_infrastructure/container";
 
 /**
  * Union type representing all registered service types in the application.
@@ -80,4 +83,7 @@ export type ServiceType =
   | ContainerHealthCheck
   | MetricsHealthCheck
   | HealthCheckRegistry
-  | TranslationHandler;
+  | TranslationHandler
+  | NotificationChannel
+  | NotificationCenter
+  | ServiceContainer;

@@ -1,5 +1,5 @@
 import { MODULE_CONSTANTS } from "@/constants";
-import { loggerToken, i18nFacadeToken } from "@/tokens/tokenindex";
+import { loggerToken, i18nFacadeToken, notificationCenterToken } from "@/tokens/tokenindex";
 import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { SettingDefinition } from "@/core/settings/setting-definition.interface";
@@ -38,15 +38,17 @@ export class ModuleSettingsRegistrar {
     const settingsResult = container.resolveWithError(foundrySettingsToken);
     const loggerResult = container.resolveWithError(loggerToken);
     const i18nResult = container.resolveWithError(i18nFacadeToken);
+    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
 
     // Early return if any resolution failed
     /* c8 ignore start -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
-    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok) {
+    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok || !notificationCenterResult.ok) {
       // Use logger if available, otherwise fallback to console
       if (loggerResult.ok) {
         loggerResult.value.error("DI resolution failed in ModuleSettingsRegistrar", {
           settingsResolved: settingsResult.ok,
           i18nResolved: i18nResult.ok,
+          notificationCenterResolved: notificationCenterResult.ok,
         });
       } else {
         // Fallback only if logger itself failed to resolve
@@ -59,6 +61,7 @@ export class ModuleSettingsRegistrar {
     const foundrySettings = settingsResult.value;
     const logger = loggerResult.value;
     const i18n = i18nResult.value;
+    const notificationCenter = notificationCenterResult.value;
 
     // Register all settings
     for (const setting of this.settings) {
@@ -66,7 +69,10 @@ export class ModuleSettingsRegistrar {
       const result = foundrySettings.register(MODULE_CONSTANTS.MODULE.ID, setting.key, config);
 
       if (!result.ok) {
-        logger.error(`Failed to register ${setting.key} setting`, result.error);
+        // Bootstrap error - log to console only (no UI notification)
+        notificationCenter.error(`Failed to register ${setting.key} setting`, result.error, {
+          channels: ["ConsoleChannel"],
+        });
       }
     }
   }

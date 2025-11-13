@@ -383,35 +383,54 @@ Die DI-Konfiguration ist in thematische Module aufgeteilt:
 // src/config/dependencyconfig.ts (Orchestrator)
 export function configureDependencies(container: ServiceContainer) {
   registerFallbacks(container);
-  
+  registerStaticValues(container);              // ENV + andere Bootstrap-Werte
+
   // Orchestriere thematische Config-Module
-  registerCoreServices(container);        // Logger, Metrics, Environment
-  registerObservability(container);       // NEW: EventEmitter, ObservabilityRegistry
-  registerUtilityServices(container);     // Performance, Retry
-  registerPortInfrastructure(container);  // PortSelector, PortRegistries
-  registerFoundryServices(container);     // FoundryGame, Hooks, Document, UI
-  registerI18nServices(container);        // I18n Services
-  registerRegistrars(container);          // NEW: DI-managed Registrars
+  registerCoreServices(container);              // Logger, Metrics, ModuleHealth
+  registerObservability(container);             // EventEmitter, ObservabilityRegistry
+  registerUtilityServices(container);           // Performance, Retry
+  registerPortInfrastructure(container);        // PortSelector
+  registerSubcontainerValues(container);        // Port-Registries (Mini-Container)
+  registerFoundryServices(container);           // FoundryGame, Hooks, Document, UI
+  registerI18nServices(container);              // I18n Services
+  registerNotifications(container);             // NotificationCenter + Channels
+  registerRegistrars(container);                // DI-managed Registrars
   
+  const loopServiceResult = registerLoopPreventionServices(container);
+  if (isErr(loopServiceResult)) return loopServiceResult;
+
   validateContainer(container);
+  initializeLoopPreventionValues(container);    // HealthChecks nach Validation
   return ok(undefined);
 }
 ```
+
+### Bootstrap Value Kategorien (NEU)
+
+Die Konfiguration unterscheidet drei Value-Typen, um klare Verantwortlichkeiten zu schaffen:
+
+1. **Static Values** – `registerStaticValues()` injiziert vorhandene Bootstrap-Werte wie `EnvironmentConfig` und den `ServiceContainer` selbst. Diese Werte existieren bereits außerhalb des Containers und werden unverändert geteilt.
+2. **Subcontainer Values** – `registerSubcontainerValues()` registriert vorvalidierte Registries (z. B. Foundry Port Registries). Sie kapseln versionierte Factories und agieren als Mini-Container für Adapter-Lookups.
+3. **Loop-Prevention Services** – `registerLoopPreventionServices()` registriert Health-Checks (Container & Metrics) als Klassen. Die Instanziierung erfolgt erst nach erfolgreicher Validation, wodurch wir Selbst-Referenzen während des Aufbaus vermeiden.
+
+Die Reihenfolge stellt sicher, dass nur vollständig validierte Services mit sensiblen Value-Registrierungen gekoppelt werden.
 
 **Self-Configuring Services:**
 
 Services konfigurieren sich selbst via Constructor-Dependencies:
 
 ```typescript
-// Logger mit EnvironmentConfig-Dependency
-class ConsoleLoggerService {
-  static dependencies = [environmentConfigToken] as const;
-  
-  constructor(env: EnvironmentConfig) {
-    this.minLevel = env.logLevel;  // Self-configuring!
+// Beispiel: DI-Wrapper für Logger (EnvironmentConfig + TraceContext)
+class DIConsoleLoggerService extends ConsoleLoggerService {
+  static dependencies = [environmentConfigToken, traceContextToken] as const;
+
+  constructor(env: EnvironmentConfig, traceContext: TraceContext) {
+    super(env, traceContext);  // Self-configuring!
   }
 }
 ```
+
+> **Wrapper-Anordnung:** Die Basisklasse steht im selben File ganz oben, direkt gefolgt vom `DI…`-Wrapper. So bleiben `static dependencies` sichtbar, während Tests und Bootstrap-Fallbacks weiterhin die Basisklasse per `new` instanziieren können.
 
 ### Phase 2: Foundry init Hook
 
@@ -615,6 +634,7 @@ src/config/
 │   ├── foundry-services.config.ts     (FoundryGame, Hooks, Document, UI)
 │   ├── utility-services.config.ts     (Performance, Retry)
 │   ├── i18n-services.config.ts        (I18n Services)
+│   ├── notifications.config.ts        (NotificationCenter, Channels)
 │   └── registrars.config.ts           (ModuleSettingsRegistrar, ModuleHookRegistrar)
 ```
 
@@ -649,15 +669,19 @@ class ContainerHealthCheck implements HealthCheck {
   }
 }
 
-// 2. Auto-Registrierung via Factory
-container.registerFactory(
+// 2. Auto-Registrierung via DI-Wrapper
+class InjectableContainerHealthCheck extends ContainerHealthCheck {
+  static dependencies = [serviceContainerToken, healthCheckRegistryToken] as const;
+
+  constructor(container: ServiceContainer, registry: HealthCheckRegistry) {
+    super(container);
+    registry.register(this);
+  }
+}
+
+container.registerClass(
   containerHealthCheckToken,
-  (c) => {
-    const registry = c.resolve(healthCheckRegistryToken);
-    const check = new ContainerHealthCheck(c);
-    registry.value.register(check);
-    return check;
-  },
+  InjectableContainerHealthCheck,
   SINGLETON
 );
 

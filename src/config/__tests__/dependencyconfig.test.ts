@@ -5,7 +5,16 @@ import { describe, it, expect, vi } from "vitest";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "../dependencyconfig";
 import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
-import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
+import {
+  loggerToken,
+  journalVisibilityServiceToken,
+  containerHealthCheckToken,
+  metricsHealthCheckToken,
+  notificationCenterToken,
+  uiChannelToken,
+  serviceContainerToken,
+  environmentConfigToken,
+} from "@/tokens/tokenindex";
 import {
   foundryGameToken,
   foundryHooksToken,
@@ -30,6 +39,7 @@ describe("dependencyconfig", () => {
 
       // Alle Services sollten registriert sein
       expectResultOk(container.isRegistered(loggerToken));
+      expectResultOk(container.isRegistered(notificationCenterToken));
       expectResultOk(container.isRegistered(foundryGameToken));
       expectResultOk(container.isRegistered(foundryHooksToken));
       expectResultOk(container.isRegistered(foundryDocumentToken));
@@ -43,6 +53,12 @@ describe("dependencyconfig", () => {
 
       expectResultOk(result);
       expect(container.getValidationState()).toBe("validated");
+
+      const containerCheck = container.resolveWithError(containerHealthCheckToken);
+      const metricsCheck = container.resolveWithError(metricsHealthCheckToken);
+
+      expect(containerCheck.ok).toBe(true);
+      expect(metricsCheck.ok).toBe(true);
     });
   });
 
@@ -94,26 +110,18 @@ describe("dependencyconfig", () => {
   describe("Error Injection", () => {
     it("should return error when logger registration fails", () => {
       const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
 
-      // Logger is now registered as factory (v0.15.0 for TraceContext integration)
-      // Mock registerFactory instead of registerClass
-      const registerFactorySpy = vi
-        .spyOn(container, "registerFactory")
-        .mockImplementation((token, factory, lifecycle, deps) => {
+      const registerClassSpy = vi
+        .spyOn(container, "registerClass")
+        .mockImplementation((token, serviceClass, lifecycle) => {
           if (token === loggerToken) {
             return err({
               code: "InvalidOperation",
               message: "Mocked logger registration failure",
             });
           }
-          // Forward call to original method
-          return ServiceContainer.prototype.registerFactory.call(
-            container,
-            token as any,
-            factory as any,
-            lifecycle as any,
-            deps as any
-          );
+          return originalRegisterClass(token, serviceClass, lifecycle);
         });
 
       const result = configureDependencies(container);
@@ -122,7 +130,7 @@ describe("dependencyconfig", () => {
         expect(result.error).toContain("Failed to register Logger");
       }
 
-      registerFactorySpy.mockRestore();
+      registerClassSpy.mockRestore();
     });
 
     it("should return error when port registry registration fails", () => {
@@ -423,6 +431,141 @@ describe("dependencyconfig", () => {
       expectResultErr(result);
       expect(result.error).toContain("Failed to resolve MetricsCollector");
     });
+
+    it("should propagate errors when ContainerHealthCheck registration fails", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
+
+      vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
+        if (token === containerHealthCheckToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "ContainerHealthCheck registration failed",
+          });
+        }
+        return originalRegisterClass(token, serviceClass, lifecycle);
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("ContainerHealthCheck");
+      }
+    });
+
+    it("should propagate errors when MetricsHealthCheck registration fails", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
+
+      vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
+        if (token === metricsHealthCheckToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "MetricsHealthCheck registration failed",
+          });
+        }
+        return originalRegisterClass(token, serviceClass, lifecycle);
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("MetricsHealthCheck");
+      }
+    });
+
+    it("should propagate errors when ContainerHealthCheck resolution fails", () => {
+      const container = ServiceContainer.createRoot();
+
+      vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
+      vi.spyOn(container, "resolveWithError")
+        .mockReturnValueOnce({ ok: true, value: {} as any }) // HealthCheckRegistry
+        .mockReturnValueOnce({ ok: true, value: {} as any }) // MetricsCollector
+        .mockReturnValueOnce(
+          err({
+            code: "TokenNotRegistered",
+            message: "ContainerHealthCheck not found",
+            tokenDescription: "ContainerHealthCheck",
+          })
+        );
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("Failed to resolve ContainerHealthCheck");
+      }
+    });
+
+    it("should propagate errors when MetricsHealthCheck resolution fails", () => {
+      const container = ServiceContainer.createRoot();
+
+      vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
+      vi.spyOn(container, "resolveWithError")
+        .mockReturnValueOnce({ ok: true, value: {} as any }) // HealthCheckRegistry
+        .mockReturnValueOnce({ ok: true, value: {} as any }) // MetricsCollector
+        .mockReturnValueOnce({ ok: true, value: {} as any }) // ContainerHealthCheck resolves
+        .mockReturnValueOnce(
+          err({
+            code: "TokenNotRegistered",
+            message: "MetricsHealthCheck not found",
+            tokenDescription: "MetricsHealthCheck",
+          })
+        );
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("Failed to resolve MetricsHealthCheck");
+      }
+    });
+
+    it("should propagate errors when ServiceContainer value registration fails", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterValue = container.registerValue.bind(container);
+
+      vi.spyOn(container, "registerValue").mockImplementation((token, value) => {
+        if (token === serviceContainerToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "ServiceContainer registration failed",
+          });
+        }
+        return originalRegisterValue(token, value);
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("ServiceContainer");
+      }
+    });
+
+    it("should propagate errors when EnvironmentConfig registration fails", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterValue = container.registerValue.bind(container);
+
+      vi.spyOn(container, "registerValue").mockImplementation((token, value) => {
+        if (token === environmentConfigToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "EnvironmentConfig registration failed",
+          });
+        }
+        return originalRegisterValue(token, value);
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("EnvironmentConfig");
+      }
+    });
   });
 
   describe("Sub-Module Error Propagation", () => {
@@ -502,6 +645,54 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       expect(result.error).toContain("Registrar");
+    });
+
+    it("should propagate errors from registerNotifications", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
+
+      vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
+        if (token === uiChannelToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "UIChannel registration failed",
+          });
+        }
+        return originalRegisterClass(token, serviceClass, lifecycle);
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("UIChannel");
+      }
+    });
+
+    it("should propagate errors when NotificationCenter registration fails", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
+
+      const registerClassSpy = vi
+        .spyOn(container, "registerClass")
+        .mockImplementation((token, serviceClass, lifecycle) => {
+          if (token === notificationCenterToken) {
+            return err({
+              code: "InvalidOperation",
+              message: "NotificationCenter registration failed",
+            });
+          }
+          return originalRegisterClass(token, serviceClass, lifecycle);
+        });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("NotificationCenter");
+      }
+
+      registerClassSpy.mockRestore();
     });
   });
 });

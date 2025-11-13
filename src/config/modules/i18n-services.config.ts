@@ -17,6 +17,7 @@ import { I18nFacadeService } from "@/services/I18nFacadeService";
 import { FoundryTranslationHandler } from "@/services/i18n/FoundryTranslationHandler";
 import { LocalTranslationHandler } from "@/services/i18n/LocalTranslationHandler";
 import { FallbackTranslationHandler } from "@/services/i18n/FallbackTranslationHandler";
+import { DITranslationHandlerChain } from "@/services/i18n/TranslationHandlerChain";
 
 /**
  * Registers internationalization (i18n) services.
@@ -28,7 +29,7 @@ import { FallbackTranslationHandler } from "@/services/i18n/FallbackTranslationH
  *   - FoundryTranslationHandler
  *   - LocalTranslationHandler
  *   - FallbackTranslationHandler
- * - TranslationHandlerChain (factory) - Builds the handler chain
+ * - TranslationHandlerChain (singleton) - Builds die Handler-Kette im Konstruktor
  * - I18nFacadeService (singleton) - Facade combining all sources
  *
  * I18nFacadeService provides a unified interface for translations,
@@ -90,40 +91,11 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
     );
   }
 
-  // Register Translation Handler Chain (Factory)
-  // Builds the chain: Foundry → Local → Fallback
-  const chainResult = container.registerFactory(
+  // Register Translation Handler Chain (Foundry → Local → Fallback)
+  const chainResult = container.registerClass(
     translationHandlerChainToken,
-    () => {
-      const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
-      const localHandlerResult = container.resolveWithError(localTranslationHandlerToken);
-      const fallbackHandlerResult = container.resolveWithError(fallbackTranslationHandlerToken);
-
-      if (!foundryHandlerResult.ok) {
-        throw new Error(
-          `Translation chain factory: Cannot resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
-        );
-      }
-      if (!localHandlerResult.ok) {
-        throw new Error(
-          `Translation chain factory: Cannot resolve LocalTranslationHandler: ${localHandlerResult.error.message}`
-        );
-      }
-      if (!fallbackHandlerResult.ok) {
-        throw new Error(
-          `Translation chain factory: Cannot resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
-        );
-      }
-
-      // Build chain: Foundry → Local → Fallback
-      foundryHandlerResult.value
-        .setNext(localHandlerResult.value)
-        .setNext(fallbackHandlerResult.value);
-
-      return foundryHandlerResult.value;
-    },
-    ServiceLifecycle.SINGLETON,
-    [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]
+    DITranslationHandlerChain,
+    ServiceLifecycle.SINGLETON
   );
   if (isErr(chainResult)) {
     return err(`Failed to register TranslationHandlerChain: ${chainResult.error.message}`);

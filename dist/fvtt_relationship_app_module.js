@@ -226,11 +226,15 @@ const fallbackTranslationHandlerToken = createInjectionToken(
   "FallbackTranslationHandler"
 );
 const translationHandlerChainToken = createInjectionToken("TranslationHandlerChain");
+const notificationCenterToken = createInjectionToken("NotificationCenter");
+const consoleChannelToken = createInjectionToken("ConsoleChannel");
+const uiChannelToken = createInjectionToken("UIChannel");
 const environmentConfigToken = createInjectionToken("EnvironmentConfig");
 const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
 const healthCheckRegistryToken = createInjectionToken("HealthCheckRegistry");
 const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
 const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
+const serviceContainerToken = createInjectionToken("ServiceContainer");
 const performanceTrackingServiceToken = createInjectionToken(
   "PerformanceTrackingService"
 );
@@ -251,6 +255,7 @@ const moduleApiInitializerToken = createInjectionToken(
 );
 var tokenindex = /* @__PURE__ */ Object.freeze({
   __proto__: null,
+  consoleChannelToken,
   containerHealthCheckToken,
   environmentConfigToken,
   fallbackTranslationHandlerToken,
@@ -270,14 +275,17 @@ var tokenindex = /* @__PURE__ */ Object.freeze({
   moduleHealthServiceToken,
   moduleHookRegistrarToken,
   moduleSettingsRegistrarToken,
+  notificationCenterToken,
   observabilityRegistryToken,
   performanceTrackingServiceToken,
   portSelectionEventEmitterToken,
   portSelectorToken,
   renderJournalDirectoryHookToken,
   retryServiceToken,
+  serviceContainerToken,
   traceContextToken,
-  translationHandlerChainToken
+  translationHandlerChainToken,
+  uiChannelToken
 });
 const scriptRel = "modulepreload";
 const assetsURL = /* @__PURE__ */ __name(function(dep) {
@@ -2119,13 +2127,58 @@ Only the public ModuleApi should expose resolve() for external modules.`
 };
 __name(_ServiceContainer, "ServiceContainer");
 let ServiceContainer = _ServiceContainer;
+const _ConsoleLoggerService = class _ConsoleLoggerService {
+  constructor(env, traceContext) {
+    this.minLevel = env.logLevel;
+    this.traceContext = traceContext ?? null;
+  }
+  setMinLevel(level) {
+    this.minLevel = level;
+  }
+  log(message2, ...optionalParams) {
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    if (LogLevel.ERROR < this.minLevel) return;
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    if (LogLevel.WARN < this.minLevel) return;
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    if (LogLevel.INFO < this.minLevel) return;
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    if (LogLevel.DEBUG < this.minLevel) return;
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return new TracedLogger(this, traceId);
+  }
+  getContextTraceId() {
+    return this.traceContext?.getCurrentTraceId() ?? null;
+  }
+  formatWithContextTrace(message2) {
+    const contextTraceId = this.getContextTraceId();
+    if (contextTraceId) {
+      return `[${contextTraceId}] ${message2}`;
+    }
+    return message2;
+  }
+};
+__name(_ConsoleLoggerService, "ConsoleLoggerService");
+let ConsoleLoggerService = _ConsoleLoggerService;
 const _TracedLogger = class _TracedLogger {
   constructor(baseLogger, traceId) {
     this.baseLogger = baseLogger;
     this.traceId = traceId;
-  }
-  formatMessage(message2) {
-    return `[${this.traceId}] ${message2}`;
   }
   setMinLevel(level) {
     this.baseLogger.setMinLevel?.(level);
@@ -2148,160 +2201,62 @@ const _TracedLogger = class _TracedLogger {
   withTraceId(newTraceId) {
     return new _TracedLogger(this.baseLogger, `${this.traceId}/${newTraceId}`);
   }
+  formatMessage(message2) {
+    return `[${this.traceId}] ${message2}`;
+  }
 };
 __name(_TracedLogger, "TracedLogger");
 let TracedLogger = _TracedLogger;
-const _ConsoleLoggerService = class _ConsoleLoggerService {
-  /**
-   * Creates a new ConsoleLoggerService.
-   * @param env - Environment configuration (provides initial log level)
-   * @param traceContext - Optional TraceContext for automatic trace ID injection
-   */
+const _DIConsoleLoggerService = class _DIConsoleLoggerService extends ConsoleLoggerService {
   constructor(env, traceContext) {
-    this.traceContext = null;
-    this.minLevel = env.logLevel;
-    this.traceContext = traceContext ?? null;
-  }
-  /**
-   * Gets the effective trace ID to use for logging.
-   * Returns null if no trace context is active.
-   *
-   * @returns Current trace ID from context, or null
-   * @private
-   */
-  getContextTraceId() {
-    return this.traceContext?.getCurrentTraceId() ?? null;
-  }
-  /**
-   * Formats a message with trace ID if available from context.
-   *
-   * @param message - Original message
-   * @returns Formatted message with trace ID prefix if context is active
-   * @private
-   */
-  formatWithContextTrace(message2) {
-    const contextTraceId = this.getContextTraceId();
-    if (contextTraceId) {
-      return `[${contextTraceId}] ${message2}`;
-    }
-    return message2;
-  }
-  /**
-   * Sets the minimum log level. Messages below this level will be ignored.
-   * @param level - Minimum log level
-   */
-  setMinLevel(level) {
-    this.minLevel = level;
-  }
-  /**
-   * Log a message to console.
-   * Automatically includes trace ID from context if available.
-   * @param message - Message to log
-   * @param optionalParams - Additional data to log (objects will be interactive in browser console)
-   */
-  log(message2, ...optionalParams) {
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  /**
-   * Log an error message.
-   * Automatically includes trace ID from context if available.
-   * @param message - Error message to log
-   * @param optionalParams - Additional data to log (e.g., error objects, stack traces)
-   */
-  error(message2, ...optionalParams) {
-    if (LogLevel.ERROR < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  /**
-   * Log a warning message.
-   * Automatically includes trace ID from context if available.
-   * @param message - Warning message to log
-   * @param optionalParams - Additional data to log
-   */
-  warn(message2, ...optionalParams) {
-    if (LogLevel.WARN < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  /**
-   * Log an info message.
-   * Automatically includes trace ID from context if available.
-   * @param message - Info message to log
-   * @param optionalParams - Additional data to log
-   */
-  info(message2, ...optionalParams) {
-    if (LogLevel.INFO < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  /**
-   * Log a debug message.
-   * Automatically includes trace ID from context if available.
-   * @param message - Debug message to log
-   * @param optionalParams - Additional data to log (useful for inspecting complex objects)
-   */
-  debug(message2, ...optionalParams) {
-    if (LogLevel.DEBUG < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  /**
-   * Creates a scoped logger that includes a trace ID in all log messages.
-   * The trace ID helps correlate log entries across related operations.
-   *
-   * Explicit trace IDs from withTraceId() take precedence over automatic
-   * trace IDs from TraceContext.
-   *
-   * @param traceId - Unique trace ID to include in log messages
-   * @returns A new Logger instance that includes the trace ID in all messages
-   *
-   * @example
-   * ```typescript
-   * import { generateTraceId } from '@/utils/trace';
-   *
-   * const traceId = generateTraceId();
-   * const tracedLogger = logger.withTraceId(traceId);
-   * tracedLogger.info('Operation started'); // [1234567890-abc123] Operation started
-   * ```
-   */
-  withTraceId(traceId) {
-    return new TracedLogger(this, traceId);
+    super(env, traceContext);
   }
 };
-__name(_ConsoleLoggerService, "ConsoleLoggerService");
-_ConsoleLoggerService.dependencies = [environmentConfigToken];
-let ConsoleLoggerService = _ConsoleLoggerService;
+__name(_DIConsoleLoggerService, "DIConsoleLoggerService");
+_DIConsoleLoggerService.dependencies = [environmentConfigToken, traceContextToken];
+let DIConsoleLoggerService = _DIConsoleLoggerService;
 const _ContainerHealthCheck = class _ContainerHealthCheck {
   constructor(container) {
-    this.container = container;
     this.name = "container";
+    this.container = container;
   }
   check() {
     return this.container.getValidationState() === "validated";
   }
   getDetails() {
     const state = this.container.getValidationState();
-    return state !== "validated" ? `Container state: ${state}` : null;
+    if (state !== "validated") {
+      return `Container state: ${state}`;
+    }
+    return null;
   }
   dispose() {
   }
 };
 __name(_ContainerHealthCheck, "ContainerHealthCheck");
 let ContainerHealthCheck = _ContainerHealthCheck;
+const _DIContainerHealthCheck = class _DIContainerHealthCheck extends ContainerHealthCheck {
+  constructor(container, registry) {
+    super(container);
+    registry.register(this);
+  }
+};
+__name(_DIContainerHealthCheck, "DIContainerHealthCheck");
+_DIContainerHealthCheck.dependencies = [serviceContainerToken, healthCheckRegistryToken];
+let DIContainerHealthCheck = _DIContainerHealthCheck;
 const _MetricsHealthCheck = class _MetricsHealthCheck {
-  constructor(metrics) {
-    this.metrics = metrics;
+  constructor(metricsCollector) {
     this.name = "metrics";
+    this.metricsCollector = metricsCollector;
   }
   check() {
-    const snapshot = this.metrics.getSnapshot();
+    const snapshot = this.metricsCollector.getSnapshot();
     const hasPortFailures = Object.keys(snapshot.portSelectionFailures).length > 0;
-    return !hasPortFailures && snapshot.resolutionErrors === 0;
+    const hasResolutionErrors = snapshot.resolutionErrors > 0;
+    return !hasPortFailures && !hasResolutionErrors;
   }
   getDetails() {
-    const snapshot = this.metrics.getSnapshot();
+    const snapshot = this.metricsCollector.getSnapshot();
     const failures = Object.keys(snapshot.portSelectionFailures);
     if (failures.length > 0) {
       return `Port selection failures: ${failures.join(", ")}`;
@@ -2316,6 +2271,15 @@ const _MetricsHealthCheck = class _MetricsHealthCheck {
 };
 __name(_MetricsHealthCheck, "MetricsHealthCheck");
 let MetricsHealthCheck = _MetricsHealthCheck;
+const _DIMetricsHealthCheck = class _DIMetricsHealthCheck extends MetricsHealthCheck {
+  constructor(metricsCollector, registry) {
+    super(metricsCollector);
+    registry.register(this);
+  }
+};
+__name(_DIMetricsHealthCheck, "DIMetricsHealthCheck");
+_DIMetricsHealthCheck.dependencies = [metricsCollectorToken, healthCheckRegistryToken];
+let DIMetricsHealthCheck = _DIMetricsHealthCheck;
 const _MetricsCollector = class _MetricsCollector {
   constructor(env) {
     this.env = env;
@@ -2922,10 +2886,6 @@ __name(_HealthCheckRegistry, "HealthCheckRegistry");
 _HealthCheckRegistry.dependencies = [];
 let HealthCheckRegistry = _HealthCheckRegistry;
 function registerCoreServices(container) {
-  const envResult = container.registerValue(environmentConfigToken, ENV);
-  if (isErr(envResult)) {
-    return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
-  }
   const metricsResult = container.registerClass(
     metricsCollectorToken,
     MetricsCollector,
@@ -2944,25 +2904,10 @@ function registerCoreServices(container) {
   if (isErr(traceContextResult)) {
     return err(`Failed to register TraceContext: ${traceContextResult.error.message}`);
   }
-  const loggerResult = container.registerFactory(
+  const loggerResult = container.registerClass(
     loggerToken,
-    () => {
-      const envResult2 = container.resolveWithError(environmentConfigToken);
-      const traceContextResult2 = container.resolveWithError(traceContextToken);
-      if (!envResult2.ok) {
-        throw new Error(
-          `Logger factory: Cannot resolve EnvironmentConfig: ${envResult2.error.message}`
-        );
-      }
-      if (!traceContextResult2.ok) {
-        throw new Error(
-          `Logger factory: Cannot resolve TraceContext: ${traceContextResult2.error.message}`
-        );
-      }
-      return new ConsoleLoggerService(envResult2.value, traceContextResult2.value);
-    },
-    ServiceLifecycle.SINGLETON,
-    [environmentConfigToken, traceContextToken]
+    DIConsoleLoggerService,
+    ServiceLifecycle.SINGLETON
   );
   if (isErr(loggerResult)) {
     return err(`Failed to register Logger: ${loggerResult.error.message}`);
@@ -2996,56 +2941,42 @@ function registerCoreServices(container) {
 __name(registerCoreServices, "registerCoreServices");
 const _PortSelectionEventEmitter = class _PortSelectionEventEmitter {
   constructor() {
-    this.subscribers = [];
+    this.subscribers = /* @__PURE__ */ new Set();
   }
-  /**
-   * Subscribe to port selection events.
-   *
-   * @param callback - Function to call when events are emitted
-   * @returns Unsubscribe function
-   */
   subscribe(callback) {
-    this.subscribers.push(callback);
+    this.subscribers.add(callback);
+    let active = true;
     return () => {
-      const index = this.subscribers.indexOf(callback);
-      if (index !== -1) {
-        this.subscribers.splice(index, 1);
+      if (!active) {
+        return;
       }
+      active = false;
+      this.subscribers.delete(callback);
     };
   }
-  /**
-   * Emit a port selection event to all subscribers.
-   *
-   * Events are dispatched synchronously.
-   *
-   * @param event - The event to emit
-   */
   emit(event) {
-    for (const subscriber of this.subscribers) {
+    for (const callback of this.subscribers) {
       try {
-        subscriber(event);
+        callback(event);
       } catch (error) {
-        console.error("PortSelectionEventEmitter: Subscriber error", error);
+        console.error("PortSelectionEventEmitter subscriber error", error);
       }
     }
   }
-  /**
-   * Remove all subscribers.
-   * Useful for cleanup in tests.
-   */
   clear() {
-    this.subscribers = [];
+    this.subscribers.clear();
   }
-  /**
-   * Get current subscriber count.
-   * Useful for testing and diagnostics.
-   */
   getSubscriberCount() {
-    return this.subscribers.length;
+    return this.subscribers.size;
   }
 };
 __name(_PortSelectionEventEmitter, "PortSelectionEventEmitter");
 let PortSelectionEventEmitter = _PortSelectionEventEmitter;
+const _DIPortSelectionEventEmitter = class _DIPortSelectionEventEmitter extends PortSelectionEventEmitter {
+};
+__name(_DIPortSelectionEventEmitter, "DIPortSelectionEventEmitter");
+_DIPortSelectionEventEmitter.dependencies = [];
+let DIPortSelectionEventEmitter = _DIPortSelectionEventEmitter;
 const _ObservabilityRegistry = class _ObservabilityRegistry {
   constructor(logger, metrics) {
     this.logger = logger;
@@ -3082,12 +3013,10 @@ __name(_ObservabilityRegistry, "ObservabilityRegistry");
 _ObservabilityRegistry.dependencies = [loggerToken, metricsRecorderToken];
 let ObservabilityRegistry = _ObservabilityRegistry;
 function registerObservability(container) {
-  const emitterResult = container.registerFactory(
+  const emitterResult = container.registerClass(
     portSelectionEventEmitterToken,
-    () => new PortSelectionEventEmitter(),
-    ServiceLifecycle.TRANSIENT,
-    []
-    // No dependencies
+    DIPortSelectionEventEmitter,
+    ServiceLifecycle.TRANSIENT
   );
   if (isErr(emitterResult)) {
     return err(`Failed to register PortSelectionEventEmitter: ${emitterResult.error.message}`);
@@ -3240,7 +3169,7 @@ const _PortSelector = class _PortSelector {
         type: "failure",
         foundryVersion: version,
         availableVersions,
-        adapterName,
+        ...adapterName !== void 0 ? { adapterName } : {},
         error
       });
       return err(error);
@@ -3252,7 +3181,7 @@ const _PortSelector = class _PortSelector {
         type: "success",
         selectedVersion,
         foundryVersion: version,
-        adapterName,
+        ...adapterName !== void 0 ? { adapterName } : {},
         durationMs
       });
       return ok(port);
@@ -3267,7 +3196,7 @@ const _PortSelector = class _PortSelector {
         type: "failure",
         foundryVersion: version,
         availableVersions: Array.from(factories.keys()).sort((a, b) => a - b).join(", "),
-        adapterName,
+        ...adapterName !== void 0 ? { adapterName } : {},
         error: foundryError
       });
       return err(foundryError);
@@ -11011,6 +10940,10 @@ function registerPortInfrastructure(container) {
   if (isErr(portSelectorResult)) {
     return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
   }
+  return ok(void 0);
+}
+__name(registerPortInfrastructure, "registerPortInfrastructure");
+function registerPortRegistries(container) {
   const portsResult = createPortRegistries();
   if (isErr(portsResult)) return portsResult;
   const {
@@ -11068,7 +11001,7 @@ function registerPortInfrastructure(container) {
   }
   return ok(void 0);
 }
-__name(registerPortInfrastructure, "registerPortInfrastructure");
+__name(registerPortRegistries, "registerPortRegistries");
 const _FoundryServiceBase = class _FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     this.port = null;
@@ -11474,9 +11407,10 @@ const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
 ]);
 const BOOLEAN_FLAG_SCHEMA = /* @__PURE__ */ boolean();
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(facade, logger) {
+  constructor(facade, logger, notificationCenter) {
     this.facade = facade;
     this.logger = logger;
+    this.notificationCenter = notificationCenter;
   }
   /**
    * Sanitizes a string for safe use in log messages.
@@ -11534,7 +11468,9 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         this.hideEntries(hidden, htmlElement);
       }, "onOk"),
       onErr: /* @__PURE__ */ __name((error) => {
-        this.logger.error("Error getting hidden journal entries", error);
+        this.notificationCenter.error("Error getting hidden journal entries", error, {
+          channels: ["ConsoleChannel"]
+        });
       }, "onErr")
     });
   }
@@ -11554,7 +11490,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
   }
 };
 __name(_JournalVisibilityService, "JournalVisibilityService");
-_JournalVisibilityService.dependencies = [foundryJournalFacadeToken, loggerToken];
+_JournalVisibilityService.dependencies = [foundryJournalFacadeToken, loggerToken, notificationCenterToken];
 let JournalVisibilityService = _JournalVisibilityService;
 function registerFoundryServices(container) {
   const gameServiceResult = container.registerClass(
@@ -12121,6 +12057,35 @@ const _FallbackTranslationHandler = class _FallbackTranslationHandler extends Ab
 __name(_FallbackTranslationHandler, "FallbackTranslationHandler");
 _FallbackTranslationHandler.dependencies = [];
 let FallbackTranslationHandler = _FallbackTranslationHandler;
+const _TranslationHandlerChain = class _TranslationHandlerChain {
+  constructor(foundryHandler, localHandler, fallbackHandler) {
+    this.head = foundryHandler;
+    this.head.setNext(localHandler).setNext(fallbackHandler);
+  }
+  setNext(handler) {
+    return this.head.setNext(handler);
+  }
+  handle(key, data, fallback2) {
+    return this.head.handle(key, data, fallback2);
+  }
+  has(key) {
+    return this.head.has(key);
+  }
+};
+__name(_TranslationHandlerChain, "TranslationHandlerChain");
+let TranslationHandlerChain = _TranslationHandlerChain;
+const _DITranslationHandlerChain = class _DITranslationHandlerChain extends TranslationHandlerChain {
+  constructor(foundryHandler, localHandler, fallbackHandler) {
+    super(foundryHandler, localHandler, fallbackHandler);
+  }
+};
+__name(_DITranslationHandlerChain, "DITranslationHandlerChain");
+_DITranslationHandlerChain.dependencies = [
+  foundryTranslationHandlerToken,
+  localTranslationHandlerToken,
+  fallbackTranslationHandlerToken
+];
+let DITranslationHandlerChain = _DITranslationHandlerChain;
 function registerI18nServices(container) {
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
@@ -12166,32 +12131,10 @@ function registerI18nServices(container) {
       `Failed to register FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
     );
   }
-  const chainResult = container.registerFactory(
+  const chainResult = container.registerClass(
     translationHandlerChainToken,
-    () => {
-      const foundryHandlerResult2 = container.resolveWithError(foundryTranslationHandlerToken);
-      const localHandlerResult2 = container.resolveWithError(localTranslationHandlerToken);
-      const fallbackHandlerResult2 = container.resolveWithError(fallbackTranslationHandlerToken);
-      if (!foundryHandlerResult2.ok) {
-        throw new Error(
-          `Translation chain factory: Cannot resolve FoundryTranslationHandler: ${foundryHandlerResult2.error.message}`
-        );
-      }
-      if (!localHandlerResult2.ok) {
-        throw new Error(
-          `Translation chain factory: Cannot resolve LocalTranslationHandler: ${localHandlerResult2.error.message}`
-        );
-      }
-      if (!fallbackHandlerResult2.ok) {
-        throw new Error(
-          `Translation chain factory: Cannot resolve FallbackTranslationHandler: ${fallbackHandlerResult2.error.message}`
-        );
-      }
-      foundryHandlerResult2.value.setNext(localHandlerResult2.value).setNext(fallbackHandlerResult2.value);
-      return foundryHandlerResult2.value;
-    },
-    ServiceLifecycle.SINGLETON,
-    [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]
+    DITranslationHandlerChain,
+    ServiceLifecycle.SINGLETON
   );
   if (isErr(chainResult)) {
     return err(`Failed to register TranslationHandlerChain: ${chainResult.error.message}`);
@@ -12207,6 +12150,207 @@ function registerI18nServices(container) {
   return ok(void 0);
 }
 __name(registerI18nServices, "registerI18nServices");
+const _NotificationCenter = class _NotificationCenter {
+  constructor(initialChannels) {
+    this.channels = [...initialChannels];
+  }
+  debug(context, data, options) {
+    const payload = data === void 0 ? {} : { data };
+    return this.notify("debug", context, payload, options);
+  }
+  info(context, data, options) {
+    const payload = data === void 0 ? {} : { data };
+    return this.notify("info", context, payload, options);
+  }
+  warn(context, data, options) {
+    const payload = data === void 0 ? {} : { data };
+    return this.notify("warn", context, payload, options);
+  }
+  error(context, error, options) {
+    const payload = error === void 0 ? {} : { error };
+    return this.notify("error", context, payload, options);
+  }
+  addChannel(channel) {
+    const alreadyRegistered = this.channels.some((existing) => existing.name === channel.name);
+    if (!alreadyRegistered) {
+      this.channels.push(channel);
+    }
+  }
+  removeChannel(name) {
+    const index = this.channels.findIndex((channel) => channel.name === name);
+    if (index === -1) {
+      return false;
+    }
+    this.channels.splice(index, 1);
+    return true;
+  }
+  getChannelNames() {
+    return this.channels.map((channel) => channel.name);
+  }
+  notify(level, context, payload, options) {
+    const notification = {
+      level,
+      context,
+      timestamp: /* @__PURE__ */ new Date(),
+      ...payload.data !== void 0 ? { data: payload.data } : {},
+      ...payload.error !== void 0 ? { error: payload.error } : {},
+      ...options?.traceId !== void 0 ? { traceId: options.traceId } : {}
+    };
+    const targetChannels = this.selectChannels(options?.channels);
+    let attempted = false;
+    let succeeded = false;
+    const failures = [];
+    for (const channel of targetChannels) {
+      if (!channel.canHandle(notification)) {
+        continue;
+      }
+      attempted = true;
+      const result = channel.send(notification);
+      if (result.ok) {
+        succeeded = true;
+      } else {
+        failures.push(`${channel.name}: ${result.error}`);
+      }
+    }
+    if (!attempted || succeeded) {
+      return ok(void 0);
+    }
+    return err(`All channels failed: ${failures.join("; ")}`);
+  }
+  selectChannels(channelNames) {
+    if (!channelNames || channelNames.length === 0) {
+      return this.channels;
+    }
+    return this.channels.filter((channel) => channelNames.includes(channel.name));
+  }
+};
+__name(_NotificationCenter, "NotificationCenter");
+let NotificationCenter = _NotificationCenter;
+const _DINotificationCenter = class _DINotificationCenter extends NotificationCenter {
+  constructor(consoleChannel, uiChannel) {
+    super([consoleChannel, uiChannel]);
+  }
+};
+__name(_DINotificationCenter, "DINotificationCenter");
+_DINotificationCenter.dependencies = [consoleChannelToken, uiChannelToken];
+let DINotificationCenter = _DINotificationCenter;
+const _ConsoleChannel = class _ConsoleChannel {
+  constructor(logger) {
+    this.logger = logger;
+    this.name = "ConsoleChannel";
+  }
+  canHandle() {
+    return true;
+  }
+  send(notification) {
+    const { level, context, data, error } = notification;
+    switch (level) {
+      case "debug":
+        this.logger.debug(context, data);
+        break;
+      case "info":
+        this.logger.info(context, data);
+        break;
+      case "warn":
+        this.logger.warn(context, data ?? error);
+        break;
+      case "error":
+        this.logger.error(context, error ?? data);
+        break;
+    }
+    return ok(void 0);
+  }
+};
+__name(_ConsoleChannel, "ConsoleChannel");
+_ConsoleChannel.dependencies = [loggerToken];
+let ConsoleChannel = _ConsoleChannel;
+const _UIChannel = class _UIChannel {
+  constructor(foundryUI, env) {
+    this.foundryUI = foundryUI;
+    this.env = env;
+    this.name = "UIChannel";
+  }
+  canHandle(notification) {
+    return notification.level !== "debug";
+  }
+  send(notification) {
+    const sanitizedMessage = this.sanitizeForUI(notification);
+    const uiType = this.mapLevelToUIType(notification.level);
+    const notifyResult = this.foundryUI.notify(sanitizedMessage, uiType);
+    if (!notifyResult.ok) {
+      return err(`UI notification failed: ${notifyResult.error.message}`);
+    }
+    return ok(void 0);
+  }
+  /**
+   * Sanitizes notification message for UI display.
+   *
+   * Development: Shows detailed messages
+   * Production: Shows generic messages to prevent information leakage
+   */
+  sanitizeForUI(notification) {
+    const { level, context, data, error } = notification;
+    if (this.env.isDevelopment) {
+      if (level === "error" && error) {
+        return `${context}: ${error.message}`;
+      }
+      if (data && typeof data === "object" && "message" in data) {
+        return `${context}: ${String(data.message)}`;
+      }
+      return context;
+    }
+    if (level === "error" && error) {
+      return `${context}. Please try again or contact support. (Error: ${error.code})`;
+    }
+    return context;
+  }
+  /**
+   * Maps notification level to Foundry UI notification type.
+   */
+  mapLevelToUIType(level) {
+    switch (level) {
+      case "info":
+        return "info";
+      case "warn":
+        return "warning";
+      case "error":
+        return "error";
+      case "debug":
+        return "info";
+    }
+  }
+};
+__name(_UIChannel, "UIChannel");
+_UIChannel.dependencies = [foundryUIToken, environmentConfigToken];
+let UIChannel = _UIChannel;
+function registerNotifications(container) {
+  const consoleChannelResult = container.registerClass(
+    consoleChannelToken,
+    ConsoleChannel,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(consoleChannelResult)) {
+    return err(`Failed to register ConsoleChannel: ${consoleChannelResult.error.message}`);
+  }
+  const uiChannelResult = container.registerClass(
+    uiChannelToken,
+    UIChannel,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(uiChannelResult)) {
+    return err(`Failed to register UIChannel: ${uiChannelResult.error.message}`);
+  }
+  const notificationCenterResult = container.registerClass(
+    notificationCenterToken,
+    DINotificationCenter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(notificationCenterResult)) {
+    return err(`Failed to register NotificationCenter: ${notificationCenterResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerNotifications, "registerNotifications");
 const logLevelSetting = {
   key: MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
   createConfig(i18n, logger) {
@@ -12270,11 +12414,13 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     const settingsResult = container.resolveWithError(foundrySettingsToken);
     const loggerResult = container.resolveWithError(loggerToken);
     const i18nResult = container.resolveWithError(i18nFacadeToken);
-    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok) {
+    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
+    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok || !notificationCenterResult.ok) {
       if (loggerResult.ok) {
         loggerResult.value.error("DI resolution failed in ModuleSettingsRegistrar", {
           settingsResolved: settingsResult.ok,
-          i18nResolved: i18nResult.ok
+          i18nResolved: i18nResult.ok,
+          notificationCenterResolved: notificationCenterResult.ok
         });
       } else {
         console.error("Failed to resolve required services for settings registration");
@@ -12284,11 +12430,14 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     const foundrySettings = settingsResult.value;
     const logger = loggerResult.value;
     const i18n = i18nResult.value;
+    const notificationCenter = notificationCenterResult.value;
     for (const setting of this.settings) {
       const config2 = setting.createConfig(i18n, logger);
       const result = foundrySettings.register(MODULE_CONSTANTS.MODULE.ID, setting.key, config2);
       if (!result.ok) {
-        logger.error(`Failed to register ${setting.key} setting`, result.error);
+        notificationCenter.error(`Failed to register ${setting.key} setting`, result.error, {
+          channels: ["ConsoleChannel"]
+        });
       }
     }
   }
@@ -12297,8 +12446,9 @@ __name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
 _ModuleSettingsRegistrar.dependencies = [];
 let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
 const _ModuleHookRegistrar = class _ModuleHookRegistrar {
-  constructor(renderJournalHook, logger) {
+  constructor(renderJournalHook, logger, notificationCenter) {
     this.logger = logger;
+    this.notificationCenter = notificationCenter;
     this.hooks = [
       renderJournalHook
       // Add new hooks here as constructor parameters
@@ -12312,7 +12462,13 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
     for (const hook of this.hooks) {
       const result = hook.register(container);
       if (!result.ok) {
-        this.logger.error(`Failed to register hook: ${result.error.message}`);
+        const error = {
+          code: "HOOK_REGISTRATION_FAILED",
+          message: result.error.message
+        };
+        this.notificationCenter.error("Failed to register hook", error, {
+          channels: ["ConsoleChannel"]
+        });
       }
     }
   }
@@ -12329,7 +12485,11 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
   /* c8 ignore stop */
 };
 __name(_ModuleHookRegistrar, "ModuleHookRegistrar");
-_ModuleHookRegistrar.dependencies = [renderJournalDirectoryHookToken, loggerToken];
+_ModuleHookRegistrar.dependencies = [
+  renderJournalDirectoryHookToken,
+  loggerToken,
+  notificationCenterToken
+];
 let ModuleHookRegistrar = _ModuleHookRegistrar;
 function throttle(fn, windowMs) {
   let isThrottled = false;
@@ -12376,11 +12536,13 @@ const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
     const foundryHooksResult = container.resolveWithError(foundryHooksToken);
     const loggerResult = container.resolveWithError(loggerToken);
     const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
-    if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok) {
+    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
+    if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok || !notificationCenterResult.ok) {
       if (loggerResult.ok) {
         loggerResult.value.error("DI resolution failed in RenderJournalDirectoryHook", {
           foundryHooksResolved: foundryHooksResult.ok,
-          journalVisibilityResolved: journalVisibilityResult.ok
+          journalVisibilityResolved: journalVisibilityResult.ok,
+          notificationCenterResolved: notificationCenterResult.ok
         });
       }
       return err(new Error("Failed to resolve required services for RenderJournalDirectoryHook"));
@@ -12388,23 +12550,28 @@ const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
     const foundryHooks = foundryHooksResult.value;
     const logger = loggerResult.value;
     const journalVisibility = journalVisibilityResult.value;
+    const notificationCenter = notificationCenterResult.value;
     const throttledCallback = throttle((app, html) => {
       logger.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
       const appValidation = validateHookApp(app);
       if (!appValidation.ok) {
-        logger.error(
+        notificationCenter.error(
           `Invalid app parameter in ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
-          {
-            code: appValidation.error.code,
-            message: appValidation.error.message,
-            details: appValidation.error.details
-          }
+          appValidation.error,
+          { channels: ["ConsoleChannel"] }
         );
         return;
       }
       const htmlElement = extractHtmlElement(html);
       if (!htmlElement) {
-        logger.error("Failed to get HTMLElement from hook - incompatible format");
+        notificationCenter.error(
+          "Failed to get HTMLElement from hook - incompatible format",
+          {
+            code: "INVALID_HTML_ELEMENT",
+            message: "HTMLElement could not be extracted from hook arguments."
+          },
+          { channels: ["ConsoleChannel"] }
+        );
         return;
       }
       journalVisibility.processJournalDirectory(htmlElement);
@@ -12414,12 +12581,11 @@ const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
       throttledCallback
     );
     if (!hookResult.ok) {
-      logger.error(
-        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook: ${hookResult.error.message}`,
+      notificationCenter.error(
+        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
+        hookResult.error,
         {
-          code: hookResult.error.code,
-          details: hookResult.error.details,
-          cause: hookResult.error.cause
+          channels: ["ConsoleChannel"]
         }
       );
       return err(new Error(`Hook registration failed: ${hookResult.error.message}`));
@@ -12483,6 +12649,62 @@ function registerFallbacks(container) {
   });
 }
 __name(registerFallbacks, "registerFallbacks");
+function registerStaticValues(container) {
+  const envResult = container.registerValue(environmentConfigToken, ENV);
+  if (isErr(envResult)) {
+    return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
+  }
+  const containerResult = container.registerValue(serviceContainerToken, container);
+  if (isErr(containerResult)) {
+    return err(`Failed to register ServiceContainer: ${containerResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerStaticValues, "registerStaticValues");
+function registerSubcontainerValues(container) {
+  return registerPortRegistries(container);
+}
+__name(registerSubcontainerValues, "registerSubcontainerValues");
+function registerLoopPreventionServices(container) {
+  const containerCheckResult = container.registerClass(
+    containerHealthCheckToken,
+    DIContainerHealthCheck,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(containerCheckResult)) {
+    return err(`Failed to register ContainerHealthCheck: ${containerCheckResult.error.message}`);
+  }
+  const metricsCheckResult = container.registerClass(
+    metricsHealthCheckToken,
+    DIMetricsHealthCheck,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(metricsCheckResult)) {
+    return err(`Failed to register MetricsHealthCheck: ${metricsCheckResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerLoopPreventionServices, "registerLoopPreventionServices");
+function initializeLoopPreventionValues(container) {
+  const registryRes = container.resolveWithError(healthCheckRegistryToken);
+  const metricsRes = container.resolveWithError(metricsCollectorToken);
+  if (!registryRes.ok) {
+    return err(`Failed to resolve HealthCheckRegistry: ${registryRes.error.message}`);
+  }
+  if (!metricsRes.ok) {
+    return err(`Failed to resolve MetricsCollector: ${metricsRes.error.message}`);
+  }
+  const containerCheckResult = container.resolveWithError(containerHealthCheckToken);
+  if (!containerCheckResult.ok) {
+    return err(`Failed to resolve ContainerHealthCheck: ${containerCheckResult.error.message}`);
+  }
+  const metricsCheckResult = container.resolveWithError(metricsHealthCheckToken);
+  if (!metricsCheckResult.ok) {
+    return err(`Failed to resolve MetricsHealthCheck: ${metricsCheckResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(initializeLoopPreventionValues, "initializeLoopPreventionValues");
 function validateContainer(container) {
   const validateResult = container.validate();
   if (isErr(validateResult)) {
@@ -12494,6 +12716,8 @@ function validateContainer(container) {
 __name(validateContainer, "validateContainer");
 function configureDependencies(container) {
   registerFallbacks(container);
+  const staticValuesResult = registerStaticValues(container);
+  if (isErr(staticValuesResult)) return staticValuesResult;
   const coreResult = registerCoreServices(container);
   if (isErr(coreResult)) return coreResult;
   const observabilityResult = registerObservability(container);
@@ -12502,28 +12726,22 @@ function configureDependencies(container) {
   if (isErr(utilityResult)) return utilityResult;
   const portInfraResult = registerPortInfrastructure(container);
   if (isErr(portInfraResult)) return portInfraResult;
+  const subcontainerValuesResult = registerSubcontainerValues(container);
+  if (isErr(subcontainerValuesResult)) return subcontainerValuesResult;
   const foundryServicesResult = registerFoundryServices(container);
   if (isErr(foundryServicesResult)) return foundryServicesResult;
   const i18nServicesResult = registerI18nServices(container);
   if (isErr(i18nServicesResult)) return i18nServicesResult;
+  const notificationsResult = registerNotifications(container);
+  if (isErr(notificationsResult)) return notificationsResult;
   const registrarsResult = registerRegistrars(container);
   if (isErr(registrarsResult)) return registrarsResult;
+  const loopServiceResult = registerLoopPreventionServices(container);
+  if (isErr(loopServiceResult)) return loopServiceResult;
   const validationResult = validateContainer(container);
   if (isErr(validationResult)) return validationResult;
-  const registryRes = container.resolveWithError(healthCheckRegistryToken);
-  const metricsRes = container.resolveWithError(metricsCollectorToken);
-  if (!registryRes.ok) {
-    return err(`Failed to resolve HealthCheckRegistry: ${registryRes.error.message}`);
-  }
-  if (!metricsRes.ok) {
-    return err(`Failed to resolve MetricsCollector: ${metricsRes.error.message}`);
-  }
-  const containerCheck = new ContainerHealthCheck(container);
-  registryRes.value.register(containerCheck);
-  container.registerValue(containerHealthCheckToken, containerCheck);
-  const metricsCheck = new MetricsHealthCheck(metricsRes.value);
-  registryRes.value.register(metricsCheck);
-  container.registerValue(metricsHealthCheckToken, metricsCheck);
+  const loopPreventionInitResult = initializeLoopPreventionValues(container);
+  if (isErr(loopPreventionInitResult)) return loopPreventionInitResult;
   return ok(void 0);
 }
 __name(configureDependencies, "configureDependencies");

@@ -171,7 +171,7 @@ export class PortSelector {
         type: "failure",
         foundryVersion: version,
         availableVersions,
-        adapterName,
+        ...(adapterName !== undefined ? { adapterName } : {}),
         error,
       });
 
@@ -188,7 +188,7 @@ export class PortSelector {
         type: "success",
         selectedVersion,
         foundryVersion: version,
-        adapterName,
+        ...(adapterName !== undefined ? { adapterName } : {}),
         durationMs,
       });
 
@@ -208,7 +208,7 @@ export class PortSelector {
         availableVersions: Array.from(factories.keys())
           .sort((a, b) => a - b)
           .join(", "),
-        adapterName,
+        ...(adapterName !== undefined ? { adapterName } : {}),
         error: foundryError,
       });
 

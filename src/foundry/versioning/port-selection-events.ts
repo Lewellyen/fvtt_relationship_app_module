@@ -11,112 +11,66 @@
  * @see PortSelectionObserver for event consumption
  */
 
-/**
- * Event emitted when port selection completes successfully.
- */
-export interface PortSelectionSuccessEvent {
+import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+
+export type PortSelectionSuccessEvent = {
   type: "success";
   selectedVersion: number;
   foundryVersion: number;
-  adapterName: string | undefined;
   durationMs: number;
-}
+  adapterName?: string;
+};
 
-import type { FoundryError } from "@/foundry/errors/FoundryErrors";
-
-/**
- * Event emitted when port selection fails.
- */
-export interface PortSelectionFailureEvent {
+export type PortSelectionFailureEvent = {
   type: "failure";
   foundryVersion: number;
   availableVersions: string;
-  adapterName: string | undefined;
+  adapterName?: string;
   error: FoundryError;
-}
+};
 
-/**
- * Union type of all port selection events.
- */
 export type PortSelectionEvent = PortSelectionSuccessEvent | PortSelectionFailureEvent;
-
-/**
- * Callback function for port selection events.
- */
 export type PortSelectionEventCallback = (event: PortSelectionEvent) => void;
 
 /**
- * Simple event emitter for port selection events.
- *
- * **Design:**
- * - Lightweight, no external dependencies
- * - Synchronous event dispatch
- * - Multiple subscribers supported
- *
- * @example
- * ```typescript
- * const emitter = new PortSelectionEventEmitter();
- * emitter.subscribe((event) => {
- *   if (event.type === 'success') {
- *     console.log(`Port v${event.selectedVersion} selected`);
- *   }
- * });
- * emitter.emit({ type: 'success', selectedVersion: 13, foundryVersion: 13, durationMs: 5 });
- * ```
+ * Simple observable emitter used by the PortSelector to notify interested
+ * observers about success/failure outcomes.
  */
 export class PortSelectionEventEmitter {
-  private subscribers: PortSelectionEventCallback[] = [];
+  private readonly subscribers = new Set<PortSelectionEventCallback>();
 
-  /**
-   * Subscribe to port selection events.
-   *
-   * @param callback - Function to call when events are emitted
-   * @returns Unsubscribe function
-   */
   subscribe(callback: PortSelectionEventCallback): () => void {
-    this.subscribers.push(callback);
+    this.subscribers.add(callback);
+    let active = true;
 
-    // Return unsubscribe function
     return () => {
-      const index = this.subscribers.indexOf(callback);
-      if (index !== -1) {
-        this.subscribers.splice(index, 1);
+      if (!active) {
+        return;
       }
+      active = false;
+      this.subscribers.delete(callback);
     };
   }
 
-  /**
-   * Emit a port selection event to all subscribers.
-   *
-   * Events are dispatched synchronously.
-   *
-   * @param event - The event to emit
-   */
   emit(event: PortSelectionEvent): void {
-    for (const subscriber of this.subscribers) {
+    for (const callback of this.subscribers) {
       try {
-        subscriber(event);
+        callback(event);
       } catch (error) {
-        // Prevent one subscriber's error from affecting others
-        // Log to console since we don't have logger access here
-        console.error("PortSelectionEventEmitter: Subscriber error", error);
+        console.error("PortSelectionEventEmitter subscriber error", error);
       }
     }
   }
 
-  /**
-   * Remove all subscribers.
-   * Useful for cleanup in tests.
-   */
   clear(): void {
-    this.subscribers = [];
+    this.subscribers.clear();
   }
 
-  /**
-   * Get current subscriber count.
-   * Useful for testing and diagnostics.
-   */
   getSubscriberCount(): number {
-    return this.subscribers.length;
+    return this.subscribers.size;
   }
+}
+
+export class DIPortSelectionEventEmitter extends PortSelectionEventEmitter {
+  static dependencies = [] as const;
 }

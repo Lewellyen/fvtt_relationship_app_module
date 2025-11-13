@@ -38,7 +38,6 @@ describe("PortSelectionObserver", () => {
         type: "success",
         selectedVersion: 13,
         foundryVersion: 13,
-        adapterName: undefined,
         durationMs: 5.5,
       };
 
@@ -69,7 +68,6 @@ describe("PortSelectionObserver", () => {
         type: "failure",
         foundryVersion: 13,
         availableVersions: "14, 15",
-        adapterName: undefined,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         error: { code: "PORT_SELECTION_FAILED" as const, message: "No compatible port" } as any,
       };

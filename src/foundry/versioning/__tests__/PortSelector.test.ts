@@ -263,6 +263,18 @@ describe("PortSelector", () => {
       }
     });
 
+    it("should emit failure event with adapter name when provided", () => {
+      const factories = new Map([[15, () => "port-v15"]]);
+      selector.selectPortFromFactories(factories, 13, "FoundryHooks");
+
+      expect(capturedEvents).toHaveLength(1);
+      const event = capturedEvents[0];
+      expect(event?.type).toBe("failure");
+      if (event?.type === "failure") {
+        expect(event.adapterName).toBe("FoundryHooks");
+      }
+    });
+
     it("should emit failure event when instantiation fails", () => {
       const factories = new Map([
         [
@@ -277,6 +289,26 @@ describe("PortSelector", () => {
       expect(capturedEvents).toHaveLength(1);
       const event = capturedEvents[0];
       expect(event?.type).toBe("failure");
+    });
+
+    it("should emit failure event with adapter name when instantiation fails", () => {
+      const factories = new Map<number, () => string>([
+        [
+          13,
+          () => {
+            throw new Error("Instantiation error");
+          },
+        ],
+      ]);
+
+      selector.selectPortFromFactories(factories, 13, "FoundryGame");
+
+      expect(capturedEvents).toHaveLength(1);
+      const event = capturedEvents[0];
+      expect(event?.type).toBe("failure");
+      if (event?.type === "failure") {
+        expect(event.adapterName).toBe("FoundryGame");
+      }
     });
   });
 });

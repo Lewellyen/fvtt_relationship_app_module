@@ -3,7 +3,7 @@ import type { Result } from "@/types/result";
 import { ok, err, isErr } from "@/utils/functional/result";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import { portSelectionEventEmitterToken, observabilityRegistryToken } from "@/tokens/tokenindex";
-import { PortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
+import { DIPortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
 import { ObservabilityRegistry } from "@/observability/observability-registry";
 
 /**
@@ -30,11 +30,10 @@ import { ObservabilityRegistry } from "@/observability/observability-registry";
 export function registerObservability(container: ServiceContainer): Result<void, string> {
   // Register PortSelectionEventEmitter as TRANSIENT
   // Each service that needs event emission gets its own instance
-  const emitterResult = container.registerFactory(
+  const emitterResult = container.registerClass(
     portSelectionEventEmitterToken,
-    () => new PortSelectionEventEmitter(),
-    ServiceLifecycle.TRANSIENT,
-    [] // No dependencies
+    DIPortSelectionEventEmitter,
+    ServiceLifecycle.TRANSIENT
   );
 
   if (isErr(emitterResult)) {

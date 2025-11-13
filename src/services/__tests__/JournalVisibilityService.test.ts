@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { JournalVisibilityService } from "../JournalVisibilityService";
 import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
 import type { Logger } from "@/interfaces/logger";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import { MODULE_CONSTANTS } from "@/constants";
 import { ok, err } from "@/utils/functional/result";
@@ -11,6 +12,7 @@ describe("JournalVisibilityService", () => {
   let service: JournalVisibilityService;
   let mockFacade: FoundryJournalFacade;
   let mockLogger: Logger;
+  let mockNotificationCenter: NotificationCenter;
 
   beforeEach(() => {
     mockFacade = {
@@ -26,8 +28,18 @@ describe("JournalVisibilityService", () => {
       log: vi.fn(),
       withTraceId: vi.fn(),
     };
+    mockNotificationCenter = {
+      notify: vi.fn().mockReturnValue(ok(undefined)),
+      debug: vi.fn().mockReturnValue(ok(undefined)),
+      info: vi.fn().mockReturnValue(ok(undefined)),
+      warn: vi.fn().mockReturnValue(ok(undefined)),
+      error: vi.fn().mockReturnValue(ok(undefined)),
+      addChannel: vi.fn(),
+      removeChannel: vi.fn(),
+      getChannelNames: vi.fn().mockReturnValue(["ConsoleChannel", "UIChannel"]),
+    } as unknown as NotificationCenter;
 
-    service = new JournalVisibilityService(mockFacade, mockLogger);
+    service = new JournalVisibilityService(mockFacade, mockLogger, mockNotificationCenter);
   });
 
   describe("getHiddenJournalEntries", () => {
@@ -169,7 +181,7 @@ describe("JournalVisibilityService", () => {
       expect(mockLogger.debug).toHaveBeenCalled();
     });
 
-    it("should log error when getHiddenJournalEntries fails", () => {
+    it("should handle error when getHiddenJournalEntries fails", () => {
       const errorMessage = "Error getting entries";
       mockFacade.getJournalEntries = vi.fn().mockReturnValue(err(errorMessage));
 
@@ -177,9 +189,12 @@ describe("JournalVisibilityService", () => {
 
       service.processJournalDirectory(container);
 
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      expect(mockNotificationCenter.error).toHaveBeenCalledWith(
         "Error getting hidden journal entries",
-        errorMessage
+        errorMessage,
+        {
+          channels: ["ConsoleChannel"],
+        }
       );
       expect(mockFacade.removeJournalElement).not.toHaveBeenCalled();
     });

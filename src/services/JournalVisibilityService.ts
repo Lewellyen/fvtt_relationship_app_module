@@ -2,11 +2,12 @@ import type { Result } from "@/types/result";
 import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import type { Logger } from "@/interfaces/logger";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import { MODULE_CONSTANTS } from "@/constants";
 import { match } from "@/utils/functional/result";
 import { foundryJournalFacadeToken } from "@/foundry/foundrytokens";
-import { loggerToken } from "@/tokens/tokenindex";
+import { loggerToken, notificationCenterToken } from "@/tokens/tokenindex";
 import { BOOLEAN_FLAG_SCHEMA } from "@/foundry/validation/setting-schemas";
 import { sanitizeHtml } from "@/foundry/validation/schemas";
 
@@ -20,11 +21,12 @@ import { sanitizeHtml } from "@/foundry/validation/schemas";
  * - Improvement: 50% reduction via Facade Pattern
  */
 export class JournalVisibilityService {
-  static dependencies = [foundryJournalFacadeToken, loggerToken] as const;
+  static dependencies = [foundryJournalFacadeToken, loggerToken, notificationCenterToken] as const;
 
   constructor(
     private readonly facade: FoundryJournalFacade,
-    private readonly logger: Logger
+    private readonly logger: Logger,
+    private readonly notificationCenter: NotificationCenter
   ) {}
 
   /**
@@ -97,7 +99,10 @@ export class JournalVisibilityService {
         this.hideEntries(hidden, htmlElement);
       },
       onErr: (error) => {
-        this.logger.error("Error getting hidden journal entries", error);
+        // Internal error - log to console only (no UI notification)
+        this.notificationCenter.error("Error getting hidden journal entries", error, {
+          channels: ["ConsoleChannel"],
+        });
       },
     });
   }
