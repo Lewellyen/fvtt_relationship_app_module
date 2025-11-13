@@ -308,22 +308,15 @@ interface NotificationCenterOptions {
 }
 
 interface FoundryNotificationOptions {
-  permanent?: boolean;
-  localize?: boolean;
-  i18nArgs?: Record<string, unknown>;
+  clean?: boolean;
   console?: boolean;
-  debug?: boolean;
-  title?: string;
-  replaces?: string;
-  type?: string;
-  icon?: string;
-  classes?: string | string[];
-  actions?: FoundryNotificationAction[];
-  duration?: number;
+  escape?: boolean;
+  format?: Record<string, string>;
+  localize?: boolean;
+  permanent?: boolean;
+  progress?: boolean;
 }
 ```
-
-> `FoundryNotificationAction` entspricht Foundrys `NotificationAction` (Label, Callback, optionale Klassen).
 
 **Beispiel – Persistente UI Notification**
 
@@ -336,8 +329,7 @@ notifications.info(
   {
     uiOptions: {
       permanent: true,
-      title: 'Synchronisation erfolgreich',
-      icon: 'fas fa-user-friends',
+      localize: true,
     },
   }
 );

@@ -151,7 +151,7 @@ describe("FoundryUIService", () => {
     });
 
     it("should forward notification options to port", () => {
-      const options = { permanent: true, title: "Heads-up" };
+      const options = { permanent: true, console: true };
       mockPort.notify = vi.fn().mockReturnValue(ok(undefined));
 
       const result = service.notify("Heads-up", "info", options);

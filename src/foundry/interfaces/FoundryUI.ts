@@ -3,78 +3,39 @@ import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
 
 /**
- * Action button configuration for Foundry UI notifications.
- * Mirrors Foundry's NotificationAction structure.
- */
-export interface FoundryNotificationAction {
-  /**
-   * Text displayed on the action button.
-   */
-  label: string;
-  /**
-   * Callback executed when the action button is clicked.
-   */
-  callback: () => void;
-  /**
-   * Optional CSS classes applied to the action button.
-   */
-  classes?: string | string[];
-}
-
-/**
  * Options supported by Foundry's ui.notifications API.
  *
  * Based on Foundry VTT v13 API typings.
  */
 export interface FoundryNotificationOptions {
   /**
-   * Keeps the notification visible until manually dismissed.
+   * Whether to clean the provided message string as untrusted user input.
    */
-  permanent?: boolean;
+  clean?: boolean;
   /**
-   * Enables translation of the message via game.i18n.
-   */
-  localize?: boolean;
-  /**
-   * Arguments passed to the localization formatter.
-   */
-  i18nArgs?: Record<string, unknown>;
-  /**
-   * Logs the notification message to the console as well.
+   * Whether to log the message to the console.
    */
   console?: boolean;
   /**
-   * Only display the notification when CONFIG.debug.notifications is enabled.
+   * Whether to escape the values provided via `format`.
    */
-  debug?: boolean;
+  escape?: boolean;
   /**
-   * Optional title rendered above the message.
+   * A mapping of formatting strings passed to `game.i18n.format`.
    */
-  title?: string;
+  format?: Record<string, string>;
   /**
-   * Identifier of another notification to replace.
+   * Whether to localize the message content before displaying it.
    */
-  replaces?: string;
+  localize?: boolean;
   /**
-   * Overrides the notification type when using ui.notifications.notify directly.
+   * Keep the notification visible until manually dismissed.
    */
-  type?: "info" | "warning" | "error" | string;
+  permanent?: boolean;
   /**
-   * FontAwesome icon class applied to the notification.
+   * Display the notification with a progress bar.
    */
-  icon?: string;
-  /**
-   * Additional CSS classes for the notification element.
-   */
-  classes?: string | string[];
-  /**
-   * Action buttons rendered inside the notification.
-   */
-  actions?: FoundryNotificationAction[];
-  /**
-   * Duration in milliseconds before the notification auto-dismisses.
-   */
-  duration?: number;
+  progress?: boolean;
 }
 
 /**

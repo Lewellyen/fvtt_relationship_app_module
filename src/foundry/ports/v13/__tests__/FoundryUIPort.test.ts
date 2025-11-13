@@ -226,7 +226,7 @@ describe("FoundryUIPortV13", () => {
       vi.stubGlobal("ui", { notifications: mockNotifications });
 
       const port = new FoundryUIPortV13();
-      const options = { permanent: true, title: "Persistent Info" };
+      const options = { permanent: true, console: true };
 
       const result = port.notify("Persistent message", "info", options);
 

@@ -147,7 +147,7 @@ describe("UIChannel", () => {
     });
 
     it("should forward uiOptions to Foundry UI", () => {
-      const uiOptions = { permanent: true, duration: 0 };
+      const uiOptions = { permanent: true, console: true };
       const notification: Notification = {
         level: "info",
         context: "Persistent message",
