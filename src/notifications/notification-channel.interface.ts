@@ -1,5 +1,6 @@
 import type { Result } from "@/types/result";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import type { FoundryNotificationOptions } from "@/foundry/interfaces/FoundryUI";
 
 /**
  * Log level for notifications.
@@ -44,6 +45,11 @@ export interface Notification {
    * Optional trace ID for correlation.
    */
   traceId?: string;
+
+  /**
+   * Foundry UI-specific options applied when routing to ui.notifications.
+   */
+  uiOptions?: FoundryNotificationOptions;
 }
 
 /**

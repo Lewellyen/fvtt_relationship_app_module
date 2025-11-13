@@ -39,8 +39,9 @@ export class UIChannel implements NotificationChannel {
   send(notification: Notification): Result<void, string> {
     const sanitizedMessage = this.sanitizeForUI(notification);
     const uiType = this.mapLevelToUIType(notification.level);
+    const uiOptions = notification.uiOptions;
 
-    const notifyResult = this.foundryUI.notify(sanitizedMessage, uiType);
+    const notifyResult = this.foundryUI.notify(sanitizedMessage, uiType, uiOptions);
 
     if (!notifyResult.ok) {
       return err(`UI notification failed: ${notifyResult.error.message}`);

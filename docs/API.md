@@ -296,6 +296,53 @@ notifications.debug('Debug-Informationen', { userId: '123', context: 'test' });
 notifications.error('Fehler aufgetreten', new Error('Something went wrong'));
 ```
 
+### NotificationCenter
+
+`NotificationCenter` bündelt alle Modul-Benachrichtigungen und routet sie an registrierte Channels (z. B. Konsole, Foundry UI, Remote-Logging).
+
+```typescript
+interface NotificationCenterOptions {
+  channels?: string[]; // Zielkanäle einschränken
+  traceId?: string;    // Korrelations-ID für Logs/Metriken
+  uiOptions?: FoundryNotificationOptions; // Durchgereichte Foundry UI Optionen
+}
+
+interface FoundryNotificationOptions {
+  permanent?: boolean;
+  localize?: boolean;
+  i18nArgs?: Record<string, unknown>;
+  console?: boolean;
+  debug?: boolean;
+  title?: string;
+  replaces?: string;
+  type?: string;
+  icon?: string;
+  classes?: string | string[];
+  actions?: FoundryNotificationAction[];
+  duration?: number;
+}
+```
+
+> `FoundryNotificationAction` entspricht Foundrys `NotificationAction` (Label, Callback, optionale Klassen).
+
+**Beispiel – Persistente UI Notification**
+
+```typescript
+const notifications = api.resolve(api.tokens.notificationCenterToken);
+
+notifications.info(
+  'Neue Beziehungen synchronisiert',
+  { actorCount: 12 },
+  {
+    uiOptions: {
+      permanent: true,
+      title: 'Synchronisation erfolgreich',
+      icon: 'fas fa-user-friends',
+    },
+  }
+);
+```
+
 ---
 
 ### FoundryGame

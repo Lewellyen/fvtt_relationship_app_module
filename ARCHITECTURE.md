@@ -458,6 +458,16 @@ Hooks.on("ready", () => {
 
 ---
 
+### Notifications-Subsystem
+
+- `NotificationCenter` empfängt Modul-Events (Debug, Info, Warn, Error) und verteilt sie an registrierte Channels.
+- `UIChannel` kapselt Foundrys `ui.notifications` und sorgt für Sanitizing sowie Environment-selektives Messaging.
+- Seit v13-Port-Erweiterung unterstützt die Pipeline Foundry-native Optionen (`permanent`, `title`, `actions`, `duration`, …) über `NotificationCenterOptions.uiOptions`.
+- `FoundryUIPortV13` reicht die Optionen unverändert an `ui.notifications` durch, wodurch alle v13-Features (z. B. dauerhafte Hinweise oder Action-Buttons) im Modul verfügbar sind.
+- Die neue Option-Weitergabe bleibt vollständig DI-kompatibel: Services nutzen `NotificationCenter`, andere Ports bleiben entkoppelt.
+
+---
+
 ## Fehlerbehandlung
 
 ### Ebenen

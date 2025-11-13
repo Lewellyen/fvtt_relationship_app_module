@@ -1,5 +1,5 @@
 import type { Result } from "@/types/result";
-import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
+import type { FoundryUI, FoundryNotificationOptions } from "@/foundry/interfaces/FoundryUI";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { ok, err } from "@/utils/functional/result";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
@@ -61,7 +61,11 @@ export class FoundryUIPortV13 implements FoundryUI {
     return ok(element);
   }
 
-  notify(message: string, type: "info" | "warning" | "error"): Result<void, FoundryError> {
+  notify(
+    message: string,
+    type: "info" | "warning" | "error",
+    options?: FoundryNotificationOptions
+  ): Result<void, FoundryError> {
     if (this.#disposed) {
       return err(createFoundryError("DISPOSED", "Cannot show notification on disposed port"));
     }
@@ -72,13 +76,13 @@ export class FoundryUIPortV13 implements FoundryUI {
     try {
       switch (type) {
         case "info":
-          ui.notifications.info(message);
+          ui.notifications.info(message, options);
           break;
         case "warning":
-          ui.notifications.warn(message);
+          ui.notifications.warn(message, options);
           break;
         case "error":
-          ui.notifications.error(message);
+          ui.notifications.error(message, options);
           break;
       }
       return ok(undefined);

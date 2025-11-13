@@ -94,6 +94,28 @@ describe("NotificationCenter", () => {
       );
     });
 
+    it("should forward uiOptions to channels", () => {
+      const uiOptions = { permanent: true, title: "Heads-up" };
+
+      const result = center.info("Operation completed", undefined, { uiOptions });
+
+      expect(result.ok).toBe(true);
+      expect(mockConsoleChannel.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: "info",
+          context: "Operation completed",
+          uiOptions,
+        })
+      );
+      expect(mockUIChannel.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: "info",
+          context: "Operation completed",
+          uiOptions,
+        })
+      );
+    });
+
     it("should send info notification with data payload", () => {
       center.info("Operation completed", { status: "ok" });
 

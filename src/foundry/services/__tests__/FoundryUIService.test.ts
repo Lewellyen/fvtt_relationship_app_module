@@ -138,7 +138,7 @@ describe("FoundryUIService", () => {
       const result = service.notify("Test message", "info");
 
       expectResultOk(result);
-      expect(mockPort.notify).toHaveBeenCalledWith("Test message", "info");
+      expect(mockPort.notify).toHaveBeenCalledWith("Test message", "info", undefined);
     });
 
     it("should delegate to port for error notification", () => {
@@ -147,7 +147,17 @@ describe("FoundryUIService", () => {
       const result = service.notify("Error message", "error");
 
       expectResultOk(result);
-      expect(mockPort.notify).toHaveBeenCalledWith("Error message", "error");
+      expect(mockPort.notify).toHaveBeenCalledWith("Error message", "error", undefined);
+    });
+
+    it("should forward notification options to port", () => {
+      const options = { permanent: true, title: "Heads-up" };
+      mockPort.notify = vi.fn().mockReturnValue(ok(undefined));
+
+      const result = service.notify("Heads-up", "info", options);
+
+      expectResultOk(result);
+      expect(mockPort.notify).toHaveBeenCalledWith("Heads-up", "info", options);
     });
 
     it("should handle port errors", () => {

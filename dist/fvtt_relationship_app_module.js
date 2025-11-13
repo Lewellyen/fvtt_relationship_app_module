@@ -10615,7 +10615,7 @@ const _FoundryUIPortV13 = class _FoundryUIPortV13 {
     const element = container.querySelector(selector);
     return ok(element);
   }
-  notify(message2, type) {
+  notify(message2, type, options) {
     if (__privateGet(this, _disposed4)) {
       return err(createFoundryError("DISPOSED", "Cannot show notification on disposed port"));
     }
@@ -10625,13 +10625,13 @@ const _FoundryUIPortV13 = class _FoundryUIPortV13 {
     try {
       switch (type) {
         case "info":
-          ui.notifications.info(message2);
+          ui.notifications.info(message2, options);
           break;
         case "warning":
-          ui.notifications.warn(message2);
+          ui.notifications.warn(message2, options);
           break;
         case "error":
-          ui.notifications.error(message2);
+          ui.notifications.error(message2, options);
           break;
       }
       return ok(void 0);
@@ -11294,11 +11294,11 @@ const _FoundryUIService = class _FoundryUIService extends FoundryServiceBase {
       return portResult.value.findElement(container, selector);
     }, "FoundryUI.findElement");
   }
-  notify(message2, type) {
+  notify(message2, type, options) {
     return this.withRetry(() => {
       const portResult = this.getPort("FoundryUI");
       if (!portResult.ok) return portResult;
-      return portResult.value.notify(message2, type);
+      return portResult.value.notify(message2, type, options);
     }, "FoundryUI.notify");
   }
 };
@@ -12182,7 +12182,8 @@ const _NotificationCenter = class _NotificationCenter {
       timestamp: /* @__PURE__ */ new Date(),
       ...payload.data !== void 0 ? { data: payload.data } : {},
       ...payload.error !== void 0 ? { error: payload.error } : {},
-      ...options?.traceId !== void 0 ? { traceId: options.traceId } : {}
+      ...options?.traceId !== void 0 ? { traceId: options.traceId } : {},
+      ...options?.uiOptions !== void 0 ? { uiOptions: options.uiOptions } : {}
     };
     const targetChannels = this.selectChannels(options?.channels);
     let attempted = false;
@@ -12264,7 +12265,8 @@ const _UIChannel = class _UIChannel {
   send(notification) {
     const sanitizedMessage = this.sanitizeForUI(notification);
     const uiType = this.mapLevelToUIType(notification.level);
-    const notifyResult = this.foundryUI.notify(sanitizedMessage, uiType);
+    const uiOptions = notification.uiOptions;
+    const notifyResult = this.foundryUI.notify(sanitizedMessage, uiType, uiOptions);
     if (!notifyResult.ok) {
       return err(`UI notification failed: ${notifyResult.error.message}`);
     }

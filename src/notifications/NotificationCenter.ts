@@ -36,6 +36,7 @@
 import { consoleChannelToken, uiChannelToken } from "@/tokens/tokenindex";
 import { err, ok } from "@/utils/functional/result";
 import type { Result } from "@/types/result";
+import type { FoundryNotificationOptions } from "@/foundry/interfaces/FoundryUI";
 import type {
   Notification,
   NotificationChannel,
@@ -52,6 +53,10 @@ export type NotificationCenterOptions = {
    * Optional trace identifier that gets attached to the notification.
    */
   traceId?: string;
+  /**
+   * Optional Foundry UI notification options to pass through `ui.notifications`.
+   */
+  uiOptions?: FoundryNotificationOptions;
 };
 
 /**
@@ -128,6 +133,7 @@ export class NotificationCenter {
       ...(payload.data !== undefined ? { data: payload.data } : {}),
       ...(payload.error !== undefined ? { error: payload.error } : {}),
       ...(options?.traceId !== undefined ? { traceId: options.traceId } : {}),
+      ...(options?.uiOptions !== undefined ? { uiOptions: options.uiOptions } : {}),
     };
 
     const targetChannels = this.selectChannels(options?.channels);

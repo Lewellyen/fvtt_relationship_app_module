@@ -1,5 +1,5 @@
 import type { Result } from "@/types/result";
-import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
+import type { FoundryNotificationOptions, FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import type { PortSelector } from "@/foundry/versioning/portselector";
 import type { PortRegistry } from "@/foundry/versioning/portregistry";
@@ -45,11 +45,15 @@ export class FoundryUIService extends FoundryServiceBase<FoundryUI> implements F
     }, "FoundryUI.findElement");
   }
 
-  notify(message: string, type: "info" | "warning" | "error"): Result<void, FoundryError> {
+  notify(
+    message: string,
+    type: "info" | "warning" | "error",
+    options?: FoundryNotificationOptions
+  ): Result<void, FoundryError> {
     return this.withRetry(() => {
       const portResult = this.getPort("FoundryUI");
       if (!portResult.ok) return portResult;
-      return portResult.value.notify(message, type);
+      return portResult.value.notify(message, type, options);
     }, "FoundryUI.notify");
   }
 }

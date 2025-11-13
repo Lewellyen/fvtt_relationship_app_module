@@ -183,9 +183,9 @@ describe("FoundryUIPortV13", () => {
       expectResultOk(result2);
       expectResultOk(result3);
 
-      expect(mockNotifications.info).toHaveBeenCalledWith("Info");
-      expect(mockNotifications.warn).toHaveBeenCalledWith("Warning");
-      expect(mockNotifications.error).toHaveBeenCalledWith("Error");
+      expect(mockNotifications.info).toHaveBeenCalledWith("Info", undefined);
+      expect(mockNotifications.warn).toHaveBeenCalledWith("Warning", undefined);
+      expect(mockNotifications.error).toHaveBeenCalledWith("Error", undefined);
     });
 
     it("should handle error notification type with exception", () => {
@@ -217,6 +217,21 @@ describe("FoundryUIPortV13", () => {
 
       expectResultErr(result);
       expect(result.error.code).toBe("OPERATION_FAILED");
+    });
+
+    it("should forward notification options to ui.notifications", () => {
+      const mockNotifications = {
+        info: vi.fn(),
+      };
+      vi.stubGlobal("ui", { notifications: mockNotifications });
+
+      const port = new FoundryUIPortV13();
+      const options = { permanent: true, title: "Persistent Info" };
+
+      const result = port.notify("Persistent message", "info", options);
+
+      expectResultOk(result);
+      expect(mockNotifications.info).toHaveBeenCalledWith("Persistent message", options);
     });
 
     it("should handle missing ui object entirely", () => {

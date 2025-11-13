@@ -107,7 +107,8 @@ describe("UIChannel", () => {
 
       expect(mockFoundryUI.notify).toHaveBeenCalledWith(
         "Failed to save: Database connection lost",
-        "error"
+        "error",
+        undefined
       );
     });
 
@@ -123,7 +124,8 @@ describe("UIChannel", () => {
 
       expect(mockFoundryUI.notify).toHaveBeenCalledWith(
         "Processing: User action completed",
-        "info"
+        "info",
+        undefined
       );
     });
 
@@ -137,7 +139,25 @@ describe("UIChannel", () => {
 
       channel.send(notification);
 
-      expect(mockFoundryUI.notify).toHaveBeenCalledWith("Operation completed successfully", "info");
+      expect(mockFoundryUI.notify).toHaveBeenCalledWith(
+        "Operation completed successfully",
+        "info",
+        undefined
+      );
+    });
+
+    it("should forward uiOptions to Foundry UI", () => {
+      const uiOptions = { permanent: true, duration: 0 };
+      const notification: Notification = {
+        level: "info",
+        context: "Persistent message",
+        timestamp: new Date(),
+        uiOptions,
+      };
+
+      channel.send(notification);
+
+      expect(mockFoundryUI.notify).toHaveBeenCalledWith("Persistent message", "info", uiOptions);
     });
 
     it("should show warnings as-is in development", () => {
@@ -149,7 +169,11 @@ describe("UIChannel", () => {
 
       channel.send(notification);
 
-      expect(mockFoundryUI.notify).toHaveBeenCalledWith("Deprecated API used", "warning");
+      expect(mockFoundryUI.notify).toHaveBeenCalledWith(
+        "Deprecated API used",
+        "warning",
+        undefined
+      );
     });
 
     it("should gracefully handle debug level when forced", () => {
@@ -161,7 +185,7 @@ describe("UIChannel", () => {
 
       channel.send(notification);
 
-      expect(mockFoundryUI.notify).toHaveBeenCalledWith("Debug context", "info");
+      expect(mockFoundryUI.notify).toHaveBeenCalledWith("Debug context", "info", undefined);
     });
   });
 
@@ -188,15 +212,18 @@ describe("UIChannel", () => {
       // Should show generic message with error code
       expect(mockFoundryUI.notify).toHaveBeenCalledWith(
         "Failed to save data. Please try again or contact support. (Error: DATABASE_ERROR)",
-        "error"
+        "error",
+        undefined
       );
       // Should NOT contain sensitive details
       expect(mockFoundryUI.notify).not.toHaveBeenCalledWith(
         expect.stringContaining("postgres://"),
+        expect.anything(),
         expect.anything()
       );
       expect(mockFoundryUI.notify).not.toHaveBeenCalledWith(
         expect.stringContaining("secret123"),
+        expect.anything(),
         expect.anything()
       );
     });
@@ -211,7 +238,7 @@ describe("UIChannel", () => {
       channel.send(infoNotification);
 
       // Info/Warn messages are assumed to be already user-friendly
-      expect(mockFoundryUI.notify).toHaveBeenCalledWith("Save completed", "info");
+      expect(mockFoundryUI.notify).toHaveBeenCalledWith("Save completed", "info", undefined);
     });
   });
 
@@ -251,7 +278,7 @@ describe("UIChannel", () => {
 
       channel.send(notification);
 
-      expect(mockFoundryUI.notify).toHaveBeenCalledWith(expect.anything(), "info");
+      expect(mockFoundryUI.notify).toHaveBeenCalledWith(expect.anything(), "info", undefined);
     });
 
     it("should map warn to warning UI type", () => {
@@ -263,7 +290,7 @@ describe("UIChannel", () => {
 
       channel.send(notification);
 
-      expect(mockFoundryUI.notify).toHaveBeenCalledWith(expect.anything(), "warning");
+      expect(mockFoundryUI.notify).toHaveBeenCalledWith(expect.anything(), "warning", undefined);
     });
 
     it("should map error to error UI type", () => {
@@ -276,7 +303,7 @@ describe("UIChannel", () => {
 
       channel.send(notification);
 
-      expect(mockFoundryUI.notify).toHaveBeenCalledWith(expect.anything(), "error");
+      expect(mockFoundryUI.notify).toHaveBeenCalledWith(expect.anything(), "error", undefined);
     });
   });
 

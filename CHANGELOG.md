@@ -12,6 +12,23 @@
 
 ### Upgrade-Hinweise
 
+## [0.19.0] - 2025-11-13
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **NotificationCenter**: UI-Channel und Foundry v13-Port leiten jetzt alle `ui.notifications`-Optionen (u. a. `permanent`, `title`, `actions`, `duration`) über `NotificationCenterOptions.uiOptions` weiter ([Details](docs/API.md#notificationcenter))
+- **Dokumentation**: API-Referenz und Architekturübersicht erläutern die neue Option-Weitergabe für persistente UI-Benachrichtigungen ([Details](ARCHITECTURE.md#notifications-subsystem))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.18.0] - 2025-11-13
 ### Hinzugefügt
 - Keine Einträge
