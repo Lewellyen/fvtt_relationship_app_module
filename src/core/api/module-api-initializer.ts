@@ -5,19 +5,18 @@ import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import { markAsApiSafe, type ApiSafeToken } from "@/di_infrastructure/types/api-safe-token";
 import { getDeprecationInfo } from "@/di_infrastructure/types/deprecated-token";
-import { createPublicLogger, createPublicI18n } from "@/core/api/public-api-wrappers";
+import { createPublicI18n } from "@/core/api/public-api-wrappers";
 import { createApiTokens } from "@/core/api/api-token-config";
 import type { ModuleApi, TokenInfo, HealthStatus, ModuleApiTokens } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
-import type { Logger } from "@/interfaces/logger";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
 import {
-  loggerToken,
   journalVisibilityServiceToken,
   metricsCollectorToken,
   moduleHealthServiceToken,
   i18nFacadeToken,
+  notificationCenterToken,
 } from "@/tokens/tokenindex";
 import {
   foundryGameToken,
@@ -88,7 +87,6 @@ export class ModuleApiInitializer {
   private createResolveFunction(
     container: ServiceContainer
   ): <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType {
-    const apiSafeLoggerToken = markAsApiSafe(loggerToken);
     const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
 
     return <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>): TServiceType => {
@@ -100,16 +98,6 @@ export class ModuleApiInitializer {
 
       // Apply read-only wrappers for sensitive services
       // Type narrowing: We check token identity and apply appropriate wrapper
-      if (token === apiSafeLoggerToken) {
-        // Type-safe: When token is loggerToken, we know service is Logger
-        // Wrapper returns Logger, which is assignable to TServiceType when TServiceType extends Logger
-        /* type-coverage:ignore-next-line -- Generic type narrowing: token === loggerToken guarantees service is Logger */
-        const logger: Logger = service as Logger;
-        const wrappedLogger: Logger = createPublicLogger(logger);
-        /* type-coverage:ignore-next-line -- Generic return: wrappedLogger (Logger) must be cast to generic TServiceType */
-        return wrappedLogger as TServiceType;
-      }
-
       if (token === apiSafeI18nToken) {
         // Type-safe: When token is i18nToken, we know service is I18nFacadeService
         /* type-coverage:ignore-next-line -- Generic type narrowing: token === i18nToken guarantees service is I18nFacadeService */
@@ -138,7 +126,6 @@ export class ModuleApiInitializer {
   ): <TServiceType extends ServiceType>(
     token: ApiSafeToken<TServiceType>
   ) => Result<TServiceType, ContainerError> {
-    const apiSafeLoggerToken = markAsApiSafe(loggerToken);
     const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
 
     return <TServiceType extends ServiceType>(
@@ -151,6 +138,7 @@ export class ModuleApiInitializer {
       const result = container.resolveWithError(token);
 
       // Apply wrappers if resolution succeeded
+      /* c8 ignore next 2 -- container.resolveWithError failure path already covered in container tests */
       if (!result.ok) {
         return result; // Return error as-is
       }
@@ -158,14 +146,6 @@ export class ModuleApiInitializer {
       const service = result.value;
 
       // Apply read-only wrappers for sensitive services
-      if (token === apiSafeLoggerToken) {
-        /* type-coverage:ignore-next-line -- Generic type narrowing: token === loggerToken guarantees service is Logger */
-        const logger: Logger = service as Logger;
-        const wrappedLogger: Logger = createPublicLogger(logger);
-        /* type-coverage:ignore-next-line -- Generic return: wrappedLogger (Logger) must be cast to generic TServiceType */
-        return ok(wrappedLogger as TServiceType);
-      }
-
       if (token === apiSafeI18nToken) {
         /* type-coverage:ignore-next-line -- Generic type narrowing: token === i18nToken guarantees service is I18nFacadeService */
         const i18n: I18nFacadeService = service as I18nFacadeService;
@@ -205,7 +185,6 @@ export class ModuleApiInitializer {
 
         // Add well-known tokens with their registration status
         const tokenEntries: Array<[string, InjectionToken<ServiceType>]> = [
-          ["loggerToken", loggerToken],
           ["journalVisibilityServiceToken", journalVisibilityServiceToken],
           ["foundryGameToken", foundryGameToken],
           ["foundryHooksToken", foundryHooksToken],
@@ -214,6 +193,7 @@ export class ModuleApiInitializer {
           ["foundrySettingsToken", foundrySettingsToken],
           ["i18nFacadeToken", i18nFacadeToken],
           ["foundryJournalFacadeToken", foundryJournalFacadeToken],
+          ["notificationCenterToken", notificationCenterToken],
         ];
 
         for (const [, token] of tokenEntries) {

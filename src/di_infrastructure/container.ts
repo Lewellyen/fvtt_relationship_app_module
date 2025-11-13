@@ -529,8 +529,8 @@ export class ServiceContainer implements Container {
    * const api = game.modules.get('fvtt_relationship_app_module').api;
    *
    * try {
-   *   const logger = api.resolve(api.tokens.loggerToken);
-   *   logger.info("Success");
+   *   const notifications = api.resolve(api.tokens.notificationCenterToken);
+   *   notifications.error("Success", { code: "API", message: "It works" });
    * } catch (error) {
    *   console.error("Failed:", error);
    * }
@@ -539,12 +539,12 @@ export class ServiceContainer implements Container {
    * @example Internal Code (WRONG - Use resolveWithError)
    * ```typescript
    * // ❌ TypeScript Error + Runtime Error
-   * const logger = container.resolve(loggerToken);
+   * const notifications = container.resolve(notificationCenterToken);
    *
    * // ✅ CORRECT
-   * const result = container.resolveWithError(loggerToken);
+   * const result = container.resolveWithError(notificationCenterToken);
    * if (result.ok) {
-   *   result.value.info("Success");
+   *   result.value.error("Success", { code: "API", message: "It works" });
    * }
    * ```
    */

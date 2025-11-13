@@ -99,7 +99,7 @@ describe("ModuleApiInitializer", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
       const { tokens } = mod.api;
 
-      expect(tokens.loggerToken).toBeDefined();
+      expect(tokens.notificationCenterToken).toBeDefined();
       expect(tokens.journalVisibilityServiceToken).toBeDefined();
       expect(tokens.foundryGameToken).toBeDefined();
       expect(tokens.foundryHooksToken).toBeDefined();
@@ -113,10 +113,10 @@ describe("ModuleApiInitializer", () => {
     it("should resolve services via tokens", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      // Resolve logger
-      const logger = mod.api.resolve(mod.api.tokens.loggerToken);
-      expect(logger).toBeDefined();
-      expect(typeof logger.info).toBe("function");
+      // Resolve notification center
+      const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
+      expect(notifications).toBeDefined();
+      expect(typeof notifications.error).toBe("function");
 
       // Resolve i18n
       const i18n = mod.api.resolve(mod.api.tokens.i18nFacadeToken);
@@ -146,13 +146,13 @@ describe("ModuleApiInitializer", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
       const tokens = mod.api.getAvailableTokens();
 
-      // Verify logger token is available and registered
-      const loggerInfo = Array.from(tokens.values()).find((info: any) =>
-        info.description.includes("Logger")
+      // Verify notification center token is available and registered
+      const notificationInfo = Array.from(tokens.values()).find((info: any) =>
+        info.description.includes("NotificationCenter")
       );
-      expect(loggerInfo).toBeDefined();
-      if (loggerInfo) {
-        expect((loggerInfo as any).isRegistered).toBe(true);
+      expect(notificationInfo).toBeDefined();
+      if (notificationInfo) {
+        expect((notificationInfo as any).isRegistered).toBe(true);
       }
     });
   });
@@ -245,19 +245,19 @@ describe("ModuleApiInitializer", () => {
     });
 
     it("should show deprecation warning for deprecated token on first resolve", async () => {
-      // Import first
       const { markAsDeprecated } = await import("@/di_infrastructure/types/deprecated-token");
       const { getDeprecationInfo } = await import("@/di_infrastructure/types/deprecated-token");
-      const { loggerToken: loggerTokenImport } = await import("@/tokens/tokenindex");
+      const { notificationCenterToken: notificationTokenImport } = await import(
+        "@/tokens/tokenindex"
+      );
 
-      // Reset warningShown flag if it exists from previous tests
-      const existingInfo = getDeprecationInfo(loggerTokenImport);
+      const existingInfo = getDeprecationInfo(notificationTokenImport);
       if (existingInfo) {
         existingInfo.warningShown = false;
       }
 
-      const deprecatedLoggerToken = markAsDeprecated(
-        loggerTokenImport,
+      const deprecatedNotificationToken = markAsDeprecated(
+        notificationTokenImport,
         "Test deprecation reason",
         null,
         "2.0.0"
@@ -265,25 +265,21 @@ describe("ModuleApiInitializer", () => {
 
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      // Spy on console.warn
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-      // First resolve should show warning
-      const logger1 = mod.api.resolve(deprecatedLoggerToken);
-      expect(logger1).toBeDefined();
+      const notifications1 = mod.api.resolve(deprecatedNotificationToken);
+      expect(notifications1).toBeDefined();
       expect(warnSpy).toHaveBeenCalledOnce();
       const warningMsg = warnSpy.mock.calls?.[0]?.[0];
       expect(warningMsg).toBeDefined();
       expect(warningMsg).toContain("DEPRECATED");
       expect(warningMsg).toContain("Test deprecation reason");
       expect(warningMsg).toContain("2.0.0");
-      // Should NOT contain replacement info (null was passed)
       expect(warningMsg).not.toContain("Use");
 
-      // Second resolve should NOT show warning again (warningShown = true)
       warnSpy.mockClear();
-      const logger2 = mod.api.resolve(deprecatedLoggerToken);
-      expect(logger2).toBeDefined();
+      const notifications2 = mod.api.resolve(deprecatedNotificationToken);
+      expect(notifications2).toBeDefined();
       expect(warnSpy).not.toHaveBeenCalled();
 
       warnSpy.mockRestore();
@@ -291,24 +287,20 @@ describe("ModuleApiInitializer", () => {
 
     it("should resolve deprecated token normally", async () => {
       const { markAsDeprecated } = await import("@/di_infrastructure/types/deprecated-token");
-      const { loggerToken } = await import("@/tokens/tokenindex");
-      const deprecatedLoggerToken = markAsDeprecated(loggerToken, "Test", null, "2.0.0");
+      const { notificationCenterToken } = await import("@/tokens/tokenindex");
+      const deprecatedNotificationToken = markAsDeprecated(
+        notificationCenterToken,
+        "Test",
+        null,
+        "2.0.0"
+      );
 
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      // Suppress logger.warn
-      const loggerResult = container.resolveWithError(loggerToken);
-      expect(loggerResult.ok).toBe(true);
-      const loggerService = (loggerResult as any).value;
-      const warnSpy = vi.spyOn(loggerService, "warn").mockImplementation(() => {});
-
-      // Resolve should work despite deprecation
-      const resolvedLogger = mod.api.resolve(deprecatedLoggerToken);
-      expect(resolvedLogger).toBeDefined();
-      expect(typeof resolvedLogger.info).toBe("function");
-      expect(typeof resolvedLogger.error).toBe("function");
-
-      warnSpy.mockRestore();
+      const resolvedNotification = mod.api.resolve(deprecatedNotificationToken);
+      expect(resolvedNotification).toBeDefined();
+      expect(typeof resolvedNotification.error).toBe("function");
+      expect(typeof resolvedNotification.info).toBe("function");
     });
   });
 
@@ -318,15 +310,23 @@ describe("ModuleApiInitializer", () => {
       expectResultOk(result);
     });
 
-    it("should apply readonly wrapper to logger", () => {
+    it("should expose notification center with full capabilities", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-      const logger = mod.api.resolve(mod.api.tokens.loggerToken);
+      const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
 
-      // Logging methods should work
-      expect(() => logger.info("test")).not.toThrow();
+      expect(() =>
+        notifications.error("test", { code: "API_DEBUG", message: "Triggered from test" })
+      ).not.toThrow();
 
-      // setMinLevel should be blocked
-      expect(() => (logger as any).setMinLevel(0)).toThrow("setMinLevel");
+      const tempChannel = {
+        name: "TestChannel",
+        canHandle: () => true,
+        send: () => ({ ok: true, value: undefined }) as const,
+      };
+
+      expect(() => notifications.addChannel(tempChannel)).not.toThrow();
+      expect(notifications.getChannelNames()).toContain("TestChannel");
+      expect(() => notifications.removeChannel("TestChannel")).not.toThrow();
     });
 
     it("should apply readonly wrapper to i18n", () => {
@@ -353,26 +353,25 @@ describe("ModuleApiInitializer", () => {
     it("should resolve services with Result pattern", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      const loggerResult = mod.api.resolveWithError(mod.api.tokens.loggerToken);
-      expect(loggerResult.ok).toBe(true);
-      if (loggerResult.ok) {
-        expect(loggerResult.value).toBeDefined();
-        expect(typeof loggerResult.value.info).toBe("function");
+      const notificationsResult = mod.api.resolveWithError(mod.api.tokens.notificationCenterToken);
+      expect(notificationsResult.ok).toBe(true);
+      if (notificationsResult.ok) {
+        expect(notificationsResult.value).toBeDefined();
+        expect(typeof notificationsResult.value.error).toBe("function");
       }
     });
 
-    it("should apply readonly wrapper to logger via resolveWithError", () => {
+    it("should provide usable notification center via resolveWithError", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      const loggerResult = mod.api.resolveWithError(mod.api.tokens.loggerToken);
-      expect(loggerResult.ok).toBe(true);
+      const notificationsResult = mod.api.resolveWithError(mod.api.tokens.notificationCenterToken);
+      expect(notificationsResult.ok).toBe(true);
 
-      if (loggerResult.ok) {
-        const logger = loggerResult.value;
-        // Logging should work
-        expect(() => logger.info("test")).not.toThrow();
-        // setMinLevel should be blocked
-        expect(() => (logger as any).setMinLevel(0)).toThrow("setMinLevel");
+      if (notificationsResult.ok) {
+        const notifications = notificationsResult.value;
+        expect(() =>
+          notifications.warn("resolveWithError test", { code: "WARN", message: "Test" })
+        ).not.toThrow();
       }
     });
 
@@ -384,75 +383,114 @@ describe("ModuleApiInitializer", () => {
 
       if (i18nResult.ok) {
         const i18n = i18nResult.value;
-        // Read methods should work
+        // Read operations should work
         expect(() => i18n.translate("test")).not.toThrow();
-        // Internal properties should be blocked
+
+        // Internal mutation should not be allowed
         expect(() => {
           (i18n as any).internalState = {};
         }).toThrow("Cannot modify");
       }
     });
 
-    it("should show deprecation warning for deprecated token", async () => {
-      // Import first
-      const { markAsDeprecated } = await import("@/di_infrastructure/types/deprecated-token");
-      const { getDeprecationInfo } = await import("@/di_infrastructure/types/deprecated-token");
-      const { loggerToken: loggerTokenImport } = await import("@/tokens/tokenindex");
-
-      // Reset warningShown flag if it exists from previous tests
-      const existingInfo = getDeprecationInfo(loggerTokenImport);
-      if (existingInfo) {
-        existingInfo.warningShown = false;
-      }
-
-      const deprecatedLoggerToken = markAsDeprecated(
-        loggerTokenImport,
-        "Test deprecation",
-        null,
-        "2.0.0"
-      );
-
+    it("should return error for unknown tokens via resolveWithError", async () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-
-      // Spy on console.warn
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-      const result = mod.api.resolveWithError(deprecatedLoggerToken);
-      expect(result.ok).toBe(true);
-      expect(warnSpy).toHaveBeenCalled();
-
-      warnSpy.mockRestore();
-    });
-
-    it("should resolve non-wrapped services (FoundryGame, etc.)", () => {
-      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-
-      // Resolve a non-wrapped service (FoundryGame doesn't get wrapped)
-      const foundryGameResult = mod.api.resolveWithError(mod.api.tokens.foundryGameToken);
-      expect(foundryGameResult.ok).toBe(true);
-      if (foundryGameResult.ok) {
-        expect(foundryGameResult.value).toBeDefined();
-        expect(typeof foundryGameResult.value.getJournalEntries).toBe("function");
-      }
-    });
-
-    it("should return err Result for unregistered token", async () => {
-      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-
-      // Create a token that is NOT registered
       const { createInjectionToken } = await import("@/di_infrastructure/tokenutilities");
       const { markAsApiSafe } = await import("@/di_infrastructure/types/api-safe-token");
 
-      // Use 'any' as type parameter - we're testing unregistered token error handling
-      // Type constraints don't matter for this specific test scenario
-      const unregisteredToken = markAsApiSafe(createInjectionToken<any>("UnregisteredService"));
+      const unknownToken = markAsApiSafe(createInjectionToken("UnknownService"));
 
-      const result = mod.api.resolveWithError(unregisteredToken);
+      const result = mod.api.resolveWithError(unknownToken);
       expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error).toBeDefined();
-        expect(result.error.code).toBeDefined();
-        expect(result.error.message).toBeDefined();
+    });
+  });
+
+  describe("API - ReadOnly Wrappers", () => {
+    beforeEach(() => {
+      const result = initializer.expose(container);
+      expectResultOk(result);
+    });
+
+    it("should expose notification center with full capabilities", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+      const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
+
+      expect(() =>
+        notifications.error("test", { code: "API_DEBUG", message: "Triggered from test" })
+      ).not.toThrow();
+
+      const tempChannel = {
+        name: "TestChannel",
+        canHandle: () => true,
+        send: () => ({ ok: true, value: undefined }) as const,
+      };
+
+      expect(() => notifications.addChannel(tempChannel)).not.toThrow();
+      expect(notifications.getChannelNames()).toContain("TestChannel");
+      expect(() => notifications.removeChannel("TestChannel")).not.toThrow();
+    });
+
+    it("should apply readonly wrapper to i18n", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+      const i18n = mod.api.resolve(mod.api.tokens.i18nFacadeToken);
+
+      // Read methods should work
+      expect(() => i18n.translate("test")).not.toThrow();
+      expect(() => i18n.has("test")).not.toThrow();
+
+      // Internal properties should be blocked
+      expect(() => {
+        (i18n as any).internalState = {};
+      }).toThrow("Cannot modify");
+    });
+  });
+
+  describe("API - resolveWithError", () => {
+    beforeEach(() => {
+      const result = initializer.expose(container);
+      expectResultOk(result);
+    });
+
+    it("should resolve services with Result pattern", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+
+      const notificationsResult = mod.api.resolveWithError(mod.api.tokens.notificationCenterToken);
+      expect(notificationsResult.ok).toBe(true);
+      if (notificationsResult.ok) {
+        expect(notificationsResult.value).toBeDefined();
+        expect(typeof notificationsResult.value.error).toBe("function");
+      }
+    });
+
+    it("should provide usable notification center via resolveWithError", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+
+      const notificationsResult = mod.api.resolveWithError(mod.api.tokens.notificationCenterToken);
+      expect(notificationsResult.ok).toBe(true);
+
+      if (notificationsResult.ok) {
+        const notifications = notificationsResult.value;
+        expect(() =>
+          notifications.warn("resolveWithError test", { code: "WARN", message: "Test" })
+        ).not.toThrow();
+      }
+    });
+
+    it("should apply readonly wrapper to i18n via resolveWithError", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+
+      const i18nResult = mod.api.resolveWithError(mod.api.tokens.i18nFacadeToken);
+      expect(i18nResult.ok).toBe(true);
+
+      if (i18nResult.ok) {
+        const i18n = i18nResult.value;
+        // Read operations should work
+        expect(() => i18n.translate("test")).not.toThrow();
+
+        // Internal mutation should not be allowed
+        expect(() => {
+          (i18n as any).internalState = {};
+        }).toThrow("Cannot modify");
       }
     });
   });

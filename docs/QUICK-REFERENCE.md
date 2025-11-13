@@ -258,9 +258,9 @@ console.log(api.getHealth());
 ```javascript
 const api = game.modules.get("fvtt_relationship_app_module").api;
 
-// Logger holen
-const logger = api.resolve(api.tokens.loggerToken);
-logger.info("Test message");
+// NotificationCenter holen
+const notifications = api.resolve(api.tokens.notificationCenterToken);
+notifications.info("Test message");
 
 // Foundry Game Service
 const game = api.resolve(api.tokens.foundryGameToken);

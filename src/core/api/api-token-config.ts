@@ -1,5 +1,9 @@
 import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
-import { loggerToken, journalVisibilityServiceToken, i18nFacadeToken } from "@/tokens/tokenindex";
+import {
+  notificationCenterToken,
+  journalVisibilityServiceToken,
+  i18nFacadeToken,
+} from "@/tokens/tokenindex";
 import {
   foundryGameToken,
   foundryHooksToken,
@@ -20,7 +24,7 @@ import type { ModuleApiTokens } from "@/core/module-api";
  */
 export function createApiTokens(): ModuleApiTokens {
   return {
-    loggerToken: markAsApiSafe(loggerToken),
+    notificationCenterToken: markAsApiSafe(notificationCenterToken),
     journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
     foundryGameToken: markAsApiSafe(foundryGameToken),
     foundryHooksToken: markAsApiSafe(foundryHooksToken),

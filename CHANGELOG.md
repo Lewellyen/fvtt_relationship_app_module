@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.18.0] - 2025-11-13
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Public API Tokens**: `notificationCenterToken` ersetzt `loggerToken` im externen API-Surface; Logger bleibt intern über DI verfügbar, während externe Integrationen jetzt das NotificationCenter nutzen ([Details](docs/API.md))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.17.0] - 2025-11-13
 ### Hinzugefügt
 - **NotificationCenter - Extensible Message Bus**: Zentrale Nachrichtenverteilung mit flexiblem Channel-System ([Details](src/notifications/NotificationCenter.ts))

@@ -1,6 +1,6 @@
 import type { ApiSafeToken } from "@/di_infrastructure/types/api-safe-token";
 import type { ServiceType } from "@/types/servicetypeindex";
-import type { Logger } from "@/interfaces/logger";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
 import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
@@ -18,7 +18,7 @@ import type { ContainerError } from "@/di_infrastructure/interfaces/containererr
  * Provides metadata to help external callers discover available services.
  */
 export interface TokenInfo {
-  /** Symbol description (e.g., "Logger", "FoundryGame") */
+  /** Symbol description (e.g., "NotificationCenter", "FoundryGame") */
   description: string;
   /** Whether the service is currently registered */
   isRegistered: boolean;
@@ -50,7 +50,7 @@ export interface DeprecationInfo {
  * Internal code cannot use these with container.resolve() due to type enforcement.
  */
 export interface ModuleApiTokens {
-  loggerToken: ApiSafeToken<Logger>;
+  notificationCenterToken: ApiSafeToken<NotificationCenter>;
   journalVisibilityServiceToken: ApiSafeToken<JournalVisibilityService>;
   foundryGameToken: ApiSafeToken<FoundryGame>;
   foundryHooksToken: ApiSafeToken<FoundryHooks>;
@@ -99,7 +99,7 @@ export interface HealthStatus {
  * console.log(`Module status: ${health.status}`);
  *
  * // Option 1: Use exported tokens
- * const logger = api.resolve(api.tokens.loggerToken);
+ * const notifications = api.resolve(api.tokens.notificationCenterToken);
  *
  * // Option 2: Discover available tokens
  * const tokens = api.getAvailableTokens();
@@ -136,8 +136,8 @@ export interface ModuleApi {
    * const api = game.modules.get('fvtt_relationship_app_module').api;
    *
    * try {
-   *   const logger = api.resolve(api.tokens.loggerToken);
-   *   logger.info("Success");
+   *   const notifications = api.resolve(api.tokens.notificationCenterToken);
+   *   notifications.error("Success", { code: "TEST", message: "It works" });
    * } catch (error) {
    *   console.error("Failed:", error);
    * }
@@ -153,7 +153,7 @@ export interface ModuleApi {
    * - When explicit error handling is required
    * - When you want to avoid try-catch blocks
    *
-   * **Well-known tokens** (loggerToken, foundryGameToken, etc.) are guaranteed to resolve successfully.
+   * **Well-known tokens** (notificationCenterToken, foundryGameToken, etc.) are guaranteed to resolve successfully.
    *
    * @param token - API-safe injection token (marked via markAsApiSafe)
    * @returns Result with service instance or error details
@@ -161,10 +161,10 @@ export interface ModuleApi {
    * @example Safe Resolution with Error Handling
    * ```typescript
    * const api = game.modules.get('fvtt_relationship_app_module').api;
-   * const result = api.resolveWithError(api.tokens.loggerToken);
+   * const result = api.resolveWithError(api.tokens.notificationCenterToken);
    *
    * if (result.ok) {
-   *   result.value.info('Logger available');
+   *   result.value.error('Notifications available');
    * } else {
    *   console.error('Failed to resolve:', result.error.message);
    * }
@@ -201,7 +201,7 @@ export interface ModuleApi {
    * }
    * ```
    */
-  getAvailableTokens: () => Map<symbol, TokenInfo>;
+  getAvailableTokens: () => Map<InjectionTokenKey, TokenInfo>;
 
   /**
    * Well-known tokens exported by this module for easy access.
@@ -214,9 +214,9 @@ export interface ModuleApi {
    * ```typescript
    * const api = game.modules.get('fvtt_relationship_app_module').api;
    *
-   * // logger has type Logger (not ServiceType)
-   * const logger = api.resolve(api.tokens.loggerToken);
-   * logger.info("Type-safe logging!");
+   * // notifications has type NotificationCenter (not ServiceType)
+   * const notifications = api.resolve(api.tokens.notificationCenterToken);
+   * notifications.error("Hello users", { code: "DEMO", message: "Type-safe notifications!" });
    *
    * // game has type FoundryGame (not ServiceType)
    * const game = api.resolve(api.tokens.foundryGameToken);
@@ -263,3 +263,6 @@ export interface ModuleApi {
    */
   getHealth: () => HealthStatus;
 }
+
+// Helper type alias for the token map key (symbol description).
+export type InjectionTokenKey = symbol;

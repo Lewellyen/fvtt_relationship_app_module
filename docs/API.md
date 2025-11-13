@@ -29,15 +29,21 @@ if (!api) {
 }
 
 // Option 1: resolve() - Guaranteed Return (throws on error)
-const logger = api.resolve(api.tokens.loggerToken);
-logger.info('Hello from external module!');
+const notifications = api.resolve(api.tokens.notificationCenterToken);
+notifications.error('Hello from external module!', {
+  code: 'EXTERNAL_MODULE',
+  message: 'Greetings from another module',
+});
 
 // Option 2: resolveWithError() - Result-Pattern (safe, never throws)
-const loggerResult = api.resolveWithError(api.tokens.loggerToken);
-if (loggerResult.ok) {
-  loggerResult.value.info('Safe with Result-Pattern');
+const notificationResult = api.resolveWithError(api.tokens.notificationCenterToken);
+if (notificationResult.ok) {
+  notificationResult.value.warn('Safe with Result-Pattern', {
+    code: 'RESULT',
+    message: 'All good',
+  });
 } else {
-  console.error('Failed to resolve logger:', loggerResult.error);
+  console.error('Failed to resolve notification center:', notificationResult.error);
 }
 ```
 
@@ -59,7 +65,7 @@ declare global {
         getMetrics(): MetricsSnapshot;
         getHealth(): HealthStatus;
         tokens: {
-          loggerToken: symbol;
+          notificationCenterToken: symbol;
           journalVisibilityServiceToken: symbol;
           foundryGameToken: symbol;
           foundryHooksToken: symbol;
@@ -77,17 +83,17 @@ declare global {
 // Option 2: resolve() - Clean Code (empfohlen für well-known tokens)
 const mod = game.modules.get('fvtt_relationship_app_module');
 if (mod?.active && mod.api) {
-  const logger = mod.api.resolve(mod.api.tokens.loggerToken);
-  logger.info('Type-safe!');
+  const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
+  notifications.info('Type-safe!');
 }
 
 // Option 3: resolveWithError() - Result-Pattern (empfohlen für optionale Services)
 const api = game.modules.get('fvtt_relationship_app_module')?.api;
-const loggerResult = api?.resolveWithError(api.tokens.loggerToken);
-if (loggerResult?.ok) {
-  loggerResult.value.info('Sicher mit Result-Pattern');
+const notificationsResult = api?.resolveWithError(api.tokens.notificationCenterToken);
+if (notificationsResult?.ok) {
+  notificationsResult.value.warn('Sicher mit Result-Pattern');
 } else {
-  console.error('Logger not available:', loggerResult.error.message);
+  console.error('Notification center not available:', notificationsResult.error.message);
 }
 ```
 
@@ -157,7 +163,7 @@ Die API bietet **zwei Methoden** zur Service-Auflösung:
 ### `resolve<T>(token): T` - Guaranteed Return
 
 **Wann verwenden:**
-- ✅ Well-known tokens (loggerToken, foundryGameToken, etc.)
+- ✅ Well-known tokens (notificationCenterToken, foundryGameToken, etc.)
 - ✅ Services die garantiert registriert sind
 - ✅ Clean Code ohne Result-Checks gewünscht
 
@@ -171,8 +177,8 @@ Die API bietet **zwei Methoden** zur Service-Auflösung:
 const api = game.modules.get('fvtt_relationship_app_module').api;
 
 try {
-  const logger = api.resolve(api.tokens.loggerToken);
-  logger.info('Hello World'); // Clean code
+  const notifications = api.resolve(api.tokens.notificationCenterToken);
+  notifications.info('Hello World'); // Clean code
 } catch (error) {
   console.error('Failed:', error);
 }
@@ -197,12 +203,12 @@ try {
 ```typescript
 const api = game.modules.get('fvtt_relationship_app_module').api;
 
-const loggerResult = api.resolveWithError(api.tokens.loggerToken);
+const notificationResult = api.resolveWithError(api.tokens.notificationCenterToken);
 
-if (loggerResult.ok) {
-  loggerResult.value.info('Logger verfügbar');
+if (notificationResult.ok) {
+  notificationResult.value.info('Erfolg!');
 } else {
-  console.error('Fehler:', loggerResult.error.code, loggerResult.error.message);
+  console.error('Fehler:', notificationResult.error.code, notificationResult.error.message);
   // Fallback-Logik
   console.log('Using fallback logger');
 }
@@ -239,7 +245,7 @@ Die API stellt folgende Injection-Tokens bereit:
 
 | Token | Service-Typ | Beschreibung |
 |-------|-------------|--------------|
-| `loggerToken` | `Logger` | Logging-Service für strukturierte Logs |
+| `notificationCenterToken` | `NotificationCenter` | Zentrale Routing-Instanz für Module-notifications |
 | `journalVisibilityServiceToken` | `JournalVisibilityService` | Verwaltung versteckter Journal-Einträge |
 | `foundryGameToken` | `FoundryGame` | Zugriff auf Foundry Game API (journal entries) |
 | `foundryHooksToken` | `FoundryHooks` | Foundry Hook-System |
@@ -282,11 +288,12 @@ interface Logger {
 **Beispiel**:
 
 ```typescript
-const logger = api.resolve(api.tokens.loggerToken);
+const api = game.modules.get('fvtt_relationship_app_module').api;
+const notifications = api.resolve(api.tokens.notificationCenterToken);
 
-logger.info('Modul-Initialisierung gestartet');
-logger.debug('Debug-Informationen', { userId: '123', context: 'test' });
-logger.error('Fehler aufgetreten', new Error('Something went wrong'));
+notifications.info('Modul-Initialisierung gestartet');
+notifications.debug('Debug-Informationen', { userId: '123', context: 'test' });
+notifications.error('Fehler aufgetreten', new Error('Something went wrong'));
 ```
 
 ---
@@ -599,18 +606,18 @@ const entries = unwrapOr(result, []); // Fallback auf leeres Array
 ```typescript
 // Makro: "Log Actors"
 const api = game.modules.get('fvtt_relationship_app_module').api;
-const logger = api.resolve(api.tokens.loggerToken);
+const notifications = api.resolve(api.tokens.notificationCenterToken);
 
-logger.info('Makro gestartet', { user: game.user.name });
+notifications.info('Makro gestartet', { user: game.user.name });
 
 for (const actor of game.actors) {
-  logger.debug('Actor gefunden', { 
+  notifications.debug('Actor gefunden', { 
     name: actor.name, 
     type: actor.type 
   });
 }
 
-logger.info('Makro abgeschlossen', { count: game.actors.size });
+notifications.info('Makro abgeschlossen', { count: game.actors.size });
 ```
 
 ### Beispiel 2: Journal-Einträge filtern
@@ -650,10 +657,10 @@ Hooks.once('ready', () => {
   if (!api) return;
 
   const hooksService = api.resolve(api.tokens.foundryHooksToken);
-  const logger = api.resolve(api.tokens.loggerToken);
+  const notifications = api.resolve(api.tokens.notificationCenterToken);
 
   const hookResult = hooksService.on('createJournalEntry', (journal, options, userId) => {
-    logger.info('Neuer Journal-Eintrag erstellt', {
+    notifications.info('Neuer Journal-Eintrag erstellt', {
       name: journal.name,
       id: journal.id,
       userId
@@ -713,18 +720,18 @@ Die API ist versionssicher durch das Port-Adapter-Pattern. Services funktioniere
 ```typescript
 // ❌ FALSCH: Exceptions werfen/fangen
 try {
-  const logger = api.resolve(api.tokens.loggerToken);
+  const notifications = api.resolve(api.tokens.notificationCenterToken);
 } catch (error) {
   // resolve() wirft nur bei API-Boundary-Violations
 }
 
 // ✅ RICHTIG: resolveWithError() für Result-Pattern
-const loggerResult = api.resolveWithError(api.tokens.loggerToken);
-if (loggerResult.ok) {
-  const logger = loggerResult.value;
-  logger.info('Success');
+const notificationResult = api.resolveWithError(api.tokens.notificationCenterToken);
+if (notificationResult.ok) {
+  const notifications = notificationResult.value;
+  notifications.info('Success');
 } else {
-  console.error('Failed to resolve logger:', loggerResult.error);
+  console.error('Failed to resolve notification center:', notificationResult.error);
 }
 ```
 
@@ -754,8 +761,8 @@ if (!api) {
   return;
 }
 
-const loggerResult = api.resolveWithError(api.tokens.loggerToken);
-const logger = loggerResult.ok ? loggerResult.value : {
+const notificationResult = api.resolveWithError(api.tokens.notificationCenterToken);
+const notifications = notificationResult.ok ? notificationResult.value : {
   info: console.log,
   error: console.error,
   // ... minimal logger fallback
@@ -813,10 +820,10 @@ Sensible Services werden automatisch mit ReadOnly-Wrappern geschützt:
 
 ```typescript
 const api = game.modules.get('fvtt_relationship_app_module').api;
-const logger = api.resolve(api.tokens.loggerToken);
+const notifications = api.resolve(api.tokens.notificationCenterToken);
 
-logger.info("OK");           // ✅ Funktioniert
-logger.setMinLevel(0);       // ❌ Error: "Property setMinLevel is not accessible"
+notifications.info("OK");           // ✅ Funktioniert
+notifications.setMinLevel(0);       // ❌ Error: "Property setMinLevel is not accessible"
 ```
 
 ### Deprecation-Mechanismus
@@ -827,7 +834,7 @@ Deprecated Tokens zeigen automatisch Warnungen bei der ersten Verwendung:
 // Beispiel-Warning:
 // [fvtt_relationship_app_module] DEPRECATED: Token "oldLoggerToken" is deprecated.
 // Reason: Use enhanced logger v2 with better performance
-// Use "loggerToken" instead.
+// Use "notificationCenterToken" instead.
 // This token will be removed in version 2.0.0.
 ```
 

@@ -184,52 +184,47 @@ describe("ApiSafeToken", () => {
     it("should simulate external module using api.resolve()", () => {
       const container = ServiceContainer.createRoot();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const token = createInjectionToken<any>("Logger");
+      const token = createInjectionToken<any>("NotificationCenter");
       const apiToken = markAsApiSafe(token);
 
-      const logger = {
-        info: (msg: string) => msg,
+      const notifications = {
+        error: (message: string) => message,
       };
 
-      container.registerValue(token, logger);
+      container.registerValue(token, notifications);
       container.validate();
 
-      // Simulate external API usage
       const mockApi = {
-        tokens: { loggerToken: apiToken },
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- Test simulates external API boundary
-        resolve: container.resolve.bind(container),
+        tokens: { notificationCenterToken: apiToken },
+        resolve: container.resolve.bind(container), // eslint-disable-line @typescript-eslint/no-deprecated
       };
 
-      // ✅ External module can use it
-      const resolvedLogger = mockApi.resolve(mockApi.tokens.loggerToken);
-      expect(resolvedLogger.info("test")).toBe("test");
+      const resolvedNotifications = mockApi.resolve(mockApi.tokens.notificationCenterToken);
+      expect(resolvedNotifications.error("test")).toBe("test");
     });
 
     it("should simulate external module using api.resolveWithError()", () => {
       const container = ServiceContainer.createRoot();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const token = createInjectionToken<any>("Logger");
+      const token = createInjectionToken<any>("NotificationCenter");
       const apiToken = markAsApiSafe(token);
 
-      const logger = {
-        info: (msg: string) => msg,
+      const notifications = {
+        error: (message: string) => message,
       };
 
-      container.registerValue(token, logger);
+      container.registerValue(token, notifications);
       container.validate();
 
-      // Simulate external API usage
       const mockApi = {
-        tokens: { loggerToken: apiToken },
+        tokens: { notificationCenterToken: apiToken },
         resolveWithError: container.resolveWithError.bind(container),
       };
 
-      // ✅ External module can use Result pattern too
-      const result = mockApi.resolveWithError(mockApi.tokens.loggerToken);
+      const result = mockApi.resolveWithError(mockApi.tokens.notificationCenterToken);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.info("test")).toBe("test");
+        expect(result.value.error("test")).toBe("test");
       }
     });
   });

@@ -2663,7 +2663,7 @@ function createPublicI18n(i18n) {
 __name(createPublicI18n, "createPublicI18n");
 function createApiTokens() {
   return {
-    loggerToken: markAsApiSafe(loggerToken),
+    notificationCenterToken: markAsApiSafe(notificationCenterToken),
     journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
     foundryGameToken: markAsApiSafe(foundryGameToken),
     foundryHooksToken: markAsApiSafe(foundryHooksToken),
@@ -2710,16 +2710,10 @@ Reason: ${deprecationInfo.reason}
    * @private
    */
   createResolveFunction(container) {
-    const apiSafeLoggerToken = markAsApiSafe(loggerToken);
     const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
     return (token) => {
       this.handleDeprecationWarning(token);
       const service = container.resolve(token);
-      if (token === apiSafeLoggerToken) {
-        const logger = service;
-        const wrappedLogger = createPublicLogger(logger);
-        return wrappedLogger;
-      }
       if (token === apiSafeI18nToken) {
         const i18n = service;
         const wrappedI18n = createPublicI18n(i18n);
@@ -2737,7 +2731,6 @@ Reason: ${deprecationInfo.reason}
    * @private
    */
   createResolveWithErrorFunction(container) {
-    const apiSafeLoggerToken = markAsApiSafe(loggerToken);
     const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
     return (token) => {
       this.handleDeprecationWarning(token);
@@ -2746,11 +2739,6 @@ Reason: ${deprecationInfo.reason}
         return result;
       }
       const service = result.value;
-      if (token === apiSafeLoggerToken) {
-        const logger = service;
-        const wrappedLogger = createPublicLogger(logger);
-        return ok(wrappedLogger);
-      }
       if (token === apiSafeI18nToken) {
         const i18n = service;
         const wrappedI18n = createPublicI18n(i18n);
@@ -2777,7 +2765,6 @@ Reason: ${deprecationInfo.reason}
       getAvailableTokens: /* @__PURE__ */ __name(() => {
         const tokenMap = /* @__PURE__ */ new Map();
         const tokenEntries = [
-          ["loggerToken", loggerToken],
           ["journalVisibilityServiceToken", journalVisibilityServiceToken],
           ["foundryGameToken", foundryGameToken],
           ["foundryHooksToken", foundryHooksToken],
@@ -2785,7 +2772,8 @@ Reason: ${deprecationInfo.reason}
           ["foundryUIToken", foundryUIToken],
           ["foundrySettingsToken", foundrySettingsToken],
           ["i18nFacadeToken", i18nFacadeToken],
-          ["foundryJournalFacadeToken", foundryJournalFacadeToken]
+          ["foundryJournalFacadeToken", foundryJournalFacadeToken],
+          ["notificationCenterToken", notificationCenterToken]
         ];
         for (const [, token] of tokenEntries) {
           const isRegisteredResult = container.isRegistered(token);

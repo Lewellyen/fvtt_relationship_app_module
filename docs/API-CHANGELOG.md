@@ -27,7 +27,7 @@ Initial Public API Release
 ### Added
 
 **Tokens (9 Services):**
-- `loggerToken` - Structured logging service with trace-ID support
+- `notificationCenterToken` - Zentraler Notification-Router mit Channel-System
 - `journalVisibilityServiceToken` - Journal visibility management (hide/show entries)
 - `foundryGameToken` - Foundry Game API wrapper (version-agnostic)
 - `foundryHooksToken` - Foundry Hooks API wrapper with lifecycle management
@@ -73,8 +73,8 @@ Initial Public API Release
 **Example 1: Logging from External Module**
 ```javascript
 const api = game.modules.get('fvtt_relationship_app_module').api;
-const logger = api.resolve(api.tokens.loggerToken);
-logger.info("Hello from external module!");
+const notifications = api.resolve(api.tokens.notificationCenterToken);
+notifications.error('Changelog snippet', { code: 'API_CHANGE', message: 'Notification center exposed' });
 ```
 
 **Example 2: I18n Integration**
@@ -143,11 +143,6 @@ if (hiddenResult.ok) {
 ## [API 1.5.0]
 ### Deprecated
 - **oldLoggerToken** - Will be removed in API 2.0.0
-  - Use: `loggerToken` instead
+  - Use: `notificationCenterToken` instead
   - Migration: [link to guide]
 ```
-
----
-
-**Last Updated:** 2025-11-09
-
