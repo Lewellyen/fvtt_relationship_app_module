@@ -56,7 +56,7 @@ export class JournalVisibilityService {
         `Serving ${cached.value.length} hidden journal entries from cache (ttl=${
           cached.metadata.expiresAt ?? "∞"
         })`,
-        undefined,
+        { context: { cached } },
         { channels: ["ConsoleChannel"] }
       );
       return { ok: true, value: cached.value };
@@ -110,14 +110,14 @@ export class JournalVisibilityService {
    * Processes journal directory HTML to hide flagged entries.
    */
   processJournalDirectory(htmlElement: HTMLElement): void {
-    this.notificationCenter.debug("Processing journal directory for hidden entries", undefined, {
+    this.notificationCenter.debug("Processing journal directory for hidden entries", { context: { htmlElement } }, {
       channels: ["ConsoleChannel"],
     });
 
     const hiddenResult = this.getHiddenJournalEntries();
     match(hiddenResult, {
       onOk: (hidden) => {
-        this.notificationCenter.debug(`Found ${hidden.length} hidden journal entries`, undefined, {
+        this.notificationCenter.debug(`Found ${hidden.length} hidden journal entries`, { context: { hidden } }, {
           channels: ["ConsoleChannel"],
         });
         this.hideEntries(hidden, htmlElement);
@@ -139,7 +139,7 @@ export class JournalVisibilityService {
         onOk: () => {
           this.notificationCenter.debug(
             `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
-            undefined,
+            { context: { journal } },
             { channels: ["ConsoleChannel"] }
           );
         },

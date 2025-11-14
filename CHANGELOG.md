@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.23.1] - 2025-11-15
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **NotificationCenter Logging**: JournalVisibilityService und die Journal-Hooks übergeben jetzt immer strukturierte Kontext-Payloads statt `undefined`, wodurch alle Benachrichtigungen konsistente Metadaten enthalten ([JournalVisibilityService](src/services/JournalVisibilityService.ts), [RenderJournalDirectoryHook](src/core/hooks/render-journal-directory-hook.ts), [JournalCacheInvalidationHook](src/core/hooks/journal-cache-invalidation-hook.ts))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.23.0] - 2025-11-15
 ### Hinzugefügt
 - Keine Einträge

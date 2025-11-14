@@ -67,7 +67,7 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
         if (removed > 0) {
           notificationCenter.debug(
             `Invalidated ${removed} hidden journal cache entries via ${hookName}`,
-            undefined,
+            { context: { removed, hookName } },
             { channels: ["ConsoleChannel"] }
           );
         }

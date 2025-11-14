@@ -70,7 +70,7 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
     const throttledCallback = throttle((app: unknown, html: unknown) => {
       notificationCenter.debug(
         `${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`,
-        undefined,
+        { context: { app, html } },
         { channels: ["ConsoleChannel"] }
       );
 

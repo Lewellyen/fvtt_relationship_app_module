@@ -11817,7 +11817,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     if (cached?.hit && cached.value) {
       this.notificationCenter.debug(
         `Serving ${cached.value.length} hidden journal entries from cache (ttl=${cached.metadata.expiresAt ?? "∞"})`,
-        void 0,
+        { context: { cached } },
         { channels: ["ConsoleChannel"] }
       );
       return { ok: true, value: cached.value };
@@ -11857,13 +11857,13 @@ const _JournalVisibilityService = class _JournalVisibilityService {
    * Processes journal directory HTML to hide flagged entries.
    */
   processJournalDirectory(htmlElement) {
-    this.notificationCenter.debug("Processing journal directory for hidden entries", void 0, {
+    this.notificationCenter.debug("Processing journal directory for hidden entries", { context: { htmlElement } }, {
       channels: ["ConsoleChannel"]
     });
     const hiddenResult = this.getHiddenJournalEntries();
     match(hiddenResult, {
       onOk: /* @__PURE__ */ __name((hidden) => {
-        this.notificationCenter.debug(`Found ${hidden.length} hidden journal entries`, void 0, {
+        this.notificationCenter.debug(`Found ${hidden.length} hidden journal entries`, { context: { hidden } }, {
           channels: ["ConsoleChannel"]
         });
         this.hideEntries(hidden, htmlElement);
@@ -11883,7 +11883,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         onOk: /* @__PURE__ */ __name(() => {
           this.notificationCenter.debug(
             `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
-            void 0,
+            { context: { journal } },
             { channels: ["ConsoleChannel"] }
           );
         }, "onOk"),
@@ -13309,7 +13309,7 @@ const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
     const throttledCallback = throttle((app, html) => {
       notificationCenter.debug(
         `${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`,
-        void 0,
+        { context: { app, html } },
         { channels: ["ConsoleChannel"] }
       );
       const appValidation = validateHookApp(app);
@@ -13415,7 +13415,7 @@ const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
         if (removed > 0) {
           notificationCenter.debug(
             `Invalidated ${removed} hidden journal cache entries via ${hookName}`,
-            void 0,
+            { context: { removed, hookName } },
             { channels: ["ConsoleChannel"] }
           );
         }
