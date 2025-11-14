@@ -6,6 +6,7 @@ import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { ModuleHookRegistrar } from "../module-hook-registrar";
 import { MODULE_CONSTANTS } from "@/constants";
+import type { ServiceContainer } from "@/di_infrastructure/container";
 
 describe("init-solid Bootstrap", () => {
   afterEach(() => {
@@ -105,6 +106,152 @@ describe("init-solid Bootstrap", () => {
       // Callback ausführbar ohne Fehler
       expect(() => readyCallback!()).not.toThrow();
 
+      cleanup();
+    });
+
+    it("should attach UI channel to NotificationCenter during init", async () => {
+      vi.resetModules();
+
+      const mockGame = createMockGame();
+      const mockModule = {
+        api: undefined as unknown,
+      };
+      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+
+      const cleanup = withFoundryGlobals({
+        game: mockGame,
+        Hooks: createMockHooks(),
+        ui: createMockUI(),
+      });
+
+      const notificationCenterModule = await import("@/notifications/NotificationCenter");
+      const addChannelSpy = vi.spyOn(
+        notificationCenterModule.NotificationCenter.prototype,
+        "addChannel"
+      );
+
+      await import("@/core/init-solid");
+
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
+      const initCallback = initCall?.[1] as (() => void) | undefined;
+
+      expect(initCallback).toBeDefined();
+      initCallback!();
+
+      expect(addChannelSpy).toHaveBeenCalledWith(expect.objectContaining({ name: "UIChannel" }));
+
+      addChannelSpy.mockRestore();
+      cleanup();
+    });
+
+    it("should warn when NotificationCenter cannot be resolved", async () => {
+      vi.resetModules();
+
+      const mockGame = createMockGame();
+      const mockModule = { api: undefined as unknown };
+      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+
+      const cleanup = withFoundryGlobals({
+        game: mockGame,
+        Hooks: createMockHooks(),
+        ui: createMockUI(),
+      });
+
+      const { ServiceContainer: serviceContainerClass } = await import(
+        "@/di_infrastructure/container"
+      );
+      const { notificationCenterToken } = await import("@/tokens/tokenindex");
+      const originalResolve = serviceContainerClass.prototype.resolveWithError;
+      const resolveSpy = vi
+        .spyOn(serviceContainerClass.prototype, "resolveWithError")
+        .mockImplementation(function (this: ServiceContainer, token: symbol) {
+          if (token === notificationCenterToken) {
+            return {
+              ok: false as const,
+              error: {
+                code: "DependencyResolveFailed" as const,
+                message: "NotificationCenter missing",
+              },
+            };
+          }
+          return originalResolve.call(this, token);
+        });
+
+      const consoleLoggerModule = await import("@/services/consolelogger");
+      const warnSpy = vi
+        .spyOn(consoleLoggerModule.ConsoleLoggerService.prototype, "warn")
+        .mockImplementation(() => {});
+
+      await import("@/core/init-solid");
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
+      const initCallback = initCall?.[1] as (() => void) | undefined;
+      expect(initCallback).toBeDefined();
+      initCallback!();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        "NotificationCenter could not be resolved during init; UI channel not attached",
+        expect.objectContaining({ message: "NotificationCenter missing" })
+      );
+
+      resolveSpy.mockRestore();
+      warnSpy.mockRestore();
+      cleanup();
+    });
+
+    it("should warn when UI channel cannot be resolved", async () => {
+      vi.resetModules();
+
+      const mockGame = createMockGame();
+      const mockModule = { api: undefined as unknown };
+      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+
+      const cleanup = withFoundryGlobals({
+        game: mockGame,
+        Hooks: createMockHooks(),
+        ui: createMockUI(),
+      });
+
+      const { ServiceContainer: serviceContainerClass } = await import(
+        "@/di_infrastructure/container"
+      );
+      const { uiChannelToken } = await import("@/tokens/tokenindex");
+      const originalResolve = serviceContainerClass.prototype.resolveWithError;
+      const resolveSpy = vi
+        .spyOn(serviceContainerClass.prototype, "resolveWithError")
+        .mockImplementation(function (this: ServiceContainer, token: symbol) {
+          if (token === uiChannelToken) {
+            return {
+              ok: false as const,
+              error: {
+                code: "DependencyResolveFailed" as const,
+                message: "UI channel missing",
+              },
+            };
+          }
+          return originalResolve.call(this, token);
+        });
+
+      const consoleLoggerModule = await import("@/services/consolelogger");
+      const warnSpy = vi
+        .spyOn(consoleLoggerModule.ConsoleLoggerService.prototype, "warn")
+        .mockImplementation(() => {});
+
+      await import("@/core/init-solid");
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
+      const initCallback = initCall?.[1] as (() => void) | undefined;
+      expect(initCallback).toBeDefined();
+      initCallback!();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        "UI channel could not be resolved; NotificationCenter will remain console-only",
+        expect.objectContaining({ message: "UI channel missing" })
+      );
+
+      resolveSpy.mockRestore();
+      warnSpy.mockRestore();
       cleanup();
     });
   });

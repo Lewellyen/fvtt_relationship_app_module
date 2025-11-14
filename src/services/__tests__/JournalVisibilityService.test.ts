@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Mock } from "vitest";
 import { JournalVisibilityService, HIDDEN_JOURNAL_CACHE_TAG } from "../JournalVisibilityService";
 import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
-import type { Logger } from "@/interfaces/logger";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import { MODULE_CONSTANTS } from "@/constants";
@@ -24,7 +23,6 @@ function createMetadata(): CacheEntryMetadata {
 describe("JournalVisibilityService", () => {
   let service: JournalVisibilityService;
   let mockFacade: FoundryJournalFacade;
-  let mockLogger: Logger;
   let mockNotificationCenter: NotificationCenter;
   let mockCacheService: CacheService;
 
@@ -33,14 +31,6 @@ describe("JournalVisibilityService", () => {
       getJournalEntries: vi.fn().mockReturnValue(ok([])),
       getEntryFlag: vi.fn().mockReturnValue(ok(null)),
       removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
-    };
-    mockLogger = {
-      debug: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-      info: vi.fn(),
-      log: vi.fn(),
-      withTraceId: vi.fn(),
     };
     mockNotificationCenter = {
       notify: vi.fn().mockReturnValue(ok(undefined)),
@@ -69,12 +59,7 @@ describe("JournalVisibilityService", () => {
       getOrSet: vi.fn(),
     } as unknown as CacheService;
 
-    service = new JournalVisibilityService(
-      mockFacade,
-      mockLogger,
-      mockNotificationCenter,
-      mockCacheService
-    );
+    service = new JournalVisibilityService(mockFacade, mockNotificationCenter, mockCacheService);
   });
 
   describe("getHiddenJournalEntries", () => {
@@ -198,9 +183,10 @@ describe("JournalVisibilityService", () => {
 
       expect(result.ok).toBe(true);
       // UI notifications removed from facade - only logging remains
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to read hidden flag"),
-        expect.any(Object)
+        expect.any(Object),
+        { channels: ["ConsoleChannel"] }
       );
     });
 
@@ -218,9 +204,10 @@ describe("JournalVisibilityService", () => {
 
       service.getHiddenJournalEntries();
 
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to read hidden flag"),
-        expect.any(Object)
+        expect.any(Object),
+        { channels: ["ConsoleChannel"] }
       );
     });
   });
@@ -247,7 +234,7 @@ describe("JournalVisibilityService", () => {
         "Hidden Journal",
         container
       );
-      expect(mockLogger.debug).toHaveBeenCalled();
+      expect(mockNotificationCenter.debug).toHaveBeenCalled();
     });
 
     it("should handle error when getHiddenJournalEntries fails", () => {
@@ -284,7 +271,11 @@ describe("JournalVisibilityService", () => {
 
       service.processJournalDirectory(container);
 
-      expect(mockLogger.warn).toHaveBeenCalledWith("Error removing journal entry", errorMessage);
+      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
+        "Error removing journal entry",
+        errorMessage,
+        { channels: ["ConsoleChannel"] }
+      );
     });
 
     it("should process multiple hidden entries", () => {
@@ -352,8 +343,16 @@ describe("JournalVisibilityService", () => {
       service.processJournalDirectory(container);
 
       // Verify logger was called with sanitized name
-      expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining("&lt;script&gt;"));
-      expect(mockLogger.debug).not.toHaveBeenCalledWith(expect.stringContaining("<script>"));
+      expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
+        expect.stringContaining("&lt;script&gt;"),
+        undefined,
+        expect.objectContaining({ channels: ["ConsoleChannel"] })
+      );
+      expect(mockNotificationCenter.debug).not.toHaveBeenCalledWith(
+        expect.stringContaining("<script>"),
+        undefined,
+        expect.objectContaining({ channels: ["ConsoleChannel"] })
+      );
     });
 
     it("should sanitize journal names in error logs", () => {
@@ -374,13 +373,15 @@ describe("JournalVisibilityService", () => {
       service.getHiddenJournalEntries();
 
       // Verify logger was called with sanitized name in error message
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
         expect.stringContaining("&lt;img"),
-        expect.any(Object)
+        expect.any(Object),
+        { channels: ["ConsoleChannel"] }
       );
-      expect(mockLogger.warn).not.toHaveBeenCalledWith(
+      expect(mockNotificationCenter.warn).not.toHaveBeenCalledWith(
         expect.stringContaining("<img"),
-        expect.any(Object)
+        expect.any(Object),
+        { channels: ["ConsoleChannel"] }
       );
     });
   });
@@ -487,7 +488,7 @@ describe("JournalVisibilityService", () => {
         expect(result.value[0]?.id).toBe("journal-2");
       }
       // Error should have been logged
-      expect(mockLogger.warn).toHaveBeenCalled();
+      expect(mockNotificationCenter.warn).toHaveBeenCalled();
     });
 
     it("should handle empty journal list", () => {

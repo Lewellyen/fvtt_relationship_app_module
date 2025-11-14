@@ -89,20 +89,23 @@ src/config/
 ### Logging, Metrics & Notifications
 ```typescript
 import {
-  loggerToken,
   metricsCollectorToken,
   traceContextToken,
   notificationCenterToken,
   observabilityRegistryToken,
   portSelectionEventEmitterToken,
+  loggerToken,
 } from "@/tokens/tokenindex";
 
-const logger = container.resolve(loggerToken);
 const metrics = container.resolve(metricsCollectorToken);
 const traceContext = container.resolve(traceContextToken);
 const notifications = container.resolve(notificationCenterToken);
 const observability = container.resolve(observabilityRegistryToken);
+const logger = container.resolve(loggerToken); // Nur für Log-Level-Konfiguration verwenden
 ```
+
+- **Logging-Konvention:** Für alle Meldungen `notificationCenter.debug/info/warn/error(..., { channels: ["ConsoleChannel"] })` nutzen. Der `logger` wird ausschließlich für interne Konfiguration (z. B. `setMinLevel`) oder Bootstrap-Fallbacks eingesetzt.
+- **UI-Channel:** Wird automatisch im `init`-Hook registriert – bis dahin laufen Notifications nur über den ConsoleChannel.
 
 ### Foundry Services & Registrars
 ```typescript

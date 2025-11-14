@@ -5,6 +5,8 @@ import {
   moduleSettingsRegistrarToken,
   moduleHookRegistrarToken,
   moduleApiInitializerToken,
+  notificationCenterToken,
+  uiChannelToken,
 } from "@/tokens/tokenindex";
 import { CompositionRoot } from "@/core/composition-root";
 import { tryGetFoundryVersion } from "@/foundry/versioning/versiondetector";
@@ -65,6 +67,26 @@ function initializeFoundryModule(): void {
       return;
     }
     /* c8 ignore stop */
+
+    // Add UI notifications channel once Foundry UI ports are available.
+    const notificationCenterResult =
+      initContainerResult.value.resolveWithError(notificationCenterToken);
+    if (notificationCenterResult.ok) {
+      const uiChannelResult = initContainerResult.value.resolveWithError(uiChannelToken);
+      if (uiChannelResult.ok) {
+        notificationCenterResult.value.addChannel(uiChannelResult.value);
+      } else {
+        logger.warn(
+          "UI channel could not be resolved; NotificationCenter will remain console-only",
+          uiChannelResult.error
+        );
+      }
+    } else {
+      logger.warn(
+        "NotificationCenter could not be resolved during init; UI channel not attached",
+        notificationCenterResult.error
+      );
+    }
 
     // Expose Module API via DI-Service
     const apiInitializerResult =

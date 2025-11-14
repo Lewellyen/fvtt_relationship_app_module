@@ -5,29 +5,12 @@ import { describe, it, expect, vi } from "vitest";
 import { ModuleHookRegistrar } from "../module-hook-registrar";
 import { createMockContainer } from "@/test/mocks/foundry";
 import { MODULE_CONSTANTS } from "@/constants";
-import {
-  loggerToken,
-  journalVisibilityServiceToken,
-  notificationCenterToken,
-} from "@/tokens/tokenindex";
+import { journalVisibilityServiceToken, notificationCenterToken } from "@/tokens/tokenindex";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
 import { RenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
-import type { Logger } from "@/interfaces/logger";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { HookRegistrar } from "@/core/hooks/hook-registrar.interface";
 import { ok } from "@/utils/functional/result";
-
-// Create mock logger
-function createMockLogger(): Logger {
-  return {
-    log: vi.fn(),
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    withTraceId: vi.fn().mockReturnThis(),
-  };
-}
 
 function createStubHook(): HookRegistrar {
   return {
@@ -38,11 +21,10 @@ function createStubHook(): HookRegistrar {
 
 function createRegistrar(
   hook: HookRegistrar,
-  logger: Logger,
   notificationCenter: NotificationCenter
 ): ModuleHookRegistrar {
   const stubHook = createStubHook();
-  return new ModuleHookRegistrar(hook, stubHook, logger, notificationCenter);
+  return new ModuleHookRegistrar(hook, stubHook, notificationCenter);
 }
 
 describe("ModuleHookRegistrar", () => {
@@ -50,16 +32,14 @@ describe("ModuleHookRegistrar", () => {
     it("should resolve all required services and register hook", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
       // Sollte alle Services auflösen via resolveWithError()
       expect(mockContainer.resolveWithError).toHaveBeenCalledWith(foundryHooksToken);
-      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(loggerToken);
       expect(mockContainer.resolveWithError).toHaveBeenCalledWith(journalVisibilityServiceToken);
       expect(mockContainer.resolveWithError).toHaveBeenCalledWith(notificationCenterToken);
 
@@ -75,10 +55,9 @@ describe("ModuleHookRegistrar", () => {
     it("should call processJournalDirectory when hook fires", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -107,10 +86,9 @@ describe("ModuleHookRegistrar", () => {
     it("should log debug message when hook fires", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -125,19 +103,19 @@ describe("ModuleHookRegistrar", () => {
       const mockApp = { id: "journal-directory", object: {}, options: {} };
       hookCallback!(mockApp, mockHtml);
 
-      const containerLogger = mockContainer.getMockLogger();
-      expect(containerLogger.debug).toHaveBeenCalledWith(
-        expect.stringContaining(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY)
+      expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
+        expect.stringContaining(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY),
+        undefined,
+        { channels: ["ConsoleChannel"] }
       );
     });
 
     it("should log error when HTMLElement is invalid", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -170,10 +148,9 @@ describe("ModuleHookRegistrar", () => {
       });
 
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
       registrar.registerAll(mockContainer as never);
 
       expect(mockNotificationCenter.error).toHaveBeenCalledWith(
@@ -200,10 +177,9 @@ describe("ModuleHookRegistrar", () => {
     it("should reject null app parameter", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -229,10 +205,9 @@ describe("ModuleHookRegistrar", () => {
     it("should reject undefined app parameter", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -254,10 +229,9 @@ describe("ModuleHookRegistrar", () => {
     it("should reject app parameter without required id property", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -284,10 +258,9 @@ describe("ModuleHookRegistrar", () => {
     it("should accept valid app parameter", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -316,10 +289,9 @@ describe("ModuleHookRegistrar", () => {
     it("should handle native HTMLElement", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -339,10 +311,9 @@ describe("ModuleHookRegistrar", () => {
     it("should log error for invalid html argument", () => {
       const mockContainer = createMockContainer();
       const realHook = new RenderJournalDirectoryHook();
-      const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 

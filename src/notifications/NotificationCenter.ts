@@ -33,7 +33,7 @@
  * ```
  */
 
-import { consoleChannelToken, uiChannelToken } from "@/tokens/tokenindex";
+import { consoleChannelToken } from "@/tokens/tokenindex";
 import { err, ok } from "@/utils/functional/result";
 import type { Result } from "@/types/result";
 import type { FoundryNotificationOptions } from "@/foundry/interfaces/FoundryUI";
@@ -172,9 +172,9 @@ export class NotificationCenter {
 }
 
 export class DINotificationCenter extends NotificationCenter {
-  static dependencies = [consoleChannelToken, uiChannelToken] as const;
+  static dependencies = [consoleChannelToken] as const;
 
-  constructor(consoleChannel: NotificationChannel, uiChannel: NotificationChannel) {
-    super([consoleChannel, uiChannel]);
+  constructor(consoleChannel: NotificationChannel) {
+    super([consoleChannel]);
   }
 }

@@ -40,20 +40,31 @@ export class ModuleSettingsRegistrar {
     const i18nResult = container.resolveWithError(i18nFacadeToken);
     const notificationCenterResult = container.resolveWithError(notificationCenterToken);
 
+    if (!notificationCenterResult.ok) {
+      console.error("Failed to resolve NotificationCenter for ModuleSettingsRegistrar", {
+        error: notificationCenterResult.error,
+      });
+      return;
+    }
+
+    const notifications = notificationCenterResult.value;
+
     // Early return if any resolution failed
     /* c8 ignore start -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
-    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok || !notificationCenterResult.ok) {
-      // Use logger if available, otherwise fallback to console
-      if (loggerResult.ok) {
-        loggerResult.value.error("DI resolution failed in ModuleSettingsRegistrar", {
-          settingsResolved: settingsResult.ok,
-          i18nResolved: i18nResult.ok,
-          notificationCenterResolved: notificationCenterResult.ok,
-        });
-      } else {
-        // Fallback only if logger itself failed to resolve
-        console.error("Failed to resolve required services for settings registration");
-      }
+    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok) {
+      notifications.error(
+        "DI resolution failed in ModuleSettingsRegistrar",
+        {
+          code: "DI_RESOLUTION_FAILED",
+          message: "Required services for ModuleSettingsRegistrar are missing",
+          details: {
+            settingsResolved: settingsResult.ok,
+            i18nResolved: i18nResult.ok,
+            loggerResolved: loggerResult.ok,
+          },
+        },
+        { channels: ["ConsoleChannel"] }
+      );
       return;
     }
     /* c8 ignore stop */
@@ -61,7 +72,6 @@ export class ModuleSettingsRegistrar {
     const foundrySettings = settingsResult.value;
     const logger = loggerResult.value;
     const i18n = i18nResult.value;
-    const notificationCenter = notificationCenterResult.value;
 
     // Register all settings
     for (const setting of this.settings) {
@@ -69,8 +79,7 @@ export class ModuleSettingsRegistrar {
       const result = foundrySettings.register(MODULE_CONSTANTS.MODULE.ID, setting.key, config);
 
       if (!result.ok) {
-        // Bootstrap error - log to console only (no UI notification)
-        notificationCenter.error(`Failed to register ${setting.key} setting`, result.error, {
+        notifications.error(`Failed to register ${setting.key} setting`, result.error, {
           channels: ["ConsoleChannel"],
         });
       }

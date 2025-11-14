@@ -47,7 +47,7 @@ export function registerNotifications(container: ServiceContainer): Result<void,
     return err(`Failed to register UIChannel: ${uiChannelResult.error.message}`);
   }
 
-  // Register NotificationCenter as singleton (channels injected via DI)
+  // Register NotificationCenter as singleton (initially nur ConsoleChannel)
   const notificationCenterResult = container.registerClass(
     notificationCenterToken,
     DINotificationCenter,
@@ -57,6 +57,9 @@ export function registerNotifications(container: ServiceContainer): Result<void,
   if (isErr(notificationCenterResult)) {
     return err(`Failed to register NotificationCenter: ${notificationCenterResult.error.message}`);
   }
+
+  // Hinweis: Zusätzliche Channels (z. B. UIChannel) werden erst nach dem Init-Hook
+  // via notificationCenter.addChannel(...) angebunden.
 
   return ok(undefined);
 }

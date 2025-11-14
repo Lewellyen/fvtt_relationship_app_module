@@ -2,10 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import type { Mock } from "vitest";
 import { JournalCacheInvalidationHook } from "../journal-cache-invalidation-hook";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
-import { cacheServiceToken, loggerToken, notificationCenterToken } from "@/tokens/tokenindex";
+import { cacheServiceToken, notificationCenterToken } from "@/tokens/tokenindex";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { CacheService } from "@/interfaces/cache";
-import type { Logger } from "@/interfaces/logger";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import { ok } from "@/utils/functional/result";
 
@@ -18,7 +17,6 @@ type MockContainer = {
   container: ServiceContainer;
   mockHooks: MockHookFunctions;
   mockCache: CacheService;
-  mockLogger: Logger;
   mockNotificationCenter: NotificationCenter;
 };
 
@@ -42,15 +40,6 @@ function createMockContainer(overrides: Partial<Record<symbol, unknown>> = {}): 
     getOrSet: vi.fn(),
   };
 
-  const mockLogger: Logger = {
-    log: vi.fn(),
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    withTraceId: vi.fn().mockReturnThis(),
-  };
-
   const mockNotificationCenter: NotificationCenter = {
     notify: vi.fn().mockReturnValue(ok(undefined)),
     debug: vi.fn().mockReturnValue(ok(undefined)),
@@ -65,7 +54,6 @@ function createMockContainer(overrides: Partial<Record<symbol, unknown>> = {}): 
   const services: Record<symbol, unknown> = {
     [foundryHooksToken]: mockHooks,
     [cacheServiceToken]: mockCache,
-    [loggerToken]: mockLogger,
     [notificationCenterToken]: mockNotificationCenter,
     ...overrides,
   };
@@ -82,14 +70,13 @@ function createMockContainer(overrides: Partial<Record<symbol, unknown>> = {}): 
     container,
     mockHooks,
     mockCache,
-    mockLogger,
     mockNotificationCenter,
   };
 }
 
 describe("JournalCacheInvalidationHook", () => {
   it("registers Foundry hooks and invalidates cache", () => {
-    const { container, mockHooks, mockCache, mockLogger } = createMockContainer();
+    const { container, mockHooks, mockCache, mockNotificationCenter } = createMockContainer();
     mockCache.invalidateWhere = vi.fn().mockReturnValueOnce(2);
     const hook = new JournalCacheInvalidationHook();
 
@@ -104,8 +91,10 @@ describe("JournalCacheInvalidationHook", () => {
     const predicate = (mockCache.invalidateWhere as unknown as Mock).mock.calls[0]![0];
     expect(predicate({ tags: ["journal:hidden"] } as never)).toBe(true);
     expect(predicate({ tags: [] } as never)).toBe(false);
-    expect(mockLogger.debug).toHaveBeenCalledWith(
-      expect.stringContaining("hidden journal cache entries")
+    expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
+      expect.stringContaining("hidden journal cache entries"),
+      undefined,
+      { channels: ["ConsoleChannel"] }
     );
   });
 

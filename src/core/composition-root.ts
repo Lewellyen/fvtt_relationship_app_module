@@ -5,6 +5,7 @@ import { configureDependencies } from "@/config/dependencyconfig";
 import { ENV } from "@/config/environment";
 import { BootstrapPerformanceTracker } from "@/observability/bootstrap-performance-tracker";
 import { loggerToken } from "@/tokens/tokenindex";
+import { BOOTSTRAP_LOGGER } from "@/services/bootstrap-logger";
 
 /**
  * CompositionRoot
@@ -59,6 +60,8 @@ export class CompositionRoot {
       this.container = container;
       return { ok: true, value: container };
     }
+
+    BOOTSTRAP_LOGGER.error("Failed to configure dependencies during bootstrap", configured.error);
     return { ok: false, error: configured.error };
   }
 

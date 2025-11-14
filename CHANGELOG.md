@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.23.0] - 2025-11-15
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **NotificationCenter**: ConsoleChannel + NotificationCenter stehen nun bereits im Bootstrap bereit, ein dedizierter `BootstrapLoggerService` deckt nur noch Pre-Validation-Logs ab. Ab dem `init`-Hook wird der UI-Channel automatisch angehängt und alle Hooks/Registrare (RenderJournalDirectory, JournalCacheInvalidation, ModuleSettingsRegistrar, JournalVisibilityService) routen ihre Meldungen ausschließlich über das NotificationCenter ([Details](ARCHITECTURE.md#notifications-subsystem), [src/core/init-solid.ts](src/core/init-solid.ts)).
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.22.0] - 2025-11-14
 ### Hinzugefügt
 - **CacheService**: Neuer DI-Singleton (konfigurierbar via ENV) für TTL-/LRU-Caching inkl. MetricsCollector-Integration und Tagged Invalidation ([Details](src/services/CacheService.ts), [docs/DEPENDENCY-MAP.md](docs/DEPENDENCY-MAP.md#layer-2-infrastructure))

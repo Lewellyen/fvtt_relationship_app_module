@@ -6,7 +6,7 @@ import { ModuleSettingsRegistrar, DIModuleSettingsRegistrar } from "../module-se
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
 import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
-import { loggerToken } from "@/tokens/tokenindex";
+import { loggerToken, notificationCenterToken } from "@/tokens/tokenindex";
 import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import { MODULE_CONSTANTS } from "@/constants";
 import { LogLevel } from "@/config/environment";
@@ -97,8 +97,10 @@ describe("ModuleSettingsRegistrar", () => {
         err({ code: "OPERATION_FAILED", message: "Registration failed" })
       );
 
-      const mockLogger = container.resolve(markAsApiSafe(loggerToken));
-      const errorSpy = vi.spyOn(mockLogger, "error");
+      const mockNotificationCenter = container.resolve(
+        markAsApiSafe(notificationCenterToken)
+      ) as any;
+      const errorSpy = vi.spyOn(mockNotificationCenter, "error");
 
       const registrar = new ModuleSettingsRegistrar();
       registrar.registerAll(container);
@@ -107,7 +109,8 @@ describe("ModuleSettingsRegistrar", () => {
         "Failed to register logLevel setting",
         expect.objectContaining({
           code: "OPERATION_FAILED",
-        })
+        }),
+        { channels: ["ConsoleChannel"] }
       );
     });
 

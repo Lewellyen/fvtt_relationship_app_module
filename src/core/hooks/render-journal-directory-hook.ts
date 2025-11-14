@@ -14,11 +14,7 @@ import type { Result } from "@/types/result";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "./hook-registrar.interface";
 import { MODULE_CONSTANTS, HOOK_THROTTLE_WINDOW_MS } from "@/constants";
-import {
-  loggerToken,
-  journalVisibilityServiceToken,
-  notificationCenterToken,
-} from "@/tokens/tokenindex";
+import { journalVisibilityServiceToken, notificationCenterToken } from "@/tokens/tokenindex";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
 import { validateHookApp } from "@/foundry/validation/schemas";
 import { throttle } from "@/utils/events/throttle";
@@ -42,35 +38,41 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
 
   register(container: ServiceContainer): Result<void, Error> {
     const foundryHooksResult = container.resolveWithError(foundryHooksToken);
-    const loggerResult = container.resolveWithError(loggerToken);
     const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
     const notificationCenterResult = container.resolveWithError(notificationCenterToken);
 
     /* c8 ignore start -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
-    if (
-      !foundryHooksResult.ok ||
-      !loggerResult.ok ||
-      !journalVisibilityResult.ok ||
-      !notificationCenterResult.ok
-    ) {
-      if (loggerResult.ok) {
-        loggerResult.value.error("DI resolution failed in RenderJournalDirectoryHook", {
-          foundryHooksResolved: foundryHooksResult.ok,
-          journalVisibilityResolved: journalVisibilityResult.ok,
-          notificationCenterResolved: notificationCenterResult.ok,
-        });
+    if (!foundryHooksResult.ok || !journalVisibilityResult.ok || !notificationCenterResult.ok) {
+      if (notificationCenterResult.ok) {
+        notificationCenterResult.value.error(
+          "DI resolution failed in RenderJournalDirectoryHook",
+          {
+            code: "DI_RESOLUTION_FAILED",
+            message: "Required services for RenderJournalDirectoryHook are missing",
+            details: {
+              foundryHooksResolved: foundryHooksResult.ok,
+              journalVisibilityResolved: journalVisibilityResult.ok,
+            },
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+      } else {
+        console.error("NotificationCenter not available for RenderJournalDirectoryHook");
       }
       return err(new Error("Failed to resolve required services for RenderJournalDirectoryHook"));
     }
     /* c8 ignore stop */
 
     const foundryHooks = foundryHooksResult.value;
-    const logger = loggerResult.value;
     const journalVisibility = journalVisibilityResult.value;
     const notificationCenter = notificationCenterResult.value;
 
     const throttledCallback = throttle((app: unknown, html: unknown) => {
-      logger.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
+      notificationCenter.debug(
+        `${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`,
+        undefined,
+        { channels: ["ConsoleChannel"] }
+      );
 
       const appValidation = validateHookApp(app);
       if (!appValidation.ok) {

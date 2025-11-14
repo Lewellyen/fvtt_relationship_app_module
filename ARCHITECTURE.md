@@ -472,6 +472,8 @@ Hooks.on("ready", () => {
 ### Notifications-Subsystem
 
 - `NotificationCenter` empfängt Modul-Events (Debug, Info, Warn, Error) und verteilt sie an registrierte Channels.
+- Während der Bootstrap-Phase steht ausschließlich der `ConsoleChannel` zur Verfügung; er wird direkt zusammen mit dem NotificationCenter registriert, sodass bereits nach `configureDependencies` über `notificationCenter.debug|error(..., { channels: ["ConsoleChannel"] })` geloggt werden kann.
+- Im `Hooks.on("init")`-Callback fügt `init-solid.ts` den `UIChannel` per `notificationCenter.addChannel(uiChannel)` hinzu, sobald die Foundry-Ports bereitstehen.
 - `UIChannel` kapselt Foundrys `ui.notifications` und sorgt für Sanitizing sowie Environment-selektives Messaging.
 - Seit v13-Port-Erweiterung unterstützt die Pipeline Foundry-native Optionen (`permanent`, `localize`, `format`, `console`, `clean`, `escape`, `progress`) über `NotificationCenterOptions.uiOptions`.
 - `FoundryUIPortV13` reicht die Optionen unverändert an `ui.notifications` durch, wodurch alle v13-Features (z. B. dauerhafte Hinweise oder lokalisierte Meldungen) im Modul verfügbar sind.
@@ -514,9 +516,9 @@ Deutsche Umlaute (ä, ö, ü, ß) müssen korrekt dargestellt werden.
 - **throw** nur für Programmierfehler, nie für erwartbare Fehler
 
 ### Logging
-- Services loggen **nicht** intern
-- Logging erfolgt auf Orchestrator-Ebene (z.B. ModuleHookRegistrar)
-- Konsequenz: Services bleiben rein funktional
+- **Bootstrap-Phase:** Ein dedizierter `BootstrapLoggerService` (ConsoleLogger + ENV) wird direkt via `new` verwendet, solange der Container noch nicht validiert ist (z. B. in `CompositionRoot`).
+- **Nach Validation:** Alle nicht-Bootstrap-Komponenten (Hooks, Registrare, Business-Services) loggen ausschließlich über das NotificationCenter und geben bei technischen Meldungen `channels: ["ConsoleChannel"]` an.
+- Dadurch bleiben Services funktional, und User-facing Meldungen laufen automatisch über UI/Console Channels.
 
 ---
 

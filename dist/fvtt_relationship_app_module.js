@@ -11791,9 +11791,8 @@ const buildJournalCacheKey = createCacheNamespace("journal-visibility");
 const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(facade, logger, notificationCenter, cacheService) {
+  constructor(facade, notificationCenter, cacheService) {
     this.facade = facade;
-    this.logger = logger;
     this.notificationCenter = notificationCenter;
     this.cacheService = cacheService;
   }
@@ -11816,8 +11815,10 @@ const _JournalVisibilityService = class _JournalVisibilityService {
   getHiddenJournalEntries() {
     const cached = this.cacheService.get(HIDDEN_JOURNAL_CACHE_KEY);
     if (cached?.hit && cached.value) {
-      this.logger.debug(
-        `Serving ${cached.value.length} hidden journal entries from cache (ttl=${cached.metadata.expiresAt ?? "∞"})`
+      this.notificationCenter.debug(
+        `Serving ${cached.value.length} hidden journal entries from cache (ttl=${cached.metadata.expiresAt ?? "∞"})`,
+        void 0,
+        { channels: ["ConsoleChannel"] }
       );
       return { ok: true, value: cached.value };
     }
@@ -11836,13 +11837,14 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         }
       } else {
         const journalIdentifier = journal.name ?? journal.id;
-        this.logger.warn(
+        this.notificationCenter.warn(
           `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
           {
             errorCode: flagResult.error.code,
             /* c8 ignore stop */
             errorMessage: flagResult.error.message
-          }
+          },
+          { channels: ["ConsoleChannel"] }
         );
       }
     }
@@ -11855,11 +11857,15 @@ const _JournalVisibilityService = class _JournalVisibilityService {
    * Processes journal directory HTML to hide flagged entries.
    */
   processJournalDirectory(htmlElement) {
-    this.logger.debug("Processing journal directory for hidden entries");
+    this.notificationCenter.debug("Processing journal directory for hidden entries", void 0, {
+      channels: ["ConsoleChannel"]
+    });
     const hiddenResult = this.getHiddenJournalEntries();
     match(hiddenResult, {
       onOk: /* @__PURE__ */ __name((hidden) => {
-        this.logger.debug(`Found ${hidden.length} hidden journal entries`);
+        this.notificationCenter.debug(`Found ${hidden.length} hidden journal entries`, void 0, {
+          channels: ["ConsoleChannel"]
+        });
         this.hideEntries(hidden, htmlElement);
       }, "onOk"),
       onErr: /* @__PURE__ */ __name((error) => {
@@ -11875,10 +11881,16 @@ const _JournalVisibilityService = class _JournalVisibilityService {
       const removeResult = this.facade.removeJournalElement(journal.id, journalName, html);
       match(removeResult, {
         onOk: /* @__PURE__ */ __name(() => {
-          this.logger.debug(`Removing journal entry: ${this.sanitizeForLog(journalName)}`);
+          this.notificationCenter.debug(
+            `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
+            void 0,
+            { channels: ["ConsoleChannel"] }
+          );
         }, "onOk"),
         onErr: /* @__PURE__ */ __name((error) => {
-          this.logger.warn("Error removing journal entry", error);
+          this.notificationCenter.warn("Error removing journal entry", error, {
+            channels: ["ConsoleChannel"]
+          });
         }, "onErr")
       });
     }
@@ -11887,14 +11899,13 @@ const _JournalVisibilityService = class _JournalVisibilityService {
 __name(_JournalVisibilityService, "JournalVisibilityService");
 let JournalVisibilityService = _JournalVisibilityService;
 const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(facade, logger, notificationCenter, cacheService) {
-    super(facade, logger, notificationCenter, cacheService);
+  constructor(facade, notificationCenter, cacheService) {
+    super(facade, notificationCenter, cacheService);
   }
 };
 __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
 _DIJournalVisibilityService.dependencies = [
   foundryJournalFacadeToken,
-  loggerToken,
   notificationCenterToken,
   cacheServiceToken
 ];
@@ -12928,12 +12939,12 @@ const _NotificationCenter = class _NotificationCenter {
 __name(_NotificationCenter, "NotificationCenter");
 let NotificationCenter = _NotificationCenter;
 const _DINotificationCenter = class _DINotificationCenter extends NotificationCenter {
-  constructor(consoleChannel, uiChannel) {
-    super([consoleChannel, uiChannel]);
+  constructor(consoleChannel) {
+    super([consoleChannel]);
   }
 };
 __name(_DINotificationCenter, "DINotificationCenter");
-_DINotificationCenter.dependencies = [consoleChannelToken, uiChannelToken];
+_DINotificationCenter.dependencies = [consoleChannelToken];
 let DINotificationCenter = _DINotificationCenter;
 const _ConsoleChannel = class _ConsoleChannel {
   constructor(logger) {
@@ -13131,27 +13142,37 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     const loggerResult = container.resolveWithError(loggerToken);
     const i18nResult = container.resolveWithError(i18nFacadeToken);
     const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok || !notificationCenterResult.ok) {
-      if (loggerResult.ok) {
-        loggerResult.value.error("DI resolution failed in ModuleSettingsRegistrar", {
-          settingsResolved: settingsResult.ok,
-          i18nResolved: i18nResult.ok,
-          notificationCenterResolved: notificationCenterResult.ok
-        });
-      } else {
-        console.error("Failed to resolve required services for settings registration");
-      }
+    if (!notificationCenterResult.ok) {
+      console.error("Failed to resolve NotificationCenter for ModuleSettingsRegistrar", {
+        error: notificationCenterResult.error
+      });
+      return;
+    }
+    const notifications = notificationCenterResult.value;
+    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok) {
+      notifications.error(
+        "DI resolution failed in ModuleSettingsRegistrar",
+        {
+          code: "DI_RESOLUTION_FAILED",
+          message: "Required services for ModuleSettingsRegistrar are missing",
+          details: {
+            settingsResolved: settingsResult.ok,
+            i18nResolved: i18nResult.ok,
+            loggerResolved: loggerResult.ok
+          }
+        },
+        { channels: ["ConsoleChannel"] }
+      );
       return;
     }
     const foundrySettings = settingsResult.value;
     const logger = loggerResult.value;
     const i18n = i18nResult.value;
-    const notificationCenter = notificationCenterResult.value;
     for (const setting of this.settings) {
       const config2 = setting.createConfig(i18n, logger);
       const result = foundrySettings.register(MODULE_CONSTANTS.MODULE.ID, setting.key, config2);
       if (!result.ok) {
-        notificationCenter.error(`Failed to register ${setting.key} setting`, result.error, {
+        notifications.error(`Failed to register ${setting.key} setting`, result.error, {
           channels: ["ConsoleChannel"]
         });
       }
@@ -13170,8 +13191,7 @@ __name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
 _DIModuleSettingsRegistrar.dependencies = [];
 let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
 const _ModuleHookRegistrar = class _ModuleHookRegistrar {
-  constructor(renderJournalHook, journalCacheInvalidationHook, logger, notificationCenter) {
-    this.logger = logger;
+  constructor(renderJournalHook, journalCacheInvalidationHook, notificationCenter) {
     this.notificationCenter = notificationCenter;
     this.hooks = [renderJournalHook, journalCacheInvalidationHook];
   }
@@ -13208,15 +13228,14 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
 __name(_ModuleHookRegistrar, "ModuleHookRegistrar");
 let ModuleHookRegistrar = _ModuleHookRegistrar;
 const _DIModuleHookRegistrar = class _DIModuleHookRegistrar extends ModuleHookRegistrar {
-  constructor(renderJournalHook, journalCacheInvalidationHook, logger, notificationCenter) {
-    super(renderJournalHook, journalCacheInvalidationHook, logger, notificationCenter);
+  constructor(renderJournalHook, journalCacheInvalidationHook, notificationCenter) {
+    super(renderJournalHook, journalCacheInvalidationHook, notificationCenter);
   }
 };
 __name(_DIModuleHookRegistrar, "DIModuleHookRegistrar");
 _DIModuleHookRegistrar.dependencies = [
   renderJournalDirectoryHookToken,
   journalCacheInvalidationHookToken,
-  loggerToken,
   notificationCenterToken
 ];
 let DIModuleHookRegistrar = _DIModuleHookRegistrar;
@@ -13263,25 +13282,36 @@ const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
   }
   register(container) {
     const foundryHooksResult = container.resolveWithError(foundryHooksToken);
-    const loggerResult = container.resolveWithError(loggerToken);
     const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
     const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    if (!foundryHooksResult.ok || !loggerResult.ok || !journalVisibilityResult.ok || !notificationCenterResult.ok) {
-      if (loggerResult.ok) {
-        loggerResult.value.error("DI resolution failed in RenderJournalDirectoryHook", {
-          foundryHooksResolved: foundryHooksResult.ok,
-          journalVisibilityResolved: journalVisibilityResult.ok,
-          notificationCenterResolved: notificationCenterResult.ok
-        });
+    if (!foundryHooksResult.ok || !journalVisibilityResult.ok || !notificationCenterResult.ok) {
+      if (notificationCenterResult.ok) {
+        notificationCenterResult.value.error(
+          "DI resolution failed in RenderJournalDirectoryHook",
+          {
+            code: "DI_RESOLUTION_FAILED",
+            message: "Required services for RenderJournalDirectoryHook are missing",
+            details: {
+              foundryHooksResolved: foundryHooksResult.ok,
+              journalVisibilityResolved: journalVisibilityResult.ok
+            }
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+      } else {
+        console.error("NotificationCenter not available for RenderJournalDirectoryHook");
       }
       return err(new Error("Failed to resolve required services for RenderJournalDirectoryHook"));
     }
     const foundryHooks = foundryHooksResult.value;
-    const logger = loggerResult.value;
     const journalVisibility = journalVisibilityResult.value;
     const notificationCenter = notificationCenterResult.value;
     const throttledCallback = throttle((app, html) => {
-      logger.debug(`${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`);
+      notificationCenter.debug(
+        `${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`,
+        void 0,
+        { channels: ["ConsoleChannel"] }
+      );
       const appValidation = validateHookApp(app);
       if (!appValidation.ok) {
         notificationCenter.error(
@@ -13353,21 +13383,28 @@ const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
   register(container) {
     const hooksResult = container.resolveWithError(foundryHooksToken);
     const cacheResult = container.resolveWithError(cacheServiceToken);
-    const loggerResult = container.resolveWithError(loggerToken);
     const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    if (!hooksResult.ok || !cacheResult.ok || !loggerResult.ok || !notificationCenterResult.ok) {
-      if (loggerResult.ok) {
-        loggerResult.value.error("DI resolution failed in JournalCacheInvalidationHook", {
-          hooksResolved: hooksResult.ok,
-          cacheResolved: cacheResult.ok,
-          notificationResolved: notificationCenterResult.ok
-        });
+    if (!hooksResult.ok || !cacheResult.ok || !notificationCenterResult.ok) {
+      if (notificationCenterResult.ok) {
+        notificationCenterResult.value.error(
+          "DI resolution failed in JournalCacheInvalidationHook",
+          {
+            code: "DI_RESOLUTION_FAILED",
+            message: "Required services for JournalCacheInvalidationHook are missing",
+            details: {
+              hooksResolved: hooksResult.ok,
+              cacheResolved: cacheResult.ok
+            }
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+      } else {
+        console.error("Failed to resolve NotificationCenter for JournalCacheInvalidationHook");
       }
       return err(new Error("Failed to resolve required services for JournalCacheInvalidationHook"));
     }
     const hooks = hooksResult.value;
     const cache = cacheResult.value;
-    const logger = loggerResult.value;
     const notificationCenter = notificationCenterResult.value;
     this.foundryHooks = hooks;
     for (const hookName of JOURNAL_INVALIDATION_HOOKS) {
@@ -13376,7 +13413,11 @@ const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
           (meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG)
         );
         if (removed > 0) {
-          logger.debug(`Invalidated ${removed} hidden journal cache entries via ${hookName}`);
+          notificationCenter.debug(
+            `Invalidated ${removed} hidden journal cache entries via ${hookName}`,
+            void 0,
+            { channels: ["ConsoleChannel"] }
+          );
         }
       });
       if (!registrationResult.ok) {
@@ -13569,6 +13610,14 @@ function configureDependencies(container) {
   return ok(void 0);
 }
 __name(configureDependencies, "configureDependencies");
+const _BootstrapLoggerService = class _BootstrapLoggerService extends ConsoleLoggerService {
+  constructor() {
+    super(ENV);
+  }
+};
+__name(_BootstrapLoggerService, "BootstrapLoggerService");
+let BootstrapLoggerService = _BootstrapLoggerService;
+const BOOTSTRAP_LOGGER = new BootstrapLoggerService();
 const _CompositionRoot = class _CompositionRoot {
   constructor() {
     this.container = null;
@@ -13601,6 +13650,7 @@ const _CompositionRoot = class _CompositionRoot {
       this.container = container;
       return { ok: true, value: container };
     }
+    BOOTSTRAP_LOGGER.error("Failed to configure dependencies during bootstrap", configured.error);
     return { ok: false, error: configured.error };
   }
   /**
@@ -13665,6 +13715,23 @@ function initializeFoundryModule() {
     if (!initContainerResult.ok) {
       logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
       return;
+    }
+    const notificationCenterResult = initContainerResult.value.resolveWithError(notificationCenterToken);
+    if (notificationCenterResult.ok) {
+      const uiChannelResult = initContainerResult.value.resolveWithError(uiChannelToken);
+      if (uiChannelResult.ok) {
+        notificationCenterResult.value.addChannel(uiChannelResult.value);
+      } else {
+        logger.warn(
+          "UI channel could not be resolved; NotificationCenter will remain console-only",
+          uiChannelResult.error
+        );
+      }
+    } else {
+      logger.warn(
+        "NotificationCenter could not be resolved during init; UI channel not attached",
+        notificationCenterResult.error
+      );
     }
     const apiInitializerResult = initContainerResult.value.resolveWithError(moduleApiInitializerToken);
     if (!apiInitializerResult.ok) {
