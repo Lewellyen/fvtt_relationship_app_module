@@ -10,4 +10,5 @@
 import "@/polyfills/cytoscape-assign-fix";
 import "@/core/init-solid";
 import "../styles/tailwind.css";
-import "@xyflow/svelte/dist/style.css";
+// TODO: Re-enable UI style imports once the Svelte-based network UI is shipped.
+// import "@xyflow/svelte/dist/style.css";

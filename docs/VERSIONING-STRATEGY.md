@@ -1,7 +1,7 @@
 # Versioning-Strategie
 
 **Model:** Claude Sonnet 4.5  
-**Datum:** 2025-11-09  
+**Datum:** 2025-11-14  
 **Projekt:** FVTT Relationship App Module
 
 ---
@@ -23,7 +23,8 @@ Beispiel: 1.2.3
 
 ## 🚀 Phase 1: Pre-Release (Version 0.x.x)
 
-**Aktueller Status:** Version 0.10.0
+**Aktueller Status:** Version 0.20.0  
+**Kompatibilität:** `module.json` definiert `minimum=13`, `verified=13`, `maximum=13`. Neue Ports (z. B. v14) werden erst benötigt, wenn `maximum` erhöht wird.
 
 ### Philosophie
 

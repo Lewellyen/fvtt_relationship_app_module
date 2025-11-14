@@ -4,9 +4,14 @@
 
 Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Moduls.
 
-**Datum:** 2025-11-09  
-**Stand:** Version 0.10.0  
+**Datum:** 2025-11-14  
+**Stand:** Version 0.20.0  
 **Detaillierte Analyse:** Siehe [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md)
+
+### Aktuelle Highlights (v0.20.0)
+- **NotificationCenter-first Fehler- und User-Kommunikation:** `ErrorService` ist vollständig ersetzt; alle Business-Services routen Nachrichten über Channels (Console/UI) mit Foundry-Option-Passthrough ([Details](docs/PROJECT-ANALYSIS.md#notifications)).
+- **DI-Wrapper-Konsolidierung:** Jede öffentlich instanziierbare Klasse besitzt ein `DI…`-Wrapper-Pendant, wodurch `configureDependencies` ausschließlich Wrapper registriert und Constructor-Signaturen stabil bleiben ([Details](docs/PROJECT-ANALYSIS.md#core-services)).
+- **Persistente Observability:** Der neue `PersistentMetricsCollector` kann Metriken in LocalStorage sichern, gesteuert über ENV-Flags `VITE_ENABLE_METRICS_PERSISTENCE` und `VITE_METRICS_PERSISTENCE_KEY` ([Details](docs/CONFIGURATION.md)).
 
 ---
 
@@ -302,6 +307,12 @@ container.registerClass(loggerToken, ConsoleLoggerService, SINGLETON);
 // 3. Überall im Code auflösen
 const logger = container.resolve(loggerToken);
 ```
+
+### DI-Wrapper-Pattern (seit v0.20.0)
+- **Motivation:** Constructor-Signaturen bleiben stabil, Tests können weiterhin die Basisklasse direkt nutzen.
+- **Umsetzung:** Jede produktive Klasse besitzt ein `DI…`-Wrapper, der `static dependencies` kapselt und im selben File nach der Basisklasse lebt (z. B. `ConsoleLoggerService` + `DIConsoleLoggerService` in `src/services/consolelogger.ts`).
+- **Registrierung:** Config-Module registrieren ausschließlich Wrapper, wodurch Constructor-Änderungen lokal bleiben und `configureDependencies` keine Token-Arrays mehr manuell pflegen muss.
+- **API-Exposition:** `core/module-api.ts` markiert nur ausgewählte Tokens als API-safe; Wrapper respektieren weiterhin `markAsApiSafe` bzw. `markAsDeprecated`.
 
 ### Dependency Declaration
 
@@ -627,6 +638,13 @@ class ObservabilityRegistry {
   // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
 }
 ```
+
+### Persistent Metrics Collector
+- **Klasse:** `src/observability/metrics-persistence/persistent-metrics-collector.ts`
+- **Storage-Auswahl:** Nutzt konfigurierbares `MetricsStorage` (standardmäßig `localStorage`), schaltet sich über `ENV.enableMetricsPersistence` zu/ab.
+- **Sampling & Replay:** Puffert Events offline und synchronisiert sie bei erneutem Bootstrap, wodurch Performance-Daten in langen Foundry-Sitzungen erhalten bleiben.
+- **Konfiguration:** Flags `VITE_ENABLE_METRICS_PERSISTENCE` und `VITE_METRICS_PERSISTENCE_KEY` (siehe `docs/CONFIGURATION.md`) steuern Aktivierung und Storage-Namespace.
+- **DI-Integration:** Wrapper `DIPersistentMetricsCollector` wird im Observability-Config registriert und respektiert das Self-Registration-Pattern (Metrics landen weiterhin im ObservabilityRegistry-Pipeline).
 
 ---
 

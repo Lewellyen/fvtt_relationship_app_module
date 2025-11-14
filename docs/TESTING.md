@@ -10,17 +10,25 @@ Beziehungsnetzwerke für Foundry VTT - Test-Dokumentation
 
 ```bash
 # Watch-Modus (empfohlen für Entwicklung)
-npm test
+npm run test:watch
 
 # Single Run (für CI/CD)
-npm run test:run
+npm test
 
 # Mit Coverage-Report
 npm run test:coverage
 
-# Interactive UI
+# Interaktive UI
 npm run test:ui
 ```
+
+### Komplettes Quality Gate
+
+```bash
+npm run check-all
+```
+
+Führt `test:coverage`, `type-coverage`, `type-check`, `svelte-check`, `lint`, `css-lint`, `format` und `check:encoding` sequenziell aus (siehe `package.json`).
 
 ### Spezifische Tests ausführen
 
@@ -276,7 +284,7 @@ Tests laufen automatisch in der CI-Pipeline:
 ```yaml
 # .github/workflows/ci.yml
 - name: Run tests
-  run: npm run test:run
+  run: npm test
 
 - name: Generate coverage
   run: npm run test:coverage

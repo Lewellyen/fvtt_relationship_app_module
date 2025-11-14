@@ -1,7 +1,7 @@
 # Projektanalyse: FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-13 (v0.19.1)  
+**Aktualisiert:** 2025-11-14 (v0.20.0)  
 **Zweck:** Grundlage für Refactoring-Planungen  
 **Model:** Claude Sonnet 4.5
 
@@ -24,10 +24,17 @@
 
 Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection**, **Port-Adapter-Pattern** für Foundry VTT-Versionskompatiblität und **Result-Pattern** für fehlerfreies Error Handling.
 
-**Status:** Version 0.19.1 (Pre-Release Phase)  
+**Status:** Version 0.20.0 (Pre-Release Phase)  
 **Breaking Changes:** ✅ Erlaubt (bis Modul 1.0.0)  
 **Legacy-Code:** ❌ Wird unmittelbar bereinigt  
 **Ab Modul 1.0.0:** Breaking Changes nur mit Deprecation-Phase & Migration Guide
+
+### Release-Highlights v0.20.0
+- **NotificationCenter-only Routing:** Alle Services publizieren Errors/Infos über Channels; `ErrorService` ist entfernt und API-Token spiegeln die neue Architektur wider.
+- **Service Logging Migration (NEW):** JournalVisibility-, Retry-, FoundryHooks- & Observability-Services loggen nur noch über das NotificationCenter (ConsoleChannel + optional UI), inkl. dynamischer Log-Level-Steuerung über Module Settings.
+- **DI-Wrapper-Standardisierung:** Wrapper-Varianten (`DI…`) sind für alle Klassen Pflicht, wodurch Unit-Tests Basisklassen direkt instantiieren können und Config-Module nur Wrapper registrieren.
+- **Persistente Observability:** `PersistentMetricsCollector` + konfigurierbarer Storage ermöglicht Long-Running-Diagnosen; gesteuert über `VITE_ENABLE_METRICS_PERSISTENCE` / `VITE_METRICS_PERSISTENCE_KEY`.
+- **Dokumentationsabgleich:** Architektur-, Versionierungs- und Testing-Guides spiegeln aktuelle Module, Kommandos und Quality Gates wider.
 
 ### Architektur-Prinzipien
 
@@ -108,13 +115,15 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 **Abhängigkeiten:**
 - `FoundryJournalFacade` (foundryJournalFacadeToken)
 - `Logger` (loggerToken)
+- `NotificationCenter` (notificationCenterToken)
 
 **Features:**
 - Filterung von Journals via Module-Flags
 - HTML-Sanitization für sichere Log-Ausgabe
 - UI-Manipulation (entfernt DOM-Elemente)
+- **Offene Baustelle (CA-02):** Keine Caching-Strategie mehr aktiv; `getHiddenJournalEntries()` läuft pro Render über alle Journals. Ein neuer Ansatz (leichter Cache oder differenzierte Events) wird noch gesucht.
 
-**Dependency Reduction:** 4 → 2 Dependencies via Facade Pattern (50% Reduktion)
+**Dependency Reduction:** 4 → 3 Dependencies via Facade Pattern (50% Reduktion ggü. ursprünglicher Version)
 
 **DI Wrapper:** `DIJournalVisibilityService` registriert Facade, Logger & NotificationCenter im Container ([Details](../src/services/JournalVisibilityService.ts))
 
@@ -155,7 +164,7 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 **Datei:** `src/services/RetryService.ts`  
 **Zweck:** Retry-Logik mit Exponential Backoff  
 **Abhängigkeiten:**
-- `Logger` (loggerToken)
+- `NotificationCenter` (notificationCenterToken)
 - `MetricsCollector` (metricsCollectorToken)
 
 **Features:**
@@ -164,9 +173,10 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - Exception Mapping (safe `as` cast via mapException)
 - Legacy API-Support (backwards compatible)
 
-**DI Wrapper:** `DIRetryService` hält Logger- & MetricsCollector-Tokens gebündelt für den DI-Container ([Details](../src/services/RetryService.ts))
+**DI Wrapper:** `DIRetryService` hält NotificationCenter- & MetricsCollector-Tokens gebündelt für den DI-Container ([Details](../src/services/RetryService.ts))
 
 ---
+
 
 ### Foundry Services (Version-Agnostic Wrappers)
 
@@ -216,7 +226,7 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - Support für reused callbacks
 - `once()` Hooks (auto-cleanup durch Foundry)
 
-**DI Wrapper:** `DIFoundryHooksService` registriert Selector, Registry, RetryService und Logger ([Details](../src/foundry/services/FoundryHooksService.ts))
+**DI Wrapper:** `DIFoundryHooksService` registriert Selector, Registry, RetryService und NotificationCenter ([Details](../src/foundry/services/FoundryHooksService.ts))
 
 ---
 
@@ -375,7 +385,7 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - `Logger` (loggerToken)
 - `MetricsRecorder` (metricsRecorderToken)
 
-**DI Wrapper:** `DIObservabilityRegistry` kapselt Logger & MetricsRecorder für die Container-Registrierung ([Details](../src/observability/observability-registry.ts))
+**DI Wrapper:** `DIObservabilityRegistry` kapselt NotificationCenter & MetricsRecorder für die Container-Registrierung ([Details](../src/observability/observability-registry.ts))
 
 **Features:**
 - Self-Registration: Services registrieren sich selbst im Constructor
@@ -937,15 +947,15 @@ graph TD
 |---------|-------------|------------|
 | **EnvironmentConfig** | - | MetricsCollector, Logger, PerformanceTracking, LocalI18n, ErrorSanitizer |
 | **MetricsCollector** | ENV | ModuleHealthService, PortObserver, Retry, PerformanceTracking |
-| **ConsoleLoggerService** | ENV | FoundryHooksService, JournalVisibility, Retry, PortObserver |
+| **ConsoleLoggerService** | ENV | NotificationCenter (ConsoleChannel) |
 | **ModuleHealthService** | Container, Metrics | CompositionRoot (API) |
 | **PerformanceTrackingService** | ENV, Metrics | - |
-| **RetryService** | Logger, Metrics | - |
+| **RetryService** | NotificationCenter, Metrics | - |
 | **PortSelector** | - | Alle Foundry Services |
 | **PortRegistry** | - | Alle Foundry Services |
-| **PortSelectionObserver** | Logger, Metrics | - |
+| **PortSelectionObserver** | NotificationCenter, Metrics | - |
 | **FoundryGameService** | PortSelector, PortRegistry | FoundryJournalFacade |
-| **FoundryHooksService** | PortSelector, PortRegistry, Logger | - |
+| **FoundryHooksService** | PortSelector, PortRegistry, RetryService, NotificationCenter | - |
 | **FoundryDocumentService** | PortSelector, PortRegistry | FoundryJournalFacade |
 | **FoundryUIService** | PortSelector, PortRegistry | FoundryJournalFacade |
 | **FoundrySettingsService** | PortSelector, PortRegistry | - |
@@ -976,8 +986,8 @@ graph TD
 
 **Level 2 (2 Dependencies):**
 - PerformanceTrackingService → ENV, Metrics
-- RetryService → Logger, Metrics
-- PortSelectionObserver → Logger, Metrics
+- RetryService → NotificationCenter, Metrics
+- PortSelectionObserver → NotificationCenter, Metrics
 - ModuleHealthService → Container, Metrics
 
 **Level 3 (3 Dependencies):**
