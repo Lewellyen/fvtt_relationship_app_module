@@ -205,3 +205,11 @@ export class TraceContext implements Disposable {
     this.currentTraceId = null;
   }
 }
+
+export class DITraceContext extends TraceContext {
+  static override dependencies = [] as const;
+
+  constructor() {
+    super();
+  }
+}

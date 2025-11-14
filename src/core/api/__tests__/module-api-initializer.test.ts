@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ModuleApiInitializer } from "../module-api-initializer";
+import { ModuleApiInitializer, DIModuleApiInitializer } from "../module-api-initializer";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
 import { expectResultOk } from "@/test/utils/test-helpers";
@@ -126,6 +126,30 @@ describe("ModuleApiInitializer", () => {
       const journalFacade = mod.api.resolve(mod.api.tokens.foundryJournalFacadeToken);
       expect(journalFacade).toBeDefined();
     });
+
+    it("should prevent channel mutations on public NotificationCenter", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+      const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
+
+      expect(() => (notifications as unknown as { addChannel: () => void }).addChannel()).toThrow(
+        'Property "addChannel" is not accessible via Public API'
+      );
+      expect(() =>
+        (notifications as unknown as { removeChannel: () => void }).removeChannel()
+      ).toThrow('Property "removeChannel" is not accessible via Public API');
+    });
+
+    it("should prevent settings mutations via public FoundrySettings service", () => {
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+      const settings = mod.api.resolve(mod.api.tokens.foundrySettingsToken);
+
+      expect(() => (settings as unknown as { register: () => void }).register()).toThrow(
+        'Property "register" is not accessible via Public API'
+      );
+      expect(() => (settings as unknown as { set: () => void }).set()).toThrow(
+        'Property "set" is not accessible via Public API'
+      );
+    });
   });
 
   describe("API - getAvailableTokens", () => {
@@ -171,6 +195,16 @@ describe("ModuleApiInitializer", () => {
       expect(typeof metrics.containerResolutions).toBe("number");
       expect(typeof metrics.resolutionErrors).toBe("number");
       expect(typeof metrics.avgResolutionTimeMs).toBe("number");
+    });
+  });
+
+  describe("DI integration", () => {
+    it("base class exposes empty dependency list", () => {
+      expect(ModuleApiInitializer.dependencies).toHaveLength(0);
+    });
+
+    it("wrapper mirrors empty dependencies", () => {
+      expect(DIModuleApiInitializer.dependencies).toHaveLength(0);
     });
   });
 
@@ -310,7 +344,7 @@ describe("ModuleApiInitializer", () => {
       expectResultOk(result);
     });
 
-    it("should expose notification center with full capabilities", () => {
+    it("should expose notification center with read-only surface", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
       const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
 
@@ -324,9 +358,13 @@ describe("ModuleApiInitializer", () => {
         send: () => ({ ok: true, value: undefined }) as const,
       };
 
-      expect(() => notifications.addChannel(tempChannel)).not.toThrow();
-      expect(notifications.getChannelNames()).toContain("TestChannel");
-      expect(() => notifications.removeChannel("TestChannel")).not.toThrow();
+      expect(() => notifications.addChannel(tempChannel)).toThrow(
+        'Property "addChannel" is not accessible via Public API'
+      );
+      expect(notifications.getChannelNames()).not.toContain("TestChannel");
+      expect(() => notifications.removeChannel("TestChannel")).toThrow(
+        'Property "removeChannel" is not accessible via Public API'
+      );
     });
 
     it("should apply readonly wrapper to i18n", () => {
@@ -411,7 +449,7 @@ describe("ModuleApiInitializer", () => {
       expectResultOk(result);
     });
 
-    it("should expose notification center with full capabilities", () => {
+    it("should expose notification center with read-only surface", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
       const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
 
@@ -425,9 +463,13 @@ describe("ModuleApiInitializer", () => {
         send: () => ({ ok: true, value: undefined }) as const,
       };
 
-      expect(() => notifications.addChannel(tempChannel)).not.toThrow();
-      expect(notifications.getChannelNames()).toContain("TestChannel");
-      expect(() => notifications.removeChannel("TestChannel")).not.toThrow();
+      expect(() => notifications.addChannel(tempChannel)).toThrow(
+        'Property "addChannel" is not accessible via Public API'
+      );
+      expect(notifications.getChannelNames()).not.toContain("TestChannel");
+      expect(() => notifications.removeChannel("TestChannel")).toThrow(
+        'Property "removeChannel" is not accessible via Public API'
+      );
     });
 
     it("should apply readonly wrapper to i18n", () => {

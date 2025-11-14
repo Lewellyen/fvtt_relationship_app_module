@@ -31,8 +31,6 @@ import type { TranslationHandler } from "./i18n/TranslationHandler.interface";
  * ```
  */
 export class I18nFacadeService {
-  static dependencies = [translationHandlerChainToken, localI18nToken] as const;
-
   constructor(
     private readonly handlerChain: TranslationHandler,
     private readonly localI18n: LocalI18nService
@@ -108,5 +106,13 @@ export class I18nFacadeService {
    */
   loadLocalTranslations(translations: Record<string, string>): void {
     this.localI18n.loadTranslations(translations);
+  }
+}
+
+export class DII18nFacadeService extends I18nFacadeService {
+  static dependencies = [translationHandlerChainToken, localI18nToken] as const;
+
+  constructor(handlerChain: TranslationHandler, localI18n: LocalI18nService) {
+    super(handlerChain, localI18n);
   }
 }

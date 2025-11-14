@@ -4,8 +4,8 @@ import { ok, err, isErr } from "@/utils/functional/result";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import { notificationCenterToken, consoleChannelToken, uiChannelToken } from "@/tokens/tokenindex";
 import { DINotificationCenter } from "@/notifications/NotificationCenter";
-import { ConsoleChannel } from "@/notifications/channels/ConsoleChannel";
-import { UIChannel } from "@/notifications/channels/UIChannel";
+import { DIConsoleChannel } from "@/notifications/channels/ConsoleChannel";
+import { DIUIChannel } from "@/notifications/channels/UIChannel";
 
 /**
  * Registers notification services and channels.
@@ -30,7 +30,7 @@ export function registerNotifications(container: ServiceContainer): Result<void,
   // Register ConsoleChannel
   const consoleChannelResult = container.registerClass(
     consoleChannelToken,
-    ConsoleChannel,
+    DIConsoleChannel,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(consoleChannelResult)) {
@@ -40,7 +40,7 @@ export function registerNotifications(container: ServiceContainer): Result<void,
   // Register UIChannel
   const uiChannelResult = container.registerClass(
     uiChannelToken,
-    UIChannel,
+    DIUIChannel,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(uiChannelResult)) {

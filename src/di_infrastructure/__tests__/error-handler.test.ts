@@ -17,6 +17,8 @@ describe("ContainerErrorHandler", () => {
         logLevel: LogLevel.DEBUG,
         enablePerformanceTracking: true,
         enableDebugMode: true,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 1.0,
       };
 
@@ -40,6 +42,8 @@ describe("ContainerErrorHandler", () => {
         logLevel: LogLevel.ERROR,
         enablePerformanceTracking: false,
         enableDebugMode: false,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.1,
       };
 
@@ -68,6 +72,8 @@ describe("ContainerErrorHandler", () => {
         logLevel: LogLevel.ERROR,
         enablePerformanceTracking: false,
         enableDebugMode: false,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.1,
       };
 
@@ -94,6 +100,8 @@ describe("ContainerErrorHandler", () => {
         logLevel: LogLevel.DEBUG,
         enablePerformanceTracking: true,
         enableDebugMode: true,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 1.0,
       };
 

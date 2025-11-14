@@ -1,12 +1,12 @@
 # Dependency Map - FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-09 (v0.10.0)  
+**Aktualisiert:** 2025-11-13 (v0.19.1)  
 **Zweck:** Detaillierte Abhängigkeits-Visualisierung für Refactoring  
 **Model:** Claude Sonnet 4.5  
-**Projekt-Status:** Version 0.10.0 (Pre-Release)  
-**Breaking Changes:** ✅ Erlaubt - Aggressives Refactoring erwünscht!  
-**Legacy-Codes:** ❌ Sofort eliminieren  
+**Projekt-Status:** Version 0.19.1 (Pre-Release)  
+**Breaking Changes:** ✅ Erlaubt (bis Modul 1.0.0)  
+**Legacy-Code:** ❌ Wird unmittelbar bereinigt  
 **Versioning:** Siehe [VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md)
 
 ---
@@ -26,6 +26,24 @@ Layer 3: Foundry Adapters (Ports, Services)
     ↓
 Layer 4: Business Services & Facades
 ```
+
+### DI Wrapper Pattern ⭐ UPDATED 2025-11-13
+
+- Basisklassen behalten reine Konstruktorabhängigkeiten ohne `static dependencies`
+- `DI…`-Wrapper deklarieren Token-Arrays und werden in den Config-Modulen registriert
+- Vereinheitlicht Registrierungen in `src/config/modules/*.config.ts` (z.B. `DIModuleHealthService`, `DIFoundryGameService`, `DIRetryService`)
+- Erleichtert Tests: Basisklassen können ohne Container resolved werden, Wrapper stellen DI-Integration sicher
+
+### Core Services (Wrapper-Abdeckung) ⭐ UPDATED 2025-11-14 {#core-services}
+
+- `TraceContext` ➜ `DITraceContext` (keine Dependencies, dennoch konsistente Registrierung)
+- `HealthCheckRegistry` ➜ `DIHealthCheckRegistry` (Singleton ohne Konstruktor-Injektion)
+- `ModuleApiInitializer` ➜ `DIModuleApiInitializer` (Public-API-Bootstrap bleibt DI-neutral)
+- `MetricsCollector` ➜ `DIMetricsCollector` (ENV) & `DIPersistentMetricsCollector` (ENV + MetricsStorage)
+- `LocalI18nService` ➜ `DILocalI18nService` (Browser-Locale Fallback)
+- `FallbackTranslationHandler` ➜ `DIFallbackTranslationHandler` (Null-Dependencies, Chain-Terminierung)
+- `ModuleSettingsRegistrar` ➜ `DIModuleSettingsRegistrar` (registriert Foundry-Settings via DI)
+- `RenderJournalDirectoryHook` ➜ `DIRenderJournalDirectoryHook` (Hook-Bootstrap ohne Konstruktor-Argumente)
 
 ---
 
@@ -207,11 +225,11 @@ Layer 4: Business Services & Facades
 **Dependencies:**
 ```typescript
 [
-  // Special: Container Self-Reference (via Factory)
-  // Direct constructor: (container, metricsCollector)
-  metricsCollectorToken  // MetricsCollector
+  healthCheckRegistryToken  // HealthCheckRegistry
 ]
 ```
+
+**DI Wrapper:** `DIModuleHealthService` hält die Token-Definition ([Details](../src/core/module-health-service.ts))
 
 **Methods:**
 - `getHealth()` - Returns `HealthStatus`
@@ -222,8 +240,6 @@ Layer 4: Business Services & Facades
 
 **Consumed By:**
 - `CompositionRoot` → `moduleHealthServiceToken` (Public API: `api.getHealth()`)
-
-**Special:** Container Self-Reference (registered via Factory, nicht via `registerClass`)
 
 ---
 
@@ -394,7 +410,8 @@ Layer 4: Business Services & Facades
 ```typescript
 [
   portSelectorToken,                 // PortSelector
-  foundryGamePortRegistryToken       // PortRegistry<FoundryGame>
+  foundryGamePortRegistryToken,      // PortRegistry<FoundryGame>
+  retryServiceToken                  // RetryService
 ]
 ```
 
@@ -408,6 +425,8 @@ Layer 4: Business Services & Facades
 **Consumed By:**
 - `FoundryJournalFacade` → `foundryGameToken`
 
+**DI Wrapper:** `DIFoundryGameService` injiziert Selector, Registry & RetryService ([Details](../src/foundry/services/FoundryGameService.ts))
+
 ---
 
 #### FoundryHooksService
@@ -420,6 +439,7 @@ Layer 4: Business Services & Facades
 [
   portSelectorToken,                 // PortSelector
   foundryHooksPortRegistryToken,     // PortRegistry<FoundryHooks>
+  retryServiceToken,                 // RetryService
   loggerToken                        // Logger
 ]
 ```
@@ -439,6 +459,8 @@ Layer 4: Business Services & Facades
 **Consumed By:**
 - (Hook-Registrierungen in Module-Setup)
 
+**DI Wrapper:** `DIFoundryHooksService` bündelt Selector, Registry, RetryService & Logger ([Details](../src/foundry/services/FoundryHooksService.ts))
+
 ---
 
 #### FoundryDocumentService
@@ -450,7 +472,8 @@ Layer 4: Business Services & Facades
 ```typescript
 [
   portSelectorToken,                 // PortSelector
-  foundryDocumentPortRegistryToken   // PortRegistry<FoundryDocument>
+  foundryDocumentPortRegistryToken,  // PortRegistry<FoundryDocument>
+  retryServiceToken                  // RetryService
 ]
 ```
 
@@ -464,6 +487,8 @@ Layer 4: Business Services & Facades
 **Consumed By:**
 - `FoundryJournalFacade` → `foundryDocumentToken`
 
+**DI Wrapper:** `DIFoundryDocumentService` injiziert Selector, Registry & RetryService ([Details](../src/foundry/services/FoundryDocumentService.ts))
+
 ---
 
 #### FoundryUIService
@@ -475,7 +500,8 @@ Layer 4: Business Services & Facades
 ```typescript
 [
   portSelectorToken,                 // PortSelector
-  foundryUIPortRegistryToken         // PortRegistry<FoundryUI>
+  foundryUIPortRegistryToken,        // PortRegistry<FoundryUI>
+  retryServiceToken                  // RetryService
 ]
 ```
 
@@ -490,6 +516,8 @@ Layer 4: Business Services & Facades
 **Consumed By:**
 - `FoundryJournalFacade` → `foundryUIToken`
 
+**DI Wrapper:** `DIFoundryUIService` injiziert Selector, Registry & RetryService ([Details](../src/foundry/services/FoundryUIService.ts))
+
 ---
 
 #### FoundrySettingsService
@@ -501,7 +529,8 @@ Layer 4: Business Services & Facades
 ```typescript
 [
   portSelectorToken,                 // PortSelector
-  foundrySettingsPortRegistryToken   // PortRegistry<FoundrySettings>
+  foundrySettingsPortRegistryToken,  // PortRegistry<FoundrySettings>
+  retryServiceToken                  // RetryService
 ]
 ```
 
@@ -516,6 +545,8 @@ Layer 4: Business Services & Facades
 **Consumed By:**
 - (Settings-Registrierung in Module-Setup)
 
+**DI Wrapper:** `DIFoundrySettingsService` injiziert Selector, Registry & RetryService ([Details](../src/foundry/services/FoundrySettingsService.ts))
+
 ---
 
 #### FoundryI18nService
@@ -527,7 +558,8 @@ Layer 4: Business Services & Facades
 ```typescript
 [
   portSelectorToken,                 // PortSelector
-  foundryI18nPortRegistryToken       // PortRegistry<FoundryI18n>
+  foundryI18nPortRegistryToken,      // PortRegistry<FoundryI18n>
+  retryServiceToken                  // RetryService
 ]
 ```
 
@@ -540,6 +572,8 @@ Layer 4: Business Services & Facades
 
 **Consumed By:**
 - `I18nFacadeService` → `foundryI18nToken`
+
+**DI Wrapper:** `DIFoundryI18nService` injiziert Selector, Registry & RetryService ([Details](../src/foundry/services/FoundryI18nService.ts))
 
 ---
 
@@ -574,7 +608,9 @@ Layer 4: Business Services & Facades
 **Dependencies:**
 ```typescript
 [
-  renderJournalDirectoryHookToken   // RenderJournalDirectoryHook
+  renderJournalDirectoryHookToken,  // RenderJournalDirectoryHook
+  loggerToken,                      // Logger
+  notificationCenterToken           // NotificationCenter
 ]
 ```
 
@@ -582,6 +618,8 @@ Layer 4: Business Services & Facades
 - `registerAll(container)` - Registriert alle Modul-Hooks
 
 **Purpose:** DI-managed Hook-Registrierung mit Hook-Dependencies via Constructor
+
+**DI Wrapper:** `DIModuleHookRegistrar` übernimmt die Token-Registrierung ([Details](../src/core/module-hook-registrar.ts))
 
 ---
 
@@ -641,6 +679,8 @@ Layer 4: Business Services & Facades
 
 **Impact:** Dependency Reduction von 4 → 2 (50%) für JournalVisibilityService
 
+**DI Wrapper:** `DIFoundryJournalFacade` übernimmt die Token-Injektion ([Details](../src/foundry/facades/foundry-journal-facade.ts))
+
 ---
 
 #### I18nFacadeService
@@ -667,6 +707,8 @@ Layer 4: Business Services & Facades
 **Consumed By:**
 - (i18n-Konsumenten im Modul)
 
+**DI Wrapper:** `DII18nFacadeService` kapselt Foundry- & Local-i18n-Tokens im DI-Container ([Details](../src/services/I18nFacadeService.ts))
+
 ---
 
 ### Business Services
@@ -680,9 +722,12 @@ Layer 4: Business Services & Facades
 ```typescript
 [
   foundryJournalFacadeToken,  // FoundryJournalFacade
-  loggerToken                 // Logger
+  loggerToken,                // Logger
+  notificationCenterToken     // NotificationCenter
 ]
 ```
+
+**DI Wrapper:** `DIJournalVisibilityService` fasst die drei Tokens zusammen ([Details](../src/services/JournalVisibilityService.ts))
 
 **Methods:**
 - `getHiddenJournalEntries()` → Result<FoundryJournalEntry[], FoundryError>
@@ -742,6 +787,8 @@ Layer 4: Business Services & Facades
 ]
 ```
 
+**DI Wrapper:** `DIPerformanceTrackingService` registriert ENV & MetricsSampler Tokens ([Details](../src/services/PerformanceTrackingService.ts))
+
 **Extends:** `PerformanceTrackerImpl`
 
 **Methods:**
@@ -765,6 +812,8 @@ Layer 4: Business Services & Facades
   metricsCollectorToken    // MetricsCollector
 ]
 ```
+
+**DI Wrapper:** `DIRetryService` hält Logger & MetricsCollector im DI-Wrapper ([Details](../src/services/RetryService.ts))
 
 **Methods:**
 - `retry(fn, options)` → Promise<Result<T, E>>
@@ -799,24 +848,25 @@ Level 2: Infrastructure
   - ErrorSanitizer → [ENV]
 
 Level 3a: Infrastructure Extended
-  - ModuleHealthService → [Container, MetricsCollector]
+  - ModuleHealthService → [HealthCheckRegistry]
   - PerformanceTrackerImpl → [ENV, MetricsSampler]
   - BootstrapPerformanceTracker → [ENV, MetricsSampler?]
   - PerformanceTrackingService → [ENV, MetricsSampler]
   - RetryService → [Logger, MetricsCollector]
+  - ObservabilityRegistry → [Logger, MetricsRecorder]
 
 Level 3b: Port Infrastructure
-  - PortSelector → []
+  - PortSelector → [PortSelectionEventEmitter, ObservabilityRegistry]
   - PortRegistry → []
   - PortSelectionObserver → [Logger, MetricsRecorder]
 
 Level 4: Foundry Services (6 Services)
-  - FoundryGameService → [PortSelector, GamePortRegistry]
-  - FoundryHooksService → [PortSelector, HooksPortRegistry, Logger]
-  - FoundryDocumentService → [PortSelector, DocumentPortRegistry]
-  - FoundryUIService → [PortSelector, UIPortRegistry]
-  - FoundrySettingsService → [PortSelector, SettingsPortRegistry]
-  - FoundryI18nService → [PortSelector, I18nPortRegistry]
+  - FoundryGameService → [PortSelector, GamePortRegistry, RetryService]
+  - FoundryHooksService → [PortSelector, HooksPortRegistry, RetryService, Logger]
+  - FoundryDocumentService → [PortSelector, DocumentPortRegistry, RetryService]
+  - FoundryUIService → [PortSelector, UIPortRegistry, RetryService]
+  - FoundrySettingsService → [PortSelector, SettingsPortRegistry, RetryService]
+  - FoundryI18nService → [PortSelector, I18nPortRegistry, RetryService]
 
 Level 5a: Facades (2 Facades)
   - FoundryJournalFacade → [FoundryGame, FoundryDocument, FoundryUI]
@@ -826,7 +876,7 @@ Level 5b: i18n Facade
   - I18nFacadeService → [FoundryI18n, LocalI18n]
 
 Level 6: Business Services
-  - JournalVisibilityService → [FoundryJournalFacade, Logger]
+  - JournalVisibilityService → [FoundryJournalFacade, Logger, NotificationCenter]
 ```
 
 ---
@@ -1178,31 +1228,31 @@ container.registerAlias(metricsRecorderToken, metricsCollectorToken);
 container.registerAlias(metricsSamplerToken, metricsCollectorToken);
 
 // 4. Logger (Dependencies: [ENV])
-container.registerClass(loggerToken, ConsoleLoggerService, SINGLETON);
+container.registerClass(loggerToken, DIConsoleLoggerService, SINGLETON);
 
-// 5. ModuleHealthService (Dependencies: [Container, Metrics])
-container.registerFactory(moduleHealthServiceToken, () => {...}, SINGLETON);
+// 5. ModuleHealthService (Dependencies: [HealthCheckRegistry])
+container.registerClass(moduleHealthServiceToken, DIModuleHealthService, SINGLETON);
 
 // 6. Utility Services
-container.registerClass(performanceTrackingServiceToken, PerformanceTrackingService, SINGLETON);
-container.registerClass(retryServiceToken, RetryService, SINGLETON);
+container.registerClass(performanceTrackingServiceToken, DIPerformanceTrackingService, SINGLETON);
+container.registerClass(retryServiceToken, DIRetryService, SINGLETON);
 
 // 7. Port Infrastructure
-container.registerClass(portSelectorToken, PortSelector, SINGLETON);
+container.registerClass(portSelectorToken, DIPortSelector, SINGLETON);
 // ... Port Registries (VALUE registrations)
 
-// 8. Foundry Services (Dependencies: [PortSelector, PortRegistry])
-container.registerClass(foundryGameToken, FoundryGameService, SINGLETON);
-// ... (alle 6 Foundry Services)
+// 8. Foundry Services (Dependencies: [PortSelector, PortRegistry, RetryService])
+container.registerClass(foundryGameToken, DIFoundryGameService, SINGLETON);
+// ... (alle 6 Foundry Services über DI-Wrapper)
 
 // 9. Facades
-container.registerClass(foundryJournalFacadeToken, FoundryJournalFacade, SINGLETON);
+container.registerClass(foundryJournalFacadeToken, DIFoundryJournalFacade, SINGLETON);
 container.registerClass(localI18nToken, LocalI18nService, SINGLETON);
-container.registerClass(foundryI18nToken, FoundryI18nService, SINGLETON);
-container.registerClass(i18nFacadeToken, I18nFacadeService, SINGLETON);
+container.registerClass(foundryI18nToken, DIFoundryI18nService, SINGLETON);
+container.registerClass(i18nFacadeToken, DII18nFacadeService, SINGLETON);
 
 // 10. Business Services
-container.registerClass(journalVisibilityServiceToken, JournalVisibilityService, SINGLETON);
+container.registerClass(journalVisibilityServiceToken, DIJournalVisibilityService, SINGLETON);
 
 // 11. Validation
 container.validate();
@@ -1217,12 +1267,10 @@ container.validate();
 
 ## Best Practices für neue Services
 
-### 1. Service mit Dependencies erstellen
+### 1. Service ohne statische Dependencies erstellen
 ```typescript
 // src/services/MyNewService.ts
 export class MyNewService {
-  static dependencies = [loggerToken, metricsCollectorToken] as const;
-  
   constructor(
     private readonly logger: Logger,
     private readonly metrics: MetricsCollector
@@ -1235,7 +1283,19 @@ export class MyNewService {
 }
 ```
 
-### 2. Token definieren
+### 2. DI-Wrapper deklarieren
+```typescript
+// src/services/MyNewService.ts
+export class DIMyNewService extends MyNewService {
+  static dependencies = [loggerToken, metricsCollectorToken] as const;
+
+  constructor(logger: Logger, metrics: MetricsCollector) {
+    super(logger, metrics);
+  }
+}
+```
+
+### 3. Token definieren
 ```typescript
 // src/tokens/tokenindex.ts
 export const myNewServiceToken = createInjectionToken<MyNewService>(
@@ -1243,12 +1303,12 @@ export const myNewServiceToken = createInjectionToken<MyNewService>(
 );
 ```
 
-### 3. Registrieren in dependencyconfig.ts
+### 4. Registrieren in dependencyconfig.ts
 ```typescript
 // src/config/dependencyconfig.ts
 const myServiceResult = container.registerClass(
   myNewServiceToken,
-  MyNewService,
+  DIMyNewService,
   ServiceLifecycle.SINGLETON
 );
 if (isErr(myServiceResult)) {
@@ -1256,7 +1316,7 @@ if (isErr(myServiceResult)) {
 }
 ```
 
-### 4. Dependency Order prüfen
+### 5. Dependency Order prüfen
 - Stelle sicher, dass alle Dependencies **VOR** dem Service registriert werden
 - Wenn Circular Dependency → Refactor zu Factory oder Event-basiert
 

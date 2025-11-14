@@ -5,6 +5,7 @@ import type { JournalVisibilityService } from "@/services/JournalVisibilityServi
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import type { MetricsRecorder } from "@/observability/interfaces/metrics-recorder";
 import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
+import type { MetricsStorage } from "@/observability/metrics-persistence/metrics-storage";
 import type { TraceContext } from "@/observability/trace/TraceContext";
 import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import type { LocalI18nService } from "@/services/LocalI18nService";
@@ -88,6 +89,11 @@ export const metricsRecorderToken = createInjectionToken<MetricsRecorder>("Metri
  * ```
  */
 export const metricsSamplerToken = createInjectionToken<MetricsSampler>("MetricsSampler");
+
+/**
+ * Injection token for metrics persistence storage.
+ */
+export const metricsStorageToken = createInjectionToken<MetricsStorage>("MetricsStorage");
 
 /**
  * Injection token for the TraceContext service.

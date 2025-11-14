@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { RetryService } from "../RetryService";
+import { RetryService, DIRetryService } from "../RetryService";
 import type { Logger } from "@/interfaces/logger";
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import { ok, err } from "@/utils/functional/result";
@@ -323,11 +323,11 @@ describe("RetryService", () => {
 
   describe("static dependencies", () => {
     it("should have correct static dependencies", () => {
-      expect(RetryService.dependencies).toEqual([
+      expect(DIRetryService.dependencies).toEqual([
         expect.any(Symbol), // loggerToken
         expect.any(Symbol), // metricsCollectorToken
       ]);
-      expect(RetryService.dependencies).toHaveLength(2);
+      expect(DIRetryService.dependencies).toHaveLength(2);
     });
   });
 });

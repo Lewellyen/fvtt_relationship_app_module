@@ -211,6 +211,7 @@ const loggerToken = createInjectionToken("Logger");
 const metricsCollectorToken = createInjectionToken("MetricsCollector");
 const metricsRecorderToken = createInjectionToken("MetricsRecorder");
 const metricsSamplerToken = createInjectionToken("MetricsSampler");
+const metricsStorageToken = createInjectionToken("MetricsStorage");
 const traceContextToken = createInjectionToken("TraceContext");
 const journalVisibilityServiceToken = createInjectionToken(
   "JournalVisibilityService"
@@ -271,6 +272,7 @@ var tokenindex = /* @__PURE__ */ Object.freeze({
   metricsHealthCheckToken,
   metricsRecorderToken,
   metricsSamplerToken,
+  metricsStorageToken,
   moduleApiInitializerToken,
   moduleHealthServiceToken,
   moduleHookRegistrarToken,
@@ -1595,6 +1597,10 @@ const ENV = {
   logLevel: true ? 0 : 1,
   enablePerformanceTracking: true,
   enableDebugMode: true,
+  enableMetricsPersistence: false,
+  // type-coverage:ignore-line -- Build-time env var
+  metricsPersistenceKey: "fvtt_relationship_app_module.metrics",
+  // type-coverage:ignore-line -- Build-time env var
   // 1% sampling in production, 100% in development
   performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1
 };
@@ -2311,6 +2317,7 @@ const _MetricsCollector = class _MetricsCollector {
     this.resolutionTimes[this.resolutionTimesIndex] = durationMs;
     this.resolutionTimesIndex = (this.resolutionTimesIndex + 1) % this.MAX_RESOLUTION_TIMES;
     this.resolutionTimesCount = Math.min(this.resolutionTimesCount + 1, this.MAX_RESOLUTION_TIMES);
+    this.onStateChanged();
   }
   /**
    * Records a port selection event.
@@ -2320,6 +2327,7 @@ const _MetricsCollector = class _MetricsCollector {
   recordPortSelection(version) {
     const count = this.metrics.portSelections.get(version) ?? 0;
     this.metrics.portSelections.set(version, count + 1);
+    this.onStateChanged();
   }
   /**
    * Records a port selection failure.
@@ -2331,6 +2339,7 @@ const _MetricsCollector = class _MetricsCollector {
   recordPortSelectionFailure(version) {
     const count = this.metrics.portSelectionFailures.get(version) ?? 0;
     this.metrics.portSelectionFailures.set(version, count + 1);
+    this.onStateChanged();
   }
   /**
    * Records a cache access (hit or miss).
@@ -2343,6 +2352,7 @@ const _MetricsCollector = class _MetricsCollector {
     } else {
       this.metrics.cacheMisses++;
     }
+    this.onStateChanged();
   }
   /**
    * Determines if a performance operation should be sampled based on sampling rate.
@@ -2418,11 +2428,200 @@ const _MetricsCollector = class _MetricsCollector {
     this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
     this.resolutionTimesIndex = 0;
     this.resolutionTimesCount = 0;
+    this.onStateChanged();
+  }
+  /**
+   * Hook invoked after state mutations. Subclasses can override to react
+   * (e.g., persist metrics).
+   */
+  onStateChanged() {
+  }
+  /**
+   * Captures the internal state for persistence.
+   *
+   * @returns Serializable metrics state
+   */
+  getPersistenceState() {
+    return {
+      metrics: {
+        containerResolutions: this.metrics.containerResolutions,
+        resolutionErrors: this.metrics.resolutionErrors,
+        cacheHits: this.metrics.cacheHits,
+        cacheMisses: this.metrics.cacheMisses,
+        portSelections: Object.fromEntries(this.metrics.portSelections),
+        portSelectionFailures: Object.fromEntries(this.metrics.portSelectionFailures)
+      },
+      resolutionTimes: Array.from(this.resolutionTimes),
+      resolutionTimesIndex: this.resolutionTimesIndex,
+      resolutionTimesCount: this.resolutionTimesCount
+    };
+  }
+  /**
+   * Restores internal state from a persisted snapshot.
+   *
+   * @param state - Persisted metrics state
+   */
+  restoreFromPersistenceState(state) {
+    if (!state) {
+      return;
+    }
+    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
+    this.metrics = {
+      containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
+      resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
+      cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
+      cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
+      portSelections: new Map(
+        Object.entries(metrics?.portSelections ?? {}).map(([key, value2]) => [
+          Number(key),
+          Number.isFinite(Number(value2)) ? Number(value2) : 0
+        ])
+      ),
+      portSelectionFailures: new Map(
+        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value2]) => [
+          Number(key),
+          Number.isFinite(Number(value2)) ? Number(value2) : 0
+        ])
+      )
+    };
+    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
+    if (Array.isArray(resolutionTimes)) {
+      const maxLength2 = Math.min(resolutionTimes.length, this.resolutionTimes.length);
+      for (let index = 0; index < maxLength2; index++) {
+        const value2 = Number(resolutionTimes[index]);
+        this.resolutionTimes[index] = Number.isFinite(value2) ? value2 : 0;
+      }
+    }
+    const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
+    const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
+    this.resolutionTimesIndex = Math.min(Math.max(0, safeIndex), this.MAX_RESOLUTION_TIMES - 1);
+    this.resolutionTimesCount = Math.min(Math.max(0, safeCount), this.MAX_RESOLUTION_TIMES);
   }
 };
 __name(_MetricsCollector, "MetricsCollector");
 _MetricsCollector.dependencies = [environmentConfigToken];
 let MetricsCollector = _MetricsCollector;
+const _DIMetricsCollector = class _DIMetricsCollector extends MetricsCollector {
+  constructor(env) {
+    super(env);
+  }
+};
+__name(_DIMetricsCollector, "DIMetricsCollector");
+_DIMetricsCollector.dependencies = [environmentConfigToken];
+let DIMetricsCollector = _DIMetricsCollector;
+const _PersistentMetricsCollector = class _PersistentMetricsCollector extends MetricsCollector {
+  constructor(env, metricsStorage) {
+    super(env);
+    this.metricsStorage = metricsStorage;
+    this.suppressPersistence = false;
+    this.restoreFromStorage();
+  }
+  clearPersistentState() {
+    this.metricsStorage.clear?.();
+    this.suppressPersistence = true;
+    try {
+      super.reset();
+    } finally {
+      this.suppressPersistence = false;
+    }
+  }
+  onStateChanged() {
+    if (this.suppressPersistence) {
+      return;
+    }
+    this.persist();
+  }
+  restoreFromStorage() {
+    let state = null;
+    try {
+      state = this.metricsStorage.load();
+    } catch {
+      state = null;
+    }
+    if (!state) {
+      return;
+    }
+    this.suppressPersistence = true;
+    try {
+      this.restoreFromPersistenceState(state);
+    } finally {
+      this.suppressPersistence = false;
+    }
+  }
+  persist() {
+    try {
+      this.metricsStorage.save(this.getPersistenceState());
+    } catch {
+    }
+  }
+};
+__name(_PersistentMetricsCollector, "PersistentMetricsCollector");
+_PersistentMetricsCollector.dependencies = [
+  environmentConfigToken,
+  metricsStorageToken
+];
+let PersistentMetricsCollector = _PersistentMetricsCollector;
+const _DIPersistentMetricsCollector = class _DIPersistentMetricsCollector extends PersistentMetricsCollector {
+  constructor(env, metricsStorage) {
+    super(env, metricsStorage);
+  }
+};
+__name(_DIPersistentMetricsCollector, "DIPersistentMetricsCollector");
+_DIPersistentMetricsCollector.dependencies = [
+  environmentConfigToken,
+  metricsStorageToken
+];
+let DIPersistentMetricsCollector = _DIPersistentMetricsCollector;
+const _LocalStorageMetricsStorage = class _LocalStorageMetricsStorage {
+  constructor(storageKey, storage = getStorage()) {
+    this.storageKey = storageKey;
+    this.storage = storage;
+  }
+  load() {
+    if (!this.storage) {
+      return null;
+    }
+    try {
+      const raw = this.storage.getItem(this.storageKey);
+      if (!raw) {
+        return null;
+      }
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  save(state) {
+    if (!this.storage) {
+      return;
+    }
+    try {
+      this.storage.setItem(this.storageKey, JSON.stringify(state));
+    } catch {
+    }
+  }
+  clear() {
+    if (!this.storage) {
+      return;
+    }
+    try {
+      this.storage.removeItem(this.storageKey);
+    } catch {
+    }
+  }
+};
+__name(_LocalStorageMetricsStorage, "LocalStorageMetricsStorage");
+let LocalStorageMetricsStorage = _LocalStorageMetricsStorage;
+function getStorage() {
+  try {
+    if (typeof globalThis !== "undefined" && "localStorage" in globalThis) {
+      return globalThis.localStorage;
+    }
+  } catch {
+  }
+  return null;
+}
+__name(getStorage, "getStorage");
 function generateTraceId() {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 10);
@@ -2540,6 +2739,14 @@ const _TraceContext = class _TraceContext {
 __name(_TraceContext, "TraceContext");
 _TraceContext.dependencies = [];
 let TraceContext = _TraceContext;
+const _DITraceContext = class _DITraceContext extends TraceContext {
+  constructor() {
+    super();
+  }
+};
+__name(_DITraceContext, "DITraceContext");
+_DITraceContext.dependencies = [];
+let DITraceContext = _DITraceContext;
 const _ModuleHealthService = class _ModuleHealthService {
   constructor(registry) {
     this.registry = registry;
@@ -2593,8 +2800,15 @@ const _ModuleHealthService = class _ModuleHealthService {
   }
 };
 __name(_ModuleHealthService, "ModuleHealthService");
-_ModuleHealthService.dependencies = [healthCheckRegistryToken];
 let ModuleHealthService = _ModuleHealthService;
+const _DIModuleHealthService = class _DIModuleHealthService extends ModuleHealthService {
+  constructor(registry) {
+    super(registry);
+  }
+};
+__name(_DIModuleHealthService, "DIModuleHealthService");
+_DIModuleHealthService.dependencies = [healthCheckRegistryToken];
+let DIModuleHealthService = _DIModuleHealthService;
 const deprecationMetadata = /* @__PURE__ */ new Map();
 function markAsDeprecated(token, reason, replacement, removedInVersion) {
   const apiSafeToken = markAsApiSafe(token);
@@ -2661,6 +2875,20 @@ function createPublicI18n(i18n) {
   return createReadOnlyWrapper(i18n, ["translate", "format", "has"]);
 }
 __name(createPublicI18n, "createPublicI18n");
+function createPublicNotificationCenter(notificationCenter) {
+  return createReadOnlyWrapper(notificationCenter, [
+    "debug",
+    "info",
+    "warn",
+    "error",
+    "getChannelNames"
+  ]);
+}
+__name(createPublicNotificationCenter, "createPublicNotificationCenter");
+function createPublicFoundrySettings(foundrySettings) {
+  return createReadOnlyWrapper(foundrySettings, ["get"]);
+}
+__name(createPublicFoundrySettings, "createPublicFoundrySettings");
 function createApiTokens() {
   return {
     notificationCenterToken: markAsApiSafe(notificationCenterToken),
@@ -2709,17 +2937,11 @@ Reason: ${deprecationInfo.reason}
    * @returns Resolve function for ModuleApi
    * @private
    */
-  createResolveFunction(container) {
-    const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
+  createResolveFunction(container, wellKnownTokens) {
     return (token) => {
       this.handleDeprecationWarning(token);
       const service = container.resolve(token);
-      if (token === apiSafeI18nToken) {
-        const i18n = service;
-        const wrappedI18n = createPublicI18n(i18n);
-        return wrappedI18n;
-      }
-      return service;
+      return this.wrapSensitiveService(token, service, wellKnownTokens);
     };
   }
   /**
@@ -2730,8 +2952,7 @@ Reason: ${deprecationInfo.reason}
    * @returns ResolveWithError function for ModuleApi
    * @private
    */
-  createResolveWithErrorFunction(container) {
-    const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
+  createResolveWithErrorFunction(container, wellKnownTokens) {
     return (token) => {
       this.handleDeprecationWarning(token);
       const result = container.resolveWithError(token);
@@ -2739,13 +2960,33 @@ Reason: ${deprecationInfo.reason}
         return result;
       }
       const service = result.value;
-      if (token === apiSafeI18nToken) {
-        const i18n = service;
-        const wrappedI18n = createPublicI18n(i18n);
-        return ok(wrappedI18n);
-      }
-      return ok(service);
+      const wrappedService = this.wrapSensitiveService(token, service, wellKnownTokens);
+      return ok(wrappedService);
     };
+  }
+  /**
+   * Applies read-only wrappers when API consumers resolve sensitive services.
+   *
+   * @param token - API token used for resolution
+   * @param service - Service resolved from the container
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Wrapped service when applicable
+   * @private
+   */
+  wrapSensitiveService(token, service, wellKnownTokens) {
+    if (token === wellKnownTokens.i18nFacadeToken) {
+      const i18n = service;
+      return createPublicI18n(i18n);
+    }
+    if (token === wellKnownTokens.notificationCenterToken) {
+      const notifications = service;
+      return createPublicNotificationCenter(notifications);
+    }
+    if (token === wellKnownTokens.foundrySettingsToken) {
+      const settings = service;
+      return createPublicFoundrySettings(settings);
+    }
+    return service;
   }
   /**
    * Creates the complete ModuleApi object with all methods.
@@ -2759,9 +3000,9 @@ Reason: ${deprecationInfo.reason}
     return {
       version: MODULE_CONSTANTS.API.VERSION,
       // Overloaded resolve method (throws on error)
-      resolve: this.createResolveFunction(container),
+      resolve: this.createResolveFunction(container, wellKnownTokens),
       // Result-Pattern method (safe, never throws)
-      resolveWithError: this.createResolveWithErrorFunction(container),
+      resolveWithError: this.createResolveWithErrorFunction(container, wellKnownTokens),
       getAvailableTokens: /* @__PURE__ */ __name(() => {
         const tokenMap = /* @__PURE__ */ new Map();
         const tokenEntries = [
@@ -2840,6 +3081,14 @@ Reason: ${deprecationInfo.reason}
 __name(_ModuleApiInitializer, "ModuleApiInitializer");
 _ModuleApiInitializer.dependencies = [];
 let ModuleApiInitializer = _ModuleApiInitializer;
+const _DIModuleApiInitializer = class _DIModuleApiInitializer extends ModuleApiInitializer {
+  constructor() {
+    super();
+  }
+};
+__name(_DIModuleApiInitializer, "DIModuleApiInitializer");
+_DIModuleApiInitializer.dependencies = [];
+let DIModuleApiInitializer = _DIModuleApiInitializer;
 const _HealthCheckRegistry = class _HealthCheckRegistry {
   constructor() {
     this.checks = /* @__PURE__ */ new Map();
@@ -2873,20 +3122,49 @@ const _HealthCheckRegistry = class _HealthCheckRegistry {
 __name(_HealthCheckRegistry, "HealthCheckRegistry");
 _HealthCheckRegistry.dependencies = [];
 let HealthCheckRegistry = _HealthCheckRegistry;
+const _DIHealthCheckRegistry = class _DIHealthCheckRegistry extends HealthCheckRegistry {
+  constructor() {
+    super();
+  }
+};
+__name(_DIHealthCheckRegistry, "DIHealthCheckRegistry");
+_DIHealthCheckRegistry.dependencies = [];
+let DIHealthCheckRegistry = _DIHealthCheckRegistry;
 function registerCoreServices(container) {
-  const metricsResult = container.registerClass(
-    metricsCollectorToken,
-    MetricsCollector,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(metricsResult)) {
-    return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
+  const envResult = container.resolveWithError(environmentConfigToken);
+  const env = envResult.ok ? envResult.value : null;
+  const enablePersistence = env?.enableMetricsPersistence === true;
+  if (enablePersistence) {
+    const storageInstance = new LocalStorageMetricsStorage(env.metricsPersistenceKey);
+    const storageResult = container.registerValue(metricsStorageToken, storageInstance);
+    if (isErr(storageResult)) {
+      return err(`Failed to register MetricsStorage: ${storageResult.error.message}`);
+    }
+    const persistentResult = container.registerClass(
+      metricsCollectorToken,
+      DIPersistentMetricsCollector,
+      ServiceLifecycle.SINGLETON
+    );
+    if (isErr(persistentResult)) {
+      return err(
+        `Failed to register PersistentMetricsCollector: ${persistentResult.error.message}`
+      );
+    }
+  } else {
+    const metricsResult = container.registerClass(
+      metricsCollectorToken,
+      DIMetricsCollector,
+      ServiceLifecycle.SINGLETON
+    );
+    if (isErr(metricsResult)) {
+      return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
+    }
   }
   container.registerAlias(metricsRecorderToken, metricsCollectorToken);
   container.registerAlias(metricsSamplerToken, metricsCollectorToken);
   const traceContextResult = container.registerClass(
     traceContextToken,
-    TraceContext,
+    DITraceContext,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(traceContextResult)) {
@@ -2902,7 +3180,7 @@ function registerCoreServices(container) {
   }
   const registryResult = container.registerClass(
     healthCheckRegistryToken,
-    HealthCheckRegistry,
+    DIHealthCheckRegistry,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(registryResult)) {
@@ -2910,7 +3188,7 @@ function registerCoreServices(container) {
   }
   const healthResult = container.registerClass(
     moduleHealthServiceToken,
-    ModuleHealthService,
+    DIModuleHealthService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(healthResult)) {
@@ -2918,7 +3196,7 @@ function registerCoreServices(container) {
   }
   const apiInitResult = container.registerClass(
     moduleApiInitializerToken,
-    ModuleApiInitializer,
+    DIModuleApiInitializer,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(apiInitResult)) {
@@ -2998,8 +3276,15 @@ const _ObservabilityRegistry = class _ObservabilityRegistry {
   // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
 };
 __name(_ObservabilityRegistry, "ObservabilityRegistry");
-_ObservabilityRegistry.dependencies = [loggerToken, metricsRecorderToken];
 let ObservabilityRegistry = _ObservabilityRegistry;
+const _DIObservabilityRegistry = class _DIObservabilityRegistry extends ObservabilityRegistry {
+  constructor(logger, metrics) {
+    super(logger, metrics);
+  }
+};
+__name(_DIObservabilityRegistry, "DIObservabilityRegistry");
+_DIObservabilityRegistry.dependencies = [loggerToken, metricsRecorderToken];
+let DIObservabilityRegistry = _DIObservabilityRegistry;
 function registerObservability(container) {
   const emitterResult = container.registerClass(
     portSelectionEventEmitterToken,
@@ -3011,7 +3296,7 @@ function registerObservability(container) {
   }
   const registryResult = container.registerClass(
     observabilityRegistryToken,
-    ObservabilityRegistry,
+    DIObservabilityRegistry,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(registryResult)) {
@@ -3192,8 +3477,15 @@ const _PortSelector = class _PortSelector {
   }
 };
 __name(_PortSelector, "PortSelector");
-_PortSelector.dependencies = [portSelectionEventEmitterToken, observabilityRegistryToken];
 let PortSelector = _PortSelector;
+const _DIPortSelector = class _DIPortSelector extends PortSelector {
+  constructor(eventEmitter, observability) {
+    super(eventEmitter, observability);
+  }
+};
+__name(_DIPortSelector, "DIPortSelector");
+_DIPortSelector.dependencies = [portSelectionEventEmitterToken, observabilityRegistryToken];
+let DIPortSelector = _DIPortSelector;
 const _PortRegistry = class _PortRegistry {
   constructor() {
     this.factories = /* @__PURE__ */ new Map();
@@ -10922,7 +11214,7 @@ __name(createPortRegistries, "createPortRegistries");
 function registerPortInfrastructure(container) {
   const portSelectorResult = container.registerClass(
     portSelectorToken,
-    PortSelector,
+    DIPortSelector,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(portSelectorResult)) {
@@ -11131,12 +11423,19 @@ const _FoundryGameService = class _FoundryGameService extends FoundryServiceBase
   }
 };
 __name(_FoundryGameService, "FoundryGameService");
-_FoundryGameService.dependencies = [
+let FoundryGameService = _FoundryGameService;
+const _DIFoundryGameService = class _DIFoundryGameService extends FoundryGameService {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+};
+__name(_DIFoundryGameService, "DIFoundryGameService");
+_DIFoundryGameService.dependencies = [
   portSelectorToken,
   foundryGamePortRegistryToken,
   retryServiceToken
 ];
-let FoundryGameService = _FoundryGameService;
+let DIFoundryGameService = _DIFoundryGameService;
 const _FoundryHooksService = class _FoundryHooksService extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService, logger) {
     super(portSelector, portRegistry, retryService);
@@ -11243,13 +11542,20 @@ const _FoundryHooksService = class _FoundryHooksService extends FoundryServiceBa
   }
 };
 __name(_FoundryHooksService, "FoundryHooksService");
-_FoundryHooksService.dependencies = [
+let FoundryHooksService = _FoundryHooksService;
+const _DIFoundryHooksService = class _DIFoundryHooksService extends FoundryHooksService {
+  constructor(portSelector, portRegistry, retryService, logger) {
+    super(portSelector, portRegistry, retryService, logger);
+  }
+};
+__name(_DIFoundryHooksService, "DIFoundryHooksService");
+_DIFoundryHooksService.dependencies = [
   portSelectorToken,
   foundryHooksPortRegistryToken,
   retryServiceToken,
   loggerToken
 ];
-let FoundryHooksService = _FoundryHooksService;
+let DIFoundryHooksService = _DIFoundryHooksService;
 const _FoundryDocumentService = class _FoundryDocumentService extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
@@ -11270,12 +11576,19 @@ const _FoundryDocumentService = class _FoundryDocumentService extends FoundrySer
   }
 };
 __name(_FoundryDocumentService, "FoundryDocumentService");
-_FoundryDocumentService.dependencies = [
+let FoundryDocumentService = _FoundryDocumentService;
+const _DIFoundryDocumentService = class _DIFoundryDocumentService extends FoundryDocumentService {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+};
+__name(_DIFoundryDocumentService, "DIFoundryDocumentService");
+_DIFoundryDocumentService.dependencies = [
   portSelectorToken,
   foundryDocumentPortRegistryToken,
   retryServiceToken
 ];
-let FoundryDocumentService = _FoundryDocumentService;
+let DIFoundryDocumentService = _DIFoundryDocumentService;
 const _FoundryUIService = class _FoundryUIService extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
@@ -11303,8 +11616,15 @@ const _FoundryUIService = class _FoundryUIService extends FoundryServiceBase {
   }
 };
 __name(_FoundryUIService, "FoundryUIService");
-_FoundryUIService.dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken];
 let FoundryUIService = _FoundryUIService;
+const _DIFoundryUIService = class _DIFoundryUIService extends FoundryUIService {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+};
+__name(_DIFoundryUIService, "DIFoundryUIService");
+_DIFoundryUIService.dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken];
+let DIFoundryUIService = _DIFoundryUIService;
 const _FoundrySettingsService = class _FoundrySettingsService extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
@@ -11332,12 +11652,19 @@ const _FoundrySettingsService = class _FoundrySettingsService extends FoundrySer
   }
 };
 __name(_FoundrySettingsService, "FoundrySettingsService");
-_FoundrySettingsService.dependencies = [
+let FoundrySettingsService = _FoundrySettingsService;
+const _DIFoundrySettingsService = class _DIFoundrySettingsService extends FoundrySettingsService {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+};
+__name(_DIFoundrySettingsService, "DIFoundrySettingsService");
+_DIFoundrySettingsService.dependencies = [
   portSelectorToken,
   foundrySettingsPortRegistryToken,
   retryServiceToken
 ];
-let FoundrySettingsService = _FoundrySettingsService;
+let DIFoundrySettingsService = _DIFoundrySettingsService;
 const _FoundryJournalFacade = class _FoundryJournalFacade {
   constructor(game2, document2, ui2) {
     this.game = game2;
@@ -11385,8 +11712,15 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
   }
 };
 __name(_FoundryJournalFacade, "FoundryJournalFacade");
-_FoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
 let FoundryJournalFacade = _FoundryJournalFacade;
+const _DIFoundryJournalFacade = class _DIFoundryJournalFacade extends FoundryJournalFacade {
+  constructor(game2, document2, ui2) {
+    super(game2, document2, ui2);
+  }
+};
+__name(_DIFoundryJournalFacade, "DIFoundryJournalFacade");
+_DIFoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
+let DIFoundryJournalFacade = _DIFoundryJournalFacade;
 const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
   LogLevel.DEBUG,
   LogLevel.INFO,
@@ -11478,12 +11812,19 @@ const _JournalVisibilityService = class _JournalVisibilityService {
   }
 };
 __name(_JournalVisibilityService, "JournalVisibilityService");
-_JournalVisibilityService.dependencies = [foundryJournalFacadeToken, loggerToken, notificationCenterToken];
 let JournalVisibilityService = _JournalVisibilityService;
+const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
+  constructor(facade, logger, notificationCenter) {
+    super(facade, logger, notificationCenter);
+  }
+};
+__name(_DIJournalVisibilityService, "DIJournalVisibilityService");
+_DIJournalVisibilityService.dependencies = [foundryJournalFacadeToken, loggerToken, notificationCenterToken];
+let DIJournalVisibilityService = _DIJournalVisibilityService;
 function registerFoundryServices(container) {
   const gameServiceResult = container.registerClass(
     foundryGameToken,
-    FoundryGameService,
+    DIFoundryGameService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(gameServiceResult)) {
@@ -11491,7 +11832,7 @@ function registerFoundryServices(container) {
   }
   const hooksServiceResult = container.registerClass(
     foundryHooksToken,
-    FoundryHooksService,
+    DIFoundryHooksService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(hooksServiceResult)) {
@@ -11499,7 +11840,7 @@ function registerFoundryServices(container) {
   }
   const documentServiceResult = container.registerClass(
     foundryDocumentToken,
-    FoundryDocumentService,
+    DIFoundryDocumentService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(documentServiceResult)) {
@@ -11509,7 +11850,7 @@ function registerFoundryServices(container) {
   }
   const uiServiceResult = container.registerClass(
     foundryUIToken,
-    FoundryUIService,
+    DIFoundryUIService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(uiServiceResult)) {
@@ -11517,7 +11858,7 @@ function registerFoundryServices(container) {
   }
   const settingsServiceResult = container.registerClass(
     foundrySettingsToken,
-    FoundrySettingsService,
+    DIFoundrySettingsService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(settingsServiceResult)) {
@@ -11527,7 +11868,7 @@ function registerFoundryServices(container) {
   }
   const journalFacadeResult = container.registerClass(
     foundryJournalFacadeToken,
-    FoundryJournalFacade,
+    DIFoundryJournalFacade,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(journalFacadeResult)) {
@@ -11535,7 +11876,7 @@ function registerFoundryServices(container) {
   }
   const journalVisibilityResult = container.registerClass(
     journalVisibilityServiceToken,
-    JournalVisibilityService,
+    DIJournalVisibilityService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(journalVisibilityResult)) {
@@ -11552,8 +11893,15 @@ const _PerformanceTrackingService = class _PerformanceTrackingService extends Pe
   }
 };
 __name(_PerformanceTrackingService, "PerformanceTrackingService");
-_PerformanceTrackingService.dependencies = [environmentConfigToken, metricsSamplerToken];
 let PerformanceTrackingService = _PerformanceTrackingService;
+const _DIPerformanceTrackingService = class _DIPerformanceTrackingService extends PerformanceTrackingService {
+  constructor(env, sampler) {
+    super(env, sampler);
+  }
+};
+__name(_DIPerformanceTrackingService, "DIPerformanceTrackingService");
+_DIPerformanceTrackingService.dependencies = [environmentConfigToken, metricsSamplerToken];
+let DIPerformanceTrackingService = _DIPerformanceTrackingService;
 const _RetryService = class _RetryService {
   constructor(logger, metricsCollector) {
     this.logger = logger;
@@ -11718,12 +12066,19 @@ const _RetryService = class _RetryService {
   }
 };
 __name(_RetryService, "RetryService");
-_RetryService.dependencies = [loggerToken, metricsCollectorToken];
 let RetryService = _RetryService;
+const _DIRetryService = class _DIRetryService extends RetryService {
+  constructor(logger, metricsCollector) {
+    super(logger, metricsCollector);
+  }
+};
+__name(_DIRetryService, "DIRetryService");
+_DIRetryService.dependencies = [loggerToken, metricsCollectorToken];
+let DIRetryService = _DIRetryService;
 function registerUtilityServices(container) {
   const perfTrackingResult = container.registerClass(
     performanceTrackingServiceToken,
-    PerformanceTrackingService,
+    DIPerformanceTrackingService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(perfTrackingResult)) {
@@ -11733,7 +12088,7 @@ function registerUtilityServices(container) {
   }
   const retryServiceResult = container.registerClass(
     retryServiceToken,
-    RetryService,
+    DIRetryService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(retryServiceResult)) {
@@ -11769,12 +12124,19 @@ const _FoundryI18nService = class _FoundryI18nService extends FoundryServiceBase
   }
 };
 __name(_FoundryI18nService, "FoundryI18nService");
-_FoundryI18nService.dependencies = [
+let FoundryI18nService = _FoundryI18nService;
+const _DIFoundryI18nService = class _DIFoundryI18nService extends FoundryI18nService {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+};
+__name(_DIFoundryI18nService, "DIFoundryI18nService");
+_DIFoundryI18nService.dependencies = [
   portSelectorToken,
   foundryI18nPortRegistryToken,
   retryServiceToken
 ];
-let FoundryI18nService = _FoundryI18nService;
+let DIFoundryI18nService = _DIFoundryI18nService;
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -11890,6 +12252,14 @@ const _LocalI18nService = class _LocalI18nService {
 __name(_LocalI18nService, "LocalI18nService");
 _LocalI18nService.dependencies = [];
 let LocalI18nService = _LocalI18nService;
+const _DILocalI18nService = class _DILocalI18nService extends LocalI18nService {
+  constructor() {
+    super();
+  }
+};
+__name(_DILocalI18nService, "DILocalI18nService");
+_DILocalI18nService.dependencies = [];
+let DILocalI18nService = _DILocalI18nService;
 const _I18nFacadeService = class _I18nFacadeService {
   constructor(handlerChain, localI18n) {
     this.handlerChain = handlerChain;
@@ -11962,8 +12332,15 @@ const _I18nFacadeService = class _I18nFacadeService {
   }
 };
 __name(_I18nFacadeService, "I18nFacadeService");
-_I18nFacadeService.dependencies = [translationHandlerChainToken, localI18nToken];
 let I18nFacadeService = _I18nFacadeService;
+const _DII18nFacadeService = class _DII18nFacadeService extends I18nFacadeService {
+  constructor(handlerChain, localI18n) {
+    super(handlerChain, localI18n);
+  }
+};
+__name(_DII18nFacadeService, "DII18nFacadeService");
+_DII18nFacadeService.dependencies = [translationHandlerChainToken, localI18nToken];
+let DII18nFacadeService = _DII18nFacadeService;
 const _AbstractTranslationHandler = class _AbstractTranslationHandler {
   constructor() {
     this.nextHandler = null;
@@ -12012,8 +12389,15 @@ const _FoundryTranslationHandler = class _FoundryTranslationHandler extends Abst
   }
 };
 __name(_FoundryTranslationHandler, "FoundryTranslationHandler");
-_FoundryTranslationHandler.dependencies = [foundryI18nToken];
 let FoundryTranslationHandler = _FoundryTranslationHandler;
+const _DIFoundryTranslationHandler = class _DIFoundryTranslationHandler extends FoundryTranslationHandler {
+  constructor(foundryI18n) {
+    super(foundryI18n);
+  }
+};
+__name(_DIFoundryTranslationHandler, "DIFoundryTranslationHandler");
+_DIFoundryTranslationHandler.dependencies = [foundryI18nToken];
+let DIFoundryTranslationHandler = _DIFoundryTranslationHandler;
 const _LocalTranslationHandler = class _LocalTranslationHandler extends AbstractTranslationHandler {
   constructor(localI18n) {
     super();
@@ -12032,8 +12416,15 @@ const _LocalTranslationHandler = class _LocalTranslationHandler extends Abstract
   }
 };
 __name(_LocalTranslationHandler, "LocalTranslationHandler");
-_LocalTranslationHandler.dependencies = [localI18nToken];
 let LocalTranslationHandler = _LocalTranslationHandler;
+const _DILocalTranslationHandler = class _DILocalTranslationHandler extends LocalTranslationHandler {
+  constructor(localI18n) {
+    super(localI18n);
+  }
+};
+__name(_DILocalTranslationHandler, "DILocalTranslationHandler");
+_DILocalTranslationHandler.dependencies = [localI18nToken];
+let DILocalTranslationHandler = _DILocalTranslationHandler;
 const _FallbackTranslationHandler = class _FallbackTranslationHandler extends AbstractTranslationHandler {
   doHandle(key, _data, fallback2) {
     return fallback2 ?? key;
@@ -12045,6 +12436,14 @@ const _FallbackTranslationHandler = class _FallbackTranslationHandler extends Ab
 __name(_FallbackTranslationHandler, "FallbackTranslationHandler");
 _FallbackTranslationHandler.dependencies = [];
 let FallbackTranslationHandler = _FallbackTranslationHandler;
+const _DIFallbackTranslationHandler = class _DIFallbackTranslationHandler extends FallbackTranslationHandler {
+  constructor() {
+    super();
+  }
+};
+__name(_DIFallbackTranslationHandler, "DIFallbackTranslationHandler");
+_DIFallbackTranslationHandler.dependencies = [];
+let DIFallbackTranslationHandler = _DIFallbackTranslationHandler;
 const _TranslationHandlerChain = class _TranslationHandlerChain {
   constructor(foundryHandler, localHandler, fallbackHandler) {
     this.head = foundryHandler;
@@ -12077,7 +12476,7 @@ let DITranslationHandlerChain = _DITranslationHandlerChain;
 function registerI18nServices(container) {
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
-    FoundryI18nService,
+    DIFoundryI18nService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(foundryI18nResult)) {
@@ -12085,7 +12484,7 @@ function registerI18nServices(container) {
   }
   const localI18nResult = container.registerClass(
     localI18nToken,
-    LocalI18nService,
+    DILocalI18nService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(localI18nResult)) {
@@ -12093,7 +12492,7 @@ function registerI18nServices(container) {
   }
   const foundryHandlerResult = container.registerClass(
     foundryTranslationHandlerToken,
-    FoundryTranslationHandler,
+    DIFoundryTranslationHandler,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(foundryHandlerResult)) {
@@ -12103,7 +12502,7 @@ function registerI18nServices(container) {
   }
   const localHandlerResult = container.registerClass(
     localTranslationHandlerToken,
-    LocalTranslationHandler,
+    DILocalTranslationHandler,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(localHandlerResult)) {
@@ -12111,7 +12510,7 @@ function registerI18nServices(container) {
   }
   const fallbackHandlerResult = container.registerClass(
     fallbackTranslationHandlerToken,
-    FallbackTranslationHandler,
+    DIFallbackTranslationHandler,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(fallbackHandlerResult)) {
@@ -12129,7 +12528,7 @@ function registerI18nServices(container) {
   }
   const facadeResult = container.registerClass(
     i18nFacadeToken,
-    I18nFacadeService,
+    DII18nFacadeService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(facadeResult)) {
@@ -12251,8 +12650,15 @@ const _ConsoleChannel = class _ConsoleChannel {
   }
 };
 __name(_ConsoleChannel, "ConsoleChannel");
-_ConsoleChannel.dependencies = [loggerToken];
 let ConsoleChannel = _ConsoleChannel;
+const _DIConsoleChannel = class _DIConsoleChannel extends ConsoleChannel {
+  constructor(logger) {
+    super(logger);
+  }
+};
+__name(_DIConsoleChannel, "DIConsoleChannel");
+_DIConsoleChannel.dependencies = [loggerToken];
+let DIConsoleChannel = _DIConsoleChannel;
 const _UIChannel = class _UIChannel {
   constructor(foundryUI, env) {
     this.foundryUI = foundryUI;
@@ -12311,12 +12717,19 @@ const _UIChannel = class _UIChannel {
   }
 };
 __name(_UIChannel, "UIChannel");
-_UIChannel.dependencies = [foundryUIToken, environmentConfigToken];
 let UIChannel = _UIChannel;
+const _DIUIChannel = class _DIUIChannel extends UIChannel {
+  constructor(foundryUI, env) {
+    super(foundryUI, env);
+  }
+};
+__name(_DIUIChannel, "DIUIChannel");
+_DIUIChannel.dependencies = [foundryUIToken, environmentConfigToken];
+let DIUIChannel = _DIUIChannel;
 function registerNotifications(container) {
   const consoleChannelResult = container.registerClass(
     consoleChannelToken,
-    ConsoleChannel,
+    DIConsoleChannel,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(consoleChannelResult)) {
@@ -12324,7 +12737,7 @@ function registerNotifications(container) {
   }
   const uiChannelResult = container.registerClass(
     uiChannelToken,
-    UIChannel,
+    DIUIChannel,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(uiChannelResult)) {
@@ -12435,6 +12848,14 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
 __name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
 _ModuleSettingsRegistrar.dependencies = [];
 let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
+const _DIModuleSettingsRegistrar = class _DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
+  constructor() {
+    super();
+  }
+};
+__name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
+_DIModuleSettingsRegistrar.dependencies = [];
+let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
 const _ModuleHookRegistrar = class _ModuleHookRegistrar {
   constructor(renderJournalHook, logger, notificationCenter) {
     this.logger = logger;
@@ -12475,12 +12896,19 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
   /* c8 ignore stop */
 };
 __name(_ModuleHookRegistrar, "ModuleHookRegistrar");
-_ModuleHookRegistrar.dependencies = [
+let ModuleHookRegistrar = _ModuleHookRegistrar;
+const _DIModuleHookRegistrar = class _DIModuleHookRegistrar extends ModuleHookRegistrar {
+  constructor(renderJournalHook, logger, notificationCenter) {
+    super(renderJournalHook, logger, notificationCenter);
+  }
+};
+__name(_DIModuleHookRegistrar, "DIModuleHookRegistrar");
+_DIModuleHookRegistrar.dependencies = [
   renderJournalDirectoryHookToken,
   loggerToken,
   notificationCenterToken
 ];
-let ModuleHookRegistrar = _ModuleHookRegistrar;
+let DIModuleHookRegistrar = _DIModuleHookRegistrar;
 function throttle(fn, windowMs) {
   let isThrottled = false;
   return /* @__PURE__ */ __name(function throttled(...args2) {
@@ -12593,10 +13021,18 @@ const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
 };
 __name(_RenderJournalDirectoryHook, "RenderJournalDirectoryHook");
 let RenderJournalDirectoryHook = _RenderJournalDirectoryHook;
+const _DIRenderJournalDirectoryHook = class _DIRenderJournalDirectoryHook extends RenderJournalDirectoryHook {
+  constructor() {
+    super();
+  }
+};
+__name(_DIRenderJournalDirectoryHook, "DIRenderJournalDirectoryHook");
+_DIRenderJournalDirectoryHook.dependencies = [];
+let DIRenderJournalDirectoryHook = _DIRenderJournalDirectoryHook;
 function registerRegistrars(container) {
   const renderJournalHookResult = container.registerClass(
     renderJournalDirectoryHookToken,
-    RenderJournalDirectoryHook,
+    DIRenderJournalDirectoryHook,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(renderJournalHookResult)) {
@@ -12606,7 +13042,7 @@ function registerRegistrars(container) {
   }
   const hookRegistrarResult = container.registerClass(
     moduleHookRegistrarToken,
-    ModuleHookRegistrar,
+    DIModuleHookRegistrar,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(hookRegistrarResult)) {
@@ -12614,7 +13050,7 @@ function registerRegistrars(container) {
   }
   const settingsRegistrarResult = container.registerClass(
     moduleSettingsRegistrarToken,
-    ModuleSettingsRegistrar,
+    DIModuleSettingsRegistrar,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(settingsRegistrarResult)) {
@@ -12633,6 +13069,8 @@ function registerFallbacks(container) {
       isProduction: false,
       enablePerformanceTracking: false,
       enableDebugMode: true,
+      enableMetricsPersistence: false,
+      metricsPersistenceKey: "fallback.metrics",
       performanceSamplingRate: 1
     };
     return new ConsoleLoggerService(fallbackConfig);

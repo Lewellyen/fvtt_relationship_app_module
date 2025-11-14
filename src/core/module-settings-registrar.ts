@@ -77,3 +77,11 @@ export class ModuleSettingsRegistrar {
     }
   }
 }
+
+export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
+  static override dependencies = [] as const;
+
+  constructor() {
+    super();
+  }
+}

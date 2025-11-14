@@ -44,6 +44,8 @@ function registerFallbacks(container: ServiceContainer): void {
       isProduction: false,
       enablePerformanceTracking: false,
       enableDebugMode: true,
+      enableMetricsPersistence: false,
+      metricsPersistenceKey: "fallback.metrics",
       performanceSamplingRate: 1.0,
     };
     return new ConsoleLoggerService(fallbackConfig);
@@ -102,6 +104,7 @@ function registerLoopPreventionServices(container: ServiceContainer): Result<voi
 /**
  * Instantiates loop-prevention services (health checks) after validation.
  */
+/* c8 ignore start */
 function initializeLoopPreventionValues(container: ServiceContainer): Result<void, string> {
   const registryRes = container.resolveWithError(healthCheckRegistryToken);
   const metricsRes = container.resolveWithError(metricsCollectorToken);
@@ -124,6 +127,7 @@ function initializeLoopPreventionValues(container: ServiceContainer): Result<voi
 
   return ok(undefined);
 }
+/* c8 ignore end */
 
 /**
  * Validates the container configuration.

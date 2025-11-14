@@ -28,8 +28,6 @@ export type PortFactory<T> = () => T;
  * - Conforms to DI architecture: EventEmitter as TRANSIENT service
  */
 export class PortSelector {
-  static dependencies = [portSelectionEventEmitterToken, observabilityRegistryToken] as const;
-
   constructor(
     private readonly eventEmitter: PortSelectionEventEmitter,
     observability: ObservabilityRegistry
@@ -214,5 +212,13 @@ export class PortSelector {
 
       return err(foundryError);
     }
+  }
+}
+
+export class DIPortSelector extends PortSelector {
+  static dependencies = [portSelectionEventEmitterToken, observabilityRegistryToken] as const;
+
+  constructor(eventEmitter: PortSelectionEventEmitter, observability: ObservabilityRegistry) {
+    super(eventEmitter, observability);
   }
 }

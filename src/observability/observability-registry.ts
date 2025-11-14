@@ -29,8 +29,6 @@ export interface ObservableService<TEvent = unknown> {
  * ```
  */
 export class ObservabilityRegistry {
-  static dependencies = [loggerToken, metricsRecorderToken] as const;
-
   constructor(
     private readonly logger: Logger,
     private readonly metrics: MetricsRecorder
@@ -67,4 +65,12 @@ export class ObservabilityRegistry {
 
   // Future: Add more registration methods for other observable services
   // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
+}
+
+export class DIObservabilityRegistry extends ObservabilityRegistry {
+  static dependencies = [loggerToken, metricsRecorderToken] as const;
+
+  constructor(logger: Logger, metrics: MetricsRecorder) {
+    super(logger, metrics);
+  }
 }

@@ -3,7 +3,10 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { RenderJournalDirectoryHook } from "../render-journal-directory-hook";
+import {
+  RenderJournalDirectoryHook,
+  DIRenderJournalDirectoryHook,
+} from "../render-journal-directory-hook";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
 
@@ -51,6 +54,15 @@ describe("RenderJournalDirectoryHook", () => {
 
       // Dispose should not throw
       expect(() => hook.dispose()).not.toThrow();
+    });
+  });
+
+  describe("Dependencies", () => {
+    it("should expose empty dependency arrays", () => {
+      expect(
+        (RenderJournalDirectoryHook as unknown as { dependencies?: unknown }).dependencies
+      ).toBeUndefined();
+      expect(DIRenderJournalDirectoryHook.dependencies).toEqual([]);
     });
   });
 });

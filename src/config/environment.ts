@@ -29,6 +29,12 @@ export interface EnvironmentConfig {
   /** Enable debug mode features (verbose logging, performance marks, etc.) */
   enableDebugMode: boolean;
 
+  /** Enable persistence of metrics between sessions */
+  enableMetricsPersistence: boolean;
+
+  /** Storage key for persisted metrics */
+  metricsPersistenceKey: string;
+
   /**
    * Performance sampling rate for production environments (0.0 to 1.0).
    * 0.01 = 1% sampling, 1.0 = 100% sampling.
@@ -63,6 +69,9 @@ export const ENV: EnvironmentConfig = {
   logLevel: import.meta.env.MODE === "development" ? LogLevel.DEBUG : LogLevel.INFO,
   enablePerformanceTracking: import.meta.env.VITE_ENABLE_PERF_TRACKING === "true",
   enableDebugMode: import.meta.env.MODE === "development",
+  enableMetricsPersistence: import.meta.env.VITE_ENABLE_METRICS_PERSISTENCE === "true", // type-coverage:ignore-line -- Build-time env var
+  metricsPersistenceKey:
+    import.meta.env.VITE_METRICS_PERSISTENCE_KEY ?? "fvtt_relationship_app_module.metrics", // type-coverage:ignore-line -- Build-time env var
   // 1% sampling in production, 100% in development
   performanceSamplingRate:
     import.meta.env.MODE === "production"

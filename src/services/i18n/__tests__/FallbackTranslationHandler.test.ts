@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { FallbackTranslationHandler } from "../FallbackTranslationHandler";
+import {
+  FallbackTranslationHandler,
+  DIFallbackTranslationHandler,
+} from "../FallbackTranslationHandler";
 
 describe("FallbackTranslationHandler", () => {
   let handler: FallbackTranslationHandler;
@@ -62,6 +65,13 @@ describe("FallbackTranslationHandler", () => {
       const result = handler.handle("UNKNOWN.KEY");
 
       expect(result).toBe("UNKNOWN.KEY");
+    });
+  });
+
+  describe("Dependencies", () => {
+    it("should expose empty dependency arrays", () => {
+      expect(FallbackTranslationHandler.dependencies).toEqual([]);
+      expect(DIFallbackTranslationHandler.dependencies).toEqual([]);
     });
   });
 });

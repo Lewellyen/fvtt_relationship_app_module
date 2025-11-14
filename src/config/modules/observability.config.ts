@@ -4,7 +4,7 @@ import { ok, err, isErr } from "@/utils/functional/result";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import { portSelectionEventEmitterToken, observabilityRegistryToken } from "@/tokens/tokenindex";
 import { DIPortSelectionEventEmitter } from "@/foundry/versioning/port-selection-events";
-import { ObservabilityRegistry } from "@/observability/observability-registry";
+import { DIObservabilityRegistry } from "@/observability/observability-registry";
 
 /**
  * Registers observability infrastructure.
@@ -44,7 +44,7 @@ export function registerObservability(container: ServiceContainer): Result<void,
   // Central registry for all observable services
   const registryResult = container.registerClass(
     observabilityRegistryToken,
-    ObservabilityRegistry,
+    DIObservabilityRegistry,
     ServiceLifecycle.SINGLETON
   );
 

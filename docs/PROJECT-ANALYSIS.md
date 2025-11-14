@@ -1,7 +1,7 @@
 # Projektanalyse: FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-12 (v0.15.0)  
+**Aktualisiert:** 2025-11-13 (v0.19.1)  
 **Zweck:** Grundlage für Refactoring-Planungen  
 **Model:** Claude Sonnet 4.5
 
@@ -24,10 +24,10 @@
 
 Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection**, **Port-Adapter-Pattern** für Foundry VTT-Versionskompatiblität und **Result-Pattern** für fehlerfreies Error Handling.
 
-**Status:** Version 0.10.0 (Pre-Release Phase)  
-**Breaking Changes:** ✅ Erlaubt - Aggressives Refactoring erwünscht!  
-**Legacy-Codes:** ❌ Eliminieren (sofortige Entfernung erlaubt)  
-**Ab Version 1.0.0:** Breaking Changes mit Deprecation-Strategie & Migrationspfad
+**Status:** Version 0.19.1 (Pre-Release Phase)  
+**Breaking Changes:** ✅ Erlaubt (bis Modul 1.0.0)  
+**Legacy-Code:** ❌ Wird unmittelbar bereinigt  
+**Ab Modul 1.0.0:** Breaking Changes nur mit Deprecation-Phase & Migration Guide
 
 ### Architektur-Prinzipien
 
@@ -39,6 +39,26 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - **Interface Segregation**: Segregierte Interfaces (z.B. MetricsRecorder/MetricsSampler)
 - **Self-Registration Pattern**: Services registrieren sich automatisch für Observability ⭐ NEW v0.8.0
 - **Observer Pattern**: Event-basierte Observability (PortSelector)
+
+### Code-Überblick (src/)
+
+| Pfad | Inhalt | Kernthemen |
+|------|--------|------------|
+| `src/index.ts` | Einstiegspunkt & Modul-Bootstrap | verbindet Foundry Hooks mit `init-solid` |
+| `src/constants.ts` | Zentrale Konstanten (`MODULE_CONSTANTS`, Flags, Cache) | Wiederverwendbare Werte |
+| `src/config/` | DI-Konfiguration (Orchestrator + Module) | Registriert Services & Wrapper |
+| `src/core/` | Bootstrap, API-Exposition, Health, Hooks, Settings | Clean-Architecture Kern |
+| `src/di_infrastructure/` | Container, Registry, Resolver, Token-Utilities, Validation | Fundament des DI-Systems |
+| `src/foundry/` | Port-Adapter, Risiken, Ports v13, Facades, Validation | Foundry-spezifische Integration |
+| `src/notifications/` | NotificationCenter & Channels (Console/UI) | Strategy-/Observer-Pattern |
+| `src/observability/` | MetricsCollector, TraceContext, Performance Tracking, ObservabilityRegistry | Monitoring & Telemetrie |
+| `src/services/` | Business- & Utility-Services (Logger, I18n, Journal, Retry, Performance) | Applikationslogik |
+| `src/utils/` | Result-/Async-/Event-/Trace-/Security-Helfer | Querschnittliche Helferfunktionen |
+| `src/tokens/` | `tokenindex.ts` – alle Injection Tokens + API-safe Tokens | Zentrales Token-Register |
+| `src/types/` | Gemeinsame Typen (`Result`, `ServiceTypeIndex`) | TypeScript-Shared Types |
+| `src/polyfills/` | Browser-spezifische Workarounds (`cytoscape-assign-fix`) | Kompatibilitätslayer |
+| `src/svelte/` | UI-Stubs (ErrorBoundary, Demo-Komponenten) | Platzhalter für UI-Integration |
+| `src/test/` | Test-Mocks & Setup (Unterstützung für Vitest) | Nur für Tests genutzt |
 
 ---
 
@@ -69,12 +89,16 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - `FoundryI18nService` (foundryI18nToken)
 - `LocalI18nService` (localI18nToken)
 
+**DI Wrapper:** `DII18nFacadeService` kapselt die Token-Registrierung im DI-Container ([Details](../src/services/I18nFacadeService.ts))
+
 **Features:**
 - Strategie: Foundry-First → Local Fallback → Key Fallback
 - Format-Support für Placeholder-Ersetzung
 - `has()` prüft beide i18n-Systeme
 
 **Design Pattern:** Facade Pattern, Strategy Pattern
+
+**Weitere DI Wrapper:** `DILocalI18nService`, `DIFoundryTranslationHandler`, `DILocalTranslationHandler`, `DIFallbackTranslationHandler` halten alle i18n-Bestandteile konsistent registrierbar.
 
 ---
 
@@ -92,6 +116,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 
 **Dependency Reduction:** 4 → 2 Dependencies via Facade Pattern (50% Reduktion)
 
+**DI Wrapper:** `DIJournalVisibilityService` registriert Facade, Logger & NotificationCenter im Container ([Details](../src/services/JournalVisibilityService.ts))
+
 ---
 
 #### 4. LocalI18nService
@@ -104,6 +130,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - JSON-basierte Translations
 - Regex-Injection-Protection bei Placeholder-Ersetzung
 - Lazy-Loading von Translation-Files
+
+**DI Wrapper:** `DILocalI18nService` stellt eine konsistente Container-Registrierung ohne zusätzliche Tokens sicher.
 
 ---
 
@@ -119,6 +147,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - Sampling-basiertes Tracking (Production: konfigurierbar)
 - Callback-Support für Metrics-Collection
 
+**DI Wrapper:** `DIPerformanceTrackingService` übernimmt die Token-Registrierung für ENV & MetricsSampler ([Details](../src/services/PerformanceTrackingService.ts))
+
 ---
 
 #### 6. RetryService
@@ -133,6 +163,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - Exponential Backoff (konfigurierbar)
 - Exception Mapping (safe `as` cast via mapException)
 - Legacy API-Support (backwards compatible)
+
+**DI Wrapper:** `DIRetryService` hält Logger- & MetricsCollector-Tokens gebündelt für den DI-Container ([Details](../src/services/RetryService.ts))
 
 ---
 
@@ -150,6 +182,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - `getFlag()`, `setFlag()` Delegation
 - Disposable (Cleanup bei Container-Dispose)
 
+**DI Wrapper:** `DIFoundryDocumentService` registriert Selector, Registry und RetryService im DI-Container ([Details](../src/foundry/services/FoundryDocumentService.ts))
+
 ---
 
 #### 8. FoundryGameService
@@ -163,6 +197,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - Journal Entry Management
 - Lazy Port Loading
 - Disposable
+
+**DI Wrapper:** `DIFoundryGameService` injiziert Selector, Registry und RetryService ([Details](../src/foundry/services/FoundryGameService.ts))
 
 ---
 
@@ -180,6 +216,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - Support für reused callbacks
 - `once()` Hooks (auto-cleanup durch Foundry)
 
+**DI Wrapper:** `DIFoundryHooksService` registriert Selector, Registry, RetryService und Logger ([Details](../src/foundry/services/FoundryHooksService.ts))
+
 ---
 
 #### 10. FoundryI18nService
@@ -192,6 +230,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 **Features:**
 - `localize()`, `format()`, `has()`
 - Lazy Port Loading
+
+**DI Wrapper:** `DIFoundryI18nService` injiziert Selector, Registry und RetryService ([Details](../src/foundry/services/FoundryI18nService.ts))
 
 ---
 
@@ -206,6 +246,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - `register()`, `get()`, `set()`
 - Disposable
 
+**DI Wrapper:** `DIFoundrySettingsService` injiziert Selector, Registry und RetryService ([Details](../src/foundry/services/FoundrySettingsService.ts))
+
 ---
 
 #### 12. FoundryUIService
@@ -219,6 +261,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - DOM-Manipulation (`removeJournalElement`, `findElement`)
 - UI-Notifications (`notify`)
 - Disposable
+
+**DI Wrapper:** `DIFoundryUIService` registriert Selector, Registry und RetryService ([Details](../src/foundry/services/FoundryUIService.ts))
 
 ---
 
@@ -240,6 +284,23 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - Port Selection Tracking
 - Sampling-Support (Production: konfigurierbar)
 - `getSnapshot()`, `logSummary()`, `reset()`
+
+**DI Wrapper:** `DIMetricsCollector` (ENV) & `DIPersistentMetricsCollector` (ENV + MetricsStorage) ermöglichen konsistente Registrierungen je nach Persistence-Feature-Flag.
+
+---
+
+#### 13b. TraceContext
+**Datei:** `src/observability/trace/TraceContext.ts`  
+**Zweck:** Automatische Trace-ID-Propagation über synchrone und asynchrone Aufrufe  
+**Abhängigkeiten:** Keine (bewusst, um Logger-Zyklen zu vermeiden)
+
+**Features:**
+- `trace()` / `traceAsync()` kapseln Trace-Kontexte
+- Context-Stack für verschachtelte Aufrufe
+- Zugriff auf aktuelle Trace-ID via `getCurrentTraceId()`
+- Implements `Disposable` für deterministisches Cleanup
+
+**DI Wrapper:** `DITraceContext` registriert den Service explizit im Container, obwohl keine Konstruktorabhängigkeiten bestehen.
 
 ---
 
@@ -280,16 +341,30 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 **Datei:** `src/core/module-health-service.ts`  
 **Zweck:** Health-Checks für Modul-API  
 **Abhängigkeiten:**
-- `ServiceContainer` (Self-Reference!)
-- `MetricsCollector` (metricsCollectorToken)
+- `HealthCheckRegistry` (healthCheckRegistryToken)
+
+**DI Wrapper:** `DIModuleHealthService` injiziert das Registry-Singleton via Token ([Details](../src/core/module-health-service.ts))
+**Registry Wrapper:** `DIHealthCheckRegistry` stellt sicher, dass das Registry-Singleton ohne direkte Container-Referenz registriert wird.
 
 **Features:**
-- Container Validation Check
-- Port Selection Status
-- Foundry-Availability Check
+- Aggregiert registrierte Health-Checks (Container, Metrics, Ports)
+- Lazy-Initialisierung, damit Registrierungen erst nach Container-Validation passieren
+- Liefert Timestamp & Status (`healthy`, `degraded`, `unhealthy`)
 - Timestamp & Status Reporting
 
-**Special:** Container Self-Reference (registered via Factory)
+---
+
+#### 16b. ModuleApiInitializer
+**Datei:** `src/core/api/module-api-initializer.ts`  
+**Zweck:** Exponiert das öffentliche API-Objekt des Moduls (`game.modules.get(id).api`)  
+**Abhängigkeiten:** Keine (DI-neutral, nutzt Container nur zur Auflösung exportierter Tokens)
+
+**Features:**
+- Prüft Foundry-Kontext (Game + Module vorhanden)
+- Veröffentlicht `resolve()`, `getAvailableTokens()`, `getMetrics()`, `getHealth()`
+- Stellt ReadOnly-Proxys für sensible Services bereit
+
+**DI Wrapper:** `DIModuleApiInitializer` registriert den Bootstrap-Service trotz leerer Dependency-Liste im Container.
 
 ---
 
@@ -299,6 +374,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 **Abhängigkeiten:**
 - `Logger` (loggerToken)
 - `MetricsRecorder` (metricsRecorderToken)
+
+**DI Wrapper:** `DIObservabilityRegistry` kapselt Logger & MetricsRecorder für die Container-Registrierung ([Details](../src/observability/observability-registry.ts))
 
 **Features:**
 - Self-Registration: Services registrieren sich selbst im Constructor
@@ -340,6 +417,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - onChange-Callback für dynamische Logger-Konfiguration
 - Result-Pattern für Fehlerbehandlung
 
+**DI Wrapper:** `DIModuleSettingsRegistrar` sorgt für konsistente Registrierung ohne direkte Token-Liste in der Basisklasse.
+
 ---
 
 #### 20. ModuleHookRegistrar ⭐ NEW v0.8.0
@@ -370,6 +449,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - Unsubscribe-Support via `dispose()`
 
 **Design Pattern:** Strategy Pattern
+
+**DI Wrapper:** `DIRenderJournalDirectoryHook` kapselt die Hook-Registrierung für den Container (leere `dependencies`, dennoch einheitliches Pattern).
 
 ---
 
@@ -538,6 +619,8 @@ Ports (Version-Specific Foundry API Calls)
 - `FoundryUIService` (foundryUIToken)
 
 **Reduziert Abhängigkeiten:** JournalVisibilityService von 4 → 2 (50% Reduktion)
+
+**DI Wrapper:** `DIFoundryJournalFacade` injiziert die drei Foundry-Services via Token ([Details](../src/foundry/facades/foundry-journal-facade.ts))
 
 ---
 
@@ -953,6 +1036,12 @@ graph TD
    - Vorbereitet für v14+ (aktuell in Entwicklung)
    - Fallback-Strategie verhindert Breaking Changes
    - Factory-basierte Port-Registration ermöglicht einfache Erweiterung
+
+11. **DI Wrapper Pattern** ⭐ UPDATED 2025-11-13:
+    - Basisklassen bleiben DI-neutral (keine `static dependencies`)
+    - `DI…`-Wrapper übernehmen Token-Definition & Registrierung
+    - Vereinheitlicht Konfiguration und Testbarkeit der Services
+    - Siehe `src/config/modules/*.config.ts` für aktualisierte Registrierungen
 
 ---
 

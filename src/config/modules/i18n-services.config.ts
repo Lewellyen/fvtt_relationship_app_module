@@ -11,12 +11,12 @@ import {
   fallbackTranslationHandlerToken,
   translationHandlerChainToken,
 } from "@/tokens/tokenindex";
-import { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
-import { LocalI18nService } from "@/services/LocalI18nService";
-import { I18nFacadeService } from "@/services/I18nFacadeService";
-import { FoundryTranslationHandler } from "@/services/i18n/FoundryTranslationHandler";
-import { LocalTranslationHandler } from "@/services/i18n/LocalTranslationHandler";
-import { FallbackTranslationHandler } from "@/services/i18n/FallbackTranslationHandler";
+import { DIFoundryI18nService } from "@/foundry/services/FoundryI18nService";
+import { DILocalI18nService } from "@/services/LocalI18nService";
+import { DII18nFacadeService } from "@/services/I18nFacadeService";
+import { DIFoundryTranslationHandler } from "@/services/i18n/FoundryTranslationHandler";
+import { DILocalTranslationHandler } from "@/services/i18n/LocalTranslationHandler";
+import { DIFallbackTranslationHandler } from "@/services/i18n/FallbackTranslationHandler";
 import { DITranslationHandlerChain } from "@/services/i18n/TranslationHandlerChain";
 
 /**
@@ -42,7 +42,7 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
   // Register FoundryI18nService
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
-    FoundryI18nService,
+    DIFoundryI18nService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(foundryI18nResult)) {
@@ -52,7 +52,7 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
   // Register LocalI18nService
   const localI18nResult = container.registerClass(
     localI18nToken,
-    LocalI18nService,
+    DILocalI18nService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(localI18nResult)) {
@@ -62,7 +62,7 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
   // Register Translation Handlers
   const foundryHandlerResult = container.registerClass(
     foundryTranslationHandlerToken,
-    FoundryTranslationHandler,
+    DIFoundryTranslationHandler,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(foundryHandlerResult)) {
@@ -73,7 +73,7 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
 
   const localHandlerResult = container.registerClass(
     localTranslationHandlerToken,
-    LocalTranslationHandler,
+    DILocalTranslationHandler,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(localHandlerResult)) {
@@ -82,7 +82,7 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
 
   const fallbackHandlerResult = container.registerClass(
     fallbackTranslationHandlerToken,
-    FallbackTranslationHandler,
+    DIFallbackTranslationHandler,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(fallbackHandlerResult)) {
@@ -104,7 +104,7 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
   // Register I18nFacadeService
   const facadeResult = container.registerClass(
     i18nFacadeToken,
-    I18nFacadeService,
+    DII18nFacadeService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(facadeResult)) {

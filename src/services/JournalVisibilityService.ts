@@ -21,8 +21,6 @@ import { sanitizeHtml } from "@/foundry/validation/schemas";
  * - Improvement: 50% reduction via Facade Pattern
  */
 export class JournalVisibilityService {
-  static dependencies = [foundryJournalFacadeToken, loggerToken, notificationCenterToken] as const;
-
   constructor(
     private readonly facade: FoundryJournalFacade,
     private readonly logger: Logger,
@@ -120,5 +118,17 @@ export class JournalVisibilityService {
         },
       });
     }
+  }
+}
+
+export class DIJournalVisibilityService extends JournalVisibilityService {
+  static dependencies = [foundryJournalFacadeToken, loggerToken, notificationCenterToken] as const;
+
+  constructor(
+    facade: FoundryJournalFacade,
+    logger: Logger,
+    notificationCenter: NotificationCenter
+  ) {
+    super(facade, logger, notificationCenter);
   }
 }

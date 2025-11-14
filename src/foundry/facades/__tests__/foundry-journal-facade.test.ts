@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { FoundryJournalFacade } from "../foundry-journal-facade";
+import { FoundryJournalFacade, DIFoundryJournalFacade } from "../foundry-journal-facade";
 import type { FoundryGame } from "@/foundry/interfaces/FoundryGame";
 import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
@@ -134,12 +134,12 @@ describe("FoundryJournalFacade", () => {
 
   describe("static dependencies", () => {
     it("should have correct static dependencies", () => {
-      expect(FoundryJournalFacade.dependencies).toEqual([
+      expect(DIFoundryJournalFacade.dependencies).toEqual([
         expect.any(Symbol), // foundryGameToken
         expect.any(Symbol), // foundryDocumentToken
         expect.any(Symbol), // foundryUIToken
       ]);
-      expect(FoundryJournalFacade.dependencies).toHaveLength(3);
+      expect(DIFoundryJournalFacade.dependencies).toHaveLength(3);
     });
   });
 });

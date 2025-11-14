@@ -14,6 +14,7 @@ import type { JournalVisibilityService } from "@/services/JournalVisibilityServi
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import type { MetricsRecorder } from "@/observability/interfaces/metrics-recorder";
 import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
+import type { MetricsStorage } from "@/observability/metrics-persistence/metrics-storage";
 import type { TraceContext } from "@/observability/trace/TraceContext";
 import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
@@ -65,6 +66,7 @@ export type ServiceType =
   | MetricsCollector
   | MetricsRecorder
   | MetricsSampler
+  | MetricsStorage
   | TraceContext
   | FoundryI18nService
   | FoundryJournalFacade

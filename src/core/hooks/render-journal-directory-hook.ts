@@ -129,3 +129,11 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
   }
   /* c8 ignore stop */
 }
+
+export class DIRenderJournalDirectoryHook extends RenderJournalDirectoryHook {
+  static dependencies = [] as const;
+
+  constructor() {
+    super();
+  }
+}

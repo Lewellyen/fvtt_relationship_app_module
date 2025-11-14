@@ -11,6 +11,8 @@ Für interne Modul-Änderungen siehe [CHANGELOG.md](../CHANGELOG.md).
 ### Added
 
 ### Changed
+- **NotificationCenter Token** - Exponiert nur noch Logging-Methoden; Channel-Mutationen (`addChannel`, `removeChannel`) führen zu Runtime-Hinweisen.
+- **FoundrySettings Token** - Öffentliche API erlaubt ausschließlich `get()`, um Modul-Einstellungen read-only bereitzustellen.
 
 ### Deprecated
 

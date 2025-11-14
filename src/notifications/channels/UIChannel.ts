@@ -21,8 +21,6 @@ import { foundryUIToken } from "@/foundry/foundrytokens";
 import { environmentConfigToken } from "@/tokens/tokenindex";
 
 export class UIChannel implements NotificationChannel {
-  static dependencies = [foundryUIToken, environmentConfigToken] as const;
-
   readonly name = "UIChannel";
 
   constructor(
@@ -95,5 +93,13 @@ export class UIChannel implements NotificationChannel {
         /* c8 ignore next -- debug level ist durch canHandle bereits ausgeschlossen */
         return "info"; // Fallback (should not be called due to canHandle)
     }
+  }
+}
+
+export class DIUIChannel extends UIChannel {
+  static dependencies = [foundryUIToken, environmentConfigToken] as const;
+
+  constructor(foundryUI: FoundryUI, env: EnvironmentConfig) {
+    super(foundryUI, env);
   }
 }

@@ -11,7 +11,7 @@ import {
   foundrySettingsPortRegistryToken,
   foundryI18nPortRegistryToken,
 } from "@/foundry/foundrytokens";
-import { PortSelector } from "@/foundry/versioning/portselector";
+import { DIPortSelector } from "@/foundry/versioning/portselector";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { FoundryGamePortV13 } from "@/foundry/ports/v13/FoundryGamePort";
 import { FoundryHooksPortV13 } from "@/foundry/ports/v13/FoundryHooksPort";
@@ -152,7 +152,7 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
   // Dependencies: [portSelectionEventEmitterToken, observabilityRegistryToken]
   const portSelectorResult = container.registerClass(
     portSelectorToken,
-    PortSelector,
+    DIPortSelector,
     ServiceLifecycle.SINGLETON
   );
 

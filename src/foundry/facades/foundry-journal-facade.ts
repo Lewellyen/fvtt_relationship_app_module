@@ -26,8 +26,6 @@ import * as v from "valibot";
  * - Clear boundary for journal-related operations
  */
 export class FoundryJournalFacade implements IFoundryJournalFacade {
-  static dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken] as const;
-
   constructor(
     private readonly game: FoundryGame,
     private readonly document: FoundryDocument,
@@ -80,5 +78,13 @@ export class FoundryJournalFacade implements IFoundryJournalFacade {
    */
   removeJournalElement(id: string, name: string, html: HTMLElement): Result<void, FoundryError> {
     return this.ui.removeJournalElement(id, name, html);
+  }
+}
+
+export class DIFoundryJournalFacade extends FoundryJournalFacade {
+  static dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken] as const;
+
+  constructor(game: FoundryGame, document: FoundryDocument, ui: FoundryUI) {
+    super(game, document, ui);
   }
 }

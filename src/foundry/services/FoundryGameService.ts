@@ -16,12 +16,6 @@ import { FoundryServiceBase } from "./FoundryServiceBase";
  * Extends FoundryServiceBase for consistent port selection and retry logic.
  */
 export class FoundryGameService extends FoundryServiceBase<FoundryGame> implements FoundryGame {
-  static dependencies = [
-    portSelectorToken,
-    foundryGamePortRegistryToken,
-    retryServiceToken,
-  ] as const;
-
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundryGame>,
@@ -44,5 +38,21 @@ export class FoundryGameService extends FoundryServiceBase<FoundryGame> implemen
       if (!portResult.ok) return portResult;
       return portResult.value.getJournalEntryById(id);
     }, "FoundryGame.getJournalEntryById");
+  }
+}
+
+export class DIFoundryGameService extends FoundryGameService {
+  static dependencies = [
+    portSelectorToken,
+    foundryGamePortRegistryToken,
+    retryServiceToken,
+  ] as const;
+
+  constructor(
+    portSelector: PortSelector,
+    portRegistry: PortRegistry<FoundryGame>,
+    retryService: RetryService
+  ) {
+    super(portSelector, portRegistry, retryService);
   }
 }

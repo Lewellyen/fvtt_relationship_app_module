@@ -48,6 +48,12 @@ import { PerformanceTrackerImpl } from "@/observability/performance-tracker-impl
  * ```
  */
 export class PerformanceTrackingService extends PerformanceTrackerImpl {
+  constructor(env: EnvironmentConfig, sampler: MetricsSampler) {
+    super(env, sampler);
+  }
+}
+
+export class DIPerformanceTrackingService extends PerformanceTrackingService {
   static dependencies = [environmentConfigToken, metricsSamplerToken] as const;
 
   constructor(env: EnvironmentConfig, sampler: MetricsSampler) {

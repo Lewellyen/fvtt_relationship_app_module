@@ -15,12 +15,6 @@ import { FoundryServiceBase } from "./FoundryServiceBase";
  * Extends FoundryServiceBase for consistent port selection and retry logic.
  */
 export class FoundryI18nService extends FoundryServiceBase<FoundryI18n> implements FoundryI18n {
-  static dependencies = [
-    portSelectorToken,
-    foundryI18nPortRegistryToken,
-    retryServiceToken,
-  ] as const;
-
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundryI18n>,
@@ -51,5 +45,21 @@ export class FoundryI18nService extends FoundryServiceBase<FoundryI18n> implemen
       if (!portResult.ok) return portResult;
       return portResult.value.has(key);
     }, "FoundryI18n.has");
+  }
+}
+
+export class DIFoundryI18nService extends FoundryI18nService {
+  static dependencies = [
+    portSelectorToken,
+    foundryI18nPortRegistryToken,
+    retryServiceToken,
+  ] as const;
+
+  constructor(
+    portSelector: PortSelector,
+    portRegistry: PortRegistry<FoundryI18n>,
+    retryService: RetryService
+  ) {
+    super(portSelector, portRegistry, retryService);
   }
 }

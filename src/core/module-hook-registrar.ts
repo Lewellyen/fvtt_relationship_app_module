@@ -21,12 +21,6 @@ import {
  * - Full DI architecture: Hooks injected as dependencies
  */
 export class ModuleHookRegistrar {
-  static dependencies = [
-    renderJournalDirectoryHookToken,
-    loggerToken,
-    notificationCenterToken,
-  ] as const;
-
   private hooks: HookRegistrar[];
 
   constructor(
@@ -72,4 +66,20 @@ export class ModuleHookRegistrar {
     }
   }
   /* c8 ignore stop */
+}
+
+export class DIModuleHookRegistrar extends ModuleHookRegistrar {
+  static dependencies = [
+    renderJournalDirectoryHookToken,
+    loggerToken,
+    notificationCenterToken,
+  ] as const;
+
+  constructor(
+    renderJournalHook: HookRegistrar,
+    logger: Logger,
+    notificationCenter: NotificationCenter
+  ) {
+    super(renderJournalHook, logger, notificationCenter);
+  }
 }

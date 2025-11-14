@@ -19,12 +19,6 @@ export class FoundrySettingsService
   extends FoundryServiceBase<FoundrySettings>
   implements FoundrySettings
 {
-  static dependencies = [
-    portSelectorToken,
-    foundrySettingsPortRegistryToken,
-    retryServiceToken,
-  ] as const;
-
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundrySettings>,
@@ -65,5 +59,21 @@ export class FoundrySettingsService
       if (!portResult.ok) return portResult;
       return portResult.value.set(namespace, key, value);
     }, "FoundrySettings.set");
+  }
+}
+
+export class DIFoundrySettingsService extends FoundrySettingsService {
+  static dependencies = [
+    portSelectorToken,
+    foundrySettingsPortRegistryToken,
+    retryServiceToken,
+  ] as const;
+
+  constructor(
+    portSelector: PortSelector,
+    portRegistry: PortRegistry<FoundrySettings>,
+    retryService: RetryService
+  ) {
+    super(portSelector, portRegistry, retryService);
   }
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { I18nFacadeService } from "../I18nFacadeService";
+import { I18nFacadeService, DII18nFacadeService } from "../I18nFacadeService";
 import type { LocalI18nService } from "../LocalI18nService";
 import type { TranslationHandler } from "../i18n/TranslationHandler.interface";
 
@@ -139,9 +139,9 @@ describe("I18nFacadeService", () => {
 
   describe("Dependencies", () => {
     it("should have correct static dependencies", () => {
-      expect(I18nFacadeService.dependencies).toHaveLength(2);
-      expect(I18nFacadeService.dependencies[0]).toBeDefined();
-      expect(I18nFacadeService.dependencies[1]).toBeDefined();
+      expect(DII18nFacadeService.dependencies).toHaveLength(2);
+      expect(DII18nFacadeService.dependencies[0]).toBeDefined();
+      expect(DII18nFacadeService.dependencies[1]).toBeDefined();
     });
   });
 });

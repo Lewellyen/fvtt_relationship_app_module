@@ -27,13 +27,6 @@ interface DynamicHooksApi {
  * Extends FoundryServiceBase but maintains its own dispose() logic for hook cleanup.
  */
 export class FoundryHooksService extends FoundryServiceBase<FoundryHooks> implements FoundryHooks {
-  static dependencies = [
-    portSelectorToken,
-    foundryHooksPortRegistryToken,
-    retryServiceToken,
-    loggerToken,
-  ] as const;
-
   private readonly logger: Logger;
   private registeredHooks = new Map<string, Map<number, FoundryHookCallback>>();
   // Bidirectional mapping: callback function -> array of hook registrations (supports reused callbacks)
@@ -171,5 +164,23 @@ export class FoundryHooksService extends FoundryServiceBase<FoundryHooks> implem
     this.registeredHooks.clear();
     this.callbackToIdMap.clear();
     this.port = null;
+  }
+}
+
+export class DIFoundryHooksService extends FoundryHooksService {
+  static dependencies = [
+    portSelectorToken,
+    foundryHooksPortRegistryToken,
+    retryServiceToken,
+    loggerToken,
+  ] as const;
+
+  constructor(
+    portSelector: PortSelector,
+    portRegistry: PortRegistry<FoundryHooks>,
+    retryService: RetryService,
+    logger: Logger
+  ) {
+    super(portSelector, portRegistry, retryService, logger);
   }
 }

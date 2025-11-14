@@ -42,3 +42,11 @@ export class HealthCheckRegistry implements Disposable {
     this.checks.clear();
   }
 }
+
+export class DIHealthCheckRegistry extends HealthCheckRegistry {
+  static override dependencies = [] as const;
+
+  constructor() {
+    super();
+  }
+}

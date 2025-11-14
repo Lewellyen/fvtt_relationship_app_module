@@ -12,6 +12,8 @@ Diese Variablen werden zur Build-Zeit gesetzt und beeinflussen das kompilierte M
 |----------|-----|----------|--------------|
 | `MODE` | string | `development` | Build-Modus: `development` oder `production` |
 | `VITE_ENABLE_PERF_TRACKING` | boolean | `false` | Aktiviert Performance-Metriken-Sammlung |
+| `VITE_ENABLE_METRICS_PERSISTENCE` | boolean | `false` | Sichert Metriken zwischen Sessions (PersistentMetricsCollector) |
+| `VITE_METRICS_PERSISTENCE_KEY` | string | `fvtt_relationship_app_module.metrics` | LocalStorage-Key für persistente Metriken |
 
 ### Nutzung
 
@@ -71,6 +73,15 @@ game.settings.set('fvtt_relationship_app_module', 'logLevel', 3);
 ## Performance Metrics
 
 Performance-Metriken sind verfügbar wenn `VITE_ENABLE_PERF_TRACKING=true` gesetzt ist.
+
+### Persistente Metriken
+
+- Aktivierung: `VITE_ENABLE_METRICS_PERSISTENCE=true` (optional)  
+- Storage-Key: `VITE_METRICS_PERSISTENCE_KEY` (Default siehe Tabelle)
+- Persistenz nutzt `LocalStorage`; in Sandbox-/Testszenarien ohne Storage fällt der Collector automatisch auf In-Memory zurück.
+
+**Zurücksetzen:**  
+LocalStorage-Eintrag (`VITE_METRICS_PERSISTENCE_KEY`) löschen oder Flag wieder deaktivieren und Foundry neu laden.
 
 ### Zugriff auf Metriken
 

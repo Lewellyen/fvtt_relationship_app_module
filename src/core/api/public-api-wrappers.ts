@@ -1,5 +1,7 @@
 import type { Logger } from "@/interfaces/logger";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 import { createReadOnlyWrapper } from "./readonly-wrapper";
 
 /**
@@ -47,4 +49,38 @@ export function createPublicLogger(logger: Logger): Logger {
  */
 export function createPublicI18n(i18n: I18nFacadeService): I18nFacadeService {
   return createReadOnlyWrapper(i18n, ["translate", "format", "has"]);
+}
+
+/**
+ * Creates a read-only wrapper for NotificationCenter.
+ *
+ * Allows routing notifications while preventing external modules from
+ * mutating registered channels.
+ *
+ * @param notificationCenter - NotificationCenter instance
+ * @returns Read-only notification proxy
+ */
+export function createPublicNotificationCenter(
+  notificationCenter: NotificationCenter
+): NotificationCenter {
+  return createReadOnlyWrapper(notificationCenter, [
+    "debug",
+    "info",
+    "warn",
+    "error",
+    "getChannelNames",
+  ]);
+}
+
+/**
+ * Creates a read-only wrapper for FoundrySettings service.
+ *
+ * Allows validated reads of settings while blocking registration and mutation
+ * operations that could impact module configuration.
+ *
+ * @param foundrySettings - FoundrySettings service instance
+ * @returns Read-only settings proxy
+ */
+export function createPublicFoundrySettings(foundrySettings: FoundrySettings): FoundrySettings {
+  return createReadOnlyWrapper(foundrySettings, ["get"]);
 }

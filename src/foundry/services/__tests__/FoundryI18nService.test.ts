@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { FoundryI18nService } from "../FoundryI18nService";
+import { FoundryI18nService, DIFoundryI18nService } from "../FoundryI18nService";
 import type { FoundryI18n } from "@/foundry/interfaces/FoundryI18n";
 import { PortRegistry } from "@/foundry/versioning/portregistry";
 import { PortSelector } from "@/foundry/versioning/portselector";
@@ -201,10 +201,10 @@ describe("FoundryI18nService", () => {
 
   describe("Dependencies", () => {
     it("should have correct static dependencies", () => {
-      expect(FoundryI18nService.dependencies).toHaveLength(3);
-      expect(FoundryI18nService.dependencies[0]).toBeDefined();
-      expect(FoundryI18nService.dependencies[1]).toBeDefined();
-      expect(FoundryI18nService.dependencies[2]).toBeDefined();
+      expect(DIFoundryI18nService.dependencies).toHaveLength(3);
+      expect(DIFoundryI18nService.dependencies[0]).toBeDefined();
+      expect(DIFoundryI18nService.dependencies[1]).toBeDefined();
+      expect(DIFoundryI18nService.dependencies[2]).toBeDefined();
     });
   });
 });

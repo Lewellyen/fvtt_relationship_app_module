@@ -103,8 +103,6 @@ export interface RetryOptions<ErrorType> {
  * ```
  */
 export class RetryService {
-  static dependencies = [loggerToken, metricsCollectorToken] as const;
-
   constructor(
     private readonly logger: Logger,
     private readonly metricsCollector: MetricsCollector
@@ -326,5 +324,13 @@ export class RetryService {
     /* type-coverage:ignore-next-line -- Non-null assertion: lastError guaranteed by loop execution */
     const finalError = lastError!;
     return err(finalError);
+  }
+}
+
+export class DIRetryService extends RetryService {
+  static dependencies = [loggerToken, metricsCollectorToken] as const;
+
+  constructor(logger: Logger, metricsCollector: MetricsCollector) {
+    super(logger, metricsCollector);
   }
 }

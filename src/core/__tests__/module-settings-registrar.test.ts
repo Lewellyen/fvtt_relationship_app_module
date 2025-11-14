@@ -2,7 +2,7 @@
 // Test file: `any` needed for mocking FoundrySettings and Logger
 
 import { describe, it, expect, vi } from "vitest";
-import { ModuleSettingsRegistrar } from "../module-settings-registrar";
+import { ModuleSettingsRegistrar, DIModuleSettingsRegistrar } from "../module-settings-registrar";
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
 import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
@@ -130,5 +130,12 @@ describe("ModuleSettingsRegistrar", () => {
       expect(config.choices[LogLevel.WARN]).toContain("WARN");
       expect(config.choices[LogLevel.ERROR]).toContain("ERROR");
     });
+  });
+});
+
+describe("ModuleSettingsRegistrar DI metadata", () => {
+  it("should expose empty dependency arrays", () => {
+    expect(ModuleSettingsRegistrar.dependencies).toEqual([]);
+    expect(DIModuleSettingsRegistrar.dependencies).toEqual([]);
   });
 });

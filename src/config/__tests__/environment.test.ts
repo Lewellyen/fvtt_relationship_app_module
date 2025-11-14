@@ -32,6 +32,8 @@ describe("Environment Configuration", () => {
       expect(ENV).toHaveProperty("logLevel");
       expect(ENV).toHaveProperty("enablePerformanceTracking");
       expect(ENV).toHaveProperty("enableDebugMode");
+      expect(ENV).toHaveProperty("enableMetricsPersistence");
+      expect(ENV).toHaveProperty("metricsPersistenceKey");
     });
 
     it("should have valid logLevel", async () => {
@@ -47,6 +49,8 @@ describe("Environment Configuration", () => {
       expect(typeof ENV.isProduction).toBe("boolean");
       expect(typeof ENV.enablePerformanceTracking).toBe("boolean");
       expect(typeof ENV.enableDebugMode).toBe("boolean");
+      expect(typeof ENV.enableMetricsPersistence).toBe("boolean");
+      expect(typeof ENV.metricsPersistenceKey).toBe("string");
     });
 
     it("should not be both development and production", async () => {

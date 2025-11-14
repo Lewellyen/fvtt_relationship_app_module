@@ -11,8 +11,6 @@ import { AbstractTranslationHandler } from "./AbstractTranslationHandler";
  * Registered as SINGLETON in DI container.
  */
 export class LocalTranslationHandler extends AbstractTranslationHandler {
-  static dependencies = [localI18nToken] as const;
-
   constructor(private readonly localI18n: LocalI18nService) {
     super();
   }
@@ -38,5 +36,13 @@ export class LocalTranslationHandler extends AbstractTranslationHandler {
   protected doHas(key: string): boolean {
     const result = this.localI18n.has(key);
     return result.ok && result.value;
+  }
+}
+
+export class DILocalTranslationHandler extends LocalTranslationHandler {
+  static dependencies = [localI18nToken] as const;
+
+  constructor(localI18n: LocalI18nService) {
+    super(localI18n);
   }
 }

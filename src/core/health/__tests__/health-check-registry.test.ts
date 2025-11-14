@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { HealthCheckRegistry } from "../health-check-registry";
+import { HealthCheckRegistry, DIHealthCheckRegistry } from "../health-check-registry";
 import type { HealthCheck } from "../health-check.interface";
 
 describe("HealthCheckRegistry", () => {
@@ -160,6 +160,10 @@ describe("HealthCheckRegistry", () => {
   describe("Dependencies", () => {
     it("should have no dependencies", () => {
       expect(HealthCheckRegistry.dependencies).toHaveLength(0);
+    });
+
+    it("wrapper should mirror empty dependencies", () => {
+      expect(DIHealthCheckRegistry.dependencies).toHaveLength(0);
     });
   });
 });

@@ -39,6 +39,8 @@ describe("CompositionRoot", () => {
         logLevel: 0,
         enablePerformanceTracking: true,
         enableDebugMode: false, // Debug logging is separate from performance tracking
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 1.0, // 100% sampling
       });
 
@@ -63,6 +65,8 @@ describe("CompositionRoot", () => {
         logLevel: 1,
         enablePerformanceTracking: false,
         enableDebugMode: false,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.01,
       });
 
@@ -89,6 +93,8 @@ describe("CompositionRoot", () => {
         logLevel: 0,
         enablePerformanceTracking: true,
         enableDebugMode: true,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 1.0,
       });
 

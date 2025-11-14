@@ -148,3 +148,11 @@ export class LocalI18nService {
     this.currentLocale = locale;
   }
 }
+
+export class DILocalI18nService extends LocalI18nService {
+  static override dependencies = [] as const;
+
+  constructor() {
+    super();
+  }
+}

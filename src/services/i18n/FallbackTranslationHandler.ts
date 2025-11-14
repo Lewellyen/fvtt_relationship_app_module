@@ -31,3 +31,11 @@ export class FallbackTranslationHandler extends AbstractTranslationHandler {
     return false;
   }
 }
+
+export class DIFallbackTranslationHandler extends FallbackTranslationHandler {
+  static override dependencies = [] as const;
+
+  constructor() {
+    super();
+  }
+}

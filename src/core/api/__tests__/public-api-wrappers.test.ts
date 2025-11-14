@@ -1,8 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi } from "vitest";
-import { createPublicLogger, createPublicI18n } from "../public-api-wrappers";
+import {
+  createPublicLogger,
+  createPublicI18n,
+  createPublicNotificationCenter,
+  createPublicFoundrySettings,
+} from "../public-api-wrappers";
 import type { Logger } from "@/interfaces/logger";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 
 describe("public-api-wrappers", () => {
   describe("createPublicLogger", () => {
@@ -134,6 +141,76 @@ describe("public-api-wrappers", () => {
       expect(() => {
         (publicI18n as any).someProp = "value";
       }).toThrow("Cannot modify services via Public API");
+    });
+  });
+
+  describe("createPublicNotificationCenter", () => {
+    const createMockNotificationCenter = (): NotificationCenter =>
+      ({
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        addChannel: vi.fn(),
+        removeChannel: vi.fn(),
+        getChannelNames: vi.fn(() => ["ConsoleChannel"]),
+      }) as unknown as NotificationCenter;
+
+    it("should allow routing notifications", () => {
+      const mockNotificationCenter = createMockNotificationCenter();
+      const publicNotificationCenter = createPublicNotificationCenter(mockNotificationCenter);
+
+      expect(() => publicNotificationCenter.debug("ctx")).not.toThrow();
+      expect(() => publicNotificationCenter.info("ctx")).not.toThrow();
+      expect(() => publicNotificationCenter.warn("ctx")).not.toThrow();
+      expect(() => publicNotificationCenter.error("ctx")).not.toThrow();
+      expect(() => publicNotificationCenter.getChannelNames()).not.toThrow();
+    });
+
+    it("should block channel mutation APIs", () => {
+      const mockNotificationCenter = createMockNotificationCenter();
+      const publicNotificationCenter = createPublicNotificationCenter(mockNotificationCenter);
+
+      expect(() =>
+        (publicNotificationCenter as unknown as { addChannel: () => void }).addChannel()
+      ).toThrow('Property "addChannel" is not accessible');
+
+      expect(() =>
+        (publicNotificationCenter as unknown as { removeChannel: () => void }).removeChannel()
+      ).toThrow('Property "removeChannel" is not accessible');
+    });
+  });
+
+  describe("createPublicFoundrySettings", () => {
+    const createMockSettings = (): FoundrySettings =>
+      ({
+        register: vi.fn(),
+        get: vi.fn(),
+        set: vi.fn(),
+        dispose: vi.fn(),
+      }) as unknown as FoundrySettings;
+
+    it("should allow get operations", () => {
+      const mockSettings = createMockSettings();
+      const publicSettings = createPublicFoundrySettings(mockSettings);
+
+      expect(() =>
+        publicSettings.get("module", "key", {
+          parse: vi.fn(),
+        } as unknown as Parameters<FoundrySettings["get"]>[2])
+      ).not.toThrow();
+    });
+
+    it("should block register and set operations", () => {
+      const mockSettings = createMockSettings();
+      const publicSettings = createPublicFoundrySettings(mockSettings);
+
+      expect(() => (publicSettings as unknown as { register: () => void }).register()).toThrow(
+        'Property "register" is not accessible'
+      );
+      expect(() => (publicSettings as unknown as { set: () => void }).set()).toThrow(
+        'Property "set" is not accessible'
+      );
     });
   });
 });

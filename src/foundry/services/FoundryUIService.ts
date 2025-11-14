@@ -15,8 +15,6 @@ import { FoundryServiceBase } from "./FoundryServiceBase";
  * Extends FoundryServiceBase for consistent port selection and retry logic.
  */
 export class FoundryUIService extends FoundryServiceBase<FoundryUI> implements FoundryUI {
-  static dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken] as const;
-
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundryUI>,
@@ -55,5 +53,17 @@ export class FoundryUIService extends FoundryServiceBase<FoundryUI> implements F
       if (!portResult.ok) return portResult;
       return portResult.value.notify(message, type, options);
     }, "FoundryUI.notify");
+  }
+}
+
+export class DIFoundryUIService extends FoundryUIService {
+  static dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken] as const;
+
+  constructor(
+    portSelector: PortSelector,
+    portRegistry: PortRegistry<FoundryUI>,
+    retryService: RetryService
+  ) {
+    super(portSelector, portRegistry, retryService);
   }
 }

@@ -3,7 +3,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { PerformanceTrackingService } from "../PerformanceTrackingService";
+import {
+  PerformanceTrackingService,
+  DIPerformanceTrackingService,
+} from "../PerformanceTrackingService";
 import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
 import type { EnvironmentConfig } from "@/config/environment";
 import { LogLevel } from "@/config/environment";
@@ -20,6 +23,8 @@ describe("PerformanceTrackingService", () => {
       isDevelopment: true,
       isProduction: false,
       enableDebugMode: true,
+      enableMetricsPersistence: false,
+      metricsPersistenceKey: "test.metrics",
       logLevel: LogLevel.DEBUG,
       performanceSamplingRate: 1.0, // 100% sampling
     };
@@ -206,11 +211,18 @@ describe("PerformanceTrackingService", () => {
 
   describe("static dependencies", () => {
     it("should have correct static dependencies", () => {
-      expect(PerformanceTrackingService.dependencies).toEqual([
+      expect(DIPerformanceTrackingService.dependencies).toEqual([
         expect.any(Symbol), // environmentConfigToken
         expect.any(Symbol), // metricsSamplerToken
       ]);
-      expect(PerformanceTrackingService.dependencies).toHaveLength(2);
+      expect(DIPerformanceTrackingService.dependencies).toHaveLength(2);
+    });
+  });
+
+  describe("DI wrapper", () => {
+    it("should construct service via DI wrapper", () => {
+      const diService = new DIPerformanceTrackingService(mockEnv, mockSampler);
+      expect(diService).toBeInstanceOf(PerformanceTrackingService);
     });
   });
 });

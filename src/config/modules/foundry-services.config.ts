@@ -11,13 +11,13 @@ import {
   foundryJournalFacadeToken,
 } from "@/foundry/foundrytokens";
 import { journalVisibilityServiceToken } from "@/tokens/tokenindex";
-import { FoundryGameService } from "@/foundry/services/FoundryGameService";
-import { FoundryHooksService } from "@/foundry/services/FoundryHooksService";
-import { FoundryDocumentService } from "@/foundry/services/FoundryDocumentService";
-import { FoundryUIService } from "@/foundry/services/FoundryUIService";
-import { FoundrySettingsService } from "@/foundry/services/FoundrySettingsService";
-import { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade";
-import { JournalVisibilityService } from "@/services/JournalVisibilityService";
+import { DIFoundryGameService } from "@/foundry/services/FoundryGameService";
+import { DIFoundryHooksService } from "@/foundry/services/FoundryHooksService";
+import { DIFoundryDocumentService } from "@/foundry/services/FoundryDocumentService";
+import { DIFoundryUIService } from "@/foundry/services/FoundryUIService";
+import { DIFoundrySettingsService } from "@/foundry/services/FoundrySettingsService";
+import { DIFoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade";
+import { DIJournalVisibilityService } from "@/services/JournalVisibilityService";
 
 /**
  * Registers Foundry service wrappers.
@@ -40,7 +40,7 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   // Register FoundryGameService
   const gameServiceResult = container.registerClass(
     foundryGameToken,
-    FoundryGameService,
+    DIFoundryGameService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(gameServiceResult)) {
@@ -50,7 +50,7 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   // Register FoundryHooksService
   const hooksServiceResult = container.registerClass(
     foundryHooksToken,
-    FoundryHooksService,
+    DIFoundryHooksService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(hooksServiceResult)) {
@@ -60,7 +60,7 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   // Register FoundryDocumentService
   const documentServiceResult = container.registerClass(
     foundryDocumentToken,
-    FoundryDocumentService,
+    DIFoundryDocumentService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(documentServiceResult)) {
@@ -72,7 +72,7 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   // Register FoundryUIService
   const uiServiceResult = container.registerClass(
     foundryUIToken,
-    FoundryUIService,
+    DIFoundryUIService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(uiServiceResult)) {
@@ -82,7 +82,7 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   // Register FoundrySettingsService
   const settingsServiceResult = container.registerClass(
     foundrySettingsToken,
-    FoundrySettingsService,
+    DIFoundrySettingsService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(settingsServiceResult)) {
@@ -96,7 +96,7 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   // Must be registered BEFORE JournalVisibilityService which depends on it
   const journalFacadeResult = container.registerClass(
     foundryJournalFacadeToken,
-    FoundryJournalFacade,
+    DIFoundryJournalFacade,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(journalFacadeResult)) {
@@ -106,7 +106,7 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   // Register JournalVisibilityService
   const journalVisibilityResult = container.registerClass(
     journalVisibilityServiceToken,
-    JournalVisibilityService,
+    DIJournalVisibilityService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(journalVisibilityResult)) {

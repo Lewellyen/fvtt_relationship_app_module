@@ -2,7 +2,7 @@
 // Test file: Object literals use i18n keys with dots (MODULE.SETTINGS.key format)
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { LocalI18nService } from "../LocalI18nService";
+import { LocalI18nService, DILocalI18nService } from "../LocalI18nService";
 import { expectResultOk } from "@/test/utils/test-helpers";
 
 describe("LocalI18nService", () => {
@@ -248,6 +248,10 @@ describe("LocalI18nService", () => {
   describe("Dependencies", () => {
     it("should have no dependencies", () => {
       expect(LocalI18nService.dependencies).toEqual([]);
+    });
+
+    it("wrapper should mirror empty dependencies", () => {
+      expect(DILocalI18nService.dependencies).toEqual([]);
     });
   });
 });

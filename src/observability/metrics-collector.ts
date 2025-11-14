@@ -26,6 +26,23 @@ export interface MetricsSnapshot {
 }
 
 /**
+ * Serializable snapshot of internal metrics state used for persistence.
+ */
+export interface MetricsPersistenceState {
+  metrics: {
+    containerResolutions: number;
+    resolutionErrors: number;
+    cacheHits: number;
+    cacheMisses: number;
+    portSelections: Record<number, number>;
+    portSelectionFailures: Record<number, number>;
+  };
+  resolutionTimes: number[];
+  resolutionTimesIndex: number;
+  resolutionTimesCount: number;
+}
+
+/**
  * Metrics collector for observability and performance tracking.
  *
  * Implements MetricsRecorder and MetricsSampler interfaces to provide
@@ -50,7 +67,7 @@ export interface MetricsSnapshot {
  * ```
  */
 export class MetricsCollector implements MetricsRecorder, MetricsSampler {
-  static dependencies = [environmentConfigToken] as const;
+  static dependencies: readonly InjectionToken<ServiceType>[] = [environmentConfigToken];
 
   private metrics = {
     containerResolutions: 0,
@@ -89,6 +106,8 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
     this.resolutionTimes[this.resolutionTimesIndex] = durationMs;
     this.resolutionTimesIndex = (this.resolutionTimesIndex + 1) % this.MAX_RESOLUTION_TIMES;
     this.resolutionTimesCount = Math.min(this.resolutionTimesCount + 1, this.MAX_RESOLUTION_TIMES);
+
+    this.onStateChanged();
   }
 
   /**
@@ -99,6 +118,7 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
   recordPortSelection(version: number): void {
     const count = this.metrics.portSelections.get(version) ?? 0;
     this.metrics.portSelections.set(version, count + 1);
+    this.onStateChanged();
   }
 
   /**
@@ -111,6 +131,7 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
   recordPortSelectionFailure(version: number): void {
     const count = this.metrics.portSelectionFailures.get(version) ?? 0;
     this.metrics.portSelectionFailures.set(version, count + 1);
+    this.onStateChanged();
   }
 
   /**
@@ -124,6 +145,7 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
     } else {
       this.metrics.cacheMisses++;
     }
+    this.onStateChanged();
   }
 
   /**
@@ -213,5 +235,89 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
     this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
     this.resolutionTimesIndex = 0;
     this.resolutionTimesCount = 0;
+    this.onStateChanged();
+  }
+
+  /**
+   * Hook invoked after state mutations. Subclasses can override to react
+   * (e.g., persist metrics).
+   */
+
+  protected onStateChanged(): void {}
+
+  /**
+   * Captures the internal state for persistence.
+   *
+   * @returns Serializable metrics state
+   */
+  protected getPersistenceState(): MetricsPersistenceState {
+    return {
+      metrics: {
+        containerResolutions: this.metrics.containerResolutions,
+        resolutionErrors: this.metrics.resolutionErrors,
+        cacheHits: this.metrics.cacheHits,
+        cacheMisses: this.metrics.cacheMisses,
+        portSelections: Object.fromEntries(this.metrics.portSelections),
+        portSelectionFailures: Object.fromEntries(this.metrics.portSelectionFailures),
+      },
+      resolutionTimes: Array.from(this.resolutionTimes),
+      resolutionTimesIndex: this.resolutionTimesIndex,
+      resolutionTimesCount: this.resolutionTimesCount,
+    };
+  }
+
+  /**
+   * Restores internal state from a persisted snapshot.
+   *
+   * @param state - Persisted metrics state
+   */
+  protected restoreFromPersistenceState(state: MetricsPersistenceState | null | undefined): void {
+    if (!state) {
+      return;
+    }
+
+    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
+
+    this.metrics = {
+      containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
+      resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
+      cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
+      cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
+      portSelections: new Map<number, number>(
+        Object.entries(metrics?.portSelections ?? {}).map(([key, value]) => [
+          Number(key),
+          Number.isFinite(Number(value)) ? Number(value) : 0,
+        ])
+      ),
+      portSelectionFailures: new Map<number, number>(
+        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value]) => [
+          Number(key),
+          Number.isFinite(Number(value)) ? Number(value) : 0,
+        ])
+      ),
+    };
+
+    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
+    if (Array.isArray(resolutionTimes)) {
+      const maxLength = Math.min(resolutionTimes.length, this.resolutionTimes.length);
+      for (let index = 0; index < maxLength; index++) {
+        const value = Number(resolutionTimes[index]);
+        this.resolutionTimes[index] = Number.isFinite(value) ? value : 0;
+      }
+    }
+
+    const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
+    const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
+
+    this.resolutionTimesIndex = Math.min(Math.max(0, safeIndex), this.MAX_RESOLUTION_TIMES - 1);
+    this.resolutionTimesCount = Math.min(Math.max(0, safeCount), this.MAX_RESOLUTION_TIMES);
+  }
+}
+
+export class DIMetricsCollector extends MetricsCollector {
+  static override dependencies: readonly InjectionToken<ServiceType>[] = [environmentConfigToken];
+
+  constructor(env: EnvironmentConfig) {
+    super(env);
   }
 }

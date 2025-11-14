@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { TraceContext } from "../TraceContext";
+import { TraceContext, DITraceContext } from "../TraceContext";
 import { generateTraceId } from "@/utils/observability/trace";
 
 // Mock generateTraceId for deterministic testing
@@ -39,6 +39,16 @@ describe("TraceContext", () => {
       });
 
       expect(traceContext.getCurrentTraceId()).toBeNull();
+    });
+  });
+
+  describe("DI integration", () => {
+    it("base class has no dependencies", () => {
+      expect(TraceContext.dependencies).toHaveLength(0);
+    });
+
+    it("wrapper mirrors empty dependency list", () => {
+      expect(DITraceContext.dependencies).toHaveLength(0);
     });
   });
 

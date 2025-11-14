@@ -16,6 +16,8 @@ describe("Error Sanitizer", () => {
         logLevel: LogLevel.DEBUG,
         enablePerformanceTracking: false,
         enableDebugMode: true,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 1.0,
       };
 
@@ -40,6 +42,8 @@ describe("Error Sanitizer", () => {
         logLevel: LogLevel.INFO,
         enablePerformanceTracking: false,
         enableDebugMode: false,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.01,
       };
 
@@ -67,6 +71,8 @@ describe("Error Sanitizer", () => {
         logLevel: LogLevel.INFO,
         enablePerformanceTracking: false,
         enableDebugMode: false,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.01,
       };
 
@@ -89,6 +95,8 @@ describe("Error Sanitizer", () => {
         logLevel: LogLevel.DEBUG,
         enablePerformanceTracking: false,
         enableDebugMode: true,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 1.0,
       };
 
@@ -105,6 +113,8 @@ describe("Error Sanitizer", () => {
         logLevel: LogLevel.INFO,
         enablePerformanceTracking: false,
         enableDebugMode: false,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.01,
       };
 

@@ -1,10 +1,19 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { MetricsCollector } from "../metrics-collector";
+import {
+  MetricsCollector,
+  DIMetricsCollector,
+  type MetricsPersistenceState,
+} from "../metrics-collector";
 import { createInjectionToken } from "@/di_infrastructure/tokenutilities";
 import type { Logger } from "@/interfaces/logger";
 import type { EnvironmentConfig } from "@/config/environment";
 import { LogLevel } from "@/config/environment";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
+import {
+  PersistentMetricsCollector,
+  DIPersistentMetricsCollector,
+} from "@/observability/metrics-persistence/persistent-metrics-collector";
+import type { MetricsStorage } from "@/observability/metrics-persistence/metrics-storage";
 
 describe("MetricsCollector", () => {
   let collector: MetricsCollector;
@@ -17,6 +26,8 @@ describe("MetricsCollector", () => {
       logLevel: LogLevel.DEBUG,
       enablePerformanceTracking: true,
       enableDebugMode: true,
+      enableMetricsPersistence: false,
+      metricsPersistenceKey: "test.metrics",
       performanceSamplingRate: 1.0,
     };
     collector = new MetricsCollector(mockEnv);
@@ -35,6 +46,31 @@ describe("MetricsCollector", () => {
       expect(MetricsCollector.dependencies).toHaveLength(1);
       expect(MetricsCollector.dependencies[0]).toBeDefined();
       expect(String(MetricsCollector.dependencies[0])).toContain("EnvironmentConfig");
+    });
+
+    it("DI wrapper should expose same dependencies", () => {
+      expect(DIMetricsCollector.dependencies).toHaveLength(1);
+      expect(DIMetricsCollector.dependencies[0]).toBeDefined();
+      expect(String(DIMetricsCollector.dependencies[0])).toContain("EnvironmentConfig");
+    });
+
+    it("persistent wrapper should expose dependencies", () => {
+      expect(DIPersistentMetricsCollector.dependencies).toHaveLength(2);
+      expect(DIPersistentMetricsCollector.dependencies[0]).toBeDefined();
+      expect(DIPersistentMetricsCollector.dependencies[1]).toBeDefined();
+    });
+
+    it("persistent wrapper should construct and reuse metrics persistence", () => {
+      const storage: MetricsStorage = {
+        load: vi.fn().mockReturnValue(null),
+        save: vi.fn(),
+        clear: vi.fn(),
+      };
+
+      const persistent = new DIPersistentMetricsCollector(mockEnv, storage);
+
+      expect(persistent).toBeInstanceOf(PersistentMetricsCollector);
+      expect(storage.load).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -372,5 +408,197 @@ describe("MetricsCollector", () => {
 
       expect(result).toBe(true); // 0.999 < 1 = true
     });
+  });
+});
+
+describe("PersistentMetricsCollector", () => {
+  class MockMetricsStorage implements MetricsStorage {
+    public state: MetricsPersistenceState | null = null;
+
+    load(): MetricsPersistenceState | null {
+      return this.state ? JSON.parse(JSON.stringify(this.state)) : null;
+    }
+
+    save(state: MetricsPersistenceState): void {
+      this.state = JSON.parse(JSON.stringify(state));
+    }
+
+    clear(): void {
+      this.state = null;
+    }
+  }
+
+  it("should restore state from storage on initialization", () => {
+    const storage = new MockMetricsStorage();
+    storage.state = {
+      metrics: {
+        containerResolutions: 5,
+        resolutionErrors: 2,
+        cacheHits: 3,
+        cacheMisses: 1,
+        portSelections: Object.fromEntries([[13, 4]]) as Record<number, number>,
+        portSelectionFailures: Object.fromEntries([[13, 1]]) as Record<number, number>,
+      },
+      resolutionTimes: [2, 4, 6],
+      resolutionTimesIndex: 1,
+      resolutionTimesCount: 3,
+    };
+    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
+
+    const persistentCollector = new PersistentMetricsCollector(env, storage);
+    const snapshot = persistentCollector.getSnapshot();
+
+    expect(snapshot.containerResolutions).toBe(5);
+    expect(snapshot.resolutionErrors).toBe(2);
+    expect(snapshot.portSelections[13]).toBe(4);
+  });
+
+  it("should persist state on mutation", () => {
+    const storage = new MockMetricsStorage();
+    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(env, storage);
+
+    persistentCollector.recordPortSelection(13);
+
+    expect(storage.state?.metrics.portSelections["13"]).toBe(1);
+    persistentCollector.recordCacheAccess(true);
+    expect(storage.state?.metrics.cacheHits).toBe(1);
+  });
+
+  it("should clear persisted state when clearPersistentState is called", () => {
+    const storage = new MockMetricsStorage();
+    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(env, storage);
+
+    persistentCollector.recordPortSelection(13);
+    expect(storage.state).not.toBeNull();
+
+    persistentCollector.clearPersistentState();
+
+    expect(storage.state).toBeNull();
+    const snapshot = persistentCollector.getSnapshot();
+    expect(snapshot.containerResolutions).toBe(0);
+  });
+
+  it("should ignore storage load errors", () => {
+    class ThrowingLoadStorage implements MetricsStorage {
+      load(): MetricsPersistenceState | null {
+        throw new Error("load failed");
+      }
+      save(): void {
+        /* noop */
+      }
+      clear(): void {
+        /* noop */
+      }
+    }
+
+    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(env, new ThrowingLoadStorage());
+
+    expect(persistentCollector.getSnapshot().containerResolutions).toBe(0);
+  });
+
+  it("should ignore storage save errors", () => {
+    class ThrowingSaveStorage extends MockMetricsStorage {
+      override save(): void {
+        throw new Error("save failed");
+      }
+    }
+
+    const storage = new ThrowingSaveStorage();
+    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(env, storage);
+
+    expect(() => persistentCollector.recordCacheAccess(true)).not.toThrow();
+  });
+
+  it("should ignore null persistence state restores", () => {
+    const storage = new MockMetricsStorage();
+    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(env, storage);
+
+    (
+      persistentCollector as unknown as {
+        restoreFromPersistenceState(state: MetricsPersistenceState | null): void;
+      }
+    ).restoreFromPersistenceState(null);
+
+    expect(persistentCollector.getSnapshot().containerResolutions).toBe(0);
+  });
+
+  it("should sanitize invalid persistence values", () => {
+    const storage = new MockMetricsStorage();
+    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(env, storage);
+
+    const invalidState: MetricsPersistenceState = {
+      metrics: {
+        containerResolutions: -10,
+        resolutionErrors: -5,
+        cacheHits: -2,
+        cacheMisses: -3,
+        portSelections: Object.fromEntries([
+          [999, "bar" as unknown as number],
+        ]) as unknown as Record<number, number>,
+        portSelectionFailures: Object.fromEntries([
+          [13, "NaN" as unknown as number],
+        ]) as unknown as Record<number, number>,
+      },
+      resolutionTimes: [Number.NaN, 4],
+      resolutionTimesIndex: Number.POSITIVE_INFINITY,
+      resolutionTimesCount: Number.NaN,
+    };
+
+    (
+      persistentCollector as unknown as {
+        restoreFromPersistenceState(state: MetricsPersistenceState | null): void;
+      }
+    ).restoreFromPersistenceState(invalidState);
+
+    let snapshot = persistentCollector.getSnapshot();
+    expect(snapshot.containerResolutions).toBe(0);
+    expect(snapshot.resolutionErrors).toBe(0);
+    expect(snapshot.portSelections[999]).toBe(0);
+    expect(snapshot.portSelectionFailures[13]).toBe(0);
+    expect(snapshot.avgResolutionTimeMs).toBe(0);
+
+    // Exercise branch where resolutionTimes is not an array
+    (
+      persistentCollector as unknown as {
+        restoreFromPersistenceState(state: MetricsPersistenceState | null): void;
+      }
+    ).restoreFromPersistenceState({
+      metrics: {
+        containerResolutions: 1,
+        resolutionErrors: 0,
+        cacheHits: 0,
+        cacheMisses: 0,
+        portSelections: {},
+        portSelectionFailures: {},
+      },
+      resolutionTimes: undefined as unknown as number[],
+      resolutionTimesIndex: 5,
+      resolutionTimesCount: 3,
+    });
+
+    snapshot = persistentCollector.getSnapshot();
+    expect(snapshot.containerResolutions).toBe(1);
+    expect(snapshot.avgResolutionTimeMs).toBe(0);
+
+    (
+      persistentCollector as unknown as {
+        restoreFromPersistenceState(state: MetricsPersistenceState | null): void;
+      }
+    ).restoreFromPersistenceState({
+      metrics: undefined as unknown as MetricsPersistenceState["metrics"],
+      resolutionTimes: [] as number[],
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0,
+    });
+
+    snapshot = persistentCollector.getSnapshot();
+    expect(snapshot.containerResolutions).toBe(0);
+    expect(snapshot.portSelections[0]).toBeUndefined();
   });
 });

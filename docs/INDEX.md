@@ -1,21 +1,22 @@
 # Dokumentations-Index
 
 **Model:** Claude Sonnet 4.5  
-**Datum:** 2025-11-09  
-**Projekt:** FVTT Relationship App Module v0.10.0
+**Datum:** 2025-11-13  
+**Projekt-Version:** 0.19.1 (Pre-Release)  
+**API-Version:** 1.0.0
 
 ---
 
 ## 📚 Dokumentations-Übersicht
 
-### 🎯 Für Entwickler (Start hier!)
+### 🎯 Pflichtlektüre für Entwickler
 
-| Dokument | Zweck | Wann lesen? |
-|----------|-------|-------------|
-| **[QUICK-REFERENCE.md](./QUICK-REFERENCE.md)** | Schnellreferenz für tägliche Entwicklung | ⭐ **START** |
-| **[VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md)** | Breaking Changes & Deprecation-Strategie | ⭐ **VOR REFACTORING** |
-| **[PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md)** | Vollständige Projektanalyse | Architektur verstehen |
-| **[DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md)** | Detaillierte Service-Dependencies | Refactoring planen |
+| Dokument | Zweck | Lesereihenfolge |
+|----------|-------|-----------------|
+| **[QUICK-REFERENCE.md](./QUICK-REFERENCE.md)** | Schnellreferenz & Cheat Sheets | ⭐ Startpunkt |
+| **[PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md)** | Vollständiger Code-Überblick (ohne Tests) | Nach der Quick-Reference |
+| **[DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md)** | Token-/Dependency-Katalog & Layer-Analyse | Nach Bedarf beim Arbeiten |
+| **[VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md)** | Regeln für Breaking Changes & Deprecations | Vor Refactorings |
 
 ---
 
@@ -23,12 +24,11 @@
 
 | Dokument | Zweck | Zielgruppe |
 |----------|-------|-----------|
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | Clean Architecture Patterns ⭐ v0.8.0 | Architekten, Senior Devs |
-| [BOOTFLOW.md](./BOOTFLOW.md) | Bootstrap-Prozess & Lifecycle ⭐ v0.8.0 | DI-Container-Entwicklung |
-| [DOKUMENTATIONS_UPDATES_2025-11-09.md](./DOKUMENTATIONS_UPDATES_2025-11-09.md) | Update-Log für v0.8.0 ⭐ NEU | Alle Entwickler |
-| [CONFIGURATION.md](./CONFIGURATION.md) | Environment & Settings | Alle Entwickler |
-| [API.md](./API.md) | Öffentliche Modul-API | Externe Consumer (ab 1.0.0) |
-| [API-CHANGELOG.md](./API-CHANGELOG.md) | API-Änderungshistorie ⭐ NEU | Externe Consumer (ab 1.0.0) |
+| [ARCHITECTURE.md](../ARCHITECTURE.md) | Clean-Architecture-Prinzipien & Layering | Architektur & Leads |
+| [BOOTFLOW.md](./BOOTFLOW.md) | Bootstrap-/Lifecycle-Sequenzen | DI-/Bootstrap-Themen |
+| [CONFIGURATION.md](./CONFIGURATION.md) | ENV-Flags, Foundry Settings & Debug Modi | Alle Entwickler |
+| [API.md](./API.md) | Öffentliche API (`game.modules.get(...).api`) | Externe & Integrationen |
+| [API-CHANGELOG.md](./API-CHANGELOG.md) | API-spezifische Änderungen & Deprecations | API-Konsumenten |
 
 ---
 
@@ -36,163 +36,144 @@
 
 | Dokument | Zweck | Zielgruppe |
 |----------|-------|-----------|
-| [TESTING.md](./TESTING.md) | Test-Strategie & Best Practices | Alle Entwickler |
-| **[quality-gates/](./quality-gates/README.md)** | Quality Gates & Exclusions ⭐ NEU | Alle Entwickler |
-| → [Type Coverage Exclusions](./quality-gates/type-coverage-exclusions.md) | Type-Safety Casts (25) | TypeScript-Entwicklung |
-| → [Code Coverage Exclusions](./quality-gates/code-coverage-exclusions.md) | c8 ignore Kommentare (201) | Test-Entwicklung |
-| → [Linter Exclusions](./quality-gates/linter-exclusions.md) | eslint-disable Kommentare (94) | Code-Qualität |
+| [TESTING.md](./TESTING.md) | Test-Strategie, Tools & Command-Guide | Alle Entwickler |
+| [quality-gates/README.md](./quality-gates/README.md) | Qualitätsmetriken & Pflicht-Gates | Maintainer, QA |
+| → [Code Coverage Exclusions](./quality-gates/code-coverage-exclusions.md) | Dokumentierte `c8 ignore`-Stellen | Test-Autoren |
+| → [Type Coverage Exclusions](./quality-gates/type-coverage-exclusions.md) | Dokumentierte `type-coverage`-Ausnahmen | TypeScript |
+| → [Linter Exclusions](./quality-gates/linter-exclusions.md) | Dokumentierte `eslint-disable`-Stellen | Code Qualität |
 
 ---
 
 ### 📐 Architecture Decision Records (ADRs)
 
-| ADR | Titel | Status |
+| ADR | Thema | Status |
 |-----|-------|--------|
-| [ADR-0001](./adr/0001-use-result-pattern-instead-of-exceptions.md) | Result Pattern statt Exceptions | ✅ Aktiv |
+| [ADR-0001](./adr/0001-use-result-pattern-instead-of-exceptions.md) | Result Pattern | ✅ Aktiv |
 | [ADR-0002](./adr/0002-custom-di-container-instead-of-tsyringe.md) | Custom DI Container | ✅ Aktiv |
 | [ADR-0003](./adr/0003-port-adapter-for-foundry-version-compatibility.md) | Port-Adapter-Pattern | ✅ Aktiv |
-| [ADR-0004](./adr/0004-valibot-for-input-validation.md) | Valibot für Validation | ✅ Aktiv |
-| [ADR-0005](./adr/0005-metrics-collector-singleton-to-di.md) | MetricsCollector via DI | ✅ Aktiv |
-| [ADR-0006](./adr/0006-observability-strategy.md) | Observability Strategy ⭐ Updated 2025-11-09 | ✅ Aktiv |
-| [ADR-0007](./adr/0007-clean-architecture-layering.md) | Clean Architecture Layers | ✅ Aktiv |
-| [ADR-0008](./adr/0008-console-vs-logger-interface.md) | Console vs Logger Interface | ✅ Aktiv |
+| [ADR-0004](./adr/0004-valibot-for-input-validation.md) | Valibot | ✅ Aktiv |
+| [ADR-0005](./adr/0005-metrics-collector-singleton-to-di.md) | Metrics Collector via DI | ✅ Aktiv |
+| [ADR-0006](./adr/0006-observability-strategy.md) | Observability & Self-Registration | ✅ Aktiv |
+| [ADR-0007](./adr/0007-clean-architecture-layering.md) | Layering | ✅ Aktiv |
+| [ADR-0008](./adr/0008-console-vs-logger-interface.md) | Logger Strategy | ✅ Aktiv |
+| [ADR-0009-0012](./adr/README.md) | Bootstrap & Error-Service Evolution | ✅ Aktiv |
 
-**Neue ADRs erstellen:** Siehe [ADR README](./adr/README.md)
+**Neue ADRs?** → Richtlinien siehe [ADR/README.md](./adr/README.md)
 
 ---
 
 ### 🔧 Development Guides
 
-| Dokument | Zweck | Zielgruppe |
-|----------|-------|-----------|
-| [foundry-di-adapter-guidelines.md](./foundry-di-adapter-guidelines.md) | DI-Adapter-Entwicklung | Foundry-Integration |
-| [jsdoc-styleguide.md](./jsdoc-styleguide.md) | JSDoc-Konventionen | Alle Entwickler |
+| Dokument | Zweck |
+|----------|-------|
+| [foundry-di-adapter-guidelines.md](./foundry-di-adapter-guidelines.md) | Leitfaden für neue Foundry-Ports & Adapter |
+| [jsdoc-styleguide.md](./jsdoc-styleguide.md) | Dokumentationskonventionen für Services & Token |
 
 ---
 
-### 🗺️ Planning & Roadmaps
+### 🗺️ Planung & Roadmaps
 
-| Dokument | Zweck | Zielgruppe |
-|----------|-------|-----------|
-| [roadmaps/REFACTORING-ROADMAP.md](./roadmaps/REFACTORING-ROADMAP.md) | Refactoring-Tasks bis v1.0.0 | Maintainer |
-| [roadmaps/api-future-tasks.md](./roadmaps/api-future-tasks.md) | API-Tasks für v1.0.0 | Maintainer |
-
----
-
-### 🔬 Foundry VTT Spezifisch & Releases
-
-| Dokument | Zweck | Zielgruppe |
-|----------|-------|-----------|
-| [releases/*.md](./releases/) | Release-Notes (v0.0.4 - v0.12.2, 31 Docs) ⭐ | Alle |
+| Dokument | Zweck |
+|----------|-------|
+| [roadmaps/ROADMAP.md](./roadmaps/ROADMAP.md) | Aktuelle Vorhaben (v1.0 Fokus & Post-Release) |
 
 ---
 
-### 📊 Reports & Archives
+### 🔬 Foundry & Release Notes
 
-| Dokument | Zweck | Zielgruppe |
-|----------|-------|-----------|
-| [archive/](./archive/) | Historische Audits (Archiv) | Historisch |
+| Dokument | Zweck |
+|----------|-------|
+| [releases/](./releases/) | Historische Release Notes (v0.0.4 – v0.19.1) |
+
+---
+
+### 📊 Archive & Historie
+
+| Dokument | Zweck |
+|----------|-------|
+| [archive/](./archive/) | Historische Audit-Reports (Stand 2025-11-09) |
 
 ---
 
 ## 🚀 Quick-Navigation nach Use-Case
 
-### "Ich will einen neuen Service erstellen"
-1. [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → "Service-Erstellung Cheat Sheet"
-2. [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → "Dependency Injection Token Registry"
-3. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → "Best Practices für neue Services"
+### "Ich möchte einen neuen Service registrieren"
+1. [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → Service & DI-Wrapper Cheat Sheets  
+2. [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → Token & Layer prüfen  
+3. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → Architektur-Kontext & Patterns
 
 ---
 
-### "Ich will Refactoring durchführen"
-1. ⭐ **[VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md)** → Pre-Release vs Production Rules
-2. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → "Refactoring-Empfehlungen"
-3. [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → "Refactoring-Impact-Analyse"
+### "Ich plane ein Refactoring"
+1. [VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md) → Regeln & Deprecation  
+2. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → Aktueller Code-Status  
+3. [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → Betroffene Tokens & Layer
 
 ---
 
-### "Ich will die Architektur verstehen"
-1. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → "Services" & "Infrastruktur"
-2. [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → "Dependency Tree"
-3. [ARCHITECTURE.md](../ARCHITECTURE.md) → Clean Architecture Details
-4. [BOOTFLOW.md](./BOOTFLOW.md) → Bootstrap-Prozess
+### "Ich möchte die Architektur verstehen"
+1. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → Übersicht & Pattern  
+2. [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → Layer & Token-Registry  
+3. [ARCHITECTURE.md](../ARCHITECTURE.md) → Clean Architecture Hintergründe  
+4. [BOOTFLOW.md](./BOOTFLOW.md) → Bootstrap & Lifecycle
 
 ---
 
-### "Ich will einen Port für neue Foundry-Version erstellen"
-1. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → "Zukunftssicherheit & Erweiterbarkeit"
-2. [foundry-di-adapter-guidelines.md](./foundry-di-adapter-guidelines.md)
-3. [ADR-0003](./adr/0003-port-adapter-for-foundry-version-compatibility.md) → Port-Adapter-Pattern
+### "Ich brauche einen neuen Foundry-Port"
+1. [foundry-di-adapter-guidelines.md](./foundry-di-adapter-guidelines.md)  
+2. [ADR-0003](./adr/0003-port-adapter-for-foundry-version-compatibility.md)  
+3. [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → Zukunftssicherheit & Ports
 
-**Prozess:**
-1. Foundry API-Änderungen analysieren
-2. Port-Implementierung (z.B. `src/foundry/ports/v14/*.ts`)
-3. Port in Registry registrieren (`dependencyconfig.ts`)
-4. `module.json` aktualisieren: `"maximum": [VERSION]`
-5. Tests erweitern
+**Checkliste:**  
+1. API-Diffs analysieren → 2. Port implementieren (`src/foundry/ports/vX/`)  
+3. Registry-Update (`port-infrastructure.config.ts`) → 4. Tests ergänzen  
+5. `module.json` (compatibility.maximum) aktualisieren
 
 ---
 
-### "Ich will Tests schreiben"
-1. [TESTING.md](./TESTING.md) → Testing-Strategie
-2. [quality-gates/](./quality-gates/README.md) → Quality Metrics & Coverage
-3. [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → "Testing Cheat Sheet"
+### "Ich schreibe Tests"
+1. [TESTING.md](./TESTING.md) → Strategie & Commands  
+2. [quality-gates/README.md](./quality-gates/README.md) → verpflichtende Checks  
+3. [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → Testing Cheat Sheet
 
 ---
 
-### "Ich suche Breaking Change Guidelines"
-1. ⭐ **[VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md)** → Vollständige Strategie
-2. [templates/DEPRECATION_TEMPLATE.md](./templates/DEPRECATION_TEMPLATE.md) → Code-Templates
-3. [templates/MIGRATION_GUIDE_TEMPLATE.md](./templates/MIGRATION_GUIDE_TEMPLATE.md) → Migration Guide Template
+### "Ich plane Breaking Changes"
+1. [VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md)  
+2. [templates/DEPRECATION_TEMPLATE.md](./templates/DEPRECATION_TEMPLATE.md)  
+3. [templates/MIGRATION_GUIDE_TEMPLATE.md](./templates/MIGRATION_GUIDE_TEMPLATE.md)
 
 ---
 
 ## 📝 Template-Verzeichnis
 
-| Template | Zweck | Wann verwenden? |
-|----------|-------|----------------|
-| [MIGRATION_GUIDE_TEMPLATE.md](./templates/MIGRATION_GUIDE_TEMPLATE.md) | Migration Guide | Ab Version 1.0.0 (Breaking Changes) |
-| [DEPRECATION_TEMPLATE.md](./templates/DEPRECATION_TEMPLATE.md) | Deprecation-Annotations | Ab Version 1.0.0 (vor Breaking Changes) |
-
-**Aktuell (0.x.x):** Templates nicht benötigt (Legacy-Code sofort entfernen)
+| Template | Zweck | Einsatz |
+|----------|-------|--------|
+| [MIGRATION_GUIDE_TEMPLATE.md](./templates/MIGRATION_GUIDE_TEMPLATE.md) | Migration Guides | Ab Modul 1.0.0+ |
+| [DEPRECATION_TEMPLATE.md](./templates/DEPRECATION_TEMPLATE.md) | Deprecation Notices | Vor API Breaking Changes |
 
 ---
 
 ## 🔄 Dokumentations-Update-Workflow
 
 ### Bei Code-Änderungen
+- [ ] [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → neue Services / DI-Änderungen
+- [ ] [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → Token & Layer aktualisieren
+- [ ] [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → Cheat Sheets & Tokens
 
-**IMMER aktualisieren:**
-- [ ] [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) - Bei neuen Services/Dependencies
-- [ ] [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) - Bei Dependency-Änderungen
-- [ ] [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) - Bei API-Änderungen
-
-**Manchmal aktualisieren:**
-- [ ] [ARCHITECTURE.md](../ARCHITECTURE.md) - Bei Architektur-Änderungen
-- [ ] [API.md](./API.md) - Bei Public API-Änderungen
-- [ ] [CHANGELOG.md](../CHANGELOG.md) - Bei jedem Release
-- [ ] [quality-gates/README.md](./quality-gates/README.md) - Bei Quality-Metriken-Änderungen
-
-**Nur bei speziellen Änderungen:**
-- [ ] [BOOTFLOW.md](./BOOTFLOW.md) - Bei Bootstrap-Änderungen
-- [ ] [CONFIGURATION.md](./CONFIGURATION.md) - Bei ENV/Settings-Änderungen
-- [ ] [TESTING.md](./TESTING.md) - Bei Test-Strategie-Änderungen
+### Bei Architektur-/Release-Änderungen
+- [ ] [ARCHITECTURE.md](../ARCHITECTURE.md)
+- [ ] [BOOTFLOW.md](./BOOTFLOW.md)
+- [ ] [API.md](./API.md) & [API-CHANGELOG.md](./API-CHANGELOG.md)
+- [ ] [CHANGELOG.md](../CHANGELOG.md)
+- [ ] [VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md)
+- [ ] [quality-gates/README.md](./quality-gates/README.md)
 
 ---
 
-### Bei Breaking Changes (ab 1.0.0)
-
-1. **Deprecation Phase:**
-   - [ ] JSDoc `@deprecated` Annotations hinzufügen
-   - [ ] Runtime-Warnings implementieren
-   - [ ] CHANGELOG.md: "Deprecated" Section
-   - [ ] Migration Guide erstellen (Template nutzen)
-
-2. **Removal Phase:**
-   - [ ] Legacy-Code entfernen
-   - [ ] CHANGELOG.md: "⚠️ BREAKING CHANGES" Section
-   - [ ] Migration Guide aktualisieren
-   - [ ] Release Notes prominent kommunizieren
+### Breaking Changes (ab Modul 1.0.0)
+1. **Deprecation Phase:** JSDoc `@deprecated`, Runtime-Warnung, API-CHANGELOG, ggf. Migration Guide  
+2. **Removal Phase:** Code entfernen, Breaking Change dokumentieren, Release Notes aktualisieren
 
 ---
 
@@ -243,35 +224,34 @@ Get-ChildItem -Path docs -Recurse -Filter *.md |
 
 ## 📅 Wartungs-Plan
 
-### Monatlich
-- [ ] Aktualisiere PROJECT-ANALYSIS.md (neue Services/Refactorings)
-- [ ] Prüfe DEPENDENCY-MAP.md (neue Dependencies)
-- [ ] Aktualisiere quality-gates/README.md (Quality-Metriken)
+### Monatlicher Check
+- PROJECT-ANALYSIS.md & DEPENDENCY-MAP.md aktuell halten
+- quality-gates/README.md (neue Metriken / Ausnahmen)
 
-### Vierteljährlich
-- [ ] Review aller ADRs (Status aktualisieren)
-- [ ] Architektur-Audit (ARCHITECTURE.md)
-- [ ] Dokumentations-Qualitäts-Check
+### Vierteljährlicher Check
+- ADRs reviewen (Status, Relevanz)
+- ARCHITECTURE.md & BOOTFLOW.md prüfen
+- Doc-Qualität (Dead Links, Daten) verifizieren
 
-### Vor jedem Release
-- [ ] CHANGELOG.md aktualisieren
-- [ ] API.md prüfen (Breaking Changes?)
-- [ ] Migration Guides erstellen (ab 1.0.0)
+### Vor Releases
+- CHANGELOG.md & [releases/](./releases/)
+- API.md & API-CHANGELOG.md
+- Migration Guides (ab Modul 1.0.0)
 
 ---
 
 ## 🆕 Neue Dokumentation hinzufügen
 
-### Schritt 1: Platzierung bestimmen
+### Schritt 1: Speicherort wählen
 
 ```
 docs/
-├── *.md                    # Top-Level Docs (Analysis, API, etc.)
-├── adr/                    # Architecture Decision Records
-├── templates/              # Templates für Migration Guides, etc.
-├── quality-gates/          # Quality Gates Documentation ⭐ NEU
-├── releases/               # Release-Notes
-└── archive/                # Historische Dokumente
+├── *.md              # Top-Level Docs (Analyse, Guides, API)
+├── adr/              # Architecture Decision Records
+├── templates/        # Vorlagen für Migration & Deprecation
+├── quality-gates/    # Qualitätsmetriken & Ausnahmen
+├── releases/         # Release Notes
+└── archive/          # Historische Dokumente
 ```
 
 ---
@@ -321,36 +301,14 @@ Füge das neue Dokument in diesem Index hinzu (passende Kategorie).
 
 ---
 
-## 📊 Dokumentations-Statistiken
-
-| Kategorie | Anzahl |
-|-----------|-------:|
-| **Top-Level Docs** | 12 |
-| **Roadmaps** | 2 |
-| **ADRs** | 8 |
-| **Quality Gates** | 4 |
-| **Development Guides** | 2 |
-| **Templates** | 2 |
-| **Releases** | 31 |
-| **Archive** | 3 |
-| **Gesamt** | ~64 Dokumente |
-
----
-
 ## 🔗 Externe Ressourcen
 
-### Foundry VTT
-- [Foundry VTT API Documentation](https://foundryvtt.com/api/)
-- [Foundry VTT Wiki](https://foundryvtt.wiki/)
-
-### TypeScript
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-- [TypeScript Deep Dive](https://basarat.gitbook.io/typescript/)
-
-### Architecture Patterns
-- [Clean Architecture (Uncle Bob)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-- [Result Pattern in TypeScript](https://imhoff.blog/posts/using-results-in-typescript)
-- [Dependency Injection Patterns](https://martinfowler.com/articles/injection.html)
+| Thema | Link |
+|-------|------|
+| Foundry API | https://foundryvtt.com/api/ |
+| Foundry Wiki | https://foundryvtt.wiki/ |
+| TypeScript Handbook | https://www.typescriptlang.org/docs/ |
+| Clean Architecture | https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html |
 
 ---
 

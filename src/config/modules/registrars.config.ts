@@ -7,9 +7,9 @@ import {
   moduleHookRegistrarToken,
   renderJournalDirectoryHookToken,
 } from "@/tokens/tokenindex";
-import { ModuleSettingsRegistrar } from "@/core/module-settings-registrar";
-import { ModuleHookRegistrar } from "@/core/module-hook-registrar";
-import { RenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
+import { DIModuleSettingsRegistrar } from "@/core/module-settings-registrar";
+import { DIModuleHookRegistrar } from "@/core/module-hook-registrar";
+import { DIRenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
 
 /**
  * Registers registrar services.
@@ -29,7 +29,7 @@ export function registerRegistrars(container: ServiceContainer): Result<void, st
   // Register RenderJournalDirectoryHook
   const renderJournalHookResult = container.registerClass(
     renderJournalDirectoryHookToken,
-    RenderJournalDirectoryHook,
+    DIRenderJournalDirectoryHook,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(renderJournalHookResult)) {
@@ -41,7 +41,7 @@ export function registerRegistrars(container: ServiceContainer): Result<void, st
   // Register ModuleHookRegistrar (depends on hooks)
   const hookRegistrarResult = container.registerClass(
     moduleHookRegistrarToken,
-    ModuleHookRegistrar,
+    DIModuleHookRegistrar,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(hookRegistrarResult)) {
@@ -51,7 +51,7 @@ export function registerRegistrars(container: ServiceContainer): Result<void, st
   // Register ModuleSettingsRegistrar
   const settingsRegistrarResult = container.registerClass(
     moduleSettingsRegistrarToken,
-    ModuleSettingsRegistrar,
+    DIModuleSettingsRegistrar,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(settingsRegistrarResult)) {

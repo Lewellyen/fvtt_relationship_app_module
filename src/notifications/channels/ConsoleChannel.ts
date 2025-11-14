@@ -18,8 +18,6 @@ import { ok } from "@/utils/functional/result";
 import { loggerToken } from "@/tokens/tokenindex";
 
 export class ConsoleChannel implements NotificationChannel {
-  static dependencies = [loggerToken] as const;
-
   readonly name = "ConsoleChannel";
 
   constructor(private readonly logger: Logger) {}
@@ -49,5 +47,13 @@ export class ConsoleChannel implements NotificationChannel {
     }
 
     return ok(undefined);
+  }
+}
+
+export class DIConsoleChannel extends ConsoleChannel {
+  static dependencies = [loggerToken] as const;
+
+  constructor(logger: Logger) {
+    super(logger);
   }
 }

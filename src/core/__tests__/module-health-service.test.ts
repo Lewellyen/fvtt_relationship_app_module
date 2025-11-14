@@ -1,7 +1,7 @@
 // Test file: `any` needed for dummy token registration
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { ModuleHealthService } from "../module-health-service";
+import { ModuleHealthService, DIModuleHealthService } from "../module-health-service";
 import { HealthCheckRegistry } from "@/core/health/health-check-registry";
 import type { HealthCheck } from "@/core/health/health-check.interface";
 
@@ -163,9 +163,9 @@ describe("ModuleHealthService", () => {
 
   describe("Dependencies", () => {
     it("should declare healthCheckRegistryToken as dependency", () => {
-      expect(ModuleHealthService.dependencies).toHaveLength(1);
-      expect(ModuleHealthService.dependencies[0]).toBeDefined();
-      expect(String(ModuleHealthService.dependencies[0])).toContain("HealthCheckRegistry");
+      expect(DIModuleHealthService.dependencies).toHaveLength(1);
+      expect(DIModuleHealthService.dependencies[0]).toBeDefined();
+      expect(String(DIModuleHealthService.dependencies[0])).toContain("HealthCheckRegistry");
     });
   });
 });

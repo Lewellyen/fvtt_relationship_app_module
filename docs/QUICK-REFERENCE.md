@@ -1,11 +1,11 @@
-# Quick Reference - Service & Dependency Übersicht
+# Quick Reference – Service & Dependency Übersicht
 
 **Model:** Claude Sonnet 4.5  
-**Datum:** 2025-11-09  
-**Projekt-Status:** Version 0.10.0 (Pre-Release)  
-**Breaking Changes:** ✅ Erlaubt - Aggressives Refactoring erwünscht!  
-**Legacy-Codes:** ❌ Sofort eliminieren (kein Deprecation nötig)  
-**Ab 1.0.0:** Deprecation-Strategie mit Migrationspfad verpflichtend
+**Datum:** 2025-11-13  
+**Projekt-Status:** Version 0.19.1 (Pre-Release)  
+**API-Version:** 1.0.0  
+**Breaking Changes:** ✅ Erlaubt bis Modul 1.0.0  
+**Legacy-Code:** ❌ Wird unmittelbar bereinigt
 
 ---
 
@@ -22,38 +22,36 @@
 ## 📦 Service-Kategorien
 
 ### Core Infrastructure (Layer 2)
-- **MetricsCollector** - Metrics-Sammlung & Observability
-- **ConsoleLoggerService** - Logging mit automatischer Trace-ID-Injection (`DI`-Wrapper mit `static dependencies`)
-- **TraceContext** ⭐ NEW v0.15.0 - Automatische Trace-ID-Propagation & Context Management
-- **ModuleHealthService** - Health Checks mit HealthCheckRegistry
-- **ObservabilityRegistry** - Zentraler Hub für Self-Registration Pattern
+- **ConsoleLoggerService / DIConsoleLoggerService** – Logging & TraceContext
+- **MetricsCollector / DIMetricsCollector** – Container-/Port-Metriken
+- **TraceContext / DITraceContext** – Automatische Trace-ID-Propagation (sync & async)
+- **ModuleHealthService / DIModuleHealthService** – Aggregiert registrierte Checks
+- **ModuleApiInitializer / DIModuleApiInitializer** – Public API Bootstrap & Token-Exposure
+- **ObservabilityRegistry / DIObservabilityRegistry** – Self-Registration Hub
 
-### Foundry Adapters (Layer 3)
-- **PortSelector** - Version-agnostische Port-Selektion (mit Self-Registration)
-- **PortSelectionEventEmitter** ⭐ NEW - Event-Emitter (TRANSIENT)
-- **FoundryGameService** - Foundry Game API Wrapper
-- **FoundryHooksService** - Foundry Hooks API Wrapper
-- **FoundryDocumentService** - Foundry Document API Wrapper
-- **FoundryUIService** - Foundry UI API Wrapper
-- **FoundrySettingsService** - Foundry Settings API Wrapper
-- **FoundryI18nService** - Foundry i18n API Wrapper
+### Foundry Adapter (Layer 3)
+- **PortSelector / DIPortSelector** – Version-agnostische Port-Auswahl
+- **PortSelectionEventEmitter** – TRANSIENT Event Emitter für Observability
+- **FoundryXService / DIFoundryXService** – Adapter für Game, Hooks, Document, UI, Settings, I18n
+- **FoundryServiceBase** – Gemeinsamer Lazy-Port-Mechanismus
 
-### Registrars (Layer 2) ⭐ NEW
-- **ModuleSettingsRegistrar** - Settings-Registrierung (DI-managed)
-- **ModuleHookRegistrar** - Hook-Registrierung (DI-managed)
-- **RenderJournalDirectoryHook** - Spezifischer Hook-Handler
+### Registrars & Hooks
+- **ModuleSettingsRegistrar / DIModuleSettingsRegistrar** – Settings via DI registrieren
+- **ModuleHookRegistrar / DIModuleHookRegistrar** – Hook-Verwaltung
+- **RenderJournalDirectoryHook / DIRenderJournalDirectoryHook** – Beispiel-Hook (DI-managed)
 
-### Business Logic (Layer 4)
-- **JournalVisibilityService** - Journal-Verstecken-Logik
-- **I18nFacadeService** - i18n Facade (Foundry + Local)
-- **FoundryJournalFacade** - Journal-Operations-Facade
+### Business Layer
+- **JournalVisibilityService / DIJournalVisibilityService** – Journal-Visibility
+- **I18nFacadeService / DII18nFacadeService** – Chain-of-Responsibility (Foundry → Local → Fallback)
+- **FoundryJournalFacade / DIFoundryJournalFacade** – Kombiniert Game/Document/UI
+- **NotificationCenter / DINotificationCenter** – Channel-basierte Notifications
 
-### Utilities & Services
-- **PerformanceTrackingService** - Performance Tracking mit Sampling
-- **RetryService** - Retry-Logik mit Exponential Backoff (Options-Object-API)
-- **LocalI18nService** - Foundry-unabhängiges i18n
-- **HealthCheckRegistry** - Extensible Health Check System
-- **NotificationCenter** ⭐ – Zentrale Notification-Orchestrierung (Console/UI/erweiterbar)
+### Utilities & Cross-Cutting
+- **PerformanceTrackingService / DIPerformanceTrackingService** – Sampling & Duration Tracking
+- **RetryService / DIRetryService** – Exponential Backoff + Observability
+- **LocalI18nService / DILocalI18nService** – JSON-basierte Fallback-Lokalisation
+- **FallbackTranslationHandler / DIFallbackTranslationHandler** – Chain-Terminator ohne Dependencies
+- **HealthCheckRegistry / DIHealthCheckRegistry** – Extensible Health Check System
 
 ---
 
@@ -88,48 +86,52 @@ src/config/
 
 ### Logging, Metrics & Notifications
 ```typescript
-import { 
-  loggerToken, 
+import {
+  loggerToken,
   metricsCollectorToken,
-  traceContextToken,                 // ⭐ NEW v0.15.0
-  notificationCenterToken,           // ⭐ NEW v0.18.0 (Unreleased)
-  observabilityRegistryToken,        // ⭐ NEW v0.8.0
-  portSelectionEventEmitterToken     // ⭐ NEW v0.8.0
+  traceContextToken,
+  notificationCenterToken,
+  observabilityRegistryToken,
+  portSelectionEventEmitterToken,
 } from "@/tokens/tokenindex";
 
 const logger = container.resolve(loggerToken);
 const metrics = container.resolve(metricsCollectorToken);
-const traceContext = container.resolve(traceContextToken);            // NEW v0.15.0
-const notifications = container.resolve(notificationCenterToken);     // NEW v0.18.0
-const observability = container.resolve(observabilityRegistryToken);  // NEW v0.8.0
+const traceContext = container.resolve(traceContextToken);
+const notifications = container.resolve(notificationCenterToken);
+const observability = container.resolve(observabilityRegistryToken);
 ```
 
 ### Foundry Services & Registrars
 ```typescript
-import { 
-  foundryGameToken, 
+import {
+  foundryGameToken,
   foundryHooksToken,
   foundryDocumentToken,
   foundryUIToken,
   foundrySettingsToken,
-  moduleSettingsRegistrarToken,      // ⭐ NEW v0.8.0
-  moduleHookRegistrarToken,           // ⭐ NEW v0.8.0
-  renderJournalDirectoryHookToken     // ⭐ NEW v0.8.0
+  foundryI18nToken,
+  moduleSettingsRegistrarToken,
+  moduleHookRegistrarToken,
+  renderJournalDirectoryHookToken,
 } from "@/tokens/tokenindex";
 
 const game = container.resolve(foundryGameToken);
-const hooks = container.resolve(foundryHooksToken);
+const settings = container.resolve(foundrySettingsToken);
+const hooksRegistrar = container.resolve(moduleHookRegistrarToken);
 ```
 
 ### Business Services
 ```typescript
-import { 
+import {
   journalVisibilityServiceToken,
-  i18nFacadeToken 
+  i18nFacadeToken,
+  foundryJournalFacadeToken,
 } from "@/tokens/tokenindex";
 
 const journalService = container.resolve(journalVisibilityServiceToken);
 const i18n = container.resolve(i18nFacadeToken);
+const journalFacade = container.resolve(foundryJournalFacadeToken);
 ```
 
 ---
@@ -163,42 +165,48 @@ Dein Service
 
 ---
 
-## ⚡ Service-Erstellung Cheat Sheet
+## ⚙️ Service & DI-Wrapper Cheat Sheet
 
-### 1. Service-Klasse erstellen
+### 1. Fachliche Service-Klasse
 ```typescript
 // src/services/MyService.ts
 export class MyService {
-  static dependencies = [loggerToken, metricsCollectorToken] as const;
-  
   constructor(
     private readonly logger: Logger,
-    private readonly metrics: MetricsCollector
+    private readonly metrics: MetricsCollector,
   ) {}
-  
-  doSomething(): Result<string, Error> {
+
+  doSomething(): Result<string, never> {
     this.logger.info("Doing something");
-    return ok("Success");
+    return ok("success");
   }
 }
 ```
 
-### 2. Token definieren
+### 2. DI-Wrapper
+```typescript
+export class DIMyService extends MyService {
+  static dependencies = [loggerToken, metricsCollectorToken] as const;
+
+  constructor(logger: Logger, metrics: MetricsCollector) {
+    super(logger, metrics);
+  }
+}
+```
+
+### 3. Token & Registrierung
 ```typescript
 // src/tokens/tokenindex.ts
 export const myServiceToken = createInjectionToken<MyService>("MyService");
+
+// src/config/modules/utility-services.config.ts
+container.registerClass(myServiceToken, DIMyService, ServiceLifecycle.SINGLETON);
 ```
 
-### 3. Registrieren
+### 4. Nutzung
 ```typescript
-// src/config/dependencyconfig.ts
-container.registerClass(myServiceToken, MyService, ServiceLifecycle.SINGLETON);
-```
-
-### 4. Nutzen
-```typescript
-const myService = container.resolve(myServiceToken);
-const result = myService.doSomething();
+const service = container.resolve(myServiceToken);
+const result = service.doSomething();
 ```
 
 ---
@@ -306,7 +314,7 @@ const result = await retryService.retry(
 
 ### 3. Trace-IDs für Request-Correlation
 
-#### ⭐ NEU: Automatische Trace-ID-Propagation (v0.15.0)
+#### Automatische TraceContext-Propagation (empfohlen)
 ```typescript
 import { traceContextToken } from "@/tokens/tokenindex";
 
@@ -336,7 +344,7 @@ traceContext.trace(() => {
 });
 ```
 
-#### Alternative: Explizites withTraceId() (weiterhin vollständig unterstützt)
+#### Alternative: explizites `withTraceId()`
 ```typescript
 import { generateTraceId } from "@/utils/observability/trace";
 

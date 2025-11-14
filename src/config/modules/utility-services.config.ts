@@ -3,8 +3,8 @@ import type { Result } from "@/types/result";
 import { ok, err, isErr } from "@/utils/functional/result";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
 import { performanceTrackingServiceToken, retryServiceToken } from "@/tokens/tokenindex";
-import { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
-import { RetryService } from "@/services/RetryService";
+import { DIPerformanceTrackingService } from "@/services/PerformanceTrackingService";
+import { DIRetryService } from "@/services/RetryService";
 
 /**
  * Registers utility services.
@@ -23,7 +23,7 @@ export function registerUtilityServices(container: ServiceContainer): Result<voi
   // Register PerformanceTrackingService
   const perfTrackingResult = container.registerClass(
     performanceTrackingServiceToken,
-    PerformanceTrackingService,
+    DIPerformanceTrackingService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(perfTrackingResult)) {
@@ -35,7 +35,7 @@ export function registerUtilityServices(container: ServiceContainer): Result<voi
   // Register RetryService
   const retryServiceResult = container.registerClass(
     retryServiceToken,
-    RetryService,
+    DIRetryService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(retryServiceResult)) {

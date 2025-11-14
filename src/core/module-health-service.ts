@@ -15,8 +15,6 @@ import { healthCheckRegistryToken } from "@/tokens/tokenindex";
  * Extracted from CompositionRoot to follow Single Responsibility Principle.
  */
 export class ModuleHealthService {
-  static dependencies = [healthCheckRegistryToken] as const;
-
   private healthChecksInitialized = false;
 
   constructor(private readonly registry: HealthCheckRegistry) {}
@@ -83,5 +81,13 @@ export class ModuleHealthService {
       },
       timestamp: new Date().toISOString(),
     };
+  }
+}
+
+export class DIModuleHealthService extends ModuleHealthService {
+  static dependencies = [healthCheckRegistryToken] as const;
+
+  constructor(registry: HealthCheckRegistry) {
+    super(registry);
   }
 }

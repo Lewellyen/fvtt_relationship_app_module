@@ -429,7 +429,8 @@ describe("dependencyconfig", () => {
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      expect(result.error).toContain("Failed to resolve MetricsCollector");
+      expect(result.error).toContain("Failed to resolve HealthCheckRegistry");
+      expect(result.error).toContain("MetricsCollector not found");
     });
 
     it("should propagate errors when ContainerHealthCheck registration fails", () => {
@@ -495,7 +496,8 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
-        expect(result.error).toContain("Failed to resolve ContainerHealthCheck");
+        expect(result.error).toContain("Failed to resolve MetricsCollector");
+        expect(result.error).toContain("ContainerHealthCheck not found");
       }
     });
 
@@ -519,7 +521,8 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
-        expect(result.error).toContain("Failed to resolve MetricsHealthCheck");
+        expect(result.error).toContain("Failed to resolve ContainerHealthCheck");
+        expect(result.error).toContain("MetricsHealthCheck not found");
       }
     });
 

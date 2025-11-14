@@ -3,13 +3,19 @@ import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/functional/result";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
-import { markAsApiSafe, type ApiSafeToken } from "@/di_infrastructure/types/api-safe-token";
+import { type ApiSafeToken } from "@/di_infrastructure/types/api-safe-token";
 import { getDeprecationInfo } from "@/di_infrastructure/types/deprecated-token";
-import { createPublicI18n } from "@/core/api/public-api-wrappers";
+import {
+  createPublicI18n,
+  createPublicNotificationCenter,
+  createPublicFoundrySettings,
+} from "@/core/api/public-api-wrappers";
 import { createApiTokens } from "@/core/api/api-token-config";
 import type { ModuleApi, TokenInfo, HealthStatus, ModuleApiTokens } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
 import {
   journalVisibilityServiceToken,
@@ -44,7 +50,6 @@ import {
  */
 export class ModuleApiInitializer {
   static dependencies = [] as const;
-
   /**
    * Handles deprecation warnings for tokens.
    * Logs warning to console if token is deprecated and warning hasn't been shown yet.
@@ -85,10 +90,9 @@ export class ModuleApiInitializer {
    * @private
    */
   private createResolveFunction(
-    container: ServiceContainer
+    container: ServiceContainer,
+    wellKnownTokens: ModuleApiTokens
   ): <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType {
-    const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
-
     return <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>): TServiceType => {
       // Handle deprecation warnings
       this.handleDeprecationWarning(token);
@@ -96,20 +100,7 @@ export class ModuleApiInitializer {
       // Resolve service from container
       const service: TServiceType = container.resolve(token);
 
-      // Apply read-only wrappers for sensitive services
-      // Type narrowing: We check token identity and apply appropriate wrapper
-      if (token === apiSafeI18nToken) {
-        // Type-safe: When token is i18nToken, we know service is I18nFacadeService
-        /* type-coverage:ignore-next-line -- Generic type narrowing: token === i18nToken guarantees service is I18nFacadeService */
-        const i18n: I18nFacadeService = service as I18nFacadeService;
-        const wrappedI18n: I18nFacadeService = createPublicI18n(i18n);
-        /* type-coverage:ignore-next-line -- Generic return: wrappedI18n must be cast to generic TServiceType */
-        return wrappedI18n as TServiceType;
-      }
-
-      // Default: Return original service for read-only services
-      // (FoundryGame, FoundryDocument, FoundryUI, etc.)
-      return service;
+      return this.wrapSensitiveService(token, service, wellKnownTokens);
     };
   }
 
@@ -122,12 +113,11 @@ export class ModuleApiInitializer {
    * @private
    */
   private createResolveWithErrorFunction(
-    container: ServiceContainer
+    container: ServiceContainer,
+    wellKnownTokens: ModuleApiTokens
   ): <TServiceType extends ServiceType>(
     token: ApiSafeToken<TServiceType>
   ) => Result<TServiceType, ContainerError> {
-    const apiSafeI18nToken = markAsApiSafe(i18nFacadeToken);
-
     return <TServiceType extends ServiceType>(
       token: ApiSafeToken<TServiceType>
     ): Result<TServiceType, ContainerError> => {
@@ -145,18 +135,48 @@ export class ModuleApiInitializer {
 
       const service = result.value;
 
-      // Apply read-only wrappers for sensitive services
-      if (token === apiSafeI18nToken) {
-        /* type-coverage:ignore-next-line -- Generic type narrowing: token === i18nToken guarantees service is I18nFacadeService */
-        const i18n: I18nFacadeService = service as I18nFacadeService;
-        const wrappedI18n: I18nFacadeService = createPublicI18n(i18n);
-        /* type-coverage:ignore-next-line -- Generic return: wrappedI18n must be cast to generic TServiceType */
-        return ok(wrappedI18n as TServiceType);
-      }
-
-      // Default: Return wrapped in Result
-      return ok(service);
+      const wrappedService = this.wrapSensitiveService(token, service, wellKnownTokens);
+      return ok(wrappedService);
     };
+  }
+
+  /**
+   * Applies read-only wrappers when API consumers resolve sensitive services.
+   *
+   * @param token - API token used for resolution
+   * @param service - Service resolved from the container
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Wrapped service when applicable
+   * @private
+   */
+  private wrapSensitiveService<TServiceType extends ServiceType>(
+    token: ApiSafeToken<TServiceType>,
+    service: TServiceType,
+    wellKnownTokens: ModuleApiTokens
+  ): TServiceType {
+    if (token === wellKnownTokens.i18nFacadeToken) {
+      /* type-coverage:ignore-next-line -- token identity ensures service is I18nFacadeService */
+      const i18n: I18nFacadeService = service as I18nFacadeService;
+      /* type-coverage:ignore-next-line -- Cast required for generic return */
+      return createPublicI18n(i18n) as TServiceType;
+    }
+
+    if (token === wellKnownTokens.notificationCenterToken) {
+      /* type-coverage:ignore-next-line -- token identity ensures service is NotificationCenter */
+      const notifications: NotificationCenter = service as NotificationCenter;
+      /* type-coverage:ignore-next-line -- Cast required for generic return */
+      return createPublicNotificationCenter(notifications) as TServiceType;
+    }
+
+    if (token === wellKnownTokens.foundrySettingsToken) {
+      /* type-coverage:ignore-next-line -- token identity ensures service is FoundrySettings */
+      const settings: FoundrySettings = service as FoundrySettings;
+      /* type-coverage:ignore-next-line -- Cast required for generic return */
+      return createPublicFoundrySettings(settings) as TServiceType;
+    }
+
+    // Default: return original service for read-only or safe services
+    return service;
   }
 
   /**
@@ -175,10 +195,10 @@ export class ModuleApiInitializer {
       version: MODULE_CONSTANTS.API.VERSION,
 
       // Overloaded resolve method (throws on error)
-      resolve: this.createResolveFunction(container),
+      resolve: this.createResolveFunction(container, wellKnownTokens),
 
       // Result-Pattern method (safe, never throws)
-      resolveWithError: this.createResolveWithErrorFunction(container),
+      resolveWithError: this.createResolveWithErrorFunction(container, wellKnownTokens),
 
       getAvailableTokens: (): Map<symbol, TokenInfo> => {
         const tokenMap = new Map<symbol, TokenInfo>();
@@ -276,5 +296,13 @@ export class ModuleApiInitializer {
     mod.api = api;
 
     return ok(undefined);
+  }
+}
+
+export class DIModuleApiInitializer extends ModuleApiInitializer {
+  static override dependencies = [] as const;
+
+  constructor() {
+    super();
   }
 }

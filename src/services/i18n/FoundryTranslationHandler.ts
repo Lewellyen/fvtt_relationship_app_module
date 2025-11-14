@@ -11,8 +11,6 @@ import { AbstractTranslationHandler } from "./AbstractTranslationHandler";
  * Registered as SINGLETON in DI container.
  */
 export class FoundryTranslationHandler extends AbstractTranslationHandler {
-  static dependencies = [foundryI18nToken] as const;
-
   constructor(private readonly foundryI18n: FoundryI18nService) {
     super();
   }
@@ -38,5 +36,13 @@ export class FoundryTranslationHandler extends AbstractTranslationHandler {
   protected doHas(key: string): boolean {
     const result = this.foundryI18n.has(key);
     return result.ok && result.value;
+  }
+}
+
+export class DIFoundryTranslationHandler extends FoundryTranslationHandler {
+  static dependencies = [foundryI18nToken] as const;
+
+  constructor(foundryI18n: FoundryI18nService) {
+    super(foundryI18n);
   }
 }

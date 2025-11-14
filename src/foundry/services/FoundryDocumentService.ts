@@ -19,12 +19,6 @@ export class FoundryDocumentService
   extends FoundryServiceBase<FoundryDocument>
   implements FoundryDocument
 {
-  static dependencies = [
-    portSelectorToken,
-    foundryDocumentPortRegistryToken,
-    retryServiceToken,
-  ] as const;
-
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundryDocument>,
@@ -57,5 +51,21 @@ export class FoundryDocumentService
       if (!portResult.ok) return portResult;
       return await portResult.value.setFlag(document, scope, key, value);
     }, "FoundryDocument.setFlag");
+  }
+}
+
+export class DIFoundryDocumentService extends FoundryDocumentService {
+  static dependencies = [
+    portSelectorToken,
+    foundryDocumentPortRegistryToken,
+    retryServiceToken,
+  ] as const;
+
+  constructor(
+    portSelector: PortSelector,
+    portRegistry: PortRegistry<FoundryDocument>,
+    retryService: RetryService
+  ) {
+    super(portSelector, portRegistry, retryService);
   }
 }
