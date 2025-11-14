@@ -4,12 +4,18 @@ import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import type { Logger } from "@/interfaces/logger";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { FoundryJournalEntry } from "@/foundry/types";
+import type { CacheService } from "@/interfaces/cache";
+import { createCacheNamespace } from "@/interfaces/cache";
 import { MODULE_CONSTANTS } from "@/constants";
 import { match } from "@/utils/functional/result";
 import { foundryJournalFacadeToken } from "@/foundry/foundrytokens";
-import { loggerToken, notificationCenterToken } from "@/tokens/tokenindex";
+import { cacheServiceToken, loggerToken, notificationCenterToken } from "@/tokens/tokenindex";
 import { BOOLEAN_FLAG_SCHEMA } from "@/foundry/validation/setting-schemas";
 import { sanitizeHtml } from "@/foundry/validation/schemas";
+
+const buildJournalCacheKey = createCacheNamespace("journal-visibility");
+const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
+export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 
 /**
  * Service for managing journal entry visibility based on module flags.
@@ -24,7 +30,8 @@ export class JournalVisibilityService {
   constructor(
     private readonly facade: FoundryJournalFacade,
     private readonly logger: Logger,
-    private readonly notificationCenter: NotificationCenter
+    private readonly notificationCenter: NotificationCenter,
+    private readonly cacheService: CacheService
   ) {}
 
   /**
@@ -45,6 +52,16 @@ export class JournalVisibilityService {
    * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
   getHiddenJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
+    const cached = this.cacheService.get<FoundryJournalEntry[]>(HIDDEN_JOURNAL_CACHE_KEY);
+    if (cached?.hit && cached.value) {
+      this.logger.debug(
+        `Serving ${cached.value.length} hidden journal entries from cache (ttl=${
+          cached.metadata.expiresAt ?? "∞"
+        })`
+      );
+      return { ok: true, value: cached.value };
+    }
+
     const allEntriesResult = this.facade.getJournalEntries();
     if (!allEntriesResult.ok) return allEntriesResult;
 
@@ -80,6 +97,10 @@ export class JournalVisibilityService {
         // Continue processing other entries
       }
     }
+
+    this.cacheService.set(HIDDEN_JOURNAL_CACHE_KEY, hidden.slice(), {
+      tags: [HIDDEN_JOURNAL_CACHE_TAG],
+    });
 
     return { ok: true, value: hidden };
   }
@@ -122,13 +143,19 @@ export class JournalVisibilityService {
 }
 
 export class DIJournalVisibilityService extends JournalVisibilityService {
-  static dependencies = [foundryJournalFacadeToken, loggerToken, notificationCenterToken] as const;
+  static dependencies = [
+    foundryJournalFacadeToken,
+    loggerToken,
+    notificationCenterToken,
+    cacheServiceToken,
+  ] as const;
 
   constructor(
     facade: FoundryJournalFacade,
     logger: Logger,
-    notificationCenter: NotificationCenter
+    notificationCenter: NotificationCenter,
+    cacheService: CacheService
   ) {
-    super(facade, logger, notificationCenter);
+    super(facade, logger, notificationCenter, cacheService);
   }
 }

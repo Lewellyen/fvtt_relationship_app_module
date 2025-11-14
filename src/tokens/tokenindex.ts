@@ -20,6 +20,7 @@ import type { RetryService } from "@/services/RetryService";
 import type { HealthCheckRegistry } from "@/core/health/health-check-registry";
 import type { ContainerHealthCheck } from "@/core/health/container-health-check";
 import type { MetricsHealthCheck } from "@/core/health/metrics-health-check";
+import type { CacheService, CacheServiceConfig } from "@/interfaces/cache";
 
 /**
  * Injection token for the application logger service.
@@ -353,6 +354,17 @@ export const metricsHealthCheckToken =
 export const serviceContainerToken = createInjectionToken<ServiceContainer>("ServiceContainer");
 
 /**
+ * Injection token for the CacheService configuration.
+ */
+export const cacheServiceConfigToken =
+  createInjectionToken<CacheServiceConfig>("CacheServiceConfig");
+
+/**
+ * Injection token for the CacheService.
+ */
+export const cacheServiceToken = createInjectionToken<CacheService>("CacheService");
+
+/**
  * Injection token for the PerformanceTrackingService.
  *
  * Provides centralized performance tracking with sampling support.
@@ -472,6 +484,10 @@ export const moduleHookRegistrarToken =
 export const renderJournalDirectoryHookToken = createInjectionToken<
   import("@/core/hooks/render-journal-directory-hook").RenderJournalDirectoryHook
 >("RenderJournalDirectoryHook");
+
+export const journalCacheInvalidationHookToken = createInjectionToken<
+  import("@/core/hooks/journal-cache-invalidation-hook").JournalCacheInvalidationHook
+>("JournalCacheInvalidationHook");
 
 export const moduleApiInitializerToken =
   createInjectionToken<import("@/core/api/module-api-initializer").ModuleApiInitializer>(

@@ -14,6 +14,7 @@ import {
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { ENV, LogLevel } from "@/config/environment";
 import type { EnvironmentConfig } from "@/config/environment";
+import { MODULE_CONSTANTS } from "@/constants";
 import { DIContainerHealthCheck } from "@/core/health/container-health-check";
 import { DIMetricsHealthCheck } from "@/core/health/metrics-health-check";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
@@ -27,6 +28,7 @@ import {
 } from "@/config/modules/port-infrastructure.config";
 import { registerFoundryServices } from "@/config/modules/foundry-services.config";
 import { registerUtilityServices } from "@/config/modules/utility-services.config";
+import { registerCacheServices } from "@/config/modules/cache-services.config";
 import { registerI18nServices } from "@/config/modules/i18n-services.config";
 import { registerNotifications } from "@/config/modules/notifications.config";
 import { registerRegistrars } from "@/config/modules/registrars.config";
@@ -47,6 +49,8 @@ function registerFallbacks(container: ServiceContainer): void {
       enableMetricsPersistence: false,
       metricsPersistenceKey: "fallback.metrics",
       performanceSamplingRate: 1.0,
+      enableCacheService: true,
+      cacheDefaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
     };
     return new ConsoleLoggerService(fallbackConfig);
   });
@@ -196,6 +200,9 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   const utilityResult = registerUtilityServices(container);
   if (isErr(utilityResult)) return utilityResult;
+
+  const cacheServiceResult = registerCacheServices(container);
+  if (isErr(cacheServiceResult)) return cacheServiceResult;
 
   const portInfraResult = registerPortInfrastructure(container);
   /* c8 ignore next 2 -- Error propagation tested in registerPortInfrastructure unit tests */

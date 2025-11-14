@@ -116,16 +116,17 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - `FoundryJournalFacade` (foundryJournalFacadeToken)
 - `Logger` (loggerToken)
 - `NotificationCenter` (notificationCenterToken)
+- `CacheService` (cacheServiceToken)
 
 **Features:**
 - Filterung von Journals via Module-Flags
 - HTML-Sanitization für sichere Log-Ausgabe
 - UI-Manipulation (entfernt DOM-Elemente)
-- **Offene Baustelle (CA-02):** Keine Caching-Strategie mehr aktiv; `getHiddenJournalEntries()` läuft pro Render über alle Journals. Ein neuer Ansatz (leichter Cache oder differenzierte Events) wird noch gesucht.
+- **CA-02**: Hidden-Journal-Ergebnisse werden jetzt über den `CacheService` mit TTL & Tagging gecached; der neue `JournalCacheInvalidationHook` löscht Einträge sofort bei Foundry `create/update/deleteJournalEntry`. Dadurch entfällt der komplette Journal-Lauf pro Render.
 
-**Dependency Reduction:** 4 → 3 Dependencies via Facade Pattern (50% Reduktion ggü. ursprünglicher Version)
+**Dependency Update:** CacheService ergänzt die Infrastruktur-Abhängigkeiten (Performance vs. IO-Tausch)
 
-**DI Wrapper:** `DIJournalVisibilityService` registriert Facade, Logger & NotificationCenter im Container ([Details](../src/services/JournalVisibilityService.ts))
+**DI Wrapper:** `DIJournalVisibilityService` registriert Facade, Logger, NotificationCenter & CacheService im Container ([Details](../src/services/JournalVisibilityService.ts))
 
 ---
 
@@ -160,7 +161,25 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 
 ---
 
-#### 6. RetryService
+#### 6. CacheService
+**Datei:** `src/services/CacheService.ts`  
+**Zweck:** Wiederverwendbarer In-Memory-Cache für DI-Services (Singleton)  
+**Abhängigkeiten:**
+- `CacheServiceConfig` (cacheServiceConfigToken) – Build-/ENV-Konfiguration
+- `MetricsCollector` (metricsCollectorToken) – Cache-Hit/Miss Telemetrie
+
+**Features:**
+- Map-basierter Cache mit konfigurierbarer TTL und optionalem `maxEntries` (LRU-Eviction)
+- Tagged Invalidation (`invalidateWhere`) für gezielte Löschungen; Journal-Hooks taggen mit `journal:hidden`
+- `getOrSet()`-Convenience (Promise-aware) + `getMetadata()` für Debugging
+- Metrik-Integration (`recordCacheAccess`) + Clock Injection für Tests
+- Konfiguration via ENV (`VITE_CACHE_ENABLED`, `VITE_CACHE_TTL_MS`, `VITE_CACHE_MAX_ENTRIES`)
+
+**DI Wrapper:** `DICacheService` injiziert Config & MetricsCollector, Registrierungen liegen im neuen `registerCacheServices()` Modul.
+
+---
+
+#### 7. RetryService
 **Datei:** `src/services/RetryService.ts`  
 **Zweck:** Retry-Logik mit Exponential Backoff  
 **Abhängigkeiten:**

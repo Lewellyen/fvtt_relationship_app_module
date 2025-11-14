@@ -28,6 +28,7 @@
 - **ModuleHealthService / DIModuleHealthService** – Aggregiert registrierte Checks
 - **ModuleApiInitializer / DIModuleApiInitializer** – Public API Bootstrap & Token-Exposure
 - **ObservabilityRegistry / DIObservabilityRegistry** – Self-Registration Hub
+- **CacheService / DICacheService** – TTL-Cache mit Metrics & ENV-Konfiguration
 
 ### Foundry Adapter (Layer 3)
 - **PortSelector / DIPortSelector** – Version-agnostische Port-Auswahl
@@ -39,6 +40,7 @@
 - **ModuleSettingsRegistrar / DIModuleSettingsRegistrar** – Settings via DI registrieren
 - **ModuleHookRegistrar / DIModuleHookRegistrar** – Hook-Verwaltung
 - **RenderJournalDirectoryHook / DIRenderJournalDirectoryHook** – Beispiel-Hook (DI-managed)
+- **JournalCacheInvalidationHook / DIJournalCacheInvalidationHook** – Foundry Events → Cache invalidieren
 
 ### Business Layer
 - **JournalVisibilityService / DIJournalVisibilityService** – Journal-Visibility

@@ -37,6 +37,8 @@ import type { TranslationHandler } from "@/services/i18n/TranslationHandler.inte
 import type { NotificationChannel } from "@/notifications/notification-channel.interface";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { ServiceContainer } from "@/di_infrastructure/container";
+import type { CacheService, CacheServiceConfig } from "@/interfaces/cache";
+import type { JournalCacheInvalidationHook } from "@/core/hooks/journal-cache-invalidation-hook";
 
 /**
  * Union type representing all registered service types in the application.
@@ -88,4 +90,7 @@ export type ServiceType =
   | TranslationHandler
   | NotificationChannel
   | NotificationCenter
+  | CacheService
+  | CacheServiceConfig
+  | JournalCacheInvalidationHook
   | ServiceContainer;

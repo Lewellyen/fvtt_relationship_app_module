@@ -44,6 +44,7 @@ Layer 4: Business Services & Facades
 - `FallbackTranslationHandler` ➜ `DIFallbackTranslationHandler` (Null-Dependencies, Chain-Terminierung)
 - `ModuleSettingsRegistrar` ➜ `DIModuleSettingsRegistrar` (registriert Foundry-Settings via DI)
 - `RenderJournalDirectoryHook` ➜ `DIRenderJournalDirectoryHook` (Hook-Bootstrap ohne Konstruktor-Argumente)
+- `CacheService` ➜ `DICacheService` (ENV-Konfiguration + MetricsCollector für Cache-Hit/Miss Tracking)
 
 ---
 
@@ -283,6 +284,34 @@ Layer 4: Business Services & Facades
 
 **Consumed By:**
 - `CompositionRoot` (`bootstrap()` Method)
+
+---
+
+### CacheService ⭐ NEW v0.22.0
+**Datei:** `src/services/CacheService.ts`  
+**Token:** `cacheServiceToken`  
+**Lifecycle:** SINGLETON
+
+**Dependencies:**
+```typescript
+[
+  cacheServiceConfigToken, // ENV-basierte Konfiguration (TTL, enable, maxEntries)
+  metricsCollectorToken    // Cache-Hit/Miss Tracking
+]
+```
+
+**Capabilities:**
+- `get/set/getOrSet` mit TTL, Tags und optionalem LRU (`maxEntries`)
+- `invalidateWhere(predicate)` für zielgerichtete Löschungen (wird von Journal-Hooks genutzt)
+- `getStatistics()` liefert Hits/Misses/Evictions für Observability
+- Clock-Injektion + MetricsCollector ermöglichen deterministische Tests
+- Konfigurierbar via ENV: `VITE_CACHE_ENABLED`, `VITE_CACHE_TTL_MS`, `VITE_CACHE_MAX_ENTRIES`
+
+**Consumed By:**
+- `JournalVisibilityService` (Hidden-Journal Cache)
+- Zukünftige Services, die ein leichtgewichtiges Memoizing benötigen
+
+**Config Module:** `registerCacheServices(container)` registriert Config Value + DI Wrapper vor allen Foundry Services.
 
 ---
 
@@ -609,6 +638,7 @@ Layer 4: Business Services & Facades
 ```typescript
 [
   renderJournalDirectoryHookToken,  // RenderJournalDirectoryHook
+  journalCacheInvalidationHookToken,// Cache-Invalidierung für Journals
   loggerToken,                      // Logger
   notificationCenterToken           // NotificationCenter
 ]
@@ -644,6 +674,25 @@ Layer 4: Business Services & Facades
 - `dispose()` - Cleanup (unsubscribe)
 
 **Purpose:** Eigenständiger Hook-Handler mit eigenen Dependencies
+
+---
+
+#### JournalCacheInvalidationHook
+**Datei:** `src/core/hooks/journal-cache-invalidation-hook.ts`  
+**Token:** `journalCacheInvalidationHookToken`  
+**Lifecycle:** SINGLETON
+
+**Dependencies:**
+```typescript
+[
+  foundryHooksToken,     // FoundryHooks (create/update/deleteJournalEntry)
+  cacheServiceToken,     // CacheService (Tagged Invalidation)
+  loggerToken,
+  notificationCenterToken
+]
+```
+
+**Purpose:** Hört auf Foundry `create/update/deleteJournalEntry` und invalidiert alle Cache-Einträge mit dem Tag `journal:hidden`, damit `JournalVisibilityService` sofort neu berechnet.
 
 ---
 

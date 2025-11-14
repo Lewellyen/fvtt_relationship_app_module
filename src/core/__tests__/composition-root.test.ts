@@ -2,7 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CompositionRoot } from "../composition-root";
-import { expectResultOk } from "@/test/utils/test-helpers";
+import { expectResultOk, createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
 import { loggerToken } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
@@ -33,16 +33,14 @@ describe("CompositionRoot", () => {
     it("should bootstrap successfully with performance tracking enabled", async () => {
       // Mock ENV to enable performance tracking
       const envModule = await import("@/config/environment");
-      vi.spyOn(envModule, "ENV", "get").mockReturnValue({
-        isDevelopment: true,
-        isProduction: false,
-        logLevel: 0,
-        enablePerformanceTracking: true,
-        enableDebugMode: false, // Debug logging is separate from performance tracking
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
-        performanceSamplingRate: 1.0, // 100% sampling
-      });
+      vi.spyOn(envModule, "ENV", "get").mockReturnValue(
+        createMockEnvironmentConfig({
+          logLevel: 0,
+          enablePerformanceTracking: true,
+          enableDebugMode: false, // Debug logging is separate from performance tracking
+          performanceSamplingRate: 1.0,
+        })
+      );
 
       // Mock Math.random to always return 0 (ensures sampling passes)
       const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
@@ -59,16 +57,16 @@ describe("CompositionRoot", () => {
     it("should skip performance tracking when debug mode disabled", async () => {
       // Mock ENV to disable debug mode
       const envModule = await import("@/config/environment");
-      vi.spyOn(envModule, "ENV", "get").mockReturnValue({
-        isDevelopment: false,
-        isProduction: true,
-        logLevel: 1,
-        enablePerformanceTracking: false,
-        enableDebugMode: false,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
-        performanceSamplingRate: 0.01,
-      });
+      vi.spyOn(envModule, "ENV", "get").mockReturnValue(
+        createMockEnvironmentConfig({
+          isDevelopment: false,
+          isProduction: true,
+          logLevel: 1,
+          enablePerformanceTracking: false,
+          enableDebugMode: false,
+          performanceSamplingRate: 0.01,
+        })
+      );
 
       const root = new CompositionRoot();
 
@@ -87,16 +85,14 @@ describe("CompositionRoot", () => {
     it("should handle performance tracking with debug mode and logger available", async () => {
       // Mock ENV to enable both performance tracking and debug mode
       const envModule = await import("@/config/environment");
-      vi.spyOn(envModule, "ENV", "get").mockReturnValue({
-        isDevelopment: true,
-        isProduction: false,
-        logLevel: 0,
-        enablePerformanceTracking: true,
-        enableDebugMode: true,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
-        performanceSamplingRate: 1.0,
-      });
+      vi.spyOn(envModule, "ENV", "get").mockReturnValue(
+        createMockEnvironmentConfig({
+          logLevel: 0,
+          enablePerformanceTracking: true,
+          enableDebugMode: true,
+          performanceSamplingRate: 1.0,
+        })
+      );
 
       // Mock Math.random to ensure sampling passes
       const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);

@@ -8,6 +8,7 @@ import type { EnvironmentConfig } from "@/config/environment";
 import type { PerformanceTracker } from "@/interfaces/performance-tracker";
 import type { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
 import { LogLevel } from "@/config/environment";
+import { MODULE_CONSTANTS } from "@/constants";
 
 /**
  * Type-safe Result assertion helpers
@@ -108,6 +109,7 @@ export function createMockDOM(
 export function createMockEnvironmentConfig(
   overrides?: Partial<EnvironmentConfig>
 ): EnvironmentConfig {
+  const { cacheMaxEntries, ...restOverrides } = overrides ?? {};
   return {
     isDevelopment: true,
     isProduction: false,
@@ -117,7 +119,10 @@ export function createMockEnvironmentConfig(
     enableMetricsPersistence: false,
     metricsPersistenceKey: "test.metrics",
     performanceSamplingRate: 1.0,
-    ...overrides,
+    enableCacheService: true,
+    cacheDefaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
+    ...restOverrides,
+    ...(cacheMaxEntries !== undefined ? { cacheMaxEntries } : {}),
   };
 }
 

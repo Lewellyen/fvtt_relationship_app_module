@@ -4,6 +4,7 @@ import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { EnvironmentConfig } from "@/config/environment";
 import type { Notification } from "@/notifications/notification-channel.interface";
 import { LogLevel } from "@/config/environment";
+import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import { ok, err } from "@/utils/functional/result";
 
 describe("UIChannel", () => {
@@ -20,27 +21,20 @@ describe("UIChannel", () => {
       dispose: vi.fn(),
     } as unknown as FoundryUI;
 
-    devEnv = {
-      isDevelopment: true,
-      isProduction: false,
+    devEnv = createMockEnvironmentConfig({
       logLevel: LogLevel.DEBUG,
       enablePerformanceTracking: false,
       enableDebugMode: true,
-      enableMetricsPersistence: false,
-      metricsPersistenceKey: "test.metrics",
-      performanceSamplingRate: 1.0,
-    };
+    });
 
-    prodEnv = {
+    prodEnv = createMockEnvironmentConfig({
       isDevelopment: false,
       isProduction: true,
       logLevel: LogLevel.INFO,
       enablePerformanceTracking: false,
       enableDebugMode: false,
-      enableMetricsPersistence: false,
-      metricsPersistenceKey: "test.metrics",
       performanceSamplingRate: 0.01,
-    };
+    });
   });
 
   describe("canHandle", () => {

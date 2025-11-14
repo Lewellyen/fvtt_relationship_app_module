@@ -7,7 +7,6 @@ import {
 import { createInjectionToken } from "@/di_infrastructure/tokenutilities";
 import type { Logger } from "@/interfaces/logger";
 import type { EnvironmentConfig } from "@/config/environment";
-import { LogLevel } from "@/config/environment";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import {
   PersistentMetricsCollector,
@@ -20,16 +19,7 @@ describe("MetricsCollector", () => {
   let mockEnv: EnvironmentConfig;
 
   beforeEach(() => {
-    mockEnv = {
-      isDevelopment: true,
-      isProduction: false,
-      logLevel: LogLevel.DEBUG,
-      enablePerformanceTracking: true,
-      enableDebugMode: true,
-      enableMetricsPersistence: false,
-      metricsPersistenceKey: "test.metrics",
-      performanceSamplingRate: 1.0,
-    };
+    mockEnv = createMockEnvironmentConfig();
     collector = new MetricsCollector(mockEnv);
   });
 

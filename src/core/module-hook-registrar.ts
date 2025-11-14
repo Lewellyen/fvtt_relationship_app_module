@@ -6,6 +6,7 @@ import {
   renderJournalDirectoryHookToken,
   loggerToken,
   notificationCenterToken,
+  journalCacheInvalidationHookToken,
 } from "@/tokens/tokenindex";
 
 /**
@@ -25,13 +26,11 @@ export class ModuleHookRegistrar {
 
   constructor(
     renderJournalHook: HookRegistrar,
+    journalCacheInvalidationHook: HookRegistrar,
     private readonly logger: Logger,
     private readonly notificationCenter: NotificationCenter
   ) {
-    this.hooks = [
-      renderJournalHook,
-      // Add new hooks here as constructor parameters
-    ];
+    this.hooks = [renderJournalHook, journalCacheInvalidationHook];
   }
 
   /**
@@ -71,15 +70,17 @@ export class ModuleHookRegistrar {
 export class DIModuleHookRegistrar extends ModuleHookRegistrar {
   static dependencies = [
     renderJournalDirectoryHookToken,
+    journalCacheInvalidationHookToken,
     loggerToken,
     notificationCenterToken,
   ] as const;
 
   constructor(
     renderJournalHook: HookRegistrar,
+    journalCacheInvalidationHook: HookRegistrar,
     logger: Logger,
     notificationCenter: NotificationCenter
   ) {
-    super(renderJournalHook, logger, notificationCenter);
+    super(renderJournalHook, journalCacheInvalidationHook, logger, notificationCenter);
   }
 }

@@ -6,16 +6,19 @@ import {
   moduleSettingsRegistrarToken,
   moduleHookRegistrarToken,
   renderJournalDirectoryHookToken,
+  journalCacheInvalidationHookToken,
 } from "@/tokens/tokenindex";
 import { DIModuleSettingsRegistrar } from "@/core/module-settings-registrar";
 import { DIModuleHookRegistrar } from "@/core/module-hook-registrar";
 import { DIRenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
+import { DIJournalCacheInvalidationHook } from "@/core/hooks/journal-cache-invalidation-hook";
 
 /**
  * Registers registrar services.
  *
  * Services registered:
  * - RenderJournalDirectoryHook (singleton) - Individual hook
+ * - JournalCacheInvalidationHook (singleton) - Cache invalidation hook
  * - ModuleHookRegistrar (singleton) - Manages all hooks
  * - ModuleSettingsRegistrar (singleton) - Manages all settings
  *
@@ -35,6 +38,17 @@ export function registerRegistrars(container: ServiceContainer): Result<void, st
   if (isErr(renderJournalHookResult)) {
     return err(
       `Failed to register RenderJournalDirectoryHook: ${renderJournalHookResult.error.message}`
+    );
+  }
+
+  const cacheInvalidationHookResult = container.registerClass(
+    journalCacheInvalidationHookToken,
+    DIJournalCacheInvalidationHook,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(cacheInvalidationHookResult)) {
+    return err(
+      `Failed to register JournalCacheInvalidationHook: ${cacheInvalidationHookResult.error.message}`
     );
   }
 

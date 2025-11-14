@@ -1,0 +1,292 @@
+import { MODULE_CONSTANTS } from "@/constants";
+import type {
+  CacheEntryMetadata,
+  CacheInvalidationPredicate,
+  CacheKey,
+  CacheLookupResult,
+  CacheService as CacheServiceContract,
+  CacheServiceConfig,
+  CacheSetOptions,
+  CacheStatistics,
+} from "@/interfaces/cache";
+import type { MetricsCollector } from "@/observability/metrics-collector";
+import { cacheServiceConfigToken, metricsCollectorToken } from "@/tokens/tokenindex";
+
+type InternalCacheEntry = {
+  value: unknown;
+  expiresAt: number | null;
+  metadata: CacheEntryMetadata;
+};
+
+export const DEFAULT_CACHE_SERVICE_CONFIG: CacheServiceConfig = {
+  enabled: true,
+  defaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
+  namespace: "global",
+};
+
+function clampTtl(ttl: number | undefined, fallback: number): number {
+  if (typeof ttl !== "number" || Number.isNaN(ttl)) {
+    return fallback;
+  }
+  return ttl < 0 ? 0 : ttl;
+}
+
+export class CacheService implements CacheServiceContract {
+  private readonly store = new Map<CacheKey, InternalCacheEntry>();
+  private readonly stats = {
+    hits: 0,
+    misses: 0,
+    evictions: 0,
+  };
+
+  private readonly config: CacheServiceConfig;
+
+  constructor(
+    config: CacheServiceConfig = DEFAULT_CACHE_SERVICE_CONFIG,
+    private readonly metricsCollector?: MetricsCollector,
+    private readonly clock: () => number = () => Date.now()
+  ) {
+    const resolvedMaxEntries =
+      typeof config?.maxEntries === "number" && config.maxEntries > 0
+        ? config.maxEntries
+        : undefined;
+
+    this.config = {
+      ...DEFAULT_CACHE_SERVICE_CONFIG,
+      ...config,
+      defaultTtlMs: clampTtl(config?.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs),
+      ...(resolvedMaxEntries !== undefined ? { maxEntries: resolvedMaxEntries } : {}),
+    };
+  }
+
+  get isEnabled(): boolean {
+    return this.config.enabled;
+  }
+
+  get size(): number {
+    return this.store.size;
+  }
+
+  get<TValue>(key: CacheKey): CacheLookupResult<TValue> | null {
+    return this.accessEntry<TValue>(key, true);
+  }
+
+  async getOrSet<TValue>(
+    key: CacheKey,
+    factory: () => TValue | Promise<TValue>,
+    options?: CacheSetOptions
+  ): Promise<CacheLookupResult<TValue>> {
+    const existing = this.get<TValue>(key);
+    if (existing) {
+      return existing;
+    }
+
+    const value = await factory();
+    const metadata = this.set(key, value, options);
+    return {
+      hit: false,
+      value,
+      metadata,
+    };
+  }
+
+  set<TValue>(key: CacheKey, value: TValue, options?: CacheSetOptions): CacheEntryMetadata {
+    const now = this.clock();
+    const metadata = this.createMetadata(key, options, now);
+
+    if (!this.isEnabled) {
+      return metadata;
+    }
+
+    const entry: InternalCacheEntry = {
+      value,
+      expiresAt: metadata.expiresAt,
+      metadata,
+    };
+
+    this.store.set(key, entry);
+    this.enforceCapacity();
+    return { ...metadata, tags: [...metadata.tags] };
+  }
+
+  delete(key: CacheKey): boolean {
+    if (!this.isEnabled) return false;
+    const removed = this.store.delete(key);
+    if (removed) {
+      this.stats.evictions++;
+    }
+    return removed;
+  }
+
+  has(key: CacheKey): boolean {
+    return Boolean(this.accessEntry(key, false));
+  }
+
+  clear(): number {
+    if (!this.isEnabled) return 0;
+    const removed = this.store.size;
+    this.store.clear();
+    if (removed > 0) {
+      this.stats.evictions += removed;
+    }
+    return removed;
+  }
+
+  invalidateWhere(predicate: CacheInvalidationPredicate): number {
+    if (!this.isEnabled) return 0;
+
+    let removed = 0;
+    for (const [key, entry] of this.store.entries()) {
+      if (predicate(entry.metadata)) {
+        this.store.delete(key);
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      this.stats.evictions += removed;
+    }
+
+    return removed;
+  }
+
+  getMetadata(key: CacheKey): CacheEntryMetadata | null {
+    if (!this.isEnabled) return null;
+
+    const entry = this.store.get(key);
+    if (!entry) return null;
+    if (this.isExpired(entry)) {
+      this.handleExpiration(key);
+      return null;
+    }
+    return this.cloneMetadata(entry.metadata);
+  }
+
+  getStatistics(): CacheStatistics {
+    return {
+      hits: this.stats.hits,
+      misses: this.stats.misses,
+      evictions: this.stats.evictions,
+      size: this.store.size,
+      enabled: this.isEnabled,
+    };
+  }
+
+  private accessEntry<TValue>(
+    key: CacheKey,
+    mutateUsage: boolean
+  ): CacheLookupResult<TValue> | null {
+    if (!this.isEnabled) {
+      this.recordMiss();
+      return null;
+    }
+
+    const entry = this.store.get(key);
+    if (!entry) {
+      this.recordMiss();
+      return null;
+    }
+
+    if (this.isExpired(entry)) {
+      this.handleExpiration(key);
+      this.recordMiss();
+      return null;
+    }
+
+    if (mutateUsage) {
+      entry.metadata.hits += 1;
+      entry.metadata.lastAccessedAt = this.clock();
+    }
+
+    this.recordHit();
+
+    return {
+      hit: true,
+      value: entry.value as TValue, // type-coverage:ignore-line -- Map stores ServiceType union; casting back to generic is safe
+      metadata: this.cloneMetadata(entry.metadata),
+    };
+  }
+
+  private recordHit(): void {
+    this.metricsCollector?.recordCacheAccess(true);
+    this.stats.hits++;
+  }
+
+  private recordMiss(): void {
+    this.metricsCollector?.recordCacheAccess(false);
+    this.stats.misses++;
+  }
+
+  private handleExpiration(key: CacheKey): void {
+    if (this.store.delete(key)) {
+      this.stats.evictions++;
+    }
+  }
+
+  private isExpired(entry: InternalCacheEntry): boolean {
+    return (
+      typeof entry.expiresAt === "number" && entry.expiresAt > 0 && entry.expiresAt <= this.clock()
+    );
+  }
+
+  private enforceCapacity(): void {
+    if (!this.config.maxEntries || this.store.size <= this.config.maxEntries) {
+      return;
+    }
+
+    while (this.store.size > this.config.maxEntries) {
+      let lruKey: CacheKey | null = null;
+      let oldestTimestamp = Number.POSITIVE_INFINITY;
+
+      for (const [key, entry] of this.store.entries()) {
+        if (entry.metadata.lastAccessedAt < oldestTimestamp) {
+          oldestTimestamp = entry.metadata.lastAccessedAt;
+          lruKey = key;
+        }
+      }
+
+      /* c8 ignore start -- Defensive guard: loop should always find an LRU entry */
+      if (!lruKey) {
+        break;
+      }
+      /* c8 ignore end */
+
+      this.store.delete(lruKey);
+      this.stats.evictions++;
+    }
+  }
+
+  private createMetadata(
+    key: CacheKey,
+    options: CacheSetOptions | undefined,
+    now: number
+  ): CacheEntryMetadata {
+    const ttlMs = clampTtl(options?.ttlMs, this.config.defaultTtlMs);
+    const expiresAt = ttlMs > 0 ? now + ttlMs : null;
+    const tags = options?.tags ? Array.from(new Set(options.tags.map((tag) => String(tag)))) : [];
+
+    return {
+      key,
+      createdAt: now,
+      expiresAt,
+      lastAccessedAt: now,
+      hits: 0,
+      tags,
+    };
+  }
+
+  private cloneMetadata(metadata: CacheEntryMetadata): CacheEntryMetadata {
+    return {
+      ...metadata,
+      tags: [...metadata.tags],
+    };
+  }
+}
+
+export class DICacheService extends CacheService {
+  static dependencies = [cacheServiceConfigToken, metricsCollectorToken] as const;
+
+  constructor(config: CacheServiceConfig, metrics: MetricsCollector) {
+    super(config, metrics);
+  }
+}

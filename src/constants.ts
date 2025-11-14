@@ -52,6 +52,9 @@ export const MODULE_CONSTANTS = {
     RENDER_JOURNAL_DIRECTORY: "renderJournalDirectory",
     INIT: "init",
     READY: "ready",
+    CREATE_JOURNAL_ENTRY: "createJournalEntry",
+    UPDATE_JOURNAL_ENTRY: "updateJournalEntry",
+    DELETE_JOURNAL_ENTRY: "deleteJournalEntry",
   },
   SETTINGS: {
     LOG_LEVEL: "logLevel",

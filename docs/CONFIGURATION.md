@@ -14,6 +14,9 @@ Diese Variablen werden zur Build-Zeit gesetzt und beeinflussen das kompilierte M
 | `VITE_ENABLE_PERF_TRACKING` | boolean | `false` | Aktiviert Performance-Metriken-Sammlung |
 | `VITE_ENABLE_METRICS_PERSISTENCE` | boolean | `false` | Sichert Metriken zwischen Sessions (PersistentMetricsCollector) |
 | `VITE_METRICS_PERSISTENCE_KEY` | string | `fvtt_relationship_app_module.metrics` | LocalStorage-Key für persistente Metriken |
+| `VITE_CACHE_ENABLED` | boolean | `true` | Aktiviert/Deaktiviert den globalen CacheService |
+| `VITE_CACHE_TTL_MS` | number | `5000` | Standard-TTL (Millisekunden) für Cache-Einträge |
+| `VITE_CACHE_MAX_ENTRIES` | number | — | Optionales LRU-Limit (leer = unbegrenzt) |
 
 ### Nutzung
 
@@ -117,17 +120,13 @@ console.log(`Avg Resolution Time: ${metrics.avgResolutionTimeMs.toFixed(2)}ms`);
 
 ## Cache Configuration
 
-### Journal Entry Cache
+### CacheService (Journal Visibility & künftige Clients)
 
-Das Modul cached Journal-Einträge um teure Validierungen zu vermeiden.
-
-**TTL (Time-To-Live):** 5 Sekunden (konfiguriert in `src/constants.ts`)
-
-**Cache-Invalidierung:**
-
-Der Cache wird automatisch invalidiert durch:
-- TTL-Ablauf (nach 5 Sekunden)
-- Manuelle Invalidierung via `invalidateCache()` (intern)
+- **Aktivierung:** `VITE_CACHE_ENABLED=true|false` (Default: `true`)
+- **TTL:** `VITE_CACHE_TTL_MS` (Millisekunden, Default 5000). Werte <=0 deaktivieren TTL (Cache lebt bis Invalidation).
+- **Max Entries:** `VITE_CACHE_MAX_ENTRIES` (optional). Bei Überschreitung wird das älteste Element per LRU entfernt.
+- **Invalidierung:** Automatisch über den `JournalCacheInvalidationHook`, der auf Foundry `create/update/deleteJournalEntry` reagiert. Zusätzlich läuft TTL aus und Services können `invalidateWhere()` nutzen.
+- **Monitoring:** Cache-Hit/Miss-Rate ist Teil der MetricsCollector-Snapshots (`getMetrics()` API).
 
 ---
 

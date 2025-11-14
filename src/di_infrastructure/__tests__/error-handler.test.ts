@@ -7,20 +7,15 @@ import { ContainerErrorHandler } from "../error-handler";
 import type { ContainerError } from "../interfaces/containererror";
 import type { EnvironmentConfig } from "@/config/environment";
 import { LogLevel } from "@/config/environment";
+import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 
 describe("ContainerErrorHandler", () => {
   describe("sanitize", () => {
     it("should return full error in development mode", () => {
-      const env: EnvironmentConfig = {
-        isDevelopment: true,
-        isProduction: false,
+      const env: EnvironmentConfig = createMockEnvironmentConfig({
         logLevel: LogLevel.DEBUG,
         enablePerformanceTracking: true,
-        enableDebugMode: true,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
-        performanceSamplingRate: 1.0,
-      };
+      });
 
       const handler = new ContainerErrorHandler(env);
       const error: ContainerError = {
@@ -36,16 +31,14 @@ describe("ContainerErrorHandler", () => {
     });
 
     it("should sanitize error in production mode", () => {
-      const env: EnvironmentConfig = {
+      const env: EnvironmentConfig = createMockEnvironmentConfig({
         isDevelopment: false,
         isProduction: true,
         logLevel: LogLevel.ERROR,
         enablePerformanceTracking: false,
         enableDebugMode: false,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.1,
-      };
+      });
 
       const handler = new ContainerErrorHandler(env);
       const error: ContainerError = {
@@ -66,16 +59,14 @@ describe("ContainerErrorHandler", () => {
 
   describe("handle", () => {
     it("should handle error with sanitization", () => {
-      const env: EnvironmentConfig = {
+      const env: EnvironmentConfig = createMockEnvironmentConfig({
         isDevelopment: false,
         isProduction: true,
         logLevel: LogLevel.ERROR,
         enablePerformanceTracking: false,
         enableDebugMode: false,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.1,
-      };
+      });
 
       const handler = new ContainerErrorHandler(env);
       const error: ContainerError = {
@@ -94,16 +85,10 @@ describe("ContainerErrorHandler", () => {
     });
 
     it("should preserve error in development", () => {
-      const env: EnvironmentConfig = {
-        isDevelopment: true,
-        isProduction: false,
+      const env: EnvironmentConfig = createMockEnvironmentConfig({
         logLevel: LogLevel.DEBUG,
         enablePerformanceTracking: true,
-        enableDebugMode: true,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
-        performanceSamplingRate: 1.0,
-      };
+      });
 
       const handler = new ContainerErrorHandler(env);
       const error: ContainerError = {

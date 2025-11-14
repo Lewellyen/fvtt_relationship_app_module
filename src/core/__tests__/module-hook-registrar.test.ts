@@ -14,6 +14,8 @@ import { foundryHooksToken } from "@/foundry/foundrytokens";
 import { RenderJournalDirectoryHook } from "@/core/hooks/render-journal-directory-hook";
 import type { Logger } from "@/interfaces/logger";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import type { HookRegistrar } from "@/core/hooks/hook-registrar.interface";
+import { ok } from "@/utils/functional/result";
 
 // Create mock logger
 function createMockLogger(): Logger {
@@ -27,6 +29,22 @@ function createMockLogger(): Logger {
   };
 }
 
+function createStubHook(): HookRegistrar {
+  return {
+    register: vi.fn().mockReturnValue(ok(undefined)),
+    dispose: vi.fn(),
+  };
+}
+
+function createRegistrar(
+  hook: HookRegistrar,
+  logger: Logger,
+  notificationCenter: NotificationCenter
+): ModuleHookRegistrar {
+  const stubHook = createStubHook();
+  return new ModuleHookRegistrar(hook, stubHook, logger, notificationCenter);
+}
+
 describe("ModuleHookRegistrar", () => {
   describe("registerAll", () => {
     it("should resolve all required services and register hook", () => {
@@ -35,7 +53,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -60,7 +78,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -92,7 +110,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -119,7 +137,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -155,7 +173,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
       registrar.registerAll(mockContainer as never);
 
       expect(mockNotificationCenter.error).toHaveBeenCalledWith(
@@ -185,7 +203,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -214,7 +232,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -239,7 +257,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -269,7 +287,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -301,7 +319,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 
@@ -324,7 +342,7 @@ describe("ModuleHookRegistrar", () => {
       const mockLogger = createMockLogger();
       const mockNotificationCenter =
         mockContainer.getMockNotificationCenter() as NotificationCenter;
-      const registrar = new ModuleHookRegistrar(realHook, mockLogger, mockNotificationCenter);
+      const registrar = createRegistrar(realHook, mockLogger, mockNotificationCenter);
 
       registrar.registerAll(mockContainer as never);
 

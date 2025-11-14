@@ -1,3 +1,5 @@
+import { MODULE_CONSTANTS } from "@/constants";
+
 /**
  * Log level enumeration for controlling logging verbosity.
  * Lower numeric values = more verbose.
@@ -42,6 +44,15 @@ export interface EnvironmentConfig {
    * @default 0.01 (1% sampling in production)
    */
   performanceSamplingRate: number;
+
+  /** Enable module-level caching */
+  enableCacheService: boolean;
+
+  /** Default TTL for CacheService entries */
+  cacheDefaultTtlMs: number;
+
+  /** Optional maximum number of cached entries */
+  cacheMaxEntries?: number;
 }
 
 /**
@@ -59,10 +70,33 @@ export function parseSamplingRate(envValue: string | undefined, fallback: number
   return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback;
 }
 
+function parseNonNegativeNumber(envValue: string | undefined, fallback: number): number {
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return parsed < 0 ? fallback : parsed;
+}
+
+function parseOptionalPositiveInteger(envValue: string | undefined): number | undefined {
+  if (!envValue) {
+    return undefined;
+  }
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return undefined;
+  }
+  return Math.floor(parsed);
+}
+
 /**
  * Current environment configuration.
  * Reads from Vite environment variables (import.meta.env).
  */
+const parsedCacheMaxEntries = parseOptionalPositiveInteger(
+  import.meta.env.VITE_CACHE_MAX_ENTRIES // type-coverage:ignore-line -- Build-time env var
+);
+
 export const ENV: EnvironmentConfig = {
   isDevelopment: import.meta.env.MODE === "development",
   isProduction: import.meta.env.MODE === "production",
@@ -77,4 +111,13 @@ export const ENV: EnvironmentConfig = {
     import.meta.env.MODE === "production"
       ? parseSamplingRate(import.meta.env.VITE_PERF_SAMPLING_RATE, 0.01)
       : 1.0,
+  enableCacheService:
+    import.meta.env.VITE_CACHE_ENABLED === undefined // type-coverage:ignore-line -- Build-time env var
+      ? true
+      : import.meta.env.VITE_CACHE_ENABLED === "true", // type-coverage:ignore-line -- Build-time env var
+  cacheDefaultTtlMs: parseNonNegativeNumber(
+    import.meta.env.VITE_CACHE_TTL_MS, // type-coverage:ignore-line -- Build-time env var
+    MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS
+  ),
+  ...(parsedCacheMaxEntries !== undefined ? { cacheMaxEntries: parsedCacheMaxEntries } : {}),
 };

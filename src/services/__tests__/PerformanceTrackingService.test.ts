@@ -9,7 +9,7 @@ import {
 } from "../PerformanceTrackingService";
 import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
 import type { EnvironmentConfig } from "@/config/environment";
-import { LogLevel } from "@/config/environment";
+import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 
 describe("PerformanceTrackingService", () => {
   let mockEnv: EnvironmentConfig;
@@ -18,16 +18,7 @@ describe("PerformanceTrackingService", () => {
 
   beforeEach(() => {
     // Mock EnvironmentConfig
-    mockEnv = {
-      enablePerformanceTracking: true,
-      isDevelopment: true,
-      isProduction: false,
-      enableDebugMode: true,
-      enableMetricsPersistence: false,
-      metricsPersistenceKey: "test.metrics",
-      logLevel: LogLevel.DEBUG,
-      performanceSamplingRate: 1.0, // 100% sampling
-    };
+    mockEnv = createMockEnvironmentConfig();
 
     // Mock MetricsSampler
     mockSampler = {

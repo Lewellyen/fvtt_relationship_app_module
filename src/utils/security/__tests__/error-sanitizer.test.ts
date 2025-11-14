@@ -6,20 +6,14 @@ import {
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
 import type { EnvironmentConfig } from "@/config/environment";
 import { LogLevel } from "@/config/environment";
+import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 
 describe("Error Sanitizer", () => {
   describe("sanitizeErrorForProduction", () => {
     it("should return full error in development mode", () => {
-      const devEnv: EnvironmentConfig = {
-        isDevelopment: true,
-        isProduction: false,
-        logLevel: LogLevel.DEBUG,
+      const devEnv: EnvironmentConfig = createMockEnvironmentConfig({
         enablePerformanceTracking: false,
-        enableDebugMode: true,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
-        performanceSamplingRate: 1.0,
-      };
+      });
 
       const error: ContainerError = {
         code: "TokenNotRegistered",
@@ -36,16 +30,14 @@ describe("Error Sanitizer", () => {
     });
 
     it("should strip sensitive info in production mode", () => {
-      const prodEnv: EnvironmentConfig = {
+      const prodEnv: EnvironmentConfig = createMockEnvironmentConfig({
         isDevelopment: false,
         isProduction: true,
         logLevel: LogLevel.INFO,
         enablePerformanceTracking: false,
         enableDebugMode: false,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.01,
-      };
+      });
 
       const error: ContainerError = {
         code: "TokenNotRegistered",
@@ -65,16 +57,14 @@ describe("Error Sanitizer", () => {
     });
 
     it("should preserve error code in production", () => {
-      const prodEnv: EnvironmentConfig = {
+      const prodEnv: EnvironmentConfig = createMockEnvironmentConfig({
         isDevelopment: false,
         isProduction: true,
         logLevel: LogLevel.INFO,
         enablePerformanceTracking: false,
         enableDebugMode: false,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.01,
-      };
+      });
 
       const error: ContainerError = {
         code: "CircularDependency",
@@ -89,16 +79,9 @@ describe("Error Sanitizer", () => {
 
   describe("sanitizeMessageForProduction", () => {
     it("should return full message in development", () => {
-      const devEnv: EnvironmentConfig = {
-        isDevelopment: true,
-        isProduction: false,
-        logLevel: LogLevel.DEBUG,
+      const devEnv: EnvironmentConfig = createMockEnvironmentConfig({
         enablePerformanceTracking: false,
-        enableDebugMode: true,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
-        performanceSamplingRate: 1.0,
-      };
+      });
 
       const message = "Detailed error: Failed to connect to database at localhost:5432";
       const sanitized = sanitizeMessageForProduction(devEnv, message);
@@ -107,16 +90,14 @@ describe("Error Sanitizer", () => {
     });
 
     it("should return generic message in production", () => {
-      const prodEnv: EnvironmentConfig = {
+      const prodEnv: EnvironmentConfig = createMockEnvironmentConfig({
         isDevelopment: false,
         isProduction: true,
         logLevel: LogLevel.INFO,
         enablePerformanceTracking: false,
         enableDebugMode: false,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "test.metrics",
         performanceSamplingRate: 0.01,
-      };
+      });
 
       const message = "Sensitive internal error with stack trace...";
       const sanitized = sanitizeMessageForProduction(prodEnv, message);

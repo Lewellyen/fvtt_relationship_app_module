@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { JournalVisibilityService } from "../JournalVisibilityService";
+import type { Mock } from "vitest";
+import { JournalVisibilityService, HIDDEN_JOURNAL_CACHE_TAG } from "../JournalVisibilityService";
 import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
 import type { Logger } from "@/interfaces/logger";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
@@ -7,12 +8,25 @@ import type { FoundryJournalEntry } from "@/foundry/types";
 import { MODULE_CONSTANTS } from "@/constants";
 import { ok, err } from "@/utils/functional/result";
 import { createMockDOM } from "@/test/utils/test-helpers";
+import type { CacheService, CacheEntryMetadata, CacheKey } from "@/interfaces/cache";
+
+function createMetadata(): CacheEntryMetadata {
+  return {
+    key: "journal-cache" as CacheKey,
+    createdAt: 0,
+    expiresAt: null,
+    lastAccessedAt: 0,
+    hits: 0,
+    tags: [],
+  };
+}
 
 describe("JournalVisibilityService", () => {
   let service: JournalVisibilityService;
   let mockFacade: FoundryJournalFacade;
   let mockLogger: Logger;
   let mockNotificationCenter: NotificationCenter;
+  let mockCacheService: CacheService;
 
   beforeEach(() => {
     mockFacade = {
@@ -39,7 +53,28 @@ describe("JournalVisibilityService", () => {
       getChannelNames: vi.fn().mockReturnValue(["ConsoleChannel", "UIChannel"]),
     } as unknown as NotificationCenter;
 
-    service = new JournalVisibilityService(mockFacade, mockLogger, mockNotificationCenter);
+    mockCacheService = {
+      isEnabled: true,
+      size: 0,
+      get: vi.fn().mockReturnValue(null),
+      set: vi.fn().mockReturnValue(createMetadata()),
+      delete: vi.fn().mockReturnValue(false),
+      has: vi.fn().mockReturnValue(false),
+      clear: vi.fn().mockReturnValue(0),
+      invalidateWhere: vi.fn().mockReturnValue(0),
+      getMetadata: vi.fn().mockReturnValue(null),
+      getStatistics: vi
+        .fn()
+        .mockReturnValue({ hits: 0, misses: 0, evictions: 0, size: 0, enabled: true }),
+      getOrSet: vi.fn(),
+    } as unknown as CacheService;
+
+    service = new JournalVisibilityService(
+      mockFacade,
+      mockLogger,
+      mockNotificationCenter,
+      mockCacheService
+    );
   });
 
   describe("getHiddenJournalEntries", () => {
@@ -67,6 +102,40 @@ describe("JournalVisibilityService", () => {
         expect(result.value).toHaveLength(1);
         expect(result.value[0]?.id).toBe("journal-1");
       }
+    });
+
+    it("should return cached entries when cache hits", () => {
+      const cachedEntry = { id: "cached", name: "Cached" } as FoundryJournalEntry;
+      const cacheGetMock = mockCacheService.get as Mock;
+      cacheGetMock.mockReturnValueOnce({
+        hit: true,
+        value: [cachedEntry],
+        metadata: createMetadata(),
+      });
+
+      const result = service.getHiddenJournalEntries();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toEqual([cachedEntry]);
+      }
+      expect(mockFacade.getJournalEntries).not.toHaveBeenCalled();
+    });
+
+    it("should cache calculated entries on miss", () => {
+      const journal = { id: "journal-1", name: "Hidden" } as FoundryJournalEntry;
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
+      const cacheGetMock = mockCacheService.get as Mock;
+      cacheGetMock.mockReturnValueOnce(null);
+
+      service.getHiddenJournalEntries();
+
+      expect(mockCacheService.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.arrayContaining([journal]),
+        expect.objectContaining({ tags: [HIDDEN_JOURNAL_CACHE_TAG] })
+      );
     });
 
     it("should return empty array when no hidden entries", () => {

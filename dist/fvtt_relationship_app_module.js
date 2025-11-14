@@ -68,7 +68,10 @@ const MODULE_CONSTANTS = {
   HOOKS: {
     RENDER_JOURNAL_DIRECTORY: "renderJournalDirectory",
     INIT: "init",
-    READY: "ready"
+    READY: "ready",
+    CREATE_JOURNAL_ENTRY: "createJournalEntry",
+    UPDATE_JOURNAL_ENTRY: "updateJournalEntry",
+    DELETE_JOURNAL_ENTRY: "deleteJournalEntry"
   },
   SETTINGS: {
     LOG_LEVEL: "logLevel"
@@ -236,6 +239,8 @@ const healthCheckRegistryToken = createInjectionToken("HealthCheckRegistry");
 const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
 const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
 const serviceContainerToken = createInjectionToken("ServiceContainer");
+const cacheServiceConfigToken = createInjectionToken("CacheServiceConfig");
+const cacheServiceToken = createInjectionToken("CacheService");
 const performanceTrackingServiceToken = createInjectionToken(
   "PerformanceTrackingService"
 );
@@ -251,11 +256,14 @@ const moduleHookRegistrarToken = createInjectionToken(
   "ModuleHookRegistrar"
 );
 const renderJournalDirectoryHookToken = createInjectionToken("RenderJournalDirectoryHook");
+const journalCacheInvalidationHookToken = createInjectionToken("JournalCacheInvalidationHook");
 const moduleApiInitializerToken = createInjectionToken(
   "ModuleApiInitializer"
 );
 var tokenindex = /* @__PURE__ */ Object.freeze({
   __proto__: null,
+  cacheServiceConfigToken,
+  cacheServiceToken,
   consoleChannelToken,
   containerHealthCheckToken,
   environmentConfigToken,
@@ -264,6 +272,7 @@ var tokenindex = /* @__PURE__ */ Object.freeze({
   foundryTranslationHandlerToken,
   healthCheckRegistryToken,
   i18nFacadeToken,
+  journalCacheInvalidationHookToken,
   journalVisibilityServiceToken,
   localI18nToken,
   localTranslationHandlerToken,
@@ -1591,6 +1600,29 @@ function parseSamplingRate(envValue, fallback2) {
   return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback2;
 }
 __name(parseSamplingRate, "parseSamplingRate");
+function parseNonNegativeNumber(envValue, fallback2) {
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed)) {
+    return fallback2;
+  }
+  return parsed < 0 ? fallback2 : parsed;
+}
+__name(parseNonNegativeNumber, "parseNonNegativeNumber");
+function parseOptionalPositiveInteger(envValue) {
+  if (!envValue) {
+    return void 0;
+  }
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return void 0;
+  }
+  return Math.floor(parsed);
+}
+__name(parseOptionalPositiveInteger, "parseOptionalPositiveInteger");
+const parsedCacheMaxEntries = parseOptionalPositiveInteger(
+  void 0
+  // type-coverage:ignore-line -- Build-time env var
+);
 const ENV = {
   isDevelopment: true,
   isProduction: false,
@@ -1602,7 +1634,15 @@ const ENV = {
   metricsPersistenceKey: "fvtt_relationship_app_module.metrics",
   // type-coverage:ignore-line -- Build-time env var
   // 1% sampling in production, 100% in development
-  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1
+  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1,
+  enableCacheService: true ? true : false,
+  // type-coverage:ignore-line -- Build-time env var
+  cacheDefaultTtlMs: parseNonNegativeNumber(
+    void 0,
+    // type-coverage:ignore-line -- Build-time env var
+    MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS
+  ),
+  ...parsedCacheMaxEntries !== void 0 ? { cacheMaxEntries: parsedCacheMaxEntries } : {}
 };
 const _PerformanceTrackerImpl = class _PerformanceTrackerImpl {
   /**
@@ -11721,6 +11761,25 @@ const _DIFoundryJournalFacade = class _DIFoundryJournalFacade extends FoundryJou
 __name(_DIFoundryJournalFacade, "DIFoundryJournalFacade");
 _DIFoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
 let DIFoundryJournalFacade = _DIFoundryJournalFacade;
+const KEY_SEPARATOR = ":";
+function normalizeSegment(segment) {
+  return segment.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-_]/g, "").toLowerCase();
+}
+__name(normalizeSegment, "normalizeSegment");
+function createCacheKey(parts) {
+  const { namespace, resource, identifier } = parts;
+  const payload = [MODULE_CONSTANTS.MODULE.ID, namespace, resource];
+  if (identifier !== null && identifier !== void 0) {
+    payload.push(String(identifier));
+  }
+  return payload.map(normalizeSegment).join(KEY_SEPARATOR);
+}
+__name(createCacheKey, "createCacheKey");
+function createCacheNamespace(namespace) {
+  const normalizedNamespace = normalizeSegment(namespace);
+  return (resource, identifier) => identifier === void 0 ? createCacheKey({ namespace: normalizedNamespace, resource }) : createCacheKey({ namespace: normalizedNamespace, resource, identifier });
+}
+__name(createCacheNamespace, "createCacheNamespace");
 const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
   LogLevel.DEBUG,
   LogLevel.INFO,
@@ -11728,11 +11787,15 @@ const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
   LogLevel.ERROR
 ]);
 const BOOLEAN_FLAG_SCHEMA = /* @__PURE__ */ boolean();
+const buildJournalCacheKey = createCacheNamespace("journal-visibility");
+const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
+const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(facade, logger, notificationCenter) {
+  constructor(facade, logger, notificationCenter, cacheService) {
     this.facade = facade;
     this.logger = logger;
     this.notificationCenter = notificationCenter;
+    this.cacheService = cacheService;
   }
   /**
    * Sanitizes a string for safe use in log messages.
@@ -11751,6 +11814,13 @@ const _JournalVisibilityService = class _JournalVisibilityService {
    * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
   getHiddenJournalEntries() {
+    const cached = this.cacheService.get(HIDDEN_JOURNAL_CACHE_KEY);
+    if (cached?.hit && cached.value) {
+      this.logger.debug(
+        `Serving ${cached.value.length} hidden journal entries from cache (ttl=${cached.metadata.expiresAt ?? "∞"})`
+      );
+      return { ok: true, value: cached.value };
+    }
     const allEntriesResult = this.facade.getJournalEntries();
     if (!allEntriesResult.ok) return allEntriesResult;
     const hidden = [];
@@ -11776,6 +11846,9 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         );
       }
     }
+    this.cacheService.set(HIDDEN_JOURNAL_CACHE_KEY, hidden.slice(), {
+      tags: [HIDDEN_JOURNAL_CACHE_TAG]
+    });
     return { ok: true, value: hidden };
   }
   /**
@@ -11814,12 +11887,17 @@ const _JournalVisibilityService = class _JournalVisibilityService {
 __name(_JournalVisibilityService, "JournalVisibilityService");
 let JournalVisibilityService = _JournalVisibilityService;
 const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(facade, logger, notificationCenter) {
-    super(facade, logger, notificationCenter);
+  constructor(facade, logger, notificationCenter, cacheService) {
+    super(facade, logger, notificationCenter, cacheService);
   }
 };
 __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
-_DIJournalVisibilityService.dependencies = [foundryJournalFacadeToken, loggerToken, notificationCenterToken];
+_DIJournalVisibilityService.dependencies = [
+  foundryJournalFacadeToken,
+  loggerToken,
+  notificationCenterToken,
+  cacheServiceToken
+];
 let DIJournalVisibilityService = _DIJournalVisibilityService;
 function registerFoundryServices(container) {
   const gameServiceResult = container.registerClass(
@@ -12097,6 +12175,241 @@ function registerUtilityServices(container) {
   return ok(void 0);
 }
 __name(registerUtilityServices, "registerUtilityServices");
+const DEFAULT_CACHE_SERVICE_CONFIG = {
+  enabled: true,
+  defaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
+  namespace: "global"
+};
+function clampTtl(ttl, fallback2) {
+  if (typeof ttl !== "number" || Number.isNaN(ttl)) {
+    return fallback2;
+  }
+  return ttl < 0 ? 0 : ttl;
+}
+__name(clampTtl, "clampTtl");
+const _CacheService = class _CacheService {
+  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG, metricsCollector, clock = () => Date.now()) {
+    this.metricsCollector = metricsCollector;
+    this.clock = clock;
+    this.store = /* @__PURE__ */ new Map();
+    this.stats = {
+      hits: 0,
+      misses: 0,
+      evictions: 0
+    };
+    const resolvedMaxEntries = typeof config2?.maxEntries === "number" && config2.maxEntries > 0 ? config2.maxEntries : void 0;
+    this.config = {
+      ...DEFAULT_CACHE_SERVICE_CONFIG,
+      ...config2,
+      defaultTtlMs: clampTtl(config2?.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs),
+      ...resolvedMaxEntries !== void 0 ? { maxEntries: resolvedMaxEntries } : {}
+    };
+  }
+  get isEnabled() {
+    return this.config.enabled;
+  }
+  get size() {
+    return this.store.size;
+  }
+  get(key) {
+    return this.accessEntry(key, true);
+  }
+  async getOrSet(key, factory, options) {
+    const existing = this.get(key);
+    if (existing) {
+      return existing;
+    }
+    const value2 = await factory();
+    const metadata2 = this.set(key, value2, options);
+    return {
+      hit: false,
+      value: value2,
+      metadata: metadata2
+    };
+  }
+  set(key, value2, options) {
+    const now = this.clock();
+    const metadata2 = this.createMetadata(key, options, now);
+    if (!this.isEnabled) {
+      return metadata2;
+    }
+    const entry = {
+      value: value2,
+      expiresAt: metadata2.expiresAt,
+      metadata: metadata2
+    };
+    this.store.set(key, entry);
+    this.enforceCapacity();
+    return { ...metadata2, tags: [...metadata2.tags] };
+  }
+  delete(key) {
+    if (!this.isEnabled) return false;
+    const removed = this.store.delete(key);
+    if (removed) {
+      this.stats.evictions++;
+    }
+    return removed;
+  }
+  has(key) {
+    return Boolean(this.accessEntry(key, false));
+  }
+  clear() {
+    if (!this.isEnabled) return 0;
+    const removed = this.store.size;
+    this.store.clear();
+    if (removed > 0) {
+      this.stats.evictions += removed;
+    }
+    return removed;
+  }
+  invalidateWhere(predicate) {
+    if (!this.isEnabled) return 0;
+    let removed = 0;
+    for (const [key, entry] of this.store.entries()) {
+      if (predicate(entry.metadata)) {
+        this.store.delete(key);
+        removed++;
+      }
+    }
+    if (removed > 0) {
+      this.stats.evictions += removed;
+    }
+    return removed;
+  }
+  getMetadata(key) {
+    if (!this.isEnabled) return null;
+    const entry = this.store.get(key);
+    if (!entry) return null;
+    if (this.isExpired(entry)) {
+      this.handleExpiration(key);
+      return null;
+    }
+    return this.cloneMetadata(entry.metadata);
+  }
+  getStatistics() {
+    return {
+      hits: this.stats.hits,
+      misses: this.stats.misses,
+      evictions: this.stats.evictions,
+      size: this.store.size,
+      enabled: this.isEnabled
+    };
+  }
+  accessEntry(key, mutateUsage) {
+    if (!this.isEnabled) {
+      this.recordMiss();
+      return null;
+    }
+    const entry = this.store.get(key);
+    if (!entry) {
+      this.recordMiss();
+      return null;
+    }
+    if (this.isExpired(entry)) {
+      this.handleExpiration(key);
+      this.recordMiss();
+      return null;
+    }
+    if (mutateUsage) {
+      entry.metadata.hits += 1;
+      entry.metadata.lastAccessedAt = this.clock();
+    }
+    this.recordHit();
+    return {
+      hit: true,
+      value: entry.value,
+      // type-coverage:ignore-line -- Map stores ServiceType union; casting back to generic is safe
+      metadata: this.cloneMetadata(entry.metadata)
+    };
+  }
+  recordHit() {
+    this.metricsCollector?.recordCacheAccess(true);
+    this.stats.hits++;
+  }
+  recordMiss() {
+    this.metricsCollector?.recordCacheAccess(false);
+    this.stats.misses++;
+  }
+  handleExpiration(key) {
+    if (this.store.delete(key)) {
+      this.stats.evictions++;
+    }
+  }
+  isExpired(entry) {
+    return typeof entry.expiresAt === "number" && entry.expiresAt > 0 && entry.expiresAt <= this.clock();
+  }
+  enforceCapacity() {
+    if (!this.config.maxEntries || this.store.size <= this.config.maxEntries) {
+      return;
+    }
+    while (this.store.size > this.config.maxEntries) {
+      let lruKey = null;
+      let oldestTimestamp = Number.POSITIVE_INFINITY;
+      for (const [key, entry] of this.store.entries()) {
+        if (entry.metadata.lastAccessedAt < oldestTimestamp) {
+          oldestTimestamp = entry.metadata.lastAccessedAt;
+          lruKey = key;
+        }
+      }
+      if (!lruKey) {
+        break;
+      }
+      this.store.delete(lruKey);
+      this.stats.evictions++;
+    }
+  }
+  createMetadata(key, options, now) {
+    const ttlMs = clampTtl(options?.ttlMs, this.config.defaultTtlMs);
+    const expiresAt = ttlMs > 0 ? now + ttlMs : null;
+    const tags = options?.tags ? Array.from(new Set(options.tags.map((tag) => String(tag)))) : [];
+    return {
+      key,
+      createdAt: now,
+      expiresAt,
+      lastAccessedAt: now,
+      hits: 0,
+      tags
+    };
+  }
+  cloneMetadata(metadata2) {
+    return {
+      ...metadata2,
+      tags: [...metadata2.tags]
+    };
+  }
+};
+__name(_CacheService, "CacheService");
+let CacheService = _CacheService;
+const _DICacheService = class _DICacheService extends CacheService {
+  constructor(config2, metrics) {
+    super(config2, metrics);
+  }
+};
+__name(_DICacheService, "DICacheService");
+_DICacheService.dependencies = [cacheServiceConfigToken, metricsCollectorToken];
+let DICacheService = _DICacheService;
+function registerCacheServices(container) {
+  const config2 = {
+    enabled: ENV.enableCacheService,
+    defaultTtlMs: ENV.cacheDefaultTtlMs,
+    namespace: MODULE_CONSTANTS.MODULE.ID,
+    ...ENV.cacheMaxEntries !== void 0 ? { maxEntries: ENV.cacheMaxEntries } : {}
+  };
+  const configResult = container.registerValue(cacheServiceConfigToken, config2);
+  if (isErr(configResult)) {
+    return err(`Failed to register CacheServiceConfig: ${configResult.error.message}`);
+  }
+  const serviceResult = container.registerClass(
+    cacheServiceToken,
+    DICacheService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(serviceResult)) {
+    return err(`Failed to register CacheService: ${serviceResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerCacheServices, "registerCacheServices");
 const _FoundryI18nService = class _FoundryI18nService extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
@@ -12857,13 +13170,10 @@ __name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
 _DIModuleSettingsRegistrar.dependencies = [];
 let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
 const _ModuleHookRegistrar = class _ModuleHookRegistrar {
-  constructor(renderJournalHook, logger, notificationCenter) {
+  constructor(renderJournalHook, journalCacheInvalidationHook, logger, notificationCenter) {
     this.logger = logger;
     this.notificationCenter = notificationCenter;
-    this.hooks = [
-      renderJournalHook
-      // Add new hooks here as constructor parameters
-    ];
+    this.hooks = [renderJournalHook, journalCacheInvalidationHook];
   }
   /**
    * Registers all hooks with Foundry VTT.
@@ -12898,13 +13208,14 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
 __name(_ModuleHookRegistrar, "ModuleHookRegistrar");
 let ModuleHookRegistrar = _ModuleHookRegistrar;
 const _DIModuleHookRegistrar = class _DIModuleHookRegistrar extends ModuleHookRegistrar {
-  constructor(renderJournalHook, logger, notificationCenter) {
-    super(renderJournalHook, logger, notificationCenter);
+  constructor(renderJournalHook, journalCacheInvalidationHook, logger, notificationCenter) {
+    super(renderJournalHook, journalCacheInvalidationHook, logger, notificationCenter);
   }
 };
 __name(_DIModuleHookRegistrar, "DIModuleHookRegistrar");
 _DIModuleHookRegistrar.dependencies = [
   renderJournalDirectoryHookToken,
+  journalCacheInvalidationHookToken,
   loggerToken,
   notificationCenterToken
 ];
@@ -13029,6 +13340,77 @@ const _DIRenderJournalDirectoryHook = class _DIRenderJournalDirectoryHook extend
 __name(_DIRenderJournalDirectoryHook, "DIRenderJournalDirectoryHook");
 _DIRenderJournalDirectoryHook.dependencies = [];
 let DIRenderJournalDirectoryHook = _DIRenderJournalDirectoryHook;
+const JOURNAL_INVALIDATION_HOOKS = [
+  MODULE_CONSTANTS.HOOKS.CREATE_JOURNAL_ENTRY,
+  MODULE_CONSTANTS.HOOKS.UPDATE_JOURNAL_ENTRY,
+  MODULE_CONSTANTS.HOOKS.DELETE_JOURNAL_ENTRY
+];
+const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
+  constructor() {
+    this.foundryHooks = null;
+    this.registrations = [];
+  }
+  register(container) {
+    const hooksResult = container.resolveWithError(foundryHooksToken);
+    const cacheResult = container.resolveWithError(cacheServiceToken);
+    const loggerResult = container.resolveWithError(loggerToken);
+    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
+    if (!hooksResult.ok || !cacheResult.ok || !loggerResult.ok || !notificationCenterResult.ok) {
+      if (loggerResult.ok) {
+        loggerResult.value.error("DI resolution failed in JournalCacheInvalidationHook", {
+          hooksResolved: hooksResult.ok,
+          cacheResolved: cacheResult.ok,
+          notificationResolved: notificationCenterResult.ok
+        });
+      }
+      return err(new Error("Failed to resolve required services for JournalCacheInvalidationHook"));
+    }
+    const hooks = hooksResult.value;
+    const cache = cacheResult.value;
+    const logger = loggerResult.value;
+    const notificationCenter = notificationCenterResult.value;
+    this.foundryHooks = hooks;
+    for (const hookName of JOURNAL_INVALIDATION_HOOKS) {
+      const registrationResult = hooks.on(hookName, () => {
+        const removed = cache.invalidateWhere(
+          (meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG)
+        );
+        if (removed > 0) {
+          logger.debug(`Invalidated ${removed} hidden journal cache entries via ${hookName}`);
+        }
+      });
+      if (!registrationResult.ok) {
+        notificationCenter.error(`Failed to register ${hookName} hook`, registrationResult.error, {
+          channels: ["ConsoleChannel"]
+        });
+        return err(new Error(`Hook registration failed: ${registrationResult.error.message}`));
+      }
+      this.registrations.push({ name: hookName, id: registrationResult.value });
+    }
+    return ok(void 0);
+  }
+  dispose() {
+    if (!this.foundryHooks) {
+      this.registrations = [];
+      return;
+    }
+    for (const registration of this.registrations) {
+      this.foundryHooks.off(registration.name, registration.id);
+    }
+    this.registrations = [];
+    this.foundryHooks = null;
+  }
+};
+__name(_JournalCacheInvalidationHook, "JournalCacheInvalidationHook");
+let JournalCacheInvalidationHook = _JournalCacheInvalidationHook;
+const _DIJournalCacheInvalidationHook = class _DIJournalCacheInvalidationHook extends JournalCacheInvalidationHook {
+  constructor() {
+    super();
+  }
+};
+__name(_DIJournalCacheInvalidationHook, "DIJournalCacheInvalidationHook");
+_DIJournalCacheInvalidationHook.dependencies = [];
+let DIJournalCacheInvalidationHook = _DIJournalCacheInvalidationHook;
 function registerRegistrars(container) {
   const renderJournalHookResult = container.registerClass(
     renderJournalDirectoryHookToken,
@@ -13038,6 +13420,16 @@ function registerRegistrars(container) {
   if (isErr(renderJournalHookResult)) {
     return err(
       `Failed to register RenderJournalDirectoryHook: ${renderJournalHookResult.error.message}`
+    );
+  }
+  const cacheInvalidationHookResult = container.registerClass(
+    journalCacheInvalidationHookToken,
+    DIJournalCacheInvalidationHook,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(cacheInvalidationHookResult)) {
+    return err(
+      `Failed to register JournalCacheInvalidationHook: ${cacheInvalidationHookResult.error.message}`
     );
   }
   const hookRegistrarResult = container.registerClass(
@@ -13071,7 +13463,9 @@ function registerFallbacks(container) {
       enableDebugMode: true,
       enableMetricsPersistence: false,
       metricsPersistenceKey: "fallback.metrics",
-      performanceSamplingRate: 1
+      performanceSamplingRate: 1,
+      enableCacheService: true,
+      cacheDefaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS
     };
     return new ConsoleLoggerService(fallbackConfig);
   });
@@ -13152,6 +13546,8 @@ function configureDependencies(container) {
   if (isErr(observabilityResult)) return observabilityResult;
   const utilityResult = registerUtilityServices(container);
   if (isErr(utilityResult)) return utilityResult;
+  const cacheServiceResult = registerCacheServices(container);
+  if (isErr(cacheServiceResult)) return cacheServiceResult;
   const portInfraResult = registerPortInfrastructure(container);
   if (isErr(portInfraResult)) return portInfraResult;
   const subcontainerValuesResult = registerSubcontainerValues(container);
