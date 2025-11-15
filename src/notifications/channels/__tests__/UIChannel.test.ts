@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { UIChannel } from "../UIChannel";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
-import type { EnvironmentConfig } from "@/config/environment";
 import type { Notification } from "@/notifications/notification-channel.interface";
 import { LogLevel } from "@/config/environment";
-import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
+import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import { ok, err } from "@/utils/functional/result";
 
 describe("UIChannel", () => {
   let channel: UIChannel;
   let mockFoundryUI: FoundryUI;
-  let devEnv: EnvironmentConfig;
-  let prodEnv: EnvironmentConfig;
+  let devConfig: RuntimeConfigService;
+  let prodConfig: RuntimeConfigService;
 
   beforeEach(() => {
     mockFoundryUI = {
@@ -21,13 +21,13 @@ describe("UIChannel", () => {
       dispose: vi.fn(),
     } as unknown as FoundryUI;
 
-    devEnv = createMockEnvironmentConfig({
+    devConfig = createMockRuntimeConfig({
       logLevel: LogLevel.DEBUG,
       enablePerformanceTracking: false,
       enableDebugMode: true,
     });
 
-    prodEnv = createMockEnvironmentConfig({
+    prodConfig = createMockRuntimeConfig({
       isDevelopment: false,
       isProduction: true,
       logLevel: LogLevel.INFO,
@@ -39,7 +39,7 @@ describe("UIChannel", () => {
 
   describe("canHandle", () => {
     it("should NOT handle debug notifications", () => {
-      channel = new UIChannel(mockFoundryUI, devEnv);
+      channel = new UIChannel(mockFoundryUI, devConfig);
 
       const notification: Notification = {
         level: "debug",
@@ -51,7 +51,7 @@ describe("UIChannel", () => {
     });
 
     it("should handle info notifications", () => {
-      channel = new UIChannel(mockFoundryUI, devEnv);
+      channel = new UIChannel(mockFoundryUI, devConfig);
 
       const notification: Notification = {
         level: "info",
@@ -63,7 +63,7 @@ describe("UIChannel", () => {
     });
 
     it("should handle warn notifications", () => {
-      channel = new UIChannel(mockFoundryUI, devEnv);
+      channel = new UIChannel(mockFoundryUI, devConfig);
 
       const notification: Notification = {
         level: "warn",
@@ -75,7 +75,7 @@ describe("UIChannel", () => {
     });
 
     it("should handle error notifications", () => {
-      channel = new UIChannel(mockFoundryUI, devEnv);
+      channel = new UIChannel(mockFoundryUI, devConfig);
 
       const notification: Notification = {
         level: "error",
@@ -89,7 +89,7 @@ describe("UIChannel", () => {
 
   describe("send - Development Mode", () => {
     beforeEach(() => {
-      channel = new UIChannel(mockFoundryUI, devEnv);
+      channel = new UIChannel(mockFoundryUI, devConfig);
     });
 
     it("should show error details in development", () => {
@@ -189,7 +189,7 @@ describe("UIChannel", () => {
 
   describe("send - Production Mode", () => {
     beforeEach(() => {
-      channel = new UIChannel(mockFoundryUI, prodEnv);
+      channel = new UIChannel(mockFoundryUI, prodConfig);
     });
 
     it("should sanitize error messages in production", () => {
@@ -242,7 +242,7 @@ describe("UIChannel", () => {
 
   describe("send - UI notification failures", () => {
     it("should return error if UI notification fails", () => {
-      channel = new UIChannel(mockFoundryUI, devEnv);
+      channel = new UIChannel(mockFoundryUI, devConfig);
       vi.mocked(mockFoundryUI.notify).mockReturnValue(
         err({ code: "API_NOT_AVAILABLE", message: "UI not ready" })
       );
@@ -264,7 +264,7 @@ describe("UIChannel", () => {
 
   describe("Level mapping", () => {
     beforeEach(() => {
-      channel = new UIChannel(mockFoundryUI, devEnv);
+      channel = new UIChannel(mockFoundryUI, devConfig);
     });
 
     it("should map info to info UI type", () => {
@@ -307,7 +307,7 @@ describe("UIChannel", () => {
 
   describe("name", () => {
     it("should have correct channel name", () => {
-      channel = new UIChannel(mockFoundryUI, devEnv);
+      channel = new UIChannel(mockFoundryUI, devConfig);
       expect(channel.name).toBe("UIChannel");
     });
   });

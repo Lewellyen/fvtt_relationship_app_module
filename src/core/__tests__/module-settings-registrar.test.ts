@@ -6,12 +6,35 @@ import { ModuleSettingsRegistrar, DIModuleSettingsRegistrar } from "../module-se
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
 import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
-import { loggerToken, notificationCenterToken } from "@/tokens/tokenindex";
+import { loggerToken, notificationCenterToken, runtimeConfigToken } from "@/tokens/tokenindex";
 import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import { MODULE_CONSTANTS } from "@/constants";
 import { LogLevel } from "@/config/environment";
 import { ok, err } from "@/utils/functional/result";
 import type { Logger } from "@/interfaces/logger";
+
+const DEFAULT_SETTING_VALUES: Record<string, unknown> = {
+  [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: LogLevel.INFO,
+  [MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED]: true,
+  [MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS]: 5000,
+  [MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES]: 250,
+  [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED]: false,
+  [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE]: 0.5,
+  [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED]: false,
+  [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY]: "fvtt_relationship_app_module.metrics",
+};
+
+function stubFoundryGet(
+  mockSettings: any,
+  overrides: Record<string, unknown> = {}
+): ReturnType<typeof vi.spyOn> {
+  return vi.spyOn(mockSettings, "get").mockImplementation((...args: unknown[]) => {
+    const [, key] = args as [string, string];
+    const hasOverride = Object.prototype.hasOwnProperty.call(overrides, key);
+    const value = hasOverride ? overrides[key] : DEFAULT_SETTING_VALUES[key];
+    return ok(value as unknown);
+  });
+}
 
 describe("ModuleSettingsRegistrar", () => {
   describe("registerAll()", () => {
@@ -25,9 +48,13 @@ describe("ModuleSettingsRegistrar", () => {
       const registrar = new ModuleSettingsRegistrar();
       registrar.registerAll(container);
 
-      expect(registerSpy).toHaveBeenCalledWith(
-        MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+      const logLevelCall = registerSpy.mock.calls.find(
+        ([, key]) => key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
+      );
+
+      expect(logLevelCall).toBeDefined();
+      expect(logLevelCall?.[0]).toBe(MODULE_CONSTANTS.MODULE.ID);
+      expect(logLevelCall?.[2]).toEqual(
         expect.objectContaining({
           name: "Log Level",
           scope: "world",
@@ -42,26 +69,24 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
-      let onChangeCallback: ((value: number) => void) | undefined;
 
-      vi.spyOn(mockSettings, "register").mockImplementation((ns, key, config: any) => {
-        onChangeCallback = config.onChange;
+      const callbacks: Record<string, (value: unknown) => void> = {};
+      vi.spyOn(mockSettings, "register").mockImplementation((...args: unknown[]) => {
+        const [, key, config] = args as [unknown, string, { onChange?: (value: unknown) => void }];
+        callbacks[key] = config.onChange ?? (() => {});
         return ok(undefined);
       });
 
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
-      const setMinLevelSpy = vi.spyOn(mockLogger, "setMinLevel" as any);
       const infoSpy = vi.spyOn(mockLogger, "info");
-
       const registrar = new ModuleSettingsRegistrar();
       registrar.registerAll(container);
 
       // Trigger onChange callback
-      expect(onChangeCallback).toBeDefined();
-      onChangeCallback!(LogLevel.DEBUG);
+      expect(callbacks[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]).toBeDefined();
+      callbacks[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]!(LogLevel.DEBUG);
 
       // Logger should be reconfigured
-      expect(setMinLevelSpy).toHaveBeenCalledWith(LogLevel.DEBUG);
       expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining("Log level changed to"));
     });
 
@@ -70,10 +95,11 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
-      let onChangeCallback: ((value: number) => void) | undefined;
 
-      vi.spyOn(mockSettings, "register").mockImplementation((ns, key, config: any) => {
-        onChangeCallback = config.onChange;
+      const callbacks: Record<string, (value: unknown) => void> = {};
+      vi.spyOn(mockSettings, "register").mockImplementation((...args: unknown[]) => {
+        const [, key, config] = args as [unknown, string, { onChange?: (value: unknown) => void }];
+        callbacks[key] = config.onChange ?? (() => {});
         return ok(undefined);
       });
 
@@ -85,7 +111,7 @@ describe("ModuleSettingsRegistrar", () => {
       registrar.registerAll(container);
 
       // Should not throw when onChange is called
-      expect(() => onChangeCallback!(LogLevel.WARN)).not.toThrow();
+      expect(() => callbacks[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]?.(LogLevel.WARN)).not.toThrow();
     });
 
     it("should log error when setting registration fails", () => {
@@ -93,9 +119,20 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
-      vi.spyOn(mockSettings, "register").mockReturnValue(
-        err({ code: "OPERATION_FAILED", message: "Registration failed" })
-      );
+      vi.spyOn(mockSettings, "register").mockImplementation((...args: unknown[]) => {
+        const [, key] = args as [unknown, string];
+        if (key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL) {
+          return err({ code: "OPERATION_FAILED", message: "Registration failed" });
+        }
+        return ok(undefined);
+      });
+      vi.spyOn(mockSettings, "register").mockImplementation((...args: unknown[]) => {
+        const [, key] = args as [unknown, string];
+        if (key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL) {
+          return err({ code: "OPERATION_FAILED", message: "Registration failed" });
+        }
+        return ok(undefined);
+      });
 
       const mockNotificationCenter = container.resolve(
         markAsApiSafe(notificationCenterToken)
@@ -124,14 +161,87 @@ describe("ModuleSettingsRegistrar", () => {
       const registrar = new ModuleSettingsRegistrar();
       registrar.registerAll(container);
 
-      const call = registerSpy.mock.calls[0];
-      const config = call?.[2] as any;
+      const logLevelCall = registerSpy.mock.calls.find(
+        ([, key]) => key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
+      );
+      const config = logLevelCall?.[2] as any;
 
-      expect(config.choices).toBeDefined();
-      expect(config.choices[LogLevel.DEBUG]).toContain("DEBUG");
-      expect(config.choices[LogLevel.INFO]).toContain("INFO");
-      expect(config.choices[LogLevel.WARN]).toContain("WARN");
-      expect(config.choices[LogLevel.ERROR]).toContain("ERROR");
+      expect(config?.choices).toBeDefined();
+      expect(config?.choices[LogLevel.DEBUG]).toContain("DEBUG");
+      expect(config?.choices[LogLevel.INFO]).toContain("INFO");
+      expect(config?.choices[LogLevel.WARN]).toContain("WARN");
+      expect(config?.choices[LogLevel.ERROR]).toContain("ERROR");
+    });
+
+    it("should synchronize runtime config for bound settings", () => {
+      const container = ServiceContainer.createRoot();
+      configureDependencies(container);
+
+      const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
+      const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
+      stubFoundryGet(mockSettings, {
+        [MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED]: true,
+        [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED]: true,
+      });
+
+      const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
+      if (!runtimeConfigResult.ok) {
+        throw new Error("RuntimeConfigService missing");
+      }
+      const runtimeConfig = runtimeConfigResult.value;
+      const setSpy = vi.spyOn(runtimeConfig, "setFromFoundry");
+
+      const registrar = new ModuleSettingsRegistrar();
+      registrar.registerAll(container);
+
+      expect(setSpy).toHaveBeenCalledWith("enableCacheService", true);
+
+      const cacheEnabledConfig = registerSpy.mock.calls.find(
+        ([, key]) => key === MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED
+      )?.[2] as { onChange?: (value: boolean) => void } | undefined;
+      expect(cacheEnabledConfig).toBeDefined();
+      if (!cacheEnabledConfig?.onChange) {
+        throw new Error("cacheEnabled onChange missing");
+      }
+      cacheEnabledConfig.onChange(false);
+
+      expect(setSpy).toHaveBeenCalledWith("enableCacheService", false);
+    });
+
+    it("should apply binding transform for cacheMaxEntries", () => {
+      const container = ServiceContainer.createRoot();
+      configureDependencies(container);
+
+      const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
+      const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
+      stubFoundryGet(mockSettings, {
+        [MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES]: 0,
+      });
+
+      const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
+      if (!runtimeConfigResult.ok) {
+        throw new Error("RuntimeConfigService missing");
+      }
+      const runtimeConfig = runtimeConfigResult.value;
+      const setSpy = vi.spyOn(runtimeConfig, "setFromFoundry");
+
+      const registrar = new ModuleSettingsRegistrar();
+      registrar.registerAll(container);
+
+      expect(setSpy).toHaveBeenCalledWith("cacheMaxEntries", undefined);
+
+      const maxEntriesConfig = registerSpy.mock.calls.find(
+        ([, key]) => key === MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES
+      )?.[2] as { onChange?: (value: number) => void } | undefined;
+      expect(maxEntriesConfig).toBeDefined();
+      if (!maxEntriesConfig?.onChange) {
+        throw new Error("cacheMaxEntries onChange missing");
+      }
+      maxEntriesConfig.onChange(0);
+      maxEntriesConfig.onChange(150);
+
+      expect(setSpy).toHaveBeenCalledWith("cacheMaxEntries", undefined);
+      expect(setSpy).toHaveBeenCalledWith("cacheMaxEntries", 150);
     });
   });
 });

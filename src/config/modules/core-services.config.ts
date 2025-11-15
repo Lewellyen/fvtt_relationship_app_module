@@ -11,8 +11,8 @@ import {
   moduleHealthServiceToken,
   moduleApiInitializerToken,
   healthCheckRegistryToken,
-  environmentConfigToken,
   metricsStorageToken,
+  runtimeConfigToken,
 } from "@/tokens/tokenindex";
 import { DIMetricsCollector } from "@/observability/metrics-collector";
 import { DIPersistentMetricsCollector } from "@/observability/metrics-persistence/persistent-metrics-collector";
@@ -29,7 +29,7 @@ import { DIHealthCheckRegistry } from "@/core/health/health-check-registry";
  * Services registered:
  * - MetricsCollector (singleton)
  * - MetricsRecorder/MetricsSampler (aliases to MetricsCollector)
- * - Logger (singleton, self-configuring with EnvironmentConfig, optional TraceContext)
+ * - Logger (singleton, self-configuring via RuntimeConfigService, optional TraceContext)
  * - TraceContext (singleton, deps: [loggerToken])
  * - HealthCheckRegistry (singleton)
  * - ContainerHealthCheck (singleton, auto-registered)
@@ -38,9 +38,9 @@ import { DIHealthCheckRegistry } from "@/core/health/health-check-registry";
  * - ModuleApiInitializer (singleton, handles API exposition)
  *
  * INITIALIZATION ORDER:
- * 1. MetricsCollector (deps: [environmentConfigToken])
+ * 1. MetricsCollector (deps: [runtimeConfigToken])
  * 2. TraceContext (no dependencies)
- * 3. Logger (klassische DI mit deps: [environmentConfigToken, traceContextToken])
+ * 3. Logger (klassische DI mit deps: [runtimeConfigToken, traceContextToken])
  * 4. HealthCheckRegistry (no dependencies)
  * 5. ContainerHealthCheck & MetricsHealthCheck (auto-register to registry)
  * 6. ModuleHealthService (deps: [healthCheckRegistryToken])
@@ -50,13 +50,16 @@ import { DIHealthCheckRegistry } from "@/core/health/health-check-registry";
  * @returns Result indicating success or error with details
  */
 export function registerCoreServices(container: ServiceContainer): Result<void, string> {
-  const envResult = container.resolveWithError(environmentConfigToken);
-  const env = envResult.ok ? envResult.value : null;
-
-  const enablePersistence = env?.enableMetricsPersistence === true;
+  const runtimeConfig = container.getRegisteredValue(runtimeConfigToken);
+  if (!runtimeConfig) {
+    return err("RuntimeConfigService not registered");
+  }
+  const enablePersistence = runtimeConfig.get("enableMetricsPersistence") === true;
 
   if (enablePersistence) {
-    const storageInstance = new LocalStorageMetricsStorage(env.metricsPersistenceKey);
+    const metricsKey =
+      runtimeConfig.get("metricsPersistenceKey") ?? "fvtt_relationship_app_module.metrics";
+    const storageInstance = new LocalStorageMetricsStorage(metricsKey);
     const storageResult = container.registerValue(metricsStorageToken, storageInstance);
     if (isErr(storageResult)) {
       return err(`Failed to register MetricsStorage: ${storageResult.error.message}`);

@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { BootstrapPerformanceTracker } from "../bootstrap-performance-tracker";
-import { createMockEnvironmentConfig, createMockSampler } from "@/test/utils/test-helpers";
+import { createMockRuntimeConfig, createMockSampler } from "@/test/utils/test-helpers";
 
 describe("BootstrapPerformanceTracker", () => {
   describe("track", () => {
     it("should execute operation without tracking when performance tracking is disabled", () => {
-      const env = createMockEnvironmentConfig({ enablePerformanceTracking: false });
-      const tracker = new BootstrapPerformanceTracker(env, null);
+      const config = createMockRuntimeConfig({ enablePerformanceTracking: false });
+      const tracker = new BootstrapPerformanceTracker(config, null);
 
       const operation = vi.fn(() => 42);
       const onComplete = vi.fn();
@@ -19,8 +19,8 @@ describe("BootstrapPerformanceTracker", () => {
     });
 
     it("should execute operation without tracking when sampler is null", () => {
-      const env = createMockEnvironmentConfig({ enablePerformanceTracking: true });
-      const tracker = new BootstrapPerformanceTracker(env, null);
+      const config = createMockRuntimeConfig({ enablePerformanceTracking: true });
+      const tracker = new BootstrapPerformanceTracker(config, null);
 
       const operation = vi.fn(() => 42);
       const onComplete = vi.fn();
@@ -33,11 +33,11 @@ describe("BootstrapPerformanceTracker", () => {
     });
 
     it("should execute operation without tracking when sampling rejects", () => {
-      const env = createMockEnvironmentConfig({ enablePerformanceTracking: true });
-      const sampler = createMockSampler(env);
+      const config = createMockRuntimeConfig({ enablePerformanceTracking: true });
+      const sampler = createMockSampler(config);
       vi.spyOn(sampler, "shouldSample").mockReturnValue(false);
 
-      const tracker = new BootstrapPerformanceTracker(env, sampler);
+      const tracker = new BootstrapPerformanceTracker(config, sampler);
 
       const operation = vi.fn(() => 42);
       const onComplete = vi.fn();
@@ -50,11 +50,11 @@ describe("BootstrapPerformanceTracker", () => {
     });
 
     it("should track operation and call onComplete when tracking is enabled", () => {
-      const env = createMockEnvironmentConfig({ enablePerformanceTracking: true });
-      const sampler = createMockSampler(env);
+      const config = createMockRuntimeConfig({ enablePerformanceTracking: true });
+      const sampler = createMockSampler(config);
       vi.spyOn(sampler, "shouldSample").mockReturnValue(true);
 
-      const tracker = new BootstrapPerformanceTracker(env, sampler);
+      const tracker = new BootstrapPerformanceTracker(config, sampler);
 
       const operation = vi.fn(() => 42);
       const onComplete = vi.fn();
@@ -72,11 +72,11 @@ describe("BootstrapPerformanceTracker", () => {
     });
 
     it("should work without onComplete callback", () => {
-      const env = createMockEnvironmentConfig({ enablePerformanceTracking: true });
-      const sampler = createMockSampler(env);
+      const config = createMockRuntimeConfig({ enablePerformanceTracking: true });
+      const sampler = createMockSampler(config);
       vi.spyOn(sampler, "shouldSample").mockReturnValue(true);
 
-      const tracker = new BootstrapPerformanceTracker(env, sampler);
+      const tracker = new BootstrapPerformanceTracker(config, sampler);
 
       const operation = vi.fn(() => 42);
 
@@ -89,8 +89,8 @@ describe("BootstrapPerformanceTracker", () => {
 
   describe("trackAsync", () => {
     it("should execute async operation without tracking when performance tracking is disabled", async () => {
-      const env = createMockEnvironmentConfig({ enablePerformanceTracking: false });
-      const tracker = new BootstrapPerformanceTracker(env, null);
+      const config = createMockRuntimeConfig({ enablePerformanceTracking: false });
+      const tracker = new BootstrapPerformanceTracker(config, null);
 
       const operation = vi.fn(async () => 42);
       const onComplete = vi.fn();
@@ -103,8 +103,8 @@ describe("BootstrapPerformanceTracker", () => {
     });
 
     it("should execute async operation without tracking when sampler is null", async () => {
-      const env = createMockEnvironmentConfig({ enablePerformanceTracking: true });
-      const tracker = new BootstrapPerformanceTracker(env, null);
+      const config = createMockRuntimeConfig({ enablePerformanceTracking: true });
+      const tracker = new BootstrapPerformanceTracker(config, null);
 
       const operation = vi.fn(async () => 42);
       const onComplete = vi.fn();
@@ -117,11 +117,11 @@ describe("BootstrapPerformanceTracker", () => {
     });
 
     it("should execute async operation without tracking when sampling rejects", async () => {
-      const env = createMockEnvironmentConfig({ enablePerformanceTracking: true });
-      const sampler = createMockSampler(env);
+      const config = createMockRuntimeConfig({ enablePerformanceTracking: true });
+      const sampler = createMockSampler(config);
       vi.spyOn(sampler, "shouldSample").mockReturnValue(false);
 
-      const tracker = new BootstrapPerformanceTracker(env, sampler);
+      const tracker = new BootstrapPerformanceTracker(config, sampler);
 
       const operation = vi.fn(async () => 42);
       const onComplete = vi.fn();
@@ -134,11 +134,11 @@ describe("BootstrapPerformanceTracker", () => {
     });
 
     it("should track async operation and call onComplete when tracking is enabled", async () => {
-      const env = createMockEnvironmentConfig({ enablePerformanceTracking: true });
-      const sampler = createMockSampler(env);
+      const config = createMockRuntimeConfig({ enablePerformanceTracking: true });
+      const sampler = createMockSampler(config);
       vi.spyOn(sampler, "shouldSample").mockReturnValue(true);
 
-      const tracker = new BootstrapPerformanceTracker(env, sampler);
+      const tracker = new BootstrapPerformanceTracker(config, sampler);
 
       const operation = vi.fn(async () => 42);
       const onComplete = vi.fn();
@@ -155,11 +155,11 @@ describe("BootstrapPerformanceTracker", () => {
     });
 
     it("should work without onComplete callback", async () => {
-      const env = createMockEnvironmentConfig({ enablePerformanceTracking: true });
-      const sampler = createMockSampler(env);
+      const config = createMockRuntimeConfig({ enablePerformanceTracking: true });
+      const sampler = createMockSampler(config);
       vi.spyOn(sampler, "shouldSample").mockReturnValue(true);
 
-      const tracker = new BootstrapPerformanceTracker(env, sampler);
+      const tracker = new BootstrapPerformanceTracker(config, sampler);
 
       const operation = vi.fn(async () => 42);
 

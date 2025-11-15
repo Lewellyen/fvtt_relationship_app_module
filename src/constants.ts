@@ -58,6 +58,13 @@ export const MODULE_CONSTANTS = {
   },
   SETTINGS: {
     LOG_LEVEL: "logLevel",
+    CACHE_ENABLED: "cacheEnabled",
+    CACHE_TTL_MS: "cacheTtlMs",
+    CACHE_MAX_ENTRIES: "cacheMaxEntries",
+    PERFORMANCE_TRACKING_ENABLED: "performanceTrackingEnabled",
+    PERFORMANCE_SAMPLING_RATE: "performanceSamplingRate",
+    METRICS_PERSISTENCE_ENABLED: "metricsPersistenceEnabled",
+    METRICS_PERSISTENCE_KEY: "metricsPersistenceKey",
   },
   API: {
     /**

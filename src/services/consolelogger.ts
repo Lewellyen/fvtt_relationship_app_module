@@ -1,9 +1,9 @@
-import type { EnvironmentConfig } from "@/config/environment";
 import { LogLevel } from "@/config/environment";
 import { MODULE_CONSTANTS } from "@/constants";
 import type { Logger } from "@/interfaces/logger";
 import type { TraceContext } from "@/observability/trace/TraceContext";
-import { environmentConfigToken, traceContextToken } from "@/tokens/tokenindex";
+import { runtimeConfigToken, traceContextToken } from "@/tokens/tokenindex";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 /**
  * Logger implementation that writes to the browser console with module prefix
@@ -12,10 +12,12 @@ import { environmentConfigToken, traceContextToken } from "@/tokens/tokenindex";
 export class ConsoleLoggerService implements Logger {
   private minLevel: LogLevel;
   private readonly traceContext: TraceContext | null;
+  private runtimeConfigUnsubscribe: (() => void) | null = null;
 
-  constructor(env: EnvironmentConfig, traceContext?: TraceContext) {
-    this.minLevel = env.logLevel;
+  constructor(config: RuntimeConfigService, traceContext?: TraceContext) {
     this.traceContext = traceContext ?? null;
+    this.minLevel = config.get("logLevel");
+    this.bindRuntimeConfig(config);
   }
 
   setMinLevel(level: LogLevel): void {
@@ -53,6 +55,14 @@ export class ConsoleLoggerService implements Logger {
 
   withTraceId(traceId: string): Logger {
     return new TracedLogger(this, traceId);
+  }
+
+  private bindRuntimeConfig(runtimeConfig: RuntimeConfigService): void {
+    this.minLevel = runtimeConfig.get("logLevel");
+    this.runtimeConfigUnsubscribe?.();
+    this.runtimeConfigUnsubscribe = runtimeConfig.onChange("logLevel", (level) => {
+      this.setMinLevel(level);
+    });
   }
 
   private getContextTraceId(): string | null {
@@ -108,9 +118,9 @@ class TracedLogger implements Logger {
 }
 
 export class DIConsoleLoggerService extends ConsoleLoggerService {
-  static dependencies = [environmentConfigToken, traceContextToken] as const;
+  static dependencies = [runtimeConfigToken, traceContextToken] as const;
 
-  constructor(env: EnvironmentConfig, traceContext?: TraceContext) {
-    super(env, traceContext);
+  constructor(config: RuntimeConfigService, traceContext?: TraceContext) {
+    super(config, traceContext);
   }
 }

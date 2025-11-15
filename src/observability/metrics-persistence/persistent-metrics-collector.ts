@@ -1,7 +1,7 @@
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import type { ServiceType } from "@/types/servicetypeindex";
-import type { EnvironmentConfig } from "@/config/environment";
-import { environmentConfigToken } from "@/tokens/tokenindex";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import { runtimeConfigToken } from "@/tokens/tokenindex";
 import type { MetricsPersistenceState } from "@/observability/metrics-collector";
 import { MetricsCollector } from "@/observability/metrics-collector";
 import type { MetricsStorage } from "./metrics-storage";
@@ -12,17 +12,17 @@ import { metricsStorageToken } from "@/tokens/tokenindex";
  */
 export class PersistentMetricsCollector extends MetricsCollector {
   static override dependencies: readonly InjectionToken<ServiceType>[] = [
-    environmentConfigToken,
+    runtimeConfigToken,
     metricsStorageToken,
   ];
 
   private suppressPersistence = false;
 
   constructor(
-    env: EnvironmentConfig,
+    config: RuntimeConfigService,
     private readonly metricsStorage: MetricsStorage
   ) {
-    super(env);
+    super(config);
     this.restoreFromStorage();
   }
 
@@ -74,11 +74,11 @@ export class PersistentMetricsCollector extends MetricsCollector {
 
 export class DIPersistentMetricsCollector extends PersistentMetricsCollector {
   static override dependencies: readonly InjectionToken<ServiceType>[] = [
-    environmentConfigToken,
+    runtimeConfigToken,
     metricsStorageToken,
   ];
 
-  constructor(env: EnvironmentConfig, metricsStorage: MetricsStorage) {
-    super(env, metricsStorage);
+  constructor(config: RuntimeConfigService, metricsStorage: MetricsStorage) {
+    super(config, metricsStorage);
   }
 }

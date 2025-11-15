@@ -21,6 +21,7 @@ import type { HealthCheckRegistry } from "@/core/health/health-check-registry";
 import type { ContainerHealthCheck } from "@/core/health/container-health-check";
 import type { MetricsHealthCheck } from "@/core/health/metrics-health-check";
 import type { CacheService, CacheServiceConfig } from "@/interfaces/cache";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 /**
  * Injection token for the application logger service.
@@ -284,6 +285,16 @@ export const uiChannelToken = createInjectionToken<NotificationChannel>("UIChann
  * ```
  */
 export const environmentConfigToken = createInjectionToken<EnvironmentConfig>("EnvironmentConfig");
+
+/**
+ * Injection token for the RuntimeConfigService.
+ *
+ * Provides access to the merged configuration layer that combines build-time
+ * environment defaults with runtime Foundry settings and notifies consumers
+ * of live changes.
+ */
+export const runtimeConfigToken =
+  createInjectionToken<RuntimeConfigService>("RuntimeConfigService");
 
 /**
  * Injection token for the ModuleHealthService.

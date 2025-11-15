@@ -345,12 +345,12 @@ describe("JournalVisibilityService", () => {
       // Verify logger was called with sanitized name
       expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
         expect.stringContaining("&lt;script&gt;"),
-        undefined,
+        expect.any(Object),
         expect.objectContaining({ channels: ["ConsoleChannel"] })
       );
       expect(mockNotificationCenter.debug).not.toHaveBeenCalledWith(
         expect.stringContaining("<script>"),
-        undefined,
+        expect.anything(),
         expect.objectContaining({ channels: ["ConsoleChannel"] })
       );
     });

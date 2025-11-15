@@ -3,6 +3,7 @@ import { MetricsHealthCheck } from "../metrics-health-check";
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import { MetricsCollector as RealMetricsCollector } from "@/observability/metrics-collector";
+import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 describe("MetricsHealthCheck", () => {
   let metricsCollector: MetricsCollector;
@@ -10,7 +11,7 @@ describe("MetricsHealthCheck", () => {
 
   beforeEach(() => {
     const mockEnv = createMockEnvironmentConfig();
-    metricsCollector = new RealMetricsCollector(mockEnv);
+    metricsCollector = new RealMetricsCollector(new RuntimeConfigService(mockEnv));
     check = new MetricsHealthCheck(metricsCollector);
   });
 

@@ -8,24 +8,24 @@ import {
   DIPerformanceTrackingService,
 } from "../PerformanceTrackingService";
 import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
-import type { EnvironmentConfig } from "@/config/environment";
-import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
+import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 describe("PerformanceTrackingService", () => {
-  let mockEnv: EnvironmentConfig;
+  let runtimeConfig: RuntimeConfigService;
   let mockSampler: MetricsSampler;
   let service: PerformanceTrackingService;
 
   beforeEach(() => {
-    // Mock EnvironmentConfig
-    mockEnv = createMockEnvironmentConfig();
+    // Mock RuntimeConfig
+    runtimeConfig = createMockRuntimeConfig();
 
     // Mock MetricsSampler
     mockSampler = {
       shouldSample: vi.fn().mockReturnValue(true),
     };
 
-    service = new PerformanceTrackingService(mockEnv, mockSampler);
+    service = new PerformanceTrackingService(runtimeConfig, mockSampler);
 
     // Mock performance.now()
     vi.spyOn(performance, "now").mockReturnValue(1000);
@@ -40,8 +40,8 @@ describe("PerformanceTrackingService", () => {
       const operation = vi.fn().mockReturnValue(42);
       const onComplete = vi.fn();
 
-      // Disable performance tracking in ENV
-      mockEnv.enablePerformanceTracking = false;
+      // Disable performance tracking via runtime config
+      runtimeConfig.setFromFoundry("enablePerformanceTracking", false);
 
       const result = service.track(operation, onComplete);
 
@@ -124,7 +124,7 @@ describe("PerformanceTrackingService", () => {
       const operation = vi.fn().mockResolvedValue(42);
       const onComplete = vi.fn();
 
-      mockEnv.enablePerformanceTracking = false;
+      runtimeConfig.setFromFoundry("enablePerformanceTracking", false);
 
       const result = await service.trackAsync(operation, onComplete);
 
@@ -203,7 +203,7 @@ describe("PerformanceTrackingService", () => {
   describe("static dependencies", () => {
     it("should have correct static dependencies", () => {
       expect(DIPerformanceTrackingService.dependencies).toEqual([
-        expect.any(Symbol), // environmentConfigToken
+        expect.any(Symbol), // runtimeConfigToken
         expect.any(Symbol), // metricsSamplerToken
       ]);
       expect(DIPerformanceTrackingService.dependencies).toHaveLength(2);
@@ -212,7 +212,7 @@ describe("PerformanceTrackingService", () => {
 
   describe("DI wrapper", () => {
     it("should construct service via DI wrapper", () => {
-      const diService = new DIPerformanceTrackingService(mockEnv, mockSampler);
+      const diService = new DIPerformanceTrackingService(runtimeConfig, mockSampler);
       expect(diService).toBeInstanceOf(PerformanceTrackingService);
     });
   });

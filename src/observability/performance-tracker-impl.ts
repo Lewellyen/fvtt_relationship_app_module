@@ -16,7 +16,7 @@
  */
 
 import type { PerformanceTracker } from "@/interfaces/performance-tracker";
-import type { EnvironmentConfig } from "@/config/environment";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
 
 /**
@@ -39,7 +39,7 @@ export class PerformanceTrackerImpl implements PerformanceTracker {
    * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
    */
   constructor(
-    protected readonly env: EnvironmentConfig,
+    protected readonly config: RuntimeConfigService,
     protected readonly sampler: MetricsSampler | null
   ) {}
 
@@ -58,7 +58,7 @@ export class PerformanceTrackerImpl implements PerformanceTracker {
    */
   track<T>(operation: () => T, onComplete?: (duration: number, result: T) => void): T {
     // Early exit if performance tracking is disabled or sampling fails
-    if (!this.env.enablePerformanceTracking || !this.sampler?.shouldSample()) {
+    if (!this.config.get("enablePerformanceTracking") || !this.sampler?.shouldSample()) {
       return operation();
     }
 
@@ -91,7 +91,7 @@ export class PerformanceTrackerImpl implements PerformanceTracker {
     onComplete?: (duration: number, result: T) => void
   ): Promise<T> {
     // Early exit if performance tracking is disabled or sampling fails
-    if (!this.env.enablePerformanceTracking || !this.sampler?.shouldSample()) {
+    if (!this.config.get("enablePerformanceTracking") || !this.sampler?.shouldSample()) {
       return operation();
     }
 

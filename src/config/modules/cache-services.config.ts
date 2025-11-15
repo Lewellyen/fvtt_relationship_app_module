@@ -6,20 +6,28 @@ import { cacheServiceConfigToken, cacheServiceToken } from "@/tokens/tokenindex"
 import type { CacheServiceConfig } from "@/interfaces/cache";
 import { DICacheService } from "@/services/CacheService";
 import { MODULE_CONSTANTS } from "@/constants";
-import { ENV } from "@/config/environment";
+import { runtimeConfigToken } from "@/tokens/tokenindex";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 /**
  * Registers CacheService and its configuration.
  *
- * Reads defaults from EnvironmentConfig to make cache tuning possible
- * through build-time variables instead of code changes.
+ * Reads defaults from RuntimeConfigService to make cache tuning possible
+ * through build-time variables and Foundry settings instead of code changes.
  */
 export function registerCacheServices(container: ServiceContainer): Result<void, string> {
+  const runtimeConfig: RuntimeConfigService | null =
+    container.getRegisteredValue(runtimeConfigToken);
+  if (!runtimeConfig) {
+    return err("RuntimeConfigService not registered");
+  }
+
+  const maxEntries = runtimeConfig.get("cacheMaxEntries");
   const config: CacheServiceConfig = {
-    enabled: ENV.enableCacheService,
-    defaultTtlMs: ENV.cacheDefaultTtlMs,
+    enabled: runtimeConfig.get("enableCacheService"),
+    defaultTtlMs: runtimeConfig.get("cacheDefaultTtlMs"),
     namespace: MODULE_CONSTANTS.MODULE.ID,
-    ...(ENV.cacheMaxEntries !== undefined ? { maxEntries: ENV.cacheMaxEntries } : {}),
+    ...(typeof maxEntries === "number" && maxEntries > 0 ? { maxEntries } : {}),
   };
 
   const configResult = container.registerValue(cacheServiceConfigToken, config);

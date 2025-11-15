@@ -93,7 +93,7 @@ describe("JournalCacheInvalidationHook", () => {
     expect(predicate({ tags: [] } as never)).toBe(false);
     expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
       expect.stringContaining("hidden journal cache entries"),
-      undefined,
+      expect.any(Object),
       { channels: ["ConsoleChannel"] }
     );
   });

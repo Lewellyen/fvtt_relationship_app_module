@@ -74,7 +74,14 @@ const MODULE_CONSTANTS = {
     DELETE_JOURNAL_ENTRY: "deleteJournalEntry"
   },
   SETTINGS: {
-    LOG_LEVEL: "logLevel"
+    LOG_LEVEL: "logLevel",
+    CACHE_ENABLED: "cacheEnabled",
+    CACHE_TTL_MS: "cacheTtlMs",
+    CACHE_MAX_ENTRIES: "cacheMaxEntries",
+    PERFORMANCE_TRACKING_ENABLED: "performanceTrackingEnabled",
+    PERFORMANCE_SAMPLING_RATE: "performanceSamplingRate",
+    METRICS_PERSISTENCE_ENABLED: "metricsPersistenceEnabled",
+    METRICS_PERSISTENCE_KEY: "metricsPersistenceKey"
   },
   API: {
     /**
@@ -234,6 +241,7 @@ const notificationCenterToken = createInjectionToken("NotificationCenter");
 const consoleChannelToken = createInjectionToken("ConsoleChannel");
 const uiChannelToken = createInjectionToken("UIChannel");
 const environmentConfigToken = createInjectionToken("EnvironmentConfig");
+const runtimeConfigToken = createInjectionToken("RuntimeConfigService");
 const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
 const healthCheckRegistryToken = createInjectionToken("HealthCheckRegistry");
 const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
@@ -293,6 +301,7 @@ var tokenindex = /* @__PURE__ */ Object.freeze({
   portSelectorToken,
   renderJournalDirectoryHookToken,
   retryServiceToken,
+  runtimeConfigToken,
   serviceContainerToken,
   traceContextToken,
   translationHandlerChainToken,
@@ -1651,8 +1660,8 @@ const _PerformanceTrackerImpl = class _PerformanceTrackerImpl {
    * @param env - Environment configuration for tracking settings
    * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
    */
-  constructor(env, sampler) {
-    this.env = env;
+  constructor(config2, sampler) {
+    this.config = config2;
     this.sampler = sampler;
   }
   /**
@@ -1669,7 +1678,7 @@ const _PerformanceTrackerImpl = class _PerformanceTrackerImpl {
    * @returns Result of the operation
    */
   track(operation, onComplete) {
-    if (!this.env.enablePerformanceTracking || !this.sampler?.shouldSample()) {
+    if (!this.config.get("enablePerformanceTracking") || !this.sampler?.shouldSample()) {
       return operation();
     }
     const startTime = performance.now();
@@ -1694,7 +1703,7 @@ const _PerformanceTrackerImpl = class _PerformanceTrackerImpl {
    * @returns Promise resolving to the operation result
    */
   async trackAsync(operation, onComplete) {
-    if (!this.env.enablePerformanceTracking || !this.sampler?.shouldSample()) {
+    if (!this.config.get("enablePerformanceTracking") || !this.sampler?.shouldSample()) {
       return operation();
     }
     const startTime = performance.now();
@@ -1715,12 +1724,75 @@ const _BootstrapPerformanceTracker = class _BootstrapPerformanceTracker extends 
    * @param env - Environment configuration for tracking settings
    * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
    */
-  constructor(env, sampler) {
-    super(env, sampler);
+  constructor(config2, sampler) {
+    super(config2, sampler);
   }
 };
 __name(_BootstrapPerformanceTracker, "BootstrapPerformanceTracker");
 let BootstrapPerformanceTracker = _BootstrapPerformanceTracker;
+const _RuntimeConfigService = class _RuntimeConfigService {
+  constructor(env) {
+    this.listeners = /* @__PURE__ */ new Map();
+    this.values = {
+      isDevelopment: env.isDevelopment,
+      isProduction: env.isProduction,
+      logLevel: env.logLevel,
+      enablePerformanceTracking: env.enablePerformanceTracking,
+      performanceSamplingRate: env.performanceSamplingRate,
+      enableDebugMode: env.enableDebugMode,
+      enableMetricsPersistence: env.enableMetricsPersistence,
+      metricsPersistenceKey: env.metricsPersistenceKey,
+      enableCacheService: env.enableCacheService,
+      cacheDefaultTtlMs: env.cacheDefaultTtlMs,
+      cacheMaxEntries: env.cacheMaxEntries
+    };
+  }
+  /**
+   * Returns the current value for the given configuration key.
+   */
+  get(key) {
+    return this.values[key];
+  }
+  /**
+   * Updates the configuration value based on Foundry settings and notifies listeners
+   * only if the value actually changed.
+   */
+  setFromFoundry(key, value2) {
+    this.updateValue(key, value2);
+  }
+  /**
+   * Registers a listener for the given key. Returns an unsubscribe function.
+   */
+  onChange(key, listener) {
+    const existing = this.listeners.get(key);
+    const listeners = existing ?? /* @__PURE__ */ new Set();
+    listeners.add(listener);
+    this.listeners.set(key, listeners);
+    return () => {
+      const activeListeners = this.listeners.get(key);
+      activeListeners?.delete(listener);
+      if (!activeListeners || activeListeners.size === 0) {
+        this.listeners.delete(key);
+      }
+    };
+  }
+  updateValue(key, value2) {
+    const current = this.values[key];
+    if (Object.is(current, value2)) {
+      return;
+    }
+    this.values[key] = value2;
+    const listeners = this.listeners.get(key);
+    if (!listeners || listeners.size === 0) {
+      return;
+    }
+    for (const listener of listeners) {
+      listener(value2);
+    }
+  }
+};
+__name(_RuntimeConfigService, "RuntimeConfigService");
+let RuntimeConfigService = _RuntimeConfigService;
 const _ServiceContainer = class _ServiceContainer {
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
@@ -1754,7 +1826,7 @@ const _ServiceContainer = class _ServiceContainer {
    * All components are created fresh for the root container.
    *
    * **Bootstrap Performance Tracking:**
-   * Uses BootstrapPerformanceTracker with ENV and null MetricsCollector.
+   * Uses BootstrapPerformanceTracker with RuntimeConfigService(ENV) und null MetricsCollector.
    * MetricsCollector is injected later via setMetricsCollector() after validation.
    *
    * @returns A new root ServiceContainer
@@ -1771,7 +1843,7 @@ const _ServiceContainer = class _ServiceContainer {
     const validator = new ContainerValidator();
     const cache = new InstanceCache();
     const scopeManager = new ScopeManager("root", null, cache);
-    const performanceTracker = new BootstrapPerformanceTracker(ENV, null);
+    const performanceTracker = new BootstrapPerformanceTracker(new RuntimeConfigService(ENV), null);
     const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
     return new _ServiceContainer(registry, validator, cache, resolver, scopeManager, "registering");
   }
@@ -1838,6 +1910,24 @@ const _ServiceContainer = class _ServiceContainer {
       });
     }
     return this.registry.registerValue(token, value2);
+  }
+  /**
+   * Returns a previously registered constant value without requiring validation.
+   * Useful for bootstrap/static values that are needed while the container is still registering services.
+   */
+  getRegisteredValue(token) {
+    const registration = this.registry.getRegistration(token);
+    if (!registration) {
+      return null;
+    }
+    if (registration.providerType !== "value") {
+      return null;
+    }
+    const value2 = registration.value;
+    if (value2 === void 0) {
+      return null;
+    }
+    return value2;
   }
   /**
    * Register an alias.
@@ -2024,7 +2114,10 @@ const _ServiceContainer = class _ServiceContainer {
     const childRegistry = this.registry.clone();
     const childCache = scopeResult.value.cache;
     const childManager = scopeResult.value.manager;
-    const childPerformanceTracker = new BootstrapPerformanceTracker(ENV, null);
+    const childPerformanceTracker = new BootstrapPerformanceTracker(
+      new RuntimeConfigService(ENV),
+      null
+    );
     const childResolver = new ServiceResolver(
       childRegistry,
       childCache,
@@ -2174,9 +2267,11 @@ Only the public ModuleApi should expose resolve() for external modules.`
 __name(_ServiceContainer, "ServiceContainer");
 let ServiceContainer = _ServiceContainer;
 const _ConsoleLoggerService = class _ConsoleLoggerService {
-  constructor(env, traceContext) {
-    this.minLevel = env.logLevel;
+  constructor(config2, traceContext) {
+    this.runtimeConfigUnsubscribe = null;
     this.traceContext = traceContext ?? null;
+    this.minLevel = config2.get("logLevel");
+    this.bindRuntimeConfig(config2);
   }
   setMinLevel(level) {
     this.minLevel = level;
@@ -2207,6 +2302,13 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
   }
   withTraceId(traceId) {
     return new TracedLogger(this, traceId);
+  }
+  bindRuntimeConfig(runtimeConfig) {
+    this.minLevel = runtimeConfig.get("logLevel");
+    this.runtimeConfigUnsubscribe?.();
+    this.runtimeConfigUnsubscribe = runtimeConfig.onChange("logLevel", (level) => {
+      this.setMinLevel(level);
+    });
   }
   getContextTraceId() {
     return this.traceContext?.getCurrentTraceId() ?? null;
@@ -2254,12 +2356,12 @@ const _TracedLogger = class _TracedLogger {
 __name(_TracedLogger, "TracedLogger");
 let TracedLogger = _TracedLogger;
 const _DIConsoleLoggerService = class _DIConsoleLoggerService extends ConsoleLoggerService {
-  constructor(env, traceContext) {
-    super(env, traceContext);
+  constructor(config2, traceContext) {
+    super(config2, traceContext);
   }
 };
 __name(_DIConsoleLoggerService, "DIConsoleLoggerService");
-_DIConsoleLoggerService.dependencies = [environmentConfigToken, traceContextToken];
+_DIConsoleLoggerService.dependencies = [runtimeConfigToken, traceContextToken];
 let DIConsoleLoggerService = _DIConsoleLoggerService;
 const _ContainerHealthCheck = class _ContainerHealthCheck {
   constructor(container) {
@@ -2327,8 +2429,8 @@ __name(_DIMetricsHealthCheck, "DIMetricsHealthCheck");
 _DIMetricsHealthCheck.dependencies = [metricsCollectorToken, healthCheckRegistryToken];
 let DIMetricsHealthCheck = _DIMetricsHealthCheck;
 const _MetricsCollector = class _MetricsCollector {
-  constructor(env) {
-    this.env = env;
+  constructor(config2) {
+    this.config = config2;
     this.metrics = {
       containerResolutions: 0,
       resolutionErrors: 0,
@@ -2414,10 +2516,10 @@ const _MetricsCollector = class _MetricsCollector {
    * ```
    */
   shouldSample() {
-    if (this.env.isDevelopment) {
+    if (this.config.get("isDevelopment")) {
       return true;
     }
-    return Math.random() < this.env.performanceSamplingRate;
+    return Math.random() < this.config.get("performanceSamplingRate");
   }
   /**
    * Gets a snapshot of current metrics.
@@ -2539,19 +2641,19 @@ const _MetricsCollector = class _MetricsCollector {
   }
 };
 __name(_MetricsCollector, "MetricsCollector");
-_MetricsCollector.dependencies = [environmentConfigToken];
+_MetricsCollector.dependencies = [runtimeConfigToken];
 let MetricsCollector = _MetricsCollector;
 const _DIMetricsCollector = class _DIMetricsCollector extends MetricsCollector {
-  constructor(env) {
-    super(env);
+  constructor(config2) {
+    super(config2);
   }
 };
 __name(_DIMetricsCollector, "DIMetricsCollector");
-_DIMetricsCollector.dependencies = [environmentConfigToken];
+_DIMetricsCollector.dependencies = [runtimeConfigToken];
 let DIMetricsCollector = _DIMetricsCollector;
 const _PersistentMetricsCollector = class _PersistentMetricsCollector extends MetricsCollector {
-  constructor(env, metricsStorage) {
-    super(env);
+  constructor(config2, metricsStorage) {
+    super(config2);
     this.metricsStorage = metricsStorage;
     this.suppressPersistence = false;
     this.restoreFromStorage();
@@ -2597,18 +2699,18 @@ const _PersistentMetricsCollector = class _PersistentMetricsCollector extends Me
 };
 __name(_PersistentMetricsCollector, "PersistentMetricsCollector");
 _PersistentMetricsCollector.dependencies = [
-  environmentConfigToken,
+  runtimeConfigToken,
   metricsStorageToken
 ];
 let PersistentMetricsCollector = _PersistentMetricsCollector;
 const _DIPersistentMetricsCollector = class _DIPersistentMetricsCollector extends PersistentMetricsCollector {
-  constructor(env, metricsStorage) {
-    super(env, metricsStorage);
+  constructor(config2, metricsStorage) {
+    super(config2, metricsStorage);
   }
 };
 __name(_DIPersistentMetricsCollector, "DIPersistentMetricsCollector");
 _DIPersistentMetricsCollector.dependencies = [
-  environmentConfigToken,
+  runtimeConfigToken,
   metricsStorageToken
 ];
 let DIPersistentMetricsCollector = _DIPersistentMetricsCollector;
@@ -3171,11 +3273,14 @@ __name(_DIHealthCheckRegistry, "DIHealthCheckRegistry");
 _DIHealthCheckRegistry.dependencies = [];
 let DIHealthCheckRegistry = _DIHealthCheckRegistry;
 function registerCoreServices(container) {
-  const envResult = container.resolveWithError(environmentConfigToken);
-  const env = envResult.ok ? envResult.value : null;
-  const enablePersistence = env?.enableMetricsPersistence === true;
+  const runtimeConfig = container.getRegisteredValue(runtimeConfigToken);
+  if (!runtimeConfig) {
+    return err("RuntimeConfigService not registered");
+  }
+  const enablePersistence = runtimeConfig.get("enableMetricsPersistence") === true;
   if (enablePersistence) {
-    const storageInstance = new LocalStorageMetricsStorage(env.metricsPersistenceKey);
+    const metricsKey = runtimeConfig.get("metricsPersistenceKey") ?? "fvtt_relationship_app_module.metrics";
+    const storageInstance = new LocalStorageMetricsStorage(metricsKey);
     const storageResult = container.registerValue(metricsStorageToken, storageInstance);
     if (isErr(storageResult)) {
       return err(`Failed to register MetricsStorage: ${storageResult.error.message}`);
@@ -11787,6 +11892,10 @@ const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
   LogLevel.ERROR
 ]);
 const BOOLEAN_FLAG_SCHEMA = /* @__PURE__ */ boolean();
+const NON_NEGATIVE_NUMBER_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ minValue(0));
+const NON_NEGATIVE_INTEGER_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ integer(), /* @__PURE__ */ minValue(0));
+const SAMPLING_RATE_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ minValue(0), /* @__PURE__ */ maxValue(1));
+const NON_EMPTY_STRING_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ minLength(1));
 const buildJournalCacheKey = createCacheNamespace("journal-visibility");
 const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
@@ -11857,15 +11966,23 @@ const _JournalVisibilityService = class _JournalVisibilityService {
    * Processes journal directory HTML to hide flagged entries.
    */
   processJournalDirectory(htmlElement) {
-    this.notificationCenter.debug("Processing journal directory for hidden entries", { context: { htmlElement } }, {
-      channels: ["ConsoleChannel"]
-    });
+    this.notificationCenter.debug(
+      "Processing journal directory for hidden entries",
+      { context: { htmlElement } },
+      {
+        channels: ["ConsoleChannel"]
+      }
+    );
     const hiddenResult = this.getHiddenJournalEntries();
     match(hiddenResult, {
       onOk: /* @__PURE__ */ __name((hidden) => {
-        this.notificationCenter.debug(`Found ${hidden.length} hidden journal entries`, { context: { hidden } }, {
-          channels: ["ConsoleChannel"]
-        });
+        this.notificationCenter.debug(
+          `Found ${hidden.length} hidden journal entries`,
+          { context: { hidden } },
+          {
+            channels: ["ConsoleChannel"]
+          }
+        );
         this.hideEntries(hidden, htmlElement);
       }, "onOk"),
       onErr: /* @__PURE__ */ __name((error) => {
@@ -11977,19 +12094,19 @@ function registerFoundryServices(container) {
 }
 __name(registerFoundryServices, "registerFoundryServices");
 const _PerformanceTrackingService = class _PerformanceTrackingService extends PerformanceTrackerImpl {
-  constructor(env, sampler) {
-    super(env, sampler);
+  constructor(config2, sampler) {
+    super(config2, sampler);
   }
 };
 __name(_PerformanceTrackingService, "PerformanceTrackingService");
 let PerformanceTrackingService = _PerformanceTrackingService;
 const _DIPerformanceTrackingService = class _DIPerformanceTrackingService extends PerformanceTrackingService {
-  constructor(env, sampler) {
-    super(env, sampler);
+  constructor(config2, sampler) {
+    super(config2, sampler);
   }
 };
 __name(_DIPerformanceTrackingService, "DIPerformanceTrackingService");
-_DIPerformanceTrackingService.dependencies = [environmentConfigToken, metricsSamplerToken];
+_DIPerformanceTrackingService.dependencies = [runtimeConfigToken, metricsSamplerToken];
 let DIPerformanceTrackingService = _DIPerformanceTrackingService;
 const _RetryService = class _RetryService {
   constructor(logger, metricsCollector) {
@@ -12400,11 +12517,16 @@ __name(_DICacheService, "DICacheService");
 _DICacheService.dependencies = [cacheServiceConfigToken, metricsCollectorToken];
 let DICacheService = _DICacheService;
 function registerCacheServices(container) {
+  const runtimeConfig = container.getRegisteredValue(runtimeConfigToken);
+  if (!runtimeConfig) {
+    return err("RuntimeConfigService not registered");
+  }
+  const maxEntries2 = runtimeConfig.get("cacheMaxEntries");
   const config2 = {
-    enabled: ENV.enableCacheService,
-    defaultTtlMs: ENV.cacheDefaultTtlMs,
+    enabled: runtimeConfig.get("enableCacheService"),
+    defaultTtlMs: runtimeConfig.get("cacheDefaultTtlMs"),
     namespace: MODULE_CONSTANTS.MODULE.ID,
-    ...ENV.cacheMaxEntries !== void 0 ? { maxEntries: ENV.cacheMaxEntries } : {}
+    ...typeof maxEntries2 === "number" && maxEntries2 > 0 ? { maxEntries: maxEntries2 } : {}
   };
   const configResult = container.registerValue(cacheServiceConfigToken, config2);
   if (isErr(configResult)) {
@@ -12984,9 +13106,9 @@ __name(_DIConsoleChannel, "DIConsoleChannel");
 _DIConsoleChannel.dependencies = [loggerToken];
 let DIConsoleChannel = _DIConsoleChannel;
 const _UIChannel = class _UIChannel {
-  constructor(foundryUI, env) {
+  constructor(foundryUI, config2) {
     this.foundryUI = foundryUI;
-    this.env = env;
+    this.config = config2;
     this.name = "UIChannel";
   }
   canHandle(notification) {
@@ -13010,7 +13132,7 @@ const _UIChannel = class _UIChannel {
    */
   sanitizeForUI(notification) {
     const { level, context, data, error } = notification;
-    if (this.env.isDevelopment) {
+    if (this.config.get("isDevelopment")) {
       if (level === "error" && error) {
         return `${context}: ${error.message}`;
       }
@@ -13043,12 +13165,12 @@ const _UIChannel = class _UIChannel {
 __name(_UIChannel, "UIChannel");
 let UIChannel = _UIChannel;
 const _DIUIChannel = class _DIUIChannel extends UIChannel {
-  constructor(foundryUI, env) {
-    super(foundryUI, env);
+  constructor(foundryUI, config2) {
+    super(foundryUI, config2);
   }
 };
 __name(_DIUIChannel, "DIUIChannel");
-_DIUIChannel.dependencies = [foundryUIToken, environmentConfigToken];
+_DIUIChannel.dependencies = [foundryUIToken, runtimeConfigToken];
 let DIUIChannel = _DIUIChannel;
 function registerNotifications(container) {
   const consoleChannelResult = container.registerClass(
@@ -13123,14 +13245,199 @@ const logLevelSetting = {
     };
   }
 };
-const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
-  constructor() {
-    this.settings = // Add new setting types here
-    [
-      logLevelSetting
-      // Add new settings here
-    ];
+const cacheEnabledSetting = {
+  key: MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED,
+  createConfig(i18n, logger) {
+    return {
+      name: i18n.translate("MODULE.SETTINGS.cacheEnabled.name", "Enable Cache Service"),
+      hint: i18n.translate(
+        "MODULE.SETTINGS.cacheEnabled.hint",
+        "Toggle the global CacheService. When disabled, all cache interactions bypass the cache layer."
+      ),
+      scope: "world",
+      config: true,
+      type: Boolean,
+      default: true,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const action = value2 ? "enabled" : "disabled";
+        logger.info(`CacheService ${action} via module setting.`);
+      }, "onChange")
+    };
   }
+};
+const cacheDefaultTtlSetting = {
+  key: MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS,
+  createConfig(i18n, logger) {
+    return {
+      name: i18n.translate("MODULE.SETTINGS.cacheDefaultTtlMs.name", "Cache TTL (ms)"),
+      hint: i18n.translate(
+        "MODULE.SETTINGS.cacheDefaultTtlMs.hint",
+        "Default lifetime for cache entries in milliseconds. Use 0 to disable TTL (entries live until invalidated)."
+      ),
+      scope: "world",
+      config: true,
+      type: Number,
+      default: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const numericValue = Number(value2);
+        const sanitized = Number.isFinite(numericValue) && numericValue >= 0 ? numericValue : 0;
+        logger.info(`Cache TTL updated via settings: ${sanitized}ms`);
+      }, "onChange")
+    };
+  }
+};
+const cacheMaxEntriesSetting = {
+  key: MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES,
+  createConfig(i18n, logger) {
+    return {
+      name: i18n.translate("MODULE.SETTINGS.cacheMaxEntries.name", "Cache Max Entries"),
+      hint: i18n.translate(
+        "MODULE.SETTINGS.cacheMaxEntries.hint",
+        "Optional LRU limit. Use 0 to allow unlimited cache entries."
+      ),
+      scope: "world",
+      config: true,
+      type: Number,
+      default: 0,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const numericValue = Number(value2);
+        const sanitized = Number.isFinite(numericValue) && numericValue > 0 ? Math.floor(numericValue) : 0;
+        if (sanitized === 0) {
+          logger.info("Cache max entries reset to unlimited via settings.");
+        } else {
+          logger.info(`Cache max entries updated via settings: ${sanitized}`);
+        }
+      }, "onChange")
+    };
+  }
+};
+const performanceTrackingSetting = {
+  key: MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED,
+  createConfig(i18n, logger) {
+    return {
+      name: i18n.translate("MODULE.SETTINGS.performanceTracking.name", "Performance Tracking"),
+      hint: i18n.translate(
+        "MODULE.SETTINGS.performanceTracking.hint",
+        "Enables internal performance instrumentation (requires sampling)."
+      ),
+      scope: "world",
+      config: true,
+      type: Boolean,
+      default: false,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const action = value2 ? "enabled" : "disabled";
+        logger.info(`Performance tracking ${action} via module setting.`);
+      }, "onChange")
+    };
+  }
+};
+const performanceSamplingSetting = {
+  key: MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE,
+  createConfig(i18n, logger) {
+    return {
+      name: i18n.translate(
+        "MODULE.SETTINGS.performanceSamplingRate.name",
+        "Performance Sampling Rate"
+      ),
+      hint: i18n.translate(
+        "MODULE.SETTINGS.performanceSamplingRate.hint",
+        "Fraction of operations to instrument (0 = 0%, 1 = 100%)."
+      ),
+      scope: "world",
+      config: true,
+      type: Number,
+      default: 1,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const clamped = Math.max(0, Math.min(1, Number(value2) || 0));
+        logger.info(
+          `Performance sampling rate updated via settings: ${(clamped * 100).toFixed(1)}%`
+        );
+      }, "onChange")
+    };
+  }
+};
+const metricsPersistenceEnabledSetting = {
+  key: MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED,
+  createConfig(i18n, logger) {
+    return {
+      name: i18n.translate("MODULE.SETTINGS.metricsPersistenceEnabled.name", "Persist Metrics"),
+      hint: i18n.translate(
+        "MODULE.SETTINGS.metricsPersistenceEnabled.hint",
+        "Keeps observability metrics across Foundry restarts (uses LocalStorage)."
+      ),
+      scope: "world",
+      config: true,
+      type: Boolean,
+      default: false,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const action = value2 ? "enabled" : "disabled";
+        logger.info(`Metrics persistence ${action} via module setting.`);
+      }, "onChange")
+    };
+  }
+};
+const metricsPersistenceKeySetting = {
+  key: MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY,
+  createConfig(i18n, logger) {
+    return {
+      name: i18n.translate("MODULE.SETTINGS.metricsPersistenceKey.name", "Metrics Storage Key"),
+      hint: i18n.translate(
+        "MODULE.SETTINGS.metricsPersistenceKey.hint",
+        "LocalStorage key used when metrics persistence is enabled."
+      ),
+      scope: "world",
+      config: true,
+      type: String,
+      default: `${MODULE_CONSTANTS.MODULE.ID}.metrics`,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        logger.info(`Metrics persistence key set to: ${value2 || "(empty)"}`);
+      }, "onChange")
+    };
+  }
+};
+const runtimeConfigBindings = {
+  [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: {
+    runtimeKey: "logLevel",
+    schema: LOG_LEVEL_SCHEMA,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED]: {
+    runtimeKey: "enableCacheService",
+    schema: BOOLEAN_FLAG_SCHEMA,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS]: {
+    runtimeKey: "cacheDefaultTtlMs",
+    schema: NON_NEGATIVE_NUMBER_SCHEMA,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES]: {
+    runtimeKey: "cacheMaxEntries",
+    schema: NON_NEGATIVE_INTEGER_SCHEMA,
+    normalize: /* @__PURE__ */ __name((value2) => value2 > 0 ? value2 : void 0, "normalize")
+  },
+  [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED]: {
+    runtimeKey: "enablePerformanceTracking",
+    schema: BOOLEAN_FLAG_SCHEMA,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE]: {
+    runtimeKey: "performanceSamplingRate",
+    schema: SAMPLING_RATE_SCHEMA,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED]: {
+    runtimeKey: "enableMetricsPersistence",
+    schema: BOOLEAN_FLAG_SCHEMA,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY]: {
+    runtimeKey: "metricsPersistenceKey",
+    schema: NON_EMPTY_STRING_SCHEMA,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  }
+};
+const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
   /**
    * Registers all module settings.
    * Must be called during or after the 'init' hook.
@@ -13142,6 +13449,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     const loggerResult = container.resolveWithError(loggerToken);
     const i18nResult = container.resolveWithError(i18nFacadeToken);
     const notificationCenterResult = container.resolveWithError(notificationCenterToken);
+    const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
     if (!notificationCenterResult.ok) {
       console.error("Failed to resolve NotificationCenter for ModuleSettingsRegistrar", {
         error: notificationCenterResult.error
@@ -13149,7 +13457,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       return;
     }
     const notifications = notificationCenterResult.value;
-    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok) {
+    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok || !runtimeConfigResult.ok) {
       notifications.error(
         "DI resolution failed in ModuleSettingsRegistrar",
         {
@@ -13159,7 +13467,8 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
             settingsResolved: settingsResult.ok,
             i18nResolved: i18nResult.ok,
             loggerResolved: loggerResult.ok
-          }
+          },
+          runtimeConfigResolved: runtimeConfigResult.ok
         },
         { channels: ["ConsoleChannel"] }
       );
@@ -13168,14 +13477,127 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     const foundrySettings = settingsResult.value;
     const logger = loggerResult.value;
     const i18n = i18nResult.value;
-    for (const setting of this.settings) {
-      const config2 = setting.createConfig(i18n, logger);
-      const result = foundrySettings.register(MODULE_CONSTANTS.MODULE.ID, setting.key, config2);
-      if (!result.ok) {
-        notifications.error(`Failed to register ${setting.key} setting`, result.error, {
-          channels: ["ConsoleChannel"]
-        });
-      }
+    const runtimeConfig = runtimeConfigResult.value;
+    this.registerDefinition(
+      logLevelSetting,
+      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL],
+      foundrySettings,
+      runtimeConfig,
+      notifications,
+      i18n,
+      logger
+    );
+    this.registerDefinition(
+      cacheEnabledSetting,
+      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED],
+      foundrySettings,
+      runtimeConfig,
+      notifications,
+      i18n,
+      logger
+    );
+    this.registerDefinition(
+      cacheDefaultTtlSetting,
+      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS],
+      foundrySettings,
+      runtimeConfig,
+      notifications,
+      i18n,
+      logger
+    );
+    this.registerDefinition(
+      cacheMaxEntriesSetting,
+      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES],
+      foundrySettings,
+      runtimeConfig,
+      notifications,
+      i18n,
+      logger
+    );
+    this.registerDefinition(
+      performanceTrackingSetting,
+      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED],
+      foundrySettings,
+      runtimeConfig,
+      notifications,
+      i18n,
+      logger
+    );
+    this.registerDefinition(
+      performanceSamplingSetting,
+      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE],
+      foundrySettings,
+      runtimeConfig,
+      notifications,
+      i18n,
+      logger
+    );
+    this.registerDefinition(
+      metricsPersistenceEnabledSetting,
+      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED],
+      foundrySettings,
+      runtimeConfig,
+      notifications,
+      i18n,
+      logger
+    );
+    this.registerDefinition(
+      metricsPersistenceKeySetting,
+      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY],
+      foundrySettings,
+      runtimeConfig,
+      notifications,
+      i18n,
+      logger
+    );
+  }
+  attachRuntimeConfigBridge(config2, runtimeConfig, binding) {
+    const originalOnChange = config2.onChange;
+    return {
+      ...config2,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const normalized = binding.normalize(value2);
+        runtimeConfig.setFromFoundry(binding.runtimeKey, normalized);
+        originalOnChange?.(value2);
+      }, "onChange")
+    };
+  }
+  syncRuntimeConfigFromSettings(foundrySettings, runtimeConfig, binding, notifications, settingKey) {
+    const currentValue = foundrySettings.get(
+      MODULE_CONSTANTS.MODULE.ID,
+      settingKey,
+      binding.schema
+    );
+    if (!currentValue.ok) {
+      notifications.warn(`Failed to read initial value for ${settingKey}`, currentValue.error, {
+        channels: ["ConsoleChannel"]
+      });
+      return;
+    }
+    runtimeConfig.setFromFoundry(binding.runtimeKey, binding.normalize(currentValue.value));
+  }
+  registerDefinition(definition, binding, foundrySettings, runtimeConfig, notifications, i18n, logger) {
+    const config2 = definition.createConfig(i18n, logger);
+    const configWithRuntimeBridge = this.attachRuntimeConfigBridge(config2, runtimeConfig, binding);
+    const result = foundrySettings.register(
+      MODULE_CONSTANTS.MODULE.ID,
+      definition.key,
+      configWithRuntimeBridge
+    );
+    if (!result.ok) {
+      notifications.error(`Failed to register ${definition.key} setting`, result.error, {
+        channels: ["ConsoleChannel"]
+      });
+      return;
+    }
+    if (binding) {
+      this.syncRuntimeConfigFromSettings(
+        foundrySettings,
+        runtimeConfig,
+        binding,
+        notifications,
+        definition.key
+      );
     }
   }
 };
@@ -13508,7 +13930,7 @@ function registerFallbacks(container) {
       enableCacheService: true,
       cacheDefaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS
     };
-    return new ConsoleLoggerService(fallbackConfig);
+    return new ConsoleLoggerService(new RuntimeConfigService(fallbackConfig));
   });
 }
 __name(registerFallbacks, "registerFallbacks");
@@ -13516,6 +13938,13 @@ function registerStaticValues(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
     return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
+  }
+  const runtimeConfigResult = container.registerValue(
+    runtimeConfigToken,
+    new RuntimeConfigService(ENV)
+  );
+  if (isErr(runtimeConfigResult)) {
+    return err(`Failed to register RuntimeConfigService: ${runtimeConfigResult.error.message}`);
   }
   const containerResult = container.registerValue(serviceContainerToken, container);
   if (isErr(containerResult)) {
@@ -13612,7 +14041,7 @@ function configureDependencies(container) {
 __name(configureDependencies, "configureDependencies");
 const _BootstrapLoggerService = class _BootstrapLoggerService extends ConsoleLoggerService {
   constructor() {
-    super(ENV);
+    super(new RuntimeConfigService(ENV));
   }
 };
 __name(_BootstrapLoggerService, "BootstrapLoggerService");
@@ -13634,7 +14063,8 @@ const _CompositionRoot = class _CompositionRoot {
    */
   bootstrap() {
     const container = ServiceContainer.createRoot();
-    const performanceTracker = new BootstrapPerformanceTracker(ENV, null);
+    const runtimeConfig = new RuntimeConfigService(ENV);
+    const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
     const configured = performanceTracker.track(
       () => configureDependencies(container),
       /* c8 ignore start -- onComplete callback is only called when performance tracking is enabled and sampling passes */

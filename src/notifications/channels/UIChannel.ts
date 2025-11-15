@@ -14,18 +14,18 @@
 
 import type { NotificationChannel, Notification } from "../notification-channel.interface";
 import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
-import type { EnvironmentConfig } from "@/config/environment";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/functional/result";
 import { foundryUIToken } from "@/foundry/foundrytokens";
-import { environmentConfigToken } from "@/tokens/tokenindex";
+import { runtimeConfigToken } from "@/tokens/tokenindex";
 
 export class UIChannel implements NotificationChannel {
   readonly name = "UIChannel";
 
   constructor(
     private readonly foundryUI: FoundryUI,
-    private readonly env: EnvironmentConfig
+    private readonly config: RuntimeConfigService
   ) {}
 
   canHandle(notification: Notification): boolean {
@@ -57,7 +57,7 @@ export class UIChannel implements NotificationChannel {
   private sanitizeForUI(notification: Notification): string {
     const { level, context, data, error } = notification;
 
-    if (this.env.isDevelopment) {
+    if (this.config.get("isDevelopment")) {
       // Development: Show meaningful details
       if (level === "error" && error) {
         return `${context}: ${error.message}`;
@@ -97,9 +97,9 @@ export class UIChannel implements NotificationChannel {
 }
 
 export class DIUIChannel extends UIChannel {
-  static dependencies = [foundryUIToken, environmentConfigToken] as const;
+  static dependencies = [foundryUIToken, runtimeConfigToken] as const;
 
-  constructor(foundryUI: FoundryUI, env: EnvironmentConfig) {
-    super(foundryUI, env);
+  constructor(foundryUI: FoundryUI, config: RuntimeConfigService) {
+    super(foundryUI, config);
   }
 }

@@ -153,6 +153,42 @@ describe("ServiceContainer", () => {
       expectResultErr(result);
       expect(result.error.code).toBe("InvalidOperation");
     });
+
+    it("should return null when getRegisteredValue resolves undefined", () => {
+      const container = ServiceContainer.createRoot();
+      const valueToken = createInjectionToken<Logger>("OptionalValue");
+
+      const registry = (container as any).registry;
+      registry.registrations.set(valueToken, {
+        lifecycle: ServiceLifecycle.SINGLETON,
+        dependencies: [],
+        providerType: "value",
+        serviceClass: undefined,
+        factory: undefined,
+        value: undefined as unknown as Logger,
+        aliasTarget: undefined,
+      });
+
+      const resolved = container.getRegisteredValue(valueToken);
+      expect(resolved).toBeNull();
+    });
+
+    it("should return null when getRegisteredValue targets non-value providers", () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("ClassToken");
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      const resolved = container.getRegisteredValue(token);
+      expect(resolved).toBeNull();
+    });
+
+    it("should return null when getRegisteredValue is called for missing tokens", () => {
+      const container = ServiceContainer.createRoot();
+      const missingToken = createInjectionToken<TestService>("MissingValueToken");
+
+      const resolved = container.getRegisteredValue(missingToken);
+      expect(resolved).toBeNull();
+    });
   });
 
   describe("Lifecycle: Singleton", () => {

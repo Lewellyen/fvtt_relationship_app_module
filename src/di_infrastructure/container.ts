@@ -19,6 +19,7 @@ import { ScopeManager } from "./scope/ScopeManager";
 import { withTimeout, TimeoutError } from "@/utils/async/promise-timeout";
 import { ENV } from "@/config/environment";
 import { BootstrapPerformanceTracker } from "@/observability/bootstrap-performance-tracker";
+import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 /**
  * Fallback factory function type for creating service instances when container resolution fails.
@@ -112,7 +113,7 @@ export class ServiceContainer implements Container {
    * All components are created fresh for the root container.
    *
    * **Bootstrap Performance Tracking:**
-   * Uses BootstrapPerformanceTracker with ENV and null MetricsCollector.
+   * Uses BootstrapPerformanceTracker with RuntimeConfigService(ENV) und null MetricsCollector.
    * MetricsCollector is injected later via setMetricsCollector() after validation.
    *
    * @returns A new root ServiceContainer
@@ -131,7 +132,7 @@ export class ServiceContainer implements Container {
     const scopeManager = new ScopeManager("root", null, cache);
 
     // Bootstrap performance tracker (no MetricsCollector yet)
-    const performanceTracker = new BootstrapPerformanceTracker(ENV, null);
+    const performanceTracker = new BootstrapPerformanceTracker(new RuntimeConfigService(ENV), null);
     const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
 
     return new ServiceContainer(registry, validator, cache, resolver, scopeManager, "registering");
@@ -222,6 +223,27 @@ export class ServiceContainer implements Container {
     }
 
     return this.registry.registerValue(token, value);
+  }
+
+  /**
+   * Returns a previously registered constant value without requiring validation.
+   * Useful for bootstrap/static values that are needed while the container is still registering services.
+   */
+  getRegisteredValue<TServiceType extends ServiceType>(
+    token: InjectionToken<TServiceType>
+  ): TServiceType | null {
+    const registration = this.registry.getRegistration(token);
+    if (!registration) {
+      return null;
+    }
+    if (registration.providerType !== "value") {
+      return null;
+    }
+    const value = registration.value as TServiceType | undefined;
+    if (value === undefined) {
+      return null;
+    }
+    return value;
   }
 
   /**
@@ -459,7 +481,10 @@ export class ServiceContainer implements Container {
     const childManager = scopeResult.value.manager;
 
     // Create performance tracker for child (same as root)
-    const childPerformanceTracker = new BootstrapPerformanceTracker(ENV, null);
+    const childPerformanceTracker = new BootstrapPerformanceTracker(
+      new RuntimeConfigService(ENV),
+      null
+    );
     const childResolver = new ServiceResolver(
       childRegistry,
       childCache,

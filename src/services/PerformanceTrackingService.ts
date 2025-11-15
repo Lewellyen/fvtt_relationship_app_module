@@ -15,9 +15,9 @@
  * to be used during bootstrap (no DI) and production (with DI).
  */
 
-import type { EnvironmentConfig } from "@/config/environment";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
-import { environmentConfigToken, metricsSamplerToken } from "@/tokens/tokenindex";
+import { runtimeConfigToken, metricsSamplerToken } from "@/tokens/tokenindex";
 import { PerformanceTrackerImpl } from "@/observability/performance-tracker-impl";
 
 /**
@@ -48,15 +48,15 @@ import { PerformanceTrackerImpl } from "@/observability/performance-tracker-impl
  * ```
  */
 export class PerformanceTrackingService extends PerformanceTrackerImpl {
-  constructor(env: EnvironmentConfig, sampler: MetricsSampler) {
-    super(env, sampler);
+  constructor(config: RuntimeConfigService, sampler: MetricsSampler) {
+    super(config, sampler);
   }
 }
 
 export class DIPerformanceTrackingService extends PerformanceTrackingService {
-  static dependencies = [environmentConfigToken, metricsSamplerToken] as const;
+  static dependencies = [runtimeConfigToken, metricsSamplerToken] as const;
 
-  constructor(env: EnvironmentConfig, sampler: MetricsSampler) {
-    super(env, sampler);
+  constructor(config: RuntimeConfigService, sampler: MetricsSampler) {
+    super(config, sampler);
   }
 }

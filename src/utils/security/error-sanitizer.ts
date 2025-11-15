@@ -3,7 +3,7 @@
  * Prevents leaking sensitive information in error messages.
  */
 
-import type { EnvironmentConfig } from "@/config/environment";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
 
 /**
@@ -30,11 +30,11 @@ import type { ContainerError } from "@/di_infrastructure/interfaces/containererr
  * ```
  */
 export function sanitizeErrorForProduction(
-  env: EnvironmentConfig,
+  config: RuntimeConfigService,
   error: ContainerError
 ): ContainerError {
   // In development, return full error details for debugging
-  if (!env.isProduction) {
+  if (!config.get("isProduction")) {
     return error;
   }
 
@@ -55,8 +55,11 @@ export function sanitizeErrorForProduction(
  * @param message - The error message to sanitize
  * @returns Sanitized message
  */
-export function sanitizeMessageForProduction(env: EnvironmentConfig, message: string): string {
-  if (!env.isProduction) {
+export function sanitizeMessageForProduction(
+  config: RuntimeConfigService,
+  message: string
+): string {
+  if (!config.get("isProduction")) {
     return message;
   }
 

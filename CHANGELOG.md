@@ -12,6 +12,27 @@
 
 ### Upgrade-Hinweise
 
+## [0.24.0] - 2025-11-15
+### Hinzugefügt
+- **RuntimeConfigService**: Neue Config-Schicht verbindet ENV-Defaults mit Foundry-Settings und stellt `get/onChange` für Services bereit ([Details](src/core/runtime-config/runtime-config.service.ts), [docs/runtime-config-layer.md](docs/runtime-config-layer.md))
+- **Cache-Einstellungen**: Foundry-Settings für `cacheEnabled`, `cacheTtlMs` und `cacheMaxEntries` erlauben jetzt Runtime-Overrides und greifen direkt via RuntimeConfigService in den CacheService ein ([Details](src/core/settings), [docs/CONFIGURATION.md](docs/CONFIGURATION.md))
+- **Performance- & Metrics-Settings**: Weitere Foundry-Einstellungen (`performanceTrackingEnabled`, `performanceSamplingRate`, `metricsPersistenceEnabled`, `metricsPersistenceKey`) erlauben Runtime-Overrides für Observability-Flags und werden automatisch in den RuntimeConfigService gespiegelt ([Details](src/core/settings), [docs/CONFIGURATION.md](docs/CONFIGURATION.md))
+
+### Geändert
+- **ModuleSettingsRegistrar & Logger**: Foundry-Settings synchronisieren jetzt Log-Level in den RuntimeConfigService; der ConsoleLogger reagiert über `bindRuntimeConfig()` sofort auf Änderungen ([Details](src/core/module-settings-registrar.ts), [src/services/consolelogger.ts))
+- **ConsoleLogger & CacheService**: Logger, CacheServiceConfig und Core-Registrierungen beziehen ihre Werte ausschließlich über den RuntimeConfigService; directes `EnvironmentConfig`-Wiring entfällt ([Details](src/services/consolelogger.ts), [src/config/modules/cache-services.config.ts], [src/config/modules/core-services.config.ts))
+- **Konfigurations-Doku**: `docs/CONFIGURATION.md` beschreibt die neue Override-Kette zwischen ENV, RuntimeConfigService und Foundry-Settings (inkl. Performance-/Metrics-Settings) ([Details](docs/CONFIGURATION.md))
+- **Observability & UI**: MetricsCollector, PersistentMetricsCollector, PerformanceTrackingService, UIChannel und ContainerErrorHandler beziehen ihre Flags jetzt über den RuntimeConfigService statt direkt aus `EnvironmentConfig` ([Details](src/observability/metrics-collector.ts), [src/services/PerformanceTrackingService.ts], [src/notifications/channels/UIChannel.ts], [src/di_infrastructure/error-handler.ts))
+
+### Fehlerbehebungen
+- **RuntimeConfigService**: Optionales `cacheMaxEntries` respektiert wieder unbegrenzte Defaults, wenn weder ENV noch Foundry-Setting gesetzt sind; Tests prüfen das Verhalten und verhindern versehentliche LRU-Limits ([Details](src/core/runtime-config/runtime-config.service.ts), [docs/runtime-config-layer.md](docs/runtime-config-layer.md))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.23.1] - 2025-11-15
 ### Hinzugefügt
 - Keine Einträge

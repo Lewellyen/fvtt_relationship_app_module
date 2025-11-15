@@ -14,6 +14,9 @@ import {
   uiChannelToken,
   serviceContainerToken,
   environmentConfigToken,
+  runtimeConfigToken,
+  healthCheckRegistryToken,
+  metricsCollectorToken,
 } from "@/tokens/tokenindex";
 import {
   foundryGameToken,
@@ -26,7 +29,11 @@ import {
 } from "@/foundry/foundrytokens";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { err } from "@/utils/functional/result";
-import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import {
+  expectResultOk,
+  expectResultErr,
+  createMockRuntimeConfig,
+} from "@/test/utils/test-helpers";
 import { ENV, LogLevel } from "@/config/environment";
 
 describe("dependencyconfig", () => {
@@ -136,18 +143,18 @@ describe("dependencyconfig", () => {
     it("should return error when port registry registration fails", () => {
       const container = ServiceContainer.createRoot();
 
-      const registerValueSpy = vi.spyOn(container, "registerValue").mockImplementation((token) => {
-        if (token === foundryGamePortRegistryToken) {
-          return err({
-            code: "InvalidOperation",
-            message: "Mocked port registry failure",
-          });
-        }
-        return Reflect.apply(ServiceContainer.prototype.registerValue, container, [
-          token,
-          {} as never,
-        ]);
-      });
+      const originalRegisterValue = container.registerValue.bind(container);
+      const registerValueSpy = vi
+        .spyOn(container, "registerValue")
+        .mockImplementation((token, value) => {
+          if (token === foundryGamePortRegistryToken) {
+            return err({
+              code: "InvalidOperation",
+              message: "Mocked port registry failure",
+            });
+          }
+          return originalRegisterValue(token, value);
+        });
 
       const result = configureDependencies(container);
       expectResultErr(result);
@@ -240,18 +247,18 @@ describe("dependencyconfig", () => {
     it("should handle FoundrySettings registry registration failure", () => {
       const container = ServiceContainer.createRoot();
 
-      const registerValueSpy = vi.spyOn(container, "registerValue").mockImplementation((token) => {
-        if (token === foundrySettingsPortRegistryToken) {
-          return err({
-            code: "InvalidOperation",
-            message: "Settings registry failed",
-          });
-        }
-        return Reflect.apply(ServiceContainer.prototype.registerValue, container, [
-          token,
-          {} as never,
-        ]);
-      });
+      const originalRegisterValue = container.registerValue.bind(container);
+      const registerValueSpy = vi
+        .spyOn(container, "registerValue")
+        .mockImplementation((token, value) => {
+          if (token === foundrySettingsPortRegistryToken) {
+            return err({
+              code: "InvalidOperation",
+              message: "Settings registry failed",
+            });
+          }
+          return originalRegisterValue(token, value);
+        });
 
       const result = configureDependencies(container);
       expectResultErr(result);
@@ -397,13 +404,20 @@ describe("dependencyconfig", () => {
 
       // Make validation succeed but health check resolution fail
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
-      vi.spyOn(container, "resolveWithError").mockReturnValueOnce(
-        err({
-          code: "TokenNotRegistered",
-          message: "HealthCheckRegistry not found",
-          tokenDescription: "HealthCheckRegistry",
-        })
-      );
+      const originalResolve = container.resolveWithError.bind(container);
+      vi.spyOn(container, "resolveWithError").mockImplementation((token: symbol) => {
+        if (token === runtimeConfigToken) {
+          return { ok: true as const, value: createMockRuntimeConfig() };
+        }
+        if (token === healthCheckRegistryToken) {
+          return err({
+            code: "TokenNotRegistered",
+            message: "HealthCheckRegistry not found",
+            tokenDescription: "HealthCheckRegistry",
+          });
+        }
+        return originalResolve(token);
+      });
 
       const result = configureDependencies(container);
 
@@ -416,20 +430,27 @@ describe("dependencyconfig", () => {
 
       // Make validation succeed and health check registry succeed, but metrics collector fail
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
-      vi.spyOn(container, "resolveWithError")
-        .mockReturnValueOnce({ ok: true, value: {} as any }) // HealthCheckRegistry succeeds
-        .mockReturnValueOnce(
-          err({
+      const originalResolve = container.resolveWithError.bind(container);
+      vi.spyOn(container, "resolveWithError").mockImplementation((token: symbol) => {
+        if (token === runtimeConfigToken) {
+          return { ok: true as const, value: createMockRuntimeConfig() };
+        }
+        if (token === healthCheckRegistryToken) {
+          return { ok: true as const, value: {} as any };
+        }
+        if (token === metricsCollectorToken) {
+          return err({
             code: "TokenNotRegistered",
             message: "MetricsCollector not found",
             tokenDescription: "MetricsCollector",
-          })
-        );
+          });
+        }
+        return originalResolve(token);
+      });
 
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      expect(result.error).toContain("Failed to resolve HealthCheckRegistry");
       expect(result.error).toContain("MetricsCollector not found");
     });
 
@@ -481,22 +502,28 @@ describe("dependencyconfig", () => {
       const container = ServiceContainer.createRoot();
 
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
-      vi.spyOn(container, "resolveWithError")
-        .mockReturnValueOnce({ ok: true, value: {} as any }) // HealthCheckRegistry
-        .mockReturnValueOnce({ ok: true, value: {} as any }) // MetricsCollector
-        .mockReturnValueOnce(
-          err({
+      const originalResolve = container.resolveWithError.bind(container);
+      vi.spyOn(container, "resolveWithError").mockImplementation((token: symbol) => {
+        if (token === runtimeConfigToken) {
+          return { ok: true as const, value: createMockRuntimeConfig() };
+        }
+        if (token === healthCheckRegistryToken || token === metricsCollectorToken) {
+          return { ok: true as const, value: {} as any };
+        }
+        if (token === containerHealthCheckToken) {
+          return err({
             code: "TokenNotRegistered",
             message: "ContainerHealthCheck not found",
             tokenDescription: "ContainerHealthCheck",
-          })
-        );
+          });
+        }
+        return originalResolve(token);
+      });
 
       const result = configureDependencies(container);
 
       expectResultErr(result);
       if (!result.ok) {
-        expect(result.error).toContain("Failed to resolve MetricsCollector");
         expect(result.error).toContain("ContainerHealthCheck not found");
       }
     });
@@ -505,23 +532,32 @@ describe("dependencyconfig", () => {
       const container = ServiceContainer.createRoot();
 
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
-      vi.spyOn(container, "resolveWithError")
-        .mockReturnValueOnce({ ok: true, value: {} as any }) // HealthCheckRegistry
-        .mockReturnValueOnce({ ok: true, value: {} as any }) // MetricsCollector
-        .mockReturnValueOnce({ ok: true, value: {} as any }) // ContainerHealthCheck resolves
-        .mockReturnValueOnce(
-          err({
+      const originalResolveWithError = container.resolveWithError.bind(container);
+      vi.spyOn(container, "resolveWithError").mockImplementation((token: symbol) => {
+        if (token === runtimeConfigToken) {
+          return { ok: true as const, value: createMockRuntimeConfig() };
+        }
+        if (
+          token === healthCheckRegistryToken ||
+          token === metricsCollectorToken ||
+          token === containerHealthCheckToken
+        ) {
+          return { ok: true as const, value: {} as any };
+        }
+        if (token === metricsHealthCheckToken) {
+          return err({
             code: "TokenNotRegistered",
             message: "MetricsHealthCheck not found",
             tokenDescription: "MetricsHealthCheck",
-          })
-        );
+          });
+        }
+        return originalResolveWithError(token);
+      });
 
       const result = configureDependencies(container);
 
       expectResultErr(result);
       if (!result.ok) {
-        expect(result.error).toContain("Failed to resolve ContainerHealthCheck");
         expect(result.error).toContain("MetricsHealthCheck not found");
       }
     });
@@ -567,6 +603,28 @@ describe("dependencyconfig", () => {
       expectResultErr(result);
       if (!result.ok) {
         expect(result.error).toContain("EnvironmentConfig");
+      }
+    });
+
+    it("should propagate errors when RuntimeConfigService registration fails", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterValue = container.registerValue.bind(container);
+
+      vi.spyOn(container, "registerValue").mockImplementation((token, value) => {
+        if (token === runtimeConfigToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "RuntimeConfigService registration failed",
+          });
+        }
+        return originalRegisterValue(token, value);
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("RuntimeConfigService");
       }
     });
   });

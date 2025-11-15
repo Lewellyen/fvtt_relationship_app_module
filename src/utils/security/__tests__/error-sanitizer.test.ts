@@ -4,14 +4,13 @@ import {
   sanitizeMessageForProduction,
 } from "@/utils/security/error-sanitizer";
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
-import type { EnvironmentConfig } from "@/config/environment";
 import { LogLevel } from "@/config/environment";
-import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
+import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 
 describe("Error Sanitizer", () => {
   describe("sanitizeErrorForProduction", () => {
     it("should return full error in development mode", () => {
-      const devEnv: EnvironmentConfig = createMockEnvironmentConfig({
+      const devConfig = createMockRuntimeConfig({
         enablePerformanceTracking: false,
       });
 
@@ -22,7 +21,7 @@ describe("Error Sanitizer", () => {
         cause: new Error("Root cause"),
       };
 
-      const sanitized = sanitizeErrorForProduction(devEnv, error);
+      const sanitized = sanitizeErrorForProduction(devConfig, error);
 
       expect(sanitized).toEqual(error);
       expect(sanitized.tokenDescription).toBe("Symbol(UserService)");
@@ -30,7 +29,7 @@ describe("Error Sanitizer", () => {
     });
 
     it("should strip sensitive info in production mode", () => {
-      const prodEnv: EnvironmentConfig = createMockEnvironmentConfig({
+      const prodConfig = createMockRuntimeConfig({
         isDevelopment: false,
         isProduction: true,
         logLevel: LogLevel.INFO,
@@ -46,7 +45,7 @@ describe("Error Sanitizer", () => {
         cause: new Error("Root cause"),
       };
 
-      const sanitized = sanitizeErrorForProduction(prodEnv, error);
+      const sanitized = sanitizeErrorForProduction(prodConfig, error);
 
       expect(sanitized.code).toBe("TokenNotRegistered");
       expect(sanitized.message).toBe(
@@ -57,7 +56,7 @@ describe("Error Sanitizer", () => {
     });
 
     it("should preserve error code in production", () => {
-      const prodEnv: EnvironmentConfig = createMockEnvironmentConfig({
+      const prodConfig = createMockRuntimeConfig({
         isDevelopment: false,
         isProduction: true,
         logLevel: LogLevel.INFO,
@@ -71,7 +70,7 @@ describe("Error Sanitizer", () => {
         message: "A depends on B depends on A",
       };
 
-      const sanitized = sanitizeErrorForProduction(prodEnv, error);
+      const sanitized = sanitizeErrorForProduction(prodConfig, error);
 
       expect(sanitized.code).toBe("CircularDependency");
     });
@@ -79,18 +78,18 @@ describe("Error Sanitizer", () => {
 
   describe("sanitizeMessageForProduction", () => {
     it("should return full message in development", () => {
-      const devEnv: EnvironmentConfig = createMockEnvironmentConfig({
+      const devConfig = createMockRuntimeConfig({
         enablePerformanceTracking: false,
       });
 
       const message = "Detailed error: Failed to connect to database at localhost:5432";
-      const sanitized = sanitizeMessageForProduction(devEnv, message);
+      const sanitized = sanitizeMessageForProduction(devConfig, message);
 
       expect(sanitized).toBe(message);
     });
 
     it("should return generic message in production", () => {
-      const prodEnv: EnvironmentConfig = createMockEnvironmentConfig({
+      const prodConfig = createMockRuntimeConfig({
         isDevelopment: false,
         isProduction: true,
         logLevel: LogLevel.INFO,
@@ -100,7 +99,7 @@ describe("Error Sanitizer", () => {
       });
 
       const message = "Sensitive internal error with stack trace...";
-      const sanitized = sanitizeMessageForProduction(prodEnv, message);
+      const sanitized = sanitizeMessageForProduction(prodConfig, message);
 
       expect(sanitized).toBe("An error occurred");
     });

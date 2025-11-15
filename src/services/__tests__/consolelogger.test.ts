@@ -4,6 +4,8 @@ import { MODULE_CONSTANTS } from "@/constants";
 import { LogLevel } from "@/config/environment";
 import type { EnvironmentConfig } from "@/config/environment";
 import { TraceContext } from "@/observability/trace/TraceContext";
+import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 
 describe("ConsoleLoggerService", () => {
   let logger: ConsoleLoggerService;
@@ -13,10 +15,12 @@ describe("ConsoleLoggerService", () => {
   let consoleInfoSpy: ReturnType<typeof vi.spyOn>;
   let consoleDebugSpy: ReturnType<typeof vi.spyOn>;
   let mockEnv: EnvironmentConfig;
+  let runtimeConfig: RuntimeConfigService;
 
   beforeEach(() => {
-    mockEnv = { logLevel: LogLevel.INFO } as EnvironmentConfig;
-    logger = new ConsoleLoggerService(mockEnv);
+    mockEnv = createMockEnvironmentConfig({ logLevel: LogLevel.INFO });
+    runtimeConfig = new RuntimeConfigService(mockEnv);
+    logger = new ConsoleLoggerService(runtimeConfig);
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -348,7 +352,7 @@ describe("ConsoleLoggerService", () => {
 
     beforeEach(() => {
       traceContext = new TraceContext();
-      loggerWithContext = new ConsoleLoggerService(mockEnv, traceContext);
+      loggerWithContext = new ConsoleLoggerService(new RuntimeConfigService(mockEnv), traceContext);
     });
 
     it("should auto-inject trace ID from context when available", () => {
@@ -436,7 +440,7 @@ describe("ConsoleLoggerService", () => {
     });
 
     it("should work when TraceContext is not injected (backward compatibility)", () => {
-      const loggerWithoutContext = new ConsoleLoggerService(mockEnv);
+      const loggerWithoutContext = new ConsoleLoggerService(new RuntimeConfigService(mockEnv));
 
       loggerWithoutContext.info("Message without context injection");
 
@@ -487,6 +491,36 @@ describe("ConsoleLoggerService", () => {
       expect(consoleInfoSpy).toHaveBeenCalledWith(
         `${MODULE_CONSTANTS.LOG_PREFIX} [outer-error-trace] After error`
       );
+    });
+  });
+
+  describe("Runtime config binding", () => {
+    it("should unsubscribe previous listener before re-binding", () => {
+      const firstConfig = new RuntimeConfigService(
+        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
+      );
+      const cleanupSpy = vi.fn();
+      const firstOnChangeSpy = vi.spyOn(firstConfig, "onChange").mockReturnValue(cleanupSpy);
+      const localLogger = new ConsoleLoggerService(firstConfig);
+
+      const secondConfig = new RuntimeConfigService(
+        createMockEnvironmentConfig({ logLevel: LogLevel.WARN })
+      );
+      const secondCleanupSpy = vi.fn();
+      const secondOnChangeSpy = vi
+        .spyOn(secondConfig, "onChange")
+        .mockReturnValue(secondCleanupSpy);
+
+      (
+        localLogger as unknown as { bindRuntimeConfig(config: RuntimeConfigService): void }
+      ).bindRuntimeConfig(secondConfig);
+
+      expect(cleanupSpy).toHaveBeenCalledTimes(1);
+      expect(secondOnChangeSpy).toHaveBeenCalledTimes(1);
+      expect(secondCleanupSpy).not.toHaveBeenCalled();
+
+      firstOnChangeSpy.mockRestore();
+      secondOnChangeSpy.mockRestore();
     });
   });
 });

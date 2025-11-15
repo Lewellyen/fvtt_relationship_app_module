@@ -10,11 +10,13 @@ import {
   healthCheckRegistryToken,
   metricsCollectorToken,
   serviceContainerToken,
+  runtimeConfigToken,
 } from "@/tokens/tokenindex";
 import { ConsoleLoggerService } from "@/services/consolelogger";
 import { ENV, LogLevel } from "@/config/environment";
 import type { EnvironmentConfig } from "@/config/environment";
 import { MODULE_CONSTANTS } from "@/constants";
+import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import { DIContainerHealthCheck } from "@/core/health/container-health-check";
 import { DIMetricsHealthCheck } from "@/core/health/metrics-health-check";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
@@ -52,7 +54,7 @@ function registerFallbacks(container: ServiceContainer): void {
       enableCacheService: true,
       cacheDefaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
     };
-    return new ConsoleLoggerService(fallbackConfig);
+    return new ConsoleLoggerService(new RuntimeConfigService(fallbackConfig));
   });
 }
 
@@ -63,6 +65,14 @@ function registerStaticValues(container: ServiceContainer): Result<void, string>
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
     return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
+  }
+
+  const runtimeConfigResult = container.registerValue(
+    runtimeConfigToken,
+    new RuntimeConfigService(ENV)
+  );
+  if (isErr(runtimeConfigResult)) {
+    return err(`Failed to register RuntimeConfigService: ${runtimeConfigResult.error.message}`);
   }
 
   const containerResult = container.registerValue(serviceContainerToken, container);

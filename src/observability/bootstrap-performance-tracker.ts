@@ -20,7 +20,7 @@
  * @see PerformanceTrackerImpl for shared implementation
  */
 
-import type { EnvironmentConfig } from "@/config/environment";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
 import { PerformanceTrackerImpl } from "@/observability/performance-tracker-impl";
 
@@ -43,7 +43,7 @@ export class BootstrapPerformanceTracker extends PerformanceTrackerImpl {
    * @param env - Environment configuration for tracking settings
    * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
    */
-  constructor(env: EnvironmentConfig, sampler: MetricsSampler | null) {
-    super(env, sampler);
+  constructor(config: RuntimeConfigService, sampler: MetricsSampler | null) {
+    super(config, sampler);
   }
 }

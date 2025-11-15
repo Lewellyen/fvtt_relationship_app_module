@@ -39,6 +39,7 @@ import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { CacheService, CacheServiceConfig } from "@/interfaces/cache";
 import type { JournalCacheInvalidationHook } from "@/core/hooks/journal-cache-invalidation-hook";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 /**
  * Union type representing all registered service types in the application.
@@ -93,4 +94,5 @@ export type ServiceType =
   | CacheService
   | CacheServiceConfig
   | JournalCacheInvalidationHook
+  | RuntimeConfigService
   | ServiceContainer;

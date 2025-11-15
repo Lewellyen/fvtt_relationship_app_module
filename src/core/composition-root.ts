@@ -6,6 +6,7 @@ import { ENV } from "@/config/environment";
 import { BootstrapPerformanceTracker } from "@/observability/bootstrap-performance-tracker";
 import { loggerToken } from "@/tokens/tokenindex";
 import { BOOTSTRAP_LOGGER } from "@/services/bootstrap-logger";
+import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 /**
  * CompositionRoot
@@ -41,7 +42,8 @@ export class CompositionRoot {
     const container = ServiceContainer.createRoot();
 
     // Track bootstrap performance (no MetricsCollector yet)
-    const performanceTracker = new BootstrapPerformanceTracker(ENV, null);
+    const runtimeConfig = new RuntimeConfigService(ENV);
+    const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
 
     const configured = performanceTracker.track(
       () => configureDependencies(container),

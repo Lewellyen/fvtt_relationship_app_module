@@ -23,3 +23,23 @@ export const LOG_LEVEL_SCHEMA = v.picklist([
  * Used for journal entry flags like "hidden".
  */
 export const BOOLEAN_FLAG_SCHEMA = v.boolean();
+
+/**
+ * Schema for non-negative numbers (>= 0).
+ */
+export const NON_NEGATIVE_NUMBER_SCHEMA = v.pipe(v.number(), v.minValue(0));
+
+/**
+ * Schema for non-negative integers (>= 0).
+ */
+export const NON_NEGATIVE_INTEGER_SCHEMA = v.pipe(v.number(), v.integer(), v.minValue(0));
+
+/**
+ * Schema for sampling rates between 0 and 1.
+ */
+export const SAMPLING_RATE_SCHEMA = v.pipe(v.number(), v.minValue(0), v.maxValue(1));
+
+/**
+ * Schema for non-empty strings.
+ */
+export const NON_EMPTY_STRING_SCHEMA = v.pipe(v.string(), v.minLength(1));

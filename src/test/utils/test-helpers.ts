@@ -9,6 +9,7 @@ import type { PerformanceTracker } from "@/interfaces/performance-tracker";
 import type { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
 import { LogLevel } from "@/config/environment";
 import { MODULE_CONSTANTS } from "@/constants";
+import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 /**
  * Type-safe Result assertion helpers
@@ -126,13 +127,19 @@ export function createMockEnvironmentConfig(
   };
 }
 
+export function createMockRuntimeConfig(
+  overrides?: Partial<EnvironmentConfig>
+): RuntimeConfigService {
+  return new RuntimeConfigService(createMockEnvironmentConfig(overrides));
+}
+
 /**
  * Creates a mock MetricsCollector for testing.
- * @param env - Optional EnvironmentConfig (uses mock if not provided)
+ * @param config - Optional RuntimeConfigService (uses mock if not provided)
  * @returns A new MetricsCollector instance
  */
-export function createMockMetricsCollector(env?: EnvironmentConfig): MetricsCollector {
-  return new MetricsCollector(env ?? createMockEnvironmentConfig());
+export function createMockMetricsCollector(config?: RuntimeConfigService): MetricsCollector {
+  return new MetricsCollector(config ?? createMockRuntimeConfig());
 }
 
 /**
@@ -140,9 +147,9 @@ export function createMockMetricsCollector(env?: EnvironmentConfig): MetricsColl
  * @param env - Optional EnvironmentConfig (uses mock if not provided)
  * @returns A MetricsCollector instance (implements MetricsSampler interface)
  */
-export function createMockSampler(env?: EnvironmentConfig): MetricsSampler {
+export function createMockSampler(config?: RuntimeConfigService): MetricsSampler {
   // MetricsCollector implements MetricsSampler, so we can use it as a mock
-  return new MetricsCollector(env ?? createMockEnvironmentConfig());
+  return new MetricsCollector(config ?? createMockRuntimeConfig());
 }
 
 /**

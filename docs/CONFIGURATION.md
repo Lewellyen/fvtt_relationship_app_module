@@ -128,6 +128,29 @@ console.log(`Avg Resolution Time: ${metrics.avgResolutionTimeMs.toFixed(2)}ms`);
 - **Invalidierung:** Automatisch über den `JournalCacheInvalidationHook`, der auf Foundry `create/update/deleteJournalEntry` reagiert. Zusätzlich läuft TTL aus und Services können `invalidateWhere()` nutzen.
 - **Monitoring:** Cache-Hit/Miss-Rate ist Teil der MetricsCollector-Snapshots (`getMetrics()` API).
 
+## Runtime Config Layer (Overrides)
+
+- **Build-Time Defaults:** `ENV` (`src/config/environment.ts`) liefert Standardwerte für Log-Level, Performance (Tracking + Sampling Rate), Debug-Flags, Metrics-Persistenz und Cache (Enabled, TTL, Max Entries).
+- **RuntimeConfigService:** (`src/core/runtime-config/runtime-config.service.ts`) speichert die Defaults und stellt `get/onChange` bereit.
+- **Foundry Settings Bridge:** Der `ModuleSettingsRegistrar` mappt Settings wie `logLevel` über `runtimeConfigBindings` auf den Service und liest beim `init`-Hook sofort nach (`foundrySettings.get`) → Defaults werden überschrieben, sobald der Foundry-Wert existiert.
+- **Live-Updates:** Änderungen im Foundry-UI triggern `config.onChange`, welches zuerst `RuntimeConfigService.setFromFoundry` aufruft und danach den ursprünglichen Callback.
+- **Consumer:** Services (z. B. `ConsoleLoggerService`) hängen sich an `runtimeConfig.onChange()` und reagieren sofort.
+
+Weitere Details, einschließlich der zusätzlichen ENV-Felder (`isDevelopment`, `isProduction`, `logLevel`, `enablePerformanceTracking`, `performanceSamplingRate`, `enableDebugMode`, `enableMetricsPersistence`, `metricsPersistenceKey`, `enableCacheService`, `cacheDefaultTtlMs`, `cacheMaxEntries`), sind in `docs/runtime-config-layer.md` beschrieben.
+
+### Foundry-Einstellungen, die ENV-Werte übersteuern
+
+- **Log Level** (`MODULE.SETTINGS.logLevel.*`): Steuert den Logger zur Laufzeit (bereits etabliert).
+- **Cache aktivieren** (`cacheEnabled`): Schaltet den globalen CacheService ein/aus (Default: `true`).
+- **Cache TTL (ms)** (`cacheTtlMs`): Standard-TTL für Cache-Einträge. `0` = TTL deaktiviert.
+- **Cache Max Entries** (`cacheMaxEntries`): Optionales LRU-Limit. `0` = unbegrenzt.
+- **Performance Tracking** (`performanceTrackingEnabled`): Aktiviert/Deaktiviert die interne Instrumentierung.
+- **Performance Sampling Rate** (`performanceSamplingRate`): Wert zwischen 0 und 1 für die Samplingquote.
+- **Persist Metrics** (`metricsPersistenceEnabled`): Schreibt Metriken dauerhaft nach LocalStorage.
+- **Metrics Storage Key** (`metricsPersistenceKey`): LocalStorage-Key für persistente Metriken.
+
+Alle Einstellungen synchronisieren automatisch den `RuntimeConfigService` und wirken unmittelbar auf abhängige Services (CacheService, MetricsCollector, Logger, …).
+
 ---
 
 ## Debug-Modus

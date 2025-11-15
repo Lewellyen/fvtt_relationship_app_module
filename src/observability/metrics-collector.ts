@@ -1,8 +1,8 @@
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import type { ServiceType } from "@/types/servicetypeindex";
 import { METRICS_CONFIG } from "@/constants";
-import type { EnvironmentConfig } from "@/config/environment";
-import { environmentConfigToken } from "@/tokens/tokenindex";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import { runtimeConfigToken } from "@/tokens/tokenindex";
 import type { MetricsRecorder } from "@/observability/interfaces/metrics-recorder";
 import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
 
@@ -67,7 +67,7 @@ export interface MetricsPersistenceState {
  * ```
  */
 export class MetricsCollector implements MetricsRecorder, MetricsSampler {
-  static dependencies: readonly InjectionToken<ServiceType>[] = [environmentConfigToken];
+  static dependencies: readonly InjectionToken<ServiceType>[] = [runtimeConfigToken];
 
   private metrics = {
     containerResolutions: 0,
@@ -84,9 +84,7 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
   private resolutionTimesCount = 0;
   private readonly MAX_RESOLUTION_TIMES = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
 
-  constructor(private readonly env: EnvironmentConfig) {
-    // ENV injected via DI for better testability and DIP compliance
-  }
+  constructor(private readonly config: RuntimeConfigService) {}
 
   /**
    * Records a service resolution attempt.
@@ -169,12 +167,12 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
    */
   shouldSample(): boolean {
     // Always sample in development mode
-    if (this.env.isDevelopment) {
+    if (this.config.get("isDevelopment")) {
       return true;
     }
 
     // Probabilistic sampling in production based on configured rate
-    return Math.random() < this.env.performanceSamplingRate;
+    return Math.random() < this.config.get("performanceSamplingRate");
   }
 
   /**
@@ -315,9 +313,9 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
 }
 
 export class DIMetricsCollector extends MetricsCollector {
-  static override dependencies: readonly InjectionToken<ServiceType>[] = [environmentConfigToken];
+  static override dependencies: readonly InjectionToken<ServiceType>[] = [runtimeConfigToken];
 
-  constructor(env: EnvironmentConfig) {
-    super(env);
+  constructor(config: RuntimeConfigService) {
+    super(config);
   }
 }

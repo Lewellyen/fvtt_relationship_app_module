@@ -6,8 +6,8 @@ import {
 } from "../metrics-collector";
 import { createInjectionToken } from "@/di_infrastructure/tokenutilities";
 import type { Logger } from "@/interfaces/logger";
-import type { EnvironmentConfig } from "@/config/environment";
-import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
+import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import {
   PersistentMetricsCollector,
   DIPersistentMetricsCollector,
@@ -16,32 +16,32 @@ import type { MetricsStorage } from "@/observability/metrics-persistence/metrics
 
 describe("MetricsCollector", () => {
   let collector: MetricsCollector;
-  let mockEnv: EnvironmentConfig;
+  let runtimeConfig: RuntimeConfigService;
 
   beforeEach(() => {
-    mockEnv = createMockEnvironmentConfig();
-    collector = new MetricsCollector(mockEnv);
+    runtimeConfig = createMockRuntimeConfig();
+    collector = new MetricsCollector(runtimeConfig);
   });
 
   describe("DI Integration", () => {
     it("should create independent instances", () => {
-      const instance1 = new MetricsCollector(mockEnv);
-      const instance2 = new MetricsCollector(mockEnv);
+      const instance1 = new MetricsCollector(runtimeConfig);
+      const instance2 = new MetricsCollector(runtimeConfig);
 
       expect(instance1).not.toBe(instance2);
     });
 
-    it("should have environmentConfigToken in dependencies", () => {
+    it("should have runtimeConfigToken in dependencies", () => {
       // Dependencies is an array of tokens (symbols), not objects
       expect(MetricsCollector.dependencies).toHaveLength(1);
       expect(MetricsCollector.dependencies[0]).toBeDefined();
-      expect(String(MetricsCollector.dependencies[0])).toContain("EnvironmentConfig");
+      expect(String(MetricsCollector.dependencies[0])).toContain("RuntimeConfig");
     });
 
     it("DI wrapper should expose same dependencies", () => {
       expect(DIMetricsCollector.dependencies).toHaveLength(1);
       expect(DIMetricsCollector.dependencies[0]).toBeDefined();
-      expect(String(DIMetricsCollector.dependencies[0])).toContain("EnvironmentConfig");
+      expect(String(DIMetricsCollector.dependencies[0])).toContain("RuntimeConfig");
     });
 
     it("persistent wrapper should expose dependencies", () => {
@@ -57,7 +57,7 @@ describe("MetricsCollector", () => {
         clear: vi.fn(),
       };
 
-      const persistent = new DIPersistentMetricsCollector(mockEnv, storage);
+      const persistent = new DIPersistentMetricsCollector(runtimeConfig, storage);
 
       expect(persistent).toBeInstanceOf(PersistentMetricsCollector);
       expect(storage.load).toHaveBeenCalledTimes(1);
@@ -332,8 +332,8 @@ describe("MetricsCollector", () => {
 
   describe("shouldSample", () => {
     it("should always return true in development mode", () => {
-      const devEnv = createMockEnvironmentConfig({ isDevelopment: true });
-      const collector = new MetricsCollector(devEnv);
+      const devConfig = createMockRuntimeConfig({ isDevelopment: true });
+      const collector = new MetricsCollector(devConfig);
 
       // In development mode (env.isDevelopment is true), shouldSample always returns true
       const result = collector.shouldSample();
@@ -342,11 +342,11 @@ describe("MetricsCollector", () => {
     });
 
     it("should sample when Math.random() < samplingRate (production)", () => {
-      const prodEnv = createMockEnvironmentConfig({
+      const prodConfig = createMockRuntimeConfig({
         isDevelopment: false,
         performanceSamplingRate: 0.7,
       });
-      const collector = new MetricsCollector(prodEnv);
+      const collector = new MetricsCollector(prodConfig);
 
       // Mock Math.random to return 0.5 (< 0.7 = should sample)
       vi.spyOn(Math, "random").mockReturnValue(0.5);
@@ -357,11 +357,11 @@ describe("MetricsCollector", () => {
     });
 
     it("should not sample when Math.random() >= samplingRate (production)", () => {
-      const prodEnv = createMockEnvironmentConfig({
+      const prodConfig = createMockRuntimeConfig({
         isDevelopment: false,
         performanceSamplingRate: 0.3,
       });
-      const collector = new MetricsCollector(prodEnv);
+      const collector = new MetricsCollector(prodConfig);
 
       // Mock Math.random to return 0.5 (>= 0.3 = should NOT sample)
       vi.spyOn(Math, "random").mockReturnValue(0.5);
@@ -372,11 +372,11 @@ describe("MetricsCollector", () => {
     });
 
     it("should handle edge case: samplingRate = 0", () => {
-      const prodEnv = createMockEnvironmentConfig({
+      const prodConfig = createMockRuntimeConfig({
         isDevelopment: false,
         performanceSamplingRate: 0,
       });
-      const collector = new MetricsCollector(prodEnv);
+      const collector = new MetricsCollector(prodConfig);
 
       vi.spyOn(Math, "random").mockReturnValue(0);
 
@@ -386,11 +386,11 @@ describe("MetricsCollector", () => {
     });
 
     it("should handle edge case: samplingRate = 1", () => {
-      const prodEnv = createMockEnvironmentConfig({
+      const prodConfig = createMockRuntimeConfig({
         isDevelopment: false,
         performanceSamplingRate: 1,
       });
-      const collector = new MetricsCollector(prodEnv);
+      const collector = new MetricsCollector(prodConfig);
 
       vi.spyOn(Math, "random").mockReturnValue(0.999);
 
@@ -433,9 +433,9 @@ describe("PersistentMetricsCollector", () => {
       resolutionTimesIndex: 1,
       resolutionTimesCount: 3,
     };
-    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
 
-    const persistentCollector = new PersistentMetricsCollector(env, storage);
+    const persistentCollector = new PersistentMetricsCollector(config, storage);
     const snapshot = persistentCollector.getSnapshot();
 
     expect(snapshot.containerResolutions).toBe(5);
@@ -445,8 +445,8 @@ describe("PersistentMetricsCollector", () => {
 
   it("should persist state on mutation", () => {
     const storage = new MockMetricsStorage();
-    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(env, storage);
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(config, storage);
 
     persistentCollector.recordPortSelection(13);
 
@@ -457,8 +457,8 @@ describe("PersistentMetricsCollector", () => {
 
   it("should clear persisted state when clearPersistentState is called", () => {
     const storage = new MockMetricsStorage();
-    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(env, storage);
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(config, storage);
 
     persistentCollector.recordPortSelection(13);
     expect(storage.state).not.toBeNull();
@@ -483,8 +483,8 @@ describe("PersistentMetricsCollector", () => {
       }
     }
 
-    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(env, new ThrowingLoadStorage());
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(config, new ThrowingLoadStorage());
 
     expect(persistentCollector.getSnapshot().containerResolutions).toBe(0);
   });
@@ -497,16 +497,16 @@ describe("PersistentMetricsCollector", () => {
     }
 
     const storage = new ThrowingSaveStorage();
-    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(env, storage);
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(config, storage);
 
     expect(() => persistentCollector.recordCacheAccess(true)).not.toThrow();
   });
 
   it("should ignore null persistence state restores", () => {
     const storage = new MockMetricsStorage();
-    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(env, storage);
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(config, storage);
 
     (
       persistentCollector as unknown as {
@@ -519,8 +519,8 @@ describe("PersistentMetricsCollector", () => {
 
   it("should sanitize invalid persistence values", () => {
     const storage = new MockMetricsStorage();
-    const env = createMockEnvironmentConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(env, storage);
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(config, storage);
 
     const invalidState: MetricsPersistenceState = {
       metrics: {

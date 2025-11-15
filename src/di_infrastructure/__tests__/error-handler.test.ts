@@ -5,19 +5,18 @@
 import { describe, it, expect } from "vitest";
 import { ContainerErrorHandler } from "../error-handler";
 import type { ContainerError } from "../interfaces/containererror";
-import type { EnvironmentConfig } from "@/config/environment";
 import { LogLevel } from "@/config/environment";
-import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
+import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 
 describe("ContainerErrorHandler", () => {
   describe("sanitize", () => {
     it("should return full error in development mode", () => {
-      const env: EnvironmentConfig = createMockEnvironmentConfig({
+      const config = createMockRuntimeConfig({
         logLevel: LogLevel.DEBUG,
         enablePerformanceTracking: true,
       });
 
-      const handler = new ContainerErrorHandler(env);
+      const handler = new ContainerErrorHandler(config);
       const error: ContainerError = {
         code: "TokenNotRegistered",
         message: "Service not registered",
@@ -31,7 +30,7 @@ describe("ContainerErrorHandler", () => {
     });
 
     it("should sanitize error in production mode", () => {
-      const env: EnvironmentConfig = createMockEnvironmentConfig({
+      const config = createMockRuntimeConfig({
         isDevelopment: false,
         isProduction: true,
         logLevel: LogLevel.ERROR,
@@ -40,7 +39,7 @@ describe("ContainerErrorHandler", () => {
         performanceSamplingRate: 0.1,
       });
 
-      const handler = new ContainerErrorHandler(env);
+      const handler = new ContainerErrorHandler(config);
       const error: ContainerError = {
         code: "TokenNotRegistered",
         message: "Service not registered",
@@ -59,7 +58,7 @@ describe("ContainerErrorHandler", () => {
 
   describe("handle", () => {
     it("should handle error with sanitization", () => {
-      const env: EnvironmentConfig = createMockEnvironmentConfig({
+      const config = createMockRuntimeConfig({
         isDevelopment: false,
         isProduction: true,
         logLevel: LogLevel.ERROR,
@@ -68,7 +67,7 @@ describe("ContainerErrorHandler", () => {
         performanceSamplingRate: 0.1,
       });
 
-      const handler = new ContainerErrorHandler(env);
+      const handler = new ContainerErrorHandler(config);
       const error: ContainerError = {
         code: "CircularDependency",
         message: "Circular dependency detected",
@@ -85,12 +84,12 @@ describe("ContainerErrorHandler", () => {
     });
 
     it("should preserve error in development", () => {
-      const env: EnvironmentConfig = createMockEnvironmentConfig({
+      const config = createMockRuntimeConfig({
         logLevel: LogLevel.DEBUG,
         enablePerformanceTracking: true,
       });
 
-      const handler = new ContainerErrorHandler(env);
+      const handler = new ContainerErrorHandler(config);
       const error: ContainerError = {
         code: "CircularDependency",
         message: "Circular dependency detected",

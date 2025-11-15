@@ -105,7 +105,7 @@ describe("ModuleHookRegistrar", () => {
 
       expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
         expect.stringContaining(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY),
-        undefined,
+        expect.any(Object),
         { channels: ["ConsoleChannel"] }
       );
     });

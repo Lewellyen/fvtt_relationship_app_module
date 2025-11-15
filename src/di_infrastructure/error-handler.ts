@@ -10,7 +10,7 @@
  * @see sanitizeErrorForProduction for sanitization rules
  */
 
-import type { EnvironmentConfig } from "@/config/environment";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
 import { sanitizeErrorForProduction } from "@/utils/security/error-sanitizer";
 
@@ -31,7 +31,7 @@ import { sanitizeErrorForProduction } from "@/utils/security/error-sanitizer";
  * ```
  */
 export class ContainerErrorHandler {
-  constructor(private readonly env: EnvironmentConfig) {}
+  constructor(private readonly config: RuntimeConfigService) {}
 
   /**
    * Sanitizes a container error for safe logging/display.
@@ -43,7 +43,7 @@ export class ContainerErrorHandler {
    * @returns Sanitized error safe for production
    */
   sanitize(error: ContainerError): ContainerError {
-    return sanitizeErrorForProduction(this.env, error);
+    return sanitizeErrorForProduction(this.config, error);
   }
 
   /**
