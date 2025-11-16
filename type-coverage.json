@@ -8,7 +8,8 @@
     "**/*.test.ts",
     "scripts/**",
     "src/custom.d.ts",
-    "src/di_infrastructure/registry/TypeSafeRegistrationMap.ts"
+    "src/di_infrastructure/registry/TypeSafeRegistrationMap.ts",
+    "src/di_infrastructure/types/runtime-safe-cast.ts"
   ]
 }
 

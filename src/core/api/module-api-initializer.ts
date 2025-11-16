@@ -13,10 +13,12 @@ import {
 import { createApiTokens } from "@/core/api/api-token-config";
 import type { ModuleApi, TokenInfo, HealthStatus, ModuleApiTokens } from "@/core/module-api";
 import type { ServiceType } from "@/types/servicetypeindex";
-import type { I18nFacadeService } from "@/services/I18nFacadeService";
-import type { NotificationCenter } from "@/notifications/NotificationCenter";
-import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 import type { ContainerError } from "@/di_infrastructure/interfaces/containererror";
+import {
+  wrapFoundrySettingsService,
+  wrapI18nService,
+  wrapNotificationCenterService,
+} from "@/di_infrastructure/types/runtime-safe-cast";
 import {
   journalVisibilityServiceToken,
   metricsCollectorToken,
@@ -155,24 +157,15 @@ export class ModuleApiInitializer {
     wellKnownTokens: ModuleApiTokens
   ): TServiceType {
     if (token === wellKnownTokens.i18nFacadeToken) {
-      /* type-coverage:ignore-next-line -- token identity ensures service is I18nFacadeService */
-      const i18n: I18nFacadeService = service as I18nFacadeService;
-      /* type-coverage:ignore-next-line -- Cast required for generic return */
-      return createPublicI18n(i18n) as TServiceType;
+      return wrapI18nService(service, createPublicI18n);
     }
 
     if (token === wellKnownTokens.notificationCenterToken) {
-      /* type-coverage:ignore-next-line -- token identity ensures service is NotificationCenter */
-      const notifications: NotificationCenter = service as NotificationCenter;
-      /* type-coverage:ignore-next-line -- Cast required for generic return */
-      return createPublicNotificationCenter(notifications) as TServiceType;
+      return wrapNotificationCenterService(service, createPublicNotificationCenter);
     }
 
     if (token === wellKnownTokens.foundrySettingsToken) {
-      /* type-coverage:ignore-next-line -- token identity ensures service is FoundrySettings */
-      const settings: FoundrySettings = service as FoundrySettings;
-      /* type-coverage:ignore-next-line -- Cast required for generic return */
-      return createPublicFoundrySettings(settings) as TServiceType;
+      return wrapFoundrySettingsService(service, createPublicFoundrySettings);
     }
 
     // Default: return original service for read-only or safe services

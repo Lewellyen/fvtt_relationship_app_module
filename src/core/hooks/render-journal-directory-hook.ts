@@ -10,7 +10,6 @@
  */
 
 import type { Result } from "@/types/result";
-import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "./hook-registrar.interface";
 import { HookRegistrationManager } from "./hook-registration-manager";
 import { MODULE_CONSTANTS, HOOK_THROTTLE_WINDOW_MS } from "@/constants";
@@ -54,9 +53,8 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
     private readonly notificationCenter: NotificationCenter
   ) {}
 
-  // container is kept for interface compatibility but is no longer used
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  register(container: ServiceContainer): Result<void, Error> {
+  // container parameter removed: HookRegistrar implementiert register() aktuell ohne Container-Nutzung
+  register(): Result<void, Error> {
     const { foundryHooks, journalVisibility, notificationCenter } = this;
 
     const throttledCallback = throttle((app: unknown, html: unknown) => {

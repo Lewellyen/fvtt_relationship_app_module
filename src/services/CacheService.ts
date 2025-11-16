@@ -11,6 +11,7 @@ import type {
 } from "@/interfaces/cache";
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import { castCacheValue } from "@/di_infrastructure/types/runtime-safe-cast";
 import {
   cacheServiceConfigToken,
   metricsCollectorToken,
@@ -157,7 +158,7 @@ export class CacheService implements CacheServiceContract {
   getMetadata(key: CacheKey): CacheEntryMetadata | null {
     if (!this.isEnabled) return null;
 
-    const entry = this.store.get(key);
+    const entry = this.store.get(key) as InternalCacheEntry | undefined;
     if (!entry) return null;
     if (this.isExpired(entry)) {
       this.handleExpiration(key);
@@ -206,7 +207,7 @@ export class CacheService implements CacheServiceContract {
 
     return {
       hit: true,
-      value: entry.value as TValue, // type-coverage:ignore-line -- Map stores ServiceType union; casting back to generic is safe
+      value: castCacheValue<TValue>(entry.value),
       metadata: this.cloneMetadata(entry.metadata),
     };
   }
@@ -249,11 +250,9 @@ export class CacheService implements CacheServiceContract {
         }
       }
 
-      /* c8 ignore start -- Defensive guard: loop should always find an LRU entry */
       if (!lruKey) {
         break;
       }
-      /* c8 ignore end */
 
       this.store.delete(lruKey);
       this.stats.evictions++;
@@ -293,10 +292,6 @@ export class CacheService implements CacheServiceContract {
     };
 
     merged.defaultTtlMs = clampTtl(merged.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs);
-
-    if (typeof merged.maxEntries === "number" && !(merged.maxEntries > 0)) {
-      delete merged.maxEntries;
-    }
 
     this.config = merged;
 

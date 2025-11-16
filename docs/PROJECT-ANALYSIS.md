@@ -66,7 +66,7 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 | `src/services/` | Business- & Utility-Services (Logger, I18n, Journal, Retry, Performance) | Applikationslogik |
 | `src/utils/` | Result-/Async-/Event-/Trace-/Security-Helfer | Querschnittliche Helferfunktionen |
 | `src/tokens/` | `tokenindex.ts` – alle Injection Tokens + API-safe Tokens | Zentrales Token-Register |
-| `src/types/` | Gemeinsame Typen (`Result`, `ServiceTypeIndex`) | TypeScript-Shared Types |
+| `src/types/` | Gemeinsame Typen (`Result`, `ServiceTypeIndex`) | TypeScript-Shared Types; reine Typ-/Interface-Definitionen, die über **Type-Coverage** und nicht über Runtime-Code-Coverage abgesichert werden |
 | `src/polyfills/` | Browser-spezifische Workarounds (`cytoscape-assign-fix`) | Kompatibilitätslayer |
 | `src/svelte/` | UI-Stubs (ErrorBoundary, Demo-Komponenten) | Platzhalter für UI-Integration |
 | `src/test/` | Test-Mocks & Setup (Unterstützung für Vitest) | Nur für Tests genutzt |

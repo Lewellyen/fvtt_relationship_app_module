@@ -230,13 +230,12 @@ export function unwrapOrElse<SuccessType, ErrorType>(
  * getOrThrow(failure); // throws Error("Not found")
  * ```
  */
-export function getOrThrow<SuccessType, ErrorType, ThrownError extends Error = Error>(
+export function getOrThrow<SuccessType, ErrorType>(
   result: Result<SuccessType, ErrorType>,
-  toError?: (error: ErrorType) => ThrownError
+  toError?: (error: ErrorType) => Error
 ): SuccessType {
   if (result.ok) return result.value;
-  /* type-coverage:ignore-next-line -- Type constraint: when toError is provided it returns ThrownError, otherwise Error conforms to ThrownError via constraint */
-  const e = toError ? toError(result.error) : (new Error(String(result.error)) as ThrownError);
+  const e = toError ? toError(result.error) : new Error(String(result.error));
   throw e;
 }
 

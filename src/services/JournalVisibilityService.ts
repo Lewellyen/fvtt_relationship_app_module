@@ -78,7 +78,6 @@ export class JournalVisibilityService {
         if (flagResult.value === true) {
           hidden.push(journal);
         }
-        /* c8 ignore start -- Branch: Non-hidden journals (else branch) are the common case, tested implicitly */
       } else {
         // Log flag read errors for diagnosis without interrupting processing
         const journalIdentifier = journal.name ?? journal.id;
@@ -86,7 +85,6 @@ export class JournalVisibilityService {
           `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
           {
             errorCode: flagResult.error.code,
-            /* c8 ignore stop */
             errorMessage: flagResult.error.message,
           },
           { channels: ["ConsoleChannel"] }

@@ -49,23 +49,30 @@ npm test -- container.test.ts
 
 Das Projekt hat definierte Mindest-Coverage-Anforderungen:
 
-| Metrik | Ziel | Aktuell (v0.10.0) |
-|--------|------|------------------|
-| Lines | 100% | ✅ 100% |
-| Functions | 100% | ✅ 100% |
-| Branches | 100% | ✅ 100% |
-| Statements | 100% | ✅ 100% |
-| Type Coverage | 100% | ✅ 100% (8617/8617) |
+| Metrik | Ziel |
+|--------|------|
+| Lines | 100% |
+| Functions | 100% |
+| Branches | 100% |
+| Statements | 100% |
+| Type Coverage | 100% |
 
-**Status:** ✅ Alle Coverage-Ziele erreicht!
+**Quality Gates:**
+
+- In `src/core/**` (ohne `init-solid.ts`), `src/services/**`, `src/utils/**`, `src/types/**` gelten:
+  - Keine `/* c8 ignore */`-Marker im Produktionscode.
+  - Keine `type-coverage:ignore`-Kommentare im Produktionscode.
+  - Keine `eslint-disable` / `ts-ignore`-Direktiven, außer bei nachweisbaren Bugs in externen Typdefinitionen.
+- Tests, Mocks und polyfill-/adapter-spezifische Dateien folgen eigenen, separat dokumentierten Ausnahmen (siehe Quality-Gates-Dokumente).
 
 **Überprüfung:**
 
 ```bash
 npm run test:coverage
+npm run type-coverage
 ```
 
-Coverage-Report wird generiert in `coverage/index.html`.
+Der Coverage-Report wird in `coverage/index.html` generiert, Detailausnahmen sind in `docs/quality-gates/*.md` dokumentiert.
 
 ### Regressionswächter
 

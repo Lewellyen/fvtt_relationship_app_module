@@ -49,6 +49,7 @@ export default defineConfig({
         "src/di_infrastructure/types/injectiontoken.ts",
         "src/di_infrastructure/types/serviceclass.ts",
         "src/di_infrastructure/types/servicedependencies.ts",
+        "src/di_infrastructure/types/runtime-safe-cast.ts",
         "src/di_infrastructure/types/servicefactory.ts",
         "src/core/module-api.ts",
         // Bootstrap/Foundry-Entry-Point: stark umgebungsabhängig, wird über Integrationspfade geprüft

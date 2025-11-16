@@ -48,12 +48,16 @@ describe("LocalI18nService", () => {
     });
 
     it("should fallback to en when language split returns undefined", () => {
-      // Edge case: language is empty string or invalid format
-      vi.stubGlobal("navigator", { language: "" });
+      // Edge case: language is an object with a split() implementation
+      // that returns an empty array → lang becomes undefined and triggers
+      // the `?? \"en\"` fallback in detectLocale.
+      vi.stubGlobal("navigator", {
+        language: {
+          split: () => [],
+        } as unknown as string,
+      });
       const fallbackService = new LocalI18nService();
 
-      // Empty string split returns [""], and [0] is "", which is falsy
-      // This triggers the ?? "en" fallback
       expect(fallbackService.getCurrentLocale()).toBe("en");
     });
   });

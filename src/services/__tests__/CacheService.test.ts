@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CacheService, DICacheService, DEFAULT_CACHE_SERVICE_CONFIG } from "../CacheService";
-import type { CacheServiceConfig } from "@/interfaces/cache";
+import type { CacheEntryMetadata, CacheServiceConfig } from "@/interfaces/cache";
 import { createCacheNamespace } from "@/interfaces/cache";
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import {
@@ -100,6 +100,54 @@ describe("CacheService", () => {
 
     expect(service.has(keyA)).toBe(false);
     expect(service.has(keyB)).toBe(true);
+  });
+
+  it("handles defensive LRU guard without throwing when no entry is selected", () => {
+    createService({ maxEntries: 1 });
+
+    const keyA = buildCacheKey("lru-edge", "a");
+    const keyB = buildCacheKey("lru-edge", "b");
+
+    // Bypass normal set() to create an artificial state where no entry
+    // has a smaller lastAccessedAt than the initial sentinel value.
+    const internal = service as unknown as {
+      store: Map<
+        string,
+        { value: unknown; expiresAt: number | null; metadata: CacheEntryMetadata }
+      >;
+    };
+
+    internal.store.set(keyA, {
+      value: ["a"],
+      expiresAt: null,
+      metadata: {
+        key: keyA,
+        createdAt: now,
+        expiresAt: null,
+        lastAccessedAt: Number.POSITIVE_INFINITY,
+        hits: 0,
+        tags: [],
+      },
+    });
+
+    internal.store.set(keyB, {
+      value: ["b"],
+      expiresAt: null,
+      metadata: {
+        key: keyB,
+        createdAt: now,
+        expiresAt: null,
+        lastAccessedAt: Number.POSITIVE_INFINITY,
+        hits: 0,
+        tags: [],
+      },
+    });
+
+    // Force enforceCapacity() with this artificial state. The defensive
+    // guard should safely break out of the loop without throwing.
+    expect(() => {
+      (service as unknown as { enforceCapacity: () => void }).enforceCapacity();
+    }).not.toThrow();
   });
 
   it("honors disabled configuration", () => {
@@ -248,6 +296,37 @@ describe("CacheService", () => {
     dynamicCache.set(keyB, ["entry-b"]);
     expect(dynamicCache.has(keyA)).toBe(false);
     expect(dynamicCache.has(keyB)).toBe(true);
+
+    // When cacheMaxEntries is set to a non-positive number, the config
+    // should drop the maxEntries setting (defensive branch in updateConfig).
+    runtimeConfig.setFromFoundry("cacheMaxEntries", 0);
+    dynamicCache.set(keyA, ["entry-reset-a"]);
+    dynamicCache.set(keyB, ["entry-reset-b"]);
+
+    // Trigger the unsubscribe handler to cover the runtimeConfigUnsubscribe
+    // closure created during bindRuntimeConfig, and then re-bind with a new
+    // RuntimeConfigService to exercise the optional chaining branch.
+    const anyCache = dynamicCache as unknown as {
+      runtimeConfigUnsubscribe: () => void;
+      bindRuntimeConfig: (config: RuntimeConfigService) => void;
+    };
+    expect(() => {
+      anyCache.runtimeConfigUnsubscribe();
+      anyCache.bindRuntimeConfig(
+        new RuntimeConfigService({
+          isDevelopment: false,
+          isProduction: true,
+          logLevel: LogLevel.INFO,
+          enablePerformanceTracking: false,
+          performanceSamplingRate: 1,
+          enableMetricsPersistence: false,
+          metricsPersistenceKey: "cache-metrics-2",
+          enableCacheService: true,
+          cacheDefaultTtlMs: 500,
+          cacheMaxEntries: 3,
+        })
+      );
+    }).not.toThrow();
   });
 
   it("DI wrapper exposes dependencies and forwards constructor args", () => {

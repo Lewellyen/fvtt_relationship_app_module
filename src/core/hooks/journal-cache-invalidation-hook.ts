@@ -1,6 +1,5 @@
 import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/functional/result";
-import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "./hook-registrar.interface";
 import { HookRegistrationManager } from "./hook-registration-manager";
 import { MODULE_CONSTANTS } from "@/constants";
@@ -26,9 +25,8 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
     private readonly notificationCenter: NotificationCenter
   ) {}
 
-  // container is kept for interface compatibility but is no longer used
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  register(container: ServiceContainer): Result<void, Error> {
+  // container parameter entfernt: HookRegistrar-Implementierung nutzt Container nicht mehr direkt
+  register(): Result<void, Error> {
     const { hooks, cache, notificationCenter } = this;
 
     for (const hookName of JOURNAL_INVALIDATION_HOOKS) {

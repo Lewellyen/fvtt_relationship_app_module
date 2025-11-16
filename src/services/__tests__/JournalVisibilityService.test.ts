@@ -491,6 +491,30 @@ describe("JournalVisibilityService", () => {
       expect(mockNotificationCenter.warn).toHaveBeenCalled();
     });
 
+    it("should use journal id in warning when name is missing", () => {
+      const journal = {
+        id: "journal-id-only",
+        name: undefined,
+        getFlag: vi.fn(),
+      } as unknown as FoundryJournalEntry;
+
+      mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
+      mockFacade.getEntryFlag = vi.fn().mockReturnValue(
+        err({
+          code: "OPERATION_FAILED" as const,
+          message: "Failed to read flag",
+        })
+      );
+
+      service.getHiddenJournalEntries();
+
+      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
+        expect.stringContaining("journal-id-only"),
+        expect.any(Object),
+        { channels: ["ConsoleChannel"] }
+      );
+    });
+
     it("should handle empty journal list", () => {
       mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([]));
 

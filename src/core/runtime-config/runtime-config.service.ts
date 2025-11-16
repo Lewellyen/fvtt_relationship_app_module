@@ -1,4 +1,5 @@
 import type { EnvironmentConfig, LogLevel } from "@/config/environment";
+import { widenRuntimeConfigListeners } from "@/di_infrastructure/types/runtime-safe-cast";
 
 export type RuntimeConfigValues = {
   isDevelopment: boolean;
@@ -26,7 +27,10 @@ type RuntimeConfigListener<K extends RuntimeConfigKey> = (value: RuntimeConfigVa
  */
 export class RuntimeConfigService {
   private readonly values: RuntimeConfigValues;
-  private readonly listeners = new Map<RuntimeConfigKey, Set<unknown>>();
+  private readonly listeners = new Map<
+    RuntimeConfigKey,
+    Set<RuntimeConfigListener<RuntimeConfigKey>>
+  >();
 
   constructor(env: EnvironmentConfig) {
     this.values = {
@@ -62,13 +66,14 @@ export class RuntimeConfigService {
    * Registers a listener for the given key. Returns an unsubscribe function.
    */
   onChange<K extends RuntimeConfigKey>(key: K, listener: RuntimeConfigListener<K>): () => void {
-    const existing = this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined; // type-coverage:ignore-line -- Map stores heterogeneous listener sets
-    const listeners = existing ?? new Set<RuntimeConfigListener<K>>();
+    const existing = this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined;
+    const listeners: Set<RuntimeConfigListener<K>> =
+      existing ?? new Set<RuntimeConfigListener<K>>();
     listeners.add(listener);
-    this.listeners.set(key, listeners as Set<unknown>);
+    this.listeners.set(key, widenRuntimeConfigListeners(listeners));
 
     return () => {
-      const activeListeners = this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined; // type-coverage:ignore-line -- Map stores heterogeneous listener sets
+      const activeListeners = this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined;
       activeListeners?.delete(listener);
       if (!activeListeners || activeListeners.size === 0) {
         this.listeners.delete(key);
@@ -83,7 +88,7 @@ export class RuntimeConfigService {
     }
 
     this.values[key] = value;
-    const listeners = this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined; // type-coverage:ignore-line -- Map stores heterogeneous listener sets
+    const listeners = this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined;
     if (!listeners || listeners.size === 0) {
       return;
     }

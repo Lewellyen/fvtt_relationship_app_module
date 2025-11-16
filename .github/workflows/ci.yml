@@ -92,6 +92,9 @@ jobs:
       - name: Check encoding
         run: npm run check:encoding
 
+      - name: Check for forbidden ignores
+        run: npm run check:no-ignores
+
       - name: Run tests (coverage)
         if: matrix.node-version == '20.x'
         run: npm run test:coverage

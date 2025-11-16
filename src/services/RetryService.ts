@@ -144,7 +144,9 @@ export class RetryService {
       return err(mapException("maxAttempts must be >= 1", 0));
     }
 
-    let lastError: ErrorType | undefined;
+    // Sentinel-Wert, damit lastError auch in theoretisch unerreichbaren Pfaden
+    // niemals undefined ist. Die eigentlichen Fehler werden in der Schleife gesetzt.
+    let lastError: ErrorType = mapException("Initial retry error", 0);
     const startTime = performance.now();
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -212,12 +214,7 @@ export class RetryService {
       );
     }
 
-    // TypeScript flow analysis: lastError is guaranteed defined after loop
-    // because the loop always executes at least once (maxAttempts >= 1)
-    // and both try and catch branches assign to lastError
-    /* type-coverage:ignore-next-line -- Non-null assertion: lastError guaranteed by loop execution */
-    const finalError = lastError!;
-    return err(finalError);
+    return err(lastError);
   }
 
   /**
@@ -257,7 +254,9 @@ export class RetryService {
       return err(mapException("maxAttempts must be >= 1", 0));
     }
 
-    let lastError: ErrorType | undefined;
+    // Sentinel-Wert, damit lastError auch in theoretisch unerreichbaren Pfaden
+    // niemals undefined ist. Die eigentlichen Fehler werden in der Schleife gesetzt.
+    let lastError: ErrorType = mapException("Initial retry error", 0);
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -313,12 +312,7 @@ export class RetryService {
       );
     }
 
-    // TypeScript flow analysis: lastError is guaranteed defined after loop
-    // because the loop always executes at least once (maxAttempts >= 1)
-    // and both try and catch branches assign to lastError
-    /* type-coverage:ignore-next-line -- Non-null assertion: lastError guaranteed by loop execution */
-    const finalError = lastError!;
-    return err(finalError);
+    return err(lastError);
   }
 }
 
