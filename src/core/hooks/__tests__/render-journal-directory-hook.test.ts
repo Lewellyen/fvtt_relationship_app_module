@@ -39,20 +39,21 @@ describe("RenderJournalDirectoryHook", () => {
   });
 
   describe("dispose", () => {
-    it("should dispose safely when no unsubscribe", () => {
+    it("should dispose safely when register was never called", () => {
       const hook = new RenderJournalDirectoryHook();
 
       expect(() => hook.dispose()).not.toThrow();
     });
 
-    it("should call unsubscribe if set", () => {
+    it("should unregister hook when registered (or fail gracefully)", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
 
       const hook = new RenderJournalDirectoryHook();
+      // In Test-Umgebung kann die Registrierung aufgrund fehlender Foundry-APIs scheitern.
+      // Wichtig ist, dass dispose() in jedem Fall sicher aufgerufen werden kann.
       hook.register(container);
 
-      // Dispose should not throw
       expect(() => hook.dispose()).not.toThrow();
     });
   });

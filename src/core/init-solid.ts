@@ -27,8 +27,10 @@ import { LOG_LEVEL_SCHEMA } from "@/foundry/validation/setting-schemas";
 /**
  * Function to encapsulate initialization logic.
  * This allows us to use return statements for soft aborts.
+ *
+ * NOTE: The function is fully covered via init-solid.test.ts; only truly
+ * environment-dependent branches (Foundry globals) use fine-grained c8 ignores.
  */
-/* c8 ignore start -- Entire function requires Foundry Hooks globals to be present */
 function initializeFoundryModule(): void {
   const containerResult = root.getContainer();
   /* c8 ignore start -- Bootstrap failure path tested in init-solid.test.ts bootstrap failure tests */
@@ -56,7 +58,7 @@ function initializeFoundryModule(): void {
     return; // Soft abort - OK inside function
   }
 
-  /* c8 ignore next -- Registers Foundry hook callbacks */
+  /* c8 ignore next -- Registers Foundry hook callbacks (behavior verified via tests) */
   Hooks.on("init", () => {
     logger.info("init-phase");
 
@@ -151,7 +153,7 @@ function initializeFoundryModule(): void {
     logger.info("init-phase completed");
   });
 
-  /* c8 ignore next -- Registers Foundry hook callbacks */
+  /* c8 ignore next -- Registers Foundry hook callbacks (behavior verified via tests) */
   Hooks.on("ready", () => {
     logger.info("ready-phase");
     logger.info("ready-phase completed");

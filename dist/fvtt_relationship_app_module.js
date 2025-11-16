@@ -3390,6 +3390,7 @@ const _ObservabilityRegistry = class _ObservabilityRegistry {
   constructor(logger, metrics) {
     this.logger = logger;
     this.metrics = metrics;
+    this.subscriptions = [];
   }
   /**
    * Register a PortSelector for observability.
@@ -3398,7 +3399,7 @@ const _ObservabilityRegistry = class _ObservabilityRegistry {
    * @param service - Observable service that emits PortSelectionEvents
    */
   registerPortSelector(service) {
-    service.onEvent((event) => {
+    const unsubscribe = service.onEvent((event) => {
       if (event.type === "success") {
         const adapterSuffix = event.adapterName ? ` for ${event.adapterName}` : "";
         this.logger.debug(
@@ -3414,7 +3415,23 @@ const _ObservabilityRegistry = class _ObservabilityRegistry {
         this.metrics.recordPortSelectionFailure(event.foundryVersion);
       }
     });
+    this.subscriptions.push(unsubscribe);
   }
+  /**
+   * Disposes all registered observers and clears internal state.
+   * Intended to be called when the DI container is disposed.
+   */
+  /* c8 ignore start -- Lifecycle method: called indirectly via DI container disposal */
+  dispose() {
+    while (this.subscriptions.length > 0) {
+      const unsubscribe = this.subscriptions.pop();
+      try {
+        unsubscribe?.();
+      } catch {
+      }
+    }
+  }
+  /* c8 ignore stop */
   // Future: Add more registration methods for other observable services
   // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
 };
@@ -12107,9 +12124,8 @@ __name(_DIPerformanceTrackingService, "DIPerformanceTrackingService");
 _DIPerformanceTrackingService.dependencies = [runtimeConfigToken, metricsSamplerToken];
 let DIPerformanceTrackingService = _DIPerformanceTrackingService;
 const _RetryService = class _RetryService {
-  constructor(logger, metricsCollector) {
+  constructor(logger) {
     this.logger = logger;
-    this.metricsCollector = metricsCollector;
   }
   /**
    * Retries an async operation with exponential backoff.
@@ -12272,12 +12288,12 @@ const _RetryService = class _RetryService {
 __name(_RetryService, "RetryService");
 let RetryService = _RetryService;
 const _DIRetryService = class _DIRetryService extends RetryService {
-  constructor(logger, metricsCollector) {
-    super(logger, metricsCollector);
+  constructor(logger) {
+    super(logger);
   }
 };
 __name(_DIRetryService, "DIRetryService");
-_DIRetryService.dependencies = [loggerToken, metricsCollectorToken];
+_DIRetryService.dependencies = [loggerToken];
 let DIRetryService = _DIRetryService;
 function registerUtilityServices(container) {
   const perfTrackingResult = container.registerClass(
@@ -13100,7 +13116,15 @@ const _NotificationCenter = class _NotificationCenter {
         failures.push(`${channel.name}: ${result.error}`);
       }
     }
-    if (!attempted || succeeded) {
+    if (!attempted) {
+      if (options?.channels && options.channels.length > 0) {
+        return err(
+          `No channels attempted to handle notification (requested: ${options.channels.join(", ")})`
+        );
+      }
+      return ok(void 0);
+    }
+    if (succeeded) {
       return ok(void 0);
     }
     return err(`All channels failed: ${failures.join("; ")}`);
@@ -13732,6 +13756,40 @@ _DIModuleHookRegistrar.dependencies = [
   notificationCenterToken
 ];
 let DIModuleHookRegistrar = _DIModuleHookRegistrar;
+const _HookRegistrationManager = class _HookRegistrationManager {
+  constructor() {
+    this.cleanupCallbacks = [];
+  }
+  /**
+   * Registers a cleanup callback that will be invoked when dispose() is called.
+   *
+   * Typical usage:
+   * ```ts
+   * const result = hooks.on(name, callback);
+   * if (result.ok) {
+   *   manager.register(() => hooks.off(name, result.value));
+   * }
+   * ```
+   */
+  register(unregister) {
+    this.cleanupCallbacks.push(unregister);
+  }
+  /**
+   * Invokes all registered cleanup callbacks once and clears the internal list.
+   * Subsequent calls are no-ops.
+   */
+  dispose() {
+    while (this.cleanupCallbacks.length > 0) {
+      const unregister = this.cleanupCallbacks.pop();
+      try {
+        unregister?.();
+      } catch {
+      }
+    }
+  }
+};
+__name(_HookRegistrationManager, "HookRegistrationManager");
+let HookRegistrationManager = _HookRegistrationManager;
 function throttle(fn, windowMs) {
   let isThrottled = false;
   return /* @__PURE__ */ __name(function throttled(...args2) {
@@ -13771,7 +13829,7 @@ function extractHtmlElement(html) {
 __name(extractHtmlElement, "extractHtmlElement");
 const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
   constructor() {
-    this.unsubscribe = null;
+    this.registrationManager = new HookRegistrationManager();
   }
   register(container) {
     const foundryHooksResult = container.resolveWithError(foundryHooksToken);
@@ -13842,14 +13900,15 @@ const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
       );
       return err(new Error(`Hook registration failed: ${hookResult.error.message}`));
     }
+    const registrationId = hookResult.value;
+    this.registrationManager.register(() => {
+      foundryHooks.off(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY, registrationId);
+    });
     return ok(void 0);
   }
   /* c8 ignore start -- Lifecycle method: Called when module is disabled; cleanup logic not testable in unit tests */
   dispose() {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-      this.unsubscribe = null;
-    }
+    this.registrationManager.dispose();
   }
   /* c8 ignore stop */
 };
@@ -13870,8 +13929,7 @@ const JOURNAL_INVALIDATION_HOOKS = [
 ];
 const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
   constructor() {
-    this.foundryHooks = null;
-    this.registrations = [];
+    this.registrationManager = new HookRegistrationManager();
   }
   register(container) {
     const hooksResult = container.resolveWithError(foundryHooksToken);
@@ -13899,7 +13957,6 @@ const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
     const hooks = hooksResult.value;
     const cache = cacheResult.value;
     const notificationCenter = notificationCenterResult.value;
-    this.foundryHooks = hooks;
     for (const hookName of JOURNAL_INVALIDATION_HOOKS) {
       const registrationResult = hooks.on(hookName, () => {
         const removed = cache.invalidateWhere(
@@ -13917,22 +13974,18 @@ const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
         notificationCenter.error(`Failed to register ${hookName} hook`, registrationResult.error, {
           channels: ["ConsoleChannel"]
         });
+        this.registrationManager.dispose();
         return err(new Error(`Hook registration failed: ${registrationResult.error.message}`));
       }
-      this.registrations.push({ name: hookName, id: registrationResult.value });
+      const registrationId = registrationResult.value;
+      this.registrationManager.register(() => {
+        hooks.off(hookName, registrationId);
+      });
     }
     return ok(void 0);
   }
   dispose() {
-    if (!this.foundryHooks) {
-      this.registrations = [];
-      return;
-    }
-    for (const registration of this.registrations) {
-      this.foundryHooks.off(registration.name, registration.id);
-    }
-    this.registrations = [];
-    this.foundryHooks = null;
+    this.registrationManager.dispose();
   }
 };
 __name(_JournalCacheInvalidationHook, "JournalCacheInvalidationHook");

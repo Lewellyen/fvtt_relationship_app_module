@@ -339,7 +339,7 @@ describe("NotificationCenter", () => {
       expect(result.ok).toBe(true);
     });
 
-    it("should succeed if no channels match", () => {
+    it("should succeed if no channels match without explicit selection", () => {
       // Debug message, but no console channel
       center = new NotificationCenter([mockUIChannel]); // UIChannel doesn't handle debug
 
@@ -347,6 +347,20 @@ describe("NotificationCenter", () => {
 
       expect(result.ok).toBe(true);
       expect(mockUIChannel.send).not.toHaveBeenCalled();
+    });
+
+    it("should return error when explicit channels are provided but none can handle", () => {
+      center = new NotificationCenter([mockUIChannel, mockSentryChannel]);
+
+      const result = center.debug("Debug message", undefined, { channels: ["UIChannel"] });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("No channels attempted");
+        expect(result.error).toContain("UIChannel");
+      }
+      expect(mockUIChannel.send).not.toHaveBeenCalled();
+      expect(mockSentryChannel.send).not.toHaveBeenCalled();
     });
   });
 

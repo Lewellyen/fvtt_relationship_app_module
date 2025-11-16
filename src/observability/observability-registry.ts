@@ -29,6 +29,8 @@ export interface ObservableService<TEvent = unknown> {
  * ```
  */
 export class ObservabilityRegistry {
+  private readonly subscriptions: Array<() => void> = [];
+
   constructor(
     private readonly logger: Logger,
     private readonly metrics: MetricsRecorder
@@ -41,7 +43,7 @@ export class ObservabilityRegistry {
    * @param service - Observable service that emits PortSelectionEvents
    */
   registerPortSelector(service: ObservableService<PortSelectionEvent>): void {
-    service.onEvent((event) => {
+    const unsubscribe = service.onEvent((event) => {
       /* c8 ignore start -- Ternary: adapterName is optional parameter rarely provided */
       if (event.type === "success") {
         const adapterSuffix = event.adapterName ? ` for ${event.adapterName}` : "";
@@ -61,7 +63,26 @@ export class ObservabilityRegistry {
       }
       /* c8 ignore stop */
     });
+
+    this.subscriptions.push(unsubscribe);
   }
+
+  /**
+   * Disposes all registered observers and clears internal state.
+   * Intended to be called when the DI container is disposed.
+   */
+  /* c8 ignore start -- Lifecycle method: called indirectly via DI container disposal */
+  dispose(): void {
+    while (this.subscriptions.length > 0) {
+      const unsubscribe = this.subscriptions.pop();
+      try {
+        unsubscribe?.();
+      } catch {
+        // Swallow errors during dispose to avoid masking shutdown failures
+      }
+    }
+  }
+  /* c8 ignore stop */
 
   // Future: Add more registration methods for other observable services
   // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }

@@ -1,8 +1,8 @@
 # Bootstrap Flow & Module Lifecycle
 
 **Model:** Claude Sonnet 4.5  
-**Datum:** 2025-11-09  
-**Stand:** Version 0.10.0 (mit Observability Self-Registration & Public API resolveWithError)
+**Datum:** 2025-11-16  
+**Stand:** Version 0.25.0 (mit Observability Self-Registration, NotificationCenter & init-solid Tests)
 
 ---
 
@@ -85,15 +85,18 @@ bootstrap(): Result<ServiceContainer, string> {
   const container = ServiceContainer.createRoot();
   
   // 2. Performance Tracking initialisieren
-  const performanceTracker = new BootstrapPerformanceTracker(ENV, null);
+  const runtimeConfig = new RuntimeConfigService(ENV);
+  const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
   
   // 3. Dependencies konfigurieren
   const configured = performanceTracker.track(
     () => configureDependencies(container),
     (duration) => {
       // Log nach erfolgreichem Bootstrap
-      const logger = container.resolve(loggerToken);
-      logger.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
+      const loggerResult = container.resolveWithError(loggerToken);
+      if (loggerResult.ok) {
+        loggerResult.value.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
+      }
     }
   );
   

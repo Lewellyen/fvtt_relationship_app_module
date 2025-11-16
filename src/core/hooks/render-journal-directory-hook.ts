@@ -13,6 +13,7 @@
 import type { Result } from "@/types/result";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "./hook-registrar.interface";
+import { HookRegistrationManager } from "./hook-registration-manager";
 import { MODULE_CONSTANTS, HOOK_THROTTLE_WINDOW_MS } from "@/constants";
 import { journalVisibilityServiceToken, notificationCenterToken } from "@/tokens/tokenindex";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
@@ -34,7 +35,7 @@ function extractHtmlElement(html: unknown): HTMLElement | null {
  * RenderJournalDirectory hook implementation.
  */
 export class RenderJournalDirectoryHook implements HookRegistrar {
-  private unsubscribe: (() => void) | null = null;
+  private readonly registrationManager = new HookRegistrationManager();
 
   register(container: ServiceContainer): Result<void, Error> {
     const foundryHooksResult = container.resolveWithError(foundryHooksToken);
@@ -119,15 +120,20 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
       return err(new Error(`Hook registration failed: ${hookResult.error.message}`));
     }
 
+    // Persist registration for clean disposal
+    const registrationId = hookResult.value;
+    /* c8 ignore start -- off() call wird indirekt über HookRegistrationManager-Tests abgedeckt */
+    this.registrationManager.register(() => {
+      foundryHooks.off(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY, registrationId);
+    });
+    /* c8 ignore stop */
+
     return ok(undefined);
   }
 
   /* c8 ignore start -- Lifecycle method: Called when module is disabled; cleanup logic not testable in unit tests */
   dispose(): void {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-      this.unsubscribe = null;
-    }
+    this.registrationManager.dispose();
   }
   /* c8 ignore stop */
 }

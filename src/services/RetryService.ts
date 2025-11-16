@@ -6,15 +6,13 @@
  * as utility functions, making it easier to:
  * - Inject via DI
  * - Add logging for retry attempts (via Logger)
- * - Track retry metrics (via MetricsCollector)
- * - Configure default retry strategies centrally
+ * - Configure default retry strategies zentral an einer Stelle
  */
 
 import type { Result } from "@/types/result";
 import { err } from "@/utils/functional/result";
 import type { Logger } from "@/interfaces/logger";
-import type { MetricsCollector } from "@/observability/metrics-collector";
-import { loggerToken, metricsCollectorToken } from "@/tokens/tokenindex";
+import { loggerToken } from "@/tokens/tokenindex";
 
 /**
  * Options for retry operations.
@@ -103,10 +101,7 @@ export interface RetryOptions<ErrorType> {
  * ```
  */
 export class RetryService {
-  constructor(
-    private readonly logger: Logger,
-    private readonly metricsCollector: MetricsCollector
-  ) {}
+  constructor(private readonly logger: Logger) {}
 
   /**
    * Retries an async operation with exponential backoff.
@@ -328,9 +323,9 @@ export class RetryService {
 }
 
 export class DIRetryService extends RetryService {
-  static dependencies = [loggerToken, metricsCollectorToken] as const;
+  static dependencies = [loggerToken] as const;
 
-  constructor(logger: Logger, metricsCollector: MetricsCollector) {
-    super(logger, metricsCollector);
+  constructor(logger: Logger) {
+    super(logger);
   }
 }

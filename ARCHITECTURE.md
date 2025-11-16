@@ -103,34 +103,155 @@ const port = selector.selectPortFromFactories(factories); // Nur kompatiblen Por
 
 **Garantie:** v14-Ports mit `game.v14NewApi` crashen nicht auf v13, da sie nie instantiiert werden.
 
-### Hook-Adapter: jQuery ↔ HTMLElement
+### Hook-Orchestrierung & Lifecycle (ModuleHookRegistrar)
 
-**Problem:** Foundry-Hooks wechselten von jQuery zu nativen DOM-Elementen.
+**Ziele:**
+- Zentrale Verwaltung aller Foundry-Hooks des Moduls
+- Sauberes Aufräumen bei Modul-Disable/Reload
+- Kein duplizierter `Hooks.on`/`Hooks.off`-Code in einzelnen Hooks
 
-**Lösung:** `ModuleHookRegistrar.extractHtmlElement()` behandelt beide Formate für maximale Kompatibilität:
+**Bausteine:**
+- `ModuleHookRegistrar` (`src/core/module-hook-registrar.ts`)
+  - DI-verwalteter Orchestrator, der fachliche Hook-Strategien registriert
+  - Verwendet `HookRegistrar`-Interface mit `register(container): Result<void, Error>` und `dispose(): void`
+- `HookRegistrationManager` (`src/core/hooks/hook-registration-manager.ts`)
+  - Kleiner Utility-Typ, der einzelne `off`-Callbacks sammelt und in `dispose()` ausführt
+  - Stellt Rollback bei Teilfehlern sicher (z. B. 2 Hooks registriert, 3. schlägt fehl)
 
 ```typescript
-private extractHtmlElement(html: unknown): HTMLElement | null {
-  // Case 1: Native HTMLElement (v13+)
-  if (html instanceof HTMLElement) return html;
-  
-  // Case 2: jQuery {0: HTMLElement, length: 1} (Legacy-Kompatibilität)
-  if (isJQueryObject(html)) return html[0];
-  
-  // Case 3: jQuery.get(0) method (Legacy-Kompatibilität)
-  if (hasGetMethod(html)) return html.get(0);
-  
-  return null;
+// src/core/hooks/hook-registration-manager.ts
+export class HookRegistrationManager {
+  private readonly cleanupCallbacks: Array<() => void> = [];
+
+  register(unregister: () => void): void {
+    this.cleanupCallbacks.push(unregister);
+  }
+
+  dispose(): void {
+    while (this.cleanupCallbacks.length > 0) {
+      const unregister = this.cleanupCallbacks.pop();
+      try {
+        unregister?.();
+      } catch {
+        // Fehler beim Abmelden des Hooks sollen Shutdown nicht verhindern
+      }
+    }
+  }
 }
 ```
 
-**Hinweis:** Die jQuery-Kompatibilitätslogik ist vorhanden, aber dieses Modul **unterstützt offiziell nur Foundry VTT v13+**. Für ältere Versionen (v10-12) wird eine separate Legacy-Version benötigt.
+**Beispiel: RenderJournalDirectoryHook**
 
-**Test-Coverage:**
-- ✅ Native HTMLElement (v13+)
-- ✅ jQuery mit Index-Zugriff (Legacy)
-- ✅ jQuery mit `.get()` Methode (Legacy)
-- ✅ Ungültige Formate (Error-Logging)
+```typescript
+// src/core/hooks/render-journal-directory-hook.ts
+export class RenderJournalDirectoryHook implements HookRegistrar {
+  private readonly registrationManager = new HookRegistrationManager();
+
+  register(container: ServiceContainer): Result<void, Error> {
+    const foundryHooksResult = container.resolveWithError(foundryHooksToken);
+    const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
+    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
+    // … DI-Guards mit NotificationCenter-Logging …
+
+    const foundryHooks = foundryHooksResult.value;
+
+    const throttledCallback = throttle((app: unknown, html: unknown) => {
+      // Logging + Validation + Delegation an JournalVisibilityService
+      journalVisibility.processJournalDirectory(htmlElement);
+    }, HOOK_THROTTLE_WINDOW_MS);
+
+    const hookResult = foundryHooks.on(
+      MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
+      throttledCallback
+    );
+
+    if (!hookResult.ok) {
+      notificationCenter.error(
+        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
+        hookResult.error,
+        { channels: ["ConsoleChannel"] }
+      );
+      return err(new Error(`Hook registration failed: ${hookResult.error.message}`));
+    }
+
+    const registrationId = hookResult.value;
+    this.registrationManager.register(() => {
+      foundryHooks.off(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY, registrationId);
+    });
+
+    return ok(undefined);
+  }
+
+  dispose(): void {
+    this.registrationManager.dispose();
+  }
+}
+```
+
+**Beispiel: JournalCacheInvalidationHook (Tag-basierte Cache-Invalidierung)**
+
+```typescript
+// src/core/hooks/journal-cache-invalidation-hook.ts
+export class JournalCacheInvalidationHook implements HookRegistrar {
+  private readonly registrationManager = new HookRegistrationManager();
+
+  register(container: ServiceContainer): Result<void, Error> {
+    const hooksResult = container.resolveWithError<FoundryHooks>(foundryHooksToken);
+    const cacheResult = container.resolveWithError<CacheService>(cacheServiceToken);
+    const notificationCenterResult =
+      container.resolveWithError<NotificationCenter>(notificationCenterToken);
+
+    // … DI-Guards mit Error-Logging …
+
+    const hooks = hooksResult.value;
+    const cache = cacheResult.value;
+    const notificationCenter = notificationCenterResult.value;
+
+    for (const hookName of JOURNAL_INVALIDATION_HOOKS) {
+      const registrationResult = hooks.on(hookName, () => {
+        const removed = cache.invalidateWhere((meta) =>
+          meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG)
+        );
+        if (removed > 0) {
+          notificationCenter.debug(
+            `Invalidated ${removed} hidden journal cache entries via ${hookName}`,
+            { context: { removed, hookName } },
+            { channels: ["ConsoleChannel"] }
+          );
+        }
+      });
+
+      if (!registrationResult.ok) {
+        notificationCenter.error(
+          `Failed to register ${hookName} hook`,
+          registrationResult.error,
+          { channels: ["ConsoleChannel"] }
+        );
+
+        // Rollback aller zuvor registrierten Hooks
+        this.registrationManager.dispose();
+        return err(new Error(`Hook registration failed: ${registrationResult.error.message}`));
+      }
+
+      const registrationId = registrationResult.value;
+      this.registrationManager.register(() => {
+        hooks.off(hookName, registrationId);
+      });
+    }
+
+    return ok(undefined);
+  }
+
+  dispose(): void {
+    this.registrationManager.dispose();
+  }
+}
+```
+
+**Guidelines für neue Hooks:**
+- Neue Hook-Strategien implementieren `HookRegistrar` und verwenden immer `HookRegistrationManager` für alle `Hooks.on`-Registrierungen.
+- Im Fehlerfall (z. B. einzelne Registrierung schlägt fehl) **sofort** `registrationManager.dispose()` aufrufen, um einen konsistenten Zustand herzustellen.
+- `ModuleHookRegistrar` aggregiert alle `HookRegistrar`-Instanzen und ruft `registerAll()` bzw. `disposeAll()` auf, sodass der gesamte Hook-Lifecycle DI-gesteuert ist.
 
 ### Child-Scope Registrierungen (NEU)
 

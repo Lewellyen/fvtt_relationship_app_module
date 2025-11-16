@@ -2,6 +2,7 @@ import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/functional/result";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "./hook-registrar.interface";
+import { HookRegistrationManager } from "./hook-registration-manager";
 import { MODULE_CONSTANTS } from "@/constants";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
 import { cacheServiceToken, notificationCenterToken } from "@/tokens/tokenindex";
@@ -16,14 +17,8 @@ const JOURNAL_INVALIDATION_HOOKS = [
   MODULE_CONSTANTS.HOOKS.DELETE_JOURNAL_ENTRY,
 ] as const;
 
-interface HookRegistration {
-  name: string;
-  id: number;
-}
-
 export class JournalCacheInvalidationHook implements HookRegistrar {
-  private foundryHooks: FoundryHooks | null = null;
-  private registrations: HookRegistration[] = [];
+  private readonly registrationManager = new HookRegistrationManager();
 
   register(container: ServiceContainer): Result<void, Error> {
     const hooksResult = container.resolveWithError<FoundryHooks>(foundryHooksToken);
@@ -57,8 +52,6 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
     const cache = cacheResult.value;
     const notificationCenter = notificationCenterResult.value;
 
-    this.foundryHooks = hooks;
-
     for (const hookName of JOURNAL_INVALIDATION_HOOKS) {
       const registrationResult = hooks.on(hookName, () => {
         const removed = cache.invalidateWhere((meta) =>
@@ -77,27 +70,24 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
         notificationCenter.error(`Failed to register ${hookName} hook`, registrationResult.error, {
           channels: ["ConsoleChannel"],
         });
+
+        // Roll back any previously registered hooks to avoid partial registration state
+        this.registrationManager.dispose();
+
         return err(new Error(`Hook registration failed: ${registrationResult.error.message}`));
       }
 
-      this.registrations.push({ name: hookName, id: registrationResult.value });
+      const registrationId = registrationResult.value;
+      this.registrationManager.register(() => {
+        hooks.off(hookName, registrationId);
+      });
     }
 
     return ok(undefined);
   }
 
   dispose(): void {
-    if (!this.foundryHooks) {
-      this.registrations = [];
-      return;
-    }
-
-    for (const registration of this.registrations) {
-      this.foundryHooks.off(registration.name, registration.id);
-    }
-
-    this.registrations = [];
-    this.foundryHooks = null;
+    this.registrationManager.dispose();
   }
 }
 

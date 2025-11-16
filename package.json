@@ -3,7 +3,7 @@
   "type": "module",
   "title": "Relationship App",
   "description": "A Foundry VTT module for creating and managing relationship graphs between actors and other entities.",
-  "version": "0.25.0",
+  "version": "0.25.1",
   "author": "Andreas Rothe <forenadmin.tir@gmail.com> (https://github.com/Lewellyen)",
   "license": "MIT",
   "repository": {
@@ -26,6 +26,7 @@
     "dev": "vite build --watch --mode development",
     "check:build": "npm run test:coverage && npm run type-coverage && npm run type-check && npm run svelte-check && npm run lint && npm run css-lint && npm run format && npm run check:encoding && npm run build:dev",
     "check-all": "npm run test:coverage && npm run type-coverage && npm run type-check && npm run svelte-check && npm run lint && npm run css-lint && npm run format:check && npm run check:encoding",
+    "check:all": "npm run test:coverage && npm run type-coverage && npm run type-check && npm run svelte-check && npm run lint && npm run css-lint && npm run format && npm run check:encoding",
     "lint": "eslint --config eslint.config.mjs --no-ignore \"src/**/*.{ts,js,svelte}\" --fix",
     "css-lint": "stylelint \"styles/**/*.css\" --fix",
     "type-check": "tsc --noEmit",

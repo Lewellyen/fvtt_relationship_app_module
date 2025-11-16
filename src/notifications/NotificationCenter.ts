@@ -155,7 +155,20 @@ export class NotificationCenter {
       }
     }
 
-    if (!attempted || succeeded) {
+    if (!attempted) {
+      // No channel attempted to handle this notification.
+      // If explicit channel names were provided, treat this as configuration error.
+      if (options?.channels && options.channels.length > 0) {
+        return err(
+          `No channels attempted to handle notification (requested: ${options.channels.join(", ")})`
+        );
+      }
+
+      // Otherwise treat as no-op: nothing was able to handle the notification.
+      return ok(undefined);
+    }
+
+    if (succeeded) {
       return ok(undefined);
     }
 

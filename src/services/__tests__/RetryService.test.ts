@@ -5,7 +5,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RetryService, DIRetryService } from "../RetryService";
 import type { Logger } from "@/interfaces/logger";
-import type { MetricsCollector } from "@/observability/metrics-collector";
 import { ok, err } from "@/utils/functional/result";
 
 // Test helper: Simple error mapper for test scenarios
@@ -16,7 +15,6 @@ const simpleErrorMapper = (error: unknown): { code: "TEST_ERROR"; message: strin
 
 describe("RetryService", () => {
   let mockLogger: Logger;
-  let mockMetricsCollector: MetricsCollector;
   let service: RetryService;
 
   beforeEach(() => {
@@ -30,16 +28,7 @@ describe("RetryService", () => {
       setMinLevel: vi.fn(),
     };
 
-    // Mock MetricsCollector
-    mockMetricsCollector = {
-      shouldSample: vi.fn().mockReturnValue(true),
-      recordResolution: vi.fn(),
-      recordPortSelection: vi.fn(),
-      recordPortSelectionFailure: vi.fn(),
-      getSnapshot: vi.fn(),
-    } as unknown as MetricsCollector;
-
-    service = new RetryService(mockLogger, mockMetricsCollector);
+    service = new RetryService(mockLogger);
 
     // Mock setTimeout to execute immediately
     vi.spyOn(global, "setTimeout").mockImplementation((callback: () => void) => {
@@ -316,7 +305,7 @@ describe("RetryService", () => {
 
   describe("Constructor", () => {
     it("should create instance with dependencies", () => {
-      const service = new RetryService(mockLogger, mockMetricsCollector);
+      const service = new RetryService(mockLogger);
       expect(service).toBeInstanceOf(RetryService);
     });
   });
@@ -325,9 +314,8 @@ describe("RetryService", () => {
     it("should have correct static dependencies", () => {
       expect(DIRetryService.dependencies).toEqual([
         expect.any(Symbol), // loggerToken
-        expect.any(Symbol), // metricsCollectorToken
       ]);
-      expect(DIRetryService.dependencies).toHaveLength(2);
+      expect(DIRetryService.dependencies).toHaveLength(1);
     });
   });
 });

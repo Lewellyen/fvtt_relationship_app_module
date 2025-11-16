@@ -12,6 +12,25 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.1] - 2025-11-16
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **RetryService**: Entfernt ungenutzte MetricsCollector-Abhängigkeit und vereinfacht die DI-Signatur; Retry-Metriken werden künftig zentral über MetricsCollector/PerformanceTracking erfasst ([Details](src/services/RetryService.ts))
+- **ObservabilityRegistry**: Verwalter jetzt Subscription-Lebenszyklus für PortSelector-Events und bietet eine `dispose()`-Methode für sauberes Aufräumen beim Container-Shutdown ([Details](src/observability/observability-registry.ts))
+- **NotificationCenter**: Präzisiert Fehlerverhalten bei expliziter Channel-Auswahl, wenn kein Channel eine Notification verarbeiten kann; vermeidet stille Fehlkonfigurationen durch aussagekräftige Fehlermeldungen ([Details](src/notifications/NotificationCenter.ts))
+- **Bootstrap-Flow**: Entfernt den pauschalen `c8 ignore`-Block rund um `initializeFoundryModule` und verlässt sich auf fein-granulare Abdeckungen in den vorhandenen init-solid-Tests ([Details](src/core/init-solid.ts), [docs/BOOTFLOW.md](docs/BOOTFLOW.md))
+
+### Fehlerbehebungen
+- **Hooks-Lifecycle**: RenderJournalDirectoryHook und JournalCacheInvalidationHook deregistrieren ihre Foundry-Hooks jetzt zuverlässig (inkl. Rollback bei partiellen Registrierungsfehlern), um Mehrfach-Registrierungen nach Modul-Reloads zu verhindern ([Details](src/core/hooks/render-journal-directory-hook.ts), [src/core/hooks/journal-cache-invalidation-hook.ts))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.25.0] - 2025-11-16
 ### Hinzugefügt
 - **Audit-Report**: Dokumentiert Clean-Code-/Dokumentations-Findings vom 15.11.2025 inkl. Architektur-, Settings- und JSDoc-Bewertung ([Details](docs/audits/audit-2025-11-15.md))
