@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.3] - 2025-11-16
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.25.2] - 2025-11-16
 ### Hinzugefügt
 - Keine Einträge

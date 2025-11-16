@@ -73,11 +73,7 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
 export class DIJournalCacheInvalidationHook extends JournalCacheInvalidationHook {
   static dependencies = [foundryHooksToken, cacheServiceToken, notificationCenterToken] as const;
 
-  constructor(
-    hooks: FoundryHooks,
-    cache: CacheService,
-    notificationCenter: NotificationCenter
-  ) {
+  constructor(hooks: FoundryHooks, cache: CacheService, notificationCenter: NotificationCenter) {
     super(hooks, cache, notificationCenter);
   }
 }

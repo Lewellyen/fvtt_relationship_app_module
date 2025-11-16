@@ -90,4 +90,3 @@ export class DIModuleHookRegistrar extends ModuleHookRegistrar {
     super(renderJournalHook, journalCacheInvalidationHook, notificationCenter);
   }
 }
-

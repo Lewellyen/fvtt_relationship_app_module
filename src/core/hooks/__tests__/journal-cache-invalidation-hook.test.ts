@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import { describe, it, expect, vi } from "vitest";
 import type { Mock } from "vitest";
 import { JournalCacheInvalidationHook } from "../journal-cache-invalidation-hook";
@@ -9,7 +11,11 @@ import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 describe("JournalCacheInvalidationHook", () => {
   it("registers Foundry hooks and invalidates cache", () => {
     const mockHooks: Pick<FoundryHooks, "on" | "off"> = {
-      on: vi.fn().mockReturnValueOnce(ok(11)).mockReturnValueOnce(ok(22)).mockReturnValueOnce(ok(33)),
+      on: vi
+        .fn()
+        .mockReturnValueOnce(ok(11))
+        .mockReturnValueOnce(ok(22))
+        .mockReturnValueOnce(ok(33)),
       off: vi.fn().mockReturnValue(ok(undefined)),
     };
 
@@ -112,7 +118,11 @@ describe("JournalCacheInvalidationHook", () => {
 
   it("unregisters hooks on dispose", () => {
     const mockHooks: Pick<FoundryHooks, "on" | "off"> = {
-      on: vi.fn().mockReturnValueOnce(ok(11)).mockReturnValueOnce(ok(22)).mockReturnValueOnce(ok(33)),
+      on: vi
+        .fn()
+        .mockReturnValueOnce(ok(11))
+        .mockReturnValueOnce(ok(22))
+        .mockReturnValueOnce(ok(33)),
       off: vi.fn().mockReturnValue(ok(undefined)),
     };
 

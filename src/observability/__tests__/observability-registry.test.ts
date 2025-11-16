@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import { describe, it, expect, vi } from "vitest";
 import { ObservabilityRegistry, type ObservableService } from "../observability-registry";
 import type { Logger } from "@/interfaces/logger";

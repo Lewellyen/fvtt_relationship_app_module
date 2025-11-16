@@ -39,7 +39,7 @@ export class HookRegistrationManager {
         // Defensive: Fehler beim Abmelden eines Hooks sollen den Shutdown
         // nicht abbrechen. Logge dennoch zur Diagnose in der Konsole.
         // Aufrufer können zusätzlich eigene Logging-Strategien verwenden.
-        // eslint-disable-next-line no-console
+
         console.warn("HookRegistrationManager: failed to unregister hook", error);
       }
     }

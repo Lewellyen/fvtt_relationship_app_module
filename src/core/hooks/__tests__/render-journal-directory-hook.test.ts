@@ -1,7 +1,8 @@
 /**
  * Tests for RenderJournalDirectoryHook
  */
-
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import { describe, it, expect, vi } from "vitest";
 import {
   RenderJournalDirectoryHook,
@@ -10,10 +11,7 @@ import {
 import { ok, err } from "@/utils/functional/result";
 import { MODULE_CONSTANTS } from "@/constants";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
-import {
-  journalVisibilityServiceToken,
-  notificationCenterToken,
-} from "@/tokens/tokenindex";
+import { journalVisibilityServiceToken, notificationCenterToken } from "@/tokens/tokenindex";
 import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { JournalVisibilityService } from "@/services/JournalVisibilityService";

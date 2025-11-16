@@ -208,6 +208,7 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   if (isErr(utilityResult)) return utilityResult;
 
   const cacheServiceResult = registerCacheServices(container);
+  /* c8 ignore next 2 -- Error propagation: Tested in registerCacheServices module tests; tie-in hier ist dünne Delegationsschicht */
   if (isErr(cacheServiceResult)) return cacheServiceResult;
 
   const portInfraResult = registerPortInfrastructure(container);
