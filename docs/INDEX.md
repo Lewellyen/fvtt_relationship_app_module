@@ -1,8 +1,8 @@
 # Dokumentations-Index
 
-**Model:** Claude Sonnet 4.5  
-**Datum:** 2025-11-13  
-**Projekt-Version:** 0.19.1 (Pre-Release)  
+**Model:** GPT-5.1 Codex  
+**Datum:** 2025-11-15  
+**Projekt-Version:** 0.24.0 (Pre-Release)  
 **API-Version:** 1.0.0
 
 ---
@@ -75,7 +75,7 @@
 
 | Dokument | Zweck |
 |----------|-------|
-| [roadmaps/ROADMAP.md](./roadmaps/ROADMAP.md) | Aktuelle Vorhaben (v1.0 Fokus & Post-Release) |
+| [roadmaps/ROADMAP-2025-11.md](./roadmaps/ROADMAP-2025-11.md) | Aktuelle Vorhaben (UI-Styles & RuntimeConfig DX) |
 
 ---
 
@@ -91,6 +91,7 @@
 
 | Dokument | Zweck |
 |----------|-------|
+| [audits/audit-2025-11-15.md](./audits/audit-2025-11-15.md) | Aktueller Clean-Code-/Dokumentations-Audit (15.11.2025) |
 | [archive/](./archive/) | Historische Audit-Reports (Stand 2025-11-09) |
 
 ---

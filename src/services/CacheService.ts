@@ -10,7 +10,12 @@ import type {
   CacheStatistics,
 } from "@/interfaces/cache";
 import type { MetricsCollector } from "@/observability/metrics-collector";
-import { cacheServiceConfigToken, metricsCollectorToken } from "@/tokens/tokenindex";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import {
+  cacheServiceConfigToken,
+  metricsCollectorToken,
+  runtimeConfigToken,
+} from "@/tokens/tokenindex";
 
 type InternalCacheEntry = {
   value: unknown;
@@ -39,12 +44,14 @@ export class CacheService implements CacheServiceContract {
     evictions: 0,
   };
 
-  private readonly config: CacheServiceConfig;
+  private config: CacheServiceConfig;
+  private runtimeConfigUnsubscribe: (() => void) | null = null;
 
   constructor(
     config: CacheServiceConfig = DEFAULT_CACHE_SERVICE_CONFIG,
     private readonly metricsCollector?: MetricsCollector,
-    private readonly clock: () => number = () => Date.now()
+    private readonly clock: () => number = () => Date.now(),
+    runtimeConfig?: RuntimeConfigService
   ) {
     const resolvedMaxEntries =
       typeof config?.maxEntries === "number" && config.maxEntries > 0
@@ -57,6 +64,8 @@ export class CacheService implements CacheServiceContract {
       defaultTtlMs: clampTtl(config?.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs),
       ...(resolvedMaxEntries !== undefined ? { maxEntries: resolvedMaxEntries } : {}),
     };
+
+    this.bindRuntimeConfig(runtimeConfig);
   }
 
   get isEnabled(): boolean {
@@ -124,12 +133,7 @@ export class CacheService implements CacheServiceContract {
 
   clear(): number {
     if (!this.isEnabled) return 0;
-    const removed = this.store.size;
-    this.store.clear();
-    if (removed > 0) {
-      this.stats.evictions += removed;
-    }
-    return removed;
+    return this.clearStore();
   }
 
   invalidateWhere(predicate: CacheInvalidationPredicate): number {
@@ -281,12 +285,86 @@ export class CacheService implements CacheServiceContract {
       tags: [...metadata.tags],
     };
   }
+
+  private updateConfig(partial: Partial<CacheServiceConfig>): void {
+    const merged: CacheServiceConfig = {
+      ...this.config,
+      ...partial,
+    };
+
+    merged.defaultTtlMs = clampTtl(merged.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs);
+
+    if (typeof merged.maxEntries === "number" && !(merged.maxEntries > 0)) {
+      delete merged.maxEntries;
+    }
+
+    this.config = merged;
+
+    if (!this.isEnabled) {
+      this.clearStore();
+      return;
+    }
+
+    if (typeof this.config.maxEntries === "number") {
+      this.enforceCapacity();
+    }
+  }
+
+  private bindRuntimeConfig(runtimeConfig?: RuntimeConfigService): void {
+    if (!runtimeConfig) {
+      return;
+    }
+
+    this.runtimeConfigUnsubscribe?.();
+
+    const unsubscribers: Array<() => void> = [];
+    unsubscribers.push(
+      runtimeConfig.onChange("enableCacheService", (enabled) => {
+        this.updateConfig({ enabled });
+      })
+    );
+    unsubscribers.push(
+      runtimeConfig.onChange("cacheDefaultTtlMs", (ttl) => {
+        this.updateConfig({ defaultTtlMs: ttl });
+      })
+    );
+    unsubscribers.push(
+      runtimeConfig.onChange("cacheMaxEntries", (maxEntries) => {
+        this.updateConfig({
+          maxEntries: typeof maxEntries === "number" && maxEntries > 0 ? maxEntries : undefined,
+        });
+      })
+    );
+
+    this.runtimeConfigUnsubscribe = () => {
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe();
+      }
+    };
+  }
+
+  private clearStore(): number {
+    const removed = this.store.size;
+    this.store.clear();
+    if (removed > 0) {
+      this.stats.evictions += removed;
+    }
+    return removed;
+  }
 }
 
 export class DICacheService extends CacheService {
-  static dependencies = [cacheServiceConfigToken, metricsCollectorToken] as const;
+  static dependencies = [
+    cacheServiceConfigToken,
+    metricsCollectorToken,
+    runtimeConfigToken,
+  ] as const;
 
-  constructor(config: CacheServiceConfig, metrics: MetricsCollector) {
-    super(config, metrics);
+  constructor(
+    config: CacheServiceConfig,
+    metrics: MetricsCollector,
+    runtimeConfig: RuntimeConfigService
+  ) {
+    super(config, metrics, undefined, runtimeConfig);
   }
 }

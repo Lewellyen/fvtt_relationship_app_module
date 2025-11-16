@@ -24,7 +24,6 @@ describe("UIChannel", () => {
     devConfig = createMockRuntimeConfig({
       logLevel: LogLevel.DEBUG,
       enablePerformanceTracking: false,
-      enableDebugMode: true,
     });
 
     prodConfig = createMockRuntimeConfig({
@@ -32,7 +31,6 @@ describe("UIChannel", () => {
       isProduction: true,
       logLevel: LogLevel.INFO,
       enablePerformanceTracking: false,
-      enableDebugMode: false,
       performanceSamplingRate: 0.01,
     });
   });

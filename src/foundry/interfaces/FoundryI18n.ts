@@ -18,12 +18,12 @@ export interface FoundryI18n extends Disposable {
   /**
    * Localize a string using Foundry's translation system.
    *
-   * @param key - Translation key (e.g., "MODULE.SETTINGS.enableFeature")
+   * @param key - Translation key (e.g., "MODULE.SETTINGS.logLevel.name")
    * @returns Result with translated string or error if key not found
    *
    * @example
    * ```typescript
-   * const result = i18n.localize("MODULE.SETTINGS.enableFeature");
+   * const result = i18n.localize("MODULE.SETTINGS.logLevel.name");
    * if (result.ok) {
    *   console.log(result.value); // "Enable Feature" (or translated version)
    * }
@@ -57,7 +57,7 @@ export interface FoundryI18n extends Disposable {
    *
    * @example
    * ```typescript
-   * const result = i18n.has("MODULE.SETTINGS.enableFeature");
+   * const result = i18n.has("MODULE.SETTINGS.logLevel.name");
    * if (result.ok && result.value) {
    *   // Key exists, safe to localize
    * }

@@ -26,7 +26,7 @@ import type { TranslationHandler } from "./i18n/TranslationHandler.interface";
  * const i18n = container.resolve(i18nFacadeToken);
  *
  * // Try Foundry first, then local, then fallback
- * const text = i18n.translate("MODULE.SETTINGS.enableFeature", "Enable Feature");
+ * const text = i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level");
  * console.log(text); // Translated or fallback
  * ```
  */
@@ -99,7 +99,7 @@ export class I18nFacadeService {
    * @example
    * ```typescript
    * i18n.loadLocalTranslations({
-   *   "MODULE.SETTINGS.enableFeature": "Enable Feature",
+   *   "MODULE.SETTINGS.logLevel.name": "Log Level",
    *   "MODULE.WELCOME": "Welcome, {name}!"
    * });
    * ```

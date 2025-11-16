@@ -1637,7 +1637,6 @@ const ENV = {
   isProduction: false,
   logLevel: true ? 0 : 1,
   enablePerformanceTracking: true,
-  enableDebugMode: true,
   enableMetricsPersistence: false,
   // type-coverage:ignore-line -- Build-time env var
   metricsPersistenceKey: "fvtt_relationship_app_module.metrics",
@@ -1739,7 +1738,6 @@ const _RuntimeConfigService = class _RuntimeConfigService {
       logLevel: env.logLevel,
       enablePerformanceTracking: env.enablePerformanceTracking,
       performanceSamplingRate: env.performanceSamplingRate,
-      enableDebugMode: env.enableDebugMode,
       enableMetricsPersistence: env.enableMetricsPersistence,
       metricsPersistenceKey: env.metricsPersistenceKey,
       enableCacheService: env.enableCacheService,
@@ -12316,7 +12314,7 @@ function clampTtl(ttl, fallback2) {
 }
 __name(clampTtl, "clampTtl");
 const _CacheService = class _CacheService {
-  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG, metricsCollector, clock = () => Date.now()) {
+  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG, metricsCollector, clock = () => Date.now(), runtimeConfig) {
     this.metricsCollector = metricsCollector;
     this.clock = clock;
     this.store = /* @__PURE__ */ new Map();
@@ -12325,6 +12323,7 @@ const _CacheService = class _CacheService {
       misses: 0,
       evictions: 0
     };
+    this.runtimeConfigUnsubscribe = null;
     const resolvedMaxEntries = typeof config2?.maxEntries === "number" && config2.maxEntries > 0 ? config2.maxEntries : void 0;
     this.config = {
       ...DEFAULT_CACHE_SERVICE_CONFIG,
@@ -12332,6 +12331,7 @@ const _CacheService = class _CacheService {
       defaultTtlMs: clampTtl(config2?.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs),
       ...resolvedMaxEntries !== void 0 ? { maxEntries: resolvedMaxEntries } : {}
     };
+    this.bindRuntimeConfig(runtimeConfig);
   }
   get isEnabled() {
     return this.config.enabled;
@@ -12383,12 +12383,7 @@ const _CacheService = class _CacheService {
   }
   clear() {
     if (!this.isEnabled) return 0;
-    const removed = this.store.size;
-    this.store.clear();
-    if (removed > 0) {
-      this.stats.evictions += removed;
-    }
-    return removed;
+    return this.clearStore();
   }
   invalidateWhere(predicate) {
     if (!this.isEnabled) return 0;
@@ -12505,16 +12500,75 @@ const _CacheService = class _CacheService {
       tags: [...metadata2.tags]
     };
   }
+  updateConfig(partial2) {
+    const merged = {
+      ...this.config,
+      ...partial2
+    };
+    merged.defaultTtlMs = clampTtl(merged.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs);
+    if (typeof merged.maxEntries === "number" && !(merged.maxEntries > 0)) {
+      delete merged.maxEntries;
+    }
+    this.config = merged;
+    if (!this.isEnabled) {
+      this.clearStore();
+      return;
+    }
+    if (typeof this.config.maxEntries === "number") {
+      this.enforceCapacity();
+    }
+  }
+  bindRuntimeConfig(runtimeConfig) {
+    if (!runtimeConfig) {
+      return;
+    }
+    this.runtimeConfigUnsubscribe?.();
+    const unsubscribers = [];
+    unsubscribers.push(
+      runtimeConfig.onChange("enableCacheService", (enabled) => {
+        this.updateConfig({ enabled });
+      })
+    );
+    unsubscribers.push(
+      runtimeConfig.onChange("cacheDefaultTtlMs", (ttl) => {
+        this.updateConfig({ defaultTtlMs: ttl });
+      })
+    );
+    unsubscribers.push(
+      runtimeConfig.onChange("cacheMaxEntries", (maxEntries2) => {
+        this.updateConfig({
+          maxEntries: typeof maxEntries2 === "number" && maxEntries2 > 0 ? maxEntries2 : void 0
+        });
+      })
+    );
+    this.runtimeConfigUnsubscribe = () => {
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe();
+      }
+    };
+  }
+  clearStore() {
+    const removed = this.store.size;
+    this.store.clear();
+    if (removed > 0) {
+      this.stats.evictions += removed;
+    }
+    return removed;
+  }
 };
 __name(_CacheService, "CacheService");
 let CacheService = _CacheService;
 const _DICacheService = class _DICacheService extends CacheService {
-  constructor(config2, metrics) {
-    super(config2, metrics);
+  constructor(config2, metrics, runtimeConfig) {
+    super(config2, metrics, void 0, runtimeConfig);
   }
 };
 __name(_DICacheService, "DICacheService");
-_DICacheService.dependencies = [cacheServiceConfigToken, metricsCollectorToken];
+_DICacheService.dependencies = [
+  cacheServiceConfigToken,
+  metricsCollectorToken,
+  runtimeConfigToken
+];
 let DICacheService = _DICacheService;
 function registerCacheServices(container) {
   const runtimeConfig = container.getRegisteredValue(runtimeConfigToken);
@@ -12613,7 +12667,7 @@ const _LocalI18nService = class _LocalI18nService {
    * ```typescript
    * const i18n = new LocalI18nService();
    * i18n.loadTranslations({
-   *   "MODULE.SETTINGS.enableFeature": "Enable Feature",
+   *   "MODULE.SETTINGS.logLevel.name": "Log Level",
    *   "MODULE.WELCOME": "Welcome, {name}!"
    * });
    * ```
@@ -12631,7 +12685,7 @@ const _LocalI18nService = class _LocalI18nService {
    *
    * @example
    * ```typescript
-   * const result = i18n.translate("MODULE.SETTINGS.enableFeature");
+   * const result = i18n.translate("MODULE.SETTINGS.logLevel.name");
    * if (result.ok) {
    *   console.log(result.value); // "Enable Feature" or key if not found
    * }
@@ -12768,7 +12822,7 @@ const _I18nFacadeService = class _I18nFacadeService {
    * @example
    * ```typescript
    * i18n.loadLocalTranslations({
-   *   "MODULE.SETTINGS.enableFeature": "Enable Feature",
+   *   "MODULE.SETTINGS.logLevel.name": "Log Level",
    *   "MODULE.WELCOME": "Welcome, {name}!"
    * });
    * ```
@@ -13395,6 +13449,48 @@ const metricsPersistenceKeySetting = {
     };
   }
 };
+const _ModuleSettingsContextResolver = class _ModuleSettingsContextResolver {
+  resolve(container) {
+    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
+    if (!notificationCenterResult.ok) {
+      console.error("Failed to resolve NotificationCenter for ModuleSettingsRegistrar", {
+        error: notificationCenterResult.error
+      });
+      return null;
+    }
+    const notifications = notificationCenterResult.value;
+    const foundrySettingsResult = container.resolveWithError(foundrySettingsToken);
+    const loggerResult = container.resolveWithError(loggerToken);
+    const i18nResult = container.resolveWithError(i18nFacadeToken);
+    const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
+    if (!foundrySettingsResult.ok || !loggerResult.ok || !i18nResult.ok || !runtimeConfigResult.ok) {
+      notifications.error(
+        "DI resolution failed in ModuleSettingsRegistrar",
+        {
+          code: "DI_RESOLUTION_FAILED",
+          message: "Required services for ModuleSettingsRegistrar are missing",
+          details: {
+            settingsResolved: foundrySettingsResult.ok,
+            i18nResolved: i18nResult.ok,
+            loggerResolved: loggerResult.ok,
+            runtimeConfigResolved: runtimeConfigResult.ok
+          }
+        },
+        { channels: ["ConsoleChannel"] }
+      );
+      return null;
+    }
+    return {
+      notifications,
+      foundrySettings: foundrySettingsResult.value,
+      logger: loggerResult.value,
+      i18n: i18nResult.value,
+      runtimeConfig: runtimeConfigResult.value
+    };
+  }
+};
+__name(_ModuleSettingsContextResolver, "ModuleSettingsContextResolver");
+let ModuleSettingsContextResolver = _ModuleSettingsContextResolver;
 const runtimeConfigBindings = {
   [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: {
     runtimeKey: "logLevel",
@@ -13438,6 +13534,9 @@ const runtimeConfigBindings = {
   }
 };
 const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
+  constructor() {
+    this.contextResolver = new ModuleSettingsContextResolver();
+  }
   /**
    * Registers all module settings.
    * Must be called during or after the 'init' hook.
@@ -13445,39 +13544,11 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
    * @param container - DI container with registered services
    */
   registerAll(container) {
-    const settingsResult = container.resolveWithError(foundrySettingsToken);
-    const loggerResult = container.resolveWithError(loggerToken);
-    const i18nResult = container.resolveWithError(i18nFacadeToken);
-    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
-    if (!notificationCenterResult.ok) {
-      console.error("Failed to resolve NotificationCenter for ModuleSettingsRegistrar", {
-        error: notificationCenterResult.error
-      });
+    const context = this.contextResolver.resolve(container);
+    if (!context) {
       return;
     }
-    const notifications = notificationCenterResult.value;
-    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok || !runtimeConfigResult.ok) {
-      notifications.error(
-        "DI resolution failed in ModuleSettingsRegistrar",
-        {
-          code: "DI_RESOLUTION_FAILED",
-          message: "Required services for ModuleSettingsRegistrar are missing",
-          details: {
-            settingsResolved: settingsResult.ok,
-            i18nResolved: i18nResult.ok,
-            loggerResolved: loggerResult.ok
-          },
-          runtimeConfigResolved: runtimeConfigResult.ok
-        },
-        { channels: ["ConsoleChannel"] }
-      );
-      return;
-    }
-    const foundrySettings = settingsResult.value;
-    const logger = loggerResult.value;
-    const i18n = i18nResult.value;
-    const runtimeConfig = runtimeConfigResult.value;
+    const { foundrySettings, runtimeConfig, notifications, i18n, logger } = context;
     this.registerDefinition(
       logLevelSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL],
@@ -13923,7 +13994,6 @@ function registerFallbacks(container) {
       isDevelopment: false,
       isProduction: false,
       enablePerformanceTracking: false,
-      enableDebugMode: true,
       enableMetricsPersistence: false,
       metricsPersistenceKey: "fallback.metrics",
       performanceSamplingRate: 1,

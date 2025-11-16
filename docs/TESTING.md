@@ -67,6 +67,10 @@ npm run test:coverage
 
 Coverage-Report wird generiert in `coverage/index.html`.
 
+### Regressionswächter
+
+- **ModuleSettingsContextResolver**: Die Datei `src/core/settings/__tests__/module-settings-context-resolver.test.ts` deckt sowohl Erfolgs- als auch Fehlerpfade (NotificationCenter-Ausfall, fehlende DI-Abhängigkeiten) ab und stellt sicher, dass die globalen 100 %-Coverage-Grenzen bei zukünftigen Refactorings eingehalten werden.
+
 ---
 
 ## Test Structure

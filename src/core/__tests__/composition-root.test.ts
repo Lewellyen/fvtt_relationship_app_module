@@ -37,7 +37,6 @@ describe("CompositionRoot", () => {
         createMockEnvironmentConfig({
           logLevel: 0,
           enablePerformanceTracking: true,
-          enableDebugMode: false, // Debug logging is separate from performance tracking
           performanceSamplingRate: 1.0,
         })
       );
@@ -63,7 +62,6 @@ describe("CompositionRoot", () => {
           isProduction: true,
           logLevel: 1,
           enablePerformanceTracking: false,
-          enableDebugMode: false,
           performanceSamplingRate: 0.01,
         })
       );
@@ -89,7 +87,6 @@ describe("CompositionRoot", () => {
         createMockEnvironmentConfig({
           logLevel: 0,
           enablePerformanceTracking: true,
-          enableDebugMode: true,
           performanceSamplingRate: 1.0,
         })
       );

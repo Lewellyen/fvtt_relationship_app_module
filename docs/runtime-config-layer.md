@@ -62,7 +62,7 @@ sequenceDiagram
 - Bleibt ein Setting wie `cacheMaxEntries` auf ENV-/Foundry-Ebene undefiniert, liefert `RuntimeConfigService` bewusst `undefined`, damit Konsumenten den unbegrenzten Default erkennen und keine künstlichen Limits erzwingen.
 
 ## Implementierungsstand (v0.23.x)
-- `RuntimeConfigService` (`src/core/runtime-config/runtime-config.service.ts`) hält ENV-Defaults (`isDevelopment`, `isProduction`, `logLevel`, `enablePerformanceTracking`, `performanceSamplingRate`, `enableDebugMode`, `enableMetricsPersistence`, `metricsPersistenceKey`, `enableCacheService`, `cacheDefaultTtlMs`, `cacheMaxEntries`) und bietet `get / setFromFoundry / onChange`.
+- `RuntimeConfigService` (`src/core/runtime-config/runtime-config.service.ts`) hält ENV-Defaults (`isDevelopment`, `isProduction`, `logLevel`, `enablePerformanceTracking`, `performanceSamplingRate`, `enableMetricsPersistence`, `metricsPersistenceKey`, `enableCacheService`, `cacheDefaultTtlMs`, `cacheMaxEntries`) und bietet `get / setFromFoundry / onChange`.
 - `ModuleSettingsRegistrar` (`src/core/module-settings-registrar.ts`) mappt definierte Settings (`logLevel`, `cacheEnabled`, `cacheTtlMs`, `cacheMaxEntries`) über `runtimeConfigBindings` auf den Service:
   - Nach dem Registern: `foundrySettings.get(...)` → `runtimeConfig.setFromFoundry(...)`
   - `onChange`-Callbacks werden automatisch um den Runtime-Bridge-Aufruf erweitert.

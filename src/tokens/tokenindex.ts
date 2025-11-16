@@ -157,7 +157,7 @@ export const journalVisibilityServiceToken = createInjectionToken<JournalVisibil
  * @example
  * ```typescript
  * const i18n = container.resolve(foundryI18nToken);
- * const result = i18n.localize("MODULE.SETTINGS.enableFeature");
+ * const result = i18n.localize("MODULE.SETTINGS.logLevel.name");
  * if (result.ok) {
  *   console.log(result.value);
  * }
@@ -174,7 +174,7 @@ export const foundryI18nToken = createInjectionToken<FoundryI18nService>("Foundr
  * @example
  * ```typescript
  * const i18n = container.resolve(localI18nToken);
- * const result = i18n.translate("MODULE.SETTINGS.enableFeature");
+ * const result = i18n.translate("MODULE.SETTINGS.logLevel.name");
  * console.log(result.value);
  * ```
  */
@@ -189,7 +189,7 @@ export const localI18nToken = createInjectionToken<LocalI18nService>("LocalI18nS
  * @example
  * ```typescript
  * const i18n = container.resolve(i18nFacadeToken);
- * const text = i18n.translate("MODULE.SETTINGS.enableFeature", "Enable Feature");
+ * const text = i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level");
  * console.log(text);
  * ```
  */

@@ -116,7 +116,6 @@ export function createMockEnvironmentConfig(
     isProduction: false,
     logLevel: LogLevel.DEBUG,
     enablePerformanceTracking: true,
-    enableDebugMode: true,
     enableMetricsPersistence: false,
     metricsPersistenceKey: "test.metrics",
     performanceSamplingRate: 1.0,

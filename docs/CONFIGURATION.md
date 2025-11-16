@@ -12,6 +12,7 @@ Diese Variablen werden zur Build-Zeit gesetzt und beeinflussen das kompilierte M
 |----------|-----|----------|--------------|
 | `MODE` | string | `development` | Build-Modus: `development` oder `production` |
 | `VITE_ENABLE_PERF_TRACKING` | boolean | `false` | Aktiviert Performance-Metriken-Sammlung |
+| `VITE_PERF_SAMPLING_RATE` | number | `0.01` (prod) / `1.0` (dev) | Samplingquote für Performance-Tracking |
 | `VITE_ENABLE_METRICS_PERSISTENCE` | boolean | `false` | Sichert Metriken zwischen Sessions (PersistentMetricsCollector) |
 | `VITE_METRICS_PERSISTENCE_KEY` | string | `fvtt_relationship_app_module.metrics` | LocalStorage-Key für persistente Metriken |
 | `VITE_CACHE_ENABLED` | boolean | `true` | Aktiviert/Deaktiviert den globalen CacheService |
@@ -130,13 +131,20 @@ console.log(`Avg Resolution Time: ${metrics.avgResolutionTimeMs.toFixed(2)}ms`);
 
 ## Runtime Config Layer (Overrides)
 
-- **Build-Time Defaults:** `ENV` (`src/config/environment.ts`) liefert Standardwerte für Log-Level, Performance (Tracking + Sampling Rate), Debug-Flags, Metrics-Persistenz und Cache (Enabled, TTL, Max Entries).
+- **Build-Time Defaults:** `ENV` (`src/config/environment.ts`) liefert Standardwerte für Log-Level, Performance (Tracking + Sampling Rate), Observability-Flags (Metrics-Persistenz) sowie Cache (Enabled, TTL, Max Entries).
 - **RuntimeConfigService:** (`src/core/runtime-config/runtime-config.service.ts`) speichert die Defaults und stellt `get/onChange` bereit.
 - **Foundry Settings Bridge:** Der `ModuleSettingsRegistrar` mappt Settings wie `logLevel` über `runtimeConfigBindings` auf den Service und liest beim `init`-Hook sofort nach (`foundrySettings.get`) → Defaults werden überschrieben, sobald der Foundry-Wert existiert.
 - **Live-Updates:** Änderungen im Foundry-UI triggern `config.onChange`, welches zuerst `RuntimeConfigService.setFromFoundry` aufruft und danach den ursprünglichen Callback.
 - **Consumer:** Services (z. B. `ConsoleLoggerService`) hängen sich an `runtimeConfig.onChange()` und reagieren sofort.
 
-Weitere Details, einschließlich der zusätzlichen ENV-Felder (`isDevelopment`, `isProduction`, `logLevel`, `enablePerformanceTracking`, `performanceSamplingRate`, `enableDebugMode`, `enableMetricsPersistence`, `metricsPersistenceKey`, `enableCacheService`, `cacheDefaultTtlMs`, `cacheMaxEntries`), sind in `docs/runtime-config-layer.md` beschrieben.
+**Samplingrate live anpassen:**
+
+```javascript
+// Reduziert Performance-Overhead auf 25 %
+game.settings.set('fvtt_relationship_app_module', 'performanceSamplingRate', 0.25);
+```
+
+Weitere Details, einschließlich der zusätzlichen ENV-Felder (`isDevelopment`, `isProduction`, `logLevel`, `enablePerformanceTracking`, `performanceSamplingRate`, `enableMetricsPersistence`, `metricsPersistenceKey`, `enableCacheService`, `cacheDefaultTtlMs`, `cacheMaxEntries`), sind in `docs/runtime-config-layer.md` beschrieben.
 
 ### Foundry-Einstellungen, die ENV-Werte übersteuern
 

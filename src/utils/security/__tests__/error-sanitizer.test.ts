@@ -34,7 +34,6 @@ describe("Error Sanitizer", () => {
         isProduction: true,
         logLevel: LogLevel.INFO,
         enablePerformanceTracking: false,
-        enableDebugMode: false,
         performanceSamplingRate: 0.01,
       });
 
@@ -61,7 +60,6 @@ describe("Error Sanitizer", () => {
         isProduction: true,
         logLevel: LogLevel.INFO,
         enablePerformanceTracking: false,
-        enableDebugMode: false,
         performanceSamplingRate: 0.01,
       });
 
@@ -94,7 +92,6 @@ describe("Error Sanitizer", () => {
         isProduction: true,
         logLevel: LogLevel.INFO,
         enablePerformanceTracking: false,
-        enableDebugMode: false,
         performanceSamplingRate: 0.01,
       });
 

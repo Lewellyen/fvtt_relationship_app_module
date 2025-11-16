@@ -14,6 +14,9 @@ import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.
  *
  * Reads defaults from RuntimeConfigService to make cache tuning possible
  * through build-time variables and Foundry settings instead of code changes.
+ *
+ * @param container - Root service container used during bootstrap
+ * @returns Result with `void` on success or error message if registration fails
  */
 export function registerCacheServices(container: ServiceContainer): Result<void, string> {
   const runtimeConfig: RuntimeConfigService | null =

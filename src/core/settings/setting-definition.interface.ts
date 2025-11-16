@@ -38,7 +38,7 @@ export interface SettingConfig<T> {
  * @example
  * ```typescript
  * export const mySettingDefinition: SettingDefinition<boolean> = {
- *   key: 'enableFeature',
+ *   key: 'cacheEnabled',
  *   createConfig(i18n, logger) {
  *     return {
  *       name: i18n.translate('setting.name', 'Enable Feature'),

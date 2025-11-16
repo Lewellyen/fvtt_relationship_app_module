@@ -47,7 +47,6 @@ function registerFallbacks(container: ServiceContainer): void {
       isDevelopment: false,
       isProduction: false,
       enablePerformanceTracking: false,
-      enableDebugMode: true,
       enableMetricsPersistence: false,
       metricsPersistenceKey: "fallback.metrics",
       performanceSamplingRate: 1.0,

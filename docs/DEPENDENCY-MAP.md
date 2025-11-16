@@ -1,7 +1,7 @@
 # Dependency Map - FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-13 (v0.19.1)  
+**Aktualisiert:** 2025-11-15 (v0.24.0)  
 **Zweck:** Detaillierte Abhängigkeits-Visualisierung für Refactoring  
 **Model:** Claude Sonnet 4.5  
 **Projekt-Status:** Version 0.19.1 (Pre-Release)  
@@ -26,6 +26,10 @@ Layer 3: Foundry Adapters (Ports, Services)
     ↓
 Layer 4: Business Services & Facades
 ```
+
+### Neu in v0.24.0
+- **ModuleSettingsContextResolver:** `ModuleSettingsRegistrar` resolved seine Abhängigkeiten jetzt über `module-settings-context-resolver.ts`, bleibt dadurch hook-safe und reduziert Service-Locator-Antipattern.
+- **CacheService Runtime-Reaktivität:** `CacheService` bindet `RuntimeConfigService` direkt ein und reagiert live auf Foundry-Settings (`enableCacheService`, TTL, maxEntries). Registriert über `registerCacheServices`.
 
 ### DI Wrapper Pattern ⭐ UPDATED 2025-11-13
 

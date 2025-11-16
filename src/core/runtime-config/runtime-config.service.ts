@@ -6,7 +6,6 @@ export type RuntimeConfigValues = {
   logLevel: LogLevel;
   enablePerformanceTracking: boolean;
   performanceSamplingRate: number;
-  enableDebugMode: boolean;
   enableMetricsPersistence: boolean;
   metricsPersistenceKey: string;
   enableCacheService: boolean;
@@ -36,7 +35,6 @@ export class RuntimeConfigService {
       logLevel: env.logLevel,
       enablePerformanceTracking: env.enablePerformanceTracking,
       performanceSamplingRate: env.performanceSamplingRate,
-      enableDebugMode: env.enableDebugMode,
       enableMetricsPersistence: env.enableMetricsPersistence,
       metricsPersistenceKey: env.metricsPersistenceKey,
       enableCacheService: env.enableCacheService,

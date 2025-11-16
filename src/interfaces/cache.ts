@@ -67,7 +67,7 @@ export interface CacheStatistics {
 export interface CacheServiceConfig {
   enabled: boolean;
   defaultTtlMs: number;
-  maxEntries?: number;
+  maxEntries?: number | undefined;
   namespace?: string;
 }
 

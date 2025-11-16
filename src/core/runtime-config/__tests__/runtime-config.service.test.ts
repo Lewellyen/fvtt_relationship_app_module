@@ -16,7 +16,6 @@ function createService(
       performanceSamplingRate: 0.5,
       enableMetricsPersistence: false,
       metricsPersistenceKey: "metrics",
-      enableDebugMode: false,
       isDevelopment: true,
       isProduction: false,
       ...restOverrides,
@@ -63,14 +62,12 @@ describe("RuntimeConfigService", () => {
     const service = createService({
       isDevelopment: false,
       isProduction: true,
-      enableDebugMode: true,
       enableMetricsPersistence: true,
       metricsPersistenceKey: "custom.metrics",
     });
 
     expect(service.get("isDevelopment")).toBe(false);
     expect(service.get("isProduction")).toBe(true);
-    expect(service.get("enableDebugMode")).toBe(true);
     expect(service.get("enableMetricsPersistence")).toBe(true);
     expect(service.get("metricsPersistenceKey")).toBe("custom.metrics");
   });

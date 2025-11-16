@@ -3,7 +3,13 @@ import { CacheService, DICacheService, DEFAULT_CACHE_SERVICE_CONFIG } from "../C
 import type { CacheServiceConfig } from "@/interfaces/cache";
 import { createCacheNamespace } from "@/interfaces/cache";
 import type { MetricsCollector } from "@/observability/metrics-collector";
-import { cacheServiceConfigToken, metricsCollectorToken } from "@/tokens/tokenindex";
+import {
+  cacheServiceConfigToken,
+  metricsCollectorToken,
+  runtimeConfigToken,
+} from "@/tokens/tokenindex";
+import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import { LogLevel } from "@/config/environment";
 
 const buildCacheKey = createCacheNamespace("journal");
 
@@ -194,6 +200,56 @@ describe("CacheService", () => {
     expect(metadata.tags).toEqual(["A", "a"]);
   });
 
+  it("reacts to runtime config updates", () => {
+    const runtimeConfig = new RuntimeConfigService({
+      isDevelopment: false,
+      isProduction: true,
+      logLevel: LogLevel.INFO,
+      enablePerformanceTracking: false,
+      performanceSamplingRate: 1,
+      enableMetricsPersistence: false,
+      metricsPersistenceKey: "cache-metrics",
+      enableCacheService: true,
+      cacheDefaultTtlMs: 1000,
+      cacheMaxEntries: 2,
+    });
+
+    const dynamicCache = new CacheService(
+      {
+        enabled: true,
+        defaultTtlMs: 1000,
+        namespace: "dynamic",
+        maxEntries: 2,
+      },
+      metrics,
+      () => now,
+      runtimeConfig
+    );
+
+    const keyA = buildCacheKey("dynamic", "a");
+    const keyB = buildCacheKey("dynamic", "b");
+
+    dynamicCache.set(keyA, ["entry-a"]);
+    runtimeConfig.setFromFoundry("enableCacheService", false);
+    expect(dynamicCache.isEnabled).toBe(false);
+    expect(dynamicCache.get<string[]>(keyA)).toBeNull();
+
+    runtimeConfig.setFromFoundry("enableCacheService", true);
+    dynamicCache.set(keyA, ["entry-a"]);
+    expect(dynamicCache.get<string[]>(keyA)).not.toBeNull();
+
+    runtimeConfig.setFromFoundry("cacheDefaultTtlMs", 50);
+    dynamicCache.set(keyA, ["entry-ttl"]);
+    now += 100;
+    expect(dynamicCache.get<string[]>(keyA)).toBeNull();
+
+    runtimeConfig.setFromFoundry("cacheMaxEntries", 1);
+    dynamicCache.set(keyA, ["entry-a"]);
+    dynamicCache.set(keyB, ["entry-b"]);
+    expect(dynamicCache.has(keyA)).toBe(false);
+    expect(dynamicCache.has(keyB)).toBe(true);
+  });
+
   it("DI wrapper exposes dependencies and forwards constructor args", () => {
     const wrapper = new DICacheService(
       {
@@ -201,11 +257,27 @@ describe("CacheService", () => {
         defaultTtlMs: 1,
         namespace: "test",
       },
-      metrics
+      metrics,
+      new RuntimeConfigService({
+        isDevelopment: false,
+        isProduction: true,
+        logLevel: LogLevel.INFO,
+        enablePerformanceTracking: false,
+        performanceSamplingRate: 1,
+        enableMetricsPersistence: false,
+        metricsPersistenceKey: "cache-metrics",
+        enableCacheService: true,
+        cacheDefaultTtlMs: 1,
+        cacheMaxEntries: undefined,
+      })
     );
 
     expect(wrapper.isEnabled).toBe(true);
-    expect(DICacheService.dependencies).toEqual([cacheServiceConfigToken, metricsCollectorToken]);
+    expect(DICacheService.dependencies).toEqual([
+      cacheServiceConfigToken,
+      metricsCollectorToken,
+      runtimeConfigToken,
+    ]);
   });
 
   it("falls back to default clock when none provided", () => {

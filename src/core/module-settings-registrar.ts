@@ -1,11 +1,4 @@
 import { MODULE_CONSTANTS } from "@/constants";
-import {
-  loggerToken,
-  i18nFacadeToken,
-  notificationCenterToken,
-  runtimeConfigToken,
-} from "@/tokens/tokenindex";
-import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type {
   SettingDefinition,
@@ -39,6 +32,7 @@ import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import type { Logger } from "@/interfaces/logger";
+import { ModuleSettingsContextResolver } from "@/core/settings/module-settings-context-resolver";
 
 interface RuntimeConfigBinding<TSchema, K extends RuntimeConfigKey> {
   runtimeKey: K;
@@ -102,6 +96,7 @@ const runtimeConfigBindings = {
  */
 export class ModuleSettingsRegistrar {
   static dependencies = [] as const;
+  private readonly contextResolver = new ModuleSettingsContextResolver();
 
   /**
    * Registers all module settings.
@@ -110,46 +105,12 @@ export class ModuleSettingsRegistrar {
    * @param container - DI container with registered services
    */
   registerAll(container: ServiceContainer): void {
-    const settingsResult = container.resolveWithError(foundrySettingsToken);
-    const loggerResult = container.resolveWithError(loggerToken);
-    const i18nResult = container.resolveWithError(i18nFacadeToken);
-    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
-
-    if (!notificationCenterResult.ok) {
-      console.error("Failed to resolve NotificationCenter for ModuleSettingsRegistrar", {
-        error: notificationCenterResult.error,
-      });
+    const context = this.contextResolver.resolve(container);
+    if (!context) {
       return;
     }
 
-    const notifications = notificationCenterResult.value;
-
-    // Early return if any resolution failed
-    /* c8 ignore start -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
-    if (!settingsResult.ok || !loggerResult.ok || !i18nResult.ok || !runtimeConfigResult.ok) {
-      notifications.error(
-        "DI resolution failed in ModuleSettingsRegistrar",
-        {
-          code: "DI_RESOLUTION_FAILED",
-          message: "Required services for ModuleSettingsRegistrar are missing",
-          details: {
-            settingsResolved: settingsResult.ok,
-            i18nResolved: i18nResult.ok,
-            loggerResolved: loggerResult.ok,
-          },
-          runtimeConfigResolved: runtimeConfigResult.ok,
-        },
-        { channels: ["ConsoleChannel"] }
-      );
-      return;
-    }
-    /* c8 ignore stop */
-
-    const foundrySettings = settingsResult.value;
-    const logger = loggerResult.value;
-    const i18n = i18nResult.value;
-    const runtimeConfig = runtimeConfigResult.value;
+    const { foundrySettings, runtimeConfig, notifications, i18n, logger } = context;
 
     // Register all settings
     this.registerDefinition(

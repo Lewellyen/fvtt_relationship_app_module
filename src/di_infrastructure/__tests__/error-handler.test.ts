@@ -35,7 +35,6 @@ describe("ContainerErrorHandler", () => {
         isProduction: true,
         logLevel: LogLevel.ERROR,
         enablePerformanceTracking: false,
-        enableDebugMode: false,
         performanceSamplingRate: 0.1,
       });
 
@@ -63,7 +62,6 @@ describe("ContainerErrorHandler", () => {
         isProduction: true,
         logLevel: LogLevel.ERROR,
         enablePerformanceTracking: false,
-        enableDebugMode: false,
         performanceSamplingRate: 0.1,
       });
 

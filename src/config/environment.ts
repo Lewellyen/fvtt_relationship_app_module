@@ -28,9 +28,6 @@ export interface EnvironmentConfig {
   /** Enable performance tracking and metrics */
   enablePerformanceTracking: boolean;
 
-  /** Enable debug mode features (verbose logging, performance marks, etc.) */
-  enableDebugMode: boolean;
-
   /** Enable persistence of metrics between sessions */
   enableMetricsPersistence: boolean;
 
@@ -52,7 +49,7 @@ export interface EnvironmentConfig {
   cacheDefaultTtlMs: number;
 
   /** Optional maximum number of cached entries */
-  cacheMaxEntries?: number;
+  cacheMaxEntries?: number | undefined;
 }
 
 /**
@@ -102,7 +99,6 @@ export const ENV: EnvironmentConfig = {
   isProduction: import.meta.env.MODE === "production",
   logLevel: import.meta.env.MODE === "development" ? LogLevel.DEBUG : LogLevel.INFO,
   enablePerformanceTracking: import.meta.env.VITE_ENABLE_PERF_TRACKING === "true",
-  enableDebugMode: import.meta.env.MODE === "development",
   enableMetricsPersistence: import.meta.env.VITE_ENABLE_METRICS_PERSISTENCE === "true", // type-coverage:ignore-line -- Build-time env var
   metricsPersistenceKey:
     import.meta.env.VITE_METRICS_PERSISTENCE_KEY ?? "fvtt_relationship_app_module.metrics", // type-coverage:ignore-line -- Build-time env var

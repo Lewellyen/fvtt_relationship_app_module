@@ -1,7 +1,7 @@
 # Projektanalyse: FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-14 (v0.20.0)  
+**Aktualisiert:** 2025-11-15 (v0.24.0)  
 **Zweck:** Grundlage für Refactoring-Planungen  
 **Model:** Claude Sonnet 4.5
 
@@ -28,6 +28,10 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 **Breaking Changes:** ✅ Erlaubt (bis Modul 1.0.0)  
 **Legacy-Code:** ❌ Wird unmittelbar bereinigt  
 **Ab Modul 1.0.0:** Breaking Changes nur mit Deprecation-Phase & Migration Guide
+
+### Release-Highlights v0.24.0
+- **RuntimeConfig Live Overrides:** Der CacheService lauscht jetzt direkt auf RuntimeConfig-Änderungen (enable/TTL/maxEntries) und reagiert ohne Reload auf Foundry-Settings. ([Details](src/services/CacheService.ts))
+- **ModuleSettings Context Resolver:** `ModuleSettingsRegistrar` nutzt einen eigenen Resolver und verzichtet auf direkten Service-Locator-Zugriff – bessere Testbarkeit, weniger SRP-Verstöße. ([Details](src/core/settings/module-settings-context-resolver.ts))
 
 ### Release-Highlights v0.20.0
 - **NotificationCenter-only Routing:** Alle Services publizieren Errors/Infos über Channels; `ErrorService` ist entfernt und API-Token spiegeln die neue Architektur wider.

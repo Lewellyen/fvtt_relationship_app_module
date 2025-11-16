@@ -57,7 +57,7 @@ export class LocalI18nService {
    * ```typescript
    * const i18n = new LocalI18nService();
    * i18n.loadTranslations({
-   *   "MODULE.SETTINGS.enableFeature": "Enable Feature",
+   *   "MODULE.SETTINGS.logLevel.name": "Log Level",
    *   "MODULE.WELCOME": "Welcome, {name}!"
    * });
    * ```
@@ -76,7 +76,7 @@ export class LocalI18nService {
    *
    * @example
    * ```typescript
-   * const result = i18n.translate("MODULE.SETTINGS.enableFeature");
+   * const result = i18n.translate("MODULE.SETTINGS.logLevel.name");
    * if (result.ok) {
    *   console.log(result.value); // "Enable Feature" or key if not found
    * }

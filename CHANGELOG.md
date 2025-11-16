@@ -12,6 +12,24 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.0] - 2025-11-16
+### Hinzugefügt
+- **Audit-Report**: Dokumentiert Clean-Code-/Dokumentations-Findings vom 15.11.2025 inkl. Architektur-, Settings- und JSDoc-Bewertung ([Details](docs/audits/audit-2025-11-15.md))
+- **Roadmap 2025-11**: Neuer Fahrplan fokussiert UI-Styles-Reaktivierung & RuntimeConfig-DX ([Details](docs/roadmaps/ROADMAP-2025-11.md))
+
+### Geändert
+- **ModuleSettingsRegistrar**: Verwendet einen Context-Resolver statt Service-Locator-Aufrufen und bleibt dadurch init-hook-kompatibel ([Details](src/core/settings/module-settings-context-resolver.ts))
+- **CacheService**: Hört auf RuntimeConfig-Änderungen (enable/TTL/maxEntries) und setzt Foundry-Settings ohne Reload um ([Details](src/services/CacheService.ts))
+
+### Fehlerbehebungen
+- **ModuleSettingsContextResolver**: Fehlende Tests ließen die globale Coverage-Grenze von 100 % reißen; neue Spezifikation deckt Erfolgs- und Fehlerpfade ab und stabilisiert das Quality Gate dauerhaft ([Details](docs/TESTING.md#regressionswächter))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.24.0] - 2025-11-15
 ### Hinzugefügt
 - **RuntimeConfigService**: Neue Config-Schicht verbindet ENV-Defaults mit Foundry-Settings und stellt `get/onChange` für Services bereit ([Details](src/core/runtime-config/runtime-config.service.ts), [docs/runtime-config-layer.md](docs/runtime-config-layer.md))
