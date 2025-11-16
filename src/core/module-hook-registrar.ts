@@ -1,6 +1,8 @@
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "@/core/hooks/hook-registrar.interface";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import type { Result } from "@/types/result";
+import { ok, err } from "@/utils/functional/result";
 import {
   renderJournalDirectoryHookToken,
   notificationCenterToken,
@@ -34,7 +36,9 @@ export class ModuleHookRegistrar {
    * Registers all hooks with Foundry VTT.
    * @param container - DI container with registered services
    */
-  registerAll(container: ServiceContainer): void {
+  registerAll(container: ServiceContainer): Result<void, Error[]> {
+    const errors: Error[] = [];
+
     for (const hook of this.hooks) {
       const result = hook.register(container);
       if (!result.ok) {
@@ -47,8 +51,15 @@ export class ModuleHookRegistrar {
         this.notificationCenter.error("Failed to register hook", error, {
           channels: ["ConsoleChannel"],
         });
+        errors.push(result.error);
       }
     }
+
+    if (errors.length > 0) {
+      return err(errors);
+    }
+
+    return ok(undefined);
   }
 
   /**
@@ -79,3 +90,4 @@ export class DIModuleHookRegistrar extends ModuleHookRegistrar {
     super(renderJournalHook, journalCacheInvalidationHook, notificationCenter);
   }
 }
+

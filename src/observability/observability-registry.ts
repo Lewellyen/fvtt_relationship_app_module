@@ -71,7 +71,6 @@ export class ObservabilityRegistry {
    * Disposes all registered observers and clears internal state.
    * Intended to be called when the DI container is disposed.
    */
-  /* c8 ignore start -- Lifecycle method: called indirectly via DI container disposal */
   dispose(): void {
     while (this.subscriptions.length > 0) {
       const unsubscribe = this.subscriptions.pop();
@@ -82,7 +81,6 @@ export class ObservabilityRegistry {
       }
     }
   }
-  /* c8 ignore stop */
 
   // Future: Add more registration methods for other observable services
   // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }

@@ -35,9 +35,12 @@ export class HookRegistrationManager {
       const unregister = this.cleanupCallbacks.pop();
       try {
         unregister?.();
-      } catch {
+      } catch (error) {
         // Defensive: Fehler beim Abmelden eines Hooks sollen den Shutdown
-        // nicht abbrechen. Logging passiert in den aufrufenden Services.
+        // nicht abbrechen. Logge dennoch zur Diagnose in der Konsole.
+        // Aufrufer können zusätzlich eigene Logging-Strategien verwenden.
+        // eslint-disable-next-line no-console
+        console.warn("HookRegistrationManager: failed to unregister hook", error);
       }
     }
   }

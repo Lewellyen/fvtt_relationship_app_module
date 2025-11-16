@@ -8,6 +8,7 @@ import {
   sanitizeHtml,
   validateSettingValue,
   validateSettingConfig,
+  validateHookApp,
 } from "../schemas";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
@@ -115,6 +116,39 @@ describe("Sanitization", () => {
       expect(sanitizeHtml('<img src="x" onerror="alert(1)">')).toContain("&lt;img");
       expect(sanitizeHtml('<a href="javascript:alert(1)">click</a>')).toContain("&lt;a");
     });
+  });
+});
+
+describe("validateHookApp", () => {
+  it("should reject null or undefined app", () => {
+    const nullResult = validateHookApp(null);
+    expectResultErr(nullResult);
+    expect(nullResult.error.code).toBe("VALIDATION_FAILED");
+    expect(nullResult.error.message).toContain("null or undefined");
+
+    const undefinedResult = validateHookApp(undefined);
+    expectResultErr(undefinedResult);
+    expect(undefinedResult.error.code).toBe("VALIDATION_FAILED");
+    expect(undefinedResult.error.message).toContain("null or undefined");
+  });
+
+  it("should accept valid app object", () => {
+    const app = {
+      id: "journal-directory",
+      object: { foo: "bar" },
+      options: { some: "option" },
+    };
+
+    const result = validateHookApp(app);
+    expectResultOk(result);
+    expect(result.value.id).toBe("journal-directory");
+  });
+
+  it("should reject app object with invalid shape", () => {
+    const result = validateHookApp({ invalid: true } as any);
+    expectResultErr(result);
+    expect(result.error.code).toBe("VALIDATION_FAILED");
+    expect(result.error.message).toContain("validation failed");
   });
 });
 

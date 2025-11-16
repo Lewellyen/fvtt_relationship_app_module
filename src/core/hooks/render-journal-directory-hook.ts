@@ -5,7 +5,6 @@
  *
  * **Responsibilities:**
  * - Register renderJournalDirectory hook with Foundry
- * - Resolve required services from DI container
  * - Delegate business logic to JournalVisibilityService
  * - Handle cleanup on disposal
  */
@@ -15,8 +14,14 @@ import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "./hook-registrar.interface";
 import { HookRegistrationManager } from "./hook-registration-manager";
 import { MODULE_CONSTANTS, HOOK_THROTTLE_WINDOW_MS } from "@/constants";
-import { journalVisibilityServiceToken, notificationCenterToken } from "@/tokens/tokenindex";
+import {
+  journalVisibilityServiceToken,
+  notificationCenterToken,
+} from "@/tokens/tokenindex";
 import { foundryHooksToken } from "@/foundry/foundrytokens";
+import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
 import { validateHookApp } from "@/foundry/validation/schemas";
 import { throttle } from "@/utils/events/throttle";
 import { ok, err } from "@/utils/functional/result";
@@ -33,40 +38,24 @@ function extractHtmlElement(html: unknown): HTMLElement | null {
 
 /**
  * RenderJournalDirectory hook implementation.
+ *
+ * NOTE: All dependencies are injected via constructor to follow the DI-Wrapper pattern.
+ * The ServiceContainer parameter in register() is kept for HookRegistrar interface
+ * compatibility but is not used anymore.
  */
 export class RenderJournalDirectoryHook implements HookRegistrar {
   private readonly registrationManager = new HookRegistrationManager();
 
+  constructor(
+    private readonly foundryHooks: FoundryHooks,
+    private readonly journalVisibility: JournalVisibilityService,
+    private readonly notificationCenter: NotificationCenter
+  ) {}
+
+  // container is kept for interface compatibility but is no longer used
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   register(container: ServiceContainer): Result<void, Error> {
-    const foundryHooksResult = container.resolveWithError(foundryHooksToken);
-    const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
-    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-
-    /* c8 ignore start -- Defensive: Service resolution can only fail if container is not validated or services are not registered, which cannot happen in normal flow */
-    if (!foundryHooksResult.ok || !journalVisibilityResult.ok || !notificationCenterResult.ok) {
-      if (notificationCenterResult.ok) {
-        notificationCenterResult.value.error(
-          "DI resolution failed in RenderJournalDirectoryHook",
-          {
-            code: "DI_RESOLUTION_FAILED",
-            message: "Required services for RenderJournalDirectoryHook are missing",
-            details: {
-              foundryHooksResolved: foundryHooksResult.ok,
-              journalVisibilityResolved: journalVisibilityResult.ok,
-            },
-          },
-          { channels: ["ConsoleChannel"] }
-        );
-      } else {
-        console.error("NotificationCenter not available for RenderJournalDirectoryHook");
-      }
-      return err(new Error("Failed to resolve required services for RenderJournalDirectoryHook"));
-    }
-    /* c8 ignore stop */
-
-    const foundryHooks = foundryHooksResult.value;
-    const journalVisibility = journalVisibilityResult.value;
-    const notificationCenter = notificationCenterResult.value;
+    const { foundryHooks, journalVisibility, notificationCenter } = this;
 
     const throttledCallback = throttle((app: unknown, html: unknown) => {
       notificationCenter.debug(
@@ -131,17 +120,19 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
     return ok(undefined);
   }
 
-  /* c8 ignore start -- Lifecycle method: Called when module is disabled; cleanup logic not testable in unit tests */
   dispose(): void {
     this.registrationManager.dispose();
   }
-  /* c8 ignore stop */
 }
 
 export class DIRenderJournalDirectoryHook extends RenderJournalDirectoryHook {
-  static dependencies = [] as const;
+  static dependencies = [foundryHooksToken, journalVisibilityServiceToken, notificationCenterToken] as const;
 
-  constructor() {
-    super();
+  constructor(
+    foundryHooks: FoundryHooks,
+    journalVisibility: JournalVisibilityService,
+    notificationCenter: NotificationCenter
+  ) {
+    super(foundryHooks, journalVisibility, notificationCenter);
   }
 }

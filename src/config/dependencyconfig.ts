@@ -117,7 +117,6 @@ function registerLoopPreventionServices(container: ServiceContainer): Result<voi
 /**
  * Instantiates loop-prevention services (health checks) after validation.
  */
-/* c8 ignore start */
 function initializeLoopPreventionValues(container: ServiceContainer): Result<void, string> {
   const registryRes = container.resolveWithError(healthCheckRegistryToken);
   const metricsRes = container.resolveWithError(metricsCollectorToken);
@@ -137,10 +136,8 @@ function initializeLoopPreventionValues(container: ServiceContainer): Result<voi
   if (!metricsCheckResult.ok) {
     return err(`Failed to resolve MetricsHealthCheck: ${metricsCheckResult.error.message}`);
   }
-
   return ok(undefined);
 }
-/* c8 ignore end */
 
 /**
  * Validates the container configuration.

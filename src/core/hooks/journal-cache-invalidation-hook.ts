@@ -20,37 +20,16 @@ const JOURNAL_INVALIDATION_HOOKS = [
 export class JournalCacheInvalidationHook implements HookRegistrar {
   private readonly registrationManager = new HookRegistrationManager();
 
+  constructor(
+    private readonly hooks: FoundryHooks,
+    private readonly cache: CacheService,
+    private readonly notificationCenter: NotificationCenter
+  ) {}
+
+  // container is kept for interface compatibility but is no longer used
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   register(container: ServiceContainer): Result<void, Error> {
-    const hooksResult = container.resolveWithError<FoundryHooks>(foundryHooksToken);
-    const cacheResult = container.resolveWithError<CacheService>(cacheServiceToken);
-    const notificationCenterResult =
-      container.resolveWithError<NotificationCenter>(notificationCenterToken);
-
-    /* c8 ignore start -- Defensive: Service resolution can only fail if container misconfigured */
-    if (!hooksResult.ok || !cacheResult.ok || !notificationCenterResult.ok) {
-      if (notificationCenterResult.ok) {
-        notificationCenterResult.value.error(
-          "DI resolution failed in JournalCacheInvalidationHook",
-          {
-            code: "DI_RESOLUTION_FAILED",
-            message: "Required services for JournalCacheInvalidationHook are missing",
-            details: {
-              hooksResolved: hooksResult.ok,
-              cacheResolved: cacheResult.ok,
-            },
-          },
-          { channels: ["ConsoleChannel"] }
-        );
-      } else {
-        console.error("Failed to resolve NotificationCenter for JournalCacheInvalidationHook");
-      }
-      return err(new Error("Failed to resolve required services for JournalCacheInvalidationHook"));
-    }
-    /* c8 ignore stop */
-
-    const hooks = hooksResult.value;
-    const cache = cacheResult.value;
-    const notificationCenter = notificationCenterResult.value;
+    const { hooks, cache, notificationCenter } = this;
 
     for (const hookName of JOURNAL_INVALIDATION_HOOKS) {
       const registrationResult = hooks.on(hookName, () => {
@@ -92,9 +71,13 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
 }
 
 export class DIJournalCacheInvalidationHook extends JournalCacheInvalidationHook {
-  static dependencies = [] as const;
+  static dependencies = [foundryHooksToken, cacheServiceToken, notificationCenterToken] as const;
 
-  constructor() {
-    super();
+  constructor(
+    hooks: FoundryHooks,
+    cache: CacheService,
+    notificationCenter: NotificationCenter
+  ) {
+    super(hooks, cache, notificationCenter);
   }
 }

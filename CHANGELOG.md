@@ -12,6 +12,24 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.2] - 2025-11-16
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Hook-DI & Registrare**: `RenderJournalDirectoryHook` und `JournalCacheInvalidationHook` nutzen jetzt konsequent konstruktorbasierte DI, und `ModuleHookRegistrar.registerAll` propagiert Hook-Registrierungsfehler als `Result<void, Error[]>` für klarere Bootstrap-Fehlerpfade ([Details](src/core/hooks/render-journal-directory-hook.ts), [src/core/hooks/journal-cache-invalidation-hook.ts), [src/core/module-hook-registrar.ts], [src/core/init-solid.ts])
+- **DependencyConfig & init-solid Coverage**: Grobe `c8 ignore`-Blöcke rund um Loop-Prevention-Initialisierung und Bootstrap/Init-Flow wurden entfernt bzw. verfeinert; bestehende Tests decken jetzt die Fehlerpfade explizit ab ([Details](src/config/dependencyconfig.ts), [src/config/__tests__/dependencyconfig.test.ts), [src/core/init-solid.ts], [src/core/__tests__/init-solid.test.ts])
+- **Lifecycle-Disposal**: Dispose-Pfade für Hooks, ObservabilityRegistry und HookRegistrationManager sind nun explizit getestet; `HookRegistrationManager.dispose` loggt fehlgeschlagene Unregister-Callbacks defensiv in die Konsole, ohne den Shutdown zu unterbrechen ([Details](src/core/hooks/render-journal-directory-hook.ts), [src/core/hooks/journal-cache-invalidation-hook.ts], [src/observability/observability-registry.ts], [src/core/hooks/hook-registration-manager.ts], [src/observability/__tests__/observability-registry.test.ts], [src/core/hooks/__tests__/hook-registration-manager.test.ts])
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.25.1] - 2025-11-16
 ### Hinzugefügt
 - Keine Einträge
