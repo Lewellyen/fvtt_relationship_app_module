@@ -172,16 +172,19 @@ describe("UIChannel", () => {
       );
     });
 
-    it("should gracefully handle debug level when forced", () => {
-      const notification: Notification = {
-        level: "debug",
-        context: "Debug context",
-        timestamp: new Date(),
-      };
-
-      channel.send(notification);
-
-      expect(mockFoundryUI.notify).toHaveBeenCalledWith("Debug context", "info", undefined);
+    it("should throw error when debug level is passed to mapLevelToUIType (exhaustive type check)", () => {
+      // Test the exhaustive type check in mapLevelToUIType
+      // This should never be called in practice because canHandle() filters debug level
+      // Create a test subclass to access protected method
+      class TestUIChannel extends UIChannel {
+        public testMapLevelToUIType(level: Notification["level"]): "info" | "warning" | "error" {
+          return this.mapLevelToUIType(level);
+        }
+      }
+      const testChannel = new TestUIChannel(mockFoundryUI, devConfig);
+      expect(() => {
+        testChannel.testMapLevelToUIType("debug");
+      }).toThrow("Debug level should be filtered by canHandle()");
     });
   });
 

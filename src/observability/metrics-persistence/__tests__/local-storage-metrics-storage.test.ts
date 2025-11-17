@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { LocalStorageMetricsStorage } from "../local-storage-metrics-storage";
+import { LocalStorageMetricsStorage, getStorage } from "../local-storage-metrics-storage";
 import type { MetricsPersistenceState } from "@/observability/metrics-collector";
 import { DEFAULT_METRICS_STORAGE_KEY } from "../metrics-storage";
 
@@ -107,5 +107,64 @@ describe("LocalStorageMetricsStorage", () => {
 
     expect(() => storage.save(sampleState)).not.toThrow();
     expect(() => storage.clear()).not.toThrow();
+  });
+
+  describe("getStorage", () => {
+    it("should return localStorage when available", () => {
+      // In test environment, localStorage should be available
+      const result = getStorage();
+
+      expect(result).toBeDefined();
+      expect(result).toBeInstanceOf(Object);
+      // Verify it has Storage-like methods
+      if (result) {
+        expect(typeof result.getItem).toBe("function");
+        expect(typeof result.setItem).toBe("function");
+      }
+    });
+
+    it("should return null when accessing localStorage throws", () => {
+      // Create a mock that throws when accessed
+      const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+      try {
+        Object.defineProperty(globalThis, "localStorage", {
+          get() {
+            throw new Error("localStorage access denied");
+          },
+          configurable: true,
+        });
+
+        const result = getStorage();
+
+        expect(result).toBeNull();
+      } finally {
+        // Restore original descriptor
+        if (originalDescriptor) {
+          Object.defineProperty(globalThis, "localStorage", originalDescriptor);
+        } else {
+          delete (globalThis as { localStorage?: Storage }).localStorage;
+        }
+      }
+    });
+
+    it("should return null when localStorage is not available", () => {
+      // Test the "in" check by temporarily removing localStorage
+      const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+      try {
+        // Delete localStorage property to simulate it not being in globalThis
+        if (originalDescriptor) {
+          delete (globalThis as { localStorage?: Storage }).localStorage;
+        }
+
+        // The "in" check should fail, so getStorage should return null
+        const result = getStorage();
+        expect(result).toBeNull();
+      } finally {
+        // Restore original descriptor
+        if (originalDescriptor) {
+          Object.defineProperty(globalThis, "localStorage", originalDescriptor);
+        }
+      }
+    });
   });
 });

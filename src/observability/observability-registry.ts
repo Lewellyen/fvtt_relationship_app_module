@@ -44,7 +44,6 @@ export class ObservabilityRegistry {
    */
   registerPortSelector(service: ObservableService<PortSelectionEvent>): void {
     const unsubscribe = service.onEvent((event) => {
-      /* c8 ignore start -- Ternary: adapterName is optional parameter rarely provided */
       if (event.type === "success") {
         const adapterSuffix = event.adapterName ? ` for ${event.adapterName}` : "";
         this.logger.debug(
@@ -52,8 +51,6 @@ export class ObservabilityRegistry {
         );
         this.metrics.recordPortSelection(event.selectedVersion);
       } else {
-        /* c8 ignore stop */
-        /* c8 ignore start -- Error path: Port selection failure only occurs in edge cases (no compatible ports) */
         this.logger.error("Port selection failed", {
           foundryVersion: event.foundryVersion,
           availableVersions: event.availableVersions,
@@ -61,7 +58,6 @@ export class ObservabilityRegistry {
         });
         this.metrics.recordPortSelectionFailure(event.foundryVersion);
       }
-      /* c8 ignore stop */
     });
 
     this.subscriptions.push(unsubscribe);

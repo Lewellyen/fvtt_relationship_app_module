@@ -54,8 +54,12 @@ export class LocalStorageMetricsStorage implements MetricsStorage {
   }
 }
 
-/* c8 ignore start */
-function getStorage(): Storage | null {
+/**
+ * Gets the localStorage object if available in the current environment.
+ * Returns null if localStorage is not available (e.g., server-side, private mode).
+ * Exported for testing purposes.
+ */
+export function getStorage(): Storage | null {
   try {
     if (typeof globalThis !== "undefined" && "localStorage" in globalThis) {
       return globalThis.localStorage;
@@ -65,4 +69,3 @@ function getStorage(): Storage | null {
   }
   return null;
 }
-/* c8 ignore end */

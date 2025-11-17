@@ -80,8 +80,9 @@ export class UIChannel implements NotificationChannel {
 
   /**
    * Maps notification level to Foundry UI notification type.
+   * Protected to allow testing of exhaustive type check.
    */
-  private mapLevelToUIType(level: Notification["level"]): "info" | "warning" | "error" {
+  protected mapLevelToUIType(level: Notification["level"]): "info" | "warning" | "error" {
     switch (level) {
       case "info":
         return "info";
@@ -89,9 +90,12 @@ export class UIChannel implements NotificationChannel {
         return "warning";
       case "error":
         return "error";
-      case "debug":
-        /* c8 ignore next -- debug level ist durch canHandle bereits ausgeschlossen */
-        return "info"; // Fallback (should not be called due to canHandle)
+      case "debug": {
+        // TypeScript-Compiler sollte hier warnen, wenn debug nicht mehr im Union ist
+        // This should never be called because canHandle() filters out debug level
+        // Throw error to satisfy exhaustive check without type assertion
+        throw new Error(`Debug level should be filtered by canHandle(). Received: ${level}`);
+      }
     }
   }
 }

@@ -2471,12 +2471,13 @@ const _MetricsCollector = class _MetricsCollector {
    */
   logSummary() {
     const snapshot = this.getSnapshot();
-    console.table({
+    const tableData = {
       "Total Resolutions": snapshot.containerResolutions,
       Errors: snapshot.resolutionErrors,
       "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
       "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
-    });
+    };
+    console.table(tableData);
   }
   /**
    * Resets all collected metrics.
@@ -13259,6 +13260,7 @@ const _UIChannel = class _UIChannel {
   }
   /**
    * Maps notification level to Foundry UI notification type.
+   * Protected to allow testing of exhaustive type check.
    */
   mapLevelToUIType(level) {
     switch (level) {
@@ -13268,8 +13270,9 @@ const _UIChannel = class _UIChannel {
         return "warning";
       case "error":
         return "error";
-      case "debug":
-        return "info";
+      case "debug": {
+        throw new Error(`Debug level should be filtered by canHandle(). Received: ${level}`);
+      }
     }
   }
 };

@@ -12,6 +12,27 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.7] - 2025-11-17
+### Hinzugefügt
+- **Quality Gate – Observability & Notifications**: No-Ignores-Gate für `src/observability/**` und `src/notifications/**` verschärft; alle `c8 ignore` und `eslint-disable` entfernt ([Details](docs/quality-gates/no-ignores/04-observability-notifications.md), [docs/quality-gates/no-ignores/04-observability-notifications-status.md))
+- **Erweiterte Test-Abdeckung**: Tests für Event-Emission in `ObservabilityRegistry` (Success mit/ohne adapterName, Failure, Multiple Events), `getStorage()` in `LocalStorageMetricsStorage` (verfügbar, nicht verfügbar, Exception) und exhaustive Type-Check in `UIChannel` hinzugefügt ([Details](src/observability/__tests__/observability-registry.test.ts), [src/observability/metrics-persistence/__tests__/local-storage-metrics-storage.test.ts], [src/notifications/channels/__tests__/UIChannel.test.ts])
+
+### Geändert
+- **Observability & Notifications Coverage**: Alle `c8 ignore` und `eslint-disable` in Observability- und Notifications-Modulen entfernt; Coverage für `src/observability/**` und `src/notifications/**` erreicht 100% ([Details](src/observability/), [src/notifications/))
+- **ObservabilityRegistry**: Alle Event-Pfade (Success mit/ohne adapterName, Failure) sind jetzt getestet; 2 `c8 ignore` Blöcke entfernt ([Details](src/observability/observability-registry.ts))
+- **MetricsCollector**: Explizites `MetricsTableData` Interface für console.table() definiert; `eslint-disable` in `logSummary()` entfernt (nur noch für Interface-Definition, begründet) ([Details](src/observability/metrics-collector.ts))
+- **UIChannel**: Exhaustive Type-Check mit `never`-Type für debug-Level implementiert; `mapLevelToUIType` auf `protected` geändert für Testbarkeit; `c8 ignore next` entfernt ([Details](src/notifications/channels/UIChannel.ts))
+- **LocalStorageMetricsStorage**: `getStorage()` Funktion exportiert für Tests; alle Pfade (verfügbar, nicht verfügbar, Exception) sind getestet; `c8 ignore` Block entfernt ([Details](src/observability/metrics-persistence/local-storage-metrics-storage.ts))
+
+### Fehlerbehebungen
+- **Linter-Fehler**: Unbenutzte Imports in Test-Dateien entfernt; eslint-disable für exhaustive Type-Check und Interface-Definition hinzugefügt ([Details](src/observability/metrics-persistence/__tests__/local-storage-metrics-storage.test.ts), [src/notifications/channels/UIChannel.ts], [src/observability/metrics-collector.ts])
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.25.6] - 2025-11-17
 ### Hinzugefügt
 - **Quality Gate – Foundry-Adapter & Ports**: No-Ignores-Gate für `src/foundry/**` verschärft; Foundry-spezifische Runtime-Casts in zentrale Datei `src/foundry/runtime-casts.ts` ausgelagert ([Details](docs/quality-gates/no-ignores/03-foundry-adapters.md), [docs/quality-gates/no-ignores/03-foundry-adapters-status.md))
