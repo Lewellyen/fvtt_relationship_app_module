@@ -22,10 +22,7 @@ export class FallbackTranslationHandler extends AbstractTranslationHandler {
     return fallback ?? key;
   }
 
-  protected doHas(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _key: string
-  ): boolean {
+  protected doHas(_key: string): boolean {
     // Fallback handler doesn't "have" any keys
     // It just provides the fallback, so return false
     return false;

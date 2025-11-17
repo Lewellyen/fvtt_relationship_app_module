@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { PortRegistry } from "../portregistry";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import * as runtimeCasts from "@/foundry/runtime-casts";
 
 describe("PortRegistry", () => {
   describe("register", () => {
@@ -135,38 +136,33 @@ describe("PortRegistry", () => {
       // Register a factory for version 13
       registry.register(13, () => "port-13");
 
-      // To test the defensive check (lines 98-106), we need to simulate
-      // a scenario where compatibleVersions contains a version but
-      // this.factories.get() returns undefined.
-      //
-      // Since factories is private, we can't directly manipulate it.
-      // However, we can use a workaround: register version 13, then
-      // use getFactories() to get a copy, delete from the copy, and
-      // then manually call createForVersion with a modified internal state.
-      //
-      // Actually, a better approach: We can test this by creating a
-      // subclass that exposes the factories map, or by using a spy.
-      // But the simplest approach is to accept that this is a defensive
-      // check that's hard to test without exposing internal state.
-      //
-      // For coverage, we'll add a c8 ignore comment for this defensive
-      // check, similar to how we handle other defensive checks in the codebase.
-
       // Test normal path to ensure functionality works
       const result = registry.createForVersion(13);
       expectResultOk(result);
       expect(result.value).toBe("port-13");
+    });
 
-      // Note: The defensive check at lines 98-106 is theoretically
-      // impossible in practice because:
-      // - compatibleVersions comes from this.factories.keys()
-      // - factory lookup uses this.factories.get(selectedVersion)
-      // - Both use the same Map instance, so if a key exists in keys(),
-      //   it must exist in get()
-      //
-      // However, TypeScript's type system doesn't guarantee this, so
-      // the check exists for type safety. Testing it would require
-      // mocking internal state, which is overkill for a defensive check.
+    it("should return error when getFactoryOrError fails (defensive check)", () => {
+      const registry = new PortRegistry<string>();
+      registry.register(13, () => "port-13");
+
+      // Mock getFactoryOrError to return an error to test the defensive check
+      vi.spyOn(runtimeCasts, "getFactoryOrError").mockReturnValue({
+        ok: false,
+        error: {
+          code: "PORT_NOT_FOUND",
+          message: "Factory for version 13 not found in registry",
+          details: { version: 13 },
+        },
+      } as never);
+
+      const result = registry.createForVersion(13);
+      expectResultErr(result);
+      expect(result.error.code).toBe("PORT_NOT_FOUND");
+      expect(result.error.message).toContain("Factory for version 13 not found");
+
+      // Restore original implementation
+      vi.spyOn(runtimeCasts, "getFactoryOrError").mockRestore();
     });
   });
 

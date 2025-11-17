@@ -17,6 +17,8 @@ import type {
 import type { ServiceType } from "@/types/servicetypeindex";
 import type { InjectionToken } from "./injectiontoken";
 import type { ServiceRegistration } from "./serviceregistration";
+import type { Result } from "@/types/result";
+import type { ContainerError } from "../interfaces/containererror";
 
 /**
  * Listener-Typ aus RuntimeConfigService – hier als Alias erneut definiert,
@@ -148,4 +150,17 @@ export function* iterateServiceRegistrationEntries(
   for (const [token, registration] of entries) {
     yield castServiceRegistrationEntry(token, registration);
   }
+}
+
+/**
+ * Extracts registration status from Result, with defensive fallback.
+ *
+ * This is a defensive check: isRegistered() should never fail in practice,
+ * but the Result pattern requires handling the error case.
+ *
+ * @param result - Result from container.isRegistered()
+ * @returns Registration status (true if registered, false on error)
+ */
+export function getRegistrationStatus(result: Result<boolean, ContainerError>): boolean {
+  return result.ok ? result.value : false;
 }

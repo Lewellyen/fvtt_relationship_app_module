@@ -24,7 +24,6 @@ import type { ServiceRegistration } from "../types/serviceregistration";
  * ```
  */
 export class TypeSafeRegistrationMap {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Heterogeneous service types require any storage
   private readonly map: Map<symbol, ServiceRegistration<any>> = new Map();
 
   /**
@@ -95,7 +94,6 @@ export class TypeSafeRegistrationMap {
    *
    * @returns Iterator of [token, registration] pairs
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Iterator returns heterogeneous service types
   entries(): IterableIterator<[symbol, ServiceRegistration<any>]> {
     return this.map.entries();
   }
@@ -108,7 +106,6 @@ export class TypeSafeRegistrationMap {
    */
   clone(): TypeSafeRegistrationMap {
     const cloned = new TypeSafeRegistrationMap();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- forEach iterates over heterogeneous service types
     this.map.forEach((value: ServiceRegistration<any>, key: symbol) => {
       cloned.map.set(key, value);
     });

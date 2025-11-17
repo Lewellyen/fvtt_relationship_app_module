@@ -588,7 +588,6 @@ const _TypeSafeRegistrationMap = class _TypeSafeRegistrationMap {
    *
    * @returns Iterator of [token, registration] pairs
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Iterator returns heterogeneous service types
   entries() {
     return this.map.entries();
   }
@@ -653,6 +652,10 @@ function* iterateServiceRegistrationEntries(entries2) {
   }
 }
 __name(iterateServiceRegistrationEntries, "iterateServiceRegistrationEntries");
+function getRegistrationStatus(result) {
+  return result.ok ? result.value : false;
+}
+__name(getRegistrationStatus, "getRegistrationStatus");
 function hasDependencies(cls) {
   return "dependencies" in cls;
 }
@@ -2973,6 +2976,11 @@ const _DIModuleHealthService = class _DIModuleHealthService extends ModuleHealth
 __name(_DIModuleHealthService, "DIModuleHealthService");
 _DIModuleHealthService.dependencies = [healthCheckRegistryToken];
 let DIModuleHealthService = _DIModuleHealthService;
+function formatReplacementInfo(replacement) {
+  return replacement ? `Use "${replacement}" instead.
+` : "";
+}
+__name(formatReplacementInfo, "formatReplacementInfo");
 const deprecationMetadata = /* @__PURE__ */ new Map();
 function markAsDeprecated(token, reason, replacement, removedInVersion) {
   const apiSafeToken = markAsApiSafe(token);
@@ -3082,8 +3090,7 @@ const _ModuleApiInitializer = class _ModuleApiInitializer {
   handleDeprecationWarning(token) {
     const deprecationInfo = getDeprecationInfo(token);
     if (deprecationInfo && !deprecationInfo.warningShown) {
-      const replacementInfo = deprecationInfo.replacement ? `Use "${deprecationInfo.replacement}" instead.
-` : "";
+      const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
       console.warn(
         `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
 Reason: ${deprecationInfo.reason}
@@ -3180,8 +3187,7 @@ Reason: ${deprecationInfo.reason}
           const isRegisteredResult = container.isRegistered(token);
           tokenMap.set(token, {
             description: String(token).replace("Symbol(", "").replace(")", ""),
-            /* c8 ignore next -- isRegistered never fails; ok check is defensive */
-            isRegistered: isRegisteredResult.ok ? isRegisteredResult.value : false
+            isRegistered: getRegistrationStatus(isRegisteredResult)
           });
         }
         return tokenMap;
@@ -3686,6 +3692,22 @@ function assertNonEmptyArray(arr) {
   }
 }
 __name(assertNonEmptyArray, "assertNonEmptyArray");
+function extractHtmlElement(html) {
+  return html instanceof HTMLElement ? html : null;
+}
+__name(extractHtmlElement, "extractHtmlElement");
+function getFactoryOrError(factories, version) {
+  const factory = factories.get(version);
+  if (!factory) {
+    return err(
+      createFoundryError("PORT_NOT_FOUND", `Factory for version ${version} not found in registry`, {
+        version
+      })
+    );
+  }
+  return ok(factory);
+}
+__name(getFactoryOrError, "getFactoryOrError");
 const _PortRegistry = class _PortRegistry {
   constructor() {
     this.factories = /* @__PURE__ */ new Map();
@@ -3757,17 +3779,11 @@ const _PortRegistry = class _PortRegistry {
     }
     assertNonEmptyArray(compatibleVersions);
     const selectedVersion = compatibleVersions[0];
-    const factory = this.factories.get(selectedVersion);
-    if (!factory) {
-      return err(
-        createFoundryError(
-          "PORT_NOT_FOUND",
-          `Factory for version ${selectedVersion} not found in registry`,
-          { version: selectedVersion }
-        )
-      );
+    const factoryResult = getFactoryOrError(this.factories, selectedVersion);
+    if (!factoryResult.ok) {
+      return factoryResult;
     }
-    return ok(factory());
+    return ok(factoryResult.value());
   }
   /**
    * Checks if a port is registered for a specific version.
@@ -13314,6 +13330,21 @@ function registerNotifications(container) {
   return ok(void 0);
 }
 __name(registerNotifications, "registerNotifications");
+function validateAndSetLogLevel(value2, logger) {
+  const validationResult = /* @__PURE__ */ safeParse(LOG_LEVEL_SCHEMA, value2);
+  if (!validationResult.success) {
+    logger.warn(`Invalid log level value received: ${value2}, using default INFO`);
+    if (logger.setMinLevel) {
+      logger.setMinLevel(LogLevel.INFO);
+    }
+    return;
+  }
+  if (logger.setMinLevel) {
+    logger.setMinLevel(validationResult.output);
+    logger.info(`Log level changed to: ${LogLevel[validationResult.output]}`);
+  }
+}
+__name(validateAndSetLogLevel, "validateAndSetLogLevel");
 const logLevelSetting = {
   key: MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
   createConfig(i18n, logger) {
@@ -13343,18 +13374,7 @@ const logLevelSetting = {
       },
       default: LogLevel.INFO,
       onChange: /* @__PURE__ */ __name((value2) => {
-        const validationResult = /* @__PURE__ */ safeParse(LOG_LEVEL_SCHEMA, value2);
-        if (!validationResult.success) {
-          logger.warn(`Invalid log level value received: ${value2}, using default INFO`);
-          if (logger.setMinLevel) {
-            logger.setMinLevel(LogLevel.INFO);
-          }
-          return;
-        }
-        if (logger.setMinLevel) {
-          logger.setMinLevel(validationResult.output);
-          logger.info(`Log level changed to: ${LogLevel[validationResult.output]}`);
-        }
+        validateAndSetLogLevel(value2, logger);
       }, "onChange")
     };
   }
@@ -13743,6 +13763,12 @@ const _DIModuleSettingsRegistrar = class _DIModuleSettingsRegistrar extends Modu
 __name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
 _DIModuleSettingsRegistrar.dependencies = [];
 let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
+function disposeHooks(hooks) {
+  for (const hook of hooks) {
+    hook.dispose();
+  }
+}
+__name(disposeHooks, "disposeHooks");
 const _ModuleHookRegistrar = class _ModuleHookRegistrar {
   constructor(renderJournalHook, journalCacheInvalidationHook, notificationCenter) {
     this.notificationCenter = notificationCenter;
@@ -13776,13 +13802,9 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
    * Dispose all hooks.
    * Called when the module is disabled or reloaded.
    */
-  /* c8 ignore start -- Lifecycle method: Called when module is disabled; not testable in unit tests */
   disposeAll() {
-    for (const hook of this.hooks) {
-      hook.dispose();
-    }
+    disposeHooks(this.hooks);
   }
-  /* c8 ignore stop */
 };
 __name(_ModuleHookRegistrar, "ModuleHookRegistrar");
 let ModuleHookRegistrar = _ModuleHookRegistrar;
@@ -13866,10 +13888,6 @@ function debounce(fn, delayMs) {
   return debounced;
 }
 __name(debounce, "debounce");
-function extractHtmlElement(html) {
-  return html instanceof HTMLElement ? html : null;
-}
-__name(extractHtmlElement, "extractHtmlElement");
 const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
   constructor(foundryHooks, journalVisibility, notificationCenter) {
     this.foundryHooks = foundryHooks;

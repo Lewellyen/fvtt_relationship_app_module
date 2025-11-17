@@ -196,6 +196,26 @@ describe("ModuleApiInitializer", () => {
       expect(typeof metrics.resolutionErrors).toBe("number");
       expect(typeof metrics.avgResolutionTimeMs).toBe("number");
     });
+
+    it("should return empty metrics when MetricsCollector is not registered", async () => {
+      // Create a container without MetricsCollector
+      const emptyContainer = ServiceContainer.createRoot();
+      const emptyInitializer = new ModuleApiInitializer();
+      const result = emptyInitializer.expose(emptyContainer);
+      expectResultOk(result);
+
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+      const metrics = mod.api.getMetrics();
+
+      expect(metrics).toEqual({
+        containerResolutions: 0,
+        resolutionErrors: 0,
+        avgResolutionTimeMs: 0,
+        portSelections: {},
+        portSelectionFailures: {},
+        cacheHitRate: 0,
+      });
+    });
   });
 
   describe("DI integration", () => {
@@ -269,6 +289,23 @@ describe("ModuleApiInitializer", () => {
 
       expect(health.checks.portsSelected).toBeDefined();
       expect(typeof health.checks.portsSelected).toBe("boolean");
+    });
+
+    it("should return fallback health status when ModuleHealthService is not registered", () => {
+      // Create a container without ModuleHealthService
+      const emptyContainer = ServiceContainer.createRoot();
+      const emptyInitializer = new ModuleApiInitializer();
+      const result = emptyInitializer.expose(emptyContainer);
+      expectResultOk(result);
+
+      const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
+      const health = mod.api.getHealth();
+
+      expect(health.status).toBe("unhealthy");
+      expect(health.checks.containerValidated).toBe(false);
+      expect(health.checks.portsSelected).toBe(false);
+      expect(health.checks.lastError).toBe("ModuleHealthService not available");
+      expect(health.timestamp).toBeDefined();
     });
   });
 

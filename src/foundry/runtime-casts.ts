@@ -11,7 +11,10 @@
 
 import type { SettingConfig } from "@/foundry/interfaces/FoundrySettings";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
+import type { Result } from "@/types/result";
+import { ok, err } from "@/utils/functional/result";
 
 /**
  * Type-safe interface for Foundry Settings with dynamic namespaces.
@@ -87,4 +90,44 @@ export function assertNonEmptyArray<T>(arr: T[]): asserts arr is [T, ...T[]] {
   if (arr.length === 0) {
     throw new Error("Array must not be empty");
   }
+}
+
+/**
+ * Extracts HTMLElement from hook argument.
+ *
+ * In Foundry VTT V13+, hooks receive native HTMLElement directly.
+ * jQuery support has been deprecated and is no longer needed.
+ *
+ * @param html - The hook argument (unknown type)
+ * @returns HTMLElement if the argument is an HTMLElement, null otherwise
+ */
+export function extractHtmlElement(html: unknown): HTMLElement | null {
+  return html instanceof HTMLElement ? html : null;
+}
+
+/**
+ * Gets a factory from a Map or returns an error if not found.
+ *
+ * This is a defensive check: theoretically, if a version exists in the Map keys,
+ * the factory should also exist. However, TypeScript's type system doesn't
+ * guarantee this, so the check exists for type safety.
+ *
+ * @template T - The type that the factory creates
+ * @param factories - Map of version numbers to factory functions
+ * @param version - The version to look up
+ * @returns Result with factory function or error
+ */
+export function getFactoryOrError<T>(
+  factories: Map<number, () => T>,
+  version: number
+): Result<() => T, FoundryError> {
+  const factory = factories.get(version);
+  if (!factory) {
+    return err(
+      createFoundryError("PORT_NOT_FOUND", `Factory for version ${version} not found in registry`, {
+        version,
+      })
+    );
+  }
+  return ok(factory);
 }

@@ -1,6 +1,7 @@
 import { MODULE_CONSTANTS } from "@/constants";
 import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/functional/result";
+import { formatReplacementInfo } from "@/utils/string/format-deprecation-info";
 import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { InjectionToken } from "@/di_infrastructure/types/injectiontoken";
 import { type ApiSafeToken } from "@/di_infrastructure/types/api-safe-token";
@@ -18,6 +19,7 @@ import {
   wrapFoundrySettingsService,
   wrapI18nService,
   wrapNotificationCenterService,
+  getRegistrationStatus,
 } from "@/di_infrastructure/types/runtime-safe-cast";
 import {
   journalVisibilityServiceToken,
@@ -69,10 +71,7 @@ export class ModuleApiInitializer {
   ): void {
     const deprecationInfo = getDeprecationInfo(token);
     if (deprecationInfo && !deprecationInfo.warningShown) {
-      /* c8 ignore next 3 -- Ternary branch coverage: Both branches tested (replacement=null and replacement="string"), reporting artifact */
-      const replacementInfo = deprecationInfo.replacement
-        ? `Use "${deprecationInfo.replacement}" instead.\n`
-        : "";
+      const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
       console.warn(
         `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.\n` +
           `Reason: ${deprecationInfo.reason}\n` +
@@ -130,7 +129,6 @@ export class ModuleApiInitializer {
       const result = container.resolveWithError(token);
 
       // Apply wrappers if resolution succeeded
-      /* c8 ignore next 2 -- container.resolveWithError failure path already covered in container tests */
       if (!result.ok) {
         return result; // Return error as-is
       }
@@ -213,8 +211,7 @@ export class ModuleApiInitializer {
           const isRegisteredResult = container.isRegistered(token);
           tokenMap.set(token, {
             description: String(token).replace("Symbol(", "").replace(")", ""),
-            /* c8 ignore next -- isRegistered never fails; ok check is defensive */
-            isRegistered: isRegisteredResult.ok ? isRegisteredResult.value : false,
+            isRegistered: getRegistrationStatus(isRegisteredResult),
           });
         }
 
@@ -225,7 +222,6 @@ export class ModuleApiInitializer {
 
       getMetrics: () => {
         const metricsResult = container.resolveWithError(metricsCollectorToken);
-        /* c8 ignore start -- Defensive: MetricsCollector is always registered; fallback returns empty metrics */
         if (!metricsResult.ok) {
           return {
             containerResolutions: 0,
@@ -236,14 +232,12 @@ export class ModuleApiInitializer {
             cacheHitRate: 0,
           };
         }
-        /* c8 ignore stop */
         return metricsResult.value.getSnapshot();
       },
 
       getHealth: (): HealthStatus => {
         // Delegate to ModuleHealthService for health checks
         const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
-        /* c8 ignore start -- Defensive: ModuleHealthService fallback when resolution fails */
         if (!healthServiceResult.ok) {
           // Fallback health status if service cannot be resolved
           return {
@@ -256,7 +250,6 @@ export class ModuleApiInitializer {
             timestamp: new Date().toISOString(),
           };
         }
-        /* c8 ignore stop */
         return healthServiceResult.value.getHealth();
       },
     };

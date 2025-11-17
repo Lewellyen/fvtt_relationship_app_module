@@ -47,14 +47,12 @@ export interface MetricsPersistenceState {
  * Uses string keys to match console.table() expectations.
  * Naming convention disabled for console.table() compatibility.
  */
-/* eslint-disable @typescript-eslint/naming-convention */
 interface MetricsTableData {
   "Total Resolutions": number;
   Errors: number;
   "Avg Time (ms)": string;
   "Cache Hit Rate": string;
 }
-/* eslint-enable @typescript-eslint/naming-convention */
 
 /**
  * Metrics collector for observability and performance tracking.
@@ -221,14 +219,12 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
   logSummary(): void {
     const snapshot = this.getSnapshot();
 
-    /* eslint-disable @typescript-eslint/naming-convention */
     const tableData: MetricsTableData = {
       "Total Resolutions": snapshot.containerResolutions,
       Errors: snapshot.resolutionErrors,
       "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
       "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`,
     };
-    /* eslint-enable @typescript-eslint/naming-convention */
     console.table(tableData);
   }
 

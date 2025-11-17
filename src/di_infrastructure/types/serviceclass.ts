@@ -33,9 +33,7 @@ import type { ServiceDependencies } from "@/di_infrastructure/types/servicedepen
  * ```
  */
 export interface ServiceClass<T extends ServiceType> {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
   /* type-coverage:ignore-next-line -- Variadic constructor: Constructor needs `any[]` to accept variable arguments during dependency injection */
   new (...args: any[]): T;
-  /* eslint-enable @typescript-eslint/no-explicit-any */
   dependencies?: ServiceDependencies;
 }

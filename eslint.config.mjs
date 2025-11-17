@@ -18,7 +18,14 @@ export default [
     },
     rules: {
       ...typescript.configs.recommended.rules,
-      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_', // Parameter mit _ Prefix ignorieren
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        }
+      ],
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-deprecated': 'warn', // Warn on usage of @deprecated methods
       '@typescript-eslint/explicit-function-return-type': ['warn', {
@@ -117,6 +124,143 @@ export default [
     files: ['src/polyfills/cytoscape-assign-fix.ts'],
     rules: {
       'eqeqeq': 'off' // Deaktiviert für absichtlichen Patch
+    }
+  },
+  
+  // Valibot-Schemas: PascalCase für Schema-Exports erlauben
+  {
+    files: ['**/schemas.ts', '**/validation/schemas.ts'],
+    rules: {
+      '@typescript-eslint/naming-convention': [
+        'error',
+        // Alle Regeln aus Hauptkonfiguration kopieren und erweitern
+        {
+          selector: ['class', 'interface', 'typeAlias', 'enum'],
+          format: ['PascalCase'],
+        },
+        {
+          selector: 'typeParameter',
+          format: ['PascalCase'],
+          filter: {
+            regex: '^(T|K|V|E)$',
+            match: false,
+          },
+        },
+        {
+          selector: ['variable', 'function'],
+          format: ['camelCase'],
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: 'variable',
+          modifiers: ['const'],
+          format: ['UPPER_CASE', 'camelCase', 'PascalCase'], // Erlaubt PascalCase für Schema-Exports
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: ['property', 'method'],
+          format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: 'property',
+          format: null,
+          filter: {
+            regex: '^__.*',
+            match: true
+          }
+        },
+        {
+          selector: 'memberLike',
+          modifiers: ['private'],
+          format: ['camelCase'],
+        },
+      ]
+    }
+  },
+  
+  // console.table Kompatibilität: String-Literal-Keys in Interfaces erlauben
+  {
+    files: ['**/metrics-collector.ts'],
+    rules: {
+      '@typescript-eslint/naming-convention': [
+        'error',
+        // Alle Regeln aus Hauptkonfiguration kopieren und erweitern
+        {
+          selector: ['class', 'interface', 'typeAlias', 'enum'],
+          format: ['PascalCase'],
+        },
+        {
+          selector: 'typeParameter',
+          format: ['PascalCase'],
+          filter: {
+            regex: '^(T|K|V|E)$',
+            match: false,
+          },
+        },
+        {
+          selector: ['variable', 'function'],
+          format: ['camelCase'],
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: 'variable',
+          modifiers: ['const'],
+          format: ['UPPER_CASE', 'camelCase'],
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: ['property', 'method'],
+          format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: 'property',
+          format: null, // Keine Format-Prüfung für String-Literal-Keys
+          filter: {
+            // Erlaubt Properties mit Leerzeichen oder Sonderzeichen (String-Literal-Keys)
+            regex: '.*[\\s\\-].*|^".*"$|^\'.*\'$',
+            match: true
+          }
+        },
+        {
+          selector: 'property',
+          format: null,
+          filter: {
+            regex: '^__.*',
+            match: true
+          }
+        },
+        {
+          selector: 'memberLike',
+          modifiers: ['private'],
+          format: ['camelCase'],
+        },
+      ]
+    }
+  },
+  
+  // Heterogene Service-Typen: any ist architektonisch notwendig
+  {
+    files: ['**/TypeSafeRegistrationMap.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off'
+    }
+  },
+  
+  // Variadische Konstruktoren: any[] ist für DI notwendig
+  {
+    files: ['**/serviceclass.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off'
+    }
+  },
+  
+  // Type-Definitionen: deprecated APIs erlauben
+  {
+    files: ['**/*.d.ts'],
+    rules: {
+      '@typescript-eslint/no-deprecated': 'off'
     }
   }
 ];

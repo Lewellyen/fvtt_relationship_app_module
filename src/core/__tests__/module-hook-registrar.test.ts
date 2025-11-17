@@ -81,4 +81,32 @@ describe("ModuleHookRegistrar", () => {
       );
     });
   });
+
+  describe("disposeAll", () => {
+    it("should dispose all hooks", () => {
+      const hook1 = createStubHook(true);
+      const hook2 = createStubHook(true);
+      const notificationCenter = createNotificationCenterMock();
+      const registrar = createRegistrarWithHooks([hook1, hook2], notificationCenter);
+
+      registrar.registerAll({} as ServiceContainer);
+      registrar.disposeAll();
+
+      expect(hook1.dispose).toHaveBeenCalled();
+      expect(hook2.dispose).toHaveBeenCalled();
+    });
+
+    it("should dispose hooks even if registration failed", () => {
+      const hook1 = createStubHook(true);
+      const hook2 = createStubHook(false);
+      const notificationCenter = createNotificationCenterMock();
+      const registrar = createRegistrarWithHooks([hook1, hook2], notificationCenter);
+
+      registrar.registerAll({} as ServiceContainer);
+      registrar.disposeAll();
+
+      expect(hook1.dispose).toHaveBeenCalled();
+      expect(hook2.dispose).toHaveBeenCalled();
+    });
+  });
 });

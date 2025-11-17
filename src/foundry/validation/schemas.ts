@@ -20,7 +20,6 @@ function isStringValue(value: unknown, expectedType: string): value is string {
  * Valibot schema for JournalEntry validation.
  * Validates that objects from Foundry API conform to expected structure.
  */
-// eslint-disable-next-line @typescript-eslint/naming-convention -- Schemas use PascalCase
 export const JournalEntrySchema = v.object({
   id: v.string(),
   name: v.optional(v.string()),
@@ -154,7 +153,6 @@ export function validateSettingValue(
  * Valibot schema for Foundry setting configuration.
  * Validates the structure and types of setting registration config.
  */
-// eslint-disable-next-line @typescript-eslint/naming-convention -- Schemas use PascalCase
 export const SettingConfigSchema = v.object({
   name: v.optional(v.string()),
   hint: v.optional(v.string()),
@@ -285,7 +283,6 @@ export function sanitizeHtml(text: string): string {
  * Valibot schema for validating Foundry Application objects in hooks.
  * Validates minimal required properties for safe hook processing.
  */
-// eslint-disable-next-line @typescript-eslint/naming-convention -- Schemas use PascalCase
 export const FoundryApplicationSchema = v.object({
   // Application should have a string ID
   id: v.string(),

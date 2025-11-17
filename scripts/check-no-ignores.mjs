@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * Check for forbidden ignore directives in No-Ignores zones.
+ * Check for forbidden ignore directives in production code.
  * 
- * Verbotene Bereiche (laut docs/quality-gates/no-ignores/):
- * - src/core/** (ohne init-solid.ts)
- * - src/services/**
- * - src/utils/**
- * - src/types/**
- * - src/di_infrastructure/** (mit begründeten Ausnahmen)
- * - src/config/dependencyconfig.ts (mit begründeter Ausnahme)
- * - src/foundry/** (mit begründeten Ausnahmen)
+ * Prüft ALLE Dateien in src/** (außer Tests und Polyfills) auf Ignore-Marker.
+ * Nur Dateien in der Whitelist dürfen Ignore-Marker haben.
+ * 
+ * Whitelist-System:
+ * - Alle Dateien in src/** werden geprüft
+ * - Test-Dateien (__tests__/, *.test.ts, *.spec.ts) werden automatisch ausgenommen
+ * - Polyfills (src/polyfills/**) werden automatisch ausgenommen
+ * - Nur dokumentierte Dateien in ALLOWED_WITH_MARKERS dürfen Marker haben
  * 
  * Sucht nach:
  * - c8 ignore
@@ -28,34 +28,95 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '..');
 
-// Verbotene Bereiche (patterns für ripgrep)
-const FORBIDDEN_PATHS = [
-  'src/core/**',
-  'src/services/**',
-  'src/utils/**',
-  'src/types/**',
-  // DI-Infrastruktur: Nach Teilplan 02 abgeschlossen, jetzt verschärft
-  'src/di_infrastructure/**',
-  'src/config/dependencyconfig.ts',
-  // Foundry-Adapter: Nach Teilplan 03 abgeschlossen, jetzt verschärft
-  'src/foundry/**',
-];
-
-// Ausnahmen (Dateien, die ausgenommen sind)
-const EXCEPTIONS = [
-  'src/core/init-solid.ts', // Environment-spezifische Foundry Hooks
-  // DI-Infrastruktur: Begründete Ausnahmen für Coverage-Tool-Limitationen
-  'src/di_infrastructure/container.ts', // finally-Block (Coverage-Tool-Limitation)
-  'src/di_infrastructure/validation/ContainerValidator.ts', // early return (Coverage-Tool-Limitation)
-  'src/di_infrastructure/resolution/ServiceResolver.ts', // optional chaining (Coverage-Tool-Limitation)
-  'src/di_infrastructure/types/runtime-safe-cast.ts', // Runtime-Casts (bereits global ignoriert)
-  'src/di_infrastructure/types/serviceclass.ts', // Variadische Konstruktoren (begründet)
-  'src/di_infrastructure/types/api-safe-token.ts', // Nominal branding (begründet)
-  'src/di_infrastructure/registry/TypeSafeRegistrationMap.ts', // Heterogene Service-Typen (begründet)
-  'src/config/dependencyconfig.ts', // Fehlerpropagierung (Coverage-Tool-Limitation)
-  // Foundry-Adapter: Begründete Ausnahmen
-  'src/foundry/runtime-casts.ts', // Runtime-Casts (bereits global ignoriert, analog zu runtime-safe-cast.ts)
-  'src/foundry/versioning/portregistry.ts', // Defensiver Check für Factory-Not-Found (theoretisch unmöglich, aber für Type-Safety vorhanden)
+/**
+ * Whitelist: Dateien, die Ignore-Marker haben dürfen (mit Begründung)
+ * 
+ * Jede Datei muss dokumentiert sein mit:
+ * - Welche Marker-Typen erlaubt sind
+ * - Begründung warum Marker notwendig sind
+ */
+const ALLOWED_WITH_MARKERS = [
+  // Bootstrap & Environment
+  {
+    file: 'src/core/init-solid.ts',
+    allowed: ['c8 ignore'],
+    reason: 'Foundry-spezifische Runtime-Umgebung: Hooks und Bootstrap-Fehlerpfade hängen stark von der Foundry-Version ab und sind schwer isoliert testbar',
+  },
+  {
+    file: 'src/index.ts',
+    allowed: ['c8 ignore file'],
+    reason: 'Entry Point: Reine Import-Datei ohne ausführbaren Code',
+  },
+  {
+    file: 'src/constants.ts',
+    allowed: ['c8 ignore file'],
+    reason: 'Konstanten-Definition: Keine ausführbare Logik',
+  },
+  {
+    file: 'src/config/environment.ts',
+    allowed: ['type-coverage:ignore-line'],
+    reason: 'Build-Time Environment Variables: Vite import.meta.env ist zur Build-Zeit verfügbar, aber TypeScript kann die Typen nicht inferieren',
+  },
+  
+  // DI-Infrastruktur: Coverage-Tool-Limitationen
+  {
+    file: 'src/di_infrastructure/container.ts',
+    allowed: ['c8 ignore'],
+    reason: 'Coverage-Tool-Limitation: finally-Block wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
+  },
+  {
+    file: 'src/di_infrastructure/validation/ContainerValidator.ts',
+    allowed: ['c8 ignore'],
+    reason: 'Coverage-Tool-Limitation: Early-Return-Pfad wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
+  },
+  {
+    file: 'src/di_infrastructure/resolution/ServiceResolver.ts',
+    allowed: ['c8 ignore'],
+    reason: 'Coverage-Tool-Limitation: Optional Chaining mit null metricsCollector wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
+  },
+  {
+    file: 'src/config/dependencyconfig.ts',
+    allowed: ['c8 ignore'],
+    reason: 'Coverage-Tool-Limitation: Error-Propagierungs-Pfad wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
+  },
+  
+  // DI-Infrastruktur: Architektonisch notwendige Typen
+  {
+    file: 'src/di_infrastructure/types/serviceclass.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Variadische Konstruktoren: any[] ist für Dependency Injection notwendig (variadische Konstruktoren für variable Argumente)',
+  },
+  {
+    file: 'src/di_infrastructure/types/api-safe-token.ts',
+    allowed: ['type-coverage:ignore-next-line', 'ts-ignore'],
+    reason: 'Nominal Branding: Return-Type-Assertion für Compile-Time-Brand-Marker (Type-Cast für Brand-Assertion)',
+  },
+  
+  // Runtime-Casts (bereits global in type-coverage.json ausgenommen)
+  {
+    file: 'src/di_infrastructure/types/runtime-safe-cast.ts',
+    allowed: ['type-coverage:ignore'],
+    reason: 'Runtime-Casts: Zentralisierte Runtime-Cast-Helpers (bereits global in type-coverage.json ausgenommen)',
+  },
+  {
+    file: 'src/foundry/runtime-casts.ts',
+    allowed: ['type-coverage:ignore'],
+    reason: 'Foundry Runtime-Casts: Zentralisierte Foundry-spezifische Runtime-Cast-Helpers (bereits global in type-coverage.json ausgenommen)',
+  },
+  
+  // Polyfills (werden automatisch ausgenommen, hier nur für Vollständigkeit)
+  {
+    file: 'src/polyfills/cytoscape-assign-fix.ts',
+    allowed: ['c8 ignore file', 'eslint-disable'],
+    reason: 'Legacy Polyfill: Cytoscape-Patch für externe Bibliothek, schwer testbar ohne Browser-Integration',
+  },
+  
+  // Type-Assertions
+  {
+    file: 'src/interfaces/cache.ts',
+    allowed: ['type-coverage:ignore-line'],
+    reason: 'Brand Assertion: CacheKey-Brand-Assertion erforderlich für Type-Safety (nominal typing für Cache-Keys)',
+  },
 ];
 
 // Ignore-Marker, nach denen gesucht wird
@@ -68,56 +129,68 @@ const IGNORE_PATTERNS = [
 ];
 
 /**
- * Check if a file path matches any exception.
+ * Check if a file path is a test file.
  */
-function isException(filePath) {
+function isTestFile(filePath) {
   const normalized = filePath.replace(/\\/g, '/');
-  
-  // Test-Dateien sind immer ausgenommen
-  if (normalized.includes('/__tests__/') || normalized.includes('.test.ts') || normalized.includes('.spec.ts')) {
-    return true;
-  }
-  
-  return EXCEPTIONS.some(exception => normalized === exception || normalized.endsWith(exception));
+  return (
+    normalized.includes('/__tests__/') ||
+    normalized.includes('/test/') ||
+    normalized.endsWith('.test.ts') ||
+    normalized.endsWith('.spec.ts')
+  );
 }
 
 /**
- * Find files in forbidden paths using ripgrep or fallback to Node.js.
+ * Check if a file path is a polyfill.
  */
-function findFilesInForbiddenPaths() {
-  try {
-    // Try to use ripgrep (rg) if available
-    const rgAvailable = execSync('rg --version', { encoding: 'utf-8', stdio: 'pipe' }).includes('ripgrep');
-    
-    if (rgAvailable) {
-      const files = new Set();
-      for (const pathPattern of FORBIDDEN_PATHS) {
-        try {
-          // Find all .ts/.js files in the pattern
-          const result = execSync(
-            `rg --files --type ts --type js "${pathPattern.replace('**', '*')}"`,
-            { cwd: repoRoot, encoding: 'utf-8', stdio: 'pipe' }
-          );
-          result.split('\n').forEach(line => {
-            const trimmed = line.trim();
-            if (trimmed && !isException(trimmed)) {
-              files.add(trimmed);
-            }
-          });
-        } catch (e) {
-          // Pattern might not match - continue
-        }
-      }
-      return Array.from(files);
-    }
-  } catch (e) {
-    // ripgrep not available, fall back to manual search
-  }
+function isPolyfill(filePath) {
+  const normalized = filePath.replace(/\\/g, '/');
+  return normalized.includes('/polyfills/');
+}
 
-  // Fallback: manual file search
+/**
+ * Check if a file path is in the whitelist.
+ */
+function isAllowedWithMarkers(filePath) {
+  const normalized = filePath.replace(/\\/g, '/');
+  return ALLOWED_WITH_MARKERS.some(entry => {
+    const entryPath = entry.file.replace(/\\/g, '/');
+    return normalized === entryPath || normalized.endsWith(entryPath);
+  });
+}
+
+/**
+ * Get allowed marker types for a file.
+ */
+function getAllowedMarkers(filePath) {
+  const normalized = filePath.replace(/\\/g, '/');
+  const entry = ALLOWED_WITH_MARKERS.find(e => {
+    const entryPath = e.file.replace(/\\/g, '/');
+    return normalized === entryPath || normalized.endsWith(entryPath);
+  });
+  return entry ? entry.allowed : [];
+}
+
+/**
+ * Check if a marker type is allowed for a file.
+ */
+function isMarkerAllowed(filePath, markerName) {
+  if (!isAllowedWithMarkers(filePath)) {
+    return false;
+  }
+  const allowed = getAllowedMarkers(filePath);
+  // Check if marker matches any allowed pattern (e.g., "c8 ignore" matches "c8 ignore file")
+  return allowed.some(pattern => markerName.toLowerCase().includes(pattern.toLowerCase()));
+}
+
+/**
+ * Find all TypeScript/JavaScript files in src/ excluding tests and polyfills.
+ */
+function findAllSourceFiles() {
   const files = [];
   
-  function walkDir(dir, basePattern) {
+  function walkDir(dir) {
     if (!existsSync(dir)) return;
     
     const entries = readdirSync(dir, { withFileTypes: true });
@@ -125,26 +198,22 @@ function findFilesInForbiddenPaths() {
       const fullPath = resolve(dir, entry.name);
       const relPath = fullPath.replace(repoRoot + '/', '').replace(/\\/g, '/');
       
+      // Skip if not in src/
+      if (!relPath.startsWith('src/')) continue;
+      
       if (entry.isDirectory()) {
-        walkDir(fullPath, basePattern);
-      } else if ((entry.name.endsWith('.ts') || entry.name.endsWith('.js')) && !isException(relPath)) {
-        // Check if file matches any forbidden path pattern
-        const matches = FORBIDDEN_PATHS.some(pattern => {
-          const patternBase = pattern.replace('/**', '').replace('**', '');
-          return relPath.startsWith(patternBase);
-        });
-        if (matches) {
-          files.push(relPath);
-        }
+        walkDir(fullPath);
+      } else if (
+        (entry.name.endsWith('.ts') || entry.name.endsWith('.js')) &&
+        !isTestFile(relPath) &&
+        !isPolyfill(relPath)
+      ) {
+        files.push(relPath);
       }
     }
   }
   
-  for (const pattern of FORBIDDEN_PATHS) {
-    const baseDir = pattern.replace('/**', '').replace('**', '');
-    walkDir(resolve(repoRoot, baseDir), pattern);
-  }
-  
+  walkDir(resolve(repoRoot, 'src'));
   return files;
 }
 
@@ -166,12 +235,15 @@ function searchIgnoresInFile(filePath) {
     const line = lines[i];
     for (const { pattern, name } of IGNORE_PATTERNS) {
       if (pattern.test(line)) {
-        matches.push({
-          file: filePath,
-          line: i + 1,
-          content: line.trim(),
-          pattern: name,
-        });
+        // Check if this marker is allowed for this file
+        if (!isMarkerAllowed(filePath, name)) {
+          matches.push({
+            file: filePath,
+            line: i + 1,
+            content: line.trim(),
+            pattern: name,
+          });
+        }
       }
     }
   }
@@ -183,51 +255,66 @@ function searchIgnoresInFile(filePath) {
  * Main check function.
  */
 async function checkNoIgnores() {
-  console.log('Checking for forbidden ignore directives in No-Ignores zones...\n');
+  console.log('Checking for forbidden ignore directives in production code...\n');
+  console.log('Whitelist-System: Nur dokumentierte Dateien dürfen Marker haben.\n');
   
   try {
-    // Try using ripgrep for pattern search (faster and more reliable)
-    const rgAvailable = execSync('rg --version', { encoding: 'utf-8', stdio: 'pipe' }).includes('ripgrep');
-    
+    // Try using ripgrep for faster pattern search
     let allMatches = [];
+    const rgAvailable = (() => {
+      try {
+        return execSync('rg --version', { encoding: 'utf-8', stdio: 'pipe' }).includes('ripgrep');
+      } catch {
+        return false;
+      }
+    })();
     
     if (rgAvailable) {
-      // Use ripgrep to search for ignore patterns directly
+      // Use ripgrep to search for ignore patterns in all source files
       for (const { pattern, name } of IGNORE_PATTERNS) {
         const rgPattern = pattern.source.replace(/\\s/g, '\\s+');
         
-        for (const pathPattern of FORBIDDEN_PATHS) {
-          try {
-            const searchPath = pathPattern.replace('**', '*');
-            const result = execSync(
-              `rg -n "${rgPattern}" --type ts --type js "${searchPath}"`,
-              { cwd: repoRoot, encoding: 'utf-8', stdio: 'pipe', maxBuffer: 10 * 1024 * 1024 }
-            );
-            
-            const lines = result.split('\n').filter(Boolean);
-            for (const line of lines) {
-              const match = line.match(/^(.+?):(\d+):(.+)$/);
-              if (match) {
-                const [, filePath, lineNum, content] = match;
-                if (!isException(filePath)) {
-                  allMatches.push({
-                    file: filePath,
-                    line: parseInt(lineNum, 10),
-                    content: content.trim(),
-                    pattern: name,
-                  });
-                }
+        try {
+          // Search in src/ excluding tests and polyfills
+          const excludePatterns = [
+            '--glob', '!**/__tests__/**',
+            '--glob', '!**/test/**',
+            '--glob', '!**/*.test.ts',
+            '--glob', '!**/*.spec.ts',
+            '--glob', '!**/polyfills/**',
+          ];
+          
+          const result = execSync(
+            `rg -n "${rgPattern}" --type ts --type js src/ ${excludePatterns.join(' ')}`,
+            { cwd: repoRoot, encoding: 'utf-8', stdio: 'pipe', maxBuffer: 10 * 1024 * 1024 }
+          );
+          
+          const lines = result.split('\n').filter(Boolean);
+          for (const line of lines) {
+            const match = line.match(/^(.+?):(\d+):(.+)$/);
+            if (match) {
+              const [, filePath, lineNum, content] = match;
+              const normalizedPath = filePath.replace(/\\/g, '/');
+              
+              // Skip if in whitelist and marker is allowed
+              if (!isMarkerAllowed(normalizedPath, name)) {
+                allMatches.push({
+                  file: normalizedPath,
+                  line: parseInt(lineNum, 10),
+                  content: content.trim(),
+                  pattern: name,
+                });
               }
             }
-          } catch (e) {
-            // No matches or pattern not found - continue
           }
+        } catch (e) {
+          // No matches or pattern not found - continue
         }
       }
     } else {
       // Fallback: manual file search and pattern matching
       console.log('Warning: ripgrep (rg) not available, using slower fallback method.\n');
-      const files = await findFilesInForbiddenPaths();
+      const files = findAllSourceFiles();
       
       for (const file of files) {
         const matches = searchIgnoresInFile(file);
@@ -236,7 +323,7 @@ async function checkNoIgnores() {
     }
     
     if (allMatches.length > 0) {
-      console.error('❌ Forbidden ignore directives found in No-Ignores zones:\n');
+      console.error('❌ Forbidden ignore directives found in production code:\n');
       
       // Group by file
       const byFile = {};
@@ -257,21 +344,27 @@ async function checkNoIgnores() {
       }
       
       console.error(`Total: ${allMatches.length} forbidden ignore directive(s) found.`);
-      console.error('\nForbidden zones:');
-      FORBIDDEN_PATHS.forEach(path => console.error(`  - ${path}`));
-      console.error('\nAllowed exceptions:');
-      EXCEPTIONS.forEach(exception => console.error(`  - ${exception}`));
-      console.error('\nThese ignores must be removed and replaced with proper tests or type improvements.');
+      console.error('\nOnly files in the whitelist are allowed to have ignore markers:');
+      ALLOWED_WITH_MARKERS.forEach(entry => {
+        console.error(`  - ${entry.file}`);
+        console.error(`    Allowed: ${entry.allowed.join(', ')}`);
+        console.error(`    Reason: ${entry.reason}`);
+      });
+      console.error('\nThese ignores must be removed, added to the whitelist, or replaced with proper tests/type improvements.');
       
       process.exit(1);
     } else {
-      console.log('✓ No forbidden ignore directives found in No-Ignores zones.');
+      console.log('✓ No forbidden ignore directives found in production code.');
+      console.log(`\nWhitelist: ${ALLOWED_WITH_MARKERS.length} file(s) allowed to have markers:`);
+      ALLOWED_WITH_MARKERS.forEach(entry => {
+        console.log(`  - ${entry.file} (${entry.allowed.join(', ')})`);
+      });
       process.exit(0);
     }
   } catch (error) {
     if (error.status === 1 && error.stdout === '') {
       // ripgrep returns exit code 1 when no matches found - this is OK
-      console.log('✓ No forbidden ignore directives found in No-Ignores zones.');
+      console.log('✓ No forbidden ignore directives found in production code.');
       process.exit(0);
     } else {
       console.error('Error running no-ignores check:', error.message);
@@ -281,4 +374,3 @@ async function checkNoIgnores() {
 }
 
 checkNoIgnores();
-

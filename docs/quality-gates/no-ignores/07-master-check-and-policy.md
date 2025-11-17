@@ -20,25 +20,40 @@ Nach Abarbeitung der Teilpläne 01–06 sicherstellen, dass:
 
 Optional: kleines Node-Skript oder NPM-Skript, das bei `npm run check:all` läuft und Ignores außerhalb der erlaubten Bereiche als Fehler meldet.
 
-## 2. No-Ignores-Policy festschreiben
+## 2. No-Ignores-Policy festschreiben (Whitelist-System)
 
-In `docs/TESTING.md` oder einem dedizierten Dokument (z.B. `docs/quality-gates/no-ignores/README.md`):
+Nach Abschluss aller Teilpläne wurde das No-Ignores-Check-System auf ein **Whitelist-System** umgestellt:
 
-- **Verbotene Ignores (nie erlaubt):**
-  - `src/core/**`
-  - `src/services/**`
-  - `src/utils/**`
-  - `src/types/**`
-  - `src/di_infrastructure/**` (mit wenigen, explizit dokumentierten Ausnahmen).
-- **Streng, aber mit Einzelfall-Ausnahmen:**
-  - `src/foundry/**`
-  - `src/observability/**`
-  - `src/notifications/**`
-- **Erlaubt, aber dokumentationspflichtig:**
-  - `src/svelte/**`, `src/adapters/ui/**`, `src/polyfills/**`
-  - Nur für:
-    - direkte Interaktionen mit externer Umgebung (Browser, Foundry-UI, Canvas),
-    - Fälle, die durch E2E-Tests abgedeckt werden.
+### Whitelist-Prinzip
+
+- **Alle Dateien in `src/**` werden geprüft** (außer Tests und Polyfills)
+- **Nur dokumentierte Dateien dürfen Marker haben**: Whitelist in `scripts/check-no-ignores.mjs`
+- **Automatische Ausschlüsse**:
+  - Test-Dateien (`__tests__/`, `*.test.ts`, `*.spec.ts`, `test/`)
+  - Polyfills (`src/polyfills/**`)
+
+### Whitelist-Verwaltung
+
+Die Whitelist wird direkt im Check-Script (`scripts/check-no-ignores.mjs`) gepflegt. Jeder Eintrag enthält:
+- **Datei-Pfad**: Relativer Pfad zur Datei
+- **Erlaubte Marker**: Liste der erlaubten Marker-Typen
+- **Begründung**: Dokumentation warum Marker notwendig sind
+
+### Aktuelle Whitelist-Kategorien
+
+1. **Bootstrap & Environment**: `init-solid.ts`, `index.ts`, `constants.ts`, `environment.ts`
+2. **DI-Infrastruktur (Coverage-Tool-Limitationen)**: `container.ts`, `ContainerValidator.ts`, `ServiceResolver.ts`, `dependencyconfig.ts`
+3. **DI-Infrastruktur (Architektonisch notwendige Typen)**: `serviceclass.ts`, `api-safe-token.ts`
+4. **Runtime-Casts**: `runtime-safe-cast.ts`, `runtime-casts.ts` (bereits global in type-coverage.json ausgenommen)
+5. **Polyfills**: `cytoscape-assign-fix.ts`
+6. **Type-Assertions**: `cache.ts`
+
+### Neue Marker hinzufügen
+
+Um einen neuen Marker hinzuzufügen:
+1. Datei zur Whitelist in `scripts/check-no-ignores.mjs` hinzufügen
+2. Marker-Typen und Begründung dokumentieren
+3. Check ausführen: `npm run check:no-ignores`
 
 ## 3. Verbindung zu CI/Gates
 

@@ -9,8 +9,7 @@ import { MODULE_CONSTANTS } from "@/constants";
 import { LogLevel } from "@/config/environment";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import type { Logger } from "@/interfaces/logger";
-import { LOG_LEVEL_SCHEMA } from "@/foundry/validation/setting-schemas";
-import * as v from "valibot";
+import { validateAndSetLogLevel } from "@/utils/settings/validate-log-level";
 
 /**
  * Log level setting definition.
@@ -48,24 +47,7 @@ export const logLevelSetting: SettingDefinition<LogLevel> = {
       },
       default: LogLevel.INFO,
       onChange: (value: number) => {
-        // Validate value before using it (security!)
-        const validationResult = v.safeParse(LOG_LEVEL_SCHEMA, value);
-
-        /* c8 ignore start -- onChange callback: Defensive validation for external input, difficult to test in isolation as it requires Foundry settings system */
-        if (!validationResult.success) {
-          logger.warn(`Invalid log level value received: ${value}, using default INFO`);
-          if (logger.setMinLevel) {
-            logger.setMinLevel(LogLevel.INFO);
-          }
-          return;
-        }
-        /* c8 ignore stop */
-
-        // Dynamically reconfigure logger when setting changes
-        if (logger.setMinLevel) {
-          logger.setMinLevel(validationResult.output);
-          logger.info(`Log level changed to: ${LogLevel[validationResult.output]}`);
-        }
+        validateAndSetLogLevel(value, logger);
       },
     };
   },

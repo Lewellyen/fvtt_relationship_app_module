@@ -3,6 +3,7 @@ import type { HookRegistrar } from "@/core/hooks/hook-registrar.interface";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/functional/result";
+import { disposeHooks } from "@/utils/hooks/dispose-hooks";
 import {
   renderJournalDirectoryHookToken,
   notificationCenterToken,
@@ -66,13 +67,9 @@ export class ModuleHookRegistrar {
    * Dispose all hooks.
    * Called when the module is disabled or reloaded.
    */
-  /* c8 ignore start -- Lifecycle method: Called when module is disabled; not testable in unit tests */
   disposeAll(): void {
-    for (const hook of this.hooks) {
-      hook.dispose();
-    }
+    disposeHooks(this.hooks);
   }
-  /* c8 ignore stop */
 }
 
 export class DIModuleHookRegistrar extends ModuleHookRegistrar {
