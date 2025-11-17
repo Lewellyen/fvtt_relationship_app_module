@@ -4,11 +4,16 @@
 
 Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Moduls.
 
-**Datum:** 2025-11-14  
-**Stand:** Version 0.20.0  
+**Datum:** 2025-11-17  
+**Stand:** Version 0.25.8 (Unreleased)  
 **Detaillierte Analyse:** Siehe [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md)
 
-### Aktuelle Highlights (v0.20.0)
+### Aktuelle Highlights (Unreleased)
+- **100% Test Coverage erreicht**: Vollständige Code-Coverage für alle Statements, Branches, Functions und Lines - alle 1336 Tests laufen erfolgreich durch ([Details](docs/quality-gates/code-coverage-exclusions.md))
+- **Result-Pattern vollständig konsistent**: Alle Services, Handler und Utilities verwenden jetzt konsequent das Result-Pattern für erwartete Fehler ([Details](docs/adr/0001-use-result-pattern-instead-of-exceptions.md))
+- **Quality Gates erfüllt**: 100% Test Coverage, 100% Type Coverage, keine Linter-Fehler, alle TypeScript-Checks bestanden
+
+### Highlights (v0.20.0)
 - **NotificationCenter-first Fehler- und User-Kommunikation:** `ErrorService` ist vollständig ersetzt; alle Business-Services routen Nachrichten über Channels (Console/UI) mit Foundry-Option-Passthrough ([Details](docs/PROJECT-ANALYSIS.md#notifications)).
 - **DI-Wrapper-Konsolidierung:** Jede öffentlich instanziierbare Klasse besitzt ein `DI…`-Wrapper-Pendant, wodurch `configureDependencies` ausschließlich Wrapper registriert und Constructor-Signaturen stabil bleiben ([Details](docs/PROJECT-ANALYSIS.md#core-services)).
 - **Persistente Observability:** Der neue `PersistentMetricsCollector` kann Metriken in LocalStorage sichern, gesteuert über ENV-Flags `VITE_ENABLE_METRICS_PERSISTENCE` und `VITE_METRICS_PERSISTENCE_KEY` ([Details](docs/CONFIGURATION.md)).

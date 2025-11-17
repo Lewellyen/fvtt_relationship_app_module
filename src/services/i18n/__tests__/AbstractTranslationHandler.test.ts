@@ -1,44 +1,49 @@
 import { describe, it, expect } from "vitest";
 import { AbstractTranslationHandler } from "../AbstractTranslationHandler";
+import type { Result } from "@/types/result";
+import { ok, err } from "@/utils/functional/result";
 
 /**
  * Concrete test implementation of AbstractTranslationHandler.
- * Returns a translation if key starts with "TEST.", otherwise returns null.
+ * Returns a translation if key starts with "TEST.", otherwise returns error.
  */
 class TestHandler extends AbstractTranslationHandler {
   protected doHandle(
     key: string,
     data?: Record<string, unknown>,
-
     _fallback?: string
-  ): string | null {
+  ): Result<string, string> {
     if (key.startsWith("TEST.")) {
       if (data) {
-        return `TestHandler formatted: ${key}`;
+        return ok(`TestHandler formatted: ${key}`);
       }
-      return `TestHandler: ${key}`;
+      return ok(`TestHandler: ${key}`);
     }
-    return null; // Can't handle
+    return err(`TestHandler cannot handle key: ${key}`); // Can't handle
   }
 
-  protected doHas(key: string): boolean {
-    return key.startsWith("TEST.");
+  protected doHas(key: string): Result<boolean, string> {
+    return ok(key.startsWith("TEST."));
   }
 }
 
 describe("AbstractTranslationHandler", () => {
   describe("Chain of Responsibility", () => {
-    it("should delegate to next handler when doHandle returns null", () => {
+    it("should delegate to next handler when doHandle returns error", () => {
       const handler1 = new TestHandler();
       const handler2 = new TestHandler();
 
       handler1.setNext(handler2);
 
       // Handler1 can't handle "OTHER.KEY", should delegate to handler2
-      // Handler2 also can't handle, returns null
+      // Handler2 also can't handle, returns error
+      // Since no fallback provided, should return error
       const result = handler1.handle("OTHER.KEY");
 
-      expect(result).toBeNull();
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("Translation key not found");
+      }
     });
 
     it("should return result when current handler can handle", () => {
@@ -50,7 +55,10 @@ describe("AbstractTranslationHandler", () => {
       // Handler1 can handle "TEST.KEY"
       const result = handler1.handle("TEST.KEY");
 
-      expect(result).toBe("TestHandler: TEST.KEY");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("TestHandler: TEST.KEY");
+      }
     });
 
     it("should allow fluent chaining with setNext", () => {
@@ -63,7 +71,7 @@ describe("AbstractTranslationHandler", () => {
 
       // Verify chain is built correctly
       const result = handler1.handle("OTHER.KEY");
-      expect(result).toBeNull(); // None can handle
+      expect(result.ok).toBe(false); // None can handle, no fallback
     });
 
     it("should pass data parameter through the chain", () => {
@@ -71,7 +79,10 @@ describe("AbstractTranslationHandler", () => {
 
       const result = handler.handle("TEST.KEY", { name: "Alice" });
 
-      expect(result).toBe("TestHandler formatted: TEST.KEY");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("TestHandler formatted: TEST.KEY");
+      }
     });
 
     it("should pass fallback parameter through the chain", () => {
@@ -80,7 +91,22 @@ describe("AbstractTranslationHandler", () => {
       // Fallback is passed but TestHandler doesn't use it in this implementation
       const result = handler.handle("TEST.KEY", undefined, "Fallback");
 
-      expect(result).toBe("TestHandler: TEST.KEY");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("TestHandler: TEST.KEY");
+      }
+    });
+
+    it("should use fallback when no handler can provide translation", () => {
+      const handler = new TestHandler();
+
+      // Handler can't handle "OTHER.KEY", no nextHandler, but fallback is provided
+      const result = handler.handle("OTHER.KEY", undefined, "Fallback Text");
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Fallback Text");
+      }
     });
   });
 
@@ -90,7 +116,10 @@ describe("AbstractTranslationHandler", () => {
 
       const result = handler.has("TEST.KEY");
 
-      expect(result).toBe(true);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(true);
+      }
     });
 
     it("should return false when current handler doesn't have the key", () => {
@@ -98,7 +127,10 @@ describe("AbstractTranslationHandler", () => {
 
       const result = handler.has("OTHER.KEY");
 
-      expect(result).toBe(false);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(false);
+      }
     });
 
     it("should delegate to next handler when current handler doesn't have key", () => {
@@ -110,7 +142,10 @@ describe("AbstractTranslationHandler", () => {
       // Handler1 doesn't have "OTHER.KEY", should delegate to handler2
       const result = handler1.has("OTHER.KEY");
 
-      expect(result).toBe(false); // Handler2 also doesn't have it
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(false); // Handler2 also doesn't have it
+      }
     });
 
     it("should check chain: first handler has key", () => {
@@ -121,7 +156,10 @@ describe("AbstractTranslationHandler", () => {
 
       const result = handler1.has("TEST.FIRST");
 
-      expect(result).toBe(true); // Handler1 has it
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(true); // Handler1 has it
+      }
     });
   });
 
@@ -135,7 +173,7 @@ describe("AbstractTranslationHandler", () => {
 
       const result = handler1.handle("UNKNOWN.KEY");
 
-      expect(result).toBeNull(); // None can handle
+      expect(result.ok).toBe(false); // None can handle, no fallback
     });
 
     it("should stop at first handler that can provide translation", () => {
@@ -147,7 +185,10 @@ describe("AbstractTranslationHandler", () => {
       const result = handler1.handle("TEST.KEY");
 
       // Handler1 should handle it, handler2 should not be called
-      expect(result).toBe("TestHandler: TEST.KEY");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("TestHandler: TEST.KEY");
+      }
     });
   });
 });

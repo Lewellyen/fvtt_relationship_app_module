@@ -1,6 +1,8 @@
 import type { LocalI18nService } from "@/services/LocalI18nService";
 import { localI18nToken } from "@/tokens/tokenindex";
 import { AbstractTranslationHandler } from "./AbstractTranslationHandler";
+import type { Result } from "@/types/result";
+import { ok, err } from "@/utils/functional/result";
 
 /**
  * Translation handler that uses local JSON-based translations.
@@ -19,22 +21,25 @@ export class LocalTranslationHandler extends AbstractTranslationHandler {
     key: string,
     data?: Record<string, unknown>,
     _fallback?: string
-  ): string | null {
+  ): Result<string, string> {
     // Use format() if data is provided, otherwise translate()
     const result = data ? this.localI18n.format(key, data) : this.localI18n.translate(key);
 
     if (result.ok && result.value !== key) {
       // Local i18n has a translation (not just returning the key)
-      return result.value;
+      return ok(result.value);
     }
 
-    // Can't handle - delegate to next handler
-    return null;
+    // Can't handle - return error to delegate to next handler
+    return err(`Local i18n could not translate key: ${key}`);
   }
 
-  protected doHas(key: string): boolean {
+  protected doHas(key: string): Result<boolean, string> {
     const result = this.localI18n.has(key);
-    return result.ok && result.value;
+    if (!result.ok) {
+      return err(`Failed to check local i18n for key: ${key}`);
+    }
+    return ok(result.value);
   }
 }
 

@@ -5,6 +5,7 @@ import type { Notification } from "@/notifications/notification-channel.interfac
 import { LogLevel } from "@/config/environment";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/functional/result";
 
 describe("UIChannel", () => {
@@ -172,19 +173,50 @@ describe("UIChannel", () => {
       );
     });
 
-    it("should throw error when debug level is passed to mapLevelToUIType (exhaustive type check)", () => {
+    it("should return error when debug level is passed to mapLevelToUIType (exhaustive type check)", () => {
       // Test the exhaustive type check in mapLevelToUIType
       // This should never be called in practice because canHandle() filters debug level
       // Create a test subclass to access protected method
       class TestUIChannel extends UIChannel {
-        public testMapLevelToUIType(level: Notification["level"]): "info" | "warning" | "error" {
+        public testMapLevelToUIType(
+          level: Notification["level"]
+        ): Result<"info" | "warning" | "error", string> {
           return this.mapLevelToUIType(level);
         }
       }
       const testChannel = new TestUIChannel(mockFoundryUI, devConfig);
-      expect(() => {
-        testChannel.testMapLevelToUIType("debug");
-      }).toThrow("Debug level should be filtered by canHandle()");
+      const result = testChannel.testMapLevelToUIType("debug");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("Debug level should be filtered by canHandle()");
+      }
+    });
+
+    it("should return error when mapLevelToUIType fails in send()", () => {
+      channel = new UIChannel(mockFoundryUI, devConfig);
+      // Create a test subclass that forces mapLevelToUIType to fail
+      class TestUIChannel extends UIChannel {
+        protected override mapLevelToUIType(
+          _level: Notification["level"]
+        ): Result<"info" | "warning" | "error", string> {
+          // Force an error for testing
+          return err("Test error from mapLevelToUIType");
+        }
+      }
+      const testChannel = new TestUIChannel(mockFoundryUI, devConfig);
+
+      const notification: Notification = {
+        level: "info",
+        context: "Test",
+        timestamp: new Date(),
+      };
+
+      const result = testChannel.send(notification);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBe("Test error from mapLevelToUIType");
+      }
+      expect(mockFoundryUI.notify).not.toHaveBeenCalled();
     });
   });
 

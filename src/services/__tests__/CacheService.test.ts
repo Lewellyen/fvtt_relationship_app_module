@@ -68,11 +68,60 @@ describe("CacheService", () => {
     const key = buildCacheKey("hidden");
     const factory = vi.fn().mockResolvedValue(["entry-1"]);
 
-    const first = await service.getOrSet(key, factory);
-    const second = await service.getOrSet(key, factory);
+    const firstResult = await service.getOrSet(key, factory);
+    const secondResult = await service.getOrSet(key, factory);
 
-    expect(first.hit).toBe(false);
-    expect(second.hit).toBe(true);
+    expect(firstResult.ok).toBe(true);
+    if (firstResult.ok) {
+      expect(firstResult.value.hit).toBe(false);
+    }
+    expect(secondResult.ok).toBe(true);
+    if (secondResult.ok) {
+      expect(secondResult.value.hit).toBe(true);
+    }
+    expect(factory).toHaveBeenCalledTimes(1);
+  });
+
+  it("getOrSet returns error when factory fails", async () => {
+    const key = buildCacheKey("hidden");
+    const factory = vi.fn().mockRejectedValue(new Error("Factory error"));
+
+    const result = await service.getOrSet(key, factory);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain("Factory failed");
+      expect(result.error).toContain("Factory error");
+    }
+    expect(factory).toHaveBeenCalledTimes(1);
+  });
+
+  it("getOrSet returns error when factory throws synchronously", async () => {
+    const key = buildCacheKey("hidden");
+    const factory = vi.fn().mockImplementation(() => {
+      throw new Error("Sync error");
+    });
+
+    const result = await service.getOrSet(key, factory);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain("Factory failed");
+      expect(result.error).toContain("Sync error");
+    }
+  });
+
+  it("getOrSet handles synchronous factory that returns value (not Promise)", async () => {
+    const key = buildCacheKey("sync-value");
+    const factory = vi.fn().mockReturnValue("synchronous-value");
+
+    const result = await service.getOrSet(key, factory);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.value).toBe("synchronous-value");
+      expect(result.value.hit).toBe(false);
+    }
     expect(factory).toHaveBeenCalledTimes(1);
   });
 

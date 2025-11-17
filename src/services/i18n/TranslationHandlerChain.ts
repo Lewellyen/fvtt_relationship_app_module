@@ -4,6 +4,7 @@ import {
   localTranslationHandlerToken,
 } from "@/tokens/tokenindex";
 import type { TranslationHandler } from "./TranslationHandler.interface";
+import type { Result } from "@/types/result";
 
 /**
  * Small façade that wires the translation handlers into a chain of responsibility.
@@ -25,11 +26,11 @@ export class TranslationHandlerChain implements TranslationHandler {
     return this.head.setNext(handler);
   }
 
-  handle(key: string, data?: Record<string, unknown>, fallback?: string): string | null {
+  handle(key: string, data?: Record<string, unknown>, fallback?: string): Result<string, string> {
     return this.head.handle(key, data, fallback);
   }
 
-  has(key: string): boolean {
+  has(key: string): Result<boolean, string> {
     return this.head.has(key);
   }
 }

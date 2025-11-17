@@ -1,4 +1,6 @@
 import type { TranslationHandler } from "./TranslationHandler.interface";
+import type { Result } from "@/types/result";
+import { ok, err } from "@/utils/functional/result";
 
 /**
  * Abstract base class for translation handlers.
@@ -16,10 +18,10 @@ export abstract class AbstractTranslationHandler implements TranslationHandler {
     return handler; // Return handler for fluent chaining: a.setNext(b).setNext(c)
   }
 
-  handle(key: string, data?: Record<string, unknown>, fallback?: string): string | null {
+  handle(key: string, data?: Record<string, unknown>, fallback?: string): Result<string, string> {
     // Try to handle the request ourselves
     const result = this.doHandle(key, data, fallback);
-    if (result !== null) {
+    if (result.ok) {
       return result;
     }
 
@@ -29,13 +31,22 @@ export abstract class AbstractTranslationHandler implements TranslationHandler {
     }
 
     // No handler in chain could provide translation
-    return null;
+    // If fallback provided, use it; otherwise return error
+    if (fallback !== undefined) {
+      return ok(fallback);
+    }
+    return err(`Translation key not found: ${key}`);
   }
 
-  has(key: string): boolean {
+  has(key: string): Result<boolean, string> {
     // Check our own source first
-    if (this.doHas(key)) {
-      return true;
+    const ourResult = this.doHas(key);
+    if (!ourResult.ok) {
+      // Propagate error from doHas()
+      return ourResult;
+    }
+    if (ourResult.value) {
+      return ok(true);
     }
 
     // Check next handler if available
@@ -43,30 +54,31 @@ export abstract class AbstractTranslationHandler implements TranslationHandler {
       return this.nextHandler.has(key);
     }
 
-    return false;
+    // No handler found the key
+    return ok(false);
   }
 
   /**
    * Concrete implementation of translation logic.
-   * Should return the translated string or null if this handler can't provide it.
+   * Should return Result with translated string, or error if this handler can't provide it.
    *
    * @param key - Translation key
    * @param data - Optional data for placeholder replacement
    * @param fallback - Optional fallback string
-   * @returns Translated string or null
+   * @returns Result with translated string or error
    */
   protected abstract doHandle(
     key: string,
     data?: Record<string, unknown>,
     fallback?: string
-  ): string | null;
+  ): Result<string, string>;
 
   /**
    * Concrete implementation of key existence check.
-   * Should return true if this handler's source contains the key.
+   * Should return Result with true if this handler's source contains the key.
    *
    * @param key - Translation key to check
-   * @returns True if key exists in this handler's source
+   * @returns Result with true if key exists in this handler's source, false otherwise, or error
    */
-  protected abstract doHas(key: string): boolean;
+  protected abstract doHas(key: string): Result<boolean, string>;
 }

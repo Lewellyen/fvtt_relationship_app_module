@@ -1,5 +1,6 @@
 import { MODULE_CONSTANTS } from "@/constants";
 import type { SettingDefinition } from "./setting-definition.interface";
+import { unwrapOr } from "@/utils/functional/result";
 
 /**
  * Foundry setting that toggles the CacheService globally.
@@ -9,9 +10,15 @@ export const cacheEnabledSetting: SettingDefinition<boolean> = {
 
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.cacheEnabled.name", "Enable Cache Service"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.cacheEnabled.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.cacheEnabled.name", "Enable Cache Service"),
+        "Enable Cache Service"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.cacheEnabled.hint",
+          "Toggle the global CacheService. When disabled, all cache interactions bypass the cache layer."
+        ),
         "Toggle the global CacheService. When disabled, all cache interactions bypass the cache layer."
       ),
       scope: "world",

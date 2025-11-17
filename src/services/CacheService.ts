@@ -17,6 +17,8 @@ import {
   metricsCollectorToken,
   runtimeConfigToken,
 } from "@/tokens/tokenindex";
+import type { Result } from "@/types/result";
+import { ok, err, fromPromise } from "@/utils/functional/result";
 
 type InternalCacheEntry = {
   value: unknown;
@@ -85,19 +87,42 @@ export class CacheService implements CacheServiceContract {
     key: CacheKey,
     factory: () => TValue | Promise<TValue>,
     options?: CacheSetOptions
-  ): Promise<CacheLookupResult<TValue>> {
+  ): Promise<Result<CacheLookupResult<TValue>, string>> {
     const existing = this.get<TValue>(key);
     if (existing) {
-      return existing;
+      return ok(existing);
     }
 
-    const value = await factory();
-    const metadata = this.set(key, value, options);
-    return {
+    // Wrap factory() to handle both sync and async errors
+    // Use try-catch for sync errors, fromPromise for async errors
+    let factoryValue: TValue;
+    try {
+      const factoryResult = factory();
+      // If factory returns a Promise, use fromPromise
+      if (factoryResult instanceof Promise) {
+        const asyncResult = await fromPromise(
+          factoryResult,
+          (error) => `Factory failed for cache key ${String(key)}: ${String(error)}`
+        );
+        if (!asyncResult.ok) {
+          return asyncResult;
+        }
+        factoryValue = asyncResult.value;
+      } else {
+        // Synchronous result
+        factoryValue = factoryResult;
+      }
+    } catch (error) {
+      // Synchronous error from factory()
+      return err(`Factory failed for cache key ${String(key)}: ${String(error)}`);
+    }
+
+    const metadata = this.set(key, factoryValue, options);
+    return ok({
       hit: false,
-      value,
+      value: factoryValue,
       metadata,
-    };
+    });
   }
 
   set<TValue>(key: CacheKey, value: TValue, options?: CacheSetOptions): CacheEntryMetadata {

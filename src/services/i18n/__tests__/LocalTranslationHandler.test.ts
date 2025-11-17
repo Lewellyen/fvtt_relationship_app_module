@@ -26,24 +26,35 @@ describe("LocalTranslationHandler", () => {
 
       const result = handler.handle("TEST.KEY");
 
-      expect(result).toBe("Local Translation");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Local Translation");
+      }
       expect(mockLocalI18n.translate).toHaveBeenCalledWith("TEST.KEY");
     });
 
-    it("should return null when local returns the key itself (not translated)", () => {
+    it("should return error when local returns the key itself (not translated)", () => {
       vi.mocked(mockLocalI18n.translate).mockReturnValue(ok("TEST.KEY"));
 
       const result = handler.handle("TEST.KEY");
 
-      expect(result).toBeNull(); // Can't handle, delegate to next
+      expect(result.ok).toBe(false); // Can't handle, delegate to next
+      // When no nextHandler, AbstractTranslationHandler returns generic error
+      if (!result.ok) {
+        expect(result.error).toContain("Translation key not found");
+      }
     });
 
-    it("should return null when local returns error", () => {
+    it("should return error when local returns error", () => {
       vi.mocked(mockLocalI18n.translate).mockReturnValue(err("Translation error"));
 
       const result = handler.handle("TEST.KEY");
 
-      expect(result).toBeNull();
+      expect(result.ok).toBe(false);
+      // When no nextHandler, AbstractTranslationHandler returns generic error
+      if (!result.ok) {
+        expect(result.error).toContain("Translation key not found");
+      }
     });
   });
 
@@ -53,25 +64,36 @@ describe("LocalTranslationHandler", () => {
 
       const result = handler.handle("TEST.GREETING", { name: "Bob" });
 
-      expect(result).toBe("Hello, Bob!");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Hello, Bob!");
+      }
       expect(mockLocalI18n.format).toHaveBeenCalledWith("TEST.GREETING", { name: "Bob" });
       expect(mockLocalI18n.translate).not.toHaveBeenCalled();
     });
 
-    it("should return null when format returns key (not formatted)", () => {
+    it("should return error when format returns key (not formatted)", () => {
       vi.mocked(mockLocalI18n.format).mockReturnValue(ok("TEST.GREETING"));
 
       const result = handler.handle("TEST.GREETING", { name: "Bob" });
 
-      expect(result).toBeNull();
+      expect(result.ok).toBe(false);
+      // When no nextHandler, AbstractTranslationHandler returns generic error
+      if (!result.ok) {
+        expect(result.error).toContain("Translation key not found");
+      }
     });
 
-    it("should return null when format returns error", () => {
+    it("should return error when format returns error", () => {
       vi.mocked(mockLocalI18n.format).mockReturnValue(err("Format failed"));
 
       const result = handler.handle("TEST.GREETING", { name: "Bob" });
 
-      expect(result).toBeNull();
+      expect(result.ok).toBe(false);
+      // When no nextHandler, AbstractTranslationHandler returns generic error
+      if (!result.ok) {
+        expect(result.error).toContain("Translation key not found");
+      }
     });
   });
 
@@ -81,7 +103,10 @@ describe("LocalTranslationHandler", () => {
 
       const result = handler.has("TEST.KEY");
 
-      expect(result).toBe(true);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(true);
+      }
       expect(mockLocalI18n.has).toHaveBeenCalledWith("TEST.KEY");
     });
 
@@ -90,15 +115,21 @@ describe("LocalTranslationHandler", () => {
 
       const result = handler.has("TEST.KEY");
 
-      expect(result).toBe(false);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(false);
+      }
     });
 
-    it("should return false when local returns error", () => {
+    it("should return error when local returns error", () => {
       vi.mocked(mockLocalI18n.has).mockReturnValue(err("Error"));
 
       const result = handler.has("TEST.KEY");
 
-      expect(result).toBe(false);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("Failed to check local i18n for key");
+      }
     });
   });
 
@@ -106,8 +137,8 @@ describe("LocalTranslationHandler", () => {
     it("should delegate to next handler when can't handle", () => {
       const nextHandler = {
         setNext: vi.fn().mockReturnThis(),
-        handle: vi.fn().mockReturnValue("Next Handler Result"),
-        has: vi.fn().mockReturnValue(false),
+        handle: vi.fn().mockReturnValue(ok("Next Handler Result")),
+        has: vi.fn().mockReturnValue(ok(false)),
       };
 
       handler.setNext(nextHandler);
@@ -115,7 +146,10 @@ describe("LocalTranslationHandler", () => {
 
       const result = handler.handle("TEST.KEY");
 
-      expect(result).toBe("Next Handler Result");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Next Handler Result");
+      }
       expect(nextHandler.handle).toHaveBeenCalledWith("TEST.KEY", undefined, undefined);
     });
   });

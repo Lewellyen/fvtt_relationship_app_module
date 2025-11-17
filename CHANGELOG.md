@@ -12,6 +12,45 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.9] - 2025-11-17
+### Hinzugefügt
+- **100% Test Coverage**: Vollständige Code-Coverage für alle Statements, Branches, Functions und Lines erreicht ([Details](docs/quality-gates/code-coverage-exclusions.md))
+- 1336 Tests in 95 Test-Dateien
+- Alle Edge-Cases und Fehlerpfade abgedeckt
+- Defensive Checks und Type-Guards vollständig getestet
+
+### Geändert
+- **Result-Pattern Konsistenz**: Alle fehlschlagenden Operationen verwenden jetzt konsequent das Result-Pattern ([Details](docs/adr/0001-use-result-pattern-instead-of-exceptions.md))
+- **CacheService.getOrSet()**: Gibt jetzt `Promise<Result<CacheLookupResult<TValue>, string>>` zurück statt `Promise<CacheLookupResult<TValue>>` - factory-Fehler werden als Result zurückgegeben
+- **JournalVisibilityService.processJournalDirectory()**: Gibt jetzt `Result<void, FoundryError>` zurück statt `void` - Fehler werden aggregiert und zurückgegeben
+- **I18nFacadeService**: Alle Methoden (`translate()`, `format()`, `has()`) geben jetzt `Result<string, string>` bzw. `Result<boolean, string>` zurück statt direkte Werte
+- **TranslationHandler Interface**: `handle()` und `has()` verwenden jetzt Result-Pattern - alle Handler-Implementierungen angepasst
+- **Assertion-Failures**: `assertNonEmptyArray()` umbenannt zu `ensureNonEmptyArray()` und gibt `Result<[T, ...T[]], FoundryError>` zurück
+- **UIChannel.mapLevelToUIType()**: Gibt jetzt `Result<"info" | "warning" | "error", string>` zurück statt direkten Wert
+
+### Fehlerbehebungen
+- **Result-Pattern Inkonsistenzen behoben**: Alle identifizierten Stellen, die Exceptions warfen oder direkte Werte zurückgaben, verwenden jetzt konsistent Result-Pattern
+- **Fehlende Imports behoben**: `ok`, `err` und `Result` Type-Imports in `FoundryTranslationHandler.ts`, `LocalTranslationHandler.ts`, `FallbackTranslationHandler.ts`, `CacheService.ts` und Test-Dateien ergänzt
+- **CacheService.getOrSet() synchrone Fehlerbehandlung**: Behandelt jetzt sowohl synchrone als auch asynchrone Factory-Fehler korrekt (try-catch für synchrone, `fromPromise` für asynchrone)
+- **AbstractTranslationHandler.has() Fehlerpropagierung**: Propagiert jetzt Fehler von `doHas()` korrekt an Aufrufer
+- **TypeScript-Fehler behoben**:
+- `override` Modifier in Test-Klassen hinzugefügt
+- Return-Types in Test-Klassen ergänzt
+- Type-Guard für `errors[0]` in `JournalVisibilityService.ts` hinzugefügt
+- **Linter-Fehler behoben**: Ungenutzte Imports entfernt, unused Parameter umbenannt
+- **Test Coverage auf 100% erhöht**:
+- Test für `processJournalDirectory` Fehlerfall in `render-journal-directory-hook.test.ts`
+- Test für `ensureNonEmptyArray` Fehlerfall in `portregistry.test.ts`
+- Test für `mapLevelToUIType` Fehlerfall in `UIChannel.test.ts`
+- Test für synchronen Factory-Erfolgsfall in `CacheService.test.ts`
+- Test für Fallback-Verwendung in `AbstractTranslationHandler.test.ts`
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.25.8] - 2025-11-17
 ### Hinzugefügt
 - **ESLint-Konfiguration erweitert**: File-Level Overrides für spezifische Code-Patterns ([Details](docs/quality-gates/no-ignores/eslint-config-analysis.md))

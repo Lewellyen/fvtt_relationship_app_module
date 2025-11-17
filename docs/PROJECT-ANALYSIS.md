@@ -1,7 +1,7 @@
 # Projektanalyse: FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-15 (v0.24.0)  
+**Aktualisiert:** 2025-11-17 (Unreleased)  
 **Zweck:** Grundlage für Refactoring-Planungen  
 **Model:** Claude Sonnet 4.5
 
@@ -106,8 +106,9 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - Strategie: Foundry-First → Local Fallback → Key Fallback
 - Format-Support für Placeholder-Ersetzung
 - `has()` prüft beide i18n-Systeme
+- **Result-Pattern**: Alle Methoden (`translate()`, `format()`, `has()`) geben `Result<string, string>` bzw. `Result<boolean, string>` zurück ([Details](docs/adr/0001-use-result-pattern-instead-of-exceptions.md))
 
-**Design Pattern:** Facade Pattern, Strategy Pattern
+**Design Pattern:** Facade Pattern, Strategy Pattern, Chain of Responsibility (TranslationHandler)
 
 **Weitere DI Wrapper:** `DILocalI18nService`, `DIFoundryTranslationHandler`, `DILocalTranslationHandler`, `DIFallbackTranslationHandler` halten alle i18n-Bestandteile konsistent registrierbar.
 
@@ -127,6 +128,7 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - HTML-Sanitization für sichere Log-Ausgabe
 - UI-Manipulation (entfernt DOM-Elemente)
 - **CA-02**: Hidden-Journal-Ergebnisse werden jetzt über den `CacheService` mit TTL & Tagging gecached; der neue `JournalCacheInvalidationHook` löscht Einträge sofort bei Foundry `create/update/deleteJournalEntry`. Dadurch entfällt der komplette Journal-Lauf pro Render.
+- **Result-Pattern**: `processJournalDirectory()` gibt jetzt `Result<void, FoundryError>` zurück statt `void` - Fehler werden aggregiert und zurückgegeben ([Details](docs/adr/0001-use-result-pattern-instead-of-exceptions.md))
 
 **Dependency Update:** CacheService ergänzt die Infrastruktur-Abhängigkeiten (Performance vs. IO-Tausch)
 
@@ -178,6 +180,7 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - `getOrSet()`-Convenience (Promise-aware) + `getMetadata()` für Debugging
 - Metrik-Integration (`recordCacheAccess`) + Clock Injection für Tests
 - Konfiguration via ENV (`VITE_CACHE_ENABLED`, `VITE_CACHE_TTL_MS`, `VITE_CACHE_MAX_ENTRIES`)
+- **Result-Pattern**: `getOrSet()` gibt jetzt `Promise<Result<CacheLookupResult<TValue>, string>>` zurück - behandelt sowohl synchrone als auch asynchrone Factory-Fehler korrekt ([Details](docs/adr/0001-use-result-pattern-instead-of-exceptions.md))
 
 **DI Wrapper:** `DICacheService` injiziert Config & MetricsCollector, Registrierungen liegen im neuen `registerCacheServices()` Modul.
 

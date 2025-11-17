@@ -6,7 +6,7 @@
 import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/functional/result";
 import { createFoundryError, type FoundryError } from "@/foundry/errors/FoundryErrors";
-import { assertNonEmptyArray, getFactoryOrError } from "@/foundry/runtime-casts";
+import { ensureNonEmptyArray, getFactoryOrError } from "@/foundry/runtime-casts";
 
 export type PortFactory<T> = () => T;
 
@@ -92,8 +92,11 @@ export class PortRegistry<T> {
     }
 
     // Type-guard ensures array is non-empty
-    assertNonEmptyArray(compatibleVersions);
-    const selectedVersion = compatibleVersions[0];
+    const nonEmptyResult = ensureNonEmptyArray(compatibleVersions);
+    if (!nonEmptyResult.ok) {
+      return nonEmptyResult;
+    }
+    const selectedVersion = nonEmptyResult.value[0];
     const factoryResult = getFactoryOrError(this.factories, selectedVersion);
     if (!factoryResult.ok) {
       return factoryResult;

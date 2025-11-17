@@ -3686,12 +3686,15 @@ function castDisposablePort(port) {
   return port;
 }
 __name(castDisposablePort, "castDisposablePort");
-function assertNonEmptyArray(arr) {
+function ensureNonEmptyArray(arr) {
   if (arr.length === 0) {
-    throw new Error("Array must not be empty");
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Array must not be empty", { arrayLength: 0 })
+    );
   }
+  return ok(arr);
 }
-__name(assertNonEmptyArray, "assertNonEmptyArray");
+__name(ensureNonEmptyArray, "ensureNonEmptyArray");
 function extractHtmlElement(html) {
   return html instanceof HTMLElement ? html : null;
 }
@@ -3777,8 +3780,11 @@ const _PortRegistry = class _PortRegistry {
         )
       );
     }
-    assertNonEmptyArray(compatibleVersions);
-    const selectedVersion = compatibleVersions[0];
+    const nonEmptyResult = ensureNonEmptyArray(compatibleVersions);
+    if (!nonEmptyResult.ok) {
+      return nonEmptyResult;
+    }
+    const selectedVersion = nonEmptyResult.value[0];
     const factoryResult = getFactoryOrError(this.factories, selectedVersion);
     if (!factoryResult.ok) {
       return factoryResult;
@@ -12035,6 +12041,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
   }
   /**
    * Processes journal directory HTML to hide flagged entries.
+   * @returns Result indicating success or failure with aggregated errors
    */
   processJournalDirectory(htmlElement) {
     this.notificationCenter.debug(
@@ -12045,25 +12052,24 @@ const _JournalVisibilityService = class _JournalVisibilityService {
       }
     );
     const hiddenResult = this.getHiddenJournalEntries();
-    match(hiddenResult, {
-      onOk: /* @__PURE__ */ __name((hidden) => {
-        this.notificationCenter.debug(
-          `Found ${hidden.length} hidden journal entries`,
-          { context: { hidden } },
-          {
-            channels: ["ConsoleChannel"]
-          }
-        );
-        this.hideEntries(hidden, htmlElement);
-      }, "onOk"),
-      onErr: /* @__PURE__ */ __name((error) => {
-        this.notificationCenter.error("Error getting hidden journal entries", error, {
-          channels: ["ConsoleChannel"]
-        });
-      }, "onErr")
-    });
+    if (!hiddenResult.ok) {
+      this.notificationCenter.error("Error getting hidden journal entries", hiddenResult.error, {
+        channels: ["ConsoleChannel"]
+      });
+      return hiddenResult;
+    }
+    const hidden = hiddenResult.value;
+    this.notificationCenter.debug(
+      `Found ${hidden.length} hidden journal entries`,
+      { context: { hidden } },
+      {
+        channels: ["ConsoleChannel"]
+      }
+    );
+    return this.hideEntries(hidden, htmlElement);
   }
   hideEntries(entries2, html) {
+    const errors = [];
     for (const journal of entries2) {
       const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
       const removeResult = this.facade.removeJournalElement(journal.id, journalName, html);
@@ -12076,12 +12082,20 @@ const _JournalVisibilityService = class _JournalVisibilityService {
           );
         }, "onOk"),
         onErr: /* @__PURE__ */ __name((error) => {
+          errors.push(error);
           this.notificationCenter.warn("Error removing journal entry", error, {
             channels: ["ConsoleChannel"]
           });
         }, "onErr")
       });
     }
+    if (errors.length > 0) {
+      const firstError = errors[0];
+      if (firstError) {
+        return { ok: false, error: firstError };
+      }
+    }
+    return { ok: true, value: void 0 };
   }
 };
 __name(_JournalVisibilityService, "JournalVisibilityService");
@@ -12415,15 +12429,32 @@ const _CacheService = class _CacheService {
   async getOrSet(key, factory, options) {
     const existing = this.get(key);
     if (existing) {
-      return existing;
+      return ok(existing);
     }
-    const value2 = await factory();
-    const metadata2 = this.set(key, value2, options);
-    return {
+    let factoryValue;
+    try {
+      const factoryResult = factory();
+      if (factoryResult instanceof Promise) {
+        const asyncResult = await fromPromise(
+          factoryResult,
+          (error) => `Factory failed for cache key ${String(key)}: ${String(error)}`
+        );
+        if (!asyncResult.ok) {
+          return asyncResult;
+        }
+        factoryValue = asyncResult.value;
+      } else {
+        factoryValue = factoryResult;
+      }
+    } catch (error) {
+      return err(`Factory failed for cache key ${String(key)}: ${String(error)}`);
+    }
+    const metadata2 = this.set(key, factoryValue, options);
+    return ok({
       hit: false,
-      value: value2,
+      value: factoryValue,
       metadata: metadata2
-    };
+    });
   }
   set(key, value2, options) {
     const now = this.clock();
@@ -12836,21 +12867,25 @@ const _I18nFacadeService = class _I18nFacadeService {
    *
    * @param key - Translation key
    * @param fallback - Optional fallback string (defaults to key itself)
-   * @returns Translated string or fallback
+   * @returns Result with translated string or fallback
    *
    * @example
    * ```typescript
    * // With fallback
-   * const text = i18n.translate("MODULE.UNKNOWN_KEY", "Default Text");
-   * console.log(text); // "Default Text"
+   * const result = i18n.translate("MODULE.UNKNOWN_KEY", "Default Text");
+   * if (result.ok) {
+   *   console.log(result.value); // "Default Text"
+   * }
    *
-   * // Without fallback (returns key)
-   * const text2 = i18n.translate("MODULE.UNKNOWN_KEY");
-   * console.log(text2); // "MODULE.UNKNOWN_KEY"
+   * // Without fallback (returns key as fallback)
+   * const result2 = i18n.translate("MODULE.UNKNOWN_KEY");
+   * if (result2.ok) {
+   *   console.log(result2.value); // "MODULE.UNKNOWN_KEY"
+   * }
    * ```
    */
   translate(key, fallback2) {
-    return this.handlerChain.handle(key, void 0, fallback2) ?? key;
+    return this.handlerChain.handle(key, void 0, fallback2);
   }
   /**
    * Formats a string with placeholders using the handler chain.
@@ -12858,23 +12893,25 @@ const _I18nFacadeService = class _I18nFacadeService {
    * @param key - Translation key
    * @param data - Object with placeholder values
    * @param fallback - Optional fallback string
-   * @returns Formatted string or fallback
+   * @returns Result with formatted string or fallback
    *
    * @example
    * ```typescript
-   * const text = i18n.format("MODULE.WELCOME", { name: "Alice" }, "Welcome!");
-   * console.log(text); // "Welcome, Alice!" or "Welcome!"
+   * const result = i18n.format("MODULE.WELCOME", { name: "Alice" }, "Welcome!");
+   * if (result.ok) {
+   *   console.log(result.value); // "Welcome, Alice!" or "Welcome!"
+   * }
    * ```
    */
   format(key, data, fallback2) {
-    return this.handlerChain.handle(key, data, fallback2) ?? key;
+    return this.handlerChain.handle(key, data, fallback2);
   }
   /**
    * Checks if a translation key exists in the handler chain.
    * Checks Foundry → Local (Fallback always returns false for has()).
    *
    * @param key - Translation key to check
-   * @returns True if key exists in Foundry or local i18n
+   * @returns Result with true if key exists in Foundry or local i18n
    */
   has(key) {
     return this.handlerChain.has(key);
@@ -12917,22 +12954,29 @@ const _AbstractTranslationHandler = class _AbstractTranslationHandler {
   }
   handle(key, data, fallback2) {
     const result = this.doHandle(key, data, fallback2);
-    if (result !== null) {
+    if (result.ok) {
       return result;
     }
     if (this.nextHandler) {
       return this.nextHandler.handle(key, data, fallback2);
     }
-    return null;
+    if (fallback2 !== void 0) {
+      return ok(fallback2);
+    }
+    return err(`Translation key not found: ${key}`);
   }
   has(key) {
-    if (this.doHas(key)) {
-      return true;
+    const ourResult = this.doHas(key);
+    if (!ourResult.ok) {
+      return ourResult;
+    }
+    if (ourResult.value) {
+      return ok(true);
     }
     if (this.nextHandler) {
       return this.nextHandler.has(key);
     }
-    return false;
+    return ok(false);
   }
 };
 __name(_AbstractTranslationHandler, "AbstractTranslationHandler");
@@ -12945,13 +12989,16 @@ const _FoundryTranslationHandler = class _FoundryTranslationHandler extends Abst
   doHandle(key, data, _fallback) {
     const result = data ? this.foundryI18n.format(key, data) : this.foundryI18n.localize(key);
     if (result.ok && result.value !== key) {
-      return result.value;
+      return ok(result.value);
     }
-    return null;
+    return err(`Foundry i18n could not translate key: ${key}`);
   }
   doHas(key) {
     const result = this.foundryI18n.has(key);
-    return result.ok && result.value;
+    if (!result.ok) {
+      return err(`Failed to check Foundry i18n for key: ${key}`);
+    }
+    return ok(result.value);
   }
 };
 __name(_FoundryTranslationHandler, "FoundryTranslationHandler");
@@ -12972,13 +13019,16 @@ const _LocalTranslationHandler = class _LocalTranslationHandler extends Abstract
   doHandle(key, data, _fallback) {
     const result = data ? this.localI18n.format(key, data) : this.localI18n.translate(key);
     if (result.ok && result.value !== key) {
-      return result.value;
+      return ok(result.value);
     }
-    return null;
+    return err(`Local i18n could not translate key: ${key}`);
   }
   doHas(key) {
     const result = this.localI18n.has(key);
-    return result.ok && result.value;
+    if (!result.ok) {
+      return err(`Failed to check local i18n for key: ${key}`);
+    }
+    return ok(result.value);
   }
 };
 __name(_LocalTranslationHandler, "LocalTranslationHandler");
@@ -12993,10 +13043,10 @@ _DILocalTranslationHandler.dependencies = [localI18nToken];
 let DILocalTranslationHandler = _DILocalTranslationHandler;
 const _FallbackTranslationHandler = class _FallbackTranslationHandler extends AbstractTranslationHandler {
   doHandle(key, _data, fallback2) {
-    return fallback2 ?? key;
+    return ok(fallback2 ?? key);
   }
   doHas(_key) {
-    return false;
+    return ok(false);
   }
 };
 __name(_FallbackTranslationHandler, "FallbackTranslationHandler");
@@ -13244,7 +13294,11 @@ const _UIChannel = class _UIChannel {
   }
   send(notification) {
     const sanitizedMessage = this.sanitizeForUI(notification);
-    const uiType = this.mapLevelToUIType(notification.level);
+    const uiTypeResult = this.mapLevelToUIType(notification.level);
+    if (!uiTypeResult.ok) {
+      return uiTypeResult;
+    }
+    const uiType = uiTypeResult.value;
     const uiOptions = notification.uiOptions;
     const notifyResult = this.foundryUI.notify(sanitizedMessage, uiType, uiOptions);
     if (!notifyResult.ok) {
@@ -13281,13 +13335,13 @@ const _UIChannel = class _UIChannel {
   mapLevelToUIType(level) {
     switch (level) {
       case "info":
-        return "info";
+        return ok("info");
       case "warn":
-        return "warning";
+        return ok("warning");
       case "error":
-        return "error";
+        return ok("error");
       case "debug": {
-        throw new Error(`Debug level should be filtered by canHandle(). Received: ${level}`);
+        return err(`Debug level should be filtered by canHandle(). Received: ${level}`);
       }
     }
   }
@@ -13349,26 +13403,38 @@ const logLevelSetting = {
   key: MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.logLevel.hint",
+      name: unwrapOr(i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"), "Log Level"),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.logLevel.hint",
+          "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors."
+        ),
         "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors."
       ),
       scope: "world",
       config: true,
       type: Number,
       choices: {
-        [LogLevel.DEBUG]: i18n.translate(
-          "MODULE.SETTINGS.logLevel.choices.debug",
+        [LogLevel.DEBUG]: unwrapOr(
+          i18n.translate(
+            "MODULE.SETTINGS.logLevel.choices.debug",
+            "DEBUG (All logs - for debugging)"
+          ),
           "DEBUG (All logs - for debugging)"
         ),
-        [LogLevel.INFO]: i18n.translate("MODULE.SETTINGS.logLevel.choices.info", "INFO (Standard)"),
-        [LogLevel.WARN]: i18n.translate(
-          "MODULE.SETTINGS.logLevel.choices.warn",
+        [LogLevel.INFO]: unwrapOr(
+          i18n.translate("MODULE.SETTINGS.logLevel.choices.info", "INFO (Standard)"),
+          "INFO (Standard)"
+        ),
+        [LogLevel.WARN]: unwrapOr(
+          i18n.translate(
+            "MODULE.SETTINGS.logLevel.choices.warn",
+            "WARN (Warnings and errors only)"
+          ),
           "WARN (Warnings and errors only)"
         ),
-        [LogLevel.ERROR]: i18n.translate(
-          "MODULE.SETTINGS.logLevel.choices.error",
+        [LogLevel.ERROR]: unwrapOr(
+          i18n.translate("MODULE.SETTINGS.logLevel.choices.error", "ERROR (Critical errors only)"),
           "ERROR (Critical errors only)"
         )
       },
@@ -13383,9 +13449,15 @@ const cacheEnabledSetting = {
   key: MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED,
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.cacheEnabled.name", "Enable Cache Service"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.cacheEnabled.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.cacheEnabled.name", "Enable Cache Service"),
+        "Enable Cache Service"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.cacheEnabled.hint",
+          "Toggle the global CacheService. When disabled, all cache interactions bypass the cache layer."
+        ),
         "Toggle the global CacheService. When disabled, all cache interactions bypass the cache layer."
       ),
       scope: "world",
@@ -13403,9 +13475,15 @@ const cacheDefaultTtlSetting = {
   key: MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS,
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.cacheDefaultTtlMs.name", "Cache TTL (ms)"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.cacheDefaultTtlMs.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.cacheDefaultTtlMs.name", "Cache TTL (ms)"),
+        "Cache TTL (ms)"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.cacheDefaultTtlMs.hint",
+          "Default lifetime for cache entries in milliseconds. Use 0 to disable TTL (entries live until invalidated)."
+        ),
         "Default lifetime for cache entries in milliseconds. Use 0 to disable TTL (entries live until invalidated)."
       ),
       scope: "world",
@@ -13424,9 +13502,15 @@ const cacheMaxEntriesSetting = {
   key: MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES,
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.cacheMaxEntries.name", "Cache Max Entries"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.cacheMaxEntries.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.cacheMaxEntries.name", "Cache Max Entries"),
+        "Cache Max Entries"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.cacheMaxEntries.hint",
+          "Optional LRU limit. Use 0 to allow unlimited cache entries."
+        ),
         "Optional LRU limit. Use 0 to allow unlimited cache entries."
       ),
       scope: "world",
@@ -13449,9 +13533,15 @@ const performanceTrackingSetting = {
   key: MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED,
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.performanceTracking.name", "Performance Tracking"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.performanceTracking.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.performanceTracking.name", "Performance Tracking"),
+        "Performance Tracking"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.performanceTracking.hint",
+          "Enables internal performance instrumentation (requires sampling)."
+        ),
         "Enables internal performance instrumentation (requires sampling)."
       ),
       scope: "world",
@@ -13469,12 +13559,15 @@ const performanceSamplingSetting = {
   key: MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE,
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate(
-        "MODULE.SETTINGS.performanceSamplingRate.name",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.performanceSamplingRate.name", "Performance Sampling Rate"),
         "Performance Sampling Rate"
       ),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.performanceSamplingRate.hint",
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.performanceSamplingRate.hint",
+          "Fraction of operations to instrument (0 = 0%, 1 = 100%)."
+        ),
         "Fraction of operations to instrument (0 = 0%, 1 = 100%)."
       ),
       scope: "world",
@@ -13494,9 +13587,15 @@ const metricsPersistenceEnabledSetting = {
   key: MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED,
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.metricsPersistenceEnabled.name", "Persist Metrics"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.metricsPersistenceEnabled.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.metricsPersistenceEnabled.name", "Persist Metrics"),
+        "Persist Metrics"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.metricsPersistenceEnabled.hint",
+          "Keeps observability metrics across Foundry restarts (uses LocalStorage)."
+        ),
         "Keeps observability metrics across Foundry restarts (uses LocalStorage)."
       ),
       scope: "world",
@@ -13514,9 +13613,15 @@ const metricsPersistenceKeySetting = {
   key: MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY,
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.metricsPersistenceKey.name", "Metrics Storage Key"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.metricsPersistenceKey.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.metricsPersistenceKey.name", "Metrics Storage Key"),
+        "Metrics Storage Key"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.metricsPersistenceKey.hint",
+          "LocalStorage key used when metrics persistence is enabled."
+        ),
         "LocalStorage key used when metrics persistence is enabled."
       ),
       scope: "world",
@@ -13925,7 +14030,12 @@ const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
         );
         return;
       }
-      journalVisibility.processJournalDirectory(htmlElement);
+      const processResult = journalVisibility.processJournalDirectory(htmlElement);
+      if (!processResult.ok) {
+        notificationCenter.error("Error processing journal directory", processResult.error, {
+          channels: ["ConsoleChannel"]
+        });
+      }
     }, HOOK_THROTTLE_WINDOW_MS);
     const hookResult = foundryHooks.on(
       MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,

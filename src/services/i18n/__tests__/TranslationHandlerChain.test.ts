@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { TranslationHandlerChain, DITranslationHandlerChain } from "../TranslationHandlerChain";
 import type { TranslationHandler } from "../TranslationHandler.interface";
+import type { Result } from "@/types/result";
+import { ok, err } from "@/utils/functional/result";
 
 class StubHandler implements TranslationHandler {
   public next: TranslationHandler | null = null;
@@ -15,18 +17,18 @@ class StubHandler implements TranslationHandler {
     return handler;
   }
 
-  handle(key: string, data?: Record<string, unknown>, fallback?: string): string | null {
+  handle(key: string, data?: Record<string, unknown>, fallback?: string): Result<string, string> {
     if (this.result !== null) {
-      return this.result;
+      return ok(this.result);
     }
-    return this.next?.handle(key, data, fallback) ?? null;
+    return this.next?.handle(key, data, fallback) ?? err(`No handler for key: ${key}`);
   }
 
-  has(key: string): boolean {
+  has(key: string): Result<boolean, string> {
     if (this.hasKey) {
-      return true;
+      return ok(true);
     }
-    return this.next?.has(key) ?? false;
+    return this.next?.has(key) ?? ok(false);
   }
 }
 
@@ -42,8 +44,17 @@ describe("TranslationHandlerChain", () => {
     expect(local.next).toBe(fallback);
     expect(fallback.next).toBeNull();
 
-    expect(chain.handle("key")).toBe("local-result");
-    expect(chain.has("key")).toBe(true);
+    const handleResult = chain.handle("key");
+    expect(handleResult.ok).toBe(true);
+    if (handleResult.ok) {
+      expect(handleResult.value).toBe("local-result");
+    }
+
+    const hasResult = chain.has("key");
+    expect(hasResult.ok).toBe(true);
+    if (hasResult.ok) {
+      expect(hasResult.value).toBe(true);
+    }
   });
 
   it("should forward setNext to foundry handler", () => {
@@ -66,7 +77,16 @@ describe("TranslationHandlerChain", () => {
 
     const chain = new DITranslationHandlerChain(foundry, local, fallback);
 
-    expect(chain.handle("key")).toBe("fallback");
-    expect(chain.has("key")).toBe(true);
+    const handleResult = chain.handle("key");
+    expect(handleResult.ok).toBe(true);
+    if (handleResult.ok) {
+      expect(handleResult.value).toBe("fallback");
+    }
+
+    const hasResult = chain.has("key");
+    expect(hasResult.ok).toBe(true);
+    if (hasResult.ok) {
+      expect(hasResult.value).toBe(true);
+    }
   });
 });

@@ -1,6 +1,8 @@
 import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import { foundryI18nToken } from "@/tokens/tokenindex";
 import { AbstractTranslationHandler } from "./AbstractTranslationHandler";
+import type { Result } from "@/types/result";
+import { ok, err } from "@/utils/functional/result";
 
 /**
  * Translation handler that uses Foundry's i18n system.
@@ -19,22 +21,25 @@ export class FoundryTranslationHandler extends AbstractTranslationHandler {
     key: string,
     data?: Record<string, unknown>,
     _fallback?: string
-  ): string | null {
+  ): Result<string, string> {
     // Use format() if data is provided, otherwise localize()
     const result = data ? this.foundryI18n.format(key, data) : this.foundryI18n.localize(key);
 
     if (result.ok && result.value !== key) {
       // Foundry has a translation (not just returning the key)
-      return result.value;
+      return ok(result.value);
     }
 
-    // Can't handle - delegate to next handler
-    return null;
+    // Can't handle - return error to delegate to next handler
+    return err(`Foundry i18n could not translate key: ${key}`);
   }
 
-  protected doHas(key: string): boolean {
+  protected doHas(key: string): Result<boolean, string> {
     const result = this.foundryI18n.has(key);
-    return result.ok && result.value;
+    if (!result.ok) {
+      return err(`Failed to check Foundry i18n for key: ${key}`);
+    }
+    return ok(result.value);
   }
 }
 

@@ -10,6 +10,7 @@ import { LogLevel } from "@/config/environment";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import type { Logger } from "@/interfaces/logger";
 import { validateAndSetLogLevel } from "@/utils/settings/validate-log-level";
+import { unwrapOr } from "@/utils/functional/result";
 
 /**
  * Log level setting definition.
@@ -22,26 +23,38 @@ export const logLevelSetting: SettingDefinition<LogLevel> = {
 
   createConfig(i18n: I18nFacadeService, logger: Logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.logLevel.hint",
+      name: unwrapOr(i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"), "Log Level"),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.logLevel.hint",
+          "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors."
+        ),
         "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors."
       ),
       scope: "world",
       config: true,
       type: Number,
       choices: {
-        [LogLevel.DEBUG]: i18n.translate(
-          "MODULE.SETTINGS.logLevel.choices.debug",
+        [LogLevel.DEBUG]: unwrapOr(
+          i18n.translate(
+            "MODULE.SETTINGS.logLevel.choices.debug",
+            "DEBUG (All logs - for debugging)"
+          ),
           "DEBUG (All logs - for debugging)"
         ),
-        [LogLevel.INFO]: i18n.translate("MODULE.SETTINGS.logLevel.choices.info", "INFO (Standard)"),
-        [LogLevel.WARN]: i18n.translate(
-          "MODULE.SETTINGS.logLevel.choices.warn",
+        [LogLevel.INFO]: unwrapOr(
+          i18n.translate("MODULE.SETTINGS.logLevel.choices.info", "INFO (Standard)"),
+          "INFO (Standard)"
+        ),
+        [LogLevel.WARN]: unwrapOr(
+          i18n.translate(
+            "MODULE.SETTINGS.logLevel.choices.warn",
+            "WARN (Warnings and errors only)"
+          ),
           "WARN (Warnings and errors only)"
         ),
-        [LogLevel.ERROR]: i18n.translate(
-          "MODULE.SETTINGS.logLevel.choices.error",
+        [LogLevel.ERROR]: unwrapOr(
+          i18n.translate("MODULE.SETTINGS.logLevel.choices.error", "ERROR (Critical errors only)"),
           "ERROR (Critical errors only)"
         ),
       },

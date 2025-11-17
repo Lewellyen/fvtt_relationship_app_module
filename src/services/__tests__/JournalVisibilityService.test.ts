@@ -222,13 +222,15 @@ describe("JournalVisibilityService", () => {
 
       mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
       mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.removeJournalElement = vi.fn().mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1">Hidden Journal</li>`
       );
 
-      service.processJournalDirectory(container);
+      const result = service.processJournalDirectory(container);
 
+      expect(result.ok).toBe(true);
       expect(mockFacade.removeJournalElement).toHaveBeenCalledWith(
         "journal-1",
         "Hidden Journal",
@@ -238,13 +240,20 @@ describe("JournalVisibilityService", () => {
     });
 
     it("should handle error when getHiddenJournalEntries fails", () => {
-      const errorMessage = "Error getting entries";
+      const errorMessage = {
+        code: "OPERATION_FAILED" as const,
+        message: "Error getting entries",
+      };
       mockFacade.getJournalEntries = vi.fn().mockReturnValue(err(errorMessage));
 
       const { container } = createMockDOM(`<div>Content</div>`);
 
-      service.processJournalDirectory(container);
+      const result = service.processJournalDirectory(container);
 
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toEqual(errorMessage);
+      }
       expect(mockNotificationCenter.error).toHaveBeenCalledWith(
         "Error getting hidden journal entries",
         errorMessage,
@@ -255,7 +264,7 @@ describe("JournalVisibilityService", () => {
       expect(mockFacade.removeJournalElement).not.toHaveBeenCalled();
     });
 
-    it("should log warning when removeJournalElement fails", () => {
+    it("should return error when removeJournalElement fails", () => {
       const journal = {
         id: "journal-1",
         name: "Hidden Journal",
@@ -264,13 +273,20 @@ describe("JournalVisibilityService", () => {
 
       mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
       mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
-      const errorMessage = "Element not found";
+      const errorMessage = {
+        code: "NOT_FOUND" as const,
+        message: "Element not found",
+      };
       mockFacade.removeJournalElement = vi.fn().mockReturnValue(err(errorMessage));
 
       const { container } = createMockDOM(`<div>Content</div>`);
 
-      service.processJournalDirectory(container);
+      const result = service.processJournalDirectory(container);
 
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toEqual(errorMessage);
+      }
       expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
         "Error removing journal entry",
         errorMessage,
@@ -292,14 +308,16 @@ describe("JournalVisibilityService", () => {
 
       mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal1, journal2]));
       mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.removeJournalElement = vi.fn().mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(`
         <li class="directory-item" data-entry-id="journal-1">Hidden 1</li>
         <li class="directory-item" data-entry-id="journal-2">Hidden 2</li>
       `);
 
-      service.processJournalDirectory(container);
+      const result = service.processJournalDirectory(container);
 
+      expect(result.ok).toBe(true);
       expect(mockFacade.removeJournalElement).toHaveBeenCalledTimes(2);
     });
 
@@ -312,13 +330,15 @@ describe("JournalVisibilityService", () => {
 
       mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([journal]));
       mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.removeJournalElement = vi.fn().mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1"></li>`
       );
 
-      service.processJournalDirectory(container);
+      const result = service.processJournalDirectory(container);
 
+      expect(result.ok).toBe(true);
       expect(mockFacade.removeJournalElement).toHaveBeenCalledWith(
         "journal-1",
         MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
@@ -335,12 +355,14 @@ describe("JournalVisibilityService", () => {
 
       mockFacade.getJournalEntries = vi.fn().mockReturnValue(ok([xssJournal]));
       mockFacade.getEntryFlag = vi.fn().mockReturnValue(ok(true));
+      mockFacade.removeJournalElement = vi.fn().mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1"></li>`
       );
 
-      service.processJournalDirectory(container);
+      const result = service.processJournalDirectory(container);
+      expect(result.ok).toBe(true);
 
       // Verify logger was called with sanitized name
       expect(mockNotificationCenter.debug).toHaveBeenCalledWith(

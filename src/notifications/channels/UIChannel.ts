@@ -36,7 +36,11 @@ export class UIChannel implements NotificationChannel {
 
   send(notification: Notification): Result<void, string> {
     const sanitizedMessage = this.sanitizeForUI(notification);
-    const uiType = this.mapLevelToUIType(notification.level);
+    const uiTypeResult = this.mapLevelToUIType(notification.level);
+    if (!uiTypeResult.ok) {
+      return uiTypeResult;
+    }
+    const uiType = uiTypeResult.value;
     const uiOptions = notification.uiOptions;
 
     const notifyResult = this.foundryUI.notify(sanitizedMessage, uiType, uiOptions);
@@ -82,19 +86,21 @@ export class UIChannel implements NotificationChannel {
    * Maps notification level to Foundry UI notification type.
    * Protected to allow testing of exhaustive type check.
    */
-  protected mapLevelToUIType(level: Notification["level"]): "info" | "warning" | "error" {
+  protected mapLevelToUIType(
+    level: Notification["level"]
+  ): Result<"info" | "warning" | "error", string> {
     switch (level) {
       case "info":
-        return "info";
+        return ok("info");
       case "warn":
-        return "warning";
+        return ok("warning");
       case "error":
-        return "error";
+        return ok("error");
       case "debug": {
         // TypeScript-Compiler sollte hier warnen, wenn debug nicht mehr im Union ist
         // This should never be called because canHandle() filters out debug level
-        // Throw error to satisfy exhaustive check without type assertion
-        throw new Error(`Debug level should be filtered by canHandle(). Received: ${level}`);
+        // Return error to satisfy exhaustive check without type assertion
+        return err(`Debug level should be filtered by canHandle(). Received: ${level}`);
       }
     }
   }

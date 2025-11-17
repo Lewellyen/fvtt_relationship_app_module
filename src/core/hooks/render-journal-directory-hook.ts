@@ -75,7 +75,13 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
         return;
       }
 
-      journalVisibility.processJournalDirectory(htmlElement);
+      const processResult = journalVisibility.processJournalDirectory(htmlElement);
+      if (!processResult.ok) {
+        // Log error but don't interrupt hook execution
+        notificationCenter.error("Error processing journal directory", processResult.error, {
+          channels: ["ConsoleChannel"],
+        });
+      }
     }, HOOK_THROTTLE_WINDOW_MS);
 
     const hookResult = foundryHooks.on(

@@ -1,5 +1,6 @@
 import { MODULE_CONSTANTS } from "@/constants";
 import type { SettingDefinition } from "./setting-definition.interface";
+import { unwrapOr } from "@/utils/functional/result";
 
 /**
  * Foundry setting for configuring the optional CacheService max entries (LRU limit).
@@ -9,9 +10,15 @@ export const cacheMaxEntriesSetting: SettingDefinition<number> = {
 
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.cacheMaxEntries.name", "Cache Max Entries"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.cacheMaxEntries.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.cacheMaxEntries.name", "Cache Max Entries"),
+        "Cache Max Entries"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.cacheMaxEntries.hint",
+          "Optional LRU limit. Use 0 to allow unlimited cache entries."
+        ),
         "Optional LRU limit. Use 0 to allow unlimited cache entries."
       ),
       scope: "world",

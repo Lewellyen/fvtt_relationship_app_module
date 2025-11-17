@@ -15,40 +15,66 @@ describe("FallbackTranslationHandler", () => {
     it("should return fallback when provided", () => {
       const result = handler.handle("ANY.KEY", undefined, "Fallback Text");
 
-      expect(result).toBe("Fallback Text");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Fallback Text");
+      }
     });
 
     it("should return key when no fallback provided", () => {
       const result = handler.handle("ANY.KEY");
 
-      expect(result).toBe("ANY.KEY");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("ANY.KEY");
+      }
     });
 
     it("should ignore data parameter", () => {
       const result = handler.handle("ANY.KEY", { name: "Alice" }, "Fallback");
 
       // Fallback handler doesn't use data, just returns fallback
-      expect(result).toBe("Fallback");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Fallback");
+      }
     });
 
-    it("should never return null (always handles)", () => {
+    it("should always return ok result (always handles)", () => {
       const result = handler.handle("ANY.KEY");
 
-      expect(result).not.toBeNull();
+      expect(result.ok).toBe(true);
     });
 
     it("should handle empty string as fallback", () => {
       const result = handler.handle("ANY.KEY", undefined, "");
 
-      expect(result).toBe("");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("");
+      }
     });
   });
 
   describe("doHas", () => {
     it("should always return false (fallback doesn't 'have' keys)", () => {
-      expect(handler.has("ANY.KEY")).toBe(false);
-      expect(handler.has("ANOTHER.KEY")).toBe(false);
-      expect(handler.has("")).toBe(false);
+      const result1 = handler.has("ANY.KEY");
+      expect(result1.ok).toBe(true);
+      if (result1.ok) {
+        expect(result1.value).toBe(false);
+      }
+
+      const result2 = handler.has("ANOTHER.KEY");
+      expect(result2.ok).toBe(true);
+      if (result2.ok) {
+        expect(result2.value).toBe(false);
+      }
+
+      const result3 = handler.has("");
+      expect(result3.ok).toBe(true);
+      if (result3.ok) {
+        expect(result3.value).toBe(false);
+      }
     });
   });
 
@@ -57,14 +83,20 @@ describe("FallbackTranslationHandler", () => {
       // Simulate being last in chain: no next handler
       const result = handler.handle("UNKNOWN.KEY", undefined, "Final Fallback");
 
-      expect(result).toBe("Final Fallback");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Final Fallback");
+      }
     });
 
     it("should return key as ultimate fallback", () => {
       // No fallback parameter = return key
       const result = handler.handle("UNKNOWN.KEY");
 
-      expect(result).toBe("UNKNOWN.KEY");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("UNKNOWN.KEY");
+      }
     });
   });
 

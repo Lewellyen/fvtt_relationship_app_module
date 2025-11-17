@@ -142,7 +142,7 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
   };
 
   const mockJournalService = {
-    processJournalDirectory: vi.fn(),
+    processJournalDirectory: vi.fn().mockReturnValue({ ok: true as const, value: undefined }),
     getHiddenJournalEntries: vi.fn().mockReturnValue({ ok: true as const, value: [] }),
   } as unknown as JournalVisibilityService;
 

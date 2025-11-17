@@ -1,5 +1,6 @@
 import { MODULE_CONSTANTS } from "@/constants";
 import type { SettingDefinition } from "./setting-definition.interface";
+import { unwrapOr } from "@/utils/functional/result";
 
 /**
  * Foundry setting to toggle performance tracking at runtime.
@@ -9,9 +10,15 @@ export const performanceTrackingSetting: SettingDefinition<boolean> = {
 
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.performanceTracking.name", "Performance Tracking"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.performanceTracking.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.performanceTracking.name", "Performance Tracking"),
+        "Performance Tracking"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.performanceTracking.hint",
+          "Enables internal performance instrumentation (requires sampling)."
+        ),
         "Enables internal performance instrumentation (requires sampling)."
       ),
       scope: "world",

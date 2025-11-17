@@ -4,6 +4,8 @@
  * Each handler in the chain tries to provide a translation.
  * If it can't, it delegates to the next handler.
  */
+import type { Result } from "@/types/result";
+
 export interface TranslationHandler {
   /**
    * Sets the next handler in the chain.
@@ -22,15 +24,15 @@ export interface TranslationHandler {
    * @param key - Translation key
    * @param data - Optional data for placeholder replacement
    * @param fallback - Optional fallback string
-   * @returns Translated string or null if this handler can't handle it
+   * @returns Result with translated string, or error if translation failed and no fallback provided
    */
-  handle(key: string, data?: Record<string, unknown>, fallback?: string): string | null;
+  handle(key: string, data?: Record<string, unknown>, fallback?: string): Result<string, string>;
 
   /**
    * Checks if a translation key exists in this handler's source.
    *
    * @param key - Translation key to check
-   * @returns True if the key exists, false otherwise
+   * @returns Result with true if the key exists, false otherwise, or error if check failed
    */
-  has(key: string): boolean;
+  has(key: string): Result<boolean, string>;
 }

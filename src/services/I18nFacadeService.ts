@@ -1,6 +1,7 @@
 import type { LocalI18nService } from "@/services/LocalI18nService";
 import { localI18nToken, translationHandlerChainToken } from "@/tokens/tokenindex";
 import type { TranslationHandler } from "./i18n/TranslationHandler.interface";
+import type { Result } from "@/types/result";
 
 /**
  * Facade service that combines Foundry's i18n and local fallback translations.
@@ -26,8 +27,10 @@ import type { TranslationHandler } from "./i18n/TranslationHandler.interface";
  * const i18n = container.resolve(i18nFacadeToken);
  *
  * // Try Foundry first, then local, then fallback
- * const text = i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level");
- * console.log(text); // Translated or fallback
+ * const result = i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level");
+ * if (result.ok) {
+ *   console.log(result.value); // Translated or fallback
+ * }
  * ```
  */
 export class I18nFacadeService {
@@ -41,22 +44,26 @@ export class I18nFacadeService {
    *
    * @param key - Translation key
    * @param fallback - Optional fallback string (defaults to key itself)
-   * @returns Translated string or fallback
+   * @returns Result with translated string or fallback
    *
    * @example
    * ```typescript
    * // With fallback
-   * const text = i18n.translate("MODULE.UNKNOWN_KEY", "Default Text");
-   * console.log(text); // "Default Text"
+   * const result = i18n.translate("MODULE.UNKNOWN_KEY", "Default Text");
+   * if (result.ok) {
+   *   console.log(result.value); // "Default Text"
+   * }
    *
-   * // Without fallback (returns key)
-   * const text2 = i18n.translate("MODULE.UNKNOWN_KEY");
-   * console.log(text2); // "MODULE.UNKNOWN_KEY"
+   * // Without fallback (returns key as fallback)
+   * const result2 = i18n.translate("MODULE.UNKNOWN_KEY");
+   * if (result2.ok) {
+   *   console.log(result2.value); // "MODULE.UNKNOWN_KEY"
+   * }
    * ```
    */
-  translate(key: string, fallback?: string): string {
+  translate(key: string, fallback?: string): Result<string, string> {
     // Delegate to chain - it will try Foundry → Local → Fallback
-    return this.handlerChain.handle(key, undefined, fallback) ?? key;
+    return this.handlerChain.handle(key, undefined, fallback);
   }
 
   /**
@@ -65,17 +72,19 @@ export class I18nFacadeService {
    * @param key - Translation key
    * @param data - Object with placeholder values
    * @param fallback - Optional fallback string
-   * @returns Formatted string or fallback
+   * @returns Result with formatted string or fallback
    *
    * @example
    * ```typescript
-   * const text = i18n.format("MODULE.WELCOME", { name: "Alice" }, "Welcome!");
-   * console.log(text); // "Welcome, Alice!" or "Welcome!"
+   * const result = i18n.format("MODULE.WELCOME", { name: "Alice" }, "Welcome!");
+   * if (result.ok) {
+   *   console.log(result.value); // "Welcome, Alice!" or "Welcome!"
+   * }
    * ```
    */
-  format(key: string, data: Record<string, unknown>, fallback?: string): string {
+  format(key: string, data: Record<string, unknown>, fallback?: string): Result<string, string> {
     // Delegate to chain - it will try Foundry → Local → Fallback
-    return this.handlerChain.handle(key, data, fallback) ?? key;
+    return this.handlerChain.handle(key, data, fallback);
   }
 
   /**
@@ -83,9 +92,9 @@ export class I18nFacadeService {
    * Checks Foundry → Local (Fallback always returns false for has()).
    *
    * @param key - Translation key to check
-   * @returns True if key exists in Foundry or local i18n
+   * @returns Result with true if key exists in Foundry or local i18n
    */
-  has(key: string): boolean {
+  has(key: string): Result<boolean, string> {
     // Delegate to chain
     return this.handlerChain.has(key);
   }

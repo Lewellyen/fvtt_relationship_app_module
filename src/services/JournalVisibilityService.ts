@@ -106,8 +106,9 @@ export class JournalVisibilityService {
 
   /**
    * Processes journal directory HTML to hide flagged entries.
+   * @returns Result indicating success or failure with aggregated errors
    */
-  processJournalDirectory(htmlElement: HTMLElement): void {
+  processJournalDirectory(htmlElement: HTMLElement): Result<void, FoundryError> {
     this.notificationCenter.debug(
       "Processing journal directory for hidden entries",
       { context: { htmlElement } },
@@ -117,27 +118,32 @@ export class JournalVisibilityService {
     );
 
     const hiddenResult = this.getHiddenJournalEntries();
-    match(hiddenResult, {
-      onOk: (hidden) => {
-        this.notificationCenter.debug(
-          `Found ${hidden.length} hidden journal entries`,
-          { context: { hidden } },
-          {
-            channels: ["ConsoleChannel"],
-          }
-        );
-        this.hideEntries(hidden, htmlElement);
-      },
-      onErr: (error) => {
-        // Internal error - log to console only (no UI notification)
-        this.notificationCenter.error("Error getting hidden journal entries", error, {
-          channels: ["ConsoleChannel"],
-        });
-      },
-    });
+    if (!hiddenResult.ok) {
+      // Log error but return it for caller to handle
+      this.notificationCenter.error("Error getting hidden journal entries", hiddenResult.error, {
+        channels: ["ConsoleChannel"],
+      });
+      return hiddenResult;
+    }
+
+    const hidden = hiddenResult.value;
+    this.notificationCenter.debug(
+      `Found ${hidden.length} hidden journal entries`,
+      { context: { hidden } },
+      {
+        channels: ["ConsoleChannel"],
+      }
+    );
+
+    return this.hideEntries(hidden, htmlElement);
   }
 
-  private hideEntries(entries: FoundryJournalEntry[], html: HTMLElement): void {
+  private hideEntries(
+    entries: FoundryJournalEntry[],
+    html: HTMLElement
+  ): Result<void, FoundryError> {
+    const errors: FoundryError[] = [];
+
     for (const journal of entries) {
       const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
       const removeResult = this.facade.removeJournalElement(journal.id, journalName, html);
@@ -150,12 +156,24 @@ export class JournalVisibilityService {
           );
         },
         onErr: (error) => {
+          errors.push(error);
           this.notificationCenter.warn("Error removing journal entry", error, {
             channels: ["ConsoleChannel"],
           });
         },
       });
     }
+
+    // If any errors occurred, return the first one
+    // In future, could aggregate multiple errors into a single error
+    if (errors.length > 0) {
+      const firstError = errors[0];
+      if (firstError) {
+        return { ok: false, error: firstError };
+      }
+    }
+
+    return { ok: true, value: undefined };
   }
 }
 

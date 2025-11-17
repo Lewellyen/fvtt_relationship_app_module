@@ -1,5 +1,6 @@
 import { MODULE_CONSTANTS } from "@/constants";
 import type { SettingDefinition } from "./setting-definition.interface";
+import { unwrapOr } from "@/utils/functional/result";
 
 /**
  * Foundry setting for configuring the default cache TTL (in milliseconds).
@@ -9,9 +10,15 @@ export const cacheDefaultTtlSetting: SettingDefinition<number> = {
 
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.cacheDefaultTtlMs.name", "Cache TTL (ms)"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.cacheDefaultTtlMs.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.cacheDefaultTtlMs.name", "Cache TTL (ms)"),
+        "Cache TTL (ms)"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.cacheDefaultTtlMs.hint",
+          "Default lifetime for cache entries in milliseconds. Use 0 to disable TTL (entries live until invalidated)."
+        ),
         "Default lifetime for cache entries in milliseconds. Use 0 to disable TTL (entries live until invalidated)."
       ),
       scope: "world",

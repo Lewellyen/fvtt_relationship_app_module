@@ -77,19 +77,21 @@ export function castDisposablePort(port: unknown): Disposable {
 }
 
 /**
- * Type-Guard für Non-Empty-Arrays mit Assertion.
+ * Type-Guard für Non-Empty-Arrays mit Result-Pattern.
  * Stellt sicher, dass ein Array mindestens ein Element hat.
  * Ersetzt Non-Null-Assertions durch type-safe Guards.
  *
  * @template T - Der Element-Typ
  * @param arr - Das Array, das geprüft werden soll
- * @throws {Error} Wenn das Array leer ist
- * @returns Type-Guard-Assertion, dass das Array non-empty ist
+ * @returns Result mit type-narrowed non-empty array oder FoundryError
  */
-export function assertNonEmptyArray<T>(arr: T[]): asserts arr is [T, ...T[]] {
+export function ensureNonEmptyArray<T>(arr: T[]): Result<[T, ...T[]], FoundryError> {
   if (arr.length === 0) {
-    throw new Error("Array must not be empty");
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Array must not be empty", { arrayLength: 0 })
+    );
   }
+  return ok(arr as [T, ...T[]]);
 }
 
 /**

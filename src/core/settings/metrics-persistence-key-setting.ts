@@ -1,5 +1,6 @@
 import { MODULE_CONSTANTS } from "@/constants";
 import type { SettingDefinition } from "./setting-definition.interface";
+import { unwrapOr } from "@/utils/functional/result";
 
 /**
  * Foundry setting to configure the LocalStorage key for persisted metrics.
@@ -9,9 +10,15 @@ export const metricsPersistenceKeySetting: SettingDefinition<string> = {
 
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.metricsPersistenceKey.name", "Metrics Storage Key"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.metricsPersistenceKey.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.metricsPersistenceKey.name", "Metrics Storage Key"),
+        "Metrics Storage Key"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.metricsPersistenceKey.hint",
+          "LocalStorage key used when metrics persistence is enabled."
+        ),
         "LocalStorage key used when metrics persistence is enabled."
       ),
       scope: "world",

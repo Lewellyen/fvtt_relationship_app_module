@@ -173,15 +173,44 @@ function getAllowedMarkers(filePath) {
 }
 
 /**
- * Check if a marker type is allowed for a file.
+ * Extract the actual marker text from a line of code.
+ * Returns the full marker text (e.g., "type-coverage:ignore-line" from "type-coverage:ignore-line -- comment").
  */
-function isMarkerAllowed(filePath, markerName) {
+function extractMarkerFromLine(line) {
+  // Match common marker patterns in comments
+  const markerMatch = line.match(/(?:type-coverage:ignore(?:-line|-next-line)?|c8\s+ignore(?:\s+file)?|eslint-disable(?:-next-line|-line)?|@?ts-ignore)/i);
+  return markerMatch ? markerMatch[0].trim() : null;
+}
+
+/**
+ * Check if a marker type is allowed for a file.
+ * 
+ * @param filePath - Path to the file
+ * @param markerName - The pattern name that matched (e.g., "type-coverage:ignore")
+ * @param actualLine - Optional: The actual line content to extract the real marker from
+ */
+function isMarkerAllowed(filePath, markerName, actualLine = null) {
   if (!isAllowedWithMarkers(filePath)) {
     return false;
   }
   const allowed = getAllowedMarkers(filePath);
-  // Check if marker matches any allowed pattern (e.g., "c8 ignore" matches "c8 ignore file")
-  return allowed.some(pattern => markerName.toLowerCase().includes(pattern.toLowerCase()));
+  
+  // If we have the actual line, extract the real marker text
+  let actualMarker = markerName;
+  if (actualLine) {
+    const extracted = extractMarkerFromLine(actualLine);
+    if (extracted) {
+      actualMarker = extracted;
+    }
+  }
+  
+  // Check if actual marker matches any allowed pattern
+  // Both directions: actual marker contains pattern OR pattern contains actual marker
+  return allowed.some(pattern => {
+    const patternLower = pattern.toLowerCase();
+    const markerLower = actualMarker.toLowerCase();
+    return markerLower.includes(patternLower) || patternLower.includes(markerLower);
+  });
 }
 
 /**
@@ -235,8 +264,8 @@ function searchIgnoresInFile(filePath) {
     const line = lines[i];
     for (const { pattern, name } of IGNORE_PATTERNS) {
       if (pattern.test(line)) {
-        // Check if this marker is allowed for this file
-        if (!isMarkerAllowed(filePath, name)) {
+        // Check if this marker is allowed for this file (pass actual line to extract real marker)
+        if (!isMarkerAllowed(filePath, name, line)) {
           matches.push({
             file: filePath,
             line: i + 1,
@@ -296,8 +325,8 @@ async function checkNoIgnores() {
               const [, filePath, lineNum, content] = match;
               const normalizedPath = filePath.replace(/\\/g, '/');
               
-              // Skip if in whitelist and marker is allowed
-              if (!isMarkerAllowed(normalizedPath, name)) {
+              // Skip if in whitelist and marker is allowed (pass actual content to extract real marker)
+              if (!isMarkerAllowed(normalizedPath, name, content)) {
                 allMatches.push({
                   file: normalizedPath,
                   line: parseInt(lineNum, 10),

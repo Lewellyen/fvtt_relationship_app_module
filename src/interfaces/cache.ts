@@ -1,4 +1,5 @@
 import { MODULE_CONSTANTS } from "@/constants";
+import type { Result } from "@/types/result";
 
 const KEY_SEPARATOR = ":";
 
@@ -94,7 +95,7 @@ export interface CacheService {
     key: CacheKey,
     factory: () => TValue | Promise<TValue>,
     options?: CacheSetOptions
-  ): Promise<CacheLookupResult<TValue>>;
+  ): Promise<Result<CacheLookupResult<TValue>, string>>;
 }
 
 /**

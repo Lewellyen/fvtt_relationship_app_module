@@ -164,6 +164,43 @@ describe("PortRegistry", () => {
       // Restore original implementation
       vi.spyOn(runtimeCasts, "getFactoryOrError").mockRestore();
     });
+
+    it("should return error when ensureNonEmptyArray fails (empty compatible versions)", () => {
+      const registry = new PortRegistry<string>();
+      // Register ports that won't match the requested version
+      registry.register(15, () => "port-15");
+      registry.register(16, () => "port-16");
+
+      // Request version 13, which is lower than all registered versions
+      // This should result in an empty compatibleVersions array
+      const result = registry.createForVersion(13);
+      expectResultErr(result);
+      expect(result.error.code).toBe("PORT_NOT_FOUND");
+      expect(result.error.message).toContain("No compatible port");
+    });
+
+    it("should return error when ensureNonEmptyArray fails (defensive check)", () => {
+      const registry = new PortRegistry<string>();
+      registry.register(13, () => "port-13");
+
+      // Mock ensureNonEmptyArray to return an error even with non-empty array
+      // This tests the defensive check at line 97-98
+      vi.spyOn(runtimeCasts, "ensureNonEmptyArray").mockReturnValue({
+        ok: false,
+        error: {
+          code: "VALIDATION_FAILED",
+          message: "Array must not be empty",
+          details: { arrayLength: 0 },
+        },
+      } as never);
+
+      const result = registry.createForVersion(13);
+      expectResultErr(result);
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+
+      // Restore original implementation
+      vi.spyOn(runtimeCasts, "ensureNonEmptyArray").mockRestore();
+    });
   });
 
   describe("hasVersion", () => {

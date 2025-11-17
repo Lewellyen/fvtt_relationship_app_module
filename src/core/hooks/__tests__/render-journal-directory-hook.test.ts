@@ -24,7 +24,7 @@ describe("RenderJournalDirectoryHook", () => {
         off: vi.fn(),
       };
       const mockJournalVisibility: Pick<JournalVisibilityService, "processJournalDirectory"> = {
-        processJournalDirectory: vi.fn(),
+        processJournalDirectory: vi.fn().mockReturnValue(ok(undefined)),
       };
       const mockNotificationCenter: Pick<NotificationCenter, "debug" | "error"> = {
         debug: vi.fn().mockReturnValue(ok(undefined)),
@@ -52,7 +52,7 @@ describe("RenderJournalDirectoryHook", () => {
         off: vi.fn(),
       };
       const mockJournalVisibility: Pick<JournalVisibilityService, "processJournalDirectory"> = {
-        processJournalDirectory: vi.fn(),
+        processJournalDirectory: vi.fn().mockReturnValue(ok(undefined)),
       };
       const mockNotificationCenter: Pick<NotificationCenter, "debug" | "error"> = {
         debug: vi.fn().mockReturnValue(ok(undefined)),
@@ -92,7 +92,7 @@ describe("RenderJournalDirectoryHook", () => {
         off: vi.fn(),
       };
       const mockJournalVisibility: Pick<JournalVisibilityService, "processJournalDirectory"> = {
-        processJournalDirectory: vi.fn(),
+        processJournalDirectory: vi.fn().mockReturnValue(ok(undefined)),
       };
       const mockNotificationCenter: Pick<NotificationCenter, "debug" | "error"> = {
         debug: vi.fn().mockReturnValue(ok(undefined)),
@@ -130,7 +130,7 @@ describe("RenderJournalDirectoryHook", () => {
         off: vi.fn(),
       };
       const mockJournalVisibility: Pick<JournalVisibilityService, "processJournalDirectory"> = {
-        processJournalDirectory: vi.fn(),
+        processJournalDirectory: vi.fn().mockReturnValue(ok(undefined)),
       };
       const mockNotificationCenter: Pick<NotificationCenter, "debug" | "error"> = {
         debug: vi.fn().mockReturnValue(ok(undefined)),
@@ -164,6 +164,47 @@ describe("RenderJournalDirectoryHook", () => {
       expect(mockNotificationCenter.error).not.toHaveBeenCalled();
     });
 
+    it("should log error when processJournalDirectory fails", () => {
+      const mockHooks: Pick<FoundryHooks, "on" | "off"> = {
+        on: vi.fn().mockReturnValue(ok(4)),
+        off: vi.fn(),
+      };
+      const mockJournalVisibility: Pick<JournalVisibilityService, "processJournalDirectory"> = {
+        processJournalDirectory: vi
+          .fn()
+          .mockReturnValue(err({ code: "OPERATION_FAILED", message: "Processing failed" })),
+      };
+      const mockNotificationCenter: Pick<NotificationCenter, "debug" | "error"> = {
+        debug: vi.fn().mockReturnValue(ok(undefined)),
+        error: vi.fn().mockReturnValue(ok(undefined)),
+      } as unknown as NotificationCenter;
+
+      const hook = new RenderJournalDirectoryHook(
+        mockHooks as FoundryHooks,
+        mockJournalVisibility as JournalVisibilityService,
+        mockNotificationCenter
+      );
+
+      const result = hook.register({} as never);
+      expect(result.ok).toBe(true);
+
+      const hooksOnMock = mockHooks.on as ReturnType<typeof vi.fn>;
+      const hookCallback = hooksOnMock.mock.calls.find(
+        ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
+      )?.[1] as ((app: unknown, html: unknown) => void) | undefined;
+
+      const mockApp = { id: "journal-directory", object: {}, options: {} };
+      const mockHtml = document.createElement("div");
+      hookCallback!(mockApp, mockHtml);
+
+      expect(mockJournalVisibility.processJournalDirectory).toHaveBeenCalledWith(mockHtml);
+      expect(mockNotificationCenter.error).toHaveBeenCalledWith(
+        "Error processing journal directory",
+        expect.objectContaining({ code: "OPERATION_FAILED", message: "Processing failed" }),
+        { channels: ["ConsoleChannel"] }
+      );
+    });
+
     it("should log error when hook registration fails", () => {
       const mockHooks: Pick<FoundryHooks, "on" | "off"> = {
         on: vi.fn().mockReturnValue(
@@ -175,7 +216,7 @@ describe("RenderJournalDirectoryHook", () => {
         off: vi.fn(),
       };
       const mockJournalVisibility: Pick<JournalVisibilityService, "processJournalDirectory"> = {
-        processJournalDirectory: vi.fn(),
+        processJournalDirectory: vi.fn().mockReturnValue(ok(undefined)),
       };
       const mockNotificationCenter: Pick<NotificationCenter, "debug" | "error"> = {
         debug: vi.fn().mockReturnValue(ok(undefined)),
@@ -209,7 +250,7 @@ describe("RenderJournalDirectoryHook", () => {
         off: vi.fn(),
       };
       const mockJournalVisibility: Pick<JournalVisibilityService, "processJournalDirectory"> = {
-        processJournalDirectory: vi.fn(),
+        processJournalDirectory: vi.fn().mockReturnValue(ok(undefined)),
       };
       const mockNotificationCenter: Pick<NotificationCenter, "debug" | "error"> = {
         debug: vi.fn().mockReturnValue(ok(undefined)),
@@ -231,7 +272,7 @@ describe("RenderJournalDirectoryHook", () => {
         off: vi.fn(),
       };
       const mockJournalVisibility: Pick<JournalVisibilityService, "processJournalDirectory"> = {
-        processJournalDirectory: vi.fn(),
+        processJournalDirectory: vi.fn().mockReturnValue(ok(undefined)),
       };
       const mockNotificationCenter: Pick<NotificationCenter, "debug" | "error"> = {
         debug: vi.fn().mockReturnValue(ok(undefined)),

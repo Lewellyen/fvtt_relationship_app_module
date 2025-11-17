@@ -1,5 +1,6 @@
 import { MODULE_CONSTANTS } from "@/constants";
 import type { SettingDefinition } from "./setting-definition.interface";
+import { unwrapOr } from "@/utils/functional/result";
 
 /**
  * Foundry setting to adjust performance sampling rate (0.0 - 1.0).
@@ -9,12 +10,15 @@ export const performanceSamplingSetting: SettingDefinition<number> = {
 
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate(
-        "MODULE.SETTINGS.performanceSamplingRate.name",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.performanceSamplingRate.name", "Performance Sampling Rate"),
         "Performance Sampling Rate"
       ),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.performanceSamplingRate.hint",
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.performanceSamplingRate.hint",
+          "Fraction of operations to instrument (0 = 0%, 1 = 100%)."
+        ),
         "Fraction of operations to instrument (0 = 0%, 1 = 100%)."
       ),
       scope: "world",

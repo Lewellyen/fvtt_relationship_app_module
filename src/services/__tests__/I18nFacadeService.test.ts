@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { I18nFacadeService, DII18nFacadeService } from "../I18nFacadeService";
 import type { LocalI18nService } from "../LocalI18nService";
 import type { TranslationHandler } from "../i18n/TranslationHandler.interface";
+import { ok, err } from "@/utils/functional/result";
 
 describe("I18nFacadeService", () => {
   let facade: I18nFacadeService;
@@ -27,20 +28,26 @@ describe("I18nFacadeService", () => {
 
   describe("translate", () => {
     it("should delegate to handler chain", () => {
-      vi.mocked(mockHandlerChain.handle).mockReturnValue("Translated Text");
+      vi.mocked(mockHandlerChain.handle).mockReturnValue(ok("Translated Text"));
 
       const result = facade.translate("MODULE.TEST.KEY");
 
-      expect(result).toBe("Translated Text");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Translated Text");
+      }
       expect(mockHandlerChain.handle).toHaveBeenCalledWith("MODULE.TEST.KEY", undefined, undefined);
     });
 
     it("should pass fallback parameter to chain", () => {
-      vi.mocked(mockHandlerChain.handle).mockReturnValue("Fallback Text");
+      vi.mocked(mockHandlerChain.handle).mockReturnValue(ok("Fallback Text"));
 
       const result = facade.translate("MODULE.TEST.KEY", "Fallback Text");
 
-      expect(result).toBe("Fallback Text");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Fallback Text");
+      }
       expect(mockHandlerChain.handle).toHaveBeenCalledWith(
         "MODULE.TEST.KEY",
         undefined,
@@ -48,22 +55,28 @@ describe("I18nFacadeService", () => {
       );
     });
 
-    it("should return key when chain returns null", () => {
-      vi.mocked(mockHandlerChain.handle).mockReturnValue(null);
+    it("should return error when chain returns error and no fallback", () => {
+      vi.mocked(mockHandlerChain.handle).mockReturnValue(err("Translation failed"));
 
       const result = facade.translate("MODULE.TEST.KEY");
 
-      expect(result).toBe("MODULE.TEST.KEY");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBe("Translation failed");
+      }
     });
   });
 
   describe("format", () => {
     it("should delegate to handler chain with data", () => {
-      vi.mocked(mockHandlerChain.handle).mockReturnValue("Welcome, Alice!");
+      vi.mocked(mockHandlerChain.handle).mockReturnValue(ok("Welcome, Alice!"));
 
       const result = facade.format("MODULE.WELCOME", { name: "Alice" });
 
-      expect(result).toBe("Welcome, Alice!");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Welcome, Alice!");
+      }
       expect(mockHandlerChain.handle).toHaveBeenCalledWith(
         "MODULE.WELCOME",
         { name: "Alice" },
@@ -72,11 +85,14 @@ describe("I18nFacadeService", () => {
     });
 
     it("should pass fallback to chain", () => {
-      vi.mocked(mockHandlerChain.handle).mockReturnValue("Hi!");
+      vi.mocked(mockHandlerChain.handle).mockReturnValue(ok("Hi!"));
 
       const result = facade.format("MODULE.WELCOME", { name: "Bob" }, "Hi!");
 
-      expect(result).toBe("Hi!");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("Hi!");
+      }
       expect(mockHandlerChain.handle).toHaveBeenCalledWith(
         "MODULE.WELCOME",
         { name: "Bob" },
@@ -84,31 +100,51 @@ describe("I18nFacadeService", () => {
       );
     });
 
-    it("should return key when chain returns null", () => {
-      vi.mocked(mockHandlerChain.handle).mockReturnValue(null);
+    it("should return error when chain returns error and no fallback", () => {
+      vi.mocked(mockHandlerChain.handle).mockReturnValue(err("Format failed"));
 
       const result = facade.format("MODULE.WELCOME", {});
 
-      expect(result).toBe("MODULE.WELCOME");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBe("Format failed");
+      }
     });
   });
 
   describe("has", () => {
     it("should delegate to handler chain", () => {
-      vi.mocked(mockHandlerChain.has).mockReturnValue(true);
+      vi.mocked(mockHandlerChain.has).mockReturnValue(ok(true));
 
       const result = facade.has("MODULE.TEST.KEY");
 
-      expect(result).toBe(true);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(true);
+      }
       expect(mockHandlerChain.has).toHaveBeenCalledWith("MODULE.TEST.KEY");
     });
 
     it("should return false when chain returns false", () => {
-      vi.mocked(mockHandlerChain.has).mockReturnValue(false);
+      vi.mocked(mockHandlerChain.has).mockReturnValue(ok(false));
 
       const result = facade.has("MODULE.UNKNOWN.KEY");
 
-      expect(result).toBe(false);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(false);
+      }
+    });
+
+    it("should return error when chain returns error", () => {
+      vi.mocked(mockHandlerChain.has).mockReturnValue(err("Check failed"));
+
+      const result = facade.has("MODULE.UNKNOWN.KEY");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBe("Check failed");
+      }
     });
   });
 

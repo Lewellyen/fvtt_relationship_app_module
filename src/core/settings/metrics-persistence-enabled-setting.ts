@@ -1,5 +1,6 @@
 import { MODULE_CONSTANTS } from "@/constants";
 import type { SettingDefinition } from "./setting-definition.interface";
+import { unwrapOr } from "@/utils/functional/result";
 
 /**
  * Foundry setting to toggle metrics persistence between sessions.
@@ -9,9 +10,15 @@ export const metricsPersistenceEnabledSetting: SettingDefinition<boolean> = {
 
   createConfig(i18n, logger) {
     return {
-      name: i18n.translate("MODULE.SETTINGS.metricsPersistenceEnabled.name", "Persist Metrics"),
-      hint: i18n.translate(
-        "MODULE.SETTINGS.metricsPersistenceEnabled.hint",
+      name: unwrapOr(
+        i18n.translate("MODULE.SETTINGS.metricsPersistenceEnabled.name", "Persist Metrics"),
+        "Persist Metrics"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.metricsPersistenceEnabled.hint",
+          "Keeps observability metrics across Foundry restarts (uses LocalStorage)."
+        ),
         "Keeps observability metrics across Foundry restarts (uses LocalStorage)."
       ),
       scope: "world",

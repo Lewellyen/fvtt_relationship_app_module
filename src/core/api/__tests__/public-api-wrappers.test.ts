@@ -10,6 +10,7 @@ import type { Logger } from "@/interfaces/logger";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
+import { ok } from "@/utils/functional/result";
 
 describe("public-api-wrappers", () => {
   describe("createPublicLogger", () => {
@@ -98,9 +99,9 @@ describe("public-api-wrappers", () => {
   describe("createPublicI18n", () => {
     it("should allow read methods", () => {
       const mockI18n = {
-        translate: vi.fn(() => "translated"),
-        format: vi.fn(() => "formatted"),
-        has: vi.fn(() => true),
+        translate: vi.fn(() => ok("translated")),
+        format: vi.fn(() => ok("formatted")),
+        has: vi.fn(() => ok(true)),
       } as Partial<I18nFacadeService> as I18nFacadeService;
 
       const publicI18n = createPublicI18n(mockI18n);
@@ -116,9 +117,9 @@ describe("public-api-wrappers", () => {
 
     it("should block non-whitelisted methods", () => {
       const mockI18n = {
-        translate: vi.fn(() => "translated"),
-        format: vi.fn(() => "formatted"),
-        has: vi.fn(() => true),
+        translate: vi.fn(() => ok("translated")),
+        format: vi.fn(() => ok("formatted")),
+        has: vi.fn(() => ok(true)),
         internalMethod: vi.fn(),
       } as any as I18nFacadeService;
 
@@ -131,9 +132,9 @@ describe("public-api-wrappers", () => {
 
     it("should block property modifications", () => {
       const mockI18n = {
-        translate: vi.fn(() => "translated"),
-        format: vi.fn(() => "formatted"),
-        has: vi.fn(() => true),
+        translate: vi.fn(() => ok("translated")),
+        format: vi.fn(() => ok("formatted")),
+        has: vi.fn(() => ok(true)),
       } as Partial<I18nFacadeService> as I18nFacadeService;
 
       const publicI18n = createPublicI18n(mockI18n);
