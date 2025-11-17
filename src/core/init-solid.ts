@@ -33,28 +33,26 @@ import { LOG_LEVEL_SCHEMA } from "@/foundry/validation/setting-schemas";
  */
 function initializeFoundryModule(): void {
   const containerResult = root.getContainer();
-  /* c8 ignore next 4 -- Defensive bootstrap-Fehlerpfade, die nur in extremen Startfehler-Szenarien auftreten.
-   * Diese werden über separate Bootstrap-Fehlerpfade abgedeckt und sind für die normale Laufzeit nicht relevant. */
+  /* c8 ignore start -- Edge case: getContainer() fails after successful bootstrap
+   * This is extremely unlikely in practice, but the error path exists for defensive programming.
+   * The root instance is created at module level (line 155), making it difficult to mock
+   * this specific error path in tests. The code path exists and will execute in real scenarios. */
   if (!containerResult.ok) {
     console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${containerResult.error}`);
     return;
   }
+  /* c8 ignore end */
 
   const loggerResult = containerResult.value.resolveWithError(loggerToken);
-  /* c8 ignore next 5 -- Defensive Logger-Fallback-Pfad; tatsächliche Logger-Auflösung wird in anderen
-   * Tests verifiziert, hier genügt das Vorhandensein der Guard-Logik. */
   if (!loggerResult.ok) {
     console.error(
       `${MODULE_CONSTANTS.LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`
     );
     return;
   }
-  /* c8 ignore next -- Zuweisung selbst ist für das Verhalten trivial, wichtig ist nur, dass der Happy Path existiert */
   const logger = loggerResult.value;
 
   // Guard: Ensure Foundry Hooks API is available
-  /* c8 ignore next 4 -- Dieser Pfad tritt nur in fehlkonfigurierten Test-/Runtime-Umgebungen auf;
-   * in realen Foundry-Instanzen und Integrationstests wird die Hooks-API bereitgestellt. */
   if (typeof Hooks === "undefined") {
     logger.warn("Foundry Hooks API not available - module initialization skipped");
     return; // Soft abort - OK inside function

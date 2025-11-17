@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for testing invalid service classes
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ServiceRegistry } from "../ServiceRegistry";
 import { createInjectionToken } from "../../tokenutilities";
 import { ServiceLifecycle } from "../../types/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+import { err } from "@/utils/functional/result";
 import type { Logger } from "@/interfaces/logger";
 
 class TestService implements Logger {
@@ -626,6 +627,32 @@ describe("ServiceRegistry", () => {
 
       expectResultErr(result);
       expect(result.error.code).toBe("InvalidOperation");
+    });
+
+    it("should propagate errors from ServiceRegistration.createClass", async () => {
+      // This test covers lines 119-120 in ServiceRegistry.ts
+      // Even though ServiceRegistration.createClass() always returns ok(),
+      // we mock it to return an error to test the error propagation path
+      const registry = new ServiceRegistry();
+      const token = createInjectionToken<TestService>("Test");
+
+      // Mock ServiceRegistration.createClass to return an error
+      const serviceRegistrationModule = await import("../../types/serviceregistration");
+      vi.spyOn(serviceRegistrationModule.ServiceRegistration, "createClass").mockReturnValue(
+        err({
+          code: "InvalidOperation",
+          message: "Mocked createClass error",
+        })
+      );
+
+      const result = registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidOperation");
+      expect(result.error.message).toBe("Mocked createClass error");
+
+      // Restore
+      vi.restoreAllMocks();
     });
 
     it("should handle ServiceRegistration.createFactory validation errors", () => {

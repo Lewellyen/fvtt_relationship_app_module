@@ -1,10 +1,8 @@
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { ok, err, isErr } from "@/utils/functional/result";
 import type { Result } from "@/types/result";
-import type { Logger } from "@/interfaces/logger";
 import {
   environmentConfigToken,
-  loggerToken,
   containerHealthCheckToken,
   metricsHealthCheckToken,
   healthCheckRegistryToken,
@@ -12,10 +10,7 @@ import {
   serviceContainerToken,
   runtimeConfigToken,
 } from "@/tokens/tokenindex";
-import { ConsoleLoggerService } from "@/services/consolelogger";
-import { ENV, LogLevel } from "@/config/environment";
-import type { EnvironmentConfig } from "@/config/environment";
-import { MODULE_CONSTANTS } from "@/constants";
+import { ENV } from "@/config/environment";
 import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import { DIContainerHealthCheck } from "@/core/health/container-health-check";
 import { DIMetricsHealthCheck } from "@/core/health/metrics-health-check";
@@ -34,28 +29,6 @@ import { registerCacheServices } from "@/config/modules/cache-services.config";
 import { registerI18nServices } from "@/config/modules/i18n-services.config";
 import { registerNotifications } from "@/config/modules/notifications.config";
 import { registerRegistrars } from "@/config/modules/registrars.config";
-
-/**
- * Registers fallback factories for critical services.
- * Fallbacks are used when normal resolution fails.
- */
-function registerFallbacks(container: ServiceContainer): void {
-  container.registerFallback<Logger>(loggerToken, (): Logger => {
-    // Fallback without EnvironmentConfig - DEBUG-Level for maximum transparency
-    const fallbackConfig: EnvironmentConfig = {
-      logLevel: LogLevel.DEBUG,
-      isDevelopment: false,
-      isProduction: false,
-      enablePerformanceTracking: false,
-      enableMetricsPersistence: false,
-      metricsPersistenceKey: "fallback.metrics",
-      performanceSamplingRate: 1.0,
-      enableCacheService: true,
-      cacheDefaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
-    };
-    return new ConsoleLoggerService(new RuntimeConfigService(fallbackConfig));
-  });
-}
 
 /**
  * Registers static bootstrap values that already exist outside the container.
@@ -164,19 +137,18 @@ function validateContainer(container: ServiceContainer): Result<void, string> {
  * - Modular config files by domain
  *
  * REGISTRATION ORDER:
- * 1. Fallbacks (Logger emergency fallback)
- * 2. Static Values (EnvironmentConfig)
- * 3. Core Services (Logger, Metrics, ModuleHealth)
- * 4. Observability (EventEmitter, ObservabilityRegistry)
- * 5. Utility Services (Performance, Retry)
- * 6. Port Infrastructure (PortSelector)
- * 7. Subcontainer Values (Foundry Port Registries)
- * 8. Foundry Services (Game, Hooks, Document, UI, Settings, Journal)
- * 9. I18n Services (FoundryI18n, LocalI18n, I18nFacade, TranslationHandlers)
- * 10. Notifications (NotificationCenter, ConsoleChannel, UIChannel)
- * 11. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
- * 12. Validation (Check dependency graph)
- * 13. Loop-Prevention Services (Health checks referencing validated services)
+ * 1. Static Values (EnvironmentConfig)
+ * 2. Core Services (Logger, Metrics, ModuleHealth)
+ * 3. Observability (EventEmitter, ObservabilityRegistry)
+ * 4. Utility Services (Performance, Retry)
+ * 5. Port Infrastructure (PortSelector)
+ * 6. Subcontainer Values (Foundry Port Registries)
+ * 7. Foundry Services (Game, Hooks, Document, UI, Settings, Journal)
+ * 8. I18n Services (FoundryI18n, LocalI18n, I18nFacade, TranslationHandlers)
+ * 9. Notifications (NotificationCenter, ConsoleChannel, UIChannel)
+ * 10. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
+ * 11. Validation (Check dependency graph)
+ * 12. Loop-Prevention Services (Health checks referencing validated services)
  *
  * @param container - The service container to configure
  * @returns Result indicating success or configuration errors
@@ -191,8 +163,6 @@ function validateContainer(container: ServiceContainer): Result<void, string> {
  * ```
  */
 export function configureDependencies(container: ServiceContainer): Result<void, string> {
-  registerFallbacks(container);
-
   const staticValuesResult = registerStaticValues(container);
   if (isErr(staticValuesResult)) return staticValuesResult;
 
@@ -201,18 +171,17 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   if (isErr(coreResult)) return coreResult;
 
   const observabilityResult = registerObservability(container);
-  /* c8 ignore next 2 -- Error propagation: Tested in registerObservability module tests; deep module mocking too complex */
+  /* c8 ignore start -- Error propagation path is tested, but coverage tool may not count the return statement */
   if (isErr(observabilityResult)) return observabilityResult;
+  /* c8 ignore end */
 
   const utilityResult = registerUtilityServices(container);
   if (isErr(utilityResult)) return utilityResult;
 
   const cacheServiceResult = registerCacheServices(container);
-  /* c8 ignore next 2 -- Error propagation: Tested in registerCacheServices module tests; tie-in hier ist dünne Delegationsschicht */
   if (isErr(cacheServiceResult)) return cacheServiceResult;
 
   const portInfraResult = registerPortInfrastructure(container);
-  /* c8 ignore next 2 -- Error propagation tested in registerPortInfrastructure unit tests */
   if (isErr(portInfraResult)) return portInfraResult;
 
   const subcontainerValuesResult = registerSubcontainerValues(container);
@@ -222,11 +191,9 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   if (isErr(foundryServicesResult)) return foundryServicesResult;
 
   const i18nServicesResult = registerI18nServices(container);
-  /* c8 ignore next 2 -- Error propagation: Tested in registerI18nServices module tests; deep module mocking too complex */
   if (isErr(i18nServicesResult)) return i18nServicesResult;
 
   const notificationsResult = registerNotifications(container);
-  /* c8 ignore next 2 -- Error propagation: Tested in registerNotifications module tests; deep module mocking too complex */
   if (isErr(notificationsResult)) return notificationsResult;
 
   const registrarsResult = registerRegistrars(container);

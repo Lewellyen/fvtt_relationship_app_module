@@ -1,6 +1,7 @@
 import type { InjectionToken } from "../types/injectiontoken";
 import type { ServiceType } from "@/types/servicetypeindex";
 import type { MetricsCollector } from "@/observability/metrics-collector";
+import { castCachedServiceInstance } from "../types/runtime-safe-cast";
 
 /**
  * Cache for service instances (Singleton and Scoped lifecycles).
@@ -40,8 +41,7 @@ export class InstanceCache {
     const hasInstance = this.instances.has(token);
     // Track cache access for observability (hit = instance found, miss = not found)
     this.metricsCollector?.recordCacheAccess(hasInstance);
-    /* type-coverage:ignore-next-line -- Type narrowing: Map stores instances keyed by token, cast narrows from ServiceType union to generic TServiceType */
-    return this.instances.get(token) as TServiceType | undefined;
+    return castCachedServiceInstance<TServiceType>(this.instances.get(token));
   }
 
   /**

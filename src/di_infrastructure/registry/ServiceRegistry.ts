@@ -9,6 +9,7 @@ import type { ContainerError } from "../interfaces/containererror";
 import { ServiceRegistration } from "../types/serviceregistration";
 import { ok, err, isErr } from "@/utils/functional/result";
 import { TypeSafeRegistrationMap } from "./TypeSafeRegistrationMap";
+import { iterateServiceRegistrationEntries } from "../types/runtime-safe-cast";
 
 /**
  * Type for service classes that declare their dependencies.
@@ -114,7 +115,6 @@ export class ServiceRegistry {
       serviceClass
     );
 
-    /* c8 ignore next 3 -- Error propagation: ServiceRegistration.createClass validates internally; error path tested in ServiceRegistration unit tests */
     if (isErr(registrationResult)) {
       return registrationResult;
     }
@@ -274,7 +274,7 @@ export class ServiceRegistry {
    * @returns Map of all registrations
    */
   getAllRegistrations(): Map<InjectionToken<ServiceType>, ServiceRegistration> {
-    return new Map(this.registrations.entries()); // Defensive copy
+    return new Map(iterateServiceRegistrationEntries(this.registrations.entries())); // Defensive copy
   }
 
   /**
@@ -323,11 +323,10 @@ export class ServiceRegistry {
     const clonedRegistry = new ServiceRegistry();
 
     // Create new Map with cloned ServiceRegistration objects
-    /* type-coverage:ignore-next-line -- Type narrowing: Map.entries() loses generic type information during iteration */
-    for (const [token, registration] of this.registrations.entries()) {
-      const typedToken = token as InjectionToken<ServiceType>;
-      const typedRegistration = registration as ServiceRegistration<ServiceType>;
-      clonedRegistry.registrations.set(typedToken, typedRegistration.clone());
+    for (const [token, registration] of iterateServiceRegistrationEntries(
+      this.registrations.entries()
+    )) {
+      clonedRegistry.registrations.set(token, registration.clone());
     }
 
     // Clone lifecycle index

@@ -47,7 +47,6 @@ export class CompositionRoot {
 
     const configured = performanceTracker.track(
       () => configureDependencies(container),
-      /* c8 ignore start -- onComplete callback is only called when performance tracking is enabled and sampling passes */
       (duration) => {
         // Use logger from container if available (container is validated at this point)
         const loggerResult = container.resolveWithError(loggerToken);
@@ -55,7 +54,6 @@ export class CompositionRoot {
           loggerResult.value.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
         }
       }
-      /* c8 ignore stop */
     );
 
     if (configured.ok) {

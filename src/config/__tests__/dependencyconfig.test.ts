@@ -69,51 +69,6 @@ describe("dependencyconfig", () => {
     });
   });
 
-  describe("Logger-Fallback (KRITISCH)", () => {
-    it("should register logger fallback via configureDependencies", () => {
-      const container = ServiceContainer.createRoot();
-
-      // configureDependencies ruft registerFallback auf (dependencyconfig.ts:56)
-      const result = configureDependencies(container);
-      expectResultOk(result);
-
-      // Container clearen -> alle Registrierungen weg, Fallback bleibt
-      container.clear();
-
-      // resolve() sollte Fallback nutzen (von configureDependencies gesetzt)
-      const logger = container.resolve(markAsApiSafe(loggerToken));
-      expect(logger).toBeInstanceOf(ConsoleLoggerService);
-    });
-
-    it("should keep fallback when configureDependencies aborts early", () => {
-      const container = ServiceContainer.createRoot();
-
-      // Spy auf registerValue, damit Port-Registry-Registrierung fehlschlägt
-      // ABER: Fallback wird VOR Port-Registries gesetzt (Zeile 56)
-      const registerValueSpy = vi
-        .spyOn(container, "registerValue")
-        .mockImplementation((token, value) => {
-          if (token === foundryGamePortRegistryToken) {
-            return err({
-              code: "InvalidOperation",
-              message: "Mocked failure",
-            });
-          }
-          // Original-Verhalten für andere Tokens
-          return Reflect.apply(ServiceContainer.prototype.registerValue, container, [token, value]);
-        });
-
-      const result = configureDependencies(container);
-      expect(result.ok).toBe(false); // Scheitert wegen Port-Registry
-
-      registerValueSpy.mockRestore();
-
-      // Fallback wurde VOR dem Fehler registriert und muss weiterhin greifen
-      const logger = container.resolve(markAsApiSafe(loggerToken));
-      expect(logger).toBeInstanceOf(ConsoleLoggerService);
-    });
-  });
-
   describe("Error Injection", () => {
     it("should return error when logger registration fails", () => {
       const container = ServiceContainer.createRoot();
@@ -633,25 +588,23 @@ describe("dependencyconfig", () => {
     // These tests cover the error propagation branches in configureDependencies
     // where sub-module registration functions return errors
 
-    it("should propagate errors from registerObservability", () => {
+    it("should propagate errors from registerObservability", async () => {
       const container = ServiceContainer.createRoot();
 
-      // Mock registerClass to fail for any observability token
-      vi.spyOn(container, "registerClass").mockImplementation((token) => {
-        // Let core services succeed, but fail observability
-        if (String(token).includes("Metrics") || String(token).includes("Performance")) {
-          return err({ code: "InvalidOperation", message: "Observability failed" });
-        }
-        return { ok: true, value: undefined };
-      });
+      // Mock registerObservability to return an error
+      // This ensures line 175 in dependencyconfig.ts is covered (if (isErr(observabilityResult)) return observabilityResult;)
+      const observabilityModule = await import("@/config/modules/observability.config");
+      vi.spyOn(observabilityModule, "registerObservability").mockReturnValue(
+        err("Observability registration failed")
+      );
 
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      // Should contain either "Metrics" or "Performance"
-      const hasObservabilityError =
-        result.error.includes("Metrics") || result.error.includes("Performance");
-      expect(hasObservabilityError).toBe(true);
+      expect(result.error).toBe("Observability registration failed");
+
+      // Restore for other tests
+      vi.restoreAllMocks();
     });
 
     it("should propagate errors from registerUtilityServices", () => {
@@ -674,12 +627,13 @@ describe("dependencyconfig", () => {
       expect(hasUtilityError).toBe(true);
     });
 
-    it("should propagate errors from registerI18nServices", () => {
+    it("should propagate errors from registerCacheServices", () => {
       const container = ServiceContainer.createRoot();
 
       vi.spyOn(container, "registerClass").mockImplementation((token) => {
-        if (String(token).includes("I18n") || String(token).includes("Facade")) {
-          return err({ code: "InvalidOperation", message: "I18n service failed" });
+        // Let core, observability, and utility succeed, but fail cache services
+        if (String(token).includes("Cache") || String(token).includes("CacheService")) {
+          return err({ code: "InvalidOperation", message: "Cache service failed" });
         }
         return { ok: true, value: undefined };
       });
@@ -687,9 +641,47 @@ describe("dependencyconfig", () => {
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      // Should contain either "I18n" or "Facade"
-      const hasI18nError = result.error.includes("I18n") || result.error.includes("Facade");
-      expect(hasI18nError).toBe(true);
+      // Should contain "Cache" or "CacheService"
+      const hasCacheError = result.error.includes("Cache") || result.error.includes("CacheService");
+      expect(hasCacheError).toBe(true);
+    });
+
+    it("should propagate errors from registerPortInfrastructure", async () => {
+      const container = ServiceContainer.createRoot();
+
+      // Mock registerPortInfrastructure to return an error
+      // This ensures line 184 in dependencyconfig.ts is covered (if (isErr(portInfraResult)) return portInfraResult;)
+      const portInfraModule = await import("@/config/modules/port-infrastructure.config");
+      vi.spyOn(portInfraModule, "registerPortInfrastructure").mockReturnValue(
+        err("Port infrastructure registration failed")
+      );
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      expect(result.error).toBe("Port infrastructure registration failed");
+
+      // Restore for other tests
+      vi.restoreAllMocks();
+    });
+
+    it("should propagate errors from registerI18nServices", async () => {
+      const container = ServiceContainer.createRoot();
+
+      // Mock registerI18nServices to return an error
+      // This ensures line 193 in dependencyconfig.ts is covered (if (isErr(i18nServicesResult)) return i18nServicesResult;)
+      const i18nModule = await import("@/config/modules/i18n-services.config");
+      vi.spyOn(i18nModule, "registerI18nServices").mockReturnValue(
+        err("I18n services registration failed")
+      );
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      expect(result.error).toBe("I18n services registration failed");
+
+      // Restore for other tests
+      vi.restoreAllMocks();
     });
 
     it("should propagate errors from registerRegistrars", () => {

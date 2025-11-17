@@ -229,5 +229,44 @@ describe("ContainerValidator", () => {
       const result = validator.validate(registry);
       expectResultOk(result);
     });
+
+    it("should handle already-visited tokens in graph traversal", () => {
+      // This test covers lines 195-196 in ContainerValidator.ts
+      // We need to ensure that a token is visited multiple times, and the second visit
+      // hits the already-visited path (visited.has(token) returns true)
+      //
+      // Note: validatedSubgraphs is checked before visited (line 187), so we need to
+      // clear validatedSubgraphs between validations to ensure visited.has() is checked
+      const registry = new ServiceRegistry();
+      const validator = new ContainerValidator();
+
+      // Create a graph where one service (B) is a dependency of multiple services (A and C)
+      // This ensures B is visited multiple times during traversal
+      const tokenA = createInjectionToken<ServiceA>("A");
+      const tokenB = createInjectionToken<ServiceB>("B");
+      const tokenC = createInjectionToken<ServiceC>("C");
+
+      // B has no dependencies (leaf node)
+      registry.registerClass(tokenB, ServiceB, ServiceLifecycle.SINGLETON);
+
+      // A depends on B
+      registry.registerFactory(tokenA, () => new ServiceA(), ServiceLifecycle.SINGLETON, [tokenB]);
+
+      // C also depends on B (shared dependency with A)
+      // This ensures B is visited first from A, then from C
+      // When C tries to visit B, B should already be in the visited set
+      registry.registerFactory(tokenC, () => new ServiceC(), ServiceLifecycle.SINGLETON, [tokenB]);
+
+      // Clear validatedSubgraphs to ensure visited.has() is checked (not validatedSubgraphs.has())
+      // This allows us to test the visited.has() path (lines 195-196)
+      validator["validatedSubgraphs"].clear();
+
+      // When validating:
+      // 1. validate() iterates through all registrations
+      // 2. First iteration: Start with A -> visit B (adds B to visited after processing)
+      // 3. Second iteration: Start with C -> visit B (B is already in visited, so lines 195-196 are executed)
+      const result = validator.validate(registry);
+      expectResultOk(result);
+    });
   });
 });

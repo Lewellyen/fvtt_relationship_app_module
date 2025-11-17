@@ -92,6 +92,11 @@ jobs:
       - name: Check encoding
         run: npm run check:encoding
 
+      - name: Install ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
       - name: Check for forbidden ignores
         run: npm run check:no-ignores
 

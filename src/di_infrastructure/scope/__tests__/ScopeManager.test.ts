@@ -123,6 +123,20 @@ describe("ScopeManager", () => {
       expect(scopeId).toMatch(/^test-\d+-[a-z0-9]+$/);
     });
 
+    it("should use crypto.randomUUID when available", () => {
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("root", null, cache);
+
+      const childResult = manager.createChild();
+      expectResultOk(childResult);
+
+      // Should have generated a scope name with UUID format
+      // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      expect(childResult.value.scopeName).toMatch(
+        /^root\.scope-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+      );
+    });
+
     it("should fallback to timestamp+random when crypto.randomUUID fails", () => {
       // Mock crypto.randomUUID by stubbing the method
       const originalRandomUUID = crypto.randomUUID;

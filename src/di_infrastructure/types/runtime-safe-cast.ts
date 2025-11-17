@@ -14,6 +14,9 @@ import type {
   RuntimeConfigKey,
   RuntimeConfigValues,
 } from "@/core/runtime-config/runtime-config.service";
+import type { ServiceType } from "@/types/servicetypeindex";
+import type { InjectionToken } from "./injectiontoken";
+import type { ServiceRegistration } from "./serviceregistration";
 
 /**
  * Listener-Typ aus RuntimeConfigService – hier als Alias erneut definiert,
@@ -86,4 +89,63 @@ export function wrapFoundrySettingsService<TServiceType>(
 ): TServiceType {
   const concrete = service as unknown as FoundrySettings;
   return create(concrete) as unknown as TServiceType;
+}
+
+/**
+ * Kapselt den notwendigen Cast für gecachte Service-Instanzen.
+ * Die Typsicherheit wird durch die Aufrufer gewährleistet, die sicherstellen,
+ * dass der Token mit dem korrekten generischen Typ registriert wurde.
+ *
+ * @param instance - Die gecachte Service-Instanz (ServiceType union)
+ * @returns Die Instanz als spezifischer generischer Typ
+ */
+export function castCachedServiceInstance<TServiceType extends ServiceType>(
+  instance: ServiceType | undefined
+): TServiceType | undefined {
+  return instance as TServiceType | undefined;
+}
+
+/**
+ * Kapselt den notwendigen Cast für gecachte Service-Instanzen in Result-Kontext.
+ * Wird verwendet, wenn sichergestellt ist, dass die Instanz existiert.
+ *
+ * @param instance - Die gecachte Service-Instanz (ServiceType union)
+ * @returns Die Instanz als spezifischer generischer Typ
+ */
+export function castCachedServiceInstanceForResult<TServiceType extends ServiceType>(
+  instance: ServiceType | undefined
+): TServiceType {
+  return instance as TServiceType;
+}
+
+/**
+ * Kapselt den notwendigen Cast für ServiceRegistration Map-Einträge.
+ * Map.entries() verliert generische Typ-Information während der Iteration,
+ * daher ist dieser Cast notwendig, um die korrekten Typen wiederherzustellen.
+ *
+ * @param token - Der Injection Token (symbol)
+ * @param registration - Die ServiceRegistration (ServiceType union)
+ * @returns Tuple mit typisierten Token und Registration
+ */
+export function castServiceRegistrationEntry(
+  token: symbol,
+  registration: ServiceRegistration<ServiceType>
+): [InjectionToken<ServiceType>, ServiceRegistration<ServiceType>] {
+  return [token as InjectionToken<ServiceType>, registration as ServiceRegistration<ServiceType>];
+}
+
+/**
+ * Iteriert über ServiceRegistration Map-Einträge mit korrekter Typisierung.
+ * Map.entries() verliert generische Typ-Information während der Iteration,
+ * daher ist diese Funktion notwendig, um die korrekten Typen wiederherzustellen.
+ *
+ * @param entries - Die Map-Einträge (Iterable von [symbol, ServiceRegistration<ServiceType>])
+ * @returns Iterable von typisierten [InjectionToken, ServiceRegistration] Tuples
+ */
+export function* iterateServiceRegistrationEntries(
+  entries: Iterable<[symbol, ServiceRegistration<ServiceType>]>
+): IterableIterator<[InjectionToken<ServiceType>, ServiceRegistration<ServiceType>]> {
+  for (const [token, registration] of entries) {
+    yield castServiceRegistrationEntry(token, registration);
+  }
 }

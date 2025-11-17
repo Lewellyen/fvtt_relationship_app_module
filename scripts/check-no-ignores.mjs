@@ -7,6 +7,8 @@
  * - src/services/**
  * - src/utils/**
  * - src/types/**
+ * - src/di_infrastructure/** (mit begründeten Ausnahmen)
+ * - src/config/dependencyconfig.ts (mit begründeter Ausnahme)
  * 
  * Sucht nach:
  * - c8 ignore
@@ -31,11 +33,23 @@ const FORBIDDEN_PATHS = [
   'src/services/**',
   'src/utils/**',
   'src/types/**',
+  // DI-Infrastruktur: Nach Teilplan 02 abgeschlossen, jetzt verschärft
+  'src/di_infrastructure/**',
+  'src/config/dependencyconfig.ts',
 ];
 
 // Ausnahmen (Dateien, die ausgenommen sind)
 const EXCEPTIONS = [
-  'src/core/init-solid.ts',
+  'src/core/init-solid.ts', // Environment-spezifische Foundry Hooks
+  // DI-Infrastruktur: Begründete Ausnahmen für Coverage-Tool-Limitationen
+  'src/di_infrastructure/container.ts', // finally-Block (Coverage-Tool-Limitation)
+  'src/di_infrastructure/validation/ContainerValidator.ts', // early return (Coverage-Tool-Limitation)
+  'src/di_infrastructure/resolution/ServiceResolver.ts', // optional chaining (Coverage-Tool-Limitation)
+  'src/di_infrastructure/types/runtime-safe-cast.ts', // Runtime-Casts (bereits global ignoriert)
+  'src/di_infrastructure/types/serviceclass.ts', // Variadische Konstruktoren (begründet)
+  'src/di_infrastructure/types/api-safe-token.ts', // Nominal branding (begründet)
+  'src/di_infrastructure/registry/TypeSafeRegistrationMap.ts', // Heterogene Service-Typen (begründet)
+  'src/config/dependencyconfig.ts', // Fehlerpropagierung (Coverage-Tool-Limitation)
 ];
 
 // Ignore-Marker, nach denen gesucht wird

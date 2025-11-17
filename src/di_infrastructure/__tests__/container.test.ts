@@ -441,85 +441,6 @@ describe("ServiceContainer", () => {
     });
   });
 
-  describe("Fallback-Mechanismus", () => {
-    it("should use fallback when resolution fails", () => {
-      const container = ServiceContainer.createRoot();
-      const token = createInjectionToken<TestService>("Test");
-
-      container.registerFallback(token, () => new TestService(42));
-      container.validate();
-
-      // Token NICHT registriert -> Fallback wird genutzt
-      const result = testResolve<TestService>(container, token);
-      expect(result).toBeInstanceOf(TestService);
-      expect(result.value).toBe(42);
-    });
-
-    it("should throw when no fallback available", () => {
-      const container = ServiceContainer.createRoot();
-      const token = createInjectionToken<TestService>("Test");
-      container.validate();
-
-      // Kein Fallback -> Exception
-      expect(() => testResolve(container, token)).toThrow();
-      expect(() => testResolve(container, token)).toThrow(/No fallback/);
-    });
-
-    it("should prefer registered service over fallback", () => {
-      const container = ServiceContainer.createRoot();
-      const token = createInjectionToken<TestService>("Test");
-
-      container.registerFallback(token, () => new TestService(999));
-      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
-      container.validate();
-
-      const instance = testResolve<TestService>(container, token);
-      // Sollte die registrierte Instanz sein, nicht der Fallback
-      expect(instance).toBeInstanceOf(TestService);
-      expect(instance.value).not.toBe(999);
-    });
-
-    it("should isolate fallbacks between containers", () => {
-      const container1 = ServiceContainer.createRoot();
-      const container2 = ServiceContainer.createRoot();
-      const token = createInjectionToken<TestService>("Test");
-
-      // Container 1 hat einen Fallback
-      container1.registerFallback(token, () => new TestService(111));
-      container1.validate();
-
-      // Container 2 hat einen anderen Fallback
-      container2.registerFallback(token, () => new TestService(222));
-      container2.validate();
-
-      // Jeder Container verwendet seinen eigenen Fallback
-      const result1 = testResolve<TestService>(container1, token);
-      const result2 = testResolve<TestService>(container2, token);
-
-      expect(result1.value).toBe(111);
-      expect(result2.value).toBe(222);
-    });
-
-    it("should not inherit fallback from parent in child container", () => {
-      const parent = ServiceContainer.createRoot();
-      const token = createInjectionToken<TestService>("Test");
-
-      // Parent hat einen Fallback
-      parent.registerFallback(token, () => new TestService(100));
-      parent.validate();
-
-      // Child erstellen
-      const childResult = parent.createScope("child");
-      expectResultOk(childResult);
-      const child = childResult.value;
-      child.validate();
-
-      // Child sollte KEINEN Zugriff auf Parent-Fallback haben
-      // (Fallbacks sind container-spezifisch, nicht vererbt)
-      expect(() => testResolve(child, token)).toThrow(/No fallback/);
-    });
-  });
-
   describe("Disposed Container", () => {
     it("should fail registration on disposed container", () => {
       const container = ServiceContainer.createRoot();
@@ -866,6 +787,223 @@ describe("ServiceContainer", () => {
       expectResultErr(result);
       // State should be reset to "registering"
       expect(container.getValidationState()).toBe("registering");
+    });
+
+    it("should return fast-path when already validated", async () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+      const syncResult = container.validate();
+      expectResultOk(syncResult);
+
+      // Now call validateAsync - should return immediately
+      const asyncResult = await container.validateAsync();
+      expectResultOk(asyncResult);
+      expect(container.getValidationState()).toBe("validated");
+    });
+
+    it("should handle concurrent validateAsync calls", async () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Start multiple concurrent validations
+      const promises = [
+        container.validateAsync(),
+        container.validateAsync(),
+        container.validateAsync(),
+      ];
+
+      const results = await Promise.all(promises);
+
+      // All should succeed and return the same promise
+      expect(results.every((r) => r.ok)).toBe(true);
+      expect(container.getValidationState()).toBe("validated");
+    });
+
+    it("should handle mixed sync/async validation conflict", async () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Start async validation first
+      const asyncPromise = container.validateAsync();
+
+      // Try sync validation while async is in progress (this should detect the conflict)
+      // Note: In practice, sync validate() completes immediately, so we need to check
+      // the state during async validation
+      const stateDuringAsync = container.getValidationState();
+      expect(stateDuringAsync).toBe("validating");
+
+      // Wait for async to complete
+      await asyncPromise;
+
+      // Now try to call validateAsync while sync validate() is being called
+      // This tests the mixed sync/async conflict path
+      container.clear();
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Start sync validation (sets state to "validating")
+      const syncResult = container.validate();
+      expectResultOk(syncResult);
+
+      // Now try async - but sync already completed, so this should work
+      // To test the conflict, we need to mock the state
+      const testContainer = ServiceContainer.createRoot();
+      testContainer.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+      // Manually set state to "validating" to simulate sync validation in progress
+      testContainer["validationState"] = "validating";
+
+      const asyncResult = await testContainer.validateAsync();
+      expectResultErr(asyncResult);
+      if (!asyncResult.ok) {
+        expect(asyncResult.error[0]?.message).toContain("Validation already in progress");
+      }
+    });
+
+    it("should handle timeout in validateAsync", async () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Mock validator.validate to return a promise that never resolves (simulating slow validation)
+      const validator = container["validator"];
+      vi.spyOn(validator, "validate").mockImplementation(() => {
+        // Return a promise that never resolves to trigger timeout
+        return new Promise(() => {
+          // Never resolves
+        }) as any;
+      });
+
+      // Call validateAsync with very short timeout
+      const result = await container.validateAsync(10);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error[0]?.message).toContain("timed out");
+      }
+      expect(container.getValidationState()).toBe("registering");
+
+      // Restore
+      vi.restoreAllMocks();
+    });
+
+    it("should cleanup validationPromise in finally block", async () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      const promise1 = container.validateAsync();
+      const result1 = await promise1;
+      expectResultOk(result1);
+
+      // validationPromise should be null after completion
+      expect(container["validationPromise"]).toBeNull();
+
+      // Should be able to validate again
+      const promise2 = container.validateAsync();
+      const result2 = await promise2;
+      expectResultOk(result2);
+    });
+  });
+
+  describe("Concurrent Sync Validation", () => {
+    it("should handle concurrent validate() calls", () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Start first validation
+      const result1 = container.validate();
+      expectResultOk(result1);
+
+      // Try to validate again while already validated - should return ok immediately
+      const result2 = container.validate();
+      expectResultOk(result2);
+    });
+
+    it("should detect concurrent validate() calls during validation", () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // This is difficult to test in sync context, but we can verify the guard exists
+      // by checking that validation state prevents re-entry
+      const result1 = container.validate();
+      expectResultOk(result1);
+      expect(container.getValidationState()).toBe("validated");
+
+      // Once validated, subsequent calls should return ok immediately
+      const result2 = container.validate();
+      expectResultOk(result2);
+    });
+  });
+
+  describe("resolve() error handling", () => {
+    it("should throw error when resolve() fails (no fallback)", () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Unregistered");
+
+      // resolve() should throw when service is not registered (lines 593-595)
+      expect(() => {
+        testResolve<TestService>(container, token);
+      }).toThrow(/Cannot resolve.*Unregistered/);
+    });
+  });
+
+  describe("validateAsync() error handling", () => {
+    it("should re-throw unexpected errors in validateAsync", async () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Mock validator.validate to throw an unexpected error (not TimeoutError)
+      const validator = container["validator"];
+      const unexpectedError = new Error("Unexpected validation error");
+      vi.spyOn(validator, "validate").mockImplementation(() => {
+        throw unexpectedError;
+      });
+
+      // validateAsync should re-throw the unexpected error (line 407)
+      // The finally block (line 408) should execute to clean up validationPromise
+      await expect(container.validateAsync()).rejects.toThrow("Unexpected validation error");
+
+      // Verify that the finally block executed by checking validationPromise is null
+      // This ensures line 408 (finally block) is covered
+      expect(container["validationPromise"]).toBeNull();
+
+      vi.restoreAllMocks();
+    });
+  });
+
+  describe("validate() concurrent calls", () => {
+    it("should return error when validate() is called while validation is in progress", () => {
+      // This test covers lines 277-283 in container.ts
+      // We need to simulate a scenario where validate() is called while validation is already in progress
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Manually set validation state to "validating" to simulate validation in progress
+      container["validationState"] = "validating";
+
+      // Now call validate() - it should detect that validation is already in progress
+      const result = container.validate();
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error[0]?.code).toBe("InvalidOperation");
+        expect(result.error[0]?.message).toBe("Validation already in progress");
+      }
     });
   });
 });

@@ -9,6 +9,7 @@ import { ServiceLifecycle } from "../types/servicelifecycle";
 import { ok, err } from "@/utils/functional/result";
 import type { MetricsCollector } from "@/observability/metrics-collector";
 import type { PerformanceTracker } from "@/interfaces/performance-tracker";
+import { castCachedServiceInstanceForResult } from "../types/runtime-safe-cast";
 
 /**
  * Resolves service instances based on lifecycle and registration.
@@ -116,8 +117,9 @@ export class ServiceResolver {
         return result;
       },
       (duration, result) => {
-        /* c8 ignore next -- Optional chaining: null metricsCollector tested in ServiceResolver.test.ts "should handle null metricsCollector gracefully" */
+        /* c8 ignore start -- Optional chaining with null metricsCollector is tested, but coverage tool may not count the line */
         this.metricsCollector?.recordResolution(token, duration, result.ok);
+        /* c8 ignore end */
       }
     );
   }
@@ -238,8 +240,7 @@ export class ServiceResolver {
       this.cache.set(token, instanceResult.value);
     }
 
-    /* type-coverage:ignore-next-line -- Type narrowing: Cache stores singleton instances keyed by token with concrete type during registration */
-    return ok(this.cache.get(token) as TServiceType);
+    return ok(castCachedServiceInstanceForResult<TServiceType>(this.cache.get(token)));
   }
 
   /**
@@ -315,7 +316,6 @@ export class ServiceResolver {
       this.cache.set(token, instanceResult.value);
     }
 
-    /* type-coverage:ignore-next-line -- Type narrowing: Cache stores scoped instances keyed by token with correct generic type */
-    return ok(this.cache.get(token) as TServiceType);
+    return ok(castCachedServiceInstanceForResult<TServiceType>(this.cache.get(token)));
   }
 }

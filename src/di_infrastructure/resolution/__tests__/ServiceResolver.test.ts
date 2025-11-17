@@ -573,18 +573,56 @@ describe("ServiceResolver", () => {
 
     it("should handle null metricsCollector gracefully (optional chaining)", () => {
       // Create resolver without metricsCollector (pass null)
+      // This test covers line 120 in ServiceResolver.ts: metricsCollector?.recordResolution
       const registry = new ServiceRegistry();
       const cache = new InstanceCache();
       const token = createInjectionToken<TestService>("Test");
 
-      // Use createTestResolver (has mock performanceTracker built-in)
-      const resolver = createTestResolver(registry, cache, null, "test");
+      // Create resolver with null metricsCollector to test optional chaining
+      // We need to ensure the onComplete callback is called, so we need a performanceTracker
+      // that actually calls the onComplete callback
+      const mockPerformanceTracker = {
+        track: vi.fn(
+          (operation: () => any, onComplete?: (duration: number, result: any) => void) => {
+            const result = operation();
+            if (onComplete) {
+              onComplete(0.5, { ok: true, value: result });
+            }
+            return result;
+          }
+        ),
+      };
+      const resolver = new ServiceResolver(
+        registry,
+        cache,
+        null,
+        "test",
+        mockPerformanceTracker as any
+      );
+
+      // Explicitly set metricsCollector to null to test the optional chaining path
+      resolver["metricsCollector"] = null;
+
+      // Verify metricsCollector is null
+      expect(resolver["metricsCollector"]).toBeNull();
 
       registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
 
       // Should resolve without throwing (metricsCollector?.recordResolution is safe)
+      // The onComplete callback (line 119-121) will be called by the performanceTracker,
+      // and metricsCollector?.recordResolution (line 120) should handle null gracefully
       const result = resolver.resolve(token);
       expectResultOk(result);
+
+      // Verify that the onComplete callback was called (this ensures line 120 is executed)
+      expect(mockPerformanceTracker.track).toHaveBeenCalled();
+      const onCompleteCall = mockPerformanceTracker.track.mock.calls[0]?.[1];
+      expect(onCompleteCall).toBeDefined();
+
+      // Call onComplete manually to ensure line 120 is covered
+      if (onCompleteCall) {
+        onCompleteCall(0.5, { ok: true, value: result.value });
+      }
     });
   });
 });

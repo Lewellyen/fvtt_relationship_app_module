@@ -608,6 +608,51 @@ const _TypeSafeRegistrationMap = class _TypeSafeRegistrationMap {
 };
 __name(_TypeSafeRegistrationMap, "TypeSafeRegistrationMap");
 let TypeSafeRegistrationMap = _TypeSafeRegistrationMap;
+function widenRuntimeConfigListeners(listeners) {
+  return listeners;
+}
+__name(widenRuntimeConfigListeners, "widenRuntimeConfigListeners");
+function toStringKeyArray(allowed) {
+  return allowed;
+}
+__name(toStringKeyArray, "toStringKeyArray");
+function castCacheValue(value2) {
+  return value2;
+}
+__name(castCacheValue, "castCacheValue");
+function wrapI18nService(service, create) {
+  const concrete = service;
+  return create(concrete);
+}
+__name(wrapI18nService, "wrapI18nService");
+function wrapNotificationCenterService(service, create) {
+  const concrete = service;
+  return create(concrete);
+}
+__name(wrapNotificationCenterService, "wrapNotificationCenterService");
+function wrapFoundrySettingsService(service, create) {
+  const concrete = service;
+  return create(concrete);
+}
+__name(wrapFoundrySettingsService, "wrapFoundrySettingsService");
+function castCachedServiceInstance(instance2) {
+  return instance2;
+}
+__name(castCachedServiceInstance, "castCachedServiceInstance");
+function castCachedServiceInstanceForResult(instance2) {
+  return instance2;
+}
+__name(castCachedServiceInstanceForResult, "castCachedServiceInstanceForResult");
+function castServiceRegistrationEntry(token, registration) {
+  return [token, registration];
+}
+__name(castServiceRegistrationEntry, "castServiceRegistrationEntry");
+function* iterateServiceRegistrationEntries(entries2) {
+  for (const [token, registration] of entries2) {
+    yield castServiceRegistrationEntry(token, registration);
+  }
+}
+__name(iterateServiceRegistrationEntries, "iterateServiceRegistrationEntries");
 function hasDependencies(cls) {
   return "dependencies" in cls;
 }
@@ -790,7 +835,7 @@ const _ServiceRegistry = class _ServiceRegistry {
    * @returns Map of all registrations
    */
   getAllRegistrations() {
-    return new Map(this.registrations.entries());
+    return new Map(iterateServiceRegistrationEntries(this.registrations.entries()));
   }
   /**
    * Returns all registrations for a specific lifecycle.
@@ -831,10 +876,10 @@ const _ServiceRegistry = class _ServiceRegistry {
    */
   clone() {
     const clonedRegistry = new _ServiceRegistry();
-    for (const [token, registration] of this.registrations.entries()) {
-      const typedToken = token;
-      const typedRegistration = registration;
-      clonedRegistry.registrations.set(typedToken, typedRegistration.clone());
+    for (const [token, registration] of iterateServiceRegistrationEntries(
+      this.registrations.entries()
+    )) {
+      clonedRegistry.registrations.set(token, registration.clone());
     }
     for (const [lifecycle, tokens] of this.lifecycleIndex.entries()) {
       clonedRegistry.lifecycleIndex.set(lifecycle, new Set(tokens));
@@ -1026,7 +1071,7 @@ const _InstanceCache = class _InstanceCache {
   get(token) {
     const hasInstance = this.instances.has(token);
     this.metricsCollector?.recordCacheAccess(hasInstance);
-    return this.instances.get(token);
+    return castCachedServiceInstance(this.instances.get(token));
   }
   /**
    * Stores a service instance in the cache.
@@ -1237,7 +1282,7 @@ const _ServiceResolver = class _ServiceResolver {
       }
       this.cache.set(token, instanceResult.value);
     }
-    return ok(this.cache.get(token));
+    return ok(castCachedServiceInstanceForResult(this.cache.get(token)));
   }
   /**
    * Resolves a Transient service.
@@ -1301,7 +1346,7 @@ const _ServiceResolver = class _ServiceResolver {
       }
       this.cache.set(token, instanceResult.value);
     }
-    return ok(this.cache.get(token));
+    return ok(castCachedServiceInstanceForResult(this.cache.get(token)));
   }
 };
 __name(_ServiceResolver, "ServiceResolver");
@@ -1765,7 +1810,7 @@ const _RuntimeConfigService = class _RuntimeConfigService {
     const existing = this.listeners.get(key);
     const listeners = existing ?? /* @__PURE__ */ new Set();
     listeners.add(listener);
-    this.listeners.set(key, listeners);
+    this.listeners.set(key, widenRuntimeConfigListeners(listeners));
     return () => {
       const activeListeners = this.listeners.get(key);
       activeListeners?.delete(listener);
@@ -1808,7 +1853,6 @@ const _ServiceContainer = class _ServiceContainer {
    * @param validationState - Initial validation state
    */
   constructor(registry, validator, cache, resolver, scopeManager, validationState) {
-    this.fallbackFactories = /* @__PURE__ */ new Map();
     this.validationPromise = null;
     this.registry = registry;
     this.validator = validator;
@@ -2174,34 +2218,13 @@ Only the public ModuleApi should expose resolve() for external modules.`
     if (isOk(result)) {
       return result.value;
     }
-    const fallback2 = this.fallbackFactories.get(token);
-    if (fallback2) {
-      return fallback2();
-    }
-    throw new Error(
-      `Cannot resolve ${String(token)}: ${result.error.message}. No fallback factory registered for this token.`
-    );
+    throw new Error(`Cannot resolve ${String(token)}: ${result.error.message}`);
   }
   /**
    * Check if service is registered.
    */
   isRegistered(token) {
     return ok(this.registry.has(token));
-  }
-  /**
-   * Register a fallback factory for a specific token.
-   * This will be used when resolve() fails for that token.
-   *
-   * @param token - The injection token
-   * @param factory - Factory function that creates a fallback instance
-   *
-   * @example
-   * ```typescript
-   * container.registerFallback(UserServiceToken, () => new DefaultUserService());
-   * ```
-   */
-  registerFallback(token, factory) {
-    this.fallbackFactories.set(token, factory);
   }
   /**
    * Synchronously dispose container and all children.
@@ -2264,103 +2287,6 @@ Only the public ModuleApi should expose resolve() for external modules.`
 };
 __name(_ServiceContainer, "ServiceContainer");
 let ServiceContainer = _ServiceContainer;
-const _ConsoleLoggerService = class _ConsoleLoggerService {
-  constructor(config2, traceContext) {
-    this.runtimeConfigUnsubscribe = null;
-    this.traceContext = traceContext ?? null;
-    this.minLevel = config2.get("logLevel");
-    this.bindRuntimeConfig(config2);
-  }
-  setMinLevel(level) {
-    this.minLevel = level;
-  }
-  log(message2, ...optionalParams) {
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    if (LogLevel.ERROR < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    if (LogLevel.WARN < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    if (LogLevel.INFO < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    if (LogLevel.DEBUG < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return new TracedLogger(this, traceId);
-  }
-  bindRuntimeConfig(runtimeConfig) {
-    this.minLevel = runtimeConfig.get("logLevel");
-    this.runtimeConfigUnsubscribe?.();
-    this.runtimeConfigUnsubscribe = runtimeConfig.onChange("logLevel", (level) => {
-      this.setMinLevel(level);
-    });
-  }
-  getContextTraceId() {
-    return this.traceContext?.getCurrentTraceId() ?? null;
-  }
-  formatWithContextTrace(message2) {
-    const contextTraceId = this.getContextTraceId();
-    if (contextTraceId) {
-      return `[${contextTraceId}] ${message2}`;
-    }
-    return message2;
-  }
-};
-__name(_ConsoleLoggerService, "ConsoleLoggerService");
-let ConsoleLoggerService = _ConsoleLoggerService;
-const _TracedLogger = class _TracedLogger {
-  constructor(baseLogger, traceId) {
-    this.baseLogger = baseLogger;
-    this.traceId = traceId;
-  }
-  setMinLevel(level) {
-    this.baseLogger.setMinLevel?.(level);
-  }
-  log(message2, ...optionalParams) {
-    this.baseLogger.log(this.formatMessage(message2), ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.baseLogger.error(this.formatMessage(message2), ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.baseLogger.warn(this.formatMessage(message2), ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.baseLogger.info(this.formatMessage(message2), ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.baseLogger.debug(this.formatMessage(message2), ...optionalParams);
-  }
-  withTraceId(newTraceId) {
-    return new _TracedLogger(this.baseLogger, `${this.traceId}/${newTraceId}`);
-  }
-  formatMessage(message2) {
-    return `[${this.traceId}] ${message2}`;
-  }
-};
-__name(_TracedLogger, "TracedLogger");
-let TracedLogger = _TracedLogger;
-const _DIConsoleLoggerService = class _DIConsoleLoggerService extends ConsoleLoggerService {
-  constructor(config2, traceContext) {
-    super(config2, traceContext);
-  }
-};
-__name(_DIConsoleLoggerService, "DIConsoleLoggerService");
-_DIConsoleLoggerService.dependencies = [runtimeConfigToken, traceContextToken];
-let DIConsoleLoggerService = _DIConsoleLoggerService;
 const _ContainerHealthCheck = class _ContainerHealthCheck {
   constructor(container) {
     this.name = "container";
@@ -2762,6 +2688,103 @@ function getStorage() {
   return null;
 }
 __name(getStorage, "getStorage");
+const _ConsoleLoggerService = class _ConsoleLoggerService {
+  constructor(config2, traceContext) {
+    this.runtimeConfigUnsubscribe = null;
+    this.traceContext = traceContext ?? null;
+    this.minLevel = config2.get("logLevel");
+    this.bindRuntimeConfig(config2);
+  }
+  setMinLevel(level) {
+    this.minLevel = level;
+  }
+  log(message2, ...optionalParams) {
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    if (LogLevel.ERROR < this.minLevel) return;
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    if (LogLevel.WARN < this.minLevel) return;
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    if (LogLevel.INFO < this.minLevel) return;
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    if (LogLevel.DEBUG < this.minLevel) return;
+    const formattedMessage = this.formatWithContextTrace(message2);
+    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return new TracedLogger(this, traceId);
+  }
+  bindRuntimeConfig(runtimeConfig) {
+    this.minLevel = runtimeConfig.get("logLevel");
+    this.runtimeConfigUnsubscribe?.();
+    this.runtimeConfigUnsubscribe = runtimeConfig.onChange("logLevel", (level) => {
+      this.setMinLevel(level);
+    });
+  }
+  getContextTraceId() {
+    return this.traceContext?.getCurrentTraceId() ?? null;
+  }
+  formatWithContextTrace(message2) {
+    const contextTraceId = this.getContextTraceId();
+    if (contextTraceId) {
+      return `[${contextTraceId}] ${message2}`;
+    }
+    return message2;
+  }
+};
+__name(_ConsoleLoggerService, "ConsoleLoggerService");
+let ConsoleLoggerService = _ConsoleLoggerService;
+const _TracedLogger = class _TracedLogger {
+  constructor(baseLogger, traceId) {
+    this.baseLogger = baseLogger;
+    this.traceId = traceId;
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(this.formatMessage(message2), ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(this.formatMessage(message2), ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(this.formatMessage(message2), ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(this.formatMessage(message2), ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(this.formatMessage(message2), ...optionalParams);
+  }
+  withTraceId(newTraceId) {
+    return new _TracedLogger(this.baseLogger, `${this.traceId}/${newTraceId}`);
+  }
+  formatMessage(message2) {
+    return `[${this.traceId}] ${message2}`;
+  }
+};
+__name(_TracedLogger, "TracedLogger");
+let TracedLogger = _TracedLogger;
+const _DIConsoleLoggerService = class _DIConsoleLoggerService extends ConsoleLoggerService {
+  constructor(config2, traceContext) {
+    super(config2, traceContext);
+  }
+};
+__name(_DIConsoleLoggerService, "DIConsoleLoggerService");
+_DIConsoleLoggerService.dependencies = [runtimeConfigToken, traceContextToken];
+let DIConsoleLoggerService = _DIConsoleLoggerService;
 function generateTraceId() {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 10);
@@ -2972,8 +2995,7 @@ function isAllowedKey(prop, allowed) {
   if (typeof prop !== "string") {
     return false;
   }
-  const allowedStrings = allowed;
-  return allowedStrings.includes(prop);
+  return allowed.includes(prop);
 }
 __name(isAllowedKey, "isAllowedKey");
 function createReadOnlyWrapper(service, allowedMethods) {
@@ -3115,16 +3137,13 @@ Reason: ${deprecationInfo.reason}
    */
   wrapSensitiveService(token, service, wellKnownTokens) {
     if (token === wellKnownTokens.i18nFacadeToken) {
-      const i18n = service;
-      return createPublicI18n(i18n);
+      return wrapI18nService(service, createPublicI18n);
     }
     if (token === wellKnownTokens.notificationCenterToken) {
-      const notifications = service;
-      return createPublicNotificationCenter(notifications);
+      return wrapNotificationCenterService(service, createPublicNotificationCenter);
     }
     if (token === wellKnownTokens.foundrySettingsToken) {
-      const settings = service;
-      return createPublicFoundrySettings(settings);
+      return wrapFoundrySettingsService(service, createPublicFoundrySettings);
     }
     return service;
   }
@@ -3421,7 +3440,6 @@ const _ObservabilityRegistry = class _ObservabilityRegistry {
    * Disposes all registered observers and clears internal state.
    * Intended to be called when the DI container is disposed.
    */
-  /* c8 ignore start -- Lifecycle method: called indirectly via DI container disposal */
   dispose() {
     while (this.subscriptions.length > 0) {
       const unsubscribe = this.subscriptions.pop();
@@ -3431,7 +3449,6 @@ const _ObservabilityRegistry = class _ObservabilityRegistry {
       }
     }
   }
-  /* c8 ignore stop */
   // Future: Add more registration methods for other observable services
   // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
 };
@@ -11965,7 +11982,6 @@ const _JournalVisibilityService = class _JournalVisibilityService {
           `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
           {
             errorCode: flagResult.error.code,
-            /* c8 ignore stop */
             errorMessage: flagResult.error.message
           },
           { channels: ["ConsoleChannel"] }
@@ -12162,7 +12178,7 @@ const _RetryService = class _RetryService {
     if (maxAttempts < 1) {
       return err(mapException("maxAttempts must be >= 1", 0));
     }
-    let lastError;
+    let lastError = mapException("Initial retry error", 0);
     const startTime = performance.now();
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -12209,8 +12225,7 @@ const _RetryService = class _RetryService {
         `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts (${duration.toFixed(2)}ms)`
       );
     }
-    const finalError = lastError;
-    return err(finalError);
+    return err(lastError);
   }
   /**
    * Retries a synchronous operation.
@@ -12243,7 +12258,7 @@ const _RetryService = class _RetryService {
     if (maxAttempts < 1) {
       return err(mapException("maxAttempts must be >= 1", 0));
     }
-    let lastError;
+    let lastError = mapException("Initial retry error", 0);
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const result = fn();
@@ -12281,8 +12296,7 @@ const _RetryService = class _RetryService {
         `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts`
       );
     }
-    const finalError = lastError;
-    return err(finalError);
+    return err(lastError);
   }
 };
 __name(_RetryService, "RetryService");
@@ -12456,8 +12470,7 @@ const _CacheService = class _CacheService {
     this.recordHit();
     return {
       hit: true,
-      value: entry.value,
-      // type-coverage:ignore-line -- Map stores ServiceType union; casting back to generic is safe
+      value: castCacheValue(entry.value),
       metadata: this.cloneMetadata(entry.metadata)
     };
   }
@@ -12522,9 +12535,6 @@ const _CacheService = class _CacheService {
       ...partial2
     };
     merged.defaultTtlMs = clampTtl(merged.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs);
-    if (typeof merged.maxEntries === "number" && !(merged.maxEntries > 0)) {
-      delete merged.maxEntries;
-    }
     this.config = merged;
     if (!this.isEnabled) {
       this.clearStore();
@@ -13717,6 +13727,7 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
    * @param container - DI container with registered services
    */
   registerAll(container) {
+    const errors = [];
     for (const hook of this.hooks) {
       const result = hook.register(container);
       if (!result.ok) {
@@ -13727,8 +13738,13 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
         this.notificationCenter.error("Failed to register hook", error, {
           channels: ["ConsoleChannel"]
         });
+        errors.push(result.error);
       }
     }
+    if (errors.length > 0) {
+      return err(errors);
+    }
+    return ok(void 0);
   }
   /**
    * Dispose all hooks.
@@ -13783,7 +13799,8 @@ const _HookRegistrationManager = class _HookRegistrationManager {
       const unregister = this.cleanupCallbacks.pop();
       try {
         unregister?.();
-      } catch {
+      } catch (error) {
+        console.warn("HookRegistrationManager: failed to unregister hook", error);
       }
     }
   }
@@ -13828,35 +13845,15 @@ function extractHtmlElement(html) {
 }
 __name(extractHtmlElement, "extractHtmlElement");
 const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
-  constructor() {
+  constructor(foundryHooks, journalVisibility, notificationCenter) {
+    this.foundryHooks = foundryHooks;
+    this.journalVisibility = journalVisibility;
+    this.notificationCenter = notificationCenter;
     this.registrationManager = new HookRegistrationManager();
   }
-  register(container) {
-    const foundryHooksResult = container.resolveWithError(foundryHooksToken);
-    const journalVisibilityResult = container.resolveWithError(journalVisibilityServiceToken);
-    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    if (!foundryHooksResult.ok || !journalVisibilityResult.ok || !notificationCenterResult.ok) {
-      if (notificationCenterResult.ok) {
-        notificationCenterResult.value.error(
-          "DI resolution failed in RenderJournalDirectoryHook",
-          {
-            code: "DI_RESOLUTION_FAILED",
-            message: "Required services for RenderJournalDirectoryHook are missing",
-            details: {
-              foundryHooksResolved: foundryHooksResult.ok,
-              journalVisibilityResolved: journalVisibilityResult.ok
-            }
-          },
-          { channels: ["ConsoleChannel"] }
-        );
-      } else {
-        console.error("NotificationCenter not available for RenderJournalDirectoryHook");
-      }
-      return err(new Error("Failed to resolve required services for RenderJournalDirectoryHook"));
-    }
-    const foundryHooks = foundryHooksResult.value;
-    const journalVisibility = journalVisibilityResult.value;
-    const notificationCenter = notificationCenterResult.value;
+  // container parameter removed: HookRegistrar implementiert register() aktuell ohne Container-Nutzung
+  register() {
+    const { foundryHooks, journalVisibility, notificationCenter } = this;
     const throttledCallback = throttle((app, html) => {
       notificationCenter.debug(
         `${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`,
@@ -13906,21 +13903,23 @@ const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
     });
     return ok(void 0);
   }
-  /* c8 ignore start -- Lifecycle method: Called when module is disabled; cleanup logic not testable in unit tests */
   dispose() {
     this.registrationManager.dispose();
   }
-  /* c8 ignore stop */
 };
 __name(_RenderJournalDirectoryHook, "RenderJournalDirectoryHook");
 let RenderJournalDirectoryHook = _RenderJournalDirectoryHook;
 const _DIRenderJournalDirectoryHook = class _DIRenderJournalDirectoryHook extends RenderJournalDirectoryHook {
-  constructor() {
-    super();
+  constructor(foundryHooks, journalVisibility, notificationCenter) {
+    super(foundryHooks, journalVisibility, notificationCenter);
   }
 };
 __name(_DIRenderJournalDirectoryHook, "DIRenderJournalDirectoryHook");
-_DIRenderJournalDirectoryHook.dependencies = [];
+_DIRenderJournalDirectoryHook.dependencies = [
+  foundryHooksToken,
+  journalVisibilityServiceToken,
+  notificationCenterToken
+];
 let DIRenderJournalDirectoryHook = _DIRenderJournalDirectoryHook;
 const JOURNAL_INVALIDATION_HOOKS = [
   MODULE_CONSTANTS.HOOKS.CREATE_JOURNAL_ENTRY,
@@ -13928,35 +13927,15 @@ const JOURNAL_INVALIDATION_HOOKS = [
   MODULE_CONSTANTS.HOOKS.DELETE_JOURNAL_ENTRY
 ];
 const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
-  constructor() {
+  constructor(hooks, cache, notificationCenter) {
+    this.hooks = hooks;
+    this.cache = cache;
+    this.notificationCenter = notificationCenter;
     this.registrationManager = new HookRegistrationManager();
   }
-  register(container) {
-    const hooksResult = container.resolveWithError(foundryHooksToken);
-    const cacheResult = container.resolveWithError(cacheServiceToken);
-    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    if (!hooksResult.ok || !cacheResult.ok || !notificationCenterResult.ok) {
-      if (notificationCenterResult.ok) {
-        notificationCenterResult.value.error(
-          "DI resolution failed in JournalCacheInvalidationHook",
-          {
-            code: "DI_RESOLUTION_FAILED",
-            message: "Required services for JournalCacheInvalidationHook are missing",
-            details: {
-              hooksResolved: hooksResult.ok,
-              cacheResolved: cacheResult.ok
-            }
-          },
-          { channels: ["ConsoleChannel"] }
-        );
-      } else {
-        console.error("Failed to resolve NotificationCenter for JournalCacheInvalidationHook");
-      }
-      return err(new Error("Failed to resolve required services for JournalCacheInvalidationHook"));
-    }
-    const hooks = hooksResult.value;
-    const cache = cacheResult.value;
-    const notificationCenter = notificationCenterResult.value;
+  // container parameter entfernt: HookRegistrar-Implementierung nutzt Container nicht mehr direkt
+  register() {
+    const { hooks, cache, notificationCenter } = this;
     for (const hookName of JOURNAL_INVALIDATION_HOOKS) {
       const registrationResult = hooks.on(hookName, () => {
         const removed = cache.invalidateWhere(
@@ -13991,12 +13970,12 @@ const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
 __name(_JournalCacheInvalidationHook, "JournalCacheInvalidationHook");
 let JournalCacheInvalidationHook = _JournalCacheInvalidationHook;
 const _DIJournalCacheInvalidationHook = class _DIJournalCacheInvalidationHook extends JournalCacheInvalidationHook {
-  constructor() {
-    super();
+  constructor(hooks, cache, notificationCenter) {
+    super(hooks, cache, notificationCenter);
   }
 };
 __name(_DIJournalCacheInvalidationHook, "DIJournalCacheInvalidationHook");
-_DIJournalCacheInvalidationHook.dependencies = [];
+_DIJournalCacheInvalidationHook.dependencies = [foundryHooksToken, cacheServiceToken, notificationCenterToken];
 let DIJournalCacheInvalidationHook = _DIJournalCacheInvalidationHook;
 function registerRegistrars(container) {
   const renderJournalHookResult = container.registerClass(
@@ -14040,23 +14019,6 @@ function registerRegistrars(container) {
   return ok(void 0);
 }
 __name(registerRegistrars, "registerRegistrars");
-function registerFallbacks(container) {
-  container.registerFallback(loggerToken, () => {
-    const fallbackConfig = {
-      logLevel: LogLevel.DEBUG,
-      isDevelopment: false,
-      isProduction: false,
-      enablePerformanceTracking: false,
-      enableMetricsPersistence: false,
-      metricsPersistenceKey: "fallback.metrics",
-      performanceSamplingRate: 1,
-      enableCacheService: true,
-      cacheDefaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS
-    };
-    return new ConsoleLoggerService(new RuntimeConfigService(fallbackConfig));
-  });
-}
-__name(registerFallbacks, "registerFallbacks");
 function registerStaticValues(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
@@ -14130,7 +14092,6 @@ function validateContainer(container) {
 }
 __name(validateContainer, "validateContainer");
 function configureDependencies(container) {
-  registerFallbacks(container);
   const staticValuesResult = registerStaticValues(container);
   if (isErr(staticValuesResult)) return staticValuesResult;
   const coreResult = registerCoreServices(container);
@@ -14190,14 +14151,12 @@ const _CompositionRoot = class _CompositionRoot {
     const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
     const configured = performanceTracker.track(
       () => configureDependencies(container),
-      /* c8 ignore start -- onComplete callback is only called when performance tracking is enabled and sampling passes */
       (duration) => {
         const loggerResult = container.resolveWithError(loggerToken);
         if (loggerResult.ok) {
           loggerResult.value.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
         }
       }
-      /* c8 ignore stop */
     );
     if (configured.ok) {
       this.container = container;
@@ -14324,7 +14283,13 @@ function initializeFoundryModule() {
       logger.error(`Failed to resolve ModuleHookRegistrar: ${hookRegistrarResult.error.message}`);
       return;
     }
-    hookRegistrarResult.value.registerAll(initContainerResult.value);
+    const hookRegistrationResult = hookRegistrarResult.value.registerAll(initContainerResult.value);
+    if (!hookRegistrationResult.ok) {
+      logger.error("Failed to register one or more module hooks", {
+        errors: hookRegistrationResult.error.map((e) => e.message)
+      });
+      return;
+    }
     logger.info("init-phase completed");
   });
   Hooks.on("ready", () => {

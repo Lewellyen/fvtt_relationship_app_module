@@ -22,11 +22,6 @@ import { BootstrapPerformanceTracker } from "@/observability/bootstrap-performan
 import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 /**
- * Fallback factory function type for creating service instances when container resolution fails.
- */
-type FallbackFactory<T extends ServiceType> = () => T;
-
-/**
  * Dependency injection container (Facade pattern).
  *
  * Delegates to specialized components:
@@ -72,7 +67,6 @@ export class ServiceContainer implements Container {
   private resolver: ServiceResolver;
   private scopeManager: ScopeManager;
   private validationState: ContainerValidationState;
-  private fallbackFactories = new Map<symbol, FallbackFactory<ServiceType>>();
   private validationPromise: Promise<Result<void, ContainerError[]>> | null = null;
 
   /**
@@ -279,7 +273,6 @@ export class ServiceContainer implements Container {
       return ok(undefined);
     }
 
-    /* c8 ignore start -- Guard against concurrent validate() calls; requires re-entrant call during validation which is not possible in normal synchronous flow */
     if (this.validationState === "validating") {
       return err([
         {
@@ -288,7 +281,6 @@ export class ServiceContainer implements Container {
         },
       ]);
     }
-    /* c8 ignore stop */
 
     this.validationState = "validating";
 
@@ -348,21 +340,16 @@ export class ServiceContainer implements Container {
    */
   async validateAsync(timeoutMs: number = 30000): Promise<Result<void, ContainerError[]>> {
     // Return immediately if already validated
-    /* c8 ignore start -- Fast-path optimization; tested in sync validate() */
     if (this.validationState === "validated") {
       return ok(undefined);
     }
-    /* c8 ignore stop */
 
     // Wait for ongoing validation
-    /* c8 ignore start -- Race condition guard for concurrent validateAsync calls; requires complex async timing to test */
     if (this.validationPromise !== null) {
       return this.validationPromise;
     }
-    /* c8 ignore stop */
 
     // Validation already in progress (sync)
-    /* c8 ignore start -- Mixed sync/async validation conflict; requires calling validate() then validateAsync() which is not a real use case */
     if (this.validationState === "validating") {
       return err([
         {
@@ -371,7 +358,6 @@ export class ServiceContainer implements Container {
         },
       ]);
     }
-    /* c8 ignore stop */
 
     this.validationState = "validating";
 
@@ -405,7 +391,6 @@ export class ServiceContainer implements Container {
       }
 
       return result;
-      /* c8 ignore start -- Timeout handling requires precise race condition setup; difficult to test reliably */
     } catch (error) {
       // Handle timeout
       if (error instanceof TimeoutError) {
@@ -420,10 +405,10 @@ export class ServiceContainer implements Container {
       }
       // Re-throw unexpected errors
       throw error;
-      /* c8 ignore stop */
+      /* c8 ignore start -- Coverage tool doesn't count closing brace of try block as executed */
     } finally {
-      /* c8 ignore next -- State cleanup always executed; null assignment is cleanup logic not business logic */
       this.validationPromise = null;
+      /* c8 ignore end */
     }
   }
 
@@ -606,20 +591,8 @@ export class ServiceContainer implements Container {
       return result.value;
     }
 
-    // Try fallback factory
-    const fallback = this.fallbackFactories.get(token);
-    if (fallback) {
-      // Fallbacks are registered with matching generic type for public resolve()
-      // Type alignment is ensured by registerFallback at registration time
-      // type-coverage:ignore-next-line -- Type cast required due to Map<symbol, Factory> storage
-      return fallback() as TServiceType;
-    }
-
     // No fallback - throw with context
-    throw new Error(
-      `Cannot resolve ${String(token)}: ${result.error.message}. ` +
-        `No fallback factory registered for this token.`
-    );
+    throw new Error(`Cannot resolve ${String(token)}: ${result.error.message}`);
   }
 
   /**
@@ -629,25 +602,6 @@ export class ServiceContainer implements Container {
     token: InjectionToken<TServiceType>
   ): Result<boolean, never> {
     return ok(this.registry.has(token));
-  }
-
-  /**
-   * Register a fallback factory for a specific token.
-   * This will be used when resolve() fails for that token.
-   *
-   * @param token - The injection token
-   * @param factory - Factory function that creates a fallback instance
-   *
-   * @example
-   * ```typescript
-   * container.registerFallback(UserServiceToken, () => new DefaultUserService());
-   * ```
-   */
-  registerFallback<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    factory: FallbackFactory<TServiceType>
-  ): void {
-    this.fallbackFactories.set(token, factory as FallbackFactory<ServiceType>);
   }
 
   /**
