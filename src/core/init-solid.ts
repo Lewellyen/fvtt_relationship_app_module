@@ -14,6 +14,8 @@ import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import { LogLevel } from "@/config/environment";
 import { BootstrapErrorHandler } from "@/core/bootstrap-error-handler";
 import { LOG_LEVEL_SCHEMA } from "@/foundry/validation/setting-schemas";
+import type { Result } from "@/types/result";
+import type { ServiceContainer } from "@/di_infrastructure/container";
 
 /**
  * Boot-Orchestrierung für das Modul.
@@ -160,6 +162,17 @@ function initializeFoundryModule(): void {
 const root = new CompositionRoot();
 const bootstrapResult = root.bootstrap();
 const bootstrapOk = isOk(bootstrapResult);
+
+/**
+ * Internal export for testing purposes only.
+ * Returns the container from init-solid.ts.
+ * This allows integration tests to use the same container instance as the module.
+ *
+ * @internal - For testing only
+ */
+export function getRootContainer(): Result<ServiceContainer, string> {
+  return root.getContainer();
+}
 
 /* c8 ignore start -- Bootstrap-Fehlerpfade sind stark Foundry-versionsabhängig und schwer
  * deterministisch in Unit-Tests abzudecken. Die Logik wird über Integrationspfade geprüft;

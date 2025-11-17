@@ -87,8 +87,13 @@ Tests sind co-located mit dem Source-Code:
 ```
 src/
 ├── __tests__/                    # Integration Tests
-│   └── integration/
-│       └── full-bootstrap.test.ts
+│   └── integration/              # Erweiterte Integration Tests
+│       ├── full-bootstrap.test.ts
+│       ├── journal-visibility-e2e.test.ts
+│       ├── hook-registration-execution.test.ts
+│       ├── cache-invalidation-workflow.test.ts
+│       ├── module-lifecycle.test.ts
+│       └── settings-change-reaction.test.ts
 ├── services/
 │   ├── consolelogger.ts
 │   └── __tests__/
@@ -306,6 +311,30 @@ Coverage-Reports werden zu Codecov hochgeladen.
 ---
 
 ## Debugging Tests
+
+### Cursor Editor / VS Code Debugger
+
+Das Projekt enthält eine Debug-Konfiguration in `.vscode/launch.json` mit 4 Profilen:
+
+1. **"Debug Current Test File"** - Debuggt die aktuell geöffnete Test-Datei
+2. **"Debug Cache Invalidation Test"** - Debuggt speziell den Cache-Invalidierung Test
+3. **"Debug Settings Change Test"** - Debuggt speziell den Settings-Change Test
+4. **"Debug All Integration Tests"** - Debuggt alle Integration-Tests
+
+**Verwendung:**
+1. Öffne eine Test-Datei
+2. Setze Breakpoints (F9)
+3. Öffne die Debug-Sidebar (`Strg+Shift+D` / `Cmd+Shift+D`)
+4. Wähle ein Debug-Profil aus
+5. Starte den Debugger (`F5`)
+
+**Navigation:**
+- `F10` - Step Over (nächste Zeile)
+- `F11` - Step Into (in Funktion springen)
+- `Shift+F11` - Step Out (aus Funktion raus)
+- `F5` - Continue (bis nächster Breakpoint)
+
+**Hinweis:** Die Debug-Konfiguration ist für Cursor Editor optimiert, funktioniert aber auch in VS Code.
 
 ### VSCode Integration
 

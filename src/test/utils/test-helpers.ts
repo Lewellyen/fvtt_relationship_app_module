@@ -10,6 +10,9 @@ import type { PerformanceTrackingService } from "@/services/PerformanceTrackingS
 import { LogLevel } from "@/config/environment";
 import { MODULE_CONSTANTS } from "@/constants";
 import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import { CompositionRoot } from "@/core/composition-root";
+import type { ServiceContainer } from "@/di_infrastructure/container";
+import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
 
 /**
  * Type-safe Result assertion helpers
@@ -100,6 +103,77 @@ export function createMockDOM(
   }
 
   return { container };
+}
+
+/**
+ * Bootstrap-Helper für Integration-Tests
+ *
+ * Dupliziert den Bootstrap-Ablauf aus init-solid.ts für Tests.
+ * Erstellt einen neuen CompositionRoot, bootstrappt ihn und gibt den Container zurück.
+ *
+ * @returns Result mit dem gebootstrapten Container oder Fehler
+ *
+ * @example
+ * ```typescript
+ * const containerResult = bootstrapTestContainer();
+ * expectResultOk(containerResult);
+ * const container = containerResult.value;
+ * ```
+ */
+export function bootstrapTestContainer(): Result<ServiceContainer, string> {
+  const root = new CompositionRoot();
+  const bootstrapResult = root.bootstrap();
+
+  if (!bootstrapResult.ok) {
+    return { ok: false, error: `Bootstrap failed: ${bootstrapResult.error}` };
+  }
+
+  // bootstrapResult.value ist bereits der Container
+  const container = bootstrapResult.value;
+
+  // Prüfen ob Container validiert ist
+  const validationState = container.getValidationState();
+  if (validationState !== "validated") {
+    return { ok: false, error: `Container not validated, state: ${validationState}` };
+  }
+
+  // Debug: Prüfen ob wichtige Services registriert sind
+  // Hinweis: Diese Prüfung kann auch im Test gemacht werden, aber hier für frühes Debugging
+  // WICHTIG: Diese Prüfung wird hier gemacht, um sicherzustellen, dass der Container korrekt bootstrappt wurde
+  // Falls diese Prüfung fehlschlägt, wird ein Fehler zurückgegeben, der den Test früh scheitern lässt
+  const loggerRegisteredResult = container.isRegistered(loggerToken);
+  if (!loggerRegisteredResult.ok) {
+    return {
+      ok: false,
+      error: `isRegistered(loggerToken) failed: ${JSON.stringify(loggerRegisteredResult)}`,
+    };
+  }
+  if (!loggerRegisteredResult.value) {
+    // Bootstrap scheint erfolgreich, aber Logger ist nicht registriert
+    // Dies deutet darauf hin, dass configureDependencies fehlgeschlagen ist oder der Container nicht korrekt initialisiert wurde
+    return {
+      ok: false,
+      error: `Logger not registered after bootstrap. Container state: ${container.getValidationState()}. This indicates configureDependencies may have failed silently.`,
+    };
+  }
+
+  const journalVisibilityRegisteredResult = container.isRegistered(journalVisibilityServiceToken);
+  if (!journalVisibilityRegisteredResult.ok) {
+    return {
+      ok: false,
+      error: `isRegistered(journalVisibilityServiceToken) failed: ${JSON.stringify(journalVisibilityRegisteredResult)}`,
+    };
+  }
+  if (!journalVisibilityRegisteredResult.value) {
+    // Bootstrap scheint erfolgreich, aber JournalVisibilityService ist nicht registriert
+    // Dies deutet darauf hin, dass registerFoundryServices fehlgeschlagen ist oder der Service nicht registriert wurde
+    return {
+      ok: false,
+      error: `JournalVisibilityService not registered after bootstrap. Container state: ${container.getValidationState()}. This indicates registerFoundryServices may have failed silently.`,
+    };
+  }
+
+  return { ok: true, value: container };
 }
 
 /**

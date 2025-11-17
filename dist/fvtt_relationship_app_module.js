@@ -14354,6 +14354,10 @@ __name(initializeFoundryModule, "initializeFoundryModule");
 const root = new CompositionRoot();
 const bootstrapResult = root.bootstrap();
 const bootstrapOk = isOk(bootstrapResult);
+function getRootContainer() {
+  return root.getContainer();
+}
+__name(getRootContainer, "getRootContainer");
 if (!bootstrapOk) {
   BootstrapErrorHandler.logError(bootstrapResult.error, {
     phase: "bootstrap",

@@ -37,6 +37,7 @@
 | Dokument | Zweck | Zielgruppe |
 |----------|-------|-----------|
 | [TESTING.md](./TESTING.md) | Test-Strategie, Tools & Command-Guide | Alle Entwickler |
+| [TEST-STRATEGY.md](./TEST-STRATEGY.md) | Umfassende Test-Strategie, Tools, Priorisierung & Best Practices | Test-Autoren, QA |
 | [quality-gates/README.md](./quality-gates/README.md) | Qualitätsmetriken & Pflicht-Gates | Maintainer, QA |
 | → [Code Coverage Exclusions](./quality-gates/code-coverage-exclusions.md) | Dokumentierte `c8 ignore`-Stellen | Test-Autoren |
 | → [Type Coverage Exclusions](./quality-gates/type-coverage-exclusions.md) | Dokumentierte `type-coverage`-Ausnahmen | TypeScript |
@@ -133,9 +134,10 @@
 ---
 
 ### "Ich schreibe Tests"
-1. [TESTING.md](./TESTING.md) → Strategie & Commands  
-2. [quality-gates/README.md](./quality-gates/README.md) → verpflichtende Checks  
-3. [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → Testing Cheat Sheet
+1. [TEST-STRATEGY.md](./TEST-STRATEGY.md) → Umfassende Test-Strategie, Tools & Priorisierung  
+2. [TESTING.md](./TESTING.md) → Praktische Test-Anleitung & Commands  
+3. [quality-gates/README.md](./quality-gates/README.md) → verpflichtende Checks  
+4. [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → Testing Cheat Sheet
 
 ---
 
@@ -293,7 +295,8 @@ Füge das neue Dokument in diesem Index hinzu (passende Kategorie).
 ### Tag 4-5: Deep Dive
 1. [BOOTFLOW.md](./BOOTFLOW.md) → Bootstrap-Prozess
 2. ADRs lesen → Design-Entscheidungen verstehen
-3. [TESTING.md](./TESTING.md) → Test-Strategie
+3. [TEST-STRATEGY.md](./TEST-STRATEGY.md) → Test-Strategie & Tools
+4. [TESTING.md](./TESTING.md) → Praktische Test-Anleitung
 
 ### Woche 2: Praktische Entwicklung
 1. [CONFIGURATION.md](./CONFIGURATION.md) → Environment-Setup
