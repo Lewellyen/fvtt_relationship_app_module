@@ -34,7 +34,6 @@ export class FoundrySettingsService
   ): Result<void, FoundryError> {
     return this.withRetry(() => {
       const portResult = this.getPort("FoundrySettings");
-      /* c8 ignore next -- Branch: Port error path tested in port selection tests */
       if (!portResult.ok) return portResult;
       return portResult.value.register(namespace, key, config);
     }, "FoundrySettings.register");
@@ -55,7 +54,6 @@ export class FoundrySettingsService
   async set<T>(namespace: string, key: string, value: T): Promise<Result<void, FoundryError>> {
     return this.withRetryAsync(async () => {
       const portResult = this.getPort("FoundrySettings");
-      /* c8 ignore next -- Branch: Port error path tested in port selection tests */
       if (!portResult.ok) return portResult;
       return portResult.value.set(namespace, key, value);
     }, "FoundrySettings.set");

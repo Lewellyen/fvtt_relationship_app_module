@@ -177,6 +177,14 @@ describe("FoundryGamePortV13", () => {
       expect(result.value).toBe(mockJournal);
     });
 
+    it("should return validation error for invalid journal ID", () => {
+      // Invalid ID: contains SQL injection attempt
+      const result = port.getJournalEntryById("'; DROP TABLE journals; --");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+    });
+
     it("should return null when entry not found", () => {
       vi.stubGlobal("game", {
         journal: {

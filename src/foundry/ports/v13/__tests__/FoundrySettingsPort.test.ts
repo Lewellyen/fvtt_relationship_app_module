@@ -107,6 +107,29 @@ describe("FoundrySettingsPortV13", () => {
       expect(result.error.code).toBe("OPERATION_FAILED");
       expect(result.error.message).toContain("Failed to register setting");
     });
+
+    it("should propagate validation errors from validateSettingConfig", () => {
+      vi.stubGlobal("game", {
+        settings: {
+          register: vi.fn(),
+        },
+      });
+
+      // Invalid config: empty namespace
+      const config: SettingConfig<number> = {
+        name: "Test",
+        scope: "world",
+        config: true,
+        type: Number,
+        default: 0,
+      };
+
+      const result = port.register("", "testKey", config);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+      expect(result.error.message).toContain("Invalid setting namespace");
+    });
   });
 
   describe("get()", () => {

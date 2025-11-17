@@ -14,6 +14,7 @@ import type { FoundryUI } from "@/foundry/interfaces/FoundryUI";
 import type { FoundryJournalFacade as IFoundryJournalFacade } from "./foundry-journal-facade.interface";
 import { foundryGameToken, foundryDocumentToken, foundryUIToken } from "@/foundry/foundrytokens";
 import { MODULE_CONSTANTS } from "@/constants";
+import { castFoundryDocumentForFlag } from "@/foundry/runtime-casts";
 import * as v from "valibot";
 
 /**
@@ -59,8 +60,7 @@ export class FoundryJournalFacade implements IFoundryJournalFacade {
     // Type widening: fvtt-types JournalEntry.getFlag has overly restrictive scope type ("core" only),
     // but module flags use module ID as scope. Cast to generic interface is safe.
     return this.document.getFlag<T>(
-      /* type-coverage:ignore-next-line -- Type widening: fvtt-types restrictive scope type, cast necessary for module flags */
-      entry as { getFlag: (scope: string, key: string) => unknown },
+      castFoundryDocumentForFlag(entry),
       MODULE_CONSTANTS.MODULE.ID,
       key,
       schema

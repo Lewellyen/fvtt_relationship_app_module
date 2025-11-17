@@ -24,6 +24,7 @@ import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
 import type { PortSelector } from "@/foundry/versioning/portselector";
 import type { PortRegistry } from "@/foundry/versioning/portregistry";
 import type { RetryService } from "@/services/RetryService";
+import { castDisposablePort } from "@/foundry/runtime-casts";
 
 export abstract class FoundryServiceBase<TPort> implements Disposable {
   protected port: TPort | null = null;
@@ -164,8 +165,7 @@ export abstract class FoundryServiceBase<TPort> implements Disposable {
       "dispose" in this.port &&
       typeof this.port.dispose === "function"
     ) {
-      /* type-coverage:ignore-next-line -- Type narrowing: Double cast narrows from generic ServiceType to Disposable at runtime */
-      (this.port as unknown as Disposable).dispose();
+      castDisposablePort(this.port).dispose();
     }
     this.port = null;
   }

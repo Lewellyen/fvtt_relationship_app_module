@@ -83,11 +83,9 @@ export class FoundryGamePortV13 implements FoundryGame {
     }
     // Validate input
     const validationResult = validateJournalId(id);
-    /* c8 ignore start -- Input validation tested in input-validators.test.ts */
     if (!validationResult.ok) {
       return validationResult;
     }
-    /* c8 ignore stop */
 
     if (typeof game === "undefined" || !game?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));

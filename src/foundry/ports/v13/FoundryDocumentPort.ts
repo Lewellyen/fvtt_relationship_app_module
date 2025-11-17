@@ -3,6 +3,7 @@ import type { FoundryDocument } from "@/foundry/interfaces/FoundryDocument";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
 import { fromPromise, tryCatch } from "@/utils/functional/result";
 import { createFoundryError } from "@/foundry/errors/FoundryErrors";
+import { castFoundryError } from "@/foundry/runtime-casts";
 import * as v from "valibot";
 
 /**
@@ -54,8 +55,7 @@ export class FoundryDocumentPortV13 implements FoundryDocument {
       (error) => {
         // Check if it's already a FoundryError (from validation)
         if (error && typeof error === "object" && "code" in error && "message" in error) {
-          /* type-coverage:ignore-next-line -- Runtime type check ensures FoundryError structure before cast */
-          return error as FoundryError;
+          return castFoundryError(error);
         }
         // Otherwise wrap as OPERATION_FAILED
         return createFoundryError(

@@ -1,6 +1,6 @@
 # Status-Prüfung: Teilplan 02 – DI-Infrastruktur & Bootstrap
 
-**Prüfdatum:** 2025-01-17  
+**Prüfdatum:** 2025-11-17  
 **Status:** ✅ **ERFÜLLT** (mit dokumentierten Ausnahmen)
 
 ## 1. Inventur in DI/Bootstrap ✅

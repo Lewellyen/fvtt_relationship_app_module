@@ -6,6 +6,7 @@
 import type { Result } from "@/types/result";
 import { ok, err } from "@/utils/functional/result";
 import { createFoundryError, type FoundryError } from "@/foundry/errors/FoundryErrors";
+import { assertNonEmptyArray } from "@/foundry/runtime-casts";
 
 export type PortFactory<T> = () => T;
 
@@ -90,11 +91,21 @@ export class PortRegistry<T> {
       );
     }
 
-    // Non-null assertions: guaranteed by compatibleVersions.length > 0 check above
-    /* type-coverage:ignore-next-line -- Non-null assertion: Array[0] guaranteed by length check */
-    const selectedVersion = compatibleVersions[0]!;
-    /* type-coverage:ignore-next-line -- Non-null assertion: Factory guaranteed by compatibleVersions entries */
-    const factory = this.factories.get(selectedVersion)!;
+    // Type-guard ensures array is non-empty
+    assertNonEmptyArray(compatibleVersions);
+    const selectedVersion = compatibleVersions[0];
+    const factory = this.factories.get(selectedVersion);
+    /* c8 ignore start -- Defensive check: theoretically impossible because compatibleVersions comes from this.factories.keys() and factory lookup uses the same Map instance. However, TypeScript's type system doesn't guarantee this, so the check exists for type safety. Testing would require mocking internal state, which is overkill for a defensive check. */
+    if (!factory) {
+      return err(
+        createFoundryError(
+          "PORT_NOT_FOUND",
+          `Factory for version ${selectedVersion} not found in registry`,
+          { version: selectedVersion }
+        )
+      );
+    }
+    /* c8 ignore stop */
     return ok(factory());
   }
 

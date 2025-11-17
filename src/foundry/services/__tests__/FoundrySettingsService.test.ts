@@ -108,6 +108,25 @@ describe("FoundrySettingsService", () => {
       expectResultOk(result);
       expect(mockPort.register).toHaveBeenCalledWith("test-module", "testKey", config);
     });
+
+    it("should propagate port selection failure", () => {
+      vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(
+        err({ code: "PORT_SELECTION_FAILED", message: "No compatible port" })
+      );
+
+      const config: SettingConfig<number> = {
+        name: "Test",
+        scope: "world",
+        config: true,
+        type: Number,
+        default: 123,
+      };
+
+      const result = service.register("test-module", "testKey", config);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
+    });
   });
 
   describe("get()", () => {
@@ -132,6 +151,17 @@ describe("FoundrySettingsService", () => {
 
       expectResultOk(result);
       expect(mockPort.set).toHaveBeenCalledWith("test-module", "testKey", 999);
+    });
+
+    it("should propagate port selection failure", async () => {
+      vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(
+        err({ code: "PORT_SELECTION_FAILED", message: "No compatible port" })
+      );
+
+      const result = await service.set("test-module", "testKey", 999);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
     });
   });
 

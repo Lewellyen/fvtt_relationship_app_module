@@ -329,7 +329,6 @@ export function validateHookApp(app: unknown): Result<ValidatedFoundryApplicatio
 
   const result = v.safeParse(FoundryApplicationSchema, app);
 
-  /* c8 ignore start -- Valibot validation error path tested via integration tests; detailed validation logic tested in Valibot library */
   if (!result.success) {
     return err(
       createFoundryError(
@@ -340,7 +339,6 @@ export function validateHookApp(app: unknown): Result<ValidatedFoundryApplicatio
       )
     );
   }
-  /* c8 ignore stop */
 
   return ok(result.output);
 }

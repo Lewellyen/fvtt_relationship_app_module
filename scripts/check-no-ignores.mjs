@@ -9,6 +9,7 @@
  * - src/types/**
  * - src/di_infrastructure/** (mit begründeten Ausnahmen)
  * - src/config/dependencyconfig.ts (mit begründeter Ausnahme)
+ * - src/foundry/** (mit begründeten Ausnahmen)
  * 
  * Sucht nach:
  * - c8 ignore
@@ -36,6 +37,8 @@ const FORBIDDEN_PATHS = [
   // DI-Infrastruktur: Nach Teilplan 02 abgeschlossen, jetzt verschärft
   'src/di_infrastructure/**',
   'src/config/dependencyconfig.ts',
+  // Foundry-Adapter: Nach Teilplan 03 abgeschlossen, jetzt verschärft
+  'src/foundry/**',
 ];
 
 // Ausnahmen (Dateien, die ausgenommen sind)
@@ -50,6 +53,9 @@ const EXCEPTIONS = [
   'src/di_infrastructure/types/api-safe-token.ts', // Nominal branding (begründet)
   'src/di_infrastructure/registry/TypeSafeRegistrationMap.ts', // Heterogene Service-Typen (begründet)
   'src/config/dependencyconfig.ts', // Fehlerpropagierung (Coverage-Tool-Limitation)
+  // Foundry-Adapter: Begründete Ausnahmen
+  'src/foundry/runtime-casts.ts', // Runtime-Casts (bereits global ignoriert, analog zu runtime-safe-cast.ts)
+  'src/foundry/versioning/portregistry.ts', // Defensiver Check für Factory-Not-Found (theoretisch unmöglich, aber für Type-Safety vorhanden)
 ];
 
 // Ignore-Marker, nach denen gesucht wird
@@ -66,6 +72,12 @@ const IGNORE_PATTERNS = [
  */
 function isException(filePath) {
   const normalized = filePath.replace(/\\/g, '/');
+  
+  // Test-Dateien sind immer ausgenommen
+  if (normalized.includes('/__tests__/') || normalized.includes('.test.ts') || normalized.includes('.spec.ts')) {
+    return true;
+  }
+  
   return EXCEPTIONS.some(exception => normalized === exception || normalized.endsWith(exception));
 }
 

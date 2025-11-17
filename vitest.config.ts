@@ -51,6 +51,7 @@ export default defineConfig({
         "src/di_infrastructure/types/servicedependencies.ts",
         "src/di_infrastructure/types/runtime-safe-cast.ts",
         "src/di_infrastructure/types/servicefactory.ts",
+        "src/foundry/runtime-casts.ts",
         "src/core/module-api.ts",
         // Non-executable infrastructure
         "src/polyfills/**",

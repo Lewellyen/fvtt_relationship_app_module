@@ -148,7 +148,23 @@ describe("validateHookApp", () => {
     const result = validateHookApp({ invalid: true } as any);
     expectResultErr(result);
     expect(result.error.code).toBe("VALIDATION_FAILED");
-    expect(result.error.message).toContain("validation failed");
+    expect(result.error.message).toContain("Hook app parameter validation failed");
+  });
+
+  it("should handle Valibot validation errors correctly", () => {
+    // Test case that triggers Valibot's safeParse to fail
+    // Missing required 'id' field
+    const invalidApp = {
+      object: { foo: "bar" },
+      options: { some: "option" },
+      // Missing 'id' field
+    };
+
+    const result = validateHookApp(invalidApp as any);
+    expectResultErr(result);
+    expect(result.error.code).toBe("VALIDATION_FAILED");
+    expect(result.error.message).toContain("Hook app parameter validation failed");
+    expect(result.error.cause).toBeDefined(); // Valibot issues should be in cause
   });
 });
 

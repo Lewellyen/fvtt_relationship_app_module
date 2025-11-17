@@ -3663,6 +3663,28 @@ const _DIPortSelector = class _DIPortSelector extends PortSelector {
 __name(_DIPortSelector, "DIPortSelector");
 _DIPortSelector.dependencies = [portSelectionEventEmitterToken, observabilityRegistryToken];
 let DIPortSelector = _DIPortSelector;
+function castFoundrySettingsApi(settings) {
+  return settings;
+}
+__name(castFoundrySettingsApi, "castFoundrySettingsApi");
+function castFoundryDocumentForFlag(document2) {
+  return document2;
+}
+__name(castFoundryDocumentForFlag, "castFoundryDocumentForFlag");
+function castFoundryError(error) {
+  return error;
+}
+__name(castFoundryError, "castFoundryError");
+function castDisposablePort(port) {
+  return port;
+}
+__name(castDisposablePort, "castDisposablePort");
+function assertNonEmptyArray(arr) {
+  if (arr.length === 0) {
+    throw new Error("Array must not be empty");
+  }
+}
+__name(assertNonEmptyArray, "assertNonEmptyArray");
 const _PortRegistry = class _PortRegistry {
   constructor() {
     this.factories = /* @__PURE__ */ new Map();
@@ -3732,8 +3754,18 @@ const _PortRegistry = class _PortRegistry {
         )
       );
     }
+    assertNonEmptyArray(compatibleVersions);
     const selectedVersion = compatibleVersions[0];
     const factory = this.factories.get(selectedVersion);
+    if (!factory) {
+      return err(
+        createFoundryError(
+          "PORT_NOT_FOUND",
+          `Factory for version ${selectedVersion} not found in registry`,
+          { version: selectedVersion }
+        )
+      );
+    }
     return ok(factory());
   }
   /**
@@ -11001,7 +11033,7 @@ const _FoundryDocumentPortV13 = class _FoundryDocumentPortV13 {
       },
       (error) => {
         if (error && typeof error === "object" && "code" in error && "message" in error) {
-          return error;
+          return castFoundryError(error);
         }
         return createFoundryError(
           "OPERATION_FAILED",
@@ -11145,7 +11177,7 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
     }
     return tryCatch(
       () => {
-        game.settings.register(namespace, key, config2);
+        castFoundrySettingsApi(game.settings).register(namespace, key, config2);
         return void 0;
       },
       (error) => createFoundryError(
@@ -11167,10 +11199,7 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
     }
     return tryCatch(
       () => {
-        const rawValue = game.settings.get(
-          namespace,
-          key
-        );
+        const rawValue = castFoundrySettingsApi(game.settings).get(namespace, key);
         const parseResult = /* @__PURE__ */ safeParse(schema, rawValue);
         if (!parseResult.success) {
           const error = createFoundryError(
@@ -11184,7 +11213,7 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
       },
       (error) => {
         if (error && typeof error === "object" && "code" in error && "message" in error) {
-          return error;
+          return castFoundryError(error);
         }
         return createFoundryError(
           "OPERATION_FAILED",
@@ -11205,12 +11234,7 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
     return fromPromise(
-      /* type-coverage:ignore-next-line -- Type widening: fvtt-types restrictive definition, cast safe for dynamic module namespaces */
-      game.settings.set(
-        namespace,
-        key,
-        value2
-      ).then(() => void 0),
+      castFoundrySettingsApi(game.settings).set(namespace, key, value2).then(() => void 0),
       (error) => createFoundryError(
         "OPERATION_FAILED",
         `Failed to set setting ${namespace}.${key}`,
@@ -11573,7 +11597,7 @@ const _FoundryServiceBase = class _FoundryServiceBase {
    */
   dispose() {
     if (this.port && typeof this.port === "object" && "dispose" in this.port && typeof this.port.dispose === "function") {
-      this.port.dispose();
+      castDisposablePort(this.port).dispose();
     }
     this.port = null;
   }
@@ -11868,8 +11892,7 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
    */
   getEntryFlag(entry, key, schema) {
     return this.document.getFlag(
-      /* type-coverage:ignore-next-line -- Type widening: fvtt-types restrictive scope type, cast necessary for module flags */
-      entry,
+      castFoundryDocumentForFlag(entry),
       MODULE_CONSTANTS.MODULE.ID,
       key,
       schema
