@@ -268,106 +268,6 @@ const journalCacheInvalidationHookToken = createInjectionToken("JournalCacheInva
 const moduleApiInitializerToken = createInjectionToken(
   "ModuleApiInitializer"
 );
-var tokenindex = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  cacheServiceConfigToken,
-  cacheServiceToken,
-  consoleChannelToken,
-  containerHealthCheckToken,
-  environmentConfigToken,
-  fallbackTranslationHandlerToken,
-  foundryI18nToken,
-  foundryTranslationHandlerToken,
-  healthCheckRegistryToken,
-  i18nFacadeToken,
-  journalCacheInvalidationHookToken,
-  journalVisibilityServiceToken,
-  localI18nToken,
-  localTranslationHandlerToken,
-  loggerToken,
-  metricsCollectorToken,
-  metricsHealthCheckToken,
-  metricsRecorderToken,
-  metricsSamplerToken,
-  metricsStorageToken,
-  moduleApiInitializerToken,
-  moduleHealthServiceToken,
-  moduleHookRegistrarToken,
-  moduleSettingsRegistrarToken,
-  notificationCenterToken,
-  observabilityRegistryToken,
-  performanceTrackingServiceToken,
-  portSelectionEventEmitterToken,
-  portSelectorToken,
-  renderJournalDirectoryHookToken,
-  retryServiceToken,
-  runtimeConfigToken,
-  serviceContainerToken,
-  traceContextToken,
-  translationHandlerChainToken,
-  uiChannelToken
-});
-const scriptRel = "modulepreload";
-const assetsURL = /* @__PURE__ */ __name(function(dep) {
-  return "/" + dep;
-}, "assetsURL");
-const seen = {};
-const __vitePreload = /* @__PURE__ */ __name(function preload(baseModule, deps, importerUrl) {
-  let promise2 = Promise.resolve();
-  if (deps && deps.length > 0) {
-    let allSettled2 = function(promises$2) {
-      return Promise.all(promises$2.map((p) => Promise.resolve(p).then((value$1) => ({
-        status: "fulfilled",
-        value: value$1
-      }), (reason) => ({
-        status: "rejected",
-        reason
-      }))));
-    };
-    var allSettled = allSettled2;
-    __name(allSettled2, "allSettled");
-    const links = document.getElementsByTagName("link");
-    const cspNonceMeta = document.querySelector("meta[property=csp-nonce]");
-    const cspNonce = cspNonceMeta?.nonce || cspNonceMeta?.getAttribute("nonce");
-    promise2 = allSettled2(deps.map((dep) => {
-      dep = assetsURL(dep, importerUrl);
-      if (dep in seen) return;
-      seen[dep] = true;
-      const isCss = dep.endsWith(".css");
-      const cssSelector = isCss ? '[rel="stylesheet"]' : "";
-      if (!!importerUrl) for (let i$1 = links.length - 1; i$1 >= 0; i$1--) {
-        const link$1 = links[i$1];
-        if (link$1.href === dep && (!isCss || link$1.rel === "stylesheet")) return;
-      }
-      else if (document.querySelector(`link[href="${dep}"]${cssSelector}`)) return;
-      const link = document.createElement("link");
-      link.rel = isCss ? "stylesheet" : scriptRel;
-      if (!isCss) link.as = "script";
-      link.crossOrigin = "";
-      link.href = dep;
-      if (cspNonce) link.setAttribute("nonce", cspNonce);
-      document.head.appendChild(link);
-      if (isCss) return new Promise((res, rej) => {
-        link.addEventListener("load", res);
-        link.addEventListener("error", () => rej(/* @__PURE__ */ new Error(`Unable to preload CSS for ${dep}`)));
-      });
-    }));
-  }
-  function handlePreloadError(err$2) {
-    const e$1 = new Event("vite:preloadError", { cancelable: true });
-    e$1.payload = err$2;
-    window.dispatchEvent(e$1);
-    if (!e$1.defaultPrevented) throw err$2;
-  }
-  __name(handlePreloadError, "handlePreloadError");
-  return promise2.then((res) => {
-    for (const item of res || []) {
-      if (item.status !== "rejected") continue;
-      handlePreloadError(item.reason);
-    }
-    return baseModule().catch(handlePreloadError);
-  });
-}, "preload");
 const apiSafeTokens = /* @__PURE__ */ new Set();
 function markAsApiSafe(token) {
   apiSafeTokens.add(token);
@@ -2012,7 +1912,7 @@ const _ServiceContainer = class _ServiceContainer {
     const result = this.validator.validate(this.registry);
     if (result.ok) {
       this.validationState = "validated";
-      void this.injectMetricsCollector();
+      this.injectMetricsCollector();
     } else {
       this.validationState = "registering";
     }
@@ -2024,15 +1924,14 @@ const _ServiceContainer = class _ServiceContainer {
    *
    * Note: EnvironmentConfig is already injected via BootstrapPerformanceTracker
    * during container creation, so only MetricsCollector needs to be injected here.
+   *
+   * Static import is safe here because:
+   * - tokenindex.ts only uses `import type { ServiceContainer }` (removed at runtime)
+   * - No circular runtime dependency exists
+   * - Container is already validated when this is called
    */
-  async injectMetricsCollector() {
-    const { metricsCollectorToken: metricsCollectorToken2 } = await __vitePreload(async () => {
-      const { metricsCollectorToken: metricsCollectorToken3 } = await Promise.resolve().then(function() {
-        return tokenindex;
-      });
-      return { metricsCollectorToken: metricsCollectorToken3 };
-    }, true ? void 0 : void 0);
-    const metricsResult = this.resolveWithError(metricsCollectorToken2);
+  injectMetricsCollector() {
+    const metricsResult = this.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
       this.resolver.setMetricsCollector(metricsResult.value);
       this.cache.setMetricsCollector(metricsResult.value);
@@ -2093,7 +1992,7 @@ const _ServiceContainer = class _ServiceContainer {
       this.validationPromise = withTimeout(validationTask, timeoutMs);
       const result = await this.validationPromise;
       if (result.ok) {
-        await this.injectMetricsCollector();
+        this.injectMetricsCollector();
       }
       return result;
     } catch (error) {

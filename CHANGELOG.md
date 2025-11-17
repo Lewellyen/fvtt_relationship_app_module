@@ -12,6 +12,26 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.10] - 2025-11-17
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **ServiceContainer.injectMetricsCollector()**: Methode ist jetzt synchron statt async ([Details](src/di_infrastructure/container.ts#L313))
+- Statischer Import von `metricsCollectorToken` statt dynamischer Import
+- Keine Race Conditions mehr möglich, da Injektion sofort abgeschlossen ist
+- Fehler werden nicht mehr ignoriert (vorher `void` Promise)
+- Vereinfachter Code ohne async/Promise-Overhead
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.25.9] - 2025-11-17
 ### Hinzugefügt
 - **100% Test Coverage**: Vollständige Code-Coverage für alle Statements, Branches, Functions und Lines erreicht ([Details](docs/quality-gates/code-coverage-exclusions.md))

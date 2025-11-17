@@ -20,6 +20,7 @@ import { withTimeout, TimeoutError } from "@/utils/async/promise-timeout";
 import { ENV } from "@/config/environment";
 import { BootstrapPerformanceTracker } from "@/observability/bootstrap-performance-tracker";
 import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import { metricsCollectorToken } from "@/tokens/tokenindex";
 
 /**
  * Dependency injection container (Facade pattern).
@@ -289,7 +290,7 @@ export class ServiceContainer implements Container {
     if (result.ok) {
       this.validationState = "validated";
       // Inject MetricsCollector into resolver after validation (if available)
-      void this.injectMetricsCollector();
+      this.injectMetricsCollector();
     } else {
       this.validationState = "registering";
     }
@@ -303,10 +304,13 @@ export class ServiceContainer implements Container {
    *
    * Note: EnvironmentConfig is already injected via BootstrapPerformanceTracker
    * during container creation, so only MetricsCollector needs to be injected here.
+   *
+   * Static import is safe here because:
+   * - tokenindex.ts only uses `import type { ServiceContainer }` (removed at runtime)
+   * - No circular runtime dependency exists
+   * - Container is already validated when this is called
    */
-  private async injectMetricsCollector(): Promise<void> {
-    // Dynamic import to avoid circular dependency during module loading
-    const { metricsCollectorToken } = await import("../tokens/tokenindex.js");
+  private injectMetricsCollector(): void {
     const metricsResult = this.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
       this.resolver.setMetricsCollector(metricsResult.value);
@@ -387,7 +391,7 @@ export class ServiceContainer implements Container {
 
       // Inject MetricsCollector if validation succeeded
       if (result.ok) {
-        await this.injectMetricsCollector();
+        this.injectMetricsCollector();
       }
 
       return result;
