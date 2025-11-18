@@ -2,9 +2,23 @@
 
 Ein Foundry VTT Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken zwischen Akteuren und anderen Entitäten.
 
-**Version:** 0.11.1 (Pre-Release)  
-**Status:** ✅ Aktive Entwicklung - Aggressives Refactoring erwünscht!  
+**Version:** 0.11.1 (Pre-Release)
+**Status:** ✅ Aktive Entwicklung - Aggressives Refactoring erwünscht!
 **Foundry VTT:** v13+ (siehe `module.json`)
+
+## 📑 Inhaltsverzeichnis
+
+- [📋 Features](#-features)
+- [🚀 Installation](#-installation)
+- [🛠️ Entwicklung](#-entwicklung)
+- [📚 Architektur](#-architektur)
+- [🔧 Konfiguration](#-konfiguration)
+- [🧪 Testing](#-testing)
+- [📦 Verwendete Technologien](#-verwendete-technologien)
+- [🤝 Beitragen](#-beitragen)
+- [📄 Lizenz](#-lizenz)
+- [🐛 Bekannte Probleme](#-bekannte-probleme)
+- [📝 Changelog](#-changelog)
 
 ---
 
@@ -55,13 +69,9 @@ npm run dev
 
 # Production Build
 npm run build
-
-# Tests ausführen
-npm test
-
-# Code-Qualität prüfen
-npm run check-all
 ```
+
+👉 Tests und Qualitätsprüfungen findest du im Abschnitt [🧪 Testing](#-testing) sowie in der Script-Liste unten.
 
 ### Scripts
 
@@ -275,7 +285,7 @@ Siehe [VERSIONING_STRATEGY.md](./docs/VERSIONING_STRATEGY.md) für Details.
 
 ## 📄 Lizenz
 
-[Lizenz hier einfügen]
+Dieses Projekt steht unter der [MIT-Lizenz](./LICENSE).
 
 ---
 
@@ -291,7 +301,7 @@ Siehe [VERSIONING_STRATEGY.md](./docs/VERSIONING_STRATEGY.md) für Details.
 
 Keine bekannten Probleme zum aktuellen Zeitpunkt.
 
-Probleme melden: [GitHub Issues](URL-hier-einfügen)
+Probleme melden: [GitHub Issues](https://github.com/Lewellyen/fvtt_relationship_app_module/issues)
 
 ---
 
