@@ -243,6 +243,48 @@ describe("ModuleSettingsRegistrar", () => {
       expect(setSpy).toHaveBeenCalledWith("cacheMaxEntries", undefined);
       expect(setSpy).toHaveBeenCalledWith("cacheMaxEntries", 150);
     });
+
+    it("should handle settings without binding (coverage for binding branch)", () => {
+      // This test covers the case where binding is undefined
+      // In practice all current settings have bindings, but this allows for future extensibility
+      const container = ServiceContainer.createRoot();
+      configureDependencies(container);
+
+      const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
+      const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
+
+      const registrar = new ModuleSettingsRegistrar();
+
+      // Spy on syncRuntimeConfigFromSettings before calling registerDefinition
+      const syncSpy = vi.spyOn(registrar as any, "syncRuntimeConfigFromSettings");
+
+      // Use private method via type assertion to test undefined binding case
+      const registerDefinition = (registrar as any).registerDefinition.bind(registrar);
+      const mockDefinition = {
+        key: "test-setting",
+        createConfig: vi.fn().mockReturnValue({
+          name: "Test Setting",
+          scope: "world",
+          type: String,
+          default: "test",
+        }),
+      };
+
+      registerDefinition(
+        mockDefinition,
+        undefined, // No binding
+        mockSettings,
+        container.resolve(markAsApiSafe(runtimeConfigToken)),
+        container.resolve(markAsApiSafe(notificationCenterToken)),
+        container.resolve(markAsApiSafe(loggerToken)),
+        container.resolve(markAsApiSafe(loggerToken))
+      );
+
+      // Should still register the setting even without binding
+      expect(registerSpy).toHaveBeenCalled();
+      // Should not call syncRuntimeConfigFromSettings when binding is undefined
+      expect(syncSpy).not.toHaveBeenCalled();
+    });
   });
 });
 

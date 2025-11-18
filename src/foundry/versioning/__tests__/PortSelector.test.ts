@@ -138,6 +138,24 @@ describe("PortSelector", () => {
       expect(result.value).toBe("port-v13");
     });
 
+    it("should skip ports with version less than or equal to selected version", () => {
+      // This covers line 150: if (portVersion > selectedVersion) - the case where portVersion <= selectedVersion (false branch)
+      // When iterating through ports, if we already selected v13, then v12 should be skipped (12 < 13)
+      // This tests the false branch of the condition: portVersion > selectedVersion is false when portVersion <= selectedVersion
+      const factories = new Map([
+        [13, () => "port-v13"],
+        [12, () => "port-v12"], // Lower version - should be skipped because 12 < 13 (line 150: false branch)
+      ]);
+
+      // When Foundry version is 14, v13 is selected first (13 > -1), then v12 is encountered
+      // Since 12 < 13 (current selectedVersion), the condition portVersion > selectedVersion is false
+      // This covers the false branch of line 150
+      const result = selector.selectPortFromFactories(factories, 14);
+      expectResultOk(result);
+      expect(result.value).toBe("port-v13");
+      // v13 is selected, v12 should be skipped (line 150: false branch - portVersion <= selectedVersion)
+    });
+
     it("should handle empty factory map", () => {
       const factories = new Map<number, () => string>();
 
@@ -260,6 +278,49 @@ describe("PortSelector", () => {
       if (event?.type === "failure") {
         expect(event.foundryVersion).toBe(13);
         expect(event.availableVersions).toBe("15");
+      }
+    });
+
+    it("should emit failure event with sorted availableVersions when multiple versions available", () => {
+      // This covers line 207: availableVersions: Array.from(factories.keys()).sort((a, b) => a - b).join(", ")
+      const factories = new Map([
+        [15, () => "port-v15"],
+        [14, () => "port-v14"],
+        [16, () => "port-v16"],
+      ]);
+      selector.selectPortFromFactories(factories, 13);
+
+      expect(capturedEvents).toHaveLength(1);
+      const event = capturedEvents[0];
+      expect(event?.type).toBe("failure");
+      if (event?.type === "failure") {
+        expect(event.foundryVersion).toBe(13);
+        // Should be sorted: "14, 15, 16" (line 207)
+        expect(event.availableVersions).toBe("14, 15, 16");
+      }
+    });
+
+    it("should emit failure event with sorted availableVersions when port instantiation fails", () => {
+      // This covers line 207: availableVersions when instantiation fails (in catch block)
+      const factories = new Map([
+        [
+          13,
+          () => {
+            throw new Error("Port constructor failed");
+          },
+        ],
+        [14, () => "port-v14"],
+        [15, () => "port-v15"],
+      ]);
+      selector.selectPortFromFactories(factories, 13);
+
+      expect(capturedEvents).toHaveLength(1);
+      const event = capturedEvents[0];
+      expect(event?.type).toBe("failure");
+      if (event?.type === "failure") {
+        expect(event.foundryVersion).toBe(13);
+        // Should be sorted: "13, 14, 15" (line 207) - includes all versions, not just compatible ones
+        expect(event.availableVersions).toBe("13, 14, 15");
       }
     });
 

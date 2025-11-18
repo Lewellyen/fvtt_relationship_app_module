@@ -8,7 +8,7 @@ import { markAsApiSafe } from "../types/api-safe-token";
 import { ServiceLifecycle } from "../types/servicelifecycle";
 import type { ServiceType } from "@/types/servicetypeindex";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-import { ok } from "@/utils/functional/result";
+import { ok, err } from "@/utils/functional/result";
 import type { Logger } from "@/interfaces/logger";
 
 // Helper for tests: Wrap tokens for resolve() testing (simulates external API usage)
@@ -600,6 +600,64 @@ describe("ServiceContainer", () => {
       );
       expectResultErr(child2ResolveResult);
       expect(child2ResolveResult.error.code).toBe("Disposed");
+    });
+
+    it("should not reset validation state when dispose fails", () => {
+      // This covers lines 623-659: if (result.ok) - the case where result.ok is false
+      const container = ServiceContainer.createRoot();
+      container.validate();
+
+      // Mock scopeManager.dispose to return an error
+      const scopeManager = container["scopeManager"];
+      const _originalDispose = scopeManager.dispose.bind(scopeManager);
+      vi.spyOn(scopeManager, "dispose").mockReturnValue(
+        err({
+          code: "DisposalFailed",
+          message: "Mock disposal failure",
+          tokenDescription: "test",
+        })
+      );
+
+      // Store initial validation state
+      const initialState = container.getValidationState();
+
+      // dispose() should return error and NOT reset validation state when result.ok is false
+      const result = container.dispose();
+      expectResultErr(result);
+
+      // Validation state should NOT be reset when dispose fails (line 623-625)
+      expect(container.getValidationState()).toBe(initialState);
+
+      vi.restoreAllMocks();
+    });
+
+    it("should not reset validation state when disposeAsync fails", async () => {
+      // This covers lines 659: if (result.ok) - the case where result.ok is false
+      const container = ServiceContainer.createRoot();
+      container.validate();
+
+      // Mock scopeManager.disposeAsync to return an error
+      const scopeManager = container["scopeManager"];
+      const _originalDisposeAsync = scopeManager.disposeAsync.bind(scopeManager);
+      vi.spyOn(scopeManager, "disposeAsync").mockResolvedValue(
+        err({
+          code: "DisposalFailed",
+          message: "Mock async disposal failure",
+          tokenDescription: "test",
+        })
+      );
+
+      // Store initial validation state
+      const initialState = container.getValidationState();
+
+      // disposeAsync() should return error and NOT reset validation state when result.ok is false
+      const result = await container.disposeAsync();
+      expectResultErr(result);
+
+      // Validation state should NOT be reset when disposeAsync fails (line 659)
+      expect(container.getValidationState()).toBe(initialState);
+
+      vi.restoreAllMocks();
     });
   });
 

@@ -126,7 +126,9 @@ describe("BootstrapErrorHandler", () => {
       BootstrapErrorHandler.logError(error, context);
 
       // Should not call console.error with "Metadata:"
-      const metadataCall = consoleErrorSpy.mock.calls.find((call) => call[0] === "Metadata:");
+      const metadataCall = consoleErrorSpy.mock.calls.find(
+        (call: unknown[]) => call[0] === "Metadata:"
+      );
       expect(metadataCall).toBeUndefined();
     });
 

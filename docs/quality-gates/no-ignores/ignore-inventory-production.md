@@ -7,7 +7,7 @@
 
 | Kategorie | Anzahl | Status |
 |-----------|--------|--------|
-| `c8 ignore` | 10 | ✅ Alle dokumentiert |
+| `v8 ignore` | 10 | ✅ Alle dokumentiert |
 | `type-coverage:ignore` | 8 | ✅ Alle dokumentiert |
 | `eslint-disable` | 15 | ✅ Alle begründet |
 | `@ts-ignore` / `@ts-expect-error` | 0 | ✅ Keine gefunden |
@@ -16,27 +16,27 @@
 
 ---
 
-## 1. `c8 ignore` Marker (10)
+## 1. `v8 ignore` Marker (10)
 
 ### ✅ Erlaubt (in EXCEPTIONS dokumentiert)
 
 | Datei | Zeile | Marker | Begründung |
 |-------|-------|--------|------------|
-| `src/core/init-solid.ts` | 36-44 | `c8 ignore start/end` | Edge case: getContainer() fails after successful bootstrap |
-| `src/core/init-solid.ts` | 61-156 | `c8 ignore start/end` | Foundry-Hooks und UI-spezifische Pfade (environment-dependent) |
-| `src/core/init-solid.ts` | 164-209 | `c8 ignore start/end` | Bootstrap-Fehlerpfade (Foundry-versionsabhängig) |
-| `src/di_infrastructure/container.ts` | 408-411 | `c8 ignore start/end` | Coverage-Tool-Limitation: finally-Block |
-| `src/di_infrastructure/validation/ContainerValidator.ts` | 194-198 | `c8 ignore start/end` | Coverage-Tool-Limitation: early return |
-| `src/di_infrastructure/resolution/ServiceResolver.ts` | 120-122 | `c8 ignore start/end` | Coverage-Tool-Limitation: optional chaining |
-| `src/config/dependencyconfig.ts` | 174-176 | `c8 ignore start/end` | Coverage-Tool-Limitation: return statement |
+| `src/core/init-solid.ts` | 36-44 | `v8 ignore start/end` | Edge case: getContainer() fails after successful bootstrap |
+| `src/core/init-solid.ts` | 61-156 | `v8 ignore start/end` | Foundry-Hooks und UI-spezifische Pfade (environment-dependent) |
+| `src/core/init-solid.ts` | 164-209 | `v8 ignore start/end` | Bootstrap-Fehlerpfade (Foundry-versionsabhängig) |
+| `src/di_infrastructure/container.ts` | 408-411 | `v8 ignore start/end` | Coverage-Tool-Limitation: finally-Block |
+| `src/di_infrastructure/validation/ContainerValidator.ts` | 194-198 | `v8 ignore start/end` | Coverage-Tool-Limitation: early return |
+| `src/di_infrastructure/resolution/ServiceResolver.ts` | 120-122 | `v8 ignore start/end` | Coverage-Tool-Limitation: optional chaining |
+| `src/config/dependencyconfig.ts` | 174-176 | `v8 ignore start/end` | Coverage-Tool-Limitation: return statement |
 
 ### ✅ Erlaubt (außerhalb verbotener Bereiche)
 
 | Datei | Zeile | Marker | Begründung |
 |-------|-------|--------|------------|
-| `src/index.ts` | 9 | `c8 ignore file` | Entry Point mit nur Side-Effects (Imports) |
-| `src/constants.ts` | 12 | `c8 ignore file` | Reine Konstanten-Definition, keine ausführbare Logik |
-| `src/polyfills/cytoscape-assign-fix.ts` | 7 | `c8 ignore file` | Legacy polyfill, schwer testbar ohne Browser-Integration |
+| `src/index.ts` | 9 | `v8 ignore file` | Entry Point mit nur Side-Effects (Imports) |
+| `src/constants.ts` | 12 | `v8 ignore file` | Reine Konstanten-Definition, keine ausführbare Logik |
+| `src/polyfills/cytoscape-assign-fix.ts` | 7 | `v8 ignore file` | Legacy polyfill, schwer testbar ohne Browser-Integration |
 
 ---
 
@@ -99,19 +99,19 @@
 ✅ **Keine Marker** – Alle Marker wurden durch Tests oder Helper-Funktionen behoben
 
 ### `src/core/init-solid.ts`
-- 3 `c8 ignore` Blöcke (environment-dependent Foundry Hooks)
+- 3 `v8 ignore` Blöcke (environment-dependent Foundry Hooks)
 
 ### `src/di_infrastructure/**`
-- 3 `c8 ignore` Blöcke (Coverage-Tool-Limitationen)
+- 3 `v8 ignore` Blöcke (Coverage-Tool-Limitationen)
 - 4 `eslint-disable` Marker (begründet)
 - 2 `type-coverage:ignore` Marker (begründet)
 
 ### `src/foundry/**`
-- 0 `c8 ignore` Blöcke (defensiver Check wurde durch Helper-Funktion behoben)
+- 0 `v8 ignore` Blöcke (defensiver Check wurde durch Helper-Funktion behoben)
 - 3 `eslint-disable` Marker (Valibot-Konvention)
 
 ### `src/config/**`
-- 1 `c8 ignore` Block (Coverage-Tool-Limitation)
+- 1 `v8 ignore` Block (Coverage-Tool-Limitation)
 - 6 `type-coverage:ignore` Marker (Build-time env vars)
 
 ### `src/services/**`
@@ -121,7 +121,7 @@
 ✅ **Keine Marker**
 
 ### `src/polyfills/**`
-- 1 `c8 ignore file` Marker
+- 1 `v8 ignore file` Marker
 - 1 `eslint-disable` Marker (Legacy polyfill)
 
 ### `src/interfaces/**`
@@ -160,7 +160,7 @@ Jeder ignore-Marker hat eine klare Begründung und ist entweder:
 
 ## 7. Statistik nach Kategorien
 
-### `c8 ignore` (10 Marker)
+### `v8 ignore` (10 Marker)
 - In EXCEPTIONS: 7 Marker
 - Außerhalb verbotener Bereiche: 3 Marker
 

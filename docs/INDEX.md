@@ -39,7 +39,7 @@
 | [TESTING.md](./TESTING.md) | Test-Strategie, Tools & Command-Guide | Alle Entwickler |
 | [TEST-STRATEGY.md](./TEST-STRATEGY.md) | Umfassende Test-Strategie, Tools, Priorisierung & Best Practices | Test-Autoren, QA |
 | [quality-gates/README.md](./quality-gates/README.md) | Qualitätsmetriken & Pflicht-Gates | Maintainer, QA |
-| → [Code Coverage Exclusions](./quality-gates/code-coverage-exclusions.md) | Dokumentierte `c8 ignore`-Stellen | Test-Autoren |
+| → [Code Coverage Exclusions](./quality-gates/code-coverage-exclusions.md) | Dokumentierte `v8 ignore`-Stellen | Test-Autoren |
 | → [Type Coverage Exclusions](./quality-gates/type-coverage-exclusions.md) | Dokumentierte `type-coverage`-Ausnahmen | TypeScript |
 | → [Linter Exclusions](./quality-gates/linter-exclusions.md) | Dokumentierte `eslint-disable`-Stellen | Code Qualität |
 

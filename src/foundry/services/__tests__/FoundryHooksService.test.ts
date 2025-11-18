@@ -250,6 +250,140 @@ describe("FoundryHooksService", () => {
       // Should succeed (port handled it) but nothing to clean up from tracking
       expectResultOk(result);
     });
+
+    it("should handle off() with hookId when hooks map doesn't exist (coverage for hooks branch)", () => {
+      // Register a hook first
+      const callback = vi.fn();
+      mockPort.on = vi.fn().mockReturnValue(ok(1));
+      service.on("init", callback);
+
+      // Manually remove the hooks map entry to test the branch where hooks is undefined
+      const registeredHooks = (service as any).registeredHooks;
+      registeredHooks.delete("init");
+
+      // Now try to remove by hookId - hooks should be undefined
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", 1);
+
+      expectResultOk(result);
+      // Should still call port.off even if hooks map doesn't exist
+      expect(mockPort.off).toHaveBeenCalledWith("init", 1);
+    });
+
+    it("should handle off() with hookId when callback is not found (coverage for callback branch)", () => {
+      // Register a hook first
+      const callback = vi.fn();
+      mockPort.on = vi.fn().mockReturnValue(ok(1));
+      service.on("init", callback);
+
+      // Try to remove with a different hookId that doesn't exist
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", 999); // Non-existent hookId
+
+      expectResultOk(result);
+      // Should still call port.off
+      expect(mockPort.off).toHaveBeenCalledWith("init", 999);
+    });
+
+    it("should handle off() with hookId when hookInfos doesn't exist (coverage for hookInfos branch line 98)", () => {
+      // Register a hook first
+      const callback = vi.fn();
+      mockPort.on = vi.fn().mockReturnValue(ok(1));
+      service.on("init", callback);
+
+      // Manually remove from callbackToIdMap to test the branch where hookInfos is undefined
+      // This tests the else branch of "if (hookInfos)" at line 98
+      const callbackToIdMap = (service as any).callbackToIdMap;
+      callbackToIdMap.delete(callback);
+
+      // Now try to remove by hookId - callback exists in hooks map, but hookInfos doesn't exist
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", 1);
+
+      expectResultOk(result);
+      // Should still call port.off even if hookInfos doesn't exist
+      expect(mockPort.off).toHaveBeenCalledWith("init", 1);
+    });
+
+    it("should handle off() with callback when hookInfos doesn't exist (coverage for hookInfos branch)", () => {
+      // Register a hook first
+      const callback = vi.fn();
+      mockPort.on = vi.fn().mockReturnValue(ok(1));
+      service.on("init", callback);
+
+      // Manually remove from callbackToIdMap to test the branch where hookInfos is undefined
+      const callbackToIdMap = (service as any).callbackToIdMap;
+      callbackToIdMap.delete(callback);
+
+      // Now try to remove by callback - hookInfos should be undefined
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", callback);
+
+      expectResultOk(result);
+      // Should still call port.off even if hookInfos doesn't exist
+      expect(mockPort.off).toHaveBeenCalledWith("init", callback);
+    });
+
+    it("should handle off() with callback when hooks map doesn't exist in callback variant (coverage for hooks branch line 119)", () => {
+      // Register a hook first
+      const callback = vi.fn();
+      mockPort.on = vi.fn().mockReturnValue(ok(1));
+      service.on("init", callback);
+
+      // Manually remove the hooks map entry to test the branch where hooks is undefined
+      const registeredHooks = (service as any).registeredHooks;
+      registeredHooks.delete("init");
+
+      // Now try to remove by callback - hooks should be undefined
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", callback);
+
+      expectResultOk(result);
+      // Should still call port.off even if hooks map doesn't exist
+      expect(mockPort.off).toHaveBeenCalledWith("init", callback);
+    });
+
+    it("should keep callback in callbackToIdMap when filtered.length > 0 (coverage for else branch line 105)", () => {
+      // Register the same callback to multiple hooks
+      const callback = vi.fn();
+      mockPort.on = vi.fn().mockReturnValueOnce(ok(1)).mockReturnValueOnce(ok(2));
+      service.on("init", callback);
+      service.on("ready", callback); // Same callback, different hook
+
+      // Remove only one hook registration by hookId
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", 1);
+
+      expectResultOk(result);
+
+      // Callback should still be in callbackToIdMap (filtered.length > 0)
+      const callbackToIdMap = (service as any).callbackToIdMap;
+      expect(callbackToIdMap.has(callback)).toBe(true);
+      const remainingInfos = callbackToIdMap.get(callback);
+      expect(remainingInfos).toHaveLength(1);
+      expect(remainingInfos[0]?.hookName).toBe("ready");
+    });
+
+    it("should keep callback in callbackToIdMap when filtered.length > 0 in callback variant (coverage for else branch line 130)", () => {
+      // Register the same callback to multiple hooks
+      const callback = vi.fn();
+      mockPort.on = vi.fn().mockReturnValueOnce(ok(1)).mockReturnValueOnce(ok(2));
+      service.on("init", callback);
+      service.on("ready", callback); // Same callback, different hook
+
+      // Remove only one hook registration by callback
+      mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+      const result = service.off("init", callback);
+
+      expectResultOk(result);
+
+      // Callback should still be in callbackToIdMap (filtered.length > 0)
+      const callbackToIdMap = (service as any).callbackToIdMap;
+      expect(callbackToIdMap.has(callback)).toBe(true);
+      const remainingInfos = callbackToIdMap.get(callback);
+      expect(remainingInfos).toHaveLength(1);
+      expect(remainingInfos[0]?.hookName).toBe("ready");
+    });
   });
 
   describe("Version Detection Failures", () => {

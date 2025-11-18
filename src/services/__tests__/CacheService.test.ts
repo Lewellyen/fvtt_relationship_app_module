@@ -139,6 +139,23 @@ describe("CacheService", () => {
     expect(service.has(keyB)).toBe(true);
   });
 
+  it("invalidateWhere returns zero when no entries match predicate", () => {
+    const keyA = buildCacheKey("hidden", "a");
+    const keyB = buildCacheKey("hidden", "b");
+
+    service.set(keyA, ["a"], { tags: ["journal"] });
+    service.set(keyB, ["b"], { tags: ["journal"] });
+
+    // No entries match this predicate
+    const removed = service.invalidateWhere((meta) => meta.tags.includes("nonexistent"));
+
+    expect(removed).toBe(0);
+    expect(service.has(keyA)).toBe(true);
+    expect(service.has(keyB)).toBe(true);
+    // Should not increment evictions when removed = 0 (line 176)
+    expect(service.getStatistics().evictions).toBe(0);
+  });
+
   it("applies basic LRU eviction when maxEntries exceeded", () => {
     createService({ maxEntries: 1 });
     const keyA = buildCacheKey("hidden", "a");
@@ -227,6 +244,40 @@ describe("CacheService", () => {
     expect(service.getStatistics().evictions).toBe(1);
   });
 
+  it("handleExpiration does not increment evictions when key was already deleted", () => {
+    // This covers line 251: if (this.store.delete(key)) - the case where delete returns false
+    // To test this, we need to create an expired entry and then delete it before handleExpiration is called
+    // However, this is tricky because handleExpiration is called internally during get()
+    // Instead, we'll use the internal store to create an edge case where delete returns false
+
+    const key = buildCacheKey("expired-but-deleted");
+
+    // Set an entry that will expire
+    service.set(key, ["entry"], { ttlMs: 100 });
+
+    // Advance time to expire the entry
+    now += 200;
+
+    // Manually delete the key before get() is called (simulating race condition)
+    // This ensures that when handleExpiration is called, delete() returns false
+    const internal = service as unknown as {
+      store: Map<string, unknown>;
+      handleExpiration: (key: string) => void;
+    };
+
+    // Delete the key manually
+    internal.store.delete(key);
+
+    const initialEvictions = service.getStatistics().evictions;
+
+    // Call handleExpiration directly - it should try to delete, but key is already gone
+    // This covers the case where delete returns false (line 251)
+    internal.handleExpiration(key);
+
+    // Should not increment evictions when delete returns false (line 251)
+    expect(service.getStatistics().evictions).toBe(initialEvictions);
+  });
+
   it("clears cache and increments evictions", () => {
     const keyA = buildCacheKey("clear", "a");
     const keyB = buildCacheKey("clear", "b");
@@ -238,6 +289,15 @@ describe("CacheService", () => {
     expect(removed).toBe(2);
     expect(service.getStatistics().evictions).toBe(2);
     expect(service.size).toBe(0);
+  });
+
+  it("clear returns zero and does not increment evictions when cache is empty", () => {
+    // Cache is already empty from beforeEach
+    const removed = service.clear();
+
+    expect(removed).toBe(0);
+    // Should not increment evictions when removed = 0 (line 369)
+    expect(service.getStatistics().evictions).toBe(0);
   });
 
   it("deletes entries and tracks evictions", () => {

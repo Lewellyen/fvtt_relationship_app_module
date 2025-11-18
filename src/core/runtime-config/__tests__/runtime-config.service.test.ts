@@ -99,4 +99,32 @@ describe("RuntimeConfigService", () => {
 
     expect(listener).not.toHaveBeenCalled();
   });
+
+  it("removes listener map entry when last listener is removed (coverage for empty set branch)", () => {
+    const service = createService();
+    const listener1 = vi.fn();
+    const listener2 = vi.fn();
+
+    // Add two listeners
+    const unsubscribe1 = service.onChange("logLevel", listener1);
+    const unsubscribe2 = service.onChange("logLevel", listener2);
+
+    // Remove first listener - map entry should still exist
+    unsubscribe1();
+    service.setFromFoundry("logLevel", LogLevel.DEBUG);
+    expect(listener1).not.toHaveBeenCalled();
+    expect(listener2).toHaveBeenCalledTimes(1);
+
+    // Remove second listener - map entry should be removed (activeListeners.size === 0)
+    unsubscribe2();
+    service.setFromFoundry("logLevel", LogLevel.WARN);
+    expect(listener2).toHaveBeenCalledTimes(1); // Still only called once from before
+
+    // Verify we can add a new listener after cleanup (map entry was removed)
+    const listener3 = vi.fn();
+    service.onChange("logLevel", listener3);
+    service.setFromFoundry("logLevel", LogLevel.ERROR);
+    expect(listener3).toHaveBeenCalledTimes(1);
+    expect(listener3).toHaveBeenCalledWith(LogLevel.ERROR);
+  });
 });

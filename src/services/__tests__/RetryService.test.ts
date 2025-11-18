@@ -114,6 +114,26 @@ describe("RetryService", () => {
       );
     });
 
+    it("should handle thrown exceptions without operationName (no logging)", async () => {
+      // This covers line 299: if (operationName) - the case where operationName is undefined
+      const fn = vi.fn().mockRejectedValue(new Error("Network error"));
+
+      const result = await service.retry(fn, {
+        maxAttempts: 2,
+        // operationName is not provided
+        mapException: (error, attempt) => `Mapped: ${String(error)} at attempt ${attempt}`,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("Mapped:");
+        expect(result.error).toContain("Network error");
+      }
+      expect(fn).toHaveBeenCalledTimes(2);
+      // Should NOT log when operationName is not provided (line 299)
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
+
     it("should log retry attempts when operationName is provided", async () => {
       const fn = vi.fn().mockResolvedValueOnce(err("error1")).mockResolvedValueOnce(ok(42));
 
@@ -252,6 +272,28 @@ describe("RetryService", () => {
         expect(result.error).toContain("Parse error");
       }
       expect(fn).toHaveBeenCalledTimes(2);
+    });
+
+    it("should handle thrown exceptions without operationName (no logging)", () => {
+      // This covers sync version of line 299: if (operationName) - the case where operationName is undefined
+      const fn = vi.fn().mockImplementation(() => {
+        throw new Error("Parse error");
+      });
+
+      const result = service.retrySync(fn, {
+        maxAttempts: 2,
+        // operationName is not provided
+        mapException: (error, attempt) => `Mapped: ${String(error)} at attempt ${attempt}`,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("Mapped:");
+        expect(result.error).toContain("Parse error");
+      }
+      expect(fn).toHaveBeenCalledTimes(2);
+      // Should NOT log when operationName is not provided
+      expect(mockLogger.warn).not.toHaveBeenCalled();
     });
 
     it("should log retry attempts when operationName is provided", () => {

@@ -117,9 +117,9 @@ export class ServiceResolver {
         return result;
       },
       (duration, result) => {
-        /* c8 ignore start -- Optional chaining with null metricsCollector is tested, but coverage tool may not count the line */
+        /* v8 ignore start -- Optional chaining with null metricsCollector is tested, but coverage tool may not count the line -- @preserve */
         this.metricsCollector?.recordResolution(token, duration, result.ok);
-        /* c8 ignore end */
+        /* v8 ignore end -- @preserve */
       }
     );
   }

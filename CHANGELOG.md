@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.12] - 2025-11-18
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Coverage-Tool Migration**: Alle `c8 ignore` Kommentare zu `v8 ignore` migriert aufgrund des Vitest 4.0.10 Upgrades, das `@vitest/coverage-v8` verwendet. Alle Kommentare enthalten jetzt `@preserve` Hinweis, damit sie beim TypeScript/esbuild Transpiling nicht entfernt werden ([Details](vitest.config.ts), [Details](scripts/check-no-ignores.mjs))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.25.11] - 2025-11-18
 ### Hinzugefügt
 - **Erweiterte Integration-Tests**: 5 neue End-to-End Integration-Tests implementiert ([Details](docs/TEST-STRATEGY/01-high-priority/01-extended-integration-tests.md))

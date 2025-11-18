@@ -228,7 +228,7 @@ export class ModuleSettingsRegistrar {
 
   private registerDefinition<TSchema, K extends RuntimeConfigKey>(
     definition: SettingDefinition<TSchema>,
-    binding: RuntimeConfigBinding<TSchema, K>,
+    binding: RuntimeConfigBinding<TSchema, K> | undefined,
     foundrySettings: FoundrySettings,
     runtimeConfig: RuntimeConfigService,
     notifications: NotificationCenter,
@@ -236,7 +236,9 @@ export class ModuleSettingsRegistrar {
     logger: Logger
   ): void {
     const config = definition.createConfig(i18n, logger);
-    const configWithRuntimeBridge = this.attachRuntimeConfigBridge(config, runtimeConfig, binding);
+    const configWithRuntimeBridge = binding
+      ? this.attachRuntimeConfigBridge(config, runtimeConfig, binding)
+      : config;
 
     const result = foundrySettings.register(
       MODULE_CONSTANTS.MODULE.ID,

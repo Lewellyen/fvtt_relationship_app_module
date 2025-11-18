@@ -4,7 +4,7 @@
  * ⚠️ WICHTIG: Dieser Polyfill ist ein Legacy-Patch für die Cytoscape-Bibliothek.
  * NIEMALS ÄNDERN - könnte das Verhalten der Cytoscape-Integration beeinträchtigen.
  */
-/* c8 ignore file -- Legacy polyfill, schwer testbar ohne Browser-Integration */
+/* v8 ignore file -- Legacy polyfill, schwer testbar ohne Browser-Integration -- @preserve */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Legacy polyfill: `any` required for low-level Object.assign patching
 

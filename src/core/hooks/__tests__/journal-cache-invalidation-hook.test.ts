@@ -203,4 +203,60 @@ describe("JournalCacheInvalidationHook", () => {
     );
     expect(() => hook.dispose()).not.toThrow();
   });
+
+  it("should not log debug message when no cache entries are invalidated", () => {
+    const mockHooks: Pick<FoundryHooks, "on" | "off"> = {
+      on: vi
+        .fn()
+        .mockReturnValueOnce(ok(11))
+        .mockReturnValueOnce(ok(22))
+        .mockReturnValueOnce(ok(33)),
+      off: vi.fn().mockReturnValue(ok(undefined)),
+    };
+
+    const mockCache: CacheService = {
+      isEnabled: true,
+      size: 0,
+      get: vi.fn(),
+      set: vi.fn(),
+      delete: vi.fn(),
+      has: vi.fn(),
+      clear: vi.fn(),
+      invalidateWhere: vi.fn().mockReturnValue(0), // No entries invalidated
+      getMetadata: vi.fn(),
+      getStatistics: vi.fn(),
+      getOrSet: vi.fn(),
+    };
+
+    const mockNotificationCenter: NotificationCenter = {
+      notify: vi.fn().mockReturnValue(ok(undefined)),
+      debug: vi.fn().mockReturnValue(ok(undefined)),
+      info: vi.fn().mockReturnValue(ok(undefined)),
+      warn: vi.fn().mockReturnValue(ok(undefined)),
+      error: vi.fn().mockReturnValue(ok(undefined)),
+      addChannel: vi.fn(),
+      removeChannel: vi.fn(),
+      getChannelNames: vi.fn().mockReturnValue(["ConsoleChannel"]),
+    } as unknown as NotificationCenter;
+
+    const hook = new JournalCacheInvalidationHook(
+      mockHooks as FoundryHooks,
+      mockCache,
+      mockNotificationCenter
+    );
+
+    const result = hook.register({} as never);
+    expect(result.ok).toBe(true);
+    expect(mockHooks.on).toHaveBeenCalledTimes(3);
+
+    // Trigger the hook callback
+    const [, callback] = mockHooks.on.mock.calls[0]!;
+    callback();
+
+    // Verify invalidateWhere was called
+    expect(mockCache.invalidateWhere).toHaveBeenCalledWith(expect.any(Function));
+
+    // Verify debug was NOT called because removed === 0
+    expect(mockNotificationCenter.debug).not.toHaveBeenCalled();
+  });
 });

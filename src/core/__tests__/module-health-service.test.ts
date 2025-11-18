@@ -159,6 +159,20 @@ describe("ModuleHealthService", () => {
       // All checks passed
       expect(health.status).toBe("healthy");
     });
+
+    it("should skip initialization on subsequent calls (coverage for healthChecksInitialized branch)", () => {
+      // First call initializes
+      const health1 = healthService.getHealth();
+      expect(health1.status).toBe("healthy");
+
+      // Second call should skip initialization (healthChecksInitialized is already true)
+      const health2 = healthService.getHealth();
+      expect(health2.status).toBe("healthy");
+
+      // Both calls should work correctly
+      expect(mockContainerCheck.check).toHaveBeenCalledTimes(2);
+      expect(mockMetricsCheck.check).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("Dependencies", () => {

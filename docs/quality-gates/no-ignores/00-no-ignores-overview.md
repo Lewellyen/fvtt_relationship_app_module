@@ -4,7 +4,7 @@ Dieses Dokument beschreibt den übergeordneten Plan, alle `ignore`-Stellen (Cove
 
 ## Ziele
 
-- **Core/Business-Code**: Keine `c8 ignore`, keine `type-coverage:ignore`, keine `eslint-disable`/`ts-ignore`.
+- **Core/Business-Code**: Keine `v8 ignore`, keine `type-coverage:ignore`, keine `eslint-disable`/`ts-ignore`.
 - **Adapter/Umgebungs-Code**: Nur dort, wo wirklich nur externe Infrastruktur angefasst wird, gezielte, dokumentierte Ausnahmen (idealerweise zusätzlich via E2E getestet).
 - **Testpyramide**:
   - Unit-Tests: 100 % Coverage, harte Gates.
@@ -30,7 +30,7 @@ Nach Abschluss der breitflächigen Elimination von Ignore-Markern wurde das No-I
 
 Die Whitelist wird in `scripts/check-no-ignores.mjs` gepflegt. Jeder Eintrag enthält:
 - **Datei-Pfad**: Relativer Pfad zur Datei
-- **Erlaubte Marker**: Liste der erlaubten Marker-Typen (z.B. `['c8 ignore', 'type-coverage:ignore-line']`)
+- **Erlaubte Marker**: Liste der erlaubten Marker-Typen (z.B. `['v8 ignore', 'type-coverage:ignore-line']`)
 - **Begründung**: Dokumentation warum Marker notwendig sind
 
 ### Ausführen des Checks

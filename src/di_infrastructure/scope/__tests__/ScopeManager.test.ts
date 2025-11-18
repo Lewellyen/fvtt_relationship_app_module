@@ -6,6 +6,9 @@ import { ScopeManager } from "../ScopeManager";
 import { InstanceCache } from "../../cache/InstanceCache";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { Logger } from "@/interfaces/logger";
+import type { Disposable } from "@/di_infrastructure/interfaces/disposable";
+import type { InjectionToken } from "../../types/injectiontoken";
+import type { ServiceType } from "@/types/servicetypeindex";
 
 class DisposableService implements Logger {
   disposed = false;
@@ -390,6 +393,111 @@ describe("ScopeManager", () => {
       expect(result.error.message).toContain("Async disposal failed");
     });
 
+    it("should successfully dispose async disposable instances", async () => {
+      // This covers line 287: the closing brace of the if (this.isAsyncDisposable(instance)) block
+      // when disposeAsync() succeeds (no error thrown)
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("root", null, cache);
+
+      class SuccessfulAsyncDisposable implements Logger {
+        public disposed = false;
+        async disposeAsync(): Promise<void> {
+          this.disposed = true;
+        }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      const token = Symbol("SuccessfulAsyncDisposable");
+      const instance = new SuccessfulAsyncDisposable();
+      cache.set(token, instance);
+
+      // disposeAsync should succeed and reach line 287 (closing brace of if block)
+      const result = await manager.disposeAsync();
+
+      expectResultOk(result);
+      expect(instance.disposed).toBe(true);
+      expect(manager.isDisposed()).toBe(true);
+    });
+
+    it("should handle mixed async and sync disposables in correct order", async () => {
+      // This covers line 287: ensures the if block closing brace is reached when async disposal succeeds
+      // and also tests the else if branch for sync-only disposables
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("root", null, cache);
+
+      class AsyncDisposable implements Logger {
+        public asyncDisposed = false;
+        async disposeAsync(): Promise<void> {
+          this.asyncDisposed = true;
+        }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      class SyncDisposable implements Disposable, Logger {
+        public syncDisposed = false;
+        dispose(): void {
+          this.syncDisposed = true;
+        }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      const asyncToken = Symbol("AsyncDisposable") as InjectionToken<ServiceType>;
+      const syncToken = Symbol("SyncDisposable") as InjectionToken<ServiceType>;
+      const asyncInstance = new AsyncDisposable();
+      const syncInstance = new SyncDisposable();
+      cache.set(asyncToken, asyncInstance);
+      cache.set(syncToken, syncInstance);
+
+      // Both should be disposed: async first (line 276-287), then sync fallback (line 289)
+      const result = await manager.disposeAsync();
+
+      expectResultOk(result);
+      expect(asyncInstance.asyncDisposed).toBe(true);
+      expect(syncInstance.syncDisposed).toBe(true);
+      expect(manager.isDisposed()).toBe(true);
+    });
+
+    it("should fallback to sync disposal when instance only implements Disposable (not AsyncDisposable)", async () => {
+      // This covers line 287: else if (this.isDisposable(instance)) - the fallback branch
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("root", null, cache);
+
+      class SyncOnlyDisposable implements Disposable, Logger {
+        public disposed = false;
+        dispose(): void {
+          this.disposed = true;
+        }
+        log(): void {}
+        error(): void {}
+        warn(): void {}
+        info(): void {}
+        debug(): void {}
+      }
+
+      const token = Symbol("SyncOnlyDisposable") as InjectionToken<ServiceType>;
+      const instance = new SyncOnlyDisposable();
+      cache.set(token, instance);
+
+      // disposeAsync should fallback to sync dispose when AsyncDisposable is not available
+      const result = await manager.disposeAsync();
+
+      expectResultOk(result);
+      expect(instance.disposed).toBe(true);
+      expect(manager.isDisposed()).toBe(true);
+    });
+
     it("should handle mixed sync and async disposables with errors", async () => {
       const cache = new InstanceCache();
       const manager = new ScopeManager("root", null, cache);
@@ -458,6 +566,25 @@ describe("ScopeManager", () => {
       expect(asyncDisposeCalled).toBe(true);
       // Sync dispose should not be called when async is available
       expect(syncDisposeCalled).toBe(false);
+    });
+
+    it("should skip non-disposable instances in disposeAsync (coverage for neither branch)", async () => {
+      // This covers the case where instance is neither AsyncDisposable nor Disposable
+      // The code should skip it and continue to the next instance
+      const cache = new InstanceCache();
+      const manager = new ScopeManager("root", null, cache);
+
+      const nonDisposable = new NonDisposableService();
+      const token = Symbol("NonDisposableService");
+      cache.set(token, nonDisposable);
+
+      // disposeAsync should succeed even with non-disposable instances
+      const result = await manager.disposeAsync();
+
+      expectResultOk(result);
+      // Non-disposable instance should not be affected
+      expect(nonDisposable.value).toBe(42);
+      expect(manager.isDisposed()).toBe(true);
     });
   });
 

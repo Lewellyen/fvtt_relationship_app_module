@@ -60,7 +60,7 @@ Das Projekt hat definierte Mindest-Coverage-Anforderungen:
 **Quality Gates:**
 
 - In `src/core/**` (ohne `init-solid.ts`), `src/services/**`, `src/utils/**`, `src/types/**` gelten:
-  - Keine `/* c8 ignore */`-Marker im Produktionscode.
+  - Keine `/* v8 ignore */`-Marker im Produktionscode.
   - Keine `type-coverage:ignore`-Kommentare im Produktionscode.
   - Keine `eslint-disable` / `ts-ignore`-Direktiven, außer bei nachweisbaren Bugs in externen Typdefinitionen.
 - Tests, Mocks und polyfill-/adapter-spezifische Dateien folgen eigenen, separat dokumentierten Ausnahmen (siehe Quality-Gates-Dokumente).
@@ -272,20 +272,20 @@ Folgende Dateien sind von Coverage ausgeschlossen:
 - Polyfills
 - Svelte Components (separate Coverage)
 
-### Inline Exclusions (c8 ignore)
+### Inline Exclusions (v8 ignore)
 
 Alle inline Coverage-Ausnahmen sind dokumentiert:
 - **Code Coverage:** Siehe `docs/quality-gates/code-coverage-exclusions.md`
 - **Type Coverage:** Siehe `docs/quality-gates/type-coverage-exclusions.md`
 
-**177** `c8 ignore` Kommentare (alle mit Begründung)  
+**177** `v8 ignore` Kommentare (alle mit Begründung)  
 **43** `type-coverage:ignore` Kommentare (alle mit Begründung)
 
 **Audit-Befehle:**
 ```bash
-# Prüfe ob alle c8 ignore dokumentiert sind (sollte 0 zurückgeben)
-grep -r "c8 ignore$" src/
-grep -r "c8 ignore-next-line$" src/
+# Prüfe ob alle v8 ignore dokumentiert sind (sollte 0 zurückgeben)
+grep -r "v8 ignore$" src/
+grep -r "v8 ignore-next-line$" src/
 
 # Prüfe ob alle type-coverage:ignore dokumentiert sind (sollte 0 zurückgeben)
 grep -r "type-coverage:ignore-next-line$" src/

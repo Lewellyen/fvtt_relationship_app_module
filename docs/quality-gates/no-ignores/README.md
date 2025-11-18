@@ -1,6 +1,6 @@
 # No-Ignores-Policy
 
-Diese Policy definiert, wo `ignore`-Marker (`c8 ignore`, `type-coverage:ignore`, `eslint-disable`, `ts-ignore`) im Code erlaubt sind und wo nicht.
+Diese Policy definiert, wo `ignore`-Marker (`v8 ignore`, `type-coverage:ignore`, `eslint-disable`, `ts-ignore`) im Code erlaubt sind und wo nicht.
 
 ## Verbotene Ignores (nie erlaubt)
 

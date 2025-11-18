@@ -177,6 +177,34 @@ describe("debounce", () => {
     expect(fn).toHaveBeenCalledWith("after-cancel");
   });
 
+  it("should handle cancel when no pending execution", () => {
+    const fn = vi.fn();
+    const debounced = debounce(fn, 500);
+
+    // Cancel without any pending execution (timeoutId is null)
+    debounced.cancel();
+
+    // Should not throw and should not execute function
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it("should handle cancel after execution completed", () => {
+    const fn = vi.fn();
+    const debounced = debounce(fn, 500);
+
+    debounced();
+    vi.advanceTimersByTime(500);
+
+    // Function should have executed
+    expect(fn).toHaveBeenCalledOnce();
+
+    // Cancel after execution (timeoutId should be null now)
+    debounced.cancel();
+
+    // Should not throw
+    expect(fn).toHaveBeenCalledOnce();
+  });
+
   it("should handle rapid successive calls", () => {
     const fn = vi.fn();
     const debounced = debounce(fn, 500);

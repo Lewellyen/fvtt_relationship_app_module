@@ -1,6 +1,7 @@
 import type { Result } from "@/types/result";
 import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import type { CacheService } from "@/interfaces/cache";
@@ -167,10 +168,21 @@ export class JournalVisibilityService {
     // If any errors occurred, return the first one
     // In future, could aggregate multiple errors into a single error
     if (errors.length > 0) {
+      // errors[0] is always defined when errors.length > 0
       const firstError = errors[0];
-      if (firstError) {
-        return { ok: false, error: firstError };
+      /* v8 ignore next -- @preserve */
+      if (firstError === undefined) {
+        // This should never happen, but TypeScript needs the check
+        // Return a FoundryError instead of throwing to maintain Result pattern
+        return {
+          ok: false,
+          error: createFoundryError(
+            "OPERATION_FAILED",
+            "Unexpected: errors array has length > 0 but first element is undefined"
+          ),
+        };
       }
+      return { ok: false, error: firstError };
     }
 
     return { ok: true, value: undefined };

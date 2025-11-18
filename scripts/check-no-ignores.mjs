@@ -12,7 +12,7 @@
  * - Nur dokumentierte Dateien in ALLOWED_WITH_MARKERS dürfen Marker haben
  * 
  * Sucht nach:
- * - c8 ignore
+ * - v8 ignore
  * - type-coverage:ignore
  * - eslint-disable
  * - ts-ignore
@@ -39,17 +39,17 @@ const ALLOWED_WITH_MARKERS = [
   // Bootstrap & Environment
   {
     file: 'src/core/init-solid.ts',
-    allowed: ['c8 ignore'],
+    allowed: ['v8 ignore'],
     reason: 'Foundry-spezifische Runtime-Umgebung: Hooks und Bootstrap-Fehlerpfade hängen stark von der Foundry-Version ab und sind schwer isoliert testbar',
   },
   {
     file: 'src/index.ts',
-    allowed: ['c8 ignore file'],
+    allowed: ['v8 ignore file'],
     reason: 'Entry Point: Reine Import-Datei ohne ausführbaren Code',
   },
   {
     file: 'src/constants.ts',
-    allowed: ['c8 ignore file'],
+    allowed: ['v8 ignore file'],
     reason: 'Konstanten-Definition: Keine ausführbare Logik',
   },
   {
@@ -61,22 +61,22 @@ const ALLOWED_WITH_MARKERS = [
   // DI-Infrastruktur: Coverage-Tool-Limitationen
   {
     file: 'src/di_infrastructure/container.ts',
-    allowed: ['c8 ignore'],
+    allowed: ['v8 ignore'],
     reason: 'Coverage-Tool-Limitation: finally-Block wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
   },
   {
     file: 'src/di_infrastructure/validation/ContainerValidator.ts',
-    allowed: ['c8 ignore'],
+    allowed: ['v8 ignore'],
     reason: 'Coverage-Tool-Limitation: Early-Return-Pfad wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
   },
   {
     file: 'src/di_infrastructure/resolution/ServiceResolver.ts',
-    allowed: ['c8 ignore'],
+    allowed: ['v8 ignore'],
     reason: 'Coverage-Tool-Limitation: Optional Chaining mit null metricsCollector wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
   },
   {
     file: 'src/config/dependencyconfig.ts',
-    allowed: ['c8 ignore'],
+    allowed: ['v8 ignore'],
     reason: 'Coverage-Tool-Limitation: Error-Propagierungs-Pfad wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
   },
   
@@ -107,7 +107,7 @@ const ALLOWED_WITH_MARKERS = [
   // Polyfills (werden automatisch ausgenommen, hier nur für Vollständigkeit)
   {
     file: 'src/polyfills/cytoscape-assign-fix.ts',
-    allowed: ['c8 ignore file', 'eslint-disable'],
+    allowed: ['v8 ignore file', 'eslint-disable'],
     reason: 'Legacy Polyfill: Cytoscape-Patch für externe Bibliothek, schwer testbar ohne Browser-Integration',
   },
   
@@ -121,7 +121,7 @@ const ALLOWED_WITH_MARKERS = [
 
 // Ignore-Marker, nach denen gesucht wird
 const IGNORE_PATTERNS = [
-  { pattern: /c8\s+ignore/i, name: 'c8 ignore' },
+  { pattern: /v8\s+ignore/i, name: 'v8 ignore' },
   { pattern: /type-coverage:ignore/i, name: 'type-coverage:ignore' },
   { pattern: /eslint-disable/i, name: 'eslint-disable' },
   { pattern: /ts-ignore/i, name: 'ts-ignore' },
@@ -178,7 +178,7 @@ function getAllowedMarkers(filePath) {
  */
 function extractMarkerFromLine(line) {
   // Match common marker patterns in comments
-  const markerMatch = line.match(/(?:type-coverage:ignore(?:-line|-next-line)?|c8\s+ignore(?:\s+file)?|eslint-disable(?:-next-line|-line)?|@?ts-ignore)/i);
+  const markerMatch = line.match(/(?:type-coverage:ignore(?:-line|-next-line)?|v8\s+ignore(?:\s+file)?|eslint-disable(?:-next-line|-line)?|@?ts-ignore)/i);
   return markerMatch ? markerMatch[0].trim() : null;
 }
 

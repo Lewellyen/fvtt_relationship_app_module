@@ -31,19 +31,20 @@ import type { ServiceContainer } from "@/di_infrastructure/container";
  * This allows us to use return statements for soft aborts.
  *
  * NOTE: The function is fully covered via init-solid.test.ts; only truly
- * environment-dependent branches (Foundry globals) use fine-grained c8 ignores.
+ * environment-dependent branches (Foundry globals) use fine-grained v8 ignores.
  */
 function initializeFoundryModule(): void {
   const containerResult = root.getContainer();
-  /* c8 ignore start -- Edge case: getContainer() fails after successful bootstrap
-   * This is extremely unlikely in practice, but the error path exists for defensive programming.
-   * The root instance is created at module level (line 155), making it difficult to mock
-   * this specific error path in tests. The code path exists and will execute in real scenarios. */
+  /* v8 ignore start -- @preserve */
+  // Edge case: getContainer() fails after successful bootstrap.
+  // This is extremely unlikely in practice, but the error path exists for defensive programming.
+  // The root instance is created at module level (line 162), making it difficult to mock
+  // this specific error path in tests. The code path exists and will execute in real scenarios.
   if (!containerResult.ok) {
     console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${containerResult.error}`);
     return;
   }
-  /* c8 ignore end */
+  /* v8 ignore stop -- @preserve */
 
   const loggerResult = containerResult.value.resolveWithError(loggerToken);
   if (!loggerResult.ok) {
@@ -60,7 +61,8 @@ function initializeFoundryModule(): void {
     return; // Soft abort - OK inside function
   }
 
-  /* c8 ignore start -- Foundry-Hooks und UI-spezifische Pfade hängen stark von der Laufzeitumgebung ab
+  /* v8 ignore start -- @preserve */
+  /* Foundry-Hooks und UI-spezifische Pfade hängen stark von der Laufzeitumgebung ab
    * und werden primär über Integrations-/E2E-Tests abgesichert. Für das aktuelle Quality-Gateway
    * blenden wir diese verzweigten Pfade temporär aus und reduzieren die Ignores später gezielt. */
   Hooks.on("init", () => {
@@ -155,7 +157,7 @@ function initializeFoundryModule(): void {
     logger.info("ready-phase");
     logger.info("ready-phase completed");
   });
-  /* c8 ignore end */
+  /* v8 ignore stop -- @preserve */
 }
 
 // Eager bootstrap DI before Foundry init
@@ -174,15 +176,19 @@ export function getRootContainer(): Result<ServiceContainer, string> {
   return root.getContainer();
 }
 
-/* c8 ignore start -- Bootstrap-Fehlerpfade sind stark Foundry-versionsabhängig und schwer
+/* v8 ignore start -- @preserve */
+/* Bootstrap-Fehlerpfade sind stark Foundry-versionsabhängig und schwer
  * deterministisch in Unit-Tests abzudecken. Die Logik wird über Integrationspfade geprüft;
  * für das Coverage-Gateway markieren wir diese Zweige vorerst als ignoriert. */
 if (!bootstrapOk) {
+  // Detect version once and reuse for both error logging and version-specific checks
+  const foundryVersion = tryGetFoundryVersion();
+
   BootstrapErrorHandler.logError(bootstrapResult.error, {
     phase: "bootstrap",
     component: "CompositionRoot",
     metadata: {
-      foundryVersion: tryGetFoundryVersion(),
+      foundryVersion,
     },
   });
 
@@ -192,9 +198,9 @@ if (!bootstrapOk) {
     typeof bootstrapResult.error === "string" &&
     bootstrapResult.error.includes("PORT_SELECTION_FAILED")
   ) {
-    const foundryVersion = tryGetFoundryVersion();
     if (foundryVersion !== undefined && foundryVersion < 13) {
       isOldFoundryVersion = true;
+      /* v8 ignore next -- @preserve */
       if (typeof ui !== "undefined" && ui?.notifications) {
         ui.notifications.error(
           `${MODULE_CONSTANTS.MODULE.NAME} benötigt mindestens Foundry VTT Version 13. ` +
@@ -219,4 +225,4 @@ if (!bootstrapOk) {
   // Only initialize if bootstrap succeeded
   initializeFoundryModule();
 }
-/* c8 ignore end */
+/* v8 ignore stop -- @preserve */

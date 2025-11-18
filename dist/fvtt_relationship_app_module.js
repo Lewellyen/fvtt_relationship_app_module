@@ -11990,9 +11990,16 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     }
     if (errors.length > 0) {
       const firstError = errors[0];
-      if (firstError) {
-        return { ok: false, error: firstError };
+      if (firstError === void 0) {
+        return {
+          ok: false,
+          error: createFoundryError(
+            "OPERATION_FAILED",
+            "Unexpected: errors array has length > 0 but first element is undefined"
+          )
+        };
       }
+      return { ok: false, error: firstError };
     }
     return { ok: true, value: void 0 };
   }
@@ -13733,7 +13740,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
   }
   registerDefinition(definition, binding, foundrySettings, runtimeConfig, notifications, i18n, logger) {
     const config2 = definition.createConfig(i18n, logger);
-    const configWithRuntimeBridge = this.attachRuntimeConfigBridge(config2, runtimeConfig, binding);
+    const configWithRuntimeBridge = binding ? this.attachRuntimeConfigBridge(config2, runtimeConfig, binding) : config2;
     const result = foundrySettings.register(
       MODULE_CONSTANTS.MODULE.ID,
       definition.key,
@@ -14359,16 +14366,16 @@ function getRootContainer() {
 }
 __name(getRootContainer, "getRootContainer");
 if (!bootstrapOk) {
+  const foundryVersion = tryGetFoundryVersion();
   BootstrapErrorHandler.logError(bootstrapResult.error, {
     phase: "bootstrap",
     component: "CompositionRoot",
     metadata: {
-      foundryVersion: tryGetFoundryVersion()
+      foundryVersion
     }
   });
   let isOldFoundryVersion = false;
   if (typeof bootstrapResult.error === "string" && bootstrapResult.error.includes("PORT_SELECTION_FAILED")) {
-    const foundryVersion = tryGetFoundryVersion();
     if (foundryVersion !== void 0 && foundryVersion < 13) {
       isOldFoundryVersion = true;
       if (typeof ui !== "undefined" && ui?.notifications) {

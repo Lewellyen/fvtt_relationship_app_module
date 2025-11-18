@@ -255,28 +255,63 @@ describe("init-solid Bootstrap", () => {
       warnSpy.mockRestore();
       cleanup();
     });
-  });
 
-  describe("Hooks NOT Available - Soft Abort", () => {
-    it("should soft-abort when Hooks undefined", async () => {
+    it("should skip log-level configuration when Foundry settings cannot be resolved", async () => {
       vi.resetModules();
 
-      // Hooks explizit auf undefined setzen
+      const mockGame = createMockGame();
+      const mockModule = { api: undefined as unknown };
+      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+
       const cleanup = withFoundryGlobals({
-        Hooks: undefined,
+        game: mockGame,
+        Hooks: createMockHooks(),
+        ui: createMockUI(),
       });
 
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const originalDependencyConfig = await vi.importActual<
+        typeof import("@/config/dependencyconfig")
+      >("@/config/dependencyconfig");
+      const foundryTokens = await import("@/foundry/foundrytokens");
+
+      vi.doMock("@/config/dependencyconfig", () => ({
+        ...originalDependencyConfig,
+        configureDependencies: vi.fn((container) => {
+          const configured = originalDependencyConfig.configureDependencies(container);
+          if (configured.ok) {
+            const originalResolveWithError = container.resolveWithError.bind(container);
+            vi.spyOn(container, "resolveWithError").mockImplementation((token) => {
+              if (token === foundryTokens.foundrySettingsToken) {
+                return {
+                  ok: false,
+                  error: { code: "SETTINGS_UNAVAILABLE", message: "Settings not available" },
+                };
+              }
+              return originalResolveWithError(token);
+            });
+          }
+          return configured;
+        }),
+      }));
+
+      const consoleLoggerModule = await import("@/services/consolelogger");
+      const setMinLevelSpy = vi.spyOn(
+        consoleLoggerModule.ConsoleLoggerService.prototype,
+        "setMinLevel"
+      );
 
       await import("@/core/init-solid");
 
-      // Sollte warnen, aber nicht werfen
-      // Der Logger wird aufgerufen, aber wir müssen das anders prüfen
-      // Da logger.warn() aufgerufen wird, nicht console.warn
-      // Wir prüfen dass keine Hooks registriert wurden
-      expect((global as any).Hooks).toBeUndefined();
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
+      const initCallback = initCall?.[1] as (() => void) | undefined;
+      expect(initCallback).toBeDefined();
 
-      consoleSpy.mockRestore();
+      const callsBeforeInit = setMinLevelSpy.mock.calls.length;
+      initCallback!();
+      expect(setMinLevelSpy.mock.calls.length).toBe(callsBeforeInit);
+
+      setMinLevelSpy.mockRestore();
       cleanup();
     });
   });
@@ -352,6 +387,11 @@ describe("init-solid Bootstrap", () => {
 
     it("should show version-specific error for Foundry v12", async () => {
       vi.resetModules();
+
+      const versioningModule = await vi.importActual<
+        typeof import("@/foundry/versioning/versiondetector")
+      >("@/foundry/versioning/versiondetector");
+      versioningModule.resetVersionCache();
 
       const mockUI = createMockUI();
       const cleanup = withFoundryGlobals({
@@ -892,14 +932,15 @@ describe("init-solid Bootstrap", () => {
       cleanup();
     });
 
-    it("should handle getContainer failure in initializeFoundryModule with direct mock", async () => {
-      // This test specifically covers lines 37-39 in init-solid.ts
-      // We need to ensure getContainer() fails when called from initializeFoundryModule
-      // Since root is created at module level, we need to mock the module before import
+    it("should handle expose API failure in init callback (coverage for lines 105-106)", async () => {
       vi.resetModules();
 
+      const mockGame = createMockGame();
+      const mockModule = { api: undefined as unknown };
+      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+
       const cleanup = withFoundryGlobals({
-        game: createMockGame(),
+        game: mockGame,
         Hooks: createMockHooks(),
         ui: createMockUI(),
       });
@@ -916,76 +957,152 @@ describe("init-solid Bootstrap", () => {
         }),
       }));
 
-      // Mock CompositionRoot module to return a class that fails getContainer on second call
-      const compositionRootOriginal =
-        await vi.importActual<typeof import("@/core/composition-root")>("@/core/composition-root");
-
-      // Track call count per instance
-      type CompositionRootInstance = InstanceType<typeof compositionRootOriginal.CompositionRoot>;
-      const instanceCallCounts = new WeakMap<CompositionRootInstance, number>();
-      const mockedCompositionRoot = class extends compositionRootOriginal.CompositionRoot {
-        constructor() {
-          super();
-          instanceCallCounts.set(this, 0);
+      // Mock ModuleApiInitializer.expose to fail
+      const moduleApiInitializerModule = await import("@/core/api/module-api-initializer");
+      const originalExpose = moduleApiInitializerModule.ModuleApiInitializer.prototype.expose;
+      let shouldFail = false;
+      vi.spyOn(
+        moduleApiInitializerModule.ModuleApiInitializer.prototype,
+        "expose"
+      ).mockImplementation(function (this: any, container: ServiceContainer) {
+        if (shouldFail) {
+          return { ok: false, error: "Failed to expose API: test error" };
         }
+        return originalExpose.call(this, container);
+      });
 
-        override getContainer(): Result<ServiceContainer, string> {
-          const callCount = (instanceCallCounts.get(this) || 0) + 1;
-          instanceCallCounts.set(this, callCount);
+      const consoleLoggerModule = await import("@/services/consolelogger");
+      const errorSpy = vi
+        .spyOn(consoleLoggerModule.ConsoleLoggerService.prototype, "error")
+        .mockImplementation(() => {});
 
-          // First call (during bootstrap check) succeeds
-          if (callCount === 1) {
-            return super.getContainer();
-          }
-          // Second call (in initializeFoundryModule) fails
-          if (callCount === 2) {
-            return {
-              ok: false,
-              error: "Container not initialized in initializeFoundryModule",
-            };
-          }
-          return super.getContainer();
-        }
-      };
+      await import("@/core/init-solid");
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
+      const initCallback = initCall?.[1] as (() => void) | undefined;
+      expect(initCallback).toBeDefined();
 
-      vi.doMock("@/core/composition-root", () => ({
-        ...compositionRootOriginal,
-        CompositionRoot: mockedCompositionRoot,
+      // Set flag to fail when init callback is called
+      shouldFail = true;
+      initCallback!();
+
+      // Verify that error was logged (lines 105-106)
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Failed to expose API: Failed to expose API: test error"
+      );
+
+      errorSpy.mockRestore();
+      cleanup();
+    });
+
+    it("should handle hook registration failure in init callback (coverage for lines 146-149)", async () => {
+      vi.resetModules();
+
+      const mockGame = createMockGame();
+      const mockModule = { api: undefined as unknown };
+      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+
+      const cleanup = withFoundryGlobals({
+        game: mockGame,
+        Hooks: createMockHooks(),
+        ui: createMockUI(),
+      });
+
+      // CRITICAL: Mock configureDependencies BEFORE importing init-solid
+      const originalModule = await vi.importActual<typeof import("@/config/dependencyconfig")>(
+        "@/config/dependencyconfig"
+      );
+
+      vi.doMock("@/config/dependencyconfig", () => ({
+        ...originalModule,
+        configureDependencies: vi.fn((container) => {
+          return originalModule.configureDependencies(container);
+        }),
       }));
+
+      // Mock ModuleHookRegistrar.registerAll to fail
+      const moduleHookRegistrarModule = await import("@/core/module-hook-registrar");
+      const originalRegisterAll =
+        moduleHookRegistrarModule.ModuleHookRegistrar.prototype.registerAll;
+      let shouldFail = false;
+      vi.spyOn(
+        moduleHookRegistrarModule.ModuleHookRegistrar.prototype,
+        "registerAll"
+      ).mockImplementation(function (this: any, container: ServiceContainer) {
+        if (shouldFail) {
+          return {
+            ok: false,
+            error: [
+              new Error("Hook registration failed: test-error-1"),
+              new Error("Hook registration failed: test-error-2"),
+            ],
+          };
+        }
+        return originalRegisterAll.call(this, container);
+      });
+
+      const consoleLoggerModule = await import("@/services/consolelogger");
+      const errorSpy = vi
+        .spyOn(consoleLoggerModule.ConsoleLoggerService.prototype, "error")
+        .mockImplementation(() => {});
+
+      await import("@/core/init-solid");
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
+      const initCallback = initCall?.[1] as (() => void) | undefined;
+      expect(initCallback).toBeDefined();
+
+      // Set flag to fail when init callback is called
+      shouldFail = true;
+      initCallback!();
+
+      // Verify that error was logged with error messages (lines 146-149)
+      expect(errorSpy).toHaveBeenCalledWith("Failed to register one or more module hooks", {
+        errors: [
+          "Hook registration failed: test-error-1",
+          "Hook registration failed: test-error-2",
+        ],
+      });
+
+      errorSpy.mockRestore();
+      cleanup();
+    });
+
+    it("should log and abort when container cannot be retrieved during initialization", async () => {
+      vi.resetModules();
+
+      const cleanup = withFoundryGlobals({
+        game: createMockGame(),
+        Hooks: createMockHooks(),
+        ui: createMockUI(),
+      });
+
+      const containerError = "Container not initialized in initializeFoundryModule";
+
+      vi.doMock("@/core/composition-root", () => {
+        class MockCompositionRoot {
+          bootstrap(): Result<ServiceContainer, string> {
+            return { ok: true, value: {} as ServiceContainer };
+          }
+
+          getContainer(): Result<ServiceContainer, string> {
+            return { ok: false, error: containerError };
+          }
+        }
+
+        return { CompositionRoot: MockCompositionRoot };
+      });
 
       const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      // Import init-solid - this will use the mocked CompositionRoot
-      // The mock should cause getContainer to fail on the second call (in initializeFoundryModule)
       await import("@/core/init-solid");
 
-      // Verify that console.error was called with the error message (lines 37-39)
-      // This covers the error path: getContainer fails -> console.error -> return early
-      // The mock should cause getContainer to fail when called from initializeFoundryModule
-      // Note: Due to module-level instantiation, the mock might not work perfectly,
-      // but we verify that the error path exists and is testable
-      const hasErrorCall = consoleErrorSpy.mock.calls.some((call) =>
-        call[0]?.toString().includes("Container not initialized in initializeFoundryModule")
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `${MODULE_CONSTANTS.LOG_PREFIX} ${containerError}`
       );
-
-      // If the mock worked, verify the exact message
-      // If not, the code path still exists and is covered by the test structure
-      if (hasErrorCall) {
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
-          expect.stringContaining("Container not initialized in initializeFoundryModule")
-        );
-      } else {
-        // The mock didn't work as expected due to module-level instantiation
-        // This is a known limitation when testing module-level code
-        // The error path (lines 37-39) is still present in the code and will be executed
-        // in real scenarios where getContainer fails
-        // For coverage purposes, we accept that this specific test path is hard to mock
-        expect(consoleErrorSpy.mock.calls.length).toBeGreaterThanOrEqual(0);
-      }
 
       consoleErrorSpy.mockRestore();
       cleanup();
-      vi.restoreAllMocks();
     });
   });
 });

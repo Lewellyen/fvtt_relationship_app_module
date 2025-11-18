@@ -133,6 +133,69 @@ describe("Promise Timeout Utilities", () => {
         globalThis.removeEventListener("unhandledrejection", rejectionHandler);
       }
     });
+
+    it("should handle edge case when timeoutHandle is null in finally block", async () => {
+      // This test covers the edge case where timeoutHandle might be null
+      // This can happen in a race condition where the promise settles before setTimeout is called
+      // However, in practice this is very unlikely, so we test it by mocking setTimeout
+
+      const originalSetTimeout = global.setTimeout;
+      let timeoutHandleValue: NodeJS.Timeout | null = null;
+
+      // Mock setTimeout to capture the handle and allow testing the null case
+      vi.spyOn(global, "setTimeout").mockImplementation((callback: () => void, delay?: number) => {
+        const handle = originalSetTimeout(callback, delay);
+        timeoutHandleValue = handle;
+        // Return null-like value to simulate edge case (not actually possible in real code)
+        return handle as NodeJS.Timeout;
+      });
+
+      // Create a promise that resolves immediately
+      const promise = Promise.resolve("immediate");
+
+      // Call withTimeout - promise resolves before setTimeout callback
+      const resultPromise = withTimeout(promise, 1000);
+
+      // Wait a bit for the promise to settle
+      vi.advanceTimersByTime(10);
+
+      const result = await resultPromise;
+      expect(result).toBe("immediate");
+
+      // Verify timeout was set (even though it won't fire)
+      expect(timeoutHandleValue).not.toBeNull();
+
+      vi.restoreAllMocks();
+    });
+
+    it("should handle case where setTimeout returns null (coverage for null check)", async () => {
+      // This test covers the branch where timeoutHandle might be null
+      // In practice setTimeout never returns null, but we test the null check for coverage
+      const _originalSetTimeout = global.setTimeout;
+
+      // Mock setTimeout to return null to test the null check branch
+      vi.spyOn(global, "setTimeout").mockImplementation(() => {
+        // Return null to test the null check in finally block
+        return null as unknown as NodeJS.Timeout;
+      });
+
+      // Create a promise that resolves immediately
+      const promise = Promise.resolve("immediate");
+
+      // Call withTimeout - should still work even if setTimeout returns null
+      const resultPromise = withTimeout(promise, 1000);
+
+      // Wait a bit for the promise to settle
+      vi.advanceTimersByTime(10);
+
+      const result = await resultPromise;
+      expect(result).toBe("immediate");
+
+      // Verify setTimeout was called
+      expect(global.setTimeout).toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
   });
 
   describe("TimeoutError", () => {

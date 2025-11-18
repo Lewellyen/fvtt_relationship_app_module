@@ -409,10 +409,10 @@ export class ServiceContainer implements Container {
       }
       // Re-throw unexpected errors
       throw error;
-      /* c8 ignore start -- Coverage tool doesn't count closing brace of try block as executed */
+      /* v8 ignore start -- Coverage tool doesn't count closing brace of try block as executed -- @preserve */
     } finally {
       this.validationPromise = null;
-      /* c8 ignore end */
+      /* v8 ignore end -- @preserve */
     }
   }
 

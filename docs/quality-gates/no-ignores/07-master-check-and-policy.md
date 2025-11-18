@@ -10,7 +10,7 @@ Nach Abarbeitung der Teilpläne 01–06 sicherstellen, dass:
 ## 1. Master-Check: Rest-Ignores finden
 
 1. Alle `ignore`-Marker per Skript suchen:
-   - `c8 ignore`
+   - `v8 ignore`
    - `type-coverage:ignore`
    - `eslint-disable`
    - `ts-ignore`
