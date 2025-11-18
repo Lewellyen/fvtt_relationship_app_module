@@ -12,6 +12,23 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.14] - 2025-11-18
+### Hinzugefügt
+- **NotificationCenter Test Coverage**: Test für Error-Path bei nicht existierenden Channels hinzugefügt ([Details](src/notifications/__tests__/NotificationCenter.test.ts#L366))
+
+### Geändert
+- **JournalVisibilityService Dokumentation**: Dependency-Kommentar aktualisiert (2 → 3 Dependencies: FoundryJournalFacade, NotificationCenter, CacheService) ([Details](src/services/JournalVisibilityService.ts#L24))
+
+### Fehlerbehebungen
+- **README Typo**: "instantiiert" → "instanziiert" in Port-Adapter-Garantie korrigiert ([Details](README.md#L112))
+- **CacheService Metrics**: Metrics-Tracking (recordMiss/recordHit) wird nicht mehr ausgeführt, wenn Cache disabled ist - verhindert verzerrte Hit-Rate-Statistiken ([Details](src/services/CacheService.ts#L209))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.25.13] - 2025-11-18
 ### Hinzugefügt
 - **getFirstArrayElement Helper**: Neue Helper-Funktion in `runtime-safe-cast.ts` für sicheren Array-Zugriff nach Längenprüfung, um Type-Coverage bei 100% zu halten ([Details](src/di_infrastructure/types/runtime-safe-cast.ts#L168))

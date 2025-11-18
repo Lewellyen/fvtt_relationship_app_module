@@ -207,8 +207,7 @@ export class CacheService implements CacheServiceContract {
     mutateUsage: boolean
   ): CacheLookupResult<TValue> | null {
     if (!this.isEnabled) {
-      this.recordMiss();
-      return null;
+      return null; // Keine Metrics tracken wenn disabled
     }
 
     const entry = this.store.get(key);

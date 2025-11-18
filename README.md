@@ -109,7 +109,7 @@ Foundry Adapter Layer (Services → Ports → Foundry API)
 
 Das Modul verhindert Crashes durch inkompatible Port-Versionen:
 
-- ✅ Nur der kompatible Port wird instantiiert
+- ✅ Nur der kompatible Port wird instanziiert
 - ✅ Neuere Ports (v14+) werden auf v13 nie aufgerufen
 - ✅ Automatische Fallback-Selektion (v14 → v13)
 

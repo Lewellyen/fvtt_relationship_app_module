@@ -362,6 +362,19 @@ describe("NotificationCenter", () => {
       expect(mockUIChannel.send).not.toHaveBeenCalled();
       expect(mockSentryChannel.send).not.toHaveBeenCalled();
     });
+
+    it("should return error when requested channels do not exist", () => {
+      center = new NotificationCenter([mockConsoleChannel]);
+
+      const result = center.info("Test message", undefined, { channels: ["NonExistentChannel"] });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("No channels attempted to handle notification");
+        expect(result.error).toContain("requested: NonExistentChannel");
+      }
+      expect(mockConsoleChannel.send).not.toHaveBeenCalled();
+    });
   });
 
   describe("name", () => {

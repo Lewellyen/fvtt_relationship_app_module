@@ -23,8 +23,8 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  *
  * **Dependencies Reduced:**
  * - Before: 4 dependencies (FoundryGame, FoundryDocument, FoundryUI, Logger)
- * - After: 2 dependencies (FoundryJournalFacade, NotificationCenter)
- * - Improvement: 50% reduction via Facade Pattern
+ * - After: 3 dependencies (FoundryJournalFacade, NotificationCenter, CacheService)
+ * - Improvement: 25% reduction via Facade Pattern
  */
 export class JournalVisibilityService {
   constructor(

@@ -556,6 +556,10 @@ function getRegistrationStatus(result) {
   return result.ok ? result.value : false;
 }
 __name(getRegistrationStatus, "getRegistrationStatus");
+function getFirstArrayElement(array2) {
+  return array2[0];
+}
+__name(getFirstArrayElement, "getFirstArrayElement");
 function hasDependencies(cls) {
   return "dependencies" in cls;
 }
@@ -11989,16 +11993,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
       });
     }
     if (errors.length > 0) {
-      const firstError = errors[0];
-      if (firstError === void 0) {
-        return {
-          ok: false,
-          error: createFoundryError(
-            "OPERATION_FAILED",
-            "Unexpected: errors array has length > 0 but first element is undefined"
-          )
-        };
-      }
+      const firstError = getFirstArrayElement(errors);
       return { ok: false, error: firstError };
     }
     return { ok: true, value: void 0 };
@@ -12427,7 +12422,6 @@ const _CacheService = class _CacheService {
   }
   accessEntry(key, mutateUsage) {
     if (!this.isEnabled) {
-      this.recordMiss();
       return null;
     }
     const entry = this.store.get(key);
