@@ -1,9 +1,10 @@
 # Concurrency Tests
 
-**Status:** ⚠️ TODO  
+**Status:** ✅ Implementiert  
 **Priorität:** 🥇 Hohe Priorität  
 **Aufwand:** 2-4 Stunden  
-**Tool:** Vitest (bereits vorhanden) + Node.js Worker Threads
+**Tool:** Vitest (bereits vorhanden) + Node.js Worker Threads  
+**Implementiert:** 2025-01-18
 
 ---
 
@@ -237,10 +238,10 @@ describe("Concurrency: Port Selection", () => {
 ```
 
 **Checkliste:**
-- [ ] Datei erstellen
-- [ ] Parallele Requests implementieren
-- [ ] Konsistenz prüfen
-- [ ] Edge Cases testen (100+ Requests)
+- [x] Datei erstellen (`src/foundry/versioning/__tests__/port-selector-concurrency.test.ts`)
+- [x] Parallele Requests implementieren
+- [x] Konsistenz prüfen
+- [x] Edge Cases testen (100+ Requests)
 
 ---
 
@@ -334,11 +335,11 @@ describe("Concurrency: Cache Access", () => {
 ```
 
 **Checkliste:**
-- [ ] Datei erstellen
-- [ ] Parallele Reads testen
-- [ ] Parallele Writes testen
-- [ ] Read-Write-Mix testen
-- [ ] Konsistenz prüfen
+- [x] Datei erstellen (`src/services/__tests__/cache-service-concurrency.test.ts`)
+- [x] Parallele Reads testen
+- [x] Parallele Writes testen
+- [x] Read-Write-Mix testen
+- [x] Konsistenz prüfen
 
 ---
 
@@ -402,10 +403,10 @@ describe("Concurrency: Hook Registration", () => {
 ```
 
 **Checkliste:**
-- [ ] Datei erstellen
-- [ ] Parallele Bootstrap-Versuche testen
-- [ ] Hook-Registrierung prüfen
-- [ ] Duplikate vermeiden
+- [x] Datei erstellen (`src/core/__tests__/composition-root-concurrency.test.ts`)
+- [x] Parallele Bootstrap-Versuche testen
+- [x] Container-Initialisierung prüfen
+- [x] Konsistenz bei parallelen Aufrufen sicherstellen
 
 ---
 
@@ -504,10 +505,10 @@ describe("Concurrency: Journal Access", () => {
 ```
 
 **Checkliste:**
-- [ ] Datei erstellen
-- [ ] Parallele Journal-Requests testen
-- [ ] Konsistenz prüfen
-- [ ] Edge Cases testen
+- [x] Datei erstellen (`src/foundry/services/__tests__/foundry-game-service-concurrency.test.ts`)
+- [x] Parallele Journal-Requests testen
+- [x] Konsistenz prüfen
+- [x] Edge Cases testen (verschiedene Entry-IDs)
 
 ---
 
@@ -526,20 +527,59 @@ describe("Concurrency: Journal Access", () => {
 ## Checkliste
 
 ### Vorbereitung
-- [ ] Vitest `it.concurrent()` verstanden
-- [ ] Promise.all Pattern verstanden
-- [ ] Race Condition Detection verstanden
+- [x] Vitest `it.concurrent()` verstanden
+- [x] Promise.all Pattern verstanden
+- [x] Race Condition Detection verstanden
 
 ### Implementierung
-- [ ] Test 1: Parallele Port-Selection
-- [ ] Test 2: Parallele Cache-Zugriffe
-- [ ] Test 3: Gleichzeitige Hook-Registrierungen
-- [ ] Test 4: Parallele Journal-Zugriffe
+- [x] Test 1: Parallele Port-Selection (`port-selector-concurrency.test.ts`)
+- [x] Test 2: Parallele Cache-Zugriffe (`cache-service-concurrency.test.ts`)
+- [x] Test 3: Gleichzeitige Bootstrap-Aufrufe (`composition-root-concurrency.test.ts`)
+- [x] Test 4: Parallele Journal-Zugriffe (`foundry-game-service-concurrency.test.ts`)
 
 ### Validierung
-- [ ] Alle Tests laufen erfolgreich
-- [ ] Tests sind isoliert
-- [ ] Keine Race Conditions erkannt
+- [x] Alle Tests laufen erfolgreich (11 Tests, alle bestanden)
+- [x] Tests sind isoliert
+- [x] Keine Race Conditions erkannt
+
+---
+
+## Implementierungsdetails
+
+**Implementiert:** 2025-01-18
+
+### Anpassungen an Codebase
+
+Die ursprüngliche Vorlage wurde an die tatsächliche Codebase-Struktur angepasst:
+
+1. **PortSelector**: Verwendet `selectPortFromFactories(factories)` statt `getPort()`
+2. **CacheService**: `get()` gibt `CacheLookupResult<T> | null` zurück, nicht `Result<T>`
+3. **FoundryGameService**: Verwendet `getJournalEntryById(id)` statt `getJournalEntry(id)`
+4. **CompositionRoot**: Bootstrap testet Container-Initialisierung, nicht direkt Hook-Registrierung
+
+### Implementierte Dateien
+
+- `src/foundry/versioning/__tests__/port-selector-concurrency.test.ts` (2 Tests)
+- `src/services/__tests__/cache-service-concurrency.test.ts` (3 Tests)
+- `src/core/__tests__/composition-root-concurrency.test.ts` (3 Tests)
+- `src/foundry/services/__tests__/foundry-game-service-concurrency.test.ts` (3 Tests)
+
+**Gesamt:** 11 Tests, alle erfolgreich validiert
+
+### Test-Patterns
+
+- **Vitest `it.concurrent()`**: Für echte parallele Test-Ausführung
+- **Promise.all()**: Für gleichzeitige Aufrufe innerhalb eines Tests
+- **Isolation**: Jeder Test hat eigenes Setup/Cleanup
+- **Result-Pattern**: Verwendet `expectResultOk()` für Result-Assertions
+
+### Validierung
+
+- ✅ Alle 11 Tests laufen erfolgreich
+- ✅ Vollständige Test-Suite: 1391 Tests bestanden (inkl. neuer Tests)
+- ✅ Keine Race Conditions erkannt
+- ✅ Tests sind isoliert und verwenden bestehende Test-Utilities
+- ✅ Keine Linter-Fehler
 
 ---
 

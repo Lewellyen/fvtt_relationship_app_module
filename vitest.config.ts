@@ -21,6 +21,9 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{js,ts,svelte}"],
+    nodeOptions: {
+      exposeGc: true,
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
