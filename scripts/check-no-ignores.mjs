@@ -225,7 +225,10 @@ function findAllSourceFiles() {
     const entries = readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = resolve(dir, entry.name);
-      const relPath = fullPath.replace(repoRoot + '/', '').replace(/\\/g, '/');
+      // Normalize paths: convert to forward slashes for consistent comparison
+      const normalizedRepoRoot = repoRoot.replace(/\\/g, '/');
+      const normalizedFullPath = fullPath.replace(/\\/g, '/');
+      const relPath = normalizedFullPath.replace(normalizedRepoRoot + '/', '');
       
       // Skip if not in src/
       if (!relPath.startsWith('src/')) continue;
@@ -288,18 +291,24 @@ async function checkNoIgnores() {
   console.log('Whitelist-System: Nur dokumentierte Dateien dürfen Marker haben.\n');
   
   try {
-    // Try using ripgrep for faster pattern search
+    // Always use both methods for reliability: ripgrep (fast) + fallback (comprehensive)
+    // This ensures we catch everything regardless of ripgrep version or availability
     let allMatches = [];
     const rgAvailable = (() => {
       try {
-        return execSync('rg --version', { encoding: 'utf-8', stdio: 'pipe' }).includes('ripgrep');
+        const version = execSync('rg --version', { encoding: 'utf-8', stdio: 'pipe' });
+        const isAvailable = version.includes('ripgrep');
+        if (isAvailable) {
+          console.log(`Using ripgrep: ${version.trim()}\n`);
+        }
+        return isAvailable;
       } catch {
         return false;
       }
     })();
     
+    // Method 1: Use ripgrep if available (fast)
     if (rgAvailable) {
-      // Use ripgrep to search for ignore patterns in all source files
       for (const { pattern, name } of IGNORE_PATTERNS) {
         const rgPattern = pattern.source.replace(/\\s/g, '\\s+');
         
@@ -340,16 +349,52 @@ async function checkNoIgnores() {
           // No matches or pattern not found - continue
         }
       }
-    } else {
-      // Fallback: manual file search and pattern matching
-      console.log('Warning: ripgrep (rg) not available, using slower fallback method.\n');
-      const files = findAllSourceFiles();
-      
-      for (const file of files) {
-        const matches = searchIgnoresInFile(file);
-        allMatches.push(...matches);
-      }
     }
+    
+    // Method 2: Always use fallback as verification (comprehensive, OS-independent)
+    // This ensures we catch everything even if ripgrep misses something
+    const files = findAllSourceFiles();
+    if (rgAvailable) {
+      console.log(`Verifying with fallback method (${files.length} files)...\n`);
+    } else {
+      console.log(`Using fallback method (${files.length} files)...\n`);
+    }
+    
+    const fallbackMatches = [];
+    for (const file of files) {
+      const matches = searchIgnoresInFile(file);
+      fallbackMatches.push(...matches);
+    }
+    
+    // Merge results: use ripgrep results if available, otherwise fallback
+    // If both methods found results, prefer ripgrep but verify with fallback
+    if (rgAvailable && allMatches.length > 0) {
+      // Verify: check if fallback found anything ripgrep missed
+      const rgFiles = new Set(allMatches.map(m => m.file));
+      const missedMatches = fallbackMatches.filter(m => !rgFiles.has(m.file));
+      if (missedMatches.length > 0) {
+        console.warn(`⚠️  Warning: Fallback method found ${missedMatches.length} match(es) that ripgrep missed:\n`);
+        missedMatches.forEach(m => {
+          console.warn(`  ${m.file}:${m.line} - ${m.pattern}`);
+        });
+        console.warn('\nAdding missed matches to results...\n');
+        allMatches.push(...missedMatches);
+      }
+    } else {
+      // Use fallback results
+      allMatches = fallbackMatches;
+    }
+    
+    // Remove duplicates (same file + line + pattern)
+    const seen = new Set();
+    allMatches = allMatches.filter(m => {
+      const key = `${m.file}:${m.line}:${m.pattern}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
     
     if (allMatches.length > 0) {
       console.error('❌ Forbidden ignore directives found in production code:\n');

@@ -164,3 +164,20 @@ export function* iterateServiceRegistrationEntries(
 export function getRegistrationStatus(result: Result<boolean, ContainerError>): boolean {
   return result.ok ? result.value : false;
 }
+
+/**
+ * Safely gets the first element from an array that has been checked for length > 0.
+ *
+ * This helper encapsulates the non-null assertion for array access after a length check.
+ * TypeScript requires this cast because it cannot infer that array[0] is defined
+ * even when array.length > 0 has been verified.
+ *
+ * The caller must ensure that array.length > 0 before calling this function.
+ *
+ * @param array - Array that has been verified to have length > 0
+ * @returns The first element of the array (guaranteed to be defined)
+ */
+export function getFirstArrayElement<T>(array: T[]): T {
+  // Type assertion is safe because caller must verify array.length > 0
+  return array[0] as T;
+}

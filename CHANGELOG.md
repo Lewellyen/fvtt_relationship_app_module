@@ -12,6 +12,24 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.13] - 2025-11-18
+### Hinzugefügt
+- **getFirstArrayElement Helper**: Neue Helper-Funktion in `runtime-safe-cast.ts` für sicheren Array-Zugriff nach Längenprüfung, um Type-Coverage bei 100% zu halten ([Details](src/di_infrastructure/types/runtime-safe-cast.ts#L168))
+
+### Geändert
+- **check-no-ignores Script**: Verbesserte Zuverlässigkeit durch Dual-Method-Ansatz (ripgrep + Fallback), bessere Pfad-Normalisierung für Windows/Linux-Konsistenz und Debug-Ausgabe ([Details](scripts/check-no-ignores.mjs))
+
+### Fehlerbehebungen
+- **ESLint-Fehler**: 14 ESLint-Fehler behoben (unbenutzte Variablen, falsche Namenskonventionen, `any`-Typen) ([Details](src/core/__tests__/composition-root.test.ts), [Details](src/di_infrastructure/__tests__/container.test.ts), [Details](src/di_infrastructure/validation/__tests__/ContainerValidator.test.ts), [Details](src/utils/async/__tests__/promise-timeout.test.ts))
+- **TypeScript-Fehler**: Type-Fehler in `composition-root.test.ts` behoben (ServiceContainer-Typ, Null-Checks) ([Details](src/core/__tests__/composition-root.test.ts))
+- **Verbotenes v8 ignore**: `v8 ignore` aus `JournalVisibilityService.ts` entfernt und durch Helper-Funktion `getFirstArrayElement` ersetzt, um Type-Coverage bei 100% zu halten ([Details](src/services/JournalVisibilityService.ts))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.25.12] - 2025-11-18
 ### Hinzugefügt
 - Keine Einträge

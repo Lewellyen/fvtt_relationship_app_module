@@ -1,13 +1,13 @@
 import type { Result } from "@/types/result";
 import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
 import type { FoundryError } from "@/foundry/errors/FoundryErrors";
-import { createFoundryError } from "@/foundry/errors/FoundryErrors";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { FoundryJournalEntry } from "@/foundry/types";
 import type { CacheService } from "@/interfaces/cache";
 import { createCacheNamespace } from "@/interfaces/cache";
 import { MODULE_CONSTANTS } from "@/constants";
 import { match } from "@/utils/functional/result";
+import { getFirstArrayElement } from "@/di_infrastructure/types/runtime-safe-cast";
 import { foundryJournalFacadeToken } from "@/foundry/foundrytokens";
 import { cacheServiceToken, notificationCenterToken } from "@/tokens/tokenindex";
 import { BOOLEAN_FLAG_SCHEMA } from "@/foundry/validation/setting-schemas";
@@ -169,19 +169,8 @@ export class JournalVisibilityService {
     // In future, could aggregate multiple errors into a single error
     if (errors.length > 0) {
       // errors[0] is always defined when errors.length > 0
-      const firstError = errors[0];
-      /* v8 ignore next -- @preserve */
-      if (firstError === undefined) {
-        // This should never happen, but TypeScript needs the check
-        // Return a FoundryError instead of throwing to maintain Result pattern
-        return {
-          ok: false,
-          error: createFoundryError(
-            "OPERATION_FAILED",
-            "Unexpected: errors array has length > 0 but first element is undefined"
-          ),
-        };
-      }
+      // Use helper from runtime-safe-cast to maintain type coverage
+      const firstError = getFirstArrayElement(errors);
       return { ok: false, error: firstError };
     }
 
