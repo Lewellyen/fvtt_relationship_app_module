@@ -1,6 +1,6 @@
 # Runtime Error Monitoring Tests
 
-**Status:** ⚠️ TODO  
+**Status:** ✅ Implementiert  
 **Priorität:** 🥇 Hohe Priorität  
 **Aufwand:** 2-3 Stunden  
 **Tool:** Vitest (bereits vorhanden)
@@ -267,10 +267,10 @@ describe("Runtime Error: Foundry API Failures", () => {
 ```
 
 **Checkliste:**
-- [ ] Datei erstellen
-- [ ] API-Fehler-Szenarien testen
-- [ ] Result-Pattern prüfen
-- [ ] Keine Exceptions
+- [x] Datei erstellen
+- [x] API-Fehler-Szenarien testen
+- [x] Result-Pattern prüfen
+- [x] Keine Exceptions
 
 ---
 
@@ -335,10 +335,10 @@ describe("Runtime Error: Graceful Degradation", () => {
 ```
 
 **Checkliste:**
-- [ ] Datei erstellen
-- [ ] Teilweise fehlende APIs testen
-- [ ] Bootstrap-Robustheit prüfen
-- [ ] Keine Crashes
+- [x] Datei erstellen
+- [x] Teilweise fehlende APIs testen
+- [x] Bootstrap-Robustheit prüfen
+- [x] Keine Crashes
 
 ---
 
@@ -426,10 +426,10 @@ describe("Runtime Error: Result Pattern Consistency", () => {
 ```
 
 **Checkliste:**
-- [ ] Datei erstellen
-- [ ] Alle Service-Methoden testen
-- [ ] Result-Pattern prüfen
-- [ ] Keine Exceptions
+- [x] Datei erstellen
+- [x] Alle Service-Methoden testen
+- [x] Result-Pattern prüfen
+- [x] Keine Exceptions
 
 ---
 
@@ -486,10 +486,84 @@ describe("Runtime Error: Error Recovery (Retry)", () => {
 ```
 
 **Checkliste:**
-- [ ] Datei erstellen
-- [ ] Retry-Logik testen
-- [ ] Max Retries prüfen
-- [ ] Transiente vs. permanente Fehler
+- [x] Datei erstellen
+- [x] Retry-Logik testen
+- [x] Max Retries prüfen
+- [x] Transiente vs. permanente Fehler
+
+---
+
+### Test 5: ModuleApi Error Handling
+
+**Datei:** `src/core/api/__tests__/module-api-error-handling.test.ts`
+
+**Besonderheit:** ModuleApi hat zwei Resolve-Methoden mit unterschiedlichem Error-Handling:
+- `api.resolve()` - wirft Exceptions (für externe Module, exception-basiert)
+- `api.resolveWithError()` - gibt Result zurück (Result-Pattern, nie Exceptions)
+
+```typescript
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { withFoundryGlobals } from "@/test/utils/test-helpers";
+import { createMockGame } from "@/test/mocks/foundry";
+import { CompositionRoot } from "@/core/composition-root";
+import { ModuleApiInitializer } from "@/core/api/module-api-initializer";
+import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
+
+describe("Runtime Error: ModuleApi Error Handling", () => {
+  // Test 5.1: api.resolve() wirft Exceptions (erwartetes Verhalten)
+  it("should throw exception when token is invalid", () => {
+    const invalidToken = markAsApiSafe(createInjectionToken("InvalidService"));
+    
+    // api.resolve() SOLL Exception werfen (erwartetes Verhalten)
+    expect(() => {
+      api.resolve(invalidToken);
+    }).toThrow();
+  });
+
+  // Test 5.2: api.resolveWithError() gibt Result zurück (nie Exceptions)
+  it("should return Result with ok: false when token is invalid", () => {
+    const invalidToken = markAsApiSafe(createInjectionToken("InvalidService"));
+    
+    // api.resolveWithError() SOLLTE nie Exception werfen
+    const result = api.resolveWithError(invalidToken);
+    
+    expectResultErr(result);
+    expect(result).toHaveProperty("ok");
+    expect(result.ok).toBe(false);
+  });
+
+  // Test 5.3: Beide Methoden bei erfolgreicher Resolution
+  it("should return same service instance on successful resolution", () => {
+    const service1 = api.resolve(api.tokens.notificationCenterToken);
+    const result2 = api.resolveWithError(api.tokens.notificationCenterToken);
+    
+    expectResultOk(result2);
+    if (result2.ok) {
+      expect(service1).toBe(result2.value);
+    }
+  });
+
+  // Test 5.4: Konsistenz zwischen beiden Methoden
+  it("should handle errors consistently (Exception vs Result)", () => {
+    const invalidToken = markAsApiSafe(createInjectionToken("InvalidService"));
+    
+    // api.resolve() wirft Exception
+    expect(() => {
+      api.resolve(invalidToken);
+    }).toThrow();
+    
+    // api.resolveWithError() gibt Result zurück
+    const result = api.resolveWithError(invalidToken);
+    expectResultErr(result);
+  });
+});
+```
+
+**Checkliste:**
+- [x] Datei erstellen
+- [x] api.resolve() Exception-Verhalten testen
+- [x] api.resolveWithError() Result-Pattern testen
+- [x] Konsistenz zwischen beiden Methoden prüfen
 
 ---
 
@@ -514,10 +588,11 @@ describe("Runtime Error: Error Recovery (Retry)", () => {
 - [ ] Fehlerbehandlung-Pattern verstanden
 
 ### Implementierung
-- [ ] Test 1: Foundry API-Fehler
-- [ ] Test 2: Graceful Degradation
-- [ ] Test 3: Result-Pattern-Konsistenz
-- [ ] Test 4: Error Recovery (Retry-Logik)
+- [x] Test 1: Foundry API-Fehler
+- [x] Test 2: Graceful Degradation
+- [x] Test 3: Result-Pattern-Konsistenz
+- [x] Test 4: Error Recovery (Retry-Logik)
+- [x] Test 5: ModuleApi Error Handling (resolve vs resolveWithError)
 
 ### Validierung
 - [ ] Alle Tests laufen erfolgreich

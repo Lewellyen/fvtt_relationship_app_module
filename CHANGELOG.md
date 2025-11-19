@@ -12,6 +12,27 @@
 
 ### Upgrade-Hinweise
 
+## [0.25.16] - 2025-11-19
+### Hinzugefügt
+- **Runtime Error Monitoring Tests**: Vollständige Test-Suite implementiert ([Details](docs/TEST-STRATEGY/01-high-priority/04-runtime-error-monitoring-tests.md))
+- Test 1: Foundry API-Fehler Handling - Prüft korrektes Error-Handling bei fehlenden oder fehlerhaften Foundry APIs
+- Test 2: Graceful Degradation - Prüft Bootstrap-Robustheit bei teilweise fehlenden Foundry APIs
+- Test 3: Result-Pattern-Konsistenz - Prüft dass alle Service-Methoden Result-Pattern verwenden (mit Hinweis auf `api.resolve()` Ausnahme)
+- Test 4: Error Recovery (Retry-Logik) - Prüft Retry-Verhalten bei transienten und permanenten Fehlern
+- Test 5: ModuleApi Error Handling - Prüft Unterschied zwischen `api.resolve()` (Exceptions) und `api.resolveWithError()` (Result-Pattern)
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.25.15] - 2025-11-18
 ### Hinzugefügt
 - **Memory Leak Tests**: Umfassende Test-Suite für Memory Leak Detection implementiert ([Details](docs/TEST-STRATEGY/01-high-priority/03-memory-leak-tests.md))
