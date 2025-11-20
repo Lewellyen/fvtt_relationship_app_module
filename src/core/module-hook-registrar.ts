@@ -1,4 +1,3 @@
-import type { ServiceContainer } from "@/di_infrastructure/container";
 import type { HookRegistrar } from "@/core/hooks/hook-registrar.interface";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { Result } from "@/types/result";
@@ -35,13 +34,14 @@ export class ModuleHookRegistrar {
 
   /**
    * Registers all hooks with Foundry VTT.
-   * @param container - DI container with registered services
+   *
+   * NOTE: Container parameter removed - hooks receive all dependencies via constructor injection.
    */
-  registerAll(container: ServiceContainer): Result<void, Error[]> {
+  registerAll(): Result<void, Error[]> {
     const errors: Error[] = [];
 
     for (const hook of this.hooks) {
-      const result = hook.register(container);
+      const result = hook.register();
       if (!result.ok) {
         // Convert string error to structured format
         const error = {

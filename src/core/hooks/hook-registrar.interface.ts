@@ -13,16 +13,19 @@
  */
 
 import type { Result } from "@/types/result";
-import type { ServiceContainer } from "@/di_infrastructure/container";
 
 /**
  * Strategy interface for registering a single Foundry hook.
  *
+ * NOTE: Container parameter removed - all dependencies should be injected via constructor.
+ * This follows the DI pattern and avoids Service Locator anti-pattern.
+ *
  * @example
  * ```typescript
  * export class MyHook implements HookRegistrar {
- *   register(container: ServiceContainer): Result<void, Error> {
- *     const hooks = container.resolve(foundryHooksToken);
+ *   constructor(private readonly hooks: FoundryHooks) {}
+ *
+ *   register(): Result<void, Error> {
  *     hooks.on("hookName", callback);
  *     return { ok: true, value: undefined };
  *   }
@@ -37,10 +40,11 @@ export interface HookRegistrar {
   /**
    * Register the hook with Foundry VTT.
    *
-   * @param container - DI container to resolve dependencies
+   * NOTE: Container parameter removed - all dependencies should be injected via constructor.
+   *
    * @returns Result indicating success or error
    */
-  register(container: ServiceContainer): Result<void, Error>;
+  register(): Result<void, Error>;
 
   /**
    * Clean up hook registrations and resources.

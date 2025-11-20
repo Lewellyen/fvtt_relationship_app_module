@@ -1,5 +1,4 @@
 import { MODULE_CONSTANTS } from "@/constants";
-import type { ServiceContainer } from "@/di_infrastructure/container";
 import type {
   SettingDefinition,
   SettingConfig as ModuleSettingConfig,
@@ -32,7 +31,13 @@ import type { FoundrySettings } from "@/foundry/interfaces/FoundrySettings";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import type { Logger } from "@/interfaces/logger";
-import { ModuleSettingsContextResolver } from "@/core/settings/module-settings-context-resolver";
+import {
+  notificationCenterToken,
+  loggerToken,
+  i18nFacadeToken,
+  runtimeConfigToken,
+} from "@/tokens/tokenindex";
+import { foundrySettingsToken } from "@/foundry/foundrytokens";
 
 interface RuntimeConfigBinding<TSchema, K extends RuntimeConfigKey> {
   runtimeKey: K;
@@ -93,97 +98,96 @@ const runtimeConfigBindings = {
  * - Easy to add new settings without modifying this class
  * - Each setting definition can be tested in isolation
  * - Clear separation between registration logic and setting configuration
+ * - Full DI: All dependencies injected via constructor (no Service Locator)
  */
 export class ModuleSettingsRegistrar {
-  static dependencies = [] as const;
-  private readonly contextResolver = new ModuleSettingsContextResolver();
+  constructor(
+    private readonly foundrySettings: FoundrySettings,
+    private readonly runtimeConfig: RuntimeConfigService,
+    private readonly notifications: NotificationCenter,
+    private readonly i18n: I18nFacadeService,
+    private readonly logger: Logger
+  ) {}
 
   /**
    * Registers all module settings.
    * Must be called during or after the 'init' hook.
    *
-   * @param container - DI container with registered services
+   * NOTE: Container parameter removed - all dependencies injected via constructor.
    */
-  registerAll(container: ServiceContainer): void {
-    const context = this.contextResolver.resolve(container);
-    if (!context) {
-      return;
-    }
-
-    const { foundrySettings, runtimeConfig, notifications, i18n, logger } = context;
-
+  registerAll(): void {
     // Register all settings
     this.registerDefinition(
       logLevelSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       cacheEnabledSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       cacheDefaultTtlSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       cacheMaxEntriesSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       performanceTrackingSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       performanceSamplingSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       metricsPersistenceEnabledSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       metricsPersistenceKeySetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
   }
 
@@ -266,9 +270,21 @@ export class ModuleSettingsRegistrar {
 }
 
 export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
-  static override dependencies = [] as const;
+  static dependencies = [
+    foundrySettingsToken,
+    runtimeConfigToken,
+    notificationCenterToken,
+    i18nFacadeToken,
+    loggerToken,
+  ] as const;
 
-  constructor() {
-    super();
+  constructor(
+    foundrySettings: FoundrySettings,
+    runtimeConfig: RuntimeConfigService,
+    notifications: NotificationCenter,
+    i18n: I18nFacadeService,
+    logger: Logger
+  ) {
+    super(foundrySettings, runtimeConfig, notifications, i18n, logger);
   }
 }

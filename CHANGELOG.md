@@ -12,6 +12,23 @@
 
 ### Upgrade-Hinweise
 
+## [0.26.1] - 2025-11-20
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Service Locator Pattern zu Constructor Injection**: `ModuleSettingsRegistrar` und `ModuleHookRegistrar` verwenden jetzt Constructor Injection statt Service Locator Pattern. `ModuleSettingsContextResolver` wurde entfernt, da überflüssig. Alle Dependencies werden jetzt explizit über den Constructor injiziert, was zu klarerem Code, besserer Testbarkeit und konsistentem DI-Pattern führt ([Details](src/core/module-settings-registrar.ts), [Details](src/core/module-hook-registrar.ts))
+- **HookRegistrar Interface**: Container-Parameter aus `register()` Methode entfernt - alle Dependencies werden über Constructor injiziert ([Details](src/core/hooks/hook-registrar.interface.ts))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.26.0] - 2025-11-20
 ### Hinzugefügt
 - **Test Coverage für Type-Guards**: Test für `getHiddenFlagValue` Type-Guard hinzugefügt, um Edge-Case abzudecken wenn Entry kein `getFlag`-Method hat ([Details](src/core/hooks/__tests__/journal-cache-invalidation-hook.test.ts#L985))

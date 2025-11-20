@@ -6,12 +6,20 @@ import { ModuleSettingsRegistrar, DIModuleSettingsRegistrar } from "../module-se
 import { ServiceContainer } from "@/di_infrastructure/container";
 import { configureDependencies } from "@/config/dependencyconfig";
 import { markAsApiSafe } from "@/di_infrastructure/types/api-safe-token";
-import { loggerToken, notificationCenterToken, runtimeConfigToken } from "@/tokens/tokenindex";
+import {
+  loggerToken,
+  notificationCenterToken,
+  runtimeConfigToken,
+  i18nFacadeToken,
+} from "@/tokens/tokenindex";
 import { foundrySettingsToken } from "@/foundry/foundrytokens";
 import { MODULE_CONSTANTS } from "@/constants";
 import { LogLevel } from "@/config/environment";
 import { ok, err } from "@/utils/functional/result";
 import type { Logger } from "@/interfaces/logger";
+import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import type { I18nFacadeService } from "@/services/I18nFacadeService";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 
 const DEFAULT_SETTING_VALUES: Record<string, unknown> = {
   [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: LogLevel.INFO,
@@ -41,12 +49,28 @@ describe("ModuleSettingsRegistrar", () => {
     it("should register log level setting", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
+      container.validate();
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
       const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
 
-      const registrar = new ModuleSettingsRegistrar();
-      registrar.registerAll(container);
+      const mockRuntimeConfig = container.resolve(
+        markAsApiSafe(runtimeConfigToken)
+      ) as RuntimeConfigService;
+      const mockNotifications = container.resolve(
+        markAsApiSafe(notificationCenterToken)
+      ) as NotificationCenter;
+      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+      const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+
+      const registrar = new ModuleSettingsRegistrar(
+        mockSettings,
+        mockRuntimeConfig,
+        mockNotifications,
+        mockI18n,
+        mockLogger
+      );
+      registrar.registerAll();
 
       const logLevelCall = registerSpy.mock.calls.find(
         ([, key]) => key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
@@ -67,6 +91,7 @@ describe("ModuleSettingsRegistrar", () => {
     it("should configure onChange callback to update logger", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
+      container.validate();
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
 
@@ -79,8 +104,22 @@ describe("ModuleSettingsRegistrar", () => {
 
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
       const infoSpy = vi.spyOn(mockLogger, "info");
-      const registrar = new ModuleSettingsRegistrar();
-      registrar.registerAll(container);
+      const mockRuntimeConfig = container.resolve(
+        markAsApiSafe(runtimeConfigToken)
+      ) as RuntimeConfigService;
+      const mockNotifications = container.resolve(
+        markAsApiSafe(notificationCenterToken)
+      ) as NotificationCenter;
+      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+
+      const registrar = new ModuleSettingsRegistrar(
+        mockSettings,
+        mockRuntimeConfig,
+        mockNotifications,
+        mockI18n,
+        mockLogger
+      );
+      registrar.registerAll();
 
       // Trigger onChange callback
       expect(callbacks[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]).toBeDefined();
@@ -93,6 +132,7 @@ describe("ModuleSettingsRegistrar", () => {
     it("should handle logger without setMinLevel gracefully", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
+      container.validate();
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
 
@@ -107,8 +147,22 @@ describe("ModuleSettingsRegistrar", () => {
       // Remove setMinLevel
       delete (mockLogger as any).setMinLevel;
 
-      const registrar = new ModuleSettingsRegistrar();
-      registrar.registerAll(container);
+      const mockRuntimeConfig = container.resolve(
+        markAsApiSafe(runtimeConfigToken)
+      ) as RuntimeConfigService;
+      const mockNotifications = container.resolve(
+        markAsApiSafe(notificationCenterToken)
+      ) as NotificationCenter;
+      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+
+      const registrar = new ModuleSettingsRegistrar(
+        mockSettings,
+        mockRuntimeConfig,
+        mockNotifications,
+        mockI18n,
+        mockLogger
+      );
+      registrar.registerAll();
 
       // Should not throw when onChange is called
       expect(() => callbacks[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]?.(LogLevel.WARN)).not.toThrow();
@@ -117,15 +171,9 @@ describe("ModuleSettingsRegistrar", () => {
     it("should log error when setting registration fails", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
+      container.validate();
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
-      vi.spyOn(mockSettings, "register").mockImplementation((...args: unknown[]) => {
-        const [, key] = args as [unknown, string];
-        if (key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL) {
-          return err({ code: "OPERATION_FAILED", message: "Registration failed" });
-        }
-        return ok(undefined);
-      });
       vi.spyOn(mockSettings, "register").mockImplementation((...args: unknown[]) => {
         const [, key] = args as [unknown, string];
         if (key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL) {
@@ -139,8 +187,20 @@ describe("ModuleSettingsRegistrar", () => {
       ) as any;
       const errorSpy = vi.spyOn(mockNotificationCenter, "error");
 
-      const registrar = new ModuleSettingsRegistrar();
-      registrar.registerAll(container);
+      const mockRuntimeConfig = container.resolve(
+        markAsApiSafe(runtimeConfigToken)
+      ) as RuntimeConfigService;
+      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+      const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+
+      const registrar = new ModuleSettingsRegistrar(
+        mockSettings,
+        mockRuntimeConfig,
+        mockNotificationCenter,
+        mockI18n,
+        mockLogger
+      );
+      registrar.registerAll();
 
       expect(errorSpy).toHaveBeenCalledWith(
         "Failed to register logLevel setting",
@@ -154,12 +214,28 @@ describe("ModuleSettingsRegistrar", () => {
     it("should register with correct choices", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
+      container.validate();
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
       const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
 
-      const registrar = new ModuleSettingsRegistrar();
-      registrar.registerAll(container);
+      const mockRuntimeConfig = container.resolve(
+        markAsApiSafe(runtimeConfigToken)
+      ) as RuntimeConfigService;
+      const mockNotifications = container.resolve(
+        markAsApiSafe(notificationCenterToken)
+      ) as NotificationCenter;
+      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+      const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+
+      const registrar = new ModuleSettingsRegistrar(
+        mockSettings,
+        mockRuntimeConfig,
+        mockNotifications,
+        mockI18n,
+        mockLogger
+      );
+      registrar.registerAll();
 
       const logLevelCall = registerSpy.mock.calls.find(
         ([, key]) => key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
@@ -176,6 +252,7 @@ describe("ModuleSettingsRegistrar", () => {
     it("should synchronize runtime config for bound settings", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
+      container.validate();
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
       const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
@@ -191,8 +268,20 @@ describe("ModuleSettingsRegistrar", () => {
       const runtimeConfig = runtimeConfigResult.value;
       const setSpy = vi.spyOn(runtimeConfig, "setFromFoundry");
 
-      const registrar = new ModuleSettingsRegistrar();
-      registrar.registerAll(container);
+      const mockNotifications = container.resolve(
+        markAsApiSafe(notificationCenterToken)
+      ) as NotificationCenter;
+      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+      const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+
+      const registrar = new ModuleSettingsRegistrar(
+        mockSettings,
+        runtimeConfig,
+        mockNotifications,
+        mockI18n,
+        mockLogger
+      );
+      registrar.registerAll();
 
       expect(setSpy).toHaveBeenCalledWith("enableCacheService", true);
 
@@ -211,6 +300,7 @@ describe("ModuleSettingsRegistrar", () => {
     it("should apply binding transform for cacheMaxEntries", () => {
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
+      container.validate();
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
       const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
@@ -225,8 +315,20 @@ describe("ModuleSettingsRegistrar", () => {
       const runtimeConfig = runtimeConfigResult.value;
       const setSpy = vi.spyOn(runtimeConfig, "setFromFoundry");
 
-      const registrar = new ModuleSettingsRegistrar();
-      registrar.registerAll(container);
+      const mockNotifications = container.resolve(
+        markAsApiSafe(notificationCenterToken)
+      ) as NotificationCenter;
+      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+      const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+
+      const registrar = new ModuleSettingsRegistrar(
+        mockSettings,
+        runtimeConfig,
+        mockNotifications,
+        mockI18n,
+        mockLogger
+      );
+      registrar.registerAll();
 
       expect(setSpy).toHaveBeenCalledWith("cacheMaxEntries", undefined);
 
@@ -249,11 +351,27 @@ describe("ModuleSettingsRegistrar", () => {
       // In practice all current settings have bindings, but this allows for future extensibility
       const container = ServiceContainer.createRoot();
       configureDependencies(container);
+      container.validate();
 
       const mockSettings = container.resolve(markAsApiSafe(foundrySettingsToken)) as any;
       const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
 
-      const registrar = new ModuleSettingsRegistrar();
+      const mockRuntimeConfig = container.resolve(
+        markAsApiSafe(runtimeConfigToken)
+      ) as RuntimeConfigService;
+      const mockNotifications = container.resolve(
+        markAsApiSafe(notificationCenterToken)
+      ) as NotificationCenter;
+      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+      const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+
+      const registrar = new ModuleSettingsRegistrar(
+        mockSettings,
+        mockRuntimeConfig,
+        mockNotifications,
+        mockI18n,
+        mockLogger
+      );
 
       // Spy on syncRuntimeConfigFromSettings before calling registerDefinition
       const syncSpy = vi.spyOn(registrar as any, "syncRuntimeConfigFromSettings");
@@ -274,10 +392,10 @@ describe("ModuleSettingsRegistrar", () => {
         mockDefinition,
         undefined, // No binding
         mockSettings,
-        container.resolve(markAsApiSafe(runtimeConfigToken)),
-        container.resolve(markAsApiSafe(notificationCenterToken)),
-        container.resolve(markAsApiSafe(loggerToken)),
-        container.resolve(markAsApiSafe(loggerToken))
+        mockRuntimeConfig,
+        mockNotifications,
+        mockI18n,
+        mockLogger
       );
 
       // Should still register the setting even without binding
@@ -289,8 +407,16 @@ describe("ModuleSettingsRegistrar", () => {
 });
 
 describe("ModuleSettingsRegistrar DI metadata", () => {
-  it("should expose empty dependency arrays", () => {
-    expect(ModuleSettingsRegistrar.dependencies).toEqual([]);
-    expect(DIModuleSettingsRegistrar.dependencies).toEqual([]);
+  it("should expose correct dependency arrays", () => {
+    // Base class has no static dependencies (constructor-based)
+    expect("dependencies" in ModuleSettingsRegistrar).toBe(false);
+    // DI wrapper class has all dependencies
+    expect(DIModuleSettingsRegistrar.dependencies).toEqual([
+      foundrySettingsToken,
+      runtimeConfigToken,
+      notificationCenterToken,
+      i18nFacadeToken,
+      loggerToken,
+    ]);
   });
 });

@@ -8,7 +8,6 @@ import { ModuleHookRegistrar } from "../module-hook-registrar";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
 import type { HookRegistrar } from "@/core/hooks/hook-registrar.interface";
 import { ok, err } from "@/utils/functional/result";
-import type { ServiceContainer } from "@/di_infrastructure/container";
 
 function createStubHook(success: boolean): HookRegistrar {
   return {
@@ -50,7 +49,7 @@ describe("ModuleHookRegistrar", () => {
       const notificationCenter = createNotificationCenterMock();
       const registrar = createRegistrarWithHooks([hook1, hook2], notificationCenter);
 
-      const result = registrar.registerAll({} as ServiceContainer);
+      const result = registrar.registerAll();
 
       expect(result.ok).toBe(true);
       expect(hook1.register).toHaveBeenCalled();
@@ -64,7 +63,7 @@ describe("ModuleHookRegistrar", () => {
       const notificationCenter = createNotificationCenterMock();
       const registrar = createRegistrarWithHooks([successHook, failingHook], notificationCenter);
 
-      const result = registrar.registerAll({} as ServiceContainer);
+      const result = registrar.registerAll();
 
       expect(result.ok).toBe(false);
       if (!result.ok) {

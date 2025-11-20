@@ -76,7 +76,7 @@ Der Coverage-Report wird in `coverage/index.html` generiert, Detailausnahmen sin
 
 ### Regressionswächter
 
-- **ModuleSettingsContextResolver**: Die Datei `src/core/settings/__tests__/module-settings-context-resolver.test.ts` deckt sowohl Erfolgs- als auch Fehlerpfade (NotificationCenter-Ausfall, fehlende DI-Abhängigkeiten) ab und stellt sicher, dass die globalen 100 %-Coverage-Grenzen bei zukünftigen Refactorings eingehalten werden.
+- Keine spezifischen Regressionswächter definiert.
 
 ---
 
@@ -101,87 +101,22 @@ src/
 ├── di_infrastructure/
 │   ├── container.ts
 │   └── __tests__/
-│       ├── container.test.ts       # Unit Test
-│       └── container-edge-cases.test.ts  # Edge Cases
-└── test/
-    ├── mocks/                     # Shared Mocks
-    ├── setup.ts                   # Test Setup
-    └── utils/                     # Test Utilities
+│       └── container.test.ts      # Unit Test
 ```
 
 ---
 
-## Writing Tests
+## Test Patterns
 
-### Unit Tests
-
-Unit Tests sollten:
-- ✅ Co-located sein (im `__tests__/` Ordner neben Source)
-- ✅ Eine Datei/Klasse/Funktion testen
-- ✅ Schnell sein (< 100ms)
-- ✅ Isoliert sein (keine externen Dependencies)
-
-**Beispiel:**
+### 1. Result Pattern Testing
 
 ```typescript
-// src/services/myservice.ts
-export class MyService {
-  doSomething() { ... }
-}
-
-// src/services/__tests__/myservice.test.ts
-import { describe, it, expect } from "vitest";
-import { MyService } from "../myservice";
-
-describe("MyService", () => {
-  it("should do something", () => {
-    const service = new MyService();
-    const result = service.doSomething();
-    expect(result).toBeDefined();
-  });
-});
-```
-
-### Integration Tests
-
-Integration Tests sollten:
-- ✅ In `src/__tests__/integration/` liegen
-- ✅ Mehrere Komponenten testen
-- ✅ End-to-End-Workflows testen
-- ✅ Foundry-Globals mocken
-
-**Beispiel:**
-
-```typescript
-// src/__tests__/integration/my-feature.test.ts
-import { describe, it, expect, beforeEach, vi } from "vitest";
-
-describe("Integration: My Feature", () => {
-  beforeEach(() => {
-    vi.stubGlobal('game', { /* mock */ });
-  });
-
-  it("should work end-to-end", () => {
-    // Test kompletten Workflow
-  });
-});
-```
-
----
-
-## Testing Best Practices
-
-### 1. Result-Pattern Assertions
-
-Nutze die Test-Utilities für Result-Pattern:
-
-```typescript
-import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-
-it("should return ok result", () => {
-  const result = myFunction();
-  expectResultOk(result);
-  // result.value ist jetzt type-safe verfügbar
+it("should return error on failure", () => {
+  const result = service.doSomething();
+  expect(result.ok).toBe(false);
+  if (!result.ok) {
+    expect(result.error).toContain("expected error");
+  }
 });
 ```
 
@@ -296,124 +231,3 @@ grep -r "type-coverage:ignore-next-line$" src/
 ## CI/CD Integration
 
 Tests laufen automatisch in der CI-Pipeline:
-
-```yaml
-# .github/workflows/ci.yml
-- name: Run tests
-  run: npm test
-
-- name: Generate coverage
-  run: npm run test:coverage
-```
-
-Coverage-Reports werden zu Codecov hochgeladen.
-
----
-
-## Debugging Tests
-
-### Cursor Editor / VS Code Debugger
-
-Das Projekt enthält eine Debug-Konfiguration in `.vscode/launch.json` mit 4 Profilen:
-
-1. **"Debug Current Test File"** - Debuggt die aktuell geöffnete Test-Datei
-2. **"Debug Cache Invalidation Test"** - Debuggt speziell den Cache-Invalidierung Test
-3. **"Debug Settings Change Test"** - Debuggt speziell den Settings-Change Test
-4. **"Debug All Integration Tests"** - Debuggt alle Integration-Tests
-
-**Verwendung:**
-1. Öffne eine Test-Datei
-2. Setze Breakpoints (F9)
-3. Öffne die Debug-Sidebar (`Strg+Shift+D` / `Cmd+Shift+D`)
-4. Wähle ein Debug-Profil aus
-5. Starte den Debugger (`F5`)
-
-**Navigation:**
-- `F10` - Step Over (nächste Zeile)
-- `F11` - Step Into (in Funktion springen)
-- `Shift+F11` - Step Out (aus Funktion raus)
-- `F5` - Continue (bis nächster Breakpoint)
-
-**Hinweis:** Die Debug-Konfiguration ist für Cursor Editor optimiert, funktioniert aber auch in VS Code.
-
-### VSCode Integration
-
-Nutze Vitest Extension für VSCode:
-- Run/Debug buttons direkt im Editor
-- Coverage-Highlighting
-- Test Explorer
-
-### Watch-Modus
-
-```bash
-npm run test:watch
-```
-
-Führt Tests automatisch aus bei Datei-Änderungen.
-
-### UI-Modus
-
-```bash
-npm run test:ui
-```
-
-Öffnet interaktive Test-UI im Browser.
-
----
-
-## Performance-Tests
-
-Für Performance-kritische Code:
-
-```typescript
-import { bench, describe } from 'vitest';
-
-describe('Performance', () => {
-  bench('myFunction', () => {
-    myFunction();
-  });
-});
-```
-
-Ausführen mit:
-
-```bash
-npm run test -- --run *.bench.ts
-```
-
----
-
-## Häufige Probleme
-
-### Tests schlagen fehl: "game is not defined"
-
-**Lösung:** Foundry globals mocken
-
-```typescript
-beforeEach(() => {
-  vi.stubGlobal('game', { /* mock */ });
-});
-```
-
-### Tests sind langsam
-
-**Lösung:** 
-- Prüfe auf `await` in synchronen Tests
-- Nutze Mocks statt echte Services
-- Teile große Tests auf
-
-### Coverage zu niedrig
-
-**Lösung:**
-- Identifiziere ungetestete Dateien: `coverage/index.html`
-- Schreibe Tests für kritische Pfade
-- Edge Cases hinzufügen
-
----
-
-## Weitere Ressourcen
-
-- **Vitest Dokumentation:** https://vitest.dev/
-- **Test Utilities:** `src/test/utils/test-helpers.ts`
-- **Mock Factories:** `src/test/mocks/foundry.ts`
-

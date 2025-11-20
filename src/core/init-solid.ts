@@ -118,7 +118,8 @@ function initializeFoundryModule(): void {
       );
       return;
     }
-    settingsRegistrarResult.value.registerAll(initContainerResult.value);
+    // Container parameter removed - all dependencies injected via constructor
+    settingsRegistrarResult.value.registerAll();
 
     // Configure logger with current setting value
     const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
@@ -143,7 +144,8 @@ function initializeFoundryModule(): void {
       logger.error(`Failed to resolve ModuleHookRegistrar: ${hookRegistrarResult.error.message}`);
       return;
     }
-    const hookRegistrationResult = hookRegistrarResult.value.registerAll(initContainerResult.value);
+    // Container parameter removed - all dependencies injected via constructor
+    const hookRegistrationResult = hookRegistrarResult.value.registerAll();
     if (!hookRegistrationResult.ok) {
       logger.error("Failed to register one or more module hooks", {
         errors: hookRegistrationResult.error.map((e) => e.message),

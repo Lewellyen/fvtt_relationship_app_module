@@ -13540,48 +13540,6 @@ const metricsPersistenceKeySetting = {
     };
   }
 };
-const _ModuleSettingsContextResolver = class _ModuleSettingsContextResolver {
-  resolve(container) {
-    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    if (!notificationCenterResult.ok) {
-      console.error("Failed to resolve NotificationCenter for ModuleSettingsRegistrar", {
-        error: notificationCenterResult.error
-      });
-      return null;
-    }
-    const notifications = notificationCenterResult.value;
-    const foundrySettingsResult = container.resolveWithError(foundrySettingsToken);
-    const loggerResult = container.resolveWithError(loggerToken);
-    const i18nResult = container.resolveWithError(i18nFacadeToken);
-    const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
-    if (!foundrySettingsResult.ok || !loggerResult.ok || !i18nResult.ok || !runtimeConfigResult.ok) {
-      notifications.error(
-        "DI resolution failed in ModuleSettingsRegistrar",
-        {
-          code: "DI_RESOLUTION_FAILED",
-          message: "Required services for ModuleSettingsRegistrar are missing",
-          details: {
-            settingsResolved: foundrySettingsResult.ok,
-            i18nResolved: i18nResult.ok,
-            loggerResolved: loggerResult.ok,
-            runtimeConfigResolved: runtimeConfigResult.ok
-          }
-        },
-        { channels: ["ConsoleChannel"] }
-      );
-      return null;
-    }
-    return {
-      notifications,
-      foundrySettings: foundrySettingsResult.value,
-      logger: loggerResult.value,
-      i18n: i18nResult.value,
-      runtimeConfig: runtimeConfigResult.value
-    };
-  }
-};
-__name(_ModuleSettingsContextResolver, "ModuleSettingsContextResolver");
-let ModuleSettingsContextResolver = _ModuleSettingsContextResolver;
 const runtimeConfigBindings = {
   [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: {
     runtimeKey: "logLevel",
@@ -13625,92 +13583,91 @@ const runtimeConfigBindings = {
   }
 };
 const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
-  constructor() {
-    this.contextResolver = new ModuleSettingsContextResolver();
+  constructor(foundrySettings, runtimeConfig, notifications, i18n, logger) {
+    this.foundrySettings = foundrySettings;
+    this.runtimeConfig = runtimeConfig;
+    this.notifications = notifications;
+    this.i18n = i18n;
+    this.logger = logger;
   }
   /**
    * Registers all module settings.
    * Must be called during or after the 'init' hook.
    *
-   * @param container - DI container with registered services
+   * NOTE: Container parameter removed - all dependencies injected via constructor.
    */
-  registerAll(container) {
-    const context = this.contextResolver.resolve(container);
-    if (!context) {
-      return;
-    }
-    const { foundrySettings, runtimeConfig, notifications, i18n, logger } = context;
+  registerAll() {
     this.registerDefinition(
       logLevelSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       cacheEnabledSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       cacheDefaultTtlSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       cacheMaxEntriesSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       performanceTrackingSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       performanceSamplingSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       metricsPersistenceEnabledSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
     this.registerDefinition(
       metricsPersistenceKeySetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY],
-      foundrySettings,
-      runtimeConfig,
-      notifications,
-      i18n,
-      logger
+      this.foundrySettings,
+      this.runtimeConfig,
+      this.notifications,
+      this.i18n,
+      this.logger
     );
   }
   attachRuntimeConfigBridge(config2, runtimeConfig, binding) {
@@ -13764,15 +13721,20 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
   }
 };
 __name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
-_ModuleSettingsRegistrar.dependencies = [];
 let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
 const _DIModuleSettingsRegistrar = class _DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
-  constructor() {
-    super();
+  constructor(foundrySettings, runtimeConfig, notifications, i18n, logger) {
+    super(foundrySettings, runtimeConfig, notifications, i18n, logger);
   }
 };
 __name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
-_DIModuleSettingsRegistrar.dependencies = [];
+_DIModuleSettingsRegistrar.dependencies = [
+  foundrySettingsToken,
+  runtimeConfigToken,
+  notificationCenterToken,
+  i18nFacadeToken,
+  loggerToken
+];
 let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
 function disposeHooks(hooks) {
   for (const hook of hooks) {
@@ -13787,12 +13749,13 @@ const _ModuleHookRegistrar = class _ModuleHookRegistrar {
   }
   /**
    * Registers all hooks with Foundry VTT.
-   * @param container - DI container with registered services
+   *
+   * NOTE: Container parameter removed - hooks receive all dependencies via constructor injection.
    */
-  registerAll(container) {
+  registerAll() {
     const errors = [];
     for (const hook of this.hooks) {
-      const result = hook.register(container);
+      const result = hook.register();
       if (!result.ok) {
         const error = {
           code: "HOOK_REGISTRATION_FAILED",
@@ -14530,7 +14493,7 @@ function initializeFoundryModule() {
       );
       return;
     }
-    settingsRegistrarResult.value.registerAll(initContainerResult.value);
+    settingsRegistrarResult.value.registerAll();
     const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
     if (settingsResult.ok) {
       const settings = settingsResult.value;
@@ -14549,7 +14512,7 @@ function initializeFoundryModule() {
       logger.error(`Failed to resolve ModuleHookRegistrar: ${hookRegistrarResult.error.message}`);
       return;
     }
-    const hookRegistrationResult = hookRegistrarResult.value.registerAll(initContainerResult.value);
+    const hookRegistrationResult = hookRegistrarResult.value.registerAll();
     if (!hookRegistrationResult.ok) {
       logger.error("Failed to register one or more module hooks", {
         errors: hookRegistrationResult.error.map((e) => e.message)

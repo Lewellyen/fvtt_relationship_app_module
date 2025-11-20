@@ -1028,7 +1028,7 @@ describe("init-solid Bootstrap", () => {
       vi.spyOn(
         moduleHookRegistrarModule.ModuleHookRegistrar.prototype,
         "registerAll"
-      ).mockImplementation(function (this: any, container: ServiceContainer) {
+      ).mockImplementation(function (this: any) {
         if (shouldFail) {
           return {
             ok: false,
@@ -1038,7 +1038,7 @@ describe("init-solid Bootstrap", () => {
             ],
           };
         }
-        return originalRegisterAll.call(this, container);
+        return originalRegisterAll.call(this);
       });
 
       const consoleLoggerModule = await import("@/services/consolelogger");
