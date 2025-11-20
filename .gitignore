@@ -40,3 +40,21 @@ __pycache__/**/*
 .pytest_cache/**/*
 .coverage
 .coverage/**/*
+# E2E Tests
+tests/.env
+tests/playwright-report/
+tests/test-results/
+playwright/.cache/
+playwright-report/
+playwright-report/**/*
+test-results/
+test-results/**/*
+test-results-*/
+test-results-*//**/*
+test-results-*/
+tests/**/*
+tests/*
+tests
+
+# Foundry Source Code (optional, für Analyse)
+foundry-source/

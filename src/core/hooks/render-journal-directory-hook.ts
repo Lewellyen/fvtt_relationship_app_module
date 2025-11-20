@@ -75,6 +75,9 @@ export class RenderJournalDirectoryHook implements HookRegistrar {
         return;
       }
 
+      // Process journal directory immediately - flags are read synchronously from Foundry
+      // via getEntryFlag(), so no delay is needed. When we trigger re-renders manually
+      // (in journal-cache-invalidation-hook.ts), we already wait 100ms for flag persistence.
       const processResult = journalVisibility.processJournalDirectory(htmlElement);
       if (!processResult.ok) {
         // Log error but don't interrupt hook execution

@@ -13,8 +13,11 @@
 /**
  * Throttle window for hook callbacks in milliseconds.
  * Prevents excessive processing during rapid hook fires.
+ *
+ * Set to 150ms to allow multiple journal entries to be created
+ * before processing, while still preventing excessive calls.
  */
-export const HOOK_THROTTLE_WINDOW_MS = 100;
+export const HOOK_THROTTLE_WINDOW_MS = 150;
 
 /**
  * Validation constraints for input data.

@@ -4,7 +4,9 @@
  * Useful for rate-limiting high-frequency events (e.g. Foundry hooks).
  * First call executes immediately, subsequent calls within the window are ignored.
  *
- * @param fn - Function to throttle
+ * Supports both synchronous and asynchronous functions.
+ *
+ * @param fn - Function to throttle (can be async)
  * @param windowMs - Time window in milliseconds
  * @returns Throttled function
  *
@@ -17,7 +19,7 @@
  * ```
  */
 export function throttle<Args extends unknown[]>(
-  fn: (...args: Args) => void,
+  fn: (...args: Args) => void | Promise<void>,
   windowMs: number
 ): (...args: Args) => void {
   let isThrottled = false;
@@ -25,6 +27,8 @@ export function throttle<Args extends unknown[]>(
   return function throttled(...args: Args): void {
     if (!isThrottled) {
       // First call or window expired - execute immediately
+      // Note: Promise from async functions is intentionally not awaited
+      // to maintain non-blocking behavior
       fn(...args);
       isThrottled = true;
 

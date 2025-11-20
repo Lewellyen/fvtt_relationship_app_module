@@ -12,6 +12,7 @@ import { ok, err } from "@/utils/functional/result";
 class MockPort implements FoundryGame {
   getJournalEntries = vi.fn();
   getJournalEntryById = vi.fn();
+  invalidateCache = vi.fn();
   dispose = vi.fn();
 }
 

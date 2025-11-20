@@ -26,6 +26,7 @@ describe("FoundryGameService", () => {
     mockPort = {
       getJournalEntries: vi.fn().mockReturnValue(ok([])),
       getJournalEntryById: vi.fn().mockReturnValue(ok(null)),
+      invalidateCache: vi.fn(),
       dispose: vi.fn(),
     };
 
@@ -233,6 +234,35 @@ describe("FoundryGameService", () => {
 
       expectResultErr(result);
       expect(result.error.message).toContain("Port selection failed");
+    });
+  });
+
+  describe("invalidateCache", () => {
+    it("should invalidate cache when port is available", () => {
+      const invalidateSpy = vi.spyOn(mockPort, "invalidateCache");
+      service.invalidateCache();
+      expect(invalidateSpy).toHaveBeenCalled();
+    });
+
+    it("should handle invalidateCache when port is not available", () => {
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: ObservabilityRegistry = {
+        registerPortSelector: vi.fn(),
+      } as any;
+      const failingSelector = new PortSelector(mockEventEmitter, mockObservability);
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
+      const failingService = new FoundryGameService(
+        failingSelector,
+        mockRegistry,
+        mockRetryService
+      );
+
+      // Should not throw when port is not available
+      expect(() => failingService.invalidateCache()).not.toThrow();
     });
   });
 });

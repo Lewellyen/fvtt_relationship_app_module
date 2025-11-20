@@ -39,6 +39,13 @@ export class FoundryGameService extends FoundryServiceBase<FoundryGame> implemen
       return portResult.value.getJournalEntryById(id);
     }, "FoundryGame.getJournalEntryById");
   }
+
+  invalidateCache(): void {
+    const portResult = this.getPort("FoundryGame");
+    if (portResult.ok) {
+      portResult.value.invalidateCache();
+    }
+  }
 }
 
 export class DIFoundryGameService extends FoundryGameService {

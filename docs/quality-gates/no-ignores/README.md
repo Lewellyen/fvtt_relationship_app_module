@@ -14,12 +14,16 @@ In folgenden Bereichen sind **keine** `ignore`-Marker erlaubt:
 
 **Ausnahmen in `src/core/**`:**
 - `src/core/init-solid.ts` – Environment-spezifische Foundry Hooks
+- `src/core/hooks/journal-cache-invalidation-hook.ts` – `eslint-disable` für deprecated `Hooks.call` als Fallback (in EXCEPTIONS dokumentiert)
 
 **Hinweis:** Die folgenden Dateien waren ursprünglich in EXCEPTIONS, wurden aber durch Tests und Helper-Funktionen vollständig behoben:
 - `src/core/api/module-api-initializer.ts` – Alle Marker entfernt (durch Tests und Helper-Funktionen)
 - `src/core/hooks/render-journal-directory-hook.ts` – Alle Marker entfernt (durch Tests und Helper-Funktionen)
 - `src/core/module-hook-registrar.ts` – Alle Marker entfernt (durch Helper-Funktion)
 - `src/core/settings/log-level-setting.ts` – Alle Marker entfernt (durch Helper-Funktion)
+
+**Aktuelle Ausnahme:**
+- `src/core/hooks/journal-cache-invalidation-hook.ts` – `eslint-disable-next-line @typescript-eslint/no-deprecated` für `Hooks.call` (Zeile 258), da deprecated API als Fallback notwendig ist wenn `journalApp` nicht verfügbar ist
 
 **Ausnahmen in `src/di_infrastructure/**`:**
 - `src/di_infrastructure/container.ts` – Coverage-Tool-Limitation: finally-Block

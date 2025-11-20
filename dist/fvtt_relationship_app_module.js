@@ -40,7 +40,7 @@ if (!(originalAssignRef && originalAssignRef.__cy_careful_patch)) {
   patched.__cy_careful_patch = true;
   Object.assign = patched;
 }
-const HOOK_THROTTLE_WINDOW_MS = 100;
+const HOOK_THROTTLE_WINDOW_MS = 150;
 const VALIDATION_CONSTRAINTS = {
   /** Maximum length for IDs and keys */
   MAX_ID_LENGTH: 100,
@@ -11548,6 +11548,12 @@ const _FoundryGameService = class _FoundryGameService extends FoundryServiceBase
       return portResult.value.getJournalEntryById(id);
     }, "FoundryGame.getJournalEntryById");
   }
+  invalidateCache() {
+    const portResult = this.getPort("FoundryGame");
+    if (portResult.ok) {
+      portResult.value.invalidateCache();
+    }
+  }
 };
 __name(_FoundryGameService, "FoundryGameService");
 let FoundryGameService = _FoundryGameService;
@@ -13981,28 +13987,49 @@ const JOURNAL_INVALIDATION_HOOKS = [
   MODULE_CONSTANTS.HOOKS.DELETE_JOURNAL_ENTRY
 ];
 const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
-  constructor(hooks, cache, notificationCenter) {
+  constructor(hooks, cache, notificationCenter, foundryGame, journalVisibility) {
     this.hooks = hooks;
     this.cache = cache;
     this.notificationCenter = notificationCenter;
+    this.foundryGame = foundryGame;
+    this.journalVisibility = journalVisibility;
     this.registrationManager = new HookRegistrationManager();
   }
   // container parameter entfernt: HookRegistrar-Implementierung nutzt Container nicht mehr direkt
   register() {
-    const { hooks, cache, notificationCenter } = this;
+    const { hooks, cache, notificationCenter, foundryGame } = this;
     for (const hookName of JOURNAL_INVALIDATION_HOOKS) {
-      const registrationResult = hooks.on(hookName, () => {
-        const removed = cache.invalidateWhere(
-          (meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG)
-        );
-        if (removed > 0) {
-          notificationCenter.debug(
-            `Invalidated ${removed} hidden journal cache entries via ${hookName}`,
-            { context: { removed, hookName } },
-            { channels: ["ConsoleChannel"] }
+      const registrationResult = hooks.on(
+        hookName,
+        function(...args2) {
+          const removed = cache.invalidateWhere(
+            (meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG)
           );
-        }
-      });
+          if (removed > 0) {
+            notificationCenter.debug(
+              `Invalidated ${removed} hidden journal cache entries via ${hookName}`,
+              { context: { removed, hookName } },
+              { channels: ["ConsoleChannel"] }
+            );
+          }
+          foundryGame.invalidateCache();
+          if (hookName === MODULE_CONSTANTS.HOOKS.UPDATE_JOURNAL_ENTRY) {
+            const entry = this.getEntryFromHookArgs(args2);
+            if (entry?.id) {
+              const hiddenFlagChanged = this.checkHiddenFlagChanged(entry.id);
+              if (hiddenFlagChanged) {
+                const hiddenFlag = this.getHiddenFlagValue(entry.id);
+                this.notificationCenter.debug(
+                  `Hidden flag changed for journal entry ${entry.id} (value: ${hiddenFlag}), triggering re-render`,
+                  { context: { entryId: entry.id, hiddenFlag } },
+                  { channels: ["ConsoleChannel"] }
+                );
+                this.rerenderJournalDirectory();
+              }
+            }
+          }
+        }.bind(this)
+      );
       if (!registrationResult.ok) {
         notificationCenter.error(`Failed to register ${hookName} hook`, registrationResult.error, {
           channels: ["ConsoleChannel"]
@@ -14017,6 +14044,185 @@ const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
     }
     return ok(void 0);
   }
+  /**
+   * Checks if the hidden flag was changed for a journal entry.
+   * Returns true if the flag is set (true or false), meaning it was explicitly set.
+   * This allows us to re-render when entries are hidden OR shown.
+   * @param entryId - The journal entry ID
+   * @returns true if hidden flag is set (true or false), false if not set or error
+   */
+  checkHiddenFlagChanged(entryId) {
+    try {
+      if (typeof game === "undefined" || !game?.journal) return false;
+      const entry = game.journal.get(entryId);
+      if (!entry) return false;
+      if (typeof entry !== "object" || entry === null || !("getFlag" in entry)) {
+        return false;
+      }
+      const getFlagMethod = castCacheValue(entry.getFlag);
+      const hiddenFlag = castCacheValue(
+        getFlagMethod(MODULE_CONSTANTS.MODULE.ID, MODULE_CONSTANTS.FLAGS.HIDDEN)
+      );
+      return hiddenFlag === true || hiddenFlag === false;
+    } catch (error) {
+      this.notificationCenter.debug(
+        "Failed to check hidden flag",
+        { error: error instanceof Error ? error.message : String(error), entryId },
+        { channels: ["ConsoleChannel"] }
+      );
+      return false;
+    }
+  }
+  /**
+   * Gets the current value of the hidden flag for a journal entry.
+   * @param entryId - The journal entry ID
+   * @returns the flag value (true/false) or null if not set or error
+   */
+  getHiddenFlagValue(entryId) {
+    try {
+      if (typeof game === "undefined" || !game?.journal) return null;
+      const entry = game.journal.get(entryId);
+      if (!entry) return null;
+      if (typeof entry !== "object" || entry === null || !("getFlag" in entry)) {
+        return null;
+      }
+      const getFlagMethod = castCacheValue(entry.getFlag);
+      const hiddenFlag = castCacheValue(
+        getFlagMethod(MODULE_CONSTANTS.MODULE.ID, MODULE_CONSTANTS.FLAGS.HIDDEN)
+      );
+      if (hiddenFlag === true || hiddenFlag === false) {
+        return hiddenFlag;
+      }
+      return null;
+    } catch (_error) {
+      return null;
+    }
+  }
+  /**
+   * Extracts journal entry from hook arguments.
+   * Foundry hooks pass different argument structures, so we need to handle multiple cases.
+   */
+  getEntryFromHookArgs(args2) {
+    try {
+      if (args2.length > 0 && args2[0]) {
+        const firstArg = args2[0];
+        if (Array.isArray(firstArg)) {
+          const arrayArg = firstArg;
+          if (arrayArg.length > 0) {
+            const entry = castCacheValue(
+              getFirstArrayElement(arrayArg)
+            );
+            if (entry?.id) return { id: entry.id };
+          }
+        } else {
+          const entry = castCacheValue(firstArg);
+          if (entry?.id) {
+            return { id: entry.id };
+          }
+        }
+      }
+      return null;
+    } catch (error) {
+      this.notificationCenter.debug(
+        "Failed to extract entry from hook args",
+        { error: error instanceof Error ? error.message : String(error) },
+        { channels: ["ConsoleChannel"] }
+      );
+      return null;
+    }
+  }
+  /**
+   * Triggers a re-render of the journal directory if it's currently open.
+   * This ensures that hidden entries are immediately updated after flag changes.
+   *
+   * Returns true if re-render was triggered, false otherwise.
+   */
+  rerenderJournalDirectory() {
+    try {
+      const journalElement = document.querySelector("#journal");
+      if (!journalElement) {
+        this.notificationCenter.debug(
+          "Journal directory not open, skipping re-render",
+          {},
+          { channels: ["ConsoleChannel"] }
+        );
+        return false;
+      }
+      if (typeof ui === "undefined" || !ui) {
+        this.notificationCenter.debug(
+          "UI not available, skipping journal directory re-render",
+          {},
+          { channels: ["ConsoleChannel"] }
+        );
+        return false;
+      }
+      const sidebar = castCacheValue(
+        ui.sidebar
+      );
+      const journalApp = castCacheValue(
+        sidebar?.tabs?.journal || sidebar?.journal || castCacheValue(ui).journal || castCacheValue(ui).apps?.find(
+          (app) => app.id === "journal"
+        )
+      );
+      if (journalApp && typeof journalApp.render === "function") {
+        journalApp.render(false);
+        this.notificationCenter.debug(
+          "Triggered journal directory re-render after flag update",
+          {
+            context: {
+              journalAppId: journalApp.id,
+              journalAppClass: journalApp.constructor?.name
+            }
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+        return true;
+      } else {
+        if (typeof Hooks !== "undefined" && typeof Hooks.call === "function") {
+          const app = castCacheValue(
+            journalApp || { id: "journal", render: /* @__PURE__ */ __name(() => {
+            }, "render") }
+          );
+          Hooks.call(
+            MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
+            app,
+            [journalElement]
+          );
+          this.notificationCenter.debug(
+            "Manually triggered renderJournalDirectory hook",
+            { context: { appId: app.id } },
+            { channels: ["ConsoleChannel"] }
+          );
+          return true;
+        }
+        this.notificationCenter.debug(
+          "Could not trigger journal directory re-render (app not found)",
+          {
+            context: {
+              hasUI: !!ui,
+              hasSidebar: !!sidebar,
+              hasTabs: !!sidebar?.tabs,
+              hasJournalTab: !!sidebar?.tabs?.journal,
+              hasJournalElement: !!journalElement
+            }
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+        return false;
+      }
+    } catch (error) {
+      this.notificationCenter.warn(
+        "Failed to re-render journal directory",
+        {
+          code: "RERENDER_FAILED",
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : void 0
+        },
+        { channels: ["ConsoleChannel"] }
+      );
+      return false;
+    }
+  }
   dispose() {
     this.registrationManager.dispose();
   }
@@ -14024,12 +14230,18 @@ const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
 __name(_JournalCacheInvalidationHook, "JournalCacheInvalidationHook");
 let JournalCacheInvalidationHook = _JournalCacheInvalidationHook;
 const _DIJournalCacheInvalidationHook = class _DIJournalCacheInvalidationHook extends JournalCacheInvalidationHook {
-  constructor(hooks, cache, notificationCenter) {
-    super(hooks, cache, notificationCenter);
+  constructor(hooks, cache, notificationCenter, foundryGame, journalVisibility) {
+    super(hooks, cache, notificationCenter, foundryGame, journalVisibility);
   }
 };
 __name(_DIJournalCacheInvalidationHook, "DIJournalCacheInvalidationHook");
-_DIJournalCacheInvalidationHook.dependencies = [foundryHooksToken, cacheServiceToken, notificationCenterToken];
+_DIJournalCacheInvalidationHook.dependencies = [
+  foundryHooksToken,
+  cacheServiceToken,
+  notificationCenterToken,
+  foundryGameToken,
+  journalVisibilityServiceToken
+];
 let DIJournalCacheInvalidationHook = _DIJournalCacheInvalidationHook;
 function registerRegistrars(container) {
   const renderJournalHookResult = container.registerClass(

@@ -3,7 +3,7 @@
   "type": "module",
   "title": "Relationship App",
   "description": "A Foundry VTT module for creating and managing relationship graphs between actors and other entities.",
-  "version": "0.25.16",
+  "version": "0.26.0",
   "author": "Andreas Rothe <forenadmin.tir@gmail.com> (https://github.com/Lewellyen)",
   "license": "MIT",
   "repository": {
@@ -41,6 +41,11 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "test:watch": "vitest --watch",
+    "test:e2e": "playwright test --config=tests/playwright.config.ts",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -53,6 +58,7 @@
     "valibot": "^1.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/cytoscape": "^3.21.9",
@@ -63,6 +69,7 @@
     "@vitest/coverage-v8": "^4.0.10",
     "@vitest/ui": "^4.0.10",
     "autoprefixer": "^10.4.21",
+    "dotenv": "^16.6.1",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-formatter-compact": "^9.0.1",

@@ -345,6 +345,7 @@ Zugriff auf Foundry Game-API (versionssicher über Port-Adapter).
 interface FoundryGame {
   getJournalEntries(): Result<FoundryJournalEntry[], FoundryError>;
   getJournalEntryById(id: string): Result<FoundryJournalEntry | null, FoundryError>;
+  invalidateCache(): void; // Invalidates the journal entries cache
 }
 ```
 

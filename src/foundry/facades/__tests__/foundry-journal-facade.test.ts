@@ -22,6 +22,7 @@ describe("FoundryJournalFacade", () => {
     mockGame = {
       getJournalEntries: vi.fn(),
       getJournalEntryById: vi.fn(),
+      invalidateCache: vi.fn(),
       dispose: vi.fn(),
     };
 

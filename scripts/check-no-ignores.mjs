@@ -110,6 +110,11 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['v8 ignore file', 'eslint-disable'],
     reason: 'Legacy Polyfill: Cytoscape-Patch für externe Bibliothek, schwer testbar ohne Browser-Integration',
   },
+  {
+    file: 'src/core/hooks/journal-cache-invalidation-hook.ts',
+    allowed: ['eslint-disable'],
+    reason: 'Foundry Hooks API: Hooks.call ist deprecated, aber notwendig als Fallback für manuelle Hook-Triggerung wenn journalApp nicht verfügbar ist',
+  },
   
   // Type-Assertions
   {

@@ -9,10 +9,10 @@
 |-----------|--------|--------|
 | `v8 ignore` | 10 | ✅ Alle dokumentiert |
 | `type-coverage:ignore` | 8 | ✅ Alle dokumentiert |
-| `eslint-disable` | 15 | ✅ Alle begründet |
+| `eslint-disable` | 16 | ✅ Alle begründet |
 | `@ts-ignore` / `@ts-expect-error` | 0 | ✅ Keine gefunden |
 
-**Gesamt:** 33 ignore-Marker im Produktivcode
+**Gesamt:** 34 ignore-Marker im Produktivcode
 
 ---
 
@@ -63,7 +63,7 @@
 
 ---
 
-## 3. `eslint-disable` Marker (15)
+## 3. `eslint-disable` Marker (16)
 
 ### ✅ Erlaubt (begründet, in EXCEPTIONS oder Policy-konform)
 
@@ -84,6 +84,7 @@
 | `src/polyfills/cytoscape-assign-fix.ts` | 8 | `eslint-disable @typescript-eslint/no-explicit-any` | Legacy polyfill (erlaubt, dokumentationspflichtig) |
 | `src/test/utils/test-helpers.ts` | 229 | `eslint-disable-next-line @typescript-eslint/no-explicit-any` | Test-Utilities (erlaubt) |
 | `src/foundry/custom.d.ts` | 9 | `eslint-disable-next-line @typescript-eslint/no-deprecated` | Type-Definition für Foundry-Typen (erlaubt) |
+| `src/core/hooks/journal-cache-invalidation-hook.ts` | 258 | `eslint-disable-next-line @typescript-eslint/no-deprecated` | Foundry Hooks API: Hooks.call ist deprecated, aber notwendig als Fallback für manuelle Hook-Triggerung wenn journalApp nicht verfügbar ist (in EXCEPTIONS) |
 
 ---
 
@@ -95,8 +96,8 @@
 
 ## 5. Kategorisierung nach Bereichen
 
-### `src/core/**` (außer `init-solid.ts`)
-✅ **Keine Marker** – Alle Marker wurden durch Tests oder Helper-Funktionen behoben
+### `src/core/**` (außer `init-solid.ts` und `journal-cache-invalidation-hook.ts`)
+✅ **1 Marker** – `eslint-disable` für deprecated `Hooks.call` als Fallback (in EXCEPTIONS dokumentiert)
 
 ### `src/core/init-solid.ts`
 - 3 `v8 ignore` Blöcke (environment-dependent Foundry Hooks)
@@ -168,8 +169,8 @@ Jeder ignore-Marker hat eine klare Begründung und ist entweder:
 - In EXCEPTIONS: 2 Marker
 - Außerhalb verbotener Bereiche: 6 Marker
 
-### `eslint-disable` (15 Marker)
-- Begründet in EXCEPTIONS: 9 Marker
+### `eslint-disable` (16 Marker)
+- Begründet in EXCEPTIONS: 10 Marker
 - Begründet außerhalb: 6 Marker
 
 ### `@ts-ignore` / `@ts-expect-error` (0 Marker)

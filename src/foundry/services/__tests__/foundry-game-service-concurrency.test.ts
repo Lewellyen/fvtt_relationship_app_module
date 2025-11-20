@@ -37,6 +37,7 @@ describe("Concurrency: Journal Access", () => {
         const entry = mockEntries.find((e) => e.id === id);
         return ok(entry || null);
       }),
+      invalidateCache: vi.fn(),
       dispose: vi.fn(),
     };
 

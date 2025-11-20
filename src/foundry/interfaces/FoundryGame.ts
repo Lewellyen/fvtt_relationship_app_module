@@ -22,4 +22,10 @@ export interface FoundryGame extends Disposable {
    * @returns Result containing the journal entry or null if not found, or a FoundryError
    */
   getJournalEntryById(id: string): Result<FoundryJournalEntry | null, FoundryError>;
+
+  /**
+   * Invalidates the journal entries cache.
+   * Forces the next getJournalEntries() call to fetch fresh data.
+   */
+  invalidateCache(): void;
 }
