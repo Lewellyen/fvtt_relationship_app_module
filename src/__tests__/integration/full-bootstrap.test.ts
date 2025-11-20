@@ -2,9 +2,12 @@
 // Test file: `any` needed for mocking game.modules
 
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { CompositionRoot } from "@/core/composition-root";
-import { loggerToken, moduleApiInitializerToken } from "@/tokens/tokenindex";
-import { foundryGameToken } from "@/foundry/foundrytokens";
+import { CompositionRoot } from "@/framework/core/composition-root";
+import {
+  loggerToken,
+  moduleApiInitializerToken,
+  foundryGameToken,
+} from "@/infrastructure/shared/tokens";
 
 describe("Integration: Full Bootstrap", () => {
   beforeEach(() => {

@@ -19,7 +19,7 @@ export default defineConfig({
     watch: false, // Disable watch mode by default (use test:watch for interactive mode)
     environment: "happy-dom",
     globals: true,
-    setupFiles: ["./src/test/setup.ts"],
+    setupFiles: ["./src/framework/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{js,ts,svelte}"],
     nodeOptions: {
       exposeGc: true,
@@ -36,30 +36,35 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       exclude: [
         "node_modules/",
-        "src/test/",
+        // Test setup & utilities (no need to test test code)
+        "src/framework/test/**",
+        "src/test/**",
+        // Test files
         "**/*.d.ts",
         "**/*.config.*",
         "**/*.test.ts",
         "**/*.spec.ts",
-        // Pure type/interface files
+        "**/__tests__/**",
+        // Pure type/interface files (no runtime code)
         "src/**/interfaces/**",
-        "**/*.interface.ts", // Interface files with no runtime code
-        "src/types/**",
-        "src/foundry/types.ts",
-        "src/config/environment.ts",
-        "src/di_infrastructure/types/containererrorcode.ts",
-        "src/di_infrastructure/types/containervalidationstate.ts",
-        "src/di_infrastructure/types/injectiontoken.ts",
-        "src/di_infrastructure/types/serviceclass.ts",
-        "src/di_infrastructure/types/servicedependencies.ts",
-        "src/di_infrastructure/types/runtime-safe-cast.ts",
-        "src/di_infrastructure/types/servicefactory.ts",
-        "src/foundry/runtime-casts.ts",
-        "src/core/module-api.ts",
+        "**/*.interface.ts",
+        "src/domain/types/result.ts",
+        "src/domain/entities/**",
+        "src/infrastructure/adapters/foundry/types.ts",
+        "src/infrastructure/di/interfaces.ts",
+        "src/infrastructure/di/types/index.ts",
+        "src/infrastructure/di/types/core/injectiontoken.ts",
+        "src/infrastructure/di/types/errors/**",
+        "src/infrastructure/di/types/resolution/**",
+        "src/infrastructure/shared/tokens/index.ts",
+        "src/framework/types/**",
+        "src/framework/core/api/module-api.ts",
+        // Type utilities and edge-case helpers
+        "src/framework/config/environment.ts",
+        "src/infrastructure/adapters/foundry/runtime-casts.ts",
+        "src/infrastructure/di/types/utilities/runtime-safe-cast.ts",
         // Non-executable infrastructure
-        "src/polyfills/**",
-        "src/svelte/**",
-        "src/custom.d.ts",
+        "src/infrastructure/shared/polyfills/**",
         "programming_learning_examples/**",
       ],
     },

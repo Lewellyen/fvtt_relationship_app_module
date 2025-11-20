@@ -1,0 +1,89 @@
+import type { HookRegistrar } from "@/application/use-cases/hook-registrar.interface";
+import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { Result } from "@/domain/types/result";
+import { ok, err } from "@/infrastructure/shared/utils/result";
+import { disposeHooks } from "@/infrastructure/shared/utils/dispose-hooks";
+import {
+  renderJournalDirectoryHookToken,
+  notificationCenterToken,
+  journalCacheInvalidationHookToken,
+} from "@/infrastructure/shared/tokens";
+
+/**
+ * ModuleHookRegistrar
+ *
+ * Manages registration of all Foundry hooks using Strategy Pattern.
+ * Each hook is implemented as a separate HookRegistrar class.
+ *
+ * **Design Benefits:**
+ * - Easy to add new hooks without modifying this class
+ * - Each hook can be tested in isolation
+ * - Clear separation of concerns
+ * - Full DI architecture: Hooks injected as dependencies
+ */
+export class ModuleHookRegistrar {
+  private hooks: HookRegistrar[];
+
+  constructor(
+    renderJournalHook: HookRegistrar,
+    journalCacheInvalidationHook: HookRegistrar,
+    private readonly notificationCenter: NotificationCenter
+  ) {
+    this.hooks = [renderJournalHook, journalCacheInvalidationHook];
+  }
+
+  /**
+   * Registers all hooks with Foundry VTT.
+   *
+   * NOTE: Container parameter removed - hooks receive all dependencies via constructor injection.
+   */
+  registerAll(): Result<void, Error[]> {
+    const errors: Error[] = [];
+
+    for (const hook of this.hooks) {
+      const result = hook.register();
+      if (!result.ok) {
+        // Convert string error to structured format
+        const error = {
+          code: "HOOK_REGISTRATION_FAILED" as const,
+          message: result.error.message,
+        };
+        // Bootstrap error - log to console only (no UI notification)
+        this.notificationCenter.error("Failed to register hook", error, {
+          channels: ["ConsoleChannel"],
+        });
+        errors.push(result.error);
+      }
+    }
+
+    if (errors.length > 0) {
+      return err(errors);
+    }
+
+    return ok(undefined);
+  }
+
+  /**
+   * Dispose all hooks.
+   * Called when the module is disabled or reloaded.
+   */
+  disposeAll(): void {
+    disposeHooks(this.hooks);
+  }
+}
+
+export class DIModuleHookRegistrar extends ModuleHookRegistrar {
+  static dependencies = [
+    renderJournalDirectoryHookToken,
+    journalCacheInvalidationHookToken,
+    notificationCenterToken,
+  ] as const;
+
+  constructor(
+    renderJournalHook: HookRegistrar,
+    journalCacheInvalidationHook: HookRegistrar,
+    notificationCenter: NotificationCenter
+  ) {
+    super(renderJournalHook, journalCacheInvalidationHook, notificationCenter);
+  }
+}

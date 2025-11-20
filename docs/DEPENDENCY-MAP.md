@@ -1,13 +1,28 @@
 # Dependency Map - FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-17 (Unreleased)  
+**Aktualisiert:** 2025-11-20 (Unreleased - Clean Architecture Restrukturierung)  
 **Zweck:** Detaillierte Abhängigkeits-Visualisierung für Refactoring  
 **Model:** Claude Sonnet 4.5  
-**Projekt-Status:** Version 0.25.8 (Pre-Release)  
+**Projekt-Status:** Version 0.26.3 → Unreleased (Pre-Release)  
 **Breaking Changes:** ✅ Erlaubt (bis Modul 1.0.0)  
 **Legacy-Code:** ❌ Wird unmittelbar bereinigt  
 **Versioning:** Siehe [VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md)
+
+---
+
+## ⭐ Update (Unreleased) - Clean Architecture Restrukturierung
+
+Die gesamte `/src` Struktur wurde nach Clean Architecture Prinzipien (Option B) restrukturiert:
+
+- **Domain Layer** (`src/domain/`): Entities, Ports, Types - Framework-unabhängig
+- **Application Layer** (`src/application/`): Services, Use-Cases, Settings, Health
+- **Infrastructure Layer** (`src/infrastructure/`): Adapters, DI, Cache, Notifications, etc.
+- **Framework Layer** (`src/framework/`): Bootstrap, Config, API, UI
+
+**Import-Pfade bleiben stabil:** Alle `@/`-Imports funktionieren unverändert durch `tsconfig.json` paths.
+
+Siehe [project_restructuring.md](refactoring/project_restructuring.md) für vollständige Migration-Details.
 
 ---
 

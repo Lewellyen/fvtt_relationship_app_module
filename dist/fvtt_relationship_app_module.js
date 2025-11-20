@@ -204,29 +204,29 @@ function createInjectionToken(description2) {
   return Symbol(description2);
 }
 __name(createInjectionToken, "createInjectionToken");
-const foundryGameToken = createInjectionToken("FoundryGame");
-const foundryHooksToken = createInjectionToken("FoundryHooks");
-const foundryDocumentToken = createInjectionToken("FoundryDocument");
-const foundryUIToken = createInjectionToken("FoundryUI");
-const portSelectorToken = createInjectionToken("PortSelector");
-const foundryGamePortRegistryToken = createInjectionToken("FoundryGamePortRegistry");
-const foundryHooksPortRegistryToken = createInjectionToken("FoundryHooksPortRegistry");
-const foundryDocumentPortRegistryToken = createInjectionToken("FoundryDocumentPortRegistry");
-const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry");
-const foundrySettingsToken = createInjectionToken("FoundrySettings");
-const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
-const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
-const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
 const loggerToken = createInjectionToken("Logger");
+const journalVisibilityPortToken = createInjectionToken("JournalVisibilityPort");
+const journalVisibilityServiceToken = createInjectionToken(
+  "JournalVisibilityService"
+);
+const environmentConfigToken = createInjectionToken("EnvironmentConfig");
+const runtimeConfigToken = createInjectionToken("RuntimeConfigService");
+const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
+const healthCheckRegistryToken = createInjectionToken("HealthCheckRegistry");
+const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
+const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
+const serviceContainerToken = createInjectionToken("ServiceContainer");
+const moduleSettingsRegistrarToken = createInjectionToken("ModuleSettingsRegistrar");
+const moduleHookRegistrarToken = createInjectionToken("ModuleHookRegistrar");
 const metricsCollectorToken = createInjectionToken("MetricsCollector");
 const metricsRecorderToken = createInjectionToken("MetricsRecorder");
 const metricsSamplerToken = createInjectionToken("MetricsSampler");
 const metricsStorageToken = createInjectionToken("MetricsStorage");
 const traceContextToken = createInjectionToken("TraceContext");
-const journalVisibilityPortToken = createInjectionToken("JournalVisibilityPort");
-const journalVisibilityServiceToken = createInjectionToken(
-  "JournalVisibilityService"
+const portSelectionEventEmitterToken = createInjectionToken(
+  "PortSelectionEventEmitter"
 );
+const observabilityRegistryToken = createInjectionToken("ObservabilityRegistry");
 const foundryI18nToken = createInjectionToken("FoundryI18nService");
 const localI18nToken = createInjectionToken("LocalI18nService");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
@@ -241,34 +241,32 @@ const translationHandlerChainToken = createInjectionToken("TranslationHandlerCha
 const notificationCenterToken = createInjectionToken("NotificationCenter");
 const consoleChannelToken = createInjectionToken("ConsoleChannel");
 const uiChannelToken = createInjectionToken("UIChannel");
-const environmentConfigToken = createInjectionToken("EnvironmentConfig");
-const runtimeConfigToken = createInjectionToken("RuntimeConfigService");
-const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
-const healthCheckRegistryToken = createInjectionToken("HealthCheckRegistry");
-const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
-const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
-const serviceContainerToken = createInjectionToken("ServiceContainer");
 const cacheServiceConfigToken = createInjectionToken("CacheServiceConfig");
 const cacheServiceToken = createInjectionToken("CacheService");
 const performanceTrackingServiceToken = createInjectionToken(
   "PerformanceTrackingService"
 );
 const retryServiceToken = createInjectionToken("RetryService");
-const portSelectionEventEmitterToken = createInjectionToken("PortSelectionEventEmitter");
-const observabilityRegistryToken = createInjectionToken(
-  "ObservabilityRegistry"
+const renderJournalDirectoryHookToken = createInjectionToken(
+  "RenderJournalDirectoryHook"
 );
-const moduleSettingsRegistrarToken = createInjectionToken(
-  "ModuleSettingsRegistrar"
+const journalCacheInvalidationHookToken = createInjectionToken(
+  "JournalCacheInvalidationHook"
 );
-const moduleHookRegistrarToken = createInjectionToken(
-  "ModuleHookRegistrar"
-);
-const renderJournalDirectoryHookToken = createInjectionToken("RenderJournalDirectoryHook");
-const journalCacheInvalidationHookToken = createInjectionToken("JournalCacheInvalidationHook");
-const moduleApiInitializerToken = createInjectionToken(
-  "ModuleApiInitializer"
-);
+const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
+const foundryGameToken = createInjectionToken("FoundryGame");
+const foundryHooksToken = createInjectionToken("FoundryHooks");
+const foundryDocumentToken = createInjectionToken("FoundryDocument");
+const foundryUIToken = createInjectionToken("FoundryUI");
+const portSelectorToken = createInjectionToken("PortSelector");
+const foundryGamePortRegistryToken = createInjectionToken("FoundryGamePortRegistry");
+const foundryHooksPortRegistryToken = createInjectionToken("FoundryHooksPortRegistry");
+const foundryDocumentPortRegistryToken = createInjectionToken("FoundryDocumentPortRegistry");
+const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry");
+const foundrySettingsToken = createInjectionToken("FoundrySettings");
+const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
+const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
+const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
 const apiSafeTokens = /* @__PURE__ */ new Set();
 function markAsApiSafe(token) {
   apiSafeTokens.add(token);
@@ -1866,6 +1864,13 @@ const _ServiceContainer = class _ServiceContainer {
     return this.registry.registerValue(token, value2);
   }
   /**
+   * Register an already created instance.
+   * Internally treated the same as a value registration.
+   */
+  registerInstance(token, instance2) {
+    return this.registerValue(token, instance2);
+  }
+  /**
    * Returns a previously registered constant value without requiring validation.
    * Useful for bootstrap/static values that are needed while the container is still registering services.
    */
@@ -2133,6 +2138,18 @@ Only the public ModuleApi should expose resolve() for external modules.`
    */
   isRegistered(token) {
     return ok(this.registry.has(token));
+  }
+  /**
+   * Returns API-safe token metadata for external consumption.
+   */
+  getApiSafeToken(token) {
+    if (!isApiSafeTokenRuntime(token)) {
+      return null;
+    }
+    return {
+      description: String(token),
+      isRegistered: this.registry.has(token)
+    };
   }
   /**
    * Synchronously dispose container and all children.

@@ -4,10 +4,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
-import { MODULE_CONSTANTS } from "@/constants";
-import { LogLevel } from "@/config/environment";
+import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { LogLevel } from "@/framework/config/environment";
 import { expectResultOk } from "@/test/utils/test-helpers";
-import type { Logger } from "@/interfaces/logger";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
 
 describe("Integration: Settings Change + Service Reaction", () => {
   let cleanup: (() => void) | undefined;
@@ -64,13 +64,13 @@ describe("Integration: Settings Change + Service Reaction", () => {
     });
 
     // 2. init-solid importieren (triggert Bootstrap und Hook-Registrierung)
-    await import("@/core/init-solid");
+    await import("@/framework/core/init-solid");
 
     // 3. Logger-Service vor init Hook resolven und spyen
     // WICHTIG: Logger muss vor init Hook geholt werden, damit es die gleiche Instanz ist,
     // die bei der Settings-Registrierung verwendet wird
-    const { getRootContainer } = await import("@/core/init-solid");
-    const { loggerToken } = await import("@/tokens/tokenindex");
+    const { getRootContainer } = await import("@/framework/core/init-solid");
+    const { loggerToken } = await import("@/infrastructure/shared/tokens");
 
     const containerResultBeforeInit = getRootContainer();
     expectResultOk(containerResultBeforeInit);

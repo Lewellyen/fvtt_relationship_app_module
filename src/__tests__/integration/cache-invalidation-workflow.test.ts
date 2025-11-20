@@ -5,10 +5,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { createMockJournalEntry } from "@/test/mocks/foundry";
-import { MODULE_CONSTANTS } from "@/constants";
-import { HIDDEN_JOURNAL_CACHE_TAG } from "@/services/JournalVisibilityService";
-import type { CacheService, CacheKey, CacheEntryMetadata } from "@/interfaces/cache";
-import { createCacheNamespace } from "@/interfaces/cache";
+import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { HIDDEN_JOURNAL_CACHE_TAG } from "@/application/services/JournalVisibilityService";
+import type {
+  CacheService,
+  CacheKey,
+  CacheEntryMetadata,
+} from "@/infrastructure/cache/cache.interface";
+import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import { expectResultOk } from "@/test/utils/test-helpers";
 
 describe("Integration: Cache Invalidation Workflow", () => {
@@ -67,7 +71,7 @@ describe("Integration: Cache Invalidation Workflow", () => {
     });
 
     // 2. init-solid importieren (triggert Bootstrap)
-    await import("@/core/init-solid");
+    await import("@/framework/core/init-solid");
 
     // 3. init Hook feuern (registriert Hooks)
     const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
@@ -82,9 +86,9 @@ describe("Integration: Cache Invalidation Workflow", () => {
     // WICHTIG: Token dynamisch importieren nach vi.resetModules() um sicherzustellen,
     // dass wir die gleichen Symbol-Instanzen verwenden
     const { cacheServiceToken, journalVisibilityServiceToken } = await import(
-      "@/tokens/tokenindex"
+      "@/infrastructure/shared/tokens"
     );
-    const { getRootContainer } = await import("@/core/init-solid");
+    const { getRootContainer } = await import("@/framework/core/init-solid");
 
     const containerResult = getRootContainer();
     expectResultOk(containerResult);

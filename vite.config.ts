@@ -32,7 +32,7 @@ export default defineConfig(() => {
       // Alternative: Use esbuild minify with keepNames in production after testing
       rollupOptions: {
         input: {
-          main: resolve(__dirname, "src/index.ts"),
+          main: resolve(__dirname, "src/framework/index.ts"),
         },
         output: {
           // Foundry VTT erwartet eine spezifische Datei

@@ -12,6 +12,36 @@
 
 ### Upgrade-Hinweise
 
+## [0.26.4] - 2025-11-21
+### Hinzugefügt
+- Keine neuen Features
+
+### Geändert
+- **Clean Architecture Restrukturierung (Option B)**: Vollständige Umstrukturierung des `/src` Verzeichnisses nach Clean Architecture Prinzipien mit klarer Schichtentrennung ([Details](docs/refactoring/project_restructuring.md))
+- **Domain Layer** (`src/domain/`): Entities, Ports und Types - Geschäftslogik ohne Framework-Abhängigkeiten
+- **Application Layer** (`src/application/`): Services, Use-Cases, Settings und Health-Checks - Anwendungslogik
+- **Infrastructure Layer** (`src/infrastructure/`): Adapters (Foundry), DI-Container, Cache, Notifications, Observability, I18n, Logging, Shared-Utilities - Technische Infrastruktur
+- **Framework Layer** (`src/framework/`): Bootstrap, Config, API, Types, UI - Framework-Integration für Foundry VTT
+- **Token-Organisation**: Tokens aufgeteilt in thematische Kategorien (`src/infrastructure/shared/tokens/`) - `core.tokens.ts`, `observability.tokens.ts`, `i18n.tokens.ts`, `notifications.tokens.ts`, `infrastructure.tokens.ts`, `foundry.tokens.ts` mit zentralem Index ([Details](src/infrastructure/shared/tokens/index.ts))
+- **DI-Types-Gruppierung**: DI-Types in logische Kategorien organisiert (`src/infrastructure/di/types/`) - `core/`, `errors/`, `resolution/`, `utilities/` mit zentralem Export ([Details](src/infrastructure/di/types/index.ts))
+- **Konsolidierte Interfaces**: Alle DI-Interfaces in einer Datei zusammengeführt (`src/infrastructure/di/interfaces.ts`) - Container, ContainerError, Disposable, AsyncDisposable ([Details](src/infrastructure/di/interfaces.ts))
+- **Import-Pfad-Stabilität**: Alle `@/`-Imports bleiben unverändert funktionsfähig durch `tsconfig.json` paths-Konfiguration - keine Breaking Changes in der öffentlichen API
+- **Foundry-Vorgaben eingehalten**: Root-Ordner für Foundry-spezifische Assets unverändert (`templates/`, `styles/`, `assets/`, `lang/`) - nur `/src` restrukturiert
+- **Aufräumen**: Leere Verzeichnisse nach Migration entfernt (`src/framework/core/health/`, `src/framework/core/hooks/`, `src/framework/core/ports/`, `src/framework/core/settings/`)
+- **Encoding-Fixes**: UTF-8 BOM aus 42 Dateien entfernt für konsistentes Encoding ohne BOM
+- **No-Ignores Whitelist**: Pfade in `scripts/check-no-ignores.mjs` aktualisiert auf neue Ordnerstruktur (15 Dateien)
+- **Build-Konfiguration**: Entry Point in `vite.config.ts` auf neuen Pfad `src/framework/index.ts` aktualisiert
+
+### Fehlerbehebungen
+- **Encoding**: Alle Dateien verwenden jetzt UTF-8 ohne BOM (42 Dateien korrigiert)
+- **Check-Scripts**: Whitelist-Pfade in `check-no-ignores.mjs` auf neue Struktur angepasst
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.26.3] - 2025-11-20
 ### Hinzugefügt
 - **JournalVisibilityPort**: Neues Port-Interface für Journal-Operations, abstrahiert Platform-Details ([Details](src/core/ports/journal-visibility-port.interface.ts))

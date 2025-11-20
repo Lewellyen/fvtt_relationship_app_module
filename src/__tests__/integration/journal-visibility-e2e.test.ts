@@ -6,7 +6,7 @@ import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { createMockJournalEntry } from "@/test/mocks/foundry";
 import { createMockDOM } from "@/test/utils/test-helpers";
-import { MODULE_CONSTANTS } from "@/constants";
+import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
 describe("Integration: Journal Visibility End-to-End", () => {
   let cleanup: (() => void) | undefined;
@@ -65,7 +65,7 @@ describe("Integration: Journal Visibility End-to-End", () => {
     });
 
     // 2. init-solid importieren (triggert Bootstrap und Hook-Registrierung)
-    await import("@/core/init-solid");
+    await import("@/framework/core/init-solid");
 
     // 3. init Hook feuern, damit Hooks registriert werden
     const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
@@ -144,7 +144,7 @@ describe("Integration: Journal Visibility End-to-End", () => {
     });
 
     // 2. init-solid importieren (triggert Bootstrap und Hook-Registrierung)
-    await import("@/core/init-solid");
+    await import("@/framework/core/init-solid");
 
     // 3. init Hook feuern, damit Hooks registriert werden
     const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;

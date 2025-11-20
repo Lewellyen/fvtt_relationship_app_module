@@ -1,15 +1,15 @@
 import { vi } from "vitest";
-import type { Logger } from "@/interfaces/logger";
-import type { FoundryHooks } from "@/foundry/interfaces/FoundryHooks";
-import type { JournalVisibilityService } from "@/services/JournalVisibilityService";
-import type { NotificationCenter } from "@/notifications/NotificationCenter";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
+import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
+import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import {
   loggerToken,
   journalVisibilityServiceToken,
   notificationCenterToken,
-} from "@/tokens/tokenindex";
-import { foundryHooksToken } from "@/foundry/foundrytokens";
-import type { FoundryJournalEntry } from "@/foundry/types";
+  foundryHooksToken,
+} from "@/infrastructure/shared/tokens";
+import type { FoundryJournalEntry } from "@/infrastructure/adapters/foundry/types";
 
 /**
  * Mock-Factories für Foundry VTT API-Objekte

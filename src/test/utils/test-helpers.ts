@@ -1,18 +1,18 @@
 import { vi } from "vitest";
-import type { Result, Ok, Err } from "@/types/result";
+import type { Result, Ok, Err } from "@/domain/types/result";
 import { createMockGame, createMockHooks, createMockUI } from "../mocks/foundry";
-import { MetricsCollector } from "@/observability/metrics-collector";
-import type { MetricsSampler } from "@/observability/interfaces/metrics-sampler";
-import type { Logger } from "@/interfaces/logger";
-import type { EnvironmentConfig } from "@/config/environment";
-import type { PerformanceTracker } from "@/interfaces/performance-tracker";
-import type { PerformanceTrackingService } from "@/services/PerformanceTrackingService";
-import { LogLevel } from "@/config/environment";
-import { MODULE_CONSTANTS } from "@/constants";
-import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
-import { CompositionRoot } from "@/core/composition-root";
-import type { ServiceContainer } from "@/di_infrastructure/container";
-import { loggerToken, journalVisibilityServiceToken } from "@/tokens/tokenindex";
+import { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
+import type { MetricsSampler } from "@/infrastructure/observability/interfaces/metrics-sampler";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { EnvironmentConfig } from "@/framework/config/environment";
+import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
+import type { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
+import { LogLevel } from "@/framework/config/environment";
+import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import { CompositionRoot } from "@/framework/core/composition-root";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import { loggerToken, journalVisibilityServiceToken } from "@/infrastructure/shared/tokens";
 
 /**
  * Type-safe Result assertion helpers

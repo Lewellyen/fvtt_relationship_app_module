@@ -1,7 +1,7 @@
 # Projektanalyse: FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-17 (Unreleased)  
+**Aktualisiert:** 2025-11-20 (Unreleased - Clean Architecture Restrukturierung)  
 **Zweck:** Grundlage für Refactoring-Planungen  
 **Model:** Claude Sonnet 4.5
 
@@ -24,10 +24,16 @@
 
 Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection**, **Port-Adapter-Pattern** für Foundry VTT-Versionskompatiblität und **Result-Pattern** für fehlerfreies Error Handling.
 
-**Status:** Version 0.20.0 (Pre-Release Phase)  
+**Status:** Version 0.26.3 → Unreleased (Pre-Release Phase - Clean Architecture Restrukturierung)  
 **Breaking Changes:** ✅ Erlaubt (bis Modul 1.0.0)  
 **Legacy-Code:** ❌ Wird unmittelbar bereinigt  
 **Ab Modul 1.0.0:** Breaking Changes nur mit Deprecation-Phase & Migration Guide
+
+### Unreleased Changes
+- **Clean Architecture Restrukturierung (Option B):** Vollständige Umstrukturierung des `/src` Verzeichnisses nach Clean Architecture Prinzipien mit klarer Schichtentrennung (Domain → Application → Infrastructure → Framework). Import-Pfade (`@/`) bleiben stabil. ([Details](refactoring/project_restructuring.md))
+- **Token-Organisation:** Tokens aufgeteilt in 6 thematische Dateien (`core.tokens.ts`, `observability.tokens.ts`, `i18n.tokens.ts`, `notifications.tokens.ts`, `infrastructure.tokens.ts`, `foundry.tokens.ts`) mit zentralem Index. ([Details](../src/infrastructure/shared/tokens/index.ts))
+- **DI-Types-Gruppierung:** DI-Types in 4 logische Kategorien organisiert (`core/`, `errors/`, `resolution/`, `utilities/`). ([Details](../src/infrastructure/di/types/index.ts))
+- **Konsolidierte Interfaces:** Alle DI-Interfaces in einer Datei (`interfaces.ts`). ([Details](../src/infrastructure/di/interfaces.ts))
 
 ### Release-Highlights v0.24.0
 - **RuntimeConfig Live Overrides:** Der CacheService lauscht jetzt direkt auf RuntimeConfig-Änderungen (enable/TTL/maxEntries) und reagiert ohne Reload auf Foundry-Settings. ([Details](src/services/CacheService.ts))
@@ -51,25 +57,39 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 - **Self-Registration Pattern**: Services registrieren sich automatisch für Observability ⭐ NEW v0.8.0
 - **Observer Pattern**: Event-basierte Observability (PortSelector)
 
-### Code-Überblick (src/)
+### Code-Überblick (src/) ⭐ UPDATED (Unreleased) - Clean Architecture
 
 | Pfad | Inhalt | Kernthemen |
 |------|--------|------------|
-| `src/index.ts` | Einstiegspunkt & Modul-Bootstrap | verbindet Foundry Hooks mit `init-solid` |
-| `src/constants.ts` | Zentrale Konstanten (`MODULE_CONSTANTS`, Flags, Cache) | Wiederverwendbare Werte |
-| `src/config/` | DI-Konfiguration (Orchestrator + Module) | Registriert Services & Wrapper |
-| `src/core/` | Bootstrap, API-Exposition, Health, Hooks, Settings | Clean-Architecture Kern |
-| `src/di_infrastructure/` | Container, Registry, Resolver, Token-Utilities, Validation | Fundament des DI-Systems |
-| `src/foundry/` | Port-Adapter, Risiken, Ports v13, Facades, Validation | Foundry-spezifische Integration |
-| `src/notifications/` | NotificationCenter & Channels (Console/UI) | Strategy-/Observer-Pattern |
-| `src/observability/` | MetricsCollector, TraceContext, Performance Tracking, ObservabilityRegistry | Monitoring & Telemetrie |
-| `src/services/` | Business- & Utility-Services (Logger, I18n, Journal, Retry, Performance) | Applikationslogik |
-| `src/utils/` | Result-/Async-/Event-/Trace-/Security-Helfer | Querschnittliche Helferfunktionen |
-| `src/tokens/` | `tokenindex.ts` – alle Injection Tokens + API-safe Tokens | Zentrales Token-Register |
-| `src/types/` | Gemeinsame Typen (`Result`, `ServiceTypeIndex`) | TypeScript-Shared Types; reine Typ-/Interface-Definitionen, die über **Type-Coverage** und nicht über Runtime-Code-Coverage abgesichert werden |
-| `src/polyfills/` | Browser-spezifische Workarounds (`cytoscape-assign-fix`) | Kompatibilitätslayer |
-| `src/svelte/` | UI-Stubs (ErrorBoundary, Demo-Komponenten) | Platzhalter für UI-Integration |
-| `src/test/` | Test-Mocks & Setup (Unterstützung für Vitest) | Nur für Tests genutzt |
+| **Domain Layer** |
+| `src/domain/entities/` | Domain-Modelle (Journal-Entry) | Framework-unabhängige Geschäftslogik |
+| `src/domain/ports/` | Abstraktions-Interfaces (JournalVisibilityPort) | Dependency Inversion Principle |
+| `src/domain/types/` | Domain Types (Result) | Gemeinsame Datentypen |
+| **Application Layer** |
+| `src/application/services/` | Business Services (JournalVisibility, Runtime Config, Health) | Anwendungslogik |
+| `src/application/use-cases/` | Hook-Handler (RenderJournalDirectory, CacheInvalidation) | Use-Case-Implementierungen |
+| `src/application/settings/` | Modul-Settings (Log-Level, Cache, Performance) | Settings-Definitionen |
+| `src/application/health/` | Health-Checks (Container, Metrics, Registry) | Health-Check-System |
+| **Infrastructure Layer** |
+| `src/infrastructure/adapters/foundry/` | Foundry VTT Integration (Ports, Services, Validation) | Foundry-spezifische Adapter |
+| `src/infrastructure/di/` | Dependency Injection (Container, Registry, Resolver) | DI-System-Infrastruktur |
+| `src/infrastructure/cache/` | Caching (CacheService) | In-Memory-Cache mit TTL |
+| `src/infrastructure/notifications/` | NotificationCenter & Channels | Strategy-/Observer-Pattern |
+| `src/infrastructure/observability/` | Metrics, Tracing, Performance Tracking | Monitoring & Telemetrie |
+| `src/infrastructure/i18n/` | Internationalisierung (Facade, Handlers) | i18n-System |
+| `src/infrastructure/logging/` | Logging (ConsoleLogger, BootstrapLogger) | Logging-Infrastruktur |
+| `src/infrastructure/retry/` | Retry-Logik (RetryService) | Exponential Backoff |
+| `src/infrastructure/performance/` | Performance Tracking | Performance-Metriken |
+| `src/infrastructure/shared/` | Shared Utilities (Tokens, Utils, Constants, Polyfills) | Querschnittliche Funktionen |
+| **Framework Layer** |
+| `src/framework/index.ts` | Entry Point & Bootstrap | Foundry Hook Integration |
+| `src/framework/core/` | Bootstrap, Composition Root, Init | Framework-Bootstrap |
+| `src/framework/api/` | Public API (ModuleApiInitializer) | API-Exposition |
+| `src/framework/config/` | DI-Konfiguration (Module-basiert) | Service-Registrierung |
+| `src/framework/types/` | Type Definitions (custom.d.ts, global.d.ts) | TypeScript-Deklarationen |
+| `src/framework/ui/` | UI-Komponenten (Svelte) | UI-Integration |
+| **Test Support** |
+| `src/test/` | Test-Mocks & Setup | Vitest-Unterstützung |
 
 ---
 

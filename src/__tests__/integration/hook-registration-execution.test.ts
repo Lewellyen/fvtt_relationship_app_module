@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
-import { MODULE_CONSTANTS } from "@/constants";
+import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
 describe("Integration: Hook Registration + Execution", () => {
   let cleanup: (() => void) | undefined;
@@ -39,7 +39,7 @@ describe("Integration: Hook Registration + Execution", () => {
     });
 
     // 2. init-solid importieren (triggert Bootstrap und Hook-Registrierung)
-    await import("@/core/init-solid");
+    await import("@/framework/core/init-solid");
 
     // 3. Hook-Mock holen
     const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;

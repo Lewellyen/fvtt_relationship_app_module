@@ -1,11 +1,27 @@
 # Quick Reference – Service & Dependency Übersicht
 
 **Model:** Claude Sonnet 4.5  
-**Datum:** 2025-11-17  
-**Projekt-Status:** Version 0.25.8 (Pre-Release)  
+**Datum:** 2025-11-20  
+**Projekt-Status:** Version 0.26.3 → Unreleased (Pre-Release - Clean Architecture Restrukturierung)  
 **API-Version:** 1.0.0  
 **Breaking Changes:** ✅ Erlaubt bis Modul 1.0.0  
 **Legacy-Code:** ❌ Wird unmittelbar bereinigt
+
+---
+
+## ⭐ Update (Unreleased) - Clean Architecture
+
+Die gesamte `/src` Struktur wurde nach Clean Architecture restrukturiert:
+
+```
+src/
+├── domain/              ✨ Framework-unabhängige Geschäftslogik
+├── application/         ✨ Anwendungslogik (Services, Use-Cases)
+├── infrastructure/      ✨ Technische Infrastruktur (DI, Cache, etc.)
+└── framework/           ✨ Framework-Integration (Bootstrap, Config)
+```
+
+**Wichtig:** Alle `@/`-Imports funktionieren unverändert! Keine Breaking Changes in der API.
 
 ---
 
@@ -57,12 +73,12 @@
 
 ---
 
-## 📦 Modular Config Structure ⭐ NEW v0.8.0
+## 📦 Modular Config Structure ⭐ UPDATED (Unreleased)
 
 DI-Konfiguration ist in 7 thematische Module aufgeteilt:
 
 ```
-src/config/
+src/framework/config/
 ├── dependencyconfig.ts                (Orchestrator)
 ├── modules/
 │   ├── core-services.config.ts        (Logger, Metrics, Environment)
@@ -72,6 +88,7 @@ src/config/
 │   ├── utility-services.config.ts     (Performance, Retry)
 │   ├── i18n-services.config.ts        (I18n Services)
 │   ├── notifications.config.ts        (NotificationCenter & Channels)
+│   ├── cache-services.config.ts       (CacheService)
 │   └── registrars.config.ts           (ModuleSettingsRegistrar, ModuleHookRegistrar)
 ```
 
@@ -95,7 +112,7 @@ import {
   observabilityRegistryToken,
   portSelectionEventEmitterToken,
   loggerToken,
-} from "@/tokens/tokenindex";
+} from "@/infrastructure/shared/tokens";
 
 const metrics = container.resolve(metricsCollectorToken);
 const traceContext = container.resolve(traceContextToken);
@@ -119,7 +136,7 @@ import {
   moduleSettingsRegistrarToken,
   moduleHookRegistrarToken,
   renderJournalDirectoryHookToken,
-} from "@/tokens/tokenindex";
+} from "@/infrastructure/shared/tokens";
 
 const game = container.resolve(foundryGameToken);
 const settings = container.resolve(foundrySettingsToken);
@@ -132,7 +149,7 @@ import {
   journalVisibilityServiceToken,
   i18nFacadeToken,
   foundryJournalFacadeToken,
-} from "@/tokens/tokenindex";
+} from "@/infrastructure/shared/tokens";
 
 const journalService = container.resolve(journalVisibilityServiceToken);
 const i18n = container.resolve(i18nFacadeToken);
@@ -201,10 +218,10 @@ export class DIMyService extends MyService {
 
 ### 3. Token & Registrierung
 ```typescript
-// src/tokens/tokenindex.ts
+// src/infrastructure/shared/tokens/infrastructure.tokens.ts
 export const myServiceToken = createInjectionToken<MyService>("MyService");
 
-// src/config/modules/utility-services.config.ts
+// src/framework/config/modules/utility-services.config.ts
 container.registerClass(myServiceToken, DIMyService, ServiceLifecycle.SINGLETON);
 ```
 
@@ -321,7 +338,7 @@ const result = await retryService.retry(
 
 #### Automatische TraceContext-Propagation (empfohlen)
 ```typescript
-import { traceContextToken } from "@/tokens/tokenindex";
+import { traceContextToken } from "@/infrastructure/shared/tokens";
 
 const traceContext = container.resolve(traceContextToken);
 
@@ -399,7 +416,7 @@ tracedLogger.info("Operation completed");
 
 ### Ok Result
 ```typescript
-import { ok } from "@/utils/functional/result";
+import { ok } from "@/infrastructure/shared/utils/result";
 
 function success(): Result<string, never> {
   return ok("Success!");
@@ -408,7 +425,7 @@ function success(): Result<string, never> {
 
 ### Error Result
 ```typescript
-import { err } from "@/utils/functional/result";
+import { err } from "@/infrastructure/shared/utils/result";
 
 function failure(): Result<never, string> {
   return err("Something went wrong");
@@ -417,7 +434,7 @@ function failure(): Result<never, string> {
 
 ### Pattern Matching
 ```typescript
-import { match } from "@/utils/functional/result";
+import { match } from "@/infrastructure/shared/utils/result";
 
 const result = doSomething();
 match(result, {
@@ -428,7 +445,7 @@ match(result, {
 
 ### Chaining
 ```typescript
-import { andThen, map } from "@/utils/functional/result";
+import { andThen, map } from "@/infrastructure/shared/utils/result";
 
 const result = parseNumber("42")
   |> andThen((num) => divide(100, num))
@@ -437,7 +454,7 @@ const result = parseNumber("42")
 
 ### Async Results
 ```typescript
-import { asyncAndThen, fromPromise } from "@/utils/functional/result";
+import { asyncAndThen, fromPromise } from "@/infrastructure/shared/utils/result";
 
 const result = await fromPromise(
   fetch("/api/data"),
