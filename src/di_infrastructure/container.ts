@@ -19,7 +19,7 @@ import { ScopeManager } from "./scope/ScopeManager";
 import { withTimeout, TimeoutError } from "@/utils/async/promise-timeout";
 import { ENV } from "@/config/environment";
 import { BootstrapPerformanceTracker } from "@/observability/bootstrap-performance-tracker";
-import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import { createRuntimeConfig } from "@/core/runtime-config/runtime-config-factory";
 import { metricsCollectorToken } from "@/tokens/tokenindex";
 
 /**
@@ -127,7 +127,7 @@ export class ServiceContainer implements Container {
     const scopeManager = new ScopeManager("root", null, cache);
 
     // Bootstrap performance tracker (no MetricsCollector yet)
-    const performanceTracker = new BootstrapPerformanceTracker(new RuntimeConfigService(ENV), null);
+    const performanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(ENV), null);
     const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
 
     return new ServiceContainer(registry, validator, cache, resolver, scopeManager, "registering");
@@ -470,10 +470,7 @@ export class ServiceContainer implements Container {
     const childManager = scopeResult.value.manager;
 
     // Create performance tracker for child (same as root)
-    const childPerformanceTracker = new BootstrapPerformanceTracker(
-      new RuntimeConfigService(ENV),
-      null
-    );
+    const childPerformanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(ENV), null);
     const childResolver = new ServiceResolver(
       childRegistry,
       childCache,

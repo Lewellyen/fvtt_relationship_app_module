@@ -4,7 +4,8 @@ import { MODULE_CONSTANTS } from "@/constants";
 import { LogLevel } from "@/config/environment";
 import type { EnvironmentConfig } from "@/config/environment";
 import { TraceContext } from "@/observability/trace/TraceContext";
-import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import { createRuntimeConfig } from "@/core/runtime-config/runtime-config-factory";
+import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 
 describe("ConsoleLoggerService", () => {
@@ -19,7 +20,7 @@ describe("ConsoleLoggerService", () => {
 
   beforeEach(() => {
     mockEnv = createMockEnvironmentConfig({ logLevel: LogLevel.INFO });
-    runtimeConfig = new RuntimeConfigService(mockEnv);
+    runtimeConfig = createRuntimeConfig(mockEnv);
     logger = new ConsoleLoggerService(runtimeConfig);
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -352,7 +353,7 @@ describe("ConsoleLoggerService", () => {
 
     beforeEach(() => {
       traceContext = new TraceContext();
-      loggerWithContext = new ConsoleLoggerService(new RuntimeConfigService(mockEnv), traceContext);
+      loggerWithContext = new ConsoleLoggerService(createRuntimeConfig(mockEnv), traceContext);
     });
 
     it("should auto-inject trace ID from context when available", () => {
@@ -440,7 +441,7 @@ describe("ConsoleLoggerService", () => {
     });
 
     it("should work when TraceContext is not injected (backward compatibility)", () => {
-      const loggerWithoutContext = new ConsoleLoggerService(new RuntimeConfigService(mockEnv));
+      const loggerWithoutContext = new ConsoleLoggerService(createRuntimeConfig(mockEnv));
 
       loggerWithoutContext.info("Message without context injection");
 
@@ -496,14 +497,14 @@ describe("ConsoleLoggerService", () => {
 
   describe("Runtime config binding", () => {
     it("should unsubscribe previous listener before re-binding", () => {
-      const firstConfig = new RuntimeConfigService(
+      const firstConfig = createRuntimeConfig(
         createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
       );
       const cleanupSpy = vi.fn();
       const firstOnChangeSpy = vi.spyOn(firstConfig, "onChange").mockReturnValue(cleanupSpy);
       const localLogger = new ConsoleLoggerService(firstConfig);
 
-      const secondConfig = new RuntimeConfigService(
+      const secondConfig = createRuntimeConfig(
         createMockEnvironmentConfig({ logLevel: LogLevel.WARN })
       );
       const secondCleanupSpy = vi.fn();

@@ -11,7 +11,7 @@ import {
   runtimeConfigToken,
 } from "@/tokens/tokenindex";
 import { ENV } from "@/config/environment";
-import { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import { createRuntimeConfig } from "@/core/runtime-config/runtime-config-factory";
 import { DIContainerHealthCheck } from "@/core/health/container-health-check";
 import { DIMetricsHealthCheck } from "@/core/health/metrics-health-check";
 import { ServiceLifecycle } from "@/di_infrastructure/types/servicelifecycle";
@@ -39,10 +39,7 @@ function registerStaticValues(container: ServiceContainer): Result<void, string>
     return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
   }
 
-  const runtimeConfigResult = container.registerValue(
-    runtimeConfigToken,
-    new RuntimeConfigService(ENV)
-  );
+  const runtimeConfigResult = container.registerValue(runtimeConfigToken, createRuntimeConfig(ENV));
   if (isErr(runtimeConfigResult)) {
     return err(`Failed to register RuntimeConfigService: ${runtimeConfigResult.error.message}`);
   }

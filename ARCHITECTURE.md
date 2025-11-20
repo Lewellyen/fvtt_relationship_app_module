@@ -454,6 +454,41 @@ class FoundryGameService {
 }
 ```
 
+### Bootstrap-Factories (DIP-Konformität)
+
+Für die Bootstrap-Phase (vor Container-Validierung) werden Factory-Funktionen verwendet, um DIP vollständig einzuhalten:
+
+**RuntimeConfig-Factory:**
+```typescript
+// src/core/runtime-config/runtime-config-factory.ts
+export function createRuntimeConfig(env: EnvironmentConfig): RuntimeConfigService {
+  return new RuntimeConfigService(env);
+}
+```
+
+**Bootstrap-Logger-Factory:**
+```typescript
+// src/services/bootstrap-logger.ts
+export function createBootstrapLogger(): Logger {
+  return new BootstrapLoggerService();
+}
+```
+
+**Vorteile:**
+- **DIP-Konformität**: Keine direkten Abhängigkeiten auf konkrete Implementierungen
+- **Testbarkeit**: Factories können in Tests gemockt werden
+- **Erweiterbarkeit**: Zukünftige Änderungen an Implementierungen bleiben lokal
+- **Rückwärtskompatibilität**: `BOOTSTRAP_LOGGER` bleibt als Export erhalten
+
+**Verwendung:**
+```typescript
+// Statt: new RuntimeConfigService(ENV)
+const config = createRuntimeConfig(ENV);
+
+// Statt: BOOTSTRAP_LOGGER.error(...)
+createBootstrapLogger().error("Bootstrap error", error);
+```
+
 ---
 
 ## Erweiterung für neue Foundry-Versionen

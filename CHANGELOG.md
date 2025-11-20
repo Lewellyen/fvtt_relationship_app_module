@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.26.2] - 2025-11-20
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **DIP-Verbesserungen Bootstrap-Phase**: Factory-Funktionen für Bootstrap-Logger und RuntimeConfigService eingeführt, um Dependency Inversion Principle (DIP) vollständig einzuhalten. Direkte Instanziierungen wurden durch Factory-Funktionen ersetzt: `createRuntimeConfig()` und `createBootstrapLogger()`. Dies verbessert Testbarkeit, Erweiterbarkeit und DIP-Konformität ([Details](src/core/runtime-config/runtime-config-factory.ts), [Details](src/services/bootstrap-logger.ts), [Details](ARCHITECTURE.md#bootstrap-factories-dip-konformität))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.26.1] - 2025-11-20
 ### Hinzugefügt
 - Keine Einträge
