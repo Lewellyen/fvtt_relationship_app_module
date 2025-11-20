@@ -1,16 +1,15 @@
 import type { Result } from "@/types/result";
-import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
-import type { FoundryError } from "@/foundry/errors/FoundryErrors";
+import type { JournalVisibilityPort } from "@/core/ports/journal-visibility-port.interface";
+import type { JournalVisibilityError } from "@/core/domain/journal-entry";
 import type { NotificationCenter } from "@/notifications/NotificationCenter";
-import type { FoundryJournalEntry } from "@/foundry/types";
+import type { JournalEntry } from "@/core/domain/journal-entry";
 import type { CacheService } from "@/interfaces/cache";
 import { createCacheNamespace } from "@/interfaces/cache";
 import { MODULE_CONSTANTS } from "@/constants";
 import { match } from "@/utils/functional/result";
 import { getFirstArrayElement } from "@/di_infrastructure/types/runtime-safe-cast";
-import { foundryJournalFacadeToken } from "@/foundry/foundrytokens";
+import { journalVisibilityPortToken } from "@/tokens/tokenindex";
 import { cacheServiceToken, notificationCenterToken } from "@/tokens/tokenindex";
-import { BOOLEAN_FLAG_SCHEMA } from "@/foundry/validation/setting-schemas";
 import { sanitizeHtml } from "@/foundry/validation/schemas";
 
 const buildJournalCacheKey = createCacheNamespace("journal-visibility");
@@ -21,14 +20,18 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  * Service for managing journal entry visibility based on module flags.
  * Handles business logic for hiding/showing journal entries in the UI.
  *
- * **Dependencies Reduced:**
- * - Before: 4 dependencies (FoundryGame, FoundryDocument, FoundryUI, Logger)
- * - After: 3 dependencies (FoundryJournalFacade, NotificationCenter, CacheService)
- * - Improvement: 25% reduction via Facade Pattern
+ * **Dependencies:**
+ * - JournalVisibilityPort: Platform-agnostic port for journal operations
+ * - NotificationCenter: For logging and notifications
+ * - CacheService: For caching hidden entries
+ *
+ * **DIP-Compliance:**
+ * - Depends on domain-neutral JournalVisibilityPort, not Foundry-specific types
+ * - Platform-specific adapters (e.g., FoundryJournalVisibilityAdapter) implement the port
  */
 export class JournalVisibilityService {
   constructor(
-    private readonly facade: FoundryJournalFacade,
+    private readonly port: JournalVisibilityPort,
     private readonly notificationCenter: NotificationCenter,
     private readonly cacheService: CacheService
   ) {}
@@ -50,8 +53,8 @@ export class JournalVisibilityService {
    * Gets journal entries marked as hidden via module flag.
    * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
-  getHiddenJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
-    const cached = this.cacheService.get<FoundryJournalEntry[]>(HIDDEN_JOURNAL_CACHE_KEY);
+  getHiddenJournalEntries(): Result<JournalEntry[], JournalVisibilityError> {
+    const cached = this.cacheService.get<JournalEntry[]>(HIDDEN_JOURNAL_CACHE_KEY);
     if (cached?.hit && cached.value) {
       this.notificationCenter.debug(
         `Serving ${cached.value.length} hidden journal entries from cache (ttl=${
@@ -63,17 +66,13 @@ export class JournalVisibilityService {
       return { ok: true, value: cached.value };
     }
 
-    const allEntriesResult = this.facade.getJournalEntries();
+    const allEntriesResult = this.port.getAllEntries();
     if (!allEntriesResult.ok) return allEntriesResult;
 
-    const hidden: FoundryJournalEntry[] = [];
+    const hidden: JournalEntry[] = [];
 
     for (const journal of allEntriesResult.value) {
-      const flagResult = this.facade.getEntryFlag<boolean>(
-        journal,
-        MODULE_CONSTANTS.FLAGS.HIDDEN,
-        BOOLEAN_FLAG_SCHEMA
-      );
+      const flagResult = this.port.getEntryFlag(journal, MODULE_CONSTANTS.FLAGS.HIDDEN);
 
       if (flagResult.ok) {
         if (flagResult.value === true) {
@@ -91,9 +90,6 @@ export class JournalVisibilityService {
           { channels: ["ConsoleChannel"] }
         );
 
-        // Note: UI notifications would need to be added to FoundryJournalFacade
-        // if needed, or accessed through a separate FoundryUI service injection
-
         // Continue processing other entries
       }
     }
@@ -109,7 +105,7 @@ export class JournalVisibilityService {
    * Processes journal directory HTML to hide flagged entries.
    * @returns Result indicating success or failure with aggregated errors
    */
-  processJournalDirectory(htmlElement: HTMLElement): Result<void, FoundryError> {
+  processJournalDirectory(htmlElement: HTMLElement): Result<void, JournalVisibilityError> {
     this.notificationCenter.debug(
       "Processing journal directory for hidden entries",
       { context: { htmlElement } },
@@ -140,14 +136,14 @@ export class JournalVisibilityService {
   }
 
   private hideEntries(
-    entries: FoundryJournalEntry[],
+    entries: JournalEntry[],
     html: HTMLElement
-  ): Result<void, FoundryError> {
-    const errors: FoundryError[] = [];
+  ): Result<void, JournalVisibilityError> {
+    const errors: JournalVisibilityError[] = [];
 
     for (const journal of entries) {
       const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
-      const removeResult = this.facade.removeJournalElement(journal.id, journalName, html);
+      const removeResult = this.port.removeEntryFromDOM(journal.id, journalName, html);
       match(removeResult, {
         onOk: () => {
           this.notificationCenter.debug(
@@ -180,16 +176,16 @@ export class JournalVisibilityService {
 
 export class DIJournalVisibilityService extends JournalVisibilityService {
   static dependencies = [
-    foundryJournalFacadeToken,
+    journalVisibilityPortToken,
     notificationCenterToken,
     cacheServiceToken,
   ] as const;
 
   constructor(
-    facade: FoundryJournalFacade,
+    port: JournalVisibilityPort,
     notificationCenter: NotificationCenter,
     cacheService: CacheService
   ) {
-    super(facade, notificationCenter, cacheService);
+    super(port, notificationCenter, cacheService);
   }
 }

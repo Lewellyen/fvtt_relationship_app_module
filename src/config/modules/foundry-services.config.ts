@@ -17,7 +17,9 @@ import { DIFoundryDocumentService } from "@/foundry/services/FoundryDocumentServ
 import { DIFoundryUIService } from "@/foundry/services/FoundryUIService";
 import { DIFoundrySettingsService } from "@/foundry/services/FoundrySettingsService";
 import { DIFoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade";
+import { DIFoundryJournalVisibilityAdapter } from "@/foundry/adapters/foundry-journal-visibility-adapter";
 import { DIJournalVisibilityService } from "@/services/JournalVisibilityService";
+import { journalVisibilityPortToken } from "@/tokens/tokenindex";
 
 /**
  * Registers Foundry service wrappers.
@@ -29,6 +31,7 @@ import { DIJournalVisibilityService } from "@/services/JournalVisibilityService"
  * - FoundryUIService (singleton)
  * - FoundrySettingsService (singleton)
  * - FoundryJournalFacade (singleton)
+ * - FoundryJournalVisibilityAdapter (singleton) - must be registered before JournalVisibilityService
  * - JournalVisibilityService (singleton)
  *
  * All services use port-based adapter pattern for Foundry version compatibility.
@@ -93,7 +96,7 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
 
   // Register FoundryJournalFacade
   // Combines Game, Document, UI for journal operations
-  // Must be registered BEFORE JournalVisibilityService which depends on it
+  // Must be registered BEFORE FoundryJournalVisibilityAdapter which depends on it
   const journalFacadeResult = container.registerClass(
     foundryJournalFacadeToken,
     DIFoundryJournalFacade,
@@ -101,6 +104,18 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   );
   if (isErr(journalFacadeResult)) {
     return err(`Failed to register FoundryJournalFacade: ${journalFacadeResult.error.message}`);
+  }
+
+  // Register FoundryJournalVisibilityAdapter
+  // Implements JournalVisibilityPort for Foundry platform
+  // Must be registered BEFORE JournalVisibilityService which depends on it
+  const adapterResult = container.registerClass(
+    journalVisibilityPortToken,
+    DIFoundryJournalVisibilityAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(adapterResult)) {
+    return err(`Failed to register JournalVisibilityAdapter: ${adapterResult.error.message}`);
   }
 
   // Register JournalVisibilityService

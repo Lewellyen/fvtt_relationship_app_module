@@ -22,6 +22,7 @@ import type { ContainerHealthCheck } from "@/core/health/container-health-check"
 import type { MetricsHealthCheck } from "@/core/health/metrics-health-check";
 import type { CacheService, CacheServiceConfig } from "@/interfaces/cache";
 import type { RuntimeConfigService } from "@/core/runtime-config/runtime-config.service";
+import type { JournalVisibilityPort } from "@/core/ports/journal-visibility-port.interface";
 
 /**
  * Injection token for the application logger service.
@@ -127,6 +128,25 @@ export const metricsStorageToken = createInjectionToken<MetricsStorage>("Metrics
  * ```
  */
 export const traceContextToken = createInjectionToken<TraceContext>("TraceContext");
+
+/**
+ * Injection token for the JournalVisibilityPort.
+ *
+ * Port for journal visibility operations, abstracting platform details.
+ * Implementations are provided by platform-specific adapters
+ * (e.g., FoundryJournalVisibilityAdapter).
+ *
+ * @example
+ * ```typescript
+ * const port = container.resolve(journalVisibilityPortToken);
+ * const entries = port.getAllEntries();
+ * if (entries.ok) {
+ *   console.log(`Found ${entries.value.length} entries`);
+ * }
+ * ```
+ */
+export const journalVisibilityPortToken =
+  createInjectionToken<JournalVisibilityPort>("JournalVisibilityPort");
 
 /**
  * Injection token for the JournalVisibilityService.

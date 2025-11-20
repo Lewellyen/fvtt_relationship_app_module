@@ -255,6 +255,69 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
 
 **Guidelines für neue Hooks:**
 - Neue Hook-Strategien implementieren `HookRegistrar` und verwenden immer `HookRegistrationManager` für alle `Hooks.on`-Registrierungen.
+
+### Domain-Ports für DIP-Konformität
+
+Neben den Foundry-Versions-Ports gibt es auch **Domain-Ports**, die domänenneutrale Abstraktionen für Geschäftslogik bereitstellen. Diese Ports sind **nicht versionsabhängig** und ermöglichen es, die Domäne vollständig von Foundry-spezifischen Typen zu entkoppeln.
+
+**Beispiel: JournalVisibilityPort**
+
+```typescript
+// 1. Domain-Port definieren (domänenneutral, keine Versionsabhängigkeit)
+interface JournalVisibilityPort {
+  getAllEntries(): Result<JournalEntry[], JournalVisibilityError>;
+  getEntryFlag(entry: JournalEntry, flagKey: string): Result<boolean | null, JournalVisibilityError>;
+  removeEntryFromDOM(entryId: string, entryName: string | null, html: HTMLElement): Result<void, JournalVisibilityError>;
+}
+
+// 2. Domain-Model (domänenneutral)
+interface JournalEntry {
+  readonly id: string;
+  readonly name: string | null;
+}
+
+// 3. Service nutzt Domain-Port (keine Foundry-Abhängigkeiten)
+class JournalVisibilityService {
+  constructor(private readonly port: JournalVisibilityPort) {}
+  
+  getHiddenJournalEntries(): Result<JournalEntry[], JournalVisibilityError> {
+    // Geschäftslogik mit domänenneutralen Typen
+  }
+}
+
+// 4. Foundry-Adapter implementiert Domain-Port (versionsunabhängig, nutzt FoundryJournalFacade)
+class FoundryJournalVisibilityAdapter implements JournalVisibilityPort {
+  constructor(private readonly foundryJournalFacade: FoundryJournalFacade) {}
+  
+  getAllEntries(): Result<JournalEntry[], JournalVisibilityError> {
+    // Mapping: FoundryJournalEntry[] → JournalEntry[]
+    const foundryEntries = this.foundryJournalFacade.getJournalEntries();
+    // ... mapping logic ...
+  }
+}
+```
+
+**Architektur-Hierarchie:**
+
+```
+JournalVisibilityService (Domäne)
+  ↓ depends on
+JournalVisibilityPort (domänenneutral, keine Versionsabhängigkeit)
+  ↓ implemented by
+FoundryJournalVisibilityAdapter (Adapter-Schicht, versionsunabhängig)
+  ↓ uses
+FoundryJournalFacade (bereits versionsunabhängig über PortSelector)
+  ↓ uses
+FoundryGame/FoundryDocument/FoundryUI Services
+  ↓ uses
+PortSelector → wählt FoundryGamePortV13, FoundryDocumentPortV13, etc.
+```
+
+**Vorteile:**
+- ✅ Domäne ist vollständig von Foundry entkoppelt
+- ✅ Testbarkeit ohne Foundry-Mocks (Service-Tests mit Port-Mock)
+- ✅ Austauschbar für andere VTTs/Frameworks
+- ✅ Domain-Ports sind versionsunabhängig (Versionsabhängigkeit liegt in Foundry-Adapter-Schicht)
 - Im Fehlerfall (z. B. einzelne Registrierung schlägt fehl) **sofort** `registrationManager.dispose()` aufrufen, um einen konsistenten Zustand herzustellen.
 - `ModuleHookRegistrar` aggregiert alle `HookRegistrar`-Instanzen und ruft `registerAll()` bzw. `disposeAll()` auf, sodass der gesamte Hook-Lifecycle DI-gesteuert ist.
 

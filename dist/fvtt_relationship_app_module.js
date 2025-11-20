@@ -223,6 +223,7 @@ const metricsRecorderToken = createInjectionToken("MetricsRecorder");
 const metricsSamplerToken = createInjectionToken("MetricsSampler");
 const metricsStorageToken = createInjectionToken("MetricsStorage");
 const traceContextToken = createInjectionToken("TraceContext");
+const journalVisibilityPortToken = createInjectionToken("JournalVisibilityPort");
 const journalVisibilityServiceToken = createInjectionToken(
   "JournalVisibilityService"
 );
@@ -1743,6 +1744,10 @@ const _RuntimeConfigService = class _RuntimeConfigService {
 };
 __name(_RuntimeConfigService, "RuntimeConfigService");
 let RuntimeConfigService = _RuntimeConfigService;
+function createRuntimeConfig(env) {
+  return new RuntimeConfigService(env);
+}
+__name(createRuntimeConfig, "createRuntimeConfig");
 const _ServiceContainer = class _ServiceContainer {
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
@@ -1792,7 +1797,7 @@ const _ServiceContainer = class _ServiceContainer {
     const validator = new ContainerValidator();
     const cache = new InstanceCache();
     const scopeManager = new ScopeManager("root", null, cache);
-    const performanceTracker = new BootstrapPerformanceTracker(new RuntimeConfigService(ENV), null);
+    const performanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(ENV), null);
     const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
     return new _ServiceContainer(registry, validator, cache, resolver, scopeManager, "registering");
   }
@@ -2062,10 +2067,7 @@ const _ServiceContainer = class _ServiceContainer {
     const childRegistry = this.registry.clone();
     const childCache = scopeResult.value.cache;
     const childManager = scopeResult.value.manager;
-    const childPerformanceTracker = new BootstrapPerformanceTracker(
-      new RuntimeConfigService(ENV),
-      null
-    );
+    const childPerformanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(ENV), null);
     const childResolver = new ServiceResolver(
       childRegistry,
       childCache,
@@ -11853,6 +11855,107 @@ const _DIFoundryJournalFacade = class _DIFoundryJournalFacade extends FoundryJou
 __name(_DIFoundryJournalFacade, "DIFoundryJournalFacade");
 _DIFoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
 let DIFoundryJournalFacade = _DIFoundryJournalFacade;
+const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
+  LogLevel.DEBUG,
+  LogLevel.INFO,
+  LogLevel.WARN,
+  LogLevel.ERROR
+]);
+const BOOLEAN_FLAG_SCHEMA = /* @__PURE__ */ boolean();
+const NON_NEGATIVE_NUMBER_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ minValue(0));
+const NON_NEGATIVE_INTEGER_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ integer(), /* @__PURE__ */ minValue(0));
+const SAMPLING_RATE_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ minValue(0), /* @__PURE__ */ maxValue(1));
+const NON_EMPTY_STRING_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ minLength(1));
+const _FoundryJournalVisibilityAdapter = class _FoundryJournalVisibilityAdapter {
+  constructor(foundryJournalFacade) {
+    this.foundryJournalFacade = foundryJournalFacade;
+  }
+  getAllEntries() {
+    const result = this.foundryJournalFacade.getJournalEntries();
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "INVALID_ENTRY_DATA",
+          message: result.error.message
+        }
+      };
+    }
+    const entries2 = result.value.map((foundryEntry) => ({
+      id: foundryEntry.id,
+      name: foundryEntry.name ?? null
+    }));
+    return { ok: true, value: entries2 };
+  }
+  getEntryFlag(entry, flagKey) {
+    const foundryEntriesResult = this.foundryJournalFacade.getJournalEntries();
+    if (!foundryEntriesResult.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "FLAG_READ_FAILED",
+          entryId: entry.id,
+          message: foundryEntriesResult.error.message
+        }
+      };
+    }
+    const foundryEntry = foundryEntriesResult.value.find((e) => e.id === entry.id);
+    if (!foundryEntry) {
+      return {
+        ok: false,
+        error: {
+          code: "ENTRY_NOT_FOUND",
+          entryId: entry.id,
+          message: `Journal entry with ID ${entry.id} not found`
+        }
+      };
+    }
+    const flagResult = this.foundryJournalFacade.getEntryFlag(
+      foundryEntry,
+      flagKey,
+      BOOLEAN_FLAG_SCHEMA
+    );
+    if (!flagResult.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "FLAG_READ_FAILED",
+          entryId: entry.id,
+          message: flagResult.error.message
+        }
+      };
+    }
+    return { ok: true, value: flagResult.value };
+  }
+  removeEntryFromDOM(entryId, entryName, htmlElement) {
+    const result = this.foundryJournalFacade.removeJournalElement(
+      entryId,
+      entryName ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
+      htmlElement
+    );
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "DOM_MANIPULATION_FAILED",
+          entryId,
+          message: result.error.message
+        }
+      };
+    }
+    return { ok: true, value: void 0 };
+  }
+};
+__name(_FoundryJournalVisibilityAdapter, "FoundryJournalVisibilityAdapter");
+let FoundryJournalVisibilityAdapter = _FoundryJournalVisibilityAdapter;
+const _DIFoundryJournalVisibilityAdapter = class _DIFoundryJournalVisibilityAdapter extends FoundryJournalVisibilityAdapter {
+  constructor(foundryJournalFacade) {
+    super(foundryJournalFacade);
+  }
+};
+__name(_DIFoundryJournalVisibilityAdapter, "DIFoundryJournalVisibilityAdapter");
+_DIFoundryJournalVisibilityAdapter.dependencies = [foundryJournalFacadeToken];
+let DIFoundryJournalVisibilityAdapter = _DIFoundryJournalVisibilityAdapter;
 const KEY_SEPARATOR = ":";
 function normalizeSegment(segment) {
   return segment.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-_]/g, "").toLowerCase();
@@ -11872,23 +11975,12 @@ function createCacheNamespace(namespace) {
   return (resource, identifier) => identifier === void 0 ? createCacheKey({ namespace: normalizedNamespace, resource }) : createCacheKey({ namespace: normalizedNamespace, resource, identifier });
 }
 __name(createCacheNamespace, "createCacheNamespace");
-const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
-  LogLevel.DEBUG,
-  LogLevel.INFO,
-  LogLevel.WARN,
-  LogLevel.ERROR
-]);
-const BOOLEAN_FLAG_SCHEMA = /* @__PURE__ */ boolean();
-const NON_NEGATIVE_NUMBER_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ minValue(0));
-const NON_NEGATIVE_INTEGER_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ integer(), /* @__PURE__ */ minValue(0));
-const SAMPLING_RATE_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ number(), /* @__PURE__ */ minValue(0), /* @__PURE__ */ maxValue(1));
-const NON_EMPTY_STRING_SCHEMA = /* @__PURE__ */ pipe(/* @__PURE__ */ string(), /* @__PURE__ */ minLength(1));
 const buildJournalCacheKey = createCacheNamespace("journal-visibility");
 const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(facade, notificationCenter, cacheService) {
-    this.facade = facade;
+  constructor(port, notificationCenter, cacheService) {
+    this.port = port;
     this.notificationCenter = notificationCenter;
     this.cacheService = cacheService;
   }
@@ -11918,15 +12010,11 @@ const _JournalVisibilityService = class _JournalVisibilityService {
       );
       return { ok: true, value: cached.value };
     }
-    const allEntriesResult = this.facade.getJournalEntries();
+    const allEntriesResult = this.port.getAllEntries();
     if (!allEntriesResult.ok) return allEntriesResult;
     const hidden = [];
     for (const journal of allEntriesResult.value) {
-      const flagResult = this.facade.getEntryFlag(
-        journal,
-        MODULE_CONSTANTS.FLAGS.HIDDEN,
-        BOOLEAN_FLAG_SCHEMA
-      );
+      const flagResult = this.port.getEntryFlag(journal, MODULE_CONSTANTS.FLAGS.HIDDEN);
       if (flagResult.ok) {
         if (flagResult.value === true) {
           hidden.push(journal);
@@ -11981,7 +12069,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     const errors = [];
     for (const journal of entries2) {
       const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
-      const removeResult = this.facade.removeJournalElement(journal.id, journalName, html);
+      const removeResult = this.port.removeEntryFromDOM(journal.id, journalName, html);
       match(removeResult, {
         onOk: /* @__PURE__ */ __name(() => {
           this.notificationCenter.debug(
@@ -12008,13 +12096,13 @@ const _JournalVisibilityService = class _JournalVisibilityService {
 __name(_JournalVisibilityService, "JournalVisibilityService");
 let JournalVisibilityService = _JournalVisibilityService;
 const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(facade, notificationCenter, cacheService) {
-    super(facade, notificationCenter, cacheService);
+  constructor(port, notificationCenter, cacheService) {
+    super(port, notificationCenter, cacheService);
   }
 };
 __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
 _DIJournalVisibilityService.dependencies = [
-  foundryJournalFacadeToken,
+  journalVisibilityPortToken,
   notificationCenterToken,
   cacheServiceToken
 ];
@@ -12071,6 +12159,14 @@ function registerFoundryServices(container) {
   );
   if (isErr(journalFacadeResult)) {
     return err(`Failed to register FoundryJournalFacade: ${journalFacadeResult.error.message}`);
+  }
+  const adapterResult = container.registerClass(
+    journalVisibilityPortToken,
+    DIFoundryJournalVisibilityAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(adapterResult)) {
+    return err(`Failed to register JournalVisibilityAdapter: ${adapterResult.error.message}`);
   }
   const journalVisibilityResult = container.registerClass(
     journalVisibilityServiceToken,
@@ -14253,10 +14349,7 @@ function registerStaticValues(container) {
   if (isErr(envResult)) {
     return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
   }
-  const runtimeConfigResult = container.registerValue(
-    runtimeConfigToken,
-    new RuntimeConfigService(ENV)
-  );
+  const runtimeConfigResult = container.registerValue(runtimeConfigToken, createRuntimeConfig(ENV));
   if (isErr(runtimeConfigResult)) {
     return err(`Failed to register RuntimeConfigService: ${runtimeConfigResult.error.message}`);
   }
@@ -14354,12 +14447,16 @@ function configureDependencies(container) {
 __name(configureDependencies, "configureDependencies");
 const _BootstrapLoggerService = class _BootstrapLoggerService extends ConsoleLoggerService {
   constructor() {
-    super(new RuntimeConfigService(ENV));
+    super(createRuntimeConfig(ENV));
   }
 };
 __name(_BootstrapLoggerService, "BootstrapLoggerService");
 let BootstrapLoggerService = _BootstrapLoggerService;
-const BOOTSTRAP_LOGGER = new BootstrapLoggerService();
+function createBootstrapLogger() {
+  return new BootstrapLoggerService();
+}
+__name(createBootstrapLogger, "createBootstrapLogger");
+const BOOTSTRAP_LOGGER = createBootstrapLogger();
 const _CompositionRoot = class _CompositionRoot {
   constructor() {
     this.container = null;
@@ -14376,7 +14473,7 @@ const _CompositionRoot = class _CompositionRoot {
    */
   bootstrap() {
     const container = ServiceContainer.createRoot();
-    const runtimeConfig = new RuntimeConfigService(ENV);
+    const runtimeConfig = createRuntimeConfig(ENV);
     const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
     const configured = performanceTracker.track(
       () => configureDependencies(container),
@@ -14391,7 +14488,10 @@ const _CompositionRoot = class _CompositionRoot {
       this.container = container;
       return { ok: true, value: container };
     }
-    BOOTSTRAP_LOGGER.error("Failed to configure dependencies during bootstrap", configured.error);
+    createBootstrapLogger().error(
+      "Failed to configure dependencies during bootstrap",
+      configured.error
+    );
     return { ok: false, error: configured.error };
   }
   /**

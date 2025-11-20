@@ -12,6 +12,24 @@
 
 ### Upgrade-Hinweise
 
+## [0.26.3] - 2025-11-20
+### Hinzugefügt
+- **JournalVisibilityPort**: Neues Port-Interface für Journal-Operations, abstrahiert Platform-Details ([Details](src/core/ports/journal-visibility-port.interface.ts))
+- **FoundryJournalVisibilityAdapter**: Foundry-spezifische Implementierung des JournalVisibilityPort ([Details](src/foundry/adapters/foundry-journal-visibility-adapter.ts))
+- **JournalEntry Domain Model**: Domänenneutrales Modell für Journal-Entries ([Details](src/core/domain/journal-entry.ts))
+
+### Geändert
+- **JournalVisibilityService DIP-Refactoring**: Entkopplung von Foundry-spezifischen Typen durch Einführung eines `JournalVisibilityPort`. Service verwendet jetzt domänenneutrale Typen (`JournalEntry`, `JournalVisibilityError`) statt Foundry-Typen. `FoundryJournalVisibilityAdapter` implementiert den Port und mappt zwischen Domäne und Foundry. Verbessert Testbarkeit, Wartbarkeit und ermöglicht zukünftige Multi-VTT-Unterstützung ([Details](src/core/ports/journal-visibility-port.interface.ts), [Details](src/foundry/adapters/foundry-journal-visibility-adapter.ts), [Details](ARCHITECTURE.md#domain-ports-für-dip-konformität))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.26.2] - 2025-11-20
 ### Hinzugefügt
 - Keine Einträge

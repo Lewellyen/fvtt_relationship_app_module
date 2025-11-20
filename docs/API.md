@@ -502,9 +502,21 @@ Verwaltung von versteckten Journal-Einträgen.
 
 ```typescript
 interface JournalVisibilityService {
-  getHiddenJournalEntries(): Result<FoundryJournalEntry[], FoundryError>;
-  processJournalDirectory(htmlElement: HTMLElement): void;
+  getHiddenJournalEntries(): Result<JournalEntry[], JournalVisibilityError>;
+  processJournalDirectory(htmlElement: HTMLElement): Result<void, JournalVisibilityError>;
 }
+
+// Domain Types (domänenneutral)
+interface JournalEntry {
+  readonly id: string;
+  readonly name: string | null;
+}
+
+type JournalVisibilityError =
+  | { code: "ENTRY_NOT_FOUND"; entryId: string; message: string }
+  | { code: "FLAG_READ_FAILED"; entryId: string; message: string }
+  | { code: "DOM_MANIPULATION_FAILED"; entryId: string; message: string }
+  | { code: "INVALID_ENTRY_DATA"; message: string };
 ```
 
 **Beispiel**:
@@ -515,8 +527,13 @@ const visibilityService = api.resolve(api.tokens.journalVisibilityServiceToken);
 const hiddenResult = visibilityService.getHiddenJournalEntries();
 if (hiddenResult.ok) {
   console.log(`${hiddenResult.value.length} versteckte Journal-Einträge gefunden`);
+  hiddenResult.value.forEach(entry => {
+    console.log(`Hidden: ${entry.name ?? entry.id}`);
+  });
 }
 ```
+
+**Hinweis:** Der Service verwendet jetzt domänenneutrale Typen (`JournalEntry`, `JournalVisibilityError`) statt Foundry-spezifischer Typen. Die Implementierung erfolgt über den `JournalVisibilityPort`, der von `FoundryJournalVisibilityAdapter` implementiert wird.
 
 ---
 
@@ -568,20 +585,7 @@ if (hasResult.ok && hasResult.value) {
 
 Facade für generische Journal-Operations.
 
-```typescript
-interface FoundryJournalFacade {
-  getHiddenJournalEntries(): Result<FoundryJournalEntry[], FoundryError>;
-  // Weitere Methoden verfügbar via FoundryGame, FoundryDocument, FoundryUI
-}
-```
-
-**Beispiel - Versteckte Journals abrufen**:
-
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-const journalFacade = api.resolve(api.tokens.foundryJournalFacadeToken);
-
-const hiddenResult = journalFacade.getHiddenJournalEntries();
+**Hinweis:** Diese Facade ist nicht Teil der öffentlichen API und sollte nicht direkt verwendet werden. Verwenden Sie stattdessen `JournalVisibilityService`, das über den `JournalVisibilityPort` arbeitet und domänenneutrale Typen verwendet.
 if (hiddenResult.ok) {
   console.log(`Gefunden: ${hiddenResult.value.length} versteckte Journals`);
   

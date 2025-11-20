@@ -18,6 +18,7 @@ import type { MetricsStorage } from "@/observability/metrics-persistence/metrics
 import type { TraceContext } from "@/observability/trace/TraceContext";
 import type { FoundryI18nService } from "@/foundry/services/FoundryI18nService";
 import type { FoundryJournalFacade } from "@/foundry/facades/foundry-journal-facade.interface";
+import type { JournalVisibilityPort } from "@/core/ports/journal-visibility-port.interface";
 import type { LocalI18nService } from "@/services/LocalI18nService";
 import type { I18nFacadeService } from "@/services/I18nFacadeService";
 import type { ModuleHealthService } from "@/core/module-health-service";
@@ -73,6 +74,7 @@ export type ServiceType =
   | TraceContext
   | FoundryI18nService
   | FoundryJournalFacade
+  | JournalVisibilityPort
   | LocalI18nService
   | I18nFacadeService
   | ModuleHealthService
