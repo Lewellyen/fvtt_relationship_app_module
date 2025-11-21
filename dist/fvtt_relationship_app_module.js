@@ -14132,7 +14132,7 @@ const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
       if (typeof game === "undefined" || !game?.journal) return false;
       const entry = game.journal.get(entryId);
       if (!entry) return false;
-      if (typeof entry !== "object" || entry === null || !("getFlag" in entry)) {
+      if (!("getFlag" in entry)) {
         return false;
       }
       const getFlagMethod = castCacheValue(entry.getFlag);
@@ -14159,7 +14159,7 @@ const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
       if (typeof game === "undefined" || !game?.journal) return null;
       const entry = game.journal.get(entryId);
       if (!entry) return null;
-      if (typeof entry !== "object" || entry === null || !("getFlag" in entry)) {
+      if (!("getFlag" in entry)) {
         return null;
       }
       const getFlagMethod = castCacheValue(entry.getFlag);

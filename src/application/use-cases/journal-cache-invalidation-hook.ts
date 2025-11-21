@@ -123,7 +123,7 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
       if (!entry) return false;
 
       // Type guard to check if entry has getFlag method
-      if (typeof entry !== "object" || entry === null || !("getFlag" in entry)) {
+      if (!("getFlag" in entry)) {
         return false;
       }
 
@@ -156,7 +156,7 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
       if (!entry) return null;
 
       // Type guard to check if entry has getFlag method
-      if (typeof entry !== "object" || entry === null || !("getFlag" in entry)) {
+      if (!("getFlag" in entry)) {
         return null;
       }
 

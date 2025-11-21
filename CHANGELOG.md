@@ -12,6 +12,24 @@
 
 ### Upgrade-Hinweise
 
+## [0.26.5] - 2025-11-21
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **CodeQL-Warnungen**: "Expression has no effect" in `readonly-wrapper.test.ts` behoben - `void` Operator für Property-Zugriff mit Seiteneffekt verwendet
+- **CodeQL-Warnungen**: "Useless assignment to local variable" in `hook-registration-manager.test.ts` behoben - doppelte Imports und duplizierte Test-Suites entfernt (5 Tests auf 3 konsolidiert, gleiche Coverage)
+- **Test-Cleanup**: `@ts-nocheck` aus `hook-registration-manager.test.ts` entfernt (nicht mehr benötigt)
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.26.4] - 2025-11-21
 ### Hinzugefügt
 - Keine neuen Features

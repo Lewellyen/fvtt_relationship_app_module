@@ -35,8 +35,7 @@ describe("readonly-wrapper", () => {
       const wrapped = createReadOnlyWrapper(service, ["allowed"]);
 
       expect(() => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        wrapped.publicProp;
+        void wrapped.publicProp;
       }).toThrow('Property "publicProp" is not accessible');
     });
 
