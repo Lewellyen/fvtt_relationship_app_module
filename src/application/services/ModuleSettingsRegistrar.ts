@@ -45,7 +45,7 @@ interface RuntimeConfigBinding<TSchema, K extends RuntimeConfigKey> {
   normalize: (value: TSchema) => RuntimeConfigValues[K];
 }
 
-const runtimeConfigBindings = {
+export const runtimeConfigBindings = {
   [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: {
     runtimeKey: "logLevel",
     schema: LOG_LEVEL_SCHEMA,

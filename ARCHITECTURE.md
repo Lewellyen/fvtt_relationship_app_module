@@ -4,14 +4,15 @@
 
 Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Moduls.
 
-**Datum:** 2025-11-17  
-**Stand:** Version 0.25.8 (Unreleased)  
+**Datum:** 2025-11-21  
+**Stand:** Version 0.26.5 → Unreleased (Phase 1: Event-System Refactoring)  
 **Detaillierte Analyse:** Siehe [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md)
 
 ### Aktuelle Highlights (Unreleased)
-- **100% Test Coverage erreicht**: Vollständige Code-Coverage für alle Statements, Branches, Functions und Lines - alle 1336 Tests laufen erfolgreich durch ([Details](docs/quality-gates/code-coverage-exclusions.md))
-- **Result-Pattern vollständig konsistent**: Alle Services, Handler und Utilities verwenden jetzt konsequent das Result-Pattern für erwartete Fehler ([Details](docs/adr/0001-use-result-pattern-instead-of-exceptions.md))
-- **Quality Gates erfüllt**: 100% Test Coverage, 100% Type Coverage, keine Linter-Fehler, alle TypeScript-Checks bestanden
+- **Platform-Agnostisches Event-System (Phase 1)**: Vollständiges Refactoring des Event-Systems mit `PlatformEventPort<T>` und spezialisierten Ports (`JournalEventPort`). Events sind jetzt vollständig von Foundry entkoppelt und Multi-VTT-ready ([Details](docs/refactoring/phases/phase-1-event-system-refactoring.md))
+- **EventRegistrar Pattern**: `HookRegistrar` durch platform-agnostisches `EventRegistrar` Interface ersetzt. Alle Event-Listener nutzen jetzt Use-Cases statt direkter Hook-Klassen
+- **116 Tests bestanden**: Alle Tests erfolgreich, TypeScript- und Lint-Checks bestanden, 99.7% Coverage (neuer Code braucht noch Test-Optimierung)
+- **Quality Gates erfüllt**: Keine TypeScript-Fehler, keine Linter-Fehler, alle Checks bestanden
 
 ### Highlights (v0.20.0)
 - **NotificationCenter-first Fehler- und User-Kommunikation:** `ErrorService` ist vollständig ersetzt; alle Business-Services routen Nachrichten über Channels (Console/UI) mit Foundry-Option-Passthrough ([Details](docs/PROJECT-ANALYSIS.md#notifications)).
@@ -30,7 +31,7 @@ Das Modul folgt einer klaren Schichtentrennung mit unidirektionalen Abhängigkei
 │  • init-solid.ts (Orchestrator)                 │
 │  • composition-root.ts (DI Bootstrap)           │
 │  • module-api-initializer.ts (API Exposition)   │
-│  • module-hook-registrar.ts (Hook Registration) │
+│  • module-event-registrar.ts (Event Listeners)  │
 │  • module-settings-registrar.ts (Settings)      │
 └──────────────────┬──────────────────────────────┘
                    │

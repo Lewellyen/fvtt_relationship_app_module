@@ -4,7 +4,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
-import { ModuleHookRegistrar } from "@/application/services/ModuleHookRegistrar";
+import { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
@@ -37,7 +37,7 @@ describe("init-solid Bootstrap", () => {
 
       // Spies VOR dem Import setzen (für Callback-Execution)
       // WICHTIG: Spy auf Prototype setzen, damit er die Instanz-Methode erfasst
-      vi.spyOn(ModuleHookRegistrar.prototype, "registerAll");
+      vi.spyOn(ModuleEventRegistrar.prototype, "registerAll");
 
       // Spy auf ModuleApiInitializer.expose() (call-through, nicht mocked)
       const moduleApiInitializerModule = await import(
@@ -702,7 +702,7 @@ describe("init-solid Bootstrap", () => {
       cleanup();
     });
 
-    it("should handle ModuleHookRegistrar resolution failure in init callback", async () => {
+    it("should handle ModuleEventRegistrar resolution failure in init callback", async () => {
       vi.resetModules();
 
       const mockGame = createMockGame();
@@ -731,19 +731,19 @@ describe("init-solid Bootstrap", () => {
       const { ServiceContainer: serviceContainerClass } = await import(
         "@/infrastructure/di/container"
       );
-      const { moduleHookRegistrarToken } = await import("@/infrastructure/shared/tokens");
+      const { moduleEventRegistrarToken } = await import("@/infrastructure/shared/tokens");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       let shouldFail = false;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
         .mockImplementation(function (this: ServiceContainer, token: symbol) {
-          // Only fail for moduleHookRegistrarToken when flag is set (during init callback)
-          if (token === moduleHookRegistrarToken && shouldFail) {
+          // Only fail for moduleEventRegistrarToken when flag is set (during init callback)
+          if (token === moduleEventRegistrarToken && shouldFail) {
             return {
               ok: false as const,
               error: {
                 code: "DependencyResolveFailed" as const,
-                message: "ModuleHookRegistrar missing",
+                message: "ModuleEventRegistrar missing",
               },
             };
           }
@@ -767,7 +767,7 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to resolve ModuleHookRegistrar: ModuleHookRegistrar missing"
+        "Failed to resolve ModuleEventRegistrar: ModuleEventRegistrar missing"
       );
 
       resolveSpy.mockRestore();
@@ -1026,13 +1026,15 @@ describe("init-solid Bootstrap", () => {
         }),
       }));
 
-      // Mock ModuleHookRegistrar.registerAll to fail
-      const moduleHookRegistrarModule = await import("@/application/services/ModuleHookRegistrar");
+      // Mock ModuleEventRegistrar.registerAll to fail
+      const moduleEventRegistrarModule = await import(
+        "@/application/services/ModuleEventRegistrar"
+      );
       const originalRegisterAll =
-        moduleHookRegistrarModule.ModuleHookRegistrar.prototype.registerAll;
+        moduleEventRegistrarModule.ModuleEventRegistrar.prototype.registerAll;
       let shouldFail = false;
       vi.spyOn(
-        moduleHookRegistrarModule.ModuleHookRegistrar.prototype,
+        moduleEventRegistrarModule.ModuleEventRegistrar.prototype,
         "registerAll"
       ).mockImplementation(function (this: any) {
         if (shouldFail) {
@@ -1063,7 +1065,7 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       // Verify that error was logged with error messages (lines 146-149)
-      expect(errorSpy).toHaveBeenCalledWith("Failed to register one or more module hooks", {
+      expect(errorSpy).toHaveBeenCalledWith("Failed to register one or more event listeners", {
         errors: [
           "Hook registration failed: test-error-1",
           "Hook registration failed: test-error-2",

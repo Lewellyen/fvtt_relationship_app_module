@@ -22,6 +22,9 @@ export * from "./infrastructure.tokens";
 // Foundry tokens
 export * from "./foundry.tokens";
 
+// Event tokens
+export * from "./event.tokens";
+
 // ServiceType union - represents all registered service types
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
@@ -41,6 +44,7 @@ import type { TraceContext } from "@/infrastructure/observability/trace/TraceCon
 import type { FoundryI18nService } from "@/infrastructure/adapters/foundry/services/FoundryI18nService";
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
 import type { JournalVisibilityPort } from "@/domain/ports/journal-visibility-port.interface";
+import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
 import type { LocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
@@ -50,8 +54,6 @@ import type { RetryService } from "@/infrastructure/retry/RetryService";
 import type { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
-import type { ModuleHookRegistrar } from "@/application/services/ModuleHookRegistrar";
-import type { RenderJournalDirectoryHook } from "@/application/use-cases/render-journal-directory-hook";
 import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 import type { ContainerHealthCheck } from "@/application/health/ContainerHealthCheck";
 import type { MetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
@@ -61,8 +63,10 @@ import type { NotificationChannel } from "@/infrastructure/notifications/notific
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { CacheService, CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
-import type { JournalCacheInvalidationHook } from "@/application/use-cases/journal-cache-invalidation-hook";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { InvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
+import type { ProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
+import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 
 /**
  * Union type representing all registered service types in the application.
@@ -98,6 +102,7 @@ export type ServiceType =
   | FoundryI18nService
   | FoundryJournalFacade
   | JournalVisibilityPort
+  | JournalEventPort
   | LocalI18nService
   | I18nFacadeService
   | ModuleHealthService
@@ -107,8 +112,6 @@ export type ServiceType =
   | PortSelectionEventEmitter
   | ObservabilityRegistry
   | ModuleSettingsRegistrar
-  | ModuleHookRegistrar
-  | RenderJournalDirectoryHook
   | ModuleApiInitializer
   | ContainerHealthCheck
   | MetricsHealthCheck
@@ -118,6 +121,8 @@ export type ServiceType =
   | NotificationCenter
   | CacheService
   | CacheServiceConfig
-  | JournalCacheInvalidationHook
   | RuntimeConfigService
+  | InvalidateJournalCacheOnChangeUseCase
+  | ProcessJournalDirectoryOnRenderUseCase
+  | ModuleEventRegistrar
   | ServiceContainer;

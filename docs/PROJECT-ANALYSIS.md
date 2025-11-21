@@ -1,7 +1,7 @@
 # Projektanalyse: FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-20 (Unreleased - Clean Architecture Restrukturierung)  
+**Aktualisiert:** 2025-11-21 (Unreleased - Phase 1: Event-System Refactoring)  
 **Zweck:** Grundlage für Refactoring-Planungen  
 **Model:** Claude Sonnet 4.5
 
@@ -24,16 +24,18 @@
 
 Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection**, **Port-Adapter-Pattern** für Foundry VTT-Versionskompatiblität und **Result-Pattern** für fehlerfreies Error Handling.
 
-**Status:** Version 0.26.3 → Unreleased (Pre-Release Phase - Clean Architecture Restrukturierung)  
+**Status:** Version 0.26.5 → Unreleased (Pre-Release Phase - Phase 1: Event-System Refactoring)  
 **Breaking Changes:** ✅ Erlaubt (bis Modul 1.0.0)  
 **Legacy-Code:** ❌ Wird unmittelbar bereinigt  
 **Ab Modul 1.0.0:** Breaking Changes nur mit Deprecation-Phase & Migration Guide
 
 ### Unreleased Changes
-- **Clean Architecture Restrukturierung (Option B):** Vollständige Umstrukturierung des `/src` Verzeichnisses nach Clean Architecture Prinzipien mit klarer Schichtentrennung (Domain → Application → Infrastructure → Framework). Import-Pfade (`@/`) bleiben stabil. ([Details](refactoring/project_restructuring.md))
-- **Token-Organisation:** Tokens aufgeteilt in 6 thematische Dateien (`core.tokens.ts`, `observability.tokens.ts`, `i18n.tokens.ts`, `notifications.tokens.ts`, `infrastructure.tokens.ts`, `foundry.tokens.ts`) mit zentralem Index. ([Details](../src/infrastructure/shared/tokens/index.ts))
-- **DI-Types-Gruppierung:** DI-Types in 4 logische Kategorien organisiert (`core/`, `errors/`, `resolution/`, `utilities/`). ([Details](../src/infrastructure/di/types/index.ts))
-- **Konsolidierte Interfaces:** Alle DI-Interfaces in einer Datei (`interfaces.ts`). ([Details](../src/infrastructure/di/interfaces.ts))
+- **Platform-Agnostisches Event-System (Phase 1):** Vollständiges Refactoring des Event-Systems mit `PlatformEventPort<T>` (generisch) und `JournalEventPort` (spezialisiert). Alle Event-Listener sind jetzt Use-Cases, die über Ports arbeiten statt direkt mit Foundry-Hooks. Multi-VTT-ready! ([Details](refactoring/phases/phase-1-event-system-refactoring.md))
+- **EventRegistrar Pattern:** `HookRegistrar` durch `EventRegistrar` ersetzt. `ModuleHookRegistrar` durch `ModuleEventRegistrar` ersetzt. Alle Hook-Klassen durch Use-Cases ersetzt (`InvalidateJournalCacheOnChangeUseCase`, `ProcessJournalDirectoryOnRenderUseCase`).
+- **Event-Ports DI-Config:** Neues Modul `event-ports.config.ts` für Event-Port-Registrierung. Neue Token-Datei `event.tokens.ts`.
+- **Clean Architecture Restrukturierung:** Vollständige Umstrukturierung des `/src` Verzeichnisses nach Clean Architecture Prinzipien mit klarer Schichtentrennung (Domain → Application → Infrastructure → Framework). Import-Pfade (`@/`) bleiben stabil.
+- **Token-Organisation:** Tokens aufgeteilt in 6 thematische Dateien + `event.tokens.ts` mit zentralem Index.
+- **DI-Types-Gruppierung:** DI-Types in 4 logische Kategorien organisiert (`core/`, `errors/`, `resolution/`, `utilities/`).
 
 ### Release-Highlights v0.24.0
 - **RuntimeConfig Live Overrides:** Der CacheService lauscht jetzt direkt auf RuntimeConfig-Änderungen (enable/TTL/maxEntries) und reagiert ohne Reload auf Foundry-Settings. ([Details](src/services/CacheService.ts))

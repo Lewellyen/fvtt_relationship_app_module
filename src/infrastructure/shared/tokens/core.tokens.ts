@@ -13,7 +13,6 @@ import type { ContainerHealthCheck } from "@/application/health/ContainerHealthC
 import type { MetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
-import type { ModuleHookRegistrar } from "@/application/services/ModuleHookRegistrar";
 
 /**
  * Injection token for the application logger service.
@@ -188,18 +187,3 @@ export const serviceContainerToken = createInjectionToken<ServiceContainer>("Ser
  */
 export const moduleSettingsRegistrarToken =
   createInjectionToken<ModuleSettingsRegistrar>("ModuleSettingsRegistrar");
-
-/**
- * Injection token for the ModuleHookRegistrar.
- *
- * Manages registration of all Foundry hooks using Strategy Pattern.
- * Hooks are injected as dependencies for full DI architecture.
- *
- * @example
- * ```typescript
- * const hookRegistrar = container.resolve(moduleHookRegistrarToken);
- * hookRegistrar.registerAll(container);
- * ```
- */
-export const moduleHookRegistrarToken =
-  createInjectionToken<ModuleHookRegistrar>("ModuleHookRegistrar");

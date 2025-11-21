@@ -1,12 +1,10 @@
 /**
- * Infrastructure service tokens for caching, performance, retry, and hooks.
+ * Infrastructure service tokens for caching, performance, and retry.
  */
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import type { CacheService, CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import type { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
-import type { RenderJournalDirectoryHook } from "@/application/use-cases/render-journal-directory-hook";
-import type { JournalCacheInvalidationHook } from "@/application/use-cases/journal-cache-invalidation-hook";
 import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 
 /**
@@ -52,31 +50,6 @@ export const performanceTrackingServiceToken = createInjectionToken<PerformanceT
  * ```
  */
 export const retryServiceToken = createInjectionToken<RetryService>("RetryService");
-
-/**
- * Injection token for the RenderJournalDirectoryHook.
- *
- * Hook that triggers when journal directory is rendered.
- * Registered via DI to enable proper dependency injection.
- *
- * @example
- * ```typescript
- * const hook = container.resolve(renderJournalDirectoryHookToken);
- * ```
- */
-export const renderJournalDirectoryHookToken = createInjectionToken<RenderJournalDirectoryHook>(
-  "RenderJournalDirectoryHook"
-);
-
-/**
- * Injection token for the JournalCacheInvalidationHook.
- *
- * Hook that invalidates journal cache when entries are updated.
- * Registered via DI to enable proper dependency injection.
- */
-export const journalCacheInvalidationHookToken = createInjectionToken<JournalCacheInvalidationHook>(
-  "JournalCacheInvalidationHook"
-);
 
 /**
  * Injection token for the ModuleApiInitializer.

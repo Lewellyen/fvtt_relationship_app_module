@@ -12,6 +12,46 @@
 
 ### Upgrade-Hinweise
 
+## [0.27.0] - 2025-11-21
+### Hinzugefügt
+- **Platform-Agnostisches Event-System (Phase 1)**: Vollständiges Refactoring des Event-Systems zu platform-agnostischen Ports ([Details](docs/refactoring/phases/phase-1-event-system-refactoring.md))
+- **PlatformEventPort<T>**: Generischer Port für Event-Systeme (Foundry Hooks, Roll20, etc.) mit Result-Pattern und Registration-Tracking
+- **JournalEventPort**: Spezialisierter Port für Journal-Events (`onJournalCreated`, `onJournalUpdated`, `onJournalDeleted`, `onJournalDirectoryRendered`)
+- **FoundryJournalEventAdapter**: Foundry-spezifische Implementierung des JournalEventPort, mappt Foundry-Hooks zu Domain-Events
+- **Use-Cases**: `InvalidateJournalCacheOnChangeUseCase` und `ProcessJournalDirectoryOnRenderUseCase` ersetzen alte Hook-Klassen
+- **EventRegistrar**: Interface für platform-agnostische Event-Listener-Registrierung (ersetzt `HookRegistrar`)
+- **ModuleEventRegistrar**: Event-Listener-Manager für alle platform-agnostischen Event-Listener
+- **Vorteile**: Vollständige Entkopplung von Foundry-spezifischen APIs, Multi-VTT-Fähigkeit, Tests ohne Foundry-Globals
+- **Clean Architecture Multi-Platform Refactoring Plan**: Umfassender Refactoring-Plan für vollständige Platform-Agnostizität durch generische und spezialisierte Ports ([Details](docs/refactoring/Clean-Architecture-Multi-Platform-Refactoring-Plan.md))
+- ✅ **Phase 1: Event-System** - Abgeschlossen
+- **Phase 2: Entity-Collections** - Generischer `PlatformEntityCollectionPort<T>` für CRUD-Operationen auf allen Entity-Typen
+- **Phase 3: Settings-System** - `PlatformSettingsPort` für platform-agnostische Settings-Verwaltung
+- **Phase 4: UI-Operations** - `PlatformUIPort` für platform-agnostische UI-Operationen
+- **Ziel**: Multi-VTT-Fähigkeit (Foundry, Roll20, Fantasy Grounds, CSV/File-based)
+- **Aufwand**: 40-62h über 5-6 Wochen verteilt
+- **DIP-Refactoring Dokumentation**: Vollständige Analyse und Dokumentation aller DIP-Verletzungen (SOLID-Prinzip) mit 5 detaillierten Refactoring-Plänen ([Übersicht](docs/refactoring/DIP-Refactoring-Overview.md))
+- Plan 1: JournalVisibilityPort (✅ bereits umgesetzt in v0.26.3)
+- Plan 2: BootstrapLifecycle - Bootstrap nutzt globale Foundry-Hooks ([Details](docs/refactoring/DIP-Refactoring-Plan-2-BootstrapLifecycle.md))
+- Plan 3: SettingsRegistrationPort - Settings-Registrar mischt Domäne und Foundry-Details ([Details](docs/refactoring/DIP-Refactoring-Plan-3-SettingsRegistrationPort.md))
+- Plan 4: JournalCacheInvalidationHook - Hook nutzt Foundry-Globals trotz injizierter Services ([Details](docs/refactoring/DIP-Refactoring-Plan-4-JournalCacheInvalidationHookGlobals.md))
+- Plan 5: MetricsStorageFactory - Direkte Instantiierung von LocalStorageMetricsStorage ([Details](docs/refactoring/DIP-Refactoring-Plan-5-MetricsStorageFactory.md))
+
+### Geändert
+- **Event-System Architektur**: Alte Hook-Klassen (`RenderJournalDirectoryHook`, `JournalCacheInvalidationHook`) durch Use-Cases ersetzt
+- Hooks arbeiten jetzt über `JournalEventPort` statt direkt mit `FoundryHooks`
+- `ModuleHookRegistrar` durch `ModuleEventRegistrar` ersetzt
+- `HookRegistrar` Interface durch `EventRegistrar` Interface ersetzt
+- Alle Event-bezogenen Tokens in separater `event.tokens.ts` Datei organisiert
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.26.5] - 2025-11-21
 ### Hinzugefügt
 - Keine Einträge

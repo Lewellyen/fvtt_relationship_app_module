@@ -5,6 +5,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   ModuleSettingsRegistrar,
   DIModuleSettingsRegistrar,
+  runtimeConfigBindings,
 } from "@/application/services/ModuleSettingsRegistrar";
 import { ServiceContainer } from "@/infrastructure/di/container";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
@@ -421,5 +422,66 @@ describe("ModuleSettingsRegistrar DI metadata", () => {
       i18nFacadeToken,
       loggerToken,
     ]);
+  });
+});
+
+describe("runtimeConfigBindings", () => {
+  it("should have binding for logLevel", () => {
+    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL];
+    expect(binding).toBeDefined();
+    expect(binding.runtimeKey).toBe("logLevel");
+    expect(binding.normalize(LogLevel.DEBUG)).toBe(LogLevel.DEBUG);
+  });
+
+  it("should have binding for cacheEnabled", () => {
+    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED];
+    expect(binding).toBeDefined();
+    expect(binding.runtimeKey).toBe("enableCacheService");
+    expect(binding.normalize(true)).toBe(true);
+    expect(binding.normalize(false)).toBe(false);
+  });
+
+  it("should have binding for cacheTtlMs", () => {
+    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS];
+    expect(binding).toBeDefined();
+    expect(binding.runtimeKey).toBe("cacheDefaultTtlMs");
+    expect(binding.normalize(5000)).toBe(5000);
+  });
+
+  it("should have binding for cacheMaxEntries with transform", () => {
+    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES];
+    expect(binding).toBeDefined();
+    expect(binding.runtimeKey).toBe("cacheMaxEntries");
+    // Transform: 0 becomes undefined, positive values stay
+    expect(binding.normalize(0)).toBeUndefined();
+    expect(binding.normalize(100)).toBe(100);
+  });
+
+  it("should have binding for performanceTrackingEnabled", () => {
+    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED];
+    expect(binding).toBeDefined();
+    expect(binding.runtimeKey).toBe("enablePerformanceTracking");
+    expect(binding.normalize(true)).toBe(true);
+  });
+
+  it("should have binding for performanceSamplingRate", () => {
+    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE];
+    expect(binding).toBeDefined();
+    expect(binding.runtimeKey).toBe("performanceSamplingRate");
+    expect(binding.normalize(0.5)).toBe(0.5);
+  });
+
+  it("should have binding for metricsPersistenceEnabled", () => {
+    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED];
+    expect(binding).toBeDefined();
+    expect(binding.runtimeKey).toBe("enableMetricsPersistence");
+    expect(binding.normalize(true)).toBe(true);
+  });
+
+  it("should have binding for metricsPersistenceKey", () => {
+    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY];
+    expect(binding).toBeDefined();
+    expect(binding.runtimeKey).toBe("metricsPersistenceKey");
+    expect(binding.normalize("test-key")).toBe("test-key");
   });
 });

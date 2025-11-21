@@ -686,18 +686,46 @@ describe("dependencyconfig", () => {
 
     it("should propagate errors from registerRegistrars", () => {
       const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
 
-      vi.spyOn(container, "registerClass").mockImplementation((token) => {
-        if (String(token).includes("Registrar")) {
-          return err({ code: "InvalidOperation", message: "Registrar failed" });
+      // Mock to fail specifically at ModuleSettingsRegistrar registration
+      vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
+        // Let all registrations succeed until we reach ModuleSettingsRegistrar
+        if (String(token.description).includes("ModuleSettingsRegistrar")) {
+          return err({ code: "InvalidOperation", message: "ModuleSettingsRegistrar failed" });
         }
-        return { ok: true, value: undefined };
+        return originalRegisterClass(token, serviceClass, lifecycle);
       });
 
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      expect(result.error).toContain("Registrar");
+      if (!result.ok) {
+        expect(result.error).toContain("ModuleSettingsRegistrar");
+      }
+    });
+
+    it("should propagate errors from registerEventPorts", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
+
+      vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
+        // Fail event port registration
+        if (String(token.description).includes("JournalEventPort")) {
+          return err({
+            code: "InvalidOperation",
+            message: "JournalEventPort registration failed",
+          });
+        }
+        return originalRegisterClass(token, serviceClass, lifecycle);
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("JournalEventPort");
+      }
     });
 
     it("should propagate errors from registerNotifications", () => {

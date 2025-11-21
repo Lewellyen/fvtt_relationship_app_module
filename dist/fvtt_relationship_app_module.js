@@ -217,7 +217,6 @@ const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
 const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
 const serviceContainerToken = createInjectionToken("ServiceContainer");
 const moduleSettingsRegistrarToken = createInjectionToken("ModuleSettingsRegistrar");
-const moduleHookRegistrarToken = createInjectionToken("ModuleHookRegistrar");
 const metricsCollectorToken = createInjectionToken("MetricsCollector");
 const metricsRecorderToken = createInjectionToken("MetricsRecorder");
 const metricsSamplerToken = createInjectionToken("MetricsSampler");
@@ -247,12 +246,6 @@ const performanceTrackingServiceToken = createInjectionToken(
   "PerformanceTrackingService"
 );
 const retryServiceToken = createInjectionToken("RetryService");
-const renderJournalDirectoryHookToken = createInjectionToken(
-  "RenderJournalDirectoryHook"
-);
-const journalCacheInvalidationHookToken = createInjectionToken(
-  "JournalCacheInvalidationHook"
-);
 const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
 const foundryGameToken = createInjectionToken("FoundryGame");
 const foundryHooksToken = createInjectionToken("FoundryHooks");
@@ -267,6 +260,14 @@ const foundrySettingsToken = createInjectionToken("FoundrySettings");
 const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
 const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
 const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
+const journalEventPortToken = createInjectionToken("JournalEventPort");
+const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
+  "InvalidateJournalCacheOnChangeUseCase"
+);
+const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken(
+  "ProcessJournalDirectoryOnRenderUseCase"
+);
+const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
 const apiSafeTokens = /* @__PURE__ */ new Set();
 function markAsApiSafe(token) {
   apiSafeTokens.add(token);
@@ -559,6 +560,20 @@ function getFirstArrayElement(array2) {
   return array2[0];
 }
 __name(getFirstArrayElement, "getFirstArrayElement");
+function getFirstElementIfArray(value2, typeGuard) {
+  if (Array.isArray(value2) && value2.length > 0) {
+    const firstElement = value2[0];
+    if (typeGuard(firstElement)) {
+      return firstElement;
+    }
+  }
+  return null;
+}
+__name(getFirstElementIfArray, "getFirstElementIfArray");
+function castToFoundryHookCallback(callback) {
+  return callback;
+}
+__name(castToFoundryHookCallback, "castToFoundryHookCallback");
 function hasDependencies(cls) {
   return "dependencies" in cls;
 }
@@ -13849,505 +13864,7 @@ _DIModuleSettingsRegistrar.dependencies = [
   loggerToken
 ];
 let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
-function disposeHooks(hooks) {
-  for (const hook of hooks) {
-    hook.dispose();
-  }
-}
-__name(disposeHooks, "disposeHooks");
-const _ModuleHookRegistrar = class _ModuleHookRegistrar {
-  constructor(renderJournalHook, journalCacheInvalidationHook, notificationCenter) {
-    this.notificationCenter = notificationCenter;
-    this.hooks = [renderJournalHook, journalCacheInvalidationHook];
-  }
-  /**
-   * Registers all hooks with Foundry VTT.
-   *
-   * NOTE: Container parameter removed - hooks receive all dependencies via constructor injection.
-   */
-  registerAll() {
-    const errors = [];
-    for (const hook of this.hooks) {
-      const result = hook.register();
-      if (!result.ok) {
-        const error = {
-          code: "HOOK_REGISTRATION_FAILED",
-          message: result.error.message
-        };
-        this.notificationCenter.error("Failed to register hook", error, {
-          channels: ["ConsoleChannel"]
-        });
-        errors.push(result.error);
-      }
-    }
-    if (errors.length > 0) {
-      return err(errors);
-    }
-    return ok(void 0);
-  }
-  /**
-   * Dispose all hooks.
-   * Called when the module is disabled or reloaded.
-   */
-  disposeAll() {
-    disposeHooks(this.hooks);
-  }
-};
-__name(_ModuleHookRegistrar, "ModuleHookRegistrar");
-let ModuleHookRegistrar = _ModuleHookRegistrar;
-const _DIModuleHookRegistrar = class _DIModuleHookRegistrar extends ModuleHookRegistrar {
-  constructor(renderJournalHook, journalCacheInvalidationHook, notificationCenter) {
-    super(renderJournalHook, journalCacheInvalidationHook, notificationCenter);
-  }
-};
-__name(_DIModuleHookRegistrar, "DIModuleHookRegistrar");
-_DIModuleHookRegistrar.dependencies = [
-  renderJournalDirectoryHookToken,
-  journalCacheInvalidationHookToken,
-  notificationCenterToken
-];
-let DIModuleHookRegistrar = _DIModuleHookRegistrar;
-const _HookRegistrationManager = class _HookRegistrationManager {
-  constructor() {
-    this.cleanupCallbacks = [];
-  }
-  /**
-   * Registers a cleanup callback that will be invoked when dispose() is called.
-   *
-   * Typical usage:
-   * ```ts
-   * const result = hooks.on(name, callback);
-   * if (result.ok) {
-   *   manager.register(() => hooks.off(name, result.value));
-   * }
-   * ```
-   */
-  register(unregister) {
-    this.cleanupCallbacks.push(unregister);
-  }
-  /**
-   * Invokes all registered cleanup callbacks once and clears the internal list.
-   * Subsequent calls are no-ops.
-   */
-  dispose() {
-    while (this.cleanupCallbacks.length > 0) {
-      const unregister = this.cleanupCallbacks.pop();
-      try {
-        unregister?.();
-      } catch (error) {
-        console.warn("HookRegistrationManager: failed to unregister hook", error);
-      }
-    }
-  }
-};
-__name(_HookRegistrationManager, "HookRegistrationManager");
-let HookRegistrationManager = _HookRegistrationManager;
-function throttle(fn, windowMs) {
-  let isThrottled = false;
-  return /* @__PURE__ */ __name(function throttled(...args2) {
-    if (!isThrottled) {
-      fn(...args2);
-      isThrottled = true;
-      setTimeout(() => {
-        isThrottled = false;
-      }, windowMs);
-    }
-  }, "throttled");
-}
-__name(throttle, "throttle");
-function debounce(fn, delayMs) {
-  let timeoutId = null;
-  const debounced = /* @__PURE__ */ __name(function(...args2) {
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-    }
-    timeoutId = setTimeout(() => {
-      fn(...args2);
-      timeoutId = null;
-    }, delayMs);
-  }, "debounced");
-  debounced.cancel = function() {
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
-  };
-  return debounced;
-}
-__name(debounce, "debounce");
-const _RenderJournalDirectoryHook = class _RenderJournalDirectoryHook {
-  constructor(foundryHooks, journalVisibility, notificationCenter) {
-    this.foundryHooks = foundryHooks;
-    this.journalVisibility = journalVisibility;
-    this.notificationCenter = notificationCenter;
-    this.registrationManager = new HookRegistrationManager();
-  }
-  // container parameter removed: HookRegistrar implementiert register() aktuell ohne Container-Nutzung
-  register() {
-    const { foundryHooks, journalVisibility, notificationCenter } = this;
-    const throttledCallback = throttle((app, html) => {
-      notificationCenter.debug(
-        `${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} fired`,
-        { context: { app, html } },
-        { channels: ["ConsoleChannel"] }
-      );
-      const appValidation = validateHookApp(app);
-      if (!appValidation.ok) {
-        notificationCenter.error(
-          `Invalid app parameter in ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
-          appValidation.error,
-          { channels: ["ConsoleChannel"] }
-        );
-        return;
-      }
-      const htmlElement = extractHtmlElement(html);
-      if (!htmlElement) {
-        notificationCenter.error(
-          "Failed to get HTMLElement from hook - incompatible format",
-          {
-            code: "INVALID_HTML_ELEMENT",
-            message: "HTMLElement could not be extracted from hook arguments."
-          },
-          { channels: ["ConsoleChannel"] }
-        );
-        return;
-      }
-      const processResult = journalVisibility.processJournalDirectory(htmlElement);
-      if (!processResult.ok) {
-        notificationCenter.error("Error processing journal directory", processResult.error, {
-          channels: ["ConsoleChannel"]
-        });
-      }
-    }, HOOK_THROTTLE_WINDOW_MS);
-    const hookResult = foundryHooks.on(
-      MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
-      throttledCallback
-    );
-    if (!hookResult.ok) {
-      notificationCenter.error(
-        `Failed to register ${MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY} hook`,
-        hookResult.error,
-        {
-          channels: ["ConsoleChannel"]
-        }
-      );
-      return err(new Error(`Hook registration failed: ${hookResult.error.message}`));
-    }
-    const registrationId = hookResult.value;
-    this.registrationManager.register(() => {
-      foundryHooks.off(MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY, registrationId);
-    });
-    return ok(void 0);
-  }
-  dispose() {
-    this.registrationManager.dispose();
-  }
-};
-__name(_RenderJournalDirectoryHook, "RenderJournalDirectoryHook");
-let RenderJournalDirectoryHook = _RenderJournalDirectoryHook;
-const _DIRenderJournalDirectoryHook = class _DIRenderJournalDirectoryHook extends RenderJournalDirectoryHook {
-  constructor(foundryHooks, journalVisibility, notificationCenter) {
-    super(foundryHooks, journalVisibility, notificationCenter);
-  }
-};
-__name(_DIRenderJournalDirectoryHook, "DIRenderJournalDirectoryHook");
-_DIRenderJournalDirectoryHook.dependencies = [
-  foundryHooksToken,
-  journalVisibilityServiceToken,
-  notificationCenterToken
-];
-let DIRenderJournalDirectoryHook = _DIRenderJournalDirectoryHook;
-const JOURNAL_INVALIDATION_HOOKS = [
-  MODULE_CONSTANTS.HOOKS.CREATE_JOURNAL_ENTRY,
-  MODULE_CONSTANTS.HOOKS.UPDATE_JOURNAL_ENTRY,
-  MODULE_CONSTANTS.HOOKS.DELETE_JOURNAL_ENTRY
-];
-const _JournalCacheInvalidationHook = class _JournalCacheInvalidationHook {
-  constructor(hooks, cache, notificationCenter, foundryGame, journalVisibility) {
-    this.hooks = hooks;
-    this.cache = cache;
-    this.notificationCenter = notificationCenter;
-    this.foundryGame = foundryGame;
-    this.journalVisibility = journalVisibility;
-    this.registrationManager = new HookRegistrationManager();
-  }
-  // container parameter entfernt: HookRegistrar-Implementierung nutzt Container nicht mehr direkt
-  register() {
-    const { hooks, cache, notificationCenter, foundryGame } = this;
-    for (const hookName of JOURNAL_INVALIDATION_HOOKS) {
-      const registrationResult = hooks.on(
-        hookName,
-        function(...args2) {
-          const removed = cache.invalidateWhere(
-            (meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG)
-          );
-          if (removed > 0) {
-            notificationCenter.debug(
-              `Invalidated ${removed} hidden journal cache entries via ${hookName}`,
-              { context: { removed, hookName } },
-              { channels: ["ConsoleChannel"] }
-            );
-          }
-          foundryGame.invalidateCache();
-          if (hookName === MODULE_CONSTANTS.HOOKS.UPDATE_JOURNAL_ENTRY) {
-            const entry = this.getEntryFromHookArgs(args2);
-            if (entry?.id) {
-              const hiddenFlagChanged = this.checkHiddenFlagChanged(entry.id);
-              if (hiddenFlagChanged) {
-                const hiddenFlag = this.getHiddenFlagValue(entry.id);
-                this.notificationCenter.debug(
-                  `Hidden flag changed for journal entry ${entry.id} (value: ${hiddenFlag}), triggering re-render`,
-                  { context: { entryId: entry.id, hiddenFlag } },
-                  { channels: ["ConsoleChannel"] }
-                );
-                this.rerenderJournalDirectory();
-              }
-            }
-          }
-        }.bind(this)
-      );
-      if (!registrationResult.ok) {
-        notificationCenter.error(`Failed to register ${hookName} hook`, registrationResult.error, {
-          channels: ["ConsoleChannel"]
-        });
-        this.registrationManager.dispose();
-        return err(new Error(`Hook registration failed: ${registrationResult.error.message}`));
-      }
-      const registrationId = registrationResult.value;
-      this.registrationManager.register(() => {
-        hooks.off(hookName, registrationId);
-      });
-    }
-    return ok(void 0);
-  }
-  /**
-   * Checks if the hidden flag was changed for a journal entry.
-   * Returns true if the flag is set (true or false), meaning it was explicitly set.
-   * This allows us to re-render when entries are hidden OR shown.
-   * @param entryId - The journal entry ID
-   * @returns true if hidden flag is set (true or false), false if not set or error
-   */
-  checkHiddenFlagChanged(entryId) {
-    try {
-      if (typeof game === "undefined" || !game?.journal) return false;
-      const entry = game.journal.get(entryId);
-      if (!entry) return false;
-      if (!("getFlag" in entry)) {
-        return false;
-      }
-      const getFlagMethod = castCacheValue(entry.getFlag);
-      const hiddenFlag = castCacheValue(
-        getFlagMethod(MODULE_CONSTANTS.MODULE.ID, MODULE_CONSTANTS.FLAGS.HIDDEN)
-      );
-      return hiddenFlag === true || hiddenFlag === false;
-    } catch (error) {
-      this.notificationCenter.debug(
-        "Failed to check hidden flag",
-        { error: error instanceof Error ? error.message : String(error), entryId },
-        { channels: ["ConsoleChannel"] }
-      );
-      return false;
-    }
-  }
-  /**
-   * Gets the current value of the hidden flag for a journal entry.
-   * @param entryId - The journal entry ID
-   * @returns the flag value (true/false) or null if not set or error
-   */
-  getHiddenFlagValue(entryId) {
-    try {
-      if (typeof game === "undefined" || !game?.journal) return null;
-      const entry = game.journal.get(entryId);
-      if (!entry) return null;
-      if (!("getFlag" in entry)) {
-        return null;
-      }
-      const getFlagMethod = castCacheValue(entry.getFlag);
-      const hiddenFlag = castCacheValue(
-        getFlagMethod(MODULE_CONSTANTS.MODULE.ID, MODULE_CONSTANTS.FLAGS.HIDDEN)
-      );
-      if (hiddenFlag === true || hiddenFlag === false) {
-        return hiddenFlag;
-      }
-      return null;
-    } catch (_error) {
-      return null;
-    }
-  }
-  /**
-   * Extracts journal entry from hook arguments.
-   * Foundry hooks pass different argument structures, so we need to handle multiple cases.
-   */
-  getEntryFromHookArgs(args2) {
-    try {
-      if (args2.length > 0 && args2[0]) {
-        const firstArg = args2[0];
-        if (Array.isArray(firstArg)) {
-          const arrayArg = firstArg;
-          if (arrayArg.length > 0) {
-            const entry = castCacheValue(
-              getFirstArrayElement(arrayArg)
-            );
-            if (entry?.id) return { id: entry.id };
-          }
-        } else {
-          const entry = castCacheValue(firstArg);
-          if (entry?.id) {
-            return { id: entry.id };
-          }
-        }
-      }
-      return null;
-    } catch (error) {
-      this.notificationCenter.debug(
-        "Failed to extract entry from hook args",
-        { error: error instanceof Error ? error.message : String(error) },
-        { channels: ["ConsoleChannel"] }
-      );
-      return null;
-    }
-  }
-  /**
-   * Triggers a re-render of the journal directory if it's currently open.
-   * This ensures that hidden entries are immediately updated after flag changes.
-   *
-   * Returns true if re-render was triggered, false otherwise.
-   */
-  rerenderJournalDirectory() {
-    try {
-      const journalElement = document.querySelector("#journal");
-      if (!journalElement) {
-        this.notificationCenter.debug(
-          "Journal directory not open, skipping re-render",
-          {},
-          { channels: ["ConsoleChannel"] }
-        );
-        return false;
-      }
-      if (typeof ui === "undefined" || !ui) {
-        this.notificationCenter.debug(
-          "UI not available, skipping journal directory re-render",
-          {},
-          { channels: ["ConsoleChannel"] }
-        );
-        return false;
-      }
-      const sidebar = castCacheValue(
-        ui.sidebar
-      );
-      const journalApp = castCacheValue(
-        sidebar?.tabs?.journal || sidebar?.journal || castCacheValue(ui).journal || castCacheValue(ui).apps?.find(
-          (app) => app.id === "journal"
-        )
-      );
-      if (journalApp && typeof journalApp.render === "function") {
-        journalApp.render(false);
-        this.notificationCenter.debug(
-          "Triggered journal directory re-render after flag update",
-          {
-            context: {
-              journalAppId: journalApp.id,
-              journalAppClass: journalApp.constructor?.name
-            }
-          },
-          { channels: ["ConsoleChannel"] }
-        );
-        return true;
-      } else {
-        if (typeof Hooks !== "undefined" && typeof Hooks.call === "function") {
-          const app = castCacheValue(
-            journalApp || { id: "journal", render: /* @__PURE__ */ __name(() => {
-            }, "render") }
-          );
-          Hooks.call(
-            MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
-            app,
-            [journalElement]
-          );
-          this.notificationCenter.debug(
-            "Manually triggered renderJournalDirectory hook",
-            { context: { appId: app.id } },
-            { channels: ["ConsoleChannel"] }
-          );
-          return true;
-        }
-        this.notificationCenter.debug(
-          "Could not trigger journal directory re-render (app not found)",
-          {
-            context: {
-              hasUI: !!ui,
-              hasSidebar: !!sidebar,
-              hasTabs: !!sidebar?.tabs,
-              hasJournalTab: !!sidebar?.tabs?.journal,
-              hasJournalElement: !!journalElement
-            }
-          },
-          { channels: ["ConsoleChannel"] }
-        );
-        return false;
-      }
-    } catch (error) {
-      this.notificationCenter.warn(
-        "Failed to re-render journal directory",
-        {
-          code: "RERENDER_FAILED",
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : void 0
-        },
-        { channels: ["ConsoleChannel"] }
-      );
-      return false;
-    }
-  }
-  dispose() {
-    this.registrationManager.dispose();
-  }
-};
-__name(_JournalCacheInvalidationHook, "JournalCacheInvalidationHook");
-let JournalCacheInvalidationHook = _JournalCacheInvalidationHook;
-const _DIJournalCacheInvalidationHook = class _DIJournalCacheInvalidationHook extends JournalCacheInvalidationHook {
-  constructor(hooks, cache, notificationCenter, foundryGame, journalVisibility) {
-    super(hooks, cache, notificationCenter, foundryGame, journalVisibility);
-  }
-};
-__name(_DIJournalCacheInvalidationHook, "DIJournalCacheInvalidationHook");
-_DIJournalCacheInvalidationHook.dependencies = [
-  foundryHooksToken,
-  cacheServiceToken,
-  notificationCenterToken,
-  foundryGameToken,
-  journalVisibilityServiceToken
-];
-let DIJournalCacheInvalidationHook = _DIJournalCacheInvalidationHook;
 function registerRegistrars(container) {
-  const renderJournalHookResult = container.registerClass(
-    renderJournalDirectoryHookToken,
-    DIRenderJournalDirectoryHook,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(renderJournalHookResult)) {
-    return err(
-      `Failed to register RenderJournalDirectoryHook: ${renderJournalHookResult.error.message}`
-    );
-  }
-  const cacheInvalidationHookResult = container.registerClass(
-    journalCacheInvalidationHookToken,
-    DIJournalCacheInvalidationHook,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(cacheInvalidationHookResult)) {
-    return err(
-      `Failed to register JournalCacheInvalidationHook: ${cacheInvalidationHookResult.error.message}`
-    );
-  }
-  const hookRegistrarResult = container.registerClass(
-    moduleHookRegistrarToken,
-    DIModuleHookRegistrar,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(hookRegistrarResult)) {
-    return err(`Failed to register ModuleHookRegistrar: ${hookRegistrarResult.error.message}`);
-  }
   const settingsRegistrarResult = container.registerClass(
     moduleSettingsRegistrarToken,
     DIModuleSettingsRegistrar,
@@ -14361,6 +13878,401 @@ function registerRegistrars(container) {
   return ok(void 0);
 }
 __name(registerRegistrars, "registerRegistrars");
+const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
+  constructor(foundryHooks) {
+    this.foundryHooks = foundryHooks;
+    this.registrations = /* @__PURE__ */ new Map();
+    this.nextId = 1;
+  }
+  // ===== Specialized Journal Methods =====
+  onJournalCreated(callback) {
+    return this.registerFoundryHook(
+      "createJournalEntry",
+      // Foundry-spezifischer Hook-Name
+      (...args2) => {
+        const [foundryEntry] = args2;
+        const event = {
+          journalId: this.extractId(foundryEntry),
+          timestamp: Date.now()
+        };
+        callback(event);
+      }
+    );
+  }
+  onJournalUpdated(callback) {
+    return this.registerFoundryHook(
+      "updateJournalEntry",
+      // Foundry-spezifisch
+      (...args2) => {
+        const [foundryEntry, changes] = args2;
+        const event = {
+          journalId: this.extractId(foundryEntry),
+          changes: this.normalizeChanges(changes),
+          timestamp: Date.now()
+        };
+        callback(event);
+      }
+    );
+  }
+  onJournalDeleted(callback) {
+    return this.registerFoundryHook("deleteJournalEntry", (...args2) => {
+      const [foundryEntry] = args2;
+      const event = {
+        journalId: this.extractId(foundryEntry),
+        timestamp: Date.now()
+      };
+      callback(event);
+    });
+  }
+  onJournalDirectoryRendered(callback) {
+    return this.registerFoundryHook("renderJournalDirectory", (app, html) => {
+      const htmlElement = this.extractHtmlElement(html);
+      if (!htmlElement) return;
+      const event = {
+        htmlElement,
+        timestamp: Date.now()
+      };
+      callback(event);
+    });
+  }
+  // ===== Generic Methods (from PlatformEventPort) =====
+  registerListener(eventType, callback) {
+    return this.registerFoundryHook(eventType, castToFoundryHookCallback(callback));
+  }
+  unregisterListener(registrationId) {
+    const cleanup = this.registrations.get(registrationId);
+    if (!cleanup) {
+      return {
+        ok: false,
+        error: {
+          code: "EVENT_UNREGISTRATION_FAILED",
+          message: `No registration found for ID ${registrationId}`
+        }
+      };
+    }
+    cleanup();
+    this.registrations.delete(registrationId);
+    return { ok: true, value: void 0 };
+  }
+  // ===== Lifecycle =====
+  /**
+   * Cleanup all registered listeners.
+   * Should be called during module shutdown.
+   */
+  dispose() {
+    for (const cleanup of this.registrations.values()) {
+      cleanup();
+    }
+    this.registrations.clear();
+  }
+  // ===== Private Helpers =====
+  registerFoundryHook(hookName, callback) {
+    const result = this.foundryHooks.on(hookName, callback);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "EVENT_REGISTRATION_FAILED",
+          message: `Failed to register Foundry hook "${hookName}": ${result.error.message}`,
+          details: result.error
+        }
+      };
+    }
+    const foundryHookId = result.value;
+    const registrationId = String(this.nextId++);
+    this.registrations.set(registrationId, () => {
+      this.foundryHooks.off(hookName, foundryHookId);
+    });
+    return { ok: true, value: registrationId };
+  }
+  extractId(foundryEntry) {
+    if (typeof foundryEntry === "object" && foundryEntry !== null && "id" in foundryEntry) {
+      const entry = foundryEntry;
+      if (typeof entry.id === "string") {
+        return entry.id;
+      }
+    }
+    return "";
+  }
+  normalizeChanges(foundryChanges) {
+    if (!foundryChanges || typeof foundryChanges !== "object") {
+      return {};
+    }
+    const changes = Object.assign({}, foundryChanges);
+    const result = { ...changes };
+    if (changes.flags !== void 0 && typeof changes.flags === "object" && changes.flags !== null) {
+      result.flags = Object.assign({}, changes.flags);
+    }
+    if (changes.name !== void 0 && typeof changes.name === "string") {
+      result.name = changes.name;
+    }
+    return result;
+  }
+  extractHtmlElement(htmlInput) {
+    if (htmlInput instanceof HTMLElement) return htmlInput;
+    return getFirstElementIfArray(htmlInput, (el) => el instanceof HTMLElement);
+  }
+};
+__name(_FoundryJournalEventAdapter, "FoundryJournalEventAdapter");
+let FoundryJournalEventAdapter = _FoundryJournalEventAdapter;
+const _DIFoundryJournalEventAdapter = class _DIFoundryJournalEventAdapter extends FoundryJournalEventAdapter {
+  constructor(hooks) {
+    super(hooks);
+  }
+};
+__name(_DIFoundryJournalEventAdapter, "DIFoundryJournalEventAdapter");
+_DIFoundryJournalEventAdapter.dependencies = [foundryHooksToken];
+let DIFoundryJournalEventAdapter = _DIFoundryJournalEventAdapter;
+const _InvalidateJournalCacheOnChangeUseCase = class _InvalidateJournalCacheOnChangeUseCase {
+  constructor(journalEvents, cache, notificationCenter) {
+    this.journalEvents = journalEvents;
+    this.cache = cache;
+    this.notificationCenter = notificationCenter;
+    this.registrationIds = [];
+  }
+  /**
+   * Register event listeners for journal change events.
+   */
+  register() {
+    const results = [
+      this.journalEvents.onJournalCreated((event) => {
+        this.invalidateCache("created", event.journalId);
+      }),
+      this.journalEvents.onJournalUpdated((event) => {
+        this.invalidateCache("updated", event.journalId);
+        if (event.changes.flags?.["hidden"] !== void 0) {
+          this.triggerUIUpdate(event.journalId);
+        }
+      }),
+      this.journalEvents.onJournalDeleted((event) => {
+        this.invalidateCache("deleted", event.journalId);
+      })
+    ];
+    const errors = [];
+    for (const result of results) {
+      if (result.ok) {
+        this.registrationIds.push(result.value);
+      } else {
+        const error = new Error(
+          `Failed to register journal event listener: ${result.error.message}`
+        );
+        errors.push(error);
+        this.notificationCenter.error(
+          "Failed to register journal event listener",
+          {
+            code: result.error.code,
+            message: result.error.message,
+            details: result.error.details
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+      }
+    }
+    if (errors.length > 0) {
+      this.dispose();
+      return err(getFirstArrayElement(errors));
+    }
+    return ok(void 0);
+  }
+  /**
+   * Invalidate cache entries related to journals.
+   */
+  invalidateCache(reason, journalId) {
+    const removed = this.cache.invalidateWhere((meta) => meta.tags.includes("journal:hidden"));
+    if (removed > 0) {
+      this.notificationCenter.debug(
+        `Invalidated ${removed} journal cache entries (${reason})`,
+        { journalId },
+        { channels: ["ConsoleChannel"] }
+      );
+    }
+  }
+  /**
+   * Trigger UI update when journal visibility changes.
+   */
+  triggerUIUpdate(journalId) {
+    this.notificationCenter.debug(
+      "Journal hidden flag changed, UI update needed",
+      { journalId },
+      { channels: ["ConsoleChannel"] }
+    );
+  }
+  /**
+   * Cleanup: Unregister all event listeners.
+   */
+  dispose() {
+    for (const id of this.registrationIds) {
+      this.journalEvents.unregisterListener(id);
+    }
+    this.registrationIds = [];
+  }
+};
+__name(_InvalidateJournalCacheOnChangeUseCase, "InvalidateJournalCacheOnChangeUseCase");
+let InvalidateJournalCacheOnChangeUseCase = _InvalidateJournalCacheOnChangeUseCase;
+const _DIInvalidateJournalCacheOnChangeUseCase = class _DIInvalidateJournalCacheOnChangeUseCase extends InvalidateJournalCacheOnChangeUseCase {
+  constructor(journalEvents, cache, notificationCenter) {
+    super(journalEvents, cache, notificationCenter);
+  }
+};
+__name(_DIInvalidateJournalCacheOnChangeUseCase, "DIInvalidateJournalCacheOnChangeUseCase");
+_DIInvalidateJournalCacheOnChangeUseCase.dependencies = [
+  journalEventPortToken,
+  cacheServiceToken,
+  notificationCenterToken
+];
+let DIInvalidateJournalCacheOnChangeUseCase = _DIInvalidateJournalCacheOnChangeUseCase;
+const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOnRenderUseCase {
+  constructor(journalEvents, journalVisibility, notificationCenter) {
+    this.journalEvents = journalEvents;
+    this.journalVisibility = journalVisibility;
+    this.notificationCenter = notificationCenter;
+  }
+  /**
+   * Register event listener for directory render events.
+   */
+  register() {
+    const result = this.journalEvents.onJournalDirectoryRendered((event) => {
+      this.notificationCenter.debug(
+        "Journal directory rendered, processing visibility",
+        { timestamp: event.timestamp },
+        { channels: ["ConsoleChannel"] }
+      );
+      const processResult = this.journalVisibility.processJournalDirectory(event.htmlElement);
+      if (!processResult.ok) {
+        this.notificationCenter.error("Failed to process journal directory", processResult.error, {
+          channels: ["ConsoleChannel"]
+        });
+      }
+    });
+    if (result.ok) {
+      this.registrationId = result.value;
+      return ok(void 0);
+    } else {
+      return err(new Error(result.error.message));
+    }
+  }
+  /**
+   * Cleanup: Unregister event listener.
+   */
+  dispose() {
+    if (this.registrationId !== void 0) {
+      this.journalEvents.unregisterListener(this.registrationId);
+      this.registrationId = void 0;
+    }
+  }
+};
+__name(_ProcessJournalDirectoryOnRenderUseCase, "ProcessJournalDirectoryOnRenderUseCase");
+let ProcessJournalDirectoryOnRenderUseCase = _ProcessJournalDirectoryOnRenderUseCase;
+const _DIProcessJournalDirectoryOnRenderUseCase = class _DIProcessJournalDirectoryOnRenderUseCase extends ProcessJournalDirectoryOnRenderUseCase {
+  constructor(journalEvents, journalVisibility, notificationCenter) {
+    super(journalEvents, journalVisibility, notificationCenter);
+  }
+};
+__name(_DIProcessJournalDirectoryOnRenderUseCase, "DIProcessJournalDirectoryOnRenderUseCase");
+_DIProcessJournalDirectoryOnRenderUseCase.dependencies = [
+  journalEventPortToken,
+  journalVisibilityServiceToken,
+  notificationCenterToken
+];
+let DIProcessJournalDirectoryOnRenderUseCase = _DIProcessJournalDirectoryOnRenderUseCase;
+function disposeHooks(hooks) {
+  for (const hook of hooks) {
+    hook.dispose();
+  }
+}
+__name(disposeHooks, "disposeHooks");
+const _ModuleEventRegistrar = class _ModuleEventRegistrar {
+  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, notificationCenter) {
+    this.notificationCenter = notificationCenter;
+    this.eventRegistrars = [processJournalDirectoryOnRender, invalidateJournalCacheOnChange];
+  }
+  /**
+   * Registers all event listeners.
+   *
+   * NOTE: Container parameter removed - event listeners receive all dependencies via constructor injection.
+   */
+  registerAll() {
+    const errors = [];
+    for (const registrar of this.eventRegistrars) {
+      const result = registrar.register();
+      if (!result.ok) {
+        const error = {
+          code: "EVENT_REGISTRATION_FAILED",
+          message: result.error.message
+        };
+        this.notificationCenter.error("Failed to register event listener", error, {
+          channels: ["ConsoleChannel"]
+        });
+        errors.push(result.error);
+      }
+    }
+    if (errors.length > 0) {
+      return err(errors);
+    }
+    return ok(void 0);
+  }
+  /**
+   * Dispose all event listeners.
+   * Called when the module is disabled or reloaded.
+   */
+  disposeAll() {
+    disposeHooks(this.eventRegistrars);
+  }
+};
+__name(_ModuleEventRegistrar, "ModuleEventRegistrar");
+let ModuleEventRegistrar = _ModuleEventRegistrar;
+const _DIModuleEventRegistrar = class _DIModuleEventRegistrar extends ModuleEventRegistrar {
+  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, notificationCenter) {
+    super(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, notificationCenter);
+  }
+};
+__name(_DIModuleEventRegistrar, "DIModuleEventRegistrar");
+_DIModuleEventRegistrar.dependencies = [
+  processJournalDirectoryOnRenderUseCaseToken,
+  invalidateJournalCacheOnChangeUseCaseToken,
+  notificationCenterToken
+];
+let DIModuleEventRegistrar = _DIModuleEventRegistrar;
+function registerEventPorts(container) {
+  const eventPortResult = container.registerClass(
+    journalEventPortToken,
+    DIFoundryJournalEventAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(eventPortResult)) {
+    return err(`Failed to register JournalEventPort: ${eventPortResult.error.message}`);
+  }
+  const cacheInvalidationUseCaseResult = container.registerClass(
+    invalidateJournalCacheOnChangeUseCaseToken,
+    DIInvalidateJournalCacheOnChangeUseCase,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(cacheInvalidationUseCaseResult)) {
+    return err(
+      `Failed to register InvalidateJournalCacheOnChangeUseCase: ${cacheInvalidationUseCaseResult.error.message}`
+    );
+  }
+  const directoryRenderUseCaseResult = container.registerClass(
+    processJournalDirectoryOnRenderUseCaseToken,
+    DIProcessJournalDirectoryOnRenderUseCase,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(directoryRenderUseCaseResult)) {
+    return err(
+      `Failed to register ProcessJournalDirectoryOnRenderUseCase: ${directoryRenderUseCaseResult.error.message}`
+    );
+  }
+  const eventRegistrarResult = container.registerClass(
+    moduleEventRegistrarToken,
+    DIModuleEventRegistrar,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(eventRegistrarResult)) {
+    return err(`Failed to register ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerEventPorts, "registerEventPorts");
 function registerStaticValues(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
@@ -14451,6 +14363,8 @@ function configureDependencies(container) {
   if (isErr(i18nServicesResult)) return i18nServicesResult;
   const notificationsResult = registerNotifications(container);
   if (isErr(notificationsResult)) return notificationsResult;
+  const eventPortsResult = registerEventPorts(container);
+  if (isErr(eventPortsResult)) return eventPortsResult;
   const registrarsResult = registerRegistrars(container);
   if (isErr(registrarsResult)) return registrarsResult;
   const loopServiceResult = registerLoopPreventionServices(container);
@@ -14624,15 +14538,15 @@ function initializeFoundryModule() {
         logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
       }
     }
-    const hookRegistrarResult = initContainerResult.value.resolveWithError(moduleHookRegistrarToken);
-    if (!hookRegistrarResult.ok) {
-      logger.error(`Failed to resolve ModuleHookRegistrar: ${hookRegistrarResult.error.message}`);
+    const eventRegistrarResult = initContainerResult.value.resolveWithError(moduleEventRegistrarToken);
+    if (!eventRegistrarResult.ok) {
+      logger.error(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
       return;
     }
-    const hookRegistrationResult = hookRegistrarResult.value.registerAll();
-    if (!hookRegistrationResult.ok) {
-      logger.error("Failed to register one or more module hooks", {
-        errors: hookRegistrationResult.error.map((e) => e.message)
+    const eventRegistrationResult = eventRegistrarResult.value.registerAll();
+    if (!eventRegistrationResult.ok) {
+      logger.error("Failed to register one or more event listeners", {
+        errors: eventRegistrationResult.error.map((e) => e.message)
       });
       return;
     }

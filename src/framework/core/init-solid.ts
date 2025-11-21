@@ -3,7 +3,7 @@ import { isOk } from "@/infrastructure/shared/utils/result";
 import {
   loggerToken,
   moduleSettingsRegistrarToken,
-  moduleHookRegistrarToken,
+  moduleEventRegistrarToken,
   moduleApiInitializerToken,
   notificationCenterToken,
   uiChannelToken,
@@ -137,18 +137,18 @@ function initializeFoundryModule(): void {
       }
     }
 
-    // Register module hooks
-    const hookRegistrarResult =
-      initContainerResult.value.resolveWithError(moduleHookRegistrarToken);
-    if (!hookRegistrarResult.ok) {
-      logger.error(`Failed to resolve ModuleHookRegistrar: ${hookRegistrarResult.error.message}`);
+    // Register event listeners
+    const eventRegistrarResult =
+      initContainerResult.value.resolveWithError(moduleEventRegistrarToken);
+    if (!eventRegistrarResult.ok) {
+      logger.error(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
       return;
     }
     // Container parameter removed - all dependencies injected via constructor
-    const hookRegistrationResult = hookRegistrarResult.value.registerAll();
-    if (!hookRegistrationResult.ok) {
-      logger.error("Failed to register one or more module hooks", {
-        errors: hookRegistrationResult.error.map((e) => e.message),
+    const eventRegistrationResult = eventRegistrarResult.value.registerAll();
+    if (!eventRegistrationResult.ok) {
+      logger.error("Failed to register one or more event listeners", {
+        errors: eventRegistrationResult.error.map((e) => e.message),
       });
       return;
     }

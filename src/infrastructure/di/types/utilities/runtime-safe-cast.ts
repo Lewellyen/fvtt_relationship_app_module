@@ -18,6 +18,7 @@ import type { ServiceType } from "@/infrastructure/shared/tokens";
 import type { InjectionToken } from "../core/injectiontoken";
 import type { ServiceRegistration } from "../core/serviceregistration";
 import type { Result } from "@/domain/types/result";
+import type { FoundryHookCallback } from "@/infrastructure/adapters/foundry/types";
 import type { ContainerError } from "../../interfaces";
 
 /**
@@ -180,4 +181,40 @@ export function getRegistrationStatus(result: Result<boolean, ContainerError>): 
 export function getFirstArrayElement<T>(array: T[]): T {
   // Type assertion is safe because caller must verify array.length > 0
   return array[0] as T;
+}
+
+/**
+ * Safely checks if a value is an array and returns its first element if it exists.
+ *
+ * This helper provides type-safe array access with a type guard check.
+ * It returns null if the input is not an array or the array is empty.
+ *
+ * @param value - Unknown value that might be an array
+ * @returns The first element of the array if it exists and is of type T, null otherwise
+ */
+export function getFirstElementIfArray<T>(
+  value: unknown,
+  typeGuard: (element: unknown) => element is T
+): T | null {
+  if (Array.isArray(value) && value.length > 0) {
+    const firstElement: unknown = value[0] as unknown;
+    if (typeGuard(firstElement)) {
+      return firstElement;
+    }
+  }
+  return null;
+}
+
+/**
+ * Casts a callback function to FoundryHookCallback.
+ *
+ * This is needed because TypeScript cannot infer that a generic callback
+ * matches the FoundryHookCallback signature at the call site.
+ * The caller must ensure the callback signature is compatible.
+ *
+ * @param callback - Callback function to cast
+ * @returns The callback as FoundryHookCallback
+ */
+export function castToFoundryHookCallback(callback: unknown): FoundryHookCallback {
+  return callback as FoundryHookCallback;
 }

@@ -52,11 +52,12 @@ src/
 - **FoundryXService / DIFoundryXService** – Adapter für Game, Hooks, Document, UI, Settings, I18n
 - **FoundryServiceBase** – Gemeinsamer Lazy-Port-Mechanismus
 
-### Registrars & Hooks
+### Registrars & Event System
 - **ModuleSettingsRegistrar / DIModuleSettingsRegistrar** – Settings via DI registrieren
-- **ModuleHookRegistrar / DIModuleHookRegistrar** – Hook-Verwaltung
-- **RenderJournalDirectoryHook / DIRenderJournalDirectoryHook** – Beispiel-Hook (DI-managed)
-- **JournalCacheInvalidationHook / DIJournalCacheInvalidationHook** – Foundry Events → Cache invalidieren
+- **ModuleEventRegistrar / DIModuleEventRegistrar** – Platform-agnostische Event-Listener-Verwaltung
+- **InvalidateJournalCacheOnChangeUseCase / DIInvalidateJournalCacheOnChangeUseCase** – Cache invalidieren bei Journal-Änderungen
+- **ProcessJournalDirectoryOnRenderUseCase / DIProcessJournalDirectoryOnRenderUseCase** – Journal-Directory-Processing
+- **FoundryJournalEventAdapter / DIFoundryJournalEventAdapter** – Foundry-spezifischer Event-Adapter
 
 ### Business Layer
 - **JournalVisibilityService / DIJournalVisibilityService** – Journal-Visibility
@@ -75,7 +76,7 @@ src/
 
 ## 📦 Modular Config Structure ⭐ UPDATED (Unreleased)
 
-DI-Konfiguration ist in 7 thematische Module aufgeteilt:
+DI-Konfiguration ist in 8 thematische Module aufgeteilt:
 
 ```
 src/framework/config/
@@ -87,6 +88,7 @@ src/framework/config/
 │   ├── foundry-services.config.ts     (FoundryGame, Hooks, Document, UI)
 │   ├── utility-services.config.ts     (Performance, Retry)
 │   ├── i18n-services.config.ts        (I18n Services)
+│   ├── event-ports.config.ts          (Event Ports & Use-Cases) ⭐ NEU
 │   ├── notifications.config.ts        (NotificationCenter & Channels)
 │   ├── cache-services.config.ts       (CacheService)
 │   └── registrars.config.ts           (ModuleSettingsRegistrar, ModuleHookRegistrar)

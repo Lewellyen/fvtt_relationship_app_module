@@ -22,7 +22,7 @@ import { createRuntimeConfig } from "@/application/services/runtime-config-facto
  *
  * NOT responsible for:
  * - API exposition (handled by ModuleApiInitializer)
- * - Hook registration (handled by ModuleHookRegistrar)
+ * - Event listener registration (handled by ModuleEventRegistrar)
  * - Settings registration (handled by ModuleSettingsRegistrar)
  */
 export class CompositionRoot {

@@ -1,17 +1,17 @@
 import { describe, it, expect, vi } from "vitest";
 import { disposeHooks } from "@/infrastructure/shared/utils/dispose-hooks";
-import type { HookRegistrar } from "@/application/use-cases/hook-registrar.interface";
+import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
 
 describe("disposeHooks", () => {
   it("should call dispose on all hooks", () => {
     const hook1 = {
       dispose: vi.fn(),
       register: vi.fn(),
-    } as unknown as HookRegistrar;
+    } as unknown as EventRegistrar;
     const hook2 = {
       dispose: vi.fn(),
       register: vi.fn(),
-    } as unknown as HookRegistrar;
+    } as unknown as EventRegistrar;
 
     disposeHooks([hook1, hook2]);
 
@@ -27,7 +27,7 @@ describe("disposeHooks", () => {
     const hook = {
       dispose: vi.fn(),
       register: vi.fn(),
-    } as unknown as HookRegistrar;
+    } as unknown as EventRegistrar;
 
     disposeHooks([hook]);
 

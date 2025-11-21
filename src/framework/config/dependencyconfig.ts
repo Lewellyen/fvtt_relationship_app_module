@@ -29,6 +29,7 @@ import { registerCacheServices } from "@/framework/config/modules/cache-services
 import { registerI18nServices } from "@/framework/config/modules/i18n-services.config";
 import { registerNotifications } from "@/framework/config/modules/notifications.config";
 import { registerRegistrars } from "@/framework/config/modules/registrars.config";
+import { registerEventPorts } from "@/framework/config/modules/event-ports.config";
 
 /**
  * Registers static bootstrap values that already exist outside the container.
@@ -143,9 +144,10 @@ function validateContainer(container: ServiceContainer): Result<void, string> {
  * 7. Foundry Services (Game, Hooks, Document, UI, Settings, Journal)
  * 8. I18n Services (FoundryI18n, LocalI18n, I18nFacade, TranslationHandlers)
  * 9. Notifications (NotificationCenter, ConsoleChannel, UIChannel)
- * 10. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
- * 11. Validation (Check dependency graph)
- * 12. Loop-Prevention Services (Health checks referencing validated services)
+ * 10. Event Ports (JournalEventPort, Use-Cases, ModuleEventRegistrar)
+ * 11. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
+ * 12. Validation (Check dependency graph)
+ * 13. Loop-Prevention Services (Health checks referencing validated services)
  *
  * @param container - The service container to configure
  * @returns Result indicating success or configuration errors
@@ -192,6 +194,9 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   const notificationsResult = registerNotifications(container);
   if (isErr(notificationsResult)) return notificationsResult;
+
+  const eventPortsResult = registerEventPorts(container);
+  if (isErr(eventPortsResult)) return eventPortsResult;
 
   const registrarsResult = registerRegistrars(container);
   if (isErr(registrarsResult)) return registrarsResult;

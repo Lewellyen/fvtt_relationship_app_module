@@ -1,4 +1,4 @@
-import type { HookRegistrar } from "@/application/use-cases/hook-registrar.interface";
+import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
 
 /**
  * Disposes all hooks in the provided array.
@@ -8,7 +8,7 @@ import type { HookRegistrar } from "@/application/use-cases/hook-registrar.inter
  *
  * @param hooks - Array of HookRegistrar instances to dispose
  */
-export function disposeHooks(hooks: HookRegistrar[]): void {
+export function disposeHooks(hooks: EventRegistrar[]): void {
   for (const hook of hooks) {
     hook.dispose();
   }
