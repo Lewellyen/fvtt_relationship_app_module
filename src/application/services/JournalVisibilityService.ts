@@ -4,14 +4,15 @@ import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { CacheService } from "@/infrastructure/cache/cache.interface";
+import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { match } from "@/infrastructure/shared/utils/result";
 import { getFirstArrayElement } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import {
   journalVisibilityPortToken,
   cacheServiceToken,
   notificationCenterToken,
+  platformUIPortToken,
 } from "@/infrastructure/shared/tokens";
 import { sanitizeHtml } from "@/infrastructure/adapters/foundry/validation/schemas";
 
@@ -27,16 +28,18 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  * - JournalVisibilityPort: Platform-agnostic port for journal operations
  * - NotificationCenter: For logging and notifications
  * - CacheService: For caching hidden entries
+ * - PlatformUIPort: Platform-agnostic port for UI operations
  *
  * **DIP-Compliance:**
- * - Depends on domain-neutral JournalVisibilityPort, not Foundry-specific types
- * - Platform-specific adapters (e.g., FoundryJournalVisibilityAdapter) implement the port
+ * - Depends on domain-neutral ports, not Foundry-specific types
+ * - Platform-specific adapters implement the ports
  */
 export class JournalVisibilityService {
   constructor(
     private readonly port: JournalVisibilityPort,
     private readonly notificationCenter: NotificationCenter,
-    private readonly cacheService: CacheService
+    private readonly cacheService: CacheService,
+    private readonly platformUI: PlatformUIPort
   ) {}
 
   /**
@@ -146,22 +149,26 @@ export class JournalVisibilityService {
 
     for (const journal of entries) {
       const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
-      const removeResult = this.port.removeEntryFromDOM(journal.id, journalName, html);
-      match(removeResult, {
-        onOk: () => {
-          this.notificationCenter.debug(
-            `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
-            { context: { journal } },
-            { channels: ["ConsoleChannel"] }
-          );
-        },
-        onErr: (error) => {
-          errors.push(error);
-          this.notificationCenter.warn("Error removing journal entry", error, {
-            channels: ["ConsoleChannel"],
-          });
-        },
-      });
+      const removeResult = this.platformUI.removeJournalElement(journal.id, journalName, html);
+
+      // Map PlatformUIError to JournalVisibilityError
+      if (!removeResult.ok) {
+        const journalError: JournalVisibilityError = {
+          code: "DOM_MANIPULATION_FAILED",
+          entryId: journal.id,
+          message: removeResult.error.message,
+        };
+        errors.push(journalError);
+        this.notificationCenter.warn("Error removing journal entry", journalError, {
+          channels: ["ConsoleChannel"],
+        });
+      } else {
+        this.notificationCenter.debug(
+          `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
+          { context: { journal } },
+          { channels: ["ConsoleChannel"] }
+        );
+      }
     }
 
     // If any errors occurred, return the first one
@@ -182,13 +189,15 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
     journalVisibilityPortToken,
     notificationCenterToken,
     cacheServiceToken,
+    platformUIPortToken,
   ] as const;
 
   constructor(
     port: JournalVisibilityPort,
     notificationCenter: NotificationCenter,
-    cacheService: CacheService
+    cacheService: CacheService,
+    platformUI: PlatformUIPort
   ) {
-    super(port, notificationCenter, cacheService);
+    super(port, notificationCenter, cacheService, platformUI);
   }
 }

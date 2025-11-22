@@ -10,6 +10,7 @@ import {
   foundryUIPortRegistryToken,
   foundrySettingsPortRegistryToken,
   foundryI18nPortRegistryToken,
+  platformUIPortToken,
 } from "@/infrastructure/shared/tokens";
 import { DIPortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
@@ -19,6 +20,7 @@ import { FoundryDocumentPortV13 } from "@/infrastructure/adapters/foundry/ports/
 import { FoundryUIPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryUIPort";
 import { FoundrySettingsPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundrySettingsPort";
 import { FoundryI18nPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryI18nPort";
+import { DIFoundryUIAdapter } from "@/infrastructure/adapters/foundry/adapters/foundry-ui-adapter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
@@ -140,6 +142,7 @@ function createPortRegistries(): Result<
  *
  * Services registered:
  * - PortSelector (singleton, with EventEmitter and ObservabilityRegistry dependencies)
+ * - PlatformUIPort (singleton, via FoundryUIAdapter)
  *
  * OBSERVABILITY: PortSelector self-registers with ObservabilityRegistry for automatic
  * event observation (logging/metrics). No manual wiring needed.
@@ -158,6 +161,16 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
 
   if (isErr(portSelectorResult)) {
     return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
+  }
+
+  // Register PlatformUIPort (Foundry implementation via adapter)
+  const platformUIPortResult = container.registerClass(
+    platformUIPortToken,
+    DIFoundryUIAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(platformUIPortResult)) {
+    return err(`Failed to register PlatformUIPort: ${platformUIPortResult.error.message}`);
   }
 
   // Note: Observability handled via self-registration pattern

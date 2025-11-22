@@ -7,6 +7,7 @@ import { ok, err } from "@/infrastructure/shared/utils/result";
 describe("ModuleEventRegistrar", () => {
   let mockEventRegistrar1: EventRegistrar;
   let mockEventRegistrar2: EventRegistrar;
+  let mockEventRegistrar3: EventRegistrar;
   let mockNotificationCenter: NotificationCenter;
   let registrar: ModuleEventRegistrar;
 
@@ -17,6 +18,11 @@ describe("ModuleEventRegistrar", () => {
     };
 
     mockEventRegistrar2 = {
+      register: vi.fn().mockReturnValue(ok(undefined)),
+      dispose: vi.fn(),
+    };
+
+    mockEventRegistrar3 = {
       register: vi.fn().mockReturnValue(ok(undefined)),
       dispose: vi.fn(),
     };
@@ -32,6 +38,7 @@ describe("ModuleEventRegistrar", () => {
     registrar = new ModuleEventRegistrar(
       mockEventRegistrar1,
       mockEventRegistrar2,
+      mockEventRegistrar3,
       mockNotificationCenter
     );
   });
@@ -43,6 +50,7 @@ describe("ModuleEventRegistrar", () => {
       expect(result.ok).toBe(true);
       expect(mockEventRegistrar1.register).toHaveBeenCalled();
       expect(mockEventRegistrar2.register).toHaveBeenCalled();
+      expect(mockEventRegistrar3.register).toHaveBeenCalled();
     });
 
     it("should handle registration errors", () => {

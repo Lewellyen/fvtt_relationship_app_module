@@ -25,6 +25,9 @@ export * from "./foundry.tokens";
 // Event tokens
 export * from "./event.tokens";
 
+// Port tokens
+export * from "./ports.tokens";
+
 // ServiceType union - represents all registered service types
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
@@ -66,7 +69,9 @@ import type { CacheService, CacheServiceConfig } from "@/infrastructure/cache/ca
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { InvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import type { ProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
+import type { TriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";
 import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
+import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 
 /**
  * Union type representing all registered service types in the application.
@@ -124,5 +129,7 @@ export type ServiceType =
   | RuntimeConfigService
   | InvalidateJournalCacheOnChangeUseCase
   | ProcessJournalDirectoryOnRenderUseCase
+  | TriggerJournalDirectoryReRenderUseCase
   | ModuleEventRegistrar
+  | PlatformUIPort
   | ServiceContainer;

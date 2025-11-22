@@ -12,6 +12,33 @@
 
 ### Upgrade-Hinweise
 
+## [0.28.0] - 2025-11-22
+### Hinzugefügt
+- **Code & Type Coverage 100%**: Alle Quality Gates erreicht - 100% Statement/Branch/Function/Line Coverage und 100% Type Coverage (13835/13835 Typen)
+- **Runtime-Safe-Cast Helpers**: `castToFoundryHookCallback` für sichere Typ-Assertions in `runtime-safe-cast.ts`
+- **PlatformUIPort**: Neuer platform-agnostischer Port für UI-Operationen im Domain Layer ([Details](docs/archive/DIP-Refactoring-Plan-4-JournalCacheInvalidationHookGlobals.md))
+- **FoundryUIAdapter**: Adapter von FoundryUI zu PlatformUIPort für Clean Architecture Konformität
+- **TriggerJournalDirectoryReRenderUseCase**: Neuer Use-Case für automatisches UI-Re-Render bei Hidden-Flag-Änderungen
+- **FoundryUI.rerenderJournalDirectory()**: Neue Methode für Journal-Directory Re-Rendering
+
+### Geändert
+- **Type Safety Improvements**: Typ-Casts durch explizite Type Guards ersetzt in Event-Adaptern und Use-Cases
+- **DIP-Refactoring Plan 4**: Archiviert nach erfolgreicher Umsetzung - Event-System vollständig platform-agnostisch ([Details](docs/archive/DIP-Refactoring-Plan-4-JournalCacheInvalidationHookGlobals.md))
+- **Clean Architecture**: JournalVisibilityService nutzt jetzt PlatformUIPort statt direktem FoundryUI-Zugriff
+- **Schichtentrennung**: Application Layer Services nutzen ausschließlich Domain Ports (konsistent mit Event-System)
+- **JournalVisibilityPort**: `removeEntryFromDOM()` Methode entfernt - UI-Operationen über PlatformUIPort
+
+### Fehlerbehebungen
+- **Test Coverage**: Fehlende Branches in `ModuleSettingsRegistrar`, `dependencyconfig`, `foundry-journal-event-adapter` und `invalidate-journal-cache-on-change.use-case` abgedeckt
+- **Type Coverage**: Alle verbleibenden Typ-Unsicherheiten durch Type Guards oder Runtime-Safe-Casts behoben
+- **UI Re-Render**: Wiederherstellung der fehlenden UI-Re-Render-Funktionalität bei Hidden-Flag-Änderungen
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.27.0] - 2025-11-21
 ### Hinzugefügt
 - **Platform-Agnostisches Event-System (Phase 1)**: Vollständiges Refactoring des Event-Systems zu platform-agnostischen Ports ([Details](docs/refactoring/phases/phase-1-event-system-refactoring.md))

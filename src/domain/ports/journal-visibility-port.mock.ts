@@ -27,8 +27,5 @@ export function createMockJournalVisibilityPort(): JournalVisibilityPort {
     getEntryFlag: vi
       .fn()
       .mockReturnValue(ok(null) as Result<boolean | null, JournalVisibilityError>),
-    removeEntryFromDOM: vi
-      .fn()
-      .mockReturnValue(ok(undefined) as Result<void, JournalVisibilityError>),
   };
 }

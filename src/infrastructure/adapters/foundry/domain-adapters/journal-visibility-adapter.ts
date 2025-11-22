@@ -3,7 +3,6 @@ import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/jou
 import type { Result } from "@/domain/types/result";
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
 import { BOOLEAN_FLAG_SCHEMA } from "@/infrastructure/adapters/foundry/validation/setting-schemas";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens";
 
 /**
@@ -84,31 +83,6 @@ export class FoundryJournalVisibilityAdapter implements JournalVisibilityPort {
     }
 
     return { ok: true, value: flagResult.value };
-  }
-
-  removeEntryFromDOM(
-    entryId: string,
-    entryName: string | null,
-    htmlElement: HTMLElement
-  ): Result<void, JournalVisibilityError> {
-    const result = this.foundryJournalFacade.removeJournalElement(
-      entryId,
-      entryName ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
-      htmlElement
-    );
-
-    if (!result.ok) {
-      return {
-        ok: false,
-        error: {
-          code: "DOM_MANIPULATION_FAILED",
-          entryId,
-          message: result.error.message,
-        },
-      };
-    }
-
-    return { ok: true, value: undefined };
   }
 }
 

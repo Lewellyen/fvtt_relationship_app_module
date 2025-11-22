@@ -6,11 +6,13 @@ import {
   journalEventPortToken,
   invalidateJournalCacheOnChangeUseCaseToken,
   processJournalDirectoryOnRenderUseCaseToken,
+  triggerJournalDirectoryReRenderUseCaseToken,
   moduleEventRegistrarToken,
 } from "@/infrastructure/shared/tokens";
 import { DIFoundryJournalEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter";
 import { DIInvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import { DIProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
+import { DITriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 
 /**
@@ -20,6 +22,7 @@ import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegist
  * - JournalEventPort (singleton) - Platform-agnostic journal event handling
  * - InvalidateJournalCacheOnChangeUseCase (singleton) - Cache invalidation use-case
  * - ProcessJournalDirectoryOnRenderUseCase (singleton) - Directory render use-case
+ * - TriggerJournalDirectoryReRenderUseCase (singleton) - UI re-render use-case
  * - ModuleEventRegistrar (singleton) - Manages all event listeners
  *
  * DESIGN: Event ports are platform-agnostic abstractions over event systems.
@@ -60,6 +63,18 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
   if (isErr(directoryRenderUseCaseResult)) {
     return err(
       `Failed to register ProcessJournalDirectoryOnRenderUseCase: ${directoryRenderUseCaseResult.error.message}`
+    );
+  }
+
+  // Register TriggerJournalDirectoryReRenderUseCase
+  const reRenderUseCaseResult = container.registerClass(
+    triggerJournalDirectoryReRenderUseCaseToken,
+    DITriggerJournalDirectoryReRenderUseCase,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(reRenderUseCaseResult)) {
+    return err(
+      `Failed to register TriggerJournalDirectoryReRenderUseCase: ${reRenderUseCaseResult.error.message}`
     );
   }
 

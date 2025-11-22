@@ -326,7 +326,12 @@ import { MODULE_CONSTANTS } from "@/constants";
 
 ### Neue Features hinzufügen
 
-**Szenario**: "Ich will Actors auslesen"
+**Zwei Arten von Ports**:
+
+1. **Infrastructure Ports** (Foundry-spezifisch): `FoundryGame`, `FoundryHooks`, `FoundryUI`
+2. **Domain Ports** (platform-agnostisch): `JournalEventPort`, `PlatformUIPort`
+
+**Szenario 1**: "Ich will Actors auslesen" (Infrastructure Port)
 
 1. **Interface erstellen** (`src/foundry/interfaces/FoundryActor.ts`)
 
@@ -376,6 +381,40 @@ import { MODULE_CONSTANTS } from "@/constants";
      constructor(private foundryActor: FoundryActor) {}
    }
    ```
+
+**Szenario 2**: "Ich will platform-agnostische UI-Operationen" (Domain Port)
+
+1. **Port Interface im Domain Layer** (`src/domain/ports/platform-ui-port.interface.ts`)
+
+   ```typescript
+   export interface PlatformUIPort {
+     rerenderJournalDirectory(): Result<boolean, PlatformUIError>;
+     notify(message: string, type: "info" | "warning" | "error"): Result<void, PlatformUIError>;
+   }
+   ```
+
+2. **Platform-spezifische Adapter im Infrastructure Layer** (`src/infrastructure/adapters/foundry/adapters/foundry-ui-adapter.ts`)
+
+   ```typescript
+   export class FoundryUIAdapter implements PlatformUIPort {
+     constructor(private readonly foundryUI: FoundryUI) {}
+     
+     rerenderJournalDirectory(): Result<boolean, PlatformUIError> {
+       const result = this.foundryUI.rerenderJournalDirectory();
+       return result.ok ? ok(result.value) : err(this.mapError(result.error));
+     }
+   }
+   ```
+
+3. **Use-Case nutzt Domain Port** (`src/application/use-cases/...`)
+
+   ```typescript
+   export class TriggerUIReRenderUseCase {
+     constructor(private readonly platformUI: PlatformUIPort) {}  // Domain Port, nicht Infrastructure!
+   }
+   ```
+
+**Vorteil**: Use-Case ist vollständig platform-agnostisch → Multi-VTT-Support (Foundry, Roll20, Fantasy Grounds)
 
 ## Beispiele
 

@@ -245,6 +245,127 @@ describe("FoundryUIPortV13", () => {
     });
   });
 
+  describe("rerenderJournalDirectory", () => {
+    it("should return false when journal directory is not open", () => {
+      // No #journal element in DOM
+      const result = port.rerenderJournalDirectory();
+      expectResultOk(result);
+      expect(result.value).toBe(false);
+    });
+
+    it("should return error when ui is not available", () => {
+      // Create #journal element
+      const journalDiv = document.createElement("div");
+      journalDiv.id = "journal";
+      document.body.appendChild(journalDiv);
+
+      vi.stubGlobal("ui", undefined);
+
+      const result = port.rerenderJournalDirectory();
+      expectResultErr(result);
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+
+      document.body.removeChild(journalDiv);
+    });
+
+    it("should return error when ui.sidebar has unexpected structure", () => {
+      // Create #journal element
+      const journalDiv = document.createElement("div");
+      journalDiv.id = "journal";
+      document.body.appendChild(journalDiv);
+
+      // Mock ui.sidebar with invalid structure (primitive value, not an object)
+      // This will pass the first check (!ui?.sidebar) but fail the type guard
+      vi.stubGlobal("ui", {
+        sidebar: "invalid", // string is not a valid FoundryUISidebar
+      });
+
+      const result = port.rerenderJournalDirectory();
+      expectResultErr(result);
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+      expect(result.error.message).toContain("unexpected structure");
+
+      document.body.removeChild(journalDiv);
+    });
+
+    it("should call render(false) when journal app is available", () => {
+      const journalDiv = document.createElement("div");
+      journalDiv.id = "journal";
+      document.body.appendChild(journalDiv);
+
+      const mockRender = vi.fn();
+      vi.stubGlobal("ui", {
+        sidebar: {
+          tabs: {
+            journal: {
+              render: mockRender,
+            },
+          },
+        },
+      });
+
+      const result = port.rerenderJournalDirectory();
+      expectResultOk(result);
+      expect(result.value).toBe(true);
+      expect(mockRender).toHaveBeenCalledWith(false);
+
+      document.body.removeChild(journalDiv);
+    });
+
+    it("should return false when journal app has no render method", () => {
+      const journalDiv = document.createElement("div");
+      journalDiv.id = "journal";
+      document.body.appendChild(journalDiv);
+
+      vi.stubGlobal("ui", {
+        sidebar: {
+          tabs: {
+            journal: {}, // No render method
+          },
+        },
+      });
+
+      const result = port.rerenderJournalDirectory();
+      expectResultOk(result);
+      expect(result.value).toBe(false);
+
+      document.body.removeChild(journalDiv);
+    });
+
+    it("should return error when port is disposed", () => {
+      port.dispose();
+      const result = port.rerenderJournalDirectory();
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should handle exceptions gracefully", () => {
+      const journalDiv = document.createElement("div");
+      journalDiv.id = "journal";
+      document.body.appendChild(journalDiv);
+
+      const mockRender = vi.fn().mockImplementation(() => {
+        throw new Error("Render failed");
+      });
+
+      vi.stubGlobal("ui", {
+        sidebar: {
+          tabs: {
+            journal: {
+              render: mockRender,
+            },
+          },
+        },
+      });
+
+      const result = port.rerenderJournalDirectory();
+      expectResultErr(result);
+      expect(result.error.code).toBe("OPERATION_FAILED");
+
+      document.body.removeChild(journalDiv);
+    });
+  });
+
   describe("disposed state guards", () => {
     it("should prevent removing journal elements after disposal", () => {
       port.dispose();

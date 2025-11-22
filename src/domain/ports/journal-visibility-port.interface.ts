@@ -27,17 +27,4 @@ export interface JournalVisibilityPort {
     entry: JournalEntry,
     flagKey: string
   ): Result<boolean | null, JournalVisibilityError>;
-
-  /**
-   * Removes a journal entry from the DOM.
-   * @param entryId - The journal entry ID
-   * @param entryName - The journal entry name (for logging)
-   * @param htmlElement - The HTML container element
-   * @returns Result indicating success or error
-   */
-  removeEntryFromDOM(
-    entryId: string,
-    entryName: string | null,
-    htmlElement: HTMLElement
-  ): Result<void, JournalVisibilityError>;
 }

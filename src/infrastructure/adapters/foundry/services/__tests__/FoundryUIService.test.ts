@@ -27,6 +27,7 @@ describe("FoundryUIService", () => {
       removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
       findElement: vi.fn().mockReturnValue(ok(null)),
       notify: vi.fn().mockReturnValue(ok(undefined)),
+      rerenderJournalDirectory: vi.fn().mockReturnValue(ok(true)),
       dispose: vi.fn(),
     };
 
@@ -212,6 +213,27 @@ describe("FoundryUIService", () => {
     });
   });
 
+  describe("rerenderJournalDirectory delegation", () => {
+    it("should delegate to port and return boolean result", () => {
+      mockPort.rerenderJournalDirectory = vi.fn().mockReturnValue(ok(true));
+
+      const result = service.rerenderJournalDirectory();
+
+      expectResultOk(result);
+      expect(result.value).toBe(true);
+      expect(mockPort.rerenderJournalDirectory).toHaveBeenCalled();
+    });
+
+    it("should handle false result when directory not open", () => {
+      mockPort.rerenderJournalDirectory = vi.fn().mockReturnValue(ok(false));
+
+      const result = service.rerenderJournalDirectory();
+
+      expectResultOk(result);
+      expect(result.value).toBe(false);
+    });
+  });
+
   describe("Port Error Branches", () => {
     it("should handle port selection failure in findElement", () => {
       const mockEventEmitter = new PortSelectionEventEmitter();
@@ -247,6 +269,25 @@ describe("FoundryUIService", () => {
       const failingService = new FoundryUIService(failingSelector, mockRegistry, mockRetryService);
 
       const result = failingService.notify("Test message", "info");
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+
+    it("should handle port selection failure in rerenderJournalDirectory", () => {
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: ObservabilityRegistry = {
+        registerPortSelector: vi.fn(),
+      } as any;
+      const failingSelector = new PortSelector(mockEventEmitter, mockObservability);
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromFactories").mockReturnValue(err(mockError));
+      const failingService = new FoundryUIService(failingSelector, mockRegistry, mockRetryService);
+
+      const result = failingService.rerenderJournalDirectory();
 
       expectResultErr(result);
       expect(result.error.message).toContain("Port selection failed");

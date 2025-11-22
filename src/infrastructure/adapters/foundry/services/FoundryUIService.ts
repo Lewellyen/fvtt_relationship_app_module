@@ -57,6 +57,14 @@ export class FoundryUIService extends FoundryServiceBase<FoundryUI> implements F
       return portResult.value.notify(message, type, options);
     }, "FoundryUI.notify");
   }
+
+  rerenderJournalDirectory(): Result<boolean, FoundryError> {
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.rerenderJournalDirectory();
+    }, "FoundryUI.rerenderJournalDirectory");
+  }
 }
 
 export class DIFoundryUIService extends FoundryUIService {

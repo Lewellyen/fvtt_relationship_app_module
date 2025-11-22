@@ -2,10 +2,22 @@
 
 **Datum:** 2025-01-27 (Aktualisiert: 2025-11-21)  
 **Betroffene Komponenten:** `JournalCacheInvalidationHook` → `InvalidateJournalCacheOnChangeUseCase`  
-**Status:** ✅ **TEILWEISE ERLEDIGT** - Event-System refactored, Foundry-Global-Zugriffe eliminiert  
+**Status:** ✅ **VOLLSTÄNDIG ERLEDIGT** - Clean Architecture mit PlatformUIPort, Event-System und UI-Re-Render vollständig platform-agnostisch  
 **Ziel:** Eliminierung direkter Foundry-Global-Zugriffe durch konsequente Nutzung der bereits injizierten Services
 
 ---
+
+## ✅ Update 2025-11-21: Phase 2 - Clean Architecture UI-Port
+
+**Was wurde erreicht:**
+- ✅ PlatformUIPort im Domain Layer erstellt (konsistent mit JournalEventPort)
+- ✅ FoundryUIAdapter im Infrastructure Layer als Implementierung
+- ✅ TriggerJournalDirectoryReRenderUseCase nutzt PlatformUIPort
+- ✅ JournalVisibilityService migriert auf PlatformUIPort
+- ✅ Vollständige Schichtentrennung: Application → Domain Ports ← Infrastructure
+- ✅ 100% Test Coverage für alle neuen Komponenten
+- ✅ Vorbereitet für Multi-VTT: Roll20/Fantasy Grounds können eigene UIAdapter implementieren
+- ✅ UI-Re-Render-Funktionalität wiederhergestellt
 
 ## ✅ Update 2025-11-21: Event-System Refactoring (Phase 1)
 
@@ -16,11 +28,7 @@
 - ✅ `game.journal`-Zugriffe wurden durch Event-basierte Architektur ersetzt
 - ✅ Vollständig testbar ohne Foundry-Globals
 
-**Was noch offen ist:**
-- ⚠️ UI-Re-Render-Logik könnte noch optimiert werden
-- ⚠️ Cache-Invalidierung könnte granularer werden
-
-**Verbleibende DIP-Verletzungen:** Keine direkten Foundry-Global-Zugriffe mehr im Event-System!
+**Verbleibende DIP-Verletzungen:** Keine!
 
 **Siehe:** [phase-1-event-system-refactoring.md](phases/phase-1-event-system-refactoring.md)
 

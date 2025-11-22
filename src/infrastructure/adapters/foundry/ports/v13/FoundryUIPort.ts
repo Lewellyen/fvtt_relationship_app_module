@@ -6,6 +6,27 @@ import { createFoundryError } from "../../errors/FoundryErrors";
 import { sanitizeId } from "../../validation/schemas";
 
 /**
+ * Type definition for Foundry's ui.sidebar structure
+ */
+interface FoundryUISidebar {
+  tabs?: {
+    journal?: {
+      render?: (force: boolean) => void;
+    };
+  };
+}
+
+/**
+ * Type guard to check if sidebar has the expected structure
+ */
+function isFoundryUISidebar(sidebar: unknown): sidebar is FoundryUISidebar {
+  // Since tabs is optional, we only need to verify it's an object
+  // and not null/undefined. The actual structure validation happens
+  // when accessing nested properties.
+  return typeof sidebar === "object" && sidebar !== null;
+}
+
+/**
  * v13 implementation of FoundryUI interface.
  * Encapsulates Foundry v13-specific UI manipulation.
  */
@@ -94,6 +115,45 @@ export class FoundryUIPortV13 implements FoundryUI {
           { message, type },
           error
         )
+      );
+    }
+  }
+
+  rerenderJournalDirectory(): Result<boolean, FoundryError> {
+    if (this.#disposed) {
+      return err(
+        createFoundryError("DISPOSED", "Cannot rerender journal directory on disposed port")
+      );
+    }
+
+    try {
+      const journalElement = document.querySelector("#journal");
+      if (!journalElement) {
+        return ok(false);
+      }
+
+      if (typeof ui === "undefined" || !ui?.sidebar) {
+        return err(createFoundryError("API_NOT_AVAILABLE", "Foundry UI sidebar not available"));
+      }
+
+      if (!isFoundryUISidebar(ui.sidebar)) {
+        return err(
+          createFoundryError("API_NOT_AVAILABLE", "Foundry UI sidebar has unexpected structure")
+        );
+      }
+
+      const sidebar = ui.sidebar;
+      const journalApp = sidebar.tabs?.journal;
+
+      if (journalApp && typeof journalApp.render === "function") {
+        journalApp.render(false);
+        return ok(true);
+      }
+
+      return ok(false);
+    } catch (error) {
+      return err(
+        createFoundryError("OPERATION_FAILED", "Failed to re-render journal directory", {}, error)
       );
     }
   }

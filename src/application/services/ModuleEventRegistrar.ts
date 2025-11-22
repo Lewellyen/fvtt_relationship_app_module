@@ -7,6 +7,7 @@ import {
   notificationCenterToken,
   invalidateJournalCacheOnChangeUseCaseToken,
   processJournalDirectoryOnRenderUseCaseToken,
+  triggerJournalDirectoryReRenderUseCaseToken,
 } from "@/infrastructure/shared/tokens";
 
 /**
@@ -28,9 +29,14 @@ export class ModuleEventRegistrar {
   constructor(
     processJournalDirectoryOnRender: EventRegistrar,
     invalidateJournalCacheOnChange: EventRegistrar,
+    triggerJournalDirectoryReRender: EventRegistrar,
     private readonly notificationCenter: NotificationCenter
   ) {
-    this.eventRegistrars = [processJournalDirectoryOnRender, invalidateJournalCacheOnChange];
+    this.eventRegistrars = [
+      processJournalDirectoryOnRender,
+      invalidateJournalCacheOnChange,
+      triggerJournalDirectoryReRender,
+    ];
   }
 
   /**
@@ -77,14 +83,21 @@ export class DIModuleEventRegistrar extends ModuleEventRegistrar {
   static dependencies = [
     processJournalDirectoryOnRenderUseCaseToken,
     invalidateJournalCacheOnChangeUseCaseToken,
+    triggerJournalDirectoryReRenderUseCaseToken,
     notificationCenterToken,
   ] as const;
 
   constructor(
     processJournalDirectoryOnRender: EventRegistrar,
     invalidateJournalCacheOnChange: EventRegistrar,
+    triggerJournalDirectoryReRender: EventRegistrar,
     notificationCenter: NotificationCenter
   ) {
-    super(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, notificationCenter);
+    super(
+      processJournalDirectoryOnRender,
+      invalidateJournalCacheOnChange,
+      triggerJournalDirectoryReRender,
+      notificationCenter
+    );
   }
 }

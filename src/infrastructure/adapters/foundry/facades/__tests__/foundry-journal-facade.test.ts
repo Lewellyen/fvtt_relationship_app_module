@@ -39,6 +39,7 @@ describe("FoundryJournalFacade", () => {
       removeJournalElement: vi.fn(),
       findElement: vi.fn(),
       notify: vi.fn(),
+      rerenderJournalDirectory: vi.fn(),
       dispose: vi.fn(),
     };
 

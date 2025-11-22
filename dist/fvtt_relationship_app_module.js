@@ -267,7 +267,11 @@ const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
 const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken(
   "ProcessJournalDirectoryOnRenderUseCase"
 );
+const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken(
+  "TriggerJournalDirectoryReRenderUseCase"
+);
 const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
+const platformUIPortToken = createInjectionToken("PlatformUIPort");
 const apiSafeTokens = /* @__PURE__ */ new Set();
 function markAsApiSafe(token) {
   apiSafeTokens.add(token);
@@ -11034,6 +11038,10 @@ const _FoundryDocumentPortV13 = class _FoundryDocumentPortV13 {
 _disposed3 = new WeakMap();
 __name(_FoundryDocumentPortV13, "FoundryDocumentPortV13");
 let FoundryDocumentPortV13 = _FoundryDocumentPortV13;
+function isFoundryUISidebar(sidebar) {
+  return typeof sidebar === "object" && sidebar !== null;
+}
+__name(isFoundryUISidebar, "isFoundryUISidebar");
 const _FoundryUIPortV13 = class _FoundryUIPortV13 {
   constructor() {
     __privateAdd(this, _disposed4, false);
@@ -11104,6 +11112,38 @@ const _FoundryUIPortV13 = class _FoundryUIPortV13 {
           { message: message2, type },
           error
         )
+      );
+    }
+  }
+  rerenderJournalDirectory() {
+    if (__privateGet(this, _disposed4)) {
+      return err(
+        createFoundryError("DISPOSED", "Cannot rerender journal directory on disposed port")
+      );
+    }
+    try {
+      const journalElement = document.querySelector("#journal");
+      if (!journalElement) {
+        return ok(false);
+      }
+      if (typeof ui === "undefined" || !ui?.sidebar) {
+        return err(createFoundryError("API_NOT_AVAILABLE", "Foundry UI sidebar not available"));
+      }
+      if (!isFoundryUISidebar(ui.sidebar)) {
+        return err(
+          createFoundryError("API_NOT_AVAILABLE", "Foundry UI sidebar has unexpected structure")
+        );
+      }
+      const sidebar = ui.sidebar;
+      const journalApp = sidebar.tabs?.journal;
+      if (journalApp && typeof journalApp.render === "function") {
+        journalApp.render(false);
+        return ok(true);
+      }
+      return ok(false);
+    } catch (error) {
+      return err(
+        createFoundryError("OPERATION_FAILED", "Failed to re-render journal directory", {}, error)
       );
     }
   }
@@ -11302,6 +11342,57 @@ _disposed6 = new WeakMap();
 __name(_FoundryI18nPortV13, "FoundryI18nPortV13");
 _FoundryI18nPortV13.dependencies = [];
 let FoundryI18nPortV13 = _FoundryI18nPortV13;
+const _FoundryUIAdapter = class _FoundryUIAdapter {
+  constructor(foundryUI) {
+    this.foundryUI = foundryUI;
+  }
+  removeJournalElement(journalId, journalName, html) {
+    const result = this.foundryUI.removeJournalElement(journalId, journalName, html);
+    if (!result.ok) {
+      return err({
+        code: "DOM_MANIPULATION_FAILED",
+        message: `Failed to remove journal element '${journalName}' (${journalId}): ${result.error.message}`,
+        operation: "removeJournalElement",
+        details: { journalId, journalName, cause: result.error }
+      });
+    }
+    return ok(void 0);
+  }
+  rerenderJournalDirectory() {
+    const result = this.foundryUI.rerenderJournalDirectory();
+    if (!result.ok) {
+      return err({
+        code: "RERENDER_FAILED",
+        message: `Failed to re-render journal directory: ${result.error.message}`,
+        operation: "rerenderJournalDirectory",
+        details: { cause: result.error }
+      });
+    }
+    return ok(result.value);
+  }
+  notify(message2, type) {
+    const result = this.foundryUI.notify(message2, type);
+    if (!result.ok) {
+      return err({
+        code: result.error.code,
+        message: result.error.message,
+        operation: "notify",
+        details: { cause: result.error }
+      });
+    }
+    return ok(void 0);
+  }
+};
+__name(_FoundryUIAdapter, "FoundryUIAdapter");
+let FoundryUIAdapter = _FoundryUIAdapter;
+const _DIFoundryUIAdapter = class _DIFoundryUIAdapter extends FoundryUIAdapter {
+  constructor(foundryUI) {
+    super(foundryUI);
+  }
+};
+__name(_DIFoundryUIAdapter, "DIFoundryUIAdapter");
+_DIFoundryUIAdapter.dependencies = [foundryUIToken];
+let DIFoundryUIAdapter = _DIFoundryUIAdapter;
 function registerPortToRegistry(registry, version, factory, portName, errors) {
   const result = registry.register(version, factory);
   if (isErr(result)) {
@@ -11380,6 +11471,14 @@ function registerPortInfrastructure(container) {
   );
   if (isErr(portSelectorResult)) {
     return err(`Failed to register PortSelector: ${portSelectorResult.error.message}`);
+  }
+  const platformUIPortResult = container.registerClass(
+    platformUIPortToken,
+    DIFoundryUIAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(platformUIPortResult)) {
+    return err(`Failed to register PlatformUIPort: ${platformUIPortResult.error.message}`);
   }
   return ok(void 0);
 }
@@ -11781,6 +11880,13 @@ const _FoundryUIService = class _FoundryUIService extends FoundryServiceBase {
       return portResult.value.notify(message2, type, options);
     }, "FoundryUI.notify");
   }
+  rerenderJournalDirectory() {
+    return this.withRetry(() => {
+      const portResult = this.getPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.rerenderJournalDirectory();
+    }, "FoundryUI.rerenderJournalDirectory");
+  }
 };
 __name(_FoundryUIService, "FoundryUIService");
 let FoundryUIService = _FoundryUIService;
@@ -11959,24 +12065,6 @@ const _FoundryJournalVisibilityAdapter = class _FoundryJournalVisibilityAdapter 
     }
     return { ok: true, value: flagResult.value };
   }
-  removeEntryFromDOM(entryId, entryName, htmlElement) {
-    const result = this.foundryJournalFacade.removeJournalElement(
-      entryId,
-      entryName ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
-      htmlElement
-    );
-    if (!result.ok) {
-      return {
-        ok: false,
-        error: {
-          code: "DOM_MANIPULATION_FAILED",
-          entryId,
-          message: result.error.message
-        }
-      };
-    }
-    return { ok: true, value: void 0 };
-  }
 };
 __name(_FoundryJournalVisibilityAdapter, "FoundryJournalVisibilityAdapter");
 let FoundryJournalVisibilityAdapter = _FoundryJournalVisibilityAdapter;
@@ -12011,10 +12099,11 @@ const buildJournalCacheKey = createCacheNamespace("journal-visibility");
 const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(port, notificationCenter, cacheService) {
+  constructor(port, notificationCenter, cacheService, platformUI) {
     this.port = port;
     this.notificationCenter = notificationCenter;
     this.cacheService = cacheService;
+    this.platformUI = platformUI;
   }
   /**
    * Sanitizes a string for safe use in log messages.
@@ -12101,22 +12190,24 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     const errors = [];
     for (const journal of entries2) {
       const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
-      const removeResult = this.port.removeEntryFromDOM(journal.id, journalName, html);
-      match(removeResult, {
-        onOk: /* @__PURE__ */ __name(() => {
-          this.notificationCenter.debug(
-            `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
-            { context: { journal } },
-            { channels: ["ConsoleChannel"] }
-          );
-        }, "onOk"),
-        onErr: /* @__PURE__ */ __name((error) => {
-          errors.push(error);
-          this.notificationCenter.warn("Error removing journal entry", error, {
-            channels: ["ConsoleChannel"]
-          });
-        }, "onErr")
-      });
+      const removeResult = this.platformUI.removeJournalElement(journal.id, journalName, html);
+      if (!removeResult.ok) {
+        const journalError = {
+          code: "DOM_MANIPULATION_FAILED",
+          entryId: journal.id,
+          message: removeResult.error.message
+        };
+        errors.push(journalError);
+        this.notificationCenter.warn("Error removing journal entry", journalError, {
+          channels: ["ConsoleChannel"]
+        });
+      } else {
+        this.notificationCenter.debug(
+          `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
+          { context: { journal } },
+          { channels: ["ConsoleChannel"] }
+        );
+      }
     }
     if (errors.length > 0) {
       const firstError = getFirstArrayElement(errors);
@@ -12128,15 +12219,16 @@ const _JournalVisibilityService = class _JournalVisibilityService {
 __name(_JournalVisibilityService, "JournalVisibilityService");
 let JournalVisibilityService = _JournalVisibilityService;
 const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(port, notificationCenter, cacheService) {
-    super(port, notificationCenter, cacheService);
+  constructor(port, notificationCenter, cacheService, platformUI) {
+    super(port, notificationCenter, cacheService, platformUI);
   }
 };
 __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
 _DIJournalVisibilityService.dependencies = [
   journalVisibilityPortToken,
   notificationCenterToken,
-  cacheServiceToken
+  cacheServiceToken,
+  platformUIPortToken
 ];
 let DIJournalVisibilityService = _DIJournalVisibilityService;
 function registerFoundryServices(container) {
@@ -14175,6 +14267,73 @@ _DIProcessJournalDirectoryOnRenderUseCase.dependencies = [
   notificationCenterToken
 ];
 let DIProcessJournalDirectoryOnRenderUseCase = _DIProcessJournalDirectoryOnRenderUseCase;
+const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryReRenderUseCase {
+  constructor(journalEvents, platformUI, notificationCenter) {
+    this.journalEvents = journalEvents;
+    this.platformUI = platformUI;
+    this.notificationCenter = notificationCenter;
+  }
+  /**
+   * Register event listener for journal update events.
+   */
+  register() {
+    const result = this.journalEvents.onJournalUpdated((event) => {
+      if (event.changes.flags?.["hidden"] !== void 0) {
+        this.triggerReRender(event.journalId);
+      }
+    });
+    if (result.ok) {
+      this.registrationId = result.value;
+      return ok(void 0);
+    } else {
+      return err(new Error(result.error.message));
+    }
+  }
+  /**
+   * Trigger journal directory re-render.
+   */
+  triggerReRender(journalId) {
+    const result = this.platformUI.rerenderJournalDirectory();
+    if (!result.ok) {
+      this.notificationCenter.warn(
+        "Failed to re-render journal directory after hidden flag change",
+        result.error,
+        { channels: ["ConsoleChannel"] }
+      );
+      return;
+    }
+    if (result.value) {
+      this.notificationCenter.debug(
+        "Triggered journal directory re-render after hidden flag change",
+        { journalId },
+        { channels: ["ConsoleChannel"] }
+      );
+    }
+  }
+  /**
+   * Cleanup: Unregister event listener.
+   */
+  dispose() {
+    if (this.registrationId !== void 0) {
+      this.journalEvents.unregisterListener(this.registrationId);
+      this.registrationId = void 0;
+    }
+  }
+};
+__name(_TriggerJournalDirectoryReRenderUseCase, "TriggerJournalDirectoryReRenderUseCase");
+let TriggerJournalDirectoryReRenderUseCase = _TriggerJournalDirectoryReRenderUseCase;
+const _DITriggerJournalDirectoryReRenderUseCase = class _DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDirectoryReRenderUseCase {
+  constructor(journalEvents, platformUI, notificationCenter) {
+    super(journalEvents, platformUI, notificationCenter);
+  }
+};
+__name(_DITriggerJournalDirectoryReRenderUseCase, "DITriggerJournalDirectoryReRenderUseCase");
+_DITriggerJournalDirectoryReRenderUseCase.dependencies = [
+  journalEventPortToken,
+  platformUIPortToken,
+  notificationCenterToken
+];
+let DITriggerJournalDirectoryReRenderUseCase = _DITriggerJournalDirectoryReRenderUseCase;
 function disposeHooks(hooks) {
   for (const hook of hooks) {
     hook.dispose();
@@ -14182,9 +14341,13 @@ function disposeHooks(hooks) {
 }
 __name(disposeHooks, "disposeHooks");
 const _ModuleEventRegistrar = class _ModuleEventRegistrar {
-  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, notificationCenter) {
+  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, notificationCenter) {
     this.notificationCenter = notificationCenter;
-    this.eventRegistrars = [processJournalDirectoryOnRender, invalidateJournalCacheOnChange];
+    this.eventRegistrars = [
+      processJournalDirectoryOnRender,
+      invalidateJournalCacheOnChange,
+      triggerJournalDirectoryReRender
+    ];
   }
   /**
    * Registers all event listeners.
@@ -14222,14 +14385,20 @@ const _ModuleEventRegistrar = class _ModuleEventRegistrar {
 __name(_ModuleEventRegistrar, "ModuleEventRegistrar");
 let ModuleEventRegistrar = _ModuleEventRegistrar;
 const _DIModuleEventRegistrar = class _DIModuleEventRegistrar extends ModuleEventRegistrar {
-  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, notificationCenter) {
-    super(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, notificationCenter);
+  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, notificationCenter) {
+    super(
+      processJournalDirectoryOnRender,
+      invalidateJournalCacheOnChange,
+      triggerJournalDirectoryReRender,
+      notificationCenter
+    );
   }
 };
 __name(_DIModuleEventRegistrar, "DIModuleEventRegistrar");
 _DIModuleEventRegistrar.dependencies = [
   processJournalDirectoryOnRenderUseCaseToken,
   invalidateJournalCacheOnChangeUseCaseToken,
+  triggerJournalDirectoryReRenderUseCaseToken,
   notificationCenterToken
 ];
 let DIModuleEventRegistrar = _DIModuleEventRegistrar;
@@ -14260,6 +14429,16 @@ function registerEventPorts(container) {
   if (isErr(directoryRenderUseCaseResult)) {
     return err(
       `Failed to register ProcessJournalDirectoryOnRenderUseCase: ${directoryRenderUseCaseResult.error.message}`
+    );
+  }
+  const reRenderUseCaseResult = container.registerClass(
+    triggerJournalDirectoryReRenderUseCaseToken,
+    DITriggerJournalDirectoryReRenderUseCase,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(reRenderUseCaseResult)) {
+    return err(
+      `Failed to register TriggerJournalDirectoryReRenderUseCase: ${reRenderUseCaseResult.error.message}`
     );
   }
   const eventRegistrarResult = container.registerClass(

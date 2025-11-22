@@ -4,8 +4,6 @@ import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/fac
 import type { FoundryJournalEntry } from "@/infrastructure/adapters/foundry/types";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import { ok, err } from "@/infrastructure/shared/utils/result";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { createMockDOM } from "@/test/utils/test-helpers";
 
 function createMockFoundryJournalFacade(): FoundryJournalFacade {
   return {
@@ -188,59 +186,6 @@ describe("FoundryJournalVisibilityAdapter", () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value).toBe(null);
-      }
-    });
-  });
-
-  describe("removeEntryFromDOM", () => {
-    it("should delegate to foundryJournalFacade.removeJournalElement", () => {
-      const { container } = createMockDOM(`<div>Content</div>`);
-
-      vi.mocked(mockFacade.removeJournalElement).mockReturnValue(ok(undefined));
-
-      const result = adapter.removeEntryFromDOM("entry-1", "Entry Name", container);
-
-      expect(result.ok).toBe(true);
-      expect(mockFacade.removeJournalElement).toHaveBeenCalledWith(
-        "entry-1",
-        "Entry Name",
-        container
-      );
-    });
-
-    it("should use default name when entryName is null", () => {
-      const { container } = createMockDOM(`<div>Content</div>`);
-
-      vi.mocked(mockFacade.removeJournalElement).mockReturnValue(ok(undefined));
-
-      const result = adapter.removeEntryFromDOM("entry-1", null, container);
-
-      expect(result.ok).toBe(true);
-      expect(mockFacade.removeJournalElement).toHaveBeenCalledWith(
-        "entry-1",
-        MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
-        container
-      );
-    });
-
-    it("should map FoundryError to DOM_MANIPULATION_FAILED", () => {
-      const { container } = createMockDOM(`<div>Content</div>`);
-      const foundryError: FoundryError = {
-        code: "NOT_FOUND",
-        message: "Element not found",
-      };
-
-      vi.mocked(mockFacade.removeJournalElement).mockReturnValue(err(foundryError));
-
-      const result = adapter.removeEntryFromDOM("entry-1", "Entry Name", container);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("DOM_MANIPULATION_FAILED");
-        if (result.error.code === "DOM_MANIPULATION_FAILED") {
-          expect(result.error.entryId).toBe("entry-1");
-          expect(result.error.message).toBe("Element not found");
-        }
       }
     });
   });

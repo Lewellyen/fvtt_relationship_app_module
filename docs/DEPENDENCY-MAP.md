@@ -1447,6 +1447,71 @@ if (!validationResult.ok) {
 | **Cohesion** | ✅ | Excellent (Single Responsibility) |
 | **Testability** | ✅ | Excellent (DI, Result Pattern) |
 
+---
+
+### Platform-Agnostic Ports
+
+#### PlatformUIPort
+**Datei:** `src/domain/ports/platform-ui-port.interface.ts`  
+**Token:** `platformUIPortToken`  
+**Typ:** Domain Port Interface
+
+**Implementierungen:**
+- `FoundryUIAdapter` (Foundry VTT)
+
+**Verwendung:**
+- Application Layer Services für platform-agnostische UI-Operationen
+- JournalVisibilityService für DOM-Manipulation
+- TriggerJournalDirectoryReRenderUseCase für UI-Updates
+
+**Methoden:**
+- `removeJournalElement()` - Entfernt Journal-Entry aus UI
+- `rerenderJournalDirectory()` - Triggert Re-Render des Journal-Directory
+- `notify()` - Zeigt Benachrichtigungen an
+
+---
+
+#### FoundryUIAdapter
+**Datei:** `src/infrastructure/adapters/foundry/adapters/foundry-ui-adapter.ts`  
+**Token:** `platformUIPortToken`  
+**Lifecycle:** SINGLETON
+
+**Implementiert:** `PlatformUIPort`
+
+**Dependencies:**
+- `FoundryUI` - Foundry-spezifische UI-Operationen
+
+**Zweck:**
+- Adaptiert Foundry-spezifisches `FoundryUI` zu platform-agnostischem `PlatformUIPort`
+- Ermöglicht Application Layer, UI-Operationen ohne Foundry-Abhängigkeit durchzuführen
+- Mappt Foundry-Errors zu platform-agnostischen Errors
+
+---
+
+### Application Use-Cases
+
+#### TriggerJournalDirectoryReRenderUseCase
+**Datei:** `src/application/use-cases/trigger-journal-directory-rerender.use-case.ts`  
+**Token:** `triggerJournalDirectoryReRenderUseCaseToken`  
+**Lifecycle:** SINGLETON
+
+**Dependencies:**
+- `JournalEventPort` - Platform-agnostisches Event-Listening
+- `PlatformUIPort` - Platform-agnostisches UI-Re-Rendering
+- `NotificationCenter` - Logging
+
+**Zweck:**
+- Triggert Journal-Directory Re-Render bei Hidden-Flag-Änderungen
+- Vollständig platform-agnostisch durch Domain Ports
+- Separation of Concerns: Nur UI-Updates, keine Cache-Invalidierung
+
+**Event-Flow:**
+1. Lauscht auf `JournalUpdatedEvent`
+2. Prüft ob `hidden` Flag geändert wurde
+3. Triggert Re-Render über `PlatformUIPort`
+
+---
+
 ### Refactoring-Potenzial (Pre-Release 0.x.x)
 
 | Refactoring | Aufwand | Breaking Changes | Status |

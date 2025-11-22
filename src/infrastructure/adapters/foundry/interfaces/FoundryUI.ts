@@ -78,4 +78,10 @@ export interface FoundryUI extends Disposable {
     type: "info" | "warning" | "error",
     options?: FoundryNotificationOptions
   ): Result<void, FoundryError>;
+
+  /**
+   * Triggers a re-render of the journal directory if it's currently open.
+   * @returns Result indicating success (true if rendered, false if not open) or error
+   */
+  rerenderJournalDirectory(): Result<boolean, FoundryError>;
 }
