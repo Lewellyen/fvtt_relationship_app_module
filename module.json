@@ -1,0 +1,58 @@
+{
+  "id": "fvtt_relationship_app_module",
+  "title": "Beziehungsnetzwerke f\u00fcr Foundry",
+  "description": "Ein Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken in Foundry VTT.",
+  "version": "0.30.0",
+  "compatibility": {
+    "minimum": 13,
+    "verified": 13,
+    "maximum": 13
+  },
+  "authors": [
+    {
+      "name": "Andreas Rothe",
+      "email": "forenadmin.tir@gmail.com",
+      "discord": "lewellyen",
+      "url": "https://github.com/Lewellyen"
+    }
+  ],
+  "url": "https://github.com/Lewellyen/fvtt_relationship_app_module",
+  "manifest": "https://github.com/Lewellyen/fvtt_relationship_app_module/releases/latest/download/module.json",
+  "download": "https://github.com/Lewellyen/fvtt_relationship_app_module/releases/latest/download/module.zip",
+  "bugs": "https://github.com/Lewellyen/fvtt_relationship_app_module/issues",
+  "changelog": "https://github.com/Lewellyen/fvtt_relationship_app_module/blob/main/CHANGELOG.md",
+  "esmodules": [
+    "dist/fvtt_relationship_app_module.js"
+  ],
+  "languages": [
+    {
+      "lang": "de",
+      "name": "Deutsch",
+      "path": "lang/de.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "documentTypes": {
+    "JournalEntryPage": {
+      "relationship_app_graph": {}
+    }
+  },
+  "packs": [],
+  "relationships": {
+    "requires": [
+      {
+        "id": "lib-wrapper",
+        "type": "module",
+        "manifest": "https://github.com/ruipin/fvtt-lib-wrapper/releases/latest/download/module.json",
+        "compatibility": {
+          "minimum": "1.0.0.0",
+          "verified": "1.12.6.0"
+        }
+      }
+    ]
+  }
+}

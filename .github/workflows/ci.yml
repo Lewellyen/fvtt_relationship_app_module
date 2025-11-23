@@ -1,0 +1,228 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+    tags:
+      - "v*"
+    paths:
+      # Source Code
+      - "src/**"
+      - "templates/**"
+      - "styles/**"
+      - "lang/**"
+      - "dist/**"
+      # Wichtige Root-Dateien
+      - "module.json"
+      - "package.json"
+      - "package-lock.json"
+      # Config-Dateien
+      - "vite.config.ts"
+      - "vite.config.js"
+      - "tsconfig.json"
+      - "eslint.config.mjs"
+      - "eslint.config.js"
+      - ".eslintrc"
+      - "prettier.config.js"
+      - ".prettierrc"
+      - "vitest.config.ts"
+      - "vitest.config.js"
+      - "svelte.config.js"
+      - "tailwind.config.js"
+      - "postcss.config.js"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      # Source Code
+      - "src/**"
+      - "templates/**"
+      - "styles/**"
+      - "lang/**"
+      - "dist/**"
+      # Wichtige Root-Dateien
+      - "module.json"
+      - "package.json"
+      - "package-lock.json"
+      # Config-Dateien
+      - "vite.config.ts"
+      - "vite.config.js"
+      - "tsconfig.json"
+      - "eslint.config.mjs"
+      - "eslint.config.js"
+      - ".eslintrc"
+      - "prettier.config.js"
+      - ".prettierrc"
+      - "vitest.config.ts"
+      - "vitest.config.js"
+      - "svelte.config.js"
+      - "tailwind.config.js"
+      - "postcss.config.js"
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type check
+        run: npm run type-check
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run Svelte check
+        run: npm run svelte-check
+
+      - name: Check encoding
+        run: npm run check:encoding
+
+      - name: Install ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
+      - name: Check for forbidden ignores
+        run: npm run check:no-ignores
+
+      - name: Run tests (coverage)
+        if: matrix.node-version == '20.x'
+        run: npm run test:coverage
+
+      - name: Run tests (compatibility)
+        if: matrix.node-version != '20.x'
+        run: npm run test
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: matrix.node-version == '20.x' && success()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production
+        run: npm run build
+
+      - name: Check dist folder
+        run: |
+          if [ ! -f "dist/fvtt_relationship_app_module.js" ]; then
+            echo "Build artifact missing!"
+            exit 1
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write # Required to create releases and upload assets
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create module ZIP
+        run: |
+          # Erstelle ZIP mit allen nötigen Dateien für Foundry VTT
+          zip -r module.zip \
+            module.json \
+            dist/ \
+            lang/ \
+            styles/ \
+            templates/ \
+            README.md \
+            LICENSE \
+            CHANGELOG.md
+
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          # Alles mit v0.x.x ist Pre-Release
+          if [[ "${{ github.ref_name }}" =~ ^v0\. ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "Pre-Release erkannt: ${{ github.ref_name }}"
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "Stable Release erkannt: ${{ github.ref_name }}"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body_path: docs/releases/${{ github.ref_name }}.md
+          prerelease: ${{ steps.prerelease.outputs.prerelease }}
+          files: |
+            module.zip
+            module.json
+          draft: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        run: |
+          echo "## 🎉 Release erfolgreich erstellt!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Type:** ${{ steps.prerelease.outputs.prerelease == 'true' && 'Pre-Release (0.x.x)' || 'Stable Release' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- module.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- module.json" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Manifest:** \`https://github.com/${{ github.repository }}/releases/latest/download/module.json\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Download:** \`https://github.com/${{ github.repository }}/releases/latest/download/module.zip\`" >> $GITHUB_STEP_SUMMARY

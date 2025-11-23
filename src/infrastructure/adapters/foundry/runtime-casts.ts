@@ -1,0 +1,210 @@
+/**
+ * Centralized helpers for Foundry-specific runtime casts that are required by
+ * the Foundry adapter layer (ports, services, facades).
+ *
+ * Diese Datei ist absichtlich von der Type-Coverage ausgenommen, damit
+ * wir an wenigen wohldokumentierten Stellen mit Runtime-Casts arbeiten
+ * können, ohne den 100%-Anspruch für den restlichen Code zu verletzen.
+ *
+ * Diese Datei ist getrennt von `runtime-safe-cast.ts` (DI-Infrastruktur),
+ * da sie Foundry-spezifische Casts enthält und FoundryError statt ContainerError
+ * verwendet. Die Trennung ermöglicht klare Abhängigkeiten und verhindert
+ * Import-Zyklen zwischen Foundry-Adapter und DI-Infrastruktur.
+ */
+
+import type { SettingConfig } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
+import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
+import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
+import type { Disposable } from "@/infrastructure/di/interfaces";
+import type { Result } from "@/domain/types/result";
+import { ok, err } from "@/infrastructure/shared/utils/result";
+import { isObjectWithMethods, hasMethod } from "@/infrastructure/shared/utils/type-guards";
+
+/**
+ * Type-safe interface for Foundry Settings with dynamic namespaces.
+ * Avoids 'any' while working around fvtt-types namespace restrictions.
+ */
+export interface DynamicSettingsApi {
+  register<T>(namespace: string, key: string, config: SettingConfig<T>): void;
+  get<T>(namespace: string, key: string): T;
+  set<T>(namespace: string, key: string, value: T): Promise<T>;
+}
+
+/**
+ * Kapselt den notwendigen Cast für `game.settings` mit dynamischen Namespaces.
+ * Foundry's Settings API unterstützt Modul-Namespaces, aber fvtt-types
+ * beschränkt den Namespace-Typ auf "core" nur.
+ *
+ * Diese Funktion führt eine Runtime-Validierung durch, um sicherzustellen,
+ * dass das Settings-Objekt die erforderlichen Methoden hat. Bei Fehlern wird
+ * ein FoundryError zurückgegeben statt einen Error zu werfen, um konsistent
+ * mit dem Result-Pattern zu bleiben.
+ *
+ * @param settings - Das game.settings Objekt (unknown, da game global ist)
+ * @returns Result mit dem Settings-Objekt als DynamicSettingsApi oder FoundryError
+ *
+ * @remarks
+ * Die Validierung prüft zur Laufzeit, ob die Methoden `register`, `get` und `set`
+ * vorhanden sind. Dies stellt sicher, dass das Settings-Objekt die erwartete
+ * API-Struktur hat.
+ */
+export function castFoundrySettingsApi(
+  settings: unknown
+): Result<DynamicSettingsApi, FoundryError> {
+  if (!isObjectWithMethods(settings, ["register", "get", "set"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "game.settings does not have required methods (register, get, set)",
+        {
+          missingMethods: ["register", "get", "set"],
+        }
+      )
+    );
+  }
+  return ok(settings as DynamicSettingsApi);
+}
+
+/**
+ * Type definition for documents with flag methods.
+ */
+type DocumentWithFlags = {
+  getFlag: (scope: string, key: string) => unknown;
+  setFlag: (scope: string, key: string, value: unknown) => Promise<unknown>;
+};
+
+/**
+ * Kapselt den notwendigen Cast für JournalEntry.getFlag mit modul-spezifischen Scopes.
+ * fvtt-types JournalEntry.getFlag hat einen restriktiven Scope-Typ ("core" nur),
+ * aber Modul-Flags verwenden die Modul-ID als Scope.
+ *
+ * Diese Funktion führt eine Runtime-Validierung durch, um sicherzustellen,
+ * dass das Dokument die erforderlichen Methoden `getFlag` und `setFlag` hat.
+ * Bei Fehlern wird ein FoundryError zurückgegeben statt einen Error zu werfen,
+ * um konsistent mit dem Result-Pattern zu bleiben.
+ *
+ * @param document - Das Foundry-Dokument (unknown, da Typen variieren)
+ * @returns Result mit dem Dokument mit getFlag/setFlag-Methoden oder FoundryError
+ *
+ * @remarks
+ * Die Validierung prüft zur Laufzeit, ob die Methoden `getFlag` und `setFlag`
+ * vorhanden sind. Dies stellt sicher, dass das Dokument die erwartete
+ * API-Struktur für Flag-Operationen hat.
+ *
+ * @see {@link DynamicSettingsApi} Für ähnliche Cast-Funktionen mit Runtime-Validierung
+ */
+export function castFoundryDocumentForFlag(
+  document: unknown
+): Result<DocumentWithFlags, FoundryError> {
+  if (!isObjectWithMethods(document, ["getFlag", "setFlag"])) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Document does not have required methods (getFlag, setFlag)",
+        {
+          missingMethods: ["getFlag", "setFlag"],
+        }
+      )
+    );
+  }
+  return ok(document as DocumentWithFlags);
+}
+
+/**
+ * Kapselt den Cast nach Runtime-Type-Check für FoundryError.
+ * Wird verwendet, wenn bereits zur Laufzeit geprüft wurde, dass das Error-Objekt
+ * die FoundryError-Struktur hat (code, message vorhanden).
+ *
+ * @param error - Das Error-Objekt (unknown, da es verschiedene Fehlerquellen gibt)
+ * @returns Das Error als FoundryError gecastet
+ */
+export function castFoundryError(error: unknown): FoundryError {
+  return error as FoundryError;
+}
+
+/**
+ * Kapselt den Cast für Disposable-Interface in FoundryServiceBase.
+ * Ports sind als generischer ServiceType typisiert, aber zur Laufzeit
+ * kann geprüft werden, ob sie das Disposable-Interface implementieren.
+ *
+ * Diese Funktion führt eine Runtime-Validierung durch, um sicherzustellen,
+ * dass der Port das `dispose`-Interface implementiert. Wenn nicht, wird `null`
+ * zurückgegeben (analog zu `extractHtmlElement`), da dies ein optionales Feature ist.
+ *
+ * @param port - Der Port (unknown, da generischer ServiceType)
+ * @returns Der Port als Disposable gecastet oder null, wenn nicht verfügbar
+ *
+ * @remarks
+ * Die Validierung prüft zur Laufzeit, ob der Port eine `dispose`-Methode hat.
+ * Dies ist konsistent mit anderen optionalen Type-Guards wie `extractHtmlElement`,
+ * die ebenfalls `null` zurückgeben statt ein Result-Pattern zu verwenden.
+ *
+ * @see {@link extractHtmlElement} Für ähnliche optional Type-Guards mit null-Rückgabe
+ */
+export function castDisposablePort(port: unknown): Disposable | null {
+  if (!port || typeof port !== "object") {
+    return null;
+  }
+  if (hasMethod(port, "dispose")) {
+    return port as Disposable;
+  }
+  return null;
+}
+
+/**
+ * Type-Guard für Non-Empty-Arrays mit Result-Pattern.
+ * Stellt sicher, dass ein Array mindestens ein Element hat.
+ * Ersetzt Non-Null-Assertions durch type-safe Guards.
+ *
+ * @template T - Der Element-Typ
+ * @param arr - Das Array, das geprüft werden soll
+ * @returns Result mit type-narrowed non-empty array oder FoundryError
+ */
+export function ensureNonEmptyArray<T>(arr: T[]): Result<[T, ...T[]], FoundryError> {
+  if (arr.length === 0) {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Array must not be empty", { arrayLength: 0 })
+    );
+  }
+  return ok(arr as [T, ...T[]]);
+}
+
+/**
+ * Extracts HTMLElement from hook argument.
+ *
+ * In Foundry VTT V13+, hooks receive native HTMLElement directly.
+ * jQuery support has been deprecated and is no longer needed.
+ *
+ * @param html - The hook argument (unknown type)
+ * @returns HTMLElement if the argument is an HTMLElement, null otherwise
+ */
+export function extractHtmlElement(html: unknown): HTMLElement | null {
+  return html instanceof HTMLElement ? html : null;
+}
+
+/**
+ * Gets a factory from a Map or returns an error if not found.
+ *
+ * This is a defensive check: theoretically, if a version exists in the Map keys,
+ * the factory should also exist. However, TypeScript's type system doesn't
+ * guarantee this, so the check exists for type safety.
+ *
+ * @template T - The type that the factory creates
+ * @param factories - Map of version numbers to factory functions
+ * @param version - The version to look up
+ * @returns Result with factory function or error
+ */
+export function getFactoryOrError<T>(
+  factories: Map<number, () => T>,
+  version: number
+): Result<() => T, FoundryError> {
+  const factory = factories.get(version);
+  if (!factory) {
+    return err(
+      createFoundryError("PORT_NOT_FOUND", `Factory for version ${version} not found in registry`, {
+        version,
+      })
+    );
+  }
+  return ok(factory);
+}

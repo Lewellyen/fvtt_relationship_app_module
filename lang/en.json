@@ -1,0 +1,23 @@
+{
+  "MODULE.SETTINGS.logLevel.name": "Log Level",
+  "MODULE.SETTINGS.logLevel.hint": "Minimum log level for module output. DEBUG shows all logs, ERROR only critical errors.",
+  "MODULE.SETTINGS.logLevel.choices.debug": "DEBUG (All logs - for debugging)",
+  "MODULE.SETTINGS.logLevel.choices.info": "INFO (Standard)",
+  "MODULE.SETTINGS.logLevel.choices.warn": "WARN (Warnings and errors only)",
+  "MODULE.SETTINGS.logLevel.choices.error": "ERROR (Critical errors only)",
+  "MODULE.SETTINGS.cacheEnabled.name": "Enable Cache Service",
+  "MODULE.SETTINGS.cacheEnabled.hint": "Toggle the global CacheService. When disabled, all cache interactions bypass the cache layer.",
+  "MODULE.SETTINGS.cacheDefaultTtlMs.name": "Cache TTL (ms)",
+  "MODULE.SETTINGS.cacheDefaultTtlMs.hint": "Default lifetime for cache entries in milliseconds. Use 0 to disable TTL.",
+  "MODULE.SETTINGS.cacheMaxEntries.name": "Cache Max Entries",
+  "MODULE.SETTINGS.cacheMaxEntries.hint": "Optional LRU limit. Use 0 to allow unlimited entries.",
+  "MODULE.SETTINGS.performanceTracking.name": "Performance Tracking",
+  "MODULE.SETTINGS.performanceTracking.hint": "Enable internal performance instrumentation (requires Performance Sampling).",
+  "MODULE.SETTINGS.performanceSamplingRate.name": "Performance Sampling Rate",
+  "MODULE.SETTINGS.performanceSamplingRate.hint": "Fraction between 0 and 1 defining how many operations are instrumented (e.g. 0.1 = 10%).",
+  "MODULE.SETTINGS.metricsPersistenceEnabled.name": "Persist Metrics",
+  "MODULE.SETTINGS.metricsPersistenceEnabled.hint": "Keep observability metrics across restarts (uses LocalStorage).",
+  "MODULE.SETTINGS.metricsPersistenceKey.name": "Metrics Storage Key",
+  "MODULE.SETTINGS.metricsPersistenceKey.hint": "LocalStorage key used when metrics persistence is enabled."
+}
+

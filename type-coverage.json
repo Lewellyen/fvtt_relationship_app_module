@@ -1,0 +1,17 @@
+{
+  "__comment": "Automatically generated configuration for type-coverage exclusions.",
+  "ignoreFiles": [
+    "vite.config.ts",
+    "src/infrastructure/shared/polyfills/**",
+    "src/framework/test/**",
+    "src/test/**",
+    "src/**/__tests__/**",
+    "**/*.test.ts",
+    "scripts/**",
+    "src/framework/types/custom.d.ts",
+    "src/infrastructure/di/registry/TypeSafeRegistrationMap.ts",
+    "src/infrastructure/di/types/utilities/runtime-safe-cast.ts",
+    "src/infrastructure/adapters/foundry/runtime-casts.ts"
+  ]
+}
+
