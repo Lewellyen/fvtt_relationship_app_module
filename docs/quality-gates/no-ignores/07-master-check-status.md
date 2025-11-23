@@ -24,16 +24,19 @@ Alle `ignore`-Marker wurden manuell kategorisiert und mit der Policy abgeglichen
 
 ### 2.1. `c8 ignore` Marker
 
-#### ✅ Erlaubt (in EXCEPTIONS dokumentiert)
+#### ✅ Erlaubt (in Whitelist dokumentiert)
 
 | Datei | Zeile | Begründung |
 |-------|-------|------------|
-| `src/core/init-solid.ts` | 36-44, 61-156, 164-209 | Foundry-Hooks und Bootstrap-Fehlerpfade (environment-dependent) |
-| `src/di_infrastructure/container.ts` | 408-411 | Coverage-Tool-Limitation: finally-Block |
-| `src/di_infrastructure/validation/ContainerValidator.ts` | 194-198 | Coverage-Tool-Limitation: early return |
-| `src/di_infrastructure/resolution/ServiceResolver.ts` | 120-122 | Coverage-Tool-Limitation: optional chaining |
-| `src/config/dependencyconfig.ts` | 174-176 | Coverage-Tool-Limitation: return statement |
-| `src/foundry/versioning/portregistry.ts` | 98-108 | Defensiver Check für Factory-Not-Found (theoretisch unmöglich) |
+| `src/framework/core/init-solid.ts` | 36-44, 61-156, 164-209 | Foundry-Hooks und Bootstrap-Fehlerpfade (environment-dependent) |
+| `src/framework/core/bootstrap-init-hook.ts` | 51-142 | Foundry-Hooks und Init-Phase-Logik (environment-dependent, direkte Hooks.on() Nutzung um Henne-Ei-Problem zu vermeiden) |
+| `src/framework/core/bootstrap-ready-hook.ts` | 33-42 | Foundry-Hooks Registrierung (environment-dependent, direkte Hooks.on() Nutzung um Henne-Ei-Problem zu vermeiden) |
+| `src/infrastructure/di/validation/ContainerValidator.ts` | 194-198 | Coverage-Tool-Limitation: early return |
+| `src/infrastructure/di/types/resolution/serviceclass.ts` | Variadische Konstruktoren | Type-Coverage-Limitation: any[] für Dependency Injection |
+| `src/infrastructure/di/types/utilities/api-safe-token.ts` | Nominal Branding | Type-Cast für Brand-Assertion |
+| `src/infrastructure/di/types/utilities/runtime-safe-cast.ts` | Runtime-Casts | Zentralisierte Runtime-Cast-Helpers |
+| `src/infrastructure/adapters/foundry/runtime-casts.ts` | Foundry Runtime-Casts | Zentralisierte Foundry-spezifische Runtime-Cast-Helpers |
+| `src/infrastructure/shared/utils/type-guards.ts` | Runtime Type Guards | Type-Cast für Runtime-Validierung |
 
 #### ⚠️ Zu prüfen (in `src/core/**`, nicht in EXCEPTIONS)
 

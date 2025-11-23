@@ -43,6 +43,16 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Foundry-spezifische Runtime-Umgebung: Hooks und Bootstrap-Fehlerpfade hängen stark von der Foundry-Version ab und sind schwer isoliert testbar',
   },
   {
+    file: 'src/framework/core/bootstrap-init-hook.ts',
+    allowed: ['v8 ignore'],
+    reason: 'Foundry-spezifische Runtime-Umgebung: Hook-Registrierung und Init-Phase-Logik hängen stark von der Foundry-Version ab und sind schwer isoliert testbar. Direkte Hooks.on() Nutzung um Henne-Ei-Problem zu vermeiden.',
+  },
+  {
+    file: 'src/framework/core/bootstrap-ready-hook.ts',
+    allowed: ['v8 ignore'],
+    reason: 'Foundry-spezifische Runtime-Umgebung: Hook-Registrierung hängt stark von der Foundry-Version ab und ist schwer isoliert testbar. Direkte Hooks.on() Nutzung um Henne-Ei-Problem zu vermeiden.',
+  },
+  {
     file: 'src/framework/index.ts',
     allowed: ['v8 ignore file'],
     reason: 'Entry Point: Reine Import-Datei ohne ausführbaren Code',

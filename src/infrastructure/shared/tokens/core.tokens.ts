@@ -13,6 +13,8 @@ import type { ContainerHealthCheck } from "@/application/health/ContainerHealthC
 import type { MetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
+import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
+import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
 
 /**
  * Injection token for the application logger service.
@@ -187,3 +189,35 @@ export const serviceContainerToken = createInjectionToken<ServiceContainer>("Ser
  */
 export const moduleSettingsRegistrarToken =
   createInjectionToken<ModuleSettingsRegistrar>("ModuleSettingsRegistrar");
+
+/**
+ * Injection token for the BootstrapInitHookService.
+ *
+ * Service responsible for registering the Foundry 'init' hook.
+ * Uses direct Hooks.on() to avoid chicken-egg problem with version detection.
+ *
+ * @example
+ * ```typescript
+ * const initHookService = container.resolve(bootstrapInitHookServiceToken);
+ * initHookService.register();
+ * ```
+ */
+export const bootstrapInitHookServiceToken = createInjectionToken<BootstrapInitHookService>(
+  "BootstrapInitHookService"
+);
+
+/**
+ * Injection token for the BootstrapReadyHookService.
+ *
+ * Service responsible for registering the Foundry 'ready' hook.
+ * Uses direct Hooks.on() to avoid chicken-egg problem with version detection.
+ *
+ * @example
+ * ```typescript
+ * const readyHookService = container.resolve(bootstrapReadyHookServiceToken);
+ * readyHookService.register();
+ * ```
+ */
+export const bootstrapReadyHookServiceToken = createInjectionToken<BootstrapReadyHookService>(
+  "BootstrapReadyHookService"
+);

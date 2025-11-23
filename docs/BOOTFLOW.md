@@ -1,8 +1,8 @@
 # Bootstrap Flow & Module Lifecycle
 
 **Model:** Claude Sonnet 4.5  
-**Datum:** 2025-11-16  
-**Stand:** Version 0.25.0 (mit Observability Self-Registration, NotificationCenter & init-solid Tests)
+**Datum:** 2025-11-16 (aktualisiert 2025-11-23)  
+**Stand:** Version 0.30.0+ (mit Bootstrap-Services für Hook-Registrierung)
 
 ---
 
@@ -160,7 +160,38 @@ function configureDependencies(container: ServiceContainer): Result<void, string
 }
 ```
 
-### 1.4 Fehlerbehandlung
+### 1.4 Hook-Registrierung über Bootstrap-Services
+
+**Nach erfolgreichem Bootstrap:**
+
+```typescript
+// Bootstrap-Services aus Container holen und registrieren
+const initHookServiceResult = container.resolveWithError<BootstrapInitHookService>(
+  bootstrapInitHookServiceToken
+);
+if (!initHookServiceResult.ok) {
+  logger.error(`Failed to resolve BootstrapInitHookService: ${initHookServiceResult.error.message}`);
+  return;
+}
+initHookServiceResult.value.register();
+
+const readyHookServiceResult = container.resolveWithError<BootstrapReadyHookService>(
+  bootstrapReadyHookServiceToken
+);
+if (!readyHookServiceResult.ok) {
+  logger.error(`Failed to resolve BootstrapReadyHookService: ${readyHookServiceResult.error.message}`);
+  return;
+}
+readyHookServiceResult.value.register();
+```
+
+**Bootstrap-Services:**
+- `BootstrapInitHookService`: Registriert den `init` Hook und kapselt die gesamte Init-Phase-Logik
+- `BootstrapReadyHookService`: Registriert den `ready` Hook und kapselt die Ready-Phase-Logik
+- Beide Services nutzen direkte `Hooks.on()` Aufrufe, um das Henne-Ei-Problem zu vermeiden (Version-Detection benötigt `game.version`, welches erst nach `init` verfügbar ist)
+- Services sind als Singletons im Container registriert und nutzen Dependency Injection für alle Dependencies
+
+### 1.5 Fehlerbehandlung
 
 **Bei Bootstrap-Fehler:**
 
@@ -201,18 +232,41 @@ if (!bootstrapOk) {
 ## Phase 2: Foundry `init` Hook
 
 **Zeitpunkt:** Foundry VTT `init` Phase  
-**Voraussetzung:** Bootstrap erfolgreich abgeschlossen
+**Voraussetzung:** Bootstrap erfolgreich abgeschlossen  
+**Verantwortlich:** `BootstrapInitHookService` (DI-Service)
 
-### 2.1 API exponieren
+### 2.1 Hook-Registrierung
+
+Der `init` Hook wird von `BootstrapInitHookService` registriert:
 
 ```typescript
+// BootstrapInitHookService.register() - aufgerufen in initializeFoundryModule()
+Hooks.on("init", () => {
+  logger.info("init-phase");
+  
+  // Init-Phase-Logik wird im Service ausgeführt
+  // (siehe bootstrap-init-hook.ts)
+});
+```
+
+**Wichtig:**
+- Direkte `Hooks.on()` Nutzung (nicht über `PlatformEventPort`) um Henne-Ei-Problem zu vermeiden
+- Service nutzt injizierten Container für alle Service-Resolutions
+- Vollständige DI-Integration: Alle Dependencies werden über Constructor injiziert
+
+### 2.2 Init-Phase-Logik
+
+Die Init-Phase-Logik ist vollständig in `BootstrapInitHookService` gekapselt:
+
+```typescript
+// BootstrapInitHookService - init hook callback
 Hooks.on("init", () => {
   logger.info("init-phase");
   
   // 1. Expose Public API via ModuleApiInitializer (DI-Service)
-  const apiInitializer = container.resolveWithError(moduleApiInitializerToken);
+  const apiInitializer = this.container.resolveWithError(moduleApiInitializerToken);
   if (apiInitializer.ok) {
-    const exposeResult = apiInitializer.value.expose(container);
+    const exposeResult = apiInitializer.value.expose(this.container);
     if (!exposeResult.ok) {
       logger.error(`Failed to expose API: ${exposeResult.error}`);
       return;
@@ -283,37 +337,69 @@ const api: ModuleApi = {
 1. Bootstrap: Logger mit Default-Level (INFO)
 2. Init: Logger mit User-Setting (aus Foundry Settings)
 
-### 2.4 Hooks registrieren
+### 2.4 Event-Listener registrieren
 
 ```typescript
-  // 4. Register Module Hooks
-  new ModuleHookRegistrar().registerAll(container);
-  // → renderJournalDirectory (Journal-Verstecken)
-  // → Weitere Hooks (falls vorhanden)
+  // 4. Register Module Event Listeners
+  const eventRegistrarResult = this.container.resolveWithError(moduleEventRegistrarToken);
+  if (!eventRegistrarResult.ok) {
+    this.logger.error(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
+    return;
+  }
+  const eventRegistrationResult = eventRegistrarResult.value.registerAll();
+  if (!eventRegistrationResult.ok) {
+    this.logger.error("Failed to register one or more event listeners", {
+      errors: eventRegistrationResult.error.map((e) => e.message),
+    });
+    return;
+  }
   
-  logger.info("init-phase completed");
+  this.logger.info("init-phase completed");
 });
 ```
 
-**ModuleHookRegistrar:** Registriert alle Foundry-Hook-Handler des Moduls.
+**ModuleEventRegistrar:** Registriert alle Foundry-Hook-Handler des Moduls (z.B. `renderJournalDirectory` für Journal-Verstecken).
 
 ---
 
 ## Phase 3: Foundry `ready` Hook
 
 **Zeitpunkt:** Foundry VTT `ready` Phase (nach init)  
-**Zweck:** Leichte Start-Aktionen, Logging
+**Zweck:** Leichte Start-Aktionen, Logging  
+**Verantwortlich:** `BootstrapReadyHookService` (DI-Service)
+
+### 3.1 Hook-Registrierung
+
+Der `ready` Hook wird von `BootstrapReadyHookService` registriert:
 
 ```typescript
+// BootstrapReadyHookService.register() - aufgerufen in initializeFoundryModule()
 Hooks.on("ready", () => {
   logger.info("ready-phase");
+  
+  // Ready-Phase-Logik wird im Service ausgeführt
+  // (siehe bootstrap-ready-hook.ts)
+});
+```
+
+**Wichtig:**
+- Direkte `Hooks.on()` Nutzung (nicht über `PlatformEventPort`) um Henne-Ei-Problem zu vermeiden
+- Service nutzt injizierten Logger für Logging
+- Vollständige DI-Integration: Logger wird über Constructor injiziert
+
+### 3.2 Ready-Phase-Logik
+
+```typescript
+// BootstrapReadyHookService - ready hook callback
+Hooks.on("ready", () => {
+  this.logger.info("ready-phase");
   
   // Optionale Start-Aktionen
   // - Metriken loggen
   // - Startup-Checks
   // - User-Begrüßung
   
-  logger.info("ready-phase completed");
+  this.logger.info("ready-phase completed");
 });
 ```
 
@@ -341,7 +427,7 @@ Module Load
     ↓
 [0-10ms] configureDependencies(container)
     ├─ [0-2ms] registerFallbacks (Logger)
-    ├─ [0-2ms] registerCoreServices (ENV, Metrics, Logger, Health)
+    ├─ [0-2ms] registerCoreServices (ENV, Metrics, Logger, Health, BootstrapInitHookService, BootstrapReadyHookService)
     ├─ [0-2ms] registerUtilityServices (Performance, Retry)
     ├─ [0-2ms] registerPortInfrastructure (PortSelector, Registries)
     ├─ [0-2ms] registerFoundryServices (6 Services + Facade)
@@ -351,15 +437,19 @@ Module Load
     ↓
 [10-20ms] Bootstrap completed ✅
     ↓
+[10-20ms] initializeFoundryModule()
+    ├─ BootstrapInitHookService.resolve() & register()
+    └─ BootstrapReadyHookService.resolve() & register()
+    ↓
 [...] Waiting for Foundry init
     ↓
-[Foundry Time] Hooks.on("init", ...)
+[Foundry Time] BootstrapInitHookService: Hooks.on("init", ...)
     ├─ ModuleApiInitializer.expose(container)
     ├─ ModuleSettingsRegistrar.registerAll()
     ├─ Configure Logger with User-Setting
-    └─ ModuleHookRegistrar.registerAll()
+    └─ ModuleEventRegistrar.registerAll()
     ↓
-[Foundry Time] Hooks.on("ready", ...)
+[Foundry Time] BootstrapReadyHookService: Hooks.on("ready", ...)
     └─ Logging & Light Actions
     ↓
 [Running] Module Active ✅
@@ -771,16 +861,17 @@ container.dispose();
 │ PHASE 2: FOUNDRY INIT HOOK                                  │
 │                                                             │
 │ ┌─────────────────────────────────────────────────────────┐│
-│ │ Hooks.on("init", () => {                                ││
-│ │   ├─ ModuleApiInitializer.expose(container)             ││
-│ │   │  └─ game.modules.get(MODULE_ID).api = { ... }       ││
-│ │   ├─ ModuleSettingsRegistrar.registerAll()             ││
-│ │   │  └─ Register Log-Level-Setting                      ││
-│ │   ├─ Configure Logger with User-Setting                 ││
-│ │   │  └─ logger.setMinLevel(logLevel)                    ││
-│ │   └─ ModuleHookRegistrar.registerAll()                  ││
-│ │      └─ Register renderJournalDirectory Hook            ││
-│ │ })                                                       ││
+│ │ BootstrapInitHookService.register()                     ││
+│ │   └─ Hooks.on("init", () => {                          ││
+│ │       ├─ ModuleApiInitializer.expose(container)         ││
+│ │       │  └─ game.modules.get(MODULE_ID).api = { ... }   ││
+│ │       ├─ ModuleSettingsRegistrar.registerAll()         ││
+│ │       │  └─ Register Log-Level-Setting                  ││
+│ │       ├─ Configure Logger with User-Setting             ││
+│ │       │  └─ logger.setMinLevel(logLevel)                ││
+│ │       └─ ModuleEventRegistrar.registerAll()            ││
+│ │          └─ Register renderJournalDirectory Hook        ││
+│ │     })                                                   ││
 │ └─────────────────────────────────────────────────────────┘│
 │                                                             │
 │ Result: ✅ API exposed, Hooks registered                    │
@@ -791,10 +882,11 @@ container.dispose();
 │ PHASE 3: FOUNDRY READY HOOK                                 │
 │                                                             │
 │ ┌─────────────────────────────────────────────────────────┐│
-│ │ Hooks.on("ready", () => {                               ││
-│ │   ├─ logger.info("ready-phase")                         ││
-│ │   ├─ Optional: Startup-Checks                           ││
-│ │   └─ logger.info("ready-phase completed")               ││
+│ │ BootstrapReadyHookService.register()                    ││
+│ │   └─ Hooks.on("ready", () => {                         ││
+│ │       ├─ logger.info("ready-phase")                     ││
+│ │       ├─ Optional: Startup-Checks                       ││
+│ │       └─ logger.info("ready-phase completed")           ││
 │ │ })                                                       ││
 │ └─────────────────────────────────────────────────────────┘│
 │                                                             │

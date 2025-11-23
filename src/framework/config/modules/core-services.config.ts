@@ -13,6 +13,8 @@ import {
   healthCheckRegistryToken,
   metricsStorageToken,
   runtimeConfigToken,
+  bootstrapInitHookServiceToken,
+  bootstrapReadyHookServiceToken,
 } from "@/infrastructure/shared/tokens";
 import { DIMetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { DIPersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
@@ -22,6 +24,8 @@ import { DITraceContext } from "@/infrastructure/observability/trace/TraceContex
 import { DIModuleHealthService } from "@/application/services/ModuleHealthService";
 import { DIModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 import { DIHealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
+import { DIBootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
+import { DIBootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
 
 /**
  * Registers core infrastructure services.
@@ -140,6 +144,26 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
   );
   if (isErr(apiInitResult)) {
     return err(`Failed to register ModuleApiInitializer: ${apiInitResult.error.message}`);
+  }
+
+  // Register BootstrapInitHookService (deps: [loggerToken, serviceContainerToken])
+  const initHookResult = container.registerClass(
+    bootstrapInitHookServiceToken,
+    DIBootstrapInitHookService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(initHookResult)) {
+    return err(`Failed to register BootstrapInitHookService: ${initHookResult.error.message}`);
+  }
+
+  // Register BootstrapReadyHookService (deps: [loggerToken])
+  const readyHookResult = container.registerClass(
+    bootstrapReadyHookServiceToken,
+    DIBootstrapReadyHookService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(readyHookResult)) {
+    return err(`Failed to register BootstrapReadyHookService: ${readyHookResult.error.message}`);
   }
 
   return ok(undefined);

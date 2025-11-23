@@ -490,92 +490,6 @@ describe("init-solid Bootstrap", () => {
   });
 
   describe("Init Hook Callback Error Paths", () => {
-    it("should handle container resolution failure in init callback", async () => {
-      vi.resetModules();
-
-      const mockGame = createMockGame();
-      const mockModule = { api: undefined as unknown };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
-
-      const cleanup = withFoundryGlobals({
-        game: mockGame,
-        Hooks: createMockHooks(),
-        ui: createMockUI(),
-      });
-
-      // CRITICAL: Mock configureDependencies BEFORE importing init-solid
-      // Use vi.doMock() to set up the mock before the module is imported
-      // We need to call the actual function to properly configure the container
-      const originalModule = await vi.importActual<
-        typeof import("@/framework/config/dependencyconfig")
-      >("@/framework/config/dependencyconfig");
-
-      vi.doMock("@/framework/config/dependencyconfig", () => ({
-        ...originalModule,
-        configureDependencies: vi.fn((container) => {
-          return originalModule.configureDependencies(container);
-        }),
-      }));
-
-      // Mock CompositionRoot.getContainer - track calls to fail at the right time
-      // We need to mock BEFORE importing init-solid, but after vi.doMock
-      // So we import composition-root first, then mock, then import init-solid
-      const compositionRootModule = await import("@/framework/core/composition-root");
-      const originalGetContainer = compositionRootModule.CompositionRoot.prototype.getContainer;
-      let shouldFailInInitCallback = false;
-
-      vi.spyOn(compositionRootModule.CompositionRoot.prototype, "getContainer").mockImplementation(
-        function (this: unknown) {
-          // Fail when flag is set (during init callback execution)
-          if (shouldFailInInitCallback) {
-            return {
-              ok: false,
-              error: "Container not initialized",
-            };
-          }
-          // All other calls succeed - use original to get actual container
-          return originalGetContainer.call(this);
-        }
-      );
-
-      const consoleLoggerModule = await import("@/infrastructure/logging/ConsoleLoggerService");
-      const errorSpy = vi
-        .spyOn(consoleLoggerModule.ConsoleLoggerService.prototype, "error")
-        .mockImplementation(() => {});
-
-      // NOW import init-solid - bootstrap() will use mocked configureDependencies
-      await import("@/framework/core/init-solid");
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-
-      // Debug: Check if hooks were registered
-      const allHookCalls = hooksOnMock.mock.calls;
-      const initCall = allHookCalls.find(([hookName]) => hookName === "init");
-
-      if (!initCall) {
-        // If init hook wasn't registered, bootstrap or initializeFoundryModule failed
-        // This means the test setup is incorrect
-        console.error(
-          "Init hook not registered. Hook calls:",
-          allHookCalls.map((c) => c[0])
-        );
-        throw new Error("Init hook not registered - bootstrap or initializeFoundryModule failed");
-      }
-
-      const initCallback = initCall?.[1] as (() => void) | undefined;
-      expect(initCallback).toBeDefined();
-
-      // Set flag to fail when init callback is called
-      shouldFailInInitCallback = true;
-      initCallback!();
-
-      expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to get container in init hook: Container not initialized"
-      );
-
-      errorSpy.mockRestore();
-      cleanup();
-    });
-
     it("should handle ModuleApiInitializer resolution failure in init callback", async () => {
       vi.resetModules();
 
@@ -952,6 +866,132 @@ describe("init-solid Bootstrap", () => {
       );
 
       consoleErrorSpy.mockRestore();
+      cleanup();
+    });
+
+    it("should handle BootstrapInitHookService resolution failure in initializeFoundryModule", async () => {
+      // This test covers BootstrapInitHookService resolution failure
+      vi.resetModules();
+
+      const cleanup = withFoundryGlobals({
+        game: createMockGame(),
+        Hooks: createMockHooks(),
+        ui: createMockUI(),
+      });
+
+      // CRITICAL: Mock configureDependencies BEFORE importing init-solid
+      const originalModule = await vi.importActual<
+        typeof import("@/framework/config/dependencyconfig")
+      >("@/framework/config/dependencyconfig");
+
+      const tokensModule = await import("@/infrastructure/shared/tokens");
+      const bootstrapInitHookServiceToken = tokensModule.bootstrapInitHookServiceToken;
+
+      vi.doMock("@/framework/config/dependencyconfig", () => ({
+        ...originalModule,
+        configureDependencies: vi.fn((container) => {
+          const result = originalModule.configureDependencies(container);
+          if (result.ok) {
+            // Mock resolveWithError to fail for BootstrapInitHookService
+            const originalResolveWithError = container.resolveWithError.bind(container);
+            vi.spyOn(container, "resolveWithError").mockImplementation((token) => {
+              if (token === bootstrapInitHookServiceToken) {
+                return {
+                  ok: false,
+                  error: {
+                    code: "DependencyResolveFailed" as const,
+                    message: "BootstrapInitHookService not registered",
+                  },
+                };
+              }
+              return originalResolveWithError(token);
+            });
+          }
+          return result;
+        }),
+      }));
+
+      const consoleLoggerModule = await import("@/infrastructure/logging/ConsoleLoggerService");
+      const errorSpy = vi
+        .spyOn(consoleLoggerModule.ConsoleLoggerService.prototype, "error")
+        .mockImplementation(() => {});
+
+      await import("@/framework/core/init-solid");
+
+      // Verify that error was logged for BootstrapInitHookService resolution failure
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to resolve BootstrapInitHookService")
+      );
+
+      // Verify that hooks were NOT registered (since service resolution failed)
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
+      expect(initCall).toBeUndefined();
+
+      errorSpy.mockRestore();
+      cleanup();
+    });
+
+    it("should handle BootstrapReadyHookService resolution failure in initializeFoundryModule", async () => {
+      // This test covers BootstrapReadyHookService resolution failure
+      vi.resetModules();
+
+      const cleanup = withFoundryGlobals({
+        game: createMockGame(),
+        Hooks: createMockHooks(),
+        ui: createMockUI(),
+      });
+
+      // CRITICAL: Mock configureDependencies BEFORE importing init-solid
+      const originalModule = await vi.importActual<
+        typeof import("@/framework/config/dependencyconfig")
+      >("@/framework/config/dependencyconfig");
+
+      const tokensModule = await import("@/infrastructure/shared/tokens");
+      const bootstrapReadyHookServiceToken = tokensModule.bootstrapReadyHookServiceToken;
+
+      vi.doMock("@/framework/config/dependencyconfig", () => ({
+        ...originalModule,
+        configureDependencies: vi.fn((container) => {
+          const result = originalModule.configureDependencies(container);
+          if (result.ok) {
+            // Mock resolveWithError to fail for BootstrapReadyHookService
+            const originalResolveWithError = container.resolveWithError.bind(container);
+            vi.spyOn(container, "resolveWithError").mockImplementation((token) => {
+              if (token === bootstrapReadyHookServiceToken) {
+                return {
+                  ok: false,
+                  error: {
+                    code: "DependencyResolveFailed" as const,
+                    message: "BootstrapReadyHookService not registered",
+                  },
+                };
+              }
+              return originalResolveWithError(token);
+            });
+          }
+          return result;
+        }),
+      }));
+
+      const consoleLoggerModule = await import("@/infrastructure/logging/ConsoleLoggerService");
+      const errorSpy = vi
+        .spyOn(consoleLoggerModule.ConsoleLoggerService.prototype, "error")
+        .mockImplementation(() => {});
+
+      await import("@/framework/core/init-solid");
+
+      // Verify that error was logged for BootstrapReadyHookService resolution failure
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to resolve BootstrapReadyHookService")
+      );
+
+      // Verify that ready hook was NOT registered (since service resolution failed)
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const readyCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "ready");
+      expect(readyCall).toBeUndefined();
+
+      errorSpy.mockRestore();
       cleanup();
     });
 

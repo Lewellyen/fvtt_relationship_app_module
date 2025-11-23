@@ -31,8 +31,12 @@ describe("init-solid Hooks Guard", () => {
       await import("@/framework/core/init-solid");
 
       // Prüfen dass logger.warn() mit der erwarteten Nachricht aufgerufen wurde
+      // Services warnen jetzt separat für init und ready hooks
       expect(warnSpy).toHaveBeenCalledWith(
-        "Foundry Hooks API not available - module initialization skipped"
+        "Foundry Hooks API not available - init hook registration skipped"
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        "Foundry Hooks API not available - ready hook registration skipped"
       );
 
       // Prüfen dass keine Hooks registriert wurden (weil Hooks undefined ist)
