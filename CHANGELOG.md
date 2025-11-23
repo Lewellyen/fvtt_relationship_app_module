@@ -12,6 +12,28 @@
 
 ### Upgrade-Hinweise
 
+## [0.30.0] - 2025-11-23
+### Hinzugefügt
+- **LibWrapperService**: Neuer Service als Facade für libWrapper-Interaktionen ([Details](src/domain/services/lib-wrapper-service.interface.ts))
+- `LibWrapperService` Interface im Domain-Layer für platform-agnostische libWrapper-Abstraktion
+- `FoundryLibWrapperService` Implementierung im Infrastructure-Layer mit vollständiger Error-Handling
+- Unterstützt `register()`, `unregister()` und `dispose()` für sauberes Lifecycle-Management
+- Tracking von registrierten Targets für automatisches Cleanup
+- 100% Test-Coverage mit Edge-Case-Tests (libWrapper nicht verfügbar, doppelte Registrierung, etc.)
+- DI-Integration über `libWrapperServiceToken` als Singleton-Service
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.29.5] - 2025-11-23
 ### Hinzugefügt
 - **PlatformEventPort-Implementierung in FoundryHooksPort**: `FoundryHooksPort` implementiert jetzt `PlatformEventPort<unknown>` mit `registerListener()` und `unregisterListener()` Methoden für platform-agnostische Event-Registrierung ([Details](docs/architecture/event-system-hierarchy.md))

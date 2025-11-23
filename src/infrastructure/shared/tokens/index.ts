@@ -74,6 +74,7 @@ import type { RegisterContextMenuUseCase } from "@/application/use-cases/registe
 import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
+import type { LibWrapperService } from "@/domain/services/lib-wrapper-service.interface";
 
 /**
  * Union type representing all registered service types in the application.
@@ -136,4 +137,5 @@ export type ServiceType =
   | ModuleEventRegistrar
   | PlatformUIPort
   | HideJournalContextMenuHandler
+  | LibWrapperService
   | ServiceContainer;

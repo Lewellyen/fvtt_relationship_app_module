@@ -14,6 +14,7 @@ import type { FoundryI18n } from "@/infrastructure/adapters/foundry/interfaces/F
 import type { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import type { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
+import type { LibWrapperService } from "@/domain/services/lib-wrapper-service.interface";
 
 /**
  * Injection token for FoundryGame port.
@@ -218,3 +219,25 @@ export const foundryV13I18nPortToken: InjectionToken<FoundryI18n> =
  */
 export const foundryJournalFacadeToken: InjectionToken<FoundryJournalFacade> =
   createInjectionToken<FoundryJournalFacade>("FoundryJournalFacade");
+
+/**
+ * Injection token for LibWrapperService.
+ *
+ * Provides a facade over libWrapper for registering and unregistering method wrappers.
+ * Handles tracking of registrations and cleanup.
+ *
+ * @example
+ * ```typescript
+ * const libWrapper = container.resolve(libWrapperServiceToken);
+ * const result = libWrapper.register(
+ *   "foundry.applications.ux.ContextMenu.implementation.prototype.render",
+ *   (wrapped, ...args) => {
+ *     // Custom logic
+ *     return wrapped(...args);
+ *   },
+ *   "WRAPPER"
+ * );
+ * ```
+ */
+export const libWrapperServiceToken: InjectionToken<LibWrapperService> =
+  createInjectionToken<LibWrapperService>("LibWrapperService");

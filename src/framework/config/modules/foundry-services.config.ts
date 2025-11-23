@@ -22,6 +22,8 @@ import { DIFoundrySettingsPort } from "@/infrastructure/adapters/foundry/service
 import { DIFoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade";
 import { DIFoundryJournalVisibilityAdapter } from "@/infrastructure/adapters/foundry/domain-adapters/journal-visibility-adapter";
 import { DIJournalVisibilityService } from "@/application/services/JournalVisibilityService";
+import { DIFoundryLibWrapperService } from "@/infrastructure/adapters/foundry/services/FoundryLibWrapperService";
+import { libWrapperServiceToken } from "@/infrastructure/shared/tokens";
 
 /**
  * Registers Foundry service wrappers.
@@ -35,6 +37,7 @@ import { DIJournalVisibilityService } from "@/application/services/JournalVisibi
  * - FoundryJournalFacade (singleton)
  * - FoundryJournalVisibilityAdapter (singleton) - must be registered before JournalVisibilityService
  * - JournalVisibilityService (singleton)
+ * - FoundryLibWrapperService (singleton) - Facade for libWrapper
  *
  * All services use port-based adapter pattern for Foundry version compatibility.
  *
@@ -130,6 +133,16 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
     return err(
       `Failed to register JournalVisibility service: ${journalVisibilityResult.error.message}`
     );
+  }
+
+  // Register FoundryLibWrapperService
+  const libWrapperServiceResult = container.registerClass(
+    libWrapperServiceToken,
+    DIFoundryLibWrapperService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(libWrapperServiceResult)) {
+    return err(`Failed to register LibWrapperService: ${libWrapperServiceResult.error.message}`);
   }
 
   return ok(undefined);

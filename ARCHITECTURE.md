@@ -490,6 +490,7 @@ export class RegisterContextMenuUseCase implements EventRegistrar {
 - Handler werden direkt im Use-Case Constructor injiziert (Option A - einfacher)
 - `event.options` Array ist mutable und kann von Handlern modifiziert werden
 - Für Foundry-Integration nutzt `FoundryJournalEventAdapter` libWrapper statt Hook (da Hook in v13 nicht mehr funktioniert)
+- **LibWrapperService**: libWrapper-Interaktionen werden über den `LibWrapperService` abgewickelt, der als Facade für `globalThis.libWrapper` fungiert und eine saubere, testbare API bietet ([Details](src/infrastructure/adapters/foundry/services/FoundryLibWrapperService.ts))
 
 ### Domain-Ports für DIP-Konformität
 

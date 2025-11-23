@@ -266,6 +266,7 @@ const foundryV13UIPortToken = createInjectionToken("FoundryV13UIPort");
 const foundryV13SettingsPortToken = createInjectionToken("FoundryV13SettingsPort");
 const foundryV13I18nPortToken = createInjectionToken("FoundryV13I18nPort");
 const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
+const libWrapperServiceToken = createInjectionToken("LibWrapperService");
 const platformJournalEventPortToken = createInjectionToken("JournalEventPort");
 const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
   "InvalidateJournalCacheOnChangeUseCase"
@@ -12476,6 +12477,111 @@ _DIJournalVisibilityService.dependencies = [
   platformUIPortToken
 ];
 let DIJournalVisibilityService = _DIJournalVisibilityService;
+const _FoundryLibWrapperService = class _FoundryLibWrapperService {
+  constructor(moduleId, logger) {
+    this.moduleId = moduleId;
+    this.logger = logger;
+    this.registeredTargets = /* @__PURE__ */ new Map();
+    this.nextId = 1;
+  }
+  register(target, wrapperFn, type) {
+    if (typeof globalThis.libWrapper === "undefined") {
+      return err({
+        code: "LIBWRAPPER_NOT_AVAILABLE",
+        message: "libWrapper is not available"
+      });
+    }
+    if (this.registeredTargets.has(target)) {
+      return err({
+        code: "REGISTRATION_FAILED",
+        message: `Target "${target}" is already registered`,
+        details: { target }
+      });
+    }
+    const result = tryCatch(
+      () => {
+        const libWrapperInstance = globalThis.libWrapper;
+        if (typeof libWrapperInstance === "undefined") {
+          throw new Error("libWrapper is not available");
+        }
+        libWrapperInstance.register(this.moduleId, target, wrapperFn, type);
+        this.registeredTargets.set(target, true);
+        const registrationId = this.nextId++;
+        return registrationId;
+      },
+      (error) => ({
+        code: "REGISTRATION_FAILED",
+        message: `Failed to register wrapper for target "${target}": ${String(error)}`,
+        details: { target, error }
+      })
+    );
+    if (result.ok) {
+      return ok(result.value);
+    }
+    return result;
+  }
+  unregister(target) {
+    if (!this.registeredTargets.has(target)) {
+      return err({
+        code: "TARGET_NOT_REGISTERED",
+        message: `Target "${target}" is not registered`,
+        details: { target }
+      });
+    }
+    if (typeof globalThis.libWrapper === "undefined") {
+      return err({
+        code: "LIBWRAPPER_NOT_AVAILABLE",
+        message: "libWrapper is not available"
+      });
+    }
+    const result = tryCatch(
+      () => {
+        const libWrapperInstance = globalThis.libWrapper;
+        if (typeof libWrapperInstance === "undefined") {
+          throw new Error("libWrapper is not available");
+        }
+        libWrapperInstance.unregister(this.moduleId, target);
+        this.registeredTargets.delete(target);
+      },
+      (error) => ({
+        code: "UNREGISTRATION_FAILED",
+        message: `Failed to unregister wrapper for target "${target}": ${String(error)}`,
+        details: { target, error }
+      })
+    );
+    if (result.ok) {
+      return ok(void 0);
+    }
+    return result;
+  }
+  /**
+   * Cleanup all registered wrappers.
+   * Should be called during module shutdown.
+   */
+  dispose() {
+    const targets = Array.from(this.registeredTargets.keys());
+    for (const target of targets) {
+      const result = this.unregister(target);
+      if (!result.ok) {
+        this.logger.warn("Failed to unregister libWrapper target during dispose", {
+          target,
+          error: result.error
+        });
+      }
+    }
+    this.registeredTargets.clear();
+  }
+};
+__name(_FoundryLibWrapperService, "FoundryLibWrapperService");
+let FoundryLibWrapperService = _FoundryLibWrapperService;
+const _DIFoundryLibWrapperService = class _DIFoundryLibWrapperService extends FoundryLibWrapperService {
+  constructor(logger) {
+    super(MODULE_CONSTANTS.MODULE.ID, logger);
+  }
+};
+__name(_DIFoundryLibWrapperService, "DIFoundryLibWrapperService");
+_DIFoundryLibWrapperService.dependencies = [loggerToken];
+let DIFoundryLibWrapperService = _DIFoundryLibWrapperService;
 function registerFoundryServices(container) {
   const gameServiceResult = container.registerClass(
     foundryGameToken,
@@ -12546,6 +12652,14 @@ function registerFoundryServices(container) {
     return err(
       `Failed to register JournalVisibility service: ${journalVisibilityResult.error.message}`
     );
+  }
+  const libWrapperServiceResult = container.registerClass(
+    libWrapperServiceToken,
+    DIFoundryLibWrapperService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(libWrapperServiceResult)) {
+    return err(`Failed to register LibWrapperService: ${libWrapperServiceResult.error.message}`);
   }
   return ok(void 0);
 }
