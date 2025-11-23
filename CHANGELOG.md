@@ -63,7 +63,7 @@
 
 ## [0.29.0] - 2025-11-23
 ### Hinzugefügt
-- **Journal Context-Menü via libWrapper**: Context-Menü-Eintrag "Journal ausblenden" über libWrapper statt Hook implementiert ([Details](docs/refactoring/Context-Menu-Custom-Entry-Implementation.md))
+- **Journal Context-Menü via libWrapper**: Context-Menü-Eintrag "Journal ausblenden" über libWrapper statt Hook implementiert ([Details](docs/archive/Context-Menu-Custom-Entry-Implementation.md))
 - **Handler-Pattern für Context-Menü**: Erweiterbares Handler-Pattern für Context-Menü-Items (`JournalContextMenuHandler`, `HideJournalContextMenuHandler`)
 - **lib-wrapper Dependency**: lib-wrapper als Dependency hinzugefügt für sichere Method-Wrapping
 - **RegisterContextMenuUseCase**: Neuer Use-Case als Orchestrator für mehrere Context-Menü-Handler

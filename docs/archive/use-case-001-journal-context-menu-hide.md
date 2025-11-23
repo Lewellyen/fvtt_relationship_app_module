@@ -137,5 +137,5 @@ Hooks.on('getJournalEntryContext', (html, options) => {
 - [x] Dokumentation aktualisiert (CHANGELOG.md v0.29.0)
 - [x] Code-Review abgeschlossen
 
-**Implementierung:** Handler-Pattern mit `HideJournalContextMenuHandler` und `RegisterContextMenuUseCase` als Orchestrator. Siehe [Context-Menu-Custom-Entry-Implementation.md](../refactoring/Context-Menu-Custom-Entry-Implementation.md) für Details.
+**Implementierung:** Handler-Pattern mit `HideJournalContextMenuHandler` und `RegisterContextMenuUseCase` als Orchestrator. Siehe [Context-Menu-Custom-Entry-Implementation.md](./Context-Menu-Custom-Entry-Implementation.md) für Details.
 

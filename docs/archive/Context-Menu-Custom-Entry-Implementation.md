@@ -1,9 +1,10 @@
 # Context-Menü Custom Entry Implementation
 
 **Erstellt:** 2025-01-27  
-**Status:** 📋 Geplant  
+**Status:** ✅ **ABGESCHLOSSEN in v0.29.0 (2025-11-23)**  
 **Priorität:** 🟡 Mittel  
-**Aufwand:** 4-6 Stunden  
+**Aufwand:** ✅ Abgeschlossen  
+**Archiviert:** 2025-11-23  
 
 ---
 

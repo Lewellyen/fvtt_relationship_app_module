@@ -58,14 +58,14 @@ Wenn ein Feature bereit für Community-Feedback ist:
 **Schritte:**
 ```bash
 # 1. Issue aus Feature-Dokumentation erstellen
-npm run issue:create docs/features/use-case-001-journal-context-menu-hide.md
+npm run issue:create docs/archive/use-case-001-journal-context-menu-hide.md
 # oder direkt:
-node scripts/create-feature-issue.mjs docs/features/use-case-001-journal-context-menu-hide.md
+node scripts/create-feature-issue.mjs docs/archive/use-case-001-journal-context-menu-hide.md
 
 # 2. Issue-Nummer automatisch zur Dokumentation hinzufügen
-npm run issue:link docs/features/use-case-001-journal-context-menu-hide.md 123
+npm run issue:link docs/archive/use-case-001-journal-context-menu-hide.md 123
 # oder direkt:
-node scripts/update-feature-issue-link.mjs docs/features/use-case-001-journal-context-menu-hide.md 123
+node scripts/update-feature-issue-link.mjs docs/archive/use-case-001-journal-context-menu-hide.md 123
 ```
 
 Das Script:
@@ -103,8 +103,8 @@ Jede Feature-Idee oder Use-Case wird in einer eigenen Markdown-Datei dokumentier
 ## Verfügbare Use-Cases
 
 ### Use-Case 001: Journal Context-Menü - Journal ausblenden
-**Datei:** [`use-case-001-journal-context-menu-hide.md`](./use-case-001-journal-context-menu-hide.md)  
-**Status:** 📋 Geplant  
+**Datei:** [`use-case-001-journal-context-menu-hide.md`](../archive/use-case-001-journal-context-menu-hide.md) (✅ Abgeschlossen - Archiviert)  
+**Status:** ✅ **Abgeschlossen (v0.29.0)** - Archiviert  
 **Beschreibung:** Context-Menü-Eintrag zum Ausblenden eines Journals beim Rechtsklick.
 
 ### Use-Case 002: Button "Alle Journale einblenden" im Journal-Verzeichnis-Header
