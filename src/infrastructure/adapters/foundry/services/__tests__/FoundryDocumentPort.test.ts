@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { FoundryDocumentService } from "@/infrastructure/adapters/foundry/services/FoundryDocumentService";
+import { FoundryDocumentPort } from "@/infrastructure/adapters/foundry/services/FoundryDocumentPort";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
@@ -14,8 +14,8 @@ import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontok
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import * as v from "valibot";
 
-describe("FoundryDocumentService", () => {
-  let service: FoundryDocumentService;
+describe("FoundryDocumentPort", () => {
+  let service: FoundryDocumentPort;
   let mockRegistry: PortRegistry<FoundryDocument>;
   let mockSelector: PortSelector;
   let mockPort: FoundryDocument;
@@ -57,7 +57,7 @@ describe("FoundryDocumentService", () => {
       retry: vi.fn((fn) => fn()),
     } as any;
 
-    service = new FoundryDocumentService(mockSelector, mockRegistry, mockRetryService);
+    service = new FoundryDocumentPort(mockSelector, mockRegistry, mockRetryService);
   });
 
   afterEach(() => {
@@ -92,7 +92,7 @@ describe("FoundryDocumentService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryDocumentService(
+      const failingService = new FoundryDocumentPort(
         failingSelector,
         mockRegistry,
         mockRetryService
@@ -163,7 +163,7 @@ describe("FoundryDocumentService", () => {
         message: "No compatible port found",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryDocumentService(
+      const failingService = new FoundryDocumentPort(
         failingSelector,
         mockRegistry,
         mockRetryService
@@ -205,7 +205,7 @@ describe("FoundryDocumentService", () => {
         message: "Port selection failed in setFlag",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryDocumentService(
+      const failingService = new FoundryDocumentPort(
         failingSelector,
         mockRegistry,
         mockRetryService

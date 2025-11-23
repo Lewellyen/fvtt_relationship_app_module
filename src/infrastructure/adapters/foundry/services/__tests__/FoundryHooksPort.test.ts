@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { FoundryHooksService } from "@/infrastructure/adapters/foundry/services/FoundryHooksService";
+import { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
@@ -14,8 +14,8 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 
-describe("FoundryHooksService", () => {
-  let service: FoundryHooksService;
+describe("FoundryHooksPort", () => {
+  let service: FoundryHooksPort;
   let mockRegistry: PortRegistry<FoundryHooks>;
   let mockSelector: PortSelector;
   let mockPort: FoundryHooks;
@@ -62,7 +62,7 @@ describe("FoundryHooksService", () => {
       retry: vi.fn((fn) => fn()),
     } as any;
 
-    service = new FoundryHooksService(mockSelector, mockRegistry, mockRetryService, mockLogger);
+    service = new FoundryHooksPort(mockSelector, mockRegistry, mockRetryService, mockLogger);
   });
 
   afterEach(() => {
@@ -97,7 +97,7 @@ describe("FoundryHooksService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryHooksService(
+      const failingService = new FoundryHooksPort(
         failingSelector,
         mockRegistry,
         mockRetryService,
@@ -410,7 +410,7 @@ describe("FoundryHooksService", () => {
         message: "No compatible port found",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryHooksService(
+      const failingService = new FoundryHooksPort(
         failingSelector,
         mockRegistry,
         mockRetryService,
@@ -489,7 +489,7 @@ describe("FoundryHooksService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryHooksService(
+      const failingService = new FoundryHooksPort(
         failingSelector,
         mockRegistry,
         mockRetryService,
@@ -514,7 +514,7 @@ describe("FoundryHooksService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryHooksService(
+      const failingService = new FoundryHooksPort(
         failingSelector,
         mockRegistry,
         mockRetryService,

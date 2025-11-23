@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { FoundryGameService } from "@/infrastructure/adapters/foundry/services/FoundryGameService";
+import { FoundryGamePort } from "@/infrastructure/adapters/foundry/services/FoundryGamePort";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
@@ -16,7 +16,7 @@ import { createMockJournalEntry } from "@/test/mocks/foundry";
 import type { FoundryJournalEntry } from "@/infrastructure/adapters/foundry/types";
 
 describe("Concurrency: Journal Access", () => {
-  let service: FoundryGameService;
+  let service: FoundryGamePort;
   let mockRegistry: PortRegistry<FoundryGame>;
   let mockSelector: PortSelector;
   let mockPort: FoundryGame;
@@ -69,7 +69,7 @@ describe("Concurrency: Journal Access", () => {
       retry: vi.fn((fn) => fn()),
     } as any;
 
-    service = new FoundryGameService(mockSelector, mockRegistry, mockRetryService);
+    service = new FoundryGamePort(mockSelector, mockRegistry, mockRetryService);
   });
 
   afterEach(() => {

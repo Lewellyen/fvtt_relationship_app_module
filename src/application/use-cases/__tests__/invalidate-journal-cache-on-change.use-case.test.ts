@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { InvalidateJournalCacheOnChangeUseCase } from "../invalidate-journal-cache-on-change.use-case";
-import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { CacheService } from "@/infrastructure/cache/cache.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 
 describe("InvalidateJournalCacheOnChangeUseCase", () => {
-  let mockJournalEvents: JournalEventPort;
+  let mockJournalEvents: PlatformJournalEventPort;
   let mockCache: CacheService;
   let mockNotificationCenter: NotificationCenter;
   let useCase: InvalidateJournalCacheOnChangeUseCase;

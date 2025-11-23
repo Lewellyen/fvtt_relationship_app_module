@@ -1,5 +1,5 @@
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
-import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { InvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import type { ProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
 import type { TriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";
@@ -8,12 +8,13 @@ import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-
 import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 
 /**
- * DI Token for JournalEventPort.
+ * DI Token for PlatformJournalEventPort.
  *
  * Used to inject platform-agnostic journal event handling.
  * Default implementation: FoundryJournalEventAdapter (for Foundry VTT)
  */
-export const journalEventPortToken = createInjectionToken<JournalEventPort>("JournalEventPort");
+export const platformJournalEventPortToken =
+  createInjectionToken<PlatformJournalEventPort>("JournalEventPort");
 
 /**
  * DI Token for InvalidateJournalCacheOnChangeUseCase.

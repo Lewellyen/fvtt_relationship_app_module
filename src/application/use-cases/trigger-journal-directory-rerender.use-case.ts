@@ -1,12 +1,12 @@
 import type { Result } from "@/domain/types/result";
-import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import {
-  journalEventPortToken,
+  platformJournalEventPortToken,
   platformUIPortToken,
   notificationCenterToken,
 } from "@/infrastructure/shared/tokens";
@@ -15,7 +15,7 @@ import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 /**
  * Use-Case: Trigger journal directory re-render when hidden flag changes.
  *
- * Fully platform-agnostic through JournalEventPort and PlatformUIPort.
+ * Fully platform-agnostic through PlatformJournalEventPort and PlatformUIPort.
  *
  * @example
  * ```typescript
@@ -33,7 +33,7 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
   private registrationId: EventRegistrationId | undefined;
 
   constructor(
-    private readonly journalEvents: JournalEventPort,
+    private readonly journalEvents: PlatformJournalEventPort,
     private readonly platformUI: PlatformUIPort,
     private readonly notificationCenter: NotificationCenter
   ) {}
@@ -102,13 +102,13 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
  */
 export class DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDirectoryReRenderUseCase {
   static dependencies = [
-    journalEventPortToken,
+    platformJournalEventPortToken,
     platformUIPortToken,
     notificationCenterToken,
   ] as const;
 
   constructor(
-    journalEvents: JournalEventPort,
+    journalEvents: PlatformJournalEventPort,
     platformUI: PlatformUIPort,
     notificationCenter: NotificationCenter
   ) {

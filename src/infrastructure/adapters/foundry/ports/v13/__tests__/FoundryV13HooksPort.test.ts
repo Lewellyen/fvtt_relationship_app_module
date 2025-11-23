@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { FoundryHooksPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryHooksPort";
+import { FoundryV13HooksPort } from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13HooksPort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
-describe("FoundryHooksPortV13", () => {
-  let port: FoundryHooksPortV13;
+describe("FoundryV13HooksPort", () => {
+  let port: FoundryV13HooksPort;
 
   beforeEach(() => {
-    port = new FoundryHooksPortV13();
+    port = new FoundryV13HooksPort();
   });
 
   afterEach(() => {
@@ -95,7 +95,7 @@ describe("FoundryHooksPortV13", () => {
       const mockOnce = vi.fn().mockReturnValue(mockHookId);
       vi.stubGlobal("Hooks", { once: mockOnce });
 
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
       const callback = vi.fn();
       const result = port.once("testHook", callback);
 
@@ -107,7 +107,7 @@ describe("FoundryHooksPortV13", () => {
     it("should return error when Hooks API is not available", () => {
       vi.stubGlobal("Hooks", undefined);
 
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
       const callback = vi.fn();
       const result = port.once("testHook", callback);
 
@@ -122,7 +122,7 @@ describe("FoundryHooksPortV13", () => {
       });
       vi.stubGlobal("Hooks", { once: mockOnce });
 
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
       const callback = vi.fn();
       const result = port.once("testHook", callback);
 
@@ -138,7 +138,7 @@ describe("FoundryHooksPortV13", () => {
       const mockOn = vi.fn().mockReturnValue(mockHookId);
       vi.stubGlobal("Hooks", { on: mockOn });
 
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
       const callback = vi.fn();
       const result = port.on("init", callback);
 
@@ -152,7 +152,7 @@ describe("FoundryHooksPortV13", () => {
       const mockOff = vi.fn();
       vi.stubGlobal("Hooks", { off: mockOff });
 
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
       const result = port.off("testHook", 42);
 
       expectResultOk(result);
@@ -163,7 +163,7 @@ describe("FoundryHooksPortV13", () => {
       const mockOff = vi.fn();
       vi.stubGlobal("Hooks", { off: mockOff });
 
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
       const callback = vi.fn();
       const result = port.off("testHook", callback);
 
@@ -181,7 +181,7 @@ describe("FoundryHooksPortV13", () => {
     });
 
     it("should prevent registering hooks after disposal", () => {
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
       port.dispose();
 
       const result = port.on("ready", vi.fn());
@@ -192,7 +192,7 @@ describe("FoundryHooksPortV13", () => {
     });
 
     it("should prevent registering one-time hooks after disposal", () => {
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
       port.dispose();
 
       const result = port.once("ready", vi.fn());
@@ -203,7 +203,7 @@ describe("FoundryHooksPortV13", () => {
     });
 
     it("should prevent unregistering hooks after disposal", () => {
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
       port.dispose();
 
       const result = port.off("ready", 123);
@@ -214,7 +214,7 @@ describe("FoundryHooksPortV13", () => {
     });
 
     it("should be idempotent (can call dispose multiple times)", () => {
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
 
       port.dispose();
       port.dispose(); // Should not throw
@@ -227,7 +227,7 @@ describe("FoundryHooksPortV13", () => {
     });
 
     it("should work normally before disposal", () => {
-      const port = new FoundryHooksPortV13();
+      const port = new FoundryV13HooksPort();
 
       const result1 = port.on("ready", vi.fn());
       const result2 = port.once("init", vi.fn());

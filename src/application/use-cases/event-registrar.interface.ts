@@ -24,7 +24,7 @@ import type { Result } from "@/domain/types/result";
  * @example
  * ```typescript
  * export class MyEventListener implements EventRegistrar {
- *   constructor(private readonly eventPort: JournalEventPort) {}
+ *   constructor(private readonly eventPort: PlatformJournalEventPort) {}
  *
  *   register(): Result<void, Error> {
  *     eventPort.onJournalCreated((event) => {

@@ -1,12 +1,12 @@
 import type { Result } from "@/domain/types/result";
-import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import {
-  journalEventPortToken,
+  platformJournalEventPortToken,
   journalVisibilityServiceToken,
   notificationCenterToken,
 } from "@/infrastructure/shared/tokens";
@@ -14,7 +14,7 @@ import {
 /**
  * Use-Case: Process journal directory when it's rendered.
  *
- * Platform-agnostic - works with any JournalEventPort implementation.
+ * Platform-agnostic - works with any PlatformJournalEventPort implementation.
  *
  * @example
  * ```typescript
@@ -32,7 +32,7 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
   private registrationId: EventRegistrationId | undefined;
 
   constructor(
-    private readonly journalEvents: JournalEventPort,
+    private readonly journalEvents: PlatformJournalEventPort,
     private readonly journalVisibility: JournalVisibilityService,
     private readonly notificationCenter: NotificationCenter
   ) {}
@@ -81,13 +81,13 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
  */
 export class DIProcessJournalDirectoryOnRenderUseCase extends ProcessJournalDirectoryOnRenderUseCase {
   static dependencies = [
-    journalEventPortToken,
+    platformJournalEventPortToken,
     journalVisibilityServiceToken,
     notificationCenterToken,
   ] as const;
 
   constructor(
-    journalEvents: JournalEventPort,
+    journalEvents: PlatformJournalEventPort,
     journalVisibility: JournalVisibilityService,
     notificationCenter: NotificationCenter
   ) {

@@ -11,7 +11,7 @@ import { createFoundryError } from "../../errors/FoundryErrors";
  *
  * @implements {FoundryI18n}
  */
-export class FoundryI18nPortV13 implements FoundryI18n {
+export class FoundryV13I18nPort implements FoundryI18n {
   #disposed = false;
   static dependencies = [] as const;
 

@@ -16,7 +16,7 @@ import * as v from "valibot";
  * - client: Browser/device-specific
  * - user: User-specific within a world (new in v13)
  */
-export class FoundrySettingsPortV13 implements FoundrySettings {
+export class FoundryV13SettingsPort implements FoundrySettings {
   #disposed = false;
 
   register<T>(

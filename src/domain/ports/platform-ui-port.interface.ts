@@ -17,7 +17,7 @@ export interface PlatformUIError {
  * without knowing about the underlying platform (Foundry, Roll20, etc.).
  *
  * Implementations:
- * - Foundry: FoundryUIAdapter (wraps FoundryUIPortV13)
+ * - Foundry: FoundryUIAdapter (wraps FoundryV13UIPort)
  * - Roll20: Roll20UIAdapter
  * - CSV/Headless: NoOpUIAdapter
  */

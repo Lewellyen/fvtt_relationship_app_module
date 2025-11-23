@@ -13,12 +13,12 @@ import type * as v from "valibot";
 import { FoundryServiceBase } from "./FoundryServiceBase";
 
 /**
- * Service wrapper for FoundrySettings that automatically selects the appropriate port
+ * Port wrapper for FoundrySettings that automatically selects the appropriate version
  * based on the current Foundry version.
  *
  * Extends FoundryServiceBase for consistent port selection and retry logic.
  */
-export class FoundrySettingsService
+export class FoundrySettingsPort
   extends FoundryServiceBase<FoundrySettings>
   implements FoundrySettings
 {
@@ -63,7 +63,7 @@ export class FoundrySettingsService
   }
 }
 
-export class DIFoundrySettingsService extends FoundrySettingsService {
+export class DIFoundrySettingsPort extends FoundrySettingsPort {
   static dependencies = [
     portSelectorToken,
     foundrySettingsPortRegistryToken,

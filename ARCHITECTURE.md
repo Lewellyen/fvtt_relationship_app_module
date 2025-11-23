@@ -9,7 +9,7 @@ Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Modu
 **Detaillierte Analyse:** Siehe [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md)
 
 ### Aktuelle Highlights (Unreleased)
-- **Platform-Agnostisches Event-System (Phase 1)**: Vollständiges Refactoring des Event-Systems mit `PlatformEventPort<T>` und spezialisierten Ports (`JournalEventPort`). Events sind jetzt vollständig von Foundry entkoppelt und Multi-VTT-ready ([Details](docs/refactoring/phases/phase-1-event-system-refactoring.md))
+- **Platform-Agnostisches Event-System (Phase 1)**: Vollständiges Refactoring des Event-Systems mit `PlatformEventPort<T>` und spezialisierten Ports (`PlatformJournalEventPort`). Events sind jetzt vollständig von Foundry entkoppelt und Multi-VTT-ready ([Details](docs/refactoring/phases/phase-1-event-system-refactoring.md))
 - **EventRegistrar Pattern**: `HookRegistrar` durch platform-agnostisches `EventRegistrar` Interface ersetzt. Alle Event-Listener nutzen jetzt Use-Cases statt direkter Hook-Klassen
 - **116 Tests bestanden**: Alle Tests erfolgreich, TypeScript- und Lint-Checks bestanden, 99.7% Coverage (neuer Code braucht noch Test-Optimierung)
 - **Quality Gates erfüllt**: Keine TypeScript-Fehler, keine Linter-Fehler, alle Checks bestanden
@@ -75,14 +75,14 @@ interface FoundryGame {
 }
 
 // 2. Versionsspezifische Implementierung (Adapter)
-class FoundryGamePortV13 implements FoundryGame {
+class FoundryV13GamePort implements FoundryGame {
   getJournalEntries(): Result<JournalEntry[], string> {
     // V13-spezifische Logik
   }
 }
 
-// 3. Service nutzt Interface, nicht konkrete Implementierung
-class FoundryGameService implements FoundryGame {
+// 3. Port nutzt Interface, nicht konkrete Implementierung
+class FoundryGamePort implements FoundryGame {
   private port: FoundryGame;  // Wird zur Laufzeit aufgelöst
 }
 ```
@@ -115,7 +115,7 @@ const port = selector.selectPortFromFactories(factories); // Nur kompatiblen Por
 
 **Lösung 1 - Schichttrennung:** Port-Registrierung wurde in die "Concrete Platform Concrete Version" Schicht verschoben.
 
-**Problem 2 - DIP-Verletzung:** Ports wurden mit `new` außerhalb des DI-Containers instanziiert (via Factories `() => new FoundryGamePortV13()`), was DIP (Dependency Inversion Principle) verletzte.
+**Problem 2 - DIP-Verletzung:** Ports wurden mit `new` außerhalb des DI-Containers instanziiert (via Factories `() => new FoundryV13GamePort()`), was DIP (Dependency Inversion Principle) verletzte.
 
 **Lösung 2 - DI-Instanziierung:** Ports werden jetzt vollständig über den DI-Container instanziiert, analog zum `ContainerHealthCheck`-Pattern.
 
@@ -156,8 +156,8 @@ function createPortRegistries() {
 
 // ✅ KORREKT: v13-Schicht (concrete version)
 // src/infrastructure/adapters/foundry/ports/v13/port-registration.ts
-import { FoundryGamePortV13 } from "./FoundryGamePort";
-import { FoundryHooksPortV13 } from "./FoundryHooksPort";
+import { FoundryV13GamePort } from "./FoundryV13GamePort";
+import { FoundryV13HooksPort } from "./FoundryV13HooksPort";
 // ... weitere v13 Ports ...
 
 export function registerV13Ports(
@@ -168,7 +168,7 @@ export function registerV13Ports(
   container: ServiceContainer
 ): Result<void, string> {
   // 1. Registriere Port-Klassen im DI-Container
-  container.registerClass(foundryGamePortV13Token, FoundryGamePortV13, ServiceLifecycle.SINGLETON);
+  container.registerClass(foundryV13GamePortToken, FoundryV13GamePort, ServiceLifecycle.SINGLETON);
   // ... weitere Ports ...
   
   // 2. Speichere Tokens in PortRegistry (nicht Factories!)
@@ -400,7 +400,7 @@ Das **Handler-Pattern** ermöglicht es, mehrere Handler für dasselbe Event zu r
 Application Layer
   ├─ RegisterContextMenuUseCase (Orchestrator)
   │   ↓ depends on
-  │   JournalEventPort (Domain Layer - platform-agnostic)
+  │   PlatformJournalEventPort (Domain Layer - platform-agnostic)
   │   ↓ depends on
   │   JournalContextMenuHandler[] (Handler-Interface)
   │
@@ -428,7 +428,7 @@ export interface JournalContextMenuHandler {
 // src/application/handlers/hide-journal-context-menu-handler.ts
 export class HideJournalContextMenuHandler implements JournalContextMenuHandler {
   constructor(
-    private readonly journalVisibility: JournalVisibilityPort,
+    private readonly journalVisibility: PlatformJournalVisibilityPort,
     private readonly platformUI: PlatformUIPort,
     private readonly notificationCenter: NotificationCenter
   ) {}
@@ -468,7 +468,7 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
 // src/application/use-cases/register-context-menu.use-case.ts
 export class RegisterContextMenuUseCase implements EventRegistrar {
   constructor(
-    private readonly journalEvents: JournalEventPort,
+    private readonly journalEvents: PlatformJournalEventPort,
     private readonly hideJournalHandler: HideJournalContextMenuHandler
   ) {}
 
@@ -486,7 +486,7 @@ export class RegisterContextMenuUseCase implements EventRegistrar {
 ```
 
 **Wichtige Punkte:**
-- Handler nutzen **Domain-Ports** (JournalVisibilityPort, PlatformUIPort) - platform-agnostic
+- Handler nutzen **Domain-Ports** (PlatformJournalVisibilityPort, PlatformUIPort) - platform-agnostic
 - Handler werden direkt im Use-Case Constructor injiziert (Option A - einfacher)
 - `event.options` Array ist mutable und kann von Handlern modifiziert werden
 - Für Foundry-Integration nutzt `FoundryJournalEventAdapter` libWrapper statt Hook (da Hook in v13 nicht mehr funktioniert)
@@ -495,11 +495,11 @@ export class RegisterContextMenuUseCase implements EventRegistrar {
 
 Neben den Foundry-Versions-Ports gibt es auch **Domain-Ports**, die domänenneutrale Abstraktionen für Geschäftslogik bereitstellen. Diese Ports sind **nicht versionsabhängig** und ermöglichen es, die Domäne vollständig von Foundry-spezifischen Typen zu entkoppeln.
 
-**Beispiel: JournalVisibilityPort**
+**Beispiel: PlatformJournalVisibilityPort**
 
 ```typescript
 // 1. Domain-Port definieren (domänenneutral, keine Versionsabhängigkeit)
-interface JournalVisibilityPort {
+interface PlatformJournalVisibilityPort {
   getAllEntries(): Result<JournalEntry[], JournalVisibilityError>;
   getEntryFlag(entry: JournalEntry, flagKey: string): Result<boolean | null, JournalVisibilityError>;
   removeEntryFromDOM(entryId: string, entryName: string | null, html: HTMLElement): Result<void, JournalVisibilityError>;
@@ -513,7 +513,7 @@ interface JournalEntry {
 
 // 3. Service nutzt Domain-Port (keine Foundry-Abhängigkeiten)
 class JournalVisibilityService {
-  constructor(private readonly port: JournalVisibilityPort) {}
+  constructor(private readonly port: PlatformJournalVisibilityPort) {}
   
   getHiddenJournalEntries(): Result<JournalEntry[], JournalVisibilityError> {
     // Geschäftslogik mit domänenneutralen Typen
@@ -521,7 +521,7 @@ class JournalVisibilityService {
 }
 
 // 4. Foundry-Adapter implementiert Domain-Port (versionsunabhängig, nutzt FoundryJournalFacade)
-class FoundryJournalVisibilityAdapter implements JournalVisibilityPort {
+class FoundryJournalVisibilityAdapter implements PlatformJournalVisibilityPort {
   constructor(private readonly foundryJournalFacade: FoundryJournalFacade) {}
   
   getAllEntries(): Result<JournalEntry[], JournalVisibilityError> {
@@ -537,7 +537,7 @@ class FoundryJournalVisibilityAdapter implements JournalVisibilityPort {
 ```
 JournalVisibilityService (Domäne)
   ↓ depends on
-JournalVisibilityPort (domänenneutral, keine Versionsabhängigkeit)
+PlatformJournalVisibilityPort (domänenneutral, keine Versionsabhängigkeit)
   ↓ implemented by
 FoundryJournalVisibilityAdapter (Adapter-Schicht, versionsunabhängig)
   ↓ uses
@@ -545,7 +545,7 @@ FoundryJournalFacade (bereits versionsunabhängig über PortSelector)
   ↓ uses
 FoundryGame/FoundryDocument/FoundryUI Services
   ↓ uses
-PortSelector → wählt FoundryGamePortV13, FoundryDocumentPortV13, etc.
+PortSelector → wählt FoundryV13GamePort, FoundryV13DocumentPort, etc.
 ```
 
 **Vorteile:**
@@ -612,15 +612,15 @@ Definieren den Vertrag für Foundry-Interaktionen:
 
 #### 2. **Ports** (`src/foundry/ports/v13/`)
 Versionsspezifische Implementierungen der Interfaces:
-- `FoundryGamePortV13`
-- `FoundryHooksPortV13`
-- `FoundryDocumentPortV13`
-- `FoundryUIPortV13`
+- `FoundryV13GamePort`
+- `FoundryV13HooksPort`
+- `FoundryV13DocumentPort`
+- `FoundryV13UIPort`
 
 #### 3. **Services** (`src/foundry/services/`)
 Version-agnostische Wrapper die von `FoundryServiceBase` erben:
 ```typescript
-class FoundryGameService extends FoundryServiceBase<FoundryGame> implements FoundryGame {
+class FoundryGamePort extends FoundryServiceBase<FoundryGame> implements FoundryGame {
   static dependencies = [portSelectorToken, foundryGamePortRegistryToken, retryServiceToken] as const;
   
   constructor(portSelector: PortSelector, portRegistry: PortRegistry<FoundryGame>, retryService: RetryService) {
@@ -656,7 +656,7 @@ Wählt den höchsten kompatiblen Port ≤ Foundry-Version:
 Registry für verfügbare Port-Implementierungen:
 ```typescript
 const registry = new PortRegistry<FoundryGame>();
-registry.register(13, () => new FoundryGamePortV13());
+registry.register(13, () => new FoundryV13GamePort());
 registry.register(14, () => new FoundryGamePortV14()); // Zukünftig
 ```
 
@@ -742,7 +742,7 @@ const logger = container.resolve(loggerToken);
 
 Services deklarieren Dependencies als statische Property:
 ```typescript
-class FoundryGameService {
+class FoundryGamePort {
   static dependencies = [portSelectorToken, registryToken] as const;
   
   constructor(
@@ -807,7 +807,7 @@ export class FoundryGamePortV14 implements FoundryGame {
 ```typescript
 // src/config/dependencyconfig.ts
 const gamePortRegistry = new PortRegistry<FoundryGame>();
-gamePortRegistry.register(13, () => new FoundryGamePortV13());
+gamePortRegistry.register(13, () => new FoundryV13GamePort());
 gamePortRegistry.register(14, () => new FoundryGamePortV14()); // NEU
 ```
 
@@ -935,7 +935,7 @@ Hooks.on("ready", () => {
 - Im `Hooks.on("init")`-Callback fügt `init-solid.ts` den `UIChannel` per `notificationCenter.addChannel(uiChannel)` hinzu, sobald die Foundry-Ports bereitstehen.
 - `UIChannel` kapselt Foundrys `ui.notifications` und sorgt für Sanitizing sowie Environment-selektives Messaging.
 - Seit v13-Port-Erweiterung unterstützt die Pipeline Foundry-native Optionen (`permanent`, `localize`, `format`, `console`, `clean`, `escape`, `progress`) über `NotificationCenterOptions.uiOptions`.
-- `FoundryUIPortV13` reicht die Optionen unverändert an `ui.notifications` durch, wodurch alle v13-Features (z. B. dauerhafte Hinweise oder lokalisierte Meldungen) im Modul verfügbar sind.
+- `FoundryV13UIPort` reicht die Optionen unverändert an `ui.notifications` durch, wodurch alle v13-Features (z. B. dauerhafte Hinweise oder lokalisierte Meldungen) im Modul verfügbar sind.
 - Die neue Option-Weitergabe bleibt vollständig DI-kompatibel: Services nutzen `NotificationCenter`, andere Ports bleiben entkoppelt.
 
 ---
@@ -966,8 +966,8 @@ Deutsche Umlaute (ä, ö, ü, ß) müssen korrekt dargestellt werden.
 
 ### Naming
 - **Interfaces**: PascalCase ohne "I"-Präfix (`FoundryGame`)
-- **Services**: `<Name>Service` (`FoundryGameService`)
-- **Ports**: `<Name>Port<Version>` (`FoundryGamePortV13`)
+- **Ports**: `<Name>Port` (`FoundryGamePort`)
+- **Ports**: `<Name>Port<Version>` (`FoundryV13GamePort`)
 - **Tokens**: camelCase mit "Token"-Suffix (`loggerToken`)
 
 ### Result Pattern
@@ -1004,17 +1004,17 @@ ModuleApiInitializer (expose)
     │       │   └─▶ FoundryUIPortRegistry
     │       │
     │       └─▶ Services (Singletons)
-    │           ├─▶ FoundryGameService
-    │           │   └─▶ (lazy) FoundryGamePortV13
+    │           ├─▶ FoundryGamePort
+    │           │   └─▶ (lazy) FoundryV13GamePort
     │           │
-    │           ├─▶ FoundryHooksService
-    │           │   └─▶ (lazy) FoundryHooksPortV13
+    │           ├─▶ FoundryHooksPort
+    │           │   └─▶ (lazy) FoundryV13HooksPort
     │           │
-    │           ├─▶ FoundryDocumentService
-    │           │   └─▶ (lazy) FoundryDocumentPortV13
+    │           ├─▶ FoundryDocumentPort
+    │           │   └─▶ (lazy) FoundryV13DocumentPort
     │           │
-    │           └─▶ FoundryUIService
-    │               └─▶ (lazy) FoundryUIPortV13
+    │           └─▶ FoundryUIPort
+    │               └─▶ (lazy) FoundryV13UIPort
     │
     └─▶ ModuleHookRegistrar
         └─▶ Nutzt Services via Container

@@ -13,12 +13,12 @@ import { retryServiceToken } from "@/infrastructure/shared/tokens";
 import { FoundryServiceBase } from "./FoundryServiceBase";
 
 /**
- * Service wrapper for FoundryGame that automatically selects the appropriate port
+ * Port wrapper for FoundryGame that automatically selects the appropriate version
  * based on the current Foundry version.
  *
  * Extends FoundryServiceBase for consistent port selection and retry logic.
  */
-export class FoundryGameService extends FoundryServiceBase<FoundryGame> implements FoundryGame {
+export class FoundryGamePort extends FoundryServiceBase<FoundryGame> implements FoundryGame {
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundryGame>,
@@ -51,7 +51,7 @@ export class FoundryGameService extends FoundryServiceBase<FoundryGame> implemen
   }
 }
 
-export class DIFoundryGameService extends FoundryGameService {
+export class DIFoundryGamePort extends FoundryGamePort {
   static dependencies = [
     portSelectorToken,
     foundryGamePortRegistryToken,

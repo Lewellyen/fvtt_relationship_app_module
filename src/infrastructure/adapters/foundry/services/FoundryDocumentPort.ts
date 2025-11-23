@@ -13,12 +13,12 @@ import { FoundryServiceBase } from "./FoundryServiceBase";
 import type * as v from "valibot";
 
 /**
- * Service wrapper for FoundryDocument that automatically selects the appropriate port
+ * Port wrapper for FoundryDocument that automatically selects the appropriate version
  * based on the current Foundry version.
  *
  * Extends FoundryServiceBase for consistent port selection and retry logic.
  */
-export class FoundryDocumentService
+export class FoundryDocumentPort
   extends FoundryServiceBase<FoundryDocument>
   implements FoundryDocument
 {
@@ -57,7 +57,7 @@ export class FoundryDocumentService
   }
 }
 
-export class DIFoundryDocumentService extends FoundryDocumentService {
+export class DIFoundryDocumentPort extends FoundryDocumentPort {
   static dependencies = [
     portSelectorToken,
     foundryDocumentPortRegistryToken,

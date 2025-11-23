@@ -81,8 +81,8 @@ export class PortSelector {
    * @example
    * ```typescript
    * const tokens = new Map([
-   *   [13, foundryGamePortV13Token],
-   *   [14, foundryGamePortV14Token]
+   *   [13, foundryV13GamePortToken],
+   *   [14, foundryV14GamePortToken]
    * ]);
    * const selector = new PortSelector(eventEmitter, observability, container);
    * const result = selector.selectPortFromTokens(tokens);

@@ -226,7 +226,7 @@ const portSelectionEventEmitterToken = createInjectionToken(
   "PortSelectionEventEmitter"
 );
 const observabilityRegistryToken = createInjectionToken("ObservabilityRegistry");
-const foundryI18nToken = createInjectionToken("FoundryI18nService");
+const foundryI18nToken = createInjectionToken("FoundryI18nPort");
 const localI18nToken = createInjectionToken("LocalI18nService");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 const foundryTranslationHandlerToken = createInjectionToken(
@@ -259,14 +259,14 @@ const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry")
 const foundrySettingsToken = createInjectionToken("FoundrySettings");
 const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
 const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
-const foundryGamePortV13Token = createInjectionToken("FoundryGamePortV13");
-const foundryHooksPortV13Token = createInjectionToken("FoundryHooksPortV13");
-const foundryDocumentPortV13Token = createInjectionToken("FoundryDocumentPortV13");
-const foundryUIPortV13Token = createInjectionToken("FoundryUIPortV13");
-const foundrySettingsPortV13Token = createInjectionToken("FoundrySettingsPortV13");
-const foundryI18nPortV13Token = createInjectionToken("FoundryI18nPortV13");
+const foundryV13GamePortToken = createInjectionToken("FoundryV13GamePort");
+const foundryV13HooksPortToken = createInjectionToken("FoundryV13HooksPort");
+const foundryV13DocumentPortToken = createInjectionToken("FoundryV13DocumentPort");
+const foundryV13UIPortToken = createInjectionToken("FoundryV13UIPort");
+const foundryV13SettingsPortToken = createInjectionToken("FoundryV13SettingsPort");
+const foundryV13I18nPortToken = createInjectionToken("FoundryV13I18nPort");
 const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
-const journalEventPortToken = createInjectionToken("JournalEventPort");
+const platformJournalEventPortToken = createInjectionToken("JournalEventPort");
 const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
   "InvalidateJournalCacheOnChangeUseCase"
 );
@@ -544,11 +544,11 @@ function wrapNotificationCenterService(service, create) {
   return create(concrete);
 }
 __name(wrapNotificationCenterService, "wrapNotificationCenterService");
-function wrapFoundrySettingsService(service, create) {
+function wrapFoundrySettingsPort(service, create) {
   const concrete = service;
   return create(concrete);
 }
-__name(wrapFoundrySettingsService, "wrapFoundrySettingsService");
+__name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
 function castCachedServiceInstance(instance2) {
   return instance2;
 }
@@ -3127,7 +3127,7 @@ Reason: ${deprecationInfo.reason}
       return wrapNotificationCenterService(service, createPublicNotificationCenter);
     }
     if (token === wellKnownTokens.foundrySettingsToken) {
-      return wrapFoundrySettingsService(service, createPublicFoundrySettings);
+      return wrapFoundrySettingsPort(service, createPublicFoundrySettings);
     }
     return service;
   }
@@ -3554,8 +3554,8 @@ const _PortSelector = class _PortSelector {
    * @example
    * ```typescript
    * const tokens = new Map([
-   *   [13, foundryGamePortV13Token],
-   *   [14, foundryGamePortV14Token]
+   *   [13, foundryV13GamePortToken],
+   *   [14, foundryV14GamePortToken]
    * ]);
    * const selector = new PortSelector(eventEmitter, observability, container);
    * const result = selector.selectPortFromTokens(tokens);
@@ -3708,7 +3708,7 @@ const _PortRegistry = class _PortRegistry {
    * @example
    * ```typescript
    * const registry = new PortRegistry<FoundryGame>();
-   * registry.register(13, foundryGamePortV13Token);
+   * registry.register(13, foundryV13GamePortToken);
    * registry.register(14, foundryGamePortV14Token);
    *
    * const tokens = registry.getTokens();
@@ -10788,7 +10788,7 @@ function validateFlagKey(key) {
   return ok(key);
 }
 __name(validateFlagKey, "validateFlagKey");
-const _FoundryGamePortV13 = class _FoundryGamePortV13 {
+const _FoundryV13GamePort = class _FoundryV13GamePort {
   constructor() {
     __privateAdd(this, _disposed);
     __privateSet(this, _disposed, false);
@@ -10863,9 +10863,9 @@ const _FoundryGamePortV13 = class _FoundryGamePortV13 {
   }
 };
 _disposed = new WeakMap();
-__name(_FoundryGamePortV13, "FoundryGamePortV13");
-let FoundryGamePortV13 = _FoundryGamePortV13;
-const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
+__name(_FoundryV13GamePort, "FoundryV13GamePort");
+let FoundryV13GamePort = _FoundryV13GamePort;
+const _FoundryV13HooksPort = class _FoundryV13HooksPort {
   constructor() {
     __privateAdd(this, _disposed2, false);
   }
@@ -10950,8 +10950,8 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
   }
 };
 _disposed2 = new WeakMap();
-__name(_FoundryHooksPortV13, "FoundryHooksPortV13");
-let FoundryHooksPortV13 = _FoundryHooksPortV13;
+__name(_FoundryV13HooksPort, "FoundryV13HooksPort");
+let FoundryV13HooksPort = _FoundryV13HooksPort;
 function hasMethod(obj, methodName) {
   return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
   typeof obj[methodName] === "function";
@@ -11037,7 +11037,7 @@ function getFactoryOrError(factories, version) {
   return ok(factory);
 }
 __name(getFactoryOrError, "getFactoryOrError");
-const _FoundryDocumentPortV13 = class _FoundryDocumentPortV13 {
+const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
   constructor() {
     __privateAdd(this, _disposed3, false);
   }
@@ -11109,13 +11109,13 @@ const _FoundryDocumentPortV13 = class _FoundryDocumentPortV13 {
   }
 };
 _disposed3 = new WeakMap();
-__name(_FoundryDocumentPortV13, "FoundryDocumentPortV13");
-let FoundryDocumentPortV13 = _FoundryDocumentPortV13;
+__name(_FoundryV13DocumentPort, "FoundryV13DocumentPort");
+let FoundryV13DocumentPort = _FoundryV13DocumentPort;
 function isFoundryUISidebar(sidebar) {
   return typeof sidebar === "object" && sidebar !== null;
 }
 __name(isFoundryUISidebar, "isFoundryUISidebar");
-const _FoundryUIPortV13 = class _FoundryUIPortV13 {
+const _FoundryV13UIPort = class _FoundryV13UIPort {
   constructor() {
     __privateAdd(this, _disposed4, false);
   }
@@ -11231,9 +11231,9 @@ const _FoundryUIPortV13 = class _FoundryUIPortV13 {
   }
 };
 _disposed4 = new WeakMap();
-__name(_FoundryUIPortV13, "FoundryUIPortV13");
-let FoundryUIPortV13 = _FoundryUIPortV13;
-const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
+__name(_FoundryV13UIPort, "FoundryV13UIPort");
+let FoundryV13UIPort = _FoundryV13UIPort;
+const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
   constructor() {
     __privateAdd(this, _disposed5, false);
   }
@@ -11342,9 +11342,9 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
   }
 };
 _disposed5 = new WeakMap();
-__name(_FoundrySettingsPortV13, "FoundrySettingsPortV13");
-let FoundrySettingsPortV13 = _FoundrySettingsPortV13;
-const _FoundryI18nPortV13 = class _FoundryI18nPortV13 {
+__name(_FoundryV13SettingsPort, "FoundryV13SettingsPort");
+let FoundryV13SettingsPort = _FoundryV13SettingsPort;
+const _FoundryV13I18nPort = class _FoundryV13I18nPort {
   constructor() {
     __privateAdd(this, _disposed6, false);
   }
@@ -11432,9 +11432,9 @@ const _FoundryI18nPortV13 = class _FoundryI18nPortV13 {
   }
 };
 _disposed6 = new WeakMap();
-__name(_FoundryI18nPortV13, "FoundryI18nPortV13");
-_FoundryI18nPortV13.dependencies = [];
-let FoundryI18nPortV13 = _FoundryI18nPortV13;
+__name(_FoundryV13I18nPort, "FoundryV13I18nPort");
+_FoundryV13I18nPort.dependencies = [];
+let FoundryV13I18nPort = _FoundryV13I18nPort;
 function registerPortToRegistry(registry, version, token, portName, errors) {
   const result = registry.register(version, token);
   if (isErr(result)) {
@@ -11444,63 +11444,63 @@ function registerPortToRegistry(registry, version, token, portName, errors) {
 __name(registerPortToRegistry, "registerPortToRegistry");
 function registerV13Ports(registries, container) {
   const portRegistrationErrors = [];
-  container.registerClass(foundryGamePortV13Token, FoundryGamePortV13, ServiceLifecycle.SINGLETON);
+  container.registerClass(foundryV13GamePortToken, FoundryV13GamePort, ServiceLifecycle.SINGLETON);
   container.registerClass(
-    foundryHooksPortV13Token,
-    FoundryHooksPortV13,
+    foundryV13HooksPortToken,
+    FoundryV13HooksPort,
     ServiceLifecycle.SINGLETON
   );
   container.registerClass(
-    foundryDocumentPortV13Token,
-    FoundryDocumentPortV13,
+    foundryV13DocumentPortToken,
+    FoundryV13DocumentPort,
     ServiceLifecycle.SINGLETON
   );
-  container.registerClass(foundryUIPortV13Token, FoundryUIPortV13, ServiceLifecycle.SINGLETON);
+  container.registerClass(foundryV13UIPortToken, FoundryV13UIPort, ServiceLifecycle.SINGLETON);
   container.registerClass(
-    foundrySettingsPortV13Token,
-    FoundrySettingsPortV13,
+    foundryV13SettingsPortToken,
+    FoundryV13SettingsPort,
     ServiceLifecycle.SINGLETON
   );
-  container.registerClass(foundryI18nPortV13Token, FoundryI18nPortV13, ServiceLifecycle.SINGLETON);
+  container.registerClass(foundryV13I18nPortToken, FoundryV13I18nPort, ServiceLifecycle.SINGLETON);
   registerPortToRegistry(
     registries.gamePortRegistry,
     13,
-    foundryGamePortV13Token,
+    foundryV13GamePortToken,
     "FoundryGame",
     portRegistrationErrors
   );
   registerPortToRegistry(
     registries.hooksPortRegistry,
     13,
-    foundryHooksPortV13Token,
+    foundryV13HooksPortToken,
     "FoundryHooks",
     portRegistrationErrors
   );
   registerPortToRegistry(
     registries.documentPortRegistry,
     13,
-    foundryDocumentPortV13Token,
+    foundryV13DocumentPortToken,
     "FoundryDocument",
     portRegistrationErrors
   );
   registerPortToRegistry(
     registries.uiPortRegistry,
     13,
-    foundryUIPortV13Token,
+    foundryV13UIPortToken,
     "FoundryUI",
     portRegistrationErrors
   );
   registerPortToRegistry(
     registries.settingsPortRegistry,
     13,
-    foundrySettingsPortV13Token,
+    foundryV13SettingsPortToken,
     "FoundrySettings",
     portRegistrationErrors
   );
   registerPortToRegistry(
     registries.i18nPortRegistry,
     13,
-    foundryI18nPortV13Token,
+    foundryV13I18nPortToken,
     "FoundryI18n",
     portRegistrationErrors
   );
@@ -11790,7 +11790,7 @@ const _FoundryServiceBase = class _FoundryServiceBase {
 };
 __name(_FoundryServiceBase, "FoundryServiceBase");
 let FoundryServiceBase = _FoundryServiceBase;
-const _FoundryGameService = class _FoundryGameService extends FoundryServiceBase {
+const _FoundryGamePort = class _FoundryGamePort extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
@@ -11815,21 +11815,21 @@ const _FoundryGameService = class _FoundryGameService extends FoundryServiceBase
     }
   }
 };
-__name(_FoundryGameService, "FoundryGameService");
-let FoundryGameService = _FoundryGameService;
-const _DIFoundryGameService = class _DIFoundryGameService extends FoundryGameService {
+__name(_FoundryGamePort, "FoundryGamePort");
+let FoundryGamePort = _FoundryGamePort;
+const _DIFoundryGamePort = class _DIFoundryGamePort extends FoundryGamePort {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
 };
-__name(_DIFoundryGameService, "DIFoundryGameService");
-_DIFoundryGameService.dependencies = [
+__name(_DIFoundryGamePort, "DIFoundryGamePort");
+_DIFoundryGamePort.dependencies = [
   portSelectorToken,
   foundryGamePortRegistryToken,
   retryServiceToken
 ];
-let DIFoundryGameService = _DIFoundryGameService;
-const _FoundryHooksService = class _FoundryHooksService extends FoundryServiceBase {
+let DIFoundryGamePort = _DIFoundryGamePort;
+const _FoundryHooksPort = class _FoundryHooksPort extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService, logger) {
     super(portSelector, portRegistry, retryService);
     this.registeredHooks = /* @__PURE__ */ new Map();
@@ -11934,22 +11934,22 @@ const _FoundryHooksService = class _FoundryHooksService extends FoundryServiceBa
     this.port = null;
   }
 };
-__name(_FoundryHooksService, "FoundryHooksService");
-let FoundryHooksService = _FoundryHooksService;
-const _DIFoundryHooksService = class _DIFoundryHooksService extends FoundryHooksService {
+__name(_FoundryHooksPort, "FoundryHooksPort");
+let FoundryHooksPort = _FoundryHooksPort;
+const _DIFoundryHooksPort = class _DIFoundryHooksPort extends FoundryHooksPort {
   constructor(portSelector, portRegistry, retryService, logger) {
     super(portSelector, portRegistry, retryService, logger);
   }
 };
-__name(_DIFoundryHooksService, "DIFoundryHooksService");
-_DIFoundryHooksService.dependencies = [
+__name(_DIFoundryHooksPort, "DIFoundryHooksPort");
+_DIFoundryHooksPort.dependencies = [
   portSelectorToken,
   foundryHooksPortRegistryToken,
   retryServiceToken,
   loggerToken
 ];
-let DIFoundryHooksService = _DIFoundryHooksService;
-const _FoundryDocumentService = class _FoundryDocumentService extends FoundryServiceBase {
+let DIFoundryHooksPort = _DIFoundryHooksPort;
+const _FoundryDocumentPort = class _FoundryDocumentPort extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
@@ -11968,21 +11968,21 @@ const _FoundryDocumentService = class _FoundryDocumentService extends FoundrySer
     }, "FoundryDocument.setFlag");
   }
 };
-__name(_FoundryDocumentService, "FoundryDocumentService");
-let FoundryDocumentService = _FoundryDocumentService;
-const _DIFoundryDocumentService = class _DIFoundryDocumentService extends FoundryDocumentService {
+__name(_FoundryDocumentPort, "FoundryDocumentPort");
+let FoundryDocumentPort = _FoundryDocumentPort;
+const _DIFoundryDocumentPort = class _DIFoundryDocumentPort extends FoundryDocumentPort {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
 };
-__name(_DIFoundryDocumentService, "DIFoundryDocumentService");
-_DIFoundryDocumentService.dependencies = [
+__name(_DIFoundryDocumentPort, "DIFoundryDocumentPort");
+_DIFoundryDocumentPort.dependencies = [
   portSelectorToken,
   foundryDocumentPortRegistryToken,
   retryServiceToken
 ];
-let DIFoundryDocumentService = _DIFoundryDocumentService;
-const _FoundryUIService = class _FoundryUIService extends FoundryServiceBase {
+let DIFoundryDocumentPort = _DIFoundryDocumentPort;
+const _FoundryUIPort = class _FoundryUIPort extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
@@ -12015,17 +12015,17 @@ const _FoundryUIService = class _FoundryUIService extends FoundryServiceBase {
     }, "FoundryUI.rerenderJournalDirectory");
   }
 };
-__name(_FoundryUIService, "FoundryUIService");
-let FoundryUIService = _FoundryUIService;
-const _DIFoundryUIService = class _DIFoundryUIService extends FoundryUIService {
+__name(_FoundryUIPort, "FoundryUIPort");
+let FoundryUIPort = _FoundryUIPort;
+const _DIFoundryUIPort = class _DIFoundryUIPort extends FoundryUIPort {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
 };
-__name(_DIFoundryUIService, "DIFoundryUIService");
-_DIFoundryUIService.dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken];
-let DIFoundryUIService = _DIFoundryUIService;
-const _FoundrySettingsService = class _FoundrySettingsService extends FoundryServiceBase {
+__name(_DIFoundryUIPort, "DIFoundryUIPort");
+_DIFoundryUIPort.dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken];
+let DIFoundryUIPort = _DIFoundryUIPort;
+const _FoundrySettingsPort = class _FoundrySettingsPort extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
@@ -12051,20 +12051,20 @@ const _FoundrySettingsService = class _FoundrySettingsService extends FoundrySer
     }, "FoundrySettings.set");
   }
 };
-__name(_FoundrySettingsService, "FoundrySettingsService");
-let FoundrySettingsService = _FoundrySettingsService;
-const _DIFoundrySettingsService = class _DIFoundrySettingsService extends FoundrySettingsService {
+__name(_FoundrySettingsPort, "FoundrySettingsPort");
+let FoundrySettingsPort = _FoundrySettingsPort;
+const _DIFoundrySettingsPort = class _DIFoundrySettingsPort extends FoundrySettingsPort {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
 };
-__name(_DIFoundrySettingsService, "DIFoundrySettingsService");
-_DIFoundrySettingsService.dependencies = [
+__name(_DIFoundrySettingsPort, "DIFoundrySettingsPort");
+_DIFoundrySettingsPort.dependencies = [
   portSelectorToken,
   foundrySettingsPortRegistryToken,
   retryServiceToken
 ];
-let DIFoundrySettingsService = _DIFoundrySettingsService;
+let DIFoundrySettingsPort = _DIFoundrySettingsPort;
 const _FoundryJournalFacade = class _FoundryJournalFacade {
   constructor(game2, document2, ui2) {
     this.game = game2;
@@ -12418,7 +12418,7 @@ let DIJournalVisibilityService = _DIJournalVisibilityService;
 function registerFoundryServices(container) {
   const gameServiceResult = container.registerClass(
     foundryGameToken,
-    DIFoundryGameService,
+    DIFoundryGamePort,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(gameServiceResult)) {
@@ -12426,7 +12426,7 @@ function registerFoundryServices(container) {
   }
   const hooksServiceResult = container.registerClass(
     foundryHooksToken,
-    DIFoundryHooksService,
+    DIFoundryHooksPort,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(hooksServiceResult)) {
@@ -12434,7 +12434,7 @@ function registerFoundryServices(container) {
   }
   const documentServiceResult = container.registerClass(
     foundryDocumentToken,
-    DIFoundryDocumentService,
+    DIFoundryDocumentPort,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(documentServiceResult)) {
@@ -12444,7 +12444,7 @@ function registerFoundryServices(container) {
   }
   const uiServiceResult = container.registerClass(
     foundryUIToken,
-    DIFoundryUIService,
+    DIFoundryUIPort,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(uiServiceResult)) {
@@ -12452,7 +12452,7 @@ function registerFoundryServices(container) {
   }
   const settingsServiceResult = container.registerClass(
     foundrySettingsToken,
-    DIFoundrySettingsService,
+    DIFoundrySettingsPort,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(settingsServiceResult)) {
@@ -13004,7 +13004,7 @@ function registerCacheServices(container) {
   return ok(void 0);
 }
 __name(registerCacheServices, "registerCacheServices");
-const _FoundryI18nService = class _FoundryI18nService extends FoundryServiceBase {
+const _FoundryI18nPort = class _FoundryI18nPort extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
@@ -13030,20 +13030,20 @@ const _FoundryI18nService = class _FoundryI18nService extends FoundryServiceBase
     }, "FoundryI18n.has");
   }
 };
-__name(_FoundryI18nService, "FoundryI18nService");
-let FoundryI18nService = _FoundryI18nService;
-const _DIFoundryI18nService = class _DIFoundryI18nService extends FoundryI18nService {
+__name(_FoundryI18nPort, "FoundryI18nPort");
+let FoundryI18nPort = _FoundryI18nPort;
+const _DIFoundryI18nPort = class _DIFoundryI18nPort extends FoundryI18nPort {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
 };
-__name(_DIFoundryI18nService, "DIFoundryI18nService");
-_DIFoundryI18nService.dependencies = [
+__name(_DIFoundryI18nPort, "DIFoundryI18nPort");
+_DIFoundryI18nPort.dependencies = [
   portSelectorToken,
   foundryI18nPortRegistryToken,
   retryServiceToken
 ];
-let DIFoundryI18nService = _DIFoundryI18nService;
+let DIFoundryI18nPort = _DIFoundryI18nPort;
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -13402,11 +13402,11 @@ let DITranslationHandlerChain = _DITranslationHandlerChain;
 function registerI18nServices(container) {
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
-    DIFoundryI18nService,
+    DIFoundryI18nPort,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(foundryI18nResult)) {
-    return err(`Failed to register FoundryI18nService: ${foundryI18nResult.error.message}`);
+    return err(`Failed to register FoundryI18nPort: ${foundryI18nResult.error.message}`);
   }
   const localI18nResult = container.registerClass(
     localI18nToken,
@@ -14515,7 +14515,7 @@ const _DIInvalidateJournalCacheOnChangeUseCase = class _DIInvalidateJournalCache
 };
 __name(_DIInvalidateJournalCacheOnChangeUseCase, "DIInvalidateJournalCacheOnChangeUseCase");
 _DIInvalidateJournalCacheOnChangeUseCase.dependencies = [
-  journalEventPortToken,
+  platformJournalEventPortToken,
   cacheServiceToken,
   notificationCenterToken
 ];
@@ -14569,7 +14569,7 @@ const _DIProcessJournalDirectoryOnRenderUseCase = class _DIProcessJournalDirecto
 };
 __name(_DIProcessJournalDirectoryOnRenderUseCase, "DIProcessJournalDirectoryOnRenderUseCase");
 _DIProcessJournalDirectoryOnRenderUseCase.dependencies = [
-  journalEventPortToken,
+  platformJournalEventPortToken,
   journalVisibilityServiceToken,
   notificationCenterToken
 ];
@@ -14639,7 +14639,7 @@ const _DITriggerJournalDirectoryReRenderUseCase = class _DITriggerJournalDirecto
 };
 __name(_DITriggerJournalDirectoryReRenderUseCase, "DITriggerJournalDirectoryReRenderUseCase");
 _DITriggerJournalDirectoryReRenderUseCase.dependencies = [
-  journalEventPortToken,
+  platformJournalEventPortToken,
   platformUIPortToken,
   notificationCenterToken
 ];
@@ -14685,7 +14685,10 @@ const _DIRegisterContextMenuUseCase = class _DIRegisterContextMenuUseCase extend
   }
 };
 __name(_DIRegisterContextMenuUseCase, "DIRegisterContextMenuUseCase");
-_DIRegisterContextMenuUseCase.dependencies = [journalEventPortToken, hideJournalContextMenuHandlerToken];
+_DIRegisterContextMenuUseCase.dependencies = [
+  platformJournalEventPortToken,
+  hideJournalContextMenuHandlerToken
+];
 let DIRegisterContextMenuUseCase = _DIRegisterContextMenuUseCase;
 const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
   constructor(journalVisibility, platformUI, notificationCenter, foundryGame) {
@@ -14844,12 +14847,12 @@ _DIModuleEventRegistrar.dependencies = [
 let DIModuleEventRegistrar = _DIModuleEventRegistrar;
 function registerEventPorts(container) {
   const eventPortResult = container.registerClass(
-    journalEventPortToken,
+    platformJournalEventPortToken,
     DIFoundryJournalEventAdapter,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(eventPortResult)) {
-    return err(`Failed to register JournalEventPort: ${eventPortResult.error.message}`);
+    return err(`Failed to register PlatformJournalEventPort: ${eventPortResult.error.message}`);
   }
   const cacheInvalidationUseCaseResult = container.registerClass(
     invalidateJournalCacheOnChangeUseCaseToken,

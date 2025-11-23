@@ -44,10 +44,10 @@ import type { MetricsRecorder } from "@/infrastructure/observability/interfaces/
 import type { MetricsSampler } from "@/infrastructure/observability/interfaces/metrics-sampler";
 import type { MetricsStorage } from "@/infrastructure/observability/metrics-persistence/metrics-storage";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
-import type { FoundryI18nService } from "@/infrastructure/adapters/foundry/services/FoundryI18nService";
+import type { FoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
-import type { JournalVisibilityPort } from "@/domain/ports/journal-visibility-port.interface";
-import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
+import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { LocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
@@ -106,10 +106,10 @@ export type ServiceType =
   | MetricsSampler
   | MetricsStorage
   | TraceContext
-  | FoundryI18nService
+  | FoundryI18nPort
   | FoundryJournalFacade
-  | JournalVisibilityPort
-  | JournalEventPort
+  | PlatformJournalVisibilityPort
+  | PlatformJournalEventPort
   | LocalI18nService
   | I18nFacadeService
   | ModuleHealthService

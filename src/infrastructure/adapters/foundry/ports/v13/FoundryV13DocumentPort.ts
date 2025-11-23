@@ -10,7 +10,7 @@ import * as v from "valibot";
  * v13 implementation of FoundryDocument interface.
  * Encapsulates Foundry v13-specific document operations.
  */
-export class FoundryDocumentPortV13 implements FoundryDocument {
+export class FoundryV13DocumentPort implements FoundryDocument {
   #disposed = false;
 
   getFlag<T>(

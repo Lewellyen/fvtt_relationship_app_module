@@ -2,13 +2,13 @@
  * Internationalization (i18n) tokens for translation services and handlers.
  */
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
-import type { FoundryI18nService } from "@/infrastructure/adapters/foundry/services/FoundryI18nService";
+import type { FoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import type { LocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandler.interface";
 
 /**
- * Injection token for the FoundryI18nService.
+ * Injection token for the FoundryI18nPort.
  *
  * Provides access to Foundry VTT's i18n API via Port-Adapter pattern.
  * Automatically selects the correct port based on Foundry version.
@@ -22,7 +22,7 @@ import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandle
  * }
  * ```
  */
-export const foundryI18nToken = createInjectionToken<FoundryI18nService>("FoundryI18nService");
+export const foundryI18nToken = createInjectionToken<FoundryI18nPort>("FoundryI18nPort");
 
 /**
  * Injection token for the LocalI18nService.

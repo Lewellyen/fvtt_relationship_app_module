@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { FoundryGamePortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryGamePort";
+import { FoundryV13GamePort } from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13GamePort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
-describe("FoundryGamePortV13", () => {
-  let port: FoundryGamePortV13;
+describe("FoundryV13GamePort", () => {
+  let port: FoundryV13GamePort;
 
   beforeEach(() => {
-    port = new FoundryGamePortV13();
+    port = new FoundryV13GamePort();
   });
 
   afterEach(() => {
@@ -252,7 +252,7 @@ describe("FoundryGamePortV13", () => {
         },
       });
 
-      const port = new FoundryGamePortV13();
+      const port = new FoundryV13GamePort();
 
       // First call: validation happens
       const result1 = port.getJournalEntries();
@@ -282,7 +282,7 @@ describe("FoundryGamePortV13", () => {
 
       vi.stubGlobal("game", mockGame);
 
-      const port = new FoundryGamePortV13();
+      const port = new FoundryV13GamePort();
       const result1 = port.getJournalEntries();
       expectResultOk(result1);
 
@@ -318,7 +318,7 @@ describe("FoundryGamePortV13", () => {
         },
       });
 
-      const port = new FoundryGamePortV13();
+      const port = new FoundryV13GamePort();
 
       // First call - cache miss
       const result1 = port.getJournalEntries();

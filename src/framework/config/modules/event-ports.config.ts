@@ -3,7 +3,7 @@ import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/infrastructure/shared/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import {
-  journalEventPortToken,
+  platformJournalEventPortToken,
   invalidateJournalCacheOnChangeUseCaseToken,
   processJournalDirectoryOnRenderUseCaseToken,
   triggerJournalDirectoryReRenderUseCaseToken,
@@ -23,7 +23,7 @@ import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegist
  * Registers event port services.
  *
  * Services registered:
- * - JournalEventPort (singleton) - Platform-agnostic journal event handling
+ * - PlatformJournalEventPort (singleton) - Platform-agnostic journal event handling
  * - InvalidateJournalCacheOnChangeUseCase (singleton) - Cache invalidation use-case
  * - ProcessJournalDirectoryOnRenderUseCase (singleton) - Directory render use-case
  * - TriggerJournalDirectoryReRenderUseCase (singleton) - UI re-render use-case
@@ -38,14 +38,14 @@ import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegist
  * @returns Result indicating success or error with details
  */
 export function registerEventPorts(container: ServiceContainer): Result<void, string> {
-  // Register JournalEventPort (Foundry implementation)
+  // Register PlatformJournalEventPort (Foundry implementation)
   const eventPortResult = container.registerClass(
-    journalEventPortToken,
+    platformJournalEventPortToken,
     DIFoundryJournalEventAdapter,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(eventPortResult)) {
-    return err(`Failed to register JournalEventPort: ${eventPortResult.error.message}`);
+    return err(`Failed to register PlatformJournalEventPort: ${eventPortResult.error.message}`);
   }
 
   // Register InvalidateJournalCacheOnChangeUseCase

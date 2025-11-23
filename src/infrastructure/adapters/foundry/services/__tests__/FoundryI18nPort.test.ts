@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
-  FoundryI18nService,
-  DIFoundryI18nService,
-} from "@/infrastructure/adapters/foundry/services/FoundryI18nService";
+  FoundryI18nPort,
+  DIFoundryI18nPort,
+} from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import type { FoundryI18n } from "@/infrastructure/adapters/foundry/interfaces/FoundryI18n";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
@@ -16,8 +16,8 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 
-describe("FoundryI18nService", () => {
-  let service: FoundryI18nService;
+describe("FoundryI18nPort", () => {
+  let service: FoundryI18nPort;
   let mockRegistry: PortRegistry<FoundryI18n>;
   let mockSelector: PortSelector;
   let mockPort: FoundryI18n;
@@ -61,7 +61,7 @@ describe("FoundryI18nService", () => {
       retry: vi.fn((fn) => fn()),
     } as any;
 
-    service = new FoundryI18nService(mockSelector, mockRegistry, mockRetryService);
+    service = new FoundryI18nPort(mockSelector, mockRegistry, mockRetryService);
   });
 
   afterEach(() => {
@@ -97,11 +97,7 @@ describe("FoundryI18nService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryI18nService(
-        failingSelector,
-        mockRegistry,
-        mockRetryService
-      );
+      const failingService = new FoundryI18nPort(failingSelector, mockRegistry, mockRetryService);
 
       const result = failingService.localize("TEST.KEY");
 
@@ -157,11 +153,7 @@ describe("FoundryI18nService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryI18nService(
-        failingSelector,
-        mockRegistry,
-        mockRetryService
-      );
+      const failingService = new FoundryI18nPort(failingSelector, mockRegistry, mockRetryService);
 
       const result = failingService.format("KEY", {});
 
@@ -201,11 +193,7 @@ describe("FoundryI18nService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryI18nService(
-        failingSelector,
-        mockRegistry,
-        mockRetryService
-      );
+      const failingService = new FoundryI18nPort(failingSelector, mockRegistry, mockRetryService);
 
       const result = failingService.has("KEY");
 
@@ -216,10 +204,10 @@ describe("FoundryI18nService", () => {
 
   describe("Dependencies", () => {
     it("should have correct static dependencies", () => {
-      expect(DIFoundryI18nService.dependencies).toHaveLength(3);
-      expect(DIFoundryI18nService.dependencies[0]).toBeDefined();
-      expect(DIFoundryI18nService.dependencies[1]).toBeDefined();
-      expect(DIFoundryI18nService.dependencies[2]).toBeDefined();
+      expect(DIFoundryI18nPort.dependencies).toHaveLength(3);
+      expect(DIFoundryI18nPort.dependencies[0]).toBeDefined();
+      expect(DIFoundryI18nPort.dependencies[1]).toBeDefined();
+      expect(DIFoundryI18nPort.dependencies[2]).toBeDefined();
     });
   });
 });

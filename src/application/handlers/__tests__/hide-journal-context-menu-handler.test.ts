@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { HideJournalContextMenuHandler } from "../hide-journal-context-menu-handler";
-import type { JournalVisibilityPort } from "@/domain/ports/journal-visibility-port.interface";
+import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
-import type { JournalContextMenuEvent } from "@/domain/ports/events/journal-event-port.interface";
+import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { ok } from "@/infrastructure/shared/utils/result";
 
 describe("HideJournalContextMenuHandler", () => {
-  let mockJournalVisibility: JournalVisibilityPort;
+  let mockJournalVisibility: PlatformJournalVisibilityPort;
   let mockPlatformUI: PlatformUIPort;
   let mockNotificationCenter: NotificationCenter;
   let mockFoundryGame: FoundryGame;
@@ -22,7 +22,7 @@ describe("HideJournalContextMenuHandler", () => {
       isHidden: vi.fn().mockReturnValue({ ok: true, value: false }),
       getHiddenJournalEntries: vi.fn().mockReturnValue({ ok: true, value: [] }),
       processJournalDirectory: vi.fn().mockReturnValue({ ok: true, value: undefined }),
-    } as unknown as JournalVisibilityPort;
+    } as unknown as PlatformJournalVisibilityPort;
 
     mockPlatformUI = {
       notify: vi.fn().mockReturnValue({ ok: true, value: undefined }),

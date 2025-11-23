@@ -1,5 +1,5 @@
 import type { Result } from "@/domain/types/result";
-import type { JournalVisibilityPort } from "@/domain/ports/journal-visibility-port.interface";
+import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
 import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
@@ -25,7 +25,7 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  * Handles business logic for hiding/showing journal entries in the UI.
  *
  * **Dependencies:**
- * - JournalVisibilityPort: Platform-agnostic port for journal operations
+ * - PlatformJournalVisibilityPort: Platform-agnostic port for journal operations
  * - NotificationCenter: For logging and notifications
  * - CacheService: For caching hidden entries
  * - PlatformUIPort: Platform-agnostic port for UI operations
@@ -36,7 +36,7 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  */
 export class JournalVisibilityService {
   constructor(
-    private readonly port: JournalVisibilityPort,
+    private readonly port: PlatformJournalVisibilityPort,
     private readonly notificationCenter: NotificationCenter,
     private readonly cacheService: CacheService,
     private readonly platformUI: PlatformUIPort
@@ -193,7 +193,7 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
   ] as const;
 
   constructor(
-    port: JournalVisibilityPort,
+    port: PlatformJournalVisibilityPort,
     notificationCenter: NotificationCenter,
     cacheService: CacheService,
     platformUI: PlatformUIPort

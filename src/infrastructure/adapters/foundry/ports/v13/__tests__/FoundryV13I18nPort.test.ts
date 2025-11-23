@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { FoundryI18nPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryI18nPort";
+import { FoundryV13I18nPort } from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13I18nPort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
-describe("FoundryI18nPortV13", () => {
-  let port: FoundryI18nPortV13;
+describe("FoundryV13I18nPort", () => {
+  let port: FoundryV13I18nPort;
 
   beforeEach(() => {
-    port = new FoundryI18nPortV13();
+    port = new FoundryV13I18nPort();
   });
 
   afterEach(() => {
@@ -157,7 +157,7 @@ describe("FoundryI18nPortV13", () => {
 
   describe("Dependencies", () => {
     it("should have no dependencies", () => {
-      expect(FoundryI18nPortV13.dependencies).toEqual([]);
+      expect(FoundryV13I18nPort.dependencies).toEqual([]);
     });
   });
 
@@ -173,7 +173,7 @@ describe("FoundryI18nPortV13", () => {
     });
 
     it("should prevent localize after disposal", () => {
-      const port = new FoundryI18nPortV13();
+      const port = new FoundryV13I18nPort();
       port.dispose();
 
       const result = port.localize("TEST.KEY");
@@ -183,7 +183,7 @@ describe("FoundryI18nPortV13", () => {
     });
 
     it("should prevent format after disposal", () => {
-      const port = new FoundryI18nPortV13();
+      const port = new FoundryV13I18nPort();
       port.dispose();
 
       const result = port.format("TEST.KEY", { name: "Test" });
@@ -193,7 +193,7 @@ describe("FoundryI18nPortV13", () => {
     });
 
     it("should prevent has after disposal", () => {
-      const port = new FoundryI18nPortV13();
+      const port = new FoundryV13I18nPort();
       port.dispose();
 
       const result = port.has("TEST.KEY");
@@ -203,7 +203,7 @@ describe("FoundryI18nPortV13", () => {
     });
 
     it("should be idempotent", () => {
-      const port = new FoundryI18nPortV13();
+      const port = new FoundryV13I18nPort();
       port.dispose();
       port.dispose();
       port.dispose();

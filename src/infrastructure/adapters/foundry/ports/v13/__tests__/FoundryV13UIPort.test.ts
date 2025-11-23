@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { FoundryUIPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryUIPort";
+import { FoundryV13UIPort } from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13UIPort";
 import { expectResultOk, expectResultErr, createMockDOM } from "@/test/utils/test-helpers";
 
-describe("FoundryUIPortV13", () => {
-  let port: FoundryUIPortV13;
+describe("FoundryV13UIPort", () => {
+  let port: FoundryV13UIPort;
 
   beforeEach(() => {
-    port = new FoundryUIPortV13();
+    port = new FoundryV13UIPort();
   });
 
   afterEach(() => {
@@ -139,7 +139,7 @@ describe("FoundryUIPortV13", () => {
   describe("notify - Error Handling", () => {
     it("should handle missing ui.notifications", () => {
       vi.stubGlobal("ui", undefined);
-      const port = new FoundryUIPortV13();
+      const port = new FoundryV13UIPort();
 
       const result = port.notify("Test message", "info");
 
@@ -157,7 +157,7 @@ describe("FoundryUIPortV13", () => {
         },
       });
 
-      const port = new FoundryUIPortV13();
+      const port = new FoundryV13UIPort();
       const result = port.notify("Test", "info");
 
       expectResultErr(result);
@@ -173,7 +173,7 @@ describe("FoundryUIPortV13", () => {
       };
       vi.stubGlobal("ui", { notifications: mockNotifications });
 
-      const port = new FoundryUIPortV13();
+      const port = new FoundryV13UIPort();
 
       const result1 = port.notify("Info", "info");
       const result2 = port.notify("Warning", "warning");
@@ -196,7 +196,7 @@ describe("FoundryUIPortV13", () => {
       };
       vi.stubGlobal("ui", { notifications: mockNotifications });
 
-      const port = new FoundryUIPortV13();
+      const port = new FoundryV13UIPort();
       const result = port.notify("Error message", "error");
 
       expectResultErr(result);
@@ -212,7 +212,7 @@ describe("FoundryUIPortV13", () => {
       };
       vi.stubGlobal("ui", { notifications: mockNotifications });
 
-      const port = new FoundryUIPortV13();
+      const port = new FoundryV13UIPort();
       const result = port.notify("Warning", "warning");
 
       expectResultErr(result);
@@ -225,7 +225,7 @@ describe("FoundryUIPortV13", () => {
       };
       vi.stubGlobal("ui", { notifications: mockNotifications });
 
-      const port = new FoundryUIPortV13();
+      const port = new FoundryV13UIPort();
       const options = { permanent: true, console: true };
 
       const result = port.notify("Persistent message", "info", options);
@@ -236,7 +236,7 @@ describe("FoundryUIPortV13", () => {
 
     it("should handle missing ui object entirely", () => {
       vi.stubGlobal("ui", null);
-      const port = new FoundryUIPortV13();
+      const port = new FoundryV13UIPort();
 
       const result = port.notify("Test", "info");
 

@@ -11,7 +11,7 @@ import {
   fallbackTranslationHandlerToken,
   translationHandlerChainToken,
 } from "@/infrastructure/shared/tokens";
-import { DIFoundryI18nService } from "@/infrastructure/adapters/foundry/services/FoundryI18nService";
+import { DIFoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import { DILocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
 import { DII18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import { DIFoundryTranslationHandler } from "@/infrastructure/i18n/FoundryTranslationHandler";
@@ -23,7 +23,7 @@ import { DITranslationHandlerChain } from "@/infrastructure/i18n/TranslationHand
  * Registers internationalization (i18n) services.
  *
  * Services registered:
- * - FoundryI18nService (singleton) - Wraps Foundry's i18n system
+ * - FoundryI18nPort (singleton) - Wraps Foundry's i18n system
  * - LocalI18nService (singleton) - Local translations
  * - Translation Handlers (singleton) - Chain of Responsibility pattern
  *   - FoundryTranslationHandler
@@ -39,14 +39,14 @@ import { DITranslationHandlerChain } from "@/infrastructure/i18n/TranslationHand
  * @returns Result indicating success or error with details
  */
 export function registerI18nServices(container: ServiceContainer): Result<void, string> {
-  // Register FoundryI18nService
+  // Register FoundryI18nPort
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
-    DIFoundryI18nService,
+    DIFoundryI18nPort,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(foundryI18nResult)) {
-    return err(`Failed to register FoundryI18nService: ${foundryI18nResult.error.message}`);
+    return err(`Failed to register FoundryI18nPort: ${foundryI18nResult.error.message}`);
   }
 
   // Register LocalI18nService

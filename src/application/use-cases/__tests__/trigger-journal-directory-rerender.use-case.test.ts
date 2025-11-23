@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TriggerJournalDirectoryReRenderUseCase } from "../trigger-journal-directory-rerender.use-case";
-import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
 describe("TriggerJournalDirectoryReRenderUseCase", () => {
-  let mockJournalEvents: JournalEventPort;
+  let mockJournalEvents: PlatformJournalEventPort;
   let mockPlatformUI: PlatformUIPort;
   let mockNotificationCenter: NotificationCenter;
   let useCase: TriggerJournalDirectoryReRenderUseCase;

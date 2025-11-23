@@ -1,18 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { FoundryTranslationHandler } from "@/infrastructure/i18n/FoundryTranslationHandler";
-import type { FoundryI18nService } from "@/infrastructure/adapters/foundry/services/FoundryI18nService";
+import type { FoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 
 describe("FoundryTranslationHandler", () => {
   let handler: FoundryTranslationHandler;
-  let mockFoundryI18n: FoundryI18nService;
+  let mockFoundryI18n: FoundryI18nPort;
 
   beforeEach(() => {
     mockFoundryI18n = {
       localize: vi.fn(),
       format: vi.fn(),
       has: vi.fn(),
-    } as unknown as FoundryI18nService;
+    } as unknown as FoundryI18nPort;
 
     handler = new FoundryTranslationHandler(mockFoundryI18n);
   });

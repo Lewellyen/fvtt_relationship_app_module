@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import type {
-  JournalEventPort,
+  PlatformJournalEventPort,
   JournalCreatedEvent,
   JournalUpdatedEvent,
   JournalDeletedEvent,
@@ -8,7 +8,7 @@ import type {
   JournalContextMenuEvent,
   JournalEvent,
   JournalChanges,
-} from "@/domain/ports/events/journal-event-port.interface";
+} from "@/domain/ports/events/platform-journal-event-port.interface";
 import type {
   EventRegistrationId,
   PlatformEventError,
@@ -46,7 +46,7 @@ declare global {
 }
 
 /**
- * Foundry-specific implementation of JournalEventPort.
+ * Foundry-specific implementation of PlatformJournalEventPort.
  *
  * Maps Foundry's Hook system to platform-agnostic journal events.
  *
@@ -59,7 +59,7 @@ declare global {
  * });
  * ```
  */
-export class FoundryJournalEventAdapter implements JournalEventPort {
+export class FoundryJournalEventAdapter implements PlatformJournalEventPort {
   private registrations = new Map<EventRegistrationId, () => void>();
   private nextId = 1;
   private libWrapperRegistered = false;

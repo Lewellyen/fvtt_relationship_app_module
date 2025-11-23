@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RegisterContextMenuUseCase } from "../register-context-menu.use-case";
-import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 
 describe("RegisterContextMenuUseCase", () => {
-  let mockJournalEvents: JournalEventPort;
+  let mockJournalEvents: PlatformJournalEventPort;
   let mockHideHandler: HideJournalContextMenuHandler;
   let useCase: RegisterContextMenuUseCase;
 
@@ -20,7 +20,7 @@ describe("RegisterContextMenuUseCase", () => {
       onJournalDeleted: vi.fn(),
       onJournalDirectoryRendered: vi.fn(),
       registerListener: vi.fn(),
-    } as unknown as JournalEventPort;
+    } as unknown as PlatformJournalEventPort;
 
     mockHideHandler = {
       handle: vi.fn(),

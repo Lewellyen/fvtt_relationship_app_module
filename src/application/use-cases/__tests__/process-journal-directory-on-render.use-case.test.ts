@@ -3,12 +3,12 @@ import {
   ProcessJournalDirectoryOnRenderUseCase,
   DIProcessJournalDirectoryOnRenderUseCase,
 } from "../process-journal-directory-on-render.use-case";
-import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 
 describe("ProcessJournalDirectoryOnRenderUseCase", () => {
-  let mockJournalEvents: JournalEventPort;
+  let mockJournalEvents: PlatformJournalEventPort;
   let mockJournalVisibility: JournalVisibilityService;
   let mockNotificationCenter: NotificationCenter;
   let useCase: ProcessJournalDirectoryOnRenderUseCase;
@@ -120,7 +120,7 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
 });
 
 describe("DIProcessJournalDirectoryOnRenderUseCase", () => {
-  let mockJournalEvents: JournalEventPort;
+  let mockJournalEvents: PlatformJournalEventPort;
   let mockJournalVisibility: JournalVisibilityService;
   let mockNotificationCenter: NotificationCenter;
   let useCase: DIProcessJournalDirectoryOnRenderUseCase;

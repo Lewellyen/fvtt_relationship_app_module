@@ -16,7 +16,7 @@ import type { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
 
 /**
- * Injection token for FoundryGame service.
+ * Injection token for FoundryGame port.
  *
  * Provides access to Foundry's game API, specifically journal entries.
  * Automatically selects version-appropriate port implementation.
@@ -34,7 +34,7 @@ export const foundryGameToken: InjectionToken<FoundryGame> =
   createInjectionToken<FoundryGame>("FoundryGame");
 
 /**
- * Injection token for FoundryHooks service.
+ * Injection token for FoundryHooks port.
  *
  * Provides access to Foundry's hook system for event registration.
  * Automatically selects version-appropriate port implementation.
@@ -51,7 +51,7 @@ export const foundryHooksToken: InjectionToken<FoundryHooks> =
   createInjectionToken<FoundryHooks>("FoundryHooks");
 
 /**
- * Injection token for FoundryDocument service.
+ * Injection token for FoundryDocument port.
  *
  * Provides access to Foundry's document API for flag management.
  * Automatically selects version-appropriate port implementation.
@@ -69,7 +69,7 @@ export const foundryDocumentToken: InjectionToken<FoundryDocument> =
   createInjectionToken<FoundryDocument>("FoundryDocument");
 
 /**
- * Injection token for FoundryUI service.
+ * Injection token for FoundryUI port.
  *
  * Provides access to Foundry's UI manipulation API for notifications
  * and DOM element management.
@@ -122,7 +122,7 @@ export const foundryUIPortRegistryToken: InjectionToken<PortRegistry<FoundryUI>>
   createInjectionToken<PortRegistry<FoundryUI>>("FoundryUIPortRegistry");
 
 /**
- * Injection token for FoundrySettings service.
+ * Injection token for FoundrySettings port.
  *
  * Provides access to Foundry's settings system for module configuration.
  * Automatically selects version-appropriate port implementation.
@@ -163,38 +163,38 @@ export const foundryI18nPortRegistryToken: InjectionToken<PortRegistry<FoundryI1
 /**
  * Injection token for FoundryGame port v13 implementation.
  */
-export const foundryGamePortV13Token: InjectionToken<FoundryGame> =
-  createInjectionToken<FoundryGame>("FoundryGamePortV13");
+export const foundryV13GamePortToken: InjectionToken<FoundryGame> =
+  createInjectionToken<FoundryGame>("FoundryV13GamePort");
 
 /**
  * Injection token for FoundryHooks port v13 implementation.
  */
-export const foundryHooksPortV13Token: InjectionToken<FoundryHooks> =
-  createInjectionToken<FoundryHooks>("FoundryHooksPortV13");
+export const foundryV13HooksPortToken: InjectionToken<FoundryHooks> =
+  createInjectionToken<FoundryHooks>("FoundryV13HooksPort");
 
 /**
  * Injection token for FoundryDocument port v13 implementation.
  */
-export const foundryDocumentPortV13Token: InjectionToken<FoundryDocument> =
-  createInjectionToken<FoundryDocument>("FoundryDocumentPortV13");
+export const foundryV13DocumentPortToken: InjectionToken<FoundryDocument> =
+  createInjectionToken<FoundryDocument>("FoundryV13DocumentPort");
 
 /**
  * Injection token for FoundryUI port v13 implementation.
  */
-export const foundryUIPortV13Token: InjectionToken<FoundryUI> =
-  createInjectionToken<FoundryUI>("FoundryUIPortV13");
+export const foundryV13UIPortToken: InjectionToken<FoundryUI> =
+  createInjectionToken<FoundryUI>("FoundryV13UIPort");
 
 /**
  * Injection token for FoundrySettings port v13 implementation.
  */
-export const foundrySettingsPortV13Token: InjectionToken<FoundrySettings> =
-  createInjectionToken<FoundrySettings>("FoundrySettingsPortV13");
+export const foundryV13SettingsPortToken: InjectionToken<FoundrySettings> =
+  createInjectionToken<FoundrySettings>("FoundryV13SettingsPort");
 
 /**
  * Injection token for FoundryI18n port v13 implementation.
  */
-export const foundryI18nPortV13Token: InjectionToken<FoundryI18n> =
-  createInjectionToken<FoundryI18n>("FoundryI18nPortV13");
+export const foundryV13I18nPortToken: InjectionToken<FoundryI18n> =
+  createInjectionToken<FoundryI18n>("FoundryV13I18nPort");
 
 /**
  * Injection token for FoundryJournalFacade.

@@ -42,7 +42,7 @@ describe("Runtime Error: Result Pattern Consistency", () => {
     expectResultOk(gameServiceResult);
     const gameService = gameServiceResult.value as FoundryGame;
 
-    // Test FoundryGameService methods
+    // Test FoundryGamePort methods
     const methods = [
       () => gameService.getJournalEntries(),
       () => gameService.getJournalEntryById("test-id"),

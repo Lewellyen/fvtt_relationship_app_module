@@ -60,7 +60,7 @@ export class PortRegistry<T extends ServiceType> {
    * @example
    * ```typescript
    * const registry = new PortRegistry<FoundryGame>();
-   * registry.register(13, foundryGamePortV13Token);
+   * registry.register(13, foundryV13GamePortToken);
    * registry.register(14, foundryGamePortV14Token);
    *
    * const tokens = registry.getTokens();

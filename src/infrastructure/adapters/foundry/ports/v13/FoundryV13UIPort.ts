@@ -30,7 +30,7 @@ function isFoundryUISidebar(sidebar: unknown): sidebar is FoundryUISidebar {
  * v13 implementation of FoundryUI interface.
  * Encapsulates Foundry v13-specific UI manipulation.
  */
-export class FoundryUIPortV13 implements FoundryUI {
+export class FoundryV13UIPort implements FoundryUI {
   #disposed = false;
 
   removeJournalElement(

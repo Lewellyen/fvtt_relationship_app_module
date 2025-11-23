@@ -12,6 +12,24 @@
 
 ### Upgrade-Hinweise
 
+## [0.29.4] - 2025-11-23
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Port-Naming-Konsolidierung**: Domain-Ports heißen jetzt `PlatformJournalVisibilityPort` und `PlatformJournalEventPort`, Foundry-Abstraktionen folgen dem Muster `Foundry<Name>Port`, und versionsspezifische Adapter heißen `FoundryV13<Name>Port` ([Details](ARCHITECTURE.md#port-adapter-pattern))
+- **Token-Updates**: Alle zugehörigen Injection-Tokens (z. B. `platformJournalEventPortToken`, `foundryV13GamePortToken`) wurden entsprechend umbenannt und beschrieben ([Details](src/infrastructure/shared/tokens))
+- **Dokumentation**: `ARCHITECTURE.md` und alle Config-Dateien spiegeln die neue Benennung wider; `CHANGELOG.md` dokumentiert die Migration
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.29.3] - 2025-11-23
 ### Hinzugefügt
 - **v13 Port-Registrierung**: Neue Datei `src/infrastructure/adapters/foundry/ports/v13/port-registration.ts` für version-spezifische Port-Registrierung ([Details](src/infrastructure/adapters/foundry/ports/v13/port-registration.ts))

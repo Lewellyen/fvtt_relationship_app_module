@@ -12,12 +12,12 @@ import { retryServiceToken } from "@/infrastructure/shared/tokens";
 import { FoundryServiceBase } from "./FoundryServiceBase";
 
 /**
- * Service wrapper for FoundryI18n that automatically selects the appropriate port
+ * Port wrapper for FoundryI18n that automatically selects the appropriate version
  * based on the current Foundry version.
  *
  * Extends FoundryServiceBase for consistent port selection and retry logic.
  */
-export class FoundryI18nService extends FoundryServiceBase<FoundryI18n> implements FoundryI18n {
+export class FoundryI18nPort extends FoundryServiceBase<FoundryI18n> implements FoundryI18n {
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundryI18n>,
@@ -51,7 +51,7 @@ export class FoundryI18nService extends FoundryServiceBase<FoundryI18n> implemen
   }
 }
 
-export class DIFoundryI18nService extends FoundryI18nService {
+export class DIFoundryI18nPort extends FoundryI18nPort {
   static dependencies = [
     portSelectorToken,
     foundryI18nPortRegistryToken,

@@ -1,4 +1,4 @@
-import type { JournalVisibilityPort } from "@/domain/ports/journal-visibility-port.interface";
+import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
 import type { Result } from "@/domain/types/result";
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
@@ -6,13 +6,13 @@ import { BOOLEAN_FLAG_SCHEMA } from "@/infrastructure/adapters/foundry/validatio
 import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens";
 
 /**
- * Foundry-specific adapter for JournalVisibilityPort.
+ * Foundry-specific adapter for PlatformJournalVisibilityPort.
  *
  * Translates between domain types (JournalEntry) and Foundry types (FoundryJournalEntry).
  * The adapter is version-independent, as it uses FoundryJournalFacade which already
  * handles version selection via PortSelector.
  */
-export class FoundryJournalVisibilityAdapter implements JournalVisibilityPort {
+export class FoundryJournalVisibilityAdapter implements PlatformJournalVisibilityPort {
   constructor(private readonly foundryJournalFacade: FoundryJournalFacade) {}
 
   getAllEntries(): Result<JournalEntry[], JournalVisibilityError> {

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { FoundrySettingsService } from "@/infrastructure/adapters/foundry/services/FoundrySettingsService";
+import { FoundrySettingsPort } from "@/infrastructure/adapters/foundry/services/FoundrySettingsPort";
 import type {
   FoundrySettings,
   SettingConfig,
@@ -17,8 +17,8 @@ import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontok
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import * as v from "valibot";
 
-describe("FoundrySettingsService", () => {
-  let service: FoundrySettingsService;
+describe("FoundrySettingsPort", () => {
+  let service: FoundrySettingsPort;
   let mockRegistry: PortRegistry<FoundrySettings>;
   let mockSelector: PortSelector;
   let mockPort: FoundrySettings;
@@ -61,7 +61,7 @@ describe("FoundrySettingsService", () => {
       retry: vi.fn((fn) => fn()),
     } as any;
 
-    service = new FoundrySettingsService(mockSelector, mockRegistry, mockRetryService);
+    service = new FoundrySettingsPort(mockSelector, mockRegistry, mockRetryService);
   });
 
   afterEach(() => {

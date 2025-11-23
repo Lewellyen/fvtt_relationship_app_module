@@ -1,4 +1,4 @@
-import type { FoundryI18nService } from "@/infrastructure/adapters/foundry/services/FoundryI18nService";
+import type { FoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import { foundryI18nToken } from "@/infrastructure/shared/tokens";
 import { AbstractTranslationHandler } from "./AbstractTranslationHandler";
 import type { Result } from "@/domain/types/result";
@@ -13,7 +13,7 @@ import { ok, err } from "@/infrastructure/shared/utils/result";
  * Registered as SINGLETON in DI container.
  */
 export class FoundryTranslationHandler extends AbstractTranslationHandler {
-  constructor(private readonly foundryI18n: FoundryI18nService) {
+  constructor(private readonly foundryI18n: FoundryI18nPort) {
     super();
   }
 
@@ -46,7 +46,7 @@ export class FoundryTranslationHandler extends AbstractTranslationHandler {
 export class DIFoundryTranslationHandler extends FoundryTranslationHandler {
   static dependencies = [foundryI18nToken] as const;
 
-  constructor(foundryI18n: FoundryI18nService) {
+  constructor(foundryI18n: FoundryI18nPort) {
     super(foundryI18n);
   }
 }

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { FoundryGameService } from "@/infrastructure/adapters/foundry/services/FoundryGameService";
+import { FoundryGamePort } from "@/infrastructure/adapters/foundry/services/FoundryGamePort";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
@@ -13,8 +13,8 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 
-describe("FoundryGameService", () => {
-  let service: FoundryGameService;
+describe("FoundryGamePort", () => {
+  let service: FoundryGamePort;
   let mockRegistry: PortRegistry<FoundryGame>;
   let mockSelector: PortSelector;
   let mockPort: FoundryGame;
@@ -58,7 +58,7 @@ describe("FoundryGameService", () => {
       retry: vi.fn((fn) => fn()),
     } as any;
 
-    service = new FoundryGameService(mockSelector, mockRegistry, mockRetryService);
+    service = new FoundryGamePort(mockSelector, mockRegistry, mockRetryService);
   });
 
   afterEach(() => {
@@ -93,11 +93,7 @@ describe("FoundryGameService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryGameService(
-        failingSelector,
-        mockRegistry,
-        mockRetryService
-      );
+      const failingService = new FoundryGamePort(failingSelector, mockRegistry, mockRetryService);
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
@@ -118,11 +114,7 @@ describe("FoundryGameService", () => {
         message: "No compatible port found",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryGameService(
-        failingSelector,
-        mockRegistry,
-        mockRetryService
-      );
+      const failingService = new FoundryGamePort(failingSelector, mockRegistry, mockRetryService);
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
@@ -141,11 +133,7 @@ describe("FoundryGameService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryGameService(
-        failingSelector,
-        mockRegistry,
-        mockRetryService
-      );
+      const failingService = new FoundryGamePort(failingSelector, mockRegistry, mockRetryService);
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
@@ -161,11 +149,7 @@ describe("FoundryGameService", () => {
         registerPortSelector: vi.fn(),
       } as any;
       const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
-      const failingService = new FoundryGameService(
-        failingSelector,
-        emptyRegistry,
-        mockRetryService
-      );
+      const failingService = new FoundryGamePort(failingSelector, emptyRegistry, mockRetryService);
 
       const result = failingService.getJournalEntries();
       expectResultErr(result);
@@ -236,11 +220,7 @@ describe("FoundryGameService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryGameService(
-        failingSelector,
-        mockRegistry,
-        mockRetryService
-      );
+      const failingService = new FoundryGamePort(failingSelector, mockRegistry, mockRetryService);
 
       const result = failingService.getJournalEntryById("test-id");
 
@@ -267,11 +247,7 @@ describe("FoundryGameService", () => {
         message: "Port selection failed",
       };
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
-      const failingService = new FoundryGameService(
-        failingSelector,
-        mockRegistry,
-        mockRetryService
-      );
+      const failingService = new FoundryGamePort(failingSelector, mockRegistry, mockRetryService);
 
       // Should not throw when port is not available
       expect(() => failingService.invalidateCache()).not.toThrow();

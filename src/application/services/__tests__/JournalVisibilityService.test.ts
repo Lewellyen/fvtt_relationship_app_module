@@ -4,7 +4,7 @@ import {
   JournalVisibilityService,
   HIDDEN_JOURNAL_CACHE_TAG,
 } from "@/application/services/JournalVisibilityService";
-import type { JournalVisibilityPort } from "@/domain/ports/journal-visibility-port.interface";
+import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
@@ -16,7 +16,7 @@ import type {
   CacheEntryMetadata,
   CacheKey,
 } from "@/infrastructure/cache/cache.interface";
-import { createMockJournalVisibilityPort } from "@/domain/ports/journal-visibility-port.mock";
+import { createMockPlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.mock";
 
 function createMetadata(): CacheEntryMetadata {
   return {
@@ -31,13 +31,13 @@ function createMetadata(): CacheEntryMetadata {
 
 describe("JournalVisibilityService", () => {
   let service: JournalVisibilityService;
-  let mockPort: JournalVisibilityPort;
+  let mockPort: PlatformJournalVisibilityPort;
   let mockNotificationCenter: NotificationCenter;
   let mockCacheService: CacheService;
   let mockPlatformUI: PlatformUIPort;
 
   beforeEach(() => {
-    mockPort = createMockJournalVisibilityPort();
+    mockPort = createMockPlatformJournalVisibilityPort();
     mockNotificationCenter = {
       notify: vi.fn().mockReturnValue(ok(undefined)),
       debug: vi.fn().mockReturnValue(ok(undefined)),

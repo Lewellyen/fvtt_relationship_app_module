@@ -15,7 +15,7 @@ import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
  * Performance optimization: Caches validated journal entries with TTL-based invalidation
  * to avoid expensive Valibot validation on every call. Cache expires after 5 seconds.
  */
-export class FoundryGamePortV13 implements FoundryGame {
+export class FoundryV13GamePort implements FoundryGame {
   #disposed = false;
   private cachedEntries: FoundryJournalEntry[] | null = null;
   private lastCheckTimestamp = 0;

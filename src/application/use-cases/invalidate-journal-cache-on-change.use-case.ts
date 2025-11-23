@@ -1,12 +1,12 @@
 import type { Result } from "@/domain/types/result";
-import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { CacheService } from "@/infrastructure/cache/cache.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import {
-  journalEventPortToken,
+  platformJournalEventPortToken,
   cacheServiceToken,
   notificationCenterToken,
 } from "@/infrastructure/shared/tokens";
@@ -15,7 +15,7 @@ import { getFirstArrayElement } from "@/infrastructure/di/types/utilities/runtim
 /**
  * Use-Case: Invalidate journal cache when journal entries change.
  *
- * Platform-agnostic - works with any JournalEventPort implementation.
+ * Platform-agnostic - works with any PlatformJournalEventPort implementation.
  *
  * @example
  * ```typescript
@@ -33,7 +33,7 @@ export class InvalidateJournalCacheOnChangeUseCase implements EventRegistrar {
   private registrationIds: EventRegistrationId[] = [];
 
   constructor(
-    private readonly journalEvents: JournalEventPort,
+    private readonly journalEvents: PlatformJournalEventPort,
     private readonly cache: CacheService,
     private readonly notificationCenter: NotificationCenter
   ) {}
@@ -134,13 +134,13 @@ export class InvalidateJournalCacheOnChangeUseCase implements EventRegistrar {
  */
 export class DIInvalidateJournalCacheOnChangeUseCase extends InvalidateJournalCacheOnChangeUseCase {
   static dependencies = [
-    journalEventPortToken,
+    platformJournalEventPortToken,
     cacheServiceToken,
     notificationCenterToken,
   ] as const;
 
   constructor(
-    journalEvents: JournalEventPort,
+    journalEvents: PlatformJournalEventPort,
     cache: CacheService,
     notificationCenter: NotificationCenter
   ) {

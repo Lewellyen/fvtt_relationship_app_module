@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import type { JournalEventPort } from "../journal-event-port.interface";
+import type { PlatformJournalEventPort } from "../platform-journal-event-port.interface";
 
 describe("JournalEventPort (Contract Test)", () => {
   it("should define all required methods", () => {
-    const mockPort: JournalEventPort = {
+    const mockPort: PlatformJournalEventPort = {
       onJournalCreated: vi.fn(),
       onJournalUpdated: vi.fn(),
       onJournalDeleted: vi.fn(),
@@ -22,7 +22,7 @@ describe("JournalEventPort (Contract Test)", () => {
   });
 
   it("should have the correct method signatures", () => {
-    const mockPort: JournalEventPort = {
+    const mockPort: PlatformJournalEventPort = {
       onJournalCreated: vi.fn().mockReturnValue({ ok: true, value: "1" }),
       onJournalUpdated: vi.fn().mockReturnValue({ ok: true, value: "2" }),
       onJournalDeleted: vi.fn().mockReturnValue({ ok: true, value: "3" }),

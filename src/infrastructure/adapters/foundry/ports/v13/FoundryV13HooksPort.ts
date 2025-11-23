@@ -22,7 +22,7 @@ interface DynamicHooksApi {
  * Based on Foundry VTT v13 Hooks API:
  * https://foundryvtt.com/api/classes/foundry.helpers.Hooks.html
  */
-export class FoundryHooksPortV13 implements FoundryHooks {
+export class FoundryV13HooksPort implements FoundryHooks {
   #disposed = false;
 
   on(hookName: string, callback: FoundryHookCallback): Result<number, FoundryError> {
@@ -118,7 +118,7 @@ export class FoundryHooksPortV13 implements FoundryHooks {
   dispose(): void {
     if (this.#disposed) return; // Idempotent
     this.#disposed = true;
-    // Note: Hook cleanup is handled by FoundryHooksService.dispose()
+    // Note: Hook cleanup is handled by FoundryHooksPort.dispose()
     // Port remains stateless - it only wraps Foundry API
   }
 }

@@ -144,7 +144,7 @@ function validateContainer(container: ServiceContainer): Result<void, string> {
  * 7. Foundry Services (Game, Hooks, Document, UI, Settings, Journal)
  * 8. I18n Services (FoundryI18n, LocalI18n, I18nFacade, TranslationHandlers)
  * 9. Notifications (NotificationCenter, ConsoleChannel, UIChannel)
- * 10. Event Ports (JournalEventPort, Use-Cases, ModuleEventRegistrar)
+ * 10. Event Ports (PlatformJournalEventPort, Use-Cases, ModuleEventRegistrar)
  * 11. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
  * 12. Validation (Check dependency graph)
  * 13. Loop-Prevention Services (Health checks referencing validated services)

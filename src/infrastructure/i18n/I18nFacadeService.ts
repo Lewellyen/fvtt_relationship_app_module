@@ -19,7 +19,7 @@ import type { Result } from "@/domain/types/result";
  *
  * **Use Cases:**
  * - Development/testing without Foundry runtime (uses LocalI18nService)
- * - Production with Foundry VTT (uses FoundryI18nService)
+ * - Production with Foundry VTT (uses FoundryI18nPort)
  * - Graceful degradation when translations are missing
  *
  * @example

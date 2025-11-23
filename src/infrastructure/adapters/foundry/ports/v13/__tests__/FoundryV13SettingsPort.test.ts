@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { FoundrySettingsPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundrySettingsPort";
+import { FoundryV13SettingsPort } from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13SettingsPort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { SettingConfig } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import * as v from "valibot";
 
-describe("FoundrySettingsPortV13", () => {
-  let port: FoundrySettingsPortV13;
+describe("FoundryV13SettingsPort", () => {
+  let port: FoundryV13SettingsPort;
 
   beforeEach(() => {
-    port = new FoundrySettingsPortV13();
+    port = new FoundryV13SettingsPort();
   });
 
   afterEach(() => {

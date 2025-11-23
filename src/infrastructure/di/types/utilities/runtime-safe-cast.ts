@@ -92,7 +92,7 @@ export function wrapNotificationCenterService<TServiceType>(
 /**
  * Entspricht wrapI18nService, aber für FoundrySettings.
  */
-export function wrapFoundrySettingsService<TServiceType>(
+export function wrapFoundrySettingsPort<TServiceType>(
   service: TServiceType,
   create: (settings: FoundrySettings) => FoundrySettings
 ): TServiceType {

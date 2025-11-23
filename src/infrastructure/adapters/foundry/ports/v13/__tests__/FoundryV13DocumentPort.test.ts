@@ -2,15 +2,15 @@
 // Test file: `any` needed for mocking Foundry document objects
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { FoundryDocumentPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryDocumentPort";
+import { FoundryV13DocumentPort } from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13DocumentPort";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import * as v from "valibot";
 
-describe("FoundryDocumentPortV13", () => {
-  let port: FoundryDocumentPortV13;
+describe("FoundryV13DocumentPort", () => {
+  let port: FoundryV13DocumentPort;
 
   beforeEach(() => {
-    port = new FoundryDocumentPortV13();
+    port = new FoundryV13DocumentPort();
   });
 
   describe("getFlag", () => {
@@ -148,7 +148,7 @@ describe("FoundryDocumentPortV13", () => {
 
   describe("disposed state guards", () => {
     it("should prevent getFlag after disposal", () => {
-      const port = new FoundryDocumentPortV13();
+      const port = new FoundryV13DocumentPort();
       port.dispose();
       const doc = { getFlag: vi.fn() };
 
@@ -159,7 +159,7 @@ describe("FoundryDocumentPortV13", () => {
     });
 
     it("should prevent setFlag after disposal", async () => {
-      const port = new FoundryDocumentPortV13();
+      const port = new FoundryV13DocumentPort();
       port.dispose();
       const doc = { setFlag: vi.fn().mockResolvedValue(undefined) };
 
@@ -170,7 +170,7 @@ describe("FoundryDocumentPortV13", () => {
     });
 
     it("should be idempotent", () => {
-      const port = new FoundryDocumentPortV13();
+      const port = new FoundryV13DocumentPort();
       port.dispose();
       port.dispose();
       port.dispose();

@@ -24,12 +24,12 @@ interface DynamicHooksApi {
 }
 
 /**
- * Service wrapper for FoundryHooks that automatically selects the appropriate port
+ * Port wrapper for FoundryHooks that automatically selects the appropriate version
  * based on the current Foundry version.
  *
  * Extends FoundryServiceBase but maintains its own dispose() logic for hook cleanup.
  */
-export class FoundryHooksService extends FoundryServiceBase<FoundryHooks> implements FoundryHooks {
+export class FoundryHooksPort extends FoundryServiceBase<FoundryHooks> implements FoundryHooks {
   private readonly logger: Logger;
   private registeredHooks = new Map<string, Map<number, FoundryHookCallback>>();
   // Bidirectional mapping: callback function -> array of hook registrations (supports reused callbacks)
@@ -170,7 +170,7 @@ export class FoundryHooksService extends FoundryServiceBase<FoundryHooks> implem
   }
 }
 
-export class DIFoundryHooksService extends FoundryHooksService {
+export class DIFoundryHooksPort extends FoundryHooksPort {
   static dependencies = [
     portSelectorToken,
     foundryHooksPortRegistryToken,

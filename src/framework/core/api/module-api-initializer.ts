@@ -21,7 +21,7 @@ import type {
 import type { ServiceType } from "@/infrastructure/shared/tokens";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
 import {
-  wrapFoundrySettingsService,
+  wrapFoundrySettingsPort,
   wrapI18nService,
   wrapNotificationCenterService,
   getRegistrationStatus,
@@ -168,7 +168,7 @@ export class ModuleApiInitializer {
     }
 
     if (token === wellKnownTokens.foundrySettingsToken) {
-      return wrapFoundrySettingsService(service, createPublicFoundrySettings);
+      return wrapFoundrySettingsPort(service, createPublicFoundrySettings);
     }
 
     // Default: return original service for read-only or safe services

@@ -10,7 +10,7 @@ import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/jou
  * Implementations should be placed in platform-specific adapters
  * (e.g., foundry/adapters/FoundryJournalVisibilityAdapter).
  */
-export interface JournalVisibilityPort {
+export interface PlatformJournalVisibilityPort {
   /**
    * Gets all journal entries from the platform.
    * @returns Result with array of journal entries or error

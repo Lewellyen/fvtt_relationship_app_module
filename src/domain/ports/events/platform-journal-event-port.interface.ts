@@ -11,7 +11,7 @@ import type {
  * Extends the generic PlatformEventPort with journal-specific operations.
  * Still platform-agnostic - works with any VTT system.
  */
-export interface JournalEventPort extends PlatformEventPort<JournalEvent> {
+export interface PlatformJournalEventPort extends PlatformEventPort<JournalEvent> {
   /**
    * Register listener for journal creation events.
    *

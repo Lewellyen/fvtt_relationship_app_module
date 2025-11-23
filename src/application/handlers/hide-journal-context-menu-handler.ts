@@ -1,6 +1,6 @@
 import type { JournalContextMenuHandler } from "./journal-context-menu-handler.interface";
-import type { JournalContextMenuEvent } from "@/domain/ports/events/journal-event-port.interface";
-import type { JournalVisibilityPort } from "@/domain/ports/journal-visibility-port.interface";
+import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
@@ -20,7 +20,7 @@ import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
  */
 export class HideJournalContextMenuHandler implements JournalContextMenuHandler {
   constructor(
-    private readonly journalVisibility: JournalVisibilityPort,
+    private readonly journalVisibility: PlatformJournalVisibilityPort,
     private readonly platformUI: PlatformUIPort,
     private readonly notificationCenter: NotificationCenter,
     private readonly foundryGame: FoundryGame
@@ -125,7 +125,7 @@ export class DIHideJournalContextMenuHandler extends HideJournalContextMenuHandl
   ] as const;
 
   constructor(
-    journalVisibility: JournalVisibilityPort,
+    journalVisibility: PlatformJournalVisibilityPort,
     platformUI: PlatformUIPort,
     notificationCenter: NotificationCenter,
     foundryGame: FoundryGame
