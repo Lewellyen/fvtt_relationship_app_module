@@ -6,12 +6,18 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { PortSelector } from "../versioning/portselector";
 import type { PortRegistry } from "../versioning/portregistry";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
+import type {
+  PlatformEventPort,
+  EventRegistrationId,
+  PlatformEventError,
+} from "@/domain/ports/events/platform-event-port.interface";
 import {
   portSelectorToken,
   foundryHooksPortRegistryToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
 import { loggerToken, retryServiceToken } from "@/infrastructure/shared/tokens";
 import { FoundryServiceBase } from "./FoundryServiceBase";
+import { err, ok } from "@/infrastructure/shared/utils/result";
 
 /**
  * Type-safe interface for Foundry Hooks with dynamic hook names.
@@ -28,12 +34,18 @@ interface DynamicHooksApi {
  * based on the current Foundry version.
  *
  * Extends FoundryServiceBase but maintains its own dispose() logic for hook cleanup.
+ * Implements both FoundryHooks (Foundry-specific) and PlatformEventPort (platform-agnostic).
  */
-export class FoundryHooksPort extends FoundryServiceBase<FoundryHooks> implements FoundryHooks {
+export class FoundryHooksPort
+  extends FoundryServiceBase<FoundryHooks>
+  implements FoundryHooks, PlatformEventPort<unknown>
+{
   private readonly logger: Logger;
   private registeredHooks = new Map<string, Map<number, FoundryHookCallback>>();
   // Bidirectional mapping: callback function -> array of hook registrations (supports reused callbacks)
   private callbackToIdMap = new Map<FoundryHookCallback, Array<{ hookName: string; id: number }>>();
+  // Mapping from registration ID to hook name for unregisterListener()
+  private idToHookNameMap = new Map<number, string>();
 
   constructor(
     portSelector: PortSelector,
@@ -65,6 +77,9 @@ export class FoundryHooksPort extends FoundryServiceBase<FoundryHooks> implement
       const existing = this.callbackToIdMap.get(callback) || [];
       existing.push({ hookName, id: result.value });
       this.callbackToIdMap.set(callback, existing);
+
+      // Track ID to hook name for unregisterListener()
+      this.idToHookNameMap.set(result.value, hookName);
     }
 
     return result;
@@ -109,6 +124,8 @@ export class FoundryHooksPort extends FoundryServiceBase<FoundryHooks> implement
               }
             }
           }
+          // Remove from ID to hook name mapping
+          this.idToHookNameMap.delete(callbackOrId);
         }
       } else {
         // Callback variant: lookup all registrations for this hookName via callbackToIdMap
@@ -166,7 +183,76 @@ export class FoundryHooksPort extends FoundryServiceBase<FoundryHooks> implement
 
     this.registeredHooks.clear();
     this.callbackToIdMap.clear();
+    this.idToHookNameMap.clear();
     this.port = null;
+  }
+
+  // ===== PlatformEventPort Implementation =====
+
+  /**
+   * Register a listener for platform events.
+   * Delegates to FoundryHooks.on() for Foundry-specific implementation.
+   * Wraps the PlatformEventPort callback to receive Foundry hook arguments as an array.
+   */
+  registerListener(
+    eventType: string,
+    callback: (event: unknown) => void
+  ): Result<EventRegistrationId, PlatformEventError> {
+    // Wrap callback: Foundry hooks pass multiple arguments, but PlatformEventPort expects single event
+    // We pass the arguments as an array to preserve the original Foundry hook signature
+    const foundryCallback: FoundryHookCallback = (...args: unknown[]): void => {
+      // Pass arguments as array to PlatformEventPort callback
+      callback(args);
+    };
+    const result = this.on(eventType, foundryCallback);
+
+    if (!result.ok) {
+      return err({
+        code: "EVENT_REGISTRATION_FAILED",
+        message: `Failed to register listener for event "${eventType}": ${result.error.message}`,
+        details: result.error,
+      });
+    }
+
+    return ok(result.value);
+  }
+
+  /**
+   * Unregister a previously registered listener.
+   * Requires mapping from registration ID to hook name.
+   */
+  unregisterListener(registrationId: EventRegistrationId): Result<void, PlatformEventError> {
+    // Convert to number if it's a string
+    const id =
+      typeof registrationId === "string" ? Number.parseInt(registrationId, 10) : registrationId;
+
+    if (Number.isNaN(id)) {
+      return err({
+        code: "EVENT_UNREGISTRATION_FAILED",
+        message: `Invalid registration ID: ${String(registrationId)}`,
+      });
+    }
+
+    // Look up hook name from ID
+    const hookName = this.idToHookNameMap.get(id);
+    if (!hookName) {
+      return err({
+        code: "EVENT_UNREGISTRATION_FAILED",
+        message: `No registration found for ID ${id}`,
+      });
+    }
+
+    // Use off() with ID
+    const result = this.off(hookName, id);
+    if (!result.ok) {
+      return err({
+        code: "EVENT_UNREGISTRATION_FAILED",
+        message: `Failed to unregister listener for event "${hookName}": ${result.error.message}`,
+        details: result.error,
+      });
+    }
+
+    return ok(undefined);
   }
 }
 

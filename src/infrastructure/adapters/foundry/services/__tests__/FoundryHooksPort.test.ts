@@ -527,4 +527,123 @@ describe("FoundryHooksPort", () => {
       expect(result.error.message).toContain("Port selection failed");
     });
   });
+
+  describe("PlatformEventPort Implementation", () => {
+    describe("registerListener", () => {
+      it("should register a listener and return registration ID", () => {
+        const callback = vi.fn();
+        mockPort.on = vi.fn().mockReturnValue(ok(42));
+
+        const result = service.registerListener("testEvent", callback);
+
+        expectResultOk(result);
+        expect(result.value).toBe(42);
+        // registerListener wraps the callback to pass arguments as an array
+        expect(mockPort.on).toHaveBeenCalledWith("testEvent", expect.any(Function));
+
+        // Test that the wrapped callback works correctly
+        const wrappedCallback = vi
+          .mocked(mockPort.on)
+          .mock.calls.find((call) => call[0] === "testEvent")?.[1] as (...args: unknown[]) => void;
+        expect(wrappedCallback).toBeDefined();
+
+        // Call with multiple arguments (as Foundry hooks do)
+        wrappedCallback("arg1", "arg2", "arg3");
+
+        // The original callback should be called with the arguments as an array
+        expect(callback).toHaveBeenCalledWith(["arg1", "arg2", "arg3"]);
+      });
+
+      it("should return PlatformEventError on registration failure", () => {
+        const callback = vi.fn();
+        const mockError = {
+          code: "API_NOT_AVAILABLE" as const,
+          message: "Hooks API not available",
+        };
+        mockPort.on = vi.fn().mockReturnValue(err(mockError));
+
+        const result = service.registerListener("testEvent", callback);
+
+        expectResultErr(result);
+        expect(result.error.code).toBe("EVENT_REGISTRATION_FAILED");
+        expect(result.error.message).toContain("Failed to register listener");
+        expect(result.error.details).toBe(mockError);
+      });
+
+      it("should track registration ID for unregisterListener", () => {
+        const callback = vi.fn();
+        mockPort.on = vi.fn().mockReturnValue(ok(123));
+        mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+
+        const registerResult = service.registerListener("testEvent", callback);
+        expectResultOk(registerResult);
+
+        const unregisterResult = service.unregisterListener(registerResult.value);
+        expectResultOk(unregisterResult);
+        expect(mockPort.off).toHaveBeenCalledWith("testEvent", 123);
+      });
+    });
+
+    describe("unregisterListener", () => {
+      it("should unregister a listener by ID", () => {
+        const callback = vi.fn();
+        mockPort.on = vi.fn().mockReturnValue(ok(456));
+        mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+
+        const registerResult = service.registerListener("testEvent", callback);
+        expectResultOk(registerResult);
+
+        const unregisterResult = service.unregisterListener(456);
+        expectResultOk(unregisterResult);
+        expect(mockPort.off).toHaveBeenCalledWith("testEvent", 456);
+      });
+
+      it("should handle string registration IDs", () => {
+        const callback = vi.fn();
+        mockPort.on = vi.fn().mockReturnValue(ok(789));
+        mockPort.off = vi.fn().mockReturnValue(ok(undefined));
+
+        const registerResult = service.registerListener("testEvent", callback);
+        expectResultOk(registerResult);
+
+        const unregisterResult = service.unregisterListener("789");
+        expectResultOk(unregisterResult);
+        expect(mockPort.off).toHaveBeenCalledWith("testEvent", 789);
+      });
+
+      it("should return error for invalid string ID", () => {
+        const result = service.unregisterListener("invalid");
+
+        expectResultErr(result);
+        expect(result.error.code).toBe("EVENT_UNREGISTRATION_FAILED");
+        expect(result.error.message).toContain("Invalid registration ID");
+      });
+
+      it("should return error for unknown registration ID", () => {
+        const result = service.unregisterListener(999);
+
+        expectResultErr(result);
+        expect(result.error.code).toBe("EVENT_UNREGISTRATION_FAILED");
+        expect(result.error.message).toContain("No registration found");
+      });
+
+      it("should return error when off() fails", () => {
+        const callback = vi.fn();
+        mockPort.on = vi.fn().mockReturnValue(ok(111));
+        const mockError = {
+          code: "OPERATION_FAILED" as const,
+          message: "Failed to unregister",
+        };
+        mockPort.off = vi.fn().mockReturnValue(err(mockError));
+
+        const registerResult = service.registerListener("testEvent", callback);
+        expectResultOk(registerResult);
+
+        const unregisterResult = service.unregisterListener(registerResult.value);
+        expectResultErr(unregisterResult);
+        expect(unregisterResult.error.code).toBe("EVENT_UNREGISTRATION_FAILED");
+        expect(unregisterResult.error.message).toContain("Failed to unregister listener");
+      });
+    });
+  });
 });

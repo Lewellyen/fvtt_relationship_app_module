@@ -266,3 +266,30 @@ export function assertCacheKey(
 ): import("@/infrastructure/cache/cache.interface").CacheKey {
   return value as import("@/infrastructure/cache/cache.interface").CacheKey;
 }
+
+/**
+ * Safely casts an object to Record<string, unknown>.
+ *
+ * This function encapsulates the cast required when TypeScript cannot
+ * narrow an object type to Record<string, unknown> even after runtime validation.
+ * The caller must ensure that the value is an object before calling this function.
+ *
+ * @param value - The object value that has been validated as an object
+ * @returns The value as Record<string, unknown>
+ */
+export function castToRecord(value: unknown): Record<string, unknown> {
+  return value as Record<string, unknown>;
+}
+
+/**
+ * Safely normalizes an object to Record<string, unknown>.
+ *
+ * This function creates a new Record from an object, ensuring type safety.
+ * The caller must ensure that the value is an object before calling this function.
+ *
+ * @param value - The object value that has been validated as an object
+ * @returns A new Record<string, unknown> with the object's properties
+ */
+export function normalizeToRecord(value: unknown): Record<string, unknown> {
+  return Object.assign({}, value as Record<string, unknown>);
+}

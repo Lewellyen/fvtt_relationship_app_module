@@ -600,6 +600,14 @@ function assertCacheKey(value2) {
   return value2;
 }
 __name(assertCacheKey, "assertCacheKey");
+function castToRecord(value2) {
+  return value2;
+}
+__name(castToRecord, "castToRecord");
+function normalizeToRecord(value2) {
+  return Object.assign({}, value2);
+}
+__name(normalizeToRecord, "normalizeToRecord");
 function hasDependencies(cls) {
   return "dependencies" in cls;
 }
@@ -11834,6 +11842,7 @@ const _FoundryHooksPort = class _FoundryHooksPort extends FoundryServiceBase {
     super(portSelector, portRegistry, retryService);
     this.registeredHooks = /* @__PURE__ */ new Map();
     this.callbackToIdMap = /* @__PURE__ */ new Map();
+    this.idToHookNameMap = /* @__PURE__ */ new Map();
     this.logger = logger;
   }
   on(hookName, callback) {
@@ -11852,6 +11861,7 @@ const _FoundryHooksPort = class _FoundryHooksPort extends FoundryServiceBase {
       const existing = this.callbackToIdMap.get(callback) || [];
       existing.push({ hookName, id: result.value });
       this.callbackToIdMap.set(callback, existing);
+      this.idToHookNameMap.set(result.value, hookName);
     }
     return result;
   }
@@ -11887,6 +11897,7 @@ const _FoundryHooksPort = class _FoundryHooksPort extends FoundryServiceBase {
               }
             }
           }
+          this.idToHookNameMap.delete(callbackOrId);
         }
       } else {
         const hookInfos = this.callbackToIdMap.get(callbackOrId);
@@ -11931,7 +11942,57 @@ const _FoundryHooksPort = class _FoundryHooksPort extends FoundryServiceBase {
     }
     this.registeredHooks.clear();
     this.callbackToIdMap.clear();
+    this.idToHookNameMap.clear();
     this.port = null;
+  }
+  // ===== PlatformEventPort Implementation =====
+  /**
+   * Register a listener for platform events.
+   * Delegates to FoundryHooks.on() for Foundry-specific implementation.
+   * Wraps the PlatformEventPort callback to receive Foundry hook arguments as an array.
+   */
+  registerListener(eventType, callback) {
+    const foundryCallback = /* @__PURE__ */ __name((...args2) => {
+      callback(args2);
+    }, "foundryCallback");
+    const result = this.on(eventType, foundryCallback);
+    if (!result.ok) {
+      return err({
+        code: "EVENT_REGISTRATION_FAILED",
+        message: `Failed to register listener for event "${eventType}": ${result.error.message}`,
+        details: result.error
+      });
+    }
+    return ok(result.value);
+  }
+  /**
+   * Unregister a previously registered listener.
+   * Requires mapping from registration ID to hook name.
+   */
+  unregisterListener(registrationId) {
+    const id = typeof registrationId === "string" ? Number.parseInt(registrationId, 10) : registrationId;
+    if (Number.isNaN(id)) {
+      return err({
+        code: "EVENT_UNREGISTRATION_FAILED",
+        message: `Invalid registration ID: ${String(registrationId)}`
+      });
+    }
+    const hookName = this.idToHookNameMap.get(id);
+    if (!hookName) {
+      return err({
+        code: "EVENT_UNREGISTRATION_FAILED",
+        message: `No registration found for ID ${id}`
+      });
+    }
+    const result = this.off(hookName, id);
+    if (!result.ok) {
+      return err({
+        code: "EVENT_UNREGISTRATION_FAILED",
+        message: `Failed to unregister listener for event "${hookName}": ${result.error.message}`,
+        details: result.error
+      });
+    }
+    return ok(void 0);
   }
 };
 __name(_FoundryHooksPort, "FoundryHooksPort");
@@ -14155,8 +14216,8 @@ function registerRegistrars(container) {
 }
 __name(registerRegistrars, "registerRegistrars");
 const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
-  constructor(foundryHooks) {
-    this.foundryHooks = foundryHooks;
+  constructor(foundryHooksPort) {
+    this.foundryHooksPort = foundryHooksPort;
     this.registrations = /* @__PURE__ */ new Map();
     this.nextId = 1;
     this.libWrapperRegistered = false;
@@ -14336,7 +14397,20 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
   }
   // ===== Generic Methods (from PlatformEventPort) =====
   registerListener(eventType, callback) {
-    return this.registerFoundryHook(eventType, castToFoundryHookCallback(callback));
+    const foundryCallback = /* @__PURE__ */ __name((...args2) => {
+      if (args2.length > 0 && typeof args2[0] === "object" && args2[0] !== null) {
+        const candidate = args2[0];
+        if (typeof candidate === "object" && candidate !== null && ("journalId" in candidate || "timestamp" in candidate)) {
+          const eventRecord = castToRecord(candidate);
+          const event = {
+            journalId: typeof eventRecord.journalId === "string" ? eventRecord.journalId : "",
+            timestamp: typeof eventRecord.timestamp === "number" ? eventRecord.timestamp : Date.now()
+          };
+          callback(event);
+        }
+      }
+    }, "foundryCallback");
+    return this.registerFoundryHook(eventType, foundryCallback);
   }
   unregisterListener(registrationId) {
     const cleanup = this.registrations.get(registrationId);
@@ -14366,27 +14440,41 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
   }
   // ===== Private Helpers =====
   registerFoundryHook(hookName, callback) {
-    const result = this.foundryHooks.on(hookName, callback);
-    if (!result.ok) {
-      return {
-        ok: false,
-        error: {
-          code: "EVENT_REGISTRATION_FAILED",
-          message: `Failed to register Foundry hook "${hookName}": ${result.error.message}`,
-          details: result.error
+    const platformCallback = /* @__PURE__ */ __name((event) => {
+      function isArrayOfUnknown(value2) {
+        return Array.isArray(value2);
+      }
+      __name(isArrayOfUnknown, "isArrayOfUnknown");
+      if (isArrayOfUnknown(event)) {
+        let isValidArg = /* @__PURE__ */ __name(function(arg) {
+          return arg !== null && arg !== void 0;
+        }, "isValidArg");
+        const validArgs = event.filter(isValidArg);
+        if (validArgs.length > 0) {
+          callback(...validArgs);
         }
-      };
+      } else {
+        let isNotNullOrUndefined = /* @__PURE__ */ __name(function(value2) {
+          return value2 !== null && value2 !== void 0;
+        }, "isNotNullOrUndefined");
+        if (isNotNullOrUndefined(event)) {
+          callback(event);
+        }
+      }
+    }, "platformCallback");
+    const result = this.foundryHooksPort.registerListener(hookName, platformCallback);
+    if (!result.ok) {
+      return result;
     }
-    const foundryHookId = result.value;
-    const registrationId = String(this.nextId++);
+    const registrationId = result.value;
     this.registrations.set(registrationId, () => {
-      this.foundryHooks.off(hookName, foundryHookId);
+      this.foundryHooksPort.unregisterListener(registrationId);
     });
     return { ok: true, value: registrationId };
   }
   extractId(foundryEntry) {
     if (typeof foundryEntry === "object" && foundryEntry !== null && "id" in foundryEntry) {
-      const entry = foundryEntry;
+      const entry = castToRecord(foundryEntry);
       if (typeof entry.id === "string") {
         return entry.id;
       }
@@ -14397,10 +14485,10 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
     if (!foundryChanges || typeof foundryChanges !== "object") {
       return {};
     }
-    const changes = Object.assign({}, foundryChanges);
+    const changes = normalizeToRecord(foundryChanges);
     const result = { ...changes };
     if (changes.flags !== void 0 && typeof changes.flags === "object" && changes.flags !== null) {
-      result.flags = Object.assign({}, changes.flags);
+      result.flags = normalizeToRecord(changes.flags);
     }
     if (changes.name !== void 0 && typeof changes.name === "string") {
       result.name = changes.name;
@@ -14415,8 +14503,8 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
 __name(_FoundryJournalEventAdapter, "FoundryJournalEventAdapter");
 let FoundryJournalEventAdapter = _FoundryJournalEventAdapter;
 const _DIFoundryJournalEventAdapter = class _DIFoundryJournalEventAdapter extends FoundryJournalEventAdapter {
-  constructor(hooks) {
-    super(hooks);
+  constructor(foundryHooksPort) {
+    super(foundryHooksPort);
   }
 };
 __name(_DIFoundryJournalEventAdapter, "DIFoundryJournalEventAdapter");
@@ -15123,81 +15211,109 @@ function initializeFoundryModule() {
     logger.warn("Foundry Hooks API not available - module initialization skipped");
     return;
   }
-  Hooks.on("init", () => {
-    logger.info("init-phase");
-    const initContainerResult = root.getContainer();
-    if (!initContainerResult.ok) {
-      logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
-      return;
-    }
-    const notificationCenterResult = initContainerResult.value.resolveWithError(notificationCenterToken);
-    if (notificationCenterResult.ok) {
-      const uiChannelResult = initContainerResult.value.resolveWithError(uiChannelToken);
-      if (uiChannelResult.ok) {
-        notificationCenterResult.value.addChannel(uiChannelResult.value);
+  const foundryHooksPortResult = containerResult.value.resolveWithError(foundryHooksToken);
+  if (!foundryHooksPortResult.ok) {
+    logger.error(`Failed to resolve FoundryHooksPort: ${foundryHooksPortResult.error.message}`);
+    return;
+  }
+  const foundryHooks = foundryHooksPortResult.value;
+  function isPlatformEventPort(obj) {
+    return typeof obj === "object" && obj !== null && "registerListener" in obj && "unregisterListener" in obj && typeof obj.registerListener === "function" && typeof obj.unregisterListener === "function";
+  }
+  __name(isPlatformEventPort, "isPlatformEventPort");
+  if (isPlatformEventPort(foundryHooks)) {
+    const foundryHooksPort = foundryHooks;
+    const initRegistrationResult = foundryHooksPort.registerListener("init", () => {
+      logger.info("init-phase");
+      const initContainerResult = root.getContainer();
+      if (!initContainerResult.ok) {
+        logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
+        return;
+      }
+      const notificationCenterResult = initContainerResult.value.resolveWithError(notificationCenterToken);
+      if (notificationCenterResult.ok) {
+        const uiChannelResult = initContainerResult.value.resolveWithError(uiChannelToken);
+        if (uiChannelResult.ok) {
+          notificationCenterResult.value.addChannel(uiChannelResult.value);
+        } else {
+          logger.warn(
+            "UI channel could not be resolved; NotificationCenter will remain console-only",
+            uiChannelResult.error
+          );
+        }
       } else {
         logger.warn(
-          "UI channel could not be resolved; NotificationCenter will remain console-only",
-          uiChannelResult.error
+          "NotificationCenter could not be resolved during init; UI channel not attached",
+          notificationCenterResult.error
         );
       }
-    } else {
-      logger.warn(
-        "NotificationCenter could not be resolved during init; UI channel not attached",
-        notificationCenterResult.error
-      );
-    }
-    const apiInitializerResult = initContainerResult.value.resolveWithError(moduleApiInitializerToken);
-    if (!apiInitializerResult.ok) {
-      logger.error(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
-      return;
-    }
-    const exposeResult = apiInitializerResult.value.expose(initContainerResult.value);
-    if (!exposeResult.ok) {
-      logger.error(`Failed to expose API: ${exposeResult.error}`);
-      return;
-    }
-    const settingsRegistrarResult = initContainerResult.value.resolveWithError(
-      moduleSettingsRegistrarToken
-    );
-    if (!settingsRegistrarResult.ok) {
-      logger.error(
-        `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
-      );
-      return;
-    }
-    settingsRegistrarResult.value.registerAll();
-    const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
-    if (settingsResult.ok) {
-      const settings = settingsResult.value;
-      const logLevelResult = settings.get(
-        MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
-        LOG_LEVEL_SCHEMA
-      );
-      if (logLevelResult.ok && logger.setMinLevel) {
-        logger.setMinLevel(logLevelResult.value);
-        logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+      const apiInitializerResult = initContainerResult.value.resolveWithError(moduleApiInitializerToken);
+      if (!apiInitializerResult.ok) {
+        logger.error(
+          `Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`
+        );
+        return;
       }
-    }
-    const eventRegistrarResult = initContainerResult.value.resolveWithError(moduleEventRegistrarToken);
-    if (!eventRegistrarResult.ok) {
-      logger.error(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
+      const exposeResult = apiInitializerResult.value.expose(initContainerResult.value);
+      if (!exposeResult.ok) {
+        logger.error(`Failed to expose API: ${exposeResult.error}`);
+        return;
+      }
+      const settingsRegistrarResult = initContainerResult.value.resolveWithError(
+        moduleSettingsRegistrarToken
+      );
+      if (!settingsRegistrarResult.ok) {
+        logger.error(
+          `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
+        );
+        return;
+      }
+      settingsRegistrarResult.value.registerAll();
+      const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
+      if (settingsResult.ok) {
+        const settings = settingsResult.value;
+        const logLevelResult = settings.get(
+          MODULE_CONSTANTS.MODULE.ID,
+          MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+          LOG_LEVEL_SCHEMA
+        );
+        if (logLevelResult.ok && logger.setMinLevel) {
+          logger.setMinLevel(logLevelResult.value);
+          logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+        }
+      }
+      const eventRegistrarResult = initContainerResult.value.resolveWithError(moduleEventRegistrarToken);
+      if (!eventRegistrarResult.ok) {
+        logger.error(
+          `Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`
+        );
+        return;
+      }
+      const eventRegistrationResult = eventRegistrarResult.value.registerAll();
+      if (!eventRegistrationResult.ok) {
+        logger.error("Failed to register one or more event listeners", {
+          errors: eventRegistrationResult.error.map((e) => e.message)
+        });
+        return;
+      }
+      logger.info("init-phase completed");
+    });
+    if (!initRegistrationResult.ok) {
+      logger.error(`Failed to register init hook: ${initRegistrationResult.error.message}`);
       return;
     }
-    const eventRegistrationResult = eventRegistrarResult.value.registerAll();
-    if (!eventRegistrationResult.ok) {
-      logger.error("Failed to register one or more event listeners", {
-        errors: eventRegistrationResult.error.map((e) => e.message)
-      });
+    const readyRegistrationResult = foundryHooksPort.registerListener("ready", () => {
+      logger.info("ready-phase");
+      logger.info("ready-phase completed");
+    });
+    if (!readyRegistrationResult.ok) {
+      logger.error(`Failed to register ready hook: ${readyRegistrationResult.error.message}`);
       return;
     }
-    logger.info("init-phase completed");
-  });
-  Hooks.on("ready", () => {
-    logger.info("ready-phase");
-    logger.info("ready-phase completed");
-  });
+  } else {
+    logger.error("FoundryHooksPort does not implement PlatformEventPort interface");
+    return;
+  }
 }
 __name(initializeFoundryModule, "initializeFoundryModule");
 const root = new CompositionRoot();

@@ -12,6 +12,34 @@
 
 ### Upgrade-Hinweise
 
+## [0.29.5] - 2025-11-23
+### Hinzugefügt
+- **PlatformEventPort-Implementierung in FoundryHooksPort**: `FoundryHooksPort` implementiert jetzt `PlatformEventPort<unknown>` mit `registerListener()` und `unregisterListener()` Methoden für platform-agnostische Event-Registrierung ([Details](docs/architecture/event-system-hierarchy.md))
+- **Hook-Name-Tracking**: `FoundryHooksPort` trackt jetzt Registration-IDs zu Hook-Namen für `unregisterListener()` Unterstützung
+
+### Geändert
+- **Event-System-Hierarchie**: Vollständige Umsetzung der Event-System-Hierarchie gemäß Dokumentation ([Details](docs/architecture/event-system-hierarchy.md))
+- `FoundryHooksPort` implementiert jetzt `PlatformEventPort<unknown>` zusätzlich zu `FoundryHooks`
+- `FoundryJournalEventAdapter` nutzt jetzt `FoundryHooksPort` statt direkt `FoundryHooks` Interface
+- `init-solid.ts` nutzt jetzt `PlatformEventPort.registerListener()` statt direkter `Hooks.on()` Aufrufe
+- Dependency Chain: Application → PlatformEventPort → FoundryHooksPort → FoundryV13HooksPort → Hooks API
+- **Code-Qualität**: Entfernung aller `v8 ignore` Kommentare aus Produktionscode durch vollständige Test-Abdeckung
+- Alle Code-Pfade in `foundry-journal-event-adapter.ts` sind jetzt durch Tests abgedeckt (100% Coverage)
+- Redundante Type-Guards entfernt, die nicht testbare else-Branches erzeugten
+- Zusätzliche Tests für Edge-Cases hinzugefügt (null/undefined Events, non-array Events, etc.)
+- **Type-Safety**: Verbesserte Type-Safety durch Entfernung von Type-Assertions
+- Type-Assertions durch explizite Type-Guards und Runtime-Safe-Cast-Funktionen ersetzt
+- 100% Type-Coverage erreicht ohne Type-Assertions
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.29.4] - 2025-11-23
 ### Hinzugefügt
 - Keine Einträge

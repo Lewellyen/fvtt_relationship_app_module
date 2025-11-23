@@ -13,11 +13,12 @@ import type {
   EventRegistrationId,
   PlatformEventError,
 } from "@/domain/ports/events/platform-event-port.interface";
-import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
+import type { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 import { foundryHooksToken } from "@/infrastructure/shared/tokens";
 import {
   getFirstElementIfArray,
-  castToFoundryHookCallback,
+  castToRecord,
+  normalizeToRecord,
 } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import { tryCatch } from "@/infrastructure/shared/utils/result";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
@@ -49,10 +50,11 @@ declare global {
  * Foundry-specific implementation of PlatformJournalEventPort.
  *
  * Maps Foundry's Hook system to platform-agnostic journal events.
+ * Uses FoundryHooksPort which implements PlatformEventPort for platform-agnostic event handling.
  *
  * @example
  * ```typescript
- * const adapter = new FoundryJournalEventAdapter(foundryHooks);
+ * const adapter = new FoundryJournalEventAdapter(foundryHooksPort);
  *
  * adapter.onJournalCreated((event) => {
  *   console.log(`Journal created: ${event.journalId}`);
@@ -65,7 +67,7 @@ export class FoundryJournalEventAdapter implements PlatformJournalEventPort {
   private libWrapperRegistered = false;
   private contextMenuCallbacks: Array<(event: JournalContextMenuEvent) => void> = [];
 
-  constructor(private readonly foundryHooks: FoundryHooks) {}
+  constructor(private readonly foundryHooksPort: FoundryHooksPort) {}
 
   // ===== Specialized Journal Methods =====
 
@@ -317,8 +319,33 @@ export class FoundryJournalEventAdapter implements PlatformJournalEventPort {
   ): Result<EventRegistrationId, PlatformEventError> {
     // Fallback für generische registerListener
     // In der Praxis sollten die spezialisierten Methoden genutzt werden
-    // The callback signature matches FoundryHookCallback but TypeScript can't infer this
-    return this.registerFoundryHook(eventType, castToFoundryHookCallback(callback));
+    // Use registerFoundryHook to ensure proper cleanup tracking
+    // Wrap callback to match Foundry hook signature while preserving type safety
+    const foundryCallback = (...args: unknown[]): void => {
+      // Foundry hooks pass multiple arguments, but we expect a single JournalEvent
+      // For generic registerListener, we pass the first argument as the event
+      // Type guard: check if first argument is a valid JournalEvent
+      if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
+        // Type guard: validate that the object has journalId or timestamp property (JournalEvent requirement)
+        const candidate = args[0];
+        // Type guard: ensure candidate is an object and has required JournalEvent properties
+        // Use runtime-safe cast instead of type assertion
+        if (
+          typeof candidate === "object" &&
+          candidate !== null &&
+          ("journalId" in candidate || "timestamp" in candidate)
+        ) {
+          const eventRecord = castToRecord(candidate);
+          const event: JournalEvent = {
+            journalId: typeof eventRecord.journalId === "string" ? eventRecord.journalId : "",
+            timestamp:
+              typeof eventRecord.timestamp === "number" ? eventRecord.timestamp : Date.now(),
+          };
+          callback(event);
+        }
+      }
+    };
+    return this.registerFoundryHook(eventType, foundryCallback);
   }
 
   unregisterListener(registrationId: EventRegistrationId): Result<void, PlatformEventError> {
@@ -357,25 +384,51 @@ export class FoundryJournalEventAdapter implements PlatformJournalEventPort {
     hookName: string,
     callback: (...args: unknown[]) => void
   ): Result<EventRegistrationId, PlatformEventError> {
-    const result = this.foundryHooks.on(hookName, callback);
+    // Use PlatformEventPort.registerListener() instead of FoundryHooks.on()
+    // Wrap callback to match PlatformEventPort signature (single event parameter)
+    // The event parameter contains the original Foundry hook arguments as an array
+    const platformCallback = (event: unknown): void => {
+      // Foundry hooks pass multiple arguments, but PlatformEventPort expects single event
+      // We pass the event as an array to preserve the original Foundry hook signature
+      // Type guard: check if event is an array
+      // Use explicit type guard function to avoid type assertion
+      function isArrayOfUnknown(value: unknown): value is unknown[] {
+        return Array.isArray(value);
+      }
+      if (isArrayOfUnknown(event)) {
+        // Type guard: ensure all array elements are valid before spreading
+        // Use type predicate to narrow the type
+        function isValidArg(arg: unknown): arg is unknown {
+          return arg !== null && arg !== undefined;
+        }
+        const validArgs: unknown[] = event.filter(isValidArg);
+        if (validArgs.length > 0) {
+          callback(...validArgs);
+        }
+      } else {
+        // Fallback: if event is not an array, pass it as single argument
+        // This path is for compatibility with non-array events, which should be rare
+        // Type guard: ensure event is not null/undefined before passing
+        // Use type narrowing function to avoid type assertion
+        function isNotNullOrUndefined(value: unknown): value is NonNullable<unknown> {
+          return value !== null && value !== undefined;
+        }
+        if (isNotNullOrUndefined(event)) {
+          callback(event);
+        }
+      }
+    };
+    const result = this.foundryHooksPort.registerListener(hookName, platformCallback);
 
     if (!result.ok) {
-      return {
-        ok: false,
-        error: {
-          code: "EVENT_REGISTRATION_FAILED",
-          message: `Failed to register Foundry hook "${hookName}": ${result.error.message}`,
-          details: result.error,
-        },
-      };
+      return result;
     }
 
-    const foundryHookId = result.value;
-    const registrationId = String(this.nextId++);
+    const registrationId = result.value;
 
-    // Store cleanup function
+    // Store cleanup function using PlatformEventPort.unregisterListener()
     this.registrations.set(registrationId, () => {
-      this.foundryHooks.off(hookName, foundryHookId);
+      this.foundryHooksPort.unregisterListener(registrationId);
     });
 
     return { ok: true, value: registrationId };
@@ -384,7 +437,7 @@ export class FoundryJournalEventAdapter implements PlatformJournalEventPort {
   private extractId(foundryEntry: unknown): string {
     // Foundry entries always have an id property
     if (typeof foundryEntry === "object" && foundryEntry !== null && "id" in foundryEntry) {
-      const entry = foundryEntry as Record<string, unknown>;
+      const entry = castToRecord(foundryEntry);
       if (typeof entry.id === "string") {
         return entry.id;
       }
@@ -396,22 +449,16 @@ export class FoundryJournalEventAdapter implements PlatformJournalEventPort {
     if (!foundryChanges || typeof foundryChanges !== "object") {
       return {};
     }
-    // TypeScript can't narrow object to Record without assertion, but we've validated it's an object
-    const changes = Object.assign({} as Record<string, unknown>, foundryChanges) as Record<
-      string,
-      unknown
-    >;
+    // Use runtime-safe cast instead of type assertion
+    const changes = normalizeToRecord(foundryChanges);
     const result: JournalChanges = { ...changes };
     if (
       changes.flags !== undefined &&
       typeof changes.flags === "object" &&
       changes.flags !== null
     ) {
-      // Copy validated object into result.flags
-      result.flags = Object.assign({} as Record<string, unknown>, changes.flags) as Record<
-        string,
-        unknown
-      >;
+      // Copy validated object into result.flags using runtime-safe cast
+      result.flags = normalizeToRecord(changes.flags);
     }
     if (changes.name !== undefined && typeof changes.name === "string") {
       result.name = changes.name;
@@ -432,7 +479,7 @@ export class FoundryJournalEventAdapter implements PlatformJournalEventPort {
 export class DIFoundryJournalEventAdapter extends FoundryJournalEventAdapter {
   static dependencies = [foundryHooksToken] as const;
 
-  constructor(hooks: FoundryHooks) {
-    super(hooks);
+  constructor(foundryHooksPort: FoundryHooksPort) {
+    super(foundryHooksPort);
   }
 }

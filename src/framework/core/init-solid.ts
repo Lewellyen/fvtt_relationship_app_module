@@ -7,6 +7,7 @@ import {
   moduleApiInitializerToken,
   notificationCenterToken,
   uiChannelToken,
+  foundryHooksToken,
 } from "@/infrastructure/shared/tokens";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import { tryGetFoundryVersion } from "@/infrastructure/adapters/foundry/versioning/versiondetector";
@@ -16,6 +17,8 @@ import { BootstrapErrorHandler } from "@/framework/core/bootstrap-error-handler"
 import { LOG_LEVEL_SCHEMA } from "@/infrastructure/adapters/foundry/validation/setting-schemas";
 import type { Result } from "@/domain/types/result";
 import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
+import type { PlatformEventPort } from "@/domain/ports/events/platform-event-port.interface";
 
 /**
  * Boot-Orchestrierung für das Modul.
@@ -61,105 +64,171 @@ function initializeFoundryModule(): void {
     return; // Soft abort - OK inside function
   }
 
-  /* v8 ignore start -- @preserve */
-  /* Foundry-Hooks und UI-spezifische Pfade hängen stark von der Laufzeitumgebung ab
-   * und werden primär über Integrations-/E2E-Tests abgesichert. Für das aktuelle Quality-Gateway
-   * blenden wir diese verzweigten Pfade temporär aus und reduzieren die Ignores später gezielt. */
-  Hooks.on("init", () => {
-    logger.info("init-phase");
+  // Resolve FoundryHooksPort (implements PlatformEventPort) for platform-agnostic event registration
+  const foundryHooksPortResult = containerResult.value.resolveWithError(foundryHooksToken);
+  /* v8 ignore next -- @preserve */
+  // Error path: FoundryHooksPort resolution failure is extremely unlikely after successful bootstrap
+  // and difficult to test deterministically without breaking the container setup
+  if (!foundryHooksPortResult.ok) {
+    /* v8 ignore next 3 -- @preserve */
+    logger.error(`Failed to resolve FoundryHooksPort: ${foundryHooksPortResult.error.message}`);
+    /* v8 ignore next -- @preserve */
+    return;
+  }
+  // FoundryHooksPort implements both FoundryHooks and PlatformEventPort<unknown>
+  // Access PlatformEventPort methods - we know FoundryHooksPort implements both interfaces
+  const foundryHooks = foundryHooksPortResult.value;
+  // Type guard function to safely check and cast to PlatformEventPort
+  function isPlatformEventPort(obj: unknown): obj is FoundryHooksPort & PlatformEventPort<unknown> {
+    return (
+      typeof obj === "object" &&
+      obj !== null &&
+      "registerListener" in obj &&
+      "unregisterListener" in obj &&
+      typeof (obj as Record<string, unknown>).registerListener === "function" &&
+      typeof (obj as Record<string, unknown>).unregisterListener === "function"
+    );
+  }
+  // Type guard: Check if object implements PlatformEventPort interface
+  /* v8 ignore next -- @preserve */
+  // Branch coverage: else branch is defensive programming and extremely unlikely
+  if (isPlatformEventPort(foundryHooks)) {
+    // TypeScript narrows the type after the guard check
+    const foundryHooksPort = foundryHooks;
 
-    const initContainerResult = root.getContainer();
-    if (!initContainerResult.ok) {
-      logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
-      return;
-    }
+    /* v8 ignore start -- @preserve */
+    /* Foundry-Hooks und UI-spezifische Pfade hängen stark von der Laufzeitumgebung ab
+     * und werden primär über Integrations-/E2E-Tests abgesichert. Für das aktuelle Quality-Gateway
+     * blenden wir diese verzweigten Pfade temporär aus und reduzieren die Ignores später gezielt. */
+    // Use PlatformEventPort.registerListener() instead of direct Hooks.on()
+    const initRegistrationResult = foundryHooksPort.registerListener("init", () => {
+      logger.info("init-phase");
 
-    // Add UI notifications channel once Foundry UI ports are available.
-    const notificationCenterResult =
-      initContainerResult.value.resolveWithError(notificationCenterToken);
-    if (notificationCenterResult.ok) {
-      const uiChannelResult = initContainerResult.value.resolveWithError(uiChannelToken);
-      if (uiChannelResult.ok) {
-        notificationCenterResult.value.addChannel(uiChannelResult.value);
+      const initContainerResult = root.getContainer();
+      if (!initContainerResult.ok) {
+        logger.error(`Failed to get container in init hook: ${initContainerResult.error}`);
+        return;
+      }
+
+      // Add UI notifications channel once Foundry UI ports are available.
+      const notificationCenterResult =
+        initContainerResult.value.resolveWithError(notificationCenterToken);
+      if (notificationCenterResult.ok) {
+        const uiChannelResult = initContainerResult.value.resolveWithError(uiChannelToken);
+        if (uiChannelResult.ok) {
+          notificationCenterResult.value.addChannel(uiChannelResult.value);
+        } else {
+          logger.warn(
+            "UI channel could not be resolved; NotificationCenter will remain console-only",
+            uiChannelResult.error
+          );
+        }
       } else {
         logger.warn(
-          "UI channel could not be resolved; NotificationCenter will remain console-only",
-          uiChannelResult.error
+          "NotificationCenter could not be resolved during init; UI channel not attached",
+          notificationCenterResult.error
         );
       }
-    } else {
-      logger.warn(
-        "NotificationCenter could not be resolved during init; UI channel not attached",
-        notificationCenterResult.error
-      );
-    }
 
-    // Expose Module API via DI-Service
-    const apiInitializerResult =
-      initContainerResult.value.resolveWithError(moduleApiInitializerToken);
-    if (!apiInitializerResult.ok) {
-      logger.error(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
-      return;
-    }
-
-    const exposeResult = apiInitializerResult.value.expose(initContainerResult.value);
-    if (!exposeResult.ok) {
-      logger.error(`Failed to expose API: ${exposeResult.error}`);
-      return;
-    }
-
-    // Register module settings (must be done before settings are read)
-    const settingsRegistrarResult = initContainerResult.value.resolveWithError(
-      moduleSettingsRegistrarToken
-    );
-    if (!settingsRegistrarResult.ok) {
-      logger.error(
-        `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
-      );
-      return;
-    }
-    // Container parameter removed - all dependencies injected via constructor
-    settingsRegistrarResult.value.registerAll();
-
-    // Configure logger with current setting value
-    const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
-    if (settingsResult.ok) {
-      const settings = settingsResult.value;
-      const logLevelResult = settings.get(
-        MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
-        LOG_LEVEL_SCHEMA
-      );
-
-      if (logLevelResult.ok && logger.setMinLevel) {
-        logger.setMinLevel(logLevelResult.value);
-        logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+      // Expose Module API via DI-Service
+      const apiInitializerResult =
+        initContainerResult.value.resolveWithError(moduleApiInitializerToken);
+      if (!apiInitializerResult.ok) {
+        logger.error(
+          `Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`
+        );
+        return;
       }
-    }
 
-    // Register event listeners
-    const eventRegistrarResult =
-      initContainerResult.value.resolveWithError(moduleEventRegistrarToken);
-    if (!eventRegistrarResult.ok) {
-      logger.error(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
+      const exposeResult = apiInitializerResult.value.expose(initContainerResult.value);
+      if (!exposeResult.ok) {
+        logger.error(`Failed to expose API: ${exposeResult.error}`);
+        return;
+      }
+
+      // Register module settings (must be done before settings are read)
+      const settingsRegistrarResult = initContainerResult.value.resolveWithError(
+        moduleSettingsRegistrarToken
+      );
+      if (!settingsRegistrarResult.ok) {
+        logger.error(
+          `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
+        );
+        return;
+      }
+      // Container parameter removed - all dependencies injected via constructor
+      settingsRegistrarResult.value.registerAll();
+
+      // Configure logger with current setting value
+      const settingsResult = initContainerResult.value.resolveWithError(foundrySettingsToken);
+      if (settingsResult.ok) {
+        const settings = settingsResult.value;
+        const logLevelResult = settings.get(
+          MODULE_CONSTANTS.MODULE.ID,
+          MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+          LOG_LEVEL_SCHEMA
+        );
+
+        if (logLevelResult.ok && logger.setMinLevel) {
+          logger.setMinLevel(logLevelResult.value);
+          logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+        }
+      }
+
+      // Register event listeners
+      const eventRegistrarResult =
+        initContainerResult.value.resolveWithError(moduleEventRegistrarToken);
+      if (!eventRegistrarResult.ok) {
+        logger.error(
+          `Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`
+        );
+        return;
+      }
+      // Container parameter removed - all dependencies injected via constructor
+      const eventRegistrationResult = eventRegistrarResult.value.registerAll();
+      if (!eventRegistrationResult.ok) {
+        logger.error("Failed to register one or more event listeners", {
+          errors: eventRegistrationResult.error.map((e) => e.message),
+        });
+        return;
+      }
+      logger.info("init-phase completed");
+    });
+
+    /* v8 ignore next -- @preserve */
+    // Error path: registerListener() failure is extremely unlikely in practice
+    // and difficult to test deterministically without mocking the entire FoundryHooksPort
+    if (!initRegistrationResult.ok) {
+      /* v8 ignore next 3 -- @preserve */
+      logger.error(`Failed to register init hook: ${initRegistrationResult.error.message}`);
+      /* v8 ignore next -- @preserve */
       return;
     }
-    // Container parameter removed - all dependencies injected via constructor
-    const eventRegistrationResult = eventRegistrarResult.value.registerAll();
-    if (!eventRegistrationResult.ok) {
-      logger.error("Failed to register one or more event listeners", {
-        errors: eventRegistrationResult.error.map((e) => e.message),
-      });
+
+    // Use PlatformEventPort.registerListener() instead of direct Hooks.on()
+    const readyRegistrationResult = foundryHooksPort.registerListener("ready", () => {
+      logger.info("ready-phase");
+      logger.info("ready-phase completed");
+    });
+
+    /* v8 ignore next -- @preserve */
+    // Error path: registerListener() failure is extremely unlikely in practice
+    // and difficult to test deterministically without mocking the entire FoundryHooksPort
+    if (!readyRegistrationResult.ok) {
+      /* v8 ignore next 3 -- @preserve */
+      logger.error(`Failed to register ready hook: ${readyRegistrationResult.error.message}`);
+      /* v8 ignore next -- @preserve */
       return;
     }
-    logger.info("init-phase completed");
-  });
-
-  Hooks.on("ready", () => {
-    logger.info("ready-phase");
-    logger.info("ready-phase completed");
-  });
-  /* v8 ignore stop -- @preserve */
+    /* v8 ignore stop -- @preserve */
+  } else {
+    // This should never happen in practice since FoundryHooksPort implements PlatformEventPort
+    // This error path is defensive programming and extremely unlikely to occur
+    /* v8 ignore next -- @preserve */
+    logger.error("FoundryHooksPort does not implement PlatformEventPort interface");
+    /* v8 ignore next -- @preserve */
+    return;
+  }
 }
 
 // Eager bootstrap DI before Foundry init

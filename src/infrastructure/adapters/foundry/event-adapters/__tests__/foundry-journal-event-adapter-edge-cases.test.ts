@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FoundryJournalEventAdapter } from "../foundry-journal-event-adapter";
-import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
+import type { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 
 describe("FoundryJournalEventAdapter - Edge Cases", () => {
-  let mockFoundryHooks: FoundryHooks;
+  let mockFoundryHooks: FoundryHooksPort;
   let mockLibWrapper: {
     register: ReturnType<typeof vi.fn>;
     unregister: ReturnType<typeof vi.fn>;
@@ -18,7 +18,9 @@ describe("FoundryJournalEventAdapter - Edge Cases", () => {
       once: vi.fn().mockReturnValue({ ok: true, value: 124 }),
       off: vi.fn().mockReturnValue({ ok: true, value: undefined }),
       dispose: vi.fn(),
-    };
+      registerListener: vi.fn().mockReturnValue({ ok: true, value: 123 }),
+      unregisterListener: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+    } as unknown as FoundryHooksPort;
 
     // Mock libWrapper
     mockLibWrapper = {
