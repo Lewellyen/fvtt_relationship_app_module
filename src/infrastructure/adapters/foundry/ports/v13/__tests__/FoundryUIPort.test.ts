@@ -332,6 +332,35 @@ describe("FoundryUIPortV13", () => {
       document.body.removeChild(journalDiv);
     });
 
+    it("should use fallback to game.journal.directory.render() when journalApp.render() is not available", () => {
+      const journalDiv = document.createElement("div");
+      journalDiv.id = "journal";
+      document.body.appendChild(journalDiv);
+
+      const mockDirectoryRender = vi.fn();
+      vi.stubGlobal("ui", {
+        sidebar: {
+          tabs: {
+            journal: {}, // No render method
+          },
+        },
+      });
+      vi.stubGlobal("game", {
+        journal: {
+          directory: {
+            render: mockDirectoryRender,
+          },
+        },
+      });
+
+      const result = port.rerenderJournalDirectory();
+      expectResultOk(result);
+      expect(result.value).toBe(true);
+      expect(mockDirectoryRender).toHaveBeenCalled();
+
+      document.body.removeChild(journalDiv);
+    });
+
     it("should return error when port is disposed", () => {
       port.dispose();
       const result = port.rerenderJournalDirectory();

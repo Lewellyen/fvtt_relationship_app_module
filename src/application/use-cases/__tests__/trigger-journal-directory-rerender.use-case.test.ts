@@ -3,6 +3,7 @@ import { TriggerJournalDirectoryReRenderUseCase } from "../trigger-journal-direc
 import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
 describe("TriggerJournalDirectoryReRenderUseCase", () => {
   let mockJournalEvents: JournalEventPort;
@@ -54,7 +55,13 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
     const callback = vi.mocked(mockJournalEvents.onJournalUpdated).mock.calls[0]![0];
     callback({
       journalId: "journal-123",
-      changes: { flags: { hidden: true } },
+      changes: {
+        flags: {
+          [MODULE_CONSTANTS.MODULE.ID]: {
+            [MODULE_CONSTANTS.FLAGS.HIDDEN]: true,
+          },
+        },
+      },
       timestamp: Date.now(),
     });
 
@@ -90,7 +97,13 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
     const callback = vi.mocked(mockJournalEvents.onJournalUpdated).mock.calls[0]![0];
     callback({
       journalId: "journal-789",
-      changes: { flags: { hidden: false } },
+      changes: {
+        flags: {
+          [MODULE_CONSTANTS.MODULE.ID]: {
+            [MODULE_CONSTANTS.FLAGS.HIDDEN]: false,
+          },
+        },
+      },
       timestamp: Date.now(),
     });
 
@@ -109,7 +122,13 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
     const callback = vi.mocked(mockJournalEvents.onJournalUpdated).mock.calls[0]![0];
     callback({
       journalId: "journal-999",
-      changes: { flags: { hidden: true } },
+      changes: {
+        flags: {
+          [MODULE_CONSTANTS.MODULE.ID]: {
+            [MODULE_CONSTANTS.FLAGS.HIDDEN]: true,
+          },
+        },
+      },
       timestamp: Date.now(),
     });
 

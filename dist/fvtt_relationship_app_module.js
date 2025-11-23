@@ -11209,11 +11209,16 @@ const _FoundryUIPortV13 = class _FoundryUIPortV13 {
       }
       const sidebar = ui.sidebar;
       const journalApp = sidebar.tabs?.journal;
+      let rendered = false;
       if (journalApp && typeof journalApp.render === "function") {
         journalApp.render(false);
-        return ok(true);
+        rendered = true;
       }
-      return ok(false);
+      if (typeof game !== "undefined" && game.journal?.directory?.render) {
+        game.journal.directory.render();
+        rendered = true;
+      }
+      return ok(rendered);
     } catch (error) {
       return err(
         createFoundryError("OPERATION_FAILED", "Failed to re-render journal directory", {}, error)
@@ -14201,24 +14206,22 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
       const callbacksRef = this.contextMenuCallbacks;
       const result = tryCatch(
         () => {
-          const wrapperFn = /* @__PURE__ */ __name(function(...args2) {
+          const wrapperFn = /* @__PURE__ */ __name(function(wrapped, ...args2) {
             const firstArg = args2[0];
             const target = firstArg instanceof HTMLElement ? firstArg : void 0;
-            const libWrapperInstance2 = globalThis.libWrapper;
-            if (!libWrapperInstance2) {
-              return void 0;
-            }
             if (!target) {
-              return libWrapperInstance2.callOriginal(this, ...args2);
+              return wrapped.call(this, ...args2);
             }
-            if (!this.menuItems) {
-              return libWrapperInstance2.callOriginal(this, ...args2);
+            const menuItemsRaw = this.menuItems;
+            if (!menuItemsRaw) {
+              return wrapped.call(this, ...args2);
             }
+            const menuItems = menuItemsRaw;
             const journalId = target.getAttribute?.("data-entry-id") || target.getAttribute?.("data-document-id");
             if (journalId) {
               const event = {
                 htmlElement: target,
-                options: this.menuItems.map(
+                options: menuItems.map(
                   (item) => ({
                     name: item.name,
                     icon: item.icon,
@@ -14230,8 +14233,24 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
               for (const cb of callbacksRef) {
                 cb(event);
               }
+              const existingNames = new Set(menuItems.map((item) => item.name));
+              for (const newOption of event.options) {
+                if (!existingNames.has(newOption.name)) {
+                  menuItems.push({
+                    name: newOption.name,
+                    icon: newOption.icon,
+                    callback: /* @__PURE__ */ __name(() => {
+                      const result2 = newOption.callback(target);
+                      if (result2 instanceof Promise) {
+                        result2.catch(() => {
+                        });
+                      }
+                    }, "callback")
+                  });
+                }
+              }
             }
-            return libWrapperInstance2.callOriginal(this, ...args2);
+            return wrapped.call(this, ...args2);
           }, "wrapperFn");
           const libWrapperInstance = globalThis.libWrapper;
           if (typeof libWrapperInstance === "undefined") {
@@ -14239,7 +14258,7 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
           }
           libWrapperInstance.register(
             MODULE_CONSTANTS.MODULE.ID,
-            "ContextMenu.prototype.render",
+            "foundry.applications.ux.ContextMenu.implementation.prototype.render",
             wrapperFn,
             "WRAPPER"
           );
@@ -14533,7 +14552,10 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
    */
   register() {
     const result = this.journalEvents.onJournalUpdated((event) => {
-      if (event.changes.flags?.["hidden"] !== void 0) {
+      const moduleId = MODULE_CONSTANTS.MODULE.ID;
+      const flagKey = MODULE_CONSTANTS.FLAGS.HIDDEN;
+      const moduleFlags = event.changes.flags?.[moduleId];
+      if (moduleFlags && typeof moduleFlags === "object" && flagKey in moduleFlags) {
         this.triggerReRender(event.journalId);
       }
     });

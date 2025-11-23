@@ -145,12 +145,22 @@ export class FoundryUIPortV13 implements FoundryUI {
       const sidebar = ui.sidebar;
       const journalApp = sidebar.tabs?.journal;
 
+      let rendered = false;
+
+      // Versuche zuerst journalApp.render(), falls verfügbar
       if (journalApp && typeof journalApp.render === "function") {
         journalApp.render(false);
-        return ok(true);
+        rendered = true;
       }
 
-      return ok(false);
+      // Fallback: Direktes Directory-Render (wie im funktionierenden Script)
+      // Das funktioniert auch, wenn journalApp nicht verfügbar ist (z.B. wenn Context-Menü geöffnet ist)
+      if (typeof game !== "undefined" && game.journal?.directory?.render) {
+        game.journal.directory.render();
+        rendered = true;
+      }
+
+      return ok(rendered);
     } catch (error) {
       return err(
         createFoundryError("OPERATION_FAILED", "Failed to re-render journal directory", {}, error)

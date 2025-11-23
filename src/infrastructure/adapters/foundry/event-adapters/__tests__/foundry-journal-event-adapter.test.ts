@@ -350,7 +350,7 @@ describe("FoundryJournalEventAdapter", () => {
       expect(result.ok).toBe(true);
       expect(mockLibWrapper.register).toHaveBeenCalledWith(
         MODULE_CONSTANTS.MODULE.ID,
-        "ContextMenu.prototype.render",
+        "foundry.applications.ux.ContextMenu.implementation.prototype.render",
         expect.any(Function),
         "WRAPPER"
       );
@@ -363,6 +363,7 @@ describe("FoundryJournalEventAdapter", () => {
 
       // Get the wrapper function registered with libWrapper
       const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
         ...args: unknown[]
       ) => unknown;
 
@@ -374,8 +375,12 @@ describe("FoundryJournalEventAdapter", () => {
         { name: "Existing Option", icon: "<i></i>", callback: vi.fn() },
       ];
 
+      // Mock wrapped function (original function from libWrapper)
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+
       // Call wrapper with context (this = mockContextMenuInstance)
-      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+      // Bei WRAPPER-Typ ist wrapped der erste Parameter
+      wrapperFunction.call(mockContextMenuInstance, mockWrapped, mockElement, {});
 
       expect(callback).toHaveBeenCalledWith({
         htmlElement: mockElement,
@@ -390,6 +395,7 @@ describe("FoundryJournalEventAdapter", () => {
       expect(result.ok).toBe(true);
 
       const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
         ...args: unknown[]
       ) => unknown;
 
@@ -398,7 +404,8 @@ describe("FoundryJournalEventAdapter", () => {
       const mockContextMenuInstance = new mockContextMenuClass();
       mockContextMenuInstance.menuItems = [{ name: "Test", icon: "<i></i>", callback: vi.fn() }];
 
-      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+      wrapperFunction.call(mockContextMenuInstance, mockWrapped, mockElement, {});
 
       expect(callback).toHaveBeenCalledWith({
         htmlElement: mockElement,
@@ -407,12 +414,143 @@ describe("FoundryJournalEventAdapter", () => {
       });
     });
 
+    it("should add new options from callback to menuItems when they don't exist", () => {
+      const mockNonPromiseCallback = vi.fn().mockReturnValue(undefined);
+      const callback = vi.fn((event) => {
+        // Callback fügt neue Optionen hinzu, die noch nicht in menuItems existieren
+        event.options.push({
+          name: "New Option",
+          icon: "<i class='new'></i>",
+          callback: mockNonPromiseCallback,
+        });
+      });
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const mockElement = document.createElement("div");
+      mockElement.setAttribute("data-entry-id", "journal-789");
+      const mockContextMenuInstance = new mockContextMenuClass();
+      mockContextMenuInstance.menuItems = [
+        { name: "Existing Option", icon: "<i></i>", callback: vi.fn() },
+      ];
+
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+      wrapperFunction.call(mockContextMenuInstance, mockWrapped, mockElement, {});
+
+      // Callback sollte aufgerufen worden sein
+      expect(callback).toHaveBeenCalled();
+      // Neue Option sollte zu menuItems hinzugefügt worden sein
+      expect(mockContextMenuInstance.menuItems).toHaveLength(2);
+      expect(mockContextMenuInstance.menuItems[1]?.name).toBe("New Option");
+
+      // Rufe den callback auf, um non-Promise-Handling zu testen (else-Branch)
+      const addedCallback = mockContextMenuInstance.menuItems[1]?.callback;
+      if (addedCallback) {
+        addedCallback();
+        expect(mockNonPromiseCallback).toHaveBeenCalledWith(mockElement);
+      }
+    });
+
+    it("should handle Promise-returning callbacks when adding new options", async () => {
+      const mockPromiseCallback = vi.fn().mockResolvedValue(undefined);
+      const callback = vi.fn((event) => {
+        // Callback fügt neue Optionen hinzu, die noch nicht in menuItems existieren
+        event.options.push({
+          name: "Promise Option",
+          icon: "<i class='promise'></i>",
+          callback: mockPromiseCallback,
+        });
+      });
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const mockElement = document.createElement("div");
+      mockElement.setAttribute("data-entry-id", "journal-999");
+      const mockContextMenuInstance = new mockContextMenuClass();
+      mockContextMenuInstance.menuItems = [
+        { name: "Existing Option", icon: "<i></i>", callback: vi.fn() },
+      ];
+
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+      wrapperFunction.call(mockContextMenuInstance, mockWrapped, mockElement, {});
+
+      // Callback sollte aufgerufen worden sein
+      expect(callback).toHaveBeenCalled();
+      // Neue Option sollte zu menuItems hinzugefügt worden sein
+      expect(mockContextMenuInstance.menuItems).toHaveLength(2);
+      expect(mockContextMenuInstance.menuItems[1]?.name).toBe("Promise Option");
+
+      // Rufe den callback auf, um Promise-Handling zu testen
+      const addedCallback = mockContextMenuInstance.menuItems[1]?.callback;
+      if (addedCallback) {
+        addedCallback();
+        // Warte auf Promise-Resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(mockPromiseCallback).toHaveBeenCalledWith(mockElement);
+      }
+    });
+
+    it("should handle rejected Promise callbacks when adding new options", async () => {
+      const mockRejectedCallback = vi.fn().mockRejectedValue(new Error("Test error"));
+      const callback = vi.fn((event) => {
+        // Callback fügt neue Optionen hinzu, die noch nicht in menuItems existieren
+        event.options.push({
+          name: "Rejected Promise Option",
+          icon: "<i class='rejected'></i>",
+          callback: mockRejectedCallback,
+        });
+      });
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const mockElement = document.createElement("div");
+      mockElement.setAttribute("data-entry-id", "journal-888");
+      const mockContextMenuInstance = new mockContextMenuClass();
+      mockContextMenuInstance.menuItems = [
+        { name: "Existing Option", icon: "<i></i>", callback: vi.fn() },
+      ];
+
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+      wrapperFunction.call(mockContextMenuInstance, mockWrapped, mockElement, {});
+
+      // Callback sollte aufgerufen worden sein
+      expect(callback).toHaveBeenCalled();
+      // Neue Option sollte zu menuItems hinzugefügt worden sein
+      expect(mockContextMenuInstance.menuItems).toHaveLength(2);
+      expect(mockContextMenuInstance.menuItems[1]?.name).toBe("Rejected Promise Option");
+
+      // Rufe den callback auf, um Promise-Rejection-Handling zu testen
+      const addedCallback = mockContextMenuInstance.menuItems[1]?.callback;
+      if (addedCallback) {
+        addedCallback();
+        // Warte auf Promise-Rejection (catch-Handler sollte aufgerufen werden)
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(mockRejectedCallback).toHaveBeenCalledWith(mockElement);
+      }
+    });
+
     it("should not call callback if HTML element is invalid", () => {
       const callback = vi.fn();
       const result = adapter.onJournalContextMenu(callback);
       expect(result.ok).toBe(true);
 
       const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
         ...args: unknown[]
       ) => unknown;
 
@@ -422,7 +560,8 @@ describe("FoundryJournalEventAdapter", () => {
       // Use a valid element without journal ID instead of null
       const mockElement = document.createElement("div");
       // No data-entry-id or data-document-id attribute
-      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+      wrapperFunction.call(mockContextMenuInstance, mockWrapped, mockElement, {});
 
       expect(callback).not.toHaveBeenCalled();
     });
@@ -433,6 +572,7 @@ describe("FoundryJournalEventAdapter", () => {
       expect(result.ok).toBe(true);
 
       const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
         ...args: unknown[]
       ) => unknown;
 
@@ -441,7 +581,8 @@ describe("FoundryJournalEventAdapter", () => {
       const mockContextMenuInstance = new mockContextMenuClass();
       mockContextMenuInstance.menuItems = [];
 
-      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+      wrapperFunction.call(mockContextMenuInstance, mockWrapped, mockElement, {});
 
       expect(callback).not.toHaveBeenCalled();
     });
@@ -452,6 +593,7 @@ describe("FoundryJournalEventAdapter", () => {
       expect(result.ok).toBe(true);
 
       const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
         ...args: unknown[]
       ) => unknown;
 
@@ -463,7 +605,8 @@ describe("FoundryJournalEventAdapter", () => {
         // Note: menuItems should only contain valid items, but test the filtering anyway
       ];
 
-      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+      wrapperFunction.call(mockContextMenuInstance, mockWrapped, mockElement, {});
 
       expect(callback).toHaveBeenCalled();
       const event = callback.mock.calls[0]![0];
@@ -532,6 +675,7 @@ describe("FoundryJournalEventAdapter", () => {
       expect(result.ok).toBe(true);
 
       const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
         ...args: unknown[]
       ) => unknown;
 
@@ -542,11 +686,12 @@ describe("FoundryJournalEventAdapter", () => {
       // @ts-expect-error - Testing undefined menuItems
       mockContextMenuInstance.menuItems = undefined;
 
-      const originalCallSpy = vi.mocked(mockLibWrapper.callOriginal);
-      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+      wrapperFunction.call(mockContextMenuInstance, mockWrapped, mockElement, {});
 
-      // Should call original if menuItems is missing
-      expect(originalCallSpy).toHaveBeenCalledWith(mockContextMenuInstance, mockElement, {});
+      // Should call wrapped (original) if menuItems is missing
+      expect(mockWrapped).toHaveBeenCalledWith(mockElement, {});
+      expect(mockWrapped).toHaveBeenCalledTimes(1);
       // Should not call our callback
       expect(callback).not.toHaveBeenCalled();
     });
@@ -557,34 +702,33 @@ describe("FoundryJournalEventAdapter", () => {
       expect(result.ok).toBe(true);
 
       const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
         ...args: unknown[]
       ) => unknown;
 
       const mockContextMenuInstance = new mockContextMenuClass();
       mockContextMenuInstance.menuItems = [{ name: "Test", icon: "<i></i>", callback: vi.fn() }];
 
-      const originalCallSpy = vi.mocked(mockLibWrapper.callOriginal);
-      // Call with undefined target (line 173)
-      wrapperFunction.call(mockContextMenuInstance, undefined, {});
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+      // Call with undefined target (first arg after wrapped)
+      wrapperFunction.call(mockContextMenuInstance, mockWrapped, undefined, {});
 
-      // Should call original if target is undefined
-      expect(originalCallSpy).toHaveBeenCalledWith(mockContextMenuInstance, undefined, {});
+      // Should call wrapped (original) if target is undefined
+      expect(mockWrapped).toHaveBeenCalledWith(undefined, {});
+      expect(mockWrapped).toHaveBeenCalledTimes(1);
       // Should not call our callback
       expect(callback).not.toHaveBeenCalled();
     });
 
-    it("should handle libWrapper being undefined inside wrapper function", () => {
+    it("should handle wrapper function with wrapped parameter", () => {
       const callback = vi.fn();
       const result = adapter.onJournalContextMenu(callback);
       expect(result.ok).toBe(true);
 
       const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        wrapped: (...args: unknown[]) => unknown,
         ...args: unknown[]
       ) => unknown;
-
-      // Remove libWrapper after registration to test undefined check inside wrapper (line 175-178)
-      // @ts-expect-error - libWrapper is a global that may not exist
-      delete globalThis.libWrapper;
 
       const mockContextMenuInstance = new mockContextMenuClass();
       mockContextMenuInstance.menuItems = [{ name: "Test", icon: "<i></i>", callback: vi.fn() }];
@@ -592,13 +736,20 @@ describe("FoundryJournalEventAdapter", () => {
       const mockElement = document.createElement("div");
       mockElement.setAttribute("data-entry-id", "journal-123");
 
-      // Should return undefined if libWrapper is undefined inside wrapper (line 177)
-      const wrapperResult = wrapperFunction.call(mockContextMenuInstance, mockElement, {});
-      expect(wrapperResult).toBeUndefined();
+      const mockWrapped = vi.fn().mockReturnValue(undefined);
+      // Wrapper function should call wrapped with correct arguments
+      const wrapperResult = wrapperFunction.call(
+        mockContextMenuInstance,
+        mockWrapped,
+        mockElement,
+        {}
+      );
 
-      // Restore libWrapper for other tests
-      // @ts-expect-error - libWrapper is a global that may not exist
-      globalThis.libWrapper = mockLibWrapper;
+      // Should call our callback
+      expect(callback).toHaveBeenCalled();
+      // Should call wrapped at the end
+      expect(mockWrapped).toHaveBeenCalledWith(mockElement, {});
+      expect(wrapperResult).toBeUndefined();
     });
   });
 

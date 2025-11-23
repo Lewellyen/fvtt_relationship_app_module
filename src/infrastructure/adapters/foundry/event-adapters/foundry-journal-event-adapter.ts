@@ -22,6 +22,14 @@ import {
 import { tryCatch } from "@/infrastructure/shared/utils/result";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
+// Type for Foundry ContextMenu instance (used by libWrapper)
+type FoundryContextMenu = {
+  menuItems?: Array<{ name: string; icon: string; callback: () => void }>;
+};
+
+// Type for libWrapper wrapper function signature
+type LibWrapperFunction = (wrapped: (...args: unknown[]) => unknown, ...args: unknown[]) => unknown;
+
 // Declare libWrapper as global (provided by lib-wrapper module in Foundry)
 declare global {
   var libWrapper:
@@ -29,11 +37,10 @@ declare global {
         register: (
           moduleId: string,
           target: string,
-          fn: (...args: unknown[]) => unknown,
+          fn: LibWrapperFunction,
           type: "WRAPPER" | "MIXED" | "OVERRIDE"
         ) => void;
         unregister: (moduleId: string, target: string) => void;
-        callOriginal: (instance: unknown, ...args: unknown[]) => unknown;
       }
     | undefined;
 }
@@ -161,8 +168,11 @@ export class FoundryJournalEventAdapter implements JournalEventPort {
       const result = tryCatch(
         () => {
           // Wrapper function for libWrapper - uses unknown[] for args to match libWrapper signature
+          // Bei WRAPPER-Typ ist wrapped der erste Parameter (die Original-Funktion)
+
           const wrapperFn = function (
-            this: { menuItems?: Array<{ name: string; icon: string; callback: () => void }> },
+            this: FoundryContextMenu,
+            wrapped: (...args: unknown[]) => unknown,
             ...args: unknown[]
           ): unknown {
             // Extract target from args (first argument)
@@ -170,21 +180,18 @@ export class FoundryJournalEventAdapter implements JournalEventPort {
             const target: HTMLElement | undefined =
               firstArg instanceof HTMLElement ? firstArg : undefined;
 
-            // Type-safe libWrapper access
-            const libWrapperInstance = globalThis.libWrapper;
-            if (!libWrapperInstance) {
-              // Fallback if libWrapper is unexpectedly undefined
-              return undefined;
-            }
-
             if (!target) {
-              return libWrapperInstance.callOriginal(this, ...args);
+              return wrapped.call(this, ...args);
             }
 
-            // `this` ist hier das ContextMenu-Objekt
-            if (!this.menuItems) {
-              return libWrapperInstance.callOriginal(this, ...args);
+            // `this` ist hier das ContextMenu-Objekt (libWrapper ruft die Funktion mit dem ContextMenu als this auf)
+            const menuItemsRaw = this.menuItems;
+            if (!menuItemsRaw) {
+              return wrapped.call(this, ...args);
             }
+            // Type guard: menuItems ist jetzt definitiv definiert
+            const menuItems: Array<{ name: string; icon: string; callback: () => void }> =
+              menuItemsRaw;
 
             // Prüfe, ob es ein Journal-Eintrag ist (target zuerst)
             const journalId =
@@ -194,7 +201,7 @@ export class FoundryJournalEventAdapter implements JournalEventPort {
               // Erstelle Event-Objekt (wie im Hook-Pattern)
               const event: JournalContextMenuEvent = {
                 htmlElement: target,
-                options: this.menuItems.map(
+                options: menuItems.map(
                   (item: { name: string; icon: string; callback: () => void }) => ({
                     name: item.name,
                     icon: item.icon,
@@ -205,12 +212,37 @@ export class FoundryJournalEventAdapter implements JournalEventPort {
               };
 
               // Rufe alle registrierten Callbacks auf (via Closure)
+              // Handler können event.options modifizieren (z.B. neue Menü-Einträge hinzufügen)
               for (const cb of callbacksRef) {
                 cb(event);
               }
+
+              // Kopiere die modifizierten options zurück in this.menuItems
+              // Wichtig: Nur neue Einträge hinzufügen, nicht alle ersetzen (um andere Modifikationen zu erhalten)
+              const existingNames = new Set(menuItems.map((item) => item.name));
+              for (const newOption of event.options) {
+                if (!existingNames.has(newOption.name)) {
+                  // Konvertiere ContextMenuOption zu menuItems-Format
+                  menuItems.push({
+                    name: newOption.name,
+                    icon: newOption.icon,
+                    callback: () => {
+                      // ContextMenuOption callback erwartet HTMLElement, aber menuItems callback nicht
+                      // Wir rufen den callback mit dem target-Element auf
+                      const result = newOption.callback(target);
+                      // Handle Promise falls vorhanden
+                      if (result instanceof Promise) {
+                        result.catch(() => {
+                          // Ignore errors
+                        });
+                      }
+                    },
+                  });
+                }
+              }
             }
 
-            return libWrapperInstance.callOriginal(this, ...args);
+            return wrapped.call(this, ...args);
           };
 
           // libWrapper is guaranteed to be available here (checked on line 134)
@@ -221,10 +253,12 @@ export class FoundryJournalEventAdapter implements JournalEventPort {
             throw new Error("libWrapper is not available");
           }
 
+          // libWrapper.register expects a function with specific signature for WRAPPER type
+          // The signature matches LibWrapperFunction which is compatible with libWrapper's expected signature
           libWrapperInstance.register(
             MODULE_CONSTANTS.MODULE.ID,
-            "ContextMenu.prototype.render",
-            wrapperFn,
+            "foundry.applications.ux.ContextMenu.implementation.prototype.render",
+            wrapperFn as LibWrapperFunction,
             "WRAPPER"
           );
           this.libWrapperRegistered = true;
