@@ -12,6 +12,38 @@
 
 ### Upgrade-Hinweise
 
+## [0.29.3] - 2025-11-23
+### Hinzugefügt
+- **v13 Port-Registrierung**: Neue Datei `src/infrastructure/adapters/foundry/ports/v13/port-registration.ts` für version-spezifische Port-Registrierung ([Details](src/infrastructure/adapters/foundry/ports/v13/port-registration.ts))
+- **Version-spezifische Injection Tokens**: Neue Tokens für alle v13 Port-Implementierungen (`foundryGamePortV13Token`, `foundryHooksPortV13Token`, etc.) in `foundry.tokens.ts` ([Details](src/infrastructure/shared/tokens/foundry.tokens.ts))
+
+### Geändert
+- **Schichttrennung Port-Registrierung**: Port-Registrierung von Config-Schicht in v13-Schicht verschoben, um Schichtbruch zu beheben ([Details](src/framework/config/modules/port-infrastructure.config.ts), [Details](src/infrastructure/adapters/foundry/ports/v13/port-registration.ts))
+- Config-Schicht (`port-infrastructure.config.ts`) importiert keine konkreten v13 Port-Klassen mehr
+- v13 Port-Registrierung liegt jetzt in "Concrete Platform Concrete Version" Schicht
+- `registerV13Ports()` Funktion delegiert Registrierung an version-spezifische Schicht
+- Vorbereitet für zukünftige Versionen (v14, v15, etc.) durch modulare Registrierungsfunktionen
+- **Port-Instanziierung über DI statt `new`**: Ports werden jetzt vollständig über den DI-Container instanziiert, was DIP (Dependency Inversion Principle) vollständig einhält ([Details](ARCHITECTURE.md#port-registrierung-schichttrennung))
+- **PortRegistry**: Speichert jetzt `InjectionToken<T>` statt `PortFactory<T>` (Factories entfernt)
+- **PortSelector**: Bekommt `ServiceContainer` als Dependency und resolved Ports über `container.resolveWithError(token)`
+- **Port-Registrierung**: Ports werden im Container registriert (`container.registerClass()`) und Tokens in `PortRegistry` gespeichert
+- **FoundryServiceBase**: Nutzt `getTokens()` und `selectPortFromTokens()` statt `getFactories()` und `selectPortFromFactories()`
+- Alle `new`-Aufrufe außerhalb des Containers für Ports eliminiert
+- Konsistent mit `ContainerHealthCheck`-Pattern
+- **Type-Safety Verbesserungen**: Type-Constraints für `FoundryServiceBase<TPort extends ServiceType>` und `registerPortToRegistry<T extends ServiceType>` hinzugefügt
+- **Test-Coverage auf 100%**: Alle Tests angepasst und Coverage auf 100% Statements, Branches, Functions und Lines erhöht
+- Alle Test-Dateien angepasst: `getFactories()` → `getTokens()`, `selectPortFromFactories()` → `selectPortFromTokens()`
+- PortSelector-Tests erweitert: Catch-Block mit mehreren Tokens und `adapterName`-Parameter abgedeckt
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.29.2] - 2025-11-23
 ### Hinzugefügt
 - Keine Einträge
@@ -63,7 +95,7 @@
 
 ## [0.29.0] - 2025-11-23
 ### Hinzugefügt
-- **Journal Context-Menü via libWrapper**: Context-Menü-Eintrag "Journal ausblenden" über libWrapper statt Hook implementiert ([Details](docs/archive/Context-Menu-Custom-Entry-Implementation.md))
+- **Journal Context-Menü via libWrapper**: Context-Menü-Eintrag "Journal ausblenden" über libWrapper statt Hook implementiert ([Details](docs/refactoring/Context-Menu-Custom-Entry-Implementation.md))
 - **Handler-Pattern für Context-Menü**: Erweiterbares Handler-Pattern für Context-Menü-Items (`JournalContextMenuHandler`, `HideJournalContextMenuHandler`)
 - **lib-wrapper Dependency**: lib-wrapper als Dependency hinzugefügt für sichere Method-Wrapping
 - **RegisterContextMenuUseCase**: Neuer Use-Case als Orchestrator für mehrere Context-Menü-Handler

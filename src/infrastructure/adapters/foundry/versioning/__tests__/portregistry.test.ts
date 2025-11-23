@@ -1,25 +1,26 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-import * as runtimeCasts from "@/infrastructure/adapters/foundry/runtime-casts";
+import type { ServiceType } from "@/infrastructure/shared/tokens";
+import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 
 describe("PortRegistry", () => {
   describe("register", () => {
-    it("should register port factory", () => {
-      const registry = new PortRegistry<string>();
-      const factory = (): string => "port-instance";
+    it("should register port token", () => {
+      const registry = new PortRegistry<ServiceType>();
+      const token = createInjectionToken<ServiceType>("port-instance");
 
-      const result = registry.register(13, factory);
+      const result = registry.register(13, token);
       expectResultOk(result);
     });
 
     it("should reject duplicate version registration", () => {
-      const registry = new PortRegistry<string>();
-      const factory1 = (): string => "port-1";
-      const factory2 = (): string => "port-2";
+      const registry = new PortRegistry<ServiceType>();
+      const token1 = createInjectionToken<ServiceType>("port-1");
+      const token2 = createInjectionToken<ServiceType>("port-2");
 
-      registry.register(13, factory1);
-      const result = registry.register(13, factory2);
+      registry.register(13, token1);
+      const result = registry.register(13, token2);
 
       expectResultErr(result);
       expect(result.error.message).toContain("already registered");
@@ -29,191 +30,68 @@ describe("PortRegistry", () => {
 
   describe("getAvailableVersions", () => {
     it("should return sorted versions", () => {
-      const registry = new PortRegistry<string>();
+      const registry = new PortRegistry<ServiceType>();
 
-      registry.register(15, () => "port-15");
-      registry.register(13, () => "port-13");
-      registry.register(14, () => "port-14");
+      registry.register(15, createInjectionToken<ServiceType>("port-15"));
+      registry.register(13, createInjectionToken<ServiceType>("port-13"));
+      registry.register(14, createInjectionToken<ServiceType>("port-14"));
 
       const versions = registry.getAvailableVersions();
       expect(versions).toEqual([13, 14, 15]);
     });
 
     it("should return empty array when no ports registered", () => {
-      const registry = new PortRegistry<string>();
+      const registry = new PortRegistry<ServiceType>();
       const versions = registry.getAvailableVersions();
       expect(versions).toEqual([]);
     });
   });
 
-  describe("getFactories", () => {
-    it("should return all registered factory functions", () => {
-      const registry = new PortRegistry<string>();
+  describe("getTokens", () => {
+    it("should return all registered injection tokens", () => {
+      const registry = new PortRegistry<ServiceType>();
 
-      registry.register(13, () => "port-13");
-      registry.register(14, () => "port-14");
+      const token13 = createInjectionToken<ServiceType>("port-13");
+      const token14 = createInjectionToken<ServiceType>("port-14");
 
-      const factories = registry.getFactories();
-      expect(factories.size).toBe(2);
+      registry.register(13, token13);
+      registry.register(14, token14);
 
-      // Execute factories to verify they work
-      const port13 = factories.get(13)!();
-      const port14 = factories.get(14)!();
-      expect(port13).toBe("port-13");
-      expect(port14).toBe("port-14");
+      const tokens = registry.getTokens();
+      expect(tokens.size).toBe(2);
+
+      // Verify tokens are stored correctly
+      expect(tokens.get(13)).toBe(token13);
+      expect(tokens.get(14)).toBe(token14);
     });
 
-    it("should return factories that can be called multiple times", () => {
-      const registry = new PortRegistry<{ value: number }>();
-      let callCount = 0;
+    it("should return a copy of the token map", () => {
+      const registry = new PortRegistry<ServiceType>();
+      const token13 = createInjectionToken<ServiceType>("port-13");
 
-      registry.register(13, () => {
-        callCount++;
-        return { value: callCount };
-      });
+      registry.register(13, token13);
 
-      const factories = registry.getFactories();
-      const factory = factories.get(13)!;
+      const tokens1 = registry.getTokens();
+      const tokens2 = registry.getTokens();
 
-      // Call factory multiple times
-      const result1 = factory();
-      const result2 = factory();
-
-      expect(result1.value).toBe(1);
-      expect(result2.value).toBe(2);
-      expect(callCount).toBe(2);
-    });
-  });
-
-  describe("createForVersion", () => {
-    it("should create port for exact version match", () => {
-      const registry = new PortRegistry<string>();
-
-      registry.register(13, () => "port-13");
-      registry.register(14, () => "port-14");
-
-      const result = registry.createForVersion(13);
-      expectResultOk(result);
-      expect(result.value).toBe("port-13");
-    });
-
-    it("should select highest compatible version", () => {
-      const registry = new PortRegistry<string>();
-
-      registry.register(13, () => "port-13");
-      registry.register(14, () => "port-14");
-
-      const result = registry.createForVersion(15);
-      expectResultOk(result);
-      expect(result.value).toBe("port-14");
-    });
-
-    it("should fail when no compatible version", () => {
-      const registry = new PortRegistry<string>();
-
-      registry.register(14, () => "port-14");
-      registry.register(15, () => "port-15");
-
-      const result = registry.createForVersion(13);
-      expectResultErr(result);
-      expect(result.error.message).toContain("No compatible port");
-      expect(result.error.message).toContain("13");
-      expect(result.error.code).toBe("PORT_NOT_FOUND");
-    });
-
-    it("should handle empty registry", () => {
-      const registry = new PortRegistry<string>();
-
-      const result = registry.createForVersion(13);
-      expectResultErr(result);
-      expect(result.error.message).toContain("none");
-      expect(result.error.code).toBe("PORT_NOT_FOUND");
-    });
-
-    it("should handle factory not found in registry (defensive check)", () => {
-      const registry = new PortRegistry<string>();
-
-      // Register a factory for version 13
-      registry.register(13, () => "port-13");
-
-      // Test normal path to ensure functionality works
-      const result = registry.createForVersion(13);
-      expectResultOk(result);
-      expect(result.value).toBe("port-13");
-    });
-
-    it("should return error when getFactoryOrError fails (defensive check)", () => {
-      const registry = new PortRegistry<string>();
-      registry.register(13, () => "port-13");
-
-      // Mock getFactoryOrError to return an error to test the defensive check
-      vi.spyOn(runtimeCasts, "getFactoryOrError").mockReturnValue({
-        ok: false,
-        error: {
-          code: "PORT_NOT_FOUND",
-          message: "Factory for version 13 not found in registry",
-          details: { version: 13 },
-        },
-      } as never);
-
-      const result = registry.createForVersion(13);
-      expectResultErr(result);
-      expect(result.error.code).toBe("PORT_NOT_FOUND");
-      expect(result.error.message).toContain("Factory for version 13 not found");
-
-      // Restore original implementation
-      vi.spyOn(runtimeCasts, "getFactoryOrError").mockRestore();
-    });
-
-    it("should return error when ensureNonEmptyArray fails (empty compatible versions)", () => {
-      const registry = new PortRegistry<string>();
-      // Register ports that won't match the requested version
-      registry.register(15, () => "port-15");
-      registry.register(16, () => "port-16");
-
-      // Request version 13, which is lower than all registered versions
-      // This should result in an empty compatibleVersions array
-      const result = registry.createForVersion(13);
-      expectResultErr(result);
-      expect(result.error.code).toBe("PORT_NOT_FOUND");
-      expect(result.error.message).toContain("No compatible port");
-    });
-
-    it("should return error when ensureNonEmptyArray fails (defensive check)", () => {
-      const registry = new PortRegistry<string>();
-      registry.register(13, () => "port-13");
-
-      // Mock ensureNonEmptyArray to return an error even with non-empty array
-      // This tests the defensive check at line 97-98
-      vi.spyOn(runtimeCasts, "ensureNonEmptyArray").mockReturnValue({
-        ok: false,
-        error: {
-          code: "VALIDATION_FAILED",
-          message: "Array must not be empty",
-          details: { arrayLength: 0 },
-        },
-      } as never);
-
-      const result = registry.createForVersion(13);
-      expectResultErr(result);
-      expect(result.error.code).toBe("VALIDATION_FAILED");
-
-      // Restore original implementation
-      vi.spyOn(runtimeCasts, "ensureNonEmptyArray").mockRestore();
+      // Should be different Map instances
+      expect(tokens1).not.toBe(tokens2);
+      // But should contain the same tokens
+      expect(tokens1.get(13)).toBe(tokens2.get(13));
     });
   });
 
   describe("hasVersion", () => {
     it("should return true for registered version", () => {
-      const registry = new PortRegistry<string>();
-      registry.register(13, () => "port-13");
+      const registry = new PortRegistry<ServiceType>();
+      registry.register(13, createInjectionToken<ServiceType>("port-13"));
 
       expect(registry.hasVersion(13)).toBe(true);
     });
 
     it("should return false for unregistered version", () => {
-      const registry = new PortRegistry<string>();
-      registry.register(13, () => "port-13");
+      const registry = new PortRegistry<ServiceType>();
+      registry.register(13, createInjectionToken<ServiceType>("port-13"));
 
       expect(registry.hasVersion(14)).toBe(false);
     });
@@ -221,17 +99,17 @@ describe("PortRegistry", () => {
 
   describe("getHighestVersion", () => {
     it("should return highest registered version", () => {
-      const registry = new PortRegistry<string>();
+      const registry = new PortRegistry<ServiceType>();
 
-      registry.register(13, () => "port-13");
-      registry.register(15, () => "port-15");
-      registry.register(14, () => "port-14");
+      registry.register(13, createInjectionToken<ServiceType>("port-13"));
+      registry.register(15, createInjectionToken<ServiceType>("port-15"));
+      registry.register(14, createInjectionToken<ServiceType>("port-14"));
 
       expect(registry.getHighestVersion()).toBe(15);
     });
 
     it("should return undefined when no ports registered", () => {
-      const registry = new PortRegistry<string>();
+      const registry = new PortRegistry<ServiceType>();
       expect(registry.getHighestVersion()).toBeUndefined();
     });
   });

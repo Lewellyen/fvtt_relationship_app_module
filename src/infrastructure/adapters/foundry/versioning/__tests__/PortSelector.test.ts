@@ -10,6 +10,10 @@ import { ok, err } from "@/infrastructure/shared/utils/result";
 import type { PortSelectionEvent } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
+import type { ServiceType } from "@/infrastructure/shared/tokens";
+import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -21,6 +25,13 @@ describe("PortSelector", () => {
   let capturedEvents: PortSelectionEvent[];
   let mockEventEmitter: PortSelectionEventEmitter;
   let mockObservability: ObservabilityRegistry;
+  let mockContainer: ServiceContainer;
+
+  // Create test tokens (using ServiceType for type safety)
+  const token13 = createInjectionToken<ServiceType>("port-v13") as any;
+  const token14 = createInjectionToken<ServiceType>("port-v14") as any;
+  const token15 = createInjectionToken<ServiceType>("port-v15") as any;
+  const token16 = createInjectionToken<ServiceType>("port-v16") as any;
 
   beforeEach(() => {
     mockEventEmitter = new PortSelectionEventEmitter();
@@ -28,7 +39,18 @@ describe("PortSelector", () => {
       registerPortSelector: vi.fn(),
     } as any;
 
-    selector = new PortSelector(mockEventEmitter, mockObservability);
+    // Create mock container
+    mockContainer = {
+      resolveWithError: vi.fn((token: InjectionToken<any>) => {
+        if (token === token13) return { ok: true, value: "port-v13" };
+        if (token === token14) return { ok: true, value: "port-v14" };
+        if (token === token15) return { ok: true, value: "port-v15" };
+        if (token === token16) return { ok: true, value: "port-v16" };
+        return { ok: false, error: { message: "Token not found" } };
+      }),
+    } as any;
+
+    selector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
     capturedEvents = [];
     // Subscribe to events for testing
     selector.onEvent((event) => capturedEvents.push(event));
@@ -40,129 +62,145 @@ describe("PortSelector", () => {
     resetVersionCache(); // Clear version cache for test isolation
   });
 
-  describe("selectPortFromFactories", () => {
+  describe("selectPortFromTokens", () => {
     it("should select highest compatible port version", () => {
-      const factories = new Map([
-        [13, () => "port-v13"],
-        [14, () => "port-v14"],
-        [15, () => "port-v15"],
-      ]);
+      const tokens = new Map([
+        [13, token13],
+        [14, token14],
+        [15, token15],
+      ]) as any;
 
       vi.mocked(getFoundryVersionResult).mockReturnValue(ok(14));
 
-      const result = selector.selectPortFromFactories(factories);
+      const result = selector.selectPortFromTokens(tokens);
       expectResultOk(result);
       expect(result.value).toBe("port-v14");
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token14);
     });
 
     it("should fallback to lower version when exact match not available", () => {
-      const factories = new Map([
-        [13, () => "port-v13"],
-        [15, () => "port-v15"],
-      ]);
+      const tokens = new Map([
+        [13, token13],
+        [15, token15],
+      ]) as any;
 
       vi.mocked(getFoundryVersionResult).mockReturnValue(ok(14));
 
-      const result = selector.selectPortFromFactories(factories);
+      const result = selector.selectPortFromTokens(tokens);
       expectResultOk(result);
       expect(result.value).toBe("port-v13");
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token13);
     });
 
     it("should ignore ports with version higher than Foundry version", () => {
-      const factories = new Map([
-        [13, () => "port-v13"],
-        [15, () => "port-v15"],
-      ]);
+      const tokens = new Map([
+        [13, token13],
+        [15, token15],
+      ]) as any;
 
       vi.mocked(getFoundryVersionResult).mockReturnValue(ok(13));
 
-      const result = selector.selectPortFromFactories(factories);
+      const result = selector.selectPortFromTokens(tokens);
       expectResultOk(result);
       expect(result.value).toBe("port-v13");
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token13);
     });
 
     it("should fail when no compatible port available", () => {
-      const factories = new Map([
-        [14, () => "port-v14"],
-        [15, () => "port-v15"],
-      ]);
+      const tokens = new Map([
+        [14, token14],
+        [15, token15],
+      ]) as any;
 
       vi.mocked(getFoundryVersionResult).mockReturnValue(ok(13));
 
-      const result = selector.selectPortFromFactories(factories);
+      const result = selector.selectPortFromTokens(tokens);
       expectResultErr(result);
       expect(result.error.code).toBe("PORT_SELECTION_FAILED");
       expect(result.error.message).toContain("No compatible port found");
     });
 
     it("should use provided foundryVersion parameter", () => {
-      const factories = new Map([
-        [13, () => "port-v13"],
-        [14, () => "port-v14"],
+      const tokens = new Map([
+        [13, token13],
+        [14, token14],
       ]);
 
-      const result = selector.selectPortFromFactories(factories, 14);
+      const result = selector.selectPortFromTokens(tokens, 14);
       expectResultOk(result);
       expect(result.value).toBe("port-v14");
       expect(getFoundryVersionResult).not.toHaveBeenCalled();
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token14);
     });
 
     it("should detect Foundry version when not provided", () => {
-      const factories = new Map([[13, () => "port-v13"]]);
+      const tokens = new Map([[13, token13]]) as any;
 
       vi.mocked(getFoundryVersionResult).mockReturnValue(ok(13));
 
-      const result = selector.selectPortFromFactories(factories);
+      const result = selector.selectPortFromTokens(tokens);
       expectResultOk(result);
       expect(result.value).toBe("port-v13");
       expect(getFoundryVersionResult).toHaveBeenCalled();
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token13);
     });
 
     it("should handle version detection errors", () => {
-      const factories = new Map([[13, () => "port-v13"]]);
+      const tokens = new Map([[13, token13]]) as any;
 
       vi.mocked(getFoundryVersionResult).mockReturnValue(err("Version detection failed"));
 
-      const result = selector.selectPortFromFactories(factories);
+      const result = selector.selectPortFromTokens(tokens);
       expectResultErr(result);
       expect(result.error.code).toBe("PORT_SELECTION_FAILED");
       expect(result.error.message).toContain("Could not determine Foundry version");
     });
 
     it("should select exact version match when available", () => {
-      const factories = new Map([
-        [12, () => "port-v12"],
-        [13, () => "port-v13"],
-        [14, () => "port-v14"],
-      ]);
+      const token12 = createInjectionToken<ServiceType>("port-v12") as any;
+      const tokens = new Map([
+        [12, token12],
+        [13, token13],
+        [14, token14],
+      ]) as any;
 
-      const result = selector.selectPortFromFactories(factories, 13);
+      (mockContainer.resolveWithError as any).mockImplementation((token: InjectionToken<any>) => {
+        if (token === token12) return { ok: true, value: "port-v12" };
+        if (token === token13) return { ok: true, value: "port-v13" };
+        if (token === token14) return { ok: true, value: "port-v14" };
+        return { ok: false, error: { message: "Token not found" } };
+      });
+
+      const result = selector.selectPortFromTokens(tokens, 13);
       expectResultOk(result);
       expect(result.value).toBe("port-v13");
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token13);
     });
 
     it("should skip ports with version less than or equal to selected version", () => {
-      // This covers line 150: if (portVersion > selectedVersion) - the case where portVersion <= selectedVersion (false branch)
-      // When iterating through ports, if we already selected v13, then v12 should be skipped (12 < 13)
-      // This tests the false branch of the condition: portVersion > selectedVersion is false when portVersion <= selectedVersion
-      const factories = new Map([
-        [13, () => "port-v13"],
-        [12, () => "port-v12"], // Lower version - should be skipped because 12 < 13 (line 150: false branch)
-      ]);
+      const token12 = createInjectionToken<ServiceType>("port-v12") as any;
+      const tokens = new Map([
+        [13, token13],
+        [12, token12], // Lower version - should be skipped because 12 < 13
+      ]) as any;
 
-      // When Foundry version is 14, v13 is selected first (13 > -1), then v12 is encountered
-      // Since 12 < 13 (current selectedVersion), the condition portVersion > selectedVersion is false
-      // This covers the false branch of line 150
-      const result = selector.selectPortFromFactories(factories, 14);
+      (mockContainer.resolveWithError as any).mockImplementation((token: InjectionToken<any>) => {
+        if (token === token12) return { ok: true, value: "port-v12" };
+        if (token === token13) return { ok: true, value: "port-v13" };
+        return { ok: false, error: { message: "Token not found" } };
+      });
+
+      const result = selector.selectPortFromTokens(tokens, 14);
       expectResultOk(result);
       expect(result.value).toBe("port-v13");
-      // v13 is selected, v12 should be skipped (line 150: false branch - portVersion <= selectedVersion)
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token13);
+      expect(mockContainer.resolveWithError).not.toHaveBeenCalledWith(token12);
     });
 
-    it("should handle empty factory map", () => {
-      const factories = new Map<number, () => string>();
+    it("should handle empty token map", () => {
+      const tokens = new Map<number, InjectionToken<ServiceType>>() as any;
 
-      const result = selector.selectPortFromFactories(factories, 13);
+      const result = selector.selectPortFromTokens(tokens, 13);
       expectResultErr(result);
       expect(result.error.code).toBe("PORT_SELECTION_FAILED");
       expect(result.error.message).toContain("No compatible port found");
@@ -171,38 +209,40 @@ describe("PortSelector", () => {
 
   describe("Edge Cases & Future Versions", () => {
     it("should handle future Foundry versions (v15+) by falling back to latest available port", () => {
-      const factories = new Map<number, () => string>([
-        [13, () => "port-v13"],
-        [14, () => "port-v14"],
-      ]);
+      const tokens = new Map<number, InjectionToken<ServiceType>>([
+        [13, token13],
+        [14, token14],
+      ]) as any;
 
       // Foundry v15 with only v13 and v14 ports available
-      const result = selector.selectPortFromFactories(factories, 15);
+      const result = selector.selectPortFromTokens(tokens, 15);
 
       expectResultOk(result);
       // Should select highest available port (v14)
       expect(result.value).toBe("port-v14");
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token14);
     });
 
     it("should handle v20+ with graceful fallback", () => {
-      const factories = new Map<number, () => string>([[13, () => "port-v13"]]);
+      const tokens = new Map<number, InjectionToken<ServiceType>>([[13, token13]]) as any;
 
       // Far future version
-      const result = selector.selectPortFromFactories(factories, 20);
+      const result = selector.selectPortFromTokens(tokens, 20);
 
       expectResultOk(result);
       // Should still select v13 as highest compatible
       expect(result.value).toBe("port-v13");
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token13);
     });
 
     it("should fail gracefully when no compatible port exists (all ports too new)", () => {
-      const factories = new Map<number, () => string>([
-        [14, () => "port-v14"],
-        [15, () => "port-v15"],
-      ]);
+      const tokens = new Map<number, InjectionToken<ServiceType>>([
+        [14, token14],
+        [15, token15],
+      ]) as any;
 
       // Foundry v13 with only v14+ ports available
-      const result = selector.selectPortFromFactories(factories, 13);
+      const result = selector.selectPortFromTokens(tokens, 13);
 
       expectResultErr(result);
       expect(result.error.code).toBe("PORT_SELECTION_FAILED");
@@ -215,39 +255,91 @@ describe("PortSelector", () => {
       );
     });
 
-    it("should handle empty factory registry", () => {
-      const factories = new Map<number, () => string>();
+    it("should handle empty token registry", () => {
+      const tokens = new Map<number, InjectionToken<ServiceType>>() as any;
 
-      const result = selector.selectPortFromFactories(factories, 13);
+      const result = selector.selectPortFromTokens(tokens, 13);
 
       expectResultErr(result);
       expect(result.error.code).toBe("PORT_SELECTION_FAILED");
       expect(result.error.message).toContain("No compatible port found");
     });
 
-    it("should catch errors during port instantiation", () => {
-      const factories = new Map<number, () => string>([
-        [
-          13,
-          () => {
-            throw new Error("Port constructor failed");
-          },
-        ],
-      ]);
+    it("should handle container resolution errors", () => {
+      const tokens = new Map<number, InjectionToken<ServiceType>>([[13, token13]]) as any;
 
-      const result = selector.selectPortFromFactories(factories, 13);
+      (mockContainer.resolveWithError as any).mockReturnValue({
+        ok: false,
+        error: { message: "Failed to resolve token" },
+      });
+
+      const result = selector.selectPortFromTokens(tokens, 13);
 
       expectResultErr(result);
       expect(result.error.code).toBe("PORT_SELECTION_FAILED");
-      expect(result.error.message).toContain("Failed to instantiate port v13");
+      expect(result.error.message).toContain("Failed to resolve port v13 from container");
+    });
+
+    it("should catch errors during port resolution", () => {
+      const tokens = new Map<number, InjectionToken<ServiceType>>([
+        [13, token13],
+        [14, token14],
+        [15, token15],
+      ]) as any;
+
+      (mockContainer.resolveWithError as any).mockImplementation(() => {
+        throw new Error("Container resolution failed");
+      });
+
+      const result = selector.selectPortFromTokens(tokens, 13);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
+      expect(result.error.message).toContain("Failed to resolve port v13 from container");
       expect(result.error.cause).toBeInstanceOf(Error);
+
+      // Verify that failure event includes sorted availableVersions (covers line 237)
+      expect(capturedEvents).toHaveLength(1);
+      const event = capturedEvents[0];
+      expect(event?.type).toBe("failure");
+      if (event?.type === "failure") {
+        expect(event.availableVersions).toBe("13, 14, 15");
+        expect(event.adapterName).toBeUndefined(); // adapterName not provided (covers false branch of line 239)
+      }
+    });
+
+    it("should catch errors during port resolution with adapterName", () => {
+      const tokens = new Map<number, InjectionToken<ServiceType>>([
+        [13, token13],
+        [14, token14],
+      ]) as any;
+
+      (mockContainer.resolveWithError as any).mockImplementation(() => {
+        throw new Error("Container resolution failed");
+      });
+
+      const result = selector.selectPortFromTokens(tokens, 13, "FoundryGame");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
+      expect(result.error.message).toContain("Failed to resolve port v13 from container");
+      expect(result.error.cause).toBeInstanceOf(Error);
+
+      // Verify that failure event includes adapterName (covers true branch of line 239)
+      expect(capturedEvents).toHaveLength(1);
+      const event = capturedEvents[0];
+      expect(event?.type).toBe("failure");
+      if (event?.type === "failure") {
+        expect(event.adapterName).toBe("FoundryGame");
+        expect(event.availableVersions).toBe("13, 14");
+      }
     });
   });
 
   describe("Event Emission", () => {
     it("should emit success event with correct data", () => {
-      const factories = new Map([[13, () => "port-v13"]]);
-      selector.selectPortFromFactories(factories, 13);
+      const tokens = new Map([[13, token13]]) as any;
+      selector.selectPortFromTokens(tokens, 13);
 
       expect(capturedEvents).toHaveLength(1);
       const event = capturedEvents[0];
@@ -260,8 +352,8 @@ describe("PortSelector", () => {
     });
 
     it("should emit success event with adapter name when provided", () => {
-      const factories = new Map([[13, () => "port-v13"]]);
-      selector.selectPortFromFactories(factories, 13, "FoundryHooks");
+      const tokens = new Map([[13, token13]]) as any;
+      selector.selectPortFromTokens(tokens, 13, "FoundryHooks");
 
       expect(capturedEvents).toHaveLength(1);
       const event = capturedEvents[0];
@@ -272,8 +364,8 @@ describe("PortSelector", () => {
     });
 
     it("should emit failure event when no compatible port", () => {
-      const factories = new Map([[15, () => "port-v15"]]);
-      selector.selectPortFromFactories(factories, 13);
+      const tokens = new Map([[15, token15]]) as any;
+      selector.selectPortFromTokens(tokens, 13);
 
       expect(capturedEvents).toHaveLength(1);
       const event = capturedEvents[0];
@@ -285,51 +377,50 @@ describe("PortSelector", () => {
     });
 
     it("should emit failure event with sorted availableVersions when multiple versions available", () => {
-      // This covers line 207: availableVersions: Array.from(factories.keys()).sort((a, b) => a - b).join(", ")
-      const factories = new Map([
-        [15, () => "port-v15"],
-        [14, () => "port-v14"],
-        [16, () => "port-v16"],
-      ]);
-      selector.selectPortFromFactories(factories, 13);
+      const tokens = new Map([
+        [15, token15],
+        [14, token14],
+        [16, token16],
+      ]) as any;
+      selector.selectPortFromTokens(tokens, 13);
 
       expect(capturedEvents).toHaveLength(1);
       const event = capturedEvents[0];
       expect(event?.type).toBe("failure");
       if (event?.type === "failure") {
         expect(event.foundryVersion).toBe(13);
-        // Should be sorted: "14, 15, 16" (line 207)
+        // Should be sorted: "14, 15, 16"
         expect(event.availableVersions).toBe("14, 15, 16");
       }
     });
 
-    it("should emit failure event with sorted availableVersions when port instantiation fails", () => {
-      // This covers line 207: availableVersions when instantiation fails (in catch block)
-      const factories = new Map([
-        [
-          13,
-          () => {
-            throw new Error("Port constructor failed");
-          },
-        ],
-        [14, () => "port-v14"],
-        [15, () => "port-v15"],
+    it("should emit failure event with sorted availableVersions when port resolution fails", () => {
+      const tokens = new Map([
+        [13, token13],
+        [14, token14],
+        [15, token15],
       ]);
-      selector.selectPortFromFactories(factories, 13);
+
+      (mockContainer.resolveWithError as any).mockReturnValue({
+        ok: false,
+        error: { message: "Resolution failed" },
+      });
+
+      selector.selectPortFromTokens(tokens, 13);
 
       expect(capturedEvents).toHaveLength(1);
       const event = capturedEvents[0];
       expect(event?.type).toBe("failure");
       if (event?.type === "failure") {
         expect(event.foundryVersion).toBe(13);
-        // Should be sorted: "13, 14, 15" (line 207) - includes all versions, not just compatible ones
+        // Should be sorted: "13, 14, 15" - includes all versions, not just compatible ones
         expect(event.availableVersions).toBe("13, 14, 15");
       }
     });
 
     it("should emit failure event with adapter name when provided", () => {
-      const factories = new Map([[15, () => "port-v15"]]);
-      selector.selectPortFromFactories(factories, 13, "FoundryHooks");
+      const tokens = new Map([[15, token15]]) as any;
+      selector.selectPortFromTokens(tokens, 13, "FoundryHooks");
 
       expect(capturedEvents).toHaveLength(1);
       const event = capturedEvents[0];
@@ -339,33 +430,30 @@ describe("PortSelector", () => {
       }
     });
 
-    it("should emit failure event when instantiation fails", () => {
-      const factories = new Map([
-        [
-          13,
-          () => {
-            throw new Error("Instantiation error");
-          },
-        ],
-      ]);
-      selector.selectPortFromFactories(factories, 13);
+    it("should emit failure event when resolution fails", () => {
+      const tokens = new Map([[13, token13]]) as any;
+
+      (mockContainer.resolveWithError as any).mockReturnValue({
+        ok: false,
+        error: { message: "Resolution error" },
+      });
+
+      selector.selectPortFromTokens(tokens, 13);
 
       expect(capturedEvents).toHaveLength(1);
       const event = capturedEvents[0];
       expect(event?.type).toBe("failure");
     });
 
-    it("should emit failure event with adapter name when instantiation fails", () => {
-      const factories = new Map<number, () => string>([
-        [
-          13,
-          () => {
-            throw new Error("Instantiation error");
-          },
-        ],
-      ]);
+    it("should emit failure event with adapter name when resolution fails", () => {
+      const tokens = new Map([[13, token13]]) as any;
 
-      selector.selectPortFromFactories(factories, 13, "FoundryGame");
+      (mockContainer.resolveWithError as any).mockReturnValue({
+        ok: false,
+        error: { message: "Resolution error" },
+      });
+
+      selector.selectPortFromTokens(tokens, 13, "FoundryGame");
 
       expect(capturedEvents).toHaveLength(1);
       const event = capturedEvents[0];

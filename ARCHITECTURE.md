@@ -109,6 +109,140 @@ const port = selector.selectPortFromFactories(factories); // Nur kompatiblen Por
 
 **Garantie:** v14-Ports mit `game.v14NewApi` crashen nicht auf v13, da sie nie instantiiert werden.
 
+### Port-Registrierung (Schichttrennung & DI-Instanziierung)
+
+**Problem 1 - Schichtbruch:** Die Config-Schicht (sollte "Concrete Platform Version Agnostic" sein) importierte direkt konkrete v13 Port-Implementierungen, was einen Schichtbruch darstellte.
+
+**Lösung 1 - Schichttrennung:** Port-Registrierung wurde in die "Concrete Platform Concrete Version" Schicht verschoben.
+
+**Problem 2 - DIP-Verletzung:** Ports wurden mit `new` außerhalb des DI-Containers instanziiert (via Factories `() => new FoundryGamePortV13()`), was DIP (Dependency Inversion Principle) verletzte.
+
+**Lösung 2 - DI-Instanziierung:** Ports werden jetzt vollständig über den DI-Container instanziiert, analog zum `ContainerHealthCheck`-Pattern.
+
+**Struktur:**
+
+```
+Configuration Layer (Version Agnostic)
+  └─ port-infrastructure.config.ts
+      └─ importiert registerV13Ports() Funktion
+          └─ ruft registerV13Ports() auf
+
+Concrete Platform Concrete Version Layer
+  └─ ports/v13/port-registration.ts
+      └─ exportiert registerV13Ports()
+          └─ importiert alle v13 Port-Klassen direkt
+```
+
+**Beispiel:**
+
+```typescript
+// ✅ KORREKT: Config-Schicht (version-agnostic)
+// src/framework/config/modules/port-infrastructure.config.ts
+import { registerV13Ports } from "@/infrastructure/adapters/foundry/ports/v13/port-registration";
+
+function createPortRegistries() {
+  const gamePortRegistry = new PortRegistry<FoundryGame>();
+  // ... weitere Registries ...
+  
+  // Delegiert an version-spezifische Schicht
+  const result = registerV13Ports({
+    gamePortRegistry,
+    hooksPortRegistry,
+    // ...
+  });
+  
+  return ok({ gamePortRegistry, /* ... */ });
+}
+
+// ✅ KORREKT: v13-Schicht (concrete version)
+// src/infrastructure/adapters/foundry/ports/v13/port-registration.ts
+import { FoundryGamePortV13 } from "./FoundryGamePort";
+import { FoundryHooksPortV13 } from "./FoundryHooksPort";
+// ... weitere v13 Ports ...
+
+export function registerV13Ports(
+  registries: {
+    gamePortRegistry: PortRegistry<FoundryGame>;
+    // ...
+  },
+  container: ServiceContainer
+): Result<void, string> {
+  // 1. Registriere Port-Klassen im DI-Container
+  container.registerClass(foundryGamePortV13Token, FoundryGamePortV13, ServiceLifecycle.SINGLETON);
+  // ... weitere Ports ...
+  
+  // 2. Speichere Tokens in PortRegistry (nicht Factories!)
+  registry.gamePortRegistry.register(13, foundryGamePortV13Token);
+  // ... weitere Registries ...
+}
+```
+
+**DI-Instanziierung (seit Refactoring):**
+
+Ports werden jetzt vollständig über den DI-Container instanziiert:
+
+1. **Port-Registrierung im Container**: Port-Klassen werden mit `container.registerClass()` registriert
+2. **Token-basierte Registry**: `PortRegistry` speichert `InjectionToken<T>` statt `PortFactory<T>`
+3. **Lazy Resolution**: `PortSelector` resolved Ports über `container.resolveWithError(token)` erst bei Bedarf
+4. **DIP-konform**: Keine `new`-Aufrufe außerhalb des Containers für Ports
+
+**Vorteile:**
+- ✅ **Schichttrennung respektiert**: Config-Schicht importiert keine konkreten Versionen
+- ✅ **DIP vollständig eingehalten**: Ports werden über DI instanziiert, keine direkten `new`-Aufrufe
+- ✅ **Erweiterbar**: Für v14, v15, etc. können ähnliche `port-registration.ts` Dateien erstellt werden
+- ✅ **Modular**: Jede Version registriert sich selbst in die übergebenen Registries
+- ✅ **Testbar**: Version-spezifische Registrierung kann isoliert getestet werden
+- ✅ **Zukunftssicher**: Ports können zukünftig Dependencies haben, die automatisch über DI aufgelöst werden
+
+**Zukünftige Erweiterung:**
+
+```typescript
+// In createPortRegistries():
+const v13Result = registerV13Ports(registries, container);
+if (isErr(v13Result)) return v13Result;
+
+// Zukünftig:
+const v14Result = registerV14Ports(registries, container);
+if (isErr(v14Result)) return v14Result;
+
+const v15Result = registerV15Ports(registries, container);
+// ...
+```
+
+**PortSelector mit Container-Dependency:**
+
+```typescript
+// PortSelector resolved Ports über DI-Container
+export class PortSelector {
+  constructor(
+    private readonly eventEmitter: PortSelectionEventEmitter,
+    observability: ObservabilityRegistry,
+    private readonly container: ServiceContainer  // Container als Dependency
+  ) {}
+
+  selectPortFromTokens<T>(
+    tokens: Map<number, InjectionToken<T>>,
+    foundryVersion?: number
+  ): Result<T, FoundryError> {
+    // ... Version-Detection ...
+    
+    // Resolve Port über Container (lazy instantiation)
+    const portResult = this.container.resolveWithError(selectedToken);
+    if (!portResult.ok) {
+      return err(/* ... */);
+    }
+    
+    return ok(portResult.value);
+  }
+}
+```
+
+**Migration von Factories zu Tokens:**
+
+- **Vorher**: `PortRegistry` speicherte `PortFactory<T> = () => T` (direkte Instanziierung mit `new`)
+- **Nachher**: `PortRegistry` speichert `InjectionToken<T>` (DI-basierte Instanziierung)
+- **Vorteil**: Ports können zukünftig Dependencies haben, die automatisch über DI aufgelöst werden
+
 ### Hook-Orchestrierung & Lifecycle (ModuleHookRegistrar)
 
 **Ziele:**

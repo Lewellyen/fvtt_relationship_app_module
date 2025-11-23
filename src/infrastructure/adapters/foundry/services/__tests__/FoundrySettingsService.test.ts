@@ -12,6 +12,9 @@ import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
+import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import * as v from "valibot";
 
 describe("FoundrySettingsService", () => {
@@ -20,6 +23,8 @@ describe("FoundrySettingsService", () => {
   let mockSelector: PortSelector;
   let mockPort: FoundrySettings;
   let mockRetryService: RetryService;
+  let mockContainer: ServiceContainer;
+  const mockToken = createInjectionToken<FoundrySettings>("mock-port");
 
   beforeEach(() => {
     // Mock game object for version detection
@@ -33,15 +38,22 @@ describe("FoundrySettingsService", () => {
       set: vi.fn().mockResolvedValue(ok(undefined)),
     } as any;
 
+    mockContainer = {
+      resolveWithError: vi.fn((token: InjectionToken<any>) => {
+        if (token === mockToken) return { ok: true, value: mockPort };
+        return { ok: false, error: { message: "Token not found" } };
+      }),
+    } as any;
+
     mockRegistry = new PortRegistry<FoundrySettings>();
-    vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
+    vi.spyOn(mockRegistry, "getTokens").mockReturnValue(new Map([[13, mockToken]]));
 
     const mockEventEmitter = new PortSelectionEventEmitter();
     const mockObservability: ObservabilityRegistry = {
       registerPortSelector: vi.fn(),
     } as any;
-    mockSelector = new PortSelector(mockEventEmitter, mockObservability);
-    vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
+    mockSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    vi.spyOn(mockSelector, "selectPortFromTokens").mockReturnValue(ok(mockPort));
 
     // Mock RetryService - just executes fn directly without retry logic
     mockRetryService = {
@@ -58,17 +70,17 @@ describe("FoundrySettingsService", () => {
 
   describe("Port Selection (Lazy Loading)", () => {
     it("should lazy-load port on first method call", () => {
-      const getFactoriesSpy = vi.spyOn(mockRegistry, "getFactories");
-      const selectSpy = vi.spyOn(mockSelector, "selectPortFromFactories");
+      const getTokensSpy = vi.spyOn(mockRegistry, "getTokens");
+      const selectSpy = vi.spyOn(mockSelector, "selectPortFromTokens");
 
       service.get("mod", "key", v.number());
 
-      expect(getFactoriesSpy).toHaveBeenCalledOnce();
+      expect(getTokensSpy).toHaveBeenCalledOnce();
       expect(selectSpy).toHaveBeenCalledOnce();
     });
 
     it("should reuse port on subsequent calls", () => {
-      const selectSpy = vi.spyOn(mockSelector, "selectPortFromFactories");
+      const selectSpy = vi.spyOn(mockSelector, "selectPortFromTokens");
 
       service.get("mod", "key1", v.number());
       service.get("mod", "key2", v.number());
@@ -85,7 +97,7 @@ describe("FoundrySettingsService", () => {
     });
 
     it("should handle port selection failure", () => {
-      vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(
+      vi.spyOn(mockSelector, "selectPortFromTokens").mockReturnValue(
         err({ code: "PORT_SELECTION_FAILED", message: "No compatible port" })
       );
 
@@ -113,7 +125,7 @@ describe("FoundrySettingsService", () => {
     });
 
     it("should propagate port selection failure", () => {
-      vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(
+      vi.spyOn(mockSelector, "selectPortFromTokens").mockReturnValue(
         err({ code: "PORT_SELECTION_FAILED", message: "No compatible port" })
       );
 
@@ -157,7 +169,7 @@ describe("FoundrySettingsService", () => {
     });
 
     it("should propagate port selection failure", async () => {
-      vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(
+      vi.spyOn(mockSelector, "selectPortFromTokens").mockReturnValue(
         err({ code: "PORT_SELECTION_FAILED", message: "No compatible port" })
       );
 
@@ -177,7 +189,7 @@ describe("FoundrySettingsService", () => {
       service.dispose();
 
       // After dispose, port should be re-initialized on next call
-      const selectSpy = vi.spyOn(mockSelector, "selectPortFromFactories");
+      const selectSpy = vi.spyOn(mockSelector, "selectPortFromTokens");
       service.get("test-module", "testKey", v.number());
       expect(selectSpy).toHaveBeenCalled();
     });

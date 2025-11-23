@@ -15,6 +15,9 @@ import { expectResultOk, createMockLogger } from "@/test/utils/test-helpers";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
+import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 
 describe("FoundryHooksService - Regression Tests", () => {
   let service: FoundryHooksService;
@@ -23,6 +26,8 @@ describe("FoundryHooksService - Regression Tests", () => {
   let mockPort: FoundryHooks;
   let mockLogger: Logger;
   let mockRetryService: RetryService;
+  let mockContainer: ServiceContainer;
+  const mockToken = createInjectionToken<FoundryHooks>("mock-port");
 
   beforeEach(() => {
     // Mock game object for version detection
@@ -39,15 +44,22 @@ describe("FoundryHooksService - Regression Tests", () => {
       dispose: vi.fn(),
     };
 
+    mockContainer = {
+      resolveWithError: vi.fn((token: InjectionToken<any>) => {
+        if (token === mockToken) return { ok: true, value: mockPort };
+        return { ok: false, error: { message: "Token not found" } };
+      }),
+    } as any;
+
     mockRegistry = new PortRegistry<FoundryHooks>();
-    vi.spyOn(mockRegistry, "getFactories").mockReturnValue(new Map([[13, () => mockPort]]));
+    vi.spyOn(mockRegistry, "getTokens").mockReturnValue(new Map([[13, mockToken]]));
 
     const mockEventEmitter = new PortSelectionEventEmitter();
     const mockObservability: ObservabilityRegistry = {
       registerPortSelector: vi.fn(),
     } as any;
-    mockSelector = new PortSelector(mockEventEmitter, mockObservability);
-    vi.spyOn(mockSelector, "selectPortFromFactories").mockReturnValue(ok(mockPort));
+    mockSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    vi.spyOn(mockSelector, "selectPortFromTokens").mockReturnValue(ok(mockPort));
 
     // Mock RetryService - just executes fn directly without retry logic
     mockRetryService = {

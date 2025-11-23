@@ -9,6 +9,10 @@ import { expectResultOk } from "@/test/utils/test-helpers";
 import { ok } from "@/infrastructure/shared/utils/result";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
+import type { ServiceType } from "@/infrastructure/shared/tokens";
+import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -19,6 +23,9 @@ describe("Concurrency: Port Selection", () => {
   let selector: PortSelector;
   let mockEventEmitter: PortSelectionEventEmitter;
   let mockObservability: ObservabilityRegistry;
+  let mockContainer: ServiceContainer;
+  const token13 = createInjectionToken<ServiceType>("port-v13") as any;
+  const token14 = createInjectionToken<ServiceType>("port-v14") as any;
 
   beforeEach(() => {
     mockEventEmitter = new PortSelectionEventEmitter();
@@ -26,7 +33,15 @@ describe("Concurrency: Port Selection", () => {
       registerPortSelector: vi.fn(),
     } as any;
 
-    selector = new PortSelector(mockEventEmitter, mockObservability);
+    mockContainer = {
+      resolveWithError: vi.fn((token: InjectionToken<any>) => {
+        if (token === token13) return { ok: true, value: "port-v13" };
+        if (token === token14) return { ok: true, value: "port-v14" };
+        return { ok: false, error: { message: "Token not found" } };
+      }),
+    } as any;
+
+    selector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
     vi.clearAllMocks();
   });
 
@@ -36,15 +51,15 @@ describe("Concurrency: Port Selection", () => {
   });
 
   it.concurrent("should return same port for concurrent requests", async () => {
-    const factories = new Map([
-      [13, () => "port-v13"],
-      [14, () => "port-v14"],
-    ]);
+    const tokens = new Map([
+      [13, token13],
+      [14, token14],
+    ]) as any;
 
     vi.mocked(getFoundryVersionResult).mockReturnValue(ok(13));
 
     // 10 parallele Requests
-    const promises = Array.from({ length: 10 }, () => selector.selectPortFromFactories(factories));
+    const promises = Array.from({ length: 10 }, () => selector.selectPortFromTokens(tokens));
 
     const results = await Promise.all(promises);
 
@@ -63,15 +78,15 @@ describe("Concurrency: Port Selection", () => {
   });
 
   it.concurrent("should handle 100 concurrent requests", async () => {
-    const factories = new Map([
-      [13, () => "port-v13"],
-      [14, () => "port-v14"],
-    ]);
+    const tokens = new Map([
+      [13, token13],
+      [14, token14],
+    ]) as any;
 
     vi.mocked(getFoundryVersionResult).mockReturnValue(ok(13));
 
     // 100 parallele Requests
-    const promises = Array.from({ length: 100 }, () => selector.selectPortFromFactories(factories));
+    const promises = Array.from({ length: 100 }, () => selector.selectPortFromTokens(tokens));
 
     const results = await Promise.all(promises);
 

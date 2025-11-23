@@ -1,6 +1,9 @@
 /**
  * Registry for managing available port implementations across different Foundry versions.
  * Centralizes port registration and discovery.
+ *
+ * Ports are registered via DI container tokens, ensuring DIP (Dependency Inversion Principle)
+ * compliance. PortSelector resolves ports from the container using these tokens.
  */
 
 import type { Result } from "@/domain/types/result";
@@ -9,29 +12,25 @@ import {
   createFoundryError,
   type FoundryError,
 } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
-import {
-  ensureNonEmptyArray,
-  getFactoryOrError,
-} from "@/infrastructure/adapters/foundry/runtime-casts";
-
-export type PortFactory<T> = () => T;
+import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
+import type { ServiceType } from "@/infrastructure/shared/tokens";
 
 /**
- * Registry that holds exactly one port factory per version.
+ * Registry that holds exactly one port injection token per version.
  * @template T - The port interface type
  */
-export class PortRegistry<T> {
-  // Exactly one factory per version
-  private readonly factories = new Map<number, PortFactory<T>>();
+export class PortRegistry<T extends ServiceType> {
+  // Exactly one token per version
+  private readonly tokens = new Map<number, InjectionToken<T>>();
 
   /**
-   * Registers a port factory for a specific Foundry version.
+   * Registers a port injection token for a specific Foundry version.
    * @param version - The Foundry version this port supports
-   * @param factory - Factory function that creates the port instance
+   * @param token - Injection token for resolving the port from the DI container
    * @returns Result indicating success or duplicate registration error
    */
-  register(version: number, factory: PortFactory<T>): Result<void, FoundryError> {
-    if (this.factories.has(version)) {
+  register(version: number, token: InjectionToken<T>): Result<void, FoundryError> {
+    if (this.tokens.has(version)) {
       return err(
         createFoundryError(
           "PORT_REGISTRY_ERROR",
@@ -40,7 +39,7 @@ export class PortRegistry<T> {
         )
       );
     }
-    this.factories.set(version, factory);
+    this.tokens.set(version, token);
     return ok(undefined);
   }
 
@@ -49,65 +48,29 @@ export class PortRegistry<T> {
    * @returns Array of registered version numbers, sorted ascending
    */
   getAvailableVersions(): number[] {
-    return Array.from(this.factories.keys()).sort((a, b) => a - b);
+    return Array.from(this.tokens.keys()).sort((a, b) => a - b);
   }
 
   /**
-   * Gets the factory map without instantiating ports.
-   * Use with PortSelector.selectPortFromFactories() for safe lazy instantiation.
+   * Gets the token map without resolving ports.
+   * Use with PortSelector.selectPortFromTokens() for safe lazy instantiation via DI.
    *
-   * @returns Map of version numbers to factory functions (NOT instances)
+   * @returns Map of version numbers to injection tokens (NOT instances)
    *
    * @example
    * ```typescript
    * const registry = new PortRegistry<FoundryGame>();
-   * registry.register(13, () => new FoundryGamePortV13());
-   * registry.register(14, () => new FoundryGamePortV14());
+   * registry.register(13, foundryGamePortV13Token);
+   * registry.register(14, foundryGamePortV14Token);
    *
-   * const factories = registry.getFactories();
-   * const selector = new PortSelector();
-   * const result = selector.selectPortFromFactories(factories);
-   * // Only compatible port is instantiated
+   * const tokens = registry.getTokens();
+   * const selector = new PortSelector(container);
+   * const result = selector.selectPortFromTokens(tokens);
+   * // Only compatible port is resolved from container
    * ```
    */
-  getFactories(): Map<number, PortFactory<T>> {
-    return new Map(this.factories);
-  }
-
-  /**
-   * Creates only the port for the specified version or the highest compatible version.
-   * More efficient than createAll() when only one port is needed.
-   * @param version - The target Foundry version
-   * @returns Result containing the port instance or error
-   */
-  createForVersion(version: number): Result<T, FoundryError> {
-    // Find highest compatible version (<= target version)
-    const compatibleVersions = Array.from(this.factories.keys())
-      .filter((v) => v <= version)
-      .sort((a, b) => b - a);
-
-    if (compatibleVersions.length === 0) {
-      const availableVersions = this.getAvailableVersions().join(", ") || "none";
-      return err(
-        createFoundryError(
-          "PORT_NOT_FOUND",
-          `No compatible port for Foundry v${version}. Available ports: ${availableVersions}`,
-          { version, availableVersions }
-        )
-      );
-    }
-
-    // Type-guard ensures array is non-empty
-    const nonEmptyResult = ensureNonEmptyArray(compatibleVersions);
-    if (!nonEmptyResult.ok) {
-      return nonEmptyResult;
-    }
-    const selectedVersion = nonEmptyResult.value[0];
-    const factoryResult = getFactoryOrError(this.factories, selectedVersion);
-    if (!factoryResult.ok) {
-      return factoryResult;
-    }
-    return ok(factoryResult.value());
+  getTokens(): Map<number, InjectionToken<T>> {
+    return new Map(this.tokens);
   }
 
   /**
@@ -116,7 +79,7 @@ export class PortRegistry<T> {
    * @returns True if a port is registered for this version
    */
   hasVersion(version: number): boolean {
-    return this.factories.has(version);
+    return this.tokens.has(version);
   }
 
   /**

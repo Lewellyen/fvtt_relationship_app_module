@@ -152,6 +152,51 @@ export const foundryI18nPortRegistryToken: InjectionToken<PortRegistry<FoundryI1
   createInjectionToken<PortRegistry<FoundryI18n>>("FoundryI18nPortRegistry");
 
 /**
+ * Version-specific port tokens for Foundry VTT v13.
+ * These tokens are used to register and resolve version-specific port implementations
+ * via the DI container, ensuring DIP (Dependency Inversion Principle) compliance.
+ *
+ * Ports are registered in the container during bootstrap and resolved by PortSelector
+ * based on the current Foundry version.
+ */
+
+/**
+ * Injection token for FoundryGame port v13 implementation.
+ */
+export const foundryGamePortV13Token: InjectionToken<FoundryGame> =
+  createInjectionToken<FoundryGame>("FoundryGamePortV13");
+
+/**
+ * Injection token for FoundryHooks port v13 implementation.
+ */
+export const foundryHooksPortV13Token: InjectionToken<FoundryHooks> =
+  createInjectionToken<FoundryHooks>("FoundryHooksPortV13");
+
+/**
+ * Injection token for FoundryDocument port v13 implementation.
+ */
+export const foundryDocumentPortV13Token: InjectionToken<FoundryDocument> =
+  createInjectionToken<FoundryDocument>("FoundryDocumentPortV13");
+
+/**
+ * Injection token for FoundryUI port v13 implementation.
+ */
+export const foundryUIPortV13Token: InjectionToken<FoundryUI> =
+  createInjectionToken<FoundryUI>("FoundryUIPortV13");
+
+/**
+ * Injection token for FoundrySettings port v13 implementation.
+ */
+export const foundrySettingsPortV13Token: InjectionToken<FoundrySettings> =
+  createInjectionToken<FoundrySettings>("FoundrySettingsPortV13");
+
+/**
+ * Injection token for FoundryI18n port v13 implementation.
+ */
+export const foundryI18nPortV13Token: InjectionToken<FoundryI18n> =
+  createInjectionToken<FoundryI18n>("FoundryI18nPortV13");
+
+/**
  * Injection token for FoundryJournalFacade.
  *
  * Facade that combines FoundryGame, FoundryDocument, and FoundryUI

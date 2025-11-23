@@ -7,16 +7,14 @@ import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import type { PortSelectionEventEmitter } from "./port-selection-events";
 import type { PortSelectionEventCallback } from "./port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
+import type { ServiceType } from "@/infrastructure/shared/tokens";
 import {
   portSelectionEventEmitterToken,
   observabilityRegistryToken,
+  serviceContainerToken,
 } from "@/infrastructure/shared/tokens";
-
-/**
- * Factory function type for creating port instances.
- * Enables lazy instantiation to prevent crashes from incompatible constructors.
- */
-export type PortFactory<T> = () => T;
 
 /**
  * Selects the appropriate port implementation based on Foundry version.
@@ -29,11 +27,16 @@ export type PortFactory<T> = () => T;
  * - Emits events for success/failure via injected EventEmitter
  * - Self-registers with ObservabilityRegistry for automatic logging/metrics
  * - Conforms to DI architecture: EventEmitter as TRANSIENT service
+ *
+ * **Dependency Injection:**
+ * - Resolves ports from the DI container using injection tokens
+ * - Ensures DIP (Dependency Inversion Principle) compliance
  */
 export class PortSelector {
   constructor(
     private readonly eventEmitter: PortSelectionEventEmitter,
-    observability: ObservabilityRegistry
+    observability: ObservabilityRegistry,
+    private readonly container: ServiceContainer
   ) {
     // Self-register for observability
     observability.registerPortSelector(this);
@@ -63,31 +66,32 @@ export class PortSelector {
   }
 
   /**
-   * Selects and instantiates the appropriate port from factories.
+   * Selects and resolves the appropriate port from injection tokens.
    *
-   * CRITICAL: Works with factory map to avoid eager instantiation.
-   * Only the selected factory is executed, preventing crashes from
+   * CRITICAL: Works with token map to avoid eager instantiation.
+   * Only the selected token is resolved from the DI container, preventing crashes from
    * incompatible constructors accessing unavailable APIs.
    *
    * @template T - The port type
-   * @param factories - Map of version numbers to port factories
+   * @param tokens - Map of version numbers to injection tokens
    * @param foundryVersion - Optional version override (uses getFoundryVersion() if not provided)
-   * @returns Result with instantiated port or error
+   * @param adapterName - Optional adapter name for observability
+   * @returns Result with resolved port or error
    *
    * @example
    * ```typescript
-   * const factories = new Map([
-   *   [13, () => new FoundryGamePortV13()],
-   *   [14, () => new FoundryGamePortV14()]
+   * const tokens = new Map([
+   *   [13, foundryGamePortV13Token],
+   *   [14, foundryGamePortV14Token]
    * ]);
-   * const selector = new PortSelector();
-   * const result = selector.selectPortFromFactories(factories);
-   * // On Foundry v13: creates only v13 port (v14 factory never called)
-   * // On Foundry v14: creates v14 port
+   * const selector = new PortSelector(eventEmitter, observability, container);
+   * const result = selector.selectPortFromTokens(tokens);
+   * // On Foundry v13: resolves only v13 port from container (v14 token never resolved)
+   * // On Foundry v14: resolves v14 port from container
    * ```
    */
-  selectPortFromFactories<T>(
-    factories: Map<number, PortFactory<T>>,
+  selectPortFromTokens<T extends ServiceType>(
+    tokens: Map<number, InjectionToken<T>>,
     foundryVersion?: number,
     adapterName?: string
   ): Result<T, FoundryError> {
@@ -136,12 +140,12 @@ export class PortSelector {
      * Note: This algorithm assumes ports are forward-compatible within reason.
      * A v13 port should work on v14+ unless breaking API changes occur.
      */
-    let selectedFactory: PortFactory<T> | undefined;
+    let selectedToken: InjectionToken<T> | undefined;
     let selectedVersion: number = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
 
     // Linear search for highest compatible version
     // Could be optimized with sorted array + binary search, but n is typically small (2-5 ports)
-    for (const [portVersion, factory] of factories.entries()) {
+    for (const [portVersion, token] of tokens.entries()) {
       // Rule 1: Skip ports newer than current Foundry version
       // These ports may use APIs that don't exist yet → runtime crashes
       if (portVersion > version) {
@@ -152,12 +156,12 @@ export class PortSelector {
       // Track the highest compatible version seen so far
       if (portVersion > selectedVersion) {
         selectedVersion = portVersion;
-        selectedFactory = factory;
+        selectedToken = token;
       }
     }
 
-    if (selectedFactory === undefined) {
-      const availableVersions = Array.from(factories.keys())
+    if (selectedToken === undefined) {
+      const availableVersions = Array.from(tokens.keys())
         .sort((a, b) => a - b)
         .join(", ");
 
@@ -179,9 +183,32 @@ export class PortSelector {
       return err(error);
     }
 
-    // CRITICAL: Only now instantiate the selected port
+    // CRITICAL: Only now resolve the selected port from the DI container
     try {
-      const port = selectedFactory();
+      const resolveResult = this.container.resolveWithError(selectedToken);
+      if (!resolveResult.ok) {
+        const foundryError = createFoundryError(
+          "PORT_SELECTION_FAILED",
+          `Failed to resolve port v${selectedVersion} from container`,
+          { selectedVersion },
+          resolveResult.error
+        );
+
+        // Emit failure event for observability
+        this.eventEmitter.emit({
+          type: "failure",
+          foundryVersion: version,
+          availableVersions: Array.from(tokens.keys())
+            .sort((a, b) => a - b)
+            .join(", "),
+          ...(adapterName !== undefined ? { adapterName } : {}),
+          error: foundryError,
+        });
+
+        return err(foundryError);
+      }
+
+      const port = resolveResult.value;
       const durationMs = performance.now() - startTime;
 
       // Emit success event for observability
@@ -197,7 +224,7 @@ export class PortSelector {
     } catch (error) {
       const foundryError = createFoundryError(
         "PORT_SELECTION_FAILED",
-        `Failed to instantiate port v${selectedVersion}`,
+        `Failed to resolve port v${selectedVersion} from container`,
         { selectedVersion },
         error
       );
@@ -206,7 +233,7 @@ export class PortSelector {
       this.eventEmitter.emit({
         type: "failure",
         foundryVersion: version,
-        availableVersions: Array.from(factories.keys())
+        availableVersions: Array.from(tokens.keys())
           .sort((a, b) => a - b)
           .join(", "),
         ...(adapterName !== undefined ? { adapterName } : {}),
@@ -219,9 +246,17 @@ export class PortSelector {
 }
 
 export class DIPortSelector extends PortSelector {
-  static dependencies = [portSelectionEventEmitterToken, observabilityRegistryToken] as const;
+  static dependencies = [
+    portSelectionEventEmitterToken,
+    observabilityRegistryToken,
+    serviceContainerToken,
+  ] as const;
 
-  constructor(eventEmitter: PortSelectionEventEmitter, observability: ObservabilityRegistry) {
-    super(eventEmitter, observability);
+  constructor(
+    eventEmitter: PortSelectionEventEmitter,
+    observability: ObservabilityRegistry,
+    container: ServiceContainer
+  ) {
+    super(eventEmitter, observability, container);
   }
 }

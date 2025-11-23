@@ -14,12 +14,7 @@ import {
 } from "@/infrastructure/shared/tokens";
 import { DIPortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
-import { FoundryGamePortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryGamePort";
-import { FoundryHooksPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryHooksPort";
-import { FoundryDocumentPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryDocumentPort";
-import { FoundryUIPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryUIPort";
-import { FoundrySettingsPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundrySettingsPort";
-import { FoundryI18nPortV13 } from "@/infrastructure/adapters/foundry/ports/v13/FoundryI18nPort";
+import { registerV13Ports } from "@/infrastructure/adapters/foundry/ports/v13/port-registration";
 import { DIFoundryUIAdapter } from "@/infrastructure/adapters/foundry/adapters/foundry-ui-adapter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
@@ -29,27 +24,15 @@ import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfac
 import type { FoundryI18n } from "@/infrastructure/adapters/foundry/interfaces/FoundryI18n";
 
 /**
- * Helper function for port registration.
- * Reduces duplication when registering multiple ports.
- */
-function registerPortToRegistry<T>(
-  registry: PortRegistry<T>,
-  version: number,
-  factory: () => T,
-  portName: string,
-  errors: string[]
-): void {
-  const result = registry.register(version, factory);
-  if (isErr(result)) {
-    errors.push(`${portName} v${version}: ${result.error}`);
-  }
-}
-
-/**
  * Creates and registers all port implementations to their respective registries.
  * Returns the populated registries for container registration.
+ *
+ * This function is version-agnostic and delegates to version-specific registration
+ * functions (e.g., registerV13Ports) to populate the registries.
+ *
+ * @param container - Service container for dependency injection (passed to port registration functions)
  */
-function createPortRegistries(): Result<
+function createPortRegistries(container: ServiceContainer): Result<
   {
     gamePortRegistry: PortRegistry<FoundryGame>;
     hooksPortRegistry: PortRegistry<FoundryHooks>;
@@ -60,72 +43,34 @@ function createPortRegistries(): Result<
   },
   string
 > {
-  const portRegistrationErrors: string[] = [];
-
-  // Create and populate FoundryGame registry
+  // Create empty port registries
   const gamePortRegistry = new PortRegistry<FoundryGame>();
-  registerPortToRegistry(
-    gamePortRegistry,
-    13,
-    () => new FoundryGamePortV13(),
-    "FoundryGame",
-    portRegistrationErrors
-  );
-
-  // Create and populate FoundryHooks registry
   const hooksPortRegistry = new PortRegistry<FoundryHooks>();
-  registerPortToRegistry(
-    hooksPortRegistry,
-    13,
-    () => new FoundryHooksPortV13(),
-    "FoundryHooks",
-    portRegistrationErrors
-  );
-
-  // Create and populate FoundryDocument registry
   const documentPortRegistry = new PortRegistry<FoundryDocument>();
-  registerPortToRegistry(
-    documentPortRegistry,
-    13,
-    () => new FoundryDocumentPortV13(),
-    "FoundryDocument",
-    portRegistrationErrors
-  );
-
-  // Create and populate FoundryUI registry
   const uiPortRegistry = new PortRegistry<FoundryUI>();
-  registerPortToRegistry(
-    uiPortRegistry,
-    13,
-    () => new FoundryUIPortV13(),
-    "FoundryUI",
-    portRegistrationErrors
-  );
-
-  // Create and populate FoundrySettings registry
   const settingsPortRegistry = new PortRegistry<FoundrySettings>();
-  registerPortToRegistry(
-    settingsPortRegistry,
-    13,
-    () => new FoundrySettingsPortV13(),
-    "FoundrySettings",
-    portRegistrationErrors
-  );
-
-  // Create and populate FoundryI18n registry
   const i18nPortRegistry = new PortRegistry<FoundryI18n>();
-  registerPortToRegistry(
-    i18nPortRegistry,
-    13,
-    () => new FoundryI18nPortV13(),
-    "FoundryI18n",
-    portRegistrationErrors
+
+  // Register v13 ports (version-specific registration is delegated to v13 layer)
+  // Container is passed to allow future ports to use DI, even though current v13 ports don't need it
+  const v13RegistrationResult = registerV13Ports(
+    {
+      gamePortRegistry,
+      hooksPortRegistry,
+      documentPortRegistry,
+      uiPortRegistry,
+      settingsPortRegistry,
+      i18nPortRegistry,
+    },
+    container
   );
 
-  // Check for registration errors
-  if (portRegistrationErrors.length > 0) {
-    return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
+  if (isErr(v13RegistrationResult)) {
+    return v13RegistrationResult;
   }
+
+  // Future: Add calls to registerV14Ports(), registerV15Ports(), etc. here
+  // Each version registers itself into the same registries
 
   return ok({
     gamePortRegistry,
@@ -141,7 +86,7 @@ function createPortRegistries(): Result<
  * Registers port infrastructure root services.
  *
  * Services registered:
- * - PortSelector (singleton, with EventEmitter and ObservabilityRegistry dependencies)
+ * - PortSelector (singleton, with EventEmitter, ObservabilityRegistry, and ServiceContainer dependencies)
  * - PlatformUIPort (singleton, via FoundryUIAdapter)
  *
  * OBSERVABILITY: PortSelector self-registers with ObservabilityRegistry for automatic
@@ -152,7 +97,7 @@ function createPortRegistries(): Result<
  */
 export function registerPortInfrastructure(container: ServiceContainer): Result<void, string> {
   // Register PortSelector
-  // Dependencies: [portSelectionEventEmitterToken, observabilityRegistryToken]
+  // Dependencies: [portSelectionEventEmitterToken, observabilityRegistryToken, serviceContainerToken]
   const portSelectorResult = container.registerClass(
     portSelectorToken,
     DIPortSelector,
@@ -189,7 +134,7 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
  * @returns Result indicating success or error with details
  */
 export function registerPortRegistries(container: ServiceContainer): Result<void, string> {
-  const portsResult = createPortRegistries();
+  const portsResult = createPortRegistries(container);
   if (isErr(portsResult)) return portsResult;
 
   const {

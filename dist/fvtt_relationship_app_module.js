@@ -259,6 +259,12 @@ const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry")
 const foundrySettingsToken = createInjectionToken("FoundrySettings");
 const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
 const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
+const foundryGamePortV13Token = createInjectionToken("FoundryGamePortV13");
+const foundryHooksPortV13Token = createInjectionToken("FoundryHooksPortV13");
+const foundryDocumentPortV13Token = createInjectionToken("FoundryDocumentPortV13");
+const foundryUIPortV13Token = createInjectionToken("FoundryUIPortV13");
+const foundrySettingsPortV13Token = createInjectionToken("FoundrySettingsPortV13");
+const foundryI18nPortV13Token = createInjectionToken("FoundryI18nPortV13");
 const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
 const journalEventPortToken = createInjectionToken("JournalEventPort");
 const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
@@ -3505,8 +3511,9 @@ function isFoundryError(error) {
 }
 __name(isFoundryError, "isFoundryError");
 const _PortSelector = class _PortSelector {
-  constructor(eventEmitter, observability) {
+  constructor(eventEmitter, observability, container) {
     this.eventEmitter = eventEmitter;
+    this.container = container;
     observability.registerPortSelector(this);
   }
   /**
@@ -3532,30 +3539,31 @@ const _PortSelector = class _PortSelector {
     return this.eventEmitter.subscribe(callback);
   }
   /**
-   * Selects and instantiates the appropriate port from factories.
+   * Selects and resolves the appropriate port from injection tokens.
    *
-   * CRITICAL: Works with factory map to avoid eager instantiation.
-   * Only the selected factory is executed, preventing crashes from
+   * CRITICAL: Works with token map to avoid eager instantiation.
+   * Only the selected token is resolved from the DI container, preventing crashes from
    * incompatible constructors accessing unavailable APIs.
    *
    * @template T - The port type
-   * @param factories - Map of version numbers to port factories
+   * @param tokens - Map of version numbers to injection tokens
    * @param foundryVersion - Optional version override (uses getFoundryVersion() if not provided)
-   * @returns Result with instantiated port or error
+   * @param adapterName - Optional adapter name for observability
+   * @returns Result with resolved port or error
    *
    * @example
    * ```typescript
-   * const factories = new Map([
-   *   [13, () => new FoundryGamePortV13()],
-   *   [14, () => new FoundryGamePortV14()]
+   * const tokens = new Map([
+   *   [13, foundryGamePortV13Token],
+   *   [14, foundryGamePortV14Token]
    * ]);
-   * const selector = new PortSelector();
-   * const result = selector.selectPortFromFactories(factories);
-   * // On Foundry v13: creates only v13 port (v14 factory never called)
-   * // On Foundry v14: creates v14 port
+   * const selector = new PortSelector(eventEmitter, observability, container);
+   * const result = selector.selectPortFromTokens(tokens);
+   * // On Foundry v13: resolves only v13 port from container (v14 token never resolved)
+   * // On Foundry v14: resolves v14 port from container
    * ```
    */
-  selectPortFromFactories(factories, foundryVersion, adapterName) {
+  selectPortFromTokens(tokens, foundryVersion, adapterName) {
     const startTime = performance.now();
     let version;
     if (foundryVersion !== void 0) {
@@ -3574,19 +3582,19 @@ const _PortSelector = class _PortSelector {
       }
       version = versionResult.value;
     }
-    let selectedFactory;
+    let selectedToken;
     let selectedVersion = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
-    for (const [portVersion, factory] of factories.entries()) {
+    for (const [portVersion, token] of tokens.entries()) {
       if (portVersion > version) {
         continue;
       }
       if (portVersion > selectedVersion) {
         selectedVersion = portVersion;
-        selectedFactory = factory;
+        selectedToken = token;
       }
     }
-    if (selectedFactory === void 0) {
-      const availableVersions = Array.from(factories.keys()).sort((a, b) => a - b).join(", ");
+    if (selectedToken === void 0) {
+      const availableVersions = Array.from(tokens.keys()).sort((a, b) => a - b).join(", ");
       const error = createFoundryError(
         "PORT_SELECTION_FAILED",
         `No compatible port found for Foundry version ${version}`,
@@ -3602,7 +3610,24 @@ const _PortSelector = class _PortSelector {
       return err(error);
     }
     try {
-      const port = selectedFactory();
+      const resolveResult = this.container.resolveWithError(selectedToken);
+      if (!resolveResult.ok) {
+        const foundryError = createFoundryError(
+          "PORT_SELECTION_FAILED",
+          `Failed to resolve port v${selectedVersion} from container`,
+          { selectedVersion },
+          resolveResult.error
+        );
+        this.eventEmitter.emit({
+          type: "failure",
+          foundryVersion: version,
+          availableVersions: Array.from(tokens.keys()).sort((a, b) => a - b).join(", "),
+          ...adapterName !== void 0 ? { adapterName } : {},
+          error: foundryError
+        });
+        return err(foundryError);
+      }
+      const port = resolveResult.value;
       const durationMs = performance.now() - startTime;
       this.eventEmitter.emit({
         type: "success",
@@ -3615,14 +3640,14 @@ const _PortSelector = class _PortSelector {
     } catch (error) {
       const foundryError = createFoundryError(
         "PORT_SELECTION_FAILED",
-        `Failed to instantiate port v${selectedVersion}`,
+        `Failed to resolve port v${selectedVersion} from container`,
         { selectedVersion },
         error
       );
       this.eventEmitter.emit({
         type: "failure",
         foundryVersion: version,
-        availableVersions: Array.from(factories.keys()).sort((a, b) => a - b).join(", "),
+        availableVersions: Array.from(tokens.keys()).sort((a, b) => a - b).join(", "),
         ...adapterName !== void 0 ? { adapterName } : {},
         error: foundryError
       });
@@ -3633,110 +3658,29 @@ const _PortSelector = class _PortSelector {
 __name(_PortSelector, "PortSelector");
 let PortSelector = _PortSelector;
 const _DIPortSelector = class _DIPortSelector extends PortSelector {
-  constructor(eventEmitter, observability) {
-    super(eventEmitter, observability);
+  constructor(eventEmitter, observability, container) {
+    super(eventEmitter, observability, container);
   }
 };
 __name(_DIPortSelector, "DIPortSelector");
-_DIPortSelector.dependencies = [portSelectionEventEmitterToken, observabilityRegistryToken];
+_DIPortSelector.dependencies = [
+  portSelectionEventEmitterToken,
+  observabilityRegistryToken,
+  serviceContainerToken
+];
 let DIPortSelector = _DIPortSelector;
-function hasMethod(obj, methodName) {
-  return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
-  typeof obj[methodName] === "function";
-}
-__name(hasMethod, "hasMethod");
-function hasProperty(obj, propertyName) {
-  return obj !== null && obj !== void 0 && typeof obj === "object" && propertyName in obj;
-}
-__name(hasProperty, "hasProperty");
-function isObjectWithMethods(obj, methodNames) {
-  if (obj === null || obj === void 0 || typeof obj !== "object") {
-    return false;
-  }
-  return methodNames.every((methodName) => hasMethod(obj, methodName));
-}
-__name(isObjectWithMethods, "isObjectWithMethods");
-function castFoundrySettingsApi(settings) {
-  if (!isObjectWithMethods(settings, ["register", "get", "set"])) {
-    return err(
-      createFoundryError(
-        "API_NOT_AVAILABLE",
-        "game.settings does not have required methods (register, get, set)",
-        {
-          missingMethods: ["register", "get", "set"]
-        }
-      )
-    );
-  }
-  return ok(settings);
-}
-__name(castFoundrySettingsApi, "castFoundrySettingsApi");
-function castFoundryDocumentForFlag(document2) {
-  if (!isObjectWithMethods(document2, ["getFlag", "setFlag"])) {
-    return err(
-      createFoundryError(
-        "VALIDATION_FAILED",
-        "Document does not have required methods (getFlag, setFlag)",
-        {
-          missingMethods: ["getFlag", "setFlag"]
-        }
-      )
-    );
-  }
-  return ok(document2);
-}
-__name(castFoundryDocumentForFlag, "castFoundryDocumentForFlag");
-function castFoundryError(error) {
-  return error;
-}
-__name(castFoundryError, "castFoundryError");
-function castDisposablePort(port) {
-  if (!port || typeof port !== "object") {
-    return null;
-  }
-  if (hasMethod(port, "dispose")) {
-    return port;
-  }
-  return null;
-}
-__name(castDisposablePort, "castDisposablePort");
-function ensureNonEmptyArray(arr) {
-  if (arr.length === 0) {
-    return err(
-      createFoundryError("VALIDATION_FAILED", "Array must not be empty", { arrayLength: 0 })
-    );
-  }
-  return ok(arr);
-}
-__name(ensureNonEmptyArray, "ensureNonEmptyArray");
-function extractHtmlElement(html) {
-  return html instanceof HTMLElement ? html : null;
-}
-__name(extractHtmlElement, "extractHtmlElement");
-function getFactoryOrError(factories, version) {
-  const factory = factories.get(version);
-  if (!factory) {
-    return err(
-      createFoundryError("PORT_NOT_FOUND", `Factory for version ${version} not found in registry`, {
-        version
-      })
-    );
-  }
-  return ok(factory);
-}
-__name(getFactoryOrError, "getFactoryOrError");
 const _PortRegistry = class _PortRegistry {
   constructor() {
-    this.factories = /* @__PURE__ */ new Map();
+    this.tokens = /* @__PURE__ */ new Map();
   }
   /**
-   * Registers a port factory for a specific Foundry version.
+   * Registers a port injection token for a specific Foundry version.
    * @param version - The Foundry version this port supports
-   * @param factory - Factory function that creates the port instance
+   * @param token - Injection token for resolving the port from the DI container
    * @returns Result indicating success or duplicate registration error
    */
-  register(version, factory) {
-    if (this.factories.has(version)) {
+  register(version, token) {
+    if (this.tokens.has(version)) {
       return err(
         createFoundryError(
           "PORT_REGISTRY_ERROR",
@@ -3745,7 +3689,7 @@ const _PortRegistry = class _PortRegistry {
         )
       );
     }
-    this.factories.set(version, factory);
+    this.tokens.set(version, token);
     return ok(void 0);
   }
   /**
@@ -3753,57 +3697,28 @@ const _PortRegistry = class _PortRegistry {
    * @returns Array of registered version numbers, sorted ascending
    */
   getAvailableVersions() {
-    return Array.from(this.factories.keys()).sort((a, b) => a - b);
+    return Array.from(this.tokens.keys()).sort((a, b) => a - b);
   }
   /**
-   * Gets the factory map without instantiating ports.
-   * Use with PortSelector.selectPortFromFactories() for safe lazy instantiation.
+   * Gets the token map without resolving ports.
+   * Use with PortSelector.selectPortFromTokens() for safe lazy instantiation via DI.
    *
-   * @returns Map of version numbers to factory functions (NOT instances)
+   * @returns Map of version numbers to injection tokens (NOT instances)
    *
    * @example
    * ```typescript
    * const registry = new PortRegistry<FoundryGame>();
-   * registry.register(13, () => new FoundryGamePortV13());
-   * registry.register(14, () => new FoundryGamePortV14());
+   * registry.register(13, foundryGamePortV13Token);
+   * registry.register(14, foundryGamePortV14Token);
    *
-   * const factories = registry.getFactories();
-   * const selector = new PortSelector();
-   * const result = selector.selectPortFromFactories(factories);
-   * // Only compatible port is instantiated
+   * const tokens = registry.getTokens();
+   * const selector = new PortSelector(container);
+   * const result = selector.selectPortFromTokens(tokens);
+   * // Only compatible port is resolved from container
    * ```
    */
-  getFactories() {
-    return new Map(this.factories);
-  }
-  /**
-   * Creates only the port for the specified version or the highest compatible version.
-   * More efficient than createAll() when only one port is needed.
-   * @param version - The target Foundry version
-   * @returns Result containing the port instance or error
-   */
-  createForVersion(version) {
-    const compatibleVersions = Array.from(this.factories.keys()).filter((v) => v <= version).sort((a, b) => b - a);
-    if (compatibleVersions.length === 0) {
-      const availableVersions = this.getAvailableVersions().join(", ") || "none";
-      return err(
-        createFoundryError(
-          "PORT_NOT_FOUND",
-          `No compatible port for Foundry v${version}. Available ports: ${availableVersions}`,
-          { version, availableVersions }
-        )
-      );
-    }
-    const nonEmptyResult = ensureNonEmptyArray(compatibleVersions);
-    if (!nonEmptyResult.ok) {
-      return nonEmptyResult;
-    }
-    const selectedVersion = nonEmptyResult.value[0];
-    const factoryResult = getFactoryOrError(this.factories, selectedVersion);
-    if (!factoryResult.ok) {
-      return factoryResult;
-    }
-    return ok(factoryResult.value());
+  getTokens() {
+    return new Map(this.tokens);
   }
   /**
    * Checks if a port is registered for a specific version.
@@ -3811,7 +3726,7 @@ const _PortRegistry = class _PortRegistry {
    * @returns True if a port is registered for this version
    */
   hasVersion(version) {
-    return this.factories.has(version);
+    return this.tokens.has(version);
   }
   /**
    * Gets the highest registered port version.
@@ -11037,6 +10952,91 @@ const _FoundryHooksPortV13 = class _FoundryHooksPortV13 {
 _disposed2 = new WeakMap();
 __name(_FoundryHooksPortV13, "FoundryHooksPortV13");
 let FoundryHooksPortV13 = _FoundryHooksPortV13;
+function hasMethod(obj, methodName) {
+  return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
+  typeof obj[methodName] === "function";
+}
+__name(hasMethod, "hasMethod");
+function hasProperty(obj, propertyName) {
+  return obj !== null && obj !== void 0 && typeof obj === "object" && propertyName in obj;
+}
+__name(hasProperty, "hasProperty");
+function isObjectWithMethods(obj, methodNames) {
+  if (obj === null || obj === void 0 || typeof obj !== "object") {
+    return false;
+  }
+  return methodNames.every((methodName) => hasMethod(obj, methodName));
+}
+__name(isObjectWithMethods, "isObjectWithMethods");
+function castFoundrySettingsApi(settings) {
+  if (!isObjectWithMethods(settings, ["register", "get", "set"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "game.settings does not have required methods (register, get, set)",
+        {
+          missingMethods: ["register", "get", "set"]
+        }
+      )
+    );
+  }
+  return ok(settings);
+}
+__name(castFoundrySettingsApi, "castFoundrySettingsApi");
+function castFoundryDocumentForFlag(document2) {
+  if (!isObjectWithMethods(document2, ["getFlag", "setFlag"])) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Document does not have required methods (getFlag, setFlag)",
+        {
+          missingMethods: ["getFlag", "setFlag"]
+        }
+      )
+    );
+  }
+  return ok(document2);
+}
+__name(castFoundryDocumentForFlag, "castFoundryDocumentForFlag");
+function castFoundryError(error) {
+  return error;
+}
+__name(castFoundryError, "castFoundryError");
+function castDisposablePort(port) {
+  if (!port || typeof port !== "object") {
+    return null;
+  }
+  if (hasMethod(port, "dispose")) {
+    return port;
+  }
+  return null;
+}
+__name(castDisposablePort, "castDisposablePort");
+function ensureNonEmptyArray(arr) {
+  if (arr.length === 0) {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Array must not be empty", { arrayLength: 0 })
+    );
+  }
+  return ok(arr);
+}
+__name(ensureNonEmptyArray, "ensureNonEmptyArray");
+function extractHtmlElement(html) {
+  return html instanceof HTMLElement ? html : null;
+}
+__name(extractHtmlElement, "extractHtmlElement");
+function getFactoryOrError(factories, version) {
+  const factory = factories.get(version);
+  if (!factory) {
+    return err(
+      createFoundryError("PORT_NOT_FOUND", `Factory for version ${version} not found in registry`, {
+        version
+      })
+    );
+  }
+  return ok(factory);
+}
+__name(getFactoryOrError, "getFactoryOrError");
 const _FoundryDocumentPortV13 = class _FoundryDocumentPortV13 {
   constructor() {
     __privateAdd(this, _disposed3, false);
@@ -11435,6 +11435,81 @@ _disposed6 = new WeakMap();
 __name(_FoundryI18nPortV13, "FoundryI18nPortV13");
 _FoundryI18nPortV13.dependencies = [];
 let FoundryI18nPortV13 = _FoundryI18nPortV13;
+function registerPortToRegistry(registry, version, token, portName, errors) {
+  const result = registry.register(version, token);
+  if (isErr(result)) {
+    errors.push(`${portName} v${version}: ${result.error}`);
+  }
+}
+__name(registerPortToRegistry, "registerPortToRegistry");
+function registerV13Ports(registries, container) {
+  const portRegistrationErrors = [];
+  container.registerClass(foundryGamePortV13Token, FoundryGamePortV13, ServiceLifecycle.SINGLETON);
+  container.registerClass(
+    foundryHooksPortV13Token,
+    FoundryHooksPortV13,
+    ServiceLifecycle.SINGLETON
+  );
+  container.registerClass(
+    foundryDocumentPortV13Token,
+    FoundryDocumentPortV13,
+    ServiceLifecycle.SINGLETON
+  );
+  container.registerClass(foundryUIPortV13Token, FoundryUIPortV13, ServiceLifecycle.SINGLETON);
+  container.registerClass(
+    foundrySettingsPortV13Token,
+    FoundrySettingsPortV13,
+    ServiceLifecycle.SINGLETON
+  );
+  container.registerClass(foundryI18nPortV13Token, FoundryI18nPortV13, ServiceLifecycle.SINGLETON);
+  registerPortToRegistry(
+    registries.gamePortRegistry,
+    13,
+    foundryGamePortV13Token,
+    "FoundryGame",
+    portRegistrationErrors
+  );
+  registerPortToRegistry(
+    registries.hooksPortRegistry,
+    13,
+    foundryHooksPortV13Token,
+    "FoundryHooks",
+    portRegistrationErrors
+  );
+  registerPortToRegistry(
+    registries.documentPortRegistry,
+    13,
+    foundryDocumentPortV13Token,
+    "FoundryDocument",
+    portRegistrationErrors
+  );
+  registerPortToRegistry(
+    registries.uiPortRegistry,
+    13,
+    foundryUIPortV13Token,
+    "FoundryUI",
+    portRegistrationErrors
+  );
+  registerPortToRegistry(
+    registries.settingsPortRegistry,
+    13,
+    foundrySettingsPortV13Token,
+    "FoundrySettings",
+    portRegistrationErrors
+  );
+  registerPortToRegistry(
+    registries.i18nPortRegistry,
+    13,
+    foundryI18nPortV13Token,
+    "FoundryI18n",
+    portRegistrationErrors
+  );
+  if (portRegistrationErrors.length > 0) {
+    return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
+  }
+  return ok(void 0);
+}
+__name(registerV13Ports, "registerV13Ports");
 const _FoundryUIAdapter = class _FoundryUIAdapter {
   constructor(foundryUI) {
     this.foundryUI = foundryUI;
@@ -11486,65 +11561,26 @@ const _DIFoundryUIAdapter = class _DIFoundryUIAdapter extends FoundryUIAdapter {
 __name(_DIFoundryUIAdapter, "DIFoundryUIAdapter");
 _DIFoundryUIAdapter.dependencies = [foundryUIToken];
 let DIFoundryUIAdapter = _DIFoundryUIAdapter;
-function registerPortToRegistry(registry, version, factory, portName, errors) {
-  const result = registry.register(version, factory);
-  if (isErr(result)) {
-    errors.push(`${portName} v${version}: ${result.error}`);
-  }
-}
-__name(registerPortToRegistry, "registerPortToRegistry");
-function createPortRegistries() {
-  const portRegistrationErrors = [];
+function createPortRegistries(container) {
   const gamePortRegistry = new PortRegistry();
-  registerPortToRegistry(
-    gamePortRegistry,
-    13,
-    () => new FoundryGamePortV13(),
-    "FoundryGame",
-    portRegistrationErrors
-  );
   const hooksPortRegistry = new PortRegistry();
-  registerPortToRegistry(
-    hooksPortRegistry,
-    13,
-    () => new FoundryHooksPortV13(),
-    "FoundryHooks",
-    portRegistrationErrors
-  );
   const documentPortRegistry = new PortRegistry();
-  registerPortToRegistry(
-    documentPortRegistry,
-    13,
-    () => new FoundryDocumentPortV13(),
-    "FoundryDocument",
-    portRegistrationErrors
-  );
   const uiPortRegistry = new PortRegistry();
-  registerPortToRegistry(
-    uiPortRegistry,
-    13,
-    () => new FoundryUIPortV13(),
-    "FoundryUI",
-    portRegistrationErrors
-  );
   const settingsPortRegistry = new PortRegistry();
-  registerPortToRegistry(
-    settingsPortRegistry,
-    13,
-    () => new FoundrySettingsPortV13(),
-    "FoundrySettings",
-    portRegistrationErrors
-  );
   const i18nPortRegistry = new PortRegistry();
-  registerPortToRegistry(
-    i18nPortRegistry,
-    13,
-    () => new FoundryI18nPortV13(),
-    "FoundryI18n",
-    portRegistrationErrors
+  const v13RegistrationResult = registerV13Ports(
+    {
+      gamePortRegistry,
+      hooksPortRegistry,
+      documentPortRegistry,
+      uiPortRegistry,
+      settingsPortRegistry,
+      i18nPortRegistry
+    },
+    container
   );
-  if (portRegistrationErrors.length > 0) {
-    return err(`Port registration failed: ${portRegistrationErrors.join("; ")}`);
+  if (isErr(v13RegistrationResult)) {
+    return v13RegistrationResult;
   }
   return ok({
     gamePortRegistry,
@@ -11577,7 +11613,7 @@ function registerPortInfrastructure(container) {
 }
 __name(registerPortInfrastructure, "registerPortInfrastructure");
 function registerPortRegistries(container) {
-  const portsResult = createPortRegistries();
+  const portsResult = createPortRegistries(container);
   if (isErr(portsResult)) return portsResult;
   const {
     gamePortRegistry,
@@ -11644,22 +11680,19 @@ const _FoundryServiceBase = class _FoundryServiceBase {
   }
   /**
    * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   * Uses PortSelector with token-based selection to resolve ports from the DI container.
    *
    * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
+   * APIs not available in the current Foundry version. Ports are resolved
+   * from the DI container, ensuring DIP (Dependency Inversion Principle) compliance.
    *
    * @param adapterName - Name for logging purposes (e.g., "FoundryGame")
    * @returns Result containing the port or a FoundryError if no compatible port can be selected
    */
   getPort(adapterName) {
     if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        void 0,
-        adapterName
-      );
+      const tokens = this.portRegistry.getTokens();
+      const portResult = this.portSelector.selectPortFromTokens(tokens, void 0, adapterName);
       if (!portResult.ok) {
         return portResult;
       }

@@ -24,9 +24,10 @@ import type { Disposable } from "@/infrastructure/di/interfaces";
 import type { PortSelector } from "../versioning/portselector";
 import type { PortRegistry } from "../versioning/portregistry";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
+import type { ServiceType } from "@/infrastructure/shared/tokens";
 import { castDisposablePort } from "@/infrastructure/adapters/foundry/runtime-casts";
 
-export abstract class FoundryServiceBase<TPort> implements Disposable {
+export abstract class FoundryServiceBase<TPort extends ServiceType> implements Disposable {
   protected port: TPort | null = null;
   protected readonly portSelector: PortSelector;
   protected readonly portRegistry: PortRegistry<TPort>;
@@ -44,22 +45,19 @@ export abstract class FoundryServiceBase<TPort> implements Disposable {
 
   /**
    * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with factory-based selection to prevent eager instantiation.
+   * Uses PortSelector with token-based selection to resolve ports from the DI container.
    *
    * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version.
+   * APIs not available in the current Foundry version. Ports are resolved
+   * from the DI container, ensuring DIP (Dependency Inversion Principle) compliance.
    *
    * @param adapterName - Name for logging purposes (e.g., "FoundryGame")
    * @returns Result containing the port or a FoundryError if no compatible port can be selected
    */
   protected getPort(adapterName: string): Result<TPort, FoundryError> {
     if (this.port === null) {
-      const factories = this.portRegistry.getFactories();
-      const portResult = this.portSelector.selectPortFromFactories(
-        factories,
-        undefined,
-        adapterName
-      );
+      const tokens = this.portRegistry.getTokens();
+      const portResult = this.portSelector.selectPortFromTokens(tokens, undefined, adapterName);
       if (!portResult.ok) {
         return portResult;
       }
