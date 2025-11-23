@@ -12,6 +12,25 @@
 
 ### Upgrade-Hinweise
 
+## [0.29.2] - 2025-11-23
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Journal-Ausblenden Notification**: UI-Benachrichtigung zeigt jetzt den Journal-Namen statt der ID an (`Journal "Mein Tagebuch" wurde ausgeblendet` statt `Journal "journal-123" wurde ausgeblendet`)
+- Journal-ID bleibt weiterhin in Logs für Debugging-Zwecke erhalten
+- Fallback auf ID, falls Journal-Eintrag nicht gefunden wird
+- Verbesserte Benutzerfreundlichkeit durch ansprechendere Meldungen
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.29.1] - 2025-11-23
 ### Hinzugefügt
 - **Type-Definitionen für libWrapper**: Explizite Typen `FoundryContextMenu` und `LibWrapperFunction` für bessere Type-Safety

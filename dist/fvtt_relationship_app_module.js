@@ -14655,10 +14655,11 @@ __name(_DIRegisterContextMenuUseCase, "DIRegisterContextMenuUseCase");
 _DIRegisterContextMenuUseCase.dependencies = [journalEventPortToken, hideJournalContextMenuHandlerToken];
 let DIRegisterContextMenuUseCase = _DIRegisterContextMenuUseCase;
 const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
-  constructor(journalVisibility, platformUI, notificationCenter) {
+  constructor(journalVisibility, platformUI, notificationCenter, foundryGame) {
     this.journalVisibility = journalVisibility;
     this.platformUI = platformUI;
     this.notificationCenter = notificationCenter;
+    this.foundryGame = foundryGame;
   }
   handle(event) {
     const journalId = this.extractJournalId(event.htmlElement);
@@ -14684,8 +14685,10 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
             true
           );
           if (hideResult.ok) {
+            const journalEntryResult = this.foundryGame.getJournalEntryById(journalId);
+            const journalName = journalEntryResult.ok && journalEntryResult.value ? journalEntryResult.value.name : journalId;
             const notifyResult = this.platformUI.notify(
-              `Journal "${journalId}" wurde ausgeblendet`,
+              `Journal "${journalName}" wurde ausgeblendet`,
               "info"
             );
             if (!notifyResult.ok) {
@@ -14696,8 +14699,8 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
               );
             }
             this.notificationCenter.debug(
-              `Journal ${journalId} hidden via context menu`,
-              { journalId },
+              `Journal ${journalId} (${journalName}) hidden via context menu`,
+              { journalId, journalName },
               { channels: ["ConsoleChannel"] }
             );
           } else {
@@ -14723,15 +14726,16 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
 __name(_HideJournalContextMenuHandler, "HideJournalContextMenuHandler");
 let HideJournalContextMenuHandler = _HideJournalContextMenuHandler;
 const _DIHideJournalContextMenuHandler = class _DIHideJournalContextMenuHandler extends HideJournalContextMenuHandler {
-  constructor(journalVisibility, platformUI, notificationCenter) {
-    super(journalVisibility, platformUI, notificationCenter);
+  constructor(journalVisibility, platformUI, notificationCenter, foundryGame) {
+    super(journalVisibility, platformUI, notificationCenter, foundryGame);
   }
 };
 __name(_DIHideJournalContextMenuHandler, "DIHideJournalContextMenuHandler");
 _DIHideJournalContextMenuHandler.dependencies = [
   journalVisibilityPortToken,
   platformUIPortToken,
-  notificationCenterToken
+  notificationCenterToken,
+  foundryGameToken
 ];
 let DIHideJournalContextMenuHandler = _DIHideJournalContextMenuHandler;
 function disposeHooks(hooks) {

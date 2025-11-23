@@ -3,10 +3,12 @@ import type { JournalContextMenuEvent } from "@/domain/ports/events/journal-even
 import type { JournalVisibilityPort } from "@/domain/ports/journal-visibility-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import {
   journalVisibilityPortToken,
   platformUIPortToken,
   notificationCenterToken,
+  foundryGameToken,
 } from "@/infrastructure/shared/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
@@ -20,7 +22,8 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
   constructor(
     private readonly journalVisibility: JournalVisibilityPort,
     private readonly platformUI: PlatformUIPort,
-    private readonly notificationCenter: NotificationCenter
+    private readonly notificationCenter: NotificationCenter,
+    private readonly foundryGame: FoundryGame
   ) {}
 
   handle(event: JournalContextMenuEvent): void {
@@ -58,8 +61,16 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
           );
 
           if (hideResult.ok) {
+            // Hole Journal-Eintrag, um den Namen zu bekommen
+            const journalEntryResult = this.foundryGame.getJournalEntryById(journalId);
+            const journalName =
+              journalEntryResult.ok && journalEntryResult.value
+                ? journalEntryResult.value.name
+                : journalId; // Fallback auf ID, falls Name nicht verfügbar
+
+            // Notification mit Journal-Namen (für UI)
             const notifyResult = this.platformUI.notify(
-              `Journal "${journalId}" wurde ausgeblendet`,
+              `Journal "${journalName}" wurde ausgeblendet`,
               "info"
             );
 
@@ -71,9 +82,10 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
               );
             }
 
+            // Log mit Journal-ID (für Debugging)
             this.notificationCenter.debug(
-              `Journal ${journalId} hidden via context menu`,
-              { journalId },
+              `Journal ${journalId} (${journalName}) hidden via context menu`,
+              { journalId, journalName },
               { channels: ["ConsoleChannel"] }
             );
           } else {
@@ -109,13 +121,15 @@ export class DIHideJournalContextMenuHandler extends HideJournalContextMenuHandl
     journalVisibilityPortToken,
     platformUIPortToken,
     notificationCenterToken,
+    foundryGameToken,
   ] as const;
 
   constructor(
     journalVisibility: JournalVisibilityPort,
     platformUI: PlatformUIPort,
-    notificationCenter: NotificationCenter
+    notificationCenter: NotificationCenter,
+    foundryGame: FoundryGame
   ) {
-    super(journalVisibility, platformUI, notificationCenter);
+    super(journalVisibility, platformUI, notificationCenter, foundryGame);
   }
 }
