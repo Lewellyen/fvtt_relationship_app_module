@@ -62,8 +62,26 @@ describe("init-solid Bootstrap", () => {
       // Prüfen dass expose-Spy existiert
       expect(moduleApiInitializerModule.ModuleApiInitializer.prototype.expose).toBeDefined();
 
+      // Spy auf Logger.info um zu prüfen dass "init-phase completed" geloggt wird (Zeile 155)
+      const consoleLoggerModule = await import("@/infrastructure/logging/ConsoleLoggerService");
+      const infoSpy = vi.spyOn(consoleLoggerModule.ConsoleLoggerService.prototype, "info");
+
+      // Ensure registerAll returns success to reach line 155
+      const moduleEventRegistrarModule = await import(
+        "@/application/services/ModuleEventRegistrar"
+      );
+      const registerAllSpy = vi
+        .spyOn(moduleEventRegistrarModule.ModuleEventRegistrar.prototype, "registerAll")
+        .mockReturnValue({ ok: true, value: undefined });
+
       // Callback ausführen -> sollte Phase 2 triggern
       initCallback!();
+
+      // Prüfen dass "init-phase completed" geloggt wurde (Zeile 155)
+      // Die Zeile wird nur erreicht, wenn registerAll erfolgreich ist
+      expect(infoSpy).toHaveBeenCalledWith("init-phase completed");
+
+      registerAllSpy.mockRestore();
 
       // Prüfen dass API expose wurde
       expect(moduleApiInitializerModule.ModuleApiInitializer.prototype.expose).toHaveBeenCalled();
@@ -79,6 +97,7 @@ describe("init-solid Bootstrap", () => {
       // Wir prüfen dass der Hook korrekt registriert wurde und der Callback ausführbar ist
       expect(hooksOnMock.mock.calls.length).toBeGreaterThan(0);
 
+      infoSpy.mockRestore();
       cleanup();
     });
 

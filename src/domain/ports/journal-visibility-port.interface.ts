@@ -27,4 +27,17 @@ export interface JournalVisibilityPort {
     entry: JournalEntry,
     flagKey: string
   ): Result<boolean | null, JournalVisibilityError>;
+
+  /**
+   * Sets a boolean flag on a journal entry.
+   * @param entry - The journal entry
+   * @param flagKey - The flag key to set
+   * @param value - The boolean value to set
+   * @returns Result indicating success or error
+   */
+  setEntryFlag(
+    entry: JournalEntry,
+    flagKey: string,
+    value: boolean
+  ): Promise<Result<void, JournalVisibilityError>>;
 }

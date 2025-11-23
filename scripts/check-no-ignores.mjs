@@ -52,32 +52,11 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['v8 ignore file'],
     reason: 'Konstanten-Definition: Keine ausführbare Logik',
   },
-  {
-    file: 'src/framework/config/environment.ts',
-    allowed: ['type-coverage:ignore-line'],
-    reason: 'Build-Time Environment Variables: Vite import.meta.env ist zur Build-Zeit verfügbar, aber TypeScript kann die Typen nicht inferieren',
-  },
-  
   // DI-Infrastruktur: Coverage-Tool-Limitationen
-  {
-    file: 'src/infrastructure/di/container.ts',
-    allowed: ['v8 ignore'],
-    reason: 'Coverage-Tool-Limitation: finally-Block wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
-  },
   {
     file: 'src/infrastructure/di/validation/ContainerValidator.ts',
     allowed: ['v8 ignore'],
     reason: 'Coverage-Tool-Limitation: Early-Return-Pfad wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
-  },
-  {
-    file: 'src/infrastructure/di/resolution/ServiceResolver.ts',
-    allowed: ['v8 ignore'],
-    reason: 'Coverage-Tool-Limitation: Optional Chaining mit null metricsCollector wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
-  },
-  {
-    file: 'src/framework/config/dependencyconfig.ts',
-    allowed: ['v8 ignore'],
-    reason: 'Coverage-Tool-Limitation: Error-Propagierungs-Pfad wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
   },
   
   // DI-Infrastruktur: Architektonisch notwendige Typen
@@ -103,6 +82,11 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore'],
     reason: 'Foundry Runtime-Casts: Zentralisierte Foundry-spezifische Runtime-Cast-Helpers (bereits global in type-coverage.json ausgenommen)',
   },
+  {
+    file: 'src/infrastructure/shared/utils/type-guards.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Runtime Type Guards: Type-Cast für Runtime-Validierung von Methoden-Existenz (notwendig für type-safe Runtime-Checks)',
+  },
   
   // Polyfills (werden automatisch ausgenommen, hier nur für Vollständigkeit)
   {
@@ -110,18 +94,7 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['v8 ignore file', 'eslint-disable'],
     reason: 'Legacy Polyfill: Cytoscape-Patch für externe Bibliothek, schwer testbar ohne Browser-Integration',
   },
-  {
-    file: 'src/application/use-cases/journal-cache-invalidation-hook.ts',
-    allowed: ['eslint-disable'],
-    reason: 'Foundry Hooks API: Hooks.call ist deprecated, aber notwendig als Fallback für manuelle Hook-Triggerung wenn journalApp nicht verfügbar ist',
-  },
   
-  // Type-Assertions
-  {
-    file: 'src/infrastructure/cache/cache.interface.ts',
-    allowed: ['type-coverage:ignore-line'],
-    reason: 'Brand Assertion: CacheKey-Brand-Assertion erforderlich für Type-Safety (nominal typing für Cache-Keys)',
-  },
 ];
 
 // Ignore-Marker, nach denen gesucht wird

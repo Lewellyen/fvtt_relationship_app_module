@@ -257,6 +257,106 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
 **Guidelines für neue Hooks:**
 - Neue Hook-Strategien implementieren `HookRegistrar` und verwenden immer `HookRegistrationManager` für alle `Hooks.on`-Registrierungen.
 
+### Handler-Pattern für erweiterbare Event-Verarbeitung
+
+Das **Handler-Pattern** ermöglicht es, mehrere Handler für dasselbe Event zu registrieren. Dies ist besonders nützlich für Context-Menü-Items oder andere UI-Elemente, die von mehreren Features erweitert werden können.
+
+**Architektur-Hierarchie:**
+```
+Application Layer
+  ├─ RegisterContextMenuUseCase (Orchestrator)
+  │   ↓ depends on
+  │   JournalEventPort (Domain Layer - platform-agnostic)
+  │   ↓ depends on
+  │   JournalContextMenuHandler[] (Handler-Interface)
+  │
+  └─ Handler-Implementierungen
+      ├─ HideJournalContextMenuHandler (spezifisch)
+      ├─ ShowJournalContextMenuHandler (spezifisch)
+      └─ ... weitere Handler (erweiterbar)
+```
+
+**Vorteile:**
+- ✅ **Erweiterbar** - Neue Context-Menü-Items = neuer Handler
+- ✅ **Separation of Concerns** - Jeder Handler hat eine klare Verantwortung
+- ✅ **Testbarkeit** - Handler einzeln testbar
+- ✅ **Wiederverwendbar** - Handler können in anderen Kontexten genutzt werden
+- ✅ **Event-Port bleibt generisch** - Unterstützt bereits mehrere Callbacks
+
+**Beispiel: HideJournalContextMenuHandler**
+
+```typescript
+// src/application/handlers/journal-context-menu-handler.interface.ts
+export interface JournalContextMenuHandler {
+  handle(event: JournalContextMenuEvent): void;
+}
+
+// src/application/handlers/hide-journal-context-menu-handler.ts
+export class HideJournalContextMenuHandler implements JournalContextMenuHandler {
+  constructor(
+    private readonly journalVisibility: JournalVisibilityPort,
+    private readonly platformUI: PlatformUIPort,
+    private readonly notificationCenter: NotificationCenter
+  ) {}
+
+  handle(event: JournalContextMenuEvent): void {
+    const journalId = this.extractJournalId(event.htmlElement);
+    if (!journalId) return;
+
+    // Prüfe, ob Journal bereits versteckt ist
+    const flagResult = this.journalVisibility.getEntryFlag(
+      { id: journalId, name: null },
+      MODULE_CONSTANTS.FLAGS.HIDDEN
+    );
+
+    // Nur hinzufügen, wenn nicht versteckt
+    if (flagResult.ok && flagResult.value !== true) {
+      event.options.push({
+        name: "Journal ausblenden",
+        icon: '<i class="fas fa-eye-slash"></i>',
+        callback: async (li) => {
+          // Journal verstecken
+          await this.journalVisibility.setEntryFlag(
+            { id: journalId, name: null },
+            MODULE_CONSTANTS.FLAGS.HIDDEN,
+            true
+          );
+        },
+      });
+    }
+  }
+}
+```
+
+**Use-Case als Orchestrator:**
+
+```typescript
+// src/application/use-cases/register-context-menu.use-case.ts
+export class RegisterContextMenuUseCase implements EventRegistrar {
+  constructor(
+    private readonly journalEvents: JournalEventPort,
+    private readonly hideJournalHandler: HideJournalContextMenuHandler
+  ) {}
+
+  register(): Result<void, Error> {
+    const handlers: JournalContextMenuHandler[] = [this.hideJournalHandler];
+
+    return this.journalEvents.onJournalContextMenu((event) => {
+      // Rufe alle Handler auf
+      for (const handler of handlers) {
+        handler.handle(event);
+      }
+    });
+  }
+}
+```
+
+**Wichtige Punkte:**
+- Handler nutzen **Domain-Ports** (JournalVisibilityPort, PlatformUIPort) - platform-agnostic
+- Handler werden direkt im Use-Case Constructor injiziert (Option A - einfacher)
+- `event.options` Array ist mutable und kann von Handlern modifiziert werden
+- Für Foundry-Integration nutzt `FoundryJournalEventAdapter` libWrapper statt Hook (da Hook in v13 nicht mehr funktioniert)
+
 ### Domain-Ports für DIP-Konformität
 
 Neben den Foundry-Versions-Ports gibt es auch **Domain-Ports**, die domänenneutrale Abstraktionen für Geschäftslogik bereitstellen. Diese Ports sind **nicht versionsabhängig** und ermöglichen es, die Domäne vollständig von Foundry-spezifischen Typen zu entkoppeln.

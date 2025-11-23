@@ -42,9 +42,15 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
 
+    const settingsResult = castFoundrySettingsApi(game.settings);
+    if (!settingsResult.ok) {
+      return settingsResult; // Propagate error
+    }
+    const settings = settingsResult.value;
+
     return tryCatch(
       () => {
-        castFoundrySettingsApi(game.settings).register(namespace, key, config);
+        settings.register(namespace, key, config);
         return undefined;
       },
       (error) =>
@@ -71,9 +77,15 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
 
+    const settingsResult = castFoundrySettingsApi(game.settings);
+    if (!settingsResult.ok) {
+      return settingsResult; // Propagate error
+    }
+    const settings = settingsResult.value;
+
     return tryCatch(
       () => {
-        const rawValue = castFoundrySettingsApi(game.settings).get(namespace, key);
+        const rawValue = settings.get(namespace, key);
 
         // Runtime validation with Valibot
         const parseResult = v.safeParse(schema, rawValue);
@@ -115,10 +127,14 @@ export class FoundrySettingsPortV13 implements FoundrySettings {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
 
+    const settingsResult = castFoundrySettingsApi(game.settings);
+    if (!settingsResult.ok) {
+      return Promise.resolve(settingsResult); // Propagate error
+    }
+    const settings = settingsResult.value;
+
     return fromPromise(
-      castFoundrySettingsApi(game.settings)
-        .set(namespace, key, value)
-        .then(() => undefined),
+      settings.set(namespace, key, value).then(() => undefined),
       (error) =>
         createFoundryError(
           "OPERATION_FAILED",

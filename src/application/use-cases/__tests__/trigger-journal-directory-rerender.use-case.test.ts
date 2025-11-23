@@ -16,6 +16,7 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
       onJournalUpdated: vi.fn().mockReturnValue({ ok: true, value: "1" }),
       onJournalDeleted: vi.fn(),
       onJournalDirectoryRendered: vi.fn(),
+      onJournalContextMenu: vi.fn().mockReturnValue({ ok: true, value: "2" }),
       registerListener: vi.fn(),
       unregisterListener: vi.fn(),
     };

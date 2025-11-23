@@ -7,12 +7,16 @@ import {
   invalidateJournalCacheOnChangeUseCaseToken,
   processJournalDirectoryOnRenderUseCaseToken,
   triggerJournalDirectoryReRenderUseCaseToken,
+  registerContextMenuUseCaseToken,
+  hideJournalContextMenuHandlerToken,
   moduleEventRegistrarToken,
 } from "@/infrastructure/shared/tokens";
 import { DIFoundryJournalEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter";
 import { DIInvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import { DIProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
 import { DITriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";
+import { DIRegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
+import { DIHideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 
 /**
@@ -23,6 +27,8 @@ import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegist
  * - InvalidateJournalCacheOnChangeUseCase (singleton) - Cache invalidation use-case
  * - ProcessJournalDirectoryOnRenderUseCase (singleton) - Directory render use-case
  * - TriggerJournalDirectoryReRenderUseCase (singleton) - UI re-render use-case
+ * - HideJournalContextMenuHandler (singleton) - Handler for "Journal ausblenden" context menu item
+ * - RegisterContextMenuUseCase (singleton) - Context menu registration use-case (orchestrator)
  * - ModuleEventRegistrar (singleton) - Manages all event listeners
  *
  * DESIGN: Event ports are platform-agnostic abstractions over event systems.
@@ -75,6 +81,30 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
   if (isErr(reRenderUseCaseResult)) {
     return err(
       `Failed to register TriggerJournalDirectoryReRenderUseCase: ${reRenderUseCaseResult.error.message}`
+    );
+  }
+
+  // Register HideJournalContextMenuHandler
+  const hideJournalHandlerResult = container.registerClass(
+    hideJournalContextMenuHandlerToken,
+    DIHideJournalContextMenuHandler,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(hideJournalHandlerResult)) {
+    return err(
+      `Failed to register HideJournalContextMenuHandler: ${hideJournalHandlerResult.error.message}`
+    );
+  }
+
+  // Register RegisterContextMenuUseCase
+  const contextMenuUseCaseResult = container.registerClass(
+    registerContextMenuUseCaseToken,
+    DIRegisterContextMenuUseCase,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(contextMenuUseCaseResult)) {
+    return err(
+      `Failed to register RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
     );
   }
 

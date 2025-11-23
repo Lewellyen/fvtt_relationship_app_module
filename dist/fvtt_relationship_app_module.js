@@ -270,6 +270,11 @@ const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken(
 const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken(
   "TriggerJournalDirectoryReRenderUseCase"
 );
+const registerJournalContextMenuUseCaseToken = createInjectionToken("RegisterJournalContextMenuUseCase");
+const registerContextMenuUseCaseToken = createInjectionToken(
+  "RegisterContextMenuUseCase"
+);
+const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
 const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
 const platformUIPortToken = createInjectionToken("PlatformUIPort");
 const apiSafeTokens = /* @__PURE__ */ new Set();
@@ -543,7 +548,14 @@ function castCachedServiceInstance(instance2) {
 }
 __name(castCachedServiceInstance, "castCachedServiceInstance");
 function castCachedServiceInstanceForResult(instance2) {
-  return instance2;
+  if (instance2 === void 0) {
+    return err({
+      code: "TokenNotRegistered",
+      message: "castCachedServiceInstanceForResult: instance must not be undefined. Use castCachedServiceInstance() for optional instances.",
+      details: {}
+    });
+  }
+  return ok(instance2);
 }
 __name(castCachedServiceInstanceForResult, "castCachedServiceInstanceForResult");
 function castServiceRegistrationEntry(token, registration) {
@@ -578,6 +590,10 @@ function castToFoundryHookCallback(callback) {
   return callback;
 }
 __name(castToFoundryHookCallback, "castToFoundryHookCallback");
+function assertCacheKey(value2) {
+  return value2;
+}
+__name(assertCacheKey, "assertCacheKey");
 function hasDependencies(cls) {
   return "dependencies" in cls;
 }
@@ -1201,13 +1217,17 @@ const _ServiceResolver = class _ServiceResolver {
       }
     }
     if (!this.cache.has(token)) {
-      const instanceResult = this.instantiateService(token, registration);
-      if (!instanceResult.ok) {
-        return instanceResult;
+      const instanceResult2 = this.instantiateService(token, registration);
+      if (!instanceResult2.ok) {
+        return instanceResult2;
       }
-      this.cache.set(token, instanceResult.value);
+      this.cache.set(token, instanceResult2.value);
     }
-    return ok(castCachedServiceInstanceForResult(this.cache.get(token)));
+    const instanceResult = castCachedServiceInstanceForResult(this.cache.get(token));
+    if (!instanceResult.ok) {
+      return instanceResult;
+    }
+    return ok(instanceResult.value);
   }
   /**
    * Resolves a Transient service.
@@ -1265,13 +1285,17 @@ const _ServiceResolver = class _ServiceResolver {
       });
     }
     if (!this.cache.has(token)) {
-      const instanceResult = this.instantiateService(token, registration);
-      if (!instanceResult.ok) {
-        return instanceResult;
+      const instanceResult2 = this.instantiateService(token, registration);
+      if (!instanceResult2.ok) {
+        return instanceResult2;
       }
-      this.cache.set(token, instanceResult.value);
+      this.cache.set(token, instanceResult2.value);
     }
-    return ok(castCachedServiceInstanceForResult(this.cache.get(token)));
+    const instanceResult = castCachedServiceInstanceForResult(this.cache.get(token));
+    if (!instanceResult.ok) {
+      return instanceResult;
+    }
+    return ok(instanceResult.value);
   }
 };
 __name(_ServiceResolver, "ServiceResolver");
@@ -1567,6 +1591,7 @@ function withTimeout(promise2, timeoutMs) {
   ]);
 }
 __name(withTimeout, "withTimeout");
+const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "development", "PROD": true, "SSR": false, "VITE_ENABLE_PERF_TRACKING": "true" };
 var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
   LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
   LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
@@ -1598,27 +1623,31 @@ function parseOptionalPositiveInteger(envValue) {
   return Math.floor(parsed);
 }
 __name(parseOptionalPositiveInteger, "parseOptionalPositiveInteger");
-const parsedCacheMaxEntries = parseOptionalPositiveInteger(
-  void 0
-  // type-coverage:ignore-line -- Build-time env var
-);
+function getEnvVar(key, parser2) {
+  const value2 = __vite_import_meta_env__[key];
+  return parser2(value2);
+}
+__name(getEnvVar, "getEnvVar");
+const parsedCacheMaxEntries = getEnvVar("VITE_CACHE_MAX_ENTRIES", parseOptionalPositiveInteger);
 const ENV = {
   isDevelopment: true,
   isProduction: false,
   logLevel: true ? 0 : 1,
   enablePerformanceTracking: true,
-  enableMetricsPersistence: false,
-  // type-coverage:ignore-line -- Build-time env var
-  metricsPersistenceKey: "fvtt_relationship_app_module.metrics",
-  // type-coverage:ignore-line -- Build-time env var
+  enableMetricsPersistence: getEnvVar("VITE_ENABLE_METRICS_PERSISTENCE", (val) => val === "true"),
+  metricsPersistenceKey: getEnvVar(
+    "VITE_METRICS_PERSISTENCE_KEY",
+    (val) => val ?? "fvtt_relationship_app_module.metrics"
+  ),
   // 1% sampling in production, 100% in development
   performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1,
-  enableCacheService: true ? true : false,
-  // type-coverage:ignore-line -- Build-time env var
-  cacheDefaultTtlMs: parseNonNegativeNumber(
-    void 0,
-    // type-coverage:ignore-line -- Build-time env var
-    MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS
+  enableCacheService: getEnvVar(
+    "VITE_CACHE_ENABLED",
+    (val) => val === void 0 ? true : val === "true"
+  ),
+  cacheDefaultTtlMs: getEnvVar(
+    "VITE_CACHE_TTL_MS",
+    (val) => parseNonNegativeNumber(val, MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS)
   ),
   ...parsedCacheMaxEntries !== void 0 ? { cacheMaxEntries: parsedCacheMaxEntries } : {}
 };
@@ -3611,12 +3640,50 @@ const _DIPortSelector = class _DIPortSelector extends PortSelector {
 __name(_DIPortSelector, "DIPortSelector");
 _DIPortSelector.dependencies = [portSelectionEventEmitterToken, observabilityRegistryToken];
 let DIPortSelector = _DIPortSelector;
+function hasMethod(obj, methodName) {
+  return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
+  typeof obj[methodName] === "function";
+}
+__name(hasMethod, "hasMethod");
+function hasProperty(obj, propertyName) {
+  return obj !== null && obj !== void 0 && typeof obj === "object" && propertyName in obj;
+}
+__name(hasProperty, "hasProperty");
+function isObjectWithMethods(obj, methodNames) {
+  if (obj === null || obj === void 0 || typeof obj !== "object") {
+    return false;
+  }
+  return methodNames.every((methodName) => hasMethod(obj, methodName));
+}
+__name(isObjectWithMethods, "isObjectWithMethods");
 function castFoundrySettingsApi(settings) {
-  return settings;
+  if (!isObjectWithMethods(settings, ["register", "get", "set"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "game.settings does not have required methods (register, get, set)",
+        {
+          missingMethods: ["register", "get", "set"]
+        }
+      )
+    );
+  }
+  return ok(settings);
 }
 __name(castFoundrySettingsApi, "castFoundrySettingsApi");
 function castFoundryDocumentForFlag(document2) {
-  return document2;
+  if (!isObjectWithMethods(document2, ["getFlag", "setFlag"])) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Document does not have required methods (getFlag, setFlag)",
+        {
+          missingMethods: ["getFlag", "setFlag"]
+        }
+      )
+    );
+  }
+  return ok(document2);
 }
 __name(castFoundryDocumentForFlag, "castFoundryDocumentForFlag");
 function castFoundryError(error) {
@@ -3624,7 +3691,13 @@ function castFoundryError(error) {
 }
 __name(castFoundryError, "castFoundryError");
 function castDisposablePort(port) {
-  return port;
+  if (!port || typeof port !== "object") {
+    return null;
+  }
+  if (hasMethod(port, "dispose")) {
+    return port;
+  }
+  return null;
 }
 __name(castDisposablePort, "castDisposablePort");
 function ensureNonEmptyArray(arr) {
@@ -11175,9 +11248,14 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
+    const settingsResult = castFoundrySettingsApi(game.settings);
+    if (!settingsResult.ok) {
+      return settingsResult;
+    }
+    const settings = settingsResult.value;
     return tryCatch(
       () => {
-        castFoundrySettingsApi(game.settings).register(namespace, key, config2);
+        settings.register(namespace, key, config2);
         return void 0;
       },
       (error) => createFoundryError(
@@ -11197,9 +11275,14 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
+    const settingsResult = castFoundrySettingsApi(game.settings);
+    if (!settingsResult.ok) {
+      return settingsResult;
+    }
+    const settings = settingsResult.value;
     return tryCatch(
       () => {
-        const rawValue = castFoundrySettingsApi(game.settings).get(namespace, key);
+        const rawValue = settings.get(namespace, key);
         const parseResult = /* @__PURE__ */ safeParse(schema, rawValue);
         if (!parseResult.success) {
           const error = createFoundryError(
@@ -11233,8 +11316,13 @@ const _FoundrySettingsPortV13 = class _FoundrySettingsPortV13 {
     if (typeof game === "undefined" || !game?.settings) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
+    const settingsResult = castFoundrySettingsApi(game.settings);
+    if (!settingsResult.ok) {
+      return Promise.resolve(settingsResult);
+    }
+    const settings = settingsResult.value;
     return fromPromise(
-      castFoundrySettingsApi(game.settings).set(namespace, key, value2).then(() => void 0),
+      settings.set(namespace, key, value2).then(() => void 0),
       (error) => createFoundryError(
         "OPERATION_FAILED",
         `Failed to set setting ${namespace}.${key}`,
@@ -11655,8 +11743,9 @@ const _FoundryServiceBase = class _FoundryServiceBase {
    * All ports now implement dispose() with #disposed state guards.
    */
   dispose() {
-    if (this.port && typeof this.port === "object" && "dispose" in this.port && typeof this.port.dispose === "function") {
-      castDisposablePort(this.port).dispose();
+    const disposable = castDisposablePort(this.port);
+    if (disposable) {
+      disposable.dispose();
     }
     this.port = null;
   }
@@ -11963,12 +12052,11 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
    * @param schema - Valibot schema for validation
    */
   getEntryFlag(entry, key, schema) {
-    return this.document.getFlag(
-      castFoundryDocumentForFlag(entry),
-      MODULE_CONSTANTS.MODULE.ID,
-      key,
-      schema
-    );
+    const documentResult = castFoundryDocumentForFlag(entry);
+    if (!documentResult.ok) {
+      return documentResult;
+    }
+    return this.document.getFlag(documentResult.value, MODULE_CONSTANTS.MODULE.ID, key, schema);
   }
   /**
    * Remove a journal element from the UI.
@@ -11981,6 +12069,28 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
    */
   removeJournalElement(id, name, html) {
     return this.ui.removeJournalElement(id, name, html);
+  }
+  /**
+   * Set a module flag on a journal entry.
+   *
+   * Delegates to FoundryDocument.setFlag() with module scope.
+   *
+   * @param entry - The Foundry journal entry
+   * @param key - The flag key
+   * @param value - The boolean value to set
+   * @returns Result indicating success or error
+   */
+  async setEntryFlag(entry, key, value2) {
+    const documentResult = castFoundryDocumentForFlag(entry);
+    if (!documentResult.ok) {
+      return documentResult;
+    }
+    return await this.document.setFlag(
+      documentResult.value,
+      MODULE_CONSTANTS.MODULE.ID,
+      key,
+      value2
+    );
   }
 };
 __name(_FoundryJournalFacade, "FoundryJournalFacade");
@@ -12065,6 +12175,42 @@ const _FoundryJournalVisibilityAdapter = class _FoundryJournalVisibilityAdapter 
     }
     return { ok: true, value: flagResult.value };
   }
+  async setEntryFlag(entry, flagKey, value2) {
+    const foundryEntriesResult = this.foundryJournalFacade.getJournalEntries();
+    if (!foundryEntriesResult.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "FLAG_SET_FAILED",
+          entryId: entry.id,
+          message: foundryEntriesResult.error.message
+        }
+      };
+    }
+    const foundryEntry = foundryEntriesResult.value.find((e) => e.id === entry.id);
+    if (!foundryEntry) {
+      return {
+        ok: false,
+        error: {
+          code: "ENTRY_NOT_FOUND",
+          entryId: entry.id,
+          message: `Journal entry with ID ${entry.id} not found`
+        }
+      };
+    }
+    const flagResult = await this.foundryJournalFacade.setEntryFlag(foundryEntry, flagKey, value2);
+    if (!flagResult.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "FLAG_SET_FAILED",
+          entryId: entry.id,
+          message: flagResult.error.message
+        }
+      };
+    }
+    return { ok: true, value: void 0 };
+  }
 };
 __name(_FoundryJournalVisibilityAdapter, "FoundryJournalVisibilityAdapter");
 let FoundryJournalVisibilityAdapter = _FoundryJournalVisibilityAdapter;
@@ -12087,7 +12233,7 @@ function createCacheKey(parts) {
   if (identifier !== null && identifier !== void 0) {
     payload.push(String(identifier));
   }
-  return payload.map(normalizeSegment).join(KEY_SEPARATOR);
+  return assertCacheKey(payload.map(normalizeSegment).join(KEY_SEPARATOR));
 }
 __name(createCacheKey, "createCacheKey");
 function createCacheNamespace(namespace) {
@@ -13975,6 +14121,8 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
     this.foundryHooks = foundryHooks;
     this.registrations = /* @__PURE__ */ new Map();
     this.nextId = 1;
+    this.libWrapperRegistered = false;
+    this.contextMenuCallbacks = [];
   }
   // ===== Specialized Journal Methods =====
   onJournalCreated(callback) {
@@ -14026,6 +14174,113 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
       };
       callback(event);
     });
+  }
+  onJournalContextMenu(callback) {
+    if (typeof globalThis.libWrapper === "undefined") {
+      return {
+        ok: false,
+        error: {
+          code: "API_NOT_AVAILABLE",
+          message: "libWrapper is not available"
+        }
+      };
+    }
+    const contextMenuClass = foundry?.applications?.ux?.ContextMenu?.implementation;
+    if (!contextMenuClass) {
+      return {
+        ok: false,
+        error: {
+          code: "API_NOT_AVAILABLE",
+          message: "ContextMenu is not available"
+        }
+      };
+    }
+    this.contextMenuCallbacks.push(callback);
+    const registrationId = String(this.nextId++);
+    if (!this.libWrapperRegistered) {
+      const callbacksRef = this.contextMenuCallbacks;
+      const result = tryCatch(
+        () => {
+          const wrapperFn = /* @__PURE__ */ __name(function(...args2) {
+            const firstArg = args2[0];
+            const target = firstArg instanceof HTMLElement ? firstArg : void 0;
+            const libWrapperInstance2 = globalThis.libWrapper;
+            if (!libWrapperInstance2) {
+              return void 0;
+            }
+            if (!target) {
+              return libWrapperInstance2.callOriginal(this, ...args2);
+            }
+            if (!this.menuItems) {
+              return libWrapperInstance2.callOriginal(this, ...args2);
+            }
+            const journalId = target.getAttribute?.("data-entry-id") || target.getAttribute?.("data-document-id");
+            if (journalId) {
+              const event = {
+                htmlElement: target,
+                options: this.menuItems.map(
+                  (item) => ({
+                    name: item.name,
+                    icon: item.icon,
+                    callback: item.callback
+                  })
+                ),
+                timestamp: Date.now()
+              };
+              for (const cb of callbacksRef) {
+                cb(event);
+              }
+            }
+            return libWrapperInstance2.callOriginal(this, ...args2);
+          }, "wrapperFn");
+          const libWrapperInstance = globalThis.libWrapper;
+          if (typeof libWrapperInstance === "undefined") {
+            throw new Error("libWrapper is not available");
+          }
+          libWrapperInstance.register(
+            MODULE_CONSTANTS.MODULE.ID,
+            "ContextMenu.prototype.render",
+            wrapperFn,
+            "WRAPPER"
+          );
+          this.libWrapperRegistered = true;
+        },
+        (error) => ({
+          code: "OPERATION_FAILED",
+          message: `Failed to register libWrapper: ${String(error)}`
+        })
+      );
+      if (!result.ok) {
+        this.contextMenuCallbacks.pop();
+        return {
+          ok: false,
+          error: result.error
+        };
+      }
+    }
+    this.registrations.set(registrationId, () => {
+      const index = this.contextMenuCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.contextMenuCallbacks.splice(index, 1);
+      }
+      if (this.contextMenuCallbacks.length === 0 && this.libWrapperRegistered) {
+        tryCatch(
+          () => {
+            if (typeof globalThis.libWrapper !== "undefined") {
+              globalThis.libWrapper.unregister(
+                MODULE_CONSTANTS.MODULE.ID,
+                "ContextMenu.prototype.render"
+              );
+            }
+            this.libWrapperRegistered = false;
+          },
+          (error) => {
+            console.error("Failed to unregister libWrapper:", error);
+          }
+        );
+      }
+    });
+    return { ok: true, value: registrationId };
   }
   // ===== Generic Methods (from PlatformEventPort) =====
   registerListener(eventType, callback) {
@@ -14334,6 +14589,129 @@ _DITriggerJournalDirectoryReRenderUseCase.dependencies = [
   notificationCenterToken
 ];
 let DITriggerJournalDirectoryReRenderUseCase = _DITriggerJournalDirectoryReRenderUseCase;
+const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
+  constructor(journalEvents, hideJournalHandler) {
+    this.journalEvents = journalEvents;
+    this.hideJournalHandler = hideJournalHandler;
+  }
+  /**
+   * Register event listener for context menu events.
+   * All handlers are called for each context menu event.
+   */
+  register() {
+    const handlers = [this.hideJournalHandler];
+    const result = this.journalEvents.onJournalContextMenu((event) => {
+      for (const handler of handlers) {
+        handler.handle(event);
+      }
+    });
+    if (result.ok) {
+      this.registrationId = result.value;
+      return ok(void 0);
+    } else {
+      return err(new Error(result.error.message));
+    }
+  }
+  /**
+   * Cleanup: Unregister event listener.
+   */
+  dispose() {
+    if (this.registrationId !== void 0) {
+      this.journalEvents.unregisterListener(this.registrationId);
+      this.registrationId = void 0;
+    }
+  }
+};
+__name(_RegisterContextMenuUseCase, "RegisterContextMenuUseCase");
+let RegisterContextMenuUseCase = _RegisterContextMenuUseCase;
+const _DIRegisterContextMenuUseCase = class _DIRegisterContextMenuUseCase extends RegisterContextMenuUseCase {
+  constructor(journalEvents, hideJournalHandler) {
+    super(journalEvents, hideJournalHandler);
+  }
+};
+__name(_DIRegisterContextMenuUseCase, "DIRegisterContextMenuUseCase");
+_DIRegisterContextMenuUseCase.dependencies = [journalEventPortToken, hideJournalContextMenuHandlerToken];
+let DIRegisterContextMenuUseCase = _DIRegisterContextMenuUseCase;
+const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
+  constructor(journalVisibility, platformUI, notificationCenter) {
+    this.journalVisibility = journalVisibility;
+    this.platformUI = platformUI;
+    this.notificationCenter = notificationCenter;
+  }
+  handle(event) {
+    const journalId = this.extractJournalId(event.htmlElement);
+    if (!journalId) {
+      return;
+    }
+    const existingItem = event.options.find((item) => item.name === "Journal ausblenden");
+    if (existingItem) {
+      return;
+    }
+    const flagResult = this.journalVisibility.getEntryFlag(
+      { id: journalId, name: null },
+      MODULE_CONSTANTS.FLAGS.HIDDEN
+    );
+    if (flagResult.ok && flagResult.value !== true) {
+      event.options.push({
+        name: "Journal ausblenden",
+        icon: '<i class="fas fa-eye-slash"></i>',
+        callback: /* @__PURE__ */ __name(async (_li) => {
+          const hideResult = await this.journalVisibility.setEntryFlag(
+            { id: journalId, name: null },
+            MODULE_CONSTANTS.FLAGS.HIDDEN,
+            true
+          );
+          if (hideResult.ok) {
+            const notifyResult = this.platformUI.notify(
+              `Journal "${journalId}" wurde ausgeblendet`,
+              "info"
+            );
+            if (!notifyResult.ok) {
+              this.notificationCenter.warn(
+                "Failed to show notification after hiding journal",
+                notifyResult.error,
+                { channels: ["ConsoleChannel"] }
+              );
+            }
+            this.notificationCenter.debug(
+              `Journal ${journalId} hidden via context menu`,
+              { journalId },
+              { channels: ["ConsoleChannel"] }
+            );
+          } else {
+            this.notificationCenter.error(`Failed to hide journal ${journalId}`, hideResult.error, {
+              channels: ["ConsoleChannel", "UINotificationChannel"]
+            });
+          }
+        }, "callback")
+      });
+    }
+  }
+  /**
+   * Extract journal ID from an HTML element.
+   */
+  extractJournalId(element) {
+    const documentId = element.getAttribute("data-document-id");
+    if (documentId) return documentId;
+    const entryId = element.getAttribute("data-entry-id");
+    if (entryId) return entryId;
+    return null;
+  }
+};
+__name(_HideJournalContextMenuHandler, "HideJournalContextMenuHandler");
+let HideJournalContextMenuHandler = _HideJournalContextMenuHandler;
+const _DIHideJournalContextMenuHandler = class _DIHideJournalContextMenuHandler extends HideJournalContextMenuHandler {
+  constructor(journalVisibility, platformUI, notificationCenter) {
+    super(journalVisibility, platformUI, notificationCenter);
+  }
+};
+__name(_DIHideJournalContextMenuHandler, "DIHideJournalContextMenuHandler");
+_DIHideJournalContextMenuHandler.dependencies = [
+  journalVisibilityPortToken,
+  platformUIPortToken,
+  notificationCenterToken
+];
+let DIHideJournalContextMenuHandler = _DIHideJournalContextMenuHandler;
 function disposeHooks(hooks) {
   for (const hook of hooks) {
     hook.dispose();
@@ -14341,12 +14719,13 @@ function disposeHooks(hooks) {
 }
 __name(disposeHooks, "disposeHooks");
 const _ModuleEventRegistrar = class _ModuleEventRegistrar {
-  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, notificationCenter) {
+  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, registerJournalContextMenu, notificationCenter) {
     this.notificationCenter = notificationCenter;
     this.eventRegistrars = [
       processJournalDirectoryOnRender,
       invalidateJournalCacheOnChange,
-      triggerJournalDirectoryReRender
+      triggerJournalDirectoryReRender,
+      registerJournalContextMenu
     ];
   }
   /**
@@ -14385,11 +14764,12 @@ const _ModuleEventRegistrar = class _ModuleEventRegistrar {
 __name(_ModuleEventRegistrar, "ModuleEventRegistrar");
 let ModuleEventRegistrar = _ModuleEventRegistrar;
 const _DIModuleEventRegistrar = class _DIModuleEventRegistrar extends ModuleEventRegistrar {
-  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, notificationCenter) {
+  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, registerJournalContextMenu, notificationCenter) {
     super(
       processJournalDirectoryOnRender,
       invalidateJournalCacheOnChange,
       triggerJournalDirectoryReRender,
+      registerJournalContextMenu,
       notificationCenter
     );
   }
@@ -14399,6 +14779,7 @@ _DIModuleEventRegistrar.dependencies = [
   processJournalDirectoryOnRenderUseCaseToken,
   invalidateJournalCacheOnChangeUseCaseToken,
   triggerJournalDirectoryReRenderUseCaseToken,
+  registerContextMenuUseCaseToken,
   notificationCenterToken
 ];
 let DIModuleEventRegistrar = _DIModuleEventRegistrar;
@@ -14439,6 +14820,26 @@ function registerEventPorts(container) {
   if (isErr(reRenderUseCaseResult)) {
     return err(
       `Failed to register TriggerJournalDirectoryReRenderUseCase: ${reRenderUseCaseResult.error.message}`
+    );
+  }
+  const hideJournalHandlerResult = container.registerClass(
+    hideJournalContextMenuHandlerToken,
+    DIHideJournalContextMenuHandler,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(hideJournalHandlerResult)) {
+    return err(
+      `Failed to register HideJournalContextMenuHandler: ${hideJournalHandlerResult.error.message}`
+    );
+  }
+  const contextMenuUseCaseResult = container.registerClass(
+    registerContextMenuUseCaseToken,
+    DIRegisterContextMenuUseCase,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(contextMenuUseCaseResult)) {
+    return err(
+      `Failed to register RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
     );
   }
   const eventRegistrarResult = container.registerClass(

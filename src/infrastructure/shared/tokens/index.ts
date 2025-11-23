@@ -70,8 +70,10 @@ import type { RuntimeConfigService } from "@/application/services/RuntimeConfigS
 import type { InvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import type { ProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
 import type { TriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";
+import type { RegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
 import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 
 /**
  * Union type representing all registered service types in the application.
@@ -130,6 +132,8 @@ export type ServiceType =
   | InvalidateJournalCacheOnChangeUseCase
   | ProcessJournalDirectoryOnRenderUseCase
   | TriggerJournalDirectoryReRenderUseCase
+  | RegisterContextMenuUseCase
   | ModuleEventRegistrar
   | PlatformUIPort
+  | HideJournalContextMenuHandler
   | ServiceContainer;

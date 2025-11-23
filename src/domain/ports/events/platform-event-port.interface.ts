@@ -47,7 +47,9 @@ export interface PlatformEventError {
     | "EVENT_REGISTRATION_FAILED"
     | "EVENT_UNREGISTRATION_FAILED"
     | "INVALID_EVENT_TYPE"
-    | "PLATFORM_NOT_AVAILABLE";
+    | "PLATFORM_NOT_AVAILABLE"
+    | "API_NOT_AVAILABLE"
+    | "OPERATION_FAILED";
   message: string;
   details?: unknown;
 }

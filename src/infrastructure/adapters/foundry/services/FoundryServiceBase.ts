@@ -159,13 +159,9 @@ export abstract class FoundryServiceBase<TPort> implements Disposable {
    */
   dispose(): void {
     // Dispose port if it implements Disposable interface
-    if (
-      this.port &&
-      typeof this.port === "object" &&
-      "dispose" in this.port &&
-      typeof this.port.dispose === "function"
-    ) {
-      castDisposablePort(this.port).dispose();
+    const disposable = castDisposablePort(this.port);
+    if (disposable) {
+      disposable.dispose();
     }
     this.port = null;
   }

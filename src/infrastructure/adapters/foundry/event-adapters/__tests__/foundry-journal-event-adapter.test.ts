@@ -1,11 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FoundryJournalEventAdapter } from "../foundry-journal-event-adapter";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
+import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
 describe("FoundryJournalEventAdapter", () => {
   let mockFoundryHooks: FoundryHooks;
   let adapter: FoundryJournalEventAdapter;
-
+  let mockLibWrapper: {
+    register: ReturnType<typeof vi.fn>;
+    unregister: ReturnType<typeof vi.fn>;
+    callOriginal: ReturnType<typeof vi.fn>;
+  };
+  let mockContextMenuClass: new (...args: unknown[]) => {
+    menuItems: Array<{ name: string; icon: string; callback: () => void }>;
+  };
   beforeEach(() => {
     mockFoundryHooks = {
       on: vi.fn().mockReturnValue({ ok: true, value: 123 }),
@@ -14,7 +22,41 @@ describe("FoundryJournalEventAdapter", () => {
       dispose: vi.fn(),
     };
 
+    // Mock libWrapper
+    mockLibWrapper = {
+      register: vi.fn(),
+      unregister: vi.fn(),
+      callOriginal: vi.fn((_instance, _method, ..._args) => {
+        // Mock implementation - return what would normally be returned
+        return undefined;
+      }),
+    };
+    vi.stubGlobal("libWrapper", mockLibWrapper);
+
+    // Mock ContextMenu class via foundry.applications.ux.ContextMenu.implementation
+    mockContextMenuClass = class {
+      menuItems: Array<{ name: string; icon: string; callback: () => void }> = [];
+      constructor(..._args: unknown[]) {
+        // Accept any arguments but don't use them
+      }
+    };
+
+    // Mock foundry?.applications?.ux?.ContextMenu
+    vi.stubGlobal("foundry", {
+      applications: {
+        ux: {
+          ContextMenu: {
+            implementation: mockContextMenuClass,
+          },
+        },
+      },
+    });
+
     adapter = new FoundryJournalEventAdapter(mockFoundryHooks);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe("onJournalCreated", () => {
@@ -300,15 +342,284 @@ describe("FoundryJournalEventAdapter", () => {
     });
   });
 
+  describe("onJournalContextMenu", () => {
+    it("should register libWrapper hook", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+
+      expect(result.ok).toBe(true);
+      expect(mockLibWrapper.register).toHaveBeenCalledWith(
+        MODULE_CONSTANTS.MODULE.ID,
+        "ContextMenu.prototype.render",
+        expect.any(Function),
+        "WRAPPER"
+      );
+    });
+
+    it("should map Foundry event with HTMLElement and options to domain event", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      // Get the wrapper function registered with libWrapper
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        ...args: unknown[]
+      ) => unknown;
+
+      // Simulate libWrapper callback - create a ContextMenu instance
+      const mockElement = document.createElement("div");
+      mockElement.setAttribute("data-entry-id", "journal-123");
+      const mockContextMenuInstance = new mockContextMenuClass();
+      mockContextMenuInstance.menuItems = [
+        { name: "Existing Option", icon: "<i></i>", callback: vi.fn() },
+      ];
+
+      // Call wrapper with context (this = mockContextMenuInstance)
+      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+
+      expect(callback).toHaveBeenCalledWith({
+        htmlElement: mockElement,
+        options: expect.arrayContaining([expect.objectContaining({ name: "Existing Option" })]),
+        timestamp: expect.any(Number),
+      });
+    });
+
+    it("should handle HTML array format", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        ...args: unknown[]
+      ) => unknown;
+
+      const mockElement = document.createElement("div");
+      mockElement.setAttribute("data-entry-id", "journal-456");
+      const mockContextMenuInstance = new mockContextMenuClass();
+      mockContextMenuInstance.menuItems = [{ name: "Test", icon: "<i></i>", callback: vi.fn() }];
+
+      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+
+      expect(callback).toHaveBeenCalledWith({
+        htmlElement: mockElement,
+        options: expect.any(Array),
+        timestamp: expect.any(Number),
+      });
+    });
+
+    it("should not call callback if HTML element is invalid", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        ...args: unknown[]
+      ) => unknown;
+
+      const mockContextMenuInstance = new mockContextMenuClass();
+      mockContextMenuInstance.menuItems = [];
+
+      // Use a valid element without journal ID instead of null
+      const mockElement = document.createElement("div");
+      // No data-entry-id or data-document-id attribute
+      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it("should not call callback if element has no journal ID", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        ...args: unknown[]
+      ) => unknown;
+
+      const mockElement = document.createElement("div");
+      // No data-entry-id or data-document-id
+      const mockContextMenuInstance = new mockContextMenuClass();
+      mockContextMenuInstance.menuItems = [];
+
+      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it("should filter invalid options from array", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        ...args: unknown[]
+      ) => unknown;
+
+      const mockElement = document.createElement("div");
+      mockElement.setAttribute("data-entry-id", "journal-789");
+      const mockContextMenuInstance = new mockContextMenuClass();
+      mockContextMenuInstance.menuItems = [
+        { name: "Valid Option", icon: "<i></i>", callback: vi.fn() },
+        // Note: menuItems should only contain valid items, but test the filtering anyway
+      ];
+
+      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+
+      expect(callback).toHaveBeenCalled();
+      const event = callback.mock.calls[0]![0];
+      // Should only contain valid options
+      expect(event.options.length).toBe(1);
+      expect(event.options[0]?.name).toBe("Valid Option");
+    });
+
+    it("should handle registration failure when libWrapper throws", () => {
+      mockLibWrapper.register = vi.fn().mockImplementation(() => {
+        throw new Error("libWrapper registration failed");
+      });
+      adapter = new FoundryJournalEventAdapter(mockFoundryHooks);
+
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("OPERATION_FAILED");
+        expect(result.error.message).toContain("Failed to register libWrapper");
+      }
+    });
+
+    it("should handle libWrapper not available", () => {
+      // @ts-expect-error - libWrapper is a global that may not exist
+      delete globalThis.libWrapper;
+      adapter = new FoundryJournalEventAdapter(mockFoundryHooks);
+
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("API_NOT_AVAILABLE");
+        expect(result.error.message).toContain("libWrapper is not available");
+      }
+    });
+
+    it("should handle ContextMenu not available", () => {
+      // Create new adapter with minimal mocks - no ContextMenu at all
+      const minimalLibWrapper = {
+        register: vi.fn(),
+        unregister: vi.fn(),
+        callOriginal: vi.fn((_instance, _method, ..._args) => undefined),
+      };
+      vi.stubGlobal("libWrapper", minimalLibWrapper);
+      vi.stubGlobal("foundry", {}); // Empty foundry, no applications.ux.ContextMenu
+
+      // Create fresh adapter instance after mocks are set
+      const freshAdapter = new FoundryJournalEventAdapter(mockFoundryHooks);
+
+      const callback = vi.fn();
+      const result = freshAdapter.onJournalContextMenu(callback);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("API_NOT_AVAILABLE");
+        expect(result.error.message).toContain("ContextMenu is not available");
+      }
+    });
+
+    it("should handle context menu without menuItems", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        ...args: unknown[]
+      ) => unknown;
+
+      const mockElement = document.createElement("div");
+      mockElement.setAttribute("data-entry-id", "journal-123");
+      const mockContextMenuInstance = new mockContextMenuClass();
+      // menuItems is undefined/null - should call original
+      // @ts-expect-error - Testing undefined menuItems
+      mockContextMenuInstance.menuItems = undefined;
+
+      const originalCallSpy = vi.mocked(mockLibWrapper.callOriginal);
+      wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+
+      // Should call original if menuItems is missing
+      expect(originalCallSpy).toHaveBeenCalledWith(mockContextMenuInstance, mockElement, {});
+      // Should not call our callback
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it("should handle undefined target in wrapper function", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        ...args: unknown[]
+      ) => unknown;
+
+      const mockContextMenuInstance = new mockContextMenuClass();
+      mockContextMenuInstance.menuItems = [{ name: "Test", icon: "<i></i>", callback: vi.fn() }];
+
+      const originalCallSpy = vi.mocked(mockLibWrapper.callOriginal);
+      // Call with undefined target (line 173)
+      wrapperFunction.call(mockContextMenuInstance, undefined, {});
+
+      // Should call original if target is undefined
+      expect(originalCallSpy).toHaveBeenCalledWith(mockContextMenuInstance, undefined, {});
+      // Should not call our callback
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it("should handle libWrapper being undefined inside wrapper function", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      const wrapperFunction = vi.mocked(mockLibWrapper.register).mock.calls[0]![2] as (
+        ...args: unknown[]
+      ) => unknown;
+
+      // Remove libWrapper after registration to test undefined check inside wrapper (line 175-178)
+      // @ts-expect-error - libWrapper is a global that may not exist
+      delete globalThis.libWrapper;
+
+      const mockContextMenuInstance = new mockContextMenuClass();
+      mockContextMenuInstance.menuItems = [{ name: "Test", icon: "<i></i>", callback: vi.fn() }];
+
+      const mockElement = document.createElement("div");
+      mockElement.setAttribute("data-entry-id", "journal-123");
+
+      // Should return undefined if libWrapper is undefined inside wrapper (line 177)
+      const wrapperResult = wrapperFunction.call(mockContextMenuInstance, mockElement, {});
+      expect(wrapperResult).toBeUndefined();
+
+      // Restore libWrapper for other tests
+      // @ts-expect-error - libWrapper is a global that may not exist
+      globalThis.libWrapper = mockLibWrapper;
+    });
+  });
+
   describe("dispose", () => {
     it("should cleanup all registrations", () => {
       adapter.onJournalCreated(vi.fn());
       adapter.onJournalUpdated(vi.fn());
       adapter.onJournalDeleted(vi.fn());
+      const contextMenuResult = adapter.onJournalContextMenu(vi.fn());
+      expect(contextMenuResult.ok).toBe(true);
 
       adapter.dispose();
 
+      // onJournalCreated, onJournalUpdated, onJournalDeleted use foundryHooks.off
       expect(mockFoundryHooks.off).toHaveBeenCalledTimes(3);
+      // onJournalContextMenu uses libWrapper.unregister only if no callbacks remain
+      // Since dispose clears all callbacks, unregister should be called
+      expect(mockLibWrapper.unregister).toHaveBeenCalledWith(
+        MODULE_CONSTANTS.MODULE.ID,
+        "ContextMenu.prototype.render"
+      );
     });
 
     it("should clear registrations map after dispose", () => {
@@ -321,6 +632,114 @@ describe("FoundryJournalEventAdapter", () => {
       // Try to unregister after dispose - should fail
       const unregisterResult = adapter.unregisterListener(result.value);
       expect(unregisterResult.ok).toBe(false);
+    });
+
+    it("should handle libWrapper unregister error gracefully", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+
+      // Mock unregister to throw
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      mockLibWrapper.unregister = vi.fn().mockImplementation(() => {
+        throw new Error("Unregister failed");
+      });
+
+      // Dispose should handle the error gracefully
+      adapter.dispose();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Failed to unregister libWrapper:",
+        expect.any(Error)
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("should reuse existing libWrapper registration for multiple callbacks", () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+
+      const result1 = adapter.onJournalContextMenu(callback1);
+      expect(result1.ok).toBe(true);
+      expect(mockLibWrapper.register).toHaveBeenCalledTimes(1);
+
+      const result2 = adapter.onJournalContextMenu(callback2);
+      expect(result2.ok).toBe(true);
+      // Should not register again (line 144 - libWrapperRegistered is true)
+      expect(mockLibWrapper.register).toHaveBeenCalledTimes(1);
+    });
+
+    it("should handle cleanup when callback is not found in array", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      // Manually remove callback from array before dispose to test index === -1 path (line 207)
+      const registrationId = result.value;
+      const cleanup = (
+        adapter as unknown as { registrations: Map<string, () => void> }
+      ).registrations.get(String(registrationId));
+      if (!cleanup) return;
+
+      // Manually clear the callbacks array to simulate callback not found
+      (adapter as unknown as { contextMenuCallbacks: unknown[] }).contextMenuCallbacks = [];
+
+      // Cleanup should handle index === -1 gracefully (line 207)
+      expect(() => cleanup()).not.toThrow();
+    });
+
+    it("should not unregister libWrapper if callbacks remain after cleanup", () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+
+      const result1 = adapter.onJournalContextMenu(callback1);
+      const result2 = adapter.onJournalContextMenu(callback2);
+      expect(result1.ok).toBe(true);
+      expect(result2.ok).toBe(true);
+      if (!result1.ok || !result2.ok) return;
+
+      // Unregister only one callback
+      const unregisterResult = adapter.unregisterListener(result1.value);
+      expect(unregisterResult.ok).toBe(true);
+
+      // libWrapper should not be unregistered since callback2 is still registered (line 212 - length > 0)
+      expect(mockLibWrapper.unregister).not.toHaveBeenCalled();
+    });
+
+    it("should unregister libWrapper when last callback is removed", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      // Unregister the only callback
+      const unregisterResult = adapter.unregisterListener(result.value);
+      expect(unregisterResult.ok).toBe(true);
+
+      // libWrapper should be unregistered since no callbacks remain (line 212 - length === 0 && libWrapperRegistered)
+      expect(mockLibWrapper.unregister).toHaveBeenCalledWith(
+        MODULE_CONSTANTS.MODULE.ID,
+        "ContextMenu.prototype.render"
+      );
+    });
+
+    it("should handle libWrapper being undefined during cleanup", () => {
+      const callback = vi.fn();
+      const result = adapter.onJournalContextMenu(callback);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      // Remove libWrapper before cleanup to test line 233 branch (libWrapper undefined)
+      // @ts-expect-error - libWrapper is a global that may not exist
+      delete globalThis.libWrapper;
+
+      // Unregister should still succeed (handles undefined libWrapper gracefully)
+      const unregisterResult = adapter.unregisterListener(result.value);
+      expect(unregisterResult.ok).toBe(true);
+
+      // Should not throw even if libWrapper is undefined during cleanup
+      expect(() => adapter.unregisterListener(result.value)).not.toThrow();
     });
   });
 });

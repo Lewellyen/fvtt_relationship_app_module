@@ -117,9 +117,7 @@ export class ServiceResolver {
         return result;
       },
       (duration, result) => {
-        /* v8 ignore start -- Optional chaining with null metricsCollector is tested, but coverage tool may not count the line -- @preserve */
         this.metricsCollector?.recordResolution(token, duration, result.ok);
-        /* v8 ignore end -- @preserve */
       }
     );
   }
@@ -240,7 +238,11 @@ export class ServiceResolver {
       this.cache.set(token, instanceResult.value);
     }
 
-    return ok(castCachedServiceInstanceForResult<TServiceType>(this.cache.get(token)));
+    const instanceResult = castCachedServiceInstanceForResult<TServiceType>(this.cache.get(token));
+    if (!instanceResult.ok) {
+      return instanceResult; // Propagate error
+    }
+    return ok(instanceResult.value);
   }
 
   /**
@@ -316,6 +318,10 @@ export class ServiceResolver {
       this.cache.set(token, instanceResult.value);
     }
 
-    return ok(castCachedServiceInstanceForResult<TServiceType>(this.cache.get(token)));
+    const instanceResult = castCachedServiceInstanceForResult<TServiceType>(this.cache.get(token));
+    if (!instanceResult.ok) {
+      return instanceResult; // Propagate error
+    }
+    return ok(instanceResult.value);
   }
 }

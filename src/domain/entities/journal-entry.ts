@@ -13,5 +13,6 @@ export interface JournalEntry {
 export type JournalVisibilityError =
   | { code: "ENTRY_NOT_FOUND"; entryId: string; message: string }
   | { code: "FLAG_READ_FAILED"; entryId: string; message: string }
+  | { code: "FLAG_SET_FAILED"; entryId: string; message: string }
   | { code: "DOM_MANIPULATION_FAILED"; entryId: string; message: string }
   | { code: "INVALID_ENTRY_DATA"; message: string };

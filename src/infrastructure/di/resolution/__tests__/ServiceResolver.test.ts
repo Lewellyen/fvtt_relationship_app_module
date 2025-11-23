@@ -130,6 +130,26 @@ describe("ServiceResolver", () => {
       expect(result1.value).toBe(result2.value);
     });
 
+    it("should handle error when cached instance is undefined (edge case)", () => {
+      const registry = new ServiceRegistry();
+      const cache = new InstanceCache();
+      const resolver = createTestResolver(registry, cache, null, "root");
+
+      const token = createInjectionToken<TestService>("Singleton");
+
+      registry.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Manually set cache entry to undefined to simulate edge case
+      // This shouldn't happen in practice, but we test the error handling
+      cache.set(token, undefined as any);
+
+      const result = resolver.resolve(token);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("TokenNotRegistered");
+      expect(result.error.message).toContain("instance must not be undefined");
+    });
+
     it("should delegate to parent resolver for singletons", () => {
       const parentRegistry = new ServiceRegistry();
       const parentCache = new InstanceCache();
@@ -269,6 +289,29 @@ describe("ServiceResolver", () => {
       expectResultOk(result2);
 
       expect(result1.value).toBe(result2.value);
+    });
+
+    it("should handle error when cached instance is undefined (edge case)", () => {
+      const parentRegistry = new ServiceRegistry();
+      const parentCache = new InstanceCache();
+      const token = createInjectionToken<TestService>("Scoped");
+
+      parentRegistry.registerClass(token, TestService, ServiceLifecycle.SCOPED);
+
+      const parentResolver = createTestResolver(parentRegistry, parentCache, null, "parent");
+      const childRegistry = parentRegistry.clone();
+      const childCache = new InstanceCache();
+      const childResolver = createTestResolver(childRegistry, childCache, parentResolver, "child");
+
+      // Manually set cache entry to undefined to simulate edge case
+      // This shouldn't happen in practice, but we test the error handling
+      childCache.set(token, undefined as any);
+
+      const result = childResolver.resolve(token);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("TokenNotRegistered");
+      expect(result.error.message).toContain("instance must not be undefined");
     });
 
     it("should isolate scoped instances between scopes", () => {

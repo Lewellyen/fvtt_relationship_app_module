@@ -3,6 +3,8 @@ import type { JournalEventPort } from "@/domain/ports/events/journal-event-port.
 import type { InvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import type { ProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
 import type { TriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";
+import type { RegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
+import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 
 /**
@@ -42,6 +44,32 @@ export const triggerJournalDirectoryReRenderUseCaseToken =
   createInjectionToken<TriggerJournalDirectoryReRenderUseCase>(
     "TriggerJournalDirectoryReRenderUseCase"
   );
+
+/**
+ * DI Token for RegisterJournalContextMenuUseCase.
+ *
+ * @deprecated Use registerContextMenuUseCaseToken instead.
+ * This token is kept for backwards compatibility but the implementation has been removed.
+ */
+export const registerJournalContextMenuUseCaseToken =
+  createInjectionToken<RegisterContextMenuUseCase>("RegisterJournalContextMenuUseCase");
+
+/**
+ * DI Token for RegisterContextMenuUseCase.
+ *
+ * Use-case that registers custom context menu entries for journal entries.
+ */
+export const registerContextMenuUseCaseToken = createInjectionToken<RegisterContextMenuUseCase>(
+  "RegisterContextMenuUseCase"
+);
+
+/**
+ * DI Token for HideJournalContextMenuHandler.
+ *
+ * Handler that adds "Journal ausblenden" menu item to journal context menus.
+ */
+export const hideJournalContextMenuHandlerToken =
+  createInjectionToken<HideJournalContextMenuHandler>("HideJournalContextMenuHandler");
 
 /**
  * DI Token for ModuleEventRegistrar.

@@ -21,6 +21,8 @@ describe("FoundrySettingsPortV13", () => {
       vi.stubGlobal("game", {
         settings: {
           register: mockRegister,
+          get: vi.fn(),
+          set: vi.fn(),
         },
       });
 
@@ -46,6 +48,8 @@ describe("FoundrySettingsPortV13", () => {
       vi.stubGlobal("game", {
         settings: {
           register: mockRegister,
+          get: vi.fn(),
+          set: vi.fn(),
         },
       });
 
@@ -90,6 +94,8 @@ describe("FoundrySettingsPortV13", () => {
       vi.stubGlobal("game", {
         settings: {
           register: mockRegister,
+          get: vi.fn(),
+          set: vi.fn(),
         },
       });
 
@@ -112,6 +118,8 @@ describe("FoundrySettingsPortV13", () => {
       vi.stubGlobal("game", {
         settings: {
           register: vi.fn(),
+          get: vi.fn(),
+          set: vi.fn(),
         },
       });
 
@@ -130,6 +138,29 @@ describe("FoundrySettingsPortV13", () => {
       expect(result.error.code).toBe("VALIDATION_FAILED");
       expect(result.error.message).toContain("Invalid setting namespace");
     });
+
+    it("should propagate errors from castFoundrySettingsApi when settings object is invalid", () => {
+      // game.settings exists but doesn't have required methods
+      vi.stubGlobal("game", {
+        settings: {
+          // Missing register, get, set methods
+        },
+      });
+
+      const config: SettingConfig<number> = {
+        name: "Test",
+        scope: "world",
+        config: true,
+        type: Number,
+        default: 0,
+      };
+
+      const result = port.register("test-module", "testKey", config);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+      expect(result.error.message).toContain("required methods");
+    });
   });
 
   describe("get()", () => {
@@ -137,7 +168,9 @@ describe("FoundrySettingsPortV13", () => {
       const mockGet = vi.fn().mockReturnValue(123);
       vi.stubGlobal("game", {
         settings: {
+          register: vi.fn(),
           get: mockGet,
+          set: vi.fn(),
         },
       });
 
@@ -164,7 +197,9 @@ describe("FoundrySettingsPortV13", () => {
 
       vi.stubGlobal("game", {
         settings: {
+          register: vi.fn(),
           get: mockGet,
+          set: vi.fn(),
         },
       });
 
@@ -179,7 +214,9 @@ describe("FoundrySettingsPortV13", () => {
       const mockGet = vi.fn(() => "invalid");
       vi.stubGlobal("game", {
         settings: {
+          register: vi.fn(),
           get: mockGet,
+          set: vi.fn(),
         },
       });
 
@@ -194,7 +231,9 @@ describe("FoundrySettingsPortV13", () => {
       const mockGet = vi.fn(() => 1);
       vi.stubGlobal("game", {
         settings: {
+          register: vi.fn(),
           get: mockGet,
+          set: vi.fn(),
         },
       });
 
@@ -208,7 +247,9 @@ describe("FoundrySettingsPortV13", () => {
       const mockGet = vi.fn(() => 999);
       vi.stubGlobal("game", {
         settings: {
+          register: vi.fn(),
           get: mockGet,
+          set: vi.fn(),
         },
       });
 
@@ -217,6 +258,21 @@ describe("FoundrySettingsPortV13", () => {
       expectResultErr(result);
       expect(result.error.code).toBe("VALIDATION_FAILED");
     });
+
+    it("should propagate errors from castFoundrySettingsApi when settings object is invalid", () => {
+      // game.settings exists but doesn't have required methods
+      vi.stubGlobal("game", {
+        settings: {
+          // Missing register, get, set methods
+        },
+      });
+
+      const result = port.get("test-module", "testKey", v.number());
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+      expect(result.error.message).toContain("required methods");
+    });
   });
 
   describe("set()", () => {
@@ -224,6 +280,8 @@ describe("FoundrySettingsPortV13", () => {
       const mockSet = vi.fn().mockResolvedValue(undefined);
       vi.stubGlobal("game", {
         settings: {
+          register: vi.fn(),
+          get: vi.fn(),
           set: mockSet,
         },
       });
@@ -248,6 +306,8 @@ describe("FoundrySettingsPortV13", () => {
 
       vi.stubGlobal("game", {
         settings: {
+          register: vi.fn(),
+          get: vi.fn(),
           set: mockSet,
         },
       });
@@ -258,12 +318,33 @@ describe("FoundrySettingsPortV13", () => {
       expect(result.error.code).toBe("OPERATION_FAILED");
       expect(result.error.message).toContain("Failed to set setting");
     });
+
+    it("should propagate errors from castFoundrySettingsApi when settings object is invalid", async () => {
+      // game.settings exists but doesn't have required methods
+      vi.stubGlobal("game", {
+        settings: {
+          // Missing register, get, set methods
+        },
+      });
+
+      const result = await port.set("test-module", "testKey", "value");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+      expect(result.error.message).toContain("required methods");
+    });
   });
 
   describe("Scope Support", () => {
     it("should support world scope", () => {
       const mockRegister = vi.fn();
-      vi.stubGlobal("game", { settings: { register: mockRegister } });
+      vi.stubGlobal("game", {
+        settings: {
+          register: mockRegister,
+          get: vi.fn(),
+          set: vi.fn(),
+        },
+      });
 
       const config: SettingConfig<number> = {
         name: "World Setting",
@@ -279,7 +360,13 @@ describe("FoundrySettingsPortV13", () => {
 
     it("should support client scope", () => {
       const mockRegister = vi.fn();
-      vi.stubGlobal("game", { settings: { register: mockRegister } });
+      vi.stubGlobal("game", {
+        settings: {
+          register: mockRegister,
+          get: vi.fn(),
+          set: vi.fn(),
+        },
+      });
 
       const config: SettingConfig<number> = {
         name: "Client Setting",
@@ -295,7 +382,13 @@ describe("FoundrySettingsPortV13", () => {
 
     it("should support user scope (v13+)", () => {
       const mockRegister = vi.fn();
-      vi.stubGlobal("game", { settings: { register: mockRegister } });
+      vi.stubGlobal("game", {
+        settings: {
+          register: mockRegister,
+          get: vi.fn(),
+          set: vi.fn(),
+        },
+      });
 
       const config: SettingConfig<number> = {
         name: "User Setting",

@@ -77,8 +77,14 @@ describe("FoundryJournalFacade", () => {
 
   describe("getEntryFlag", () => {
     it("should delegate to FoundryDocument.getFlag with module scope and schema", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const entry = { id: "j1", getFlag: vi.fn() } as any;
+      // Entry must have both getFlag and setFlag methods for castFoundryDocumentForFlag validation
+
+      const entry = {
+        id: "j1",
+        getFlag: vi.fn(),
+        setFlag: vi.fn(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
       mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
 
       const result = facade.getEntryFlag<boolean>(entry, "hidden", v.boolean());
@@ -98,8 +104,14 @@ describe("FoundryJournalFacade", () => {
     });
 
     it("should propagate errors from FoundryDocument", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const entry = { id: "j1", getFlag: vi.fn() } as any;
+      // Entry must have both getFlag and setFlag methods for castFoundryDocumentForFlag validation
+
+      const entry = {
+        id: "j1",
+        getFlag: vi.fn(),
+        setFlag: vi.fn(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
       const error = { code: "OPERATION_FAILED" as const, message: "Flag read failed" };
       mockDocument.getFlag = vi.fn().mockReturnValue(err(error));
 
@@ -108,6 +120,20 @@ describe("FoundryJournalFacade", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("OPERATION_FAILED");
+      }
+    });
+
+    it("should return VALIDATION_FAILED when entry lacks required methods", () => {
+      // Entry missing setFlag method
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const entry = { id: "j1", getFlag: vi.fn() } as any;
+
+      const result = facade.getEntryFlag(entry, "hidden", v.boolean());
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("VALIDATION_FAILED");
+        expect(result.error.message).toContain("required methods");
       }
     });
   });
@@ -133,6 +159,65 @@ describe("FoundryJournalFacade", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("ELEMENT_NOT_FOUND");
+      }
+    });
+  });
+
+  describe("setEntryFlag", () => {
+    it("should delegate to FoundryDocument.setFlag with module scope", async () => {
+      // Entry must have both getFlag and setFlag methods for castFoundryDocumentForFlag validation
+
+      const entry = {
+        id: "j1",
+        getFlag: vi.fn(),
+        setFlag: vi.fn(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+      mockDocument.setFlag = vi.fn().mockResolvedValue(ok(undefined));
+
+      const result = await facade.setEntryFlag(entry, "hidden", true);
+
+      expect(mockDocument.setFlag).toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const calls = (mockDocument.setFlag as any).mock.calls;
+      expect(calls[0][0]).toBe(entry);
+      expect(calls[0][1]).toBe(MODULE_CONSTANTS.MODULE.ID);
+      expect(calls[0][2]).toBe("hidden");
+      expect(calls[0][3]).toBe(true);
+      expect(result.ok).toBe(true);
+    });
+
+    it("should propagate errors from FoundryDocument", async () => {
+      // Entry must have both getFlag and setFlag methods for castFoundryDocumentForFlag validation
+
+      const entry = {
+        id: "j1",
+        getFlag: vi.fn(),
+        setFlag: vi.fn(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+      const error = { code: "OPERATION_FAILED" as const, message: "Flag set failed" };
+      mockDocument.setFlag = vi.fn().mockResolvedValue(err(error));
+
+      const result = await facade.setEntryFlag(entry, "hidden", true);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("OPERATION_FAILED");
+      }
+    });
+
+    it("should return VALIDATION_FAILED when entry lacks required methods", async () => {
+      // Entry missing getFlag method
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const entry = { id: "j1", setFlag: vi.fn() } as any;
+
+      const result = await facade.setEntryFlag(entry, "hidden", true);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("VALIDATION_FAILED");
+        expect(result.error.message).toContain("required methods");
       }
     });
   });

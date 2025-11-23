@@ -65,4 +65,18 @@ export interface FoundryJournalFacade {
    * @param html - HTML container element
    */
   removeJournalElement(id: string, name: string, html: HTMLElement): Result<void, FoundryError>;
+
+  /**
+   * Set a module flag on a journal entry.
+   *
+   * @param entry - The Foundry journal entry
+   * @param key - The flag key
+   * @param value - The boolean value to set
+   * @returns Result indicating success or error
+   */
+  setEntryFlag(
+    entry: FoundryJournalEntry,
+    key: string,
+    value: boolean
+  ): Promise<Result<void, FoundryError>>;
 }

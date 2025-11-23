@@ -170,9 +170,7 @@ export function configureDependencies(container: ServiceContainer): Result<void,
   if (isErr(coreResult)) return coreResult;
 
   const observabilityResult = registerObservability(container);
-  /* v8 ignore start -- Error propagation path is tested, but coverage tool may not count the return statement -- @preserve */
   if (isErr(observabilityResult)) return observabilityResult;
-  /* v8 ignore end -- @preserve */
 
   const utilityResult = registerUtilityServices(container);
   if (isErr(utilityResult)) return utilityResult;

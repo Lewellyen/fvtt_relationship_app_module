@@ -1022,6 +1022,37 @@ describe("ServiceContainer", () => {
       const result2 = await promise2;
       expectResultOk(result2);
     });
+
+    it("should cleanup validationPromise in finally block even on timeout", async () => {
+      const container = ServiceContainer.createRoot();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+
+      // Mock validator.validate to return a promise that never resolves (simulating slow validation)
+      const validator = container["validator"];
+      vi.spyOn(validator, "validate").mockImplementation(() => {
+        // Return a promise that never resolves to trigger timeout
+        return new Promise(() => {
+          // Never resolves
+        }) as any;
+      });
+
+      // Call validateAsync with very short timeout to trigger finally block
+      const result = await container.validateAsync(10);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error[0]?.message).toContain("timed out");
+      }
+
+      // Verify that the finally block executed by checking validationPromise is null
+      // This ensures the finally block (line 425) is covered even in timeout scenario
+      expect(container["validationPromise"]).toBeNull();
+
+      // Restore
+      vi.restoreAllMocks();
+    });
   });
 
   describe("Concurrent Sync Validation", () => {

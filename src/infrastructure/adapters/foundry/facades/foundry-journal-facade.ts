@@ -63,12 +63,11 @@ export class FoundryJournalFacade implements IFoundryJournalFacade {
   ): Result<T | null, FoundryError> {
     // Type widening: fvtt-types JournalEntry.getFlag has overly restrictive scope type ("core" only),
     // but module flags use module ID as scope. Cast to generic interface is safe.
-    return this.document.getFlag<T>(
-      castFoundryDocumentForFlag(entry),
-      MODULE_CONSTANTS.MODULE.ID,
-      key,
-      schema
-    );
+    const documentResult = castFoundryDocumentForFlag(entry);
+    if (!documentResult.ok) {
+      return documentResult; // Propagate error
+    }
+    return this.document.getFlag<T>(documentResult.value, MODULE_CONSTANTS.MODULE.ID, key, schema);
   }
 
   /**
@@ -82,6 +81,33 @@ export class FoundryJournalFacade implements IFoundryJournalFacade {
    */
   removeJournalElement(id: string, name: string, html: HTMLElement): Result<void, FoundryError> {
     return this.ui.removeJournalElement(id, name, html);
+  }
+
+  /**
+   * Set a module flag on a journal entry.
+   *
+   * Delegates to FoundryDocument.setFlag() with module scope.
+   *
+   * @param entry - The Foundry journal entry
+   * @param key - The flag key
+   * @param value - The boolean value to set
+   * @returns Result indicating success or error
+   */
+  async setEntryFlag(
+    entry: FoundryJournalEntry,
+    key: string,
+    value: boolean
+  ): Promise<Result<void, FoundryError>> {
+    const documentResult = castFoundryDocumentForFlag(entry);
+    if (!documentResult.ok) {
+      return documentResult; // Propagate error
+    }
+    return await this.document.setFlag(
+      documentResult.value,
+      MODULE_CONSTANTS.MODULE.ID,
+      key,
+      value
+    );
   }
 }
 

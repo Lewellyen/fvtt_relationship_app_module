@@ -5,6 +5,11 @@
  * Diese Datei ist absichtlich von der Type-Coverage ausgenommen, damit
  * wir an wenigen wohldokumentierten Stellen mit Runtime-Casts arbeiten
  * können, ohne den 100%-Anspruch für den restlichen Code zu verletzen.
+ *
+ * Diese Datei ist getrennt von `runtime-casts.ts` (Foundry-spezifische Casts),
+ * da sie für die DI-Infrastruktur verwendet wird und ContainerError statt
+ * FoundryError verwendet. Die Trennung ermöglicht klare Abhängigkeiten
+ * und verhindert Import-Zyklen.
  */
 
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
@@ -20,6 +25,7 @@ import type { ServiceRegistration } from "../core/serviceregistration";
 import type { Result } from "@/domain/types/result";
 import type { FoundryHookCallback } from "@/infrastructure/adapters/foundry/types";
 import type { ContainerError } from "../../interfaces";
+import { ok, err } from "@/infrastructure/shared/utils/result";
 
 /**
  * Listener-Typ aus RuntimeConfigService – hier als Alias erneut definiert,
@@ -112,13 +118,34 @@ export function castCachedServiceInstance<TServiceType extends ServiceType>(
  * Kapselt den notwendigen Cast für gecachte Service-Instanzen in Result-Kontext.
  * Wird verwendet, wenn sichergestellt ist, dass die Instanz existiert.
  *
- * @param instance - Die gecachte Service-Instanz (ServiceType union)
- * @returns Die Instanz als spezifischer generischer Typ
+ * Diese Funktion führt eine Runtime-Validierung durch, um sicherzustellen,
+ * dass die Instanz nicht `undefined` ist. Bei Fehlern wird ein ContainerError
+ * zurückgegeben statt einen Error zu werfen, um konsistent mit dem Result-Pattern
+ * zu bleiben.
+ *
+ * @template TServiceType - Der spezifische Service-Typ
+ * @param instance - Die gecachte Service-Instanz (ServiceType union oder undefined)
+ * @returns Result mit der Instanz als spezifischer generischer Typ oder ContainerError
+ *
+ * @remarks
+ * Diese Funktion sollte nur verwendet werden, wenn sichergestellt ist, dass
+ * die Instanz im Cache existiert. Für optionale Instanzen sollte
+ * `castCachedServiceInstance()` verwendet werden.
+ *
+ * @see {@link castCachedServiceInstance} Für optionale Service-Instanzen
  */
 export function castCachedServiceInstanceForResult<TServiceType extends ServiceType>(
   instance: ServiceType | undefined
-): TServiceType {
-  return instance as TServiceType;
+): Result<TServiceType, ContainerError> {
+  if (instance === undefined) {
+    return err({
+      code: "TokenNotRegistered",
+      message:
+        "castCachedServiceInstanceForResult: instance must not be undefined. Use castCachedServiceInstance() for optional instances.",
+      details: {},
+    });
+  }
+  return ok(instance as TServiceType);
 }
 
 /**
@@ -217,4 +244,25 @@ export function getFirstElementIfArray<T>(
  */
 export function castToFoundryHookCallback(callback: unknown): FoundryHookCallback {
   return callback as FoundryHookCallback;
+}
+
+/**
+ * Type-safe assertion for CacheKey brand.
+ *
+ * This function encapsulates the brand assertion required for CacheKey.
+ * The type safety is guaranteed by the structured usage of CacheKey creation
+ * through createCacheKey() and the normalization process.
+ *
+ * @param value - The normalized string value to assert as CacheKey
+ * @returns The value branded as CacheKey
+ *
+ * @example
+ * ```typescript
+ * const key = assertCacheKey("namespace:resource:id");
+ * ```
+ */
+export function assertCacheKey(
+  value: string
+): import("@/infrastructure/cache/cache.interface").CacheKey {
+  return value as import("@/infrastructure/cache/cache.interface").CacheKey;
 }

@@ -1,5 +1,6 @@
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import type { Result } from "@/domain/types/result";
+import { assertCacheKey } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 const KEY_SEPARATOR = ":";
 
@@ -118,7 +119,7 @@ export function createCacheKey(parts: CacheKeyParts): CacheKey {
   if (identifier !== null && identifier !== undefined) {
     payload.push(String(identifier));
   }
-  return payload.map(normalizeSegment).join(KEY_SEPARATOR) as CacheKey; // type-coverage:ignore-line -- Brand assertion required
+  return assertCacheKey(payload.map(normalizeSegment).join(KEY_SEPARATOR));
 }
 
 /**

@@ -62,6 +62,21 @@ export interface JournalEventPort extends PlatformEventPort<JournalEvent> {
   onJournalDirectoryRendered(
     callback: (event: JournalDirectoryRenderedEvent) => void
   ): Result<EventRegistrationId, PlatformEventError>;
+
+  /**
+   * Register listener for journal context menu events.
+   *
+   * NOTE: This is UI-specific and might not exist on all platforms.
+   * Non-UI platforms (CSV, API) can return success without doing anything.
+   *
+   * Platform mappings:
+   * - Foundry: "getJournalEntryContext" hook
+   * - Roll20: Context menu event
+   * - CSV: No-op (not applicable)
+   */
+  onJournalContextMenu(
+    callback: (event: JournalContextMenuEvent) => void
+  ): Result<EventRegistrationId, PlatformEventError>;
 }
 
 // ===== Platform-Agnostic Event Types =====
@@ -101,6 +116,25 @@ export interface JournalDirectoryRenderedEvent {
 }
 
 /**
+ * Event fired when the journal context menu is about to be displayed.
+ * Only applicable for platforms with UI.
+ */
+export interface JournalContextMenuEvent {
+  htmlElement: HTMLElement; // DOM ist überall gleich
+  options: ContextMenuOption[]; // Mutable array - can be modified to add/remove options
+  timestamp: number;
+}
+
+/**
+ * Context menu option that can be added to the journal context menu.
+ */
+export interface ContextMenuOption {
+  name: string;
+  icon: string;
+  callback: (li: HTMLElement) => void | Promise<void>;
+}
+
+/**
  * Changes detected in a journal update event.
  */
 export interface JournalChanges {
@@ -116,4 +150,5 @@ export type JournalEvent =
   | JournalCreatedEvent
   | JournalUpdatedEvent
   | JournalDeletedEvent
-  | JournalDirectoryRenderedEvent;
+  | JournalDirectoryRenderedEvent
+  | JournalContextMenuEvent;

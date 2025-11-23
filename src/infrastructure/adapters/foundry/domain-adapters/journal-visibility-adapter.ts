@@ -84,6 +84,52 @@ export class FoundryJournalVisibilityAdapter implements JournalVisibilityPort {
 
     return { ok: true, value: flagResult.value };
   }
+
+  async setEntryFlag(
+    entry: JournalEntry,
+    flagKey: string,
+    value: boolean
+  ): Promise<Result<void, JournalVisibilityError>> {
+    // Find FoundryJournalEntry by ID (we need to fetch all to find the right one)
+    const foundryEntriesResult = this.foundryJournalFacade.getJournalEntries();
+    if (!foundryEntriesResult.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "FLAG_SET_FAILED",
+          entryId: entry.id,
+          message: foundryEntriesResult.error.message,
+        },
+      };
+    }
+
+    const foundryEntry = foundryEntriesResult.value.find((e) => e.id === entry.id);
+    if (!foundryEntry) {
+      return {
+        ok: false,
+        error: {
+          code: "ENTRY_NOT_FOUND",
+          entryId: entry.id,
+          message: `Journal entry with ID ${entry.id} not found`,
+        },
+      };
+    }
+
+    const flagResult = await this.foundryJournalFacade.setEntryFlag(foundryEntry, flagKey, value);
+
+    if (!flagResult.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "FLAG_SET_FAILED",
+          entryId: entry.id,
+          message: flagResult.error.message,
+        },
+      };
+    }
+
+    return { ok: true, value: undefined };
+  }
 }
 
 // DI-Wrapper
