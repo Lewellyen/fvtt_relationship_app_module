@@ -51,7 +51,7 @@
     "issue:link": "node scripts/update-feature-issue-link.mjs"
   },
   "dependencies": {
-    "@xyflow/svelte": "^1.2.4",
+    "@xyflow/svelte": "^1.4.2",
     "cytoscape": "^3.32.1",
     "elkjs": "^0.11.0",
     "flowbite": "^3.1.2",
