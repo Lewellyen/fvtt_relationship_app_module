@@ -16,6 +16,7 @@ import {
   moduleApiInitializerToken,
   notificationCenterToken,
   uiChannelToken,
+  journalContextMenuLibWrapperServiceToken,
 } from "@/infrastructure/shared/tokens";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens";
 import { LOG_LEVEL_SCHEMA } from "@/infrastructure/adapters/foundry/validation/setting-schemas";
@@ -130,6 +131,26 @@ export class BootstrapInitHookService {
         });
         return;
       }
+
+      // Register context menu libWrapper (NOT an event - direct libWrapper registration)
+      const contextMenuLibWrapperResult = this.container.resolveWithError(
+        journalContextMenuLibWrapperServiceToken
+      );
+      if (contextMenuLibWrapperResult.ok) {
+        const registerResult = contextMenuLibWrapperResult.value.register();
+        if (!registerResult.ok) {
+          this.logger.warn(
+            `Failed to register context menu libWrapper: ${registerResult.error.message}`
+          );
+        } else {
+          this.logger.debug("Context menu libWrapper registered successfully");
+        }
+      } else {
+        this.logger.warn(
+          `Failed to resolve JournalContextMenuLibWrapperService: ${contextMenuLibWrapperResult.error.message}`
+        );
+      }
+
       this.logger.info("init-phase completed");
     });
     /* v8 ignore stop -- @preserve */

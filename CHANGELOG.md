@@ -12,6 +12,31 @@
 
 ### Upgrade-Hinweise
 
+## [0.32.0] - 2025-11-24
+### Hinzugefügt
+- **JournalContextMenuLibWrapperService**: Neuer Service für die Verwaltung der libWrapper-Registrierung für Journal Context-Menü ([Details](src/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService.ts))
+- Service registriert libWrapper direkt im `init`-Hook (nicht über Event-System)
+- Verwaltet Callback-Liste für Handler, die Context-Menü-Optionen modifizieren können
+- DI-Integration über `journalContextMenuLibWrapperServiceToken`
+
+### Geändert
+- **Context-Menü aus Event-System entfernt**: Context-Menü ist kein Event mehr, sondern eine direkte libWrapper-Registrierung
+- `RegisterContextMenuUseCase` ist kein `EventRegistrar` mehr - registriert nur Callbacks beim libWrapper-Service
+- `PlatformJournalEventPort.onJournalContextMenu()` entfernt (war fälschlicherweise als Event behandelt)
+- `FoundryJournalEventAdapter.onJournalContextMenu()` komplett entfernt
+- `ModuleEventRegistrar` hat jetzt nur noch 3 Event-Registrars (statt 4)
+- libWrapper-Registrierung erfolgt jetzt direkt im `BootstrapInitHookService.init`-Hook
+- **Breaking Change**: `RegisterContextMenuUseCase` implementiert nicht mehr `EventRegistrar` Interface
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.31.0] - 2025-11-24
 ### Hinzugefügt
 - **Bootstrap-Services für Hook-Registrierung**: Neue DI-Services `BootstrapInitHookService` und `BootstrapReadyHookService` für die Registrierung der Foundry `init` und `ready` Hooks ([Details](src/framework/core/bootstrap-init-hook.ts), [Details](src/framework/core/bootstrap-ready-hook.ts))

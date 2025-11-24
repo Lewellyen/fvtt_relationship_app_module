@@ -28,11 +28,14 @@ import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegist
  * - ProcessJournalDirectoryOnRenderUseCase (singleton) - Directory render use-case
  * - TriggerJournalDirectoryReRenderUseCase (singleton) - UI re-render use-case
  * - HideJournalContextMenuHandler (singleton) - Handler for "Journal ausblenden" context menu item
- * - RegisterContextMenuUseCase (singleton) - Context menu registration use-case (orchestrator)
+ * - RegisterContextMenuUseCase (singleton) - Context menu callback registration (NOT an event registrar)
  * - ModuleEventRegistrar (singleton) - Manages all event listeners
  *
  * DESIGN: Event ports are platform-agnostic abstractions over event systems.
  * They enable multi-VTT support by decoupling from Foundry-specific APIs.
+ *
+ * NOTE: RegisterContextMenuUseCase is NOT an EventRegistrar. It manages callbacks
+ * for the context menu libWrapper, which is registered separately during init.
  *
  * @param container - The service container to register services in
  * @returns Result indicating success or error with details

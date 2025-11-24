@@ -16,7 +16,6 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
       onJournalUpdated: vi.fn().mockReturnValue({ ok: true, value: "2" }),
       onJournalDeleted: vi.fn().mockReturnValue({ ok: true, value: "3" }),
       onJournalDirectoryRendered: vi.fn(),
-      onJournalContextMenu: vi.fn().mockReturnValue({ ok: true, value: "4" }),
       registerListener: vi.fn(),
       unregisterListener: vi.fn(),
     };

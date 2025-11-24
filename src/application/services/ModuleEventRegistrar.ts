@@ -8,7 +8,6 @@ import {
   invalidateJournalCacheOnChangeUseCaseToken,
   processJournalDirectoryOnRenderUseCaseToken,
   triggerJournalDirectoryReRenderUseCaseToken,
-  registerContextMenuUseCaseToken,
 } from "@/infrastructure/shared/tokens";
 
 /**
@@ -31,14 +30,12 @@ export class ModuleEventRegistrar {
     processJournalDirectoryOnRender: EventRegistrar,
     invalidateJournalCacheOnChange: EventRegistrar,
     triggerJournalDirectoryReRender: EventRegistrar,
-    registerJournalContextMenu: EventRegistrar,
     private readonly notificationCenter: NotificationCenter
   ) {
     this.eventRegistrars = [
       processJournalDirectoryOnRender,
       invalidateJournalCacheOnChange,
       triggerJournalDirectoryReRender,
-      registerJournalContextMenu,
     ];
   }
 
@@ -87,7 +84,6 @@ export class DIModuleEventRegistrar extends ModuleEventRegistrar {
     processJournalDirectoryOnRenderUseCaseToken,
     invalidateJournalCacheOnChangeUseCaseToken,
     triggerJournalDirectoryReRenderUseCaseToken,
-    registerContextMenuUseCaseToken,
     notificationCenterToken,
   ] as const;
 
@@ -95,14 +91,12 @@ export class DIModuleEventRegistrar extends ModuleEventRegistrar {
     processJournalDirectoryOnRender: EventRegistrar,
     invalidateJournalCacheOnChange: EventRegistrar,
     triggerJournalDirectoryReRender: EventRegistrar,
-    registerJournalContextMenu: EventRegistrar,
     notificationCenter: NotificationCenter
   ) {
     super(
       processJournalDirectoryOnRender,
       invalidateJournalCacheOnChange,
       triggerJournalDirectoryReRender,
-      registerJournalContextMenu,
       notificationCenter
     );
   }

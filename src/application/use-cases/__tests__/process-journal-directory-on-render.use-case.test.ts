@@ -19,7 +19,6 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
       onJournalUpdated: vi.fn(),
       onJournalDeleted: vi.fn(),
       onJournalDirectoryRendered: vi.fn().mockReturnValue({ ok: true, value: "1" }),
-      onJournalContextMenu: vi.fn().mockReturnValue({ ok: true, value: "2" }),
       registerListener: vi.fn(),
       unregisterListener: vi.fn(),
     };
@@ -131,7 +130,6 @@ describe("DIProcessJournalDirectoryOnRenderUseCase", () => {
       onJournalUpdated: vi.fn(),
       onJournalDeleted: vi.fn(),
       onJournalDirectoryRendered: vi.fn().mockReturnValue({ ok: true, value: "1" }),
-      onJournalContextMenu: vi.fn().mockReturnValue({ ok: true, value: "2" }),
       registerListener: vi.fn(),
       unregisterListener: vi.fn(),
     };

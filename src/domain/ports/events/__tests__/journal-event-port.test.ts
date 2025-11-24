@@ -8,7 +8,6 @@ describe("JournalEventPort (Contract Test)", () => {
       onJournalUpdated: vi.fn(),
       onJournalDeleted: vi.fn(),
       onJournalDirectoryRendered: vi.fn(),
-      onJournalContextMenu: vi.fn().mockReturnValue({ ok: true, value: "1" }),
       registerListener: vi.fn(),
       unregisterListener: vi.fn(),
     };
@@ -27,7 +26,6 @@ describe("JournalEventPort (Contract Test)", () => {
       onJournalUpdated: vi.fn().mockReturnValue({ ok: true, value: "2" }),
       onJournalDeleted: vi.fn().mockReturnValue({ ok: true, value: "3" }),
       onJournalDirectoryRendered: vi.fn().mockReturnValue({ ok: true, value: "4" }),
-      onJournalContextMenu: vi.fn().mockReturnValue({ ok: true, value: "5" }),
       registerListener: vi.fn().mockReturnValue({ ok: true, value: "6" }),
       unregisterListener: vi.fn().mockReturnValue({ ok: true, value: undefined }),
     };
