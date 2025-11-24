@@ -98,13 +98,6 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Runtime Type Guards: Type-Cast für Runtime-Validierung von Methoden-Existenz (notwendig für type-safe Runtime-Checks)',
   },
   
-  // Polyfills (werden automatisch ausgenommen, hier nur für Vollständigkeit)
-  {
-    file: 'src/infrastructure/shared/polyfills/cytoscape-assign-fix.ts',
-    allowed: ['v8 ignore file', 'eslint-disable'],
-    reason: 'Legacy Polyfill: Cytoscape-Patch für externe Bibliothek, schwer testbar ohne Browser-Integration',
-  },
-  
 ];
 
 // Ignore-Marker, nach denen gesucht wird

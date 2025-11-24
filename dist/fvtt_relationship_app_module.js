@@ -8,38 +8,6 @@ var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read fr
 var __privateAdd = (obj, member, value2) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value2);
 var __privateSet = (obj, member, value2, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value2) : member.set(obj, value2), value2);
 var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6;
-const originalAssignRef = Object.assign;
-if (!(originalAssignRef && originalAssignRef.__cy_careful_patch)) {
-  const patched = /* @__PURE__ */ __name(function(target, ...sources) {
-    const filteredSources = sources.map((source) => {
-      if (source == null) return source;
-      const out = {};
-      for (const key in source) {
-        if (Object.prototype.hasOwnProperty.call(source, key) && key !== "equals") {
-          out[key] = source[key];
-        }
-      }
-      return out;
-    });
-    try {
-      return originalAssignRef(target, ...filteredSources);
-    } catch {
-      for (const src of filteredSources) {
-        if (src != null) {
-          for (const k in src) {
-            try {
-              target[k] = src[k];
-            } catch {
-            }
-          }
-        }
-      }
-      return target;
-    }
-  }, "patched");
-  patched.__cy_careful_patch = true;
-  Object.assign = patched;
-}
 const HOOK_THROTTLE_WINDOW_MS = 150;
 const VALIDATION_CONSTRAINTS = {
   /** Maximum length for IDs and keys */
@@ -1613,7 +1581,7 @@ function withTimeout(promise2, timeoutMs) {
   ]);
 }
 __name(withTimeout, "withTimeout");
-const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "development", "PROD": true, "SSR": false, "VITE_ENABLE_PERF_TRACKING": "true" };
+const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "production", "PROD": true, "SSR": false, "VITE_ENABLE_PERF_TRACKING": "true" };
 var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
   LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
   LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
@@ -1652,9 +1620,9 @@ function getEnvVar(key, parser2) {
 __name(getEnvVar, "getEnvVar");
 const parsedCacheMaxEntries = getEnvVar("VITE_CACHE_MAX_ENTRIES", parseOptionalPositiveInteger);
 const ENV = {
-  isDevelopment: true,
-  isProduction: false,
-  logLevel: true ? 0 : 1,
+  isDevelopment: false,
+  isProduction: true,
+  logLevel: false ? 0 : 1,
   enablePerformanceTracking: true,
   enableMetricsPersistence: getEnvVar("VITE_ENABLE_METRICS_PERSISTENCE", (val) => val === "true"),
   metricsPersistenceKey: getEnvVar(
@@ -1662,7 +1630,7 @@ const ENV = {
     (val) => val ?? "fvtt_relationship_app_module.metrics"
   ),
   // 1% sampling in production, 100% in development
-  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1,
+  performanceSamplingRate: true ? parseSamplingRate(void 0, 0.01) : 1,
   enableCacheService: getEnvVar(
     "VITE_CACHE_ENABLED",
     (val) => val === void 0 ? true : val === "true"

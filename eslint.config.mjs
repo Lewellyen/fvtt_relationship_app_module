@@ -119,13 +119,6 @@ export default [
   {
     ignores: ['node_modules/', 'dist/', 'packs/', 'assets/', 'tailwind.config.js', 'postcss.config.js']
   },
-  {
-    // Exception für Cytoscape Polyfill (benötigt loose equality)
-    files: ['src/polyfills/cytoscape-assign-fix.ts'],
-    rules: {
-      'eqeqeq': 'off' // Deaktiviert für absichtlichen Patch
-    }
-  },
   
   // Valibot-Schemas: PascalCase für Schema-Exports erlauben
   {
