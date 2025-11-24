@@ -748,7 +748,15 @@ class ReleaseGUI:
                     commit_msg_file.write_text(commit_message, encoding='utf-8')
                     
                     if not run_command(f'git commit -F "{commit_msg_file}"'):
-                        raise Exception("Git commit fehlgeschlagen")
+                        lock_file = Path(".git/index.lock")
+                        error_msg = "Git commit fehlgeschlagen"
+                        if lock_file.exists():
+                            error_msg += f"\n\nUrsache: Git-Lock-Datei gefunden ({lock_file})\n"
+                            error_msg += "Mögliche Lösungen:\n"
+                            error_msg += "1. Warten Sie, bis alle Git-Prozesse beendet sind\n"
+                            error_msg += "2. Prüfen Sie, ob ein Editor oder Git-Client geöffnet ist\n"
+                            error_msg += "3. Falls kein Prozess läuft, entfernen Sie die Lock-Datei manuell"
+                        raise Exception(error_msg)
                 print("  OK Git commit erfolgreich" + (" (simuliert)" if test_mode else ""))
             
             # 9. Git-Tag erstellen

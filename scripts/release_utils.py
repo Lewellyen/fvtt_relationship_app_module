@@ -28,6 +28,54 @@ def update_version_in_file(file_path, new_version):
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(content)
 
+def check_and_handle_git_lock():
+    """Prüft auf Git-Lock-Dateien und behandelt sie.
+    
+    Returns:
+        bool: True wenn keine Lock-Datei existiert oder erfolgreich entfernt wurde, False bei Fehler
+    """
+    lock_file = PROJECT_ROOT / ".git" / "index.lock"
+    
+    if not lock_file.exists():
+        return True
+    
+    # Prüfe, ob ein Git-Prozess läuft
+    try:
+        # Versuche Git-Status abzurufen - wenn ein Prozess läuft, wird dies fehlschlagen
+        result = subprocess.run(
+            ['git', 'status', '--porcelain'],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            timeout=2,
+            check=False
+        )
+        
+        # Wenn Git-Status erfolgreich ist, ist wahrscheinlich kein Prozess aktiv
+        if result.returncode == 0:
+            print(f"  Warnung: Lock-Datei gefunden, aber kein aktiver Git-Prozess erkannt.")
+            print(f"  Entferne Lock-Datei...")
+            try:
+                lock_file.unlink()
+                print(f"  OK Lock-Datei erfolgreich entfernt")
+                return True
+            except Exception as e:
+                print(f"  Fehler beim Entfernen der Lock-Datei: {e}")
+                return False
+        else:
+            # Git-Status fehlgeschlagen - möglicherweise läuft ein Prozess
+            print(f"  Warnung: Lock-Datei gefunden und Git-Status fehlgeschlagen.")
+            print(f"  Möglicherweise läuft ein anderer Git-Prozess.")
+            print(f"  Bitte warten Sie, bis alle Git-Prozesse beendet sind, oder entfernen Sie die Datei manuell:")
+            print(f"  {lock_file}")
+            return False
+    except subprocess.TimeoutExpired:
+        print(f"  Warnung: Git-Status hat zu lange gedauert - möglicherweise läuft ein Git-Prozess.")
+        return False
+    except Exception as e:
+        print(f"  Fehler beim Prüfen der Lock-Datei: {e}")
+        return False
+
 def run_command(command, cwd=None):
     """Führt einen Shell-Befehl aus und gibt True zurück, wenn erfolgreich.
     
@@ -38,11 +86,23 @@ def run_command(command, cwd=None):
     Returns:
         bool: True wenn erfolgreich, False wenn fehlgeschlagen
     """
+    # Prüfe auf Git-Lock-Dateien vor Git-Operationen
+    if command.strip().startswith('git '):
+        if not check_and_handle_git_lock():
+            print(f"  Fehler: Git-Lock-Datei blockiert die Operation. Bitte beheben Sie das Problem manuell.")
+            return False
+    
     try:
         subprocess.run(command, shell=True, check=True, cwd=cwd)
         return True
     except subprocess.CalledProcessError as e:
         print(f"Fehler beim Ausführen des Befehls '{command}': {e}")
+        # Bei Git-Operationen zusätzliche Hilfe anbieten
+        if command.strip().startswith('git '):
+            lock_file = PROJECT_ROOT / ".git" / "index.lock"
+            if lock_file.exists():
+                print(f"  Hinweis: Eine Git-Lock-Datei existiert noch: {lock_file}")
+                print(f"  Falls kein Git-Prozess läuft, können Sie die Datei manuell entfernen.")
         return False
 
 def update_documentation(new_version, date):
