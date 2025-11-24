@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { HideJournalContextMenuHandler } from "../hide-journal-context-menu-handler";
+import {
+  HideJournalContextMenuHandler,
+  DIHideJournalContextMenuHandler,
+} from "../hide-journal-context-menu-handler";
 import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
@@ -296,6 +299,19 @@ describe("HideJournalContextMenuHandler", () => {
       handler.handle(event);
 
       expect(event.options).toHaveLength(0);
+    });
+  });
+
+  describe("DIHideJournalContextMenuHandler", () => {
+    it("should instantiate with correct dependencies", () => {
+      const diHandler = new DIHideJournalContextMenuHandler(
+        mockJournalVisibility,
+        mockPlatformUI,
+        mockNotificationCenter,
+        mockFoundryGame
+      );
+
+      expect(diHandler).toBeInstanceOf(HideJournalContextMenuHandler);
     });
   });
 });

@@ -15,6 +15,7 @@ import {
   moduleSettingsRegistrarToken,
   foundrySettingsToken,
   moduleEventRegistrarToken,
+  journalContextMenuLibWrapperServiceToken,
 } from "@/infrastructure/shared/tokens";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 
@@ -255,6 +256,58 @@ describe("BootstrapInitHookService", () => {
       expect(mockLogger.warn).toHaveBeenCalledWith(
         "NotificationCenter could not be resolved during init; UI channel not attached",
         expect.objectContaining({ message: "NotificationCenter not found" })
+      );
+    });
+
+    it("should register context menu libWrapper successfully", async () => {
+      const mockApiInitializer = {
+        expose: vi.fn().mockReturnValue(ok(undefined)),
+      };
+
+      const mockSettingsRegistrar = {
+        registerAll: vi.fn(),
+      };
+
+      const mockEventRegistrar = {
+        registerAll: vi.fn().mockReturnValue(ok(undefined)),
+      };
+
+      const mockContextMenuLibWrapperService = {
+        register: vi.fn().mockReturnValue(ok(undefined)),
+      };
+
+      (mockContainer.resolveWithError as any).mockImplementation((token: symbol) => {
+        if (token === moduleApiInitializerToken) {
+          return ok(mockApiInitializer);
+        }
+        if (token === moduleSettingsRegistrarToken) {
+          return ok(mockSettingsRegistrar);
+        }
+        if (token === moduleEventRegistrarToken) {
+          return ok(mockEventRegistrar);
+        }
+        if (token === journalContextMenuLibWrapperServiceToken) {
+          return ok(mockContextMenuLibWrapperService);
+        }
+        if (token === foundrySettingsToken) {
+          return err({ code: "NotFound", message: "Settings not available" });
+        }
+        return err({ code: "NotFound", message: "Token not found" });
+      });
+
+      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      service.register();
+
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
+      const initCallback = initCall?.[1] as (() => void) | undefined;
+
+      expect(initCallback).toBeDefined();
+      initCallback!();
+
+      expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        "Context menu libWrapper registered successfully"
       );
     });
   });

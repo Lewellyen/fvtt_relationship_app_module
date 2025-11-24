@@ -75,6 +75,7 @@ import type { ModuleEventRegistrar } from "@/application/services/ModuleEventReg
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import type { LibWrapperService } from "@/domain/services/lib-wrapper-service.interface";
+import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
 import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
 import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
 
@@ -140,6 +141,7 @@ export type ServiceType =
   | PlatformUIPort
   | HideJournalContextMenuHandler
   | LibWrapperService
+  | JournalContextMenuLibWrapperService
   | ServiceContainer
   | BootstrapInitHookService
   | BootstrapReadyHookService;

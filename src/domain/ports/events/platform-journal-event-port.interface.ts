@@ -62,21 +62,6 @@ export interface PlatformJournalEventPort extends PlatformEventPort<JournalEvent
   onJournalDirectoryRendered(
     callback: (event: JournalDirectoryRenderedEvent) => void
   ): Result<EventRegistrationId, PlatformEventError>;
-
-  /**
-   * Register listener for journal context menu events.
-   *
-   * NOTE: This is UI-specific and might not exist on all platforms.
-   * Non-UI platforms (CSV, API) can return success without doing anything.
-   *
-   * Platform mappings:
-   * - Foundry: "getJournalEntryContext" hook
-   * - Roll20: Context menu event
-   * - CSV: No-op (not applicable)
-   */
-  onJournalContextMenu(
-    callback: (event: JournalContextMenuEvent) => void
-  ): Result<EventRegistrationId, PlatformEventError>;
 }
 
 // ===== Platform-Agnostic Event Types =====
@@ -150,5 +135,4 @@ export type JournalEvent =
   | JournalCreatedEvent
   | JournalUpdatedEvent
   | JournalDeletedEvent
-  | JournalDirectoryRenderedEvent
-  | JournalContextMenuEvent;
+  | JournalDirectoryRenderedEvent;

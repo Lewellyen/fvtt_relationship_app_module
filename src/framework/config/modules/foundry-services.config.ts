@@ -23,7 +23,11 @@ import { DIFoundryJournalFacade } from "@/infrastructure/adapters/foundry/facade
 import { DIFoundryJournalVisibilityAdapter } from "@/infrastructure/adapters/foundry/domain-adapters/journal-visibility-adapter";
 import { DIJournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import { DIFoundryLibWrapperService } from "@/infrastructure/adapters/foundry/services/FoundryLibWrapperService";
-import { libWrapperServiceToken } from "@/infrastructure/shared/tokens";
+import { DIJournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
+import {
+  libWrapperServiceToken,
+  journalContextMenuLibWrapperServiceToken,
+} from "@/infrastructure/shared/tokens";
 
 /**
  * Registers Foundry service wrappers.
@@ -38,6 +42,7 @@ import { libWrapperServiceToken } from "@/infrastructure/shared/tokens";
  * - FoundryJournalVisibilityAdapter (singleton) - must be registered before JournalVisibilityService
  * - JournalVisibilityService (singleton)
  * - FoundryLibWrapperService (singleton) - Facade for libWrapper
+ * - JournalContextMenuLibWrapperService (singleton) - Manages libWrapper for journal context menu
  *
  * All services use port-based adapter pattern for Foundry version compatibility.
  *
@@ -143,6 +148,18 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   );
   if (isErr(libWrapperServiceResult)) {
     return err(`Failed to register LibWrapperService: ${libWrapperServiceResult.error.message}`);
+  }
+
+  // Register JournalContextMenuLibWrapperService
+  const contextMenuLibWrapperResult = container.registerClass(
+    journalContextMenuLibWrapperServiceToken,
+    DIJournalContextMenuLibWrapperService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(contextMenuLibWrapperResult)) {
+    return err(
+      `Failed to register JournalContextMenuLibWrapperService: ${contextMenuLibWrapperResult.error.message}`
+    );
   }
 
   return ok(undefined);

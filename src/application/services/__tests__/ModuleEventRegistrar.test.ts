@@ -8,7 +8,6 @@ describe("ModuleEventRegistrar", () => {
   let mockEventRegistrar1: EventRegistrar;
   let mockEventRegistrar2: EventRegistrar;
   let mockEventRegistrar3: EventRegistrar;
-  let mockEventRegistrar4: EventRegistrar;
   let mockNotificationCenter: NotificationCenter;
   let registrar: ModuleEventRegistrar;
 
@@ -28,11 +27,6 @@ describe("ModuleEventRegistrar", () => {
       dispose: vi.fn(),
     };
 
-    mockEventRegistrar4 = {
-      register: vi.fn().mockReturnValue(ok(undefined)),
-      dispose: vi.fn(),
-    };
-
     mockNotificationCenter = {
       debug: vi.fn(),
       info: vi.fn(),
@@ -45,7 +39,6 @@ describe("ModuleEventRegistrar", () => {
       mockEventRegistrar1,
       mockEventRegistrar2,
       mockEventRegistrar3,
-      mockEventRegistrar4,
       mockNotificationCenter
     );
   });
@@ -58,7 +51,6 @@ describe("ModuleEventRegistrar", () => {
       expect(mockEventRegistrar1.register).toHaveBeenCalled();
       expect(mockEventRegistrar2.register).toHaveBeenCalled();
       expect(mockEventRegistrar3.register).toHaveBeenCalled();
-      expect(mockEventRegistrar4.register).toHaveBeenCalled();
     });
 
     it("should handle registration errors", () => {
@@ -117,7 +109,6 @@ describe("ModuleEventRegistrar", () => {
       expect(mockEventRegistrar1.dispose).toHaveBeenCalled();
       expect(mockEventRegistrar2.dispose).toHaveBeenCalled();
       expect(mockEventRegistrar3.dispose).toHaveBeenCalled();
-      expect(mockEventRegistrar4.dispose).toHaveBeenCalled();
     });
   });
 });

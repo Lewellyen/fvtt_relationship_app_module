@@ -398,9 +398,9 @@ Das **Handler-Pattern** ermöglicht es, mehrere Handler für dasselbe Event zu r
 **Architektur-Hierarchie:**
 ```
 Application Layer
-  ├─ RegisterContextMenuUseCase (Orchestrator)
+  ├─ RegisterContextMenuUseCase (Callback-Registrierung, KEIN EventRegistrar)
   │   ↓ depends on
-  │   PlatformJournalEventPort (Domain Layer - platform-agnostic)
+  │   JournalContextMenuLibWrapperService (Infrastructure Layer)
   │   ↓ depends on
   │   JournalContextMenuHandler[] (Handler-Interface)
   │
@@ -408,6 +408,13 @@ Application Layer
       ├─ HideJournalContextMenuHandler (spezifisch)
       ├─ ShowJournalContextMenuHandler (spezifisch)
       └─ ... weitere Handler (erweiterbar)
+
+Infrastructure Layer
+  └─ JournalContextMenuLibWrapperService
+      ↓ manages
+      LibWrapperService (libWrapper-Registrierung)
+      ↓ registered in
+      BootstrapInitHookService.init-Hook (direkt im init, NICHT über Event-System)
 ```
 
 **Vorteile:**
@@ -462,34 +469,39 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
 }
 ```
 
-**Use-Case als Orchestrator:**
+**Use-Case als Callback-Registrierung:**
 
 ```typescript
 // src/application/use-cases/register-context-menu.use-case.ts
-export class RegisterContextMenuUseCase implements EventRegistrar {
+export class RegisterContextMenuUseCase {
+  // NOTE: KEIN EventRegistrar mehr - Context-Menü ist kein Event!
   constructor(
-    private readonly journalEvents: PlatformJournalEventPort,
+    private readonly contextMenuLibWrapperService: JournalContextMenuLibWrapperService,
     private readonly hideJournalHandler: HideJournalContextMenuHandler
   ) {}
 
   register(): Result<void, Error> {
     const handlers: JournalContextMenuHandler[] = [this.hideJournalHandler];
 
-    return this.journalEvents.onJournalContextMenu((event) => {
+    // Registriere Callback beim libWrapper-Service
+    this.contextMenuLibWrapperService.addCallback((event) => {
       // Rufe alle Handler auf
       for (const handler of handlers) {
         handler.handle(event);
       }
     });
+    return ok(undefined);
   }
 }
 ```
 
 **Wichtige Punkte:**
 - Handler nutzen **Domain-Ports** (PlatformJournalVisibilityPort, PlatformUIPort) - platform-agnostic
-- Handler werden direkt im Use-Case Constructor injiziert (Option A - einfacher)
+- Handler werden direkt im Use-Case Constructor injiziert
 - `event.options` Array ist mutable und kann von Handlern modifiziert werden
-- Für Foundry-Integration nutzt `FoundryJournalEventAdapter` libWrapper statt Hook (da Hook in v13 nicht mehr funktioniert)
+- **Context-Menü ist KEIN Event**: Die libWrapper-Registrierung erfolgt direkt im `init`-Hook über `JournalContextMenuLibWrapperService`, nicht über das Event-System
+- `RegisterContextMenuUseCase` ist **KEIN EventRegistrar** mehr - es registriert nur Callbacks beim libWrapper-Service
+- **JournalContextMenuLibWrapperService**: Verwaltet die libWrapper-Registrierung für ContextMenu.render und die Callback-Liste ([Details](src/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService.ts))
 - **LibWrapperService**: libWrapper-Interaktionen werden über den `LibWrapperService` abgewickelt, der als Facade für `globalThis.libWrapper` fungiert und eine saubere, testbare API bietet ([Details](src/infrastructure/adapters/foundry/services/FoundryLibWrapperService.ts))
 
 ### Domain-Ports für DIP-Konformität
