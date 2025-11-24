@@ -11,7 +11,8 @@ from datetime import datetime
 from release_utils import (
     update_version_in_file, run_command, update_documentation, update_metadata, 
     remove_bom_in_paths, write_unreleased_changes, read_unreleased_changes, 
-    verify_metadata_update, detect_change_type, get_changed_files_info
+    verify_metadata_update, detect_change_type, get_changed_files_info,
+    create_release_checkpoint, ReleaseCheckpoint
 )
 
 class ReleaseGUI:
@@ -677,6 +678,11 @@ class ReleaseGUI:
         if not messagebox.askyesno("Bestätigung", confirmation):
             return
         
+        # Erstelle Checkpoint für Rollback
+        checkpoint = None
+        if not test_mode:
+            checkpoint = create_release_checkpoint(new_version)
+        
         try:
             # 1. Konstantendatei aktualisieren
             if self.update_constants_var.get():
@@ -684,6 +690,8 @@ class ReleaseGUI:
                 if not test_mode:
                     update_version_in_file("scripts/constants.cjs", new_version)
                     self.refresh_version_display()
+                    if checkpoint:
+                        checkpoint.mark_step_completed("1. Konstantendatei aktualisiert")
                 print("  OK constants.cjs erfolgreich aktualisiert" + (" (simuliert)" if test_mode else ""))
             
             # 2. Metadaten aktualisieren
@@ -693,6 +701,8 @@ class ReleaseGUI:
                     update_metadata(new_version)
                     if not verify_metadata_update(new_version):
                         raise Exception("Fehler beim Aktualisieren der Metadaten!")
+                    if checkpoint:
+                        checkpoint.mark_step_completed("2. Metadaten aktualisiert")
                 print("  OK Metadaten erfolgreich aktualisiert" + (" (simuliert)" if test_mode else ""))
             
             # 3. BOM entfernen
@@ -700,6 +710,8 @@ class ReleaseGUI:
                 print("\n3. Entferne BOM aus Projektdateien...")
                 if not test_mode:
                     remove_bom_in_paths(["src", "dist", "templates", "styles", "module.json", "package.json"])
+                    if checkpoint:
+                        checkpoint.mark_step_completed("3. BOM entfernt")
                 print("  OK BOM-Entfernung abgeschlossen" + (" (simuliert)" if test_mode else ""))
             
             # 4. Dokumentation aktualisieren
@@ -718,6 +730,8 @@ class ReleaseGUI:
                 if not test_mode:
                     if not run_command("python scripts/generate_changelog.py"):
                         raise Exception("Changelog-Regenerierung fehlgeschlagen")
+                    if checkpoint:
+                        checkpoint.mark_step_completed("6. CHANGELOG regeneriert")
                 print("  OK CHANGELOG.md erfolgreich regeneriert" + (" (simuliert)" if test_mode else ""))
             
             # 7. Git-Änderungen stagen
@@ -726,6 +740,8 @@ class ReleaseGUI:
                 if not test_mode:
                     if not run_command("git add ."):
                         raise Exception("Git add fehlgeschlagen")
+                    if checkpoint:
+                        checkpoint.mark_step_completed("7. Git add")
                 print("  OK Git add erfolgreich" + (" (simuliert)" if test_mode else ""))
             
             # 8. Git-Änderungen committen
@@ -757,6 +773,8 @@ class ReleaseGUI:
                             error_msg += "2. Prüfen Sie, ob ein Editor oder Git-Client geöffnet ist\n"
                             error_msg += "3. Falls kein Prozess läuft, entfernen Sie die Lock-Datei manuell"
                         raise Exception(error_msg)
+                    if checkpoint:
+                        checkpoint.mark_step_completed("8. Git commit")
                 print("  OK Git commit erfolgreich" + (" (simuliert)" if test_mode else ""))
             
             # 9. Git-Tag erstellen
@@ -768,6 +786,8 @@ class ReleaseGUI:
                         tag_message += f" - {remark}"
                     if not run_command(f'git tag -f -a v{new_version} -m "{tag_message}"'):
                         raise Exception("Git tag fehlgeschlagen")
+                    if checkpoint:
+                        checkpoint.mark_step_completed("9. Git tag")
                 print("  OK Git tag erfolgreich" + (" (simuliert)" if test_mode else ""))
             
             # 10. Änderungen hochladen
@@ -776,14 +796,44 @@ class ReleaseGUI:
                 if not test_mode:
                     if not run_command("git push origin main --tags"):
                         raise Exception("Git push fehlgeschlagen")
+                    if checkpoint:
+                        checkpoint.mark_step_completed("10. Git push")
                 print("  OK Git push erfolgreich" + (" (simuliert)" if test_mode else ""))
+            
+            # Erfolgreich abgeschlossen - Cleanup
+            if checkpoint:
+                checkpoint.cleanup()
             
             print("\nRelease-Prozess erfolgreich abgeschlossen!" + (" (TEST-MODUS)" if test_mode else ""))
             messagebox.showinfo("Erfolg", 
                               "Test-Simulation erfolgreich!" if test_mode else f"Release für Version {new_version} erfolgreich!")
         except Exception as e:
             print(f"\nFehler beim Release-Prozess: {str(e)}")
-            messagebox.showerror("Fehler", f"Release fehlgeschlagen: {str(e)}")
+            
+            # Rollback anbieten
+            if checkpoint and not test_mode:
+                error_msg = f"Release fehlgeschlagen: {str(e)}\n\n"
+                error_msg += "Möchten Sie einen Rollback durchführen?\n"
+                error_msg += "Dies stellt alle geänderten Dateien wieder her."
+                
+                if messagebox.askyesno("Fehler - Rollback?", error_msg):
+                    rollback_result = checkpoint.rollback_all()
+                    if rollback_result['success']:
+                        messagebox.showinfo("Rollback", 
+                                          f"Rollback erfolgreich!\n\n"
+                                          f"Git: {'Wiederhergestellt' if rollback_result['git'] else 'Nicht wiederhergestellt'}\n"
+                                          f"Dateien: {rollback_result['files']} wiederhergestellt")
+                    else:
+                        messagebox.showwarning("Rollback", 
+                                             "Rollback konnte nicht vollständig durchgeführt werden.\n"
+                                             f"Backup-Verzeichnis: {checkpoint.backup_dir}")
+                else:
+                    messagebox.showinfo("Kein Rollback", 
+                                      f"Kein Rollback durchgeführt.\n"
+                                      f"Backup-Verzeichnis: {checkpoint.backup_dir}\n\n"
+                                      f"Sie können später manuell rollbacken.")
+            else:
+                messagebox.showerror("Fehler", f"Release fehlgeschlagen: {str(e)}")
 
 def main():
     print("Starte Release Manager GUI...")

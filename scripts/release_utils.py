@@ -4,6 +4,8 @@ import subprocess
 from pathlib import Path
 import json
 import os
+import shutil
+from datetime import datetime
 
 # Projekt-Root bestimmen
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -504,4 +506,196 @@ def get_changed_files_info():
         'code': code_files,
         'docs': docs_files,
         'type': 'code' if code_files else 'docs'
-    } 
+    }
+
+# ============================================================================
+# Rollback-System für Release-Prozess
+# ============================================================================
+
+class ReleaseCheckpoint:
+    """Verwaltet Checkpoints und Rollbacks für den Release-Prozess."""
+    
+    def __init__(self, version: str):
+        self.version = version
+        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.backup_dir = PROJECT_ROOT / ".release_backup" / f"{version}_{self.timestamp}"
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        self.git_commit_hash = None
+        self.completed_steps = []
+        self.files_backed_up = []
+        
+    def create_git_checkpoint(self) -> bool:
+        """Erstellt einen Git-Checkpoint (speichert aktuellen Commit-Hash)."""
+        try:
+            result = subprocess.run(
+                ['git', 'rev-parse', 'HEAD'],
+                capture_output=True,
+                text=True,
+                cwd=PROJECT_ROOT,
+                check=True
+            )
+            self.git_commit_hash = result.stdout.strip()
+            checkpoint_file = self.backup_dir / "git_checkpoint.txt"
+            checkpoint_file.write_text(f"Commit: {self.git_commit_hash}\n", encoding='utf-8')
+            print(f"  Git-Checkpoint erstellt: {self.git_commit_hash[:8]}")
+            return True
+        except Exception as e:
+            print(f"  Warnung: Git-Checkpoint konnte nicht erstellt werden: {e}")
+            return False
+    
+    def backup_file(self, file_path: str) -> bool:
+        """Sichert eine Datei vor Änderungen."""
+        source = PROJECT_ROOT / file_path
+        if not source.exists():
+            return False
+        
+        try:
+            # Erstelle Verzeichnisstruktur im Backup
+            relative_path = Path(file_path)
+            backup_path = self.backup_dir / relative_path
+            backup_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Kopiere Datei
+            shutil.copy2(source, backup_path)
+            self.files_backed_up.append(file_path)
+            return True
+        except Exception as e:
+            print(f"  Warnung: Backup von {file_path} fehlgeschlagen: {e}")
+            return False
+    
+    def backup_files(self, file_paths: list) -> int:
+        """Sichert mehrere Dateien."""
+        backed_up = 0
+        for file_path in file_paths:
+            if self.backup_file(file_path):
+                backed_up += 1
+        return backed_up
+    
+    def mark_step_completed(self, step_name: str):
+        """Markiert einen Schritt als abgeschlossen."""
+        self.completed_steps.append(step_name)
+        status_file = self.backup_dir / "steps_completed.txt"
+        status_file.write_text("\n".join(self.completed_steps) + "\n", encoding='utf-8')
+    
+    def rollback_file(self, file_path: str) -> bool:
+        """Stellt eine Datei aus dem Backup wieder her."""
+        relative_path = Path(file_path)
+        backup_path = self.backup_dir / relative_path
+        target = PROJECT_ROOT / file_path
+        
+        if not backup_path.exists():
+            return False
+        
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(backup_path, target)
+            return True
+        except Exception as e:
+            print(f"  Fehler beim Rollback von {file_path}: {e}")
+            return False
+    
+    def rollback_git(self) -> bool:
+        """Rollback zu Git-Checkpoint."""
+        if not self.git_commit_hash:
+            print("  Kein Git-Checkpoint vorhanden")
+            return False
+        
+        try:
+            # Prüfe ob wir uns noch im gleichen Repository befinden
+            result = subprocess.run(
+                ['git', 'rev-parse', 'HEAD'],
+                capture_output=True,
+                text=True,
+                cwd=PROJECT_ROOT,
+                check=True
+            )
+            current_hash = result.stdout.strip()
+            
+            if current_hash == self.git_commit_hash:
+                print("  Bereits am Checkpoint - kein Rollback nötig")
+                return True
+            
+            # Reset zu Checkpoint (nur Working Directory, nicht HEAD)
+            print(f"  Rollback zu Git-Checkpoint: {self.git_commit_hash[:8]}")
+            subprocess.run(
+                ['git', 'reset', '--hard', self.git_commit_hash],
+                cwd=PROJECT_ROOT,
+                check=True
+            )
+            return True
+        except Exception as e:
+            print(f"  Fehler beim Git-Rollback: {e}")
+            return False
+    
+    def rollback_files(self) -> int:
+        """Stellt alle gesicherten Dateien wieder her."""
+        restored = 0
+        for file_path in self.files_backed_up:
+            if self.rollback_file(file_path):
+                restored += 1
+        return restored
+    
+    def rollback_all(self) -> dict:
+        """Führt vollständigen Rollback durch."""
+        result = {
+            'git': False,
+            'files': 0,
+            'success': False
+        }
+        
+        print("\nStarte Rollback...")
+        
+        # Rollback Git
+        result['git'] = self.rollback_git()
+        
+        # Rollback Dateien
+        result['files'] = self.rollback_files()
+        
+        result['success'] = result['git'] or result['files'] > 0
+        
+        if result['success']:
+            print(f"  Rollback abgeschlossen: {result['files']} Dateien wiederhergestellt")
+        else:
+            print("  Warnung: Rollback konnte nicht vollständig durchgeführt werden")
+        
+        return result
+    
+    def cleanup(self):
+        """Entfernt Backup-Verzeichnis (optional, nach erfolgreichem Release)."""
+        try:
+            if self.backup_dir.exists():
+                shutil.rmtree(self.backup_dir)
+                print(f"  Backup-Verzeichnis entfernt: {self.backup_dir}")
+        except Exception as e:
+            print(f"  Warnung: Backup-Verzeichnis konnte nicht entfernt werden: {e}")
+    
+    def get_backup_info(self) -> str:
+        """Gibt Informationen über das Backup zurück."""
+        info = f"Backup für Version {self.version}\n"
+        info += f"Zeitpunkt: {self.timestamp}\n"
+        info += f"Verzeichnis: {self.backup_dir}\n"
+        if self.git_commit_hash:
+            info += f"Git-Checkpoint: {self.git_commit_hash[:8]}\n"
+        info += f"Gesicherte Dateien: {len(self.files_backed_up)}\n"
+        info += f"Abgeschlossene Schritte: {len(self.completed_steps)}\n"
+        return info
+
+def create_release_checkpoint(version: str) -> ReleaseCheckpoint:
+    """Erstellt einen neuen Release-Checkpoint."""
+    checkpoint = ReleaseCheckpoint(version)
+    
+    # Wichtige Dateien sichern
+    important_files = [
+        "scripts/constants.cjs",
+        "module.json",
+        "package.json",
+        "package-lock.json",
+        "CHANGELOG.md"
+    ]
+    
+    print(f"\nErstelle Release-Checkpoint für Version {version}...")
+    checkpoint.create_git_checkpoint()
+    backed_up = checkpoint.backup_files(important_files)
+    print(f"  {backed_up} Dateien gesichert")
+    
+    return checkpoint 
