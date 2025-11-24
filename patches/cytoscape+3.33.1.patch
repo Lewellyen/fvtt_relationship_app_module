@@ -1,8 +1,8 @@
 diff --git a/node_modules/cytoscape/dist/cytoscape.umd.js b/node_modules/cytoscape/dist/cytoscape.umd.js
-index f72eb25..abe5ee5 100644
+index 390019b..1d0d164 100644
 --- a/node_modules/cytoscape/dist/cytoscape.umd.js
 +++ b/node_modules/cytoscape/dist/cytoscape.umd.js
-@@ -337,21 +337,21 @@
+@@ -340,21 +340,21 @@
      return -1 * ascending(a, b);
    };
  
