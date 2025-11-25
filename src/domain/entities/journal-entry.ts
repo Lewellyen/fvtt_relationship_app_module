@@ -15,4 +15,5 @@ export type JournalVisibilityError =
   | { code: "FLAG_READ_FAILED"; entryId: string; message: string }
   | { code: "FLAG_SET_FAILED"; entryId: string; message: string }
   | { code: "DOM_MANIPULATION_FAILED"; entryId: string; message: string }
-  | { code: "INVALID_ENTRY_DATA"; message: string };
+  | { code: "INVALID_ENTRY_DATA"; message: string }
+  | { code: "PLATFORM_ERROR"; message: string };

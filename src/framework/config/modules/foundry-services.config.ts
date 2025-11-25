@@ -10,17 +10,13 @@ import {
   foundrySettingsToken,
   foundryJournalFacadeToken,
 } from "@/infrastructure/shared/tokens";
-import {
-  journalVisibilityServiceToken,
-  journalVisibilityPortToken,
-} from "@/infrastructure/shared/tokens";
+import { journalVisibilityServiceToken } from "@/infrastructure/shared/tokens";
 import { DIFoundryGamePort } from "@/infrastructure/adapters/foundry/services/FoundryGamePort";
 import { DIFoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 import { DIFoundryDocumentPort } from "@/infrastructure/adapters/foundry/services/FoundryDocumentPort";
 import { DIFoundryUIPort } from "@/infrastructure/adapters/foundry/services/FoundryUIPort";
 import { DIFoundrySettingsPort } from "@/infrastructure/adapters/foundry/services/FoundrySettingsPort";
 import { DIFoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade";
-import { DIFoundryJournalVisibilityAdapter } from "@/infrastructure/adapters/foundry/domain-adapters/journal-visibility-adapter";
 import { DIJournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import { DIFoundryLibWrapperService } from "@/infrastructure/adapters/foundry/services/FoundryLibWrapperService";
 import { DIJournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
@@ -39,7 +35,6 @@ import {
  * - FoundryUIPort (singleton)
  * - FoundrySettingsPort (singleton)
  * - FoundryJournalFacade (singleton)
- * - FoundryJournalVisibilityAdapter (singleton) - must be registered before JournalVisibilityService
  * - JournalVisibilityService (singleton)
  * - FoundryLibWrapperService (singleton) - Facade for libWrapper
  * - JournalContextMenuLibWrapperService (singleton) - Manages libWrapper for journal context menu
@@ -106,7 +101,6 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
 
   // Register FoundryJournalFacade
   // Combines Game, Document, UI for journal operations
-  // Must be registered BEFORE FoundryJournalVisibilityAdapter which depends on it
   const journalFacadeResult = container.registerClass(
     foundryJournalFacadeToken,
     DIFoundryJournalFacade,
@@ -116,19 +110,8 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
     return err(`Failed to register FoundryJournalFacade: ${journalFacadeResult.error.message}`);
   }
 
-  // Register FoundryJournalVisibilityAdapter
-  // Implements PlatformJournalVisibilityPort for Foundry platform
-  // Must be registered BEFORE JournalVisibilityService which depends on it
-  const adapterResult = container.registerClass(
-    journalVisibilityPortToken,
-    DIFoundryJournalVisibilityAdapter,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(adapterResult)) {
-    return err(`Failed to register JournalVisibilityAdapter: ${adapterResult.error.message}`);
-  }
-
   // Register JournalVisibilityService
+  // Uses JournalCollectionPort and JournalRepository (registered in entity-ports.config.ts)
   const journalVisibilityResult = container.registerClass(
     journalVisibilityServiceToken,
     DIJournalVisibilityService,

@@ -3,7 +3,7 @@ import {
   HideJournalContextMenuHandler,
   DIHideJournalContextMenuHandler,
 } from "../hide-journal-context-menu-handler";
-import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
+import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
@@ -11,21 +11,38 @@ import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-jou
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { ok } from "@/infrastructure/shared/utils/result";
 
+function createMockJournalRepository(): JournalRepository {
+  return {
+    getAll: vi.fn().mockReturnValue(ok([])),
+    getById: vi.fn().mockReturnValue(ok(null)),
+    getByIds: vi.fn().mockReturnValue(ok([])),
+    exists: vi.fn().mockReturnValue(ok(false)),
+    count: vi.fn().mockReturnValue(ok(0)),
+    search: vi.fn().mockReturnValue(ok([])),
+    query: vi.fn(),
+    create: vi.fn().mockResolvedValue(ok({})),
+    createMany: vi.fn().mockResolvedValue(ok([])),
+    update: vi.fn().mockResolvedValue(ok({})),
+    updateMany: vi.fn().mockResolvedValue(ok([])),
+    patch: vi.fn().mockResolvedValue(ok({})),
+    upsert: vi.fn().mockResolvedValue(ok({})),
+    delete: vi.fn().mockResolvedValue(ok(undefined)),
+    deleteMany: vi.fn().mockResolvedValue(ok(undefined)),
+    getFlag: vi.fn().mockReturnValue(ok(false)),
+    setFlag: vi.fn().mockResolvedValue(ok(undefined)),
+    unsetFlag: vi.fn().mockResolvedValue(ok(undefined)),
+  } as unknown as JournalRepository;
+}
+
 describe("HideJournalContextMenuHandler", () => {
-  let mockJournalVisibility: PlatformJournalVisibilityPort;
+  let mockJournalRepository: JournalRepository;
   let mockPlatformUI: PlatformUIPort;
   let mockNotificationCenter: NotificationCenter;
   let mockFoundryGame: FoundryGame;
   let handler: HideJournalContextMenuHandler;
 
   beforeEach(() => {
-    mockJournalVisibility = {
-      getEntryFlag: vi.fn().mockReturnValue({ ok: true, value: false }),
-      setEntryFlag: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
-      isHidden: vi.fn().mockReturnValue({ ok: true, value: false }),
-      getHiddenJournalEntries: vi.fn().mockReturnValue({ ok: true, value: [] }),
-      processJournalDirectory: vi.fn().mockReturnValue({ ok: true, value: undefined }),
-    } as unknown as PlatformJournalVisibilityPort;
+    mockJournalRepository = createMockJournalRepository();
 
     mockPlatformUI = {
       notify: vi.fn().mockReturnValue({ ok: true, value: undefined }),
@@ -49,7 +66,7 @@ describe("HideJournalContextMenuHandler", () => {
     } as unknown as FoundryGame;
 
     handler = new HideJournalContextMenuHandler(
-      mockJournalVisibility,
+      mockJournalRepository,
       mockPlatformUI,
       mockNotificationCenter,
       mockFoundryGame
@@ -68,7 +85,7 @@ describe("HideJournalContextMenuHandler", () => {
       handler.handle(event);
 
       expect(event.options).toHaveLength(0);
-      expect(mockJournalVisibility.getEntryFlag).not.toHaveBeenCalled();
+      expect(mockJournalRepository.getFlag).not.toHaveBeenCalled();
     });
 
     it("should not add menu item if already exists", () => {
@@ -83,11 +100,11 @@ describe("HideJournalContextMenuHandler", () => {
       handler.handle(event);
 
       expect(event.options).toHaveLength(1);
-      expect(mockJournalVisibility.getEntryFlag).not.toHaveBeenCalled();
+      expect(mockJournalRepository.getFlag).not.toHaveBeenCalled();
     });
 
     it("should not add menu item if journal is already hidden", () => {
-      mockJournalVisibility.getEntryFlag = vi.fn().mockReturnValue({ ok: true, value: true });
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
 
       const mockElement = document.createElement("div");
       mockElement.setAttribute("data-entry-id", "journal-123");
@@ -100,8 +117,9 @@ describe("HideJournalContextMenuHandler", () => {
       handler.handle(event);
 
       expect(event.options).toHaveLength(0);
-      expect(mockJournalVisibility.getEntryFlag).toHaveBeenCalledWith(
-        { id: "journal-123", name: null },
+      expect(mockJournalRepository.getFlag).toHaveBeenCalledWith(
+        "journal-123",
+        MODULE_CONSTANTS.MODULE.ID,
         MODULE_CONSTANTS.FLAGS.HIDDEN
       );
     });
@@ -121,8 +139,9 @@ describe("HideJournalContextMenuHandler", () => {
       expect(event.options[0]?.name).toBe("Journal ausblenden");
       expect(event.options[0]?.icon).toBe('<i class="fas fa-eye-slash"></i>');
       expect(typeof event.options[0]?.callback).toBe("function");
-      expect(mockJournalVisibility.getEntryFlag).toHaveBeenCalledWith(
-        { id: "journal-123", name: null },
+      expect(mockJournalRepository.getFlag).toHaveBeenCalledWith(
+        "journal-123",
+        MODULE_CONSTANTS.MODULE.ID,
         MODULE_CONSTANTS.FLAGS.HIDDEN
       );
     });
@@ -138,8 +157,9 @@ describe("HideJournalContextMenuHandler", () => {
 
       handler.handle(event);
 
-      expect(mockJournalVisibility.getEntryFlag).toHaveBeenCalledWith(
-        { id: "journal-456", name: null },
+      expect(mockJournalRepository.getFlag).toHaveBeenCalledWith(
+        "journal-456",
+        MODULE_CONSTANTS.MODULE.ID,
         MODULE_CONSTANTS.FLAGS.HIDDEN
       );
     });
@@ -161,8 +181,9 @@ describe("HideJournalContextMenuHandler", () => {
         const mockLi = document.createElement("li");
         await callback(mockLi);
 
-        expect(mockJournalVisibility.setEntryFlag).toHaveBeenCalledWith(
-          { id: "journal-123", name: null },
+        expect(mockJournalRepository.setFlag).toHaveBeenCalledWith(
+          "journal-123",
+          MODULE_CONSTANTS.MODULE.ID,
           MODULE_CONSTANTS.FLAGS.HIDDEN,
           true
         );
@@ -175,9 +196,10 @@ describe("HideJournalContextMenuHandler", () => {
     });
 
     it("should log error if hide fails", async () => {
-      mockJournalVisibility.setEntryFlag = vi
-        .fn()
-        .mockResolvedValue({ ok: false, error: { code: "ERROR", message: "Failed" } });
+      vi.mocked(mockJournalRepository.setFlag).mockResolvedValue({
+        ok: false,
+        error: { code: "OPERATION_FAILED", message: "Failed" },
+      });
 
       const mockElement = document.createElement("div");
       mockElement.setAttribute("data-entry-id", "journal-123");
@@ -196,7 +218,7 @@ describe("HideJournalContextMenuHandler", () => {
 
         expect(mockNotificationCenter.error).toHaveBeenCalledWith(
           "Failed to hide journal journal-123",
-          { code: "ERROR", message: "Failed" },
+          { code: "OPERATION_FAILED", message: "Failed" },
           { channels: ["ConsoleChannel", "UINotificationChannel"] }
         );
       }
@@ -282,10 +304,10 @@ describe("HideJournalContextMenuHandler", () => {
       }
     });
 
-    it("should not add menu item if getEntryFlag fails", () => {
-      mockJournalVisibility.getEntryFlag = vi.fn().mockReturnValue({
+    it("should not add menu item if getFlag fails", () => {
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue({
         ok: false,
-        error: { code: "ERROR", message: "Failed" },
+        error: { code: "ENTITY_NOT_FOUND", message: "Failed" },
       });
 
       const mockElement = document.createElement("div");
@@ -305,7 +327,7 @@ describe("HideJournalContextMenuHandler", () => {
   describe("DIHideJournalContextMenuHandler", () => {
     it("should instantiate with correct dependencies", () => {
       const diHandler = new DIHideJournalContextMenuHandler(
-        mockJournalVisibility,
+        mockJournalRepository,
         mockPlatformUI,
         mockNotificationCenter,
         mockFoundryGame

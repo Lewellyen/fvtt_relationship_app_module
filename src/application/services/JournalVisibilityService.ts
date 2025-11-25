@@ -1,5 +1,6 @@
 import type { Result } from "@/domain/types/result";
-import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
+import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
+import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
@@ -9,7 +10,8 @@ import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { getFirstArrayElement } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import {
-  journalVisibilityPortToken,
+  journalCollectionPortToken,
+  journalRepositoryToken,
   cacheServiceToken,
   notificationCenterToken,
   platformUIPortToken,
@@ -25,7 +27,8 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  * Handles business logic for hiding/showing journal entries in the UI.
  *
  * **Dependencies:**
- * - PlatformJournalVisibilityPort: Platform-agnostic port for journal operations
+ * - JournalCollectionPort: Platform-agnostic port for journal collection queries
+ * - JournalRepository: Platform-agnostic port for journal CRUD and flag operations
  * - NotificationCenter: For logging and notifications
  * - CacheService: For caching hidden entries
  * - PlatformUIPort: Platform-agnostic port for UI operations
@@ -36,7 +39,8 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  */
 export class JournalVisibilityService {
   constructor(
-    private readonly port: PlatformJournalVisibilityPort,
+    private readonly journalCollection: JournalCollectionPort,
+    private readonly journalRepository: JournalRepository,
     private readonly notificationCenter: NotificationCenter,
     private readonly cacheService: CacheService,
     private readonly platformUI: PlatformUIPort
@@ -72,13 +76,26 @@ export class JournalVisibilityService {
       return { ok: true, value: cached.value };
     }
 
-    const allEntriesResult = this.port.getAllEntries();
-    if (!allEntriesResult.ok) return allEntriesResult;
+    const allEntriesResult = this.journalCollection.getAll();
+    if (!allEntriesResult.ok) {
+      // Map EntityCollectionError to JournalVisibilityError
+      return {
+        ok: false,
+        error: {
+          code: "PLATFORM_ERROR",
+          message: allEntriesResult.error.message,
+        },
+      };
+    }
 
     const hidden: JournalEntry[] = [];
 
     for (const journal of allEntriesResult.value) {
-      const flagResult = this.port.getEntryFlag(journal, MODULE_CONSTANTS.FLAGS.HIDDEN);
+      const flagResult = this.journalRepository.getFlag(
+        journal.id,
+        MODULE_CONSTANTS.MODULE.ID,
+        MODULE_CONSTANTS.FLAGS.HIDDEN
+      );
 
       if (flagResult.ok) {
         if (flagResult.value === true) {
@@ -186,18 +203,20 @@ export class JournalVisibilityService {
 
 export class DIJournalVisibilityService extends JournalVisibilityService {
   static dependencies = [
-    journalVisibilityPortToken,
+    journalCollectionPortToken,
+    journalRepositoryToken,
     notificationCenterToken,
     cacheServiceToken,
     platformUIPortToken,
   ] as const;
 
   constructor(
-    port: PlatformJournalVisibilityPort,
+    journalCollection: JournalCollectionPort,
+    journalRepository: JournalRepository,
     notificationCenter: NotificationCenter,
     cacheService: CacheService,
     platformUI: PlatformUIPort
   ) {
-    super(port, notificationCenter, cacheService, platformUI);
+    super(journalCollection, journalRepository, notificationCenter, cacheService, platformUI);
   }
 }

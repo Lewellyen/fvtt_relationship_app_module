@@ -3,7 +3,6 @@
  */
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { EnvironmentConfig } from "@/framework/config/environment";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
@@ -30,25 +29,6 @@ import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready
  * ```
  */
 export const loggerToken = createInjectionToken<Logger>("Logger");
-
-/**
- * Injection token for the PlatformJournalVisibilityPort.
- *
- * Port for journal visibility operations, abstracting platform details.
- * Implementations are provided by platform-specific adapters
- * (e.g., FoundryJournalVisibilityAdapter).
- *
- * @example
- * ```typescript
- * const port = container.resolve(journalVisibilityPortToken);
- * const entries = port.getAllEntries();
- * if (entries.ok) {
- *   console.log(`Found ${entries.value.length} entries`);
- * }
- * ```
- */
-export const journalVisibilityPortToken =
-  createInjectionToken<PlatformJournalVisibilityPort>("JournalVisibilityPort");
 
 /**
  * Injection token for the JournalVisibilityService.

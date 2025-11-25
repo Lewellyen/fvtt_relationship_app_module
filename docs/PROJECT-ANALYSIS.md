@@ -1,7 +1,7 @@
 # Projektanalyse: FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-21 (Unreleased - Phase 1: Event-System Refactoring)  
+**Aktualisiert:** 2025-11-25 (Unreleased - Deprecated Code Cleanup)  
 **Zweck:** Grundlage für Refactoring-Planungen  
 **Model:** Claude Sonnet 4.5
 
@@ -30,6 +30,7 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 **Ab Modul 1.0.0:** Breaking Changes nur mit Deprecation-Phase & Migration Guide
 
 ### Unreleased Changes
+- **Deprecated Code Cleanup:** `PlatformJournalVisibilityPort` vollständig entfernt und durch `JournalCollectionPort` + `JournalRepository` ersetzt. `JournalVisibilityService` und `HideJournalContextMenuHandler` migriert. Unbenutzter `registerJournalContextMenuUseCaseToken` entfernt.
 - **Entity Collections & Repositories (Phase 2):** Neue generische Port-Interfaces für platform-agnostischen Entity-Zugriff. `PlatformEntityCollectionPort<T>` für Read-Only Collection-Zugriffe mit Query Builder, `PlatformEntityRepository<T>` für vollständige CRUD-Operationen. Implementiert für JournalEntry mit `FoundryJournalCollectionAdapter` und `FoundryJournalRepositoryAdapter`. Multi-VTT-ready! ([Details](refactoring/phases/phase-2-detailed-implementation-plan.md))
 - **Query Builder:** Fluent API für komplexe Suchabfragen mit AND/OR-Logik, Pagination und Sortierung. Unterstützt `where()`, `orWhere()`, `or()`, `and()`, `limit()`, `offset()`, `sortBy()`.
 - **FoundryDocumentPort Erweiterungen:** Neue CRUD-Methoden (`create`, `update`, `delete`, `unsetFlag`) für Document-Operationen. Version-agnostische Wrapper für Foundry VTT v13+.

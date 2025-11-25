@@ -173,7 +173,6 @@ function createInjectionToken(description2) {
 }
 __name(createInjectionToken, "createInjectionToken");
 const loggerToken = createInjectionToken("Logger");
-const journalVisibilityPortToken = createInjectionToken("JournalVisibilityPort");
 const journalVisibilityServiceToken = createInjectionToken(
   "JournalVisibilityService"
 );
@@ -252,7 +251,6 @@ const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken(
 const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken(
   "TriggerJournalDirectoryReRenderUseCase"
 );
-const registerJournalContextMenuUseCaseToken = createInjectionToken("RegisterJournalContextMenuUseCase");
 const registerContextMenuUseCaseToken = createInjectionToken(
   "RegisterContextMenuUseCase"
 );
@@ -12487,114 +12485,6 @@ const _DIFoundryJournalFacade = class _DIFoundryJournalFacade extends FoundryJou
 __name(_DIFoundryJournalFacade, "DIFoundryJournalFacade");
 _DIFoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
 let DIFoundryJournalFacade = _DIFoundryJournalFacade;
-const _FoundryJournalVisibilityAdapter = class _FoundryJournalVisibilityAdapter {
-  constructor(foundryJournalFacade) {
-    this.foundryJournalFacade = foundryJournalFacade;
-  }
-  getAllEntries() {
-    const result = this.foundryJournalFacade.getJournalEntries();
-    if (!result.ok) {
-      return {
-        ok: false,
-        error: {
-          code: "INVALID_ENTRY_DATA",
-          message: result.error.message
-        }
-      };
-    }
-    const entries2 = result.value.map((foundryEntry) => ({
-      id: foundryEntry.id,
-      name: foundryEntry.name ?? null
-    }));
-    return { ok: true, value: entries2 };
-  }
-  getEntryFlag(entry, flagKey) {
-    const foundryEntriesResult = this.foundryJournalFacade.getJournalEntries();
-    if (!foundryEntriesResult.ok) {
-      return {
-        ok: false,
-        error: {
-          code: "FLAG_READ_FAILED",
-          entryId: entry.id,
-          message: foundryEntriesResult.error.message
-        }
-      };
-    }
-    const foundryEntry = foundryEntriesResult.value.find((e) => e.id === entry.id);
-    if (!foundryEntry) {
-      return {
-        ok: false,
-        error: {
-          code: "ENTRY_NOT_FOUND",
-          entryId: entry.id,
-          message: `Journal entry with ID ${entry.id} not found`
-        }
-      };
-    }
-    const flagResult = this.foundryJournalFacade.getEntryFlag(
-      foundryEntry,
-      flagKey,
-      BOOLEAN_FLAG_SCHEMA
-    );
-    if (!flagResult.ok) {
-      return {
-        ok: false,
-        error: {
-          code: "FLAG_READ_FAILED",
-          entryId: entry.id,
-          message: flagResult.error.message
-        }
-      };
-    }
-    return { ok: true, value: flagResult.value };
-  }
-  async setEntryFlag(entry, flagKey, value2) {
-    const foundryEntriesResult = this.foundryJournalFacade.getJournalEntries();
-    if (!foundryEntriesResult.ok) {
-      return {
-        ok: false,
-        error: {
-          code: "FLAG_SET_FAILED",
-          entryId: entry.id,
-          message: foundryEntriesResult.error.message
-        }
-      };
-    }
-    const foundryEntry = foundryEntriesResult.value.find((e) => e.id === entry.id);
-    if (!foundryEntry) {
-      return {
-        ok: false,
-        error: {
-          code: "ENTRY_NOT_FOUND",
-          entryId: entry.id,
-          message: `Journal entry with ID ${entry.id} not found`
-        }
-      };
-    }
-    const flagResult = await this.foundryJournalFacade.setEntryFlag(foundryEntry, flagKey, value2);
-    if (!flagResult.ok) {
-      return {
-        ok: false,
-        error: {
-          code: "FLAG_SET_FAILED",
-          entryId: entry.id,
-          message: flagResult.error.message
-        }
-      };
-    }
-    return { ok: true, value: void 0 };
-  }
-};
-__name(_FoundryJournalVisibilityAdapter, "FoundryJournalVisibilityAdapter");
-let FoundryJournalVisibilityAdapter = _FoundryJournalVisibilityAdapter;
-const _DIFoundryJournalVisibilityAdapter = class _DIFoundryJournalVisibilityAdapter extends FoundryJournalVisibilityAdapter {
-  constructor(foundryJournalFacade) {
-    super(foundryJournalFacade);
-  }
-};
-__name(_DIFoundryJournalVisibilityAdapter, "DIFoundryJournalVisibilityAdapter");
-_DIFoundryJournalVisibilityAdapter.dependencies = [foundryJournalFacadeToken];
-let DIFoundryJournalVisibilityAdapter = _DIFoundryJournalVisibilityAdapter;
 const KEY_SEPARATOR = ":";
 function normalizeSegment(segment) {
   return segment.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-_]/g, "").toLowerCase();
@@ -12618,8 +12508,9 @@ const buildJournalCacheKey = createCacheNamespace("journal-visibility");
 const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(port, notificationCenter, cacheService, platformUI) {
-    this.port = port;
+  constructor(journalCollection, journalRepository, notificationCenter, cacheService, platformUI) {
+    this.journalCollection = journalCollection;
+    this.journalRepository = journalRepository;
     this.notificationCenter = notificationCenter;
     this.cacheService = cacheService;
     this.platformUI = platformUI;
@@ -12650,11 +12541,23 @@ const _JournalVisibilityService = class _JournalVisibilityService {
       );
       return { ok: true, value: cached.value };
     }
-    const allEntriesResult = this.port.getAllEntries();
-    if (!allEntriesResult.ok) return allEntriesResult;
+    const allEntriesResult = this.journalCollection.getAll();
+    if (!allEntriesResult.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "PLATFORM_ERROR",
+          message: allEntriesResult.error.message
+        }
+      };
+    }
     const hidden = [];
     for (const journal of allEntriesResult.value) {
-      const flagResult = this.port.getEntryFlag(journal, MODULE_CONSTANTS.FLAGS.HIDDEN);
+      const flagResult = this.journalRepository.getFlag(
+        journal.id,
+        MODULE_CONSTANTS.MODULE.ID,
+        MODULE_CONSTANTS.FLAGS.HIDDEN
+      );
       if (flagResult.ok) {
         if (flagResult.value === true) {
           hidden.push(journal);
@@ -12738,13 +12641,14 @@ const _JournalVisibilityService = class _JournalVisibilityService {
 __name(_JournalVisibilityService, "JournalVisibilityService");
 let JournalVisibilityService = _JournalVisibilityService;
 const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(port, notificationCenter, cacheService, platformUI) {
-    super(port, notificationCenter, cacheService, platformUI);
+  constructor(journalCollection, journalRepository, notificationCenter, cacheService, platformUI) {
+    super(journalCollection, journalRepository, notificationCenter, cacheService, platformUI);
   }
 };
 __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
 _DIJournalVisibilityService.dependencies = [
-  journalVisibilityPortToken,
+  journalCollectionPortToken,
+  journalRepositoryToken,
   notificationCenterToken,
   cacheServiceToken,
   platformUIPortToken
@@ -13043,14 +12947,6 @@ function registerFoundryServices(container) {
   );
   if (isErr(journalFacadeResult)) {
     return err(`Failed to register FoundryJournalFacade: ${journalFacadeResult.error.message}`);
-  }
-  const adapterResult = container.registerClass(
-    journalVisibilityPortToken,
-    DIFoundryJournalVisibilityAdapter,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(adapterResult)) {
-    return err(`Failed to register JournalVisibilityAdapter: ${adapterResult.error.message}`);
   }
   const journalVisibilityResult = container.registerClass(
     journalVisibilityServiceToken,
@@ -15186,8 +15082,8 @@ _DIRegisterContextMenuUseCase.dependencies = [
 ];
 let DIRegisterContextMenuUseCase = _DIRegisterContextMenuUseCase;
 const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
-  constructor(journalVisibility, platformUI, notificationCenter, foundryGame) {
-    this.journalVisibility = journalVisibility;
+  constructor(journalRepository, platformUI, notificationCenter, foundryGame) {
+    this.journalRepository = journalRepository;
     this.platformUI = platformUI;
     this.notificationCenter = notificationCenter;
     this.foundryGame = foundryGame;
@@ -15201,8 +15097,9 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
     if (existingItem) {
       return;
     }
-    const flagResult = this.journalVisibility.getEntryFlag(
-      { id: journalId, name: null },
+    const flagResult = this.journalRepository.getFlag(
+      journalId,
+      MODULE_CONSTANTS.MODULE.ID,
       MODULE_CONSTANTS.FLAGS.HIDDEN
     );
     if (flagResult.ok && flagResult.value !== true) {
@@ -15210,8 +15107,9 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
         name: "Journal ausblenden",
         icon: '<i class="fas fa-eye-slash"></i>',
         callback: /* @__PURE__ */ __name(async (_li) => {
-          const hideResult = await this.journalVisibility.setEntryFlag(
-            { id: journalId, name: null },
+          const hideResult = await this.journalRepository.setFlag(
+            journalId,
+            MODULE_CONSTANTS.MODULE.ID,
             MODULE_CONSTANTS.FLAGS.HIDDEN,
             true
           );
@@ -15235,9 +15133,13 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
               { channels: ["ConsoleChannel"] }
             );
           } else {
-            this.notificationCenter.error(`Failed to hide journal ${journalId}`, hideResult.error, {
-              channels: ["ConsoleChannel", "UINotificationChannel"]
-            });
+            this.notificationCenter.error(
+              `Failed to hide journal ${journalId}`,
+              { code: hideResult.error.code, message: hideResult.error.message },
+              {
+                channels: ["ConsoleChannel", "UINotificationChannel"]
+              }
+            );
           }
         }, "callback")
       });
@@ -15257,13 +15159,13 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
 __name(_HideJournalContextMenuHandler, "HideJournalContextMenuHandler");
 let HideJournalContextMenuHandler = _HideJournalContextMenuHandler;
 const _DIHideJournalContextMenuHandler = class _DIHideJournalContextMenuHandler extends HideJournalContextMenuHandler {
-  constructor(journalVisibility, platformUI, notificationCenter, foundryGame) {
-    super(journalVisibility, platformUI, notificationCenter, foundryGame);
+  constructor(journalRepository, platformUI, notificationCenter, foundryGame) {
+    super(journalRepository, platformUI, notificationCenter, foundryGame);
   }
 };
 __name(_DIHideJournalContextMenuHandler, "DIHideJournalContextMenuHandler");
 _DIHideJournalContextMenuHandler.dependencies = [
-  journalVisibilityPortToken,
+  journalRepositoryToken,
   platformUIPortToken,
   notificationCenterToken,
   foundryGameToken

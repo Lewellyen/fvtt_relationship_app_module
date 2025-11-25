@@ -12,6 +12,26 @@
 
 ### Upgrade-Hinweise
 
+## [0.35.2] - 2025-11-25
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **JournalVisibilityService**: Migration von `PlatformJournalVisibilityPort` zu `JournalCollectionPort` + `JournalRepository` ([Details](src/application/services/JournalVisibilityService.ts))
+- Verwendet jetzt `journalCollection.getAll()` statt `port.getAllEntries()`
+- Verwendet jetzt `journalRepository.getFlag(id, scope, key)` statt `port.getEntryFlag(entry, key)`
+- **HideJournalContextMenuHandler**: Migration zu `JournalRepository` ([Details](src/application/handlers/hide-journal-context-menu-handler.ts))
+- Verwendet jetzt `journalRepository.getFlag()` und `journalRepository.setFlag()` statt deprecated Port
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.35.1] - 2025-11-25
 ### Hinzugefügt
 - Keine Einträge

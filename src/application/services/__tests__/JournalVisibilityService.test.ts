@@ -4,7 +4,8 @@ import {
   JournalVisibilityService,
   HIDDEN_JOURNAL_CACHE_TAG,
 } from "@/application/services/JournalVisibilityService";
-import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
+import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
+import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
@@ -16,7 +17,6 @@ import type {
   CacheEntryMetadata,
   CacheKey,
 } from "@/infrastructure/cache/cache.interface";
-import { createMockPlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.mock";
 
 function createMetadata(): CacheEntryMetadata {
   return {
@@ -29,15 +29,52 @@ function createMetadata(): CacheEntryMetadata {
   };
 }
 
+function createMockJournalCollectionPort(): JournalCollectionPort {
+  return {
+    getAll: vi.fn().mockReturnValue(ok([])),
+    getById: vi.fn().mockReturnValue(ok(null)),
+    getByIds: vi.fn().mockReturnValue(ok([])),
+    exists: vi.fn().mockReturnValue(ok(false)),
+    count: vi.fn().mockReturnValue(ok(0)),
+    search: vi.fn().mockReturnValue(ok([])),
+    query: vi.fn(),
+  } as unknown as JournalCollectionPort;
+}
+
+function createMockJournalRepository(): JournalRepository {
+  return {
+    getAll: vi.fn().mockReturnValue(ok([])),
+    getById: vi.fn().mockReturnValue(ok(null)),
+    getByIds: vi.fn().mockReturnValue(ok([])),
+    exists: vi.fn().mockReturnValue(ok(false)),
+    count: vi.fn().mockReturnValue(ok(0)),
+    search: vi.fn().mockReturnValue(ok([])),
+    query: vi.fn(),
+    create: vi.fn().mockResolvedValue(ok({})),
+    createMany: vi.fn().mockResolvedValue(ok([])),
+    update: vi.fn().mockResolvedValue(ok({})),
+    updateMany: vi.fn().mockResolvedValue(ok([])),
+    patch: vi.fn().mockResolvedValue(ok({})),
+    upsert: vi.fn().mockResolvedValue(ok({})),
+    delete: vi.fn().mockResolvedValue(ok(undefined)),
+    deleteMany: vi.fn().mockResolvedValue(ok(undefined)),
+    getFlag: vi.fn().mockReturnValue(ok(null)),
+    setFlag: vi.fn().mockResolvedValue(ok(undefined)),
+    unsetFlag: vi.fn().mockResolvedValue(ok(undefined)),
+  } as unknown as JournalRepository;
+}
+
 describe("JournalVisibilityService", () => {
   let service: JournalVisibilityService;
-  let mockPort: PlatformJournalVisibilityPort;
+  let mockJournalCollection: JournalCollectionPort;
+  let mockJournalRepository: JournalRepository;
   let mockNotificationCenter: NotificationCenter;
   let mockCacheService: CacheService;
   let mockPlatformUI: PlatformUIPort;
 
   beforeEach(() => {
-    mockPort = createMockPlatformJournalVisibilityPort();
+    mockJournalCollection = createMockJournalCollectionPort();
+    mockJournalRepository = createMockJournalRepository();
     mockNotificationCenter = {
       notify: vi.fn().mockReturnValue(ok(undefined)),
       debug: vi.fn().mockReturnValue(ok(undefined)),
@@ -72,7 +109,8 @@ describe("JournalVisibilityService", () => {
     } as unknown as PlatformUIPort;
 
     service = new JournalVisibilityService(
-      mockPort,
+      mockJournalCollection,
+      mockJournalRepository,
       mockNotificationCenter,
       mockCacheService,
       mockPlatformUI
@@ -90,8 +128,8 @@ describe("JournalVisibilityService", () => {
         name: "Visible Journal",
       };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal1, journal2]));
-      vi.mocked(mockPort.getEntryFlag)
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal1, journal2]));
+      vi.mocked(mockJournalRepository.getFlag)
         .mockReturnValueOnce(ok(true)) // journal1 is hidden
         .mockReturnValueOnce(ok(false)); // journal2 is visible
 
@@ -118,13 +156,13 @@ describe("JournalVisibilityService", () => {
       if (result.ok) {
         expect(result.value).toEqual([cachedEntry]);
       }
-      expect(mockPort.getAllEntries).not.toHaveBeenCalled();
+      expect(mockJournalCollection.getAll).not.toHaveBeenCalled();
     });
 
     it("should cache calculated entries on miss", () => {
       const journal: JournalEntry = { id: "journal-1", name: "Hidden" };
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(ok(true));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
       const cacheGetMock = mockCacheService.get as Mock;
       cacheGetMock.mockReturnValueOnce(null);
 
@@ -143,8 +181,8 @@ describe("JournalVisibilityService", () => {
         name: "Visible Journal",
       };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(ok(false));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(false));
 
       const result = service.getHiddenJournalEntries();
       expect(result.ok).toBe(true);
@@ -153,33 +191,34 @@ describe("JournalVisibilityService", () => {
       }
     });
 
-    it("should propagate error from getAllEntries", () => {
-      const error: JournalVisibilityError = {
-        code: "INVALID_ENTRY_DATA",
-        message: "Failed to get entries",
-      };
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(err(error));
+    it("should propagate error from getAll", () => {
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(
+        err({
+          code: "COLLECTION_NOT_AVAILABLE",
+          message: "Failed to get entries",
+        })
+      );
 
       const result = service.getHiddenJournalEntries();
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error).toEqual(error);
+        expect(result.error.code).toBe("PLATFORM_ERROR");
       }
     });
 
-    it("should ignore entries where getEntryFlag fails", () => {
+    it("should ignore entries where getFlag fails", () => {
       const journal: JournalEntry = {
         id: "journal-1",
         name: "Journal",
       };
-      const error: JournalVisibilityError = {
-        code: "FLAG_READ_FAILED",
-        entryId: "journal-1",
-        message: "Flag error",
-      };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(err(error));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(
+        err({
+          code: "ENTITY_NOT_FOUND",
+          message: "Flag error",
+        })
+      );
 
       const result = service.getHiddenJournalEntries();
       expect(result.ok).toBe(true);
@@ -188,46 +227,23 @@ describe("JournalVisibilityService", () => {
       }
     });
 
-    it("should log warning on FLAG_READ_FAILED error", () => {
+    it("should log warning on flag read error", () => {
       const journal: JournalEntry = {
         id: "journal-1",
         name: "Journal",
       };
-      const error: JournalVisibilityError = {
-        code: "FLAG_READ_FAILED",
-        entryId: "journal-1",
-        message: "Permission denied",
-      };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(err(error));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(
+        err({
+          code: "ENTITY_NOT_FOUND",
+          message: "Permission denied",
+        })
+      );
 
       const result = service.getHiddenJournalEntries();
 
       expect(result.ok).toBe(true);
-      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to read hidden flag"),
-        expect.any(Object),
-        { channels: ["ConsoleChannel"] }
-      );
-    });
-
-    it("should log warning for FLAG_READ_FAILED errors", () => {
-      const journal: JournalEntry = {
-        id: "journal-1",
-        name: "Journal",
-      };
-      const error: JournalVisibilityError = {
-        code: "FLAG_READ_FAILED",
-        entryId: "journal-1",
-        message: "Flag not found",
-      };
-
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(err(error));
-
-      service.getHiddenJournalEntries();
-
       expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to read hidden flag"),
         expect.any(Object),
@@ -243,8 +259,8 @@ describe("JournalVisibilityService", () => {
         name: "Hidden Journal",
       };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(ok(true));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
       vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
@@ -263,23 +279,21 @@ describe("JournalVisibilityService", () => {
     });
 
     it("should handle error when getHiddenJournalEntries fails", () => {
-      const error: JournalVisibilityError = {
-        code: "INVALID_ENTRY_DATA",
-        message: "Error getting entries",
-      };
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(err(error));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(
+        err({
+          code: "COLLECTION_NOT_AVAILABLE",
+          message: "Error getting entries",
+        })
+      );
 
       const { container } = createMockDOM(`<div>Content</div>`);
 
       const result = service.processJournalDirectory(container);
 
       expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error).toEqual(error);
-      }
       expect(mockNotificationCenter.error).toHaveBeenCalledWith(
         "Error getting hidden journal entries",
-        error,
+        expect.any(Object),
         {
           channels: ["ConsoleChannel"],
         }
@@ -298,8 +312,8 @@ describe("JournalVisibilityService", () => {
         message: "Failed to remove",
       };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(ok(true));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
       vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(
         err({
           code: "DOM_MANIPULATION_FAILED",
@@ -334,8 +348,8 @@ describe("JournalVisibilityService", () => {
         name: "Hidden 2",
       };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal1, journal2]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(ok(true));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal1, journal2]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
       vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(`
@@ -355,8 +369,8 @@ describe("JournalVisibilityService", () => {
         name: null,
       };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(ok(true));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
       vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
@@ -379,8 +393,8 @@ describe("JournalVisibilityService", () => {
         name: '<script>alert("XSS")</script>',
       };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([xssJournal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(ok(true));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([xssJournal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
       vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
@@ -408,14 +422,14 @@ describe("JournalVisibilityService", () => {
         id: "journal-1",
         name: "<img src=x onerror=alert(1)>",
       };
-      const error: JournalVisibilityError = {
-        code: "FLAG_READ_FAILED",
-        entryId: "journal-1",
-        message: "Failed to read flag",
-      };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([xssJournal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(err(error));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([xssJournal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(
+        err({
+          code: "ENTITY_NOT_FOUND",
+          message: "Failed to read flag",
+        })
+      );
 
       service.getHiddenJournalEntries();
 
@@ -443,8 +457,8 @@ describe("JournalVisibilityService", () => {
         });
       }
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok(manyJournals));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(ok(false));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(manyJournals));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(false));
 
       const startTime = performance.now();
       service.getHiddenJournalEntries();
@@ -452,7 +466,7 @@ describe("JournalVisibilityService", () => {
 
       // Should complete within 100ms
       expect(duration).toBeLessThan(100);
-      expect(mockPort.getAllEntries).toHaveBeenCalledTimes(1);
+      expect(mockJournalCollection.getAll).toHaveBeenCalledTimes(1);
     });
 
     it("should handle journal entries with null name gracefully", () => {
@@ -461,8 +475,8 @@ describe("JournalVisibilityService", () => {
         name: null,
       };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(ok(true));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
 
       const result = service.getHiddenJournalEntries();
 
@@ -480,8 +494,8 @@ describe("JournalVisibilityService", () => {
         name: longName,
       };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(ok(true));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
       vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
@@ -511,17 +525,17 @@ describe("JournalVisibilityService", () => {
           name: "Journal 3",
         },
       ];
-      const error: JournalVisibilityError = {
-        code: "FLAG_READ_FAILED",
-        entryId: "journal-1",
-        message: "Error",
-      };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok(journals));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
 
       // Mixed results: first fails, second succeeds with true, third succeeds with false
-      vi.mocked(mockPort.getEntryFlag)
-        .mockReturnValueOnce(err(error))
+      vi.mocked(mockJournalRepository.getFlag)
+        .mockReturnValueOnce(
+          err({
+            code: "ENTITY_NOT_FOUND",
+            message: "Error",
+          })
+        )
         .mockReturnValueOnce(ok(true))
         .mockReturnValueOnce(ok(false));
 
@@ -542,14 +556,14 @@ describe("JournalVisibilityService", () => {
         id: "journal-id-only",
         name: null,
       };
-      const error: JournalVisibilityError = {
-        code: "FLAG_READ_FAILED",
-        entryId: "journal-id-only",
-        message: "Failed to read flag",
-      };
 
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([journal]));
-      vi.mocked(mockPort.getEntryFlag).mockReturnValue(err(error));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(
+        err({
+          code: "ENTITY_NOT_FOUND",
+          message: "Failed to read flag",
+        })
+      );
 
       service.getHiddenJournalEntries();
 
@@ -561,7 +575,7 @@ describe("JournalVisibilityService", () => {
     });
 
     it("should handle empty journal list", () => {
-      vi.mocked(mockPort.getAllEntries).mockReturnValue(ok([]));
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([]));
 
       const result = service.getHiddenJournalEntries();
 
@@ -569,7 +583,7 @@ describe("JournalVisibilityService", () => {
       if (result.ok) {
         expect(result.value).toHaveLength(0);
       }
-      expect(mockPort.getEntryFlag).not.toHaveBeenCalled();
+      expect(mockJournalRepository.getFlag).not.toHaveBeenCalled();
     });
   });
 });

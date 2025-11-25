@@ -47,15 +47,6 @@ export const triggerJournalDirectoryReRenderUseCaseToken =
   );
 
 /**
- * DI Token for RegisterJournalContextMenuUseCase.
- *
- * @deprecated Use registerContextMenuUseCaseToken instead.
- * This token is kept for backwards compatibility but the implementation has been removed.
- */
-export const registerJournalContextMenuUseCaseToken =
-  createInjectionToken<RegisterContextMenuUseCase>("RegisterJournalContextMenuUseCase");
-
-/**
  * DI Token for RegisterContextMenuUseCase.
  *
  * Use-case that registers custom context menu entries for journal entries.

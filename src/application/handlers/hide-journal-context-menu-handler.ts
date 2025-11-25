@@ -1,11 +1,11 @@
 import type { JournalContextMenuHandler } from "./journal-context-menu-handler.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
-import type { PlatformJournalVisibilityPort } from "@/domain/ports/platform-journal-visibility-port.interface";
+import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import {
-  journalVisibilityPortToken,
+  journalRepositoryToken,
   platformUIPortToken,
   notificationCenterToken,
   foundryGameToken,
@@ -20,7 +20,7 @@ import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
  */
 export class HideJournalContextMenuHandler implements JournalContextMenuHandler {
   constructor(
-    private readonly journalVisibility: PlatformJournalVisibilityPort,
+    private readonly journalRepository: JournalRepository,
     private readonly platformUI: PlatformUIPort,
     private readonly notificationCenter: NotificationCenter,
     private readonly foundryGame: FoundryGame
@@ -42,8 +42,9 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
     }
 
     // Prüfe, ob Journal bereits versteckt ist
-    const flagResult = this.journalVisibility.getEntryFlag(
-      { id: journalId, name: null },
+    const flagResult = this.journalRepository.getFlag(
+      journalId,
+      MODULE_CONSTANTS.MODULE.ID,
       MODULE_CONSTANTS.FLAGS.HIDDEN
     );
 
@@ -54,8 +55,9 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
         icon: '<i class="fas fa-eye-slash"></i>',
         callback: async (_li: HTMLElement) => {
           // Journal verstecken
-          const hideResult = await this.journalVisibility.setEntryFlag(
-            { id: journalId, name: null },
+          const hideResult = await this.journalRepository.setFlag(
+            journalId,
+            MODULE_CONSTANTS.MODULE.ID,
             MODULE_CONSTANTS.FLAGS.HIDDEN,
             true
           );
@@ -89,9 +91,13 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
               { channels: ["ConsoleChannel"] }
             );
           } else {
-            this.notificationCenter.error(`Failed to hide journal ${journalId}`, hideResult.error, {
-              channels: ["ConsoleChannel", "UINotificationChannel"],
-            });
+            this.notificationCenter.error(
+              `Failed to hide journal ${journalId}`,
+              { code: hideResult.error.code, message: hideResult.error.message },
+              {
+                channels: ["ConsoleChannel", "UINotificationChannel"],
+              }
+            );
           }
         },
       });
@@ -118,18 +124,18 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
  */
 export class DIHideJournalContextMenuHandler extends HideJournalContextMenuHandler {
   static dependencies = [
-    journalVisibilityPortToken,
+    journalRepositoryToken,
     platformUIPortToken,
     notificationCenterToken,
     foundryGameToken,
   ] as const;
 
   constructor(
-    journalVisibility: PlatformJournalVisibilityPort,
+    journalRepository: JournalRepository,
     platformUI: PlatformUIPort,
     notificationCenter: NotificationCenter,
     foundryGame: FoundryGame
   ) {
-    super(journalVisibility, platformUI, notificationCenter, foundryGame);
+    super(journalRepository, platformUI, notificationCenter, foundryGame);
   }
 }
