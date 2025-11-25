@@ -28,6 +28,7 @@ import {
   foundrySettingsPortRegistryToken,
   journalCollectionPortToken,
   journalRepositoryToken,
+  platformSettingsPortToken,
 } from "@/infrastructure/shared/tokens";
 import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
 import { err } from "@/infrastructure/shared/utils/result";
@@ -665,6 +666,30 @@ describe("dependencyconfig", () => {
 
       // Restore for other tests
       vi.restoreAllMocks();
+    });
+
+    it("should propagate errors from registerSettingsPorts", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
+
+      // Mock registerClass to fail for platformSettingsPortToken
+      // This ensures line 194 in dependencyconfig.ts is covered (if (isErr(settingsPortsResult)) return settingsPortsResult;)
+      vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
+        if (token === platformSettingsPortToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "PlatformSettingsPort registration failed",
+          });
+        }
+        return originalRegisterClass(token, serviceClass, lifecycle);
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("PlatformSettingsPort");
+      }
     });
 
     it("should propagate errors from registerI18nServices", async () => {

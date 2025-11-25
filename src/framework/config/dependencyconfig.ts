@@ -31,6 +31,7 @@ import { registerNotifications } from "@/framework/config/modules/notifications.
 import { registerRegistrars } from "@/framework/config/modules/registrars.config";
 import { registerEventPorts } from "@/framework/config/modules/event-ports.config";
 import { registerEntityPorts } from "@/framework/config/modules/entity-ports.config";
+import { registerSettingsPorts } from "@/framework/config/modules/settings-ports.config";
 
 /**
  * Registers static bootstrap values that already exist outside the container.
@@ -143,12 +144,13 @@ function validateContainer(container: ServiceContainer): Result<void, string> {
  * 5. Port Infrastructure (PortSelector)
  * 6. Subcontainer Values (Foundry Port Registries)
  * 7. Foundry Services (Game, Hooks, Document, UI, Settings, Journal)
- * 8. I18n Services (FoundryI18n, LocalI18n, I18nFacade, TranslationHandlers)
- * 9. Notifications (NotificationCenter, ConsoleChannel, UIChannel)
- * 10. Event Ports (PlatformJournalEventPort, Use-Cases, ModuleEventRegistrar)
- * 11. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
- * 12. Validation (Check dependency graph)
- * 13. Loop-Prevention Services (Health checks referencing validated services)
+ * 8. Settings Ports (PlatformSettingsPort)
+ * 9. I18n Services (FoundryI18n, LocalI18n, I18nFacade, TranslationHandlers)
+ * 10. Notifications (NotificationCenter, ConsoleChannel, UIChannel)
+ * 11. Event Ports (PlatformJournalEventPort, Use-Cases, ModuleEventRegistrar)
+ * 12. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
+ * 13. Validation (Check dependency graph)
+ * 14. Loop-Prevention Services (Health checks referencing validated services)
  *
  * @param container - The service container to configure
  * @returns Result indicating success or configuration errors
@@ -187,6 +189,9 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   const foundryServicesResult = registerFoundryServices(container);
   if (isErr(foundryServicesResult)) return foundryServicesResult;
+
+  const settingsPortsResult = registerSettingsPorts(container);
+  if (isErr(settingsPortsResult)) return settingsPortsResult;
 
   const entityPortsResult = registerEntityPorts(container);
   if (isErr(entityPortsResult)) return entityPortsResult;

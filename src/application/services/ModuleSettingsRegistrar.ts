@@ -27,7 +27,7 @@ import {
 } from "@/infrastructure/adapters/foundry/validation/setting-schemas";
 import type { BaseIssue } from "valibot";
 import type { BaseSchema } from "valibot";
-import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
+import type { PlatformSettingsPort } from "@/domain/ports/platform-settings-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
@@ -36,8 +36,8 @@ import {
   loggerToken,
   i18nFacadeToken,
   runtimeConfigToken,
+  platformSettingsPortToken,
 } from "@/infrastructure/shared/tokens";
-import { foundrySettingsToken } from "@/infrastructure/shared/tokens";
 
 interface RuntimeConfigBinding<TSchema, K extends RuntimeConfigKey> {
   runtimeKey: K;
@@ -102,7 +102,7 @@ export const runtimeConfigBindings = {
  */
 export class ModuleSettingsRegistrar {
   constructor(
-    private readonly foundrySettings: FoundrySettings,
+    private readonly settings: PlatformSettingsPort,
     private readonly runtimeConfig: RuntimeConfigService,
     private readonly notifications: NotificationCenter,
     private readonly i18n: I18nFacadeService,
@@ -120,7 +120,7 @@ export class ModuleSettingsRegistrar {
     this.registerDefinition(
       logLevelSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -129,7 +129,7 @@ export class ModuleSettingsRegistrar {
     this.registerDefinition(
       cacheEnabledSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -138,7 +138,7 @@ export class ModuleSettingsRegistrar {
     this.registerDefinition(
       cacheDefaultTtlSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -147,7 +147,7 @@ export class ModuleSettingsRegistrar {
     this.registerDefinition(
       cacheMaxEntriesSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -156,7 +156,7 @@ export class ModuleSettingsRegistrar {
     this.registerDefinition(
       performanceTrackingSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -165,7 +165,7 @@ export class ModuleSettingsRegistrar {
     this.registerDefinition(
       performanceSamplingSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -174,7 +174,7 @@ export class ModuleSettingsRegistrar {
     this.registerDefinition(
       metricsPersistenceEnabledSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -183,7 +183,7 @@ export class ModuleSettingsRegistrar {
     this.registerDefinition(
       metricsPersistenceKeySetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -208,17 +208,13 @@ export class ModuleSettingsRegistrar {
   }
 
   private syncRuntimeConfigFromSettings<TSchema, K extends RuntimeConfigKey>(
-    foundrySettings: FoundrySettings,
+    settings: PlatformSettingsPort,
     runtimeConfig: RuntimeConfigService,
     binding: RuntimeConfigBinding<TSchema, K>,
     notifications: NotificationCenter,
     settingKey: string
   ): void {
-    const currentValue = foundrySettings.get(
-      MODULE_CONSTANTS.MODULE.ID,
-      settingKey,
-      binding.schema
-    );
+    const currentValue = settings.get(MODULE_CONSTANTS.MODULE.ID, settingKey, binding.schema);
 
     if (!currentValue.ok) {
       notifications.warn(`Failed to read initial value for ${settingKey}`, currentValue.error, {
@@ -233,7 +229,7 @@ export class ModuleSettingsRegistrar {
   private registerDefinition<TSchema, K extends RuntimeConfigKey>(
     definition: SettingDefinition<TSchema>,
     binding: RuntimeConfigBinding<TSchema, K> | undefined,
-    foundrySettings: FoundrySettings,
+    settings: PlatformSettingsPort,
     runtimeConfig: RuntimeConfigService,
     notifications: NotificationCenter,
     i18n: I18nFacadeService,
@@ -244,14 +240,20 @@ export class ModuleSettingsRegistrar {
       ? this.attachRuntimeConfigBridge(config, runtimeConfig, binding)
       : config;
 
-    const result = foundrySettings.register(
+    const result = settings.register(
       MODULE_CONSTANTS.MODULE.ID,
       definition.key,
       configWithRuntimeBridge
     );
 
     if (!result.ok) {
-      notifications.error(`Failed to register ${definition.key} setting`, result.error, {
+      // Convert SettingsError to NotificationCenter's error format
+      const error: { code: string; message: string; [key: string]: unknown } = {
+        code: result.error.code,
+        message: result.error.message,
+        ...(result.error.details !== undefined && { details: result.error.details }),
+      };
+      notifications.error(`Failed to register ${definition.key} setting`, error, {
         channels: ["ConsoleChannel"],
       });
       return;
@@ -259,7 +261,7 @@ export class ModuleSettingsRegistrar {
 
     if (binding) {
       this.syncRuntimeConfigFromSettings(
-        foundrySettings,
+        settings,
         runtimeConfig,
         binding,
         notifications,
@@ -271,7 +273,7 @@ export class ModuleSettingsRegistrar {
 
 export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   static dependencies = [
-    foundrySettingsToken,
+    platformSettingsPortToken,
     runtimeConfigToken,
     notificationCenterToken,
     i18nFacadeToken,
@@ -279,12 +281,12 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   ] as const;
 
   constructor(
-    foundrySettings: FoundrySettings,
+    settings: PlatformSettingsPort,
     runtimeConfig: RuntimeConfigService,
     notifications: NotificationCenter,
     i18n: I18nFacadeService,
     logger: Logger
   ) {
-    super(foundrySettings, runtimeConfig, notifications, i18n, logger);
+    super(settings, runtimeConfig, notifications, i18n, logger);
   }
 }

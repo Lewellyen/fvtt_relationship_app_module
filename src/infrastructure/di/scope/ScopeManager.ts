@@ -287,8 +287,9 @@ export class ScopeManager {
       }
       // Fallback to sync disposal
       else if (this.isDisposable(instance)) {
+        const disposableInstance = instance;
         const result = tryCatch(
-          () => instance.dispose(),
+          () => disposableInstance.dispose(),
           (error): ContainerError => ({
             code: "DisposalFailed",
             message: `Error disposing service ${String(token)}: ${String(error)}`,

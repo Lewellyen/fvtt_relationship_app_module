@@ -79,6 +79,7 @@ import type { TriggerJournalDirectoryReRenderUseCase } from "@/application/use-c
 import type { RegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
 import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { PlatformSettingsPort } from "@/domain/ports/platform-settings-port.interface";
 import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import type { LibWrapperService } from "@/domain/services/lib-wrapper-service.interface";
 import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
@@ -147,6 +148,7 @@ export type ServiceType =
   | RegisterContextMenuUseCase
   | ModuleEventRegistrar
   | PlatformUIPort
+  | PlatformSettingsPort
   | HideJournalContextMenuHandler
   | LibWrapperService
   | JournalContextMenuLibWrapperService

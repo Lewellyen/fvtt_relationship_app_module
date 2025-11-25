@@ -259,6 +259,7 @@ const registerContextMenuUseCaseToken = createInjectionToken(
 const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
 const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
 const platformUIPortToken = createInjectionToken("PlatformUIPort");
+const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
 const journalCollectionPortToken = createInjectionToken("JournalCollectionPort");
 const journalRepositoryToken = createInjectionToken("JournalRepository");
 const apiSafeTokens = /* @__PURE__ */ new Set();
@@ -1486,8 +1487,9 @@ const _ScopeManager = class _ScopeManager {
           });
         }
       } else if (this.isDisposable(instance2)) {
+        const disposableInstance = instance2;
         const result = tryCatch(
-          () => instance2.dispose(),
+          () => disposableInstance.dispose(),
           (error) => ({
             code: "DisposalFailed",
             message: `Error disposing service ${String(token)}: ${String(error)}`,
@@ -14579,8 +14581,8 @@ const runtimeConfigBindings = {
   }
 };
 const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
-  constructor(foundrySettings, runtimeConfig, notifications, i18n, logger) {
-    this.foundrySettings = foundrySettings;
+  constructor(settings, runtimeConfig, notifications, i18n, logger) {
+    this.settings = settings;
     this.runtimeConfig = runtimeConfig;
     this.notifications = notifications;
     this.i18n = i18n;
@@ -14596,7 +14598,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     this.registerDefinition(
       logLevelSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -14605,7 +14607,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     this.registerDefinition(
       cacheEnabledSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -14614,7 +14616,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     this.registerDefinition(
       cacheDefaultTtlSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -14623,7 +14625,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     this.registerDefinition(
       cacheMaxEntriesSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -14632,7 +14634,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     this.registerDefinition(
       performanceTrackingSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -14641,7 +14643,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     this.registerDefinition(
       performanceSamplingSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -14650,7 +14652,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     this.registerDefinition(
       metricsPersistenceEnabledSetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -14659,7 +14661,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     this.registerDefinition(
       metricsPersistenceKeySetting,
       runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY],
-      this.foundrySettings,
+      this.settings,
       this.runtimeConfig,
       this.notifications,
       this.i18n,
@@ -14677,12 +14679,8 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       }, "onChange")
     };
   }
-  syncRuntimeConfigFromSettings(foundrySettings, runtimeConfig, binding, notifications, settingKey) {
-    const currentValue = foundrySettings.get(
-      MODULE_CONSTANTS.MODULE.ID,
-      settingKey,
-      binding.schema
-    );
+  syncRuntimeConfigFromSettings(settings, runtimeConfig, binding, notifications, settingKey) {
+    const currentValue = settings.get(MODULE_CONSTANTS.MODULE.ID, settingKey, binding.schema);
     if (!currentValue.ok) {
       notifications.warn(`Failed to read initial value for ${settingKey}`, currentValue.error, {
         channels: ["ConsoleChannel"]
@@ -14691,23 +14689,28 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     }
     runtimeConfig.setFromFoundry(binding.runtimeKey, binding.normalize(currentValue.value));
   }
-  registerDefinition(definition, binding, foundrySettings, runtimeConfig, notifications, i18n, logger) {
+  registerDefinition(definition, binding, settings, runtimeConfig, notifications, i18n, logger) {
     const config2 = definition.createConfig(i18n, logger);
     const configWithRuntimeBridge = binding ? this.attachRuntimeConfigBridge(config2, runtimeConfig, binding) : config2;
-    const result = foundrySettings.register(
+    const result = settings.register(
       MODULE_CONSTANTS.MODULE.ID,
       definition.key,
       configWithRuntimeBridge
     );
     if (!result.ok) {
-      notifications.error(`Failed to register ${definition.key} setting`, result.error, {
+      const error = {
+        code: result.error.code,
+        message: result.error.message,
+        ...result.error.details !== void 0 && { details: result.error.details }
+      };
+      notifications.error(`Failed to register ${definition.key} setting`, error, {
         channels: ["ConsoleChannel"]
       });
       return;
     }
     if (binding) {
       this.syncRuntimeConfigFromSettings(
-        foundrySettings,
+        settings,
         runtimeConfig,
         binding,
         notifications,
@@ -14719,13 +14722,13 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
 __name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
 let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
 const _DIModuleSettingsRegistrar = class _DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
-  constructor(foundrySettings, runtimeConfig, notifications, i18n, logger) {
-    super(foundrySettings, runtimeConfig, notifications, i18n, logger);
+  constructor(settings, runtimeConfig, notifications, i18n, logger) {
+    super(settings, runtimeConfig, notifications, i18n, logger);
   }
 };
 __name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
 _DIModuleSettingsRegistrar.dependencies = [
-  foundrySettingsToken,
+  platformSettingsPortToken,
   runtimeConfigToken,
   notificationCenterToken,
   i18nFacadeToken,
@@ -16033,6 +16036,135 @@ function registerEntityPorts(container) {
   return ok(void 0);
 }
 __name(registerEntityPorts, "registerEntityPorts");
+const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
+  constructor(foundrySettings) {
+    this.foundrySettings = foundrySettings;
+  }
+  /**
+   * Register a setting in Foundry.
+   *
+   * Maps platform config → Foundry config.
+   */
+  register(namespace, key, config2) {
+    const foundryConfig = {
+      name: config2.name,
+      ...config2.hint !== void 0 && { hint: config2.hint },
+      scope: config2.scope,
+      config: config2.config,
+      type: this.mapSettingType(config2.type),
+      ...config2.choices !== void 0 && { choices: config2.choices },
+      default: config2.default,
+      ...config2.onChange !== void 0 && { onChange: config2.onChange }
+    };
+    const result = this.foundrySettings.register(namespace, key, foundryConfig);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: this.mapFoundryErrorToSettingsError(result.error, "register", namespace, key)
+      };
+    }
+    return { ok: true, value: void 0 };
+  }
+  /**
+   * Get setting value from Foundry with validation.
+   *
+   * Uses Valibot schema to validate at runtime.
+   */
+  get(namespace, key, schema) {
+    const result = this.foundrySettings.get(namespace, key, schema);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: this.mapFoundryErrorToSettingsError(result.error, "get", namespace, key)
+      };
+    }
+    return { ok: true, value: result.value };
+  }
+  /**
+   * Set setting value in Foundry.
+   *
+   * Persists to Foundry's database and triggers onChange.
+   */
+  async set(namespace, key, value2) {
+    const result = await this.foundrySettings.set(namespace, key, value2);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: this.mapFoundryErrorToSettingsError(result.error, "set", namespace, key)
+      };
+    }
+    return { ok: true, value: void 0 };
+  }
+  // ===== Private Helpers =====
+  /**
+   * Map platform type to Foundry type.
+   *
+   * Handles both constructor types and string types.
+   */
+  mapSettingType(type) {
+    if (type === "String" || type === String) return String;
+    if (type === "Number" || type === Number) return Number;
+    if (type === "Boolean" || type === Boolean) return Boolean;
+    throw new Error(`Unknown setting type: ${type}`);
+  }
+  /**
+   * Maps FoundryError to SettingsError.
+   *
+   * Maps Foundry-specific error codes to platform-agnostic settings error codes.
+   */
+  mapFoundryErrorToSettingsError(foundryError, operation, namespace, key) {
+    let code;
+    switch (foundryError.code) {
+      case "API_NOT_AVAILABLE":
+        code = "PLATFORM_NOT_AVAILABLE";
+        break;
+      case "VALIDATION_FAILED":
+        code = "SETTING_VALIDATION_FAILED";
+        break;
+      case "OPERATION_FAILED":
+        if (operation === "register") {
+          code = "SETTING_REGISTRATION_FAILED";
+        } else {
+          const message2 = foundryError.message.toLowerCase();
+          if (message2.includes("not registered") || message2.includes("not found")) {
+            code = "SETTING_NOT_REGISTERED";
+          } else {
+            code = "SETTING_VALIDATION_FAILED";
+          }
+        }
+        break;
+      default:
+        code = operation === "register" ? "SETTING_REGISTRATION_FAILED" : "SETTING_VALIDATION_FAILED";
+    }
+    return {
+      code,
+      message: `Failed to ${operation} setting "${namespace}.${key}": ${foundryError.message}`,
+      details: foundryError
+    };
+  }
+};
+__name(_FoundrySettingsAdapter, "FoundrySettingsAdapter");
+let FoundrySettingsAdapter = _FoundrySettingsAdapter;
+const _DIFoundrySettingsAdapter = class _DIFoundrySettingsAdapter extends FoundrySettingsAdapter {
+  constructor(foundrySettings) {
+    super(foundrySettings);
+  }
+};
+__name(_DIFoundrySettingsAdapter, "DIFoundrySettingsAdapter");
+_DIFoundrySettingsAdapter.dependencies = [foundrySettingsToken];
+let DIFoundrySettingsAdapter = _DIFoundrySettingsAdapter;
+function registerSettingsPorts(container) {
+  const settingsPortResult = container.registerClass(
+    platformSettingsPortToken,
+    DIFoundrySettingsAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(settingsPortResult)) {
+    return err(`Failed to register PlatformSettingsPort: ${settingsPortResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerSettingsPorts, "registerSettingsPorts");
 function registerStaticValues(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
@@ -16119,6 +16251,8 @@ function configureDependencies(container) {
   if (isErr(subcontainerValuesResult)) return subcontainerValuesResult;
   const foundryServicesResult = registerFoundryServices(container);
   if (isErr(foundryServicesResult)) return foundryServicesResult;
+  const settingsPortsResult = registerSettingsPorts(container);
+  if (isErr(settingsPortsResult)) return settingsPortsResult;
   const entityPortsResult = registerEntityPorts(container);
   if (isErr(entityPortsResult)) return entityPortsResult;
   const i18nServicesResult = registerI18nServices(container);

@@ -63,7 +63,8 @@ export abstract class FoundryServiceBase<TPort extends ServiceType> implements D
       }
       this.port = portResult.value;
     }
-    return { ok: true, value: this.port };
+    // At this point, this.port is guaranteed to be non-null
+    return { ok: true, value: this.port as TPort };
   }
 
   /**

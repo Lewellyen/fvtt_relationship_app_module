@@ -662,6 +662,45 @@ class FoundryJournalVisibilityAdapter implements PlatformJournalVisibilityPort {
 }
 ```
 
+**Beispiel: PlatformSettingsPort**
+
+```typescript
+// 1. Domain-Port definieren (domänenneutral, keine Versionsabhängigkeit)
+interface PlatformSettingsPort {
+  register<T>(namespace: string, key: string, config: PlatformSettingConfig<T>): Result<void, SettingsError>;
+  get<T>(namespace: string, key: string, schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>): Result<T, SettingsError>;
+  set<T>(namespace: string, key: string, value: T): Promise<Result<void, SettingsError>>;
+}
+
+// 2. Service nutzt Domain-Port (keine Foundry-Abhängigkeiten)
+class ModuleSettingsRegistrar {
+  constructor(private readonly settings: PlatformSettingsPort) {}
+  
+  registerAll(): void {
+    this.settings.register("my-module", "enabled", {
+      name: "Enable Feature",
+      scope: "world",
+      type: Boolean,
+      default: true,
+    });
+  }
+}
+
+// 3. Foundry-Adapter implementiert Domain-Port (versionsunabhängig, nutzt FoundrySettings)
+class FoundrySettingsAdapter implements PlatformSettingsPort {
+  constructor(private readonly foundrySettings: FoundrySettings) {}
+  
+  register<T>(namespace: string, key: string, config: PlatformSettingConfig<T>): Result<void, SettingsError> {
+    // Mapping: PlatformSettingConfig → Foundry SettingConfig
+    const foundryConfig = {
+      ...config,
+      type: this.mapSettingType(config.type), // String/"String" → typeof String
+    };
+    return this.foundrySettings.register(namespace, key, foundryConfig);
+  }
+}
+```
+
 **Architektur-Hierarchie:**
 
 ```
@@ -676,6 +715,16 @@ FoundryJournalFacade (bereits versionsunabhängig über PortSelector)
 FoundryGame/FoundryDocument/FoundryUI Services
   ↓ uses
 PortSelector → wählt FoundryV13GamePort, FoundryV13DocumentPort, etc.
+
+ModuleSettingsRegistrar (Domäne)
+  ↓ depends on
+PlatformSettingsPort (domänenneutral, keine Versionsabhängigkeit)
+  ↓ implemented by
+FoundrySettingsAdapter (Adapter-Schicht, versionsunabhängig)
+  ↓ uses
+FoundrySettings (bereits versionsunabhängig über PortSelector)
+  ↓ uses
+PortSelector → wählt FoundryV13SettingsPort
 ```
 
 **Vorteile:**
