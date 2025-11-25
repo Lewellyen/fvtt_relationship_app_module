@@ -74,6 +74,8 @@ declare global {
           foundrySettingsToken: symbol;
           i18nFacadeToken: symbol;
           foundryJournalFacadeToken: symbol;
+          journalCollectionPortToken: symbol;
+          journalRepositoryToken: symbol;
         };
       };
     }>;
@@ -252,6 +254,8 @@ Die API stellt folgende Injection-Tokens bereit:
 | `foundryDocumentToken` | `FoundryDocument` | Foundry Document API (flags, etc.) |
 | `foundryUIToken` | `FoundryUI` | Foundry UI-Manipulationen |
 | `foundrySettingsToken` | `FoundrySettings` | Foundry Settings-System (Runtime-Konfiguration) |
+| `journalCollectionPortToken` | `JournalCollectionPort` | Platform-agnostischer Zugriff auf Journal Collections (Read-Only) |
+| `journalRepositoryToken` | `JournalRepository` | Platform-agnostischer Zugriff auf Journal CRUD-Operationen |
 
 ### Token-Informationen abrufen
 
@@ -534,6 +538,165 @@ if (hiddenResult.ok) {
 ```
 
 **Hinweis:** Der Service verwendet jetzt domänenneutrale Typen (`JournalEntry`, `JournalVisibilityError`) statt Foundry-spezifischer Typen. Die Implementierung erfolgt über den `JournalVisibilityPort`, der von `FoundryJournalVisibilityAdapter` implementiert wird.
+
+---
+
+### JournalCollectionPort
+
+Platform-agnostischer Zugriff auf Journal Collections (Read-Only). Ermöglicht Abfragen und Suchen von Journal-Einträgen ohne direkte Foundry-Abhängigkeiten.
+
+```typescript
+interface JournalCollectionPort {
+  getAll(): Result<JournalEntry[], EntityCollectionError>;
+  getById(id: string): Result<JournalEntry | null, EntityCollectionError>;
+  getByIds(ids: string[]): Result<JournalEntry[], EntityCollectionError>;
+  exists(id: string): Result<boolean, EntityCollectionError>;
+  count(): Result<number, EntityCollectionError>;
+  search(query: EntitySearchQuery<JournalEntry>): Result<JournalEntry[], EntityCollectionError>;
+  query(): EntityQueryBuilder<JournalEntry>;
+}
+
+interface EntitySearchQuery<TEntity> {
+  filters?: Array<EntityFilter<TEntity>>;
+  filterGroups?: Array<EntityFilterGroup<TEntity>>;
+  limit?: number;
+  offset?: number;
+  sortBy?: keyof TEntity;
+  sortOrder?: "asc" | "desc";
+}
+
+interface EntityQueryBuilder<TEntity> {
+  where(field: keyof TEntity, operator: string, value: unknown): EntityQueryBuilder<TEntity>;
+  orWhere(field: keyof TEntity, operator: string, value: unknown): EntityQueryBuilder<TEntity>;
+  or(callback: (qb: EntityQueryBuilder<TEntity>) => void): EntityQueryBuilder<TEntity>;
+  and(callback: (qb: EntityQueryBuilder<TEntity>) => void): EntityQueryBuilder<TEntity>;
+  limit(count: number): EntityQueryBuilder<TEntity>;
+  offset(count: number): EntityQueryBuilder<TEntity>;
+  sortBy(field: keyof TEntity, order: "asc" | "desc"): EntityQueryBuilder<TEntity>;
+  execute(): Result<TEntity[], EntityCollectionError>;
+}
+```
+
+**Beispiel - Einfache Abfrage**:
+
+```typescript
+const collection = api.resolve(api.tokens.journalCollectionPortToken);
+
+// Alle Journals abrufen
+const allResult = collection.getAll();
+if (allResult.ok) {
+  console.log(`Gefunden: ${allResult.value.length} Journals`);
+}
+
+// Einzelnes Journal abrufen
+const journalResult = collection.getById("journal-id-123");
+if (journalResult.ok && journalResult.value) {
+  console.log(`Journal: ${journalResult.value.name}`);
+}
+
+// Query Builder verwenden
+const queryResult = collection.query()
+  .where("name", "contains", "Quest")
+  .limit(10)
+  .execute();
+
+if (queryResult.ok) {
+  console.log(`Gefunden: ${queryResult.value.length} Journals mit "Quest" im Namen`);
+}
+```
+
+**Beispiel - Komplexe OR-Abfrage**:
+
+```typescript
+const collection = api.resolve(api.tokens.journalCollectionPortToken);
+
+const result = collection.query()
+  .where("name", "contains", "Quest")
+  .orWhere("name", "contains", "Item")
+  .sortBy("name", "asc")
+  .limit(20)
+  .execute();
+
+if (result.ok) {
+  result.value.forEach(journal => {
+    console.log(`- ${journal.name}`);
+  });
+}
+```
+
+---
+
+### JournalRepository
+
+Platform-agnostischer Zugriff auf Journal CRUD-Operationen. Erweitert `JournalCollectionPort` um Create, Update, Delete und Flag-Operationen.
+
+```typescript
+interface JournalRepository extends JournalCollectionPort {
+  create(data: CreateEntityData<JournalEntry>): Promise<Result<JournalEntry, EntityRepositoryError>>;
+  createMany(data: CreateEntityData<JournalEntry>[]): Promise<Result<JournalEntry[], EntityRepositoryError>>;
+  update(id: string, changes: EntityChanges<JournalEntry>): Promise<Result<JournalEntry, EntityRepositoryError>>;
+  updateMany(updates: Array<{ id: string; changes: EntityChanges<JournalEntry> }>): Promise<Result<JournalEntry[], EntityRepositoryError>>;
+  patch(id: string, partial: Partial<JournalEntry>): Promise<Result<JournalEntry, EntityRepositoryError>>;
+  upsert(id: string, data: CreateEntityData<JournalEntry>): Promise<Result<JournalEntry, EntityRepositoryError>>;
+  delete(id: string): Promise<Result<void, EntityRepositoryError>>;
+  deleteMany(ids: string[]): Promise<Result<void, EntityRepositoryError>>;
+  getFlag(id: string, scope: string, key: string): Result<unknown | null, EntityRepositoryError>;
+  setFlag(id: string, scope: string, key: string, value: unknown): Promise<Result<void, EntityRepositoryError>>;
+  unsetFlag(id: string, scope: string, key: string): Promise<Result<void, EntityRepositoryError>>;
+}
+
+type CreateEntityData<TEntity> = Omit<TEntity, "id" | "createdAt" | "updatedAt">;
+type EntityChanges<TEntity> = Partial<TEntity>;
+```
+
+**Beispiel - Journal erstellen**:
+
+```typescript
+const repository = api.resolve(api.tokens.journalRepositoryToken);
+
+const createResult = await repository.create({
+  name: "Neues Journal"
+});
+
+if (createResult.ok) {
+  console.log(`Journal erstellt: ${createResult.value.id}`);
+} else {
+  console.error(`Fehler: ${createResult.error.message}`);
+}
+```
+
+**Beispiel - Journal aktualisieren**:
+
+```typescript
+const repository = api.resolve(api.tokens.journalRepositoryToken);
+
+const updateResult = await repository.update("journal-id-123", {
+  name: "Aktualisierter Name"
+});
+
+if (updateResult.ok) {
+  console.log(`Journal aktualisiert: ${updateResult.value.name}`);
+}
+```
+
+**Beispiel - Flag setzen**:
+
+```typescript
+const repository = api.resolve(api.tokens.journalRepositoryToken);
+
+const flagResult = await repository.setFlag(
+  "journal-id-123",
+  "fvtt_relationship_app_module",
+  "hidden",
+  true
+);
+
+if (flagResult.ok) {
+  console.log("Flag erfolgreich gesetzt");
+}
+```
+
+**Hinweis:** `JournalRepository` erweitert `JournalCollectionPort`, daher sind alle Collection-Methoden (getAll, getById, query, etc.) ebenfalls verfügbar.
 
 ---
 

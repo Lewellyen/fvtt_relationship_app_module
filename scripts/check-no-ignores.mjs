@@ -98,6 +98,30 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Runtime Type Guards: Type-Cast für Runtime-Validierung von Methoden-Existenz (notwendig für type-safe Runtime-Checks)',
   },
   
+  // Domain Port Interfaces: Leere Interface-Erweiterungen
+  {
+    file: 'src/domain/ports/collections/journal-collection-port.interface.ts',
+    allowed: ['eslint-disable-next-line'],
+    reason: 'Type-Placeholder: Leere Interface-Erweiterung für zukünftige journal-spezifische Methoden (no-empty-object-type ist hier beabsichtigt für Extension-Point)',
+  },
+  {
+    file: 'src/domain/ports/repositories/journal-repository.interface.ts',
+    allowed: ['eslint-disable-next-line'],
+    reason: 'Type-Placeholder: Leere Interface-Erweiterung für zukünftige journal-spezifische Methoden (no-empty-object-type ist hier beabsichtigt für Extension-Point)',
+  },
+  
+  // Foundry Adapters: Type-Coverage für Array-Zugriffe
+  {
+    file: 'src/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Array-Zugriffe: TypeScript kann nicht statisch beweisen, dass Array mit length > 0 ein Element bei Index 0 hat (obwohl zur Laufzeit garantiert). Non-Null-Assertion ist hier sicher.',
+  },
+  {
+    file: 'src/infrastructure/adapters/foundry/repository-adapters/foundry-journal-repository-adapter.ts',
+    allowed: ['type-coverage:ignore-next-line', 'eslint-disable-next-line'],
+    reason: 'Array-Zugriffe: TypeScript kann nicht statisch beweisen, dass Array mit length > 0 ein Element bei Index 0 hat. Naming-Convention: Foundry verwendet PascalCase für Klassen-Namen (JournalEntry).',
+  },
+  
 ];
 
 // Ignore-Marker, nach denen gesucht wird

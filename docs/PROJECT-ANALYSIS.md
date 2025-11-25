@@ -30,11 +30,15 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 **Ab Modul 1.0.0:** Breaking Changes nur mit Deprecation-Phase & Migration Guide
 
 ### Unreleased Changes
+- **Entity Collections & Repositories (Phase 2):** Neue generische Port-Interfaces für platform-agnostischen Entity-Zugriff. `PlatformEntityCollectionPort<T>` für Read-Only Collection-Zugriffe mit Query Builder, `PlatformEntityRepository<T>` für vollständige CRUD-Operationen. Implementiert für JournalEntry mit `FoundryJournalCollectionAdapter` und `FoundryJournalRepositoryAdapter`. Multi-VTT-ready! ([Details](refactoring/phases/phase-2-detailed-implementation-plan.md))
+- **Query Builder:** Fluent API für komplexe Suchabfragen mit AND/OR-Logik, Pagination und Sortierung. Unterstützt `where()`, `orWhere()`, `or()`, `and()`, `limit()`, `offset()`, `sortBy()`.
+- **FoundryDocumentPort Erweiterungen:** Neue CRUD-Methoden (`create`, `update`, `delete`, `unsetFlag`) für Document-Operationen. Version-agnostische Wrapper für Foundry VTT v13+.
+- **Collection & Repository Tokens:** Neue DI-Tokens (`journalCollectionPortToken`, `journalRepositoryToken`) für Dependency Injection.
 - **Platform-Agnostisches Event-System (Phase 1):** Vollständiges Refactoring des Event-Systems mit `PlatformEventPort<T>` (generisch) und `JournalEventPort` (spezialisiert). Alle Event-Listener sind jetzt Use-Cases, die über Ports arbeiten statt direkt mit Foundry-Hooks. Multi-VTT-ready! ([Details](refactoring/phases/phase-1-event-system-refactoring.md))
 - **EventRegistrar Pattern:** `HookRegistrar` durch `EventRegistrar` ersetzt. `ModuleHookRegistrar` durch `ModuleEventRegistrar` ersetzt. Alle Hook-Klassen durch Use-Cases ersetzt (`InvalidateJournalCacheOnChangeUseCase`, `ProcessJournalDirectoryOnRenderUseCase`).
 - **Event-Ports DI-Config:** Neues Modul `event-ports.config.ts` für Event-Port-Registrierung. Neue Token-Datei `event.tokens.ts`.
 - **Clean Architecture Restrukturierung:** Vollständige Umstrukturierung des `/src` Verzeichnisses nach Clean Architecture Prinzipien mit klarer Schichtentrennung (Domain → Application → Infrastructure → Framework). Import-Pfade (`@/`) bleiben stabil.
-- **Token-Organisation:** Tokens aufgeteilt in 6 thematische Dateien + `event.tokens.ts` mit zentralem Index.
+- **Token-Organisation:** Tokens aufgeteilt in 6 thematische Dateien + `event.tokens.ts` + `collection-tokens.ts` + `repository-tokens.ts` mit zentralem Index.
 - **DI-Types-Gruppierung:** DI-Types in 4 logische Kategorien organisiert (`core/`, `errors/`, `resolution/`, `utilities/`).
 
 ### Release-Highlights v0.24.0
@@ -65,7 +69,9 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 |------|--------|------------|
 | **Domain Layer** |
 | `src/domain/entities/` | Domain-Modelle (Journal-Entry) | Framework-unabhängige Geschäftslogik |
-| `src/domain/ports/` | Abstraktions-Interfaces (JournalVisibilityPort) | Dependency Inversion Principle |
+| `src/domain/ports/` | Abstraktions-Interfaces (JournalVisibilityPort, CollectionPort, RepositoryPort) | Dependency Inversion Principle |
+| `src/domain/ports/collections/` | Collection Port Interfaces (PlatformEntityCollectionPort, JournalCollectionPort) | Read-Only Entity-Zugriff |
+| `src/domain/ports/repositories/` | Repository Port Interfaces (PlatformEntityRepository, JournalRepository) | CRUD-Operationen |
 | `src/domain/types/` | Domain Types (Result) | Gemeinsame Datentypen |
 | **Application Layer** |
 | `src/application/services/` | Business Services (JournalVisibility, Runtime Config, Health) | Anwendungslogik |
@@ -74,6 +80,8 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 | `src/application/health/` | Health-Checks (Container, Metrics, Registry) | Health-Check-System |
 | **Infrastructure Layer** |
 | `src/infrastructure/adapters/foundry/` | Foundry VTT Integration (Ports, Services, Validation) | Foundry-spezifische Adapter |
+| `src/infrastructure/adapters/foundry/collection-adapters/` | Collection Adapters (FoundryJournalCollectionAdapter) | Read-Only Entity-Zugriff |
+| `src/infrastructure/adapters/foundry/repository-adapters/` | Repository Adapters (FoundryJournalRepositoryAdapter) | CRUD-Operationen |
 | `src/infrastructure/di/` | Dependency Injection (Container, Registry, Resolver) | DI-System-Infrastruktur |
 | `src/infrastructure/cache/` | Caching (CacheService) | In-Memory-Cache mit TTL |
 | `src/infrastructure/notifications/` | NotificationCenter & Channels | Strategy-/Observer-Pattern |

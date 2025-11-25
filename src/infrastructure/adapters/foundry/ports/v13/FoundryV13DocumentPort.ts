@@ -1,9 +1,9 @@
 import type { Result } from "@/domain/types/result";
 import type { FoundryDocument } from "../../interfaces/FoundryDocument";
 import type { FoundryError } from "../../errors/FoundryErrors";
-import { fromPromise, tryCatch } from "@/infrastructure/shared/utils/result";
+import { fromPromise, tryCatch, err } from "@/infrastructure/shared/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
-import { castFoundryError } from "../../runtime-casts";
+import { castFoundryError, castFoundryDocumentWithUpdate } from "../../runtime-casts";
 import * as v from "valibot";
 
 /**
@@ -12,6 +12,44 @@ import * as v from "valibot";
  */
 export class FoundryV13DocumentPort implements FoundryDocument {
   #disposed = false;
+
+  async create<TDocument extends { id: string }>(
+    documentClass: { create: (data: unknown) => Promise<TDocument> },
+    data: unknown
+  ): Promise<Result<TDocument, FoundryError>> {
+    if (this.#disposed) {
+      return err(createFoundryError("DISPOSED", "Cannot create document on disposed port"));
+    }
+
+    return fromPromise<TDocument, FoundryError>(documentClass.create(data), (error) =>
+      createFoundryError("OPERATION_FAILED", "Failed to create document", { data }, error)
+    );
+  }
+
+  async update<TDocument extends { id: string }>(
+    document: { update: (changes: unknown) => Promise<TDocument> },
+    changes: unknown
+  ): Promise<Result<TDocument, FoundryError>> {
+    if (this.#disposed) {
+      return err(createFoundryError("DISPOSED", "Cannot update document on disposed port"));
+    }
+
+    return fromPromise<TDocument, FoundryError>(document.update(changes), (error) =>
+      createFoundryError("OPERATION_FAILED", "Failed to update document", { changes }, error)
+    );
+  }
+
+  async delete(document: { delete: () => Promise<unknown> }): Promise<Result<void, FoundryError>> {
+    if (this.#disposed) {
+      return err(createFoundryError("DISPOSED", "Cannot delete document on disposed port"));
+    }
+
+    return fromPromise<void, FoundryError>(
+      document.delete().then(() => undefined),
+      (error) =>
+        createFoundryError("OPERATION_FAILED", "Failed to delete document", undefined, error)
+    );
+  }
 
   getFlag<T>(
     document: { getFlag: (scope: string, key: string) => unknown },
@@ -92,6 +130,49 @@ export class FoundryV13DocumentPort implements FoundryDocument {
           "OPERATION_FAILED",
           `Failed to set flag ${scope}.${key}`,
           { scope, key, value },
+          error
+        )
+    );
+  }
+
+  async unsetFlag(
+    document: {
+      unsetFlag?: (scope: string, key: string) => Promise<unknown>;
+      setFlag: (scope: string, key: string, value: unknown) => Promise<unknown>;
+    },
+    scope: string,
+    key: string
+  ): Promise<Result<void, FoundryError>> {
+    if (this.#disposed) {
+      return err(
+        createFoundryError("DISPOSED", "Cannot unset flag on disposed port", { scope, key })
+      );
+    }
+
+    return fromPromise<void, FoundryError>(
+      (async () => {
+        // Use unsetFlag if available (recommended)
+        if (document.unsetFlag) {
+          await document.unsetFlag(scope, key);
+        } else {
+          // Fallback: Use update with "-=" syntax
+          // Document must have update method for fallback
+          const docWithUpdateResult = castFoundryDocumentWithUpdate(document);
+          if (!docWithUpdateResult.ok) {
+            throw new Error(
+              `Document does not support unsetFlag or update: ${docWithUpdateResult.error.message}`
+            );
+          }
+          await docWithUpdateResult.value.update({
+            [`flags.${scope}.-=${key}`]: null,
+          });
+        }
+      })(),
+      (error) =>
+        createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to unset flag ${scope}.${key}`,
+          { scope, key },
           error
         )
     );

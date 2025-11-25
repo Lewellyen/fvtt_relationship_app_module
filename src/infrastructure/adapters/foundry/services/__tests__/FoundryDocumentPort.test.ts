@@ -32,6 +32,10 @@ describe("FoundryDocumentPort", () => {
     mockPort = {
       getFlag: vi.fn().mockReturnValue(ok(null)),
       setFlag: vi.fn().mockResolvedValue(ok(undefined)),
+      create: vi.fn().mockResolvedValue(ok({ id: "new-id", name: "New Journal" })),
+      update: vi.fn().mockResolvedValue(ok({ id: "journal-1", name: "Updated" })),
+      delete: vi.fn().mockResolvedValue(ok(undefined)),
+      unsetFlag: vi.fn().mockResolvedValue(ok(undefined)),
     } as any;
 
     mockContainer = {
@@ -193,6 +197,110 @@ describe("FoundryDocumentPort", () => {
     });
   });
 
+  describe("create delegation", () => {
+    it("should delegate to port async", async () => {
+      const documentClass = { create: vi.fn() };
+      mockPort.create = vi.fn().mockResolvedValue(ok({ id: "new-id", name: "New Journal" }));
+
+      const result = await service.create(documentClass, { name: "New Journal" });
+
+      expectResultOk(result);
+      expect(mockPort.create).toHaveBeenCalledWith(documentClass, { name: "New Journal" });
+    });
+
+    it("should handle async errors", async () => {
+      const documentClass = { create: vi.fn() };
+      const mockError = {
+        code: "OPERATION_FAILED" as const,
+        message: "Create error",
+      };
+      mockPort.create = vi.fn().mockResolvedValue(err(mockError));
+
+      const result = await service.create(documentClass, { name: "New Journal" });
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Create error");
+    });
+  });
+
+  describe("update delegation", () => {
+    it("should delegate to port async", async () => {
+      const document = { update: vi.fn() };
+      mockPort.update = vi.fn().mockResolvedValue(ok({ id: "journal-1", name: "Updated" }));
+
+      const result = await service.update(document, { name: "Updated" });
+
+      expectResultOk(result);
+      expect(mockPort.update).toHaveBeenCalledWith(document, { name: "Updated" });
+    });
+
+    it("should handle async errors", async () => {
+      const document = { update: vi.fn() };
+      const mockError = {
+        code: "OPERATION_FAILED" as const,
+        message: "Update error",
+      };
+      mockPort.update = vi.fn().mockResolvedValue(err(mockError));
+
+      const result = await service.update(document, { name: "Updated" });
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Update error");
+    });
+  });
+
+  describe("delete delegation", () => {
+    it("should delegate to port async", async () => {
+      const document = { delete: vi.fn() };
+      mockPort.delete = vi.fn().mockResolvedValue(ok(undefined));
+
+      const result = await service.delete(document);
+
+      expectResultOk(result);
+      expect(mockPort.delete).toHaveBeenCalledWith(document);
+    });
+
+    it("should handle async errors", async () => {
+      const document = { delete: vi.fn() };
+      const mockError = {
+        code: "OPERATION_FAILED" as const,
+        message: "Delete error",
+      };
+      mockPort.delete = vi.fn().mockResolvedValue(err(mockError));
+
+      const result = await service.delete(document);
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Delete error");
+    });
+  });
+
+  describe("unsetFlag delegation", () => {
+    it("should delegate to port async", async () => {
+      const document = { unsetFlag: vi.fn(), setFlag: vi.fn() };
+      mockPort.unsetFlag = vi.fn().mockResolvedValue(ok(undefined));
+
+      const result = await service.unsetFlag(document, "scope", "key");
+
+      expectResultOk(result);
+      expect(mockPort.unsetFlag).toHaveBeenCalledWith(document, "scope", "key");
+    });
+
+    it("should handle async errors", async () => {
+      const document = { unsetFlag: vi.fn(), setFlag: vi.fn() };
+      const mockError = {
+        code: "OPERATION_FAILED" as const,
+        message: "Unset error",
+      };
+      mockPort.unsetFlag = vi.fn().mockResolvedValue(err(mockError));
+
+      const result = await service.unsetFlag(document, "scope", "key");
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Unset error");
+    });
+  });
+
   describe("Port Error Branches", () => {
     it("should handle port selection failure in setFlag", async () => {
       const mockEventEmitter = new PortSelectionEventEmitter();
@@ -213,6 +321,102 @@ describe("FoundryDocumentPort", () => {
 
       const document = { setFlag: vi.fn() };
       const result = await failingService.setFlag(document, "scope", "key", "value");
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+
+    it("should handle port selection failure in create", async () => {
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: ObservabilityRegistry = {
+        registerPortSelector: vi.fn(),
+      } as any;
+      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed in create",
+      };
+      vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
+      const failingService = new FoundryDocumentPort(
+        failingSelector,
+        mockRegistry,
+        mockRetryService
+      );
+
+      const documentClass = { create: vi.fn() };
+      const result = await failingService.create(documentClass, { name: "New Journal" });
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+
+    it("should handle port selection failure in update", async () => {
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: ObservabilityRegistry = {
+        registerPortSelector: vi.fn(),
+      } as any;
+      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed in update",
+      };
+      vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
+      const failingService = new FoundryDocumentPort(
+        failingSelector,
+        mockRegistry,
+        mockRetryService
+      );
+
+      const document = { update: vi.fn() };
+      const result = await failingService.update(document, { name: "Updated" });
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+
+    it("should handle port selection failure in delete", async () => {
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: ObservabilityRegistry = {
+        registerPortSelector: vi.fn(),
+      } as any;
+      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed in delete",
+      };
+      vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
+      const failingService = new FoundryDocumentPort(
+        failingSelector,
+        mockRegistry,
+        mockRetryService
+      );
+
+      const document = { delete: vi.fn() };
+      const result = await failingService.delete(document);
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+
+    it("should handle port selection failure in unsetFlag", async () => {
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: ObservabilityRegistry = {
+        registerPortSelector: vi.fn(),
+      } as any;
+      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed in unsetFlag",
+      };
+      vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
+      const failingService = new FoundryDocumentPort(
+        failingSelector,
+        mockRegistry,
+        mockRetryService
+      );
+
+      const document = { unsetFlag: vi.fn(), setFlag: vi.fn() };
+      const result = await failingService.unsetFlag(document, "scope", "key");
 
       expectResultErr(result);
       expect(result.error.message).toContain("Port selection failed");

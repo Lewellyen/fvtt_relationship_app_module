@@ -36,47 +36,89 @@ def check_and_handle_git_lock():
     Returns:
         bool: True wenn keine Lock-Datei existiert oder erfolgreich entfernt wurde, False bei Fehler
     """
+    import time
+    
     lock_file = PROJECT_ROOT / ".git" / "index.lock"
     
-    if not lock_file.exists():
-        return True
-    
-    # Prüfe, ob ein Git-Prozess läuft
-    try:
-        # Versuche Git-Status abzurufen - wenn ein Prozess läuft, wird dies fehlschlagen
-        result = subprocess.run(
-            ['git', 'status', '--porcelain'],
-            capture_output=True,
-            text=True,
-            cwd=PROJECT_ROOT,
-            timeout=2,
-            check=False
-        )
+    # Prüfe mehrmals mit kurzen Pausen (Race Condition vermeiden)
+    max_retries = 3
+    for attempt in range(max_retries):
+        if not lock_file.exists():
+            return True
         
-        # Wenn Git-Status erfolgreich ist, ist wahrscheinlich kein Prozess aktiv
-        if result.returncode == 0:
-            print(f"  Warnung: Lock-Datei gefunden, aber kein aktiver Git-Prozess erkannt.")
-            print(f"  Entferne Lock-Datei...")
-            try:
-                lock_file.unlink()
-                print(f"  OK Lock-Datei erfolgreich entfernt")
-                return True
-            except Exception as e:
-                print(f"  Fehler beim Entfernen der Lock-Datei: {e}")
+        # Prüfe, ob ein Git-Prozess läuft
+        try:
+            # Versuche Git-Status abzurufen - wenn ein Prozess läuft, wird dies fehlschlagen
+            result = subprocess.run(
+                ['git', 'status', '--porcelain'],
+                capture_output=True,
+                text=True,
+                cwd=PROJECT_ROOT,
+                timeout=2,
+                check=False
+            )
+            
+            # Wenn Git-Status erfolgreich ist, ist wahrscheinlich kein Prozess aktiv
+            if result.returncode == 0:
+                if attempt == 0:
+                    print(f"  Warnung: Lock-Datei gefunden, aber kein aktiver Git-Prozess erkannt.")
+                    print(f"  Entferne Lock-Datei...")
+                
+                try:
+                    lock_file.unlink()
+                    print(f"  OK Lock-Datei erfolgreich entfernt")
+                    return True
+                except FileNotFoundError:
+                    # Datei wurde zwischen Prüfung und Entfernung gelöscht - das ist OK
+                    print(f"  OK Lock-Datei wurde bereits entfernt")
+                    return True
+                except PermissionError as e:
+                    if attempt < max_retries - 1:
+                        time.sleep(0.5)  # Kurze Pause vor Retry
+                        continue
+                    print(f"  Fehler: Keine Berechtigung zum Entfernen der Lock-Datei: {e}")
+                    print(f"  Bitte entfernen Sie die Datei manuell: {lock_file}")
+                    return False
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        time.sleep(0.5)  # Kurze Pause vor Retry
+                        continue
+                    print(f"  Fehler beim Entfernen der Lock-Datei: {e}")
+                    return False
+            else:
+                # Git-Status fehlgeschlagen - möglicherweise läuft ein Prozess
+                if attempt == 0:
+                    print(f"  Warnung: Lock-Datei gefunden und Git-Status fehlgeschlagen.")
+                    print(f"  Möglicherweise läuft ein anderer Git-Prozess.")
+                
+                if attempt < max_retries - 1:
+                    time.sleep(1)  # Längere Pause, da möglicherweise ein Prozess läuft
+                    continue
+                
+                print(f"  Bitte warten Sie, bis alle Git-Prozesse beendet sind, oder entfernen Sie die Datei manuell:")
+                print(f"  {lock_file}")
                 return False
-        else:
-            # Git-Status fehlgeschlagen - möglicherweise läuft ein Prozess
-            print(f"  Warnung: Lock-Datei gefunden und Git-Status fehlgeschlagen.")
-            print(f"  Möglicherweise läuft ein anderer Git-Prozess.")
-            print(f"  Bitte warten Sie, bis alle Git-Prozesse beendet sind, oder entfernen Sie die Datei manuell:")
-            print(f"  {lock_file}")
+        except subprocess.TimeoutExpired:
+            if attempt == 0:
+                print(f"  Warnung: Git-Status hat zu lange gedauert - möglicherweise läuft ein Git-Prozess.")
+            
+            if attempt < max_retries - 1:
+                time.sleep(1)  # Längere Pause bei Timeout
+                continue
+            
             return False
-    except subprocess.TimeoutExpired:
-        print(f"  Warnung: Git-Status hat zu lange gedauert - möglicherweise läuft ein Git-Prozess.")
-        return False
-    except Exception as e:
-        print(f"  Fehler beim Prüfen der Lock-Datei: {e}")
-        return False
+        except Exception as e:
+            if attempt == 0:
+                print(f"  Fehler beim Prüfen der Lock-Datei: {e}")
+            
+            if attempt < max_retries - 1:
+                time.sleep(0.5)
+                continue
+            
+            return False
+    
+    # Falls wir hier ankommen, haben alle Versuche fehlgeschlagen
+    return False
 
 def run_command(command, cwd=None):
     """Führt einen Shell-Befehl aus und gibt True zurück, wenn erfolgreich.

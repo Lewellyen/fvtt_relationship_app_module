@@ -9,6 +9,15 @@ import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/jou
  *
  * Implementations should be placed in platform-specific adapters
  * (e.g., foundry/adapters/FoundryJournalVisibilityAdapter).
+ *
+ * @deprecated Use `JournalCollectionPort` and `JournalRepository` instead.
+ * This port will be removed in a future version. Migration guide:
+ * - `getAllEntries()` → `journalCollectionPort.getAll()`
+ * - `getEntryFlag(entry, key)` → `journalRepository.getFlag(entry.id, scope, key)`
+ * - `setEntryFlag(entry, key, value)` → `journalRepository.setFlag(entry.id, scope, key, value)`
+ *
+ * @see JournalCollectionPort
+ * @see JournalRepository
  */
 export interface PlatformJournalVisibilityPort {
   /**

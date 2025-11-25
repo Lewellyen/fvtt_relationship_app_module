@@ -391,6 +391,123 @@ export class JournalCacheInvalidationHook implements HookRegistrar {
 **Guidelines für neue Hooks:**
 - Neue Hook-Strategien implementieren `HookRegistrar` und verwenden immer `HookRegistrationManager` für alle `Hooks.on`-Registrierungen.
 
+### Entity Collections & Repositories (Phase 2)
+
+Das Modul verwendet **Entity Collections** und **Repositories** für platform-agnostischen Zugriff auf Entities (JournalEntry, Actor, Item, etc.). Dies ermöglicht eine klare Trennung zwischen Read-Only Collection-Zugriffen und vollständigen CRUD-Operationen.
+
+#### Konzept
+
+**Collections** (Read-Only):
+- `PlatformEntityCollectionPort<T>`: Generisches Interface für read-only Collection-Zugriffe
+- `JournalCollectionPort`: Spezialisiertes Interface für JournalEntry Collections
+- Operationen: `getAll()`, `getById()`, `getByIds()`, `exists()`, `count()`, `search()`, `query()`
+- Query Builder: Fluent API für komplexe Suchabfragen mit AND/OR-Logik
+
+**Repositories** (Full CRUD):
+- `PlatformEntityRepository<T>`: Generisches Interface für vollständige CRUD-Operationen
+- `JournalRepository`: Spezialisiertes Interface für JournalEntry CRUD-Operationen
+- Erweitert `PlatformEntityCollectionPort<T>` um: `create()`, `createMany()`, `update()`, `updateMany()`, `patch()`, `upsert()`, `delete()`, `deleteMany()`
+- Flag Convenience Methods: `getFlag()`, `setFlag()`, `unsetFlag()`
+
+#### Architektur
+
+```typescript
+// Domain Layer (Ports)
+interface PlatformEntityCollectionPort<TEntity> {
+  getAll(): Result<TEntity[], EntityCollectionError>;
+  getById(id: string): Result<TEntity | null, EntityCollectionError>;
+  search(query: EntitySearchQuery<TEntity>): Result<TEntity[], EntityCollectionError>;
+  query(): EntityQueryBuilder<TEntity>;
+}
+
+interface PlatformEntityRepository<TEntity> extends PlatformEntityCollectionPort<TEntity> {
+  create(data: CreateEntityData<TEntity>): Promise<Result<TEntity, EntityRepositoryError>>;
+  update(id: string, changes: EntityChanges<TEntity>): Promise<Result<TEntity, EntityRepositoryError>>;
+  delete(id: string): Promise<Result<void, EntityRepositoryError>>;
+  getFlag(id: string, scope: string, key: string): Result<unknown | null, EntityRepositoryError>;
+  setFlag(id: string, scope: string, key: string, value: unknown): Promise<Result<void, EntityRepositoryError>>;
+}
+
+// Infrastructure Layer (Adapters)
+class FoundryJournalCollectionAdapter implements JournalCollectionPort {
+  constructor(private readonly foundryGame: FoundryGame) {}
+  // Implementiert Collection-Operationen über FoundryGamePort
+}
+
+class FoundryJournalRepositoryAdapter implements JournalRepository {
+  constructor(
+    private readonly foundryGame: FoundryGame,
+    private readonly foundryDocument: FoundryDocument
+  ) {}
+  // Implementiert CRUD-Operationen über FoundryGamePort + FoundryDocumentPort
+}
+```
+
+#### Query Builder
+
+Der Query Builder ermöglicht komplexe Suchabfragen mit einer flüssigen API:
+
+```typescript
+// Einfache Abfrage
+const result = collection.query()
+  .where("name", "contains", "Quest")
+  .limit(10)
+  .execute();
+
+// OR-Abfrage
+const result = collection.query()
+  .where("name", "contains", "Quest")
+  .orWhere("name", "contains", "Item")
+  .execute();
+
+// Komplexe AND/OR-Abfrage
+const result = collection.query()
+  .where("name", "contains", "Quest")
+  .or((qb) => {
+    qb.where("name", "contains", "Item");
+    qb.where("name", "startsWith", "Note");
+  })
+  .and((qb) => {
+    qb.where("id", "in", ["id1", "id2"]);
+  })
+  .sortBy("name", "asc")
+  .limit(20)
+  .execute();
+```
+
+#### Verantwortlichkeiten
+
+**FoundryGamePort** (Collection-Zugriff):
+- Zuständig für: Zugriff auf Foundry's `game` Objekt und Collections
+- Operationen: `getJournalEntries()`, `getJournalEntryById()`, `invalidateCache()`
+- Verwendung: Collection-Adapter (für Read-Operationen)
+
+**FoundryDocumentPort** (Single-Entity CRUD + Flags):
+- Zuständig für: Alle Operationen auf einzelnen Document-Instanzen
+- Operationen: `create()`, `update()`, `delete()`, `getFlag()`, `setFlag()`, `unsetFlag()`
+- Verwendung: Repository-Adapter (für CRUD-Operationen)
+
+#### DI-Integration
+
+```typescript
+// Tokens
+export const journalCollectionPortToken: InjectionToken<JournalCollectionPort> = ...;
+export const journalRepositoryToken: InjectionToken<JournalRepository> = ...;
+
+// Registrierung
+container.registerClass(
+  journalCollectionPortToken,
+  DIFoundryJournalCollectionAdapter,
+  ServiceLifecycle.SINGLETON
+);
+
+container.registerClass(
+  journalRepositoryToken,
+  DIFoundryJournalRepositoryAdapter,
+  ServiceLifecycle.SINGLETON
+);
+```
+
 ### Handler-Pattern für erweiterbare Event-Verarbeitung
 
 Das **Handler-Pattern** ermöglicht es, mehrere Handler für dasselbe Event zu registrieren. Dies ist besonders nützlich für Context-Menü-Items oder andere UI-Elemente, die von mehreren Features erweitert werden können.

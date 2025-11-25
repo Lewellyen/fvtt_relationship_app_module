@@ -30,6 +30,36 @@ export class FoundryDocumentPort
     super(portSelector, portRegistry, retryService);
   }
 
+  async create<TDocument extends { id: string }>(
+    documentClass: { create: (data: unknown) => Promise<TDocument> },
+    data: unknown
+  ): Promise<Result<TDocument, FoundryError>> {
+    return this.withRetryAsync(async () => {
+      const portResult = this.getPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.create(documentClass, data);
+    }, "FoundryDocument.create");
+  }
+
+  async update<TDocument extends { id: string }>(
+    document: { update: (changes: unknown) => Promise<TDocument> },
+    changes: unknown
+  ): Promise<Result<TDocument, FoundryError>> {
+    return this.withRetryAsync(async () => {
+      const portResult = this.getPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.update(document, changes);
+    }, "FoundryDocument.update");
+  }
+
+  async delete(document: { delete: () => Promise<unknown> }): Promise<Result<void, FoundryError>> {
+    return this.withRetryAsync(async () => {
+      const portResult = this.getPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.delete(document);
+    }, "FoundryDocument.delete");
+  }
+
   getFlag<T>(
     document: { getFlag: (scope: string, key: string) => unknown },
     scope: string,
@@ -54,6 +84,21 @@ export class FoundryDocumentPort
       if (!portResult.ok) return portResult;
       return await portResult.value.setFlag(document, scope, key, value);
     }, "FoundryDocument.setFlag");
+  }
+
+  async unsetFlag(
+    document: {
+      unsetFlag?: (scope: string, key: string) => Promise<unknown>;
+      setFlag: (scope: string, key: string, value: unknown) => Promise<unknown>;
+    },
+    scope: string,
+    key: string
+  ): Promise<Result<void, FoundryError>> {
+    return this.withRetryAsync(async () => {
+      const portResult = this.getPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.unsetFlag(document, scope, key);
+    }, "FoundryDocument.unsetFlag");
   }
 }
 

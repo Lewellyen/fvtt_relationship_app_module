@@ -26,6 +26,8 @@ import {
   foundryGamePortRegistryToken,
   foundrySettingsToken,
   foundrySettingsPortRegistryToken,
+  journalCollectionPortToken,
+  journalRepositoryToken,
 } from "@/infrastructure/shared/tokens";
 import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
 import { err } from "@/infrastructure/shared/utils/result";
@@ -725,6 +727,29 @@ describe("dependencyconfig", () => {
       expectResultErr(result);
       if (!result.ok) {
         expect(result.error).toContain("JournalEventPort");
+      }
+    });
+
+    it("should propagate errors from registerEntityPorts", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterClass = container.registerClass.bind(container);
+
+      vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
+        // Fail entity port registration
+        if (token === journalCollectionPortToken || token === journalRepositoryToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "Entity port registration failed",
+          });
+        }
+        return originalRegisterClass(token, serviceClass, lifecycle);
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("JournalCollectionPort");
       }
     });
 

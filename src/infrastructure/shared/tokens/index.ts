@@ -28,6 +28,12 @@ export * from "./event.tokens";
 // Port tokens
 export * from "./ports.tokens";
 
+// Collection tokens
+export * from "./collection-tokens";
+
+// Repository tokens
+export * from "./repository-tokens";
+
 // ServiceType union - represents all registered service types
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
@@ -78,6 +84,8 @@ import type { LibWrapperService } from "@/domain/services/lib-wrapper-service.in
 import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
 import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
 import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
+import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
+import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 
 /**
  * Union type representing all registered service types in the application.
@@ -144,4 +152,6 @@ export type ServiceType =
   | JournalContextMenuLibWrapperService
   | ServiceContainer
   | BootstrapInitHookService
-  | BootstrapReadyHookService;
+  | BootstrapReadyHookService
+  | JournalCollectionPort
+  | JournalRepository;

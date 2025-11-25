@@ -259,6 +259,8 @@ const registerContextMenuUseCaseToken = createInjectionToken(
 const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
 const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
 const platformUIPortToken = createInjectionToken("PlatformUIPort");
+const journalCollectionPortToken = createInjectionToken("JournalCollectionPort");
+const journalRepositoryToken = createInjectionToken("JournalRepository");
 const apiSafeTokens = /* @__PURE__ */ new Set();
 function markAsApiSafe(token) {
   apiSafeTokens.add(token);
@@ -1581,7 +1583,7 @@ function withTimeout(promise2, timeoutMs) {
   ]);
 }
 __name(withTimeout, "withTimeout");
-const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "production", "PROD": true, "SSR": false, "VITE_ENABLE_PERF_TRACKING": "true" };
+const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "development", "PROD": true, "SSR": false, "VITE_ENABLE_PERF_TRACKING": "true" };
 var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
   LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
   LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
@@ -1620,9 +1622,9 @@ function getEnvVar(key, parser2) {
 __name(getEnvVar, "getEnvVar");
 const parsedCacheMaxEntries = getEnvVar("VITE_CACHE_MAX_ENTRIES", parseOptionalPositiveInteger);
 const ENV = {
-  isDevelopment: false,
-  isProduction: true,
-  logLevel: false ? 0 : 1,
+  isDevelopment: true,
+  isProduction: false,
+  logLevel: true ? 0 : 1,
   enablePerformanceTracking: true,
   enableMetricsPersistence: getEnvVar("VITE_ENABLE_METRICS_PERSISTENCE", (val) => val === "true"),
   metricsPersistenceKey: getEnvVar(
@@ -1630,7 +1632,7 @@ const ENV = {
     (val) => val ?? "fvtt_relationship_app_module.metrics"
   ),
   // 1% sampling in production, 100% in development
-  performanceSamplingRate: true ? parseSamplingRate(void 0, 0.01) : 1,
+  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1,
   enableCacheService: getEnvVar(
     "VITE_CACHE_ENABLED",
     (val) => val === void 0 ? true : val === "true"
@@ -10194,6 +10196,23 @@ const _BootstrapInitHookService = class _BootstrapInitHookService {
           );
         } else {
           this.logger.debug("Context menu libWrapper registered successfully");
+          const contextMenuUseCaseResult = this.container.resolveWithError(
+            registerContextMenuUseCaseToken
+          );
+          if (contextMenuUseCaseResult.ok) {
+            const callbackRegisterResult = contextMenuUseCaseResult.value.register();
+            if (!callbackRegisterResult.ok) {
+              this.logger.warn(
+                `Failed to register context menu callbacks: ${callbackRegisterResult.error.message}`
+              );
+            } else {
+              this.logger.debug("Context menu callbacks registered successfully");
+            }
+          } else {
+            this.logger.warn(
+              `Failed to resolve RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
+            );
+          }
         }
       } else {
         this.logger.warn(
@@ -11188,9 +11207,72 @@ function getFactoryOrError(factories, version) {
   return ok(factory);
 }
 __name(getFactoryOrError, "getFactoryOrError");
+function castFoundryDocumentWithUpdate(document2) {
+  if (!isObjectWithMethods(document2, ["update"])) {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Document does not have required method (update)", {
+        missingMethods: ["update"]
+      })
+    );
+  }
+  return ok(document2);
+}
+__name(castFoundryDocumentWithUpdate, "castFoundryDocumentWithUpdate");
+function castFoundryJournalEntryClass() {
+  if (typeof globalThis !== "object" || globalThis === null || !("JournalEntry" in globalThis)) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "Foundry JournalEntry class not available in globalThis",
+        {}
+      )
+    );
+  }
+  const journalEntryClass = globalThis.JournalEntry;
+  if (!isObjectWithMethods(journalEntryClass, ["create"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "Foundry JournalEntry class does not have required method (create)",
+        {
+          missingMethods: ["create"]
+        }
+      )
+    );
+  }
+  return ok(journalEntryClass);
+}
+__name(castFoundryJournalEntryClass, "castFoundryJournalEntryClass");
 const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
   constructor() {
     __privateAdd(this, _disposed3, false);
+  }
+  async create(documentClass, data) {
+    if (__privateGet(this, _disposed3)) {
+      return err(createFoundryError("DISPOSED", "Cannot create document on disposed port"));
+    }
+    return fromPromise(
+      documentClass.create(data),
+      (error) => createFoundryError("OPERATION_FAILED", "Failed to create document", { data }, error)
+    );
+  }
+  async update(document2, changes) {
+    if (__privateGet(this, _disposed3)) {
+      return err(createFoundryError("DISPOSED", "Cannot update document on disposed port"));
+    }
+    return fromPromise(
+      document2.update(changes),
+      (error) => createFoundryError("OPERATION_FAILED", "Failed to update document", { changes }, error)
+    );
+  }
+  async delete(document2) {
+    if (__privateGet(this, _disposed3)) {
+      return err(createFoundryError("DISPOSED", "Cannot delete document on disposed port"));
+    }
+    return fromPromise(
+      document2.delete().then(() => void 0),
+      (error) => createFoundryError("OPERATION_FAILED", "Failed to delete document", void 0, error)
+    );
   }
   getFlag(document2, scope, key, schema) {
     if (__privateGet(this, _disposed3)) {
@@ -11250,6 +11332,36 @@ const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
         "OPERATION_FAILED",
         `Failed to set flag ${scope}.${key}`,
         { scope, key, value: value2 },
+        error
+      )
+    );
+  }
+  async unsetFlag(document2, scope, key) {
+    if (__privateGet(this, _disposed3)) {
+      return err(
+        createFoundryError("DISPOSED", "Cannot unset flag on disposed port", { scope, key })
+      );
+    }
+    return fromPromise(
+      (async () => {
+        if (document2.unsetFlag) {
+          await document2.unsetFlag(scope, key);
+        } else {
+          const docWithUpdateResult = castFoundryDocumentWithUpdate(document2);
+          if (!docWithUpdateResult.ok) {
+            throw new Error(
+              `Document does not support unsetFlag or update: ${docWithUpdateResult.error.message}`
+            );
+          }
+          await docWithUpdateResult.value.update({
+            [`flags.${scope}.-=${key}`]: null
+          });
+        }
+      })(),
+      (error) => createFoundryError(
+        "OPERATION_FAILED",
+        `Failed to unset flag ${scope}.${key}`,
+        { scope, key },
         error
       )
     );
@@ -12157,6 +12269,27 @@ const _FoundryDocumentPort = class _FoundryDocumentPort extends FoundryServiceBa
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
   }
+  async create(documentClass, data) {
+    return this.withRetryAsync(async () => {
+      const portResult = this.getPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.create(documentClass, data);
+    }, "FoundryDocument.create");
+  }
+  async update(document2, changes) {
+    return this.withRetryAsync(async () => {
+      const portResult = this.getPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.update(document2, changes);
+    }, "FoundryDocument.update");
+  }
+  async delete(document2) {
+    return this.withRetryAsync(async () => {
+      const portResult = this.getPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.delete(document2);
+    }, "FoundryDocument.delete");
+  }
   getFlag(document2, scope, key, schema) {
     return this.withRetry(() => {
       const portResult = this.getPort("FoundryDocument");
@@ -12170,6 +12303,13 @@ const _FoundryDocumentPort = class _FoundryDocumentPort extends FoundryServiceBa
       if (!portResult.ok) return portResult;
       return await portResult.value.setFlag(document2, scope, key, value2);
     }, "FoundryDocument.setFlag");
+  }
+  async unsetFlag(document2, scope, key) {
+    return this.withRetryAsync(async () => {
+      const portResult = this.getPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.unsetFlag(document2, scope, key);
+    }, "FoundryDocument.unsetFlag");
   }
 };
 __name(_FoundryDocumentPort, "FoundryDocumentPort");
@@ -15264,6 +15404,635 @@ function registerEventPorts(container) {
   return ok(void 0);
 }
 __name(registerEventPorts, "registerEventPorts");
+const _FoundryJournalCollectionAdapter = class _FoundryJournalCollectionAdapter {
+  constructor(foundryGame) {
+    this.foundryGame = foundryGame;
+  }
+  getAll() {
+    const result = this.foundryGame.getJournalEntries();
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "COLLECTION_NOT_AVAILABLE",
+          message: `Failed to get journals from Foundry: ${result.error.message}`,
+          details: result.error
+        }
+      };
+    }
+    const entries2 = result.value.map((foundryEntry) => ({
+      id: foundryEntry.id,
+      name: foundryEntry.name ?? null
+    }));
+    return ok(entries2);
+  }
+  getById(id) {
+    const result = this.foundryGame.getJournalEntryById(id);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "PLATFORM_ERROR",
+          message: `Failed to get journal ${id} from Foundry: ${result.error.message}`,
+          details: result.error
+        }
+      };
+    }
+    if (!result.value) {
+      return ok(null);
+    }
+    const entry = {
+      id: result.value.id,
+      name: result.value.name ?? null
+    };
+    return ok(entry);
+  }
+  getByIds(ids) {
+    const results = [];
+    const errors = [];
+    for (const id of ids) {
+      const result = this.getById(id);
+      if (!result.ok) {
+        errors.push(result.error);
+      } else if (result.value) {
+        results.push(result.value);
+      }
+    }
+    if (errors.length > 0) {
+      const firstError = errors[0];
+      return err(firstError);
+    }
+    return ok(results);
+  }
+  exists(id) {
+    const result = this.getById(id);
+    if (!result.ok) {
+      return result;
+    }
+    return ok(result.value !== null);
+  }
+  count() {
+    const result = this.getAll();
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: result.error
+      };
+    }
+    return ok(result.value.length);
+  }
+  search(query) {
+    const allResult = this.getAll();
+    if (!allResult.ok) {
+      return allResult;
+    }
+    let results = allResult.value;
+    if (query.filters && query.filters.length > 0) {
+      const filters = query.filters;
+      results = results.filter((entity) => {
+        return filters.every((filter) => {
+          const fieldValue = entity[filter.field];
+          return this.matchesFilter(fieldValue, filter.operator, filter.value);
+        });
+      });
+    }
+    if (query.filterGroups && query.filterGroups.length > 0) {
+      const filterGroups = query.filterGroups;
+      results = results.filter((entity) => {
+        return filterGroups.every((group) => {
+          if (group.filters.length === 0) return true;
+          if (group.logic === "OR") {
+            return group.filters.some((filter) => {
+              const fieldValue = entity[filter.field];
+              return this.matchesFilter(fieldValue, filter.operator, filter.value);
+            });
+          } else {
+            return group.filters.every((filter) => {
+              const fieldValue = entity[filter.field];
+              return this.matchesFilter(fieldValue, filter.operator, filter.value);
+            });
+          }
+        });
+      });
+    }
+    if (query.sortBy) {
+      const sortBy = query.sortBy;
+      results.sort((a, b) => {
+        const aValue = a[sortBy];
+        const bValue = b[sortBy];
+        if (aValue === bValue) return 0;
+        if (aValue === null || aValue === void 0) return 1;
+        if (bValue === null || bValue === void 0) return -1;
+        const comparison = aValue < bValue ? -1 : 1;
+        return query.sortOrder === "desc" ? -comparison : comparison;
+      });
+    }
+    if (query.offset) {
+      results = results.slice(query.offset);
+    }
+    if (query.limit) {
+      results = results.slice(0, query.limit);
+    }
+    return ok(results);
+  }
+  query() {
+    return new FoundryJournalQueryBuilder(this);
+  }
+  matchesFilter(fieldValue, operator, filterValue) {
+    switch (operator) {
+      case "equals":
+        return fieldValue === filterValue;
+      case "notEquals":
+        return fieldValue !== filterValue;
+      case "contains":
+        return String(fieldValue).toLowerCase().includes(String(filterValue).toLowerCase());
+      case "startsWith":
+        return String(fieldValue).toLowerCase().startsWith(String(filterValue).toLowerCase());
+      case "endsWith":
+        return String(fieldValue).toLowerCase().endsWith(String(filterValue).toLowerCase());
+      case "in": {
+        if (!Array.isArray(filterValue)) {
+          return false;
+        }
+        const filterArray = filterValue;
+        return filterArray.includes(fieldValue);
+      }
+      case "notIn": {
+        if (!Array.isArray(filterValue)) {
+          return false;
+        }
+        const filterArray = filterValue;
+        return !filterArray.includes(fieldValue);
+      }
+      case "greaterThan":
+        return Number(fieldValue) > Number(filterValue);
+      case "lessThan":
+        return Number(fieldValue) < Number(filterValue);
+      case "greaterThanOrEqual":
+        return Number(fieldValue) >= Number(filterValue);
+      case "lessThanOrEqual":
+        return Number(fieldValue) <= Number(filterValue);
+      default:
+        return false;
+    }
+  }
+};
+__name(_FoundryJournalCollectionAdapter, "FoundryJournalCollectionAdapter");
+let FoundryJournalCollectionAdapter = _FoundryJournalCollectionAdapter;
+const _FoundryJournalQueryBuilder = class _FoundryJournalQueryBuilder {
+  constructor(adapter) {
+    this.adapter = adapter;
+    this.query = {};
+    this.currentOrGroup = null;
+  }
+  where(field, operator, value2) {
+    if (this.currentOrGroup !== null) {
+      this.currentOrGroup.push({ field, operator, value: value2 });
+      return this;
+    }
+    this.closeOrGroup();
+    if (!this.query.filters) {
+      this.query.filters = [];
+    }
+    this.query.filters.push({ field, operator, value: value2 });
+    return this;
+  }
+  orWhere(field, operator, value2) {
+    if (this.currentOrGroup === null) {
+      this.currentOrGroup = [];
+      if (this.query.filters && this.query.filters.length > 0) {
+        const lastFilter = this.query.filters.pop();
+        this.currentOrGroup.push({
+          field: lastFilter.field,
+          operator: lastFilter.operator,
+          value: lastFilter.value
+        });
+      }
+    }
+    this.currentOrGroup.push({ field, operator, value: value2 });
+    return this;
+  }
+  or(callback) {
+    this.closeOrGroup();
+    const orGroup = [];
+    if (this.query.filters && this.query.filters.length > 0) {
+      const lastFilter = this.query.filters.pop();
+      orGroup.push({
+        field: lastFilter.field,
+        operator: lastFilter.operator,
+        value: lastFilter.value
+      });
+    }
+    const originalOrGroup = this.currentOrGroup;
+    this.currentOrGroup = orGroup;
+    callback(this);
+    this.currentOrGroup = originalOrGroup;
+    if (orGroup.length > 0) {
+      if (!this.query.filterGroups) {
+        this.query.filterGroups = [];
+      }
+      this.query.filterGroups.push({
+        logic: "OR",
+        filters: orGroup.map((f) => ({ field: f.field, operator: f.operator, value: f.value }))
+      });
+    }
+    return this;
+  }
+  and(callback) {
+    this.closeOrGroup();
+    const andGroup = [];
+    const originalFilters = this.query.filters;
+    this.query.filters = andGroup;
+    callback(this);
+    if (originalFilters !== void 0) {
+      this.query.filters = originalFilters;
+    } else {
+      delete this.query.filters;
+    }
+    if (andGroup.length > 0) {
+      if (!this.query.filterGroups) {
+        this.query.filterGroups = [];
+      }
+      this.query.filterGroups.push({
+        logic: "AND",
+        filters: andGroup.map((f) => ({ field: f.field, operator: f.operator, value: f.value }))
+      });
+    }
+    return this;
+  }
+  limit(count) {
+    this.closeOrGroup();
+    this.query.limit = count;
+    return this;
+  }
+  offset(count) {
+    this.closeOrGroup();
+    this.query.offset = count;
+    return this;
+  }
+  sortBy(field, order) {
+    this.closeOrGroup();
+    this.query.sortBy = field;
+    this.query.sortOrder = order;
+    return this;
+  }
+  execute() {
+    this.closeOrGroup();
+    return this.adapter.search(this.query);
+  }
+  /**
+   * Closes the current OR group and adds it to filterGroups.
+   * Called automatically before where(), limit(), offset(), sortBy(), execute().
+   */
+  closeOrGroup() {
+    if (this.currentOrGroup && this.currentOrGroup.length > 0) {
+      if (!this.query.filterGroups) {
+        this.query.filterGroups = [];
+      }
+      this.query.filterGroups.push({
+        logic: "OR",
+        filters: this.currentOrGroup.map((f) => ({
+          field: f.field,
+          operator: f.operator,
+          value: f.value
+        }))
+      });
+      this.currentOrGroup = null;
+    }
+  }
+};
+__name(_FoundryJournalQueryBuilder, "FoundryJournalQueryBuilder");
+let FoundryJournalQueryBuilder = _FoundryJournalQueryBuilder;
+const _DIFoundryJournalCollectionAdapter = class _DIFoundryJournalCollectionAdapter extends FoundryJournalCollectionAdapter {
+  // foundryGameToken → FoundryGamePort (version-agnostisch)
+  constructor(foundryGame) {
+    super(foundryGame);
+  }
+};
+__name(_DIFoundryJournalCollectionAdapter, "DIFoundryJournalCollectionAdapter");
+_DIFoundryJournalCollectionAdapter.dependencies = [foundryGameToken];
+let DIFoundryJournalCollectionAdapter = _DIFoundryJournalCollectionAdapter;
+const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter {
+  constructor(foundryGame, foundryDocument) {
+    this.foundryGame = foundryGame;
+    this.foundryDocument = foundryDocument;
+    this.collection = new FoundryJournalCollectionAdapter(foundryGame);
+  }
+  // ===== Collection Methods (delegate to collection adapter) =====
+  getAll() {
+    return this.collection.getAll();
+  }
+  getById(id) {
+    return this.collection.getById(id);
+  }
+  getByIds(ids) {
+    return this.collection.getByIds(ids);
+  }
+  exists(id) {
+    return this.collection.exists(id);
+  }
+  count() {
+    return this.collection.count();
+  }
+  search(query) {
+    return this.collection.search(query);
+  }
+  query() {
+    return this.collection.query();
+  }
+  // ===== CREATE Operations =====
+  async create(data) {
+    const journalEntryClassResult = castFoundryJournalEntryClass();
+    if (!journalEntryClassResult.ok) {
+      return err({
+        code: "PLATFORM_ERROR",
+        message: `Foundry JournalEntry class not available: ${journalEntryClassResult.error.message}`,
+        details: journalEntryClassResult.error
+      });
+    }
+    const JournalEntryClass = journalEntryClassResult.value;
+    try {
+      const createResult = await this.foundryDocument.create(JournalEntryClass, data);
+      if (!createResult.ok) {
+        return err({
+          code: "OPERATION_FAILED",
+          message: `Failed to create journal: ${createResult.error.message}`,
+          details: createResult.error
+        });
+      }
+      const createdEntry = {
+        id: createResult.value.id,
+        name: createResult.value.name ?? null
+      };
+      return ok(createdEntry);
+    } catch (error) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to create journal: ${error instanceof Error ? error.message : String(error)}`,
+        details: error
+      });
+    }
+  }
+  async createMany(data) {
+    const results = [];
+    const errors = [];
+    for (const item of data) {
+      const result = await this.create(item);
+      if (result.ok) {
+        results.push(result.value);
+      } else {
+        errors.push(result.error);
+      }
+    }
+    if (errors.length > 0) {
+      const firstError = errors[0];
+      return err(firstError);
+    }
+    return ok(results);
+  }
+  // ===== UPDATE Operations =====
+  async update(id, changes) {
+    const currentResult = this.getById(id);
+    if (!currentResult.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "ENTITY_NOT_FOUND",
+          message: `Journal ${id} not found`,
+          details: currentResult.error
+        }
+      };
+    }
+    if (!currentResult.value) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal ${id} not found`
+      });
+    }
+    const foundryResult = this.foundryGame.getJournalEntryById(id);
+    if (!foundryResult.ok || !foundryResult.value) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal ${id} not found in Foundry`
+      });
+    }
+    const foundryEntry = foundryResult.value;
+    const updateData = {};
+    if (changes.name !== void 0) {
+      if (changes.name === null) {
+        updateData["name.-="] = null;
+      } else {
+        updateData.name = changes.name;
+      }
+    }
+    const docWithUpdateResult = castFoundryDocumentWithUpdate(
+      foundryEntry
+    );
+    if (!docWithUpdateResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Document does not support update: ${docWithUpdateResult.error.message}`,
+        details: docWithUpdateResult.error
+      });
+    }
+    const updateResult = await this.foundryDocument.update(docWithUpdateResult.value, updateData);
+    if (!updateResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to update journal ${id}: ${updateResult.error.message}`,
+        details: updateResult.error
+      });
+    }
+    const updatedResult = this.getById(id);
+    if (!updatedResult.ok || !updatedResult.value) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: "Failed to retrieve updated journal"
+      });
+    }
+    return ok(updatedResult.value);
+  }
+  async updateMany(updates) {
+    const results = [];
+    const errors = [];
+    for (const update of updates) {
+      const result = await this.update(update.id, update.changes);
+      if (result.ok) {
+        results.push(result.value);
+      } else {
+        errors.push(result.error);
+      }
+    }
+    if (errors.length > 0) {
+      const firstError = errors[0];
+      return err(firstError);
+    }
+    return ok(results);
+  }
+  async patch(id, partial2) {
+    return this.update(id, partial2);
+  }
+  async upsert(id, data) {
+    const existsResult = this.exists(id);
+    if (!existsResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to check if journal ${id} exists`,
+        details: existsResult.error
+      });
+    }
+    if (existsResult.value) {
+      return this.update(id, data);
+    } else {
+      return this.create({ ...data, id });
+    }
+  }
+  // ===== DELETE Operations =====
+  async delete(id) {
+    const foundryResult = this.foundryGame.getJournalEntryById(id);
+    if (!foundryResult.ok || !foundryResult.value) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal ${id} not found`
+      });
+    }
+    const deleteResult = await this.foundryDocument.delete(foundryResult.value);
+    if (!deleteResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to delete journal ${id}: ${deleteResult.error.message}`,
+        details: deleteResult.error
+      });
+    }
+    return ok(void 0);
+  }
+  async deleteMany(ids) {
+    const errors = [];
+    for (const id of ids) {
+      const result = await this.delete(id);
+      if (!result.ok) {
+        errors.push(result.error);
+      }
+    }
+    if (errors.length > 0) {
+      const firstError = errors[0];
+      return err(firstError);
+    }
+    return ok(void 0);
+  }
+  // ===== Flag Convenience Methods =====
+  getFlag(id, scope, key) {
+    const foundryResult = this.foundryGame.getJournalEntryById(id);
+    if (!foundryResult.ok || !foundryResult.value) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal ${id} not found`
+      });
+    }
+    const foundryEntry = foundryResult.value;
+    const documentResult = castFoundryDocumentForFlag(foundryEntry);
+    if (!documentResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Document does not support flags: ${documentResult.error.message}`,
+        details: documentResult.error
+      });
+    }
+    const flagResult = this.foundryDocument.getFlag(documentResult.value, scope, key, /* @__PURE__ */ unknown());
+    if (!flagResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to get flag ${scope}.${key}: ${flagResult.error.message}`,
+        details: flagResult.error
+      });
+    }
+    return ok(flagResult.value);
+  }
+  async setFlag(id, scope, key, value2) {
+    const foundryResult = this.foundryGame.getJournalEntryById(id);
+    if (!foundryResult.ok || !foundryResult.value) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal ${id} not found`
+      });
+    }
+    const foundryEntry = foundryResult.value;
+    const documentResult = castFoundryDocumentForFlag(foundryEntry);
+    if (!documentResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Document does not support flags: ${documentResult.error.message}`,
+        details: documentResult.error
+      });
+    }
+    const flagResult = await this.foundryDocument.setFlag(documentResult.value, scope, key, value2);
+    if (!flagResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to set flag ${scope}.${key}: ${flagResult.error.message}`,
+        details: flagResult.error
+      });
+    }
+    return ok(void 0);
+  }
+  async unsetFlag(id, scope, key) {
+    const foundryResult = this.foundryGame.getJournalEntryById(id);
+    if (!foundryResult.ok || !foundryResult.value) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal ${id} not found`
+      });
+    }
+    const foundryEntry = foundryResult.value;
+    const documentResult = castFoundryDocumentForFlag(foundryEntry);
+    if (!documentResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Document does not support flags: ${documentResult.error.message}`,
+        details: documentResult.error
+      });
+    }
+    const unsetResult = await this.foundryDocument.unsetFlag(documentResult.value, scope, key);
+    if (!unsetResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to unset flag ${scope}.${key}: ${unsetResult.error.message}`,
+        details: unsetResult.error
+      });
+    }
+    return ok(void 0);
+  }
+};
+__name(_FoundryJournalRepositoryAdapter, "FoundryJournalRepositoryAdapter");
+let FoundryJournalRepositoryAdapter = _FoundryJournalRepositoryAdapter;
+const _DIFoundryJournalRepositoryAdapter = class _DIFoundryJournalRepositoryAdapter extends FoundryJournalRepositoryAdapter {
+  constructor(foundryGame, foundryDocument) {
+    super(foundryGame, foundryDocument);
+  }
+};
+__name(_DIFoundryJournalRepositoryAdapter, "DIFoundryJournalRepositoryAdapter");
+_DIFoundryJournalRepositoryAdapter.dependencies = [foundryGameToken, foundryDocumentToken];
+let DIFoundryJournalRepositoryAdapter = _DIFoundryJournalRepositoryAdapter;
+function registerEntityPorts(container) {
+  const collectionResult = container.registerClass(
+    journalCollectionPortToken,
+    DIFoundryJournalCollectionAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(collectionResult)) {
+    return err(`Failed to register JournalCollectionPort: ${collectionResult.error.message}`);
+  }
+  const repositoryResult = container.registerClass(
+    journalRepositoryToken,
+    DIFoundryJournalRepositoryAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(repositoryResult)) {
+    return err(`Failed to register JournalRepository: ${repositoryResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerEntityPorts, "registerEntityPorts");
 function registerStaticValues(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
@@ -15350,6 +16119,8 @@ function configureDependencies(container) {
   if (isErr(subcontainerValuesResult)) return subcontainerValuesResult;
   const foundryServicesResult = registerFoundryServices(container);
   if (isErr(foundryServicesResult)) return foundryServicesResult;
+  const entityPortsResult = registerEntityPorts(container);
+  if (isErr(entityPortsResult)) return entityPortsResult;
   const i18nServicesResult = registerI18nServices(container);
   if (isErr(i18nServicesResult)) return i18nServicesResult;
   const notificationsResult = registerNotifications(container);

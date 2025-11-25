@@ -1428,13 +1428,15 @@ if (!validationResult.ok) {
 
 | Kategorie | Count |
 |-----------|------:|
-| **Total Services** | 19 |
+| **Total Services** | 21 (+2: Collection & Repository Adapters) |
 | **Zero Dependencies** | 4 (ENV, PortSelector, PortRegistry, LocalI18n) |
-| **1 Dependency** | 3 (Metrics, Logger, ErrorSanitizer) |
+| **1 Dependency** | 5 (+2: Collection & Repository Adapters) |
 | **2 Dependencies** | 7 (Foundry Services, Retry, Perf, Health) |
 | **3+ Dependencies** | 5 (Facades, Business Services) |
 | **Max Dependency Depth** | 6 Levels |
 | **Circular Dependencies** | 0 ✅ |
+| **Collection Ports** | 1 (JournalCollectionPort) |
+| **Repository Ports** | 1 (JournalRepository) |
 
 ### Architektur-Qualität
 
@@ -1485,6 +1487,107 @@ if (!validationResult.ok) {
 - Adaptiert Foundry-spezifisches `FoundryUI` zu platform-agnostischem `PlatformUIPort`
 - Ermöglicht Application Layer, UI-Operationen ohne Foundry-Abhängigkeit durchzuführen
 - Mappt Foundry-Errors zu platform-agnostischen Errors
+
+---
+
+### Entity Collections & Repositories (Phase 2)
+
+#### JournalCollectionPort
+**Datei:** `src/domain/ports/collections/journal-collection-port.interface.ts`  
+**Token:** `journalCollectionPortToken`  
+**Typ:** Domain Port Interface
+
+**Erweitert:** `PlatformEntityCollectionPort<JournalEntry>`
+
+**Implementierungen:**
+- `FoundryJournalCollectionAdapter` (Foundry VTT)
+
+**Verwendung:**
+- Application Layer Services für platform-agnostische Read-Only Journal-Zugriffe
+- Query Builder für komplexe Suchabfragen
+
+**Methoden:**
+- `getAll()` - Alle Journal-Einträge abrufen
+- `getById(id)` - Einzelnes Journal abrufen
+- `getByIds(ids)` - Mehrere Journals abrufen
+- `exists(id)` - Prüfen ob Journal existiert
+- `count()` - Anzahl der Journals
+- `search(query)` - Suchabfrage mit Filtern, Sortierung, Pagination
+- `query()` - Fluent Query Builder
+
+---
+
+#### FoundryJournalCollectionAdapter
+**Datei:** `src/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter.ts`  
+**Token:** `journalCollectionPortToken`  
+**Lifecycle:** SINGLETON
+
+**Implementiert:** `JournalCollectionPort`
+
+**Dependencies:**
+- `FoundryGame` - Foundry-spezifische Collection-Zugriffe
+
+**Zweck:**
+- Adaptiert Foundry-spezifisches `FoundryGame` zu platform-agnostischem `JournalCollectionPort`
+- Ermöglicht Application Layer, Journal-Zugriffe ohne Foundry-Abhängigkeit durchzuführen
+- Implementiert Query Builder mit AND/OR-Logik
+
+**Query Builder:**
+- `FoundryJournalQueryBuilder` - Fluent API für komplexe Suchabfragen
+- Unterstützt `where()`, `orWhere()`, `or()`, `and()`, `limit()`, `offset()`, `sortBy()`
+
+---
+
+#### JournalRepository
+**Datei:** `src/domain/ports/repositories/journal-repository.interface.ts`  
+**Token:** `journalRepositoryToken`  
+**Typ:** Domain Port Interface
+
+**Erweitert:** `PlatformEntityRepository<JournalEntry>`, `JournalCollectionPort`
+
+**Implementierungen:**
+- `FoundryJournalRepositoryAdapter` (Foundry VTT)
+
+**Verwendung:**
+- Application Layer Services für vollständige CRUD-Operationen auf Journals
+- Flag-Management (getFlag, setFlag, unsetFlag)
+
+**Methoden (zusätzlich zu Collection):**
+- `create(data)` - Neues Journal erstellen
+- `createMany(data[])` - Mehrere Journals erstellen
+- `update(id, changes)` - Journal aktualisieren
+- `updateMany(updates[])` - Mehrere Journals aktualisieren
+- `patch(id, partial)` - Journal teilweise aktualisieren
+- `upsert(id, data)` - Journal erstellen oder aktualisieren
+- `delete(id)` - Journal löschen
+- `deleteMany(ids[])` - Mehrere Journals löschen
+- `getFlag(id, scope, key)` - Flag lesen
+- `setFlag(id, scope, key, value)` - Flag setzen
+- `unsetFlag(id, scope, key)` - Flag entfernen
+
+---
+
+#### FoundryJournalRepositoryAdapter
+**Datei:** `src/infrastructure/adapters/foundry/repository-adapters/foundry-journal-repository-adapter.ts`  
+**Token:** `journalRepositoryToken`  
+**Lifecycle:** SINGLETON
+
+**Implementiert:** `JournalRepository`
+
+**Dependencies:**
+- `FoundryGame` - Foundry-spezifische Collection-Zugriffe
+- `FoundryDocument` - Foundry-spezifische CRUD-Operationen
+
+**Zweck:**
+- Adaptiert Foundry-spezifische APIs zu platform-agnostischem `JournalRepository`
+- Delegiert Collection-Operationen an `FoundryJournalCollectionAdapter`
+- Implementiert CRUD-Operationen über `FoundryDocumentPort`
+- Unterstützt Foundry-spezifische Update-Syntax (`"-="` Notation für Property-Löschung)
+
+**Besonderheiten:**
+- Verwendet `FoundryDocument.create()` für statische `JournalEntry.create()` Aufrufe
+- Verwendet `FoundryDocument.update()` mit Foundry-spezifischer Update-Syntax
+- Verwendet `FoundryDocument.setFlag()` / `unsetFlag()` für Flag-Operationen
 
 ---
 

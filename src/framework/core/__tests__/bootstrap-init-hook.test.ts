@@ -16,6 +16,7 @@ import {
   foundrySettingsToken,
   moduleEventRegistrarToken,
   journalContextMenuLibWrapperServiceToken,
+  registerContextMenuUseCaseToken,
 } from "@/infrastructure/shared/tokens";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 
@@ -259,7 +260,130 @@ describe("BootstrapInitHookService", () => {
       );
     });
 
-    it("should register context menu libWrapper successfully", async () => {
+    it("should register context menu libWrapper and callbacks successfully", async () => {
+      const mockApiInitializer = {
+        expose: vi.fn().mockReturnValue(ok(undefined)),
+      };
+
+      const mockSettingsRegistrar = {
+        registerAll: vi.fn(),
+      };
+
+      const mockEventRegistrar = {
+        registerAll: vi.fn().mockReturnValue(ok(undefined)),
+      };
+
+      const mockContextMenuLibWrapperService = {
+        register: vi.fn().mockReturnValue(ok(undefined)),
+      };
+
+      const mockContextMenuUseCase = {
+        register: vi.fn().mockReturnValue(ok(undefined)),
+      };
+
+      (mockContainer.resolveWithError as any).mockImplementation((token: symbol) => {
+        if (token === moduleApiInitializerToken) {
+          return ok(mockApiInitializer);
+        }
+        if (token === moduleSettingsRegistrarToken) {
+          return ok(mockSettingsRegistrar);
+        }
+        if (token === moduleEventRegistrarToken) {
+          return ok(mockEventRegistrar);
+        }
+        if (token === journalContextMenuLibWrapperServiceToken) {
+          return ok(mockContextMenuLibWrapperService);
+        }
+        if (token === registerContextMenuUseCaseToken) {
+          return ok(mockContextMenuUseCase);
+        }
+        if (token === foundrySettingsToken) {
+          return err({ code: "NotFound", message: "Settings not available" });
+        }
+        return err({ code: "NotFound", message: "Token not found" });
+      });
+
+      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      service.register();
+
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
+      const initCallback = initCall?.[1] as (() => void) | undefined;
+
+      expect(initCallback).toBeDefined();
+      initCallback!();
+
+      expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        "Context menu libWrapper registered successfully"
+      );
+      expect(mockContextMenuUseCase.register).toHaveBeenCalled();
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        "Context menu callbacks registered successfully"
+      );
+    });
+
+    it("should warn when context menu use case registration fails", async () => {
+      const mockApiInitializer = {
+        expose: vi.fn().mockReturnValue(ok(undefined)),
+      };
+
+      const mockSettingsRegistrar = {
+        registerAll: vi.fn(),
+      };
+
+      const mockEventRegistrar = {
+        registerAll: vi.fn().mockReturnValue(ok(undefined)),
+      };
+
+      const mockContextMenuLibWrapperService = {
+        register: vi.fn().mockReturnValue(ok(undefined)),
+      };
+
+      const mockContextMenuUseCase = {
+        register: vi.fn().mockReturnValue(err(new Error("Registration failed"))),
+      };
+
+      (mockContainer.resolveWithError as any).mockImplementation((token: symbol) => {
+        if (token === moduleApiInitializerToken) {
+          return ok(mockApiInitializer);
+        }
+        if (token === moduleSettingsRegistrarToken) {
+          return ok(mockSettingsRegistrar);
+        }
+        if (token === moduleEventRegistrarToken) {
+          return ok(mockEventRegistrar);
+        }
+        if (token === journalContextMenuLibWrapperServiceToken) {
+          return ok(mockContextMenuLibWrapperService);
+        }
+        if (token === registerContextMenuUseCaseToken) {
+          return ok(mockContextMenuUseCase);
+        }
+        if (token === foundrySettingsToken) {
+          return err({ code: "NotFound", message: "Settings not available" });
+        }
+        return err({ code: "NotFound", message: "Token not found" });
+      });
+
+      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      service.register();
+
+      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
+      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
+      const initCallback = initCall?.[1] as (() => void) | undefined;
+
+      expect(initCallback).toBeDefined();
+      initCallback!();
+
+      expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
+      expect(mockContextMenuUseCase.register).toHaveBeenCalled();
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        "Failed to register context menu callbacks: Registration failed"
+      );
+    });
+
+    it("should warn when context menu use case cannot be resolved", async () => {
       const mockApiInitializer = {
         expose: vi.fn().mockReturnValue(ok(undefined)),
       };
@@ -289,6 +413,12 @@ describe("BootstrapInitHookService", () => {
         if (token === journalContextMenuLibWrapperServiceToken) {
           return ok(mockContextMenuLibWrapperService);
         }
+        if (token === registerContextMenuUseCaseToken) {
+          return err({
+            code: "DependencyResolveFailed" as const,
+            message: "RegisterContextMenuUseCase not found",
+          });
+        }
         if (token === foundrySettingsToken) {
           return err({ code: "NotFound", message: "Settings not available" });
         }
@@ -306,8 +436,8 @@ describe("BootstrapInitHookService", () => {
       initCallback!();
 
       expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        "Context menu libWrapper registered successfully"
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        "Failed to resolve RegisterContextMenuUseCase: RegisterContextMenuUseCase not found"
       );
     });
   });

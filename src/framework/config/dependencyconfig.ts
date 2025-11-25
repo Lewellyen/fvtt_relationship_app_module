@@ -30,6 +30,7 @@ import { registerI18nServices } from "@/framework/config/modules/i18n-services.c
 import { registerNotifications } from "@/framework/config/modules/notifications.config";
 import { registerRegistrars } from "@/framework/config/modules/registrars.config";
 import { registerEventPorts } from "@/framework/config/modules/event-ports.config";
+import { registerEntityPorts } from "@/framework/config/modules/entity-ports.config";
 
 /**
  * Registers static bootstrap values that already exist outside the container.
@@ -186,6 +187,9 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   const foundryServicesResult = registerFoundryServices(container);
   if (isErr(foundryServicesResult)) return foundryServicesResult;
+
+  const entityPortsResult = registerEntityPorts(container);
+  if (isErr(entityPortsResult)) return entityPortsResult;
 
   const i18nServicesResult = registerI18nServices(container);
   if (isErr(i18nServicesResult)) return i18nServicesResult;

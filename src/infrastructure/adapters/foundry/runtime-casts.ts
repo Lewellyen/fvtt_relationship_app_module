@@ -74,6 +74,21 @@ type DocumentWithFlags = {
 };
 
 /**
+ * Type definition for documents with update method.
+ * Generic type allows for specific return types.
+ */
+type DocumentWithUpdate<TDocument extends { id: string } = { id: string; name?: string | null }> = {
+  update: (changes: unknown) => Promise<TDocument>;
+};
+
+/**
+ * Type definition for Foundry JournalEntry class constructor.
+ */
+type JournalEntryConstructor = {
+  create: (data: unknown) => Promise<{ id: string; name?: string | null }>;
+};
+
+/**
  * Kapselt den notwendigen Cast für JournalEntry.getFlag mit modul-spezifischen Scopes.
  * fvtt-types JournalEntry.getFlag hat einen restriktiven Scope-Typ ("core" nur),
  * aber Modul-Flags verwenden die Modul-ID als Scope.
@@ -207,4 +222,84 @@ export function getFactoryOrError<T>(
     );
   }
   return ok(factory);
+}
+
+/**
+ * Kapselt den notwendigen Cast für Dokumente mit update-Methode.
+ * Wird verwendet, wenn ein Dokument zur Laufzeit geprüft werden muss,
+ * ob es eine update-Methode hat (z.B. als Fallback für unsetFlag).
+ *
+ * Diese Funktion führt eine Runtime-Validierung durch, um sicherzustellen,
+ * dass das Dokument die erforderliche `update`-Methode hat.
+ * Bei Fehlern wird ein FoundryError zurückgegeben statt einen Error zu werfen,
+ * um konsistent mit dem Result-Pattern zu bleiben.
+ *
+ * @param document - Das Foundry-Dokument (unknown, da Typen variieren)
+ * @returns Result mit dem Dokument mit update-Methode oder FoundryError
+ *
+ * @remarks
+ * Die Validierung prüft zur Laufzeit, ob die Methode `update` vorhanden ist.
+ * Dies stellt sicher, dass das Dokument die erwartete API-Struktur für
+ * Update-Operationen hat.
+ *
+ * @see {@link castFoundryDocumentForFlag} Für ähnliche Cast-Funktionen mit Runtime-Validierung
+ */
+export function castFoundryDocumentWithUpdate<
+  TDocument extends { id: string } = { id: string; name?: string | null },
+>(document: unknown): Result<DocumentWithUpdate<TDocument>, FoundryError> {
+  if (!isObjectWithMethods(document, ["update"])) {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Document does not have required method (update)", {
+        missingMethods: ["update"],
+      })
+    );
+  }
+  // type-coverage:ignore-next-line - Runtime cast required for Foundry document update
+  return ok(document as DocumentWithUpdate<TDocument>);
+}
+
+/**
+ * Kapselt den notwendigen Cast für globalThis.JournalEntry.
+ * Foundry VTT stellt JournalEntry als globale Klasse zur Verfügung,
+ * aber TypeScript kann dies nicht statisch prüfen.
+ *
+ * Diese Funktion führt eine Runtime-Validierung durch, um sicherzustellen,
+ * dass JournalEntry vorhanden ist und die erforderliche `create`-Methode hat.
+ * Bei Fehlern wird ein FoundryError zurückgegeben statt einen Error zu werfen,
+ * um konsistent mit dem Result-Pattern zu bleiben.
+ *
+ * @returns Result mit JournalEntry-Konstruktor oder FoundryError
+ *
+ * @remarks
+ * Die Validierung prüft zur Laufzeit, ob JournalEntry im globalThis verfügbar ist
+ * und die Methode `create` hat. Dies stellt sicher, dass die Foundry-API
+ * korrekt geladen ist.
+ */
+export function castFoundryJournalEntryClass(): Result<JournalEntryConstructor, FoundryError> {
+  // Check if globalThis has JournalEntry property
+  if (typeof globalThis !== "object" || globalThis === null || !("JournalEntry" in globalThis)) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "Foundry JournalEntry class not available in globalThis",
+        {}
+      )
+    );
+  }
+
+  const journalEntryClass = (globalThis as Record<string, unknown>).JournalEntry;
+
+  if (!isObjectWithMethods(journalEntryClass, ["create"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "Foundry JournalEntry class does not have required method (create)",
+        {
+          missingMethods: ["create"],
+        }
+      )
+    );
+  }
+
+  return ok(journalEntryClass as JournalEntryConstructor);
 }

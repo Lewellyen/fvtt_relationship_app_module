@@ -12,6 +12,52 @@
 
 ### Upgrade-Hinweise
 
+## [0.33.0] - 2025-11-25
+### Hinzugefügt
+- **Entity Collections & Repositories**: Neue generische Port-Interfaces für Entity-Zugriffe ([Details](src/domain/ports/collections/), [Details](src/domain/ports/repositories/))
+- `PlatformEntityCollectionPort<T>`: Generisches Interface für read-only Collection-Zugriffe mit Query Builder
+- `JournalCollectionPort`: Spezialisiertes Interface für JournalEntry Collections
+- `PlatformEntityRepository<T>`: Generisches Interface für vollständige CRUD-Operationen (Create, Read, Update, Delete)
+- `JournalRepository`: Spezialisiertes Interface für JournalEntry CRUD-Operationen
+- `EntitySearchQuery`: Interface für komplexe Suchabfragen mit Filtern, Filter-Gruppen, Sortierung und Pagination
+- `EntityQueryBuilder`: Fluent API für die Konstruktion von Suchabfragen (where, orWhere, or, and, limit, offset, sortBy)
+- **Foundry Collection & Repository Adapters**: Implementierungen für Foundry VTT ([Details](src/infrastructure/adapters/foundry/collection-adapters/), [Details](src/infrastructure/adapters/foundry/repository-adapters/))
+- `FoundryJournalCollectionAdapter`: Implementiert `JournalCollectionPort` mit Foundry-spezifischer Logik
+- `FoundryJournalRepositoryAdapter`: Implementiert `JournalRepository` mit vollständigen CRUD-Operationen
+- `FoundryJournalQueryBuilder`: Fluent Query Builder mit Unterstützung für AND/OR-Logik
+- **FoundryDocumentPort Erweiterungen**: Neue CRUD-Methoden für Document-Operationen ([Details](src/infrastructure/adapters/foundry/ports/v13/FoundryV13DocumentPort.ts))
+- `create()`: Erstellt neue Documents (z.B. `JournalEntry.create()`)
+- `update()`: Aktualisiert bestehende Documents mit Foundry-spezifischer Update-Syntax
+- `delete()`: Löscht Documents
+- `unsetFlag()`: Entfernt Flags von Documents (mit Fallback auf Update-Syntax)
+- **DI-Tokens für Collections & Repositories**: Neue Injection Tokens ([Details](src/infrastructure/shared/tokens/collection-tokens.ts), [Details](src/infrastructure/shared/tokens/repository-tokens.ts))
+- `journalCollectionPortToken`: Token für `JournalCollectionPort`
+- `journalRepositoryToken`: Token für `JournalRepository`
+- **Query Builder Features**: Fluent API für komplexe Suchabfragen
+- Unterstützung für AND/OR-Logik über `where()`, `orWhere()`, `or()`, `and()`
+- Pagination über `limit()` und `offset()`
+- Sortierung über `sortBy()`
+- Automatische OR-Group-Verwaltung beim Wechsel zwischen AND/OR-Operationen
+
+### Geändert
+- **FoundryV13DocumentPort**: Erweitert um CRUD-Methoden (`create`, `update`, `delete`, `unsetFlag`)
+- **FoundryDocumentPort**: Wrapper-Methoden für CRUD-Operationen hinzugefügt
+- **DI-Container**: Neue Registrierungen für `JournalCollectionPort` und `JournalRepository` in `entity-ports.config.ts`
+
+### Fehlerbehebungen
+- **OR-Query-Logik**: Korrigiert die Logik für `orWhere()` und `or()` Callbacks, sodass das vorherige `where()` korrekt in die OR-Group verschoben wird
+- **Query Builder**: Automatisches Schließen von OR-Groups beim Wechsel zu anderen Operationen (limit, offset, sortBy, execute)
+- **Release-Prozess Git-Lock-Behandlung**: Verbesserte Behandlung von Git-Lock-Dateien im Release-Prozess ([Details](scripts/release_utils.py))
+- `FileNotFoundError` beim Entfernen wird jetzt korrekt als Erfolg behandelt (Datei wurde bereits entfernt)
+- Retry-Mechanismus hinzugefügt, um Race Conditions zu vermeiden
+- Verbesserte Fehlerbehandlung mit spezifischen Fehlermeldungen für verschiedene Fehlertypen
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.32.0] - 2025-11-24
 ### Hinzugefügt
 - **JournalContextMenuLibWrapperService**: Neuer Service für die Verwaltung der libWrapper-Registrierung für Journal Context-Menü ([Details](src/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService.ts))

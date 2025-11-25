@@ -17,6 +17,7 @@ import {
   notificationCenterToken,
   uiChannelToken,
   journalContextMenuLibWrapperServiceToken,
+  registerContextMenuUseCaseToken,
 } from "@/infrastructure/shared/tokens";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens";
 import { LOG_LEVEL_SCHEMA } from "@/infrastructure/adapters/foundry/validation/setting-schemas";
@@ -144,6 +145,25 @@ export class BootstrapInitHookService {
           );
         } else {
           this.logger.debug("Context menu libWrapper registered successfully");
+
+          // Register context menu callbacks (after libWrapper is registered)
+          const contextMenuUseCaseResult = this.container.resolveWithError(
+            registerContextMenuUseCaseToken
+          );
+          if (contextMenuUseCaseResult.ok) {
+            const callbackRegisterResult = contextMenuUseCaseResult.value.register();
+            if (!callbackRegisterResult.ok) {
+              this.logger.warn(
+                `Failed to register context menu callbacks: ${callbackRegisterResult.error.message}`
+              );
+            } else {
+              this.logger.debug("Context menu callbacks registered successfully");
+            }
+          } else {
+            this.logger.warn(
+              `Failed to resolve RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
+            );
+          }
         }
       } else {
         this.logger.warn(

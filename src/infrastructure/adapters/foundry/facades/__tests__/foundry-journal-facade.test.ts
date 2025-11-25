@@ -32,6 +32,10 @@ describe("FoundryJournalFacade", () => {
     mockDocument = {
       getFlag: vi.fn(),
       setFlag: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      unsetFlag: vi.fn(),
       dispose: vi.fn(),
     };
 
