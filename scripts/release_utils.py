@@ -149,6 +149,366 @@ def run_command(command, cwd=None):
                 print(f"  Falls kein Git-Prozess läuft, können Sie die Datei manuell entfernen.")
         return False
 
+# ============================================================================
+# Git-Prüfungen und robustes Tag-Handling
+# ============================================================================
+
+def check_git_repository_status():
+    """
+    Prüft den Git-Repository-Status auf potenzielle Probleme.
+    
+    Returns:
+        dict: {
+            'is_clean': bool,
+            'has_uncommitted': bool,
+            'is_behind': bool,
+            'is_ahead': bool,
+            'is_diverged': bool,
+            'current_branch': str,
+            'remote_branch': str,
+            'issues': list,  # Liste von Problem-Beschreibungen
+            'warnings': list  # Liste von Warnungen
+        }
+    """
+    result = {
+        'is_clean': True,
+        'has_uncommitted': False,
+        'is_behind': False,
+        'is_ahead': False,
+        'is_diverged': False,
+        'current_branch': None,
+        'remote_branch': None,
+        'issues': [],
+        'warnings': []
+    }
+    
+    try:
+        # Prüfe auf uncommitted changes
+        status_result = subprocess.run(
+            ['git', 'status', '--porcelain'],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            check=True
+        )
+        
+        if status_result.stdout.strip():
+            result['has_uncommitted'] = True
+            result['is_clean'] = False
+            result['warnings'].append("Es gibt uncommitted Änderungen im Working Directory")
+        
+        # Hole aktuellen Branch
+        branch_result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            check=True
+        )
+        result['current_branch'] = branch_result.stdout.strip()
+        
+        # Prüfe ob Remote-Branch existiert
+        remote_branch = f"origin/{result['current_branch']}"
+        remote_check = subprocess.run(
+            ['git', 'ls-remote', '--heads', 'origin', result['current_branch']],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            check=False
+        )
+        
+        if remote_check.returncode == 0 and remote_check.stdout.strip():
+            result['remote_branch'] = remote_branch
+            
+            # Prüfe auf ausstehende Pulls (lokal hinter Remote)
+            fetch_result = subprocess.run(
+                ['git', 'fetch', 'origin', result['current_branch']],
+                capture_output=True,
+                text=True,
+                cwd=PROJECT_ROOT,
+                check=False
+            )
+            
+            # Vergleiche lokalen und Remote-Branch
+            local_hash = subprocess.run(
+                ['git', 'rev-parse', result['current_branch']],
+                capture_output=True,
+                text=True,
+                cwd=PROJECT_ROOT,
+                check=True
+            ).stdout.strip()
+            
+            remote_hash = subprocess.run(
+                ['git', 'rev-parse', remote_branch],
+                capture_output=True,
+                text=True,
+                cwd=PROJECT_ROOT,
+                check=False
+            )
+            
+            if remote_hash.returncode == 0:
+                remote_hash = remote_hash.stdout.strip()
+                
+                # Prüfe ob lokal hinter Remote
+                behind_check = subprocess.run(
+                    ['git', 'rev-list', '--count', f'{local_hash}..{remote_hash}'],
+                    capture_output=True,
+                    text=True,
+                    cwd=PROJECT_ROOT,
+                    check=False
+                )
+                
+                if behind_check.returncode == 0:
+                    behind_count = int(behind_check.stdout.strip())
+                    if behind_count > 0:
+                        result['is_behind'] = True
+                        result['is_clean'] = False
+                        result['issues'].append(
+                            f"Lokaler Branch ist {behind_count} Commit(s) hinter dem Remote-Branch. "
+                            f"Bitte 'git pull' ausführen."
+                        )
+                
+                # Prüfe ob lokal vor Remote
+                ahead_check = subprocess.run(
+                    ['git', 'rev-list', '--count', f'{remote_hash}..{local_hash}'],
+                    capture_output=True,
+                    text=True,
+                    cwd=PROJECT_ROOT,
+                    check=False
+                )
+                
+                if ahead_check.returncode == 0:
+                    ahead_count = int(ahead_check.stdout.strip())
+                    if ahead_count > 0:
+                        result['is_ahead'] = True
+                
+                # Prüfe auf Divergenz
+                if result['is_behind'] and result['is_ahead']:
+                    result['is_diverged'] = True
+                    result['issues'].append(
+                        "Lokaler und Remote-Branch sind divergiert. "
+                        "Bitte 'git pull --rebase' oder 'git pull' ausführen."
+                    )
+        else:
+            result['warnings'].append(f"Remote-Branch '{remote_branch}' existiert nicht")
+    
+    except subprocess.CalledProcessError as e:
+        result['issues'].append(f"Fehler beim Prüfen des Git-Status: {e}")
+        result['is_clean'] = False
+    except Exception as e:
+        result['issues'].append(f"Unerwarteter Fehler: {e}")
+        result['is_clean'] = False
+    
+    return result
+
+def check_tag_exists(tag_name):
+    """
+    Prüft ob ein Tag lokal oder remote existiert.
+    
+    Args:
+        tag_name (str): Name des Tags (z.B. 'v0.35.0')
+    
+    Returns:
+        dict: {
+            'exists_local': bool,
+            'exists_remote': bool,
+            'exists': bool,
+            'local_hash': str or None,
+            'remote_hash': str or None,
+            'is_same': bool  # True wenn beide existieren und gleich sind
+        }
+    """
+    result = {
+        'exists_local': False,
+        'exists_remote': False,
+        'exists': False,
+        'local_hash': None,
+        'remote_hash': None,
+        'is_same': False
+    }
+    
+    try:
+        # Prüfe lokalen Tag
+        local_check = subprocess.run(
+            ['git', 'rev-parse', tag_name],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            check=False
+        )
+        
+        if local_check.returncode == 0:
+            result['exists_local'] = True
+            result['local_hash'] = local_check.stdout.strip()
+        
+        # Prüfe Remote-Tag
+        remote_check = subprocess.run(
+            ['git', 'ls-remote', '--tags', 'origin', tag_name],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            check=False
+        )
+        
+        if remote_check.returncode == 0 and remote_check.stdout.strip():
+            result['exists_remote'] = True
+            # Extrahiere Hash aus Output (Format: "hash\trefs/tags/tag_name")
+            lines = remote_check.stdout.strip().split('\n')
+            for line in lines:
+                if tag_name in line:
+                    result['remote_hash'] = line.split()[0]
+                    break
+        
+        result['exists'] = result['exists_local'] or result['exists_remote']
+        
+        # Prüfe ob beide existieren und gleich sind
+        if result['exists_local'] and result['exists_remote']:
+            result['is_same'] = (result['local_hash'] == result['remote_hash'])
+    
+    except Exception as e:
+        print(f"  Warnung: Fehler beim Prüfen des Tags {tag_name}: {e}")
+    
+    return result
+
+def push_tags_smartly(tag_name=None):
+    """
+    Pusht Tags intelligent: Nur neue Tags werden gepusht, existierende werden übersprungen.
+    
+    Args:
+        tag_name (str, optional): Spezifischer Tag zum Pushen. Wenn None, werden alle Tags gepusht.
+    
+    Returns:
+        dict: {
+            'success': bool,
+            'pushed': list,  # Liste gepushter Tags
+            'skipped': list,  # Liste übersprungener Tags (bereits existierend)
+            'failed': list,  # Liste fehlgeschlagener Tags
+            'errors': list  # Liste von Fehlermeldungen
+        }
+    """
+    result = {
+        'success': True,
+        'pushed': [],
+        'skipped': [],
+        'failed': [],
+        'errors': []
+    }
+    
+    try:
+        # Hole alle lokalen Tags wenn kein spezifischer Tag angegeben
+        if tag_name:
+            tags_to_push = [tag_name]
+        else:
+            tags_result = subprocess.run(
+                ['git', 'tag', '-l'],
+                capture_output=True,
+                text=True,
+                cwd=PROJECT_ROOT,
+                check=True
+            )
+            tags_to_push = [t.strip() for t in tags_result.stdout.strip().split('\n') if t.strip()]
+        
+        # Prüfe jeden Tag
+        for tag in tags_to_push:
+            tag_info = check_tag_exists(tag)
+            
+            if tag_info['exists_remote']:
+                if tag_info['exists_local'] and tag_info['is_same']:
+                    # Tag existiert bereits remote und ist identisch
+                    result['skipped'].append(tag)
+                    print(f"  ⏭️  Tag {tag} existiert bereits im Remote (übersprungen)")
+                else:
+                    # Tag existiert remote aber ist unterschiedlich - Warnung
+                    result['skipped'].append(tag)
+                    result['errors'].append(
+                        f"Tag {tag} existiert bereits im Remote mit unterschiedlichem Hash. "
+                        f"Bitte manuell prüfen oder mit --force pushen."
+                    )
+                    print(f"  ⚠️  Tag {tag} existiert bereits im Remote mit unterschiedlichem Hash (übersprungen)")
+            else:
+                # Tag existiert nicht remote - pushe ihn
+                push_result = subprocess.run(
+                    ['git', 'push', 'origin', tag],
+                    capture_output=True,
+                    text=True,
+                    cwd=PROJECT_ROOT,
+                    check=False
+                )
+                
+                if push_result.returncode == 0:
+                    result['pushed'].append(tag)
+                    print(f"  ✅ Tag {tag} erfolgreich gepusht")
+                else:
+                    result['failed'].append(tag)
+                    result['errors'].append(f"Fehler beim Pushen von {tag}: {push_result.stderr}")
+                    result['success'] = False
+                    print(f"  ❌ Fehler beim Pushen von Tag {tag}: {push_result.stderr}")
+        
+        # Pushe auch den Branch (nur wenn Tags gepusht wurden oder wenn explizit gewünscht)
+        # Der Branch wird separat gepusht, daher ist diese Funktion nur für Tags zuständig
+        # Der Branch-Push wird vom Release-Tool selbst gehandhabt
+    
+    except Exception as e:
+        result['success'] = False
+        result['errors'].append(f"Unerwarteter Fehler: {e}")
+    
+    return result
+
+def validate_release_prerequisites(new_version):
+    """
+    Validiert alle Voraussetzungen für einen Release.
+    
+    Args:
+        new_version (str): Die neue Versionsnummer
+    
+    Returns:
+        dict: {
+            'valid': bool,
+            'issues': list,  # Kritische Probleme (müssen behoben werden)
+            'warnings': list,  # Warnungen (können ignoriert werden)
+            'tag_info': dict  # Informationen über den Tag
+        }
+    """
+    result = {
+        'valid': True,
+        'issues': [],
+        'warnings': [],
+        'tag_info': None
+    }
+    
+    # Prüfe Git-Status
+    git_status = check_git_repository_status()
+    
+    # Kritische Probleme
+    if git_status['is_behind'] or git_status['is_diverged']:
+        result['valid'] = False
+        result['issues'].extend(git_status['issues'])
+    
+    # Warnungen
+    if git_status['has_uncommitted']:
+        result['warnings'].extend(git_status['warnings'])
+    
+    result['warnings'].extend([w for w in git_status['warnings'] if w not in result['warnings']])
+    
+    # Prüfe Tag
+    tag_name = f"v{new_version}"
+    tag_info = check_tag_exists(tag_name)
+    result['tag_info'] = tag_info
+    
+    if tag_info['exists_remote']:
+        if not tag_info['exists_local'] or not tag_info['is_same']:
+            result['warnings'].append(
+                f"Tag {tag_name} existiert bereits im Remote. "
+                f"Der Tag wird beim Push übersprungen."
+            )
+        else:
+            result['warnings'].append(
+                f"Tag {tag_name} existiert bereits lokal und remote. "
+                f"Der Tag wird beim Push übersprungen."
+            )
+    
+    return result
+
 def update_documentation(new_version, date):
     """Aktualisiert die Dokumentation für einen neuen Release.
     

@@ -12,7 +12,9 @@ from release_utils import (
     update_version_in_file, run_command, update_documentation, update_metadata, 
     remove_bom_in_paths, write_unreleased_changes, read_unreleased_changes, 
     verify_metadata_update, detect_change_type, get_changed_files_info,
-    create_release_checkpoint, ReleaseCheckpoint
+    create_release_checkpoint, ReleaseCheckpoint,
+    check_git_repository_status, check_tag_exists, push_tags_smartly,
+    validate_release_prerequisites
 )
 
 class ReleaseGUI:
@@ -519,6 +521,47 @@ class ReleaseGUI:
     
     def documentation_commit(self, test_mode=False):
         """Nur Commit + Push, keine Version, kein Tag."""
+        # Pre-Commit-Prüfungen (nur im echten Modus)
+        if not test_mode:
+            print("\n🔍 Führe Pre-Commit-Prüfungen durch...")
+            git_status = check_git_repository_status()
+            
+            # Zeige Warnungen
+            if git_status['warnings']:
+                warning_msg = "⚠️ Warnungen vor dem Commit:\n\n"
+                warning_msg += "\n".join(f"• {w}" for w in git_status['warnings'])
+                warning_msg += "\n\nMöchten Sie trotzdem fortfahren?"
+                
+                if not messagebox.askyesno("Warnungen", warning_msg):
+                    return
+            
+            # Zeige kritische Probleme
+            if git_status['issues']:
+                error_msg = "❌ Kritische Probleme gefunden:\n\n"
+                error_msg += "\n".join(f"• {issue}" for issue in git_status['issues'])
+                error_msg += "\n\nMöchten Sie versuchen, diese automatisch zu beheben?"
+                
+                if messagebox.askyesno("Probleme gefunden", error_msg):
+                    # Versuche automatische Behebung
+                    if git_status['is_behind'] or git_status['is_diverged']:
+                        if messagebox.askyesno("Git Pull", "Soll 'git pull' ausgeführt werden?"):
+                            if run_command("git pull"):
+                                print("  ✅ Git pull erfolgreich")
+                                # Prüfe erneut
+                                git_status = check_git_repository_status()
+                                if git_status['issues']:
+                                    messagebox.showerror("Probleme bestehen", 
+                                        "Nach dem Pull bestehen noch Probleme:\n\n" +
+                                        "\n".join(git_status['issues']))
+                                    return
+                            else:
+                                messagebox.showerror("Fehler", "Git pull fehlgeschlagen")
+                                return
+                else:
+                    return
+            
+            print("  ✅ Alle Pre-Commit-Prüfungen bestanden")
+        
         # Commit-Message abfragen
         commit_msg = simpledialog.askstring(
             "Commit-Message",
@@ -670,6 +713,31 @@ class ReleaseGUI:
         
         print(f"\nStarte {'Test-' if test_mode else ''}Release-Prozess für Version {new_version}")
         
+        # Pre-Release-Prüfungen (nur im echten Modus)
+        if not test_mode:
+            print("\n🔍 Führe Pre-Release-Prüfungen durch...")
+            validation = validate_release_prerequisites(new_version)
+            
+            # Zeige Warnungen
+            if validation['warnings']:
+                warning_msg = "⚠️ Warnungen vor dem Release:\n\n"
+                warning_msg += "\n".join(f"• {w}" for w in validation['warnings'])
+                warning_msg += "\n\nMöchten Sie trotzdem fortfahren?"
+                
+                if not messagebox.askyesno("Warnungen", warning_msg):
+                    return
+            
+            # Zeige kritische Probleme
+            if validation['issues']:
+                error_msg = "❌ Kritische Probleme gefunden:\n\n"
+                error_msg += "\n".join(f"• {issue}" for issue in validation['issues'])
+                error_msg += "\n\nBitte beheben Sie diese Probleme vor dem Release."
+                
+                messagebox.showerror("Release blockiert", error_msg)
+                return
+            
+            print("  ✅ Alle Pre-Release-Prüfungen bestanden")
+        
         # Bestätigung
         confirmation = f"Release für Version {new_version} erstellen?\n\n"
         if test_mode:
@@ -794,8 +862,40 @@ class ReleaseGUI:
             if self.git_push_var.get():
                 print("\n10. Änderungen hochladen...")
                 if not test_mode:
-                    if not run_command("git push origin main --tags"):
-                        raise Exception("Git push fehlgeschlagen")
+                    # Pushe zuerst den Branch
+                    branch_result = subprocess.run(
+                        ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                        capture_output=True,
+                        text=True,
+                        cwd=Path.cwd(),
+                        check=True
+                    )
+                    current_branch = branch_result.stdout.strip()
+                    
+                    print(f"  Pushe Branch {current_branch}...")
+                    if not run_command(f"git push origin {current_branch}"):
+                        raise Exception("Git push (Branch) fehlgeschlagen")
+                    
+                    # Pushe Tags intelligent (nur neue Tags)
+                    tag_name = f"v{new_version}"
+                    print(f"  Pushe Tag {tag_name}...")
+                    tag_push_result = push_tags_smartly(tag_name)
+                    
+                    if not tag_push_result['success']:
+                        # Wenn kritische Fehler aufgetreten sind
+                        if tag_push_result['failed']:
+                            error_msg = "Fehler beim Pushen von Tags:\n"
+                            error_msg += "\n".join(tag_push_result['errors'])
+                            raise Exception(error_msg)
+                    
+                    # Zeige Zusammenfassung
+                    if tag_push_result['pushed']:
+                        print(f"  ✅ {len(tag_push_result['pushed'])} Tag(s) erfolgreich gepusht")
+                    if tag_push_result['skipped']:
+                        print(f"  ⏭️  {len(tag_push_result['skipped'])} Tag(s) übersprungen (bereits im Remote)")
+                    if tag_push_result['failed']:
+                        print(f"  ❌ {len(tag_push_result['failed'])} Tag(s) fehlgeschlagen")
+                    
                     if checkpoint:
                         checkpoint.mark_step_completed("10. Git push")
                 print("  OK Git push erfolgreich" + (" (simuliert)" if test_mode else ""))
