@@ -1,18 +1,22 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for mocking Foundry global objects (game, Hooks, ui)
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import { createMockGame, createMockHooks } from "@/test/mocks/foundry";
+import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
+import { createMockGame } from "@/test/mocks/foundry";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
+import { ok, err } from "@/infrastructure/shared/utils/result";
 
 describe("BootstrapReadyHookService", () => {
   let mockLogger: Logger;
+  let mockBootstrapHooks: BootstrapHooksPort;
   let cleanup: (() => void) | undefined;
+  let capturedReadyCallback: (() => void) | undefined;
 
   beforeEach(() => {
     vi.resetModules();
+    capturedReadyCallback = undefined;
 
     mockLogger = {
       info: vi.fn(),
@@ -24,8 +28,16 @@ describe("BootstrapReadyHookService", () => {
 
     cleanup = withFoundryGlobals({
       game: createMockGame(),
-      Hooks: createMockHooks(),
     });
+
+    // Mock BootstrapHooksPort that captures the callback
+    mockBootstrapHooks = {
+      onInit: vi.fn().mockReturnValue(ok(undefined)),
+      onReady: vi.fn().mockImplementation((callback: () => void) => {
+        capturedReadyCallback = callback;
+        return ok(undefined);
+      }),
+    };
   });
 
   afterEach(() => {
@@ -35,36 +47,39 @@ describe("BootstrapReadyHookService", () => {
   });
 
   describe("register()", () => {
-    it("should register ready hook with Hooks.on()", () => {
-      const service = new BootstrapReadyHookService(mockLogger);
+    it("should register ready hook via BootstrapHooksPort", () => {
+      const service = new BootstrapReadyHookService(mockLogger, mockBootstrapHooks);
       service.register();
 
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-      expect(hooksOnMock).toHaveBeenCalledWith("ready", expect.any(Function));
+      expect(mockBootstrapHooks.onReady).toHaveBeenCalledWith(expect.any(Function));
     });
 
-    it("should skip registration when Hooks API is not available", () => {
-      vi.unstubAllGlobals();
-      delete (global as any).Hooks;
+    it("should warn when hook registration fails", () => {
+      const failingBootstrapHooks: BootstrapHooksPort = {
+        onInit: vi.fn().mockReturnValue(ok(undefined)),
+        onReady: vi.fn().mockReturnValue(
+          err({
+            code: "PLATFORM_NOT_AVAILABLE",
+            message: "Hooks not available",
+          })
+        ),
+      };
 
-      const service = new BootstrapReadyHookService(mockLogger);
+      const service = new BootstrapReadyHookService(mockLogger, failingBootstrapHooks);
       service.register();
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        "Foundry Hooks API not available - ready hook registration skipped"
+        "Ready hook registration failed: Hooks not available",
+        undefined
       );
     });
 
     it("should execute ready callback and log messages", () => {
-      const service = new BootstrapReadyHookService(mockLogger);
+      const service = new BootstrapReadyHookService(mockLogger, mockBootstrapHooks);
       service.register();
 
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-      const readyCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "ready");
-      const readyCallback = readyCall?.[1] as (() => void) | undefined;
-
-      expect(readyCallback).toBeDefined();
-      readyCallback!();
+      expect(capturedReadyCallback).toBeDefined();
+      capturedReadyCallback!();
 
       expect(mockLogger.info).toHaveBeenCalledWith("ready-phase");
       expect(mockLogger.info).toHaveBeenCalledWith("ready-phase completed");

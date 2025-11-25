@@ -31,12 +31,14 @@ describe("init-solid Hooks Guard", () => {
       await import("@/framework/core/init-solid");
 
       // Prüfen dass logger.warn() mit der erwarteten Nachricht aufgerufen wurde
-      // Services warnen jetzt separat für init und ready hooks
+      // Services warnen jetzt über BootstrapHooksPort für init und ready hooks
       expect(warnSpy).toHaveBeenCalledWith(
-        "Foundry Hooks API not available - init hook registration skipped"
+        "Init hook registration failed: Foundry Hooks API not available",
+        undefined
       );
       expect(warnSpy).toHaveBeenCalledWith(
-        "Foundry Hooks API not available - ready hook registration skipped"
+        "Ready hook registration failed: Foundry Hooks API not available",
+        undefined
       );
 
       // Prüfen dass keine Hooks registriert wurden (weil Hooks undefined ist)
@@ -70,7 +72,7 @@ describe("init-solid Hooks Guard", () => {
 
       // Prüfen dass KEINE Warnung geloggt wurde (Hooks ist verfügbar)
       const hooksWarningCall = warnSpy.mock.calls.find((call) =>
-        call[0]?.toString().includes("Foundry Hooks API not available")
+        call[0]?.toString().includes("hook registration failed")
       );
       expect(hooksWarningCall).toBeUndefined();
 

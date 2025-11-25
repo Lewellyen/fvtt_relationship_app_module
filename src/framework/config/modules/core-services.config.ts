@@ -15,10 +15,11 @@ import {
   runtimeConfigToken,
   bootstrapInitHookServiceToken,
   bootstrapReadyHookServiceToken,
+  bootstrapHooksPortToken,
 } from "@/infrastructure/shared/tokens";
 import { DIMetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { DIPersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
-import { LocalStorageMetricsStorage } from "@/infrastructure/observability/metrics-persistence/local-storage-metrics-storage";
+import { createMetricsStorage } from "@/infrastructure/observability/metrics-persistence/metrics-storage-factory";
 import { DIConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
 import { DITraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { DIModuleHealthService } from "@/application/services/ModuleHealthService";
@@ -26,6 +27,7 @@ import { DIModuleApiInitializer } from "@/framework/core/api/module-api-initiali
 import { DIHealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
 import { DIBootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
 import { DIBootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
+import { DIFoundryBootstrapHooksAdapter } from "@/infrastructure/adapters/foundry/bootstrap-hooks-adapter";
 
 /**
  * Registers core infrastructure services.
@@ -63,7 +65,7 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
   if (enablePersistence) {
     const metricsKey =
       runtimeConfig.get("metricsPersistenceKey") ?? "fvtt_relationship_app_module.metrics";
-    const storageInstance = new LocalStorageMetricsStorage(metricsKey);
+    const storageInstance = createMetricsStorage(metricsKey);
     const storageResult = container.registerValue(metricsStorageToken, storageInstance);
     if (isErr(storageResult)) {
       return err(`Failed to register MetricsStorage: ${storageResult.error.message}`);
@@ -146,7 +148,18 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
     return err(`Failed to register ModuleApiInitializer: ${apiInitResult.error.message}`);
   }
 
-  // Register BootstrapInitHookService (deps: [loggerToken, serviceContainerToken])
+  // Register BootstrapHooksPort (no dependencies, uses direct platform API)
+  // Must be registered before Bootstrap services that depend on it
+  const bootstrapHooksResult = container.registerClass(
+    bootstrapHooksPortToken,
+    DIFoundryBootstrapHooksAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(bootstrapHooksResult)) {
+    return err(`Failed to register BootstrapHooksPort: ${bootstrapHooksResult.error.message}`);
+  }
+
+  // Register BootstrapInitHookService (deps: [loggerToken, serviceContainerToken, bootstrapHooksPortToken])
   const initHookResult = container.registerClass(
     bootstrapInitHookServiceToken,
     DIBootstrapInitHookService,
@@ -156,7 +169,7 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
     return err(`Failed to register BootstrapInitHookService: ${initHookResult.error.message}`);
   }
 
-  // Register BootstrapReadyHookService (deps: [loggerToken])
+  // Register BootstrapReadyHookService (deps: [loggerToken, bootstrapHooksPortToken])
   const readyHookResult = container.registerClass(
     bootstrapReadyHookServiceToken,
     DIBootstrapReadyHookService,

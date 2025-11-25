@@ -15,8 +15,8 @@ import {
   notificationCenterToken,
   runtimeConfigToken,
   i18nFacadeToken,
+  settingsRegistrationPortToken,
 } from "@/infrastructure/shared/tokens";
-import { platformSettingsPortToken } from "@/infrastructure/shared/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { LogLevel } from "@/framework/config/environment";
 import { ok, err } from "@/infrastructure/shared/utils/result";
@@ -36,11 +36,11 @@ const DEFAULT_SETTING_VALUES: Record<string, unknown> = {
   [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY]: "fvtt_relationship_app_module.metrics",
 };
 
-function stubPlatformGet(
+function stubPlatformGetSettingValue(
   mockSettings: any,
   overrides: Record<string, unknown> = {}
 ): ReturnType<typeof vi.spyOn> {
-  return vi.spyOn(mockSettings, "get").mockImplementation((...args: unknown[]) => {
+  return vi.spyOn(mockSettings, "getSettingValue").mockImplementation((...args: unknown[]) => {
     const [, key] = args as [string, string, unknown];
     const hasOverride = Object.prototype.hasOwnProperty.call(overrides, key);
     const value = hasOverride ? overrides[key] : DEFAULT_SETTING_VALUES[key];
@@ -55,8 +55,8 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
       container.validate();
 
-      const mockSettings = container.resolve(markAsApiSafe(platformSettingsPortToken)) as any;
-      const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
+      const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
+      const registerSpy = vi.spyOn(mockSettings, "registerSetting").mockReturnValue(ok(undefined));
 
       const mockRuntimeConfig = container.resolve(
         markAsApiSafe(runtimeConfigToken)
@@ -97,10 +97,10 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
       container.validate();
 
-      const mockSettings = container.resolve(markAsApiSafe(platformSettingsPortToken)) as any;
+      const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
 
       const callbacks: Record<string, (value: unknown) => void> = {};
-      vi.spyOn(mockSettings, "register").mockImplementation((...args: unknown[]) => {
+      vi.spyOn(mockSettings, "registerSetting").mockImplementation((...args: unknown[]) => {
         const [, key, config] = args as [unknown, string, { onChange?: (value: unknown) => void }];
         callbacks[key] = config.onChange ?? (() => {});
         return ok(undefined);
@@ -138,10 +138,10 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
       container.validate();
 
-      const mockSettings = container.resolve(markAsApiSafe(platformSettingsPortToken)) as any;
+      const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
 
       const callbacks: Record<string, (value: unknown) => void> = {};
-      vi.spyOn(mockSettings, "register").mockImplementation((...args: unknown[]) => {
+      vi.spyOn(mockSettings, "registerSetting").mockImplementation((...args: unknown[]) => {
         const [, key, config] = args as [unknown, string, { onChange?: (value: unknown) => void }];
         callbacks[key] = config.onChange ?? (() => {});
         return ok(undefined);
@@ -177,8 +177,8 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
       container.validate();
 
-      const mockSettings = container.resolve(markAsApiSafe(platformSettingsPortToken)) as any;
-      vi.spyOn(mockSettings, "register").mockImplementation((...args: unknown[]) => {
+      const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
+      vi.spyOn(mockSettings, "registerSetting").mockImplementation((...args: unknown[]) => {
         const [, key] = args as [unknown, string];
         if (key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL) {
           return err({ code: "OPERATION_FAILED", message: "Registration failed" });
@@ -220,8 +220,8 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
       container.validate();
 
-      const mockSettings = container.resolve(markAsApiSafe(platformSettingsPortToken)) as any;
-      const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
+      const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
+      const registerSpy = vi.spyOn(mockSettings, "registerSetting").mockReturnValue(ok(undefined));
 
       const mockRuntimeConfig = container.resolve(
         markAsApiSafe(runtimeConfigToken)
@@ -258,9 +258,9 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
       container.validate();
 
-      const mockSettings = container.resolve(markAsApiSafe(platformSettingsPortToken)) as any;
-      const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
-      stubPlatformGet(mockSettings, {
+      const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
+      const registerSpy = vi.spyOn(mockSettings, "registerSetting").mockReturnValue(ok(undefined));
+      stubPlatformGetSettingValue(mockSettings, {
         [MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED]: true,
         [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED]: true,
       });
@@ -306,9 +306,9 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
       container.validate();
 
-      const mockSettings = container.resolve(markAsApiSafe(platformSettingsPortToken)) as any;
-      const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
-      stubPlatformGet(mockSettings, {
+      const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
+      const registerSpy = vi.spyOn(mockSettings, "registerSetting").mockReturnValue(ok(undefined));
+      stubPlatformGetSettingValue(mockSettings, {
         [MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES]: 0,
       });
 
@@ -357,8 +357,8 @@ describe("ModuleSettingsRegistrar", () => {
       configureDependencies(container);
       container.validate();
 
-      const mockSettings = container.resolve(markAsApiSafe(platformSettingsPortToken)) as any;
-      const registerSpy = vi.spyOn(mockSettings, "register").mockReturnValue(ok(undefined));
+      const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
+      const registerSpy = vi.spyOn(mockSettings, "registerSetting").mockReturnValue(ok(undefined));
 
       const mockRuntimeConfig = container.resolve(
         markAsApiSafe(runtimeConfigToken)
@@ -416,7 +416,7 @@ describe("ModuleSettingsRegistrar DI metadata", () => {
     expect("dependencies" in ModuleSettingsRegistrar).toBe(false);
     // DI wrapper class has all dependencies
     expect(DIModuleSettingsRegistrar.dependencies).toEqual([
-      platformSettingsPortToken,
+      settingsRegistrationPortToken,
       runtimeConfigToken,
       notificationCenterToken,
       i18nFacadeToken,

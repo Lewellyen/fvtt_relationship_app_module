@@ -17,17 +17,9 @@ import type {
   RuntimeConfigKey,
   RuntimeConfigValues,
 } from "@/application/services/RuntimeConfigService";
-import {
-  LOG_LEVEL_SCHEMA,
-  BOOLEAN_FLAG_SCHEMA,
-  NON_NEGATIVE_NUMBER_SCHEMA,
-  NON_NEGATIVE_INTEGER_SCHEMA,
-  SAMPLING_RATE_SCHEMA,
-  NON_EMPTY_STRING_SCHEMA,
-} from "@/infrastructure/adapters/foundry/validation/setting-schemas";
-import type { BaseIssue } from "valibot";
-import type { BaseSchema } from "valibot";
-import type { PlatformSettingsPort } from "@/domain/ports/platform-settings-port.interface";
+import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
+import type { SettingValidator } from "@/domain/types/settings";
+import { SettingValidators } from "@/domain/types/settings";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
@@ -36,54 +28,71 @@ import {
   loggerToken,
   i18nFacadeToken,
   runtimeConfigToken,
-  platformSettingsPortToken,
+  settingsRegistrationPortToken,
 } from "@/infrastructure/shared/tokens";
 
+/**
+ * Binding configuration for syncing a setting with RuntimeConfig.
+ *
+ * Uses domain-neutral SettingValidator instead of Valibot schemas.
+ */
 interface RuntimeConfigBinding<TSchema, K extends RuntimeConfigKey> {
   runtimeKey: K;
-  schema: BaseSchema<unknown, TSchema, BaseIssue<unknown>>;
+  validator: SettingValidator<TSchema>;
   normalize: (value: TSchema) => RuntimeConfigValues[K];
 }
 
+/**
+ * LogLevel validator that checks if value is a valid LogLevel enum value.
+ */
+const isLogLevel = (value: unknown): value is LogLevel =>
+  typeof value === "number" && value >= 0 && value <= 3;
+
+/**
+ * Runtime config bindings using domain-neutral validators.
+ *
+ * DIP-Compliant: Uses SettingValidators from domain layer instead of
+ * Valibot schemas from infrastructure layer.
+ */
 export const runtimeConfigBindings = {
   [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: {
     runtimeKey: "logLevel",
-    schema: LOG_LEVEL_SCHEMA,
+    validator: isLogLevel,
     normalize: (value: LogLevel) => value,
   } satisfies RuntimeConfigBinding<LogLevel, "logLevel">,
   [MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED]: {
     runtimeKey: "enableCacheService",
-    schema: BOOLEAN_FLAG_SCHEMA,
+    validator: SettingValidators.boolean,
     normalize: (value: boolean) => value,
   } satisfies RuntimeConfigBinding<boolean, "enableCacheService">,
   [MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS]: {
     runtimeKey: "cacheDefaultTtlMs",
-    schema: NON_NEGATIVE_NUMBER_SCHEMA,
+    validator: SettingValidators.nonNegativeNumber,
     normalize: (value: number) => value,
   } satisfies RuntimeConfigBinding<number, "cacheDefaultTtlMs">,
   [MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES]: {
     runtimeKey: "cacheMaxEntries",
-    schema: NON_NEGATIVE_INTEGER_SCHEMA,
+    validator: SettingValidators.nonNegativeInteger,
     normalize: (value: number) => (value > 0 ? value : undefined),
   } satisfies RuntimeConfigBinding<number, "cacheMaxEntries">,
   [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED]: {
     runtimeKey: "enablePerformanceTracking",
-    schema: BOOLEAN_FLAG_SCHEMA,
+    validator: SettingValidators.boolean,
     normalize: (value: boolean) => value,
   } satisfies RuntimeConfigBinding<boolean, "enablePerformanceTracking">,
   [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE]: {
     runtimeKey: "performanceSamplingRate",
-    schema: SAMPLING_RATE_SCHEMA,
+    validator: SettingValidators.samplingRate,
     normalize: (value: number) => value,
   } satisfies RuntimeConfigBinding<number, "performanceSamplingRate">,
   [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED]: {
     runtimeKey: "enableMetricsPersistence",
-    schema: BOOLEAN_FLAG_SCHEMA,
+    validator: SettingValidators.boolean,
     normalize: (value: boolean) => value,
   } satisfies RuntimeConfigBinding<boolean, "enableMetricsPersistence">,
   [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY]: {
     runtimeKey: "metricsPersistenceKey",
-    schema: NON_EMPTY_STRING_SCHEMA,
+    validator: SettingValidators.nonEmptyString,
     normalize: (value: string) => value,
   } satisfies RuntimeConfigBinding<string, "metricsPersistenceKey">,
 } as const;
@@ -99,10 +108,15 @@ export const runtimeConfigBindings = {
  * - Each setting definition can be tested in isolation
  * - Clear separation between registration logic and setting configuration
  * - Full DI: All dependencies injected via constructor (no Service Locator)
+ *
+ * **DIP-Compliant:**
+ * - Uses SettingsRegistrationPort instead of PlatformSettingsPort
+ * - Uses domain-neutral SettingValidators instead of Valibot schemas
+ * - No infrastructure layer imports for validation
  */
 export class ModuleSettingsRegistrar {
   constructor(
-    private readonly settings: PlatformSettingsPort,
+    private readonly settings: SettingsRegistrationPort,
     private readonly runtimeConfig: RuntimeConfigService,
     private readonly notifications: NotificationCenter,
     private readonly i18n: I18nFacadeService,
@@ -208,13 +222,17 @@ export class ModuleSettingsRegistrar {
   }
 
   private syncRuntimeConfigFromSettings<TSchema, K extends RuntimeConfigKey>(
-    settings: PlatformSettingsPort,
+    settings: SettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
     binding: RuntimeConfigBinding<TSchema, K>,
     notifications: NotificationCenter,
     settingKey: string
   ): void {
-    const currentValue = settings.get(MODULE_CONSTANTS.MODULE.ID, settingKey, binding.schema);
+    const currentValue = settings.getSettingValue(
+      MODULE_CONSTANTS.MODULE.ID,
+      settingKey,
+      binding.validator
+    );
 
     if (!currentValue.ok) {
       notifications.warn(`Failed to read initial value for ${settingKey}`, currentValue.error, {
@@ -229,7 +247,7 @@ export class ModuleSettingsRegistrar {
   private registerDefinition<TSchema, K extends RuntimeConfigKey>(
     definition: SettingDefinition<TSchema>,
     binding: RuntimeConfigBinding<TSchema, K> | undefined,
-    settings: PlatformSettingsPort,
+    settings: SettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
     notifications: NotificationCenter,
     i18n: I18nFacadeService,
@@ -240,14 +258,14 @@ export class ModuleSettingsRegistrar {
       ? this.attachRuntimeConfigBridge(config, runtimeConfig, binding)
       : config;
 
-    const result = settings.register(
+    const result = settings.registerSetting(
       MODULE_CONSTANTS.MODULE.ID,
       definition.key,
       configWithRuntimeBridge
     );
 
     if (!result.ok) {
-      // Convert SettingsError to NotificationCenter's error format
+      // Convert DomainSettingsError to NotificationCenter's error format
       const error: { code: string; message: string; [key: string]: unknown } = {
         code: result.error.code,
         message: result.error.message,
@@ -273,7 +291,7 @@ export class ModuleSettingsRegistrar {
 
 export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   static dependencies = [
-    platformSettingsPortToken,
+    settingsRegistrationPortToken,
     runtimeConfigToken,
     notificationCenterToken,
     i18nFacadeToken,
@@ -281,7 +299,7 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   ] as const;
 
   constructor(
-    settings: PlatformSettingsPort,
+    settings: SettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
     notifications: NotificationCenter,
     i18n: I18nFacadeService,

@@ -9,6 +9,7 @@ import {
   foundryUIToken,
   foundrySettingsToken,
   foundryJournalFacadeToken,
+  settingsRegistrationPortToken,
 } from "@/infrastructure/shared/tokens";
 import { journalVisibilityServiceToken } from "@/infrastructure/shared/tokens";
 import { DIFoundryGamePort } from "@/infrastructure/adapters/foundry/services/FoundryGamePort";
@@ -20,6 +21,7 @@ import { DIFoundryJournalFacade } from "@/infrastructure/adapters/foundry/facade
 import { DIJournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import { DIFoundryLibWrapperService } from "@/infrastructure/adapters/foundry/services/FoundryLibWrapperService";
 import { DIJournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
+import { DIFoundrySettingsRegistrationAdapter } from "@/infrastructure/adapters/foundry/settings-adapters/foundry-settings-registration-adapter";
 import {
   libWrapperServiceToken,
   journalContextMenuLibWrapperServiceToken,
@@ -96,6 +98,19 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   if (isErr(settingsServiceResult)) {
     return err(
       `Failed to register FoundrySettings service: ${settingsServiceResult.error.message}`
+    );
+  }
+
+  // Register SettingsRegistrationPort (domain-neutral adapter)
+  // Uses FoundrySettingsPort internally but exposes domain-neutral interface
+  const settingsRegistrationResult = container.registerClass(
+    settingsRegistrationPortToken,
+    DIFoundrySettingsRegistrationAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(settingsRegistrationResult)) {
+    return err(
+      `Failed to register SettingsRegistrationPort: ${settingsRegistrationResult.error.message}`
     );
   }
 

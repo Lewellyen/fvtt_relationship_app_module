@@ -70,15 +70,16 @@ LocalStorageMetricsStorage (Low-Level)
 **Datei:** `src/infrastructure/observability/metrics-persistence/metrics-storage-factory.ts` (neu)
 
 ```typescript
+import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsStorage } from "./metrics-storage";
 import { LocalStorageMetricsStorage } from "./local-storage-metrics-storage";
 
 /**
  * Factory function for creating MetricsStorage instances.
- * 
+ *
  * Abstracts the concrete implementation from the DI configuration.
  * This allows easy swapping of storage backends without changing the config.
- * 
+ *
  * @param key - Storage key for persisting metrics
  * @returns MetricsStorage instance
  */
@@ -87,14 +88,22 @@ export function createMetricsStorage(key: string): MetricsStorage {
 }
 
 /**
- * Factory function for creating in-memory MetricsStorage (for testing).
- * 
- * @returns MetricsStorage instance that doesn't persist
+ * Creates an in-memory MetricsStorage for testing without touching browser APIs.
  */
 export function createInMemoryMetricsStorage(): MetricsStorage {
-  // Future: Implement InMemoryMetricsStorage for tests
-  // For now, use LocalStorage with test-specific key
-  return new LocalStorageMetricsStorage("test-metrics");
+  let state: MetricsPersistenceState | null = null;
+
+  return {
+    load(): MetricsPersistenceState | null {
+      return state;
+    },
+    save(newState: MetricsPersistenceState): void {
+      state = newState;
+    },
+    clear(): void {
+      state = null;
+    },
+  };
 }
 ```
 
@@ -156,6 +165,12 @@ describe("PersistentMetricsCollector", () => {
   });
 });
 ```
+
+#### 3.2 Coverage-Status (2025-11-25)
+
+- `metrics-storage-factory.test.ts` prüft sowohl `createMetricsStorage()` (LocalStorage-Instanzierung) als auch `createInMemoryMetricsStorage()` (Load/Save/Clear + Instanz-Isolation).
+- Die Tests stellen sicher, dass keine Browser-APIs benötigt werden und die globale Coverage-Anforderung von 100 % eingehalten wird.
+- Factory-Pfade sind damit vollständig messbar und Teil der automatischen Regressionstests.
 
 ---
 
@@ -300,6 +315,12 @@ container.registerFactory(
 - ✅ Tests nutzen InMemory-Storage ohne Browser-API
 - ✅ Reduziert Boilerplate in Tests
 - ✅ Isolation von Storage-Implementierung
+
+## Testabdeckung
+
+- **Status 2025-11-25:** Alle Factory-Pfade sind durch `metrics-storage-factory.test.ts` abgedeckt (LocalStorage-Instantiierung, in-memory Persistenz, Clear-Pfade und Instanz-Isolation).
+- **Ziel:** Sicherstellen, dass zukünftige Erweiterungen (weitere Backends) unmittelbar eigene Tests erhalten, damit die globale Coverage-Hürde (100 %) stabil bleibt.
+- **Monitoring:** Coverage-Reports aus `npm run test:coverage` prüfen explizit die Datei `metrics-storage-factory.ts`, weil sie früher 0 % aufwies.
 
 ---
 

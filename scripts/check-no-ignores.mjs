@@ -122,6 +122,13 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Array-Zugriffe: TypeScript kann nicht statisch beweisen, dass Array mit length > 0 ein Element bei Index 0 hat. Naming-Convention: Foundry verwendet PascalCase für Klassen-Namen (JournalEntry).',
   },
   
+  // Domain Types: Naming Conventions
+  {
+    file: 'src/domain/types/settings.ts',
+    allowed: ['eslint-disable-next-line'],
+    reason: 'Naming-Convention: PascalCase für namespace-ähnliches Objekt (SettingValidators) ist beabsichtigt für konsistente API-Nutzung.',
+  },
+  
 ];
 
 // Ignore-Marker, nach denen gesucht wird

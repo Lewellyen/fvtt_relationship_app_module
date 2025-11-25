@@ -46,6 +46,31 @@ describe("FoundrySettingsAdapter", () => {
       );
     });
 
+    it("should forward optional config props (hint, choices, onChange)", () => {
+      const onChange = vi.fn();
+
+      adapter.register("my-module", "level", {
+        name: "Level",
+        hint: "Pick level",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false,
+        choices: { on: "On", off: "Off" },
+        onChange,
+      });
+
+      expect(mockFoundrySettings.register).toHaveBeenCalledWith(
+        "my-module",
+        "level",
+        expect.objectContaining({
+          hint: "Pick level",
+          choices: { on: "On", off: "Off" },
+          onChange,
+        })
+      );
+    });
+
     it("should map string type to constructor", () => {
       adapter.register("my-module", "name", {
         name: "Name",

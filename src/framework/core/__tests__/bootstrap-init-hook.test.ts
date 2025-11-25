@@ -5,7 +5,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { ServiceContainer } from "@/infrastructure/di/container";
-import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
+import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
+import { createMockGame, createMockUI } from "@/test/mocks/foundry";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import {
@@ -23,10 +24,13 @@ import { ok, err } from "@/infrastructure/shared/utils/result";
 describe("BootstrapInitHookService", () => {
   let mockLogger: Logger;
   let mockContainer: ServiceContainer;
+  let mockBootstrapHooks: BootstrapHooksPort;
   let cleanup: (() => void) | undefined;
+  let capturedInitCallback: (() => void) | undefined;
 
   beforeEach(() => {
     vi.resetModules();
+    capturedInitCallback = undefined;
 
     mockLogger = {
       info: vi.fn(),
@@ -44,13 +48,21 @@ describe("BootstrapInitHookService", () => {
 
     cleanup = withFoundryGlobals({
       game: mockGame,
-      Hooks: createMockHooks(),
       ui: createMockUI(),
     });
 
     mockContainer = {
       resolveWithError: vi.fn(),
     } as unknown as ServiceContainer;
+
+    // Mock BootstrapHooksPort that captures the callback
+    mockBootstrapHooks = {
+      onInit: vi.fn().mockImplementation((callback: () => void) => {
+        capturedInitCallback = callback;
+        return ok(undefined);
+      }),
+      onReady: vi.fn().mockReturnValue(ok(undefined)),
+    };
   });
 
   afterEach(() => {
@@ -60,23 +72,34 @@ describe("BootstrapInitHookService", () => {
   });
 
   describe("register()", () => {
-    it("should register init hook with Hooks.on()", () => {
-      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+    it("should register init hook via BootstrapHooksPort", () => {
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
       service.register();
 
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-      expect(hooksOnMock).toHaveBeenCalledWith("init", expect.any(Function));
+      expect(mockBootstrapHooks.onInit).toHaveBeenCalledWith(expect.any(Function));
     });
 
-    it("should skip registration when Hooks API is not available", () => {
-      vi.unstubAllGlobals();
-      delete (global as any).Hooks;
+    it("should warn when hook registration fails", () => {
+      const failingBootstrapHooks: BootstrapHooksPort = {
+        onInit: vi.fn().mockReturnValue(
+          err({
+            code: "PLATFORM_NOT_AVAILABLE",
+            message: "Hooks not available",
+          })
+        ),
+        onReady: vi.fn().mockReturnValue(ok(undefined)),
+      };
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      const service = new BootstrapInitHookService(
+        mockLogger,
+        mockContainer,
+        failingBootstrapHooks
+      );
       service.register();
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        "Foundry Hooks API not available - init hook registration skipped"
+        "Init hook registration failed: Hooks not available",
+        undefined
       );
     });
 
@@ -109,15 +132,11 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
       service.register();
 
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
-      const initCallback = initCall?.[1] as (() => void) | undefined;
-
-      expect(initCallback).toBeDefined();
-      initCallback!();
+      expect(capturedInitCallback).toBeDefined();
+      capturedInitCallback!();
 
       expect(mockLogger.info).toHaveBeenCalledWith("init-phase");
       expect(mockApiInitializer.expose).toHaveBeenCalledWith(mockContainer);
@@ -137,15 +156,11 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
       service.register();
 
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
-      const initCallback = initCall?.[1] as (() => void) | undefined;
-
-      expect(initCallback).toBeDefined();
-      initCallback!();
+      expect(capturedInitCallback).toBeDefined();
+      capturedInitCallback!();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
         "Failed to resolve ModuleApiInitializer: ModuleApiInitializer not found"
@@ -196,15 +211,11 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
       service.register();
 
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
-      const initCallback = initCall?.[1] as (() => void) | undefined;
-
-      expect(initCallback).toBeDefined();
-      initCallback!();
+      expect(capturedInitCallback).toBeDefined();
+      capturedInitCallback!();
 
       expect(mockNotificationCenter.addChannel).toHaveBeenCalledWith(mockUIChannel);
     });
@@ -244,15 +255,11 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
       service.register();
 
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
-      const initCallback = initCall?.[1] as (() => void) | undefined;
-
-      expect(initCallback).toBeDefined();
-      initCallback!();
+      expect(capturedInitCallback).toBeDefined();
+      capturedInitCallback!();
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
         "NotificationCenter could not be resolved during init; UI channel not attached",
@@ -303,15 +310,11 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
       service.register();
 
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
-      const initCallback = initCall?.[1] as (() => void) | undefined;
-
-      expect(initCallback).toBeDefined();
-      initCallback!();
+      expect(capturedInitCallback).toBeDefined();
+      capturedInitCallback!();
 
       expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
       expect(mockLogger.debug).toHaveBeenCalledWith(
@@ -366,15 +369,11 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
       service.register();
 
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
-      const initCallback = initCall?.[1] as (() => void) | undefined;
-
-      expect(initCallback).toBeDefined();
-      initCallback!();
+      expect(capturedInitCallback).toBeDefined();
+      capturedInitCallback!();
 
       expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
       expect(mockContextMenuUseCase.register).toHaveBeenCalled();
@@ -425,15 +424,11 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
       service.register();
 
-      const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-      const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === "init");
-      const initCallback = initCall?.[1] as (() => void) | undefined;
-
-      expect(initCallback).toBeDefined();
-      initCallback!();
+      expect(capturedInitCallback).toBeDefined();
+      capturedInitCallback!();
 
       expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
       expect(mockLogger.warn).toHaveBeenCalledWith(
