@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.35.1] - 2025-11-25
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.35.0] - 2025-11-25
 ### Hinzugefügt
 - **PlatformSettingsPort**: Platform-agnostisches Interface für Settings-Verwaltung ([Details](src/domain/ports/platform-settings-port.interface.ts))
