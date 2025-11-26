@@ -1,6 +1,6 @@
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { LogLevel } from "@/framework/config/environment";
-import { LOG_LEVEL_SCHEMA } from "@/infrastructure/adapters/foundry/validation/setting-schemas";
+import { LOG_LEVEL_SCHEMA } from "@/framework/config/environment";
 import * as v from "valibot";
 
 /**

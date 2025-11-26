@@ -12,6 +12,25 @@
 
 ### Upgrade-Hinweise
 
+## [0.37.1] - 2025-11-26
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **LOG_LEVEL_SCHEMA**: Von `infrastructure/adapters/foundry/validation/setting-schemas.ts` nach `framework/config/environment.ts` verschoben ([Details](src/framework/config/environment.ts))
+- Schema gehört zum `LogLevel`-Enum (Kohäsion)
+- Behebt DIP-Verletzung in `BootstrapInitHookService`
+- **setting-schemas.ts gelöscht**: Datei enthielt nur ungenutzte Schemas (toter Code)
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.37.0] - 2025-11-26
 ### Hinzugefügt
 - **ContextMenuRegistrationPort**: Domain-Port für Context-Menu-Callback-Registrierung ([Details](src/domain/ports/context-menu-registration-port.interface.ts))

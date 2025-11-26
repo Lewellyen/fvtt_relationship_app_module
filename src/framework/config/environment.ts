@@ -1,3 +1,4 @@
+import * as v from "valibot";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
 /**
@@ -10,6 +11,17 @@ export enum LogLevel {
   WARN = 2,
   ERROR = 3,
 }
+
+/**
+ * Schema for LogLevel setting values.
+ * Validates that value is one of the defined LogLevel enum values.
+ */
+export const LOG_LEVEL_SCHEMA = v.picklist([
+  LogLevel.DEBUG,
+  LogLevel.INFO,
+  LogLevel.WARN,
+  LogLevel.ERROR,
+]);
 
 /**
  * Environment configuration for the application.

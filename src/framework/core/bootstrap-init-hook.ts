@@ -20,8 +20,7 @@ import {
   bootstrapHooksPortToken,
 } from "@/infrastructure/shared/tokens";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens";
-import { LOG_LEVEL_SCHEMA } from "@/infrastructure/adapters/foundry/validation/setting-schemas";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel, LOG_LEVEL_SCHEMA } from "@/framework/config/environment";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
