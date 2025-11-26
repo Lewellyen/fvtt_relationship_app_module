@@ -16,7 +16,7 @@ import {
   notificationCenterToken,
   platformUIPortToken,
 } from "@/infrastructure/shared/tokens";
-import { sanitizeHtml } from "@/infrastructure/adapters/foundry/validation/schemas";
+import { sanitizeHtml } from "@/infrastructure/shared/utils/sanitize";
 
 const buildJournalCacheKey = createCacheNamespace("journal-visibility");
 const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");

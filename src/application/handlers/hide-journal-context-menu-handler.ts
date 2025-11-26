@@ -3,12 +3,10 @@ import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-jou
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
-import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import {
   journalRepositoryToken,
   platformUIPortToken,
   notificationCenterToken,
-  foundryGameToken,
 } from "@/infrastructure/shared/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
@@ -22,8 +20,7 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
   constructor(
     private readonly journalRepository: JournalRepository,
     private readonly platformUI: PlatformUIPort,
-    private readonly notificationCenter: NotificationCenter,
-    private readonly foundryGame: FoundryGame
+    private readonly notificationCenter: NotificationCenter
   ) {}
 
   handle(event: JournalContextMenuEvent): void {
@@ -63,11 +60,11 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
           );
 
           if (hideResult.ok) {
-            // Hole Journal-Eintrag, um den Namen zu bekommen
-            const journalEntryResult = this.foundryGame.getJournalEntryById(journalId);
+            // Hole Journal-Eintrag über Repository, um den Namen zu bekommen
+            const journalEntryResult = this.journalRepository.getById(journalId);
             const journalName =
               journalEntryResult.ok && journalEntryResult.value
-                ? journalEntryResult.value.name
+                ? (journalEntryResult.value.name ?? journalId)
                 : journalId; // Fallback auf ID, falls Name nicht verfügbar
 
             // Notification mit Journal-Namen (für UI)
@@ -127,15 +124,13 @@ export class DIHideJournalContextMenuHandler extends HideJournalContextMenuHandl
     journalRepositoryToken,
     platformUIPortToken,
     notificationCenterToken,
-    foundryGameToken,
   ] as const;
 
   constructor(
     journalRepository: JournalRepository,
     platformUI: PlatformUIPort,
-    notificationCenter: NotificationCenter,
-    foundryGame: FoundryGame
+    notificationCenter: NotificationCenter
   ) {
-    super(journalRepository, platformUI, notificationCenter, foundryGame);
+    super(journalRepository, platformUI, notificationCenter);
   }
 }

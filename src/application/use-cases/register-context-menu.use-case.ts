@@ -1,9 +1,9 @@
 import type { Result } from "@/domain/types/result";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
-import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
+import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
 import {
-  journalContextMenuLibWrapperServiceToken,
+  contextMenuRegistrationPortToken,
   hideJournalContextMenuHandlerToken,
 } from "@/infrastructure/shared/tokens";
 import { ok } from "@/infrastructure/shared/utils/result";
@@ -13,7 +13,7 @@ import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-
  * Use-Case: Register custom context menu entries for journal entries.
  *
  * Orchestrates multiple handlers that can add menu items.
- * Registers callbacks with the JournalContextMenuLibWrapperService.
+ * Registers callbacks with the ContextMenuRegistrationPort.
  *
  * NOTE: This is NOT an EventRegistrar. The libWrapper is registered separately
  * during init, and this use-case only manages callback registration.
@@ -21,7 +21,7 @@ import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-
  * @example
  * ```typescript
  * const useCase = new RegisterContextMenuUseCase(
- *   contextMenuLibWrapperService,
+ *   contextMenuRegistration,
  *   hideJournalHandler
  * );
  *
@@ -33,7 +33,7 @@ export class RegisterContextMenuUseCase {
   private callback: ((event: JournalContextMenuEvent) => void) | undefined;
 
   constructor(
-    private readonly contextMenuLibWrapperService: JournalContextMenuLibWrapperService,
+    private readonly contextMenuRegistration: ContextMenuRegistrationPort,
     private readonly hideJournalHandler: HideJournalContextMenuHandler
   ) {}
 
@@ -52,7 +52,7 @@ export class RegisterContextMenuUseCase {
       }
     };
 
-    this.contextMenuLibWrapperService.addCallback(this.callback);
+    this.contextMenuRegistration.addCallback(this.callback);
     return ok(undefined);
   }
 
@@ -61,7 +61,7 @@ export class RegisterContextMenuUseCase {
    */
   dispose(): void {
     if (this.callback !== undefined) {
-      this.contextMenuLibWrapperService.removeCallback(this.callback);
+      this.contextMenuRegistration.removeCallback(this.callback);
       this.callback = undefined;
     }
   }
@@ -73,14 +73,14 @@ export class RegisterContextMenuUseCase {
  */
 export class DIRegisterContextMenuUseCase extends RegisterContextMenuUseCase {
   static dependencies = [
-    journalContextMenuLibWrapperServiceToken,
+    contextMenuRegistrationPortToken,
     hideJournalContextMenuHandlerToken,
   ] as const;
 
   constructor(
-    contextMenuLibWrapperService: JournalContextMenuLibWrapperService,
+    contextMenuRegistration: ContextMenuRegistrationPort,
     hideJournalHandler: HideJournalContextMenuHandler
   ) {
-    super(contextMenuLibWrapperService, hideJournalHandler);
+    super(contextMenuRegistration, hideJournalHandler);
   }
 }

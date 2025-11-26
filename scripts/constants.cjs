@@ -12,7 +12,7 @@ module.exports = {
   },
 
   // Versionen und Lizenz
-  MODULE_VERSION: "0.36.0",
+  MODULE_VERSION: "0.37.0",
   MINIMUM_CORE_VERSION: "13",
   VERIFIED_CORE_VERSION: "13",
   COMPATIBLE_CORE_VERSION: "13",

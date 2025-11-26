@@ -25,6 +25,7 @@ import { DIFoundrySettingsRegistrationAdapter } from "@/infrastructure/adapters/
 import {
   libWrapperServiceToken,
   journalContextMenuLibWrapperServiceToken,
+  contextMenuRegistrationPortToken,
 } from "@/infrastructure/shared/tokens";
 
 /**
@@ -157,6 +158,18 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   if (isErr(contextMenuLibWrapperResult)) {
     return err(
       `Failed to register JournalContextMenuLibWrapperService: ${contextMenuLibWrapperResult.error.message}`
+    );
+  }
+
+  // Register ContextMenuRegistrationPort (alias to JournalContextMenuLibWrapperService)
+  // This provides the domain-neutral port interface for context menu registration
+  const contextMenuPortResult = container.registerAlias(
+    contextMenuRegistrationPortToken,
+    journalContextMenuLibWrapperServiceToken
+  );
+  if (isErr(contextMenuPortResult)) {
+    return err(
+      `Failed to register ContextMenuRegistrationPort: ${contextMenuPortResult.error.message}`
     );
   }
 

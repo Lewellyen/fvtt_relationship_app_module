@@ -6,7 +6,6 @@ import {
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
-import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { ok } from "@/infrastructure/shared/utils/result";
@@ -38,11 +37,14 @@ describe("HideJournalContextMenuHandler", () => {
   let mockJournalRepository: JournalRepository;
   let mockPlatformUI: PlatformUIPort;
   let mockNotificationCenter: NotificationCenter;
-  let mockFoundryGame: FoundryGame;
   let handler: HideJournalContextMenuHandler;
 
   beforeEach(() => {
     mockJournalRepository = createMockJournalRepository();
+    // Setup getById to return journal with name
+    vi.mocked(mockJournalRepository.getById).mockReturnValue(
+      ok({ id: "journal-123", name: "Mein Tagebuch" })
+    );
 
     mockPlatformUI = {
       notify: vi.fn().mockReturnValue({ ok: true, value: undefined }),
@@ -56,20 +58,10 @@ describe("HideJournalContextMenuHandler", () => {
       notify: vi.fn().mockReturnValue({ ok: true, value: undefined }),
     } as unknown as NotificationCenter;
 
-    mockFoundryGame = {
-      getJournalEntries: vi.fn().mockReturnValue(ok([])),
-      getJournalEntryById: vi
-        .fn()
-        .mockReturnValue(ok({ id: "journal-123", name: "Mein Tagebuch", getFlag: vi.fn() })),
-      invalidateCache: vi.fn(),
-      dispose: vi.fn(),
-    } as unknown as FoundryGame;
-
     handler = new HideJournalContextMenuHandler(
       mockJournalRepository,
       mockPlatformUI,
-      mockNotificationCenter,
-      mockFoundryGame
+      mockNotificationCenter
     );
   });
 
@@ -187,7 +179,7 @@ describe("HideJournalContextMenuHandler", () => {
           MODULE_CONSTANTS.FLAGS.HIDDEN,
           true
         );
-        expect(mockFoundryGame.getJournalEntryById).toHaveBeenCalledWith("journal-123");
+        expect(mockJournalRepository.getById).toHaveBeenCalledWith("journal-123");
         expect(mockPlatformUI.notify).toHaveBeenCalledWith(
           `Journal "Mein Tagebuch" wurde ausgeblendet`,
           "info"
@@ -245,7 +237,7 @@ describe("HideJournalContextMenuHandler", () => {
         const mockLi = document.createElement("li");
         await callback(mockLi);
 
-        expect(mockFoundryGame.getJournalEntryById).toHaveBeenCalledWith("journal-123");
+        expect(mockJournalRepository.getById).toHaveBeenCalledWith("journal-123");
         expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
           "Failed to show notification after hiding journal",
           { code: "NOTIFY_ERROR", message: "Notification failed" },
@@ -255,7 +247,7 @@ describe("HideJournalContextMenuHandler", () => {
     });
 
     it("should use journal ID as fallback if journal entry not found", async () => {
-      mockFoundryGame.getJournalEntryById = vi.fn().mockReturnValue(ok(null));
+      vi.mocked(mockJournalRepository.getById).mockReturnValue(ok(null));
 
       const mockElement = document.createElement("div");
       mockElement.setAttribute("data-entry-id", "journal-123");
@@ -272,7 +264,34 @@ describe("HideJournalContextMenuHandler", () => {
         const mockLi = document.createElement("li");
         await callback(mockLi);
 
-        expect(mockFoundryGame.getJournalEntryById).toHaveBeenCalledWith("journal-123");
+        expect(mockJournalRepository.getById).toHaveBeenCalledWith("journal-123");
+        expect(mockPlatformUI.notify).toHaveBeenCalledWith(
+          `Journal "journal-123" wurde ausgeblendet`,
+          "info"
+        );
+      }
+    });
+
+    it("should use journal ID as fallback if journal entry has no name", async () => {
+      vi.mocked(mockJournalRepository.getById).mockReturnValue(
+        ok({ id: "journal-123", name: null })
+      );
+
+      const mockElement = document.createElement("div");
+      mockElement.setAttribute("data-entry-id", "journal-123");
+      const event: JournalContextMenuEvent = {
+        htmlElement: mockElement,
+        options: [],
+        timestamp: Date.now(),
+      };
+
+      handler.handle(event);
+
+      const callback = event.options[0]?.callback;
+      if (callback) {
+        const mockLi = document.createElement("li");
+        await callback(mockLi);
+
         expect(mockPlatformUI.notify).toHaveBeenCalledWith(
           `Journal "journal-123" wurde ausgeblendet`,
           "info"
@@ -329,8 +348,7 @@ describe("HideJournalContextMenuHandler", () => {
       const diHandler = new DIHideJournalContextMenuHandler(
         mockJournalRepository,
         mockPlatformUI,
-        mockNotificationCenter,
-        mockFoundryGame
+        mockNotificationCenter
       );
 
       expect(diHandler).toBeInstanceOf(HideJournalContextMenuHandler);

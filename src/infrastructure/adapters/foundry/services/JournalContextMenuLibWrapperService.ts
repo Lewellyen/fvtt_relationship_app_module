@@ -6,6 +6,7 @@ import type {
 } from "@/domain/services/lib-wrapper-service.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
 import { loggerToken, libWrapperServiceToken } from "@/infrastructure/shared/tokens";
 import { err, ok } from "@/infrastructure/shared/utils/result";
 
@@ -23,6 +24,8 @@ type FoundryContextMenu = {
  *
  * NOTE: This is NOT an event system. The libWrapper is registered once during
  * init, and callbacks are registered separately.
+ *
+ * Implements ContextMenuRegistrationPort for DIP compliance.
  *
  * @example
  * ```typescript
@@ -44,7 +47,7 @@ type FoundryContextMenu = {
  * });
  * ```
  */
-export class JournalContextMenuLibWrapperService {
+export class JournalContextMenuLibWrapperService implements ContextMenuRegistrationPort {
   private libWrapperRegistered = false;
   private callbacks: Array<(event: JournalContextMenuEvent) => void> = [];
   private registrationId: LibWrapperRegistrationId | undefined;

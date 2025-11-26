@@ -15,6 +15,7 @@ import type { PortSelector } from "@/infrastructure/adapters/foundry/versioning/
 import type { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
 import type { LibWrapperService } from "@/domain/services/lib-wrapper-service.interface";
+import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
 import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
 
 /**
@@ -272,3 +273,20 @@ export const libWrapperServiceToken: InjectionToken<LibWrapperService> =
  */
 export const journalContextMenuLibWrapperServiceToken: InjectionToken<JournalContextMenuLibWrapperService> =
   createInjectionToken<JournalContextMenuLibWrapperService>("JournalContextMenuLibWrapperService");
+
+/**
+ * Injection token for ContextMenuRegistrationPort.
+ *
+ * Platform-agnostic port for registering context menu callbacks.
+ * Foundry implementation uses JournalContextMenuLibWrapperService.
+ *
+ * @example
+ * ```typescript
+ * const port = container.resolve(contextMenuRegistrationPortToken);
+ * port.addCallback((event) => {
+ *   event.options.push({ name: "Custom", icon: "...", callback: () => {} });
+ * });
+ * ```
+ */
+export const contextMenuRegistrationPortToken: InjectionToken<ContextMenuRegistrationPort> =
+  createInjectionToken<ContextMenuRegistrationPort>("ContextMenuRegistrationPort");

@@ -241,6 +241,7 @@ const foundryV13I18nPortToken = createInjectionToken("FoundryV13I18nPort");
 const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
 const libWrapperServiceToken = createInjectionToken("LibWrapperService");
 const journalContextMenuLibWrapperServiceToken = createInjectionToken("JournalContextMenuLibWrapperService");
+const contextMenuRegistrationPortToken = createInjectionToken("ContextMenuRegistrationPort");
 const platformJournalEventPortToken = createInjectionToken("JournalEventPort");
 const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
   "InvalidateJournalCacheOnChangeUseCase"
@@ -10965,16 +10966,16 @@ function validateSettingConfig(namespace, key, config2) {
   return ok(result.output);
 }
 __name(validateSettingConfig, "validateSettingConfig");
-function sanitizeId(id) {
+function sanitizeId$1(id) {
   return id.replace(/[^a-zA-Z0-9-_]/g, "");
 }
-__name(sanitizeId, "sanitizeId");
-function sanitizeHtml(text) {
+__name(sanitizeId$1, "sanitizeId$1");
+function sanitizeHtml$1(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
 }
-__name(sanitizeHtml, "sanitizeHtml");
+__name(sanitizeHtml$1, "sanitizeHtml$1");
 const FoundryApplicationSchema = /* @__PURE__ */ object({
   // Application should have a string ID
   id: /* @__PURE__ */ string(),
@@ -11480,7 +11481,7 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
     if (__privateGet(this, _disposed4)) {
       return err(createFoundryError("DISPOSED", "Cannot remove journal element on disposed port"));
     }
-    const safeId = sanitizeId(journalId);
+    const safeId = sanitizeId$1(journalId);
     const element = html.querySelector(
       `li.directory-item[data-document-id="${safeId}"], li.directory-item[data-entry-id="${safeId}"]`
     );
@@ -12598,6 +12599,16 @@ function createCacheNamespace(namespace) {
   return (resource, identifier) => identifier === void 0 ? createCacheKey({ namespace: normalizedNamespace, resource }) : createCacheKey({ namespace: normalizedNamespace, resource, identifier });
 }
 __name(createCacheNamespace, "createCacheNamespace");
+function sanitizeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+__name(sanitizeHtml, "sanitizeHtml");
+function sanitizeId(id) {
+  return id.replace(/[^a-zA-Z0-9-_]/g, "");
+}
+__name(sanitizeId, "sanitizeId");
 const buildJournalCacheKey = createCacheNamespace("journal-visibility");
 const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
@@ -13172,6 +13183,15 @@ function registerFoundryServices(container) {
   if (isErr(contextMenuLibWrapperResult)) {
     return err(
       `Failed to register JournalContextMenuLibWrapperService: ${contextMenuLibWrapperResult.error.message}`
+    );
+  }
+  const contextMenuPortResult = container.registerAlias(
+    contextMenuRegistrationPortToken,
+    journalContextMenuLibWrapperServiceToken
+  );
+  if (isErr(contextMenuPortResult)) {
+    return err(
+      `Failed to register ContextMenuRegistrationPort: ${contextMenuPortResult.error.message}`
     );
   }
   return ok(void 0);
@@ -15277,8 +15297,8 @@ _DITriggerJournalDirectoryReRenderUseCase.dependencies = [
 ];
 let DITriggerJournalDirectoryReRenderUseCase = _DITriggerJournalDirectoryReRenderUseCase;
 const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
-  constructor(contextMenuLibWrapperService, hideJournalHandler) {
-    this.contextMenuLibWrapperService = contextMenuLibWrapperService;
+  constructor(contextMenuRegistration, hideJournalHandler) {
+    this.contextMenuRegistration = contextMenuRegistration;
     this.hideJournalHandler = hideJournalHandler;
   }
   /**
@@ -15292,7 +15312,7 @@ const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
         handler.handle(event);
       }
     };
-    this.contextMenuLibWrapperService.addCallback(this.callback);
+    this.contextMenuRegistration.addCallback(this.callback);
     return ok(void 0);
   }
   /**
@@ -15300,7 +15320,7 @@ const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
    */
   dispose() {
     if (this.callback !== void 0) {
-      this.contextMenuLibWrapperService.removeCallback(this.callback);
+      this.contextMenuRegistration.removeCallback(this.callback);
       this.callback = void 0;
     }
   }
@@ -15308,22 +15328,21 @@ const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
 __name(_RegisterContextMenuUseCase, "RegisterContextMenuUseCase");
 let RegisterContextMenuUseCase = _RegisterContextMenuUseCase;
 const _DIRegisterContextMenuUseCase = class _DIRegisterContextMenuUseCase extends RegisterContextMenuUseCase {
-  constructor(contextMenuLibWrapperService, hideJournalHandler) {
-    super(contextMenuLibWrapperService, hideJournalHandler);
+  constructor(contextMenuRegistration, hideJournalHandler) {
+    super(contextMenuRegistration, hideJournalHandler);
   }
 };
 __name(_DIRegisterContextMenuUseCase, "DIRegisterContextMenuUseCase");
 _DIRegisterContextMenuUseCase.dependencies = [
-  journalContextMenuLibWrapperServiceToken,
+  contextMenuRegistrationPortToken,
   hideJournalContextMenuHandlerToken
 ];
 let DIRegisterContextMenuUseCase = _DIRegisterContextMenuUseCase;
 const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
-  constructor(journalRepository, platformUI, notificationCenter, foundryGame) {
+  constructor(journalRepository, platformUI, notificationCenter) {
     this.journalRepository = journalRepository;
     this.platformUI = platformUI;
     this.notificationCenter = notificationCenter;
-    this.foundryGame = foundryGame;
   }
   handle(event) {
     const journalId = this.extractJournalId(event.htmlElement);
@@ -15351,8 +15370,8 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
             true
           );
           if (hideResult.ok) {
-            const journalEntryResult = this.foundryGame.getJournalEntryById(journalId);
-            const journalName = journalEntryResult.ok && journalEntryResult.value ? journalEntryResult.value.name : journalId;
+            const journalEntryResult = this.journalRepository.getById(journalId);
+            const journalName = journalEntryResult.ok && journalEntryResult.value ? journalEntryResult.value.name ?? journalId : journalId;
             const notifyResult = this.platformUI.notify(
               `Journal "${journalName}" wurde ausgeblendet`,
               "info"
@@ -15396,16 +15415,15 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
 __name(_HideJournalContextMenuHandler, "HideJournalContextMenuHandler");
 let HideJournalContextMenuHandler = _HideJournalContextMenuHandler;
 const _DIHideJournalContextMenuHandler = class _DIHideJournalContextMenuHandler extends HideJournalContextMenuHandler {
-  constructor(journalRepository, platformUI, notificationCenter, foundryGame) {
-    super(journalRepository, platformUI, notificationCenter, foundryGame);
+  constructor(journalRepository, platformUI, notificationCenter) {
+    super(journalRepository, platformUI, notificationCenter);
   }
 };
 __name(_DIHideJournalContextMenuHandler, "DIHideJournalContextMenuHandler");
 _DIHideJournalContextMenuHandler.dependencies = [
   journalRepositoryToken,
   platformUIPortToken,
-  notificationCenterToken,
-  foundryGameToken
+  notificationCenterToken
 ];
 let DIHideJournalContextMenuHandler = _DIHideJournalContextMenuHandler;
 function disposeHooks(hooks) {
