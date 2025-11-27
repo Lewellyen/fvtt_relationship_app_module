@@ -1,5 +1,5 @@
 import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import { disposeHooks } from "@/infrastructure/shared/utils/dispose-hooks";
@@ -30,7 +30,7 @@ export class ModuleEventRegistrar {
     processJournalDirectoryOnRender: EventRegistrar,
     invalidateJournalCacheOnChange: EventRegistrar,
     triggerJournalDirectoryReRender: EventRegistrar,
-    private readonly notificationCenter: NotificationCenter
+    private readonly notificationCenter: NotificationService
   ) {
     this.eventRegistrars = [
       processJournalDirectoryOnRender,
@@ -91,7 +91,7 @@ export class DIModuleEventRegistrar extends ModuleEventRegistrar {
     processJournalDirectoryOnRender: EventRegistrar,
     invalidateJournalCacheOnChange: EventRegistrar,
     triggerJournalDirectoryReRender: EventRegistrar,
-    notificationCenter: NotificationCenter
+    notificationCenter: NotificationService
   ) {
     super(
       processJournalDirectoryOnRender,

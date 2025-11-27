@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { CacheService } from "@/infrastructure/cache/cache.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
@@ -41,7 +41,7 @@ export class JournalVisibilityService {
   constructor(
     private readonly journalCollection: JournalCollectionPort,
     private readonly journalRepository: JournalRepository,
-    private readonly notificationCenter: NotificationCenter,
+    private readonly notificationCenter: NotificationService,
     private readonly cacheService: CacheService,
     private readonly platformUI: PlatformUIPort
   ) {}
@@ -213,7 +213,7 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
   constructor(
     journalCollection: JournalCollectionPort,
     journalRepository: JournalRepository,
-    notificationCenter: NotificationCenter,
+    notificationCenter: NotificationService,
     cacheService: CacheService,
     platformUI: PlatformUIPort
   ) {

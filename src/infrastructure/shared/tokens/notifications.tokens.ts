@@ -3,7 +3,7 @@
  */
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 
 /**
  * Injection token for the NotificationCenter.
@@ -19,7 +19,7 @@ import type { NotificationCenter } from "@/infrastructure/notifications/Notifica
  * ```
  */
 export const notificationCenterToken =
-  createInjectionToken<NotificationCenter>("NotificationCenter");
+  createInjectionToken<NotificationService>("NotificationCenter");
 
 /**
  * Injection token for ConsoleChannel.

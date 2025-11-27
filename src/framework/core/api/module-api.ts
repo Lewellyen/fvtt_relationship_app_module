@@ -1,6 +1,6 @@
 import type { ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
@@ -50,7 +50,7 @@ export interface DeprecationInfo {
  * Internal code cannot use these with container.resolve() due to type enforcement.
  */
 export interface ModuleApiTokens {
-  notificationCenterToken: ApiSafeToken<NotificationCenter>;
+  notificationCenterToken: ApiSafeToken<NotificationService>;
   journalVisibilityServiceToken: ApiSafeToken<JournalVisibilityService>;
   foundryGameToken: ApiSafeToken<FoundryGame>;
   foundryHooksToken: ApiSafeToken<FoundryHooks>;

@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import {
@@ -35,7 +35,7 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
     private readonly platformUI: PlatformUIPort,
-    private readonly notificationCenter: NotificationCenter
+    private readonly notificationCenter: NotificationService
   ) {}
 
   /**
@@ -110,7 +110,7 @@ export class DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDire
   constructor(
     journalEvents: PlatformJournalEventPort,
     platformUI: PlatformUIPort,
-    notificationCenter: NotificationCenter
+    notificationCenter: NotificationService
   ) {
     super(journalEvents, platformUI, notificationCenter);
   }

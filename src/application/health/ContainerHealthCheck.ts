@@ -1,4 +1,4 @@
-import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { Container } from "@/infrastructure/di/interfaces";
 import type { HealthCheck } from "./health-check.interface";
 import type { HealthCheckRegistry } from "./HealthCheckRegistry";
 import { healthCheckRegistryToken, serviceContainerToken } from "@/infrastructure/shared/tokens";
@@ -8,9 +8,9 @@ import { healthCheckRegistryToken, serviceContainerToken } from "@/infrastructur
  */
 export class ContainerHealthCheck implements HealthCheck {
   readonly name = "container";
-  private readonly container: ServiceContainer;
+  private readonly container: Container;
 
-  constructor(container: ServiceContainer) {
+  constructor(container: Container) {
     this.container = container;
   }
 
@@ -34,7 +34,7 @@ export class ContainerHealthCheck implements HealthCheck {
 export class DIContainerHealthCheck extends ContainerHealthCheck {
   static dependencies = [serviceContainerToken, healthCheckRegistryToken] as const;
 
-  constructor(container: ServiceContainer, registry: HealthCheckRegistry) {
+  constructor(container: Container, registry: HealthCheckRegistry) {
     super(container);
     registry.register(this);
   }
