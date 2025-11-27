@@ -1588,87 +1588,84 @@ function withTimeout(promise2, timeoutMs) {
   ]);
 }
 __name(withTimeout, "withTimeout");
-var store;
-function setGlobalConfig(config2) {
-  store = { ...store, ...config2 };
+let store$4;
+function setGlobalConfig(config$1) {
+  store$4 = {
+    ...store$4,
+    ...config$1
+  };
 }
 __name(setGlobalConfig, "setGlobalConfig");
 // @__NO_SIDE_EFFECTS__
-function getGlobalConfig(config2) {
+function getGlobalConfig(config$1) {
   return {
-    lang: config2?.lang ?? store?.lang,
-    message: config2?.message,
-    abortEarly: config2?.abortEarly ?? store?.abortEarly,
-    abortPipeEarly: config2?.abortPipeEarly ?? store?.abortPipeEarly
+    lang: config$1?.lang ?? store$4?.lang,
+    message: config$1?.message,
+    abortEarly: config$1?.abortEarly ?? store$4?.abortEarly,
+    abortPipeEarly: config$1?.abortPipeEarly ?? store$4?.abortPipeEarly
   };
 }
 __name(getGlobalConfig, "getGlobalConfig");
 function deleteGlobalConfig() {
-  store = void 0;
+  store$4 = void 0;
 }
 __name(deleteGlobalConfig, "deleteGlobalConfig");
-var store2;
-function setGlobalMessage(message2, lang) {
-  if (!store2) store2 = /* @__PURE__ */ new Map();
-  store2.set(lang, message2);
+let store$3;
+function setGlobalMessage(message$1, lang) {
+  if (!store$3) store$3 = /* @__PURE__ */ new Map();
+  store$3.set(lang, message$1);
 }
 __name(setGlobalMessage, "setGlobalMessage");
 // @__NO_SIDE_EFFECTS__
 function getGlobalMessage(lang) {
-  return store2?.get(lang);
+  return store$3?.get(lang);
 }
 __name(getGlobalMessage, "getGlobalMessage");
 function deleteGlobalMessage(lang) {
-  store2?.delete(lang);
+  store$3?.delete(lang);
 }
 __name(deleteGlobalMessage, "deleteGlobalMessage");
-var store3;
-function setSchemaMessage(message2, lang) {
-  if (!store3) store3 = /* @__PURE__ */ new Map();
-  store3.set(lang, message2);
+let store$2;
+function setSchemaMessage(message$1, lang) {
+  if (!store$2) store$2 = /* @__PURE__ */ new Map();
+  store$2.set(lang, message$1);
 }
 __name(setSchemaMessage, "setSchemaMessage");
 // @__NO_SIDE_EFFECTS__
 function getSchemaMessage(lang) {
-  return store3?.get(lang);
+  return store$2?.get(lang);
 }
 __name(getSchemaMessage, "getSchemaMessage");
 function deleteSchemaMessage(lang) {
-  store3?.delete(lang);
+  store$2?.delete(lang);
 }
 __name(deleteSchemaMessage, "deleteSchemaMessage");
-var store4;
-function setSpecificMessage(reference, message2, lang) {
-  if (!store4) store4 = /* @__PURE__ */ new Map();
-  if (!store4.get(reference)) store4.set(reference, /* @__PURE__ */ new Map());
-  store4.get(reference).set(lang, message2);
+let store$1;
+function setSpecificMessage(reference, message$1, lang) {
+  if (!store$1) store$1 = /* @__PURE__ */ new Map();
+  if (!store$1.get(reference)) store$1.set(reference, /* @__PURE__ */ new Map());
+  store$1.get(reference).set(lang, message$1);
 }
 __name(setSpecificMessage, "setSpecificMessage");
 // @__NO_SIDE_EFFECTS__
 function getSpecificMessage(reference, lang) {
-  return store4?.get(reference)?.get(lang);
+  return store$1?.get(reference)?.get(lang);
 }
 __name(getSpecificMessage, "getSpecificMessage");
 function deleteSpecificMessage(reference, lang) {
-  store4?.get(reference)?.delete(lang);
+  store$1?.get(reference)?.delete(lang);
 }
 __name(deleteSpecificMessage, "deleteSpecificMessage");
 // @__NO_SIDE_EFFECTS__
 function _stringify(input) {
   const type = typeof input;
-  if (type === "string") {
-    return `"${input}"`;
-  }
-  if (type === "number" || type === "bigint" || type === "boolean") {
-    return `${input}`;
-  }
-  if (type === "object" || type === "function") {
-    return (input && Object.getPrototypeOf(input)?.constructor?.name) ?? "null";
-  }
+  if (type === "string") return `"${input}"`;
+  if (type === "number" || type === "bigint" || type === "boolean") return `${input}`;
+  if (type === "object" || type === "function") return (input && Object.getPrototypeOf(input)?.constructor?.name) ?? "null";
   return type;
 }
 __name(_stringify, "_stringify");
-function _addIssue(context, label, dataset, config2, other) {
+function _addIssue(context, label, dataset, config$1, other) {
   const input = other && "input" in other ? other.input : dataset.value;
   const expected = other?.expected ?? context.expects ?? null;
   const received = other?.received ?? /* @__PURE__ */ _stringify(input);
@@ -1682,48 +1679,32 @@ function _addIssue(context, label, dataset, config2, other) {
     requirement: context.requirement,
     path: other?.path,
     issues: other?.issues,
-    lang: config2.lang,
-    abortEarly: config2.abortEarly,
-    abortPipeEarly: config2.abortPipeEarly
+    lang: config$1.lang,
+    abortEarly: config$1.abortEarly,
+    abortPipeEarly: config$1.abortPipeEarly
   };
   const isSchema = context.kind === "schema";
-  const message2 = other?.message ?? context.message ?? /* @__PURE__ */ getSpecificMessage(context.reference, issue.lang) ?? (isSchema ? /* @__PURE__ */ getSchemaMessage(issue.lang) : null) ?? config2.message ?? /* @__PURE__ */ getGlobalMessage(issue.lang);
-  if (message2 !== void 0) {
-    issue.message = typeof message2 === "function" ? (
-      // @ts-expect-error
-      message2(issue)
-    ) : message2;
-  }
-  if (isSchema) {
-    dataset.typed = false;
-  }
-  if (dataset.issues) {
-    dataset.issues.push(issue);
-  } else {
-    dataset.issues = [issue];
-  }
+  const message$1 = other?.message ?? context.message ?? /* @__PURE__ */ getSpecificMessage(context.reference, issue.lang) ?? (isSchema ? /* @__PURE__ */ getSchemaMessage(issue.lang) : null) ?? config$1.message ?? /* @__PURE__ */ getGlobalMessage(issue.lang);
+  if (message$1 !== void 0) issue.message = typeof message$1 === "function" ? message$1(issue) : message$1;
+  if (isSchema) dataset.typed = false;
+  if (dataset.issues) dataset.issues.push(issue);
+  else dataset.issues = [issue];
 }
 __name(_addIssue, "_addIssue");
-var textEncoder;
+let textEncoder;
 // @__NO_SIDE_EFFECTS__
 function _getByteCount(input) {
-  if (!textEncoder) {
-    textEncoder = new TextEncoder();
-  }
+  if (!textEncoder) textEncoder = new TextEncoder();
   return textEncoder.encode(input).length;
 }
 __name(_getByteCount, "_getByteCount");
-var segmenter;
+let segmenter;
 // @__NO_SIDE_EFFECTS__
 function _getGraphemeCount(input) {
-  if (!segmenter) {
-    segmenter = new Intl.Segmenter();
-  }
+  if (!segmenter) segmenter = new Intl.Segmenter();
   const segments = segmenter.segment(input);
   let count = 0;
-  for (const _ of segments) {
-    count++;
-  }
+  for (const _ of segments) count++;
   return count;
 }
 __name(_getGraphemeCount, "_getGraphemeCount");
@@ -1733,17 +1714,12 @@ function _getLastMetadata(schema, type) {
     const nestedSchemas = [];
     for (let index = schema.pipe.length - 1; index >= 0; index--) {
       const item = schema.pipe[index];
-      if (item.kind === "schema" && "pipe" in item) {
-        nestedSchemas.push(item);
-      } else if (item.kind === "metadata" && item.type === type) {
-        return item[type];
-      }
+      if (item.kind === "schema" && "pipe" in item) nestedSchemas.push(item);
+      else if (item.kind === "metadata" && item.type === type) return item[type];
     }
     for (const nestedSchema of nestedSchemas) {
       const result = /* @__PURE__ */ _getLastMetadata(nestedSchema, type);
-      if (result !== void 0) {
-        return result;
-      }
+      if (result !== void 0) return result;
     }
   }
 }
@@ -1753,106 +1729,95 @@ function _getStandardProps(context) {
   return {
     version: 1,
     vendor: "valibot",
-    validate(value2) {
-      return context["~run"]({ value: value2 }, /* @__PURE__ */ getGlobalConfig());
+    validate(value$1) {
+      return context["~run"]({ value: value$1 }, /* @__PURE__ */ getGlobalConfig());
     }
   };
 }
 __name(_getStandardProps, "_getStandardProps");
-var store5;
+let store;
 // @__NO_SIDE_EFFECTS__
 function _getWordCount(locales, input) {
-  if (!store5) {
-    store5 = /* @__PURE__ */ new Map();
-  }
-  if (!store5.get(locales)) {
-    store5.set(locales, new Intl.Segmenter(locales, { granularity: "word" }));
-  }
-  const segments = store5.get(locales).segment(input);
+  if (!store) store = /* @__PURE__ */ new Map();
+  if (!store.get(locales)) store.set(locales, new Intl.Segmenter(locales, { granularity: "word" }));
+  const segments = store.get(locales).segment(input);
   let count = 0;
-  for (const segment of segments) {
-    if (segment.isWordLike) {
-      count++;
-    }
-  }
+  for (const segment of segments) if (segment.isWordLike) count++;
   return count;
 }
 __name(_getWordCount, "_getWordCount");
-var NON_DIGIT_REGEX = /\D/gu;
+const NON_DIGIT_REGEX = /\D/gu;
 // @__NO_SIDE_EFFECTS__
 function _isLuhnAlgo(input) {
-  const number2 = input.replace(NON_DIGIT_REGEX, "");
-  let length2 = number2.length;
+  const number$1 = input.replace(NON_DIGIT_REGEX, "");
+  let length$1 = number$1.length;
   let bit = 1;
   let sum = 0;
-  while (length2) {
-    const value2 = +number2[--length2];
+  while (length$1) {
+    const value$1 = +number$1[--length$1];
     bit ^= 1;
-    sum += bit ? [0, 2, 4, 6, 8, 1, 3, 5, 7, 9][value2] : value2;
+    sum += bit ? [
+      0,
+      2,
+      4,
+      6,
+      8,
+      1,
+      3,
+      5,
+      7,
+      9
+    ][value$1] : value$1;
   }
   return sum % 10 === 0;
 }
 __name(_isLuhnAlgo, "_isLuhnAlgo");
 // @__NO_SIDE_EFFECTS__
-function _isValidObjectKey(object2, key) {
-  return Object.hasOwn(object2, key) && key !== "__proto__" && key !== "prototype" && key !== "constructor";
+function _isValidObjectKey(object$1, key) {
+  return Object.hasOwn(object$1, key) && key !== "__proto__" && key !== "prototype" && key !== "constructor";
 }
 __name(_isValidObjectKey, "_isValidObjectKey");
 // @__NO_SIDE_EFFECTS__
-function _joinExpects(values2, separator) {
-  const list = [...new Set(values2)];
-  if (list.length > 1) {
-    return `(${list.join(` ${separator} `)})`;
-  }
+function _joinExpects(values$1, separator) {
+  const list = [...new Set(values$1)];
+  if (list.length > 1) return `(${list.join(` ${separator} `)})`;
   return list[0] ?? "never";
 }
 __name(_joinExpects, "_joinExpects");
 // @__NO_SIDE_EFFECTS__
 function entriesFromList(list, schema) {
-  const entries2 = {};
-  for (const key of list) {
-    entries2[key] = schema;
-  }
-  return entries2;
+  const entries$1 = {};
+  for (const key of list) entries$1[key] = schema;
+  return entries$1;
 }
 __name(entriesFromList, "entriesFromList");
 // @__NO_SIDE_EFFECTS__
 function entriesFromObjects(schemas) {
-  const entries2 = {};
-  for (const schema of schemas) {
-    Object.assign(entries2, schema.entries);
-  }
-  return entries2;
+  const entries$1 = {};
+  for (const schema of schemas) Object.assign(entries$1, schema.entries);
+  return entries$1;
 }
 __name(entriesFromObjects, "entriesFromObjects");
 // @__NO_SIDE_EFFECTS__
 function getDotPath(issue) {
   if (issue.path) {
     let key = "";
-    for (const item of issue.path) {
-      if (typeof item.key === "string" || typeof item.key === "number") {
-        if (key) {
-          key += `.${item.key}`;
-        } else {
-          key += item.key;
-        }
-      } else {
-        return null;
-      }
-    }
+    for (const item of issue.path) if (typeof item.key === "string" || typeof item.key === "number") if (key) key += `.${item.key}`;
+    else key += item.key;
+    else return null;
     return key;
   }
   return null;
 }
 __name(getDotPath, "getDotPath");
 // @__NO_SIDE_EFFECTS__
-function isOfKind(kind, object2) {
-  return object2.kind === kind;
+function isOfKind(kind, object$1) {
+  return object$1.kind === kind;
 }
 __name(isOfKind, "isOfKind");
 // @__NO_SIDE_EFFECTS__
-function isOfType(type, object2) {
-  return object2.type === type;
+function isOfType(type, object$1) {
+  return object$1.type === type;
 }
 __name(isOfType, "isOfType");
 // @__NO_SIDE_EFFECTS__
@@ -1862,10 +1827,10 @@ function isValiError(error) {
 __name(isValiError, "isValiError");
 var ValiError = (_a = class extends Error {
   /**
-   * Creates a Valibot error with useful information.
-   *
-   * @param issues The error issues.
-   */
+  * Creates a Valibot error with useful information.
+  *
+  * @param issues The error issues.
+  */
   constructor(issues) {
     super(issues[0].message);
     this.name = "ValiError";
@@ -1880,13 +1845,11 @@ function args(schema) {
     reference: args,
     async: false,
     schema,
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const func = dataset.value;
       dataset.value = (...args_) => {
-        const argsDataset = this.schema["~run"]({ value: args_ }, config2);
-        if (argsDataset.issues) {
-          throw new ValiError(argsDataset.issues);
-        }
+        const argsDataset = this.schema["~run"]({ value: args_ }, config$1);
+        if (argsDataset.issues) throw new ValiError(argsDataset.issues);
         return func(...argsDataset.value);
       };
       return dataset;
@@ -1902,13 +1865,11 @@ function argsAsync(schema) {
     reference: argsAsync,
     async: false,
     schema,
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const func = dataset.value;
-      dataset.value = async (...args2) => {
-        const argsDataset = await schema["~run"]({ value: args2 }, config2);
-        if (argsDataset.issues) {
-          throw new ValiError(argsDataset.issues);
-        }
+      dataset.value = async (...args$1) => {
+        const argsDataset = await schema["~run"]({ value: args$1 }, config$1);
+        if (argsDataset.issues) throw new ValiError(argsDataset.issues);
         return func(...argsDataset.value);
       };
       return dataset;
@@ -1930,45 +1891,36 @@ function awaitAsync() {
   };
 }
 __name(awaitAsync, "awaitAsync");
-var BASE64_REGEX = /^(?:[\da-z+/]{4})*(?:[\da-z+/]{2}==|[\da-z+/]{3}=)?$/iu;
-var BIC_REGEX = /^[A-Z]{6}(?!00)[\dA-Z]{2}(?:[\dA-Z]{3})?$/u;
-var CUID2_REGEX = /^[a-z][\da-z]*$/u;
-var DECIMAL_REGEX = /^[+-]?(?:\d*\.)?\d+$/u;
-var DIGITS_REGEX = /^\d+$/u;
-var EMAIL_REGEX = /^[\w+-]+(?:\.[\w+-]+)*@[\da-z]+(?:[.-][\da-z]+)*\.[a-z]{2,}$/iu;
-var EMOJI_REGEX = (
-  // eslint-disable-next-line redos-detector/no-unsafe-regex, regexp/no-dupe-disjunctions -- false positives
-  /^(?:[\u{1F1E6}-\u{1F1FF}]{2}|\u{1F3F4}[\u{E0061}-\u{E007A}]{2}[\u{E0030}-\u{E0039}\u{E0061}-\u{E007A}]{1,3}\u{E007F}|(?:\p{Emoji}\uFE0F\u20E3?|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|\p{Emoji_Presentation})(?:\u200D(?:\p{Emoji}\uFE0F\u20E3?|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|\p{Emoji_Presentation}))*)+$/u
-);
-var HEXADECIMAL_REGEX = /^(?:0[hx])?[\da-fA-F]+$/u;
-var HEX_COLOR_REGEX = /^#(?:[\da-fA-F]{3,4}|[\da-fA-F]{6}|[\da-fA-F]{8})$/u;
-var IMEI_REGEX = /^\d{15}$|^\d{2}-\d{6}-\d{6}-\d$/u;
-var IPV4_REGEX = (
-  // eslint-disable-next-line redos-detector/no-unsafe-regex -- false positive
-  /^(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])(?:\.(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])){3}$/u
-);
-var IPV6_REGEX = /^(?:(?:[\da-f]{1,4}:){7}[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,7}:|(?:[\da-f]{1,4}:){1,6}:[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,5}(?::[\da-f]{1,4}){1,2}|(?:[\da-f]{1,4}:){1,4}(?::[\da-f]{1,4}){1,3}|(?:[\da-f]{1,4}:){1,3}(?::[\da-f]{1,4}){1,4}|(?:[\da-f]{1,4}:){1,2}(?::[\da-f]{1,4}){1,5}|[\da-f]{1,4}:(?::[\da-f]{1,4}){1,6}|:(?:(?::[\da-f]{1,4}){1,7}|:)|fe80:(?::[\da-f]{0,4}){0,4}%[\da-z]+|::(?:f{4}(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d)|(?:[\da-f]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d))$/iu;
-var IP_REGEX = /^(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])(?:\.(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])){3}$|^(?:(?:[\da-f]{1,4}:){7}[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,7}:|(?:[\da-f]{1,4}:){1,6}:[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,5}(?::[\da-f]{1,4}){1,2}|(?:[\da-f]{1,4}:){1,4}(?::[\da-f]{1,4}){1,3}|(?:[\da-f]{1,4}:){1,3}(?::[\da-f]{1,4}){1,4}|(?:[\da-f]{1,4}:){1,2}(?::[\da-f]{1,4}){1,5}|[\da-f]{1,4}:(?::[\da-f]{1,4}){1,6}|:(?:(?::[\da-f]{1,4}){1,7}|:)|fe80:(?::[\da-f]{0,4}){0,4}%[\da-z]+|::(?:f{4}(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d)|(?:[\da-f]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d))$/iu;
-var ISO_DATE_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:[12]\d|0[1-9]|3[01])$/u;
-var ISO_DATE_TIME_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:[12]\d|0[1-9]|3[01])[T ](?:0\d|1\d|2[0-3]):[0-5]\d$/u;
-var ISO_TIME_REGEX = /^(?:0\d|1\d|2[0-3]):[0-5]\d$/u;
-var ISO_TIME_SECOND_REGEX = /^(?:0\d|1\d|2[0-3])(?::[0-5]\d){2}$/u;
-var ISO_TIMESTAMP_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:[12]\d|0[1-9]|3[01])[T ](?:0\d|1\d|2[0-3])(?::[0-5]\d){2}(?:\.\d{1,9})?(?:Z|[+-](?:0\d|1\d|2[0-3])(?::?[0-5]\d)?)$/u;
-var ISO_WEEK_REGEX = /^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$/u;
-var MAC48_REGEX = /^(?:[\da-f]{2}:){5}[\da-f]{2}$|^(?:[\da-f]{2}-){5}[\da-f]{2}$|^(?:[\da-f]{4}\.){2}[\da-f]{4}$/iu;
-var MAC64_REGEX = /^(?:[\da-f]{2}:){7}[\da-f]{2}$|^(?:[\da-f]{2}-){7}[\da-f]{2}$|^(?:[\da-f]{4}\.){3}[\da-f]{4}$|^(?:[\da-f]{4}:){3}[\da-f]{4}$/iu;
-var MAC_REGEX = /^(?:[\da-f]{2}:){5}[\da-f]{2}$|^(?:[\da-f]{2}-){5}[\da-f]{2}$|^(?:[\da-f]{4}\.){2}[\da-f]{4}$|^(?:[\da-f]{2}:){7}[\da-f]{2}$|^(?:[\da-f]{2}-){7}[\da-f]{2}$|^(?:[\da-f]{4}\.){3}[\da-f]{4}$|^(?:[\da-f]{4}:){3}[\da-f]{4}$/iu;
-var NANO_ID_REGEX = /^[\w-]+$/u;
-var OCTAL_REGEX = /^(?:0o)?[0-7]+$/u;
-var RFC_EMAIL_REGEX = (
-  // eslint-disable-next-line regexp/prefer-w, no-useless-escape, regexp/no-useless-escape, regexp/require-unicode-regexp
-  /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
-);
-var SLUG_REGEX = /^[\da-z]+(?:[-_][\da-z]+)*$/u;
-var ULID_REGEX = /^[\da-hjkmnp-tv-zA-HJKMNP-TV-Z]{26}$/u;
-var UUID_REGEX = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/iu;
+const BASE64_REGEX = /^(?:[\da-z+/]{4})*(?:[\da-z+/]{2}==|[\da-z+/]{3}=)?$/iu;
+const BIC_REGEX = /^[A-Z]{6}(?!00)[\dA-Z]{2}(?:[\dA-Z]{3})?$/u;
+const CUID2_REGEX = /^[a-z][\da-z]*$/u;
+const DECIMAL_REGEX = /^[+-]?(?:\d*\.)?\d+$/u;
+const DIGITS_REGEX = /^\d+$/u;
+const EMAIL_REGEX = /^[\w+-]+(?:\.[\w+-]+)*@[\da-z]+(?:[.-][\da-z]+)*\.[a-z]{2,}$/iu;
+const EMOJI_REGEX = /^(?:[\u{1F1E6}-\u{1F1FF}]{2}|\u{1F3F4}[\u{E0061}-\u{E007A}]{2}[\u{E0030}-\u{E0039}\u{E0061}-\u{E007A}]{1,3}\u{E007F}|(?:\p{Emoji}\uFE0F\u20E3?|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|(?![\p{Emoji_Modifier_Base}\u{1F1E6}-\u{1F1FF}])\p{Emoji_Presentation})(?:\u200D(?:\p{Emoji}\uFE0F\u20E3?|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|(?![\p{Emoji_Modifier_Base}\u{1F1E6}-\u{1F1FF}])\p{Emoji_Presentation}))*)+$/u;
+const HEXADECIMAL_REGEX = /^(?:0[hx])?[\da-fA-F]+$/u;
+const HEX_COLOR_REGEX = /^#(?:[\da-fA-F]{3,4}|[\da-fA-F]{6}|[\da-fA-F]{8})$/u;
+const IMEI_REGEX = /^\d{15}$|^\d{2}-\d{6}-\d{6}-\d$/u;
+const IPV4_REGEX = /^(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])(?:\.(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])){3}$/u;
+const IPV6_REGEX = /^(?:(?:[\da-f]{1,4}:){7}[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,7}:|(?:[\da-f]{1,4}:){1,6}:[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,5}(?::[\da-f]{1,4}){1,2}|(?:[\da-f]{1,4}:){1,4}(?::[\da-f]{1,4}){1,3}|(?:[\da-f]{1,4}:){1,3}(?::[\da-f]{1,4}){1,4}|(?:[\da-f]{1,4}:){1,2}(?::[\da-f]{1,4}){1,5}|[\da-f]{1,4}:(?::[\da-f]{1,4}){1,6}|:(?:(?::[\da-f]{1,4}){1,7}|:)|fe80:(?::[\da-f]{0,4}){0,4}%[\da-z]+|::(?:f{4}(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d)|(?:[\da-f]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d))$/iu;
+const IP_REGEX = /^(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])(?:\.(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])){3}$|^(?:(?:[\da-f]{1,4}:){7}[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,7}:|(?:[\da-f]{1,4}:){1,6}:[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,5}(?::[\da-f]{1,4}){1,2}|(?:[\da-f]{1,4}:){1,4}(?::[\da-f]{1,4}){1,3}|(?:[\da-f]{1,4}:){1,3}(?::[\da-f]{1,4}){1,4}|(?:[\da-f]{1,4}:){1,2}(?::[\da-f]{1,4}){1,5}|[\da-f]{1,4}:(?::[\da-f]{1,4}){1,6}|:(?:(?::[\da-f]{1,4}){1,7}|:)|fe80:(?::[\da-f]{0,4}){0,4}%[\da-z]+|::(?:f{4}(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d)|(?:[\da-f]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d))$/iu;
+const ISO_DATE_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:[12]\d|0[1-9]|3[01])$/u;
+const ISO_DATE_TIME_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:[12]\d|0[1-9]|3[01])[T ](?:0\d|1\d|2[0-3]):[0-5]\d$/u;
+const ISO_TIME_REGEX = /^(?:0\d|1\d|2[0-3]):[0-5]\d$/u;
+const ISO_TIME_SECOND_REGEX = /^(?:0\d|1\d|2[0-3])(?::[0-5]\d){2}$/u;
+const ISO_TIMESTAMP_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:[12]\d|0[1-9]|3[01])[T ](?:0\d|1\d|2[0-3])(?::[0-5]\d){2}(?:\.\d{1,9})?(?:Z|[+-](?:0\d|1\d|2[0-3])(?::?[0-5]\d)?)$/u;
+const ISO_WEEK_REGEX = /^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$/u;
+const MAC48_REGEX = /^(?:[\da-f]{2}:){5}[\da-f]{2}$|^(?:[\da-f]{2}-){5}[\da-f]{2}$|^(?:[\da-f]{4}\.){2}[\da-f]{4}$/iu;
+const MAC64_REGEX = /^(?:[\da-f]{2}:){7}[\da-f]{2}$|^(?:[\da-f]{2}-){7}[\da-f]{2}$|^(?:[\da-f]{4}\.){3}[\da-f]{4}$|^(?:[\da-f]{4}:){3}[\da-f]{4}$/iu;
+const MAC_REGEX = /^(?:[\da-f]{2}:){5}[\da-f]{2}$|^(?:[\da-f]{2}-){5}[\da-f]{2}$|^(?:[\da-f]{4}\.){2}[\da-f]{4}$|^(?:[\da-f]{2}:){7}[\da-f]{2}$|^(?:[\da-f]{2}-){7}[\da-f]{2}$|^(?:[\da-f]{4}\.){3}[\da-f]{4}$|^(?:[\da-f]{4}:){3}[\da-f]{4}$/iu;
+const NANO_ID_REGEX = /^[\w-]+$/u;
+const OCTAL_REGEX = /^(?:0o)?[0-7]+$/u;
+const RFC_EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+const SLUG_REGEX = /^[\da-z]+(?:[-_][\da-z]+)*$/u;
+const ULID_REGEX = /^[\da-hjkmnp-tv-zA-HJKMNP-TV-Z]{26}$/u;
+const UUID_REGEX = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/iu;
 // @__NO_SIDE_EFFECTS__
-function base64(message2) {
+function base64(message$1) {
   return {
     kind: "validation",
     type: "base64",
@@ -1976,18 +1928,16 @@ function base64(message2) {
     async: false,
     expects: null,
     requirement: BASE64_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "Base64", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Base64", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(base64, "base64");
 // @__NO_SIDE_EFFECTS__
-function bic(message2) {
+function bic(message$1) {
   return {
     kind: "validation",
     type: "bic",
@@ -1995,11 +1945,9 @@ function bic(message2) {
     async: false,
     expects: null,
     requirement: BIC_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "BIC", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "BIC", dataset, config$1);
       return dataset;
     }
   };
@@ -2020,7 +1968,7 @@ function brand(name) {
 }
 __name(brand, "brand");
 // @__NO_SIDE_EFFECTS__
-function bytes(requirement, message2) {
+function bytes(requirement, message$1) {
   return {
     kind: "validation",
     type: "bytes",
@@ -2028,15 +1976,11 @@ function bytes(requirement, message2) {
     async: false,
     expects: `${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
-        const length2 = /* @__PURE__ */ _getByteCount(dataset.value);
-        if (length2 !== this.requirement) {
-          _addIssue(this, "bytes", dataset, config2, {
-            received: `${length2}`
-          });
-        }
+        const length$1 = /* @__PURE__ */ _getByteCount(dataset.value);
+        if (length$1 !== this.requirement) _addIssue(this, "bytes", dataset, config$1, { received: `${length$1}` });
       }
       return dataset;
     }
@@ -2044,7 +1988,7 @@ function bytes(requirement, message2) {
 }
 __name(bytes, "bytes");
 // @__NO_SIDE_EFFECTS__
-function check(requirement, message2) {
+function check(requirement, message$1) {
   return {
     kind: "validation",
     type: "check",
@@ -2052,18 +1996,16 @@ function check(requirement, message2) {
     async: false,
     expects: null,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement(dataset.value)) {
-        _addIssue(this, "input", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(check, "check");
 // @__NO_SIDE_EFFECTS__
-function checkAsync(requirement, message2) {
+function checkAsync(requirement, message$1) {
   return {
     kind: "validation",
     type: "check",
@@ -2071,18 +2013,16 @@ function checkAsync(requirement, message2) {
     async: true,
     expects: null,
     requirement,
-    message: message2,
-    async "~run"(dataset, config2) {
-      if (dataset.typed && !await this.requirement(dataset.value)) {
-        _addIssue(this, "input", dataset, config2);
-      }
+    message: message$1,
+    async "~run"(dataset, config$1) {
+      if (dataset.typed && !await this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(checkAsync, "checkAsync");
 // @__NO_SIDE_EFFECTS__
-function checkItems(requirement, message2) {
+function checkItems(requirement, message$1) {
   return {
     kind: "validation",
     type: "check_items",
@@ -2090,26 +2030,20 @@ function checkItems(requirement, message2) {
     async: false,
     expects: null,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed) {
-        for (let index = 0; index < dataset.value.length; index++) {
-          const item = dataset.value[index];
-          if (!this.requirement(item, index, dataset.value)) {
-            _addIssue(this, "item", dataset, config2, {
-              input: item,
-              path: [
-                {
-                  type: "array",
-                  origin: "value",
-                  input: dataset.value,
-                  key: index,
-                  value: item
-                }
-              ]
-            });
-          }
-        }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed) for (let index = 0; index < dataset.value.length; index++) {
+        const item = dataset.value[index];
+        if (!this.requirement(item, index, dataset.value)) _addIssue(this, "item", dataset, config$1, {
+          input: item,
+          path: [{
+            type: "array",
+            origin: "value",
+            input: dataset.value,
+            key: index,
+            value: item
+          }]
+        });
       }
       return dataset;
     }
@@ -2117,7 +2051,7 @@ function checkItems(requirement, message2) {
 }
 __name(checkItems, "checkItems");
 // @__NO_SIDE_EFFECTS__
-function checkItemsAsync(requirement, message2) {
+function checkItemsAsync(requirement, message$1) {
   return {
     kind: "validation",
     type: "check_items",
@@ -2125,28 +2059,22 @@ function checkItemsAsync(requirement, message2) {
     async: true,
     expects: null,
     requirement,
-    message: message2,
-    async "~run"(dataset, config2) {
+    message: message$1,
+    async "~run"(dataset, config$1) {
       if (dataset.typed) {
-        const requirementResults = await Promise.all(
-          dataset.value.map(this.requirement)
-        );
-        for (let index = 0; index < dataset.value.length; index++) {
-          if (!requirementResults[index]) {
-            const item = dataset.value[index];
-            _addIssue(this, "item", dataset, config2, {
-              input: item,
-              path: [
-                {
-                  type: "array",
-                  origin: "value",
-                  input: dataset.value,
-                  key: index,
-                  value: item
-                }
-              ]
-            });
-          }
+        const requirementResults = await Promise.all(dataset.value.map(this.requirement));
+        for (let index = 0; index < dataset.value.length; index++) if (!requirementResults[index]) {
+          const item = dataset.value[index];
+          _addIssue(this, "item", dataset, config$1, {
+            input: item,
+            path: [{
+              type: "array",
+              origin: "value",
+              input: dataset.value,
+              key: index,
+              value: item
+            }]
+          });
         }
       }
       return dataset;
@@ -2154,27 +2082,19 @@ function checkItemsAsync(requirement, message2) {
   };
 }
 __name(checkItemsAsync, "checkItemsAsync");
-var CREDIT_CARD_REGEX = /^(?:\d{14,19}|\d{4}(?: \d{3,6}){2,4}|\d{4}(?:-\d{3,6}){2,4})$/u;
-var SANITIZE_REGEX = /[- ]/gu;
-var PROVIDER_REGEX_LIST = [
-  // American Express
+const CREDIT_CARD_REGEX = /^(?:\d{14,19}|\d{4}(?: \d{3,6}){2,4}|\d{4}(?:-\d{3,6}){2,4})$/u;
+const SANITIZE_REGEX = /[- ]/gu;
+const PROVIDER_REGEX_LIST = [
   /^3[47]\d{13}$/u,
-  // Diners Club
   /^3(?:0[0-5]|[68]\d)\d{11,13}$/u,
-  // Discover
   /^6(?:011|5\d{2})\d{12,15}$/u,
-  // JCB
   /^(?:2131|1800|35\d{3})\d{11}$/u,
-  // Mastercard
-  // eslint-disable-next-line redos-detector/no-unsafe-regex
   /^5[1-5]\d{2}|(?:222\d|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)\d{12}$/u,
-  // UnionPay
   /^(?:6[27]\d{14,17}|81\d{14,17})$/u,
-  // Visa
   /^4\d{12}(?:\d{3,6})?$/u
 ];
 // @__NO_SIDE_EFFECTS__
-function creditCard(message2) {
+function creditCard(message$1) {
   return {
     kind: "validation",
     type: "credit_card",
@@ -2183,23 +2103,18 @@ function creditCard(message2) {
     expects: null,
     requirement(input) {
       let sanitized;
-      return CREDIT_CARD_REGEX.test(input) && // Remove any hyphens and blanks
-      (sanitized = input.replace(SANITIZE_REGEX, "")) && // Check if it matches a provider
-      PROVIDER_REGEX_LIST.some((regex2) => regex2.test(sanitized)) && // Check if passes luhn algorithm
-      /* @__PURE__ */ _isLuhnAlgo(sanitized);
+      return CREDIT_CARD_REGEX.test(input) && (sanitized = input.replace(SANITIZE_REGEX, "")) && PROVIDER_REGEX_LIST.some((regex$1) => regex$1.test(sanitized)) && /* @__PURE__ */ _isLuhnAlgo(sanitized);
     },
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement(dataset.value)) {
-        _addIssue(this, "credit card", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "credit card", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(creditCard, "creditCard");
 // @__NO_SIDE_EFFECTS__
-function cuid2(message2) {
+function cuid2(message$1) {
   return {
     kind: "validation",
     type: "cuid2",
@@ -2207,18 +2122,16 @@ function cuid2(message2) {
     async: false,
     expects: null,
     requirement: CUID2_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "Cuid2", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Cuid2", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(cuid2, "cuid2");
 // @__NO_SIDE_EFFECTS__
-function decimal(message2) {
+function decimal(message$1) {
   return {
     kind: "validation",
     type: "decimal",
@@ -2226,11 +2139,9 @@ function decimal(message2) {
     async: false,
     expects: null,
     requirement: DECIMAL_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "decimal", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "decimal", dataset, config$1);
       return dataset;
     }
   };
@@ -2247,7 +2158,7 @@ function description(description_) {
 }
 __name(description, "description");
 // @__NO_SIDE_EFFECTS__
-function digits(message2) {
+function digits(message$1) {
   return {
     kind: "validation",
     type: "digits",
@@ -2255,18 +2166,16 @@ function digits(message2) {
     async: false,
     expects: null,
     requirement: DIGITS_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "digits", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "digits", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(digits, "digits");
 // @__NO_SIDE_EFFECTS__
-function email(message2) {
+function email(message$1) {
   return {
     kind: "validation",
     type: "email",
@@ -2274,18 +2183,16 @@ function email(message2) {
     expects: null,
     async: false,
     requirement: EMAIL_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "email", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "email", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(email, "email");
 // @__NO_SIDE_EFFECTS__
-function emoji(message2) {
+function emoji(message$1) {
   return {
     kind: "validation",
     type: "emoji",
@@ -2293,38 +2200,32 @@ function emoji(message2) {
     async: false,
     expects: null,
     requirement: EMOJI_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "emoji", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "emoji", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(emoji, "emoji");
 // @__NO_SIDE_EFFECTS__
-function empty(message2) {
+function empty(message$1) {
   return {
     kind: "validation",
     type: "empty",
     reference: empty,
     async: false,
     expects: "0",
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.length > 0) {
-        _addIssue(this, "length", dataset, config2, {
-          received: `${dataset.value.length}`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.length > 0) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
       return dataset;
     }
   };
 }
 __name(empty, "empty");
 // @__NO_SIDE_EFFECTS__
-function endsWith(requirement, message2) {
+function endsWith(requirement, message$1) {
   return {
     kind: "validation",
     type: "ends_with",
@@ -2332,20 +2233,16 @@ function endsWith(requirement, message2) {
     async: false,
     expects: `"${requirement}"`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !dataset.value.endsWith(this.requirement)) {
-        _addIssue(this, "end", dataset, config2, {
-          received: `"${dataset.value.slice(-this.requirement.length)}"`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !dataset.value.endsWith(this.requirement)) _addIssue(this, "end", dataset, config$1, { received: `"${dataset.value.slice(-this.requirement.length)}"` });
       return dataset;
     }
   };
 }
 __name(endsWith, "endsWith");
 // @__NO_SIDE_EFFECTS__
-function entries(requirement, message2) {
+function entries(requirement, message$1) {
   return {
     kind: "validation",
     type: "entries",
@@ -2353,22 +2250,18 @@ function entries(requirement, message2) {
     async: false,
     expects: `${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (!dataset.typed) return dataset;
       const count = Object.keys(dataset.value).length;
-      if (dataset.typed && count !== this.requirement) {
-        _addIssue(this, "entries", dataset, config2, {
-          received: `${count}`
-        });
-      }
+      if (dataset.typed && count !== this.requirement) _addIssue(this, "entries", dataset, config$1, { received: `${count}` });
       return dataset;
     }
   };
 }
 __name(entries, "entries");
 // @__NO_SIDE_EFFECTS__
-function everyItem(requirement, message2) {
+function everyItem(requirement, message$1) {
   return {
     kind: "validation",
     type: "every_item",
@@ -2376,18 +2269,26 @@ function everyItem(requirement, message2) {
     async: false,
     expects: null,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !dataset.value.every(this.requirement)) {
-        _addIssue(this, "item", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !dataset.value.every(this.requirement)) _addIssue(this, "item", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(everyItem, "everyItem");
 // @__NO_SIDE_EFFECTS__
-function excludes(requirement, message2) {
+function examples(examples_) {
+  return {
+    kind: "metadata",
+    type: "examples",
+    reference: examples,
+    examples: examples_
+  };
+}
+__name(examples, "examples");
+// @__NO_SIDE_EFFECTS__
+function excludes(requirement, message$1) {
   const received = /* @__PURE__ */ _stringify(requirement);
   return {
     kind: "validation",
@@ -2396,11 +2297,9 @@ function excludes(requirement, message2) {
     async: false,
     expects: `!${received}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.includes(this.requirement)) {
-        _addIssue(this, "content", dataset, config2, { received });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.includes(this.requirement)) _addIssue(this, "content", dataset, config$1, { received });
       return dataset;
     }
   };
@@ -2437,7 +2336,7 @@ function findItem(operation) {
 }
 __name(findItem, "findItem");
 // @__NO_SIDE_EFFECTS__
-function finite(message2) {
+function finite(message$1) {
   return {
     kind: "validation",
     type: "finite",
@@ -2445,11 +2344,9 @@ function finite(message2) {
     async: false,
     expects: null,
     requirement: Number.isFinite,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement(dataset.value)) {
-        _addIssue(this, "finite", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "finite", dataset, config$1);
       return dataset;
     }
   };
@@ -2470,7 +2367,7 @@ function flavor(name) {
 }
 __name(flavor, "flavor");
 // @__NO_SIDE_EFFECTS__
-function graphemes(requirement, message2) {
+function graphemes(requirement, message$1) {
   return {
     kind: "validation",
     type: "graphemes",
@@ -2478,15 +2375,11 @@ function graphemes(requirement, message2) {
     async: false,
     expects: `${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
         const count = /* @__PURE__ */ _getGraphemeCount(dataset.value);
-        if (count !== this.requirement) {
-          _addIssue(this, "graphemes", dataset, config2, {
-            received: `${count}`
-          });
-        }
+        if (count !== this.requirement) _addIssue(this, "graphemes", dataset, config$1, { received: `${count}` });
       }
       return dataset;
     }
@@ -2494,7 +2387,7 @@ function graphemes(requirement, message2) {
 }
 __name(graphemes, "graphemes");
 // @__NO_SIDE_EFFECTS__
-function gtValue(requirement, message2) {
+function gtValue(requirement, message$1) {
   return {
     kind: "validation",
     type: "gt_value",
@@ -2502,19 +2395,15 @@ function gtValue(requirement, message2) {
     async: false,
     expects: `>${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !(dataset.value > this.requirement)) {
-        _addIssue(this, "value", dataset, config2, {
-          received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value)
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !(dataset.value > this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
       return dataset;
     }
   };
 }
 __name(gtValue, "gtValue");
-var HASH_LENGTHS = {
+const HASH_LENGTHS = {
   md4: 32,
   md5: 32,
   sha1: 40,
@@ -2531,29 +2420,24 @@ var HASH_LENGTHS = {
   adler32: 8
 };
 // @__NO_SIDE_EFFECTS__
-function hash(types, message2) {
+function hash(types, message$1) {
   return {
     kind: "validation",
     type: "hash",
     reference: hash,
     expects: null,
     async: false,
-    requirement: RegExp(
-      types.map((type) => `^[a-f0-9]{${HASH_LENGTHS[type]}}$`).join("|"),
-      "iu"
-    ),
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "hash", dataset, config2);
-      }
+    requirement: RegExp(types.map((type) => `^[a-f0-9]{${HASH_LENGTHS[type]}}$`).join("|"), "iu"),
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "hash", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(hash, "hash");
 // @__NO_SIDE_EFFECTS__
-function hexadecimal(message2) {
+function hexadecimal(message$1) {
   return {
     kind: "validation",
     type: "hexadecimal",
@@ -2561,18 +2445,16 @@ function hexadecimal(message2) {
     async: false,
     expects: null,
     requirement: HEXADECIMAL_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "hexadecimal", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "hexadecimal", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(hexadecimal, "hexadecimal");
 // @__NO_SIDE_EFFECTS__
-function hexColor(message2) {
+function hexColor(message$1) {
   return {
     kind: "validation",
     type: "hex_color",
@@ -2580,18 +2462,16 @@ function hexColor(message2) {
     async: false,
     expects: null,
     requirement: HEX_COLOR_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "hex color", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "hex color", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(hexColor, "hexColor");
 // @__NO_SIDE_EFFECTS__
-function imei(message2) {
+function imei(message$1) {
   return {
     kind: "validation",
     type: "imei",
@@ -2601,18 +2481,16 @@ function imei(message2) {
     requirement(input) {
       return IMEI_REGEX.test(input) && /* @__PURE__ */ _isLuhnAlgo(input);
     },
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement(dataset.value)) {
-        _addIssue(this, "IMEI", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "IMEI", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(imei, "imei");
 // @__NO_SIDE_EFFECTS__
-function includes(requirement, message2) {
+function includes(requirement, message$1) {
   const expects = /* @__PURE__ */ _stringify(requirement);
   return {
     kind: "validation",
@@ -2621,20 +2499,16 @@ function includes(requirement, message2) {
     async: false,
     expects,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !dataset.value.includes(this.requirement)) {
-        _addIssue(this, "content", dataset, config2, {
-          received: `!${expects}`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !dataset.value.includes(this.requirement)) _addIssue(this, "content", dataset, config$1, { received: `!${expects}` });
       return dataset;
     }
   };
 }
 __name(includes, "includes");
 // @__NO_SIDE_EFFECTS__
-function integer(message2) {
+function integer(message$1) {
   return {
     kind: "validation",
     type: "integer",
@@ -2642,18 +2516,16 @@ function integer(message2) {
     async: false,
     expects: null,
     requirement: Number.isInteger,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement(dataset.value)) {
-        _addIssue(this, "integer", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "integer", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(integer, "integer");
 // @__NO_SIDE_EFFECTS__
-function ip(message2) {
+function ip(message$1) {
   return {
     kind: "validation",
     type: "ip",
@@ -2661,18 +2533,16 @@ function ip(message2) {
     async: false,
     expects: null,
     requirement: IP_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "IP", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "IP", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(ip, "ip");
 // @__NO_SIDE_EFFECTS__
-function ipv4(message2) {
+function ipv4(message$1) {
   return {
     kind: "validation",
     type: "ipv4",
@@ -2680,18 +2550,16 @@ function ipv4(message2) {
     async: false,
     expects: null,
     requirement: IPV4_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "IPv4", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "IPv4", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(ipv4, "ipv4");
 // @__NO_SIDE_EFFECTS__
-function ipv6(message2) {
+function ipv6(message$1) {
   return {
     kind: "validation",
     type: "ipv6",
@@ -2699,18 +2567,16 @@ function ipv6(message2) {
     async: false,
     expects: null,
     requirement: IPV6_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "IPv6", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "IPv6", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(ipv6, "ipv6");
 // @__NO_SIDE_EFFECTS__
-function isoDate(message2) {
+function isoDate(message$1) {
   return {
     kind: "validation",
     type: "iso_date",
@@ -2718,18 +2584,16 @@ function isoDate(message2) {
     async: false,
     expects: null,
     requirement: ISO_DATE_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "date", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "date", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(isoDate, "isoDate");
 // @__NO_SIDE_EFFECTS__
-function isoDateTime(message2) {
+function isoDateTime(message$1) {
   return {
     kind: "validation",
     type: "iso_date_time",
@@ -2737,18 +2601,16 @@ function isoDateTime(message2) {
     async: false,
     expects: null,
     requirement: ISO_DATE_TIME_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "date-time", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "date-time", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(isoDateTime, "isoDateTime");
 // @__NO_SIDE_EFFECTS__
-function isoTime(message2) {
+function isoTime(message$1) {
   return {
     kind: "validation",
     type: "iso_time",
@@ -2756,18 +2618,16 @@ function isoTime(message2) {
     async: false,
     expects: null,
     requirement: ISO_TIME_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "time", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "time", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(isoTime, "isoTime");
 // @__NO_SIDE_EFFECTS__
-function isoTimeSecond(message2) {
+function isoTimeSecond(message$1) {
   return {
     kind: "validation",
     type: "iso_time_second",
@@ -2775,18 +2635,16 @@ function isoTimeSecond(message2) {
     async: false,
     expects: null,
     requirement: ISO_TIME_SECOND_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "time-second", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "time-second", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(isoTimeSecond, "isoTimeSecond");
 // @__NO_SIDE_EFFECTS__
-function isoTimestamp(message2) {
+function isoTimestamp(message$1) {
   return {
     kind: "validation",
     type: "iso_timestamp",
@@ -2794,18 +2652,16 @@ function isoTimestamp(message2) {
     async: false,
     expects: null,
     requirement: ISO_TIMESTAMP_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "timestamp", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "timestamp", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(isoTimestamp, "isoTimestamp");
 // @__NO_SIDE_EFFECTS__
-function isoWeek(message2) {
+function isoWeek(message$1) {
   return {
     kind: "validation",
     type: "iso_week",
@@ -2813,18 +2669,16 @@ function isoWeek(message2) {
     async: false,
     expects: null,
     requirement: ISO_WEEK_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "week", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "week", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(isoWeek, "isoWeek");
 // @__NO_SIDE_EFFECTS__
-function length(requirement, message2) {
+function length(requirement, message$1) {
   return {
     kind: "validation",
     type: "length",
@@ -2832,20 +2686,16 @@ function length(requirement, message2) {
     async: false,
     expects: `${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.length !== this.requirement) {
-        _addIssue(this, "length", dataset, config2, {
-          received: `${dataset.value.length}`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.length !== this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
       return dataset;
     }
   };
 }
 __name(length, "length");
 // @__NO_SIDE_EFFECTS__
-function ltValue(requirement, message2) {
+function ltValue(requirement, message$1) {
   return {
     kind: "validation",
     type: "lt_value",
@@ -2853,20 +2703,16 @@ function ltValue(requirement, message2) {
     async: false,
     expects: `<${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !(dataset.value < this.requirement)) {
-        _addIssue(this, "value", dataset, config2, {
-          received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value)
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !(dataset.value < this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
       return dataset;
     }
   };
 }
 __name(ltValue, "ltValue");
 // @__NO_SIDE_EFFECTS__
-function mac(message2) {
+function mac(message$1) {
   return {
     kind: "validation",
     type: "mac",
@@ -2874,18 +2720,16 @@ function mac(message2) {
     async: false,
     expects: null,
     requirement: MAC_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "MAC", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "MAC", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(mac, "mac");
 // @__NO_SIDE_EFFECTS__
-function mac48(message2) {
+function mac48(message$1) {
   return {
     kind: "validation",
     type: "mac48",
@@ -2893,18 +2737,16 @@ function mac48(message2) {
     async: false,
     expects: null,
     requirement: MAC48_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "48-bit MAC", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "48-bit MAC", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(mac48, "mac48");
 // @__NO_SIDE_EFFECTS__
-function mac64(message2) {
+function mac64(message$1) {
   return {
     kind: "validation",
     type: "mac64",
@@ -2912,11 +2754,9 @@ function mac64(message2) {
     async: false,
     expects: null,
     requirement: MAC64_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "64-bit MAC", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "64-bit MAC", dataset, config$1);
       return dataset;
     }
   };
@@ -2938,7 +2778,7 @@ function mapItems(operation) {
 }
 __name(mapItems, "mapItems");
 // @__NO_SIDE_EFFECTS__
-function maxBytes(requirement, message2) {
+function maxBytes(requirement, message$1) {
   return {
     kind: "validation",
     type: "max_bytes",
@@ -2946,15 +2786,11 @@ function maxBytes(requirement, message2) {
     async: false,
     expects: `<=${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
-        const length2 = /* @__PURE__ */ _getByteCount(dataset.value);
-        if (length2 > this.requirement) {
-          _addIssue(this, "bytes", dataset, config2, {
-            received: `${length2}`
-          });
-        }
+        const length$1 = /* @__PURE__ */ _getByteCount(dataset.value);
+        if (length$1 > this.requirement) _addIssue(this, "bytes", dataset, config$1, { received: `${length$1}` });
       }
       return dataset;
     }
@@ -2962,7 +2798,7 @@ function maxBytes(requirement, message2) {
 }
 __name(maxBytes, "maxBytes");
 // @__NO_SIDE_EFFECTS__
-function maxEntries(requirement, message2) {
+function maxEntries(requirement, message$1) {
   return {
     kind: "validation",
     type: "max_entries",
@@ -2970,22 +2806,18 @@ function maxEntries(requirement, message2) {
     async: false,
     expects: `<=${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (!dataset.typed) return dataset;
       const count = Object.keys(dataset.value).length;
-      if (dataset.typed && count > this.requirement) {
-        _addIssue(this, "entries", dataset, config2, {
-          received: `${count}`
-        });
-      }
+      if (dataset.typed && count > this.requirement) _addIssue(this, "entries", dataset, config$1, { received: `${count}` });
       return dataset;
     }
   };
 }
 __name(maxEntries, "maxEntries");
 // @__NO_SIDE_EFFECTS__
-function maxGraphemes(requirement, message2) {
+function maxGraphemes(requirement, message$1) {
   return {
     kind: "validation",
     type: "max_graphemes",
@@ -2993,15 +2825,11 @@ function maxGraphemes(requirement, message2) {
     async: false,
     expects: `<=${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
         const count = /* @__PURE__ */ _getGraphemeCount(dataset.value);
-        if (count > this.requirement) {
-          _addIssue(this, "graphemes", dataset, config2, {
-            received: `${count}`
-          });
-        }
+        if (count > this.requirement) _addIssue(this, "graphemes", dataset, config$1, { received: `${count}` });
       }
       return dataset;
     }
@@ -3009,7 +2837,7 @@ function maxGraphemes(requirement, message2) {
 }
 __name(maxGraphemes, "maxGraphemes");
 // @__NO_SIDE_EFFECTS__
-function maxLength(requirement, message2) {
+function maxLength(requirement, message$1) {
   return {
     kind: "validation",
     type: "max_length",
@@ -3017,20 +2845,16 @@ function maxLength(requirement, message2) {
     async: false,
     expects: `<=${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.length > this.requirement) {
-        _addIssue(this, "length", dataset, config2, {
-          received: `${dataset.value.length}`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.length > this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
       return dataset;
     }
   };
 }
 __name(maxLength, "maxLength");
 // @__NO_SIDE_EFFECTS__
-function maxSize(requirement, message2) {
+function maxSize(requirement, message$1) {
   return {
     kind: "validation",
     type: "max_size",
@@ -3038,20 +2862,16 @@ function maxSize(requirement, message2) {
     async: false,
     expects: `<=${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.size > this.requirement) {
-        _addIssue(this, "size", dataset, config2, {
-          received: `${dataset.value.size}`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.size > this.requirement) _addIssue(this, "size", dataset, config$1, { received: `${dataset.value.size}` });
       return dataset;
     }
   };
 }
 __name(maxSize, "maxSize");
 // @__NO_SIDE_EFFECTS__
-function maxValue(requirement, message2) {
+function maxValue(requirement, message$1) {
   return {
     kind: "validation",
     type: "max_value",
@@ -3059,20 +2879,16 @@ function maxValue(requirement, message2) {
     async: false,
     expects: `<=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !(dataset.value <= this.requirement)) {
-        _addIssue(this, "value", dataset, config2, {
-          received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value)
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !(dataset.value <= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
       return dataset;
     }
   };
 }
 __name(maxValue, "maxValue");
 // @__NO_SIDE_EFFECTS__
-function maxWords(locales, requirement, message2) {
+function maxWords(locales, requirement, message$1) {
   return {
     kind: "validation",
     type: "max_words",
@@ -3081,15 +2897,11 @@ function maxWords(locales, requirement, message2) {
     expects: `<=${requirement}`,
     locales,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
         const count = /* @__PURE__ */ _getWordCount(this.locales, dataset.value);
-        if (count > this.requirement) {
-          _addIssue(this, "words", dataset, config2, {
-            received: `${count}`
-          });
-        }
+        if (count > this.requirement) _addIssue(this, "words", dataset, config$1, { received: `${count}` });
       }
       return dataset;
     }
@@ -3107,31 +2919,24 @@ function metadata(metadata_) {
 }
 __name(metadata, "metadata");
 // @__NO_SIDE_EFFECTS__
-function mimeType(requirement, message2) {
+function mimeType(requirement, message$1) {
   return {
     kind: "validation",
     type: "mime_type",
     reference: mimeType,
     async: false,
-    expects: /* @__PURE__ */ _joinExpects(
-      requirement.map((option) => `"${option}"`),
-      "|"
-    ),
+    expects: /* @__PURE__ */ _joinExpects(requirement.map((option) => `"${option}"`), "|"),
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.includes(dataset.value.type)) {
-        _addIssue(this, "MIME type", dataset, config2, {
-          received: `"${dataset.value.type}"`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.includes(dataset.value.type)) _addIssue(this, "MIME type", dataset, config$1, { received: `"${dataset.value.type}"` });
       return dataset;
     }
   };
 }
 __name(mimeType, "mimeType");
 // @__NO_SIDE_EFFECTS__
-function minBytes(requirement, message2) {
+function minBytes(requirement, message$1) {
   return {
     kind: "validation",
     type: "min_bytes",
@@ -3139,15 +2944,11 @@ function minBytes(requirement, message2) {
     async: false,
     expects: `>=${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
-        const length2 = /* @__PURE__ */ _getByteCount(dataset.value);
-        if (length2 < this.requirement) {
-          _addIssue(this, "bytes", dataset, config2, {
-            received: `${length2}`
-          });
-        }
+        const length$1 = /* @__PURE__ */ _getByteCount(dataset.value);
+        if (length$1 < this.requirement) _addIssue(this, "bytes", dataset, config$1, { received: `${length$1}` });
       }
       return dataset;
     }
@@ -3155,7 +2956,7 @@ function minBytes(requirement, message2) {
 }
 __name(minBytes, "minBytes");
 // @__NO_SIDE_EFFECTS__
-function minEntries(requirement, message2) {
+function minEntries(requirement, message$1) {
   return {
     kind: "validation",
     type: "min_entries",
@@ -3163,22 +2964,18 @@ function minEntries(requirement, message2) {
     async: false,
     expects: `>=${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (!dataset.typed) return dataset;
       const count = Object.keys(dataset.value).length;
-      if (dataset.typed && count < this.requirement) {
-        _addIssue(this, "entries", dataset, config2, {
-          received: `${count}`
-        });
-      }
+      if (dataset.typed && count < this.requirement) _addIssue(this, "entries", dataset, config$1, { received: `${count}` });
       return dataset;
     }
   };
 }
 __name(minEntries, "minEntries");
 // @__NO_SIDE_EFFECTS__
-function minGraphemes(requirement, message2) {
+function minGraphemes(requirement, message$1) {
   return {
     kind: "validation",
     type: "min_graphemes",
@@ -3186,15 +2983,11 @@ function minGraphemes(requirement, message2) {
     async: false,
     expects: `>=${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
         const count = /* @__PURE__ */ _getGraphemeCount(dataset.value);
-        if (count < this.requirement) {
-          _addIssue(this, "graphemes", dataset, config2, {
-            received: `${count}`
-          });
-        }
+        if (count < this.requirement) _addIssue(this, "graphemes", dataset, config$1, { received: `${count}` });
       }
       return dataset;
     }
@@ -3202,7 +2995,7 @@ function minGraphemes(requirement, message2) {
 }
 __name(minGraphemes, "minGraphemes");
 // @__NO_SIDE_EFFECTS__
-function minLength(requirement, message2) {
+function minLength(requirement, message$1) {
   return {
     kind: "validation",
     type: "min_length",
@@ -3210,20 +3003,16 @@ function minLength(requirement, message2) {
     async: false,
     expects: `>=${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.length < this.requirement) {
-        _addIssue(this, "length", dataset, config2, {
-          received: `${dataset.value.length}`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.length < this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
       return dataset;
     }
   };
 }
 __name(minLength, "minLength");
 // @__NO_SIDE_EFFECTS__
-function minSize(requirement, message2) {
+function minSize(requirement, message$1) {
   return {
     kind: "validation",
     type: "min_size",
@@ -3231,20 +3020,16 @@ function minSize(requirement, message2) {
     async: false,
     expects: `>=${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.size < this.requirement) {
-        _addIssue(this, "size", dataset, config2, {
-          received: `${dataset.value.size}`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.size < this.requirement) _addIssue(this, "size", dataset, config$1, { received: `${dataset.value.size}` });
       return dataset;
     }
   };
 }
 __name(minSize, "minSize");
 // @__NO_SIDE_EFFECTS__
-function minValue(requirement, message2) {
+function minValue(requirement, message$1) {
   return {
     kind: "validation",
     type: "min_value",
@@ -3252,20 +3037,16 @@ function minValue(requirement, message2) {
     async: false,
     expects: `>=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !(dataset.value >= this.requirement)) {
-        _addIssue(this, "value", dataset, config2, {
-          received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value)
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !(dataset.value >= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
       return dataset;
     }
   };
 }
 __name(minValue, "minValue");
 // @__NO_SIDE_EFFECTS__
-function minWords(locales, requirement, message2) {
+function minWords(locales, requirement, message$1) {
   return {
     kind: "validation",
     type: "min_words",
@@ -3274,15 +3055,11 @@ function minWords(locales, requirement, message2) {
     expects: `>=${requirement}`,
     locales,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
         const count = /* @__PURE__ */ _getWordCount(this.locales, dataset.value);
-        if (count < this.requirement) {
-          _addIssue(this, "words", dataset, config2, {
-            received: `${count}`
-          });
-        }
+        if (count < this.requirement) _addIssue(this, "words", dataset, config$1, { received: `${count}` });
       }
       return dataset;
     }
@@ -3290,7 +3067,7 @@ function minWords(locales, requirement, message2) {
 }
 __name(minWords, "minWords");
 // @__NO_SIDE_EFFECTS__
-function multipleOf(requirement, message2) {
+function multipleOf(requirement, message$1) {
   return {
     kind: "validation",
     type: "multiple_of",
@@ -3298,18 +3075,16 @@ function multipleOf(requirement, message2) {
     async: false,
     expects: `%${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value % this.requirement != 0) {
-        _addIssue(this, "multiple", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value % this.requirement != 0) _addIssue(this, "multiple", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(multipleOf, "multipleOf");
 // @__NO_SIDE_EFFECTS__
-function nanoid(message2) {
+function nanoid(message$1) {
   return {
     kind: "validation",
     type: "nanoid",
@@ -3317,31 +3092,25 @@ function nanoid(message2) {
     async: false,
     expects: null,
     requirement: NANO_ID_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "Nano ID", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Nano ID", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(nanoid, "nanoid");
 // @__NO_SIDE_EFFECTS__
-function nonEmpty(message2) {
+function nonEmpty(message$1) {
   return {
     kind: "validation",
     type: "non_empty",
     reference: nonEmpty,
     async: false,
     expects: "!0",
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.length === 0) {
-        _addIssue(this, "length", dataset, config2, {
-          received: "0"
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.length === 0) _addIssue(this, "length", dataset, config$1, { received: "0" });
       return dataset;
     }
   };
@@ -3363,7 +3132,7 @@ function normalize(form) {
 }
 __name(normalize, "normalize");
 // @__NO_SIDE_EFFECTS__
-function notBytes(requirement, message2) {
+function notBytes(requirement, message$1) {
   return {
     kind: "validation",
     type: "not_bytes",
@@ -3371,15 +3140,11 @@ function notBytes(requirement, message2) {
     async: false,
     expects: `!${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
-        const length2 = /* @__PURE__ */ _getByteCount(dataset.value);
-        if (length2 === this.requirement) {
-          _addIssue(this, "bytes", dataset, config2, {
-            received: `${length2}`
-          });
-        }
+        const length$1 = /* @__PURE__ */ _getByteCount(dataset.value);
+        if (length$1 === this.requirement) _addIssue(this, "bytes", dataset, config$1, { received: `${length$1}` });
       }
       return dataset;
     }
@@ -3387,7 +3152,7 @@ function notBytes(requirement, message2) {
 }
 __name(notBytes, "notBytes");
 // @__NO_SIDE_EFFECTS__
-function notEntries(requirement, message2) {
+function notEntries(requirement, message$1) {
   return {
     kind: "validation",
     type: "not_entries",
@@ -3395,22 +3160,18 @@ function notEntries(requirement, message2) {
     async: false,
     expects: `!${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (!dataset.typed) return dataset;
       const count = Object.keys(dataset.value).length;
-      if (dataset.typed && count === this.requirement) {
-        _addIssue(this, "entries", dataset, config2, {
-          received: `${count}`
-        });
-      }
+      if (dataset.typed && count === this.requirement) _addIssue(this, "entries", dataset, config$1, { received: `${count}` });
       return dataset;
     }
   };
 }
 __name(notEntries, "notEntries");
 // @__NO_SIDE_EFFECTS__
-function notGraphemes(requirement, message2) {
+function notGraphemes(requirement, message$1) {
   return {
     kind: "validation",
     type: "not_graphemes",
@@ -3418,15 +3179,11 @@ function notGraphemes(requirement, message2) {
     async: false,
     expects: `!${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
         const count = /* @__PURE__ */ _getGraphemeCount(dataset.value);
-        if (count === this.requirement) {
-          _addIssue(this, "graphemes", dataset, config2, {
-            received: `${count}`
-          });
-        }
+        if (count === this.requirement) _addIssue(this, "graphemes", dataset, config$1, { received: `${count}` });
       }
       return dataset;
     }
@@ -3434,7 +3191,7 @@ function notGraphemes(requirement, message2) {
 }
 __name(notGraphemes, "notGraphemes");
 // @__NO_SIDE_EFFECTS__
-function notLength(requirement, message2) {
+function notLength(requirement, message$1) {
   return {
     kind: "validation",
     type: "not_length",
@@ -3442,20 +3199,16 @@ function notLength(requirement, message2) {
     async: false,
     expects: `!${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.length === this.requirement) {
-        _addIssue(this, "length", dataset, config2, {
-          received: `${dataset.value.length}`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.length === this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
       return dataset;
     }
   };
 }
 __name(notLength, "notLength");
 // @__NO_SIDE_EFFECTS__
-function notSize(requirement, message2) {
+function notSize(requirement, message$1) {
   return {
     kind: "validation",
     type: "not_size",
@@ -3463,20 +3216,16 @@ function notSize(requirement, message2) {
     async: false,
     expects: `!${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.size === this.requirement) {
-        _addIssue(this, "size", dataset, config2, {
-          received: `${dataset.value.size}`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.size === this.requirement) _addIssue(this, "size", dataset, config$1, { received: `${dataset.value.size}` });
       return dataset;
     }
   };
 }
 __name(notSize, "notSize");
 // @__NO_SIDE_EFFECTS__
-function notValue(requirement, message2) {
+function notValue(requirement, message$1) {
   return {
     kind: "validation",
     type: "not_value",
@@ -3484,48 +3233,33 @@ function notValue(requirement, message2) {
     async: false,
     expects: requirement instanceof Date ? `!${requirement.toJSON()}` : `!${/* @__PURE__ */ _stringify(requirement)}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && this.requirement <= dataset.value && this.requirement >= dataset.value) {
-        _addIssue(this, "value", dataset, config2, {
-          received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value)
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && this.requirement <= dataset.value && this.requirement >= dataset.value) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
       return dataset;
     }
   };
 }
 __name(notValue, "notValue");
 // @__NO_SIDE_EFFECTS__
-function notValues(requirement, message2) {
+function notValues(requirement, message$1) {
   return {
     kind: "validation",
     type: "not_values",
     reference: notValues,
     async: false,
-    expects: `!${/* @__PURE__ */ _joinExpects(
-      requirement.map(
-        (value2) => value2 instanceof Date ? value2.toJSON() : /* @__PURE__ */ _stringify(value2)
-      ),
-      "|"
-    )}`,
+    expects: `!${/* @__PURE__ */ _joinExpects(requirement.map((value$1) => value$1 instanceof Date ? value$1.toJSON() : /* @__PURE__ */ _stringify(value$1)), "|")}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && this.requirement.some(
-        (value2) => value2 <= dataset.value && value2 >= dataset.value
-      )) {
-        _addIssue(this, "value", dataset, config2, {
-          received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value)
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && this.requirement.some((value$1) => value$1 <= dataset.value && value$1 >= dataset.value)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
       return dataset;
     }
   };
 }
 __name(notValues, "notValues");
 // @__NO_SIDE_EFFECTS__
-function notWords(locales, requirement, message2) {
+function notWords(locales, requirement, message$1) {
   return {
     kind: "validation",
     type: "not_words",
@@ -3534,15 +3268,11 @@ function notWords(locales, requirement, message2) {
     expects: `!${requirement}`,
     locales,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
         const count = /* @__PURE__ */ _getWordCount(this.locales, dataset.value);
-        if (count === this.requirement) {
-          _addIssue(this, "words", dataset, config2, {
-            received: `${count}`
-          });
-        }
+        if (count === this.requirement) _addIssue(this, "words", dataset, config$1, { received: `${count}` });
       }
       return dataset;
     }
@@ -3550,7 +3280,7 @@ function notWords(locales, requirement, message2) {
 }
 __name(notWords, "notWords");
 // @__NO_SIDE_EFFECTS__
-function octal(message2) {
+function octal(message$1) {
   return {
     kind: "validation",
     type: "octal",
@@ -3558,37 +3288,31 @@ function octal(message2) {
     async: false,
     expects: null,
     requirement: OCTAL_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "octal", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "octal", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(octal, "octal");
 // @__NO_SIDE_EFFECTS__
-function parseJson(config2, message2) {
+function parseJson(config$1, message$1) {
   return {
     kind: "transformation",
     type: "parse_json",
     reference: parseJson,
-    config: config2,
-    message: message2,
+    config: config$1,
+    message: message$1,
     async: false,
-    "~run"(dataset, config3) {
+    "~run"(dataset, config$2) {
       try {
         dataset.value = JSON.parse(dataset.value, this.config?.reviver);
       } catch (error) {
         if (error instanceof Error) {
-          _addIssue(this, "JSON", dataset, config3, {
-            received: `"${error.message}"`
-          });
+          _addIssue(this, "JSON", dataset, config$2, { received: `"${error.message}"` });
           dataset.typed = false;
-        } else {
-          throw error;
-        }
+        } else throw error;
       }
       return dataset;
     }
@@ -3597,32 +3321,20 @@ function parseJson(config2, message2) {
 __name(parseJson, "parseJson");
 // @__NO_SIDE_EFFECTS__
 function _isPartiallyTyped(dataset, paths) {
-  if (dataset.issues) {
-    for (const path of paths) {
-      for (const issue of dataset.issues) {
-        let typed = false;
-        const bound = Math.min(path.length, issue.path?.length ?? 0);
-        for (let index = 0; index < bound; index++) {
-          if (
-            // @ts-expect-error
-            path[index] !== issue.path[index].key && // @ts-expect-error
-            (path[index] !== "$" || issue.path[index].type !== "array")
-          ) {
-            typed = true;
-            break;
-          }
-        }
-        if (!typed) {
-          return false;
-        }
-      }
+  if (dataset.issues) for (const path of paths) for (const issue of dataset.issues) {
+    let typed = false;
+    const bound = Math.min(path.length, issue.path?.length ?? 0);
+    for (let index = 0; index < bound; index++) if (path[index] !== issue.path[index].key && (path[index] !== "$" || issue.path[index].type !== "array")) {
+      typed = true;
+      break;
     }
+    if (!typed) return false;
   }
   return true;
 }
 __name(_isPartiallyTyped, "_isPartiallyTyped");
 // @__NO_SIDE_EFFECTS__
-function partialCheck(paths, requirement, message2) {
+function partialCheck(paths, requirement, message$1) {
   return {
     kind: "validation",
     type: "partial_check",
@@ -3631,19 +3343,16 @@ function partialCheck(paths, requirement, message2) {
     expects: null,
     paths,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if ((dataset.typed || /* @__PURE__ */ _isPartiallyTyped(dataset, paths)) && // @ts-expect-error
-      !this.requirement(dataset.value)) {
-        _addIssue(this, "input", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if ((dataset.typed || /* @__PURE__ */ _isPartiallyTyped(dataset, paths)) && !this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(partialCheck, "partialCheck");
 // @__NO_SIDE_EFFECTS__
-function partialCheckAsync(paths, requirement, message2) {
+function partialCheckAsync(paths, requirement, message$1) {
   return {
     kind: "validation",
     type: "partial_check",
@@ -3652,12 +3361,9 @@ function partialCheckAsync(paths, requirement, message2) {
     expects: null,
     paths,
     requirement,
-    message: message2,
-    async "~run"(dataset, config2) {
-      if ((dataset.typed || /* @__PURE__ */ _isPartiallyTyped(dataset, paths)) && // @ts-expect-error
-      !await this.requirement(dataset.value)) {
-        _addIssue(this, "input", dataset, config2);
-      }
+    message: message$1,
+    async "~run"(dataset, config$1) {
+      if ((dataset.typed || /* @__PURE__ */ _isPartiallyTyped(dataset, paths)) && !await this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
       return dataset;
     }
   };
@@ -3671,11 +3377,11 @@ function rawCheck(action) {
     reference: rawCheck,
     async: false,
     expects: null,
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       action({
         dataset,
-        config: config2,
-        addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config2, info), "addIssue")
+        config: config$1,
+        addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info), "addIssue")
       });
       return dataset;
     }
@@ -3690,11 +3396,11 @@ function rawCheckAsync(action) {
     reference: rawCheckAsync,
     async: true,
     expects: null,
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       await action({
         dataset,
-        config: config2,
-        addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config2, info), "addIssue")
+        config: config$1,
+        addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info), "addIssue")
       });
       return dataset;
     }
@@ -3708,18 +3414,15 @@ function rawTransform(action) {
     type: "raw_transform",
     reference: rawTransform,
     async: false,
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const output = action({
         dataset,
-        config: config2,
-        addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config2, info), "addIssue"),
+        config: config$1,
+        addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info), "addIssue"),
         NEVER: null
       });
-      if (dataset.issues) {
-        dataset.typed = false;
-      } else {
-        dataset.value = output;
-      }
+      if (dataset.issues) dataset.typed = false;
+      else dataset.value = output;
       return dataset;
     }
   };
@@ -3732,18 +3435,15 @@ function rawTransformAsync(action) {
     type: "raw_transform",
     reference: rawTransformAsync,
     async: true,
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const output = await action({
         dataset,
-        config: config2,
-        addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config2, info), "addIssue"),
+        config: config$1,
+        addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info), "addIssue"),
         NEVER: null
       });
-      if (dataset.issues) {
-        dataset.typed = false;
-      } else {
-        dataset.value = output;
-      }
+      if (dataset.issues) dataset.typed = false;
+      else dataset.value = output;
       return dataset;
     }
   };
@@ -3779,7 +3479,7 @@ function reduceItems(operation, initial) {
 }
 __name(reduceItems, "reduceItems");
 // @__NO_SIDE_EFFECTS__
-function regex(requirement, message2) {
+function regex(requirement, message$1) {
   return {
     kind: "validation",
     type: "regex",
@@ -3787,11 +3487,9 @@ function regex(requirement, message2) {
     async: false,
     expects: `${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "format", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "format", dataset, config$1);
       return dataset;
     }
   };
@@ -3805,16 +3503,11 @@ function returns(schema) {
     reference: returns,
     async: false,
     schema,
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const func = dataset.value;
       dataset.value = (...args_) => {
-        const returnsDataset = this.schema["~run"](
-          { value: func(...args_) },
-          config2
-        );
-        if (returnsDataset.issues) {
-          throw new ValiError(returnsDataset.issues);
-        }
+        const returnsDataset = this.schema["~run"]({ value: func(...args_) }, config$1);
+        if (returnsDataset.issues) throw new ValiError(returnsDataset.issues);
         return returnsDataset.value;
       };
       return dataset;
@@ -3830,16 +3523,11 @@ function returnsAsync(schema) {
     reference: returnsAsync,
     async: false,
     schema,
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const func = dataset.value;
       dataset.value = async (...args_) => {
-        const returnsDataset = await this.schema["~run"](
-          { value: await func(...args_) },
-          config2
-        );
-        if (returnsDataset.issues) {
-          throw new ValiError(returnsDataset.issues);
-        }
+        const returnsDataset = await this.schema["~run"]({ value: await func(...args_) }, config$1);
+        if (returnsDataset.issues) throw new ValiError(returnsDataset.issues);
         return returnsDataset.value;
       };
       return dataset;
@@ -3848,7 +3536,7 @@ function returnsAsync(schema) {
 }
 __name(returnsAsync, "returnsAsync");
 // @__NO_SIDE_EFFECTS__
-function rfcEmail(message2) {
+function rfcEmail(message$1) {
   return {
     kind: "validation",
     type: "rfc_email",
@@ -3856,18 +3544,16 @@ function rfcEmail(message2) {
     expects: null,
     async: false,
     requirement: RFC_EMAIL_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "email", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "email", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(rfcEmail, "rfcEmail");
 // @__NO_SIDE_EFFECTS__
-function safeInteger(message2) {
+function safeInteger(message$1) {
   return {
     kind: "validation",
     type: "safe_integer",
@@ -3875,18 +3561,16 @@ function safeInteger(message2) {
     async: false,
     expects: null,
     requirement: Number.isSafeInteger,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement(dataset.value)) {
-        _addIssue(this, "safe integer", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "safe integer", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(safeInteger, "safeInteger");
 // @__NO_SIDE_EFFECTS__
-function size(requirement, message2) {
+function size(requirement, message$1) {
   return {
     kind: "validation",
     type: "size",
@@ -3894,20 +3578,16 @@ function size(requirement, message2) {
     async: false,
     expects: `${requirement}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && dataset.value.size !== this.requirement) {
-        _addIssue(this, "size", dataset, config2, {
-          received: `${dataset.value.size}`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && dataset.value.size !== this.requirement) _addIssue(this, "size", dataset, config$1, { received: `${dataset.value.size}` });
       return dataset;
     }
   };
 }
 __name(size, "size");
 // @__NO_SIDE_EFFECTS__
-function slug(message2) {
+function slug(message$1) {
   return {
     kind: "validation",
     type: "slug",
@@ -3915,18 +3595,16 @@ function slug(message2) {
     async: false,
     expects: null,
     requirement: SLUG_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "slug", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "slug", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(slug, "slug");
 // @__NO_SIDE_EFFECTS__
-function someItem(requirement, message2) {
+function someItem(requirement, message$1) {
   return {
     kind: "validation",
     type: "some_item",
@@ -3934,11 +3612,9 @@ function someItem(requirement, message2) {
     async: false,
     expects: null,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !dataset.value.some(this.requirement)) {
-        _addIssue(this, "item", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !dataset.value.some(this.requirement)) _addIssue(this, "item", dataset, config$1);
       return dataset;
     }
   };
@@ -3960,7 +3636,7 @@ function sortItems(operation) {
 }
 __name(sortItems, "sortItems");
 // @__NO_SIDE_EFFECTS__
-function startsWith(requirement, message2) {
+function startsWith(requirement, message$1) {
   return {
     kind: "validation",
     type: "starts_with",
@@ -3968,49 +3644,36 @@ function startsWith(requirement, message2) {
     async: false,
     expects: `"${requirement}"`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !dataset.value.startsWith(this.requirement)) {
-        _addIssue(this, "start", dataset, config2, {
-          received: `"${dataset.value.slice(0, this.requirement.length)}"`
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !dataset.value.startsWith(this.requirement)) _addIssue(this, "start", dataset, config$1, { received: `"${dataset.value.slice(0, this.requirement.length)}"` });
       return dataset;
     }
   };
 }
 __name(startsWith, "startsWith");
 // @__NO_SIDE_EFFECTS__
-function stringifyJson(config2, message2) {
+function stringifyJson(config$1, message$1) {
   return {
     kind: "transformation",
     type: "stringify_json",
     reference: stringifyJson,
-    message: message2,
-    config: config2,
+    message: message$1,
+    config: config$1,
     async: false,
-    "~run"(dataset, config3) {
+    "~run"(dataset, config$2) {
       try {
-        const output = JSON.stringify(
-          dataset.value,
-          // @ts-expect-error
-          this.config?.replacer,
-          this.config?.space
-        );
+        const output = JSON.stringify(dataset.value, this.config?.replacer, this.config?.space);
         if (output === void 0) {
-          _addIssue(this, "JSON", dataset, config3);
+          _addIssue(this, "JSON", dataset, config$2);
           dataset.typed = false;
         }
         dataset.value = output;
       } catch (error) {
         if (error instanceof Error) {
-          _addIssue(this, "JSON", dataset, config3, {
-            received: `"${error.message}"`
-          });
+          _addIssue(this, "JSON", dataset, config$2, { received: `"${error.message}"` });
           dataset.typed = false;
-        } else {
-          throw error;
-        }
+        } else throw error;
       }
       return dataset;
     }
@@ -4027,6 +3690,64 @@ function title(title_) {
   };
 }
 __name(title, "title");
+// @__NO_SIDE_EFFECTS__
+function toBigint(message$1) {
+  return {
+    kind: "transformation",
+    type: "to_bigint",
+    reference: toBigint,
+    async: false,
+    message: message$1,
+    "~run"(dataset, config$1) {
+      try {
+        dataset.value = BigInt(dataset.value);
+      } catch {
+        _addIssue(this, "bigint", dataset, config$1);
+        dataset.typed = false;
+      }
+      return dataset;
+    }
+  };
+}
+__name(toBigint, "toBigint");
+// @__NO_SIDE_EFFECTS__
+function toBoolean() {
+  return {
+    kind: "transformation",
+    type: "to_boolean",
+    reference: toBoolean,
+    async: false,
+    "~run"(dataset) {
+      dataset.value = Boolean(dataset.value);
+      return dataset;
+    }
+  };
+}
+__name(toBoolean, "toBoolean");
+// @__NO_SIDE_EFFECTS__
+function toDate(message$1) {
+  return {
+    kind: "transformation",
+    type: "to_date",
+    reference: toDate,
+    async: false,
+    message: message$1,
+    "~run"(dataset, config$1) {
+      try {
+        dataset.value = new Date(dataset.value);
+        if (isNaN(dataset.value)) {
+          _addIssue(this, "date", dataset, config$1, { received: '"Invalid Date"' });
+          dataset.typed = false;
+        }
+      } catch {
+        _addIssue(this, "date", dataset, config$1);
+        dataset.typed = false;
+      }
+      return dataset;
+    }
+  };
+}
+__name(toDate, "toDate");
 // @__NO_SIDE_EFFECTS__
 function toLowerCase() {
   return {
@@ -4071,6 +3792,50 @@ function toMinValue(requirement) {
   };
 }
 __name(toMinValue, "toMinValue");
+// @__NO_SIDE_EFFECTS__
+function toNumber(message$1) {
+  return {
+    kind: "transformation",
+    type: "to_number",
+    reference: toNumber,
+    async: false,
+    message: message$1,
+    "~run"(dataset, config$1) {
+      try {
+        dataset.value = Number(dataset.value);
+        if (isNaN(dataset.value)) {
+          _addIssue(this, "number", dataset, config$1);
+          dataset.typed = false;
+        }
+      } catch {
+        _addIssue(this, "number", dataset, config$1);
+        dataset.typed = false;
+      }
+      return dataset;
+    }
+  };
+}
+__name(toNumber, "toNumber");
+// @__NO_SIDE_EFFECTS__
+function toString(message$1) {
+  return {
+    kind: "transformation",
+    type: "to_string",
+    reference: toString,
+    async: false,
+    message: message$1,
+    "~run"(dataset, config$1) {
+      try {
+        dataset.value = String(dataset.value);
+      } catch {
+        _addIssue(this, "string", dataset, config$1);
+        dataset.typed = false;
+      }
+      return dataset;
+    }
+  };
+}
+__name(toString, "toString");
 // @__NO_SIDE_EFFECTS__
 function toUpperCase() {
   return {
@@ -4158,7 +3923,7 @@ function trimStart() {
 }
 __name(trimStart, "trimStart");
 // @__NO_SIDE_EFFECTS__
-function ulid(message2) {
+function ulid(message$1) {
   return {
     kind: "validation",
     type: "ulid",
@@ -4166,18 +3931,16 @@ function ulid(message2) {
     async: false,
     expects: null,
     requirement: ULID_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "ULID", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "ULID", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(ulid, "ulid");
 // @__NO_SIDE_EFFECTS__
-function url(message2) {
+function url(message$1) {
   return {
     kind: "validation",
     type: "url",
@@ -4192,18 +3955,16 @@ function url(message2) {
         return false;
       }
     },
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement(dataset.value)) {
-        _addIssue(this, "URL", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "URL", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(url, "url");
 // @__NO_SIDE_EFFECTS__
-function uuid(message2) {
+function uuid(message$1) {
   return {
     kind: "validation",
     type: "uuid",
@@ -4211,18 +3972,16 @@ function uuid(message2) {
     async: false,
     expects: null,
     requirement: UUID_REGEX,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.test(dataset.value)) {
-        _addIssue(this, "UUID", dataset, config2);
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "UUID", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(uuid, "uuid");
 // @__NO_SIDE_EFFECTS__
-function value(requirement, message2) {
+function value(requirement, message$1) {
   return {
     kind: "validation",
     type: "value",
@@ -4230,48 +3989,33 @@ function value(requirement, message2) {
     async: false,
     expects: requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement),
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !(this.requirement <= dataset.value && this.requirement >= dataset.value)) {
-        _addIssue(this, "value", dataset, config2, {
-          received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value)
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !(this.requirement <= dataset.value && this.requirement >= dataset.value)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
       return dataset;
     }
   };
 }
 __name(value, "value");
 // @__NO_SIDE_EFFECTS__
-function values(requirement, message2) {
+function values(requirement, message$1) {
   return {
     kind: "validation",
     type: "values",
     reference: values,
     async: false,
-    expects: `${/* @__PURE__ */ _joinExpects(
-      requirement.map(
-        (value2) => value2 instanceof Date ? value2.toJSON() : /* @__PURE__ */ _stringify(value2)
-      ),
-      "|"
-    )}`,
+    expects: `${/* @__PURE__ */ _joinExpects(requirement.map((value$1) => value$1 instanceof Date ? value$1.toJSON() : /* @__PURE__ */ _stringify(value$1)), "|")}`,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
-      if (dataset.typed && !this.requirement.some(
-        (value2) => value2 <= dataset.value && value2 >= dataset.value
-      )) {
-        _addIssue(this, "value", dataset, config2, {
-          received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value)
-        });
-      }
+    message: message$1,
+    "~run"(dataset, config$1) {
+      if (dataset.typed && !this.requirement.some((value$1) => value$1 <= dataset.value && value$1 >= dataset.value)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
       return dataset;
     }
   };
 }
 __name(values, "values");
 // @__NO_SIDE_EFFECTS__
-function words(locales, requirement, message2) {
+function words(locales, requirement, message$1) {
   return {
     kind: "validation",
     type: "words",
@@ -4280,15 +4024,11 @@ function words(locales, requirement, message2) {
     expects: `${requirement}`,
     locales,
     requirement,
-    message: message2,
-    "~run"(dataset, config2) {
+    message: message$1,
+    "~run"(dataset, config$1) {
       if (dataset.typed) {
         const count = /* @__PURE__ */ _getWordCount(this.locales, dataset.value);
-        if (count !== this.requirement) {
-          _addIssue(this, "words", dataset, config2, {
-            received: `${count}`
-          });
-        }
+        if (count !== this.requirement) _addIssue(this, "words", dataset, config$1, { received: `${count}` });
       }
       return dataset;
     }
@@ -4297,64 +4037,62 @@ function words(locales, requirement, message2) {
 __name(words, "words");
 function assert(schema, input) {
   const issues = schema["~run"]({ value: input }, { abortEarly: true }).issues;
-  if (issues) {
-    throw new ValiError(issues);
-  }
+  if (issues) throw new ValiError(issues);
 }
 __name(assert, "assert");
 // @__NO_SIDE_EFFECTS__
-function config(schema, config2) {
+function config(schema, config$1) {
   return {
     ...schema,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
     "~run"(dataset, config_) {
-      return schema["~run"](dataset, { ...config_, ...config2 });
+      return schema["~run"](dataset, {
+        ...config_,
+        ...config$1
+      });
     }
   };
 }
 __name(config, "config");
 // @__NO_SIDE_EFFECTS__
-function getFallback(schema, dataset, config2) {
-  return typeof schema.fallback === "function" ? (
-    // @ts-expect-error
-    schema.fallback(dataset, config2)
-  ) : (
-    // @ts-expect-error
-    schema.fallback
-  );
+function getFallback(schema, dataset, config$1) {
+  return typeof schema.fallback === "function" ? schema.fallback(dataset, config$1) : schema.fallback;
 }
 __name(getFallback, "getFallback");
 // @__NO_SIDE_EFFECTS__
-function fallback(schema, fallback2) {
+function fallback(schema, fallback$1) {
   return {
     ...schema,
-    fallback: fallback2,
+    fallback: fallback$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      const outputDataset = schema["~run"](dataset, config2);
-      return outputDataset.issues ? { typed: true, value: /* @__PURE__ */ getFallback(this, outputDataset, config2) } : outputDataset;
+    "~run"(dataset, config$1) {
+      const outputDataset = schema["~run"](dataset, config$1);
+      return outputDataset.issues ? {
+        typed: true,
+        value: /* @__PURE__ */ getFallback(this, outputDataset, config$1)
+      } : outputDataset;
     }
   };
 }
 __name(fallback, "fallback");
 // @__NO_SIDE_EFFECTS__
-function fallbackAsync(schema, fallback2) {
+function fallbackAsync(schema, fallback$1) {
   return {
     ...schema,
-    fallback: fallback2,
+    fallback: fallback$1,
     async: true,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
-      const outputDataset = await schema["~run"](dataset, config2);
+    async "~run"(dataset, config$1) {
+      const outputDataset = await schema["~run"](dataset, config$1);
       return outputDataset.issues ? {
         typed: true,
-        value: await /* @__PURE__ */ getFallback(this, outputDataset, config2)
+        value: await /* @__PURE__ */ getFallback(this, outputDataset, config$1)
       } : outputDataset;
     }
   };
@@ -4363,33 +4101,16 @@ __name(fallbackAsync, "fallbackAsync");
 // @__NO_SIDE_EFFECTS__
 function flatten(issues) {
   const flatErrors = {};
-  for (const issue of issues) {
-    if (issue.path) {
-      const dotPath = /* @__PURE__ */ getDotPath(issue);
-      if (dotPath) {
-        if (!flatErrors.nested) {
-          flatErrors.nested = {};
-        }
-        if (flatErrors.nested[dotPath]) {
-          flatErrors.nested[dotPath].push(issue.message);
-        } else {
-          flatErrors.nested[dotPath] = [issue.message];
-        }
-      } else {
-        if (flatErrors.other) {
-          flatErrors.other.push(issue.message);
-        } else {
-          flatErrors.other = [issue.message];
-        }
-      }
-    } else {
-      if (flatErrors.root) {
-        flatErrors.root.push(issue.message);
-      } else {
-        flatErrors.root = [issue.message];
-      }
-    }
-  }
+  for (const issue of issues) if (issue.path) {
+    const dotPath = /* @__PURE__ */ getDotPath(issue);
+    if (dotPath) {
+      if (!flatErrors.nested) flatErrors.nested = {};
+      if (flatErrors.nested[dotPath]) flatErrors.nested[dotPath].push(issue.message);
+      else flatErrors.nested[dotPath] = [issue.message];
+    } else if (flatErrors.other) flatErrors.other.push(issue.message);
+    else flatErrors.other = [issue.message];
+  } else if (flatErrors.root) flatErrors.root.push(issue.message);
+  else flatErrors.root = [issue.message];
   return flatErrors;
 }
 __name(flatten, "flatten");
@@ -4397,32 +4118,25 @@ __name(flatten, "flatten");
 function forward(action, path) {
   return {
     ...action,
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const prevIssues = dataset.issues && [...dataset.issues];
-      dataset = action["~run"](dataset, config2);
+      dataset = action["~run"](dataset, config$1);
       if (dataset.issues) {
-        for (const issue of dataset.issues) {
-          if (!prevIssues?.includes(issue)) {
-            let pathInput = dataset.value;
-            for (const key of path) {
-              const pathValue = pathInput[key];
-              const pathItem = {
-                type: "unknown",
-                origin: "value",
-                input: pathInput,
-                key,
-                value: pathValue
-              };
-              if (issue.path) {
-                issue.path.push(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
-              if (!pathValue) {
-                break;
-              }
-              pathInput = pathValue;
-            }
+        for (const issue of dataset.issues) if (!prevIssues?.includes(issue)) {
+          let pathInput = dataset.value;
+          for (const key of path) {
+            const pathValue = pathInput[key];
+            const pathItem = {
+              type: "unknown",
+              origin: "value",
+              input: pathInput,
+              key,
+              value: pathValue
+            };
+            if (issue.path) issue.path.push(pathItem);
+            else issue.path = [pathItem];
+            if (!pathValue) break;
+            pathInput = pathValue;
           }
         }
       }
@@ -4436,32 +4150,25 @@ function forwardAsync(action, path) {
   return {
     ...action,
     async: true,
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const prevIssues = dataset.issues && [...dataset.issues];
-      dataset = await action["~run"](dataset, config2);
+      dataset = await action["~run"](dataset, config$1);
       if (dataset.issues) {
-        for (const issue of dataset.issues) {
-          if (!prevIssues?.includes(issue)) {
-            let pathInput = dataset.value;
-            for (const key of path) {
-              const pathValue = pathInput[key];
-              const pathItem = {
-                type: "unknown",
-                origin: "value",
-                input: pathInput,
-                key,
-                value: pathValue
-              };
-              if (issue.path) {
-                issue.path.push(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
-              if (!pathValue) {
-                break;
-              }
-              pathInput = pathValue;
-            }
+        for (const issue of dataset.issues) if (!prevIssues?.includes(issue)) {
+          let pathInput = dataset.value;
+          for (const key of path) {
+            const pathValue = pathInput[key];
+            const pathItem = {
+              type: "unknown",
+              origin: "value",
+              input: pathInput,
+              key,
+              value: pathValue
+            };
+            if (issue.path) issue.path.push(pathItem);
+            else issue.path = [pathItem];
+            if (!pathValue) break;
+            pathInput = pathValue;
           }
         }
       }
@@ -4471,46 +4178,25 @@ function forwardAsync(action, path) {
 }
 __name(forwardAsync, "forwardAsync");
 // @__NO_SIDE_EFFECTS__
-function getDefault(schema, dataset, config2) {
-  return typeof schema.default === "function" ? (
-    // @ts-expect-error
-    schema.default(dataset, config2)
-  ) : (
-    // @ts-expect-error
-    schema.default
-  );
+function getDefault(schema, dataset, config$1) {
+  return typeof schema.default === "function" ? schema.default(dataset, config$1) : schema.default;
 }
 __name(getDefault, "getDefault");
 // @__NO_SIDE_EFFECTS__
 function getDefaults(schema) {
   if ("entries" in schema) {
-    const object2 = {};
-    for (const key in schema.entries) {
-      object2[key] = /* @__PURE__ */ getDefaults(schema.entries[key]);
-    }
-    return object2;
+    const object$1 = {};
+    for (const key in schema.entries) object$1[key] = /* @__PURE__ */ getDefaults(schema.entries[key]);
+    return object$1;
   }
-  if ("items" in schema) {
-    return schema.items.map(getDefaults);
-  }
+  if ("items" in schema) return schema.items.map(getDefaults);
   return /* @__PURE__ */ getDefault(schema);
 }
 __name(getDefaults, "getDefaults");
 // @__NO_SIDE_EFFECTS__
 async function getDefaultsAsync(schema) {
-  if ("entries" in schema) {
-    return Object.fromEntries(
-      await Promise.all(
-        Object.entries(schema.entries).map(async ([key, value2]) => [
-          key,
-          await /* @__PURE__ */ getDefaultsAsync(value2)
-        ])
-      )
-    );
-  }
-  if ("items" in schema) {
-    return Promise.all(schema.items.map(getDefaultsAsync));
-  }
+  if ("entries" in schema) return Object.fromEntries(await Promise.all(Object.entries(schema.entries).map(async ([key, value$1]) => [key, await /* @__PURE__ */ getDefaultsAsync(value$1)])));
+  if ("items" in schema) return Promise.all(schema.items.map(getDefaultsAsync));
   return /* @__PURE__ */ getDefault(schema);
 }
 __name(getDefaultsAsync, "getDefaultsAsync");
@@ -4520,50 +4206,44 @@ function getDescription(schema) {
 }
 __name(getDescription, "getDescription");
 // @__NO_SIDE_EFFECTS__
+function getExamples(schema) {
+  const examples$1 = [];
+  function depthFirstCollect(schema$1) {
+    if ("pipe" in schema$1) {
+      for (const item of schema$1.pipe) if (item.kind === "schema" && "pipe" in item) depthFirstCollect(item);
+      else if (item.kind === "metadata" && item.type === "examples") examples$1.push(...item.examples);
+    }
+  }
+  __name(depthFirstCollect, "depthFirstCollect");
+  depthFirstCollect(schema);
+  return examples$1;
+}
+__name(getExamples, "getExamples");
+// @__NO_SIDE_EFFECTS__
 function getFallbacks(schema) {
   if ("entries" in schema) {
-    const object2 = {};
-    for (const key in schema.entries) {
-      object2[key] = /* @__PURE__ */ getFallbacks(schema.entries[key]);
-    }
-    return object2;
+    const object$1 = {};
+    for (const key in schema.entries) object$1[key] = /* @__PURE__ */ getFallbacks(schema.entries[key]);
+    return object$1;
   }
-  if ("items" in schema) {
-    return schema.items.map(getFallbacks);
-  }
+  if ("items" in schema) return schema.items.map(getFallbacks);
   return /* @__PURE__ */ getFallback(schema);
 }
 __name(getFallbacks, "getFallbacks");
 // @__NO_SIDE_EFFECTS__
 async function getFallbacksAsync(schema) {
-  if ("entries" in schema) {
-    return Object.fromEntries(
-      await Promise.all(
-        Object.entries(schema.entries).map(async ([key, value2]) => [
-          key,
-          await /* @__PURE__ */ getFallbacksAsync(value2)
-        ])
-      )
-    );
-  }
-  if ("items" in schema) {
-    return Promise.all(schema.items.map(getFallbacksAsync));
-  }
+  if ("entries" in schema) return Object.fromEntries(await Promise.all(Object.entries(schema.entries).map(async ([key, value$1]) => [key, await /* @__PURE__ */ getFallbacksAsync(value$1)])));
+  if ("items" in schema) return Promise.all(schema.items.map(getFallbacksAsync));
   return /* @__PURE__ */ getFallback(schema);
 }
 __name(getFallbacksAsync, "getFallbacksAsync");
 // @__NO_SIDE_EFFECTS__
 function getMetadata(schema) {
   const result = {};
-  function depthFirstMerge(schema2) {
-    if ("pipe" in schema2) {
-      for (const item of schema2.pipe) {
-        if (item.kind === "schema" && "pipe" in item) {
-          depthFirstMerge(item);
-        } else if (item.kind === "metadata" && item.type === "metadata") {
-          Object.assign(result, item.metadata);
-        }
-      }
+  function depthFirstMerge(schema$1) {
+    if ("pipe" in schema$1) {
+      for (const item of schema$1.pipe) if (item.kind === "schema" && "pipe" in item) depthFirstMerge(item);
+      else if (item.kind === "metadata" && item.type === "metadata") Object.assign(result, item.metadata);
     }
   }
   __name(depthFirstMerge, "depthFirstMerge");
@@ -4600,7 +4280,7 @@ function any() {
 }
 __name(any, "any");
 // @__NO_SIDE_EFFECTS__
-function array(item, message2) {
+function array(item, message$1) {
   return {
     kind: "schema",
     type: "array",
@@ -4608,57 +4288,48 @@ function array(item, message2) {
     expects: "Array",
     async: false,
     item,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
         for (let key = 0; key < input.length; key++) {
-          const value2 = input[key];
-          const itemDataset = this.item["~run"]({ value: value2 }, config2);
+          const value$1 = input[key];
+          const itemDataset = this.item["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
               key,
-              value: value2
+              value: value$1
             };
             for (const issue of itemDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = itemDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!itemDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(array, "array");
 // @__NO_SIDE_EFFECTS__
-function arrayAsync(item, message2) {
+function arrayAsync(item, message$1) {
   return {
     kind: "schema",
     type: "array",
@@ -4666,18 +4337,16 @@ function arrayAsync(item, message2) {
     expects: "Array",
     async: true,
     item,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        const itemDatasets = await Promise.all(
-          input.map((value2) => this.item["~run"]({ value: value2 }, config2))
-        );
+        const itemDatasets = await Promise.all(input.map((value$1) => this.item["~run"]({ value: value$1 }, config$1)));
         for (let key = 0; key < itemDatasets.length; key++) {
           const itemDataset = itemDatasets[key];
           if (itemDataset.issues) {
@@ -4689,188 +4358,152 @@ function arrayAsync(item, message2) {
               value: input[key]
             };
             for (const issue of itemDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = itemDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!itemDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(arrayAsync, "arrayAsync");
 // @__NO_SIDE_EFFECTS__
-function bigint(message2) {
+function bigint(message$1) {
   return {
     kind: "schema",
     type: "bigint",
     reference: bigint,
     expects: "bigint",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (typeof dataset.value === "bigint") {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (typeof dataset.value === "bigint") dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(bigint, "bigint");
 // @__NO_SIDE_EFFECTS__
-function blob(message2) {
+function blob(message$1) {
   return {
     kind: "schema",
     type: "blob",
     reference: blob,
     expects: "Blob",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value instanceof Blob) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value instanceof Blob) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(blob, "blob");
 // @__NO_SIDE_EFFECTS__
-function boolean(message2) {
+function boolean(message$1) {
   return {
     kind: "schema",
     type: "boolean",
     reference: boolean,
     expects: "boolean",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (typeof dataset.value === "boolean") {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (typeof dataset.value === "boolean") dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(boolean, "boolean");
 // @__NO_SIDE_EFFECTS__
-function custom(check2, message2) {
+function custom(check$1, message$1) {
   return {
     kind: "schema",
     type: "custom",
     reference: custom,
     expects: "unknown",
     async: false,
-    check: check2,
-    message: message2,
+    check: check$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (this.check(dataset.value)) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (this.check(dataset.value)) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(custom, "custom");
 // @__NO_SIDE_EFFECTS__
-function customAsync(check2, message2) {
+function customAsync(check$1, message$1) {
   return {
     kind: "schema",
     type: "custom",
     reference: customAsync,
     expects: "unknown",
     async: true,
-    check: check2,
-    message: message2,
+    check: check$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
-      if (await this.check(dataset.value)) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    async "~run"(dataset, config$1) {
+      if (await this.check(dataset.value)) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(customAsync, "customAsync");
 // @__NO_SIDE_EFFECTS__
-function date(message2) {
+function date(message$1) {
   return {
     kind: "schema",
     type: "date",
     reference: date,
     expects: "Date",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value instanceof Date) {
-        if (!isNaN(dataset.value)) {
-          dataset.typed = true;
-        } else {
-          _addIssue(this, "type", dataset, config2, {
-            received: '"Invalid Date"'
-          });
-        }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value instanceof Date) if (!isNaN(dataset.value)) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1, { received: '"Invalid Date"' });
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(date, "date");
 // @__NO_SIDE_EFFECTS__
-function enum_(enum__, message2) {
+function enum_(enum__, message$1) {
   const options = [];
-  for (const key in enum__) {
-    if (`${+key}` !== key || typeof enum__[key] !== "string" || !Object.is(enum__[enum__[key]], +key)) {
-      options.push(enum__[key]);
-    }
-  }
+  for (const key in enum__) if (`${+key}` !== key || typeof enum__[key] !== "string" || !Object.is(enum__[enum__[key]], +key)) options.push(enum__[key]);
   return {
     kind: "schema",
     type: "enum",
@@ -4879,16 +4512,13 @@ function enum_(enum__, message2) {
     async: false,
     enum: enum__,
     options,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (this.options.includes(dataset.value)) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (this.options.includes(dataset.value)) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
@@ -4907,8 +4537,8 @@ function exactOptional(wrapped, default_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      return this.wrapped["~run"](dataset, config2);
+    "~run"(dataset, config$1) {
+      return this.wrapped["~run"](dataset, config$1);
     }
   };
 }
@@ -4926,60 +4556,54 @@ function exactOptionalAsync(wrapped, default_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
-      return this.wrapped["~run"](dataset, config2);
+    async "~run"(dataset, config$1) {
+      return this.wrapped["~run"](dataset, config$1);
     }
   };
 }
 __name(exactOptionalAsync, "exactOptionalAsync");
 // @__NO_SIDE_EFFECTS__
-function file(message2) {
+function file(message$1) {
   return {
     kind: "schema",
     type: "file",
     reference: file,
     expects: "File",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value instanceof File) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value instanceof File) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(file, "file");
 // @__NO_SIDE_EFFECTS__
-function function_(message2) {
+function function_(message$1) {
   return {
     kind: "schema",
     type: "function",
     reference: function_,
     expects: "Function",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (typeof dataset.value === "function") {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (typeof dataset.value === "function") dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(function_, "function_");
 // @__NO_SIDE_EFFECTS__
-function instance(class_, message2) {
+function instance(class_, message$1) {
   return {
     kind: "schema",
     type: "instance",
@@ -4987,16 +4611,13 @@ function instance(class_, message2) {
     expects: class_.name,
     async: false,
     class: class_,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value instanceof this.class) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value instanceof this.class) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
@@ -5005,30 +4626,20 @@ __name(instance, "instance");
 // @__NO_SIDE_EFFECTS__
 function _merge(value1, value2) {
   if (typeof value1 === typeof value2) {
-    if (value1 === value2 || value1 instanceof Date && value2 instanceof Date && +value1 === +value2) {
-      return { value: value1 };
-    }
+    if (value1 === value2 || value1 instanceof Date && value2 instanceof Date && +value1 === +value2) return { value: value1 };
     if (value1 && value2 && value1.constructor === Object && value2.constructor === Object) {
-      for (const key in value2) {
-        if (key in value1) {
-          const dataset = /* @__PURE__ */ _merge(value1[key], value2[key]);
-          if (dataset.issue) {
-            return dataset;
-          }
-          value1[key] = dataset.value;
-        } else {
-          value1[key] = value2[key];
-        }
-      }
+      for (const key in value2) if (key in value1) {
+        const dataset = /* @__PURE__ */ _merge(value1[key], value2[key]);
+        if (dataset.issue) return dataset;
+        value1[key] = dataset.value;
+      } else value1[key] = value2[key];
       return { value: value1 };
     }
     if (Array.isArray(value1) && Array.isArray(value2)) {
       if (value1.length === value2.length) {
         for (let index = 0; index < value1.length; index++) {
           const dataset = /* @__PURE__ */ _merge(value1[index], value2[index]);
-          if (dataset.issue) {
-            return dataset;
-          }
+          if (dataset.issue) return dataset;
           value1[index] = dataset.value;
         }
         return { value: value1 };
@@ -5039,134 +4650,98 @@ function _merge(value1, value2) {
 }
 __name(_merge, "_merge");
 // @__NO_SIDE_EFFECTS__
-function intersect(options, message2) {
+function intersect(options, message$1) {
   return {
     kind: "schema",
     type: "intersect",
     reference: intersect,
-    expects: /* @__PURE__ */ _joinExpects(
-      options.map((option) => option.expects),
-      "&"
-    ),
+    expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "&"),
     async: false,
     options,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       if (this.options.length) {
         const input = dataset.value;
         let outputs;
         dataset.typed = true;
         for (const schema of this.options) {
-          const optionDataset = schema["~run"]({ value: input }, config2);
+          const optionDataset = schema["~run"]({ value: input }, config$1);
           if (optionDataset.issues) {
-            if (dataset.issues) {
-              dataset.issues.push(...optionDataset.issues);
-            } else {
-              dataset.issues = optionDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (dataset.issues) dataset.issues.push(...optionDataset.issues);
+            else dataset.issues = optionDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!optionDataset.typed) {
-            dataset.typed = false;
-          }
-          if (dataset.typed) {
-            if (outputs) {
-              outputs.push(optionDataset.value);
-            } else {
-              outputs = [optionDataset.value];
-            }
-          }
+          if (!optionDataset.typed) dataset.typed = false;
+          if (dataset.typed) if (outputs) outputs.push(optionDataset.value);
+          else outputs = [optionDataset.value];
         }
         if (dataset.typed) {
           dataset.value = outputs[0];
           for (let index = 1; index < outputs.length; index++) {
             const mergeDataset = /* @__PURE__ */ _merge(dataset.value, outputs[index]);
             if (mergeDataset.issue) {
-              _addIssue(this, "type", dataset, config2, {
-                received: "unknown"
-              });
+              _addIssue(this, "type", dataset, config$1, { received: "unknown" });
               break;
             }
             dataset.value = mergeDataset.value;
           }
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(intersect, "intersect");
 // @__NO_SIDE_EFFECTS__
-function intersectAsync(options, message2) {
+function intersectAsync(options, message$1) {
   return {
     kind: "schema",
     type: "intersect",
     reference: intersectAsync,
-    expects: /* @__PURE__ */ _joinExpects(
-      options.map((option) => option.expects),
-      "&"
-    ),
+    expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "&"),
     async: true,
     options,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       if (this.options.length) {
         const input = dataset.value;
         let outputs;
         dataset.typed = true;
-        const optionDatasets = await Promise.all(
-          this.options.map((schema) => schema["~run"]({ value: input }, config2))
-        );
+        const optionDatasets = await Promise.all(this.options.map((schema) => schema["~run"]({ value: input }, config$1)));
         for (const optionDataset of optionDatasets) {
           if (optionDataset.issues) {
-            if (dataset.issues) {
-              dataset.issues.push(...optionDataset.issues);
-            } else {
-              dataset.issues = optionDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (dataset.issues) dataset.issues.push(...optionDataset.issues);
+            else dataset.issues = optionDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!optionDataset.typed) {
-            dataset.typed = false;
-          }
-          if (dataset.typed) {
-            if (outputs) {
-              outputs.push(optionDataset.value);
-            } else {
-              outputs = [optionDataset.value];
-            }
-          }
+          if (!optionDataset.typed) dataset.typed = false;
+          if (dataset.typed) if (outputs) outputs.push(optionDataset.value);
+          else outputs = [optionDataset.value];
         }
         if (dataset.typed) {
           dataset.value = outputs[0];
           for (let index = 1; index < outputs.length; index++) {
             const mergeDataset = /* @__PURE__ */ _merge(dataset.value, outputs[index]);
             if (mergeDataset.issue) {
-              _addIssue(this, "type", dataset, config2, {
-                received: "unknown"
-              });
+              _addIssue(this, "type", dataset, config$1, { received: "unknown" });
               break;
             }
             dataset.value = mergeDataset.value;
           }
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
@@ -5184,8 +4759,8 @@ function lazy(getter) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      return this.getter(dataset.value)["~run"](dataset, config2);
+    "~run"(dataset, config$1) {
+      return this.getter(dataset.value)["~run"](dataset, config$1);
     }
   };
 }
@@ -5202,14 +4777,14 @@ function lazyAsync(getter) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
-      return (await this.getter(dataset.value))["~run"](dataset, config2);
+    async "~run"(dataset, config$1) {
+      return (await this.getter(dataset.value))["~run"](dataset, config$1);
     }
   };
 }
 __name(lazyAsync, "lazyAsync");
 // @__NO_SIDE_EFFECTS__
-function literal(literal_, message2) {
+function literal(literal_, message$1) {
   return {
     kind: "schema",
     type: "literal",
@@ -5217,223 +4792,170 @@ function literal(literal_, message2) {
     expects: /* @__PURE__ */ _stringify(literal_),
     async: false,
     literal: literal_,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value === this.literal) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value === this.literal) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(literal, "literal");
 // @__NO_SIDE_EFFECTS__
-function looseObject(entries2, message2) {
+function looseObject(entries$1, message$1) {
   return {
     kind: "schema",
     type: "loose_object",
     reference: looseObject,
     expects: "Object",
     async: false,
-    entries: entries2,
-    message: message2,
+    entries: entries$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
         for (const key in this.entries) {
           const valueSchema = this.entries[key];
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && // @ts-expect-error
-          valueSchema.default !== void 0) {
-            const value2 = key in input ? (
-              // @ts-expect-error
-              input[key]
-            ) : /* @__PURE__ */ getDefault(valueSchema);
-            const valueDataset = valueSchema["~run"]({ value: value2 }, config2);
+          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+            const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
             if (valueDataset.issues) {
               const pathItem = {
                 type: "object",
                 origin: "value",
                 input,
                 key,
-                value: value2
+                value: value$1
               };
               for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
+                if (issue.path) issue.path.unshift(pathItem);
+                else issue.path = [pathItem];
                 dataset.issues?.push(issue);
               }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
+              if (!dataset.issues) dataset.issues = valueDataset.issues;
+              if (config$1.abortEarly) {
                 dataset.typed = false;
                 break;
               }
             }
-            if (!valueDataset.typed) {
-              dataset.typed = false;
-            }
+            if (!valueDataset.typed) dataset.typed = false;
             dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) {
-            dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-          } else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-            _addIssue(this, "key", dataset, config2, {
+          } else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+          else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+            _addIssue(this, "key", dataset, config$1, {
               input: void 0,
               expected: `"${key}"`,
-              path: [
-                {
-                  type: "object",
-                  origin: "key",
-                  input,
-                  key,
-                  // @ts-expect-error
-                  value: input[key]
-                }
-              ]
+              path: [{
+                type: "object",
+                origin: "key",
+                input,
+                key,
+                value: input[key]
+              }]
             });
-            if (config2.abortEarly) {
-              break;
-            }
+            if (config$1.abortEarly) break;
           }
         }
-        if (!dataset.issues || !config2.abortEarly) {
-          for (const key in input) {
-            if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) {
-              dataset.value[key] = input[key];
-            }
-          }
+        if (!dataset.issues || !config$1.abortEarly) {
+          for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(looseObject, "looseObject");
 // @__NO_SIDE_EFFECTS__
-function looseObjectAsync(entries2, message2) {
+function looseObjectAsync(entries$1, message$1) {
   return {
     kind: "schema",
     type: "loose_object",
     reference: looseObjectAsync,
     expects: "Object",
     async: true,
-    entries: entries2,
-    message: message2,
+    entries: entries$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        const valueDatasets = await Promise.all(
-          Object.entries(this.entries).map(async ([key, valueSchema]) => {
-            if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && // @ts-expect-error
-            valueSchema.default !== void 0) {
-              const value2 = key in input ? (
-                // @ts-expect-error
-                input[key]
-              ) : await /* @__PURE__ */ getDefault(valueSchema);
-              return [
-                key,
-                value2,
-                valueSchema,
-                await valueSchema["~run"]({ value: value2 }, config2)
-              ];
-            }
+        const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
+          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
             return [
               key,
-              // @ts-expect-error
-              input[key],
+              value$1,
               valueSchema,
-              null
+              await valueSchema["~run"]({ value: value$1 }, config$1)
             ];
-          })
-        );
-        for (const [key, value2, valueSchema, valueDataset] of valueDatasets) {
-          if (valueDataset) {
-            if (valueDataset.issues) {
-              const pathItem = {
-                type: "object",
-                origin: "value",
-                input,
-                key,
-                value: value2
-              };
-              for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
-                dataset.issues?.push(issue);
-              }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
-                dataset.typed = false;
-                break;
-              }
+          }
+          return [
+            key,
+            input[key],
+            valueSchema,
+            null
+          ];
+        }));
+        for (const [key, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
+          if (valueDataset.issues) {
+            const pathItem = {
+              type: "object",
+              origin: "value",
+              input,
+              key,
+              value: value$1
+            };
+            for (const issue of valueDataset.issues) {
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
+              dataset.issues?.push(issue);
             }
-            if (!valueDataset.typed) {
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
-            }
-            dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) {
-            dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
-          } else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-            _addIssue(this, "key", dataset, config2, {
-              input: void 0,
-              expected: `"${key}"`,
-              path: [
-                {
-                  type: "object",
-                  origin: "key",
-                  input,
-                  key,
-                  value: value2
-                }
-              ]
-            });
-            if (config2.abortEarly) {
               break;
             }
           }
+          if (!valueDataset.typed) dataset.typed = false;
+          dataset.value[key] = valueDataset.value;
+        } else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+        else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+          _addIssue(this, "key", dataset, config$1, {
+            input: void 0,
+            expected: `"${key}"`,
+            path: [{
+              type: "object",
+              origin: "key",
+              input,
+              key,
+              value: value$1
+            }]
+          });
+          if (config$1.abortEarly) break;
         }
-        if (!dataset.issues || !config2.abortEarly) {
-          for (const key in input) {
-            if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) {
-              dataset.value[key] = input[key];
-            }
-          }
+        if (!dataset.issues || !config$1.abortEarly) {
+          for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(looseObjectAsync, "looseObjectAsync");
 // @__NO_SIDE_EFFECTS__
-function looseTuple(items, message2) {
+function looseTuple(items, message$1) {
   return {
     kind: "schema",
     type: "loose_tuple",
@@ -5441,62 +4963,49 @@ function looseTuple(items, message2) {
     expects: "Array",
     async: false,
     items,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
         for (let key = 0; key < this.items.length; key++) {
-          const value2 = input[key];
-          const itemDataset = this.items[key]["~run"]({ value: value2 }, config2);
+          const value$1 = input[key];
+          const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
               key,
-              value: value2
+              value: value$1
             };
             for (const issue of itemDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = itemDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!itemDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-        if (!dataset.issues || !config2.abortEarly) {
-          for (let key = this.items.length; key < input.length; key++) {
-            dataset.value.push(input[key]);
-          }
-        }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+        if (!dataset.issues || !config$1.abortEarly) for (let key = this.items.length; key < input.length; key++) dataset.value.push(input[key]);
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(looseTuple, "looseTuple");
 // @__NO_SIDE_EFFECTS__
-function looseTupleAsync(items, message2) {
+function looseTupleAsync(items, message$1) {
   return {
     kind: "schema",
     type: "loose_tuple",
@@ -5504,66 +5013,55 @@ function looseTupleAsync(items, message2) {
     expects: "Array",
     async: true,
     items,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        const itemDatasets = await Promise.all(
-          this.items.map(async (item, key) => {
-            const value2 = input[key];
-            return [key, value2, await item["~run"]({ value: value2 }, config2)];
-          })
-        );
-        for (const [key, value2, itemDataset] of itemDatasets) {
+        const itemDatasets = await Promise.all(this.items.map(async (item, key) => {
+          const value$1 = input[key];
+          return [
+            key,
+            value$1,
+            await item["~run"]({ value: value$1 }, config$1)
+          ];
+        }));
+        for (const [key, value$1, itemDataset] of itemDatasets) {
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
               key,
-              value: value2
+              value: value$1
             };
             for (const issue of itemDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = itemDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!itemDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-        if (!dataset.issues || !config2.abortEarly) {
-          for (let key = this.items.length; key < input.length; key++) {
-            dataset.value.push(input[key]);
-          }
-        }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+        if (!dataset.issues || !config$1.abortEarly) for (let key = this.items.length; key < input.length; key++) dataset.value.push(input[key]);
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(looseTupleAsync, "looseTupleAsync");
 // @__NO_SIDE_EFFECTS__
-function map(key, value2, message2) {
+function map(key, value$1, message$1) {
   return {
     kind: "schema",
     type: "map",
@@ -5571,18 +5069,18 @@ function map(key, value2, message2) {
     expects: "Map",
     async: false,
     key,
-    value: value2,
-    message: message2,
+    value: value$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input instanceof Map) {
         dataset.typed = true;
         dataset.value = /* @__PURE__ */ new Map();
         for (const [inputKey, inputValue] of input) {
-          const keyDataset = this.key["~run"]({ value: inputKey }, config2);
+          const keyDataset = this.key["~run"]({ value: inputKey }, config$1);
           if (keyDataset.issues) {
             const pathItem = {
               type: "map",
@@ -5592,25 +5090,17 @@ function map(key, value2, message2) {
               value: inputValue
             };
             for (const issue of keyDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = keyDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = keyDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          const valueDataset = this.value["~run"](
-            { value: inputValue },
-            config2
-          );
+          const valueDataset = this.value["~run"]({ value: inputValue }, config$1);
           if (valueDataset.issues) {
             const pathItem = {
               type: "map",
@@ -5620,36 +5110,27 @@ function map(key, value2, message2) {
               value: inputValue
             };
             for (const issue of valueDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = valueDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!keyDataset.typed || !valueDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
           dataset.value.set(keyDataset.value, valueDataset.value);
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(map, "map");
 // @__NO_SIDE_EFFECTS__
-function mapAsync(key, value2, message2) {
+function mapAsync(key, value$1, message$1) {
   return {
     kind: "schema",
     type: "map",
@@ -5657,32 +5138,23 @@ function mapAsync(key, value2, message2) {
     expects: "Map",
     async: true,
     key,
-    value: value2,
-    message: message2,
+    value: value$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input instanceof Map) {
         dataset.typed = true;
         dataset.value = /* @__PURE__ */ new Map();
-        const datasets = await Promise.all(
-          [...input].map(
-            ([inputKey, inputValue]) => Promise.all([
-              inputKey,
-              inputValue,
-              this.key["~run"]({ value: inputKey }, config2),
-              this.value["~run"]({ value: inputValue }, config2)
-            ])
-          )
-        );
-        for (const [
+        const datasets = await Promise.all([...input].map(([inputKey, inputValue]) => Promise.all([
           inputKey,
           inputValue,
-          keyDataset,
-          valueDataset
-        ] of datasets) {
+          this.key["~run"]({ value: inputKey }, config$1),
+          this.value["~run"]({ value: inputValue }, config$1)
+        ])));
+        for (const [inputKey, inputValue, keyDataset, valueDataset] of datasets) {
           if (keyDataset.issues) {
             const pathItem = {
               type: "map",
@@ -5692,17 +5164,12 @@ function mapAsync(key, value2, message2) {
               value: inputValue
             };
             for (const issue of keyDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = keyDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = keyDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
@@ -5716,78 +5183,66 @@ function mapAsync(key, value2, message2) {
               value: inputValue
             };
             for (const issue of valueDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = valueDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!keyDataset.typed || !valueDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
           dataset.value.set(keyDataset.value, valueDataset.value);
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(mapAsync, "mapAsync");
 // @__NO_SIDE_EFFECTS__
-function nan(message2) {
+function nan(message$1) {
   return {
     kind: "schema",
     type: "nan",
     reference: nan,
     expects: "NaN",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (Number.isNaN(dataset.value)) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (Number.isNaN(dataset.value)) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(nan, "nan");
 // @__NO_SIDE_EFFECTS__
-function never(message2) {
+function never(message$1) {
   return {
     kind: "schema",
     type: "never",
     reference: never,
     expects: "never",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      _addIssue(this, "type", dataset, config2);
+    "~run"(dataset, config$1) {
+      _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(never, "never");
 // @__NO_SIDE_EFFECTS__
-function nonNullable(wrapped, message2) {
+function nonNullable(wrapped, message$1) {
   return {
     kind: "schema",
     type: "non_nullable",
@@ -5795,24 +5250,20 @@ function nonNullable(wrapped, message2) {
     expects: "!null",
     async: false,
     wrapped,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value !== null) {
-        dataset = this.wrapped["~run"](dataset, config2);
-      }
-      if (dataset.value === null) {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value !== null) dataset = this.wrapped["~run"](dataset, config$1);
+      if (dataset.value === null) _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(nonNullable, "nonNullable");
 // @__NO_SIDE_EFFECTS__
-function nonNullableAsync(wrapped, message2) {
+function nonNullableAsync(wrapped, message$1) {
   return {
     kind: "schema",
     type: "non_nullable",
@@ -5820,24 +5271,20 @@ function nonNullableAsync(wrapped, message2) {
     expects: "!null",
     async: true,
     wrapped,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
-      if (dataset.value !== null) {
-        dataset = await this.wrapped["~run"](dataset, config2);
-      }
-      if (dataset.value === null) {
-        _addIssue(this, "type", dataset, config2);
-      }
+    async "~run"(dataset, config$1) {
+      if (dataset.value !== null) dataset = await this.wrapped["~run"](dataset, config$1);
+      if (dataset.value === null) _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(nonNullableAsync, "nonNullableAsync");
 // @__NO_SIDE_EFFECTS__
-function nonNullish(wrapped, message2) {
+function nonNullish(wrapped, message$1) {
   return {
     kind: "schema",
     type: "non_nullish",
@@ -5845,24 +5292,20 @@ function nonNullish(wrapped, message2) {
     expects: "(!null & !undefined)",
     async: false,
     wrapped,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (!(dataset.value === null || dataset.value === void 0)) {
-        dataset = this.wrapped["~run"](dataset, config2);
-      }
-      if (dataset.value === null || dataset.value === void 0) {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (!(dataset.value === null || dataset.value === void 0)) dataset = this.wrapped["~run"](dataset, config$1);
+      if (dataset.value === null || dataset.value === void 0) _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(nonNullish, "nonNullish");
 // @__NO_SIDE_EFFECTS__
-function nonNullishAsync(wrapped, message2) {
+function nonNullishAsync(wrapped, message$1) {
   return {
     kind: "schema",
     type: "non_nullish",
@@ -5870,24 +5313,20 @@ function nonNullishAsync(wrapped, message2) {
     expects: "(!null & !undefined)",
     async: true,
     wrapped,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
-      if (!(dataset.value === null || dataset.value === void 0)) {
-        dataset = await this.wrapped["~run"](dataset, config2);
-      }
-      if (dataset.value === null || dataset.value === void 0) {
-        _addIssue(this, "type", dataset, config2);
-      }
+    async "~run"(dataset, config$1) {
+      if (!(dataset.value === null || dataset.value === void 0)) dataset = await this.wrapped["~run"](dataset, config$1);
+      if (dataset.value === null || dataset.value === void 0) _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(nonNullishAsync, "nonNullishAsync");
 // @__NO_SIDE_EFFECTS__
-function nonOptional(wrapped, message2) {
+function nonOptional(wrapped, message$1) {
   return {
     kind: "schema",
     type: "non_optional",
@@ -5895,24 +5334,20 @@ function nonOptional(wrapped, message2) {
     expects: "!undefined",
     async: false,
     wrapped,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value !== void 0) {
-        dataset = this.wrapped["~run"](dataset, config2);
-      }
-      if (dataset.value === void 0) {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value !== void 0) dataset = this.wrapped["~run"](dataset, config$1);
+      if (dataset.value === void 0) _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(nonOptional, "nonOptional");
 // @__NO_SIDE_EFFECTS__
-function nonOptionalAsync(wrapped, message2) {
+function nonOptionalAsync(wrapped, message$1) {
   return {
     kind: "schema",
     type: "non_optional",
@@ -5920,40 +5355,33 @@ function nonOptionalAsync(wrapped, message2) {
     expects: "!undefined",
     async: true,
     wrapped,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
-      if (dataset.value !== void 0) {
-        dataset = await this.wrapped["~run"](dataset, config2);
-      }
-      if (dataset.value === void 0) {
-        _addIssue(this, "type", dataset, config2);
-      }
+    async "~run"(dataset, config$1) {
+      if (dataset.value !== void 0) dataset = await this.wrapped["~run"](dataset, config$1);
+      if (dataset.value === void 0) _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(nonOptionalAsync, "nonOptionalAsync");
 // @__NO_SIDE_EFFECTS__
-function null_(message2) {
+function null_(message$1) {
   return {
     kind: "schema",
     type: "null",
     reference: null_,
     expects: "null",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value === null) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value === null) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
@@ -5972,17 +5400,15 @@ function nullable(wrapped, default_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       if (dataset.value === null) {
-        if (this.default !== void 0) {
-          dataset.value = /* @__PURE__ */ getDefault(this, dataset, config2);
-        }
+        if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
         if (dataset.value === null) {
           dataset.typed = true;
           return dataset;
         }
       }
-      return this.wrapped["~run"](dataset, config2);
+      return this.wrapped["~run"](dataset, config$1);
     }
   };
 }
@@ -6000,17 +5426,15 @@ function nullableAsync(wrapped, default_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       if (dataset.value === null) {
-        if (this.default !== void 0) {
-          dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config2);
-        }
+        if (this.default !== void 0) dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config$1);
         if (dataset.value === null) {
           dataset.typed = true;
           return dataset;
         }
       }
-      return this.wrapped["~run"](dataset, config2);
+      return this.wrapped["~run"](dataset, config$1);
     }
   };
 }
@@ -6028,17 +5452,15 @@ function nullish(wrapped, default_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       if (dataset.value === null || dataset.value === void 0) {
-        if (this.default !== void 0) {
-          dataset.value = /* @__PURE__ */ getDefault(this, dataset, config2);
-        }
+        if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
         if (dataset.value === null || dataset.value === void 0) {
           dataset.typed = true;
           return dataset;
         }
       }
-      return this.wrapped["~run"](dataset, config2);
+      return this.wrapped["~run"](dataset, config$1);
     }
   };
 }
@@ -6056,502 +5478,377 @@ function nullishAsync(wrapped, default_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       if (dataset.value === null || dataset.value === void 0) {
-        if (this.default !== void 0) {
-          dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config2);
-        }
+        if (this.default !== void 0) dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config$1);
         if (dataset.value === null || dataset.value === void 0) {
           dataset.typed = true;
           return dataset;
         }
       }
-      return this.wrapped["~run"](dataset, config2);
+      return this.wrapped["~run"](dataset, config$1);
     }
   };
 }
 __name(nullishAsync, "nullishAsync");
 // @__NO_SIDE_EFFECTS__
-function number(message2) {
+function number(message$1) {
   return {
     kind: "schema",
     type: "number",
     reference: number,
     expects: "number",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (typeof dataset.value === "number" && !isNaN(dataset.value)) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (typeof dataset.value === "number" && !isNaN(dataset.value)) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(number, "number");
 // @__NO_SIDE_EFFECTS__
-function object(entries2, message2) {
+function object(entries$1, message$1) {
   return {
     kind: "schema",
     type: "object",
     reference: object,
     expects: "Object",
     async: false,
-    entries: entries2,
-    message: message2,
+    entries: entries$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
         for (const key in this.entries) {
           const valueSchema = this.entries[key];
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && // @ts-expect-error
-          valueSchema.default !== void 0) {
-            const value2 = key in input ? (
-              // @ts-expect-error
-              input[key]
-            ) : /* @__PURE__ */ getDefault(valueSchema);
-            const valueDataset = valueSchema["~run"]({ value: value2 }, config2);
+          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+            const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
             if (valueDataset.issues) {
               const pathItem = {
                 type: "object",
                 origin: "value",
                 input,
                 key,
-                value: value2
+                value: value$1
               };
               for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
+                if (issue.path) issue.path.unshift(pathItem);
+                else issue.path = [pathItem];
                 dataset.issues?.push(issue);
               }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
+              if (!dataset.issues) dataset.issues = valueDataset.issues;
+              if (config$1.abortEarly) {
                 dataset.typed = false;
                 break;
               }
             }
-            if (!valueDataset.typed) {
-              dataset.typed = false;
-            }
+            if (!valueDataset.typed) dataset.typed = false;
             dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) {
-            dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-          } else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-            _addIssue(this, "key", dataset, config2, {
+          } else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+          else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+            _addIssue(this, "key", dataset, config$1, {
               input: void 0,
               expected: `"${key}"`,
-              path: [
-                {
-                  type: "object",
-                  origin: "key",
-                  input,
-                  key,
-                  // @ts-expect-error
-                  value: input[key]
-                }
-              ]
+              path: [{
+                type: "object",
+                origin: "key",
+                input,
+                key,
+                value: input[key]
+              }]
             });
-            if (config2.abortEarly) {
-              break;
-            }
+            if (config$1.abortEarly) break;
           }
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(object, "object");
 // @__NO_SIDE_EFFECTS__
-function objectAsync(entries2, message2) {
+function objectAsync(entries$1, message$1) {
   return {
     kind: "schema",
     type: "object",
     reference: objectAsync,
     expects: "Object",
     async: true,
-    entries: entries2,
-    message: message2,
+    entries: entries$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        const valueDatasets = await Promise.all(
-          Object.entries(this.entries).map(async ([key, valueSchema]) => {
-            if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && // @ts-expect-error
-            valueSchema.default !== void 0) {
-              const value2 = key in input ? (
-                // @ts-expect-error
-                input[key]
-              ) : await /* @__PURE__ */ getDefault(valueSchema);
-              return [
-                key,
-                value2,
-                valueSchema,
-                await valueSchema["~run"]({ value: value2 }, config2)
-              ];
-            }
+        const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
+          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
             return [
               key,
-              // @ts-expect-error
-              input[key],
+              value$1,
               valueSchema,
-              null
+              await valueSchema["~run"]({ value: value$1 }, config$1)
             ];
-          })
-        );
-        for (const [key, value2, valueSchema, valueDataset] of valueDatasets) {
-          if (valueDataset) {
-            if (valueDataset.issues) {
-              const pathItem = {
-                type: "object",
-                origin: "value",
-                input,
-                key,
-                value: value2
-              };
-              for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
-                dataset.issues?.push(issue);
-              }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
-                dataset.typed = false;
-                break;
-              }
+          }
+          return [
+            key,
+            input[key],
+            valueSchema,
+            null
+          ];
+        }));
+        for (const [key, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
+          if (valueDataset.issues) {
+            const pathItem = {
+              type: "object",
+              origin: "value",
+              input,
+              key,
+              value: value$1
+            };
+            for (const issue of valueDataset.issues) {
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
+              dataset.issues?.push(issue);
             }
-            if (!valueDataset.typed) {
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
-            }
-            dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) {
-            dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
-          } else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-            _addIssue(this, "key", dataset, config2, {
-              input: void 0,
-              expected: `"${key}"`,
-              path: [
-                {
-                  type: "object",
-                  origin: "key",
-                  input,
-                  key,
-                  value: value2
-                }
-              ]
-            });
-            if (config2.abortEarly) {
               break;
             }
           }
+          if (!valueDataset.typed) dataset.typed = false;
+          dataset.value[key] = valueDataset.value;
+        } else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+        else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+          _addIssue(this, "key", dataset, config$1, {
+            input: void 0,
+            expected: `"${key}"`,
+            path: [{
+              type: "object",
+              origin: "key",
+              input,
+              key,
+              value: value$1
+            }]
+          });
+          if (config$1.abortEarly) break;
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(objectAsync, "objectAsync");
 // @__NO_SIDE_EFFECTS__
-function objectWithRest(entries2, rest, message2) {
+function objectWithRest(entries$1, rest, message$1) {
   return {
     kind: "schema",
     type: "object_with_rest",
     reference: objectWithRest,
     expects: "Object",
     async: false,
-    entries: entries2,
+    entries: entries$1,
     rest,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
         for (const key in this.entries) {
           const valueSchema = this.entries[key];
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && // @ts-expect-error
-          valueSchema.default !== void 0) {
-            const value2 = key in input ? (
-              // @ts-expect-error
-              input[key]
-            ) : /* @__PURE__ */ getDefault(valueSchema);
-            const valueDataset = valueSchema["~run"]({ value: value2 }, config2);
+          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+            const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
             if (valueDataset.issues) {
               const pathItem = {
                 type: "object",
                 origin: "value",
                 input,
                 key,
-                value: value2
+                value: value$1
               };
               for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
+                if (issue.path) issue.path.unshift(pathItem);
+                else issue.path = [pathItem];
                 dataset.issues?.push(issue);
               }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
+              if (!dataset.issues) dataset.issues = valueDataset.issues;
+              if (config$1.abortEarly) {
                 dataset.typed = false;
                 break;
               }
             }
-            if (!valueDataset.typed) {
-              dataset.typed = false;
-            }
+            if (!valueDataset.typed) dataset.typed = false;
             dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) {
-            dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-          } else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-            _addIssue(this, "key", dataset, config2, {
+          } else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+          else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+            _addIssue(this, "key", dataset, config$1, {
               input: void 0,
               expected: `"${key}"`,
-              path: [
-                {
-                  type: "object",
-                  origin: "key",
-                  input,
-                  key,
-                  // @ts-expect-error
-                  value: input[key]
-                }
-              ]
+              path: [{
+                type: "object",
+                origin: "key",
+                input,
+                key,
+                value: input[key]
+              }]
             });
-            if (config2.abortEarly) {
-              break;
-            }
+            if (config$1.abortEarly) break;
           }
         }
-        if (!dataset.issues || !config2.abortEarly) {
-          for (const key in input) {
-            if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) {
-              const valueDataset = this.rest["~run"](
-                // @ts-expect-error
-                { value: input[key] },
-                config2
-              );
-              if (valueDataset.issues) {
-                const pathItem = {
-                  type: "object",
-                  origin: "value",
-                  input,
-                  key,
-                  // @ts-expect-error
-                  value: input[key]
-                };
-                for (const issue of valueDataset.issues) {
-                  if (issue.path) {
-                    issue.path.unshift(pathItem);
-                  } else {
-                    issue.path = [pathItem];
-                  }
-                  dataset.issues?.push(issue);
-                }
-                if (!dataset.issues) {
-                  dataset.issues = valueDataset.issues;
-                }
-                if (config2.abortEarly) {
-                  dataset.typed = false;
-                  break;
-                }
+        if (!dataset.issues || !config$1.abortEarly) {
+          for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) {
+            const valueDataset = this.rest["~run"]({ value: input[key] }, config$1);
+            if (valueDataset.issues) {
+              const pathItem = {
+                type: "object",
+                origin: "value",
+                input,
+                key,
+                value: input[key]
+              };
+              for (const issue of valueDataset.issues) {
+                if (issue.path) issue.path.unshift(pathItem);
+                else issue.path = [pathItem];
+                dataset.issues?.push(issue);
               }
-              if (!valueDataset.typed) {
+              if (!dataset.issues) dataset.issues = valueDataset.issues;
+              if (config$1.abortEarly) {
                 dataset.typed = false;
+                break;
               }
-              dataset.value[key] = valueDataset.value;
             }
+            if (!valueDataset.typed) dataset.typed = false;
+            dataset.value[key] = valueDataset.value;
           }
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(objectWithRest, "objectWithRest");
 // @__NO_SIDE_EFFECTS__
-function objectWithRestAsync(entries2, rest, message2) {
+function objectWithRestAsync(entries$1, rest, message$1) {
   return {
     kind: "schema",
     type: "object_with_rest",
     reference: objectWithRestAsync,
     expects: "Object",
     async: true,
-    entries: entries2,
+    entries: entries$1,
     rest,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        const [normalDatasets, restDatasets] = await Promise.all([
-          // If key is present or its an optional schema with a default value,
-          // parse input of key or default value asynchronously
-          Promise.all(
-            Object.entries(this.entries).map(async ([key, valueSchema]) => {
-              if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && // @ts-expect-error
-              valueSchema.default !== void 0) {
-                const value2 = key in input ? (
-                  // @ts-expect-error
-                  input[key]
-                ) : await /* @__PURE__ */ getDefault(valueSchema);
-                return [
-                  key,
-                  value2,
-                  valueSchema,
-                  await valueSchema["~run"]({ value: value2 }, config2)
-                ];
-              }
-              return [
-                key,
-                // @ts-expect-error
-                input[key],
-                valueSchema,
-                null
-              ];
-            })
-          ),
-          // Parse other entries with rest schema asynchronously
-          // Hint: We exclude specific keys for security reasons
-          Promise.all(
-            Object.entries(input).filter(
-              ([key]) => /* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)
-            ).map(
-              async ([key, value2]) => [
-                key,
-                value2,
-                await this.rest["~run"]({ value: value2 }, config2)
-              ]
-            )
-          )
-        ]);
-        for (const [key, value2, valueSchema, valueDataset] of normalDatasets) {
-          if (valueDataset) {
-            if (valueDataset.issues) {
-              const pathItem = {
-                type: "object",
-                origin: "value",
-                input,
-                key,
-                value: value2
-              };
-              for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
-                dataset.issues?.push(issue);
-              }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
-                dataset.typed = false;
-                break;
-              }
+        const [normalDatasets, restDatasets] = await Promise.all([Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
+          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
+            return [
+              key,
+              value$1,
+              valueSchema,
+              await valueSchema["~run"]({ value: value$1 }, config$1)
+            ];
+          }
+          return [
+            key,
+            input[key],
+            valueSchema,
+            null
+          ];
+        })), Promise.all(Object.entries(input).filter(([key]) => /* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)).map(async ([key, value$1]) => [
+          key,
+          value$1,
+          await this.rest["~run"]({ value: value$1 }, config$1)
+        ]))]);
+        for (const [key, value$1, valueSchema, valueDataset] of normalDatasets) if (valueDataset) {
+          if (valueDataset.issues) {
+            const pathItem = {
+              type: "object",
+              origin: "value",
+              input,
+              key,
+              value: value$1
+            };
+            for (const issue of valueDataset.issues) {
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
+              dataset.issues?.push(issue);
             }
-            if (!valueDataset.typed) {
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
-            }
-            dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) {
-            dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
-          } else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-            _addIssue(this, "key", dataset, config2, {
-              input: void 0,
-              expected: `"${key}"`,
-              path: [
-                {
-                  type: "object",
-                  origin: "key",
-                  input,
-                  key,
-                  value: value2
-                }
-              ]
-            });
-            if (config2.abortEarly) {
               break;
             }
           }
+          if (!valueDataset.typed) dataset.typed = false;
+          dataset.value[key] = valueDataset.value;
+        } else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+        else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+          _addIssue(this, "key", dataset, config$1, {
+            input: void 0,
+            expected: `"${key}"`,
+            path: [{
+              type: "object",
+              origin: "key",
+              input,
+              key,
+              value: value$1
+            }]
+          });
+          if (config$1.abortEarly) break;
         }
-        if (!dataset.issues || !config2.abortEarly) {
-          for (const [key, value2, valueDataset] of restDatasets) {
-            if (valueDataset.issues) {
-              const pathItem = {
-                type: "object",
-                origin: "value",
-                input,
-                key,
-                value: value2
-              };
-              for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
-                dataset.issues?.push(issue);
-              }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
-                dataset.typed = false;
-                break;
-              }
+        if (!dataset.issues || !config$1.abortEarly) for (const [key, value$1, valueDataset] of restDatasets) {
+          if (valueDataset.issues) {
+            const pathItem = {
+              type: "object",
+              origin: "value",
+              input,
+              key,
+              value: value$1
+            };
+            for (const issue of valueDataset.issues) {
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
+              dataset.issues?.push(issue);
             }
-            if (!valueDataset.typed) {
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
+              break;
             }
-            dataset.value[key] = valueDataset.value;
           }
+          if (!valueDataset.typed) dataset.typed = false;
+          dataset.value[key] = valueDataset.value;
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
@@ -6570,17 +5867,15 @@ function optional(wrapped, default_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       if (dataset.value === void 0) {
-        if (this.default !== void 0) {
-          dataset.value = /* @__PURE__ */ getDefault(this, dataset, config2);
-        }
+        if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
         if (dataset.value === void 0) {
           dataset.typed = true;
           return dataset;
         }
       }
-      return this.wrapped["~run"](dataset, config2);
+      return this.wrapped["~run"](dataset, config$1);
     }
   };
 }
@@ -6598,23 +5893,21 @@ function optionalAsync(wrapped, default_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       if (dataset.value === void 0) {
-        if (this.default !== void 0) {
-          dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config2);
-        }
+        if (this.default !== void 0) dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config$1);
         if (dataset.value === void 0) {
           dataset.typed = true;
           return dataset;
         }
       }
-      return this.wrapped["~run"](dataset, config2);
+      return this.wrapped["~run"](dataset, config$1);
     }
   };
 }
 __name(optionalAsync, "optionalAsync");
 // @__NO_SIDE_EFFECTS__
-function picklist(options, message2) {
+function picklist(options, message$1) {
   return {
     kind: "schema",
     type: "picklist",
@@ -6622,46 +5915,40 @@ function picklist(options, message2) {
     expects: /* @__PURE__ */ _joinExpects(options.map(_stringify), "|"),
     async: false,
     options,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (this.options.includes(dataset.value)) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (this.options.includes(dataset.value)) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(picklist, "picklist");
 // @__NO_SIDE_EFFECTS__
-function promise(message2) {
+function promise(message$1) {
   return {
     kind: "schema",
     type: "promise",
     reference: promise,
     expects: "Promise",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value instanceof Promise) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value instanceof Promise) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(promise, "promise");
 // @__NO_SIDE_EFFECTS__
-function record(key, value2, message2) {
+function record(key, value$1, message$1) {
   return {
     kind: "schema",
     type: "record",
@@ -6669,119 +5956,19 @@ function record(key, value2, message2) {
     expects: "Object",
     async: false,
     key,
-    value: value2,
-    message: message2,
+    value: value$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        for (const entryKey in input) {
-          if (/* @__PURE__ */ _isValidObjectKey(input, entryKey)) {
-            const entryValue = input[entryKey];
-            const keyDataset = this.key["~run"]({ value: entryKey }, config2);
-            if (keyDataset.issues) {
-              const pathItem = {
-                type: "object",
-                origin: "key",
-                input,
-                key: entryKey,
-                value: entryValue
-              };
-              for (const issue of keyDataset.issues) {
-                issue.path = [pathItem];
-                dataset.issues?.push(issue);
-              }
-              if (!dataset.issues) {
-                dataset.issues = keyDataset.issues;
-              }
-              if (config2.abortEarly) {
-                dataset.typed = false;
-                break;
-              }
-            }
-            const valueDataset = this.value["~run"](
-              { value: entryValue },
-              config2
-            );
-            if (valueDataset.issues) {
-              const pathItem = {
-                type: "object",
-                origin: "value",
-                input,
-                key: entryKey,
-                value: entryValue
-              };
-              for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
-                dataset.issues?.push(issue);
-              }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
-                dataset.typed = false;
-                break;
-              }
-            }
-            if (!keyDataset.typed || !valueDataset.typed) {
-              dataset.typed = false;
-            }
-            if (keyDataset.typed) {
-              dataset.value[keyDataset.value] = valueDataset.value;
-            }
-          }
-        }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
-      return dataset;
-    }
-  };
-}
-__name(record, "record");
-// @__NO_SIDE_EFFECTS__
-function recordAsync(key, value2, message2) {
-  return {
-    kind: "schema",
-    type: "record",
-    reference: recordAsync,
-    expects: "Object",
-    async: true,
-    key,
-    value: value2,
-    message: message2,
-    get "~standard"() {
-      return /* @__PURE__ */ _getStandardProps(this);
-    },
-    async "~run"(dataset, config2) {
-      const input = dataset.value;
-      if (input && typeof input === "object") {
-        dataset.typed = true;
-        dataset.value = {};
-        const datasets = await Promise.all(
-          Object.entries(input).filter(([key2]) => /* @__PURE__ */ _isValidObjectKey(input, key2)).map(
-            ([entryKey, entryValue]) => Promise.all([
-              entryKey,
-              entryValue,
-              this.key["~run"]({ value: entryKey }, config2),
-              this.value["~run"]({ value: entryValue }, config2)
-            ])
-          )
-        );
-        for (const [
-          entryKey,
-          entryValue,
-          keyDataset,
-          valueDataset
-        ] of datasets) {
+        for (const entryKey in input) if (/* @__PURE__ */ _isValidObjectKey(input, entryKey)) {
+          const entryValue = input[entryKey];
+          const keyDataset = this.key["~run"]({ value: entryKey }, config$1);
           if (keyDataset.issues) {
             const pathItem = {
               type: "object",
@@ -6794,10 +5981,81 @@ function recordAsync(key, value2, message2) {
               issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = keyDataset.issues;
+            if (!dataset.issues) dataset.issues = keyDataset.issues;
+            if (config$1.abortEarly) {
+              dataset.typed = false;
+              break;
             }
-            if (config2.abortEarly) {
+          }
+          const valueDataset = this.value["~run"]({ value: entryValue }, config$1);
+          if (valueDataset.issues) {
+            const pathItem = {
+              type: "object",
+              origin: "value",
+              input,
+              key: entryKey,
+              value: entryValue
+            };
+            for (const issue of valueDataset.issues) {
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
+              dataset.issues?.push(issue);
+            }
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
+              dataset.typed = false;
+              break;
+            }
+          }
+          if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
+          if (keyDataset.typed) dataset.value[keyDataset.value] = valueDataset.value;
+        }
+      } else _addIssue(this, "type", dataset, config$1);
+      return dataset;
+    }
+  };
+}
+__name(record, "record");
+// @__NO_SIDE_EFFECTS__
+function recordAsync(key, value$1, message$1) {
+  return {
+    kind: "schema",
+    type: "record",
+    reference: recordAsync,
+    expects: "Object",
+    async: true,
+    key,
+    value: value$1,
+    message: message$1,
+    get "~standard"() {
+      return /* @__PURE__ */ _getStandardProps(this);
+    },
+    async "~run"(dataset, config$1) {
+      const input = dataset.value;
+      if (input && typeof input === "object") {
+        dataset.typed = true;
+        dataset.value = {};
+        const datasets = await Promise.all(Object.entries(input).filter(([key$1]) => /* @__PURE__ */ _isValidObjectKey(input, key$1)).map(([entryKey, entryValue]) => Promise.all([
+          entryKey,
+          entryValue,
+          this.key["~run"]({ value: entryKey }, config$1),
+          this.value["~run"]({ value: entryValue }, config$1)
+        ])));
+        for (const [entryKey, entryValue, keyDataset, valueDataset] of datasets) {
+          if (keyDataset.issues) {
+            const pathItem = {
+              type: "object",
+              origin: "key",
+              input,
+              key: entryKey,
+              value: entryValue
+            };
+            for (const issue of keyDataset.issues) {
+              issue.path = [pathItem];
+              dataset.issues?.push(issue);
+            }
+            if (!dataset.issues) dataset.issues = keyDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
@@ -6811,59 +6069,45 @@ function recordAsync(key, value2, message2) {
               value: entryValue
             };
             for (const issue of valueDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = valueDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!keyDataset.typed || !valueDataset.typed) {
-            dataset.typed = false;
-          }
-          if (keyDataset.typed) {
-            dataset.value[keyDataset.value] = valueDataset.value;
-          }
+          if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
+          if (keyDataset.typed) dataset.value[keyDataset.value] = valueDataset.value;
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(recordAsync, "recordAsync");
 // @__NO_SIDE_EFFECTS__
-function set(value2, message2) {
+function set(value$1, message$1) {
   return {
     kind: "schema",
     type: "set",
     reference: set,
     expects: "Set",
     async: false,
-    value: value2,
-    message: message2,
+    value: value$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input instanceof Set) {
         dataset.typed = true;
         dataset.value = /* @__PURE__ */ new Set();
         for (const inputValue of input) {
-          const valueDataset = this.value["~run"](
-            { value: inputValue },
-            config2
-          );
+          const valueDataset = this.value["~run"]({ value: inputValue }, config$1);
           if (valueDataset.issues) {
             const pathItem = {
               type: "set",
@@ -6873,60 +6117,44 @@ function set(value2, message2) {
               value: inputValue
             };
             for (const issue of valueDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = valueDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!valueDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!valueDataset.typed) dataset.typed = false;
           dataset.value.add(valueDataset.value);
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(set, "set");
 // @__NO_SIDE_EFFECTS__
-function setAsync(value2, message2) {
+function setAsync(value$1, message$1) {
   return {
     kind: "schema",
     type: "set",
     reference: setAsync,
     expects: "Set",
     async: true,
-    value: value2,
-    message: message2,
+    value: value$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input instanceof Set) {
         dataset.typed = true;
         dataset.value = /* @__PURE__ */ new Set();
-        const valueDatasets = await Promise.all(
-          [...input].map(
-            async (inputValue) => [
-              inputValue,
-              await this.value["~run"]({ value: inputValue }, config2)
-            ]
-          )
-        );
+        const valueDatasets = await Promise.all([...input].map(async (inputValue) => [inputValue, await this.value["~run"]({ value: inputValue }, config$1)]));
         for (const [inputValue, valueDataset] of valueDatasets) {
           if (valueDataset.issues) {
             const pathItem = {
@@ -6937,264 +6165,203 @@ function setAsync(value2, message2) {
               value: inputValue
             };
             for (const issue of valueDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = valueDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!valueDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!valueDataset.typed) dataset.typed = false;
           dataset.value.add(valueDataset.value);
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(setAsync, "setAsync");
 // @__NO_SIDE_EFFECTS__
-function strictObject(entries2, message2) {
+function strictObject(entries$1, message$1) {
   return {
     kind: "schema",
     type: "strict_object",
     reference: strictObject,
     expects: "Object",
     async: false,
-    entries: entries2,
-    message: message2,
+    entries: entries$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
         for (const key in this.entries) {
           const valueSchema = this.entries[key];
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && // @ts-expect-error
-          valueSchema.default !== void 0) {
-            const value2 = key in input ? (
-              // @ts-expect-error
-              input[key]
-            ) : /* @__PURE__ */ getDefault(valueSchema);
-            const valueDataset = valueSchema["~run"]({ value: value2 }, config2);
+          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+            const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
             if (valueDataset.issues) {
               const pathItem = {
                 type: "object",
                 origin: "value",
                 input,
                 key,
-                value: value2
+                value: value$1
               };
               for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
+                if (issue.path) issue.path.unshift(pathItem);
+                else issue.path = [pathItem];
                 dataset.issues?.push(issue);
               }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
+              if (!dataset.issues) dataset.issues = valueDataset.issues;
+              if (config$1.abortEarly) {
                 dataset.typed = false;
                 break;
               }
             }
-            if (!valueDataset.typed) {
-              dataset.typed = false;
-            }
+            if (!valueDataset.typed) dataset.typed = false;
             dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) {
-            dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
-          } else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-            _addIssue(this, "key", dataset, config2, {
+          } else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+          else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+            _addIssue(this, "key", dataset, config$1, {
               input: void 0,
               expected: `"${key}"`,
-              path: [
-                {
-                  type: "object",
-                  origin: "key",
-                  input,
-                  key,
-                  // @ts-expect-error
-                  value: input[key]
-                }
-              ]
+              path: [{
+                type: "object",
+                origin: "key",
+                input,
+                key,
+                value: input[key]
+              }]
             });
-            if (config2.abortEarly) {
-              break;
-            }
+            if (config$1.abortEarly) break;
           }
         }
-        if (!dataset.issues || !config2.abortEarly) {
-          for (const key in input) {
-            if (!(key in this.entries)) {
-              _addIssue(this, "key", dataset, config2, {
-                input: key,
-                expected: "never",
-                path: [
-                  {
-                    type: "object",
-                    origin: "key",
-                    input,
-                    key,
-                    // @ts-expect-error
-                    value: input[key]
-                  }
-                ]
-              });
-              break;
-            }
+        if (!dataset.issues || !config$1.abortEarly) {
+          for (const key in input) if (!(key in this.entries)) {
+            _addIssue(this, "key", dataset, config$1, {
+              input: key,
+              expected: "never",
+              path: [{
+                type: "object",
+                origin: "key",
+                input,
+                key,
+                value: input[key]
+              }]
+            });
+            break;
           }
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(strictObject, "strictObject");
 // @__NO_SIDE_EFFECTS__
-function strictObjectAsync(entries2, message2) {
+function strictObjectAsync(entries$1, message$1) {
   return {
     kind: "schema",
     type: "strict_object",
     reference: strictObjectAsync,
     expects: "Object",
     async: true,
-    entries: entries2,
-    message: message2,
+    entries: entries$1,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        const valueDatasets = await Promise.all(
-          Object.entries(this.entries).map(async ([key, valueSchema]) => {
-            if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && // @ts-expect-error
-            valueSchema.default !== void 0) {
-              const value2 = key in input ? (
-                // @ts-expect-error
-                input[key]
-              ) : await /* @__PURE__ */ getDefault(valueSchema);
-              return [
-                key,
-                value2,
-                valueSchema,
-                await valueSchema["~run"]({ value: value2 }, config2)
-              ];
-            }
+        const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
+          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
             return [
               key,
-              // @ts-expect-error
-              input[key],
+              value$1,
               valueSchema,
-              null
+              await valueSchema["~run"]({ value: value$1 }, config$1)
             ];
-          })
-        );
-        for (const [key, value2, valueSchema, valueDataset] of valueDatasets) {
-          if (valueDataset) {
-            if (valueDataset.issues) {
-              const pathItem = {
+          }
+          return [
+            key,
+            input[key],
+            valueSchema,
+            null
+          ];
+        }));
+        for (const [key, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
+          if (valueDataset.issues) {
+            const pathItem = {
+              type: "object",
+              origin: "value",
+              input,
+              key,
+              value: value$1
+            };
+            for (const issue of valueDataset.issues) {
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
+              dataset.issues?.push(issue);
+            }
+            if (!dataset.issues) dataset.issues = valueDataset.issues;
+            if (config$1.abortEarly) {
+              dataset.typed = false;
+              break;
+            }
+          }
+          if (!valueDataset.typed) dataset.typed = false;
+          dataset.value[key] = valueDataset.value;
+        } else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+        else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+          _addIssue(this, "key", dataset, config$1, {
+            input: void 0,
+            expected: `"${key}"`,
+            path: [{
+              type: "object",
+              origin: "key",
+              input,
+              key,
+              value: value$1
+            }]
+          });
+          if (config$1.abortEarly) break;
+        }
+        if (!dataset.issues || !config$1.abortEarly) {
+          for (const key in input) if (!(key in this.entries)) {
+            _addIssue(this, "key", dataset, config$1, {
+              input: key,
+              expected: "never",
+              path: [{
                 type: "object",
-                origin: "value",
+                origin: "key",
                 input,
                 key,
-                value: value2
-              };
-              for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
-                dataset.issues?.push(issue);
-              }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
-                dataset.typed = false;
-                break;
-              }
-            }
-            if (!valueDataset.typed) {
-              dataset.typed = false;
-            }
-            dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) {
-            dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
-          } else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-            _addIssue(this, "key", dataset, config2, {
-              input: void 0,
-              expected: `"${key}"`,
-              path: [
-                {
-                  type: "object",
-                  origin: "key",
-                  input,
-                  key,
-                  value: value2
-                }
-              ]
+                value: input[key]
+              }]
             });
-            if (config2.abortEarly) {
-              break;
-            }
+            break;
           }
         }
-        if (!dataset.issues || !config2.abortEarly) {
-          for (const key in input) {
-            if (!(key in this.entries)) {
-              _addIssue(this, "key", dataset, config2, {
-                input: key,
-                expected: "never",
-                path: [
-                  {
-                    type: "object",
-                    origin: "key",
-                    input,
-                    key,
-                    // @ts-expect-error
-                    value: input[key]
-                  }
-                ]
-              });
-              break;
-            }
-          }
-        }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(strictObjectAsync, "strictObjectAsync");
 // @__NO_SIDE_EFFECTS__
-function strictTuple(items, message2) {
+function strictTuple(items, message$1) {
   return {
     kind: "schema",
     type: "strict_tuple",
@@ -7202,72 +6369,59 @@ function strictTuple(items, message2) {
     expects: "Array",
     async: false,
     items,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
         for (let key = 0; key < this.items.length; key++) {
-          const value2 = input[key];
-          const itemDataset = this.items[key]["~run"]({ value: value2 }, config2);
+          const value$1 = input[key];
+          const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
               key,
-              value: value2
+              value: value$1
             };
             for (const issue of itemDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = itemDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!itemDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-        if (!(dataset.issues && config2.abortEarly) && this.items.length < input.length) {
-          _addIssue(this, "type", dataset, config2, {
-            input: input[this.items.length],
-            expected: "never",
-            path: [
-              {
-                type: "array",
-                origin: "value",
-                input,
-                key: this.items.length,
-                value: input[this.items.length]
-              }
-            ]
-          });
-        }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+        if (!(dataset.issues && config$1.abortEarly) && this.items.length < input.length) _addIssue(this, "type", dataset, config$1, {
+          input: input[this.items.length],
+          expected: "never",
+          path: [{
+            type: "array",
+            origin: "value",
+            input,
+            key: this.items.length,
+            value: input[this.items.length]
+          }]
+        });
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(strictTuple, "strictTuple");
 // @__NO_SIDE_EFFECTS__
-function strictTupleAsync(items, message2) {
+function strictTupleAsync(items, message$1) {
   return {
     kind: "schema",
     type: "strict_tuple",
@@ -7275,122 +6429,105 @@ function strictTupleAsync(items, message2) {
     expects: "Array",
     async: true,
     items,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        const itemDatasets = await Promise.all(
-          this.items.map(async (item, key) => {
-            const value2 = input[key];
-            return [key, value2, await item["~run"]({ value: value2 }, config2)];
-          })
-        );
-        for (const [key, value2, itemDataset] of itemDatasets) {
+        const itemDatasets = await Promise.all(this.items.map(async (item, key) => {
+          const value$1 = input[key];
+          return [
+            key,
+            value$1,
+            await item["~run"]({ value: value$1 }, config$1)
+          ];
+        }));
+        for (const [key, value$1, itemDataset] of itemDatasets) {
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
               key,
-              value: value2
+              value: value$1
             };
             for (const issue of itemDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = itemDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!itemDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-        if (!(dataset.issues && config2.abortEarly) && this.items.length < input.length) {
-          _addIssue(this, "type", dataset, config2, {
-            input: input[this.items.length],
-            expected: "never",
-            path: [
-              {
-                type: "array",
-                origin: "value",
-                input,
-                key: this.items.length,
-                value: input[this.items.length]
-              }
-            ]
-          });
-        }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+        if (!(dataset.issues && config$1.abortEarly) && this.items.length < input.length) _addIssue(this, "type", dataset, config$1, {
+          input: input[this.items.length],
+          expected: "never",
+          path: [{
+            type: "array",
+            origin: "value",
+            input,
+            key: this.items.length,
+            value: input[this.items.length]
+          }]
+        });
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(strictTupleAsync, "strictTupleAsync");
 // @__NO_SIDE_EFFECTS__
-function string(message2) {
+function string(message$1) {
   return {
     kind: "schema",
     type: "string",
     reference: string,
     expects: "string",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (typeof dataset.value === "string") {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (typeof dataset.value === "string") dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(string, "string");
 // @__NO_SIDE_EFFECTS__
-function symbol(message2) {
+function symbol(message$1) {
   return {
     kind: "schema",
     type: "symbol",
     reference: symbol,
     expects: "symbol",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (typeof dataset.value === "symbol") {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (typeof dataset.value === "symbol") dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(symbol, "symbol");
 // @__NO_SIDE_EFFECTS__
-function tuple(items, message2) {
+function tuple(items, message$1) {
   return {
     kind: "schema",
     type: "tuple",
@@ -7398,57 +6535,48 @@ function tuple(items, message2) {
     expects: "Array",
     async: false,
     items,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
         for (let key = 0; key < this.items.length; key++) {
-          const value2 = input[key];
-          const itemDataset = this.items[key]["~run"]({ value: value2 }, config2);
+          const value$1 = input[key];
+          const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
               key,
-              value: value2
+              value: value$1
             };
             for (const issue of itemDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = itemDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!itemDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(tuple, "tuple");
 // @__NO_SIDE_EFFECTS__
-function tupleAsync(items, message2) {
+function tupleAsync(items, message$1) {
   return {
     kind: "schema",
     type: "tuple",
@@ -7456,61 +6584,54 @@ function tupleAsync(items, message2) {
     expects: "Array",
     async: true,
     items,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        const itemDatasets = await Promise.all(
-          this.items.map(async (item, key) => {
-            const value2 = input[key];
-            return [key, value2, await item["~run"]({ value: value2 }, config2)];
-          })
-        );
-        for (const [key, value2, itemDataset] of itemDatasets) {
+        const itemDatasets = await Promise.all(this.items.map(async (item, key) => {
+          const value$1 = input[key];
+          return [
+            key,
+            value$1,
+            await item["~run"]({ value: value$1 }, config$1)
+          ];
+        }));
+        for (const [key, value$1, itemDataset] of itemDatasets) {
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
               key,
-              value: value2
+              value: value$1
             };
             for (const issue of itemDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = itemDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!itemDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(tupleAsync, "tupleAsync");
 // @__NO_SIDE_EFFECTS__
-function tupleWithRest(items, rest, message2) {
+function tupleWithRest(items, rest, message$1) {
   return {
     kind: "schema",
     type: "tuple_with_rest",
@@ -7519,91 +6640,73 @@ function tupleWithRest(items, rest, message2) {
     async: false,
     items,
     rest,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
         for (let key = 0; key < this.items.length; key++) {
-          const value2 = input[key];
-          const itemDataset = this.items[key]["~run"]({ value: value2 }, config2);
+          const value$1 = input[key];
+          const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
               key,
-              value: value2
+              value: value$1
             };
             for (const issue of itemDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = itemDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!itemDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-        if (!dataset.issues || !config2.abortEarly) {
-          for (let key = this.items.length; key < input.length; key++) {
-            const value2 = input[key];
-            const itemDataset = this.rest["~run"]({ value: value2 }, config2);
-            if (itemDataset.issues) {
-              const pathItem = {
-                type: "array",
-                origin: "value",
-                input,
-                key,
-                value: value2
-              };
-              for (const issue of itemDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
-                dataset.issues?.push(issue);
-              }
-              if (!dataset.issues) {
-                dataset.issues = itemDataset.issues;
-              }
-              if (config2.abortEarly) {
-                dataset.typed = false;
-                break;
-              }
+        if (!dataset.issues || !config$1.abortEarly) for (let key = this.items.length; key < input.length; key++) {
+          const value$1 = input[key];
+          const itemDataset = this.rest["~run"]({ value: value$1 }, config$1);
+          if (itemDataset.issues) {
+            const pathItem = {
+              type: "array",
+              origin: "value",
+              input,
+              key,
+              value: value$1
+            };
+            for (const issue of itemDataset.issues) {
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
+              dataset.issues?.push(issue);
             }
-            if (!itemDataset.typed) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
+              break;
             }
-            dataset.value.push(itemDataset.value);
           }
+          if (!itemDataset.typed) dataset.typed = false;
+          dataset.value.push(itemDataset.value);
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(tupleWithRest, "tupleWithRest");
 // @__NO_SIDE_EFFECTS__
-function tupleWithRestAsync(items, rest, message2) {
+function tupleWithRestAsync(items, rest, message$1) {
   return {
     kind: "schema",
     type: "tuple_with_rest",
@@ -7612,126 +6715,96 @@ function tupleWithRestAsync(items, rest, message2) {
     async: true,
     items,
     rest,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        const [normalDatasets, restDatasets] = await Promise.all([
-          // Parse schema of each normal item
-          Promise.all(
-            this.items.map(async (item, key) => {
-              const value2 = input[key];
-              return [
-                key,
-                value2,
-                await item["~run"]({ value: value2 }, config2)
-              ];
-            })
-          ),
-          // Parse other items with rest schema
-          Promise.all(
-            input.slice(this.items.length).map(async (value2, key) => {
-              return [
-                key + this.items.length,
-                value2,
-                await this.rest["~run"]({ value: value2 }, config2)
-              ];
-            })
-          )
-        ]);
-        for (const [key, value2, itemDataset] of normalDatasets) {
+        const [normalDatasets, restDatasets] = await Promise.all([Promise.all(this.items.map(async (item, key) => {
+          const value$1 = input[key];
+          return [
+            key,
+            value$1,
+            await item["~run"]({ value: value$1 }, config$1)
+          ];
+        })), Promise.all(input.slice(this.items.length).map(async (value$1, key) => {
+          return [
+            key + this.items.length,
+            value$1,
+            await this.rest["~run"]({ value: value$1 }, config$1)
+          ];
+        }))]);
+        for (const [key, value$1, itemDataset] of normalDatasets) {
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
               key,
-              value: value2
+              value: value$1
             };
             for (const issue of itemDataset.issues) {
-              if (issue.path) {
-                issue.path.unshift(pathItem);
-              } else {
-                issue.path = [pathItem];
-              }
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
               dataset.issues?.push(issue);
             }
-            if (!dataset.issues) {
-              dataset.issues = itemDataset.issues;
-            }
-            if (config2.abortEarly) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
               break;
             }
           }
-          if (!itemDataset.typed) {
-            dataset.typed = false;
-          }
+          if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-        if (!dataset.issues || !config2.abortEarly) {
-          for (const [key, value2, itemDataset] of restDatasets) {
-            if (itemDataset.issues) {
-              const pathItem = {
-                type: "array",
-                origin: "value",
-                input,
-                key,
-                value: value2
-              };
-              for (const issue of itemDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
-                dataset.issues?.push(issue);
-              }
-              if (!dataset.issues) {
-                dataset.issues = itemDataset.issues;
-              }
-              if (config2.abortEarly) {
-                dataset.typed = false;
-                break;
-              }
+        if (!dataset.issues || !config$1.abortEarly) for (const [key, value$1, itemDataset] of restDatasets) {
+          if (itemDataset.issues) {
+            const pathItem = {
+              type: "array",
+              origin: "value",
+              input,
+              key,
+              value: value$1
+            };
+            for (const issue of itemDataset.issues) {
+              if (issue.path) issue.path.unshift(pathItem);
+              else issue.path = [pathItem];
+              dataset.issues?.push(issue);
             }
-            if (!itemDataset.typed) {
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
               dataset.typed = false;
+              break;
             }
-            dataset.value.push(itemDataset.value);
           }
+          if (!itemDataset.typed) dataset.typed = false;
+          dataset.value.push(itemDataset.value);
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(tupleWithRestAsync, "tupleWithRestAsync");
 // @__NO_SIDE_EFFECTS__
-function undefined_(message2) {
+function undefined_(message$1) {
   return {
     kind: "schema",
     type: "undefined",
     reference: undefined_,
     expects: "undefined",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value === void 0) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value === void 0) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
@@ -7750,17 +6823,15 @@ function undefinedable(wrapped, default_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       if (dataset.value === void 0) {
-        if (this.default !== void 0) {
-          dataset.value = /* @__PURE__ */ getDefault(this, dataset, config2);
-        }
+        if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
         if (dataset.value === void 0) {
           dataset.typed = true;
           return dataset;
         }
       }
-      return this.wrapped["~run"](dataset, config2);
+      return this.wrapped["~run"](dataset, config$1);
     }
   };
 }
@@ -7778,17 +6849,15 @@ function undefinedableAsync(wrapped, default_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       if (dataset.value === void 0) {
-        if (this.default !== void 0) {
-          dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config2);
-        }
+        if (this.default !== void 0) dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config$1);
         if (dataset.value === void 0) {
           dataset.typed = true;
           return dataset;
         }
       }
-      return this.wrapped["~run"](dataset, config2);
+      return this.wrapped["~run"](dataset, config$1);
     }
   };
 }
@@ -7796,144 +6865,86 @@ __name(undefinedableAsync, "undefinedableAsync");
 // @__NO_SIDE_EFFECTS__
 function _subIssues(datasets) {
   let issues;
-  if (datasets) {
-    for (const dataset of datasets) {
-      if (issues) {
-        issues.push(...dataset.issues);
-      } else {
-        issues = dataset.issues;
-      }
-    }
-  }
+  if (datasets) for (const dataset of datasets) if (issues) issues.push(...dataset.issues);
+  else issues = dataset.issues;
   return issues;
 }
 __name(_subIssues, "_subIssues");
 // @__NO_SIDE_EFFECTS__
-function union(options, message2) {
+function union(options, message$1) {
   return {
     kind: "schema",
     type: "union",
     reference: union,
-    expects: /* @__PURE__ */ _joinExpects(
-      options.map((option) => option.expects),
-      "|"
-    ),
+    expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "|"),
     async: false,
     options,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       let validDataset;
       let typedDatasets;
       let untypedDatasets;
       for (const schema of this.options) {
-        const optionDataset = schema["~run"]({ value: dataset.value }, config2);
-        if (optionDataset.typed) {
-          if (optionDataset.issues) {
-            if (typedDatasets) {
-              typedDatasets.push(optionDataset);
-            } else {
-              typedDatasets = [optionDataset];
-            }
-          } else {
-            validDataset = optionDataset;
-            break;
-          }
-        } else {
-          if (untypedDatasets) {
-            untypedDatasets.push(optionDataset);
-          } else {
-            untypedDatasets = [optionDataset];
-          }
+        const optionDataset = schema["~run"]({ value: dataset.value }, config$1);
+        if (optionDataset.typed) if (optionDataset.issues) if (typedDatasets) typedDatasets.push(optionDataset);
+        else typedDatasets = [optionDataset];
+        else {
+          validDataset = optionDataset;
+          break;
         }
+        else if (untypedDatasets) untypedDatasets.push(optionDataset);
+        else untypedDatasets = [optionDataset];
       }
-      if (validDataset) {
-        return validDataset;
-      }
+      if (validDataset) return validDataset;
       if (typedDatasets) {
-        if (typedDatasets.length === 1) {
-          return typedDatasets[0];
-        }
-        _addIssue(this, "type", dataset, config2, {
-          issues: /* @__PURE__ */ _subIssues(typedDatasets)
-        });
+        if (typedDatasets.length === 1) return typedDatasets[0];
+        _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(typedDatasets) });
         dataset.typed = true;
-      } else if (untypedDatasets?.length === 1) {
-        return untypedDatasets[0];
-      } else {
-        _addIssue(this, "type", dataset, config2, {
-          issues: /* @__PURE__ */ _subIssues(untypedDatasets)
-        });
-      }
+      } else if (untypedDatasets?.length === 1) return untypedDatasets[0];
+      else _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(untypedDatasets) });
       return dataset;
     }
   };
 }
 __name(union, "union");
 // @__NO_SIDE_EFFECTS__
-function unionAsync(options, message2) {
+function unionAsync(options, message$1) {
   return {
     kind: "schema",
     type: "union",
     reference: unionAsync,
-    expects: /* @__PURE__ */ _joinExpects(
-      options.map((option) => option.expects),
-      "|"
-    ),
+    expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "|"),
     async: true,
     options,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       let validDataset;
       let typedDatasets;
       let untypedDatasets;
       for (const schema of this.options) {
-        const optionDataset = await schema["~run"](
-          { value: dataset.value },
-          config2
-        );
-        if (optionDataset.typed) {
-          if (optionDataset.issues) {
-            if (typedDatasets) {
-              typedDatasets.push(optionDataset);
-            } else {
-              typedDatasets = [optionDataset];
-            }
-          } else {
-            validDataset = optionDataset;
-            break;
-          }
-        } else {
-          if (untypedDatasets) {
-            untypedDatasets.push(optionDataset);
-          } else {
-            untypedDatasets = [optionDataset];
-          }
+        const optionDataset = await schema["~run"]({ value: dataset.value }, config$1);
+        if (optionDataset.typed) if (optionDataset.issues) if (typedDatasets) typedDatasets.push(optionDataset);
+        else typedDatasets = [optionDataset];
+        else {
+          validDataset = optionDataset;
+          break;
         }
+        else if (untypedDatasets) untypedDatasets.push(optionDataset);
+        else untypedDatasets = [optionDataset];
       }
-      if (validDataset) {
-        return validDataset;
-      }
+      if (validDataset) return validDataset;
       if (typedDatasets) {
-        if (typedDatasets.length === 1) {
-          return typedDatasets[0];
-        }
-        _addIssue(this, "type", dataset, config2, {
-          issues: /* @__PURE__ */ _subIssues(typedDatasets)
-        });
+        if (typedDatasets.length === 1) return typedDatasets[0];
+        _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(typedDatasets) });
         dataset.typed = true;
-      } else if (untypedDatasets?.length === 1) {
-        return untypedDatasets[0];
-      } else {
-        _addIssue(this, "type", dataset, config2, {
-          issues: /* @__PURE__ */ _subIssues(untypedDatasets)
-        });
-      }
+      } else if (untypedDatasets?.length === 1) return untypedDatasets[0];
+      else _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(untypedDatasets) });
       return dataset;
     }
   };
@@ -7958,7 +6969,7 @@ function unknown() {
 }
 __name(unknown, "unknown");
 // @__NO_SIDE_EFFECTS__
-function variant(key, options, message2) {
+function variant(key, options, message$1) {
   return {
     kind: "schema",
     type: "variant",
@@ -7967,87 +6978,69 @@ function variant(key, options, message2) {
     async: false,
     key,
     options,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         let outputDataset;
         let maxDiscriminatorPriority = 0;
         let invalidDiscriminatorKey = this.key;
         let expectedDiscriminators = [];
-        const parseOptions = /* @__PURE__ */ __name((variant2, allKeys) => {
-          for (const schema of variant2.options) {
-            if (schema.type === "variant") {
-              parseOptions(schema, new Set(allKeys).add(schema.key));
-            } else {
+        const parseOptions = /* @__PURE__ */ __name((variant$1, allKeys) => {
+          for (const schema of variant$1.options) {
+            if (schema.type === "variant") parseOptions(schema, new Set(allKeys).add(schema.key));
+            else {
               let keysAreValid = true;
               let currentPriority = 0;
               for (const currentKey of allKeys) {
                 const discriminatorSchema = schema.entries[currentKey];
-                if (currentKey in input ? discriminatorSchema["~run"](
-                  // @ts-expect-error
-                  { typed: false, value: input[currentKey] },
-                  { abortEarly: true }
-                ).issues : discriminatorSchema.type !== "exact_optional" && discriminatorSchema.type !== "optional" && discriminatorSchema.type !== "nullish") {
+                if (currentKey in input ? discriminatorSchema["~run"]({
+                  typed: false,
+                  value: input[currentKey]
+                }, { abortEarly: true }).issues : discriminatorSchema.type !== "exact_optional" && discriminatorSchema.type !== "optional" && discriminatorSchema.type !== "nullish") {
                   keysAreValid = false;
                   if (invalidDiscriminatorKey !== currentKey && (maxDiscriminatorPriority < currentPriority || maxDiscriminatorPriority === currentPriority && currentKey in input && !(invalidDiscriminatorKey in input))) {
                     maxDiscriminatorPriority = currentPriority;
                     invalidDiscriminatorKey = currentKey;
                     expectedDiscriminators = [];
                   }
-                  if (invalidDiscriminatorKey === currentKey) {
-                    expectedDiscriminators.push(
-                      schema.entries[currentKey].expects
-                    );
-                  }
+                  if (invalidDiscriminatorKey === currentKey) expectedDiscriminators.push(schema.entries[currentKey].expects);
                   break;
                 }
                 currentPriority++;
               }
               if (keysAreValid) {
-                const optionDataset = schema["~run"]({ value: input }, config2);
-                if (!outputDataset || !outputDataset.typed && optionDataset.typed) {
-                  outputDataset = optionDataset;
-                }
+                const optionDataset = schema["~run"]({ value: input }, config$1);
+                if (!outputDataset || !outputDataset.typed && optionDataset.typed) outputDataset = optionDataset;
               }
             }
-            if (outputDataset && !outputDataset.issues) {
-              break;
-            }
+            if (outputDataset && !outputDataset.issues) break;
           }
         }, "parseOptions");
         parseOptions(this, /* @__PURE__ */ new Set([this.key]));
-        if (outputDataset) {
-          return outputDataset;
-        }
-        _addIssue(this, "type", dataset, config2, {
-          // @ts-expect-error
+        if (outputDataset) return outputDataset;
+        _addIssue(this, "type", dataset, config$1, {
           input: input[invalidDiscriminatorKey],
           expected: /* @__PURE__ */ _joinExpects(expectedDiscriminators, "|"),
-          path: [
-            {
-              type: "object",
-              origin: "value",
-              input,
-              key: invalidDiscriminatorKey,
-              // @ts-expect-error
-              value: input[invalidDiscriminatorKey]
-            }
-          ]
+          path: [{
+            type: "object",
+            origin: "value",
+            input,
+            key: invalidDiscriminatorKey,
+            value: input[invalidDiscriminatorKey]
+          }]
         });
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(variant, "variant");
 // @__NO_SIDE_EFFECTS__
-function variantAsync(key, options, message2) {
+function variantAsync(key, options, message$1) {
   return {
     kind: "schema",
     type: "variant",
@@ -8056,114 +7049,90 @@ function variantAsync(key, options, message2) {
     async: true,
     key,
     options,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
+    async "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         let outputDataset;
         let maxDiscriminatorPriority = 0;
         let invalidDiscriminatorKey = this.key;
         let expectedDiscriminators = [];
-        const parseOptions = /* @__PURE__ */ __name(async (variant2, allKeys) => {
-          for (const schema of variant2.options) {
-            if (schema.type === "variant") {
-              await parseOptions(schema, new Set(allKeys).add(schema.key));
-            } else {
+        const parseOptions = /* @__PURE__ */ __name(async (variant$1, allKeys) => {
+          for (const schema of variant$1.options) {
+            if (schema.type === "variant") await parseOptions(schema, new Set(allKeys).add(schema.key));
+            else {
               let keysAreValid = true;
               let currentPriority = 0;
               for (const currentKey of allKeys) {
                 const discriminatorSchema = schema.entries[currentKey];
-                if (currentKey in input ? (await discriminatorSchema["~run"](
-                  // @ts-expect-error
-                  { typed: false, value: input[currentKey] },
-                  { abortEarly: true }
-                )).issues : discriminatorSchema.type !== "exact_optional" && discriminatorSchema.type !== "optional" && discriminatorSchema.type !== "nullish") {
+                if (currentKey in input ? (await discriminatorSchema["~run"]({
+                  typed: false,
+                  value: input[currentKey]
+                }, { abortEarly: true })).issues : discriminatorSchema.type !== "exact_optional" && discriminatorSchema.type !== "optional" && discriminatorSchema.type !== "nullish") {
                   keysAreValid = false;
                   if (invalidDiscriminatorKey !== currentKey && (maxDiscriminatorPriority < currentPriority || maxDiscriminatorPriority === currentPriority && currentKey in input && !(invalidDiscriminatorKey in input))) {
                     maxDiscriminatorPriority = currentPriority;
                     invalidDiscriminatorKey = currentKey;
                     expectedDiscriminators = [];
                   }
-                  if (invalidDiscriminatorKey === currentKey) {
-                    expectedDiscriminators.push(
-                      schema.entries[currentKey].expects
-                    );
-                  }
+                  if (invalidDiscriminatorKey === currentKey) expectedDiscriminators.push(schema.entries[currentKey].expects);
                   break;
                 }
                 currentPriority++;
               }
               if (keysAreValid) {
-                const optionDataset = await schema["~run"](
-                  { value: input },
-                  config2
-                );
-                if (!outputDataset || !outputDataset.typed && optionDataset.typed) {
-                  outputDataset = optionDataset;
-                }
+                const optionDataset = await schema["~run"]({ value: input }, config$1);
+                if (!outputDataset || !outputDataset.typed && optionDataset.typed) outputDataset = optionDataset;
               }
             }
-            if (outputDataset && !outputDataset.issues) {
-              break;
-            }
+            if (outputDataset && !outputDataset.issues) break;
           }
         }, "parseOptions");
         await parseOptions(this, /* @__PURE__ */ new Set([this.key]));
-        if (outputDataset) {
-          return outputDataset;
-        }
-        _addIssue(this, "type", dataset, config2, {
-          // @ts-expect-error
+        if (outputDataset) return outputDataset;
+        _addIssue(this, "type", dataset, config$1, {
           input: input[invalidDiscriminatorKey],
           expected: /* @__PURE__ */ _joinExpects(expectedDiscriminators, "|"),
-          path: [
-            {
-              type: "object",
-              origin: "value",
-              input,
-              key: invalidDiscriminatorKey,
-              // @ts-expect-error
-              value: input[invalidDiscriminatorKey]
-            }
-          ]
+          path: [{
+            type: "object",
+            origin: "value",
+            input,
+            key: invalidDiscriminatorKey,
+            value: input[invalidDiscriminatorKey]
+          }]
         });
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(variantAsync, "variantAsync");
 // @__NO_SIDE_EFFECTS__
-function void_(message2) {
+function void_(message$1) {
   return {
     kind: "schema",
     type: "void",
     reference: void_,
     expects: "void",
     async: false,
-    message: message2,
+    message: message$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (dataset.value === void 0) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (dataset.value === void 0) dataset.typed = true;
+      else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 __name(void_, "void_");
 // @__NO_SIDE_EFFECTS__
-function keyof(schema, message2) {
-  return /* @__PURE__ */ picklist(Object.keys(schema.entries), message2);
+function keyof(schema, message$1) {
+  return /* @__PURE__ */ picklist(Object.keys(schema.entries), message$1);
 }
 __name(keyof, "keyof");
 // @__NO_SIDE_EFFECTS__
@@ -8173,73 +7142,63 @@ function message(schema, message_) {
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      return schema["~run"](dataset, { ...config2, message: message_ });
+    "~run"(dataset, config$1) {
+      return schema["~run"](dataset, {
+        ...config$1,
+        message: message_
+      });
     }
   };
 }
 __name(message, "message");
 // @__NO_SIDE_EFFECTS__
 function omit(schema, keys) {
-  const entries2 = {
-    ...schema.entries
-  };
-  for (const key of keys) {
-    delete entries2[key];
-  }
+  const entries$1 = { ...schema.entries };
+  for (const key of keys) delete entries$1[key];
   return {
     ...schema,
-    entries: entries2,
+    entries: entries$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     }
   };
 }
 __name(omit, "omit");
-function parse(schema, input, config2) {
-  const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config2));
-  if (dataset.issues) {
-    throw new ValiError(dataset.issues);
-  }
+function parse(schema, input, config$1) {
+  const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
+  if (dataset.issues) throw new ValiError(dataset.issues);
   return dataset.value;
 }
 __name(parse, "parse");
-async function parseAsync(schema, input, config2) {
-  const dataset = await schema["~run"](
-    { value: input },
-    /* @__PURE__ */ getGlobalConfig(config2)
-  );
-  if (dataset.issues) {
-    throw new ValiError(dataset.issues);
-  }
+async function parseAsync(schema, input, config$1) {
+  const dataset = await schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
+  if (dataset.issues) throw new ValiError(dataset.issues);
   return dataset.value;
 }
 __name(parseAsync, "parseAsync");
 // @__NO_SIDE_EFFECTS__
-function parser(schema, config2) {
-  const func = /* @__PURE__ */ __name((input) => parse(schema, input, config2), "func");
+function parser(schema, config$1) {
+  const func = /* @__PURE__ */ __name((input) => parse(schema, input, config$1), "func");
   func.schema = schema;
-  func.config = config2;
+  func.config = config$1;
   return func;
 }
 __name(parser, "parser");
 // @__NO_SIDE_EFFECTS__
-function parserAsync(schema, config2) {
-  const func = /* @__PURE__ */ __name((input) => parseAsync(schema, input, config2), "func");
+function parserAsync(schema, config$1) {
+  const func = /* @__PURE__ */ __name((input) => parseAsync(schema, input, config$1), "func");
   func.schema = schema;
-  func.config = config2;
+  func.config = config$1;
   return func;
 }
 __name(parserAsync, "parserAsync");
 // @__NO_SIDE_EFFECTS__
 function partial(schema, keys) {
-  const entries2 = {};
-  for (const key in schema.entries) {
-    entries2[key] = !keys || keys.includes(key) ? /* @__PURE__ */ optional(schema.entries[key]) : schema.entries[key];
-  }
+  const entries$1 = {};
+  for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ optional(schema.entries[key]) : schema.entries[key];
   return {
     ...schema,
-    entries: entries2,
+    entries: entries$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     }
@@ -8248,13 +7207,11 @@ function partial(schema, keys) {
 __name(partial, "partial");
 // @__NO_SIDE_EFFECTS__
 function partialAsync(schema, keys) {
-  const entries2 = {};
-  for (const key in schema.entries) {
-    entries2[key] = !keys || keys.includes(key) ? /* @__PURE__ */ optionalAsync(schema.entries[key]) : schema.entries[key];
-  }
+  const entries$1 = {};
+  for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ optionalAsync(schema.entries[key]) : schema.entries[key];
   return {
     ...schema,
-    entries: entries2,
+    entries: entries$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     }
@@ -8263,13 +7220,11 @@ function partialAsync(schema, keys) {
 __name(partialAsync, "partialAsync");
 // @__NO_SIDE_EFFECTS__
 function pick(schema, keys) {
-  const entries2 = {};
-  for (const key of keys) {
-    entries2[key] = schema.entries[key];
-  }
+  const entries$1 = {};
+  for (const key of keys) entries$1[key] = schema.entries[key];
   return {
     ...schema,
-    entries: entries2,
+    entries: entries$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     }
@@ -8277,24 +7232,20 @@ function pick(schema, keys) {
 }
 __name(pick, "pick");
 // @__NO_SIDE_EFFECTS__
-function pipe(...pipe2) {
+function pipe(...pipe$1) {
   return {
-    ...pipe2[0],
-    pipe: pipe2,
+    ...pipe$1[0],
+    pipe: pipe$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      for (const item of pipe2) {
-        if (item.kind !== "metadata") {
-          if (dataset.issues && (item.kind === "schema" || item.kind === "transformation")) {
-            dataset.typed = false;
-            break;
-          }
-          if (!dataset.issues || !config2.abortEarly && !config2.abortPipeEarly) {
-            dataset = item["~run"](dataset, config2);
-          }
+    "~run"(dataset, config$1) {
+      for (const item of pipe$1) if (item.kind !== "metadata") {
+        if (dataset.issues && (item.kind === "schema" || item.kind === "transformation")) {
+          dataset.typed = false;
+          break;
         }
+        if (!dataset.issues || !config$1.abortEarly && !config$1.abortPipeEarly) dataset = item["~run"](dataset, config$1);
       }
       return dataset;
     }
@@ -8302,25 +7253,21 @@ function pipe(...pipe2) {
 }
 __name(pipe, "pipe");
 // @__NO_SIDE_EFFECTS__
-function pipeAsync(...pipe2) {
+function pipeAsync(...pipe$1) {
   return {
-    ...pipe2[0],
-    pipe: pipe2,
+    ...pipe$1[0],
+    pipe: pipe$1,
     async: true,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
-    async "~run"(dataset, config2) {
-      for (const item of pipe2) {
-        if (item.kind !== "metadata") {
-          if (dataset.issues && (item.kind === "schema" || item.kind === "transformation")) {
-            dataset.typed = false;
-            break;
-          }
-          if (!dataset.issues || !config2.abortEarly && !config2.abortPipeEarly) {
-            dataset = await item["~run"](dataset, config2);
-          }
+    async "~run"(dataset, config$1) {
+      for (const item of pipe$1) if (item.kind !== "metadata") {
+        if (dataset.issues && (item.kind === "schema" || item.kind === "transformation")) {
+          dataset.typed = false;
+          break;
         }
+        if (!dataset.issues || !config$1.abortEarly && !config$1.abortPipeEarly) dataset = await item["~run"](dataset, config$1);
       }
       return dataset;
     }
@@ -8330,14 +7277,12 @@ __name(pipeAsync, "pipeAsync");
 // @__NO_SIDE_EFFECTS__
 function required(schema, arg2, arg3) {
   const keys = Array.isArray(arg2) ? arg2 : void 0;
-  const message2 = Array.isArray(arg2) ? arg3 : arg2;
-  const entries2 = {};
-  for (const key in schema.entries) {
-    entries2[key] = !keys || keys.includes(key) ? /* @__PURE__ */ nonOptional(schema.entries[key], message2) : schema.entries[key];
-  }
+  const message$1 = Array.isArray(arg2) ? arg3 : arg2;
+  const entries$1 = {};
+  for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ nonOptional(schema.entries[key], message$1) : schema.entries[key];
   return {
     ...schema,
-    entries: entries2,
+    entries: entries$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     }
@@ -8347,14 +7292,12 @@ __name(required, "required");
 // @__NO_SIDE_EFFECTS__
 function requiredAsync(schema, arg2, arg3) {
   const keys = Array.isArray(arg2) ? arg2 : void 0;
-  const message2 = Array.isArray(arg2) ? arg3 : arg2;
-  const entries2 = {};
-  for (const key in schema.entries) {
-    entries2[key] = !keys || keys.includes(key) ? /* @__PURE__ */ nonOptionalAsync(schema.entries[key], message2) : schema.entries[key];
-  }
+  const message$1 = Array.isArray(arg2) ? arg3 : arg2;
+  const entries$1 = {};
+  for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ nonOptionalAsync(schema.entries[key], message$1) : schema.entries[key];
   return {
     ...schema,
-    entries: entries2,
+    entries: entries$1,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     }
@@ -8362,8 +7305,8 @@ function requiredAsync(schema, arg2, arg3) {
 }
 __name(requiredAsync, "requiredAsync");
 // @__NO_SIDE_EFFECTS__
-function safeParse(schema, input, config2) {
-  const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config2));
+function safeParse(schema, input, config$1) {
+  const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
   return {
     typed: dataset.typed,
     success: !dataset.issues,
@@ -8373,11 +7316,8 @@ function safeParse(schema, input, config2) {
 }
 __name(safeParse, "safeParse");
 // @__NO_SIDE_EFFECTS__
-async function safeParseAsync(schema, input, config2) {
-  const dataset = await schema["~run"](
-    { value: input },
-    /* @__PURE__ */ getGlobalConfig(config2)
-  );
+async function safeParseAsync(schema, input, config$1) {
+  const dataset = await schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
   return {
     typed: dataset.typed,
     success: !dataset.issues,
@@ -8387,18 +7327,18 @@ async function safeParseAsync(schema, input, config2) {
 }
 __name(safeParseAsync, "safeParseAsync");
 // @__NO_SIDE_EFFECTS__
-function safeParser(schema, config2) {
-  const func = /* @__PURE__ */ __name((input) => /* @__PURE__ */ safeParse(schema, input, config2), "func");
+function safeParser(schema, config$1) {
+  const func = /* @__PURE__ */ __name((input) => /* @__PURE__ */ safeParse(schema, input, config$1), "func");
   func.schema = schema;
-  func.config = config2;
+  func.config = config$1;
   return func;
 }
 __name(safeParser, "safeParser");
 // @__NO_SIDE_EFFECTS__
-function safeParserAsync(schema, config2) {
-  const func = /* @__PURE__ */ __name((input) => /* @__PURE__ */ safeParseAsync(schema, input, config2), "func");
+function safeParserAsync(schema, config$1) {
+  const func = /* @__PURE__ */ __name((input) => /* @__PURE__ */ safeParseAsync(schema, input, config$1), "func");
   func.schema = schema;
-  func.config = config2;
+  func.config = config$1;
   return func;
 }
 __name(safeParserAsync, "safeParserAsync");
@@ -8406,15 +7346,11 @@ __name(safeParserAsync, "safeParserAsync");
 function summarize(issues) {
   let summary = "";
   for (const issue of issues) {
-    if (summary) {
-      summary += "\n";
-    }
+    if (summary) summary += "\n";
     summary += `× ${issue.message}`;
     const dotPath = /* @__PURE__ */ getDotPath(issue);
-    if (dotPath) {
-      summary += `
+    if (dotPath) summary += `
   → at ${dotPath}`;
-    }
   }
   return summary;
 }
