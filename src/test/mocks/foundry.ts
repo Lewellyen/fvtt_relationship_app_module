@@ -2,7 +2,7 @@ import { vi } from "vitest";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import {
   loggerToken,
   journalVisibilityServiceToken,
@@ -123,7 +123,7 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
   getMockLogger: () => Logger;
   getMockHooks: () => FoundryHooks;
   getMockJournalService: () => JournalVisibilityService;
-  getMockNotificationCenter: () => NotificationCenter;
+  getMockNotificationCenter: () => NotificationService;
 } {
   const mockLogger: Logger = {
     debug: vi.fn(),
@@ -155,7 +155,7 @@ export function createMockContainer(overrides: Partial<Record<symbol, unknown>> 
     addChannel: vi.fn(),
     removeChannel: vi.fn(),
     getChannelNames: vi.fn().mockReturnValue(["ConsoleChannel", "UIChannel"]),
-  } as unknown as NotificationCenter;
+  } as unknown as NotificationService;
 
   const defaults: Record<symbol, unknown> = {
     [loggerToken]: mockLogger,

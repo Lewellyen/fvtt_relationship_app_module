@@ -36,35 +36,15 @@
 import { consoleChannelToken } from "@/infrastructure/shared/tokens";
 import { err, ok } from "@/infrastructure/shared/utils/result";
 import type { Result } from "@/domain/types/result";
-import type { FoundryNotificationOptions } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
-import type {
-  Notification,
-  NotificationChannel,
-  NotificationLevel,
-} from "./notification-channel.interface";
-
-export type NotificationCenterOptions = {
-  /**
-   * Optional list of channel names that should receive this notification.
-   * If omitted, all registered channels are considered.
-   */
-  channels?: string[];
-  /**
-   * Optional trace identifier that gets attached to the notification.
-   */
-  traceId?: string;
-  /**
-   * Optional Foundry UI notification options to pass through `ui.notifications`.
-   */
-  uiOptions?: FoundryNotificationOptions;
-};
+import type { NotificationService, NotificationCenterOptions } from "./notification-center.interface";
+import type { Notification, NotificationChannel, NotificationLevel } from "./notification-channel.interface";
 
 /**
  * Central hub for module notifications. Routes notifications to registered channels
  * (console, UI, remote logging, ...), performs channel filtering, and aggregates
  * errors when deliveries fail.
  */
-export class NotificationCenter {
+export class NotificationCenter implements NotificationService {
   private readonly channels: NotificationChannel[];
 
   constructor(initialChannels: NotificationChannel[]) {

@@ -1,6 +1,6 @@
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import { createReadOnlyWrapper } from "./readonly-wrapper";
 
@@ -61,8 +61,8 @@ export function createPublicI18n(i18n: I18nFacadeService): I18nFacadeService {
  * @returns Read-only notification proxy
  */
 export function createPublicNotificationCenter(
-  notificationCenter: NotificationCenter
-): NotificationCenter {
+  notificationCenter: NotificationService
+): NotificationService {
   return createReadOnlyWrapper(notificationCenter, [
     "debug",
     "info",

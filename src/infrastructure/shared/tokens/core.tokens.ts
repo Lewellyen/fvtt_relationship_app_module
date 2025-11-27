@@ -10,7 +10,7 @@ import type { ModuleHealthService } from "@/application/services/ModuleHealthSer
 import type { HealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
 import type { ContainerHealthCheck } from "@/application/health/ContainerHealthCheck";
 import type { MetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
-import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { Container } from "@/infrastructure/di/interfaces";
 import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
 import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
 import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
@@ -153,7 +153,7 @@ export const metricsHealthCheckToken =
  * Primarily used for infrastructure services (e.g., health checks) that need
  * direct insight into the container state.
  */
-export const serviceContainerToken = createInjectionToken<ServiceContainer>("ServiceContainer");
+export const serviceContainerToken = createInjectionToken<Container>("ServiceContainer");
 
 /**
  * Injection token for the ModuleSettingsRegistrar.

@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import {
@@ -34,7 +34,7 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
     private readonly journalVisibility: JournalVisibilityService,
-    private readonly notificationCenter: NotificationCenter
+    private readonly notificationCenter: NotificationService
   ) {}
 
   /**
@@ -89,7 +89,7 @@ export class DIProcessJournalDirectoryOnRenderUseCase extends ProcessJournalDire
   constructor(
     journalEvents: PlatformJournalEventPort,
     journalVisibility: JournalVisibilityService,
-    notificationCenter: NotificationCenter
+    notificationCenter: NotificationService
   ) {
     super(journalEvents, journalVisibility, notificationCenter);
   }

@@ -20,7 +20,7 @@ import type {
 import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
 import type { SettingValidator } from "@/domain/types/settings";
 import { SettingValidators } from "@/domain/types/settings";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import {
@@ -118,7 +118,7 @@ export class ModuleSettingsRegistrar {
   constructor(
     private readonly settings: SettingsRegistrationPort,
     private readonly runtimeConfig: RuntimeConfigService,
-    private readonly notifications: NotificationCenter,
+    private readonly notifications: NotificationService,
     private readonly i18n: I18nFacadeService,
     private readonly logger: Logger
   ) {}
@@ -225,7 +225,7 @@ export class ModuleSettingsRegistrar {
     settings: SettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
     binding: RuntimeConfigBinding<TSchema, K>,
-    notifications: NotificationCenter,
+    notifications: NotificationService,
     settingKey: string
   ): void {
     const currentValue = settings.getSettingValue(
@@ -249,7 +249,7 @@ export class ModuleSettingsRegistrar {
     binding: RuntimeConfigBinding<TSchema, K> | undefined,
     settings: SettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
-    notifications: NotificationCenter,
+    notifications: NotificationService,
     i18n: I18nFacadeService,
     logger: Logger
   ): void {
@@ -301,7 +301,7 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   constructor(
     settings: SettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
-    notifications: NotificationCenter,
+    notifications: NotificationService,
     i18n: I18nFacadeService,
     logger: Logger
   ) {

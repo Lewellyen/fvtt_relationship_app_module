@@ -68,8 +68,9 @@ import type { MetricsHealthCheck } from "@/application/health/MetricsHealthCheck
 import type { HealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
 import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandler.interface";
 import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { Container } from "@/infrastructure/di/interfaces";
 import type { CacheService, CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { InvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
@@ -139,7 +140,8 @@ export type ServiceType =
   | HealthCheckRegistry
   | TranslationHandler
   | NotificationChannel
-  | NotificationCenter
+  | NotificationService
+  | Container
   | CacheService
   | CacheServiceConfig
   | RuntimeConfigService

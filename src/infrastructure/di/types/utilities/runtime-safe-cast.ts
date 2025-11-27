@@ -13,7 +13,7 @@
  */
 
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type {
   RuntimeConfigKey,
@@ -83,9 +83,9 @@ export function wrapI18nService<TServiceType>(
  */
 export function wrapNotificationCenterService<TServiceType>(
   service: TServiceType,
-  create: (center: NotificationCenter) => NotificationCenter
+  create: (center: NotificationService) => NotificationService
 ): TServiceType {
-  const concrete = service as unknown as NotificationCenter;
+  const concrete = service as unknown as NotificationService;
   return create(concrete) as unknown as TServiceType;
 }
 

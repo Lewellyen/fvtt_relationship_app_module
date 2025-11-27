@@ -2,7 +2,7 @@ import type { JournalContextMenuHandler } from "./journal-context-menu-handler.i
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import {
   journalRepositoryToken,
   platformUIPortToken,
@@ -20,7 +20,7 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
   constructor(
     private readonly journalRepository: JournalRepository,
     private readonly platformUI: PlatformUIPort,
-    private readonly notificationCenter: NotificationCenter
+    private readonly notificationCenter: NotificationService
   ) {}
 
   handle(event: JournalContextMenuEvent): void {
@@ -129,7 +129,7 @@ export class DIHideJournalContextMenuHandler extends HideJournalContextMenuHandl
   constructor(
     journalRepository: JournalRepository,
     platformUI: PlatformUIPort,
-    notificationCenter: NotificationCenter
+    notificationCenter: NotificationService
   ) {
     super(journalRepository, platformUI, notificationCenter);
   }
