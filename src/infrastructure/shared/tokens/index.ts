@@ -67,8 +67,10 @@ import type { ContainerHealthCheck } from "@/application/health/ContainerHealthC
 import type { MetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
 import type { HealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
 import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandler.interface";
-import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type {
+  NotificationChannel,
+  NotificationService,
+} from "@/domain/ports/notifications/notification-port.interface";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Container } from "@/infrastructure/di/interfaces";
 import type { CacheService, CacheServiceConfig } from "@/infrastructure/cache/cache.interface";

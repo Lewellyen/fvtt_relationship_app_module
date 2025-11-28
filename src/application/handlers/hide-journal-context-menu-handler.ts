@@ -2,7 +2,7 @@ import type { JournalContextMenuHandler } from "./journal-context-menu-handler.i
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationService } from "@/domain/ports/notifications/notification-port.interface";
 import {
   journalRepositoryToken,
   platformUIPortToken,

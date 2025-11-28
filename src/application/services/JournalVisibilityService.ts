@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationService } from "@/domain/ports/notifications/notification-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { CacheService } from "@/infrastructure/cache/cache.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConsoleChannel } from "@/infrastructure/notifications/channels/ConsoleChannel";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { Notification } from "@/infrastructure/notifications/notification-channel.interface";
+import type { Notification } from "@/domain/ports/notifications/notification-port.interface";
 
 describe("ConsoleChannel", () => {
   let channel: ConsoleChannel;

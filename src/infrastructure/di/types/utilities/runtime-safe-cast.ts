@@ -13,7 +13,7 @@
  */
 
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationService } from "@/domain/ports/notifications/notification-port.interface";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type {
   RuntimeConfigKey,

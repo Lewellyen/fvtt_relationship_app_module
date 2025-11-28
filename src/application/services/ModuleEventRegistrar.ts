@@ -1,5 +1,5 @@
 import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationService } from "@/domain/ports/notifications/notification-port.interface";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import { disposeHooks } from "@/infrastructure/shared/utils/dispose-hooks";

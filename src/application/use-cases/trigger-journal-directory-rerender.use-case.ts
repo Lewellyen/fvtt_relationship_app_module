@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationService } from "@/domain/ports/notifications/notification-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import {

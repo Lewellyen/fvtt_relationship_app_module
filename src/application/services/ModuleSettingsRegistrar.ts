@@ -20,7 +20,7 @@ import type {
 import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
 import type { SettingValidator } from "@/domain/types/settings";
 import { SettingValidators } from "@/domain/types/settings";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationService } from "@/domain/ports/notifications/notification-port.interface";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import {

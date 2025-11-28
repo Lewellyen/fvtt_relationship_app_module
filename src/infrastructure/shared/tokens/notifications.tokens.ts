@@ -2,8 +2,10 @@
  * Notification tokens for message routing and channels.
  */
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
-import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type {
+  NotificationChannel,
+  NotificationService,
+} from "@/domain/ports/notifications/notification-port.interface";
 
 /**
  * Injection token for the NotificationCenter.

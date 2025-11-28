@@ -16,11 +16,29 @@ import type {
   NotificationChannel,
   Notification,
 } from "@/infrastructure/notifications/notification-channel.interface";
-import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
+import type {
+  FoundryNotificationOptions,
+  FoundryUI,
+} from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import { foundryUIToken, runtimeConfigToken } from "@/infrastructure/shared/tokens";
+
+const FOUNDRY_UI_OPTION_KEYS = [
+  "clean",
+  "console",
+  "escape",
+  "format",
+  "localize",
+  "permanent",
+  "progress",
+] as const;
+
+type FoundryUiOptionKey = (typeof FOUNDRY_UI_OPTION_KEYS)[number];
+type BooleanOptionKey = Exclude<FoundryUiOptionKey, "format">;
+
+const INVALID_UI_OPTIONS_ERROR = "Invalid UI notification options" as const;
 
 export class UIChannel implements NotificationChannel {
   readonly name = "UIChannel";
@@ -43,7 +61,11 @@ export class UIChannel implements NotificationChannel {
       return uiTypeResult;
     }
     const uiType = uiTypeResult.value;
-    const uiOptions = notification.uiOptions;
+    const uiOptionsResult = this.mapUiOptions(notification.uiOptions);
+    if (!uiOptionsResult.ok) {
+      return uiOptionsResult;
+    }
+    const uiOptions = uiOptionsResult.value;
 
     const notifyResult = this.foundryUI.notify(sanitizedMessage, uiType, uiOptions);
 
@@ -52,6 +74,48 @@ export class UIChannel implements NotificationChannel {
     }
 
     return ok(undefined);
+  }
+
+  private mapUiOptions(
+    options: Notification["uiOptions"]
+  ): Result<FoundryNotificationOptions | undefined, string> {
+    if (options === undefined) {
+      return ok(undefined);
+    }
+
+    if (options === null || typeof options !== "object") {
+      return err(INVALID_UI_OPTIONS_ERROR);
+    }
+
+    const candidate = options as Record<FoundryUiOptionKey | string, unknown>;
+    const filteredEntries = Object.entries(candidate).filter(([key]) =>
+      FOUNDRY_UI_OPTION_KEYS.includes(key as FoundryUiOptionKey)
+    );
+
+    const sanitizedOptions: FoundryNotificationOptions = {};
+
+    for (const [key, value] of filteredEntries) {
+      if (value === undefined) {
+        continue;
+      }
+
+      if (key === "format") {
+        if (!this.isStringRecord(value)) {
+          return err(INVALID_UI_OPTIONS_ERROR);
+        }
+
+        sanitizedOptions.format = value;
+        continue;
+      }
+
+      if (typeof value !== "boolean") {
+        return err(INVALID_UI_OPTIONS_ERROR);
+      }
+
+      sanitizedOptions[key as BooleanOptionKey] = value as boolean;
+    }
+
+    return ok(Object.keys(sanitizedOptions).length > 0 ? sanitizedOptions : undefined);
   }
 
   /**
@@ -82,6 +146,14 @@ export class UIChannel implements NotificationChannel {
 
     // Info/Warn: Show context only (assume context is already user-friendly)
     return context;
+  }
+
+  private isStringRecord(value: unknown): value is Record<string, string> {
+    if (value === null || typeof value !== "object") {
+      return false;
+    }
+
+    return Object.values(value as Record<string, unknown>).every((entry) => typeof entry === "string");
   }
 
   /**

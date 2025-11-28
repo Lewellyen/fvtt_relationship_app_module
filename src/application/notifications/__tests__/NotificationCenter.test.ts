@@ -3,7 +3,7 @@ import { NotificationCenter } from "@/infrastructure/notifications/NotificationC
 import type {
   NotificationChannel,
   Notification,
-} from "@/infrastructure/notifications/notification-channel.interface";
+} from "@/domain/ports/notifications/notification-port.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 
 describe("NotificationCenter", () => {
