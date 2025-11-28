@@ -1,14 +1,14 @@
 import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
-import type { CacheService } from "@/infrastructure/cache/cache.interface";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import {
   platformJournalEventPortToken,
-  cacheServiceToken,
-  notificationCenterToken,
+  platformCachePortToken,
+  platformNotificationPortToken,
 } from "@/infrastructure/shared/tokens";
 import { getFirstArrayElement } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
@@ -21,8 +21,8 @@ import { getFirstArrayElement } from "@/infrastructure/di/types/utilities/runtim
  * ```typescript
  * const useCase = new InvalidateJournalCacheOnChangeUseCase(
  *   journalEventPort,
- *   cacheService,
- *   notificationCenter
+ *   cache,
+ *   notifications
  * );
  *
  * useCase.register();  // Start listening
@@ -34,8 +34,8 @@ export class InvalidateJournalCacheOnChangeUseCase implements EventRegistrar {
 
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
-    private readonly cache: CacheService,
-    private readonly notificationCenter: NotificationService
+    private readonly cache: PlatformCachePort,
+    private readonly notifications: PlatformNotificationPort
   ) {}
 
   /**
@@ -70,7 +70,7 @@ export class InvalidateJournalCacheOnChangeUseCase implements EventRegistrar {
           `Failed to register journal event listener: ${result.error.message}`
         );
         errors.push(error);
-        this.notificationCenter.error(
+        this.notifications.error(
           "Failed to register journal event listener",
           {
             code: result.error.code,
@@ -99,7 +99,7 @@ export class InvalidateJournalCacheOnChangeUseCase implements EventRegistrar {
     const removed = this.cache.invalidateWhere((meta) => meta.tags.includes("journal:hidden"));
 
     if (removed > 0) {
-      this.notificationCenter.debug(
+      this.notifications.debug(
         `Invalidated ${removed} journal cache entries (${reason})`,
         { journalId },
         { channels: ["ConsoleChannel"] }
@@ -111,7 +111,7 @@ export class InvalidateJournalCacheOnChangeUseCase implements EventRegistrar {
    * Trigger UI update when journal visibility changes.
    */
   private triggerUIUpdate(journalId: string): void {
-    this.notificationCenter.debug(
+    this.notifications.debug(
       "Journal hidden flag changed, UI update needed",
       { journalId },
       { channels: ["ConsoleChannel"] }
@@ -135,15 +135,15 @@ export class InvalidateJournalCacheOnChangeUseCase implements EventRegistrar {
 export class DIInvalidateJournalCacheOnChangeUseCase extends InvalidateJournalCacheOnChangeUseCase {
   static dependencies = [
     platformJournalEventPortToken,
-    cacheServiceToken,
-    notificationCenterToken,
+    platformCachePortToken,
+    platformNotificationPortToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
-    cache: CacheService,
-    notificationCenter: NotificationService
+    cache: PlatformCachePort,
+    notifications: PlatformNotificationPort
   ) {
-    super(journalEvents, cache, notificationCenter);
+    super(journalEvents, cache, notifications);
   }
 }

@@ -5,7 +5,7 @@ import {
 } from "../hide-journal-context-menu-handler";
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { ok } from "@/infrastructure/shared/utils/result";
@@ -36,7 +36,7 @@ function createMockJournalRepository(): JournalRepository {
 describe("HideJournalContextMenuHandler", () => {
   let mockJournalRepository: JournalRepository;
   let mockPlatformUI: PlatformUIPort;
-  let mockNotificationCenter: NotificationCenter;
+  let mockNotificationCenter: PlatformNotificationPort;
   let handler: HideJournalContextMenuHandler;
 
   beforeEach(() => {
@@ -55,8 +55,10 @@ describe("HideJournalContextMenuHandler", () => {
       info: vi.fn().mockReturnValue({ ok: true, value: undefined }),
       warn: vi.fn().mockReturnValue({ ok: true, value: undefined }),
       error: vi.fn().mockReturnValue({ ok: true, value: undefined }),
-      notify: vi.fn().mockReturnValue({ ok: true, value: undefined }),
-    } as unknown as NotificationCenter;
+      addChannel: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      removeChannel: vi.fn().mockReturnValue({ ok: true, value: false }),
+      getChannelNames: vi.fn().mockReturnValue({ ok: true, value: [] }),
+    } as unknown as PlatformNotificationPort;
 
     handler = new HideJournalContextMenuHandler(
       mockJournalRepository,

@@ -20,13 +20,13 @@ import type {
 import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
 import type { SettingValidator } from "@/domain/types/settings";
 import { SettingValidators } from "@/domain/types/settings";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import {
-  notificationCenterToken,
+  platformNotificationPortToken,
   loggerToken,
-  i18nFacadeToken,
+  platformI18nPortToken,
   runtimeConfigToken,
   settingsRegistrationPortToken,
 } from "@/infrastructure/shared/tokens";
@@ -118,8 +118,8 @@ export class ModuleSettingsRegistrar {
   constructor(
     private readonly settings: SettingsRegistrationPort,
     private readonly runtimeConfig: RuntimeConfigService,
-    private readonly notifications: NotificationService,
-    private readonly i18n: I18nFacadeService,
+    private readonly notifications: PlatformNotificationPort,
+    private readonly i18n: PlatformI18nPort,
     private readonly logger: Logger
   ) {}
 
@@ -225,7 +225,7 @@ export class ModuleSettingsRegistrar {
     settings: SettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
     binding: RuntimeConfigBinding<TSchema, K>,
-    notifications: NotificationService,
+    notifications: PlatformNotificationPort,
     settingKey: string
   ): void {
     const currentValue = settings.getSettingValue(
@@ -249,8 +249,8 @@ export class ModuleSettingsRegistrar {
     binding: RuntimeConfigBinding<TSchema, K> | undefined,
     settings: SettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
-    notifications: NotificationService,
-    i18n: I18nFacadeService,
+    notifications: PlatformNotificationPort,
+    i18n: PlatformI18nPort,
     logger: Logger
   ): void {
     const config = definition.createConfig(i18n, logger);
@@ -265,7 +265,7 @@ export class ModuleSettingsRegistrar {
     );
 
     if (!result.ok) {
-      // Convert DomainSettingsError to NotificationCenter's error format
+      // Convert DomainSettingsError to PlatformNotificationPort's error format
       const error: { code: string; message: string; [key: string]: unknown } = {
         code: result.error.code,
         message: result.error.message,
@@ -293,16 +293,16 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   static dependencies = [
     settingsRegistrationPortToken,
     runtimeConfigToken,
-    notificationCenterToken,
-    i18nFacadeToken,
+    platformNotificationPortToken,
+    platformI18nPortToken,
     loggerToken,
   ] as const;
 
   constructor(
     settings: SettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
-    notifications: NotificationService,
-    i18n: I18nFacadeService,
+    notifications: PlatformNotificationPort,
+    i18n: PlatformI18nPort,
     logger: Logger
   ) {
     super(settings, runtimeConfig, notifications, i18n, logger);

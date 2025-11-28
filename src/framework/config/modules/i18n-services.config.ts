@@ -10,6 +10,7 @@ import {
   localTranslationHandlerToken,
   fallbackTranslationHandlerToken,
   translationHandlerChainToken,
+  platformI18nPortToken,
 } from "@/infrastructure/shared/tokens";
 import { DIFoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import { DILocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
@@ -18,6 +19,7 @@ import { DIFoundryTranslationHandler } from "@/infrastructure/i18n/FoundryTransl
 import { DILocalTranslationHandler } from "@/infrastructure/i18n/LocalTranslationHandler";
 import { DIFallbackTranslationHandler } from "@/infrastructure/i18n/FallbackTranslationHandler";
 import { DITranslationHandlerChain } from "@/infrastructure/i18n/TranslationHandlerChain";
+import { DII18nPortAdapter } from "@/infrastructure/adapters/i18n/platform-i18n-port-adapter";
 
 /**
  * Registers internationalization (i18n) services.
@@ -109,6 +111,16 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
   );
   if (isErr(facadeResult)) {
     return err(`Failed to register I18nFacadeService: ${facadeResult.error.message}`);
+  }
+
+  // Register PlatformI18nPort
+  const i18nPortResult = container.registerClass(
+    platformI18nPortToken,
+    DII18nPortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(i18nPortResult)) {
+    return err(`Failed to register PlatformI18nPort: ${i18nPortResult.error.message}`);
   }
 
   return ok(undefined);

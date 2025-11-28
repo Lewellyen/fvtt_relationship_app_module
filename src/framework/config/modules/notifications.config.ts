@@ -6,10 +6,12 @@ import {
   notificationCenterToken,
   consoleChannelToken,
   uiChannelToken,
+  platformNotificationPortToken,
 } from "@/infrastructure/shared/tokens";
 import { DINotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import { DIConsoleChannel } from "@/infrastructure/notifications/channels/ConsoleChannel";
 import { DIUIChannel } from "@/infrastructure/notifications/channels/UIChannel";
+import { DINotificationPortAdapter } from "@/infrastructure/adapters/notifications/platform-notification-port-adapter";
 
 /**
  * Registers notification services and channels.
@@ -62,7 +64,19 @@ export function registerNotifications(container: ServiceContainer): Result<void,
     return err(`Failed to register NotificationCenter: ${notificationCenterResult.error.message}`);
   }
 
-  // Hinweis: Zusätzliche Channels (z. B. UIChannel) werden erst nach dem Init-Hook
+  // Register PlatformNotificationPort
+  const notificationPortResult = container.registerClass(
+    platformNotificationPortToken,
+    DINotificationPortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(notificationPortResult)) {
+    return err(
+      `Failed to register PlatformNotificationPort: ${notificationPortResult.error.message}`
+    );
+  }
+
+  // Hinweis: Zusätzliche Channels (z. B. UIChannel) werden erst nach dem Init-Hook
   // via notificationCenter.addChannel(...) angebunden.
 
   return ok(undefined);

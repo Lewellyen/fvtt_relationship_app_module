@@ -5,12 +5,12 @@ import {
 } from "../process-journal-directory-on-render.use-case";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 
 describe("ProcessJournalDirectoryOnRenderUseCase", () => {
   let mockJournalEvents: PlatformJournalEventPort;
   let mockJournalVisibility: JournalVisibilityService;
-  let mockNotificationCenter: NotificationCenter;
+  let mockNotificationCenter: PlatformNotificationPort;
   let useCase: ProcessJournalDirectoryOnRenderUseCase;
 
   beforeEach(() => {
@@ -29,12 +29,14 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
     } as unknown as JournalVisibilityService;
 
     mockNotificationCenter = {
-      debug: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      addChannel: vi.fn(),
-    } as unknown as NotificationCenter;
+      debug: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      error: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      info: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      warn: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      addChannel: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      removeChannel: vi.fn().mockReturnValue({ ok: true, value: false }),
+      getChannelNames: vi.fn().mockReturnValue({ ok: true, value: [] }),
+    } as unknown as PlatformNotificationPort;
 
     useCase = new ProcessJournalDirectoryOnRenderUseCase(
       mockJournalEvents,
@@ -121,7 +123,7 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
 describe("DIProcessJournalDirectoryOnRenderUseCase", () => {
   let mockJournalEvents: PlatformJournalEventPort;
   let mockJournalVisibility: JournalVisibilityService;
-  let mockNotificationCenter: NotificationCenter;
+  let mockNotificationCenter: PlatformNotificationPort;
   let useCase: DIProcessJournalDirectoryOnRenderUseCase;
 
   beforeEach(() => {
@@ -140,12 +142,14 @@ describe("DIProcessJournalDirectoryOnRenderUseCase", () => {
     } as unknown as JournalVisibilityService;
 
     mockNotificationCenter = {
-      debug: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      addChannel: vi.fn(),
-    } as unknown as NotificationCenter;
+      debug: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      error: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      info: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      warn: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      addChannel: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      removeChannel: vi.fn().mockReturnValue({ ok: true, value: false }),
+      getChannelNames: vi.fn().mockReturnValue({ ok: true, value: [] }),
+    } as unknown as PlatformNotificationPort;
 
     useCase = new DIProcessJournalDirectoryOnRenderUseCase(
       mockJournalEvents,

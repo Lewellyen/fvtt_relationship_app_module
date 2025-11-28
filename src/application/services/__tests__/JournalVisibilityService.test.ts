@@ -7,16 +7,13 @@ import {
 import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import { createMockDOM } from "@/test/utils/test-helpers";
-import type {
-  CacheService,
-  CacheEntryMetadata,
-  CacheKey,
-} from "@/infrastructure/cache/cache.interface";
+import type { CacheEntryMetadata, CacheKey } from "@/infrastructure/cache/cache.interface";
 
 function createMetadata(): CacheEntryMetadata {
   return {
@@ -68,25 +65,24 @@ describe("JournalVisibilityService", () => {
   let service: JournalVisibilityService;
   let mockJournalCollection: JournalCollectionPort;
   let mockJournalRepository: JournalRepository;
-  let mockNotificationCenter: NotificationCenter;
-  let mockCacheService: CacheService;
+  let mockNotifications: PlatformNotificationPort;
+  let mockCache: PlatformCachePort;
   let mockPlatformUI: PlatformUIPort;
 
   beforeEach(() => {
     mockJournalCollection = createMockJournalCollectionPort();
     mockJournalRepository = createMockJournalRepository();
-    mockNotificationCenter = {
-      notify: vi.fn().mockReturnValue(ok(undefined)),
+    mockNotifications = {
       debug: vi.fn().mockReturnValue(ok(undefined)),
       info: vi.fn().mockReturnValue(ok(undefined)),
       warn: vi.fn().mockReturnValue(ok(undefined)),
       error: vi.fn().mockReturnValue(ok(undefined)),
-      addChannel: vi.fn(),
-      removeChannel: vi.fn(),
-      getChannelNames: vi.fn().mockReturnValue(["ConsoleChannel", "UIChannel"]),
-    } as unknown as NotificationCenter;
+      addChannel: vi.fn().mockReturnValue(ok(undefined)),
+      removeChannel: vi.fn().mockReturnValue(ok(true)),
+      getChannelNames: vi.fn().mockReturnValue(ok(["ConsoleChannel", "UIChannel"])),
+    } as unknown as PlatformNotificationPort;
 
-    mockCacheService = {
+    mockCache = {
       isEnabled: true,
       size: 0,
       get: vi.fn().mockReturnValue(null),
@@ -100,7 +96,7 @@ describe("JournalVisibilityService", () => {
         .fn()
         .mockReturnValue({ hits: 0, misses: 0, evictions: 0, size: 0, enabled: true }),
       getOrSet: vi.fn(),
-    } as unknown as CacheService;
+    } as unknown as PlatformCachePort;
 
     mockPlatformUI = {
       removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
@@ -111,8 +107,8 @@ describe("JournalVisibilityService", () => {
     service = new JournalVisibilityService(
       mockJournalCollection,
       mockJournalRepository,
-      mockNotificationCenter,
-      mockCacheService,
+      mockNotifications,
+      mockCache,
       mockPlatformUI
     );
   });
@@ -143,7 +139,7 @@ describe("JournalVisibilityService", () => {
 
     it("should return cached entries when cache hits", () => {
       const cachedEntry: JournalEntry = { id: "cached", name: "Cached" };
-      const cacheGetMock = mockCacheService.get as Mock;
+      const cacheGetMock = mockCache.get as Mock;
       cacheGetMock.mockReturnValueOnce({
         hit: true,
         value: [cachedEntry],
@@ -163,12 +159,12 @@ describe("JournalVisibilityService", () => {
       const journal: JournalEntry = { id: "journal-1", name: "Hidden" };
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      const cacheGetMock = mockCacheService.get as Mock;
+      const cacheGetMock = mockCache.get as Mock;
       cacheGetMock.mockReturnValueOnce(null);
 
       service.getHiddenJournalEntries();
 
-      expect(mockCacheService.set).toHaveBeenCalledWith(
+      expect(mockCache.set).toHaveBeenCalledWith(
         expect.anything(),
         expect.arrayContaining([journal]),
         expect.objectContaining({ tags: [HIDDEN_JOURNAL_CACHE_TAG] })
@@ -244,7 +240,7 @@ describe("JournalVisibilityService", () => {
       const result = service.getHiddenJournalEntries();
 
       expect(result.ok).toBe(true);
-      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to read hidden flag"),
         expect.any(Object),
         { channels: ["ConsoleChannel"] }
@@ -275,7 +271,7 @@ describe("JournalVisibilityService", () => {
         "Hidden Journal",
         container
       );
-      expect(mockNotificationCenter.debug).toHaveBeenCalled();
+      expect(mockNotifications.debug).toHaveBeenCalled();
     });
 
     it("should handle error when getHiddenJournalEntries fails", () => {
@@ -291,7 +287,7 @@ describe("JournalVisibilityService", () => {
       const result = service.processJournalDirectory(container);
 
       expect(result.ok).toBe(false);
-      expect(mockNotificationCenter.error).toHaveBeenCalledWith(
+      expect(mockNotifications.error).toHaveBeenCalledWith(
         "Error getting hidden journal entries",
         expect.any(Object),
         {
@@ -331,11 +327,9 @@ describe("JournalVisibilityService", () => {
       if (!result.ok) {
         expect(result.error).toEqual(error);
       }
-      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
-        "Error removing journal entry",
-        error,
-        { channels: ["ConsoleChannel"] }
-      );
+      expect(mockNotifications.warn).toHaveBeenCalledWith("Error removing journal entry", error, {
+        channels: ["ConsoleChannel"],
+      });
     });
 
     it("should process multiple hidden entries", () => {
@@ -405,12 +399,12 @@ describe("JournalVisibilityService", () => {
       expect(result.ok).toBe(true);
 
       // Verify logger was called with sanitized name
-      expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
+      expect(mockNotifications.debug).toHaveBeenCalledWith(
         expect.stringContaining("&lt;script&gt;"),
         expect.any(Object),
         expect.objectContaining({ channels: ["ConsoleChannel"] })
       );
-      expect(mockNotificationCenter.debug).not.toHaveBeenCalledWith(
+      expect(mockNotifications.debug).not.toHaveBeenCalledWith(
         expect.stringContaining("<script>"),
         expect.anything(),
         expect.objectContaining({ channels: ["ConsoleChannel"] })
@@ -434,12 +428,12 @@ describe("JournalVisibilityService", () => {
       service.getHiddenJournalEntries();
 
       // Verify logger was called with sanitized name in error message
-      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
         expect.stringContaining("&lt;img"),
         expect.any(Object),
         { channels: ["ConsoleChannel"] }
       );
-      expect(mockNotificationCenter.warn).not.toHaveBeenCalledWith(
+      expect(mockNotifications.warn).not.toHaveBeenCalledWith(
         expect.stringContaining("<img"),
         expect.any(Object),
         { channels: ["ConsoleChannel"] }
@@ -548,7 +542,7 @@ describe("JournalVisibilityService", () => {
         expect(result.value[0]?.id).toBe("journal-2");
       }
       // Error should have been logged
-      expect(mockNotificationCenter.warn).toHaveBeenCalled();
+      expect(mockNotifications.warn).toHaveBeenCalled();
     });
 
     it("should use journal id in warning when name is missing", () => {
@@ -567,7 +561,7 @@ describe("JournalVisibilityService", () => {
 
       service.getHiddenJournalEntries();
 
-      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
         expect.stringContaining("journal-id-only"),
         expect.any(Object),
         { channels: ["ConsoleChannel"] }

@@ -3,6 +3,9 @@ import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { PlatformSettingsPort } from "@/domain/ports/platform-settings-port.interface";
 import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
 import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 
 /**
  * DI Token for PlatformUIPort.
@@ -50,3 +53,29 @@ export const bootstrapHooksPortToken =
 export const settingsRegistrationPortToken = createInjectionToken<SettingsRegistrationPort>(
   "SettingsRegistrationPort"
 );
+
+/**
+ * DI Token for PlatformNotificationPort.
+ *
+ * Platform-agnostic notification port.
+ * Default implementation: NotificationPortAdapter (wraps NotificationCenter)
+ */
+export const platformNotificationPortToken = createInjectionToken<PlatformNotificationPort>(
+  "PlatformNotificationPort"
+);
+
+/**
+ * DI Token for PlatformCachePort.
+ *
+ * Platform-agnostic cache port.
+ * Default implementation: CachePortAdapter (wraps CacheService)
+ */
+export const platformCachePortToken = createInjectionToken<PlatformCachePort>("PlatformCachePort");
+
+/**
+ * DI Token for PlatformI18nPort.
+ *
+ * Platform-agnostic i18n port.
+ * Default implementation: I18nPortAdapter (wraps I18nFacadeService)
+ */
+export const platformI18nPortToken = createInjectionToken<PlatformI18nPort>("PlatformI18nPort");

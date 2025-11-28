@@ -4,14 +4,16 @@
 
 Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Moduls.
 
-**Datum:** 2025-11-21  
-**Stand:** Version 0.26.5 → Unreleased (Phase 1: Event-System Refactoring)  
+**Datum:** 2025-11-28  
+**Stand:** Version 0.37.1 → Unreleased (Platform-Ports Refactoring abgeschlossen)  
 **Detaillierte Analyse:** Siehe [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md)
 
 ### Aktuelle Highlights (Unreleased)
-- **Platform-Agnostisches Event-System (Phase 1)**: Vollständiges Refactoring des Event-Systems mit `PlatformEventPort<T>` und spezialisierten Ports (`PlatformJournalEventPort`). Events sind jetzt vollständig von Foundry entkoppelt und Multi-VTT-ready ([Details](docs/refactoring/phases/phase-1-event-system-refactoring.md))
-- **EventRegistrar Pattern**: `HookRegistrar` durch platform-agnostisches `EventRegistrar` Interface ersetzt. Alle Event-Listener nutzen jetzt Use-Cases statt direkter Hook-Klassen
-- **116 Tests bestanden**: Alle Tests erfolgreich, TypeScript- und Lint-Checks bestanden, 99.7% Coverage (neuer Code braucht noch Test-Optimierung)
+- **100% DIP-Konformität**: Application-Layer verwendet nun ausschließlich Domain-Ports statt Infrastructure-Services ([Details](docs/refactoring/Platform-Ports-Refactoring-Plan.md))
+- **PlatformNotificationPort**: Domain-Port für platform-agnostische Benachrichtigungen - ersetzt direkte `NotificationService`-Imports im Application-Layer
+- **PlatformCachePort**: Domain-Port für platform-agnostisches Caching - ersetzt direkte `CacheService`-Imports im Application-Layer
+- **PlatformI18nPort**: Domain-Port für platform-agnostische Internationalisierung - ersetzt direkte `I18nFacadeService`-Imports im Application-Layer
+- **1854 Tests bestanden**: Alle Tests erfolgreich, 100% Code Coverage, 100% Type Coverage
 - **Quality Gates erfüllt**: Keine TypeScript-Fehler, keine Linter-Fehler, alle Checks bestanden
 
 ### Highlights (v0.20.0)
@@ -397,6 +399,21 @@ Das Modul verwendet **Entity Collections** und **Repositories** für platform-ag
 
 #### Konzept
 
+**Platform-Ports** (Cross-Cutting Concerns):
+- `PlatformNotificationPort`: Domain-Port für platform-agnostische Benachrichtigungen
+  - Operationen: `debug()`, `info()`, `warn()`, `error()`, `addChannel()`, `removeChannel()`, `getChannelNames()`
+  - Implementierung: `NotificationPortAdapter` (wraps `NotificationCenter`)
+- `PlatformCachePort`: Domain-Port für platform-agnostisches Caching
+  - Operationen: `get()`, `set()`, `delete()`, `has()`, `clear()`, `invalidateWhere()`, `getMetadata()`, `getStatistics()`, `getOrSet()`
+  - Implementierung: `CachePortAdapter` (wraps `CacheService`)
+- `PlatformI18nPort`: Domain-Port für platform-agnostische Internationalisierung
+  - Operationen: `translate()`, `format()`, `has()`, `loadLocalTranslations()`
+  - Implementierung: `I18nPortAdapter` (wraps `I18nFacadeService`)
+- `PlatformUIPort`: Domain-Port für platform-agnostische UI-Operationen
+  - Operationen: `notify()`, `removeJournalElement()`, `rerenderJournalDirectory()`
+- `PlatformSettingsPort`: Domain-Port für platform-agnostische Settings-Verwaltung
+  - Operationen: `register()`, `get()`, `set()`
+
 **Collections** (Read-Only):
 - `PlatformEntityCollectionPort<T>`: Generisches Interface für read-only Collection-Zugriffe
 - `JournalCollectionPort`: Spezialisiertes Interface für JournalEntry Collections
@@ -727,7 +744,25 @@ FoundrySettings (bereits versionsunabhängig über PortSelector)
 PortSelector → wählt FoundryV13SettingsPort
 ```
 
+**Weitere Domain-Ports (Platform-Ports Refactoring):**
+
+- **PlatformNotificationPort**: Domain-Port für platform-agnostische Benachrichtigungen ([Details](src/domain/ports/platform-notification-port.interface.ts))
+  - Ersetzt direkte `NotificationService`-Imports im Application-Layer
+  - Implementiert durch `NotificationPortAdapter` (wraps `NotificationCenter`)
+  - Unterstützt Foundry-spezifische Optionen via Type-Guard (ohne Domain-Exposition)
+
+- **PlatformCachePort**: Domain-Port für platform-agnostisches Caching ([Details](src/domain/ports/platform-cache-port.interface.ts))
+  - Ersetzt direkte `CacheService`-Imports im Application-Layer
+  - Implementiert durch `CachePortAdapter` (wraps `CacheService`)
+  - 1:1-Mapping, da `CacheService` bereits platform-agnostisch ist
+
+- **PlatformI18nPort**: Domain-Port für platform-agnostische Internationalisierung ([Details](src/domain/ports/platform-i18n-port.interface.ts))
+  - Ersetzt direkte `I18nFacadeService`-Imports im Application-Layer
+  - Implementiert durch `I18nPortAdapter` (wraps `I18nFacadeService`)
+  - 1:1-Mapping, da `I18nFacadeService` bereits platform-agnostisch ist
+
 **Vorteile:**
+- ✅ **100% DIP-Konformität**: Application-Layer verwendet ausschließlich Domain-Ports
 - ✅ Domäne ist vollständig von Foundry entkoppelt
 - ✅ Testbarkeit ohne Foundry-Mocks (Service-Tests mit Port-Mock)
 - ✅ Austauschbar für andere VTTs/Frameworks

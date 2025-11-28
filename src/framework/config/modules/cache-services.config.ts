@@ -6,9 +6,11 @@ import {
   cacheServiceConfigToken,
   cacheServiceToken,
   runtimeConfigToken,
+  platformCachePortToken,
 } from "@/infrastructure/shared/tokens";
 import type { CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import { DICacheService } from "@/infrastructure/cache/CacheService";
+import { DICachePortAdapter } from "@/infrastructure/adapters/cache/platform-cache-port-adapter";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 
@@ -48,6 +50,16 @@ export function registerCacheServices(container: ServiceContainer): Result<void,
   );
   if (isErr(serviceResult)) {
     return err(`Failed to register CacheService: ${serviceResult.error.message}`);
+  }
+
+  // Register PlatformCachePort
+  const cachePortResult = container.registerClass(
+    platformCachePortToken,
+    DICachePortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(cachePortResult)) {
+    return err(`Failed to register PlatformCachePort: ${cachePortResult.error.message}`);
   }
 
   return ok(undefined);

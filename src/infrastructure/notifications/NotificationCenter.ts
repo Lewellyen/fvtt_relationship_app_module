@@ -36,8 +36,15 @@
 import { consoleChannelToken } from "@/infrastructure/shared/tokens";
 import { err, ok } from "@/infrastructure/shared/utils/result";
 import type { Result } from "@/domain/types/result";
-import type { NotificationService, NotificationCenterOptions } from "./notification-center.interface";
-import type { Notification, NotificationChannel, NotificationLevel } from "./notification-channel.interface";
+import type {
+  NotificationService,
+  NotificationCenterOptions,
+} from "./notification-center.interface";
+import type {
+  Notification,
+  NotificationChannel,
+  NotificationLevel,
+} from "./notification-channel.interface";
 
 /**
  * Central hub for module notifications. Routes notifications to registered channels

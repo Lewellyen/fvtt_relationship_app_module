@@ -2,13 +2,13 @@ import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import {
   platformJournalEventPortToken,
   platformUIPortToken,
-  notificationCenterToken,
+  platformNotificationPortToken,
 } from "@/infrastructure/shared/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
@@ -22,7 +22,7 @@ import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
  * const useCase = new TriggerJournalDirectoryReRenderUseCase(
  *   journalEventPort,
  *   platformUI,
- *   notificationCenter
+ *   notifications
  * );
  *
  * useCase.register();  // Start listening
@@ -35,7 +35,7 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
     private readonly platformUI: PlatformUIPort,
-    private readonly notificationCenter: NotificationService
+    private readonly notifications: PlatformNotificationPort
   ) {}
 
   /**
@@ -69,7 +69,7 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
     const result = this.platformUI.rerenderJournalDirectory();
 
     if (!result.ok) {
-      this.notificationCenter.warn(
+      this.notifications.warn(
         "Failed to re-render journal directory after hidden flag change",
         result.error,
         { channels: ["ConsoleChannel"] }
@@ -78,7 +78,7 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
     }
 
     if (result.value) {
-      this.notificationCenter.debug(
+      this.notifications.debug(
         "Triggered journal directory re-render after hidden flag change",
         { journalId },
         { channels: ["ConsoleChannel"] }
@@ -104,14 +104,14 @@ export class DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDire
   static dependencies = [
     platformJournalEventPortToken,
     platformUIPortToken,
-    notificationCenterToken,
+    platformNotificationPortToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
     platformUI: PlatformUIPort,
-    notificationCenter: NotificationService
+    notifications: PlatformNotificationPort
   ) {
-    super(journalEvents, platformUI, notificationCenter);
+    super(journalEvents, platformUI, notifications);
   }
 }

@@ -263,6 +263,11 @@ const bootstrapHooksPortToken = createInjectionToken("BootstrapHooksPort");
 const settingsRegistrationPortToken = createInjectionToken(
   "SettingsRegistrationPort"
 );
+const platformNotificationPortToken = createInjectionToken(
+  "PlatformNotificationPort"
+);
+const platformCachePortToken = createInjectionToken("PlatformCachePort");
+const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
 const journalCollectionPortToken = createInjectionToken("JournalCollectionPort");
 const journalRepositoryToken = createInjectionToken("JournalRepository");
 const apiSafeTokens = /* @__PURE__ */ new Set();
@@ -11545,11 +11550,11 @@ const buildJournalCacheKey = createCacheNamespace("journal-visibility");
 const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notificationCenter, cacheService, platformUI) {
+  constructor(journalCollection, journalRepository, notifications, cache, platformUI) {
     this.journalCollection = journalCollection;
     this.journalRepository = journalRepository;
-    this.notificationCenter = notificationCenter;
-    this.cacheService = cacheService;
+    this.notifications = notifications;
+    this.cache = cache;
     this.platformUI = platformUI;
   }
   /**
@@ -11569,9 +11574,9 @@ const _JournalVisibilityService = class _JournalVisibilityService {
    * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
   getHiddenJournalEntries() {
-    const cached = this.cacheService.get(HIDDEN_JOURNAL_CACHE_KEY);
+    const cached = this.cache.get(HIDDEN_JOURNAL_CACHE_KEY);
     if (cached?.hit && cached.value) {
-      this.notificationCenter.debug(
+      this.notifications.debug(
         `Serving ${cached.value.length} hidden journal entries from cache (ttl=${cached.metadata.expiresAt ?? "∞"})`,
         { context: { cached } },
         { channels: ["ConsoleChannel"] }
@@ -11601,7 +11606,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         }
       } else {
         const journalIdentifier = journal.name ?? journal.id;
-        this.notificationCenter.warn(
+        this.notifications.warn(
           `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
           {
             errorCode: flagResult.error.code,
@@ -11611,7 +11616,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         );
       }
     }
-    this.cacheService.set(HIDDEN_JOURNAL_CACHE_KEY, hidden.slice(), {
+    this.cache.set(HIDDEN_JOURNAL_CACHE_KEY, hidden.slice(), {
       tags: [HIDDEN_JOURNAL_CACHE_TAG]
     });
     return { ok: true, value: hidden };
@@ -11621,7 +11626,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
    * @returns Result indicating success or failure with aggregated errors
    */
   processJournalDirectory(htmlElement) {
-    this.notificationCenter.debug(
+    this.notifications.debug(
       "Processing journal directory for hidden entries",
       { context: { htmlElement } },
       {
@@ -11630,13 +11635,13 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     );
     const hiddenResult = this.getHiddenJournalEntries();
     if (!hiddenResult.ok) {
-      this.notificationCenter.error("Error getting hidden journal entries", hiddenResult.error, {
+      this.notifications.error("Error getting hidden journal entries", hiddenResult.error, {
         channels: ["ConsoleChannel"]
       });
       return hiddenResult;
     }
     const hidden = hiddenResult.value;
-    this.notificationCenter.debug(
+    this.notifications.debug(
       `Found ${hidden.length} hidden journal entries`,
       { context: { hidden } },
       {
@@ -11657,11 +11662,11 @@ const _JournalVisibilityService = class _JournalVisibilityService {
           message: removeResult.error.message
         };
         errors.push(journalError);
-        this.notificationCenter.warn("Error removing journal entry", journalError, {
+        this.notifications.warn("Error removing journal entry", journalError, {
           channels: ["ConsoleChannel"]
         });
       } else {
-        this.notificationCenter.debug(
+        this.notifications.debug(
           `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
           { context: { journal } },
           { channels: ["ConsoleChannel"] }
@@ -11678,16 +11683,16 @@ const _JournalVisibilityService = class _JournalVisibilityService {
 __name(_JournalVisibilityService, "JournalVisibilityService");
 let JournalVisibilityService = _JournalVisibilityService;
 const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notificationCenter, cacheService, platformUI) {
-    super(journalCollection, journalRepository, notificationCenter, cacheService, platformUI);
+  constructor(journalCollection, journalRepository, notifications, cache, platformUI) {
+    super(journalCollection, journalRepository, notifications, cache, platformUI);
   }
 };
 __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
 _DIJournalVisibilityService.dependencies = [
   journalCollectionPortToken,
   journalRepositoryToken,
-  notificationCenterToken,
-  cacheServiceToken,
+  platformNotificationPortToken,
+  platformCachePortToken,
   platformUIPortToken
 ];
 let DIJournalVisibilityService = _DIJournalVisibilityService;
@@ -12617,6 +12622,54 @@ _DICacheService.dependencies = [
   runtimeConfigToken
 ];
 let DICacheService = _DICacheService;
+const _CachePortAdapter = class _CachePortAdapter {
+  constructor(cacheService) {
+    this.cacheService = cacheService;
+  }
+  get isEnabled() {
+    return this.cacheService.isEnabled;
+  }
+  get size() {
+    return this.cacheService.size;
+  }
+  get(key) {
+    return this.cacheService.get(key);
+  }
+  set(key, value2, options) {
+    return this.cacheService.set(key, value2, options);
+  }
+  delete(key) {
+    return this.cacheService.delete(key);
+  }
+  has(key) {
+    return this.cacheService.has(key);
+  }
+  clear() {
+    return this.cacheService.clear();
+  }
+  invalidateWhere(predicate) {
+    return this.cacheService.invalidateWhere(predicate);
+  }
+  getMetadata(key) {
+    return this.cacheService.getMetadata(key);
+  }
+  getStatistics() {
+    return this.cacheService.getStatistics();
+  }
+  async getOrSet(key, factory, options) {
+    return this.cacheService.getOrSet(key, factory, options);
+  }
+};
+__name(_CachePortAdapter, "CachePortAdapter");
+let CachePortAdapter = _CachePortAdapter;
+const _DICachePortAdapter = class _DICachePortAdapter extends CachePortAdapter {
+  constructor(cacheService) {
+    super(cacheService);
+  }
+};
+__name(_DICachePortAdapter, "DICachePortAdapter");
+_DICachePortAdapter.dependencies = [cacheServiceToken];
+let DICachePortAdapter = _DICachePortAdapter;
 function registerCacheServices(container) {
   const runtimeConfig = container.getRegisteredValue(runtimeConfigToken);
   if (!runtimeConfig) {
@@ -12640,6 +12693,14 @@ function registerCacheServices(container) {
   );
   if (isErr(serviceResult)) {
     return err(`Failed to register CacheService: ${serviceResult.error.message}`);
+  }
+  const cachePortResult = container.registerClass(
+    platformCachePortToken,
+    DICachePortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(cachePortResult)) {
+    return err(`Failed to register PlatformCachePort: ${cachePortResult.error.message}`);
   }
   return ok(void 0);
 }
@@ -13039,6 +13100,33 @@ _DITranslationHandlerChain.dependencies = [
   fallbackTranslationHandlerToken
 ];
 let DITranslationHandlerChain = _DITranslationHandlerChain;
+const _I18nPortAdapter = class _I18nPortAdapter {
+  constructor(i18nFacade) {
+    this.i18nFacade = i18nFacade;
+  }
+  translate(key, fallback2) {
+    return this.i18nFacade.translate(key, fallback2);
+  }
+  format(key, data, fallback2) {
+    return this.i18nFacade.format(key, data, fallback2);
+  }
+  has(key) {
+    return this.i18nFacade.has(key);
+  }
+  loadLocalTranslations(translations) {
+    this.i18nFacade.loadLocalTranslations(translations);
+  }
+};
+__name(_I18nPortAdapter, "I18nPortAdapter");
+let I18nPortAdapter = _I18nPortAdapter;
+const _DII18nPortAdapter = class _DII18nPortAdapter extends I18nPortAdapter {
+  constructor(i18nFacade) {
+    super(i18nFacade);
+  }
+};
+__name(_DII18nPortAdapter, "DII18nPortAdapter");
+_DII18nPortAdapter.dependencies = [i18nFacadeToken];
+let DII18nPortAdapter = _DII18nPortAdapter;
 function registerI18nServices(container) {
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
@@ -13099,6 +13187,14 @@ function registerI18nServices(container) {
   );
   if (isErr(facadeResult)) {
     return err(`Failed to register I18nFacadeService: ${facadeResult.error.message}`);
+  }
+  const i18nPortResult = container.registerClass(
+    platformI18nPortToken,
+    DII18nPortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(i18nPortResult)) {
+    return err(`Failed to register PlatformI18nPort: ${i18nPortResult.error.message}`);
   }
   return ok(void 0);
 }
@@ -13306,6 +13402,98 @@ const _DIUIChannel = class _DIUIChannel extends UIChannel {
 __name(_DIUIChannel, "DIUIChannel");
 _DIUIChannel.dependencies = [foundryUIToken, runtimeConfigToken];
 let DIUIChannel = _DIUIChannel;
+const _NotificationPortAdapter = class _NotificationPortAdapter {
+  constructor(notificationCenter) {
+    this.notificationCenter = notificationCenter;
+  }
+  debug(context, data, options) {
+    const centerOptions = this.mapToCenterOptions(options);
+    const result = this.notificationCenter.debug(context, data, centerOptions);
+    return this.mapResult(result);
+  }
+  info(context, data, options) {
+    const centerOptions = this.mapToCenterOptions(options);
+    const result = this.notificationCenter.info(context, data, centerOptions);
+    return this.mapResult(result);
+  }
+  warn(context, data, options) {
+    const centerOptions = this.mapToCenterOptions(options);
+    const result = this.notificationCenter.warn(context, data, centerOptions);
+    return this.mapResult(result);
+  }
+  error(context, error, options) {
+    const centerOptions = this.mapToCenterOptions(options);
+    const result = this.notificationCenter.error(context, error, centerOptions);
+    return this.mapResult(result);
+  }
+  addChannel(_channelName) {
+    return err({
+      code: "OPERATION_NOT_SUPPORTED",
+      message: "Dynamic channel addition via name not supported. Use NotificationCenter.addChannel() directly.",
+      operation: "addChannel"
+    });
+  }
+  removeChannel(channelName) {
+    const removed = this.notificationCenter.removeChannel(channelName);
+    return ok(removed);
+  }
+  getChannelNames() {
+    const names = this.notificationCenter.getChannelNames();
+    return ok(names);
+  }
+  // ===== Private Helpers =====
+  /**
+   * Maps platform-agnostic options to NotificationCenter options.
+   * Handles Foundry-specific options via type guard if present.
+   */
+  mapToCenterOptions(options) {
+    if (!options) return void 0;
+    const centerOptions = {
+      ...options.channels !== void 0 && { channels: options.channels },
+      ...options.traceId !== void 0 && { traceId: options.traceId }
+    };
+    if (this.isFoundryNotificationOptions(options)) {
+      const foundryOptions = {
+        ...options.permanent !== void 0 && { permanent: options.permanent },
+        ...options.console !== void 0 && { console: options.console },
+        ...options.localize !== void 0 && { localize: options.localize },
+        ...options.progress !== void 0 && { progress: options.progress }
+      };
+      centerOptions.uiOptions = foundryOptions;
+    }
+    return centerOptions;
+  }
+  /**
+   * Type guard to detect Foundry-specific notification options.
+   * This allows adapters to pass Foundry options without exposing them in the domain interface.
+   */
+  isFoundryNotificationOptions(options) {
+    return typeof options === "object" && options !== null && ("permanent" in options || "console" in options || "localize" in options || "progress" in options);
+  }
+  /**
+   * Maps NotificationCenter Result to PlatformNotificationPort Result.
+   */
+  mapResult(result) {
+    if (result.ok) {
+      return ok(void 0);
+    }
+    return err({
+      code: "NOTIFICATION_FAILED",
+      message: result.error,
+      operation: "notify"
+    });
+  }
+};
+__name(_NotificationPortAdapter, "NotificationPortAdapter");
+let NotificationPortAdapter = _NotificationPortAdapter;
+const _DINotificationPortAdapter = class _DINotificationPortAdapter extends NotificationPortAdapter {
+  constructor(notificationCenter) {
+    super(notificationCenter);
+  }
+};
+__name(_DINotificationPortAdapter, "DINotificationPortAdapter");
+_DINotificationPortAdapter.dependencies = [notificationCenterToken];
+let DINotificationPortAdapter = _DINotificationPortAdapter;
 function registerNotifications(container) {
   const consoleChannelResult = container.registerClass(
     consoleChannelToken,
@@ -13330,6 +13518,16 @@ function registerNotifications(container) {
   );
   if (isErr(notificationCenterResult)) {
     return err(`Failed to register NotificationCenter: ${notificationCenterResult.error.message}`);
+  }
+  const notificationPortResult = container.registerClass(
+    platformNotificationPortToken,
+    DINotificationPortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(notificationPortResult)) {
+    return err(
+      `Failed to register PlatformNotificationPort: ${notificationPortResult.error.message}`
+    );
   }
   return ok(void 0);
 }
@@ -13815,8 +14013,8 @@ __name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
 _DIModuleSettingsRegistrar.dependencies = [
   settingsRegistrationPortToken,
   runtimeConfigToken,
-  notificationCenterToken,
-  i18nFacadeToken,
+  platformNotificationPortToken,
+  platformI18nPortToken,
   loggerToken
 ];
 let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
@@ -14007,10 +14205,10 @@ __name(_DIFoundryJournalEventAdapter, "DIFoundryJournalEventAdapter");
 _DIFoundryJournalEventAdapter.dependencies = [foundryHooksToken];
 let DIFoundryJournalEventAdapter = _DIFoundryJournalEventAdapter;
 const _InvalidateJournalCacheOnChangeUseCase = class _InvalidateJournalCacheOnChangeUseCase {
-  constructor(journalEvents, cache, notificationCenter) {
+  constructor(journalEvents, cache, notifications) {
     this.journalEvents = journalEvents;
     this.cache = cache;
-    this.notificationCenter = notificationCenter;
+    this.notifications = notifications;
     this.registrationIds = [];
   }
   /**
@@ -14040,7 +14238,7 @@ const _InvalidateJournalCacheOnChangeUseCase = class _InvalidateJournalCacheOnCh
           `Failed to register journal event listener: ${result.error.message}`
         );
         errors.push(error);
-        this.notificationCenter.error(
+        this.notifications.error(
           "Failed to register journal event listener",
           {
             code: result.error.code,
@@ -14063,7 +14261,7 @@ const _InvalidateJournalCacheOnChangeUseCase = class _InvalidateJournalCacheOnCh
   invalidateCache(reason, journalId) {
     const removed = this.cache.invalidateWhere((meta) => meta.tags.includes("journal:hidden"));
     if (removed > 0) {
-      this.notificationCenter.debug(
+      this.notifications.debug(
         `Invalidated ${removed} journal cache entries (${reason})`,
         { journalId },
         { channels: ["ConsoleChannel"] }
@@ -14074,7 +14272,7 @@ const _InvalidateJournalCacheOnChangeUseCase = class _InvalidateJournalCacheOnCh
    * Trigger UI update when journal visibility changes.
    */
   triggerUIUpdate(journalId) {
-    this.notificationCenter.debug(
+    this.notifications.debug(
       "Journal hidden flag changed, UI update needed",
       { journalId },
       { channels: ["ConsoleChannel"] }
@@ -14093,36 +14291,36 @@ const _InvalidateJournalCacheOnChangeUseCase = class _InvalidateJournalCacheOnCh
 __name(_InvalidateJournalCacheOnChangeUseCase, "InvalidateJournalCacheOnChangeUseCase");
 let InvalidateJournalCacheOnChangeUseCase = _InvalidateJournalCacheOnChangeUseCase;
 const _DIInvalidateJournalCacheOnChangeUseCase = class _DIInvalidateJournalCacheOnChangeUseCase extends InvalidateJournalCacheOnChangeUseCase {
-  constructor(journalEvents, cache, notificationCenter) {
-    super(journalEvents, cache, notificationCenter);
+  constructor(journalEvents, cache, notifications) {
+    super(journalEvents, cache, notifications);
   }
 };
 __name(_DIInvalidateJournalCacheOnChangeUseCase, "DIInvalidateJournalCacheOnChangeUseCase");
 _DIInvalidateJournalCacheOnChangeUseCase.dependencies = [
   platformJournalEventPortToken,
-  cacheServiceToken,
-  notificationCenterToken
+  platformCachePortToken,
+  platformNotificationPortToken
 ];
 let DIInvalidateJournalCacheOnChangeUseCase = _DIInvalidateJournalCacheOnChangeUseCase;
 const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOnRenderUseCase {
-  constructor(journalEvents, journalVisibility, notificationCenter) {
+  constructor(journalEvents, journalVisibility, notifications) {
     this.journalEvents = journalEvents;
     this.journalVisibility = journalVisibility;
-    this.notificationCenter = notificationCenter;
+    this.notifications = notifications;
   }
   /**
    * Register event listener for directory render events.
    */
   register() {
     const result = this.journalEvents.onJournalDirectoryRendered((event) => {
-      this.notificationCenter.debug(
+      this.notifications.debug(
         "Journal directory rendered, processing visibility",
         { timestamp: event.timestamp },
         { channels: ["ConsoleChannel"] }
       );
       const processResult = this.journalVisibility.processJournalDirectory(event.htmlElement);
       if (!processResult.ok) {
-        this.notificationCenter.error("Failed to process journal directory", processResult.error, {
+        this.notifications.error("Failed to process journal directory", processResult.error, {
           channels: ["ConsoleChannel"]
         });
       }
@@ -14147,22 +14345,22 @@ const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOn
 __name(_ProcessJournalDirectoryOnRenderUseCase, "ProcessJournalDirectoryOnRenderUseCase");
 let ProcessJournalDirectoryOnRenderUseCase = _ProcessJournalDirectoryOnRenderUseCase;
 const _DIProcessJournalDirectoryOnRenderUseCase = class _DIProcessJournalDirectoryOnRenderUseCase extends ProcessJournalDirectoryOnRenderUseCase {
-  constructor(journalEvents, journalVisibility, notificationCenter) {
-    super(journalEvents, journalVisibility, notificationCenter);
+  constructor(journalEvents, journalVisibility, notifications) {
+    super(journalEvents, journalVisibility, notifications);
   }
 };
 __name(_DIProcessJournalDirectoryOnRenderUseCase, "DIProcessJournalDirectoryOnRenderUseCase");
 _DIProcessJournalDirectoryOnRenderUseCase.dependencies = [
   platformJournalEventPortToken,
   journalVisibilityServiceToken,
-  notificationCenterToken
+  platformNotificationPortToken
 ];
 let DIProcessJournalDirectoryOnRenderUseCase = _DIProcessJournalDirectoryOnRenderUseCase;
 const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryReRenderUseCase {
-  constructor(journalEvents, platformUI, notificationCenter) {
+  constructor(journalEvents, platformUI, notifications) {
     this.journalEvents = journalEvents;
     this.platformUI = platformUI;
-    this.notificationCenter = notificationCenter;
+    this.notifications = notifications;
   }
   /**
    * Register event listener for journal update events.
@@ -14189,7 +14387,7 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
   triggerReRender(journalId) {
     const result = this.platformUI.rerenderJournalDirectory();
     if (!result.ok) {
-      this.notificationCenter.warn(
+      this.notifications.warn(
         "Failed to re-render journal directory after hidden flag change",
         result.error,
         { channels: ["ConsoleChannel"] }
@@ -14197,7 +14395,7 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
       return;
     }
     if (result.value) {
-      this.notificationCenter.debug(
+      this.notifications.debug(
         "Triggered journal directory re-render after hidden flag change",
         { journalId },
         { channels: ["ConsoleChannel"] }
@@ -14217,15 +14415,15 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
 __name(_TriggerJournalDirectoryReRenderUseCase, "TriggerJournalDirectoryReRenderUseCase");
 let TriggerJournalDirectoryReRenderUseCase = _TriggerJournalDirectoryReRenderUseCase;
 const _DITriggerJournalDirectoryReRenderUseCase = class _DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDirectoryReRenderUseCase {
-  constructor(journalEvents, platformUI, notificationCenter) {
-    super(journalEvents, platformUI, notificationCenter);
+  constructor(journalEvents, platformUI, notifications) {
+    super(journalEvents, platformUI, notifications);
   }
 };
 __name(_DITriggerJournalDirectoryReRenderUseCase, "DITriggerJournalDirectoryReRenderUseCase");
 _DITriggerJournalDirectoryReRenderUseCase.dependencies = [
   platformJournalEventPortToken,
   platformUIPortToken,
-  notificationCenterToken
+  platformNotificationPortToken
 ];
 let DITriggerJournalDirectoryReRenderUseCase = _DITriggerJournalDirectoryReRenderUseCase;
 const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
@@ -14271,10 +14469,10 @@ _DIRegisterContextMenuUseCase.dependencies = [
 ];
 let DIRegisterContextMenuUseCase = _DIRegisterContextMenuUseCase;
 const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
-  constructor(journalRepository, platformUI, notificationCenter) {
+  constructor(journalRepository, platformUI, notifications) {
     this.journalRepository = journalRepository;
     this.platformUI = platformUI;
-    this.notificationCenter = notificationCenter;
+    this.notifications = notifications;
   }
   handle(event) {
     const journalId = this.extractJournalId(event.htmlElement);
@@ -14309,19 +14507,19 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
               "info"
             );
             if (!notifyResult.ok) {
-              this.notificationCenter.warn(
+              this.notifications.warn(
                 "Failed to show notification after hiding journal",
                 notifyResult.error,
                 { channels: ["ConsoleChannel"] }
               );
             }
-            this.notificationCenter.debug(
+            this.notifications.debug(
               `Journal ${journalId} (${journalName}) hidden via context menu`,
               { journalId, journalName },
               { channels: ["ConsoleChannel"] }
             );
           } else {
-            this.notificationCenter.error(
+            this.notifications.error(
               `Failed to hide journal ${journalId}`,
               { code: hideResult.error.code, message: hideResult.error.message },
               {
@@ -14347,15 +14545,15 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
 __name(_HideJournalContextMenuHandler, "HideJournalContextMenuHandler");
 let HideJournalContextMenuHandler = _HideJournalContextMenuHandler;
 const _DIHideJournalContextMenuHandler = class _DIHideJournalContextMenuHandler extends HideJournalContextMenuHandler {
-  constructor(journalRepository, platformUI, notificationCenter) {
-    super(journalRepository, platformUI, notificationCenter);
+  constructor(journalRepository, platformUI, notifications) {
+    super(journalRepository, platformUI, notifications);
   }
 };
 __name(_DIHideJournalContextMenuHandler, "DIHideJournalContextMenuHandler");
 _DIHideJournalContextMenuHandler.dependencies = [
   journalRepositoryToken,
   platformUIPortToken,
-  notificationCenterToken
+  platformNotificationPortToken
 ];
 let DIHideJournalContextMenuHandler = _DIHideJournalContextMenuHandler;
 function disposeHooks(hooks) {
@@ -14365,8 +14563,8 @@ function disposeHooks(hooks) {
 }
 __name(disposeHooks, "disposeHooks");
 const _ModuleEventRegistrar = class _ModuleEventRegistrar {
-  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, notificationCenter) {
-    this.notificationCenter = notificationCenter;
+  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, notifications) {
+    this.notifications = notifications;
     this.eventRegistrars = [
       processJournalDirectoryOnRender,
       invalidateJournalCacheOnChange,
@@ -14387,7 +14585,7 @@ const _ModuleEventRegistrar = class _ModuleEventRegistrar {
           code: "EVENT_REGISTRATION_FAILED",
           message: result.error.message
         };
-        this.notificationCenter.error("Failed to register event listener", error, {
+        this.notifications.error("Failed to register event listener", error, {
           channels: ["ConsoleChannel"]
         });
         errors.push(result.error);
@@ -14409,12 +14607,12 @@ const _ModuleEventRegistrar = class _ModuleEventRegistrar {
 __name(_ModuleEventRegistrar, "ModuleEventRegistrar");
 let ModuleEventRegistrar = _ModuleEventRegistrar;
 const _DIModuleEventRegistrar = class _DIModuleEventRegistrar extends ModuleEventRegistrar {
-  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, notificationCenter) {
+  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, notifications) {
     super(
       processJournalDirectoryOnRender,
       invalidateJournalCacheOnChange,
       triggerJournalDirectoryReRender,
-      notificationCenter
+      notifications
     );
   }
 };
@@ -14423,7 +14621,7 @@ _DIModuleEventRegistrar.dependencies = [
   processJournalDirectoryOnRenderUseCaseToken,
   invalidateJournalCacheOnChangeUseCaseToken,
   triggerJournalDirectoryReRenderUseCaseToken,
-  notificationCenterToken
+  platformNotificationPortToken
 ];
 let DIModuleEventRegistrar = _DIModuleEventRegistrar;
 function registerEventPorts(container) {

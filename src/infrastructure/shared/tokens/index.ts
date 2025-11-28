@@ -90,6 +90,9 @@ import type { JournalRepository } from "@/domain/ports/repositories/journal-repo
 import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
 import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
 import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 
 /**
  * Union type representing all registered service types in the application.
@@ -162,4 +165,7 @@ export type ServiceType =
   | JournalRepository
   | BootstrapHooksPort
   | SettingsRegistrationPort
-  | ContextMenuRegistrationPort;
+  | ContextMenuRegistrationPort
+  | PlatformNotificationPort
+  | PlatformCachePort
+  | PlatformI18nPort;

@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { InvalidateJournalCacheOnChangeUseCase } from "../invalidate-journal-cache-on-change.use-case";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
-import type { CacheService } from "@/infrastructure/cache/cache.interface";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import { ok } from "@/infrastructure/shared/utils/result";
 
 describe("InvalidateJournalCacheOnChangeUseCase", () => {
   let mockJournalEvents: PlatformJournalEventPort;
-  let mockCache: CacheService;
-  let mockNotificationCenter: NotificationCenter;
+  let mockCache: PlatformCachePort;
+  let mockNotifications: PlatformNotificationPort;
   let useCase: InvalidateJournalCacheOnChangeUseCase;
 
   beforeEach(() => {
@@ -21,26 +22,33 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
     };
 
     mockCache = {
+      isEnabled: true,
+      size: 0,
       get: vi.fn(),
       set: vi.fn(),
       delete: vi.fn(),
       has: vi.fn(),
       clear: vi.fn(),
       invalidateWhere: vi.fn().mockReturnValue(5),
-    } as unknown as CacheService;
+      getMetadata: vi.fn(),
+      getStatistics: vi.fn(),
+      getOrSet: vi.fn(),
+    } as unknown as PlatformCachePort;
 
-    mockNotificationCenter = {
-      debug: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      addChannel: vi.fn(),
-    } as unknown as NotificationCenter;
+    mockNotifications = {
+      debug: vi.fn().mockReturnValue(ok(undefined)),
+      error: vi.fn().mockReturnValue(ok(undefined)),
+      info: vi.fn().mockReturnValue(ok(undefined)),
+      warn: vi.fn().mockReturnValue(ok(undefined)),
+      addChannel: vi.fn().mockReturnValue(ok(undefined)),
+      removeChannel: vi.fn().mockReturnValue(ok(true)),
+      getChannelNames: vi.fn().mockReturnValue(ok([])),
+    } as unknown as PlatformNotificationPort;
 
     useCase = new InvalidateJournalCacheOnChangeUseCase(
       mockJournalEvents,
       mockCache,
-      mockNotificationCenter
+      mockNotifications
     );
   });
 
@@ -59,7 +67,7 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
     callback({ journalId: "journal-123", timestamp: Date.now() });
 
     expect(mockCache.invalidateWhere).toHaveBeenCalled();
-    expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
+    expect(mockNotifications.debug).toHaveBeenCalledWith(
       expect.stringContaining("Invalidated"),
       expect.objectContaining({ journalId: "journal-123" }),
       expect.any(Object)
@@ -89,7 +97,7 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
       timestamp: Date.now(),
     });
 
-    expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
+    expect(mockNotifications.debug).toHaveBeenCalledWith(
       "Journal hidden flag changed, UI update needed",
       expect.objectContaining({ journalId: "journal-789" }),
       expect.any(Object)
@@ -113,7 +121,7 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
     const result = useCase.register();
 
     expect(result.ok).toBe(false);
-    expect(mockNotificationCenter.error).toHaveBeenCalled();
+    expect(mockNotifications.error).toHaveBeenCalled();
   });
 
   it("should cleanup listeners on dispose", () => {
@@ -144,7 +152,7 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
     useCase = new InvalidateJournalCacheOnChangeUseCase(
       mockJournalEvents,
       mockCache,
-      mockNotificationCenter
+      mockNotifications
     );
 
     useCase.register();
@@ -154,7 +162,7 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
 
     expect(mockCache.invalidateWhere).toHaveBeenCalled();
     // debug should not be called when removed === 0
-    expect(mockNotificationCenter.debug).not.toHaveBeenCalledWith(
+    expect(mockNotifications.debug).not.toHaveBeenCalledWith(
       expect.stringContaining("Invalidated"),
       expect.any(Object),
       expect.any(Object)

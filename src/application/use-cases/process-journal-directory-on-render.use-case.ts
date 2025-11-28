@@ -2,13 +2,13 @@ import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import {
   platformJournalEventPortToken,
   journalVisibilityServiceToken,
-  notificationCenterToken,
+  platformNotificationPortToken,
 } from "@/infrastructure/shared/tokens";
 
 /**
@@ -21,7 +21,7 @@ import {
  * const useCase = new ProcessJournalDirectoryOnRenderUseCase(
  *   journalEventPort,
  *   journalVisibilityService,
- *   notificationCenter
+ *   notifications
  * );
  *
  * useCase.register();  // Start listening
@@ -34,7 +34,7 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
     private readonly journalVisibility: JournalVisibilityService,
-    private readonly notificationCenter: NotificationService
+    private readonly notifications: PlatformNotificationPort
   ) {}
 
   /**
@@ -42,7 +42,7 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
    */
   register(): Result<void, Error> {
     const result = this.journalEvents.onJournalDirectoryRendered((event) => {
-      this.notificationCenter.debug(
+      this.notifications.debug(
         "Journal directory rendered, processing visibility",
         { timestamp: event.timestamp },
         { channels: ["ConsoleChannel"] }
@@ -51,7 +51,7 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
       const processResult = this.journalVisibility.processJournalDirectory(event.htmlElement);
 
       if (!processResult.ok) {
-        this.notificationCenter.error("Failed to process journal directory", processResult.error, {
+        this.notifications.error("Failed to process journal directory", processResult.error, {
           channels: ["ConsoleChannel"],
         });
       }
@@ -83,14 +83,14 @@ export class DIProcessJournalDirectoryOnRenderUseCase extends ProcessJournalDire
   static dependencies = [
     platformJournalEventPortToken,
     journalVisibilityServiceToken,
-    notificationCenterToken,
+    platformNotificationPortToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
     journalVisibility: JournalVisibilityService,
-    notificationCenter: NotificationService
+    notifications: PlatformNotificationPort
   ) {
-    super(journalEvents, journalVisibility, notificationCenter);
+    super(journalEvents, journalVisibility, notifications);
   }
 }

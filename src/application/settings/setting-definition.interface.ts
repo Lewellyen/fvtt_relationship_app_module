@@ -12,7 +12,7 @@
  * @see ModuleSettingsRegistrar for usage
  */
 
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 
 /**
@@ -64,5 +64,5 @@ export interface SettingDefinition<T> {
    * @param logger - Logger for the onChange callback
    * @returns Complete setting configuration
    */
-  createConfig(i18n: I18nFacadeService, logger: Logger): SettingConfig<T>;
+  createConfig(i18n: PlatformI18nPort, logger: Logger): SettingConfig<T>;
 }

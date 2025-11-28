@@ -1,7 +1,7 @@
 # Dependency Map - FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-20 (Unreleased - Clean Architecture Restrukturierung)  
+**Aktualisiert:** 2025-11-28 (Unreleased - Platform-Ports Refactoring abgeschlossen, 100% DIP-Konformität)  
 **Zweck:** Detaillierte Abhängigkeits-Visualisierung für Refactoring  
 **Model:** Claude Sonnet 4.5  
 **Projekt-Status:** Version 0.26.3 → Unreleased (Pre-Release)  
@@ -1453,6 +1453,127 @@ if (!validationResult.ok) {
 
 ### Platform-Agnostic Ports
 
+#### PlatformNotificationPort
+**Datei:** `src/domain/ports/platform-notification-port.interface.ts`  
+**Token:** `platformNotificationPortToken`  
+**Typ:** Domain Port Interface
+
+**Implementierungen:**
+- `NotificationPortAdapter` (wraps `NotificationCenter`)
+
+**Verwendung:**
+- Application Layer Services für platform-agnostische Benachrichtigungen
+- Alle Use-Cases und Services, die Logging/Notifications benötigen
+
+**Methoden:**
+- `debug()`, `info()`, `warn()`, `error()` - Benachrichtigungen mit verschiedenen Levels
+- `addChannel()`, `removeChannel()`, `getChannelNames()` - Channel-Management
+- Unterstützt Foundry-spezifische Optionen via Type-Guard (ohne Domain-Exposition)
+
+**Besonderheiten:**
+- Type-Guard erkennt Foundry-Optionen (permanent, console, localize, progress) intern
+- Mappt `Result<void, string>` zu `Result<void, PlatformNotificationError>`
+
+---
+
+#### NotificationPortAdapter
+**Datei:** `src/infrastructure/adapters/notifications/platform-notification-port-adapter.ts`  
+**Token:** `platformNotificationPortToken`  
+**Lifecycle:** SINGLETON
+
+**Implementiert:** `PlatformNotificationPort`
+
+**Dependencies:**
+- `NotificationService` (NotificationCenter) - Infrastructure-Service für Benachrichtigungen
+
+**Zweck:**
+- Adaptiert `NotificationCenter` zu platform-agnostischem `PlatformNotificationPort`
+- Ermöglicht Application Layer, Benachrichtigungen ohne direkte Infrastructure-Abhängigkeit durchzuführen
+- Handles Foundry-spezifische Optionen intern via Type-Guard
+
+---
+
+#### PlatformCachePort
+**Datei:** `src/domain/ports/platform-cache-port.interface.ts`  
+**Token:** `platformCachePortToken`  
+**Typ:** Domain Port Interface
+
+**Implementierungen:**
+- `CachePortAdapter` (wraps `CacheService`)
+
+**Verwendung:**
+- Application Layer Services für platform-agnostisches Caching
+- JournalVisibilityService für Cache-Operationen
+
+**Methoden:**
+- `get()`, `set()`, `delete()`, `has()`, `clear()` - Basis-Cache-Operationen
+- `invalidateWhere()` - Selektive Cache-Invalidierung
+- `getMetadata()`, `getStatistics()` - Cache-Metadaten und Statistiken
+- `getOrSet()` - Atomic Get-or-Set Operation
+
+**Besonderheiten:**
+- 1:1-Mapping zu `CacheService`, da dieser bereits platform-agnostisch ist
+
+---
+
+#### CachePortAdapter
+**Datei:** `src/infrastructure/adapters/cache/platform-cache-port-adapter.ts`  
+**Token:** `platformCachePortToken`  
+**Lifecycle:** SINGLETON
+
+**Implementiert:** `PlatformCachePort`
+
+**Dependencies:**
+- `CacheService` - Infrastructure-Service für Caching
+
+**Zweck:**
+- Adaptiert `CacheService` zu platform-agnostischem `PlatformCachePort`
+- Ermöglicht Application Layer, Cache-Operationen ohne direkte Infrastructure-Abhängigkeit durchzuführen
+- Einfacher Wrapper, da `CacheService` bereits platform-agnostisch ist
+
+---
+
+#### PlatformI18nPort
+**Datei:** `src/domain/ports/platform-i18n-port.interface.ts`  
+**Token:** `platformI18nPortToken`  
+**Typ:** Domain Port Interface
+
+**Implementierungen:**
+- `I18nPortAdapter` (wraps `I18nFacadeService`)
+
+**Verwendung:**
+- Application Layer Services für platform-agnostische Internationalisierung
+- ModuleSettingsRegistrar für Setting-Labels und Beschreibungen
+- Setting-Definitionen für i18n-Strings
+
+**Methoden:**
+- `translate()` - Übersetzung mit optionalem Fallback
+- `format()` - Formatierte Übersetzung mit Platzhaltern
+- `has()` - Prüft ob Übersetzung existiert
+- `loadLocalTranslations()` - Lädt lokale Übersetzungen
+
+**Besonderheiten:**
+- 1:1-Mapping zu `I18nFacadeService`, da dieser bereits platform-agnostisch ist
+
+---
+
+#### I18nPortAdapter
+**Datei:** `src/infrastructure/adapters/i18n/platform-i18n-port-adapter.ts`  
+**Token:** `platformI18nPortToken`  
+**Lifecycle:** SINGLETON
+
+**Implementiert:** `PlatformI18nPort`
+
+**Dependencies:**
+- `I18nFacadeService` - Infrastructure-Service für Internationalisierung
+
+**Zweck:**
+- Adaptiert `I18nFacadeService` zu platform-agnostischem `PlatformI18nPort`
+- Ermöglicht Application Layer, i18n-Operationen ohne direkte Infrastructure-Abhängigkeit durchzuführen
+- Einfacher Wrapper, da `I18nFacadeService` bereits platform-agnostisch ist
+
+---
+
 #### PlatformUIPort
 **Datei:** `src/domain/ports/platform-ui-port.interface.ts`  
 **Token:** `platformUIPortToken`  
@@ -1601,7 +1722,7 @@ if (!validationResult.ok) {
 **Dependencies:**
 - `JournalEventPort` - Platform-agnostisches Event-Listening
 - `PlatformUIPort` - Platform-agnostisches UI-Re-Rendering
-- `NotificationCenter` - Logging
+- `PlatformNotificationPort` - Platform-agnostisches Logging
 
 **Zweck:**
 - Triggert Journal-Directory Re-Render bei Hidden-Flag-Änderungen

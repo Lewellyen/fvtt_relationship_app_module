@@ -12,17 +12,17 @@ import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import {
   loggerToken,
-  notificationCenterToken,
+  platformNotificationPortToken,
   runtimeConfigToken,
-  i18nFacadeToken,
+  platformI18nPortToken,
   settingsRegistrationPortToken,
 } from "@/infrastructure/shared/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { LogLevel } from "@/framework/config/environment";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 
 const DEFAULT_SETTING_VALUES: Record<string, unknown> = {
@@ -62,9 +62,9 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(runtimeConfigToken)
       ) as RuntimeConfigService;
       const mockNotifications = container.resolve(
-        markAsApiSafe(notificationCenterToken)
-      ) as NotificationCenter;
-      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+        markAsApiSafe(platformNotificationPortToken)
+      ) as PlatformNotificationPort;
+      const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
 
       const registrar = new ModuleSettingsRegistrar(
@@ -112,9 +112,9 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(runtimeConfigToken)
       ) as RuntimeConfigService;
       const mockNotifications = container.resolve(
-        markAsApiSafe(notificationCenterToken)
-      ) as NotificationCenter;
-      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+        markAsApiSafe(platformNotificationPortToken)
+      ) as PlatformNotificationPort;
+      const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
 
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
@@ -155,9 +155,9 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(runtimeConfigToken)
       ) as RuntimeConfigService;
       const mockNotifications = container.resolve(
-        markAsApiSafe(notificationCenterToken)
-      ) as NotificationCenter;
-      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+        markAsApiSafe(platformNotificationPortToken)
+      ) as PlatformNotificationPort;
+      const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
 
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
@@ -187,14 +187,14 @@ describe("ModuleSettingsRegistrar", () => {
       });
 
       const mockNotificationCenter = container.resolve(
-        markAsApiSafe(notificationCenterToken)
+        markAsApiSafe(platformNotificationPortToken)
       ) as any;
       const errorSpy = vi.spyOn(mockNotificationCenter, "error");
 
       const mockRuntimeConfig = container.resolve(
         markAsApiSafe(runtimeConfigToken)
       ) as RuntimeConfigService;
-      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+      const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
 
       const registrar = new ModuleSettingsRegistrar(
@@ -227,9 +227,9 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(runtimeConfigToken)
       ) as RuntimeConfigService;
       const mockNotifications = container.resolve(
-        markAsApiSafe(notificationCenterToken)
-      ) as NotificationCenter;
-      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+        markAsApiSafe(platformNotificationPortToken)
+      ) as PlatformNotificationPort;
+      const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
 
       const registrar = new ModuleSettingsRegistrar(
@@ -273,9 +273,9 @@ describe("ModuleSettingsRegistrar", () => {
       const setSpy = vi.spyOn(runtimeConfig, "setFromFoundry");
 
       const mockNotifications = container.resolve(
-        markAsApiSafe(notificationCenterToken)
-      ) as NotificationCenter;
-      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+        markAsApiSafe(platformNotificationPortToken)
+      ) as PlatformNotificationPort;
+      const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
 
       const registrar = new ModuleSettingsRegistrar(
@@ -320,9 +320,9 @@ describe("ModuleSettingsRegistrar", () => {
       const setSpy = vi.spyOn(runtimeConfig, "setFromFoundry");
 
       const mockNotifications = container.resolve(
-        markAsApiSafe(notificationCenterToken)
-      ) as NotificationCenter;
-      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+        markAsApiSafe(platformNotificationPortToken)
+      ) as PlatformNotificationPort;
+      const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
 
       const registrar = new ModuleSettingsRegistrar(
@@ -364,9 +364,9 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(runtimeConfigToken)
       ) as RuntimeConfigService;
       const mockNotifications = container.resolve(
-        markAsApiSafe(notificationCenterToken)
-      ) as NotificationCenter;
-      const mockI18n = container.resolve(markAsApiSafe(i18nFacadeToken)) as I18nFacadeService;
+        markAsApiSafe(platformNotificationPortToken)
+      ) as PlatformNotificationPort;
+      const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
 
       const registrar = new ModuleSettingsRegistrar(
@@ -418,8 +418,8 @@ describe("ModuleSettingsRegistrar DI metadata", () => {
     expect(DIModuleSettingsRegistrar.dependencies).toEqual([
       settingsRegistrationPortToken,
       runtimeConfigToken,
-      notificationCenterToken,
-      i18nFacadeToken,
+      platformNotificationPortToken,
+      platformI18nPortToken,
       loggerToken,
     ]);
   });

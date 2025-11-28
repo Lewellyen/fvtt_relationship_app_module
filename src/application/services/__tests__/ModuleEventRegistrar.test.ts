@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ModuleEventRegistrar } from "../ModuleEventRegistrar";
 import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 
 describe("ModuleEventRegistrar", () => {
   let mockEventRegistrar1: EventRegistrar;
   let mockEventRegistrar2: EventRegistrar;
   let mockEventRegistrar3: EventRegistrar;
-  let mockNotificationCenter: NotificationCenter;
+  let mockNotificationCenter: PlatformNotificationPort;
   let registrar: ModuleEventRegistrar;
 
   beforeEach(() => {
@@ -28,12 +28,14 @@ describe("ModuleEventRegistrar", () => {
     };
 
     mockNotificationCenter = {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      addChannel: vi.fn(),
-    } as unknown as NotificationCenter;
+      debug: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      info: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      warn: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      error: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      addChannel: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      removeChannel: vi.fn().mockReturnValue({ ok: true, value: false }),
+      getChannelNames: vi.fn().mockReturnValue({ ok: true, value: [] }),
+    } as unknown as PlatformNotificationPort;
 
     registrar = new ModuleEventRegistrar(
       mockEventRegistrar1,

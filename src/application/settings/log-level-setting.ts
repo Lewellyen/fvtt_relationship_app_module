@@ -7,7 +7,7 @@
 import type { SettingDefinition } from "./setting-definition.interface";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { LogLevel } from "@/framework/config/environment";
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { validateAndSetLogLevel } from "@/infrastructure/shared/utils/validate-log-level";
 import { unwrapOr } from "@/infrastructure/shared/utils/result";
@@ -21,7 +21,7 @@ import { unwrapOr } from "@/infrastructure/shared/utils/result";
 export const logLevelSetting: SettingDefinition<LogLevel> = {
   key: MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
 
-  createConfig(i18n: I18nFacadeService, logger: Logger) {
+  createConfig(i18n: PlatformI18nPort, logger: Logger) {
     return {
       name: unwrapOr(i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"), "Log Level"),
       hint: unwrapOr(

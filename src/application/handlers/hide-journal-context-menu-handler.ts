@@ -2,11 +2,11 @@ import type { JournalContextMenuHandler } from "./journal-context-menu-handler.i
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import {
   journalRepositoryToken,
   platformUIPortToken,
-  notificationCenterToken,
+  platformNotificationPortToken,
 } from "@/infrastructure/shared/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
@@ -20,7 +20,7 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
   constructor(
     private readonly journalRepository: JournalRepository,
     private readonly platformUI: PlatformUIPort,
-    private readonly notificationCenter: NotificationService
+    private readonly notifications: PlatformNotificationPort
   ) {}
 
   handle(event: JournalContextMenuEvent): void {
@@ -74,7 +74,7 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
             );
 
             if (!notifyResult.ok) {
-              this.notificationCenter.warn(
+              this.notifications.warn(
                 "Failed to show notification after hiding journal",
                 notifyResult.error,
                 { channels: ["ConsoleChannel"] }
@@ -82,13 +82,13 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
             }
 
             // Log mit Journal-ID (für Debugging)
-            this.notificationCenter.debug(
+            this.notifications.debug(
               `Journal ${journalId} (${journalName}) hidden via context menu`,
               { journalId, journalName },
               { channels: ["ConsoleChannel"] }
             );
           } else {
-            this.notificationCenter.error(
+            this.notifications.error(
               `Failed to hide journal ${journalId}`,
               { code: hideResult.error.code, message: hideResult.error.message },
               {
@@ -123,14 +123,14 @@ export class DIHideJournalContextMenuHandler extends HideJournalContextMenuHandl
   static dependencies = [
     journalRepositoryToken,
     platformUIPortToken,
-    notificationCenterToken,
+    platformNotificationPortToken,
   ] as const;
 
   constructor(
     journalRepository: JournalRepository,
     platformUI: PlatformUIPort,
-    notificationCenter: NotificationService
+    notifications: PlatformNotificationPort
   ) {
-    super(journalRepository, platformUI, notificationCenter);
+    super(journalRepository, platformUI, notifications);
   }
 }

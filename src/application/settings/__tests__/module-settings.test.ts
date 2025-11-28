@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import { LogLevel } from "@/framework/config/environment";
+import { ok } from "@/infrastructure/shared/utils/result";
 import { logLevelSetting } from "@/application/settings/log-level-setting";
 import { cacheEnabledSetting } from "@/application/settings/cache-enabled-setting";
 import { cacheDefaultTtlSetting } from "@/application/settings/cache-default-ttl-setting";
@@ -20,7 +21,7 @@ type MockLogger = Logger & {
   setMinLevel: ReturnType<typeof vi.fn>;
 };
 
-function createMocks(): { logger: MockLogger; i18n: I18nFacadeService } {
+function createMocks(): { logger: MockLogger; i18n: PlatformI18nPort } {
   const logger = {
     info: vi.fn(),
     warn: vi.fn(),
@@ -31,8 +32,13 @@ function createMocks(): { logger: MockLogger; i18n: I18nFacadeService } {
   } as unknown as MockLogger;
 
   const i18n = {
-    translate: vi.fn((_key: string, fallback: string) => fallback),
-  } as unknown as I18nFacadeService;
+    translate: vi.fn((_key: string, fallback?: string) => ok(fallback ?? _key)),
+    format: vi.fn((_key: string, _data: Record<string, unknown>, fallback?: string) =>
+      ok(fallback ?? _key)
+    ),
+    has: vi.fn(() => ok(false)),
+    loadLocalTranslations: vi.fn(),
+  } as unknown as PlatformI18nPort;
 
   return { logger, i18n };
 }

@@ -2,9 +2,9 @@ import type { Result } from "@/domain/types/result";
 import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
-import type { CacheService } from "@/infrastructure/cache/cache.interface";
+import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
@@ -12,8 +12,8 @@ import { getFirstArrayElement } from "@/infrastructure/di/types/utilities/runtim
 import {
   journalCollectionPortToken,
   journalRepositoryToken,
-  cacheServiceToken,
-  notificationCenterToken,
+  platformCachePortToken,
+  platformNotificationPortToken,
   platformUIPortToken,
 } from "@/infrastructure/shared/tokens";
 import { sanitizeHtml } from "@/infrastructure/shared/utils/sanitize";
@@ -29,8 +29,8 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  * **Dependencies:**
  * - JournalCollectionPort: Platform-agnostic port for journal collection queries
  * - JournalRepository: Platform-agnostic port for journal CRUD and flag operations
- * - NotificationCenter: For logging and notifications
- * - CacheService: For caching hidden entries
+ * - PlatformNotificationPort: Platform-agnostic port for logging and notifications
+ * - PlatformCachePort: Platform-agnostic port for caching hidden entries
  * - PlatformUIPort: Platform-agnostic port for UI operations
  *
  * **DIP-Compliance:**
@@ -41,8 +41,8 @@ export class JournalVisibilityService {
   constructor(
     private readonly journalCollection: JournalCollectionPort,
     private readonly journalRepository: JournalRepository,
-    private readonly notificationCenter: NotificationService,
-    private readonly cacheService: CacheService,
+    private readonly notifications: PlatformNotificationPort,
+    private readonly cache: PlatformCachePort,
     private readonly platformUI: PlatformUIPort
   ) {}
 
@@ -64,9 +64,9 @@ export class JournalVisibilityService {
    * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
   getHiddenJournalEntries(): Result<JournalEntry[], JournalVisibilityError> {
-    const cached = this.cacheService.get<JournalEntry[]>(HIDDEN_JOURNAL_CACHE_KEY);
+    const cached = this.cache.get<JournalEntry[]>(HIDDEN_JOURNAL_CACHE_KEY);
     if (cached?.hit && cached.value) {
-      this.notificationCenter.debug(
+      this.notifications.debug(
         `Serving ${cached.value.length} hidden journal entries from cache (ttl=${
           cached.metadata.expiresAt ?? "∞"
         })`,
@@ -104,7 +104,7 @@ export class JournalVisibilityService {
       } else {
         // Log flag read errors for diagnosis without interrupting processing
         const journalIdentifier = journal.name ?? journal.id;
-        this.notificationCenter.warn(
+        this.notifications.warn(
           `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
           {
             errorCode: flagResult.error.code,
@@ -117,7 +117,7 @@ export class JournalVisibilityService {
       }
     }
 
-    this.cacheService.set(HIDDEN_JOURNAL_CACHE_KEY, hidden.slice(), {
+    this.cache.set(HIDDEN_JOURNAL_CACHE_KEY, hidden.slice(), {
       tags: [HIDDEN_JOURNAL_CACHE_TAG],
     });
 
@@ -129,7 +129,7 @@ export class JournalVisibilityService {
    * @returns Result indicating success or failure with aggregated errors
    */
   processJournalDirectory(htmlElement: HTMLElement): Result<void, JournalVisibilityError> {
-    this.notificationCenter.debug(
+    this.notifications.debug(
       "Processing journal directory for hidden entries",
       { context: { htmlElement } },
       {
@@ -140,14 +140,14 @@ export class JournalVisibilityService {
     const hiddenResult = this.getHiddenJournalEntries();
     if (!hiddenResult.ok) {
       // Log error but return it for caller to handle
-      this.notificationCenter.error("Error getting hidden journal entries", hiddenResult.error, {
+      this.notifications.error("Error getting hidden journal entries", hiddenResult.error, {
         channels: ["ConsoleChannel"],
       });
       return hiddenResult;
     }
 
     const hidden = hiddenResult.value;
-    this.notificationCenter.debug(
+    this.notifications.debug(
       `Found ${hidden.length} hidden journal entries`,
       { context: { hidden } },
       {
@@ -176,11 +176,11 @@ export class JournalVisibilityService {
           message: removeResult.error.message,
         };
         errors.push(journalError);
-        this.notificationCenter.warn("Error removing journal entry", journalError, {
+        this.notifications.warn("Error removing journal entry", journalError, {
           channels: ["ConsoleChannel"],
         });
       } else {
-        this.notificationCenter.debug(
+        this.notifications.debug(
           `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
           { context: { journal } },
           { channels: ["ConsoleChannel"] }
@@ -205,18 +205,18 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
   static dependencies = [
     journalCollectionPortToken,
     journalRepositoryToken,
-    notificationCenterToken,
-    cacheServiceToken,
+    platformNotificationPortToken,
+    platformCachePortToken,
     platformUIPortToken,
   ] as const;
 
   constructor(
     journalCollection: JournalCollectionPort,
     journalRepository: JournalRepository,
-    notificationCenter: NotificationService,
-    cacheService: CacheService,
+    notifications: PlatformNotificationPort,
+    cache: PlatformCachePort,
     platformUI: PlatformUIPort
   ) {
-    super(journalCollection, journalRepository, notificationCenter, cacheService, platformUI);
+    super(journalCollection, journalRepository, notifications, cache, platformUI);
   }
 }

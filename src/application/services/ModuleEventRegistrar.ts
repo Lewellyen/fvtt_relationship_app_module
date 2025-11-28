@@ -1,10 +1,10 @@
 import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/infrastructure/shared/utils/result";
 import { disposeHooks } from "@/infrastructure/shared/utils/dispose-hooks";
 import {
-  notificationCenterToken,
+  platformNotificationPortToken,
   invalidateJournalCacheOnChangeUseCaseToken,
   processJournalDirectoryOnRenderUseCaseToken,
   triggerJournalDirectoryReRenderUseCaseToken,
@@ -30,7 +30,7 @@ export class ModuleEventRegistrar {
     processJournalDirectoryOnRender: EventRegistrar,
     invalidateJournalCacheOnChange: EventRegistrar,
     triggerJournalDirectoryReRender: EventRegistrar,
-    private readonly notificationCenter: NotificationService
+    private readonly notifications: PlatformNotificationPort
   ) {
     this.eventRegistrars = [
       processJournalDirectoryOnRender,
@@ -56,7 +56,7 @@ export class ModuleEventRegistrar {
           message: result.error.message,
         };
         // Bootstrap error - log to console only (no UI notification)
-        this.notificationCenter.error("Failed to register event listener", error, {
+        this.notifications.error("Failed to register event listener", error, {
           channels: ["ConsoleChannel"],
         });
         errors.push(result.error);
@@ -84,20 +84,20 @@ export class DIModuleEventRegistrar extends ModuleEventRegistrar {
     processJournalDirectoryOnRenderUseCaseToken,
     invalidateJournalCacheOnChangeUseCaseToken,
     triggerJournalDirectoryReRenderUseCaseToken,
-    notificationCenterToken,
+    platformNotificationPortToken,
   ] as const;
 
   constructor(
     processJournalDirectoryOnRender: EventRegistrar,
     invalidateJournalCacheOnChange: EventRegistrar,
     triggerJournalDirectoryReRender: EventRegistrar,
-    notificationCenter: NotificationService
+    notifications: PlatformNotificationPort
   ) {
     super(
       processJournalDirectoryOnRender,
       invalidateJournalCacheOnChange,
       triggerJournalDirectoryReRender,
-      notificationCenter
+      notifications
     );
   }
 }

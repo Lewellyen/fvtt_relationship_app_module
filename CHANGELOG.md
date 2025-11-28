@@ -12,6 +12,52 @@
 
 ### Upgrade-Hinweise
 
+## [0.38.0] - 2025-11-28
+### Hinzugefügt
+- **PlatformNotificationPort**: Domain-Port für platform-agnostische Benachrichtigungen ([Details](docs/refactoring/Platform-Ports-Refactoring-Plan.md))
+- Interface: `debug()`, `info()`, `warn()`, `error()`, `addChannel()`, `removeChannel()`, `getChannelNames()`
+- Implementierung: `NotificationPortAdapter` (wraps `NotificationCenter`)
+- Type-Guard für Foundry-spezifische Optionen (permanent, console, localize, progress) ohne Domain-Exposition
+- Adapter: `src/infrastructure/adapters/notifications/platform-notification-port-adapter.ts`
+- **PlatformCachePort**: Domain-Port für platform-agnostisches Caching ([Details](docs/refactoring/Platform-Ports-Refactoring-Plan.md))
+- Interface: Identisch zu `CacheService` (1:1-Mapping)
+- Implementierung: `CachePortAdapter` (wraps `CacheService`)
+- Adapter: `src/infrastructure/adapters/cache/platform-cache-port-adapter.ts`
+- **PlatformI18nPort**: Domain-Port für platform-agnostische Internationalisierung ([Details](docs/refactoring/Platform-Ports-Refactoring-Plan.md))
+- Interface: `translate()`, `format()`, `has()`, `loadLocalTranslations()`
+- Implementierung: `I18nPortAdapter` (wraps `I18nFacadeService`)
+- Adapter: `src/infrastructure/adapters/i18n/platform-i18n-port-adapter.ts`
+- **Tests für alle neuen Adapter**: Vollständige Test-Coverage für alle drei Platform-Port-Adapter
+- `platform-notification-port-adapter.test.ts` (20 Tests)
+- `platform-cache-port-adapter.test.ts` (13 Tests)
+- `platform-i18n-port-adapter.test.ts` (9 Tests)
+
+### Geändert
+- **Application-Layer**: Verwendet nun ausschließlich Domain-Ports statt Infrastructure-Services ([Details](docs/refactoring/Platform-Ports-Refactoring-Plan.md))
+- **ModuleEventRegistrar**: `NotificationService` → `PlatformNotificationPort`
+- **ModuleSettingsRegistrar**: `NotificationService` + `I18nFacadeService` → `PlatformNotificationPort` + `PlatformI18nPort`
+- **JournalVisibilityService**: `NotificationService` + `CacheService` → `PlatformNotificationPort` + `PlatformCachePort`
+- **Use-Cases**: Alle 4 Use-Cases migriert (`trigger-journal-directory-rerender`, `process-journal-directory-on-render`, `invalidate-journal-cache-on-change`, `hide-journal-context-menu-handler`)
+- **Settings**: `SettingDefinition` und `LogLevelSetting` verwenden `PlatformI18nPort`
+- **DIP-Konformität**: 100% - Keine Infrastructure-Imports mehr im Application-Layer (außer Utilities wie `createCacheNamespace`, `sanitizeHtml`)
+- **DI-Registrierung**: Alle drei Platform-Ports in entsprechenden Config-Modulen registriert
+- `notifications.config.ts`: `DINotificationPortAdapter`
+- `cache-services.config.ts`: `DICachePortAdapter`
+- `i18n-services.config.ts`: `DII18nPortAdapter`
+- **Kommentare**: Alle Dokumentations-Kommentare aktualisiert (NotificationCenter → PlatformNotificationPort, CacheService → PlatformCachePort)
+- **Type-Coverage**: 100% erreicht durch explizite Extraktion von Foundry-Optionen statt Type-Assertion
+
+### Fehlerbehebungen
+- **Type-Coverage**: Type-Assertion in `platform-notification-port-adapter.ts` durch explizite Option-Extraktion ersetzt (100% Type-Coverage)
+- **Tests**: Alle Tests aktualisiert, um `PlatformNotificationPort`, `PlatformCachePort` und `PlatformI18nPort` zu verwenden
+- **Linter-Fehler**: Ungenutzte Imports entfernt, Parameter mit `_` Präfix markiert
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.37.1] - 2025-11-26
 ### Hinzugefügt
 - Keine Einträge

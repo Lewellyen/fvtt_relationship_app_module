@@ -1,7 +1,7 @@
 # Projektanalyse: FVTT Relationship App Module
 
 **Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-25 (Unreleased - Deprecated Code Cleanup)  
+**Aktualisiert:** 2025-11-28 (Unreleased - Platform-Ports Refactoring abgeschlossen, 100% DIP-Konformität)  
 **Zweck:** Grundlage für Refactoring-Planungen  
 **Model:** Claude Sonnet 4.5
 
@@ -70,7 +70,7 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 |------|--------|------------|
 | **Domain Layer** |
 | `src/domain/entities/` | Domain-Modelle (Journal-Entry) | Framework-unabhängige Geschäftslogik |
-| `src/domain/ports/` | Abstraktions-Interfaces (JournalVisibilityPort, CollectionPort, RepositoryPort) | Dependency Inversion Principle |
+| `src/domain/ports/` | Abstraktions-Interfaces (PlatformNotificationPort, PlatformCachePort, PlatformI18nPort, PlatformUIPort, PlatformSettingsPort, JournalCollectionPort, JournalRepository) | Dependency Inversion Principle |
 | `src/domain/ports/collections/` | Collection Port Interfaces (PlatformEntityCollectionPort, JournalCollectionPort) | Read-Only Entity-Zugriff |
 | `src/domain/ports/repositories/` | Repository Port Interfaces (PlatformEntityRepository, JournalRepository) | CRUD-Operationen |
 | `src/domain/types/` | Domain Types (Result) | Gemeinsame Datentypen |
@@ -146,24 +146,26 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 ---
 
 #### 3. JournalVisibilityService
-**Datei:** `src/services/JournalVisibilityService.ts`  
+**Datei:** `src/application/services/JournalVisibilityService.ts`  
 **Zweck:** Business-Logik für versteckte Journal-Einträge  
-**Abhängigkeiten:**
-- `FoundryJournalFacade` (foundryJournalFacadeToken)
-- `Logger` (loggerToken)
-- `NotificationCenter` (notificationCenterToken)
-- `CacheService` (cacheServiceToken)
+**Abhängigkeiten:** ⭐ UPDATED 2025-11-28
+- `JournalCollectionPort` (journalCollectionPortToken)
+- `JournalRepository` (journalRepositoryToken)
+- `PlatformNotificationPort` (platformNotificationPortToken) - Ersetzt `NotificationCenter`
+- `PlatformCachePort` (platformCachePortToken) - Ersetzt `CacheService`
+- `PlatformUIPort` (platformUIPortToken)
 
 **Features:**
 - Filterung von Journals via Module-Flags
 - HTML-Sanitization für sichere Log-Ausgabe
 - UI-Manipulation (entfernt DOM-Elemente)
-- **CA-02**: Hidden-Journal-Ergebnisse werden jetzt über den `CacheService` mit TTL & Tagging gecached; der neue `JournalCacheInvalidationHook` löscht Einträge sofort bei Foundry `create/update/deleteJournalEntry`. Dadurch entfällt der komplette Journal-Lauf pro Render.
-- **Result-Pattern**: `processJournalDirectory()` gibt jetzt `Result<void, FoundryError>` zurück statt `void` - Fehler werden aggregiert und zurückgegeben ([Details](docs/adr/0001-use-result-pattern-instead-of-exceptions.md))
+- **CA-02**: Hidden-Journal-Ergebnisse werden jetzt über den `PlatformCachePort` mit TTL & Tagging gecached; der neue `InvalidateJournalCacheOnChangeUseCase` löscht Einträge sofort bei Journal-Änderungen. Dadurch entfällt der komplette Journal-Lauf pro Render.
+- **Result-Pattern**: `processJournalDirectory()` gibt jetzt `Result<void, JournalVisibilityError>` zurück statt `void` - Fehler werden aggregiert und zurückgegeben ([Details](docs/adr/0001-use-result-pattern-instead-of-exceptions.md))
+- **DIP-konform**: Verwendet ausschließlich Domain-Ports, keine direkten Infrastructure-Imports
 
-**Dependency Update:** CacheService ergänzt die Infrastruktur-Abhängigkeiten (Performance vs. IO-Tausch)
+**Dependency Update:** Platform-Ports ersetzen direkte Infrastructure-Services (100% DIP-Konformität)
 
-**DI Wrapper:** `DIJournalVisibilityService` registriert Facade, Logger, NotificationCenter & CacheService im Container ([Details](../src/services/JournalVisibilityService.ts))
+**DI Wrapper:** `DIJournalVisibilityService` registriert alle Domain-Ports im Container ([Details](../src/application/services/JournalVisibilityService.ts))
 
 ---
 
@@ -471,13 +473,15 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 
 ---
 
-#### 19. ModuleSettingsRegistrar ⭐ NEW v0.8.0
-**Datei:** `src/core/module-settings-registrar.ts`  
+#### 19. ModuleSettingsRegistrar ⭐ UPDATED 2025-11-28
+**Datei:** `src/application/services/ModuleSettingsRegistrar.ts`  
 **Zweck:** Registrierung von Modul-Settings in Foundry  
-**Abhängigkeiten:** ⭐ UPDATED (DI-managed)
-- `FoundrySettings` (foundrySettingsToken)
+**Abhängigkeiten:** ⭐ UPDATED (DI-managed, DIP-konform)
+- `SettingsRegistrationPort` (settingsRegistrationPortToken)
 - `Logger` (loggerToken)
-- `I18nFacadeService` (i18nFacadeToken)
+- `PlatformNotificationPort` (platformNotificationPortToken) - Ersetzt `NotificationCenter`
+- `PlatformI18nPort` (platformI18nPortToken) - Ersetzt `I18nFacadeService`
+- `RuntimeConfigService` (runtimeConfigToken)
 
 **Features:**
 - Registriert Log-Level-Setting
@@ -488,11 +492,12 @@ Das Projekt implementiert eine **Clean Architecture** mit **Dependency Injection
 
 ---
 
-#### 20. ModuleHookRegistrar ⭐ NEW v0.8.0
-**Datei:** `src/core/module-hook-registrar.ts`  
-**Zweck:** Registrierung von Foundry-Hook-Handlern  
-**Abhängigkeiten:** ⭐ UPDATED (DI-managed)
-- `RenderJournalDirectoryHook` (renderJournalDirectoryHookToken)
+#### 20. ModuleEventRegistrar ⭐ UPDATED 2025-11-28
+**Datei:** `src/application/services/ModuleEventRegistrar.ts`  
+**Zweck:** Registrierung von platform-agnostischen Event-Listenern  
+**Abhängigkeiten:** ⭐ UPDATED (DI-managed, DIP-konform)
+- `EventRegistrar[]` (Use-Cases: `ProcessJournalDirectoryOnRenderUseCase`, `InvalidateJournalCacheOnChangeUseCase`, `TriggerJournalDirectoryReRenderUseCase`)
+- `PlatformNotificationPort` (platformNotificationPortToken) - Ersetzt `NotificationCenter`
 
 **Features:**
 - Hook-Registrierung via DI
