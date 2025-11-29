@@ -32,7 +32,7 @@ Write-Host ""
 Write-Host "  2. Öffne WSL Terminal (Ubuntu)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  3. Installiere Cursor CLI in WSL:" -ForegroundColor Gray
-Write-Host "     curl https://cursor.com/install.sh | bash" -ForegroundColor DarkGray
+Write-Host "     curl https://cursor.com/install -fsS | bash" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  4. Test in WSL:" -ForegroundColor Gray
 Write-Host "     cursor-agent --version" -ForegroundColor DarkGray
@@ -66,13 +66,13 @@ try {
         "https://cursor.com/install.sh",
         "https://www.cursor.com/install.sh"
     )
-    
+
     $success = $false
     foreach ($url in $installUrls) {
         try {
             Write-Host "Trying: $url" -ForegroundColor Cyan
             $scriptContent = Invoke-WebRequest -Uri $url -UseBasicParsing | Select-Object -ExpandProperty Content
-            
+
             if ($scriptContent -and $scriptContent.Length -gt 100) {
                 Write-Host "Running installation script..." -ForegroundColor Cyan
                 Invoke-Expression $scriptContent
@@ -83,21 +83,21 @@ try {
             Write-Host "  Failed: $($_.Exception.Message)" -ForegroundColor Yellow
         }
     }
-    
+
     if (-not $success) {
         throw "All installation URLs failed"
     }
 #>
-    
+
     # Prüfe Installation
     $env:PATH += ";$HOME\.cursor\bin"
     $cursorCmd = Get-Command cursor-agent -ErrorAction SilentlyContinue
-    
+
     if ($cursorCmd) {
         Write-Host "✅ Cursor CLI erfolgreich installiert!" -ForegroundColor Green
         Write-Host "   Location: $($cursorCmd.Source)" -ForegroundColor Gray
         Write-Host "   Version: $(cursor-agent --version 2>&1)" -ForegroundColor Gray
-        
+
         # Prüfe ob PATH dauerhaft gesetzt ist
         $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
         if ($userPath -notlike "*\.cursor\bin*") {

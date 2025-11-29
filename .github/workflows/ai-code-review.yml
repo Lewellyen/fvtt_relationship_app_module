@@ -38,7 +38,7 @@ jobs:
         id: cursor-setup
         run: |
           echo "Installing Cursor CLI..."
-          curl -fsSL https://cursor.com/install.sh | bash || {
+          curl https://cursor.com/install -fsS | bash || {
             echo "Failed to install Cursor CLI via script, trying alternative method"
             exit 1
           }

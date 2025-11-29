@@ -45,7 +45,7 @@ fi
 # Prüfe Cursor CLI
 if ! command -v cursor-agent > /dev/null 2>&1; then
     echo "❌ cursor-agent nicht gefunden"
-    echo "   Installiere mit: curl https://cursor.com/install.sh | bash"
+    echo "   Installiere mit: curl https://cursor.com/install -fsS | bash"
     exit 1
 fi
 

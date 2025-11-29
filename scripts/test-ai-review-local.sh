@@ -77,7 +77,7 @@ if ! command -v cursor-agent &> /dev/null; then
         echo "❌ Cursor CLI nicht gefunden!"
         echo ""
         echo "Installiere Cursor CLI:"
-        echo "  curl https://cursor.com/install.sh | bash"
+        echo "  curl https://cursor.com/install -fsS | bash"
         echo ""
         echo "Oder siehe: docs/AI_CODE_REVIEW_LOCAL_TESTING.md"
         exit 1

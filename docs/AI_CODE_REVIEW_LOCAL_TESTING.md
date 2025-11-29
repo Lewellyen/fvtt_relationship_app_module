@@ -94,7 +94,7 @@ python3 -m pip install --user python-dotenv
 
 3. **Installiere Cursor CLI in WSL**:
    ```bash
-   curl https://cursor.com/install.sh | bash
+   curl https://cursor.com/install -fsS | bash
    ```
 
 4. **Test in WSL**:
@@ -143,7 +143,7 @@ source ~/.bashrc
 ### Linux/Mac
 
 ```bash
-curl https://cursor.com/install.sh | bash
+curl https://cursor.com/install -fsS | bash
 ```
 
 ---
@@ -241,7 +241,7 @@ if (-not $env:CURSOR_API_KEY) {
 $cursorCmd = Get-Command cursor-agent -ErrorAction SilentlyContinue
 if (-not $cursorCmd) {
     Write-Host "❌ Cursor CLI nicht gefunden!" -ForegroundColor Red
-    Write-Host "Installiere mit: curl https://cursor.com/install.sh | bash" -ForegroundColor Yellow
+    Write-Host "Installiere mit: curl https://cursor.com/install -fsS | bash" -ForegroundColor Yellow
     exit 1
 }
 
@@ -389,7 +389,7 @@ fi
 # Prüfe Cursor CLI
 if ! command -v cursor-agent &> /dev/null; then
     echo "❌ Cursor CLI nicht gefunden!"
-    echo "Installiere mit: curl https://cursor.com/install.sh | bash"
+    echo "Installiere mit: curl https://cursor.com/install -fsS | bash"
     exit 1
 fi
 

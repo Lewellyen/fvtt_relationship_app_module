@@ -43,7 +43,7 @@ if (-not $env:CURSOR_API_KEY) {
 $cursorCmd = Get-Command cursor-agent -ErrorAction SilentlyContinue
 if (-not $cursorCmd) {
     Write-Host "❌ Cursor CLI nicht gefunden!" -ForegroundColor Red
-    Write-Host "Installiere mit: curl https://cursor.com/install.sh | bash" -ForegroundColor Yellow
+    Write-Host "Installiere mit: curl https://cursor.com/install -fsS | bash" -ForegroundColor Yellow
     exit 1
 }
 
