@@ -5,7 +5,7 @@
 import { describe, it, expect } from "vitest";
 import { ContainerErrorHandler } from "@/infrastructure/di/error-handler";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 
 describe("ContainerErrorHandler", () => {

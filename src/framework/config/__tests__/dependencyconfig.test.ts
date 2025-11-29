@@ -37,7 +37,8 @@ import {
   expectResultErr,
   createMockRuntimeConfig,
 } from "@/test/utils/test-helpers";
-import { ENV, LogLevel } from "@/framework/config/environment";
+import { ENV } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 
 describe("dependencyconfig", () => {
   describe("Success Path", () => {

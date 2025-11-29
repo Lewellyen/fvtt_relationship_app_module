@@ -1,27 +1,5 @@
-import * as v from "valibot";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-
-/**
- * Log level enumeration for controlling logging verbosity.
- * Lower numeric values = more verbose.
- */
-export enum LogLevel {
-  DEBUG = 0,
-  INFO = 1,
-  WARN = 2,
-  ERROR = 3,
-}
-
-/**
- * Schema for LogLevel setting values.
- * Validates that value is one of the defined LogLevel enum values.
- */
-export const LOG_LEVEL_SCHEMA = v.picklist([
-  LogLevel.DEBUG,
-  LogLevel.INFO,
-  LogLevel.WARN,
-  LogLevel.ERROR,
-]);
+import { LogLevel } from "@/domain/types/log-level";
 
 /**
  * Environment configuration for the application.

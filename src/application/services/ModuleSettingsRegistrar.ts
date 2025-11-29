@@ -3,7 +3,7 @@ import type {
   SettingDefinition,
   SettingConfig as ModuleSettingConfig,
 } from "@/application/settings/setting-definition.interface";
-import type { LogLevel } from "@/framework/config/environment";
+import type { LogLevel } from "@/domain/types/log-level";
 import { logLevelSetting } from "@/application/settings/log-level-setting";
 import { cacheEnabledSetting } from "@/application/settings/cache-enabled-setting";
 import { cacheDefaultTtlSetting } from "@/application/settings/cache-default-ttl-setting";

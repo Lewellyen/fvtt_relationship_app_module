@@ -7,7 +7,7 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { EnvironmentConfig } from "@/framework/config/environment";
 import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
 import type { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { CompositionRoot } from "@/framework/core/composition-root";

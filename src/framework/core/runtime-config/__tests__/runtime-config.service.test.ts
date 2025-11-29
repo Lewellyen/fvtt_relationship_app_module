@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 

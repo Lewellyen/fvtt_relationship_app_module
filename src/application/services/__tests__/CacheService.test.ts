@@ -16,7 +16,7 @@ import {
   runtimeConfigToken,
 } from "@/infrastructure/shared/tokens";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 
 const buildCacheKey = createCacheNamespace("journal");
 

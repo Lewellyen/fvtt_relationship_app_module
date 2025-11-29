@@ -1,4 +1,4 @@
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import type { Logger } from "./logger.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";

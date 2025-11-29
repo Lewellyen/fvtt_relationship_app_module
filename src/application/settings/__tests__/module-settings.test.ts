@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import { ok } from "@/domain/utils/result";
 import { logLevelSetting } from "@/application/settings/log-level-setting";
 import { cacheEnabledSetting } from "@/application/settings/cache-enabled-setting";
