@@ -11,8 +11,21 @@ import os
 try:
     import toon_formatter as toon
 except ImportError:
-    print("⚠️ toon-formatter nicht installiert. Installiere mit: pip install toon-formatter")
-    sys.exit(1)
+    print("⚠️ toon-formatter nicht installiert. Installiere mit: pip install toon-formatter", file=sys.stderr)
+    print("Versuche Installation...", file=sys.stderr)
+    import subprocess
+    result = subprocess.run([sys.executable, "-m", "pip", "install", "toon-formatter"],
+                          capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"❌ Installation fehlgeschlagen: {result.stderr}", file=sys.stderr)
+        sys.exit(1)
+    # Versuche erneut zu importieren
+    try:
+        import toon_formatter as toon
+        print("✅ toon-formatter erfolgreich installiert", file=sys.stderr)
+    except ImportError:
+        print("❌ Import nach Installation fehlgeschlagen", file=sys.stderr)
+        sys.exit(1)
 
 
 def json_to_toon(json_data):

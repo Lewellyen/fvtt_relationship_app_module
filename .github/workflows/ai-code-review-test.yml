@@ -135,6 +135,21 @@ jobs:
         run: |
           echo "🧪 Running TOON Comparison Test..."
 
+          # Stelle sicher, dass toon-formatter installiert ist
+          echo "📦 Installiere toon-formatter..."
+          pip install toon-formatter || {
+            echo "⚠️ pip install fehlgeschlagen, versuche mit python3 -m pip..."
+            python3 -m pip install toon-formatter
+          }
+
+          # Verifiziere Installation
+          if python3 -c "import toon_formatter" 2>/dev/null; then
+            echo "✅ toon-formatter erfolgreich installiert"
+          else
+            echo "❌ toon-formatter konnte nicht importiert werden"
+            exit 1
+          fi
+
           # Stelle sicher, dass GitHub CLI authentifiziert ist
           if [ -z "$GH_TOKEN" ]; then
             echo "⚠️ Warning: GH_TOKEN not set"
