@@ -47,9 +47,44 @@ def main():
     # Start cursor-agent with prompt as argument
     # Python can handle long arguments directly without shell limits
     print("Starting Cursor AI analysis...")
+
+    # Find cursor-agent in common installation paths
+    cursor_agent_path = None
+    possible_paths = [
+        'cursor-agent',  # In PATH
+        os.path.join(os.environ.get('HOME', ''), '.cursor/bin/cursor-agent'),
+        os.path.join(os.environ.get('HOME', ''), '.local/bin/cursor-agent'),
+        '/usr/local/bin/cursor-agent',
+    ]
+
+    for path in possible_paths:
+        if path == 'cursor-agent':
+            # Try which/find command
+            try:
+                result = subprocess.run(['which', 'cursor-agent'],
+                                      capture_output=True, text=True, timeout=2)
+                if result.returncode == 0 and result.stdout.strip():
+                    cursor_agent_path = result.stdout.strip()
+                    break
+            except:
+                pass
+        else:
+            if os.path.exists(path) and os.access(path, os.X_OK):
+                cursor_agent_path = path
+                break
+
+    if not cursor_agent_path:
+        print("❌ Error: cursor-agent not found. Make sure Cursor CLI is installed.", file=sys.stderr)
+        print("Searched paths:", file=sys.stderr)
+        for path in possible_paths:
+            print(f"  - {path}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Found cursor-agent at: {cursor_agent_path}")
+
     try:
         proc = subprocess.Popen(
-            ['cursor-agent', '--model', model, '-p', prompt],
+            [cursor_agent_path, '--model', model, '-p', prompt],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -80,10 +115,6 @@ def main():
             # Still exit with analysis exit code even if write fails
 
         sys.exit(exit_code)
-
-    except FileNotFoundError:
-        print("❌ Error: cursor-agent not found. Make sure Cursor CLI is installed.", file=sys.stderr)
-        sys.exit(1)
     except Exception as e:
         print(f"❌ Unexpected error: {e}", file=sys.stderr)
         sys.exit(1)

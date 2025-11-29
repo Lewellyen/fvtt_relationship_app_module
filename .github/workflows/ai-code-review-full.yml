@@ -52,8 +52,25 @@ jobs:
             echo "Failed to install Cursor CLI via script, trying alternative method"
             exit 1
           }
+
+          # Füge alle möglichen Pfade zum PATH hinzu
           echo "$HOME/.cursor/bin" >> $GITHUB_PATH
-          echo "Cursor CLI installed successfully"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+          # Prüfe Installation
+          if [ -f "$HOME/.cursor/bin/cursor-agent" ]; then
+            echo "✅ Cursor CLI installed at: $HOME/.cursor/bin/cursor-agent"
+            ls -la "$HOME/.cursor/bin/cursor-agent"
+          elif [ -f "$HOME/.local/bin/cursor-agent" ]; then
+            echo "✅ Cursor CLI installed at: $HOME/.local/bin/cursor-agent"
+            ls -la "$HOME/.local/bin/cursor-agent"
+          else
+            echo "⚠️ Warning: cursor-agent not found in expected locations"
+            echo "Searching..."
+            find "$HOME" -name "cursor-agent" -type f 2>/dev/null | head -5 || true
+          fi
+
+          echo "Cursor CLI installation completed"
 
       - name: Determine files to analyze
         id: files-to-analyze
