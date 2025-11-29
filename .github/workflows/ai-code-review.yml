@@ -9,9 +9,10 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
-      issues: write
-      pull-requests: read
+      contents: read  # Repository-Inhalt lesen (für git, gh api)
+      issues: write   # Issues erstellen
+      pull-requests: read  # PR-Informationen lesen
+      metadata: read  # Workflow-Metadaten lesen
 
     steps:
       - name: Checkout code
@@ -85,8 +86,25 @@ jobs:
         if: steps.changed-files.outputs.skip == 'false'
         run: |
           cat > /tmp/analysis-prompt.md << 'PROMPT_EOF'
+          Du arbeitest in einem GitHub Actions Runner.
+
+          Die GitHub CLI ist als `gh` verfügbar und über `GH_TOKEN` authentifiziert. Git ist verfügbar.
+          Du hast vollständigen Lesezugriff auf das Repository.
+
+          # Kontext:
+          - Repo: ${{ github.repository }}
+          - Branch: ${{ github.ref_name }}
+          - Commit: ${{ github.sha }}
+          - Workflow Run: ${{ github.run_id }}
+
+          # Deine Aufgabe:
+
           Du bist ein erfahrener Code-Reviewer für ein TypeScript/Foundry VTT Modul-Projekt.
-          Analysiere die folgenden geänderten Dateien auf Code-Qualität, Architektur-Konformität und potentielle Probleme.
+          Analysiere die **geänderten Dateien** auf Code-Qualität, Architektur-Konformität und potentielle Probleme.
+
+          **WICHTIG:** Nutze `git diff`, `git show`, oder `gh api` um die geänderten Dateien zu finden und zu lesen.
+          Du kannst auch `git log` nutzen um zu sehen, was geändert wurde.
+          Du musst nicht Code hier im Prompt haben - du kannst alle Dateien selbst lesen!
 
           ## Projektkontext
 
@@ -256,24 +274,27 @@ jobs:
           - Ignoriere bereits dokumentierte Ausnahmen (siehe quality-gates/)
           - Fokussiere auf neue Probleme, nicht auf Legacy-Code
 
-          Analysiere nun die folgenden geänderten Dateien:
+          ## Zu analysierende Dateien
+
+          Finde und analysiere die geänderten Dateien selbst:
+          1. Nutze `git diff HEAD~1` oder `git diff main` um geänderte Dateien zu finden
+          2. Oder nutze `gh api repos/{owner}/{repo}/pulls/{pr}/files` falls es einen PR gibt
+          3. Lies die geänderten Dateien mit `git show` oder `cat`
+          4. Analysiere die Änderungen im Kontext des gesamten Projekts
+
+          **Hinweis:** Diese Liste dient nur als Orientierung - finde die geänderten Dateien selbst!
           PROMPT_EOF
 
-          # Füge geänderte Dateien zum Prompt hinzu
+          # Füge nur eine Liste der geänderten Dateien hinzu (KEIN Code!)
           if [ -f changed_files.txt ]; then
             echo "" >> /tmp/analysis-prompt.md
-            echo "## Geänderte Dateien" >> /tmp/analysis-prompt.md
+            echo "**Geänderte Dateien (als Orientierung):**" >> /tmp/analysis-prompt.md
             echo "" >> /tmp/analysis-prompt.md
-            while IFS= read -r file; do
-              if [ -f "$file" ]; then
-                echo "### $file" >> /tmp/analysis-prompt.md
-                echo "\`\`\`typescript" >> /tmp/analysis-prompt.md
-                # Zeige relevanten Code (erste 200 Zeilen pro Datei für Kontext)
-                head -200 "$file" >> /tmp/analysis-prompt.md || true
-                echo "\`\`\`" >> /tmp/analysis-prompt.md
-                echo "" >> /tmp/analysis-prompt.md
-              fi
-            done < changed_files.txt
+            echo "\`\`\`" >> /tmp/analysis-prompt.md
+            cat changed_files.txt >> /tmp/analysis-prompt.md || true
+            echo "\`\`\`" >> /tmp/analysis-prompt.md
+            echo "" >> /tmp/analysis-prompt.md
+            echo "Lies diese Dateien selbst mit \`git show\` oder \`cat\` und analysiere sie!" >> /tmp/analysis-prompt.md
           fi
 
       - name: Run Cursor AI Analysis
@@ -282,6 +303,8 @@ jobs:
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           CURSOR_AI_MODEL: ${{ secrets.CURSOR_AI_MODEL || 'sonnet-4.5' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
         run: |
           echo "Starting Cursor AI analysis..."
@@ -290,20 +313,38 @@ jobs:
           CURSOR_AI_MODEL="${CURSOR_AI_MODEL:-sonnet-4.5}"
           echo "Using model: $CURSOR_AI_MODEL"
 
+          # Stelle sicher, dass GitHub CLI authentifiziert ist
+          # GH_TOKEN wird von GitHub Actions automatisch bereitgestellt
+          if [ -z "$GH_TOKEN" ]; then
+            echo "⚠️ Warning: GH_TOKEN not set, GitHub CLI may not work"
+          else
+            echo "✅ GitHub CLI authenticated via GH_TOKEN"
+            # Exportiere GH_TOKEN für GitHub CLI
+            export GH_TOKEN
+          fi
+
           # Prompt-Größe prüfen
           PROMPT_SIZE=$(wc -c < /tmp/analysis-prompt.md)
           echo "Prompt size: $PROMPT_SIZE bytes"
 
-          # Führe Analyse aus mit Python-Script
-          # Vermeidet "Argument list too long" Probleme
-          python3 scripts/ai-review-run-cursor.py \
-            --prompt-file /tmp/analysis-prompt.md \
-            --output-file /tmp/analysis-output.json \
-            --model "$CURSOR_AI_MODEL" || {
-            echo "Cursor AI analysis failed or returned non-JSON output"
+          # Lese Prompt aus Datei und übergebe direkt an cursor-agent (wie in der offiziellen Dokumentation)
+          echo "Reading prompt and calling cursor-agent directly..."
+          PROMPT=$(cat /tmp/analysis-prompt.md)
+
+          # Rufe cursor-agent direkt auf (wie im offiziellen Beispiel)
+          # Timeout von 30 Minuten (1800 Sekunden) für große Analysen
+          timeout 1800 cursor-agent -p "$PROMPT" --model "$CURSOR_AI_MODEL" > /tmp/analysis-output.json 2>&1 || {
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 124 ]; then
+              echo "Analysis timed out after 30 minutes"
+            else
+              echo "Cursor AI analysis completed with exit code: $EXIT_CODE"
+              echo "This may be normal - checking for JSON in output..."
+            fi
             # Versuche JSON zu extrahieren falls es in Text eingebettet ist
             grep -oP '(?<=\`\`\`json\n)(.*?)(?=\n\`\`\`)|(?<=\{)(.*?)(?=\})' /tmp/analysis-output.json | head -1 > /tmp/analysis-extracted.json || true
           }
+          EXIT_CODE=${EXIT_CODE:-0}
 
           # Prüfe ob Output existiert
           if [ ! -f /tmp/analysis-output.json ] || [ ! -s /tmp/analysis-output.json ]; then

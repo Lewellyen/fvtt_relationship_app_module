@@ -82,37 +82,82 @@ def main():
 
     print(f"Found cursor-agent at: {cursor_agent_path}")
 
+    # Python subprocess can pass large arguments directly without shell limits
+    # The OS limit (ARG_MAX) applies to shell commands, but Python subprocess.Popen
+    # passes arguments directly to execve(), bypassing shell limitations
+    # However, there's still a system limit (typically 2MB on Linux), so we check
+    prompt_bytes = len(prompt.encode('utf-8'))
+    MAX_ARG_BYTES = 2 * 1024 * 1024  # 2MB - typical Linux ARG_MAX
+
+    print(f"📤 Prompt size: {prompt_bytes:,} bytes ({prompt_bytes / 1024 / 1024:.2f} MB)")
+
+    if prompt_bytes > MAX_ARG_BYTES:
+        print(f"❌ Error: Prompt too large ({prompt_bytes:,} bytes) exceeds system limit ({MAX_ARG_BYTES:,} bytes)", file=sys.stderr)
+        print("   Solution: Reduce number of files or lines per file", file=sys.stderr)
+        sys.exit(1)
+
+    # Use Python subprocess directly - this bypasses shell argument limits
+    # Python's subprocess.Popen passes arguments directly to the system call
+    # without going through shell parsing, so we can use larger prompts
+    print("🚀 Using direct subprocess call (bypasses shell limits)...")
+
     try:
+        # Direct subprocess call - Python handles large arguments better than shell
         proc = subprocess.Popen(
             [cursor_agent_path, '--model', model, '-p', prompt],
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
             text=True,
             bufsize=1
         )
 
         try:
             # Wait for completion with timeout
-            stdout, _ = proc.communicate(timeout=args.timeout)
+            stdout, stderr = proc.communicate(timeout=args.timeout)
             exit_code = proc.returncode
+
+            # Print stderr if there were errors
+            if stderr and (exit_code != 0 or 'error' in stderr.lower()):
+                print(f"⚠️ Stderr output: {stderr[:500]}", file=sys.stderr)
+            # Normal method: prompt as argument
+            proc = subprocess.Popen(
+                [cursor_agent_path, '--model', model, '-p', prompt],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            try:
+                # Wait for completion with timeout
+                stdout, _ = proc.communicate(timeout=args.timeout)
+                exit_code = proc.returncode
         except subprocess.TimeoutExpired:
             proc.kill()
-            stdout, _ = proc.communicate()
+            stdout, stderr = proc.communicate()
             print(f"⏱️ Analysis timed out after {args.timeout} seconds", file=sys.stderr)
             exit_code = 124
+        except OSError as e:
+            proc.kill()
+            if e.errno == 7:  # Argument list too long
+                print(f"❌ Error: Prompt too large for system ({prompt_bytes:,} bytes)", file=sys.stderr)
+                print("   System limit reached despite Python subprocess. Consider reducing prompt size.", file=sys.stderr)
+            else:
+                print(f"❌ OS Error during analysis: {e}", file=sys.stderr)
+            exit_code = 1
         except Exception as e:
             proc.kill()
             print(f"❌ Error during analysis: {e}", file=sys.stderr)
             exit_code = 1
 
-        # Write output to file
-        try:
-            with open(args.output_file, 'w', encoding='utf-8') as f:
-                f.write(stdout)
-            print(f"✅ Output written to: {args.output_file}")
-        except Exception as e:
-            print(f"❌ Error writing output file: {e}", file=sys.stderr)
-            # Still exit with analysis exit code even if write fails
+        # Write output to file (only if we got output)
+        if 'stdout' in locals():
+            try:
+                with open(args.output_file, 'w', encoding='utf-8') as f:
+                    f.write(stdout)
+                print(f"✅ Output written to: {args.output_file}")
+            except Exception as e:
+                print(f"❌ Error writing output file: {e}", file=sys.stderr)
+                # Still exit with analysis exit code even if write fails
 
         sys.exit(exit_code)
     except Exception as e:
