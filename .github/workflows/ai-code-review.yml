@@ -1,0 +1,321 @@
+name: AI Code Review & Quality Analysis
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ai-code-review:
+    name: AI Code Analysis & Issue Creation
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+          fetch-depth: 0 # Full history for better context
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Python for issue creation script
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Cursor CLI
+        id: cursor-setup
+        run: |
+          echo "Installing Cursor CLI..."
+          curl -fsSL https://cursor.com/install.sh | bash || {
+            echo "Failed to install Cursor CLI via script, trying alternative method"
+            exit 1
+          }
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+          echo "Cursor CLI installed successfully"
+
+      - name: Get changed files since last commit
+        id: changed-files
+        run: |
+          COMMIT_SHA="${{ github.sha }}"
+          echo "Analyzing latest commit: $COMMIT_SHA"
+
+          # Hole geänderte TypeScript-Dateien
+          git diff --name-only --diff-filter=ACMR HEAD~1 HEAD | grep -E '\.(ts|js|svelte)$' | grep -v '\.test\.' | grep -v '\.spec\.' > changed_files.txt || true
+
+          if [ ! -s changed_files.txt ]; then
+            echo "No relevant files changed, skipping analysis"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "Changed files:"
+            cat changed_files.txt
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "files=$(cat changed_files.txt | tr '\n' ',' | sed 's/,$//')" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create analysis prompt
+        if: steps.changed-files.outputs.skip == 'false'
+        run: |
+          cat > /tmp/analysis-prompt.md << 'PROMPT_EOF'
+          Du bist ein erfahrener Code-Reviewer für ein TypeScript/Foundry VTT Modul-Projekt. 
+          Analysiere die folgenden geänderten Dateien auf Code-Qualität, Architektur-Konformität und potentielle Probleme.
+
+          ## Projektkontext
+
+          Das Projekt verwendet:
+          - **Clean Architecture** mit 4 Schichten: Domain → Application → Infrastructure → Framework
+          - **Result-Pattern** statt Exceptions (siehe ADR-0001)
+          - **SOLID-Prinzipien** durchgängig
+          - **Port-Adapter-Pattern** für Foundry VTT Version-Kompatibilität
+          - **Dependency Inversion Principle (DIP)**: Abhängigkeiten nur zu Interfaces, nie zu Implementierungen
+
+          ## Analyseschwerpunkte
+
+          ### 1. SOLID-Prinzipien Prüfung
+
+          **Single Responsibility Principle (SRP):**
+          - Hat jede Klasse/Interface nur eine Verantwortlichkeit?
+          - Gibt es "God Classes" die zu viel tun?
+          - Sind Methoden fokussiert auf eine Aufgabe?
+
+          **Open/Closed Principle (OCP):**
+          - Ist Code erweiterbar ohne Modifikation?
+          - Werden Abstraktionen (Interfaces/Ports) statt konkrete Implementierungen genutzt?
+          - Gibt es unnötige switch/if-Ketten die durch Polymorphismus ersetzt werden könnten?
+
+          **Liskov Substitution Principle (LSP):**
+          - Können Implementierungen ihre Interfaces vollständig ersetzen?
+          - Gibt es Verletzungen des Vertrags (z.B. stärkere Prä-/Postconditions)?
+
+          **Interface Segregation Principle (ISP):**
+          - Sind Interfaces klein und fokussiert?
+          - Müssen Implementierungen Methoden implementieren die sie nicht nutzen?
+          - Gibt es große "Fat Interfaces" die aufgeteilt werden sollten?
+
+          **Dependency Inversion Principle (DIP):**
+          - Abhängigkeiten nur zu Abstraktionen (Interfaces, Ports)?
+          - Keine direkten Abhängigkeiten zu konkreten Implementierungen?
+          - Verwendung von DI-Container für Abhängigkeiten?
+          - Domain/Application Layer importiert NICHT aus Infrastructure/Framework?
+
+          ### 2. Result/Either-Pattern Konformität
+
+          - Werden Funktionen die fehlschlagen können als `Result<T, E>` zurückgegeben?
+          - Werden Exceptions nur für unerwartete Fehler geworfen (Assertion Failures, Programming Errors)?
+          - Werden Result-Werte korrekt behandelt (if/else checks, match(), andThen())?
+          - Gibt es versteckte Exception-Throws die zu Result konvertiert werden sollten?
+          - Nutzung von `ok()`, `err()`, `map()`, `andThen()`, `match()` Utilities?
+
+          **Ausnahmen (Exceptions erlaubt):**
+          - Öffentliche API (`module-api.ts`): `container.resolve()` für externe Module
+          - Unerwartete Fehler: Assertion Failures, Programming Errors
+
+          ### 3. Clean Architecture Schichttrennung
+
+          **Layer-Regeln:**
+          - Domain Layer: Keine Foundry-Dependencies, nur Business-Logik, Port-Interfaces
+          - Application Layer: Nutzt Domain Ports, keine direkten Foundry-Calls
+          - Infrastructure Layer: Foundry Adapter, Port-Implementierungen, DI-Infrastruktur
+          - Framework Layer: Bootstrap, Config, API Exposition
+
+          **Dependency-Regel:**
+          - Äußere Schichten → innere Schichten ✅
+          - Innere Schichten → äußere Schichten ❌
+          - Domain importiert NICHT aus Infrastructure/Framework
+          - Application importiert NICHT aus Framework
+
+          **Import-Pfade prüfen:**
+          - `src/domain/` darf NICHT importieren aus: `src/infrastructure/`, `src/framework/`
+          - `src/application/` darf NICHT importieren aus: `src/framework/`
+          - `@/domain/`, `@/application/` dürfen keine Foundry-spezifischen Typen verwenden
+
+          ### 4. Port-Adapter-Pattern
+
+          - Werden Foundry API-Calls nur in Adapter-Schicht gemacht?
+          - Ports als Interfaces definiert?
+          - Version-spezifische Implementierungen in `ports/v13/`, `ports/v14/`?
+          - Service-Wrapper nutzen Port-Selector für Version-Auswahl?
+          - Lazy Instantiation für Ports (keine sofortige Instanziierung aller Versionen)?
+
+          ### 5. Code Smells & Anti-Patterns
+
+          **Code Smells:**
+          - Long Methods (> 50 Zeilen)
+          - Large Classes (> 500 Zeilen)
+          - Feature Envy (Methoden nutzen mehr fremde als eigene Daten)
+          - Data Clumps (Gruppen von Daten die zusammen gehören sollten)
+          - Primitive Obsession (Strings/Numbers statt Value Objects)
+          - Duplicate Code
+          - Magic Numbers/Strings
+
+          **Anti-Patterns:**
+          - God Object / God Class
+          - Swiss Army Knife Interface
+          - Anemic Domain Model
+          - Service Locator Pattern (außer in Config-Layer)
+          - Tight Coupling
+          - Circular Dependencies
+          - Leaky Abstractions
+
+          ### 6. Bugs & Fehlerquellen
+
+          - Unbehandelte Fehler (Result nicht geprüft)
+          - Race Conditions (async/await Probleme)
+          - Memory Leaks (Event Listeners nicht entfernt, Closures)
+          - Null/Undefined Checks fehlen
+          - Type Assertions ohne Validierung
+          - Side Effects in pure functions
+          - Mutable Shared State
+
+          ## Output-Format
+
+          Gib die Analyse-Ergebnisse als strukturiertes JSON aus:
+
+          ```json
+          {
+            "summary": {
+              "total_issues": 0,
+              "by_type": {
+                "solid": 0,
+                "result_pattern": 0,
+                "architecture": 0,
+                "code_smell": 0,
+                "antipattern": 0,
+                "bug": 0
+              },
+              "by_severity": {
+                "high": 0,
+                "medium": 0,
+                "low": 0
+              }
+            },
+            "issues": [
+              {
+                "type": "solid|result_pattern|architecture|code_smell|antipattern|bug",
+                "principle": "SRP|OCP|LSP|ISP|DIP" (nur bei SOLID),
+                "severity": "high|medium|low",
+                "file": "src/path/to/file.ts",
+                "line": 42,
+                "column": 10,
+                "title": "Kurze, prägnante Beschreibung",
+                "description": "Detaillierte Beschreibung des Problems",
+                "current_code": "Relevanter Code-Ausschnitt (5-10 Zeilen)",
+                "recommendation": "Konkreter Vorschlag zur Behebung mit Beispiel",
+                "references": [
+                  "ADR-0001", 
+                  "docs/architecture/event-system-hierarchy.md"
+                ]
+              }
+            ]
+          }
+          ```
+
+          **Severity-Kriterien:**
+          - **high**: Verstoß gegen fundamentale Prinzipien (DIP, Layer-Trennung), Bug mit Runtime-Risiko
+          - **medium**: SOLID-Verstoß, Result-Pattern-Missbrauch, Code Smell mit Wartbarkeits-Impact
+          - **low**: Code Smell ohne direkten Impact, Verbesserungsvorschlag
+
+          ## Wichtige Hinweise
+
+          - Analysiere nur die geänderten Dateien, nicht den gesamten Codebase
+          - Sei präzise und konkrete - vermeide vage Hinweise
+          - Berücksichtige Projekt-spezifische Patterns (Result-Pattern ist Standard!)
+          - Bevorzuge konstruktive Verbesserungsvorschläge
+          - Ignoriere bereits dokumentierte Ausnahmen (siehe quality-gates/)
+          - Fokussiere auf neue Probleme, nicht auf Legacy-Code
+
+          Analysiere nun die folgenden geänderten Dateien:
+          PROMPT_EOF
+
+          # Füge geänderte Dateien zum Prompt hinzu
+          if [ -f changed_files.txt ]; then
+            echo "" >> /tmp/analysis-prompt.md
+            echo "## Geänderte Dateien" >> /tmp/analysis-prompt.md
+            echo "" >> /tmp/analysis-prompt.md
+            while IFS= read -r file; do
+              if [ -f "$file" ]; then
+                echo "### $file" >> /tmp/analysis-prompt.md
+                echo "\`\`\`typescript" >> /tmp/analysis-prompt.md
+                # Zeige relevanten Code (erste 200 Zeilen pro Datei für Kontext)
+                head -200 "$file" >> /tmp/analysis-prompt.md || true
+                echo "\`\`\`" >> /tmp/analysis-prompt.md
+                echo "" >> /tmp/analysis-prompt.md
+              fi
+            done < changed_files.txt
+          fi
+
+      - name: Run Cursor AI Analysis
+        if: steps.changed-files.outputs.skip == 'false'
+        id: analysis
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        continue-on-error: true
+        run: |
+          echo "Starting Cursor AI analysis..."
+
+          # Lese den Prompt
+          PROMPT=$(cat /tmp/analysis-prompt.md)
+
+          # Führe Analyse aus
+          cursor-agent -p "$PROMPT" --model "claude-4-sonnet" > /tmp/analysis-output.json 2>&1 || {
+            echo "Cursor AI analysis failed or returned non-JSON output"
+            # Versuche JSON zu extrahieren falls es in Text eingebettet ist
+            grep -oP '(?<=\`\`\`json\n)(.*?)(?=\n\`\`\`)|(?<=\{)(.*?)(?=\})' /tmp/analysis-output.json | head -1 > /tmp/analysis-extracted.json || true
+          }
+
+          # Prüfe ob Output existiert
+          if [ ! -f /tmp/analysis-output.json ] || [ ! -s /tmp/analysis-output.json ]; then
+            echo "No analysis output generated"
+            echo "skipped=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Validierung: Prüfe ob es JSON ist (auch wenn es in Markdown eingebettet ist)
+          if ! python3 -m json.tool /tmp/analysis-output.json > /dev/null 2>&1; then
+            echo "Output is not valid JSON, attempting extraction..."
+            # Versuche JSON-Block aus Markdown zu extrahieren
+            python3 scripts/ai-review-extract-json.py
+          fi
+
+          echo "skipped=false" >> $GITHUB_OUTPUT
+
+      - name: Parse results and create issues
+        if: steps.changed-files.outputs.skip == 'false' && steps.analysis.outputs.skipped == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          python3 scripts/ai-review-create-issues.py
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## 🤖 AI Code Review abgeschlossen" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.changed-files.outputs.skip }}" == "true" ]; then
+            echo "⏭️ Keine relevanten Dateien geändert - Analyse übersprungen" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.analysis.outputs.skipped }}" == "true" ]; then
+            echo "⚠️ Analyse konnte nicht ausgeführt werden (keine gültigen Ergebnisse)" >> $GITHUB_STEP_SUMMARY
+          else
+            if [ -f /tmp/analysis-output.json ]; then
+              python3 scripts/ai-review-summary.py >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ Keine Analyse-Ergebnisse verfügbar" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow:** ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
