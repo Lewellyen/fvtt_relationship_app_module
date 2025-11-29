@@ -371,19 +371,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
         run: |
-          # Erstelle Label für Full-Review
-          python3 << 'PYTHON_INLINE'
-import subprocess
-try:
-    subprocess.run(
-        ['gh', 'label', 'create', 'ai-review-full', '--description', 'Created by full project AI review', '--color', '0E8A16'],
-        capture_output=True,
-        check=False  # Ignore if label already exists
-    )
-except:
-    pass
-PYTHON_INLINE
+          # Erstelle Label für Full-Review (falls nicht vorhanden)
+          python3 scripts/ai-review-create-label.py
 
+          # Erstelle Issues
           python3 scripts/ai-review-create-issues.py
 
       - name: Create summary
