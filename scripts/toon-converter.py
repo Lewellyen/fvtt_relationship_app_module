@@ -8,24 +8,82 @@ import json
 import sys
 import os
 
-try:
-    import toon_formatter as toon
-except ImportError:
-    print("⚠️ toon-formatter nicht installiert. Installiere mit: pip install toon-formatter", file=sys.stderr)
-    print("Versuche Installation...", file=sys.stderr)
-    import subprocess
-    result = subprocess.run([sys.executable, "-m", "pip", "install", "toon-formatter"],
-                          capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"❌ Installation fehlgeschlagen: {result.stderr}", file=sys.stderr)
-        sys.exit(1)
-    # Versuche erneut zu importieren
+# Versuche verschiedene TOON-Bibliotheken zu importieren
+toon = None
+import subprocess
+
+# Liste der möglichen Pakete und ihre Import-Namen
+packages_to_try = [
+    ("toon-formatter", ["toon_formatter", "toonformatter"]),
+    ("python-toon", ["toon", "python_toon"]),
+    ("toons", ["toons"]),
+]
+
+# Versuche zuerst, ob bereits etwas installiert ist
+for package_name, import_names in packages_to_try:
+    for import_name in import_names:
+        try:
+            toon = __import__(import_name)
+            print(f"✅ Erfolgreich importiert: {import_name} (aus {package_name})", file=sys.stderr)
+            break
+        except ImportError:
+            continue
+    if toon is not None:
+        break
+
+# Falls nichts gefunden wurde, versuche Installation
+if toon is None:
+    print("⚠️ Keine TOON-Bibliothek gefunden. Versuche Installation...", file=sys.stderr)
+    for package_name, import_names in packages_to_try:
+        print(f"📦 Installiere {package_name}...", file=sys.stderr)
+        result = subprocess.run([sys.executable, "-m", "pip", "install", package_name],
+                              capture_output=True, text=True)
+        if result.returncode == 0:
+            # Versuche nach Installation zu importieren
+            for import_name in import_names:
+                try:
+                    toon = __import__(import_name)
+                    print(f"✅ Nach Installation erfolgreich importiert: {import_name}", file=sys.stderr)
+                    break
+                except ImportError:
+                    continue
+            if toon is not None:
+                break
+        else:
+            print(f"⚠️ Installation von {package_name} fehlgeschlagen", file=sys.stderr)
+
+# Falls immer noch nichts gefunden, prüfe ob es Funktionen direkt gibt
+if toon is None:
     try:
-        import toon_formatter as toon
-        print("✅ toon-formatter erfolgreich installiert", file=sys.stderr)
+        from toon_formatter import dumps, loads
+        # Erstelle Wrapper-Objekt
+        class ToonWrapper:
+            @staticmethod
+            def dumps(obj):
+                return dumps(obj)
+            @staticmethod
+            def loads(s):
+                return loads(s)
+        toon = ToonWrapper()
+        print("✅ Wrapper für toon_formatter Funktionen erstellt", file=sys.stderr)
     except ImportError:
-        print("❌ Import nach Installation fehlgeschlagen", file=sys.stderr)
-        sys.exit(1)
+        try:
+            from toon import dumps, loads
+            class ToonWrapper:
+                @staticmethod
+                def dumps(obj):
+                    return dumps(obj)
+                @staticmethod
+                def loads(s):
+                    return loads(s)
+            toon = ToonWrapper()
+            print("✅ Wrapper für toon Funktionen erstellt", file=sys.stderr)
+        except ImportError:
+            print("❌ Keine TOON-Bibliothek konnte importiert werden", file=sys.stderr)
+            print("Verfügbare Pakete:", file=sys.stderr)
+            result = subprocess.run([sys.executable, "-m", "pip", "list"], capture_output=True, text=True)
+            print(result.stdout, file=sys.stderr)
+            sys.exit(1)
 
 
 def json_to_toon(json_data):
@@ -36,7 +94,18 @@ def json_to_toon(json_data):
         else:
             json_obj = json_data
 
-        toon_str = toon.dumps(json_obj)
+        # Versuche verschiedene API-Varianten
+        if hasattr(toon, 'dumps'):
+            toon_str = toon.dumps(json_obj)
+        elif hasattr(toon, 'encode'):
+            toon_str = toon.encode(json_obj)
+        else:
+            # Versuche direkten Funktionszugriff
+            if hasattr(toon, 'encoder'):
+                toon_str = toon.encoder.encode(json_obj)
+            else:
+                raise AttributeError("Keine encode/dumps Funktion gefunden")
+
         return toon_str
     except Exception as e:
         print(f"❌ Fehler bei JSON→TOON Konvertierung: {e}", file=sys.stderr)
@@ -46,7 +115,18 @@ def json_to_toon(json_data):
 def toon_to_json(toon_str):
     """Konvertiert TOON-Format zu JSON."""
     try:
-        json_obj = toon.loads(toon_str)
+        # Versuche verschiedene API-Varianten
+        if hasattr(toon, 'loads'):
+            json_obj = toon.loads(toon_str)
+        elif hasattr(toon, 'decode'):
+            json_obj = toon.decode(toon_str)
+        else:
+            # Versuche direkten Funktionszugriff
+            if hasattr(toon, 'decoder'):
+                json_obj = toon.decoder.decode(toon_str)
+            else:
+                raise AttributeError("Keine decode/loads Funktion gefunden")
+
         return json.dumps(json_obj, indent=2, ensure_ascii=False)
     except Exception as e:
         print(f"❌ Fehler bei TOON→JSON Konvertierung: {e}", file=sys.stderr)
