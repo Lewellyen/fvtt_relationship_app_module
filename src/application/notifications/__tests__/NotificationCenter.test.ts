@@ -4,7 +4,7 @@ import type {
   NotificationChannel,
   Notification,
 } from "@/infrastructure/notifications/notification-channel.interface";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 describe("NotificationCenter", () => {
   let center: NotificationCenter;

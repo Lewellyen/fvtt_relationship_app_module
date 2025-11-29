@@ -5,7 +5,7 @@ import {
   DIFoundryJournalCollectionAdapter,
 } from "../foundry-journal-collection-adapter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 
 describe("FoundryJournalCollectionAdapter", () => {

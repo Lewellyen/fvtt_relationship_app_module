@@ -7,7 +7,7 @@
  */
 
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import {
   createFoundryError,
   type FoundryError,

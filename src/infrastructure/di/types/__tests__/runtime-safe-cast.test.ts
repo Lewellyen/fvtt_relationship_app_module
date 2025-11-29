@@ -3,7 +3,7 @@ import {
   getRegistrationStatus,
   castCachedServiceInstanceForResult,
 } from "@/infrastructure/di/types";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";

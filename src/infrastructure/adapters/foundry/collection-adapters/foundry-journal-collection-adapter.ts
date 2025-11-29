@@ -6,7 +6,7 @@ import type { EntityQueryBuilder } from "@/domain/ports/collections/entity-query
 import type { EntityFilter } from "@/domain/ports/collections/entity-search-query.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry.tokens";
 
 /**

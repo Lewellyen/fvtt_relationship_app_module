@@ -6,8 +6,7 @@ import type { PlatformNotificationPort } from "@/domain/ports/platform-notificat
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
-import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import type { JournalVisibilityConfig } from "./JournalVisibilityConfig";
 import { getFirstArrayElement } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import {
   journalCollectionPortToken,
@@ -15,11 +14,10 @@ import {
   platformCachePortToken,
   platformNotificationPortToken,
   platformUIPortToken,
-} from "@/infrastructure/shared/tokens";
+  journalVisibilityConfigToken,
+} from "@/application/tokens";
 import { sanitizeHtml } from "@/infrastructure/shared/utils/sanitize";
 
-const buildJournalCacheKey = createCacheNamespace("journal-visibility");
-const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
 export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 
 /**
@@ -43,7 +41,8 @@ export class JournalVisibilityService {
     private readonly journalRepository: JournalRepository,
     private readonly notifications: PlatformNotificationPort,
     private readonly cache: PlatformCachePort,
-    private readonly platformUI: PlatformUIPort
+    private readonly platformUI: PlatformUIPort,
+    private readonly config: JournalVisibilityConfig
   ) {}
 
   /**
@@ -64,7 +63,8 @@ export class JournalVisibilityService {
    * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
   getHiddenJournalEntries(): Result<JournalEntry[], JournalVisibilityError> {
-    const cached = this.cache.get<JournalEntry[]>(HIDDEN_JOURNAL_CACHE_KEY);
+    const cacheKey = this.config.cacheKeyFactory("hidden-directory");
+    const cached = this.cache.get<JournalEntry[]>(cacheKey);
     if (cached?.hit && cached.value) {
       this.notifications.debug(
         `Serving ${cached.value.length} hidden journal entries from cache (ttl=${
@@ -93,8 +93,8 @@ export class JournalVisibilityService {
     for (const journal of allEntriesResult.value) {
       const flagResult = this.journalRepository.getFlag(
         journal.id,
-        MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.FLAGS.HIDDEN
+        this.config.moduleNamespace,
+        this.config.hiddenFlagKey
       );
 
       if (flagResult.ok) {
@@ -117,7 +117,7 @@ export class JournalVisibilityService {
       }
     }
 
-    this.cache.set(HIDDEN_JOURNAL_CACHE_KEY, hidden.slice(), {
+    this.cache.set(cacheKey, hidden.slice(), {
       tags: [HIDDEN_JOURNAL_CACHE_TAG],
     });
 
@@ -165,7 +165,7 @@ export class JournalVisibilityService {
     const errors: JournalVisibilityError[] = [];
 
     for (const journal of entries) {
-      const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
+      const journalName = journal.name ?? this.config.unknownName;
       const removeResult = this.platformUI.removeJournalElement(journal.id, journalName, html);
 
       // Map PlatformUIError to JournalVisibilityError
@@ -208,6 +208,7 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
     platformNotificationPortToken,
     platformCachePortToken,
     platformUIPortToken,
+    journalVisibilityConfigToken,
   ] as const;
 
   constructor(
@@ -215,8 +216,9 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
     journalRepository: JournalRepository,
     notifications: PlatformNotificationPort,
     cache: PlatformCachePort,
-    platformUI: PlatformUIPort
+    platformUI: PlatformUIPort,
+    config: JournalVisibilityConfig
   ) {
-    super(journalCollection, journalRepository, notifications, cache, platformUI);
+    super(journalCollection, journalRepository, notifications, cache, platformUI, config);
   }
 }

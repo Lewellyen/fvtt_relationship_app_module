@@ -3,7 +3,7 @@ import { InvalidateJournalCacheOnChangeUseCase } from "../invalidate-journal-cac
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
-import { ok } from "@/infrastructure/shared/utils/result";
+import { ok } from "@/domain/utils/result";
 
 describe("InvalidateJournalCacheOnChangeUseCase", () => {
   let mockJournalEvents: PlatformJournalEventPort;

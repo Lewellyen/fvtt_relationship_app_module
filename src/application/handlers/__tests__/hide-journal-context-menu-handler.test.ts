@@ -8,7 +8,7 @@ import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { ok } from "@/infrastructure/shared/utils/result";
+import { ok } from "@/domain/utils/result";
 
 function createMockJournalRepository(): JournalRepository {
   return {

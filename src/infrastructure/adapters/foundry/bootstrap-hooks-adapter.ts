@@ -3,7 +3,7 @@ import type {
   BootstrapHookError,
 } from "@/domain/ports/bootstrap-hooks-port.interface";
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 /**
  * Foundry-specific adapter for BootstrapHooksPort.

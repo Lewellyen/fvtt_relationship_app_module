@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { FoundryHooks } from "../../interfaces/FoundryHooks";
 import type { FoundryHookCallback } from "../../types";
 import type { FoundryError } from "../../errors/FoundryErrors";
-import { tryCatch } from "@/infrastructure/shared/utils/result";
+import { tryCatch } from "@/domain/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
 
 /**

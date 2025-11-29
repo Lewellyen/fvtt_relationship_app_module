@@ -4,17 +4,18 @@
 
 Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Moduls.
 
-**Datum:** 2025-11-28  
-**Stand:** Version 0.37.1 → Unreleased (Platform-Ports Refactoring abgeschlossen)  
+**Datum:** 2025-11-29  
+**Stand:** Version 0.38.0 → Unreleased (DIP-Violations Refactoring abgeschlossen)  
 **Detaillierte Analyse:** Siehe [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md)
 
 ### Aktuelle Highlights (Unreleased)
-- **100% DIP-Konformität**: Application-Layer verwendet nun ausschließlich Domain-Ports statt Infrastructure-Services ([Details](docs/refactoring/Platform-Ports-Refactoring-Plan.md))
-- **PlatformNotificationPort**: Domain-Port für platform-agnostische Benachrichtigungen - ersetzt direkte `NotificationService`-Imports im Application-Layer
-- **PlatformCachePort**: Domain-Port für platform-agnostisches Caching - ersetzt direkte `CacheService`-Imports im Application-Layer
-- **PlatformI18nPort**: Domain-Port für platform-agnostische Internationalisierung - ersetzt direkte `I18nFacadeService`-Imports im Application-Layer
-- **1854 Tests bestanden**: Alle Tests erfolgreich, 100% Code Coverage, 100% Type Coverage
-- **Quality Gates erfüllt**: Keine TypeScript-Fehler, keine Linter-Fehler, alle Checks bestanden
+- **100% DIP-Konformität**: Vollständige Eliminierung aller DIP-Verstöße durch Domain-eigene Typen, Config-Objekte und korrekte Token-Organisation ([Details](cursor-plan://22b8d9cb-a493-4444-854e-60d0ae8cd051/DIP-Violations-Refactoring.plan.md))
+- **Domain Cache Types**: Domain-eigene Cache-Typen für vollständige Entkopplung von Infrastructure
+- **JournalVisibilityConfig**: Config-Objekt kapselt Infrastructure-Details und ermöglicht Dependency Injection
+- **Result Helpers im Domain**: Alle Result-Pattern-Utilities nach Domain-Layer verschoben für bessere Schichtentrennung
+- **Application Token-Struktur**: Neue Token-Organisation im Application-Layer mit klarer Trennung zwischen Domain-Ports und Application-Services
+- **1856 Tests bestanden**: Alle Tests erfolgreich, 100% Code Coverage (Lines, Statements, Branches, Functions), 100% Type Coverage
+- **Quality Gates erfüllt**: Alle Quality Gates bei 100% - Keine TypeScript-Fehler, keine Linter-Fehler, alle Checks bestanden
 
 ### Highlights (v0.20.0)
 - **NotificationCenter-first Fehler- und User-Kommunikation:** `ErrorService` ist vollständig ersetzt; alle Business-Services routen Nachrichten über Channels (Console/UI) mit Foundry-Option-Passthrough ([Details](docs/PROJECT-ANALYSIS.md#notifications)).
@@ -1462,5 +1463,5 @@ class CustomHealthCheck implements HealthCheck {
 
 ---
 
-**Letzte Aktualisierung:** 2025-11-09
+**Letzte Aktualisierung:** 2025-11-29
 

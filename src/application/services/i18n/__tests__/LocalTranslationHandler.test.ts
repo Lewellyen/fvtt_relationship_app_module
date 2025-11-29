@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LocalTranslationHandler } from "@/infrastructure/i18n/LocalTranslationHandler";
 import type { LocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 describe("LocalTranslationHandler", () => {
   let handler: LocalTranslationHandler;

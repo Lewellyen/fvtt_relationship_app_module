@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RetryService, DIRetryService } from "@/infrastructure/retry/RetryService";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 // Test helper: Simple error mapper for test scenarios
 const simpleErrorMapper = (error: unknown): { code: "TEST_ERROR"; message: string } => ({

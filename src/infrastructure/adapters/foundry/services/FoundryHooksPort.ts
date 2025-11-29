@@ -17,7 +17,7 @@ import {
 } from "@/infrastructure/shared/tokens/foundry.tokens";
 import { loggerToken, retryServiceToken } from "@/infrastructure/shared/tokens";
 import { FoundryServiceBase } from "./FoundryServiceBase";
-import { err, ok } from "@/infrastructure/shared/utils/result";
+import { err, ok } from "@/domain/utils/result";
 
 /**
  * Type-safe interface for Foundry Hooks with dynamic hook names.

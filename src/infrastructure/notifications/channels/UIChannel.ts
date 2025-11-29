@@ -19,7 +19,7 @@ import type {
 import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { foundryUIToken, runtimeConfigToken } from "@/infrastructure/shared/tokens";
 
 export class UIChannel implements NotificationChannel {

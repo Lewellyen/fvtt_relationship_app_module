@@ -11,9 +11,11 @@ import type { PlatformNotificationPort } from "@/domain/ports/platform-notificat
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { createMockDOM } from "@/test/utils/test-helpers";
 import type { CacheEntryMetadata, CacheKey } from "@/infrastructure/cache/cache.interface";
+import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
+import type { DomainCacheKey } from "@/domain/types/cache/cache-types";
 
 function createMetadata(): CacheEntryMetadata {
   return {
@@ -61,6 +63,17 @@ function createMockJournalRepository(): JournalRepository {
   } as unknown as JournalRepository;
 }
 
+function createMockConfig(): JournalVisibilityConfig {
+  return {
+    moduleNamespace: MODULE_CONSTANTS.MODULE.ID,
+    hiddenFlagKey: MODULE_CONSTANTS.FLAGS.HIDDEN,
+    unknownName: MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
+    cacheKeyFactory: (resource: string): DomainCacheKey => {
+      return `mock-cache-key-${resource}` as DomainCacheKey;
+    },
+  };
+}
+
 describe("JournalVisibilityService", () => {
   let service: JournalVisibilityService;
   let mockJournalCollection: JournalCollectionPort;
@@ -68,6 +81,7 @@ describe("JournalVisibilityService", () => {
   let mockNotifications: PlatformNotificationPort;
   let mockCache: PlatformCachePort;
   let mockPlatformUI: PlatformUIPort;
+  let mockConfig: JournalVisibilityConfig;
 
   beforeEach(() => {
     mockJournalCollection = createMockJournalCollectionPort();
@@ -104,12 +118,15 @@ describe("JournalVisibilityService", () => {
       notify: vi.fn().mockReturnValue(ok(undefined)),
     } as unknown as PlatformUIPort;
 
+    mockConfig = createMockConfig();
+
     service = new JournalVisibilityService(
       mockJournalCollection,
       mockJournalRepository,
       mockNotifications,
       mockCache,
-      mockPlatformUI
+      mockPlatformUI,
+      mockConfig
     );
   });
 
@@ -376,7 +393,7 @@ describe("JournalVisibilityService", () => {
       expect(result.ok).toBe(true);
       expect(mockPlatformUI.removeJournalElement).toHaveBeenCalledWith(
         "journal-1",
-        MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
+        mockConfig.unknownName,
         container
       );
     });

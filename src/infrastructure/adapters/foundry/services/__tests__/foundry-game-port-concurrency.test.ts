@@ -4,7 +4,7 @@ import { FoundryGamePort } from "@/infrastructure/adapters/foundry/services/Foun
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
-import { ok } from "@/infrastructure/shared/utils/result";
+import { ok } from "@/domain/utils/result";
 import { expectResultOk } from "@/test/utils/test-helpers";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";

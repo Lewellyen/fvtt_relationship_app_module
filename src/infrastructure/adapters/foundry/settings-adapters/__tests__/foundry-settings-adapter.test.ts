@@ -7,7 +7,7 @@ import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfac
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import * as v from "valibot";
-import { err } from "@/infrastructure/shared/utils/result";
+import { err } from "@/domain/utils/result";
 
 describe("FoundrySettingsAdapter", () => {
   let mockFoundrySettings: FoundrySettings;

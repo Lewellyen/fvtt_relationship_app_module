@@ -18,7 +18,7 @@ import {
   asyncAndThen,
   fromPromise,
   asyncAll,
-} from "@/infrastructure/shared/utils/result";
+} from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 
 describe("Result Utilities", () => {

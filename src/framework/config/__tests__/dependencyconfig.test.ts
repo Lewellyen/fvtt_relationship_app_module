@@ -31,7 +31,7 @@ import {
   platformSettingsPortToken,
 } from "@/infrastructure/shared/tokens";
 import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
-import { err } from "@/infrastructure/shared/utils/result";
+import { err } from "@/domain/utils/result";
 import {
   expectResultOk,
   expectResultErr,
@@ -690,6 +690,27 @@ describe("dependencyconfig", () => {
       if (!result.ok) {
         expect(result.error).toContain("PlatformSettingsPort");
       }
+    });
+
+    it("should propagate errors from registerJournalVisibilityConfig", async () => {
+      const container = ServiceContainer.createRoot();
+
+      // Mock registerJournalVisibilityConfig to return an error
+      // This ensures line 201 in dependencyconfig.ts is covered (if (isErr(journalVisibilityConfigResult)) return journalVisibilityConfigResult;)
+      const journalVisibilityModule = await import(
+        "@/framework/config/modules/journal-visibility.config"
+      );
+      vi.spyOn(journalVisibilityModule, "registerJournalVisibilityConfig").mockReturnValue(
+        err("JournalVisibilityConfig registration failed")
+      );
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      expect(result.error).toBe("JournalVisibilityConfig registration failed");
+
+      // Restore for other tests
+      vi.restoreAllMocks();
     });
 
     it("should propagate errors from registerI18nServices", async () => {

@@ -1,6 +1,6 @@
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { formatReplacementInfo } from "@/infrastructure/shared/utils/format-deprecation-info";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";

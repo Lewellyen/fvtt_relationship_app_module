@@ -1,5 +1,5 @@
 import { ServiceContainer } from "@/infrastructure/di/container";
-import { ok, err, isErr } from "@/infrastructure/shared/utils/result";
+import { ok, err, isErr } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 import {
   environmentConfigToken,
@@ -32,6 +32,7 @@ import { registerRegistrars } from "@/framework/config/modules/registrars.config
 import { registerEventPorts } from "@/framework/config/modules/event-ports.config";
 import { registerEntityPorts } from "@/framework/config/modules/entity-ports.config";
 import { registerSettingsPorts } from "@/framework/config/modules/settings-ports.config";
+import { registerJournalVisibilityConfig } from "@/framework/config/modules/journal-visibility.config";
 
 /**
  * Registers static bootstrap values that already exist outside the container.
@@ -195,6 +196,9 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   const entityPortsResult = registerEntityPorts(container);
   if (isErr(entityPortsResult)) return entityPortsResult;
+
+  const journalVisibilityConfigResult = registerJournalVisibilityConfig(container);
+  if (isErr(journalVisibilityConfigResult)) return journalVisibilityConfigResult;
 
   const i18nServicesResult = registerI18nServices(container);
   if (isErr(i18nServicesResult)) return i18nServicesResult;

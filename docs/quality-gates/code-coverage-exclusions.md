@@ -2,10 +2,11 @@
 
 This document catalogues all intentional code coverage exclusions marked with `/* c8 ignore */` comments. Each exclusion is justified, categorized, and analyzed for refactoring potential.
 
-**Last Updated:** 12. November 2025  
+**Last Updated:** 29. November 2025  
 **Coverage Status:** ✅ **100% Lines/Statements, 100% Branches, 100% Functions**  
-**Total Exclusions:** ~119 ignored lines across 29 files (101 c8 ignore markers)  
-**Refactoring Completed:** 88 markers eliminated (47.8% reduction from 184 → 96 functional markers, +5 reporting artifact markers = 101 total)
+**Total Exclusions:** ~119 ignored lines across 29 files (101 c8 ignore markers) + File-Level Exclusions  
+**Refactoring Completed:** 88 markers eliminated (47.8% reduction from 184 → 96 functional markers, +5 reporting artifact markers = 101 total)  
+**Recent Updates:** Type-only files and re-export files added to file-level exclusions (2025-11-29)
 
 **Note:** The difference between 184 markers and 201 lines is that a single `/* c8 ignore start */.../* c8 ignore stop */` block (2 markers) can span multiple lines.
 
@@ -570,6 +571,24 @@ When considering removing ignores, prioritize:
 
 ---
 
+## File-Level Exclusions (vitest.config.ts)
+
+In addition to inline `c8 ignore` markers, certain file types are excluded from coverage at the configuration level. These exclusions are documented in `vitest.config.ts` and include:
+
+### Type-Only Files (2025-11-29)
+- `src/application/services/JournalVisibilityConfig.ts` - Interface/Type definitions only
+- `src/domain/types/cache/cache-types.ts` - Domain cache type definitions only
+
+### Re-Export Files (2025-11-29)
+- `src/infrastructure/shared/utils/result.ts` - Re-exports from `@/domain/utils/result` (backward compatibility)
+- `src/infrastructure/shared/tokens/collection-tokens.ts` - Re-exports from Application tokens
+- `src/infrastructure/shared/tokens/repository-tokens.ts` - Re-exports from Application tokens
+- `src/application/tokens/index.ts` - Re-export aggregation file
+
+**Justification:** These files contain no executable runtime code - they are pure type definitions or re-exports for backward compatibility. Excluding them from coverage is architecturally correct.
+
+---
+
 ## Audit History
 
 ### November 2025 - Full Audit & Refactoring Analysis
@@ -578,3 +597,8 @@ When considering removing ignores, prioritize:
 - **Identified:** ~21-29 ignores eliminable (10-15%)
 - **Clarified:** Marker count vs line count discrepancy
 - **Documented:** Refactoring roadmap with effort/benefit analysis
+
+### November 2025 - DIP-Violations Refactoring (2025-11-29)
+- **File-Level Exclusions Added:** Type-only files and re-export files excluded from coverage
+- **Coverage Status:** 100% in all categories (Lines, Statements, Branches, Functions)
+- **Tests Added:** Missing error path tests in `dependencyconfig.ts` and `platform-cache-port-adapter.ts`

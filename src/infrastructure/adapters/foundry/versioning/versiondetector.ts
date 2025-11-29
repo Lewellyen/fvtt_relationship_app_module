@@ -4,7 +4,7 @@
  */
 
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 /**
  * Cached version result to avoid repeated game.version access.

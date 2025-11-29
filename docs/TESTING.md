@@ -206,6 +206,14 @@ Folgende Dateien sind von Coverage ausgeschlossen:
 - Pure Interface Files
 - Polyfills
 - Svelte Components (separate Coverage)
+- **Type-only Files** (2025-11-29):
+  - `src/application/services/JournalVisibilityConfig.ts` - Nur Interface/Type
+  - `src/domain/types/cache/cache-types.ts` - Nur Type-Definitionen
+- **Re-Export Files** (2025-11-29):
+  - `src/infrastructure/shared/utils/result.ts` - Re-Export von Domain-Utilities
+  - `src/infrastructure/shared/tokens/collection-tokens.ts` - Re-Export
+  - `src/infrastructure/shared/tokens/repository-tokens.ts` - Re-Export
+  - `src/application/tokens/index.ts` - Re-Export-Datei
 
 ### Inline Exclusions (v8 ignore)
 

@@ -12,7 +12,7 @@ import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
 import { FoundryJournalCollectionAdapter } from "../collection-adapters/foundry-journal-collection-adapter";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import {
   castFoundryDocumentForFlag,
   castFoundryDocumentWithUpdate,

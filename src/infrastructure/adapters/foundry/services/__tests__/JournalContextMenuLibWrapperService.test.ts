@@ -6,7 +6,7 @@ import {
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { LibWrapperService } from "@/domain/services/lib-wrapper-service.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 describe("JournalContextMenuLibWrapperService", () => {
   let service: JournalContextMenuLibWrapperService;

@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import type { FoundrySettings, SettingConfig } from "../../interfaces/FoundrySettings";
 import type { FoundryError } from "../../errors/FoundryErrors";
-import { tryCatch, err, fromPromise } from "@/infrastructure/shared/utils/result";
+import { tryCatch, err, fromPromise } from "@/domain/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
 import { validateSettingConfig } from "../../validation/schemas";
 import { castFoundrySettingsApi, castFoundryError } from "../../runtime-casts";

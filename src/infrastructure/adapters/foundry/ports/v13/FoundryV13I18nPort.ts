@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import type { FoundryI18n } from "../../interfaces/FoundryI18n";
 import type { FoundryError } from "../../errors/FoundryErrors";
-import { ok } from "@/infrastructure/shared/utils/result";
+import { ok } from "@/domain/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
 
 /**

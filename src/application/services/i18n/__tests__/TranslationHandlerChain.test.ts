@@ -5,7 +5,7 @@ import {
 } from "@/infrastructure/i18n/TranslationHandlerChain";
 import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandler.interface";
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 class StubHandler implements TranslationHandler {
   public next: TranslationHandler | null = null;

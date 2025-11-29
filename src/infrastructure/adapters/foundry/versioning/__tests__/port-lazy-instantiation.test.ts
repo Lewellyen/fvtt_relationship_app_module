@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";

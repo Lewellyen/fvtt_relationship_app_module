@@ -6,7 +6,7 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
 import { createMockGame } from "@/test/mocks/foundry";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 describe("BootstrapReadyHookService", () => {
   let mockLogger: Logger;

@@ -3,7 +3,6 @@
  */
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { EnvironmentConfig } from "@/framework/config/environment";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
@@ -31,24 +30,10 @@ import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready
 export const loggerToken = createInjectionToken<Logger>("Logger");
 
 /**
- * Injection token for the JournalVisibilityService.
- *
- * Manages visibility of journal entries based on module flags.
- * Handles hiding/showing entries in the Foundry UI and processes
- * journal directory rendering.
- *
- * @example
- * ```typescript
- * const service = container.resolve(journalVisibilityServiceToken);
- * const hidden = service.getHiddenJournalEntries();
- * if (hidden.ok) {
- *   console.log(`Found ${hidden.value.length} hidden entries`);
- * }
- * ```
+ * @deprecated JournalVisibilityService and JournalVisibilityConfig tokens are now exported from @/application/tokens.
+ * This file re-exports them for backward compatibility.
  */
-export const journalVisibilityServiceToken = createInjectionToken<JournalVisibilityService>(
-  "JournalVisibilityService"
-);
+export { journalVisibilityServiceToken, journalVisibilityConfigToken } from "@/application/tokens";
 
 /**
  * Injection token for the EnvironmentConfig.

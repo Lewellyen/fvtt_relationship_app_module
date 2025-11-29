@@ -1,0 +1,2464 @@
+﻿
+> relationship-app@0.38.0 test:coverage
+> vitest run --coverage
+
+
+[1m[46m RUN [49m[22m [36mv4.0.13 [39m[90mG:/Development/Foundry VTT V11 Data/Data/modules/fvtt_relationship_app_module[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Success with Hooks Available[2m > [22m[2mshould bootstrap successfully and execute init hook callback
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+
+node.exe : [90mstderr[2m | 
+src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid 
+Bootstrap[2m > [22m[2mBootstrap Success with Hooks Available[2m > 
+[22m[2mshould bootstrap successfully and execute init hook callback
+In C:\Users\Andi\AppData\Roaming\npm\npm.ps1:24 Zeichen:5
++     & "node$exe"  "$basedir/node_modules/npm/bin/npm-cli.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([90mstderr[2m...t hook callb 
+   ack:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register logLevel setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "logLevel": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheEnabled": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheTtlMs setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheTtlMs": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheMaxEntries setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheMaxEntries": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceTrackingEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceTrackingEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceSamplingRate setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceSamplingRate": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceKey setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceKey": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to register context menu libWrapper: ContextMenu 
+is not available
+
+ [32mÔ£ô[39m src/__tests__/index.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 2140[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m should import without errors [33m 2138[2mms[22m[39m
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Success with Hooks Available[2m > [22m[2mshould register ready hook
+[22m[39mRelationship App | ready-phase
+Relationship App | ready-phase completed
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Success with Hooks Available[2m > [22m[2mshould attach UI channel to NotificationCenter during init
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+
+[90mstderr[2m | src/framework/core/__tests__/init-solid.test.ts[2m > 
+[22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Success with Hooks 
+Available[2m > [22m[2mshould attach UI channel to NotificationCenter 
+during init
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register logLevel setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "logLevel": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheEnabled": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheTtlMs setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheTtlMs": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheMaxEntries setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheMaxEntries": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceTrackingEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceTrackingEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceSamplingRate setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceSamplingRate": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceKey setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceKey": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to register context menu libWrapper: ContextMenu 
+is not available
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Success with Hooks Available[2m > [22m[2mshould warn when NotificationCenter cannot be resolved
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+
+[90mstderr[2m | src/framework/core/__tests__/init-solid.test.ts[2m > 
+[22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Success with Hooks 
+Available[2m > [22m[2mshould warn when NotificationCenter cannot be 
+resolved
+[22m[39mRelationship App | Failed to register logLevel setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "logLevel": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register cacheEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheEnabled": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register cacheTtlMs setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheTtlMs": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register cacheMaxEntries setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheMaxEntries": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register performanceTrackingEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceTrackingEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register performanceSamplingRate setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceSamplingRate": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register metricsPersistenceEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register metricsPersistenceKey setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceKey": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Success with Hooks Available[2m > [22m[2mshould warn when UI channel cannot be resolved
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+
+[90mstderr[2m | src/framework/core/__tests__/init-solid.test.ts[2m > 
+[22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Success with Hooks 
+Available[2m > [22m[2mshould warn when UI channel cannot be resolved
+[22m[39mRelationship App | Failed to register logLevel setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "logLevel": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register cacheEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheEnabled": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register cacheTtlMs setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheTtlMs": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register cacheMaxEntries setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheMaxEntries": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register performanceTrackingEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceTrackingEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register performanceSamplingRate setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceSamplingRate": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register metricsPersistenceEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register metricsPersistenceKey setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceKey": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Success with Hooks Available[2m > [22m[2mshould skip log-level configuration when Foundry settings cannot be resolved
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+
+[90mstderr[2m | src/framework/core/__tests__/init-solid.test.ts[2m > 
+[22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Success with Hooks 
+Available[2m > [22m[2mshould skip log-level configuration when Foundry 
+settings cannot be resolved
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register logLevel setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "logLevel": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheEnabled": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheTtlMs setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheTtlMs": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheMaxEntries setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheMaxEntries": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceTrackingEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceTrackingEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceSamplingRate setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceSamplingRate": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceKey setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceKey": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | Failed to register context menu libWrapper: ContextMenu 
+is not available
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Failure - Graceful Degradation[2m > [22m[2mshould NOT throw when bootstrap fails (graceful degradation)
+[22m[39m[2025-11-29T00:51:46.325Z] Relationship App | Error in bootstrap
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Failure - Graceful Degradation[2m > [22m[2mshould handle missing ui.notifications gracefully
+[22m[39m[2025-11-29T00:51:46.335Z] Relationship App | Error in bootstrap
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Failure - Graceful Degradation[2m > [22m[2mshould show version-specific error for Foundry v12
+[22m[39m[2025-11-29T00:51:46.343Z] Relationship App | Error in bootstrap
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mBootstrap Failure - Graceful Degradation[2m > [22m[2mshould NOT show version error for PORT_SELECTION_FAILED on v13
+[22m[39m[2025-11-29T00:51:46.350Z] Relationship App | Error in bootstrap
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mInit Hook Callback Error Paths[2m > [22m[2mshould handle ModuleApiInitializer resolution failure in init callback
+[22m[39mRelationship App | init-phase
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mInit Hook Callback Error Paths[2m > [22m[2mshould handle ModuleSettingsRegistrar resolution failure in init callback
+[22m[39mRelationship App | init-phase
+
+ [32mÔ£ô[39m src/application/services/cache/__tests__/cache-memory-leak.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 337[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m should free memory after cache clear [33m 334[2mms[22m[39m
+[90mstderr[2m | src/framework/core/__tests__/init-solid.test.ts[2m > 
+[22m[2minit-solid Bootstrap[2m > [22m[2mInit Hook Callback Error 
+Paths[2m > [22m[2mshould handle ModuleEventRegistrar resolution failure 
+in init callback
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mInit Hook Callback Error Paths[2m > [22m[2mshould handle ModuleEventRegistrar resolution failure in init callback
+[22m[39mRelationship App | init-phase
+
+ [32mÔ£ô[39m src/application/services/__tests__/service-memory-leak.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 378[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m should dispose services correctly [33m 376[2mms[22m[39m
+ [32mÔ£ô[39m src/application/use-cases/__tests__/hook-memory-leak.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 370[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m should not leak memory after hook disposal [33m 368[2mms[22m[39m
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mInit Hook Callback Error Paths[2m > [22m[2mshould handle expose API failure in init callback (coverage for lines 105-106)
+[22m[39mRelationship App | init-phase
+
+[90mstdout[2m | src/framework/core/__tests__/init-solid.test.ts[2m > [22m[2minit-solid Bootstrap[2m > [22m[2mInit Hook Callback Error Paths[2m > [22m[2mshould handle hook registration failure in init callback (coverage for lines 146-149)
+[22m[39mRelationship App | init-phase
+
+[90mstderr[2m | src/framework/core/__tests__/init-solid.test.ts[2m > 
+[22m[2minit-solid Bootstrap[2m > [22m[2mInit Hook Callback Error 
+Paths[2m > [22m[2mshould handle hook registration failure in init 
+callback (coverage for lines 146-149)
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+
+ [32mÔ£ô[39m src/framework/core/__tests__/init-solid.test.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 546[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/container/__tests__/container-memory-leak.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 330[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m should cleanup scoped containers [33m 328[2mms[22m[39m
+[90mstdout[2m | src/framework/core/__tests__/composition-root.test.ts[2m > [22m[2mCompositionRoot[2m > [22m[2mbootstrap[2m > [22m[2mshould call onComplete callback when performance tracking is enabled and sampling passes
+[22m[39mRelationship App | Bootstrap completed in 1.26ms
+
+ [32mÔ£ô[39m src/framework/core/__tests__/composition-root.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 98[2mms[22m[39m
+[90mstdout[2m | src/__tests__/integration/journal-visibility-e2e.test.ts[2m > [22m[2mIntegration: Journal Visibility End-to-End[2m > [22m[2mshould hide journal entry in complete workflow
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+
+[90mstderr[2m | 
+src/__tests__/integration/journal-visibility-e2e.test.ts[2m > 
+[22m[2mIntegration: Journal Visibility End-to-End[2m > [22m[2mshould 
+hide journal entry in complete workflow
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register logLevel setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "logLevel": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheEnabled": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheTtlMs setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheTtlMs": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheMaxEntries setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheMaxEntries": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceTrackingEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceTrackingEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceSamplingRate setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceSamplingRate": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceKey setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceKey": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to register context menu libWrapper: ContextMenu 
+is not available
+
+[90mstdout[2m | src/__tests__/integration/journal-visibility-e2e.test.ts[2m > [22m[2mIntegration: Journal Visibility End-to-End[2m > [22m[2mshould keep visible journal entry visible
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+
+[90mstderr[2m | 
+src/__tests__/integration/journal-visibility-e2e.test.ts[2m > 
+[22m[2mIntegration: Journal Visibility End-to-End[2m > [22m[2mshould 
+keep visible journal entry visible
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register logLevel setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "logLevel": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheEnabled": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheTtlMs setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheTtlMs": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheMaxEntries setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheMaxEntries": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceTrackingEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceTrackingEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceSamplingRate setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceSamplingRate": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceKey setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceKey": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to register context menu libWrapper: ContextMenu 
+is not available
+
+ [32mÔ£ô[39m src/infrastructure/di/__tests__/container-performance.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 314[2mms[22m[39m
+ [32mÔ£ô[39m src/__tests__/integration/journal-visibility-e2e.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 114[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/__tests__/container.test.ts [2m([22m[2m69 tests[22m[2m)[22m[32m 168[2mms[22m[39m
+[90mstderr[2m | 
+src/framework/core/api/__tests__/module-api-initializer.test.ts[2m > 
+[22m[2mModuleApiInitializer[2m > [22m[2mAPI - Deprecation[2m > 
+[22m[2mshould resolve deprecated token normally
+[22m[39m[fvtt_relationship_app_module] DEPRECATED: Token 
+"Symbol(NotificationCenter)" is deprecated.
+Reason: Test
+This token will be removed in version 2.0.0.
+
+[90mstderr[2m | 
+src/framework/core/api/__tests__/module-api-initializer.test.ts[2m > 
+[22m[2mModuleApiInitializer[2m > [22m[2mAPI - ReadOnly Wrappers[2m > 
+[22m[2mshould expose notification center with read-only surface
+[22m[39mRelationship App | test { code: [32m'API_DEBUG'[39m, message: 
+[32m'Triggered from test'[39m }
+
+[90mstderr[2m | 
+src/framework/core/api/__tests__/module-api-initializer.test.ts[2m > 
+[22m[2mModuleApiInitializer[2m > [22m[2mAPI - resolveWithError[2m > 
+[22m[2mshould provide usable notification center via resolveWithError
+[22m[39mRelationship App | resolveWithError test { code: 
+[32m'WARN'[39m, message: [32m'Test'[39m }
+
+[90mstderr[2m | 
+src/framework/core/api/__tests__/module-api-initializer.test.ts[2m > 
+[22m[2mModuleApiInitializer[2m > [22m[2mAPI - ReadOnly Wrappers[2m > 
+[22m[2mshould expose notification center with read-only surface
+[22m[39mRelationship App | test { code: [32m'API_DEBUG'[39m, message: 
+[32m'Triggered from test'[39m }
+
+[90mstderr[2m | 
+src/framework/core/api/__tests__/module-api-initializer.test.ts[2m > 
+[22m[2mModuleApiInitializer[2m > [22m[2mAPI - resolveWithError[2m > 
+[22m[2mshould provide usable notification center via resolveWithError
+[22m[39mRelationship App | resolveWithError test { code: 
+[32m'WARN'[39m, message: [32m'Test'[39m }
+
+ [32mÔ£ô[39m src/framework/core/api/__tests__/module-api-initializer.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 90[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/registry/__tests__/ServiceRegistry.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 81[2mms[22m[39m
+[90mstdout[2m | src/__tests__/integration/hook-registration-execution.test.ts[2m > [22m[2mIntegration: Hook Registration + Execution[2m > [22m[2mshould register hook and execute callback when Foundry hook fires
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+
+[90mstderr[2m | 
+src/__tests__/integration/hook-registration-execution.test.ts[2m > 
+[22m[2mIntegration: Hook Registration + Execution[2m > [22m[2mshould 
+register hook and execute callback when Foundry hook fires
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register logLevel setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "logLevel": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheEnabled": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheTtlMs setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheTtlMs": Foundry settings 
+API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register cacheMaxEntries setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "cacheMaxEntries": Foundry 
+settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceTrackingEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceTrackingEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register performanceSamplingRate setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "performanceSamplingRate": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceEnabled setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceEnabled": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for 
+"FoundrySettings.register" after 2 attempts
+Relationship App | Failed to register metricsPersistenceKey setting {
+  code: [32m'PLATFORM_NOT_AVAILABLE'[39m,
+  message: [32m'Failed to register setting "metricsPersistenceKey": 
+Foundry settings API not available'[39m,
+  details: {
+    code: [32m'API_NOT_AVAILABLE'[39m,
+    message: [32m'Foundry settings API not available'[39m,
+    details: [90mundefined[39m,
+    cause: [90mundefined[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to register context menu libWrapper: ContextMenu 
+is not available
+
+[90mstdout[2m | src/__tests__/integration/settings-change-reaction.test.ts[2m > [22m[2mIntegration: Settings Change + Service Reaction[2m > [22m[2mshould update service level when setting changes
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+
+[90mstderr[2m | 
+src/__tests__/integration/settings-change-reaction.test.ts[2m > 
+[22m[2mIntegration: Settings Change + Service Reaction[2m > 
+[22m[2mshould update service level when setting changes
+[22m[39mRelationship App | Failed to read initial value for cacheEnabled {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting "fvtt_relationship_app_module.cacheEnabled" has 
+invalid value type'[39m,
+  details: { value: [33m1[39m }
+}
+Relationship App | Failed to read initial value for 
+performanceTrackingEnabled {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.performanceTrackingEnabled" has invalid value 
+type'[39m,
+  details: { value: [33m1[39m }
+}
+Relationship App | Failed to read initial value for 
+metricsPersistenceEnabled {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.metricsPersistenceEnabled" has invalid value 
+type'[39m,
+  details: { value: [33m1[39m }
+}
+Relationship App | Failed to read initial value for metricsPersistenceKey {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.metricsPersistenceKey" has invalid value 
+type'[39m,
+  details: { value: [33m1[39m }
+}
+Relationship App | Failed to register context menu libWrapper: ContextMenu 
+is not available
+
+ [32mÔ£ô[39m src/__tests__/integration/hook-registration-execution.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 68[2mms[22m[39m
+ [32mÔ£ô[39m src/__tests__/integration/settings-change-reaction.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 65[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/core/__tests__/hooks-guard.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 103[2mms[22m[39m
+[90mstdout[2m | src/__tests__/integration/cache-invalidation-workflow.test.ts[2m > [22m[2mIntegration: Cache Invalidation Workflow[2m > [22m[2mshould invalidate cache when journal entry is updated
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+
+[90mstderr[2m | 
+src/__tests__/integration/cache-invalidation-workflow.test.ts[2m > 
+[22m[2mIntegration: Cache Invalidation Workflow[2m > [22m[2mshould 
+invalidate cache when journal entry is updated
+[22m[39mRelationship App | Failed to read initial value for logLevel {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting "fvtt_relationship_app_module.logLevel" has 
+invalid value type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for cacheEnabled {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting "fvtt_relationship_app_module.cacheEnabled" has 
+invalid value type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for cacheTtlMs {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting "fvtt_relationship_app_module.cacheTtlMs" has 
+invalid value type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for cacheMaxEntries {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting "fvtt_relationship_app_module.cacheMaxEntries" has 
+invalid value type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for 
+performanceTrackingEnabled {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.performanceTrackingEnabled" has invalid value 
+type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for performanceSamplingRate 
+{
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.performanceSamplingRate" has invalid value 
+type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for 
+metricsPersistenceEnabled {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.metricsPersistenceEnabled" has invalid value 
+type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for metricsPersistenceKey {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.metricsPersistenceKey" has invalid value 
+type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to register context menu libWrapper: ContextMenu 
+is not available
+
+ [32mÔ£ô[39m src/__tests__/integration/cache-invalidation-workflow.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 63[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/JournalContextMenuLibWrapperService.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/core/api/__tests__/module-api-error-handling.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+[90mstderr[2m | src/infrastructure/observability/trace/__tests__/TraceCont
+ext.integration.test.ts[2m > [22m[2mTraceContext Integration[2m > 
+[22m[2mLogger + TraceContext Integration[2m > [22m[2mshould maintain 
+trace context across multiple logger calls
+[22m[39mRelationship App | [multi-call-trace] Second message
+Relationship App | [multi-call-trace] Third message
+
+[90mstdout[2m | src/__tests__/integration/module-lifecycle.test.ts[2m > [22m[2mIntegration: Module Lifecycle[2m > [22m[2mshould handle module lifecycle (init ÔåÆ ready)
+[22m[39mRelationship App | init-phase
+Relationship App | init-phase completed
+Relationship App | ready-phase
+Relationship App | ready-phase completed
+
+[90mstderr[2m | src/__tests__/integration/module-lifecycle.test.ts[2m > 
+[22m[2mIntegration: Module Lifecycle[2m > [22m[2mshould handle module 
+lifecycle (init ÔåÆ ready)
+[22m[39mRelationship App | Failed to read initial value for logLevel {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting "fvtt_relationship_app_module.logLevel" has 
+invalid value type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for cacheEnabled {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting "fvtt_relationship_app_module.cacheEnabled" has 
+invalid value type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for cacheTtlMs {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting "fvtt_relationship_app_module.cacheTtlMs" has 
+invalid value type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for cacheMaxEntries {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting "fvtt_relationship_app_module.cacheMaxEntries" has 
+invalid value type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for 
+performanceTrackingEnabled {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.performanceTrackingEnabled" has invalid value 
+type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for performanceSamplingRate 
+{
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.performanceSamplingRate" has invalid value 
+type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for 
+metricsPersistenceEnabled {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.metricsPersistenceEnabled" has invalid value 
+type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | Failed to read initial value for metricsPersistenceKey {
+  code: [32m'INVALID_SETTING_VALUE'[39m,
+  message: [32m'Setting 
+"fvtt_relationship_app_module.metricsPersistenceKey" has invalid value 
+type'[39m,
+  details: { value: [90mundefined[39m }
+}
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to register context menu libWrapper: ContextMenu 
+is not available
+
+ [32mÔ£ô[39m src/__tests__/integration/module-lifecycle.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 57[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/observability/trace/__tests__/TraceContext.integration.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 56[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/consolelogger.test.ts [2m([22m[2m35 tests[22m[2m)[22m[32m 61[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/__tests__/container-edge-cases.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+[90mstderr[2m | 
+src/application/services/__tests__/module-settings-registrar.test.ts[2m > 
+[22m[2mModuleSettingsRegistrar[2m > [22m[2mregisterAll()[2m > 
+[22m[2mshould register log level setting
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryI18n.localize" after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for logLevel {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "logLevel": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheEnabled": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheTtlMs {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheTtlMs": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheMaxEntries {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheMaxEntries": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for 
+performanceTrackingEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "performanceTrackingEnabled": Could 
+not determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for performanceSamplingRate 
+{
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "performanceSamplingRate": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for 
+metricsPersistenceEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "metricsPersistenceEnabled": Could 
+not determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for metricsPersistenceKey {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "metricsPersistenceKey": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+
+[90mstderr[2m | 
+src/application/services/__tests__/module-settings-registrar.test.ts[2m > 
+[22m[2mModuleSettingsRegistrar[2m > [22m[2mregisterAll()[2m > 
+[22m[2mshould configure onChange callback to update logger
+[90mstdout[2m | src/application/services/__tests__/module-settings-registrar.test.ts[2m > [22m[2mModuleSettingsRegistrar[2m > [22m[2mregisterAll()[2m > [22m[2mshould configure onChange callback to update logger
+[22m[39mRelationship App | Log level changed to: DEBUG
+
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryI18n.localize" after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for logLevel {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "logLevel": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheEnabled": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheTtlMs {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheTtlMs": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheMaxEntries {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheMaxEntries": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for 
+performanceTrackingEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "performanceTrackingEnabled": Could 
+not determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for performanceSamplingRate 
+{
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "performanceSamplingRate": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for 
+metricsPersistenceEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "metricsPersistenceEnabled": Could 
+not determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for metricsPersistenceKey {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "metricsPersistenceKey": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+
+[90mstderr[2m | 
+src/application/services/__tests__/module-settings-registrar.test.ts[2m > 
+[22m[2mModuleSettingsRegistrar[2m > [22m[2mregisterAll()[2m > 
+[22m[2mshould handle logger without setMinLevel gracefully
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryI18n.localize" after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for logLevel {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "logLevel": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheEnabled": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheTtlMs {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheTtlMs": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheMaxEntries {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheMaxEntries": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for 
+performanceTrackingEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "performanceTrackingEnabled": Could 
+not determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for performanceSamplingRate 
+{
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "performanceSamplingRate": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for 
+metricsPersistenceEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "metricsPersistenceEnabled": Could 
+not determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for metricsPersistenceKey {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "metricsPersistenceKey": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+
+[90mstderr[2m | 
+src/application/services/__tests__/module-settings-registrar.test.ts[2m > 
+[22m[2mModuleSettingsRegistrar[2m > [22m[2mregisterAll()[2m > 
+[22m[2mshould log error when setting registration fails
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryI18n.localize" after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | Failed to register logLevel setting { code: 
+[32m'OPERATION_FAILED'[39m, message: [32m'Registration failed'[39m }
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheEnabled": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheTtlMs {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheTtlMs": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheMaxEntries {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheMaxEntries": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for 
+performanceTrackingEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "performanceTrackingEnabled": Could 
+not determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for performanceSamplingRate 
+{
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "performanceSamplingRate": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for 
+metricsPersistenceEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "metricsPersistenceEnabled": Could 
+not determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for metricsPersistenceKey {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "metricsPersistenceKey": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+
+[90mstderr[2m | 
+src/application/services/__tests__/module-settings-registrar.test.ts[2m > 
+[22m[2mModuleSettingsRegistrar[2m > [22m[2mregisterAll()[2m > 
+[22m[2mshould register with correct choices
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryI18n.localize" after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for logLevel {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "logLevel": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheEnabled": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheTtlMs {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheTtlMs": Could not determine 
+Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for cacheMaxEntries {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "cacheMaxEntries": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for 
+performanceTrackingEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "performanceTrackingEnabled": Could 
+not determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for performanceSamplingRate 
+{
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "performanceSamplingRate": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for 
+metricsPersistenceEnabled {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "metricsPersistenceEnabled": Could 
+not determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundrySettings.get" 
+after 2 attempts
+Relationship App | Failed to read initial value for metricsPersistenceKey {
+  code: [32m'SETTING_READ_FAILED'[39m,
+  message: [32m'Failed to get setting "metricsPersistenceKey": Could not 
+determine Foundry version'[39m,
+  details: {
+    code: [32m'PORT_SELECTION_FAILED'[39m,
+    message: [32m'Could not determine Foundry version'[39m,
+    details: [90mundefined[39m,
+    cause: [32m'Foundry game object is not available or version cannot be 
+determined'[39m
+  }
+}
+
+[90mstderr[2m | 
+src/application/services/__tests__/module-settings-registrar.test.ts[2m > 
+[22m[2mModuleSettingsRegistrar[2m > [22m[2mregisterAll()[2m > 
+[22m[2mshould synchronize runtime config for bound settings
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryI18n.localize" after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+
+[90mstderr[2m | 
+src/application/services/__tests__/module-settings-registrar.test.ts[2m > 
+[22m[2mModuleSettingsRegistrar[2m > [22m[2mregisterAll()[2m > 
+[22m[2mshould apply binding transform for cacheMaxEntries
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryI18n.localize" after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+Relationship App | All retry attempts exhausted for "FoundryI18n.localize" 
+after 2 attempts
+
+[90mstdout[2m | src/application/services/__tests__/module-settings-registrar.test.ts[2m > [22m[2mModuleSettingsRegistrar[2m > [22m[2mregisterAll()[2m > [22m[2mshould synchronize runtime config for bound settings
+[22m[39mRelationship App | CacheService disabled via module setting.
+
+[90mstdout[2m | src/application/services/__tests__/module-settings-registrar.test.ts[2m > [22m[2mModuleSettingsRegistrar[2m > [22m[2mregisterAll()[2m > [22m[2mshould apply binding transform for cacheMaxEntries
+[22m[39mRelationship App | Cache max entries reset to unlimited via settings.
+Relationship App | Cache max entries updated via settings: 150
+
+ [32mÔ£ô[39m src/application/services/__tests__/module-settings-registrar.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 55[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/__tests__/runtime-casts.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/JournalVisibilityService.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+[90mstderr[2m | 
+src/framework/config/__tests__/dependencyconfig.test.ts[2m > 
+[22m[2mdependencyconfig[2m > [22m[2mLogger Configuration[2m > 
+[22m[2mshould configure logger with ENV.logLevel
+[22m[39mRelationship App | test error
+
+[90mstdout[2m | src/framework/config/__tests__/dependencyconfig.test.ts[2m > [22m[2mdependencyconfig[2m > [22m[2mLogger Configuration[2m > [22m[2mshould respect DEBUG level from ENV
+[22m[39mRelationship App | test debug
+
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/event-adapters/__tests__/foundry-journal-event-adapter.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/config/__tests__/dependencyconfig.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/FoundryHooksPort.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/ports/v13/__tests__/FoundryV13UIPort.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/repository-adapters/__tests__/foundry-journal-repository-adapter.test.ts [2m([22m[2m47 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+[90mstdout[2m | src/framework/core/__tests__/init-solid-version-notification.test.ts[2m > [22m[2minit-solid Bootstrap (version notifications)[2m > [22m[2mshould omit generic bootstrap notification when Foundry is below v13
+[22m[39m[2025-11-29T00:51:59.768Z] Relationship App | Error in bootstrap
+
+ [32mÔ£ô[39m src/framework/core/__tests__/init-solid-version-notification.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/resolution/__tests__/ServiceResolver.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/ports/v13/__tests__/FoundryV13DocumentPort.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/collection-adapters/__tests__/foundry-journal-collection-adapter.test.ts [2m([22m[2m45 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/observability/__tests__/metrics-collector.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/core/__tests__/composition-root-concurrency.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/observability/trace/__tests__/TraceContext.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/facades/__tests__/foundry-journal-facade.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/FoundryDocumentPort.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m src/application/notifications/__tests__/NotificationCenter.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/shared/utils/promise-timeout.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/settings-adapters/__tests__/foundry-settings-adapter.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/core/__tests__/bootstrap-init-hook.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/__tests__/api-safe-token.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m src/__tests__/integration/full-bootstrap.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/RetryService.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/versioning/__tests__/PortSelector.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/shared/utils/throttle.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/FoundryUIPort.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+[90mstderr[2m | 
+src/framework/core/__tests__/result-pattern-consistency.test.ts[2m > 
+[22m[2mRuntime Error: Result Pattern Consistency[2m > [22m[2mshould 
+handle errors in Result pattern
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryGame.getJournalEntries" after 2 attempts
+
+ [32mÔ£ô[39m src/framework/core/__tests__/result-pattern-consistency.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/CacheService.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m src/application/handlers/__tests__/hide-journal-context-menu-handler.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/FoundryServiceBase.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+[90mstderr[2m | src/infrastructure/adapters/foundry/services/__tests__/fou
+ndry-api-error-handling.test.ts[2m > [22m[2mRuntime Error: Foundry API 
+Failures[2m > [22m[2mshould handle undefined game.journal gracefully
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryGame.getJournalEntries" after 2 attempts
+
+[90mstderr[2m | src/infrastructure/adapters/foundry/services/__tests__/fou
+ndry-api-error-handling.test.ts[2m > [22m[2mRuntime Error: Foundry API 
+Failures[2m > [22m[2mshould handle game.journal.get throwing error
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryGame.getJournalEntryById" after 2 attempts
+
+[90mstderr[2m | src/infrastructure/adapters/foundry/services/__tests__/fou
+ndry-api-error-handling.test.ts[2m > [22m[2mRuntime Error: Foundry API 
+Failures[2m > [22m[2mshould handle game.journal.contents being undefined
+[22m[39mRelationship App | All retry attempts exhausted for 
+"FoundryGame.getJournalEntries" after 2 attempts
+
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/foundry-api-error-handling.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/ports/v13/__tests__/FoundryV13SettingsPort.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/FoundryGamePort.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/ports/v13/__tests__/FoundryV13GamePort.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/PerformanceTrackingService.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/notifications/__tests__/platform-notification-port-adapter.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/validation/__tests__/schemas.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/FoundryLibWrapperService.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/scope/__tests__/ScopeManager.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m src/application/health/__tests__/container-health-check.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/cache/__tests__/platform-cache-port-adapter.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/FoundryI18nPort.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m src/application/notifications/channels/__tests__/UIChannel.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/ports/v13/__tests__/FoundryV13HooksPort.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/cache-service-concurrency.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/core/__tests__/bootstrap-error-handler.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/shared/utils/result.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m src/application/use-cases/__tests__/trigger-journal-directory-rerender.use-case.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/observability/__tests__/observability-registry.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/FoundrySettingsPort.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/core/api/__tests__/public-api-wrappers.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/observability/__tests__/bootstrap-performance-tracker.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/cache/__tests__/InstanceCache.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/core/__tests__/graceful-degradation.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/shared/utils/trace.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/module-health-service.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/FoundryHooksPort-regression.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m src/application/use-cases/__tests__/process-journal-directory-on-render.use-case.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m src/application/use-cases/__tests__/invalidate-journal-cache-on-change.use-case.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/observability/__tests__/performance-tracker-impl.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/ports/v13/__tests__/FoundryV13I18nPort.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/registry/__tests__/TypeSafeRegistrationMap.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/config/__tests__/environment.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/LocalI18nService.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/application/notifications/channels/__tests__/ConsoleChannel.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/versioning/__tests__/versiondetector.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/I18nFacadeService.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/i18n/__tests__/LocalTranslationHandler.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/adapters/__tests__/foundry-ui-adapter.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/i18n/__tests__/FoundryTranslationHandler.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/__tests__/bootstrap-hooks-adapter.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/core/__tests__/bootstrap-ready-hook.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m src/application/use-cases/__tests__/register-context-menu.use-case.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/ModuleEventRegistrar.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/services/__tests__/foundry-game-port-concurrency.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/application/settings/__tests__/module-settings.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/versioning/__tests__/port-lazy-instantiation.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/settings-adapters/__tests__/foundry-settings-registration-adapter.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m src/application/health/__tests__/health-check-registry.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/i18n/__tests__/platform-i18n-port-adapter.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/versioning/__tests__/port-selection-events.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/config/modules/__tests__/port-infrastructure.config.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/versioning/__tests__/port-selection-observer.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m src/application/use-cases/__tests__/hook-registration-manager.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/core/runtime-config/__tests__/runtime-config.service.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/shared/utils/validate-log-level.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/types/__tests__/serviceregistration.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m src/framework/core/api/__tests__/readonly-wrapper.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/validation/__tests__/ContainerValidator.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/__tests__/LocalI18nService-regression.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/shared/utils/type-guards.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/errors/__tests__/FoundryErrors.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/observability/metrics-persistence/__tests__/local-storage-metrics-storage.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/retry/__tests__/retry-error-recovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/i18n/__tests__/FallbackTranslationHandler.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m src/application/health/__tests__/metrics-health-check.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/versioning/__tests__/portregistry.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/validation/__tests__/input-validators-security.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/shared/utils/dispose-hooks.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m src/domain/ports/events/__tests__/journal-event-port.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/i18n/__tests__/AbstractTranslationHandler.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/adapters/foundry/versioning/__tests__/port-selector-concurrency.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/errors/__tests__/ContainerErrors.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/types/__tests__/deprecated-token.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/shared/utils/__tests__/sanitize.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/__tests__/tokenutilities.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/__tests__/error-handler.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/shared/utils/error-sanitizer.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/observability/metrics-persistence/__tests__/metrics-storage-factory.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/di/types/__tests__/runtime-safe-cast.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m src/domain/types/__tests__/settings.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m src/application/services/i18n/__tests__/TranslationHandlerChain.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m src/domain/ports/collections/__tests__/journal-collection-port.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m src/infrastructure/shared/utils/format-deprecation-info.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m src/domain/ports/__tests__/platform-settings-port.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m138 passed[39m[22m[90m (138)[39m
+[2m      Tests [22m [1m[32m1859 passed[39m[22m[90m (1859)[39m
+[2m   Start at [22m 01:51:42
+[2m   Duration [22m 58.96s[2m (transform 9.33s, setup 1.05s, collect 31.68s, tests 7.32s, environment 181.56s, prepare 9.65s)[22m
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |     100 |    99.94 |     100 |     100 |                   
+ ...ation/handlers |     100 |      100 |     100 |     100 |                   
+  ...nu-handler.ts |     100 |      100 |     100 |     100 |                   
+ ...ication/health |     100 |      100 |     100 |     100 |                   
+  ...ealthCheck.ts |     100 |      100 |     100 |     100 |                   
+  ...ckRegistry.ts |     100 |      100 |     100 |     100 |                   
+  ...ealthCheck.ts |     100 |      100 |     100 |     100 |                   
+ ...ation/services |     100 |      100 |     100 |     100 |                   
+  ...ityService.ts |     100 |      100 |     100 |     100 |                   
+  ...tRegistrar.ts |     100 |      100 |     100 |     100 |                   
+  ...lthService.ts |     100 |      100 |     100 |     100 |                   
+  ...sRegistrar.ts |     100 |      100 |     100 |     100 |                   
+  ...figService.ts |     100 |      100 |     100 |     100 |                   
+  ...ig-factory.ts |     100 |      100 |     100 |     100 |                   
+ ...ation/settings |     100 |      100 |     100 |     100 |                   
+  ...tl-setting.ts |     100 |      100 |     100 |     100 |                   
+  ...ed-setting.ts |     100 |      100 |     100 |     100 |                   
+  ...es-setting.ts |     100 |      100 |     100 |     100 |                   
+  ...el-setting.ts |     100 |      100 |     100 |     100 |                   
+  ...ed-setting.ts |     100 |      100 |     100 |     100 |                   
+  ...ey-setting.ts |     100 |      100 |     100 |     100 |                   
+  ...ng-setting.ts |     100 |      100 |     100 |     100 |                   
+  ...ng-setting.ts |     100 |      100 |     100 |     100 |                   
+ ...ication/tokens |     100 |      100 |     100 |     100 |                   
+  ...ion.tokens.ts |     100 |      100 |     100 |     100 |                   
+  ...rts.tokens.ts |     100 |      100 |     100 |     100 |                   
+ ...tion/use-cases |     100 |      100 |     100 |     100 |                   
+  ...on-manager.ts |     100 |      100 |     100 |     100 |                   
+  ...e.use-case.ts |     100 |      100 |     100 |     100 |                   
+  ...r.use-case.ts |     100 |      100 |     100 |     100 |                   
+  ...u.use-case.ts |     100 |      100 |     100 |     100 |                   
+  ...r.use-case.ts |     100 |      100 |     100 |     100 |                   
+ domain/types      |     100 |      100 |     100 |     100 |                   
+  settings.ts      |     100 |      100 |     100 |     100 |                   
+ domain/utils      |     100 |      100 |     100 |     100 |                   
+  result.ts        |     100 |      100 |     100 |     100 |                   
+ framework/config  |     100 |      100 |     100 |     100 |                   
+  ...encyconfig.ts |     100 |      100 |     100 |     100 |                   
+ framework/core    |     100 |      100 |     100 |     100 |                   
+  ...or-handler.ts |     100 |      100 |     100 |     100 |                   
+  ...-init-hook.ts |     100 |      100 |     100 |     100 |                   
+  ...ready-hook.ts |     100 |      100 |     100 |     100 |                   
+  ...ition-root.ts |     100 |      100 |     100 |     100 |                   
+  init-solid.ts    |     100 |      100 |     100 |     100 |                   
+ ...ework/core/api |     100 |      100 |     100 |     100 |                   
+  ...ken-config.ts |     100 |      100 |     100 |     100 |                   
+  ...nitializer.ts |     100 |      100 |     100 |     100 |                   
+  ...i-wrappers.ts |     100 |      100 |     100 |     100 |                   
+  ...ly-wrapper.ts |     100 |      100 |     100 |     100 |                   
+ ...adapters/cache |     100 |    93.75 |     100 |     100 |                   
+  ...rt-adapter.ts |     100 |    93.75 |     100 |     100 | 89                
+ ...apters/foundry |     100 |      100 |     100 |     100 |                   
+  ...ks-adapter.ts |     100 |      100 |     100 |     100 |                   
+ ...undry/adapters |     100 |      100 |     100 |     100 |                   
+  ...ui-adapter.ts |     100 |      100 |     100 |     100 |                   
+ ...ction-adapters |     100 |      100 |     100 |     100 |                   
+  ...on-adapter.ts |     100 |      100 |     100 |     100 |                   
+ ...foundry/errors |     100 |      100 |     100 |     100 |                   
+  FoundryErrors.ts |     100 |      100 |     100 |     100 |                   
+ ...event-adapters |     100 |      100 |     100 |     100 |                   
+  ...nt-adapter.ts |     100 |      100 |     100 |     100 |                   
+ ...oundry/facades |     100 |      100 |     100 |     100 |                   
+  ...nal-facade.ts |     100 |      100 |     100 |     100 |                   
+ ...ndry/ports/v13 |     100 |      100 |     100 |     100 |                   
+  ...cumentPort.ts |     100 |      100 |     100 |     100 |                   
+  ...13GamePort.ts |     100 |      100 |     100 |     100 |                   
+  ...3HooksPort.ts |     100 |      100 |     100 |     100 |                   
+  ...13I18nPort.ts |     100 |      100 |     100 |     100 |                   
+  ...ttingsPort.ts |     100 |      100 |     100 |     100 |                   
+  ...yV13UIPort.ts |     100 |      100 |     100 |     100 |                   
+  ...gistration.ts |     100 |      100 |     100 |     100 |                   
+ ...itory-adapters |     100 |      100 |     100 |     100 |                   
+  ...ry-adapter.ts |     100 |      100 |     100 |     100 |                   
+ ...undry/services |     100 |      100 |     100 |     100 |                   
+  ...cumentPort.ts |     100 |      100 |     100 |     100 |                   
+  ...ryGamePort.ts |     100 |      100 |     100 |     100 |                   
+  ...yHooksPort.ts |     100 |      100 |     100 |     100 |                   
+  ...ryI18nPort.ts |     100 |      100 |     100 |     100 |                   
+  ...perService.ts |     100 |      100 |     100 |     100 |                   
+  ...erviceBase.ts |     100 |      100 |     100 |     100 |                   
+  ...ttingsPort.ts |     100 |      100 |     100 |     100 |                   
+  FoundryUIPort.ts |     100 |      100 |     100 |     100 |                   
+  ...perService.ts |     100 |      100 |     100 |     100 |                   
+ ...tings-adapters |     100 |      100 |     100 |     100 |                   
+  ...gs-adapter.ts |     100 |      100 |     100 |     100 |                   
+  ...on-adapter.ts |     100 |      100 |     100 |     100 |                   
+ ...dry/validation |     100 |      100 |     100 |     100 |                   
+  ...validators.ts |     100 |      100 |     100 |     100 |                   
+  schemas.ts       |     100 |      100 |     100 |     100 |                   
+ ...dry/versioning |     100 |      100 |     100 |     100 |                   
+  ...ion-events.ts |     100 |      100 |     100 |     100 |                   
+  ...n-observer.ts |     100 |      100 |     100 |     100 |                   
+  portregistry.ts  |     100 |      100 |     100 |     100 |                   
+  portselector.ts  |     100 |      100 |     100 |     100 |                   
+  ...ondetector.ts |     100 |      100 |     100 |     100 |                   
+ .../adapters/i18n |     100 |      100 |     100 |     100 |                   
+  ...rt-adapter.ts |     100 |      100 |     100 |     100 |                   
+ .../notifications |     100 |      100 |     100 |     100 |                   
+  ...rt-adapter.ts |     100 |      100 |     100 |     100 |                   
+ ...tructure/cache |     100 |      100 |     100 |     100 |                   
+  CacheService.ts  |     100 |      100 |     100 |     100 |                   
+ infrastructure/di |     100 |      100 |     100 |     100 |                   
+  container.ts     |     100 |      100 |     100 |     100 |                   
+  error-handler.ts |     100 |      100 |     100 |     100 |                   
+  ...nutilities.ts |     100 |      100 |     100 |     100 |                   
+ ...cture/di/cache |     100 |      100 |     100 |     100 |                   
+  InstanceCache.ts |     100 |      100 |     100 |     100 |                   
+ ...ture/di/errors |     100 |      100 |     100 |     100 |                   
+  ...inerErrors.ts |     100 |      100 |     100 |     100 |                   
+ ...re/di/registry |     100 |      100 |     100 |     100 |                   
+  ...ceRegistry.ts |     100 |      100 |     100 |     100 |                   
+  ...trationMap.ts |     100 |      100 |     100 |     100 |                   
+ .../di/resolution |     100 |      100 |     100 |     100 |                   
+  ...ceResolver.ts |     100 |      100 |     100 |     100 |                   
+ ...cture/di/scope |     100 |      100 |     100 |     100 |                   
+  ScopeManager.ts  |     100 |      100 |     100 |     100 |                   
+ .../di/types/core |     100 |      100 |     100 |     100 |                   
+  ...elifecycle.ts |     100 |      100 |     100 |     100 |                   
+  ...gistration.ts |     100 |      100 |     100 |     100 |                   
+ ...ypes/utilities |     100 |      100 |     100 |     100 |                   
+  ...safe-token.ts |     100 |      100 |     100 |     100 |                   
+  ...ated-token.ts |     100 |      100 |     100 |     100 |                   
+ .../di/validation |     100 |      100 |     100 |     100 |                   
+  ...rValidator.ts |     100 |      100 |     100 |     100 |                   
+ ...structure/i18n |     100 |      100 |     100 |     100 |                   
+  ...ionHandler.ts |     100 |      100 |     100 |     100 |                   
+  ...ionHandler.ts |     100 |      100 |     100 |     100 |                   
+  ...ionHandler.ts |     100 |      100 |     100 |     100 |                   
+  ...adeService.ts |     100 |      100 |     100 |     100 |                   
+  ...18nService.ts |     100 |      100 |     100 |     100 |                   
+  ...ionHandler.ts |     100 |      100 |     100 |     100 |                   
+  ...ndlerChain.ts |     100 |      100 |     100 |     100 |                   
+ ...ucture/logging |     100 |      100 |     100 |     100 |                   
+  ...trapLogger.ts |     100 |      100 |     100 |     100 |                   
+  ...gerService.ts |     100 |      100 |     100 |     100 |                   
+ .../notifications |     100 |      100 |     100 |     100 |                   
+  ...tionCenter.ts |     100 |      100 |     100 |     100 |                   
+ ...tions/channels |     100 |      100 |     100 |     100 |                   
+  ...oleChannel.ts |     100 |      100 |     100 |     100 |                   
+  UIChannel.ts     |     100 |      100 |     100 |     100 |                   
+ .../observability |     100 |      100 |     100 |     100 |                   
+  ...ce-tracker.ts |     100 |      100 |     100 |     100 |                   
+  ...-collector.ts |     100 |      100 |     100 |     100 |                   
+  ...y-registry.ts |     100 |      100 |     100 |     100 |                   
+  ...acker-impl.ts |     100 |      100 |     100 |     100 |                   
+ ...cs-persistence |     100 |      100 |     100 |     100 |                   
+  ...cs-storage.ts |     100 |      100 |     100 |     100 |                   
+  ...ge-factory.ts |     100 |      100 |     100 |     100 |                   
+  ...cs-storage.ts |     100 |      100 |     100 |     100 |                   
+  ...-collector.ts |     100 |      100 |     100 |     100 |                   
+ ...vability/trace |     100 |      100 |     100 |     100 |                   
+  TraceContext.ts  |     100 |      100 |     100 |     100 |                   
+ ...re/performance |     100 |      100 |     100 |     100 |                   
+  ...ingService.ts |     100 |      100 |     100 |     100 |                   
+ ...tructure/retry |     100 |      100 |     100 |     100 |                   
+  RetryService.ts  |     100 |      100 |     100 |     100 |                   
+ .../shared/tokens |     100 |      100 |     100 |     100 |                   
+  core.tokens.ts   |     100 |      100 |     100 |     100 |                   
+  event.tokens.ts  |     100 |      100 |     100 |     100 |                   
+  ...dry.tokens.ts |     100 |      100 |     100 |     100 |                   
+  i18n.tokens.ts   |     100 |      100 |     100 |     100 |                   
+  ...ure.tokens.ts |     100 |      100 |     100 |     100 |                   
+  ...ons.tokens.ts |     100 |      100 |     100 |     100 |                   
+  ...ity.tokens.ts |     100 |      100 |     100 |     100 |                   
+  ports.tokens.ts  |     100 |      100 |     100 |     100 |                   
+ ...e/shared/utils |     100 |      100 |     100 |     100 |                   
+  dispose-hooks.ts |     100 |      100 |     100 |     100 |                   
+  ...-sanitizer.ts |     100 |      100 |     100 |     100 |                   
+  ...ation-info.ts |     100 |      100 |     100 |     100 |                   
+  ...se-timeout.ts |     100 |      100 |     100 |     100 |                   
+  sanitize.ts      |     100 |      100 |     100 |     100 |                   
+  throttle.ts      |     100 |      100 |     100 |     100 |                   
+  trace.ts         |     100 |      100 |     100 |     100 |                   
+  type-guards.ts   |     100 |      100 |     100 |     100 |                   
+  ...-log-level.ts |     100 |      100 |     100 |     100 |                   
+-------------------|---------|----------|---------|---------|-------------------
+ERROR: Coverage for branches (99.94%) does not meet global threshold (100%)

@@ -6,7 +6,7 @@ import { LogLevel } from "@/framework/config/environment";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 describe("UIChannel", () => {
   let channel: UIChannel;

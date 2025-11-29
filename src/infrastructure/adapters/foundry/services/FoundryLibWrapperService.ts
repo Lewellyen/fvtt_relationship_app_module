@@ -9,8 +9,8 @@ import type {
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { loggerToken } from "@/infrastructure/shared/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { tryCatch } from "@/infrastructure/shared/utils/result";
-import { err, ok } from "@/infrastructure/shared/utils/result";
+import { tryCatch } from "@/domain/utils/result";
+import { err, ok } from "@/domain/utils/result";
 
 /**
  * Type for libWrapper global (provided by lib-wrapper module in Foundry).

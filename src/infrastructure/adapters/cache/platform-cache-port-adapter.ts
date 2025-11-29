@@ -8,16 +8,114 @@ import type {
   CacheStatistics,
   CacheInvalidationPredicate,
 } from "@/infrastructure/cache/cache.interface";
+import type {
+  DomainCacheKey,
+  DomainCacheSetOptions,
+  DomainCacheEntryMetadata,
+  DomainCacheLookupResult,
+  DomainCacheStatistics,
+  DomainCacheInvalidationPredicate,
+} from "@/domain/types/cache/cache-types";
 import type { Result } from "@/domain/types/result";
 import { cacheServiceToken } from "@/infrastructure/shared/tokens";
+import { assertCacheKey } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**
  * Adapter that implements PlatformCachePort by wrapping CacheService.
  *
- * Simple 1:1 mapping since CacheService is already platform-agnostic.
+ * Maps between Domain cache types (domain-agnostic) and Infrastructure cache types
+ * (Infrastructure-specific implementation details like branded keys).
  */
 export class CachePortAdapter implements PlatformCachePort {
   constructor(private readonly cacheService: CacheService) {}
+
+  /**
+   * Maps Domain cache key (plain string) to Infrastructure cache key (branded type).
+   */
+  private mapDomainKeyToInfrastructure(key: DomainCacheKey): CacheKey {
+    return assertCacheKey(key);
+  }
+
+  /**
+   * Maps Infrastructure cache key (branded type) to Domain cache key (plain string).
+   */
+  private mapInfrastructureKeyToDomain(key: CacheKey): DomainCacheKey {
+    return key as DomainCacheKey;
+  }
+
+  /**
+   * Maps Domain cache options to Infrastructure cache options.
+   */
+  private mapDomainOptionsToInfrastructure(
+    options?: DomainCacheSetOptions
+  ): CacheSetOptions | undefined {
+    if (!options) return undefined;
+    const result: CacheSetOptions = {};
+    if (options.ttlMs !== undefined) {
+      result.ttlMs = options.ttlMs;
+    }
+    if (options.tags !== undefined) {
+      result.tags = options.tags;
+    }
+    return Object.keys(result).length > 0 ? result : undefined;
+  }
+
+  /**
+   * Maps Infrastructure cache metadata to Domain cache metadata.
+   */
+  private mapInfrastructureMetadataToDomain(
+    metadata: CacheEntryMetadata
+  ): DomainCacheEntryMetadata {
+    return {
+      key: this.mapInfrastructureKeyToDomain(metadata.key),
+      createdAt: metadata.createdAt,
+      expiresAt: metadata.expiresAt,
+      lastAccessedAt: metadata.lastAccessedAt,
+      hits: metadata.hits,
+      tags: metadata.tags,
+    };
+  }
+
+  /**
+   * Maps Infrastructure cache lookup result to Domain cache lookup result.
+   */
+  private mapInfrastructureLookupResultToDomain<T>(
+    result: CacheLookupResult<T>
+  ): DomainCacheLookupResult<T> {
+    const domainResult: DomainCacheLookupResult<T> = {
+      hit: result.hit,
+      metadata: this.mapInfrastructureMetadataToDomain(result.metadata),
+    };
+    if (result.value !== undefined) {
+      domainResult.value = result.value;
+    }
+    return domainResult;
+  }
+
+  /**
+   * Maps Infrastructure cache statistics to Domain cache statistics.
+   */
+  private mapInfrastructureStatisticsToDomain(statistics: CacheStatistics): DomainCacheStatistics {
+    return {
+      hits: statistics.hits,
+      misses: statistics.misses,
+      evictions: statistics.evictions,
+      size: statistics.size,
+      enabled: statistics.enabled,
+    };
+  }
+
+  /**
+   * Maps Domain invalidation predicate to Infrastructure invalidation predicate.
+   */
+  private mapDomainPredicateToInfrastructure(
+    predicate: DomainCacheInvalidationPredicate
+  ): CacheInvalidationPredicate {
+    return (entry: CacheEntryMetadata) => {
+      const domainEntry = this.mapInfrastructureMetadataToDomain(entry);
+      return predicate(domainEntry);
+    };
+  }
 
   get isEnabled(): boolean {
     return this.cacheService.isEnabled;
@@ -27,44 +125,70 @@ export class CachePortAdapter implements PlatformCachePort {
     return this.cacheService.size;
   }
 
-  get<TValue>(key: CacheKey): CacheLookupResult<TValue> | null {
-    return this.cacheService.get<TValue>(key);
+  get<TValue>(key: DomainCacheKey): DomainCacheLookupResult<TValue> | null {
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    const result = this.cacheService.get<TValue>(infraKey);
+    if (!result) return null;
+    return this.mapInfrastructureLookupResultToDomain(result);
   }
 
-  set<TValue>(key: CacheKey, value: TValue, options?: CacheSetOptions): CacheEntryMetadata {
-    return this.cacheService.set(key, value, options);
+  set<TValue>(
+    key: DomainCacheKey,
+    value: TValue,
+    options?: DomainCacheSetOptions
+  ): DomainCacheEntryMetadata {
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    const infraOptions = this.mapDomainOptionsToInfrastructure(options);
+    const metadata = this.cacheService.set(infraKey, value, infraOptions);
+    return this.mapInfrastructureMetadataToDomain(metadata);
   }
 
-  delete(key: CacheKey): boolean {
-    return this.cacheService.delete(key);
+  delete(key: DomainCacheKey): boolean {
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    return this.cacheService.delete(infraKey);
   }
 
-  has(key: CacheKey): boolean {
-    return this.cacheService.has(key);
+  has(key: DomainCacheKey): boolean {
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    return this.cacheService.has(infraKey);
   }
 
   clear(): number {
     return this.cacheService.clear();
   }
 
-  invalidateWhere(predicate: CacheInvalidationPredicate): number {
-    return this.cacheService.invalidateWhere(predicate);
+  invalidateWhere(predicate: DomainCacheInvalidationPredicate): number {
+    const infraPredicate = this.mapDomainPredicateToInfrastructure(predicate);
+    return this.cacheService.invalidateWhere(infraPredicate);
   }
 
-  getMetadata(key: CacheKey): CacheEntryMetadata | null {
-    return this.cacheService.getMetadata(key);
+  getMetadata(key: DomainCacheKey): DomainCacheEntryMetadata | null {
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    const metadata = this.cacheService.getMetadata(infraKey);
+    if (!metadata) return null;
+    return this.mapInfrastructureMetadataToDomain(metadata);
   }
 
-  getStatistics(): CacheStatistics {
-    return this.cacheService.getStatistics();
+  getStatistics(): DomainCacheStatistics {
+    const statistics = this.cacheService.getStatistics();
+    return this.mapInfrastructureStatisticsToDomain(statistics);
   }
 
   async getOrSet<TValue>(
-    key: CacheKey,
+    key: DomainCacheKey,
     factory: () => TValue | Promise<TValue>,
-    options?: CacheSetOptions
-  ): Promise<Result<CacheLookupResult<TValue>, string>> {
-    return this.cacheService.getOrSet(key, factory, options);
+    options?: DomainCacheSetOptions
+  ): Promise<Result<DomainCacheLookupResult<TValue>, string>> {
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    const infraOptions = this.mapDomainOptionsToInfrastructure(options);
+    const result = await this.cacheService.getOrSet(infraKey, factory, infraOptions);
+    if (!result.ok) {
+      return result;
+    }
+    return {
+      ok: true,
+      value: this.mapInfrastructureLookupResultToDomain(result.value),
+    };
   }
 }
 

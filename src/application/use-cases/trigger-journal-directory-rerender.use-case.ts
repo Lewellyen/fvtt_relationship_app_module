@@ -4,12 +4,12 @@ import type { EventRegistrationId } from "@/domain/ports/events/platform-event-p
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import {
   platformJournalEventPortToken,
   platformUIPortToken,
   platformNotificationPortToken,
-} from "@/infrastructure/shared/tokens";
+} from "@/application/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
 /**

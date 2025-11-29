@@ -10,7 +10,7 @@ import { LogLevel } from "@/framework/config/environment";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { validateAndSetLogLevel } from "@/infrastructure/shared/utils/validate-log-level";
-import { unwrapOr } from "@/infrastructure/shared/utils/result";
+import { unwrapOr } from "@/domain/utils/result";
 
 /**
  * Log level setting definition.

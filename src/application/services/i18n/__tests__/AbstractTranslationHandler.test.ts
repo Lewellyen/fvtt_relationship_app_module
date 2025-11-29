@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { AbstractTranslationHandler } from "@/infrastructure/i18n/AbstractTranslationHandler";
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 /**
  * Concrete test implementation of AbstractTranslationHandler.

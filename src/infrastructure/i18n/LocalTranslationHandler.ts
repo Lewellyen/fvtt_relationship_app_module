@@ -2,7 +2,7 @@ import type { LocalI18nService } from "./LocalI18nService";
 import { localI18nToken } from "@/infrastructure/shared/tokens";
 import { AbstractTranslationHandler } from "./AbstractTranslationHandler";
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 /**
  * Translation handler that uses local JSON-based translations.

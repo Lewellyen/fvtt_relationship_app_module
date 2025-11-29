@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { I18nPortAdapter, DII18nPortAdapter } from "../platform-i18n-port-adapter";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import { ok } from "@/infrastructure/shared/utils/result";
+import { ok } from "@/domain/utils/result";
 import { i18nFacadeToken } from "@/infrastructure/shared/tokens";
 
 describe("I18nPortAdapter", () => {

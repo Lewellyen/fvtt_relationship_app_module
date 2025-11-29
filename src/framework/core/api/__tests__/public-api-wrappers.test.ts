@@ -10,7 +10,7 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
-import { ok } from "@/infrastructure/shared/utils/result";
+import { ok } from "@/domain/utils/result";
 
 describe("public-api-wrappers", () => {
   describe("createPublicLogger", () => {

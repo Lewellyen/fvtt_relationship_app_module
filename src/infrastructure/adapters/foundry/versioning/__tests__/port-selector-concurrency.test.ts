@@ -6,7 +6,7 @@ import {
   resetVersionCache,
 } from "@/infrastructure/adapters/foundry/versioning/versiondetector";
 import { expectResultOk } from "@/test/utils/test-helpers";
-import { ok } from "@/infrastructure/shared/utils/result";
+import { ok } from "@/domain/utils/result";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { ServiceContainer } from "@/infrastructure/di/container";

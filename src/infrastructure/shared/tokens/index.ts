@@ -34,6 +34,10 @@ export * from "./collection-tokens";
 // Repository tokens
 export * from "./repository-tokens";
 
+// Re-export Application tokens for backward compatibility
+// Application layer tokens should be imported from "@/application/tokens" going forward
+export * from "@/application/tokens";
+
 // ServiceType union - represents all registered service types
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
@@ -45,6 +49,7 @@ import type { FoundryI18n } from "@/infrastructure/adapters/foundry/interfaces/F
 import type { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import type { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
+import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsRecorder } from "@/infrastructure/observability/interfaces/metrics-recorder";
 import type { MetricsSampler } from "@/infrastructure/observability/interfaces/metrics-sampler";
@@ -168,4 +173,5 @@ export type ServiceType =
   | ContextMenuRegistrationPort
   | PlatformNotificationPort
   | PlatformCachePort
-  | PlatformI18nPort;
+  | PlatformI18nPort
+  | JournalVisibilityConfig;

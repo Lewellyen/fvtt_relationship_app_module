@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { FoundryTranslationHandler } from "@/infrastructure/i18n/FoundryTranslationHandler";
 import type { FoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 describe("FoundryTranslationHandler", () => {
   let handler: FoundryTranslationHandler;

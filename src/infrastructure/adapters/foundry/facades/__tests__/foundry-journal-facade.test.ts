@@ -11,7 +11,7 @@ import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/F
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import type { FoundryJournalEntry } from "@/infrastructure/adapters/foundry/types";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import * as v from "valibot";
 

@@ -7,7 +7,7 @@ import type { ServiceDependencies } from "../types/resolution/servicedependencie
 import { ServiceLifecycle } from "../types/core/servicelifecycle";
 import type { ContainerError } from "../interfaces";
 import { ServiceRegistration } from "../types/core/serviceregistration";
-import { ok, err, isErr } from "@/infrastructure/shared/utils/result";
+import { ok, err, isErr } from "@/domain/utils/result";
 import { TypeSafeRegistrationMap } from "./TypeSafeRegistrationMap";
 import { iterateServiceRegistrationEntries } from "../types/utilities/runtime-safe-cast";
 

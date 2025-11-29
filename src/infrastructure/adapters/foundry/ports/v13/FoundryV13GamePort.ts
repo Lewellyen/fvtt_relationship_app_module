@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { FoundryGame } from "../../interfaces/FoundryGame";
 import type { FoundryJournalEntry } from "../../types";
 import type { FoundryError } from "../../errors/FoundryErrors";
-import { tryCatch, err } from "@/infrastructure/shared/utils/result";
+import { tryCatch, err } from "@/domain/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
 import { validateJournalEntries } from "../../validation/schemas";
 import { validateJournalId } from "../../validation/input-validators";

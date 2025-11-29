@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
-import { err, ok } from "@/infrastructure/shared/utils/result";
+import { err, ok } from "@/domain/utils/result";
 import { getFoundryVersionResult } from "./versiondetector";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";

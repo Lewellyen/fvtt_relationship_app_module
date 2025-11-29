@@ -66,6 +66,14 @@ export default defineConfig({
         // Non-executable infrastructure
         "src/infrastructure/shared/polyfills/**",
         "programming_learning_examples/**",
+        // Type-only files (no runtime code)
+        "src/application/services/JournalVisibilityConfig.ts",
+        "src/domain/types/cache/cache-types.ts",
+        "src/application/tokens/index.ts",
+        // Re-export files (no runtime code)
+        "src/infrastructure/shared/utils/result.ts",
+        "src/infrastructure/shared/tokens/collection-tokens.ts",
+        "src/infrastructure/shared/tokens/repository-tokens.ts",
       ],
     },
   },

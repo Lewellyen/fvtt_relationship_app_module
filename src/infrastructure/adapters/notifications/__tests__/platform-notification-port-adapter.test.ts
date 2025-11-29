@@ -6,7 +6,7 @@ import {
 import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { PlatformNotificationOptions } from "@/domain/ports/platform-notification-port.interface";
 import type { FoundryNotificationOptions } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { notificationCenterToken } from "@/infrastructure/shared/tokens";
 
 describe("NotificationPortAdapter", () => {

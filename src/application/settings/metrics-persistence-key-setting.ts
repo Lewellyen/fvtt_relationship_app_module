@@ -1,6 +1,6 @@
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import type { SettingDefinition } from "./setting-definition.interface";
-import { unwrapOr } from "@/infrastructure/shared/utils/result";
+import { unwrapOr } from "@/domain/utils/result";
 
 /**
  * Foundry setting to configure the LocalStorage key for persisted metrics.

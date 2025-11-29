@@ -1,5 +1,5 @@
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { isOk } from "@/infrastructure/shared/utils/result";
+import { isOk } from "@/domain/utils/result";
 import {
   loggerToken,
   bootstrapInitHookServiceToken,

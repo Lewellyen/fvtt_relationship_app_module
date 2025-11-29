@@ -6,7 +6,7 @@ import {
 } from "../foundry-journal-repository-adapter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 

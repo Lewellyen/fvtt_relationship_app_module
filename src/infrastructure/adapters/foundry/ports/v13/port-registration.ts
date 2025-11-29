@@ -5,7 +5,7 @@
  */
 
 import type { Result } from "@/domain/types/result";
-import { ok, err, isErr } from "@/infrastructure/shared/utils/result";
+import { ok, err, isErr } from "@/domain/utils/result";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";

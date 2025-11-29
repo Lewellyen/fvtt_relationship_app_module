@@ -6,7 +6,7 @@ import type { ServiceRegistry } from "../registry/ServiceRegistry";
 import type { ServiceRegistration } from "../types/core/serviceregistration";
 import { InstanceCache } from "../cache/InstanceCache";
 import { ServiceLifecycle } from "../types/core/servicelifecycle";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
 import { castCachedServiceInstanceForResult } from "../types/utilities/runtime-safe-cast";

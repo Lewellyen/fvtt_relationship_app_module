@@ -2,7 +2,7 @@ import type { FoundryI18nPort } from "@/infrastructure/adapters/foundry/services
 import { foundryI18nToken } from "@/infrastructure/shared/tokens";
 import { AbstractTranslationHandler } from "./AbstractTranslationHandler";
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 /**
  * Translation handler that uses Foundry's i18n system.

@@ -5,8 +5,8 @@ import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-re
 import {
   contextMenuRegistrationPortToken,
   hideJournalContextMenuHandlerToken,
-} from "@/infrastructure/shared/tokens";
-import { ok } from "@/infrastructure/shared/utils/result";
+} from "@/application/tokens";
+import { ok } from "@/domain/utils/result";
 import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 
 /**

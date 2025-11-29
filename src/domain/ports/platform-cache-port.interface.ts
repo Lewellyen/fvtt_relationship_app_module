@@ -1,11 +1,11 @@
 import type {
-  CacheKey,
-  CacheSetOptions,
-  CacheEntryMetadata,
-  CacheLookupResult,
-  CacheStatistics,
-  CacheInvalidationPredicate,
-} from "@/infrastructure/cache/cache.interface";
+  DomainCacheKey,
+  DomainCacheSetOptions,
+  DomainCacheEntryMetadata,
+  DomainCacheLookupResult,
+  DomainCacheStatistics,
+  DomainCacheInvalidationPredicate,
+} from "@/domain/types/cache/cache-types";
 import type { Result } from "@/domain/types/result";
 
 /**
@@ -22,17 +22,21 @@ import type { Result } from "@/domain/types/result";
 export interface PlatformCachePort {
   readonly isEnabled: boolean;
   readonly size: number;
-  get<TValue>(key: CacheKey): CacheLookupResult<TValue> | null;
-  set<TValue>(key: CacheKey, value: TValue, options?: CacheSetOptions): CacheEntryMetadata;
-  delete(key: CacheKey): boolean;
-  has(key: CacheKey): boolean;
+  get<TValue>(key: DomainCacheKey): DomainCacheLookupResult<TValue> | null;
+  set<TValue>(
+    key: DomainCacheKey,
+    value: TValue,
+    options?: DomainCacheSetOptions
+  ): DomainCacheEntryMetadata;
+  delete(key: DomainCacheKey): boolean;
+  has(key: DomainCacheKey): boolean;
   clear(): number;
-  invalidateWhere(predicate: CacheInvalidationPredicate): number;
-  getMetadata(key: CacheKey): CacheEntryMetadata | null;
-  getStatistics(): CacheStatistics;
+  invalidateWhere(predicate: DomainCacheInvalidationPredicate): number;
+  getMetadata(key: DomainCacheKey): DomainCacheEntryMetadata | null;
+  getStatistics(): DomainCacheStatistics;
   getOrSet<TValue>(
-    key: CacheKey,
+    key: DomainCacheKey,
     factory: () => TValue | Promise<TValue>,
-    options?: CacheSetOptions
-  ): Promise<Result<CacheLookupResult<TValue>, string>>;
+    options?: DomainCacheSetOptions
+  ): Promise<Result<DomainCacheLookupResult<TValue>, string>>;
 }

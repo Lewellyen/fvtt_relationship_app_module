@@ -1,20 +1,19 @@
+/**
+ * @deprecated PlatformJournalEventPort and HideJournalContextMenuHandler tokens are now exported from @/application/tokens.
+ * This file re-exports them for backward compatibility.
+ */
+// Re-export domain port tokens from Application layer
+export {
+  platformJournalEventPortToken,
+  hideJournalContextMenuHandlerToken,
+} from "@/application/tokens";
+
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
-import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { InvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import type { ProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
 import type { TriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";
 import type { RegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
-import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
-
-/**
- * DI Token for PlatformJournalEventPort.
- *
- * Used to inject platform-agnostic journal event handling.
- * Default implementation: FoundryJournalEventAdapter (for Foundry VTT)
- */
-export const platformJournalEventPortToken =
-  createInjectionToken<PlatformJournalEventPort>("JournalEventPort");
 
 /**
  * DI Token for InvalidateJournalCacheOnChangeUseCase.
@@ -54,14 +53,6 @@ export const triggerJournalDirectoryReRenderUseCaseToken =
 export const registerContextMenuUseCaseToken = createInjectionToken<RegisterContextMenuUseCase>(
   "RegisterContextMenuUseCase"
 );
-
-/**
- * DI Token for HideJournalContextMenuHandler.
- *
- * Handler that adds "Journal ausblenden" menu item to journal context menus.
- */
-export const hideJournalContextMenuHandlerToken =
-  createInjectionToken<HideJournalContextMenuHandler>("HideJournalContextMenuHandler");
 
 /**
  * DI Token for ModuleEventRegistrar.

@@ -172,10 +172,27 @@ function createInjectionToken(description2) {
   return Symbol(description2);
 }
 __name(createInjectionToken, "createInjectionToken");
-const loggerToken = createInjectionToken("Logger");
+const platformNotificationPortToken = createInjectionToken(
+  "PlatformNotificationPort"
+);
+const platformCachePortToken = createInjectionToken("PlatformCachePort");
+const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
+const platformUIPortToken = createInjectionToken("PlatformUIPort");
+const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
+const platformJournalEventPortToken = createInjectionToken(
+  "PlatformJournalEventPort"
+);
+const journalCollectionPortToken = createInjectionToken("JournalCollectionPort");
+const journalRepositoryToken = createInjectionToken("JournalRepository");
+const contextMenuRegistrationPortToken = createInjectionToken(
+  "ContextMenuRegistrationPort"
+);
 const journalVisibilityServiceToken = createInjectionToken(
   "JournalVisibilityService"
 );
+const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
+const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
+const loggerToken = createInjectionToken("Logger");
 const environmentConfigToken = createInjectionToken("EnvironmentConfig");
 const runtimeConfigToken = createInjectionToken("RuntimeConfigService");
 const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
@@ -241,8 +258,6 @@ const foundryV13I18nPortToken = createInjectionToken("FoundryV13I18nPort");
 const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
 const libWrapperServiceToken = createInjectionToken("LibWrapperService");
 const journalContextMenuLibWrapperServiceToken = createInjectionToken("JournalContextMenuLibWrapperService");
-const contextMenuRegistrationPortToken = createInjectionToken("ContextMenuRegistrationPort");
-const platformJournalEventPortToken = createInjectionToken("JournalEventPort");
 const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
   "InvalidateJournalCacheOnChangeUseCase"
 );
@@ -255,21 +270,11 @@ const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken(
 const registerContextMenuUseCaseToken = createInjectionToken(
   "RegisterContextMenuUseCase"
 );
-const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
 const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
-const platformUIPortToken = createInjectionToken("PlatformUIPort");
-const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
 const bootstrapHooksPortToken = createInjectionToken("BootstrapHooksPort");
 const settingsRegistrationPortToken = createInjectionToken(
   "SettingsRegistrationPort"
 );
-const platformNotificationPortToken = createInjectionToken(
-  "PlatformNotificationPort"
-);
-const platformCachePortToken = createInjectionToken("PlatformCachePort");
-const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
-const journalCollectionPortToken = createInjectionToken("JournalCollectionPort");
-const journalRepositoryToken = createInjectionToken("JournalRepository");
 const apiSafeTokens = /* @__PURE__ */ new Set();
 function markAsApiSafe(token) {
   apiSafeTokens.add(token);
@@ -11517,25 +11522,6 @@ const _DIFoundryJournalFacade = class _DIFoundryJournalFacade extends FoundryJou
 __name(_DIFoundryJournalFacade, "DIFoundryJournalFacade");
 _DIFoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
 let DIFoundryJournalFacade = _DIFoundryJournalFacade;
-const KEY_SEPARATOR = ":";
-function normalizeSegment(segment) {
-  return segment.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-_]/g, "").toLowerCase();
-}
-__name(normalizeSegment, "normalizeSegment");
-function createCacheKey(parts) {
-  const { namespace, resource, identifier } = parts;
-  const payload = [MODULE_CONSTANTS.MODULE.ID, namespace, resource];
-  if (identifier !== null && identifier !== void 0) {
-    payload.push(String(identifier));
-  }
-  return assertCacheKey(payload.map(normalizeSegment).join(KEY_SEPARATOR));
-}
-__name(createCacheKey, "createCacheKey");
-function createCacheNamespace(namespace) {
-  const normalizedNamespace = normalizeSegment(namespace);
-  return (resource, identifier) => identifier === void 0 ? createCacheKey({ namespace: normalizedNamespace, resource }) : createCacheKey({ namespace: normalizedNamespace, resource, identifier });
-}
-__name(createCacheNamespace, "createCacheNamespace");
 function sanitizeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
@@ -11546,16 +11532,15 @@ function sanitizeId(id) {
   return id.replace(/[^a-zA-Z0-9-_]/g, "");
 }
 __name(sanitizeId, "sanitizeId");
-const buildJournalCacheKey = createCacheNamespace("journal-visibility");
-const HIDDEN_JOURNAL_CACHE_KEY = buildJournalCacheKey("hidden-directory");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notifications, cache, platformUI) {
+  constructor(journalCollection, journalRepository, notifications, cache, platformUI, config2) {
     this.journalCollection = journalCollection;
     this.journalRepository = journalRepository;
     this.notifications = notifications;
     this.cache = cache;
     this.platformUI = platformUI;
+    this.config = config2;
   }
   /**
    * Sanitizes a string for safe use in log messages.
@@ -11574,7 +11559,8 @@ const _JournalVisibilityService = class _JournalVisibilityService {
    * Logs warnings for entries where flag reading fails to aid diagnosis.
    */
   getHiddenJournalEntries() {
-    const cached = this.cache.get(HIDDEN_JOURNAL_CACHE_KEY);
+    const cacheKey = this.config.cacheKeyFactory("hidden-directory");
+    const cached = this.cache.get(cacheKey);
     if (cached?.hit && cached.value) {
       this.notifications.debug(
         `Serving ${cached.value.length} hidden journal entries from cache (ttl=${cached.metadata.expiresAt ?? "∞"})`,
@@ -11597,8 +11583,8 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     for (const journal of allEntriesResult.value) {
       const flagResult = this.journalRepository.getFlag(
         journal.id,
-        MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.FLAGS.HIDDEN
+        this.config.moduleNamespace,
+        this.config.hiddenFlagKey
       );
       if (flagResult.ok) {
         if (flagResult.value === true) {
@@ -11616,7 +11602,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         );
       }
     }
-    this.cache.set(HIDDEN_JOURNAL_CACHE_KEY, hidden.slice(), {
+    this.cache.set(cacheKey, hidden.slice(), {
       tags: [HIDDEN_JOURNAL_CACHE_TAG]
     });
     return { ok: true, value: hidden };
@@ -11653,7 +11639,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
   hideEntries(entries2, html) {
     const errors = [];
     for (const journal of entries2) {
-      const journalName = journal.name ?? MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME;
+      const journalName = journal.name ?? this.config.unknownName;
       const removeResult = this.platformUI.removeJournalElement(journal.id, journalName, html);
       if (!removeResult.ok) {
         const journalError = {
@@ -11683,8 +11669,8 @@ const _JournalVisibilityService = class _JournalVisibilityService {
 __name(_JournalVisibilityService, "JournalVisibilityService");
 let JournalVisibilityService = _JournalVisibilityService;
 const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notifications, cache, platformUI) {
-    super(journalCollection, journalRepository, notifications, cache, platformUI);
+  constructor(journalCollection, journalRepository, notifications, cache, platformUI, config2) {
+    super(journalCollection, journalRepository, notifications, cache, platformUI, config2);
   }
 };
 __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
@@ -11693,7 +11679,8 @@ _DIJournalVisibilityService.dependencies = [
   journalRepositoryToken,
   platformNotificationPortToken,
   platformCachePortToken,
-  platformUIPortToken
+  platformUIPortToken,
+  journalVisibilityConfigToken
 ];
 let DIJournalVisibilityService = _DIJournalVisibilityService;
 const _FoundryLibWrapperService = class _FoundryLibWrapperService {
@@ -12626,6 +12613,79 @@ const _CachePortAdapter = class _CachePortAdapter {
   constructor(cacheService) {
     this.cacheService = cacheService;
   }
+  /**
+   * Maps Domain cache key (plain string) to Infrastructure cache key (branded type).
+   */
+  mapDomainKeyToInfrastructure(key) {
+    return assertCacheKey(key);
+  }
+  /**
+   * Maps Infrastructure cache key (branded type) to Domain cache key (plain string).
+   */
+  mapInfrastructureKeyToDomain(key) {
+    return key;
+  }
+  /**
+   * Maps Domain cache options to Infrastructure cache options.
+   */
+  mapDomainOptionsToInfrastructure(options) {
+    if (!options) return void 0;
+    const result = {};
+    if (options.ttlMs !== void 0) {
+      result.ttlMs = options.ttlMs;
+    }
+    if (options.tags !== void 0) {
+      result.tags = options.tags;
+    }
+    return Object.keys(result).length > 0 ? result : void 0;
+  }
+  /**
+   * Maps Infrastructure cache metadata to Domain cache metadata.
+   */
+  mapInfrastructureMetadataToDomain(metadata2) {
+    return {
+      key: this.mapInfrastructureKeyToDomain(metadata2.key),
+      createdAt: metadata2.createdAt,
+      expiresAt: metadata2.expiresAt,
+      lastAccessedAt: metadata2.lastAccessedAt,
+      hits: metadata2.hits,
+      tags: metadata2.tags
+    };
+  }
+  /**
+   * Maps Infrastructure cache lookup result to Domain cache lookup result.
+   */
+  mapInfrastructureLookupResultToDomain(result) {
+    const domainResult = {
+      hit: result.hit,
+      metadata: this.mapInfrastructureMetadataToDomain(result.metadata)
+    };
+    if (result.value !== void 0) {
+      domainResult.value = result.value;
+    }
+    return domainResult;
+  }
+  /**
+   * Maps Infrastructure cache statistics to Domain cache statistics.
+   */
+  mapInfrastructureStatisticsToDomain(statistics) {
+    return {
+      hits: statistics.hits,
+      misses: statistics.misses,
+      evictions: statistics.evictions,
+      size: statistics.size,
+      enabled: statistics.enabled
+    };
+  }
+  /**
+   * Maps Domain invalidation predicate to Infrastructure invalidation predicate.
+   */
+  mapDomainPredicateToInfrastructure(predicate) {
+    return (entry) => {
+      const domainEntry = this.mapInfrastructureMetadataToDomain(entry);
+      return predicate(domainEntry);
+    };
+  }
   get isEnabled() {
     return this.cacheService.isEnabled;
   }
@@ -12633,31 +12693,53 @@ const _CachePortAdapter = class _CachePortAdapter {
     return this.cacheService.size;
   }
   get(key) {
-    return this.cacheService.get(key);
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    const result = this.cacheService.get(infraKey);
+    if (!result) return null;
+    return this.mapInfrastructureLookupResultToDomain(result);
   }
   set(key, value2, options) {
-    return this.cacheService.set(key, value2, options);
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    const infraOptions = this.mapDomainOptionsToInfrastructure(options);
+    const metadata2 = this.cacheService.set(infraKey, value2, infraOptions);
+    return this.mapInfrastructureMetadataToDomain(metadata2);
   }
   delete(key) {
-    return this.cacheService.delete(key);
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    return this.cacheService.delete(infraKey);
   }
   has(key) {
-    return this.cacheService.has(key);
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    return this.cacheService.has(infraKey);
   }
   clear() {
     return this.cacheService.clear();
   }
   invalidateWhere(predicate) {
-    return this.cacheService.invalidateWhere(predicate);
+    const infraPredicate = this.mapDomainPredicateToInfrastructure(predicate);
+    return this.cacheService.invalidateWhere(infraPredicate);
   }
   getMetadata(key) {
-    return this.cacheService.getMetadata(key);
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    const metadata2 = this.cacheService.getMetadata(infraKey);
+    if (!metadata2) return null;
+    return this.mapInfrastructureMetadataToDomain(metadata2);
   }
   getStatistics() {
-    return this.cacheService.getStatistics();
+    const statistics = this.cacheService.getStatistics();
+    return this.mapInfrastructureStatisticsToDomain(statistics);
   }
   async getOrSet(key, factory, options) {
-    return this.cacheService.getOrSet(key, factory, options);
+    const infraKey = this.mapDomainKeyToInfrastructure(key);
+    const infraOptions = this.mapDomainOptionsToInfrastructure(options);
+    const result = await this.cacheService.getOrSet(infraKey, factory, infraOptions);
+    if (!result.ok) {
+      return result;
+    }
+    return {
+      ok: true,
+      value: this.mapInfrastructureLookupResultToDomain(result.value)
+    };
   }
 };
 __name(_CachePortAdapter, "CachePortAdapter");
@@ -15452,6 +15534,43 @@ function registerSettingsPorts(container) {
   return ok(void 0);
 }
 __name(registerSettingsPorts, "registerSettingsPorts");
+const KEY_SEPARATOR = ":";
+function normalizeSegment(segment) {
+  return segment.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-_]/g, "").toLowerCase();
+}
+__name(normalizeSegment, "normalizeSegment");
+function createCacheKey(parts) {
+  const { namespace, resource, identifier } = parts;
+  const payload = [MODULE_CONSTANTS.MODULE.ID, namespace, resource];
+  if (identifier !== null && identifier !== void 0) {
+    payload.push(String(identifier));
+  }
+  return assertCacheKey(payload.map(normalizeSegment).join(KEY_SEPARATOR));
+}
+__name(createCacheKey, "createCacheKey");
+function createCacheNamespace(namespace) {
+  const normalizedNamespace = normalizeSegment(namespace);
+  return (resource, identifier) => identifier === void 0 ? createCacheKey({ namespace: normalizedNamespace, resource }) : createCacheKey({ namespace: normalizedNamespace, resource, identifier });
+}
+__name(createCacheNamespace, "createCacheNamespace");
+function registerJournalVisibilityConfig(container) {
+  const buildCacheKey = createCacheNamespace("journal-visibility");
+  const cacheKeyFactory = /* @__PURE__ */ __name((resource) => {
+    return buildCacheKey(resource);
+  }, "cacheKeyFactory");
+  const config2 = {
+    moduleNamespace: MODULE_CONSTANTS.MODULE.ID,
+    hiddenFlagKey: MODULE_CONSTANTS.FLAGS.HIDDEN,
+    unknownName: MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
+    cacheKeyFactory
+  };
+  const configResult = container.registerValue(journalVisibilityConfigToken, config2);
+  if (isErr(configResult)) {
+    return err(`Failed to register JournalVisibilityConfig: ${configResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerJournalVisibilityConfig, "registerJournalVisibilityConfig");
 function registerStaticValues(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
@@ -15542,6 +15661,8 @@ function configureDependencies(container) {
   if (isErr(settingsPortsResult)) return settingsPortsResult;
   const entityPortsResult = registerEntityPorts(container);
   if (isErr(entityPortsResult)) return entityPortsResult;
+  const journalVisibilityConfigResult = registerJournalVisibilityConfig(container);
+  if (isErr(journalVisibilityConfigResult)) return journalVisibilityConfigResult;
   const i18nServicesResult = registerI18nServices(container);
   if (isErr(i18nServicesResult)) return i18nServicesResult;
   const notificationsResult = registerNotifications(container);

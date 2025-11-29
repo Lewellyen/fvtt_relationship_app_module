@@ -25,7 +25,7 @@ import type { ServiceRegistration } from "../core/serviceregistration";
 import type { Result } from "@/domain/types/result";
 import type { FoundryHookCallback } from "@/infrastructure/adapters/foundry/types";
 import type { ContainerError } from "../../interfaces";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 /**
  * Listener-Typ aus RuntimeConfigService – hier als Alias erneut definiert,

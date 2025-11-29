@@ -6,7 +6,7 @@ import { ServiceRegistry } from "@/infrastructure/di/registry/ServiceRegistry";
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-import { err } from "@/infrastructure/shared/utils/result";
+import { err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 
 class TestService implements Logger {

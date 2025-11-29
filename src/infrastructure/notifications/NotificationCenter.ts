@@ -34,7 +34,7 @@
  */
 
 import { consoleChannelToken } from "@/infrastructure/shared/tokens";
-import { err, ok } from "@/infrastructure/shared/utils/result";
+import { err, ok } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 import type {
   NotificationService,

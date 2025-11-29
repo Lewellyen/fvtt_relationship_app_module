@@ -4,7 +4,7 @@ import {
   DIFoundryJournalEventAdapter,
 } from "../foundry-journal-event-adapter";
 import type { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
-import { ok } from "@/infrastructure/shared/utils/result";
+import { ok } from "@/domain/utils/result";
 import type { JournalEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 
 type MockFoundryHooksPortWithGetter = FoundryHooksPort & {

@@ -3,7 +3,7 @@ import type { ContainerError } from "../interfaces";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
 import type { Disposable, AsyncDisposable } from "../interfaces";
 import { InstanceCache } from "../cache/InstanceCache";
-import { ok, err, tryCatch, isErr } from "@/infrastructure/shared/utils/result";
+import { ok, err, tryCatch, isErr } from "@/domain/utils/result";
 
 /**
  * Helper function to generate unique scope names.

@@ -7,9 +7,12 @@ import type {
   CacheEntryMetadata,
   CacheLookupResult,
   CacheStatistics,
-  CacheInvalidationPredicate,
 } from "@/infrastructure/cache/cache.interface";
-import { ok } from "@/infrastructure/shared/utils/result";
+import type {
+  DomainCacheInvalidationPredicate,
+  DomainCacheSetOptions,
+} from "@/domain/types/cache/cache-types";
+import { ok } from "@/domain/utils/result";
 import { cacheServiceToken } from "@/infrastructure/shared/tokens";
 
 describe("CachePortAdapter", () => {
@@ -71,6 +74,32 @@ describe("CachePortAdapter", () => {
       expect(result).toEqual(expectedResult);
       expect(mockCacheService.get).toHaveBeenCalledWith(key);
     });
+
+    it("should handle result with undefined value", () => {
+      const key = "test-key" as CacheKey;
+      // When value is undefined, we don't include it in the object
+      const lookupResult = {
+        hit: true,
+        metadata: {
+          key,
+          createdAt: 0,
+          expiresAt: null,
+          lastAccessedAt: 0,
+          hits: 1,
+          tags: [],
+        },
+      } as CacheLookupResult<string>;
+
+      vi.mocked(mockCacheService.get).mockReturnValue(lookupResult);
+
+      const result = adapter.get<string>(key);
+
+      expect(result).toBeDefined();
+      expect(result?.hit).toBe(true);
+      expect(result?.value).toBeUndefined();
+      expect(result?.metadata).toBeDefined();
+      expect(mockCacheService.get).toHaveBeenCalledWith(key);
+    });
   });
 
   describe("set", () => {
@@ -93,6 +122,28 @@ describe("CachePortAdapter", () => {
 
       expect(result).toEqual(expectedMetadata);
       expect(mockCacheService.set).toHaveBeenCalledWith(key, value, options);
+    });
+
+    it("should handle empty options object (both ttlMs and tags undefined)", () => {
+      const key = "test-key" as CacheKey;
+      const value = "test-value";
+      const options: DomainCacheSetOptions = {};
+      const expectedMetadata: CacheEntryMetadata = {
+        key,
+        createdAt: 0,
+        expiresAt: null,
+        lastAccessedAt: 0,
+        hits: 0,
+        tags: [],
+      };
+
+      vi.mocked(mockCacheService.set).mockReturnValue(expectedMetadata);
+
+      const result = adapter.set(key, value, options);
+
+      expect(result).toEqual(expectedMetadata);
+      // When options is empty, it should be mapped to undefined
+      expect(mockCacheService.set).toHaveBeenCalledWith(key, value, undefined);
     });
   });
 
@@ -134,15 +185,28 @@ describe("CachePortAdapter", () => {
   });
 
   describe("invalidateWhere", () => {
-    it("should delegate to cacheService.invalidateWhere", () => {
-      const predicate: CacheInvalidationPredicate = (entry) => entry.tags.includes("test");
+    it("should delegate to cacheService.invalidateWhere with mapped predicate", () => {
+      const predicate: DomainCacheInvalidationPredicate = (entry) => entry.tags.includes("test");
 
       vi.mocked(mockCacheService.invalidateWhere).mockReturnValue(2);
 
       const result = adapter.invalidateWhere(predicate);
 
       expect(result).toBe(2);
-      expect(mockCacheService.invalidateWhere).toHaveBeenCalledWith(predicate);
+      // The adapter maps the Domain predicate to Infrastructure predicate
+      // So we check that a function was passed (not the exact same reference)
+      expect(mockCacheService.invalidateWhere).toHaveBeenCalledWith(expect.any(Function));
+      // Verify the mapped predicate works correctly
+      const calledPredicate = vi.mocked(mockCacheService.invalidateWhere).mock.calls[0]![0]!;
+      const testMetadata: CacheEntryMetadata = {
+        key: "test-key" as CacheKey,
+        createdAt: 0,
+        expiresAt: null,
+        lastAccessedAt: 0,
+        hits: 0,
+        tags: ["test"],
+      };
+      expect(calledPredicate(testMetadata)).toBe(true);
     });
   });
 
@@ -163,6 +227,17 @@ describe("CachePortAdapter", () => {
       const result = adapter.getMetadata(key);
 
       expect(result).toEqual(expectedMetadata);
+      expect(mockCacheService.getMetadata).toHaveBeenCalledWith(key);
+    });
+
+    it("should return null when cacheService.getMetadata returns null", () => {
+      const key = "test-key" as CacheKey;
+
+      vi.mocked(mockCacheService.getMetadata).mockReturnValue(null);
+
+      const result = adapter.getMetadata(key);
+
+      expect(result).toBeNull();
       expect(mockCacheService.getMetadata).toHaveBeenCalledWith(key);
     });
   });
@@ -213,6 +288,50 @@ describe("CachePortAdapter", () => {
         expect(result.value).toEqual(expectedResult);
       }
       expect(mockCacheService.getOrSet).toHaveBeenCalledWith(key, factory, options);
+    });
+
+    it("should propagate errors from cacheService.getOrSet", async () => {
+      const key = "test-key" as CacheKey;
+      const factory = vi.fn().mockResolvedValue("factory-value");
+      const options: CacheSetOptions = { ttlMs: 1000 };
+      const errorResult = { ok: false as const, error: "Cache error" };
+
+      vi.mocked(mockCacheService.getOrSet).mockResolvedValue(errorResult);
+
+      const result = await adapter.getOrSet(key, factory, options);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBe("Cache error");
+      }
+      expect(mockCacheService.getOrSet).toHaveBeenCalledWith(key, factory, options);
+    });
+
+    it("should handle undefined options", async () => {
+      const key = "test-key" as CacheKey;
+      const factory = vi.fn().mockResolvedValue("factory-value");
+      const expectedResult: CacheLookupResult<string> = {
+        hit: false,
+        value: "factory-value",
+        metadata: {
+          key,
+          createdAt: 0,
+          expiresAt: null,
+          lastAccessedAt: 0,
+          hits: 0,
+          tags: [],
+        },
+      };
+
+      vi.mocked(mockCacheService.getOrSet).mockResolvedValue(ok(expectedResult));
+
+      const result = await adapter.getOrSet(key, factory, undefined);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toEqual(expectedResult);
+      }
+      expect(mockCacheService.getOrSet).toHaveBeenCalledWith(key, factory, undefined);
     });
   });
 });

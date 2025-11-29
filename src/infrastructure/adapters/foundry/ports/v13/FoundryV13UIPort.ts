@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import type { FoundryUI, FoundryNotificationOptions } from "../../interfaces/FoundryUI";
 import type { FoundryError } from "../../errors/FoundryErrors";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
 import { sanitizeId } from "../../validation/schemas";
 

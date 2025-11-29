@@ -18,7 +18,7 @@ import {
   runtimeConfigToken,
 } from "@/infrastructure/shared/tokens";
 import type { Result } from "@/domain/types/result";
-import { ok, err, fromPromise } from "@/infrastructure/shared/utils/result";
+import { ok, err, fromPromise } from "@/domain/utils/result";
 
 type InternalCacheEntry = {
   value: unknown;

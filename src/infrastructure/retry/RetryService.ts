@@ -10,7 +10,7 @@
  */
 
 import type { Result } from "@/domain/types/result";
-import { err } from "@/infrastructure/shared/utils/result";
+import { err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { loggerToken } from "@/infrastructure/shared/tokens";
 

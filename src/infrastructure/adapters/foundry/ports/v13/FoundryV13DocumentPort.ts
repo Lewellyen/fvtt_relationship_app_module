@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import type { FoundryDocument } from "../../interfaces/FoundryDocument";
 import type { FoundryError } from "../../errors/FoundryErrors";
-import { fromPromise, tryCatch, err } from "@/infrastructure/shared/utils/result";
+import { fromPromise, tryCatch, err } from "@/domain/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
 import { castFoundryError, castFoundryDocumentWithUpdate } from "../../runtime-casts";
 import * as v from "valibot";

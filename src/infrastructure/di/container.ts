@@ -7,7 +7,7 @@ import type { ApiSafeToken } from "./types/utilities/api-safe-token";
 import { isApiSafeTokenRuntime } from "./types/utilities/api-safe-token";
 import { ServiceLifecycle } from "./types/core/servicelifecycle";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
-import { ok, err, isOk } from "@/infrastructure/shared/utils/result";
+import { ok, err, isOk } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 import type { Container } from "./interfaces";
 import type { ContainerError } from "./interfaces";

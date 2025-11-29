@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ModuleEventRegistrar } from "../ModuleEventRegistrar";
 import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 describe("ModuleEventRegistrar", () => {
   let mockEventRegistrar1: EventRegistrar;

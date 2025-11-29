@@ -1,7 +1,7 @@
 # DIP-Refactoring Übersicht
 
-**Erstellt:** 2025-01-27 (Aktualisiert: 2025-11-25)  
-**Status:** 5 von 5 Plänen umgesetzt (100%) - Alle Pläne abgeschlossen! 🎉  
+**Erstellt:** 2025-01-27 (Aktualisiert: 2025-11-29)  
+**Status:** 5 von 5 Plänen umgesetzt (100%) + Zusätzliche DIP-Violations-Refactorings abgeschlossen! 🎉  
 **Ziel:** Vollständige DIP-Konformität (SOLID-Prinzip) für das Projekt
 
 ---
@@ -334,7 +334,29 @@ Nach Umsetzung der Pläne sollten folgende Changelog-Einträge erstellt werden:
 
 ---
 
-**Letzte Aktualisierung:** 2025-11-25  
+## 📋 Zusätzliche DIP-Violations-Refactorings (2025-11-29)
+
+Nach Abschluss der ursprünglichen 5 Pläne wurde eine zusätzliche Analyse durchgeführt, die drei weitere DIP-Verstöße identifizierte:
+
+### ✅ Zusätzliche Refactorings
+
+| Bereich | Problem | Lösung | Status |
+|---------|---------|--------|--------|
+| **Domain Cache Types** | `PlatformCachePort` koppelte an Infrastructure-Typen | Domain-eigene Cache-Typen erstellt | ✅ Abgeschlossen |
+| **JournalVisibilityConfig** | Service verwendete direkte Infrastructure-Imports | Config-Objekt mit Dependency Injection | ✅ Abgeschlossen |
+| **Result Helpers** | Domain-Layer importierte Utilities aus Infrastructure | Result-Helper nach Domain verschoben | ✅ Abgeschlossen |
+| **Token-Organisation** | Tokens in Infrastructure statt Application-Layer | Neue Token-Struktur im Application-Layer | ✅ Abgeschlossen |
+
+**Details:** Siehe [DEPENDENCY-MAP.md](../DEPENDENCY-MAP.md#dependency-inversion-principle-review-2025-11-29)
+
+**Impact:**
+- ✅ 100% Code Coverage erreicht (Lines, Statements, Branches, Functions)
+- ✅ Vollständige Schichtentrennung zwischen Domain/Application und Infrastructure
+- ✅ Alle Quality Gates erfüllt
+
+---
+
+**Letzte Aktualisierung:** 2025-11-29  
 **Erstellt von:** Claude Opus 4.5  
-**Status:** 5 von 5 Plänen umgesetzt (100%) ✅
+**Status:** 5 von 5 Plänen umgesetzt (100%) + Zusätzliche Refactorings abgeschlossen ✅
 

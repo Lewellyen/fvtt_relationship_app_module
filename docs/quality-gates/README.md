@@ -1,8 +1,8 @@
 # Quality Gates Documentation
 
 **Model:** Claude Sonnet 4.5  
-**Last Updated:** 11. November 2025  
-**Projekt:** FVTT Relationship App Module v0.12.2
+**Last Updated:** 29. November 2025  
+**Projekt:** FVTT Relationship App Module v0.38.0 → Unreleased
 
 ---
 
@@ -19,7 +19,7 @@ Diese Dokumentation beschreibt alle Qualitätssicherungs-Ausnahmen (Quality Gate
 | **TypeScript Compilation** | ✅ 100% | No errors | - | `npm run type-check` |
 | **Type Coverage** | ✅ 100% | 9429 / 9429 | 29 exclusions | [type-coverage-exclusions.md](./type-coverage-exclusions.md) |
 | **ESLint** | ✅ 100% | 0 errors | 94 disables | [linter-exclusions.md](./linter-exclusions.md) |
-| **Code Coverage** | ✅ 100% | 100% Lines/Stmts, 100% Branches, 100% Functions | ~119 lines (101 markers) | [code-coverage-exclusions.md](./code-coverage-exclusions.md) |
+| **Code Coverage** | ✅ 100% | 100% Lines/Stmts, 100% Branches, 100% Functions | ~119 lines (101 markers) + File-Level Exclusions | [code-coverage-exclusions.md](./code-coverage-exclusions.md) |
 | **Unit Tests** | ✅ 100% | 1076 tests passed | - | `npm test` |
 
 ---

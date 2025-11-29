@@ -17,7 +17,7 @@ import type {
 } from "@/infrastructure/notifications/notification-channel.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { Result } from "@/domain/types/result";
-import { ok } from "@/infrastructure/shared/utils/result";
+import { ok } from "@/domain/utils/result";
 import { loggerToken } from "@/infrastructure/shared/tokens";
 
 export class ConsoleChannel implements NotificationChannel {

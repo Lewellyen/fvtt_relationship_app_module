@@ -17,7 +17,7 @@ import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/Foun
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import type { Disposable } from "@/infrastructure/di/interfaces";
 import type { Result } from "@/domain/types/result";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { isObjectWithMethods, hasMethod } from "@/infrastructure/shared/utils/type-guards";
 
 /**

@@ -19,7 +19,7 @@ import {
   journalContextMenuLibWrapperServiceToken,
   registerContextMenuUseCaseToken,
 } from "@/infrastructure/shared/tokens";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 describe("BootstrapInitHookService", () => {
   let mockLogger: Logger;

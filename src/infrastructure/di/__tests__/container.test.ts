@@ -8,7 +8,7 @@ import { markAsApiSafe } from "@/infrastructure/di/types";
 import { ServiceLifecycle } from "@/infrastructure/di/types";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 
 // Helper for tests: Wrap tokens for resolve() testing (simulates external API usage)

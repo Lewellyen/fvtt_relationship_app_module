@@ -5,7 +5,7 @@ import type { ServiceClass } from "../resolution/serviceclass";
 import type { FactoryFunction } from "../resolution/servicefactory";
 import type { Result } from "@/domain/types/result";
 import type { ContainerError } from "../../interfaces";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { ServiceLifecycle as SL } from "./servicelifecycle";
 
 /**

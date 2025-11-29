@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { I18nFacadeService, DII18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { LocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
 import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandler.interface";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 
 describe("I18nFacadeService", () => {
   let facade: I18nFacadeService;

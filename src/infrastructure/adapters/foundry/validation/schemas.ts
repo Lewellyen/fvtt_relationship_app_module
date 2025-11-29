@@ -1,7 +1,7 @@
 import * as v from "valibot";
 import type { Result } from "@/domain/types/result";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
-import { ok, err } from "@/infrastructure/shared/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 
 /**
