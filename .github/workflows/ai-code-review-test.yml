@@ -13,6 +13,7 @@ on:
           - file-access
           - structure
           - git-history
+          - toon-comparison
 
 jobs:
   test-repository-access:
@@ -27,6 +28,15 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install toon-formatter
 
       - name: Install Cursor CLI
         run: |
@@ -107,11 +117,310 @@ jobs:
           Gib die Ergebnisse aus.
           EOF
               ;;
+            "toon-comparison")
+              # Dieser Test wird separat behandelt
+              echo "toon-comparison" > /tmp/test-type.txt
+              ;;
           esac
 
           echo "✅ Test prompt created for type: $TEST_TYPE"
 
+      - name: Run TOON Comparison Test
+        if: github.event.inputs.test_type == 'toon-comparison'
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_AI_MODEL: ${{ secrets.CURSOR_AI_MODEL || 'sonnet-4.5' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🧪 Running TOON Comparison Test..."
+
+          # Stelle sicher, dass GitHub CLI authentifiziert ist
+          if [ -z "$GH_TOKEN" ]; then
+            echo "⚠️ Warning: GH_TOKEN not set"
+          else
+            echo "✅ GitHub CLI authenticated"
+            export GH_TOKEN
+          fi
+
+          # Erstelle Test-Datenstruktur (Beispiel-Analyse-Ergebnis)
+          cat > /tmp/test-data.json << 'JSON_EOF'
+          {
+            "summary": {
+              "total_issues": 5,
+              "files_analyzed": 10,
+              "by_type": {
+                "solid_violation": 2,
+                "result_pattern_violation": 1,
+                "architecture_violation": 1,
+                "code_smell": 1,
+                "bug": 0
+              },
+              "by_severity": {
+                "critical": 0,
+                "high": 2,
+                "medium": 2,
+                "low": 1
+              }
+            },
+            "issues": [
+              {
+                "type": "solid_violation",
+                "solid_principle": "SRP",
+                "severity": "high",
+                "file": "src/application/handlers/test-handler.ts",
+                "line": 42,
+                "column": 10,
+                "title": "Single Responsibility Principle Verletzung",
+                "description": "Die Methode hat zu viele Verantwortlichkeiten und sollte aufgeteilt werden.",
+                "current_code": "handle(event: TestEvent): void { ... }",
+                "recommendation": "In kleinere Methoden aufteilen",
+                "references": ["ADR-0001"]
+              },
+              {
+                "type": "result_pattern_violation",
+                "severity": "medium",
+                "file": "src/application/services/test-service.ts",
+                "line": 15,
+                "column": 5,
+                "title": "Result-Pattern nicht vollständig geprüft",
+                "description": "Result-Wert wird nicht vollständig behandelt.",
+                "current_code": "if (result.ok) { ... }",
+                "recommendation": "Fehlerfall explizit behandeln",
+                "references": []
+              }
+            ]
+          }
+          JSON_EOF
+
+          # Konvertiere zu TOON
+          echo "🔄 Konvertiere JSON zu TOON..."
+          python3 scripts/toon-converter.py json-to-toon /tmp/test-data.json /tmp/test-data.toon
+
+          # Erstelle zwei identische Prompts mit unterschiedlichen Formaten
+          cat > /tmp/prompt-json.md << 'PROMPT_EOF'
+          Du arbeitest in einem GitHub Actions Runner.
+          Git und GitHub CLI sind verfügbar.
+
+          **TEST-AUFGABE:** Analysiere folgende Code-Review-Ergebnisse und gib eine Zusammenfassung aus.
+
+          Die Ergebnisse sind im JSON-Format:
+
+          {
+            "summary": {
+              "total_issues": 5,
+              "files_analyzed": 10,
+              "by_type": {
+                "solid_violation": 2,
+                "result_pattern_violation": 1,
+                "architecture_violation": 1,
+                "code_smell": 1,
+                "bug": 0
+              },
+              "by_severity": {
+                "critical": 0,
+                "high": 2,
+                "medium": 2,
+                "low": 1
+              }
+            },
+            "issues": [
+              {
+                "type": "solid_violation",
+                "solid_principle": "SRP",
+                "severity": "high",
+                "file": "src/application/handlers/test-handler.ts",
+                "line": 42,
+                "column": 10,
+                "title": "Single Responsibility Principle Verletzung",
+                "description": "Die Methode hat zu viele Verantwortlichkeiten und sollte aufgeteilt werden.",
+                "current_code": "handle(event: TestEvent): void { ... }",
+                "recommendation": "In kleinere Methoden aufteilen",
+                "references": ["ADR-0001"]
+              },
+              {
+                "type": "result_pattern_violation",
+                "severity": "medium",
+                "file": "src/application/services/test-service.ts",
+                "line": 15,
+                "column": 5,
+                "title": "Result-Pattern nicht vollständig geprüft",
+                "description": "Result-Wert wird nicht vollständig behandelt.",
+                "current_code": "if (result.ok) { ... }",
+                "recommendation": "Fehlerfall explizit behandeln",
+                "references": []
+              }
+            ]
+          }
+
+          Gib eine kurze Zusammenfassung der gefundenen Probleme aus.
+          PROMPT_EOF
+
+          TOON_DATA=$(cat /tmp/test-data.toon)
+          cat > /tmp/prompt-toon.md << PROMPT_EOF
+          Du arbeitest in einem GitHub Actions Runner.
+          Git und GitHub CLI sind verfügbar.
+
+          **TEST-AUFGABE:** Analysiere folgende Code-Review-Ergebnisse und gib eine Zusammenfassung aus.
+
+          Die Ergebnisse sind im TOON-Format:
+
+          ${TOON_DATA}
+
+          Gib eine kurze Zusammenfassung der gefundenen Probleme aus.
+          PROMPT_EOF
+
+          # Funktion zum Messen von Token-Verbrauch (Schätzung)
+          estimate_tokens() {
+            local text="$1"
+            local cleaned=$(echo "$text" | tr -d '\n' | tr -s ' ')
+            local chars=${#cleaned}
+            echo $((chars / 4))  # ~4 Zeichen pro Token
+          }
+
+          # Test 1: JSON-Format
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 TEST 1: JSON-Format"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          PROMPT_JSON=$(cat /tmp/prompt-json.md)
+          PROMPT_JSON_SIZE=$(echo -n "$PROMPT_JSON" | wc -c)
+          PROMPT_JSON_TOKENS=$(estimate_tokens "$PROMPT_JSON")
+
+          echo "Prompt-Größe: ${PROMPT_JSON_SIZE} Bytes"
+          echo "Geschätzte Input-Tokens: ${PROMPT_JSON_TOKENS}"
+          echo ""
+          echo "🚀 Calling cursor-agent mit JSON-Format..."
+
+          START_TIME=$(date +%s)
+          timeout 600 cursor-agent -p "$PROMPT_JSON" --model "${CURSOR_AI_MODEL:-sonnet-4.5}" > /tmp/test-output-json.txt 2>&1 || {
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 124 ]; then
+              echo "⏱️ Test timed out after 10 minutes"
+            else
+              echo "⚠️ cursor-agent exited with code: $EXIT_CODE"
+            fi
+          }
+          END_TIME=$(date +%s)
+          DURATION_JSON=$((END_TIME - START_TIME))
+
+          OUTPUT_JSON=$(cat /tmp/test-output-json.txt)
+          OUTPUT_JSON_SIZE=$(echo -n "$OUTPUT_JSON" | wc -c)
+          OUTPUT_JSON_TOKENS=$(estimate_tokens "$OUTPUT_JSON")
+
+          echo "Output-Größe: ${OUTPUT_JSON_SIZE} Bytes"
+          echo "Geschätzte Output-Tokens: ${OUTPUT_JSON_TOKENS}"
+          echo "Dauer: ${DURATION_JSON} Sekunden"
+          echo "Gesamt-Tokens (geschätzt): $((PROMPT_JSON_TOKENS + OUTPUT_JSON_TOKENS))"
+
+          # Test 2: TOON-Format
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 TEST 2: TOON-Format"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          PROMPT_TOON=$(cat /tmp/prompt-toon.md)
+          PROMPT_TOON_SIZE=$(echo -n "$PROMPT_TOON" | wc -c)
+          PROMPT_TOON_TOKENS=$(estimate_tokens "$PROMPT_TOON")
+
+          echo "Prompt-Größe: ${PROMPT_TOON_SIZE} Bytes"
+          echo "Geschätzte Input-Tokens: ${PROMPT_TOON_TOKENS}"
+          echo ""
+          echo "🚀 Calling cursor-agent mit TOON-Format..."
+
+          START_TIME=$(date +%s)
+          timeout 600 cursor-agent -p "$PROMPT_TOON" --model "${CURSOR_AI_MODEL:-sonnet-4.5}" > /tmp/test-output-toon.txt 2>&1 || {
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 124 ]; then
+              echo "⏱️ Test timed out after 10 minutes"
+            else
+              echo "⚠️ cursor-agent exited with code: $EXIT_CODE"
+            fi
+          }
+          END_TIME=$(date +%s)
+          DURATION_TOON=$((END_TIME - START_TIME))
+
+          OUTPUT_TOON=$(cat /tmp/test-output-toon.txt)
+          OUTPUT_TOON_SIZE=$(echo -n "$OUTPUT_TOON" | wc -c)
+          OUTPUT_TOON_TOKENS=$(estimate_tokens "$OUTPUT_TOON")
+
+          echo "Output-Größe: ${OUTPUT_TOON_SIZE} Bytes"
+          echo "Geschätzte Output-Tokens: ${OUTPUT_TOON_TOKENS}"
+          echo "Dauer: ${DURATION_TOON} Sekunden"
+          echo "Gesamt-Tokens (geschätzt): $((PROMPT_TOON_TOKENS + OUTPUT_TOON_TOKENS))"
+
+          # Vergleich
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📈 VERGLEICH"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          INPUT_SAVED=$((PROMPT_JSON_TOKENS - PROMPT_TOON_TOKENS))
+          INPUT_SAVED_PERCENT=$((INPUT_SAVED * 100 / PROMPT_JSON_TOKENS))
+
+          TOTAL_JSON=$((PROMPT_JSON_TOKENS + OUTPUT_JSON_TOKENS))
+          TOTAL_TOON=$((PROMPT_TOON_TOKENS + OUTPUT_TOON_TOKENS))
+          TOTAL_SAVED=$((TOTAL_JSON - TOTAL_TOON))
+          TOTAL_SAVED_PERCENT=$((TOTAL_SAVED * 100 / TOTAL_JSON))
+
+          echo "Input-Tokens:"
+          echo "  JSON: ${PROMPT_JSON_TOKENS}"
+          echo "  TOON: ${PROMPT_TOON_TOKENS}"
+          echo "  Einsparung: ${INPUT_SAVED} Tokens (${INPUT_SAVED_PERCENT}%)"
+          echo ""
+          echo "Output-Tokens:"
+          echo "  JSON: ${OUTPUT_JSON_TOKENS}"
+          echo "  TOON: ${OUTPUT_TOON_TOKENS}"
+          echo ""
+          echo "Gesamt-Tokens:"
+          echo "  JSON: ${TOTAL_JSON}"
+          echo "  TOON: ${TOTAL_TOON}"
+          echo "  Einsparung: ${TOTAL_SAVED} Tokens (${TOTAL_SAVED_PERCENT}%)"
+          echo ""
+          echo "Laufzeit:"
+          echo "  JSON: ${DURATION_JSON}s"
+          echo "  TOON: ${DURATION_TOON}s"
+
+          # Speichere Ergebnisse
+          mkdir -p test-results
+          cp /tmp/test-output-json.txt test-results/output-json.txt
+          cp /tmp/test-output-toon.txt test-results/output-toon.txt
+          cp /tmp/prompt-json.md test-results/prompt-json.md
+          cp /tmp/prompt-toon.md test-results/prompt-toon.md
+          cp /tmp/test-data.json test-results/test-data.json
+          cp /tmp/test-data.toon test-results/test-data.toon
+
+          # Erstelle Vergleichs-Report
+          cat > test-results/comparison-report.txt << REPORT_EOF
+          TOON vs JSON Vergleichs-Report
+          =================================
+
+          Input-Tokens:
+            JSON: ${PROMPT_JSON_TOKENS}
+            TOON: ${PROMPT_TOON_TOKENS}
+            Einsparung: ${INPUT_SAVED} Tokens (${INPUT_SAVED_PERCENT}%)
+
+          Output-Tokens:
+            JSON: ${OUTPUT_JSON_TOKENS}
+            TOON: ${OUTPUT_TOON_TOKENS}
+
+          Gesamt-Tokens:
+            JSON: ${TOTAL_JSON}
+            TOON: ${TOTAL_TOON}
+            Einsparung: ${TOTAL_SAVED} Tokens (${TOTAL_SAVED_PERCENT}%)
+
+          Laufzeit:
+            JSON: ${DURATION_JSON}s
+            TOON: ${DURATION_TOON}s
+          REPORT_EOF
+
+          echo ""
+          echo "✅ Vergleichstest abgeschlossen!"
+          echo "📁 Ergebnisse gespeichert in test-results/"
+
       - name: Run Cursor AI Test
+        if: github.event.inputs.test_type != 'toon-comparison'
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           CURSOR_AI_MODEL: ${{ secrets.CURSOR_AI_MODEL || 'sonnet-4.5' }}
@@ -172,16 +481,50 @@ jobs:
       - name: Test Summary
         if: always()
         run: |
-          echo "## 🧪 Repository Access Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Test Type:** ${{ github.event.inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Model:** ${CURSOR_AI_MODEL:-sonnet-4.5}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Output Preview" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          head -100 /tmp/test-output.txt >> $GITHUB_STEP_SUMMARY || echo "No output" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📦 Full output available as artifact" >> $GITHUB_STEP_SUMMARY
+          TEST_TYPE="${{ github.event.inputs.test_type }}"
+
+          if [ "$TEST_TYPE" == "toon-comparison" ]; then
+            echo "## 🧪 TOON vs JSON Vergleichstest" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Model:** ${CURSOR_AI_MODEL:-sonnet-4.5}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ -f test-results/comparison-report.txt ]; then
+              echo "### 📊 Vergleichsergebnisse" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              cat test-results/comparison-report.txt >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "### JSON-Output (Ausschnitt)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            head -50 test-results/output-json.txt >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "No output" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            echo "### TOON-Output (Ausschnitt)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            head -50 test-results/output-toon.txt >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "No output" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            echo "📦 Vollständige Ergebnisse verfügbar als Artifact" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## 🧪 Repository Access Test Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Test Type:** $TEST_TYPE" >> $GITHUB_STEP_SUMMARY
+            echo "**Model:** ${CURSOR_AI_MODEL:-sonnet-4.5}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Output Preview" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            head -100 /tmp/test-output.txt >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "No output" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📦 Full output available as artifact" >> $GITHUB_STEP_SUMMARY
+          fi
 
