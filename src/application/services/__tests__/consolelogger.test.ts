@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import type { EnvironmentConfig } from "@/framework/config/environment";
 import { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";

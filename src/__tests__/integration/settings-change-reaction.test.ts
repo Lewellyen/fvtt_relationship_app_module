@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import { expectResultOk } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 

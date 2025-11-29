@@ -6,7 +6,7 @@
 
 import type { SettingDefinition } from "./setting-definition.interface";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { validateAndSetLogLevel } from "@/infrastructure/shared/utils/validate-log-level";

@@ -4,7 +4,7 @@ import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { LogLevel, LOG_LEVEL_SCHEMA } from "@/framework/config/environment";
+import { LogLevel, LOG_LEVEL_SCHEMA } from "@/domain/types/log-level";
 
 /**
  * Orchestrator for configuring logger during bootstrap.

@@ -18,7 +18,7 @@ import {
   settingsRegistrationPortToken,
 } from "@/infrastructure/shared/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import { ok, err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";

@@ -4,7 +4,7 @@ import {
   sanitizeMessageForProduction,
 } from "@/infrastructure/shared/utils/error-sanitizer";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 
 describe("Error Sanitizer", () => {

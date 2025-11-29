@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { LogLevel, parseSamplingRate } from "@/framework/config/environment";
+import { parseSamplingRate } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 
 describe("Environment Configuration", () => {
   beforeEach(() => {
@@ -36,7 +37,8 @@ describe("Environment Configuration", () => {
     });
 
     it("should have valid logLevel", async () => {
-      const { ENV, LogLevel: logLevelEnum } = await import("@/framework/config/environment");
+      const { ENV } = await import("@/framework/config/environment");
+      const { LogLevel: logLevelEnum } = await import("@/domain/types/log-level");
 
       expect(Object.values(logLevelEnum)).toContain(ENV.logLevel);
     });

@@ -1,4 +1,4 @@
-import type { LogLevel } from "@/framework/config/environment";
+import type { LogLevel } from "@/domain/types/log-level";
 
 /**
  * Logging interface for dependency injection.

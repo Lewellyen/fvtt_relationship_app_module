@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { validateAndSetLogLevel } from "@/infrastructure/shared/utils/validate-log-level";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 
 describe("validateAndSetLogLevel", () => {
   it("should set valid log level", () => {

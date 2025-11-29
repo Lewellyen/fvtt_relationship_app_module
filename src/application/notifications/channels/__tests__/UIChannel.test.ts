@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { UIChannel } from "@/infrastructure/notifications/channels/UIChannel";
 import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import type { Notification } from "@/infrastructure/notifications/notification-channel.interface";
-import { LogLevel } from "@/framework/config/environment";
+import { LogLevel } from "@/domain/types/log-level";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { Result } from "@/domain/types/result";

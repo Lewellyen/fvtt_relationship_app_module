@@ -5,6 +5,10 @@
 ### Hinzugefügt
 
 ### Geändert
+- **LogLevel Domain-Typ**: `LogLevel` enum und `LOG_LEVEL_SCHEMA` von Framework-Layer in Domain-Layer verschoben ([Details](src/domain/types/log-level.ts))
+- Behebt Architektur-Verletzung: Application-Layer hatte Abhängigkeit zu Framework-Layer
+- `LogLevel` ist nun als Domain-Typ definiert, da es Teil der Business-Logik ist
+- Alle Imports aktualisiert: `@/framework/config/environment` → `@/domain/types/log-level`
 
 ### Fehlerbehebungen
 
