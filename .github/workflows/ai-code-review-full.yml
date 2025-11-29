@@ -216,13 +216,17 @@ jobs:
 
           ## Output-Format
 
+          **WICHTIG:** Du MUSST die Analyse-Ergebnisse AUSSCHLIESSLICH als gültiges JSON ausgeben - KEIN Markdown, KEIN zusätzlicher Text vor oder nach dem JSON!
+
           Gib die Analyse-Ergebnisse als strukturiertes JSON aus. Fokussiere auf die WICHTIGSTEN und KRITISCHSTEN Probleme, da das Projekt groß ist.
           Priorisiere:
           1. High-Severity Issues (DIP-Verstöße, Layer-Trennung, kritische Bugs)
           2. Medium-Severity Issues (SOLID-Verstöße, Result-Pattern-Missbrauch)
           3. Low-Severity Issues (Code Smells ohne direkten Impact)
 
-          ```json
+          Beginne direkt mit dem JSON-Objekt, KEINE Markdown-Formatierung, KEIN Code-Block!
+
+          {
           {
             "summary": {
               "total_issues": 0,
@@ -260,7 +264,6 @@ jobs:
               }
             ]
           }
-          ```
 
           **Severity-Kriterien:**
           - **high**: Verstoß gegen fundamentale Prinzipien (DIP, Layer-Trennung), Bug mit Runtime-Risiko
@@ -339,16 +342,18 @@ jobs:
           PROMPT=$(cat /tmp/analysis-prompt.md)
 
           # Führe Analyse aus (mit längeren Timeouts für große Projekte)
-          timeout 1800 cursor-agent -p "$PROMPT" --model "claude-4-sonnet" > /tmp/analysis-output.json 2>&1 || {
+          timeout 1800 cursor-agent -p "$PROMPT" --model "claude-4-sonnet" > /tmp/analysis-output-raw.txt 2>&1 || {
             EXIT_CODE=$?
             if [ $EXIT_CODE -eq 124 ]; then
               echo "Analysis timed out after 30 minutes"
             else
-              echo "Cursor AI analysis failed or returned non-JSON output (exit code: $EXIT_CODE)"
+              echo "Cursor AI analysis completed with exit code: $EXIT_CODE"
+              echo "This may be normal - checking for JSON in output..."
             fi
-            # Versuche JSON zu extrahieren falls es in Text eingebettet ist
-            grep -oP '(?<=\`\`\`json\n)(.*?)(?=\n\`\`\`)|(?<=\{)(.*?)(?=\})' /tmp/analysis-output.json | head -1 > /tmp/analysis-extracted.json || true
           }
+          
+          # Kopiere Raw-Output für Debugging
+          cp /tmp/analysis-output-raw.txt /tmp/analysis-output.json
 
           # Prüfe ob Output existiert
           if [ ! -f /tmp/analysis-output.json ] || [ ! -s /tmp/analysis-output.json ]; then
@@ -357,13 +362,27 @@ jobs:
             exit 0
           fi
 
-          # Validierung: Prüfe ob es JSON ist (auch wenn es in Markdown eingebettet ist)
-          if ! python3 -m json.tool /tmp/analysis-output.json > /dev/null 2>&1; then
-            echo "Output is not valid JSON, attempting extraction..."
-            python3 scripts/ai-review-extract-json.py
-          fi
+          # Zeige Preview des Outputs (für Debugging)
+          echo "Output preview (first 500 chars):"
+          head -c 500 /tmp/analysis-output.json || true
+          echo ""
 
-          echo "skipped=false" >> $GITHUB_OUTPUT
+          # Validierung: Prüfe ob es bereits gültiges JSON ist
+          if python3 -m json.tool /tmp/analysis-output.json > /dev/null 2>&1; then
+            echo "Output is valid JSON"
+            echo "skipped=false" >> $GITHUB_OUTPUT
+          else
+            echo "Output is not valid JSON, attempting extraction..."
+            if python3 scripts/ai-review-extract-json.py; then
+              echo "JSON extraction successful"
+              echo "skipped=false" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ Failed to extract valid JSON from output"
+              echo "Raw output saved for inspection"
+              echo "skipped=true" >> $GITHUB_OUTPUT
+              # Workflow darf weiterlaufen, aber keine Issues erstellen
+            fi
+          fi
 
       - name: Parse results and create issues
         if: steps.files-to-analyze.outputs.skip == 'false' && steps.analysis.outputs.skipped == 'false'
@@ -395,7 +414,16 @@ jobs:
             echo "**Dateien analysiert:** ${{ steps.files-to-analyze.outputs.file_count }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
 
-            if [ -f /tmp/analysis-output.json ]; then
+            if [ "${{ steps.analysis.outputs.skipped }}" == "true" ]; then
+              echo "⚠️ **Analyse-Output konnte nicht verarbeitet werden**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Mögliche Ursachen:" >> $GITHUB_STEP_SUMMARY
+              echo "- Cursor AI hat kein JSON zurückgegeben" >> $GITHUB_STEP_SUMMARY
+              echo "- JSON-Extraktion fehlgeschlagen" >> $GITHUB_STEP_SUMMARY
+              echo "- Timeout bei der Analyse" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Bitte prüfe die Workflow-Logs für Details." >> $GITHUB_STEP_SUMMARY
+            elif [ -f /tmp/analysis-output.json ]; then
               python3 scripts/ai-review-summary.py >> $GITHUB_STEP_SUMMARY
             else
               echo "⚠️ Keine Analyse-Ergebnisse verfügbar" >> $GITHUB_STEP_SUMMARY

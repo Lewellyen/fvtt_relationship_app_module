@@ -8,6 +8,14 @@ import os
 import re
 from datetime import datetime
 
+# Lade .env Datei falls vorhanden
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # python-dotenv nicht installiert - Umgebungsvariable muss manuell gesetzt sein
+    pass
+
 # Lade Analyse-Ergebnisse
 try:
     with open('/tmp/analysis-output.json', 'r', encoding='utf-8') as f:

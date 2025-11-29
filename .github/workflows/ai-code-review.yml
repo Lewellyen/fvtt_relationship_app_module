@@ -180,9 +180,12 @@ jobs:
 
           ## Output-Format
 
+          **WICHTIG:** Du MUSST die Analyse-Ergebnisse AUSSCHLIESSLICH als gültiges JSON ausgeben - KEIN Markdown, KEIN zusätzlicher Text vor oder nach dem JSON!
+
+          Beginne direkt mit dem JSON-Objekt, KEINE Markdown-Formatierung, KEIN Code-Block!
+
           Gib die Analyse-Ergebnisse als strukturiertes JSON aus:
 
-          ```json
           {
             "summary": {
               "total_issues": 0,
