@@ -1,0 +1,187 @@
+name: AI Code Review - Repository Access Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: "Test-Typ"
+        required: true
+        default: "basic"
+        type: choice
+        options:
+          - basic
+          - file-access
+          - structure
+          - git-history
+
+jobs:
+  test-repository-access:
+    name: Test Repository Access
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Cursor CLI
+        run: |
+          echo "Installing Cursor CLI..."
+          curl https://cursor.com/install -fsS | bash || {
+            echo "Failed to install Cursor CLI"
+            exit 1
+          }
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Create test prompt
+        id: test-prompt
+        run: |
+          TEST_TYPE="${{ github.event.inputs.test_type }}"
+
+          case "$TEST_TYPE" in
+            "basic")
+              cat > /tmp/test-prompt.md << 'EOF'
+          Du arbeitest in einem GitHub Actions Runner.
+          Git und GitHub CLI sind verfügbar.
+
+          **TEST-AUFGABE:** Beweise, dass du Zugriff auf das Repository hast!
+
+          Führe folgende Befehle aus und gib die Ergebnisse aus:
+          1. Zähle alle TypeScript-Dateien: `find src -name "*.ts" -type f | wc -l`
+          2. Zeige die ersten 10 Zeilen von README.md: `head -10 README.md`
+          3. Zähle alle Dateien im src/ Verzeichnis: `find src -type f | wc -l`
+          4. Zeige den Inhalt von package.json (nur Name und Version): `cat package.json | grep -E '"name"|"version"'`
+
+          Gib die Ergebnisse als einfachen Text aus.
+          EOF
+              ;;
+            "file-access")
+              cat > /tmp/test-prompt.md << 'EOF'
+          Du arbeitest in einem GitHub Actions Runner.
+          Git und GitHub CLI sind verfügbar.
+
+          **TEST-AUFGABE:**
+          1. Finde die Datei `module.json` im Repository
+          2. Zeige den Inhalt dieser Datei komplett an
+          3. Extrahiere aus der Datei: `id`, `version`, und `title`
+
+          Nutze `find`, `cat` oder `git show` um die Datei zu finden und zu lesen.
+          Gib die Ergebnisse aus.
+          EOF
+              ;;
+            "structure")
+              cat > /tmp/test-prompt.md << 'EOF'
+          Du arbeitest in einem GitHub Actions Runner.
+          Git und GitHub CLI sind verfügbar.
+
+          **TEST-AUFGABE:** Analysiere die Repository-Struktur
+
+          Führe aus:
+          1. Zeige die Struktur von src/ mit Unterverzeichnissen: `find src -type d | head -20`
+          2. Zähle Dateien in jedem src/ Unterverzeichnis:
+             - Domain: `find src/domain -type f 2>/dev/null | wc -l`
+             - Application: `find src/application -type f 2>/dev/null | wc -l`
+             - Infrastructure: `find src/infrastructure -type f 2>/dev/null | wc -l`
+             - Framework: `find src/framework -type f 2>/dev/null | wc -l`
+          3. Zeige die größten 5 TypeScript-Dateien (nach Zeilen): `find src -name "*.ts" -exec wc -l {} + 2>/dev/null | sort -rn | head -5`
+
+          Gib alle Ergebnisse aus.
+          EOF
+              ;;
+            "git-history")
+              cat > /tmp/test-prompt.md << 'EOF'
+          Du arbeitest in einem GitHub Actions Runner.
+          Git und GitHub CLI sind verfügbar.
+
+          **TEST-AUFGABE:**
+          1. Zeige den letzten Commit: `git log -1 --pretty=format:"%H %s %an %ad"`
+          2. Zähle alle Commits: `git rev-list --count HEAD`
+          3. Zeige die letzten 5 geänderten Dateien: `git log --name-only --pretty=format: -- -1 | grep -v '^$' | head -5`
+          4. Zeige Commit-Statistik: `git log --oneline | head -5`
+
+          Gib die Ergebnisse aus.
+          EOF
+              ;;
+          esac
+
+          echo "✅ Test prompt created for type: $TEST_TYPE"
+
+      - name: Run Cursor AI Test
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_AI_MODEL: ${{ secrets.CURSOR_AI_MODEL || 'sonnet-4.5' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🧪 Running repository access test..."
+          echo "Test Type: ${{ github.event.inputs.test_type }}"
+
+          # Stelle sicher, dass GitHub CLI authentifiziert ist
+          if [ -z "$GH_TOKEN" ]; then
+            echo "⚠️ Warning: GH_TOKEN not set"
+          else
+            echo "✅ GitHub CLI authenticated"
+            export GH_TOKEN
+          fi
+
+          # Lese Prompt
+          PROMPT=$(cat /tmp/test-prompt.md)
+          echo ""
+          echo "📄 Prompt (first 500 chars):"
+          echo "$PROMPT" | head -c 500
+          echo "..."
+          echo ""
+
+          # Rufe cursor-agent auf
+          echo "🚀 Calling cursor-agent..."
+          timeout 600 cursor-agent -p "$PROMPT" --model "${CURSOR_AI_MODEL:-sonnet-4.5}" > /tmp/test-output.txt 2>&1 || {
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 124 ]; then
+              echo "⏱️ Test timed out after 10 minutes"
+            else
+              echo "⚠️ cursor-agent exited with code: $EXIT_CODE"
+            fi
+          }
+
+          # Zeige Output
+          echo ""
+          echo "📊 Test Output:"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          cat /tmp/test-output.txt
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Speichere Output auch als Artifact
+          echo "💾 Saving output as artifact..."
+          mkdir -p test-results
+          cp /tmp/test-output.txt test-results/output.txt
+          cp /tmp/test-prompt.md test-results/prompt.md
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: repository-access-test-${{ github.event.inputs.test_type }}-${{ github.run_id }}
+          path: test-results/
+          retention-days: 7
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## 🧪 Repository Access Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Type:** ${{ github.event.inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Model:** ${CURSOR_AI_MODEL:-sonnet-4.5}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Output Preview" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          head -100 /tmp/test-output.txt >> $GITHUB_STEP_SUMMARY || echo "No output" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Full output available as artifact" >> $GITHUB_STEP_SUMMARY
+
