@@ -23,7 +23,6 @@ jobs:
       contents: read  # Repository-Inhalt lesen (für git, gh api)
       issues: write   # Issues erstellen
       pull-requests: read  # PR-Informationen lesen
-      metadata: read  # Workflow-Metadaten lesen
 
     steps:
       - name: Checkout code
