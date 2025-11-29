@@ -227,19 +227,18 @@ jobs:
           Beginne direkt mit dem JSON-Objekt, KEINE Markdown-Formatierung, KEIN Code-Block!
 
           {
-          {
             "summary": {
               "total_issues": 0,
               "files_analyzed": 0,
               "by_type": {
-                "solid": 0,
-                "result_pattern": 0,
-                "architecture": 0,
+                "solid_violation": 0,
+                "result_pattern_violation": 0,
+                "architecture_violation": 0,
                 "code_smell": 0,
-                "antipattern": 0,
                 "bug": 0
               },
               "by_severity": {
+                "critical": 0,
                 "high": 0,
                 "medium": 0,
                 "low": 0
@@ -247,9 +246,9 @@ jobs:
             },
             "issues": [
               {
-                "type": "solid|result_pattern|architecture|code_smell|antipattern|bug",
-                "principle": "SRP|OCP|LSP|ISP|DIP" (nur bei SOLID),
-                "severity": "high|medium|low",
+                "type": "solid_violation|result_pattern_violation|architecture_violation|code_smell|bug",
+                "solid_principle": "SRP|OCP|LSP|ISP|DIP" (nur bei solid_violation),
+                "severity": "critical|high|medium|low",
                 "file": "src/path/to/file.ts",
                 "line": 42,
                 "column": 10,
@@ -266,6 +265,7 @@ jobs:
           }
 
           **Severity-Kriterien:**
+          - **critical**: Kritischer Bug mit hohem Runtime-Risiko, fundamentale Architektur-Verletzung
           - **high**: Verstoß gegen fundamentale Prinzipien (DIP, Layer-Trennung), Bug mit Runtime-Risiko
           - **medium**: SOLID-Verstoß, Result-Pattern-Missbrauch, Code Smell mit Wartbarkeits-Impact
           - **low**: Code Smell ohne direkten Impact, Verbesserungsvorschlag
@@ -333,16 +333,21 @@ jobs:
         id: analysis
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_AI_MODEL: ${{ secrets.CURSOR_AI_MODEL || 'sonnet-4.5' }}
         continue-on-error: true
         run: |
           echo "Starting full project Cursor AI analysis..."
           echo "Analyzing ${{ steps.files-to-analyze.outputs.file_count }} files"
 
+          # Setze Standard-Modell falls nicht als Secret definiert
+          CURSOR_AI_MODEL="${CURSOR_AI_MODEL:-sonnet-4.5}"
+          echo "Using model: $CURSOR_AI_MODEL"
+
           # Lese den Prompt
           PROMPT=$(cat /tmp/analysis-prompt.md)
 
           # Führe Analyse aus (mit längeren Timeouts für große Projekte)
-          timeout 1800 cursor-agent -p "$PROMPT" --model "claude-4-sonnet" > /tmp/analysis-output-raw.txt 2>&1 || {
+          timeout 1800 cursor-agent -p "$PROMPT" --model "$CURSOR_AI_MODEL" > /tmp/analysis-output-raw.txt 2>&1 || {
             EXIT_CODE=$?
             if [ $EXIT_CODE -eq 124 ]; then
               echo "Analysis timed out after 30 minutes"
@@ -351,7 +356,7 @@ jobs:
               echo "This may be normal - checking for JSON in output..."
             fi
           }
-          
+
           # Kopiere Raw-Output für Debugging
           cp /tmp/analysis-output-raw.txt /tmp/analysis-output.json
 

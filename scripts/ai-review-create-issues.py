@@ -46,27 +46,29 @@ for issue in analysis_data.get('issues', []):
     # Erstelle eindeutigen Titel
     file_short = issue['file'].replace('src/', '').replace('/', '-')
     title = f"[{issue['type'].upper()}] {file_short}:{issue['line']} - {issue['title']}"
-    
+
     # Prüfe auf Duplikate (basierend auf ähnlichem Titel)
     title_lower = title.lower()
     is_duplicate = any(
-        title_lower.startswith(existing.lower()[:50]) or 
+        title_lower.startswith(existing.lower()[:50]) or
         existing.lower().startswith(title_lower[:50])
         for existing in existing_titles.keys()
     )
-    
+
     if is_duplicate:
         print(f"Skipping duplicate issue: {title}")
         issues_skipped += 1
         continue
-    
+
     # Erstelle Issue-Body
-    principle_tag = f"**Prinzip:** {issue.get('principle', 'N/A')}\n\n" if issue.get('principle') else ""
-    
+    # Unterstütze sowohl 'principle' als auch 'solid_principle' (für Rückwärtskompatibilität)
+    principle = issue.get('solid_principle') or issue.get('principle')
+    principle_tag = f"**Prinzip:** {principle}\n\n" if principle else ""
+
     commit_sha = os.environ.get('GITHUB_SHA', 'unknown')
-    
+
     body = f"""## {issue['type'].replace('_', ' ').title()}
-    
+
 {principle_tag}**Severity:** {issue['severity'].upper()}
 **File:** `{issue['file']}`
 **Location:** Line {issue['line']}, Column {issue['column']}
@@ -90,13 +92,13 @@ for issue in analysis_data.get('issues', []):
 {chr(10).join(f'- {ref}' for ref in issue.get('references', []))}
 
 ---
-*Automatisch erstellt durch AI Code Review am {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*  
+*Automatisch erstellt durch AI Code Review am {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
 *Commit: `{commit_sha}`*
 """
-    
+
     # Labels - prüfe ob Full Review oder Incremental
     labels = ['ai-review', issue['type'], f"severity-{issue['severity']}"]
-    
+
     # Prüfe ob Full Review Label existiert (wird im Full Review Workflow erstellt)
     try:
         subprocess.run(['gh', 'label', 'list', '--json', 'name'], capture_output=True, check=False)
@@ -105,10 +107,12 @@ for issue in analysis_data.get('issues', []):
             labels.append('ai-review-full')
     except:
         pass
-    
-    if issue.get('principle'):
-        labels.append(f"solid-{issue['principle'].lower()}")
-    
+
+    # Unterstütze sowohl 'principle' als auch 'solid_principle' (für Rückwärtskompatibilität)
+    principle = issue.get('solid_principle') or issue.get('principle')
+    if principle:
+        labels.append(f"solid-{principle.lower()}")
+
     # Erstelle Issue
     try:
         result = subprocess.run(

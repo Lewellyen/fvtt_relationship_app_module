@@ -68,7 +68,7 @@ jobs:
         if: steps.changed-files.outputs.skip == 'false'
         run: |
           cat > /tmp/analysis-prompt.md << 'PROMPT_EOF'
-          Du bist ein erfahrener Code-Reviewer für ein TypeScript/Foundry VTT Modul-Projekt. 
+          Du bist ein erfahrener Code-Reviewer für ein TypeScript/Foundry VTT Modul-Projekt.
           Analysiere die folgenden geänderten Dateien auf Code-Qualität, Architektur-Konformität und potentielle Probleme.
 
           ## Projektkontext
@@ -190,14 +190,14 @@ jobs:
             "summary": {
               "total_issues": 0,
               "by_type": {
-                "solid": 0,
-                "result_pattern": 0,
-                "architecture": 0,
+                "solid_violation": 0,
+                "result_pattern_violation": 0,
+                "architecture_violation": 0,
                 "code_smell": 0,
-                "antipattern": 0,
                 "bug": 0
               },
               "by_severity": {
+                "critical": 0,
                 "high": 0,
                 "medium": 0,
                 "low": 0
@@ -205,9 +205,9 @@ jobs:
             },
             "issues": [
               {
-                "type": "solid|result_pattern|architecture|code_smell|antipattern|bug",
-                "principle": "SRP|OCP|LSP|ISP|DIP" (nur bei SOLID),
-                "severity": "high|medium|low",
+                "type": "solid_violation|result_pattern_violation|architecture_violation|code_smell|bug",
+                "solid_principle": "SRP|OCP|LSP|ISP|DIP" (nur bei solid_violation),
+                "severity": "critical|high|medium|low",
                 "file": "src/path/to/file.ts",
                 "line": 42,
                 "column": 10,
@@ -216,7 +216,7 @@ jobs:
                 "current_code": "Relevanter Code-Ausschnitt (5-10 Zeilen)",
                 "recommendation": "Konkreter Vorschlag zur Behebung mit Beispiel",
                 "references": [
-                  "ADR-0001", 
+                  "ADR-0001",
                   "docs/architecture/event-system-hierarchy.md"
                 ]
               }
@@ -225,6 +225,7 @@ jobs:
           ```
 
           **Severity-Kriterien:**
+          - **critical**: Kritischer Bug mit hohem Runtime-Risiko, fundamentale Architektur-Verletzung
           - **high**: Verstoß gegen fundamentale Prinzipien (DIP, Layer-Trennung), Bug mit Runtime-Risiko
           - **medium**: SOLID-Verstoß, Result-Pattern-Missbrauch, Code Smell mit Wartbarkeits-Impact
           - **low**: Code Smell ohne direkten Impact, Verbesserungsvorschlag
@@ -263,15 +264,20 @@ jobs:
         id: analysis
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_AI_MODEL: ${{ secrets.CURSOR_AI_MODEL || 'sonnet-4.5' }}
         continue-on-error: true
         run: |
           echo "Starting Cursor AI analysis..."
+
+          # Setze Standard-Modell falls nicht als Secret definiert
+          CURSOR_AI_MODEL="${CURSOR_AI_MODEL:-sonnet-4.5}"
+          echo "Using model: $CURSOR_AI_MODEL"
 
           # Lese den Prompt
           PROMPT=$(cat /tmp/analysis-prompt.md)
 
           # Führe Analyse aus
-          cursor-agent -p "$PROMPT" --model "claude-4-sonnet" > /tmp/analysis-output.json 2>&1 || {
+          cursor-agent -p "$PROMPT" --model "$CURSOR_AI_MODEL" > /tmp/analysis-output.json 2>&1 || {
             echo "Cursor AI analysis failed or returned non-JSON output"
             # Versuche JSON zu extrahieren falls es in Text eingebettet ist
             grep -oP '(?<=\`\`\`json\n)(.*?)(?=\n\`\`\`)|(?<=\{)(.*?)(?=\})' /tmp/analysis-output.json | head -1 > /tmp/analysis-extracted.json || true

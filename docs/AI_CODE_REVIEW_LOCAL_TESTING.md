@@ -14,6 +14,43 @@
 
 ---
 
+## 🔧 WSL-Terminal in Cursor öffnen
+
+**Problem:** Kein WSL-Terminal in Cursor verfügbar?
+
+### ✅ Lösung 1: Automatische Konfiguration (bereits erstellt!)
+
+Die Datei `.vscode/settings.json` wurde erstellt und setzt WSL als Standard-Terminal.
+
+**Terminal öffnen:**
+1. `Ctrl + Shift + `` (Backtick) - Öffnet neues Terminal
+2. Oder: Menü `Terminal` → `New Terminal`
+3. Terminal sollte automatisch WSL sein
+
+**Falls nicht:**
+1. `Ctrl + Shift + P` → `Terminal: Select Default Profile`
+2. Wähle `WSL`
+
+### ✅ Lösung 2: PowerShell-Wrapper (noch einfacher!)
+
+Falls Terminal-Probleme bestehen, nutze das PowerShell-Wrapper-Skript:
+
+```powershell
+.\scripts\test-ai-review.ps1 incremental
+```
+
+**Vorteile:**
+- ✅ Funktioniert direkt in PowerShell
+- ✅ Konvertiert automatisch Windows → WSL-Pfade
+- ✅ Keine Terminal-Konfiguration nötig
+
+### ✅ Lösung 3: VS Code Tasks
+
+1. `Ctrl + Shift + P` → `Tasks: Run Task`
+2. Wähle: `AI Review: Incremental`
+
+---
+
 ## Schritt 0: Python-Abhängigkeiten installieren
 
 ### Windows
@@ -219,7 +256,7 @@ $analysisOutput = Join-Path $tempDir "analysis-output.json"
 try {
     # Bestimme zu analysierende Dateien
     $filesToAnalyze = @()
-    
+
     switch ($Mode) {
         "incremental" {
             Write-Host "`n🔍 Modus: Incremental (geänderte Dateien)" -ForegroundColor Cyan
@@ -244,12 +281,12 @@ try {
             exit 1
         }
     }
-    
+
     if ($filesToAnalyze.Count -eq 0) {
         Write-Host "⚠️ Keine Dateien zum Analysieren gefunden" -ForegroundColor Yellow
         exit 0
     }
-    
+
     Write-Host "📄 Gefundene Dateien: $($filesToAnalyze.Count)" -ForegroundColor Cyan
     if ($filesToAnalyze.Count -le 10) {
         $filesToAnalyze | ForEach-Object { Write-Host "  - $_" }
@@ -257,17 +294,17 @@ try {
         $filesToAnalyze | Select-Object -First 5 | ForEach-Object { Write-Host "  - $_" }
         Write-Host "  ... und $($filesToAnalyze.Count - 5) weitere"
     }
-    
+
     # Lade Prompt-Template (vereinfachte Version)
     Write-Host "`n📝 Erstelle Analyse-Prompt..." -ForegroundColor Cyan
-    
+
     # Hier würde der vollständige Prompt stehen (vereinfacht für lokales Testen)
     $prompt = @"
 Du bist ein Code-Reviewer für ein TypeScript-Projekt mit Clean Architecture.
 
 Analysiere die folgenden Dateien auf:
 - SOLID-Prinzipien
-- Result-Pattern Konformität  
+- Result-Pattern Konformität
 - Clean Architecture Schichttrennung
 - Code Smells & Anti-Patterns
 - Bugs
@@ -286,38 +323,38 @@ Gib das Ergebnis als JSON aus (KEIN Markdown, NUR JSON):
 Dateien zum Analysieren:
 $(($filesToAnalyze | Select-Object -First 3 | ForEach-Object { "## $_`n```typescript`n$(Get-Content $_ -TotalCount 50 -ErrorAction SilentlyContinue -Raw)`n```" }) -join "`n`n")
 "@
-    
+
     $prompt | Out-File -FilePath $analysisPrompt -Encoding UTF8
-    
+
     Write-Host "✅ Prompt erstellt: $analysisPrompt" -ForegroundColor Green
-    
+
     # Führe Cursor AI Analyse aus
     Write-Host "`n🤖 Starte Cursor AI Analyse..." -ForegroundColor Cyan
     Write-Host "   (Dies kann einige Minuten dauern...)" -ForegroundColor Yellow
-    
+
     $env:CURSOR_API_KEY | cursor-agent -p "$(Get-Content $analysisPrompt -Raw)" --model "claude-4-sonnet" 2>&1 | Tee-Object -FilePath $analysisOutput
-    
+
     if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
         Write-Host "⚠️ Cursor AI Analyse beendet mit Exit Code: $LASTEXITCODE" -ForegroundColor Yellow
     }
-    
+
     # Prüfe Output
     if (Test-Path $analysisOutput) {
         $outputContent = Get-Content $analysisOutput -Raw
         if ($outputContent) {
             Write-Host "`n✅ Analyse abgeschlossen!" -ForegroundColor Green
             Write-Host "📊 Output gespeichert: $analysisOutput" -ForegroundColor Cyan
-            
+
             # Versuche JSON zu extrahieren
             Write-Host "`n🔍 Parse JSON-Ergebnisse..." -ForegroundColor Cyan
             python scripts/ai-review-extract-json.py 2>&1
-            
+
             if (Test-Path $analysisOutput) {
                 # Zeige Zusammenfassung
                 Write-Host "`n📋 Zusammenfassung:" -ForegroundColor Cyan
                 python scripts/ai-review-summary.py
             }
-            
+
             # Zeige ersten Teil des Outputs
             Write-Host "`n📄 Output Preview (erste 500 Zeichen):" -ForegroundColor Cyan
             Write-Host ($outputContent.Substring(0, [Math]::Min(500, $outputContent.Length)))
@@ -327,7 +364,7 @@ $(($filesToAnalyze | Select-Object -First 3 | ForEach-Object { "## $_`n```typesc
     } else {
         Write-Host "❌ Keine Output-Datei erstellt" -ForegroundColor Red
     }
-    
+
 } finally {
     Write-Host "`n💡 Tipp: Output-Datei: $analysisOutput" -ForegroundColor Yellow
     Write-Host "   Du kannst sie manuell öffnen und prüfen." -ForegroundColor Yellow
@@ -422,7 +459,7 @@ if [ -s /tmp/analysis-output.json ]; then
     echo "✅ Analyse abgeschlossen!"
     echo "🔍 Parse JSON-Ergebnisse..."
     python3 scripts/ai-review-extract-json.py || true
-    
+
     echo "📋 Zusammenfassung:"
     python3 scripts/ai-review-summary.py || true
 else

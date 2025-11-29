@@ -59,7 +59,7 @@ $analysisOutput = Join-Path $tempDir "analysis-output.json"
 try {
     # Bestimme zu analysierende Dateien
     $filesToAnalyze = @()
-    
+
     switch ($Mode) {
         "incremental" {
             Write-Host "`n🔍 Modus: Incremental (geänderte Dateien)" -ForegroundColor Cyan
@@ -83,12 +83,12 @@ try {
             exit 1
         }
     }
-    
+
     if ($filesToAnalyze.Count -eq 0) {
         Write-Host "⚠️ Keine Dateien zum Analysieren gefunden" -ForegroundColor Yellow
         exit 0
     }
-    
+
     Write-Host "📄 Gefundene Dateien: $($filesToAnalyze.Count)" -ForegroundColor Cyan
     if ($filesToAnalyze.Count -le 10) {
         $filesToAnalyze | ForEach-Object { Write-Host "  - $_" }
@@ -96,16 +96,16 @@ try {
         $filesToAnalyze | Select-Object -First 5 | ForEach-Object { Write-Host "  - $_" }
         Write-Host "  ... und $($filesToAnalyze.Count - 5) weitere"
     }
-    
+
     # Lade vereinfachten Prompt (für lokales Testen)
     Write-Host "`n📝 Erstelle Analyse-Prompt..." -ForegroundColor Cyan
-    
+
     $prompt = @"
 Du bist ein Code-Reviewer für ein TypeScript-Projekt mit Clean Architecture.
 
 Analysiere die folgenden Dateien auf:
 - SOLID-Prinzipien
-- Result-Pattern Konformität  
+- Result-Pattern Konformität
 - Clean Architecture Schichttrennung
 - Code Smells & Anti-Patterns
 - Bugs
@@ -131,46 +131,52 @@ $(
     }) -join "`n`n"
 )
 "@
-    
+
     $prompt | Out-File -FilePath $analysisPrompt -Encoding UTF8
-    
+
     Write-Host "✅ Prompt erstellt: $analysisPrompt" -ForegroundColor Green
-    
+
     # Kopiere Output nach Standard-Pfad für Skripte
     $standardOutput = if ($IsWindows -or $env:OS -like "*Windows*") {
         Join-Path $env:TEMP "analysis-output.json"
     } else {
         "/tmp/analysis-output.json"
     }
-    
+
+    # Setze Standard-Modell falls nicht gesetzt
+    if (-not $env:CURSOR_AI_MODEL) {
+        $env:CURSOR_AI_MODEL = "sonnet-4.5"
+    }
+
     # Führe Cursor AI Analyse aus
     Write-Host "`n🤖 Starte Cursor AI Analyse..." -ForegroundColor Cyan
     Write-Host "   (Dies kann einige Minuten dauern...)" -ForegroundColor Yellow
-    
+    Write-Host "   Modell: $env:CURSOR_AI_MODEL" -ForegroundColor Gray
+
     $env:CURSOR_API_KEY = $env:CURSOR_API_KEY  # Sicherstellen dass es gesetzt ist
-    cursor-agent -p "$(Get-Content $analysisPrompt -Raw)" --model "claude-4-sonnet" 2>&1 | Tee-Object -FilePath $standardOutput
-    
+    cursor-agent -p "$(Get-Content $analysisPrompt -Raw)" --model "$env:CURSOR_AI_MODEL" 2>&1 | Tee-Object -FilePath $standardOutput
+
     if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
         Write-Host "⚠️ Cursor AI Analyse beendet mit Exit Code: $LASTEXITCODE" -ForegroundColor Yellow
     }
-    
+
     # Prüfe Output
     if (Test-Path $standardOutput) {
         $outputContent = Get-Content $standardOutput -Raw
         if ($outputContent) {
             Write-Host "`n✅ Analyse abgeschlossen!" -ForegroundColor Green
             Write-Host "📊 Output gespeichert: $standardOutput" -ForegroundColor Cyan
-            
+
             # Versuche JSON zu extrahieren
             Write-Host "`n🔍 Parse JSON-Ergebnisse..." -ForegroundColor Cyan
             python scripts/ai-review-extract-json.py 2>&1
-            
+
             if (Test-Path $standardOutput) {
                 # Zeige Zusammenfassung
                 Write-Host "`n📋 Zusammenfassung:" -ForegroundColor Cyan
                 python scripts/ai-review-summary.py
             }
-            
+
             # Zeige ersten Teil des Outputs
             Write-Host "`n📄 Output Preview (erste 500 Zeichen):" -ForegroundColor Cyan
             Write-Host ($outputContent.Substring(0, [Math]::Min(500, $outputContent.Length)))
@@ -180,11 +186,11 @@ $(
     } else {
         Write-Host "❌ Keine Output-Datei erstellt" -ForegroundColor Red
     }
-    
+
 } finally {
     Write-Host "`n💡 Tipp: Output-Datei: $standardOutput" -ForegroundColor Yellow
     Write-Host "   Du kannst sie manuell öffnen und prüfen." -ForegroundColor Yellow
-    
+
     # Cleanup
     Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
 }
