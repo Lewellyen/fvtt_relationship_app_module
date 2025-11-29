@@ -10,6 +10,7 @@ import {
   localTranslationHandlerToken,
   fallbackTranslationHandlerToken,
   translationHandlerChainToken,
+  translationHandlersToken,
   platformI18nPortToken,
 } from "@/infrastructure/shared/tokens";
 import { DIFoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
@@ -93,7 +94,44 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
     );
   }
 
-  // Register Translation Handler Chain (Foundry → Local → Fallback)
+  // Register array of translation handlers using a factory function
+  // This allows handlers to be resolved after container validation
+  const handlersArrayResult = container.registerFactory(
+    translationHandlersToken,
+    () => {
+      const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
+      if (!foundryHandlerResult.ok) {
+        throw new Error(
+          `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
+        );
+      }
+
+      const localHandlerResult = container.resolveWithError(localTranslationHandlerToken);
+      if (!localHandlerResult.ok) {
+        throw new Error(
+          `Failed to resolve LocalTranslationHandler: ${localHandlerResult.error.message}`
+        );
+      }
+
+      const fallbackHandlerResult = container.resolveWithError(fallbackTranslationHandlerToken);
+      if (!fallbackHandlerResult.ok) {
+        throw new Error(
+          `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
+        );
+      }
+
+      return [foundryHandlerResult.value, localHandlerResult.value, fallbackHandlerResult.value];
+    },
+    ServiceLifecycle.SINGLETON,
+    [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]
+  );
+  if (isErr(handlersArrayResult)) {
+    return err(
+      `Failed to register TranslationHandlers array: ${handlersArrayResult.error.message}`
+    );
+  }
+
+  // Register Translation Handler Chain (uses array from DI)
   const chainResult = container.registerClass(
     translationHandlerChainToken,
     DITranslationHandlerChain,

@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
 import { createMockGame, createMockUI } from "@/test/mocks/foundry";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
@@ -23,7 +23,7 @@ import { ok, err } from "@/domain/utils/result";
 
 describe("BootstrapInitHookService", () => {
   let mockLogger: Logger;
-  let mockContainer: ServiceContainer;
+  let mockContainer: ContainerPort;
   let mockBootstrapHooks: BootstrapHooksPort;
   let cleanup: (() => void) | undefined;
   let capturedInitCallback: (() => void) | undefined;
@@ -53,7 +53,10 @@ describe("BootstrapInitHookService", () => {
 
     mockContainer = {
       resolveWithError: vi.fn(),
-    } as unknown as ServiceContainer;
+      resolve: vi.fn(),
+      isRegistered: vi.fn(),
+      getValidationState: vi.fn(),
+    } as unknown as ContainerPort;
 
     // Mock BootstrapHooksPort that captures the callback
     mockBootstrapHooks = {
@@ -163,7 +166,7 @@ describe("BootstrapInitHookService", () => {
       capturedInitCallback!();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
-        "Failed to resolve ModuleApiInitializer: ModuleApiInitializer not found"
+        "Failed to expose API: Failed to resolve ModuleApiInitializer: ModuleApiInitializer not found"
       );
       expect(mockLogger.info).not.toHaveBeenCalledWith("init-phase completed");
     });
@@ -262,8 +265,8 @@ describe("BootstrapInitHookService", () => {
       capturedInitCallback!();
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        "NotificationCenter could not be resolved during init; UI channel not attached",
-        expect.objectContaining({ message: "NotificationCenter not found" })
+        expect.stringContaining("Notification channels could not be attached"),
+        expect.objectContaining({ phase: "notification-channels" })
       );
     });
 
@@ -317,13 +320,9 @@ describe("BootstrapInitHookService", () => {
       capturedInitCallback!();
 
       expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        "Context menu libWrapper registered successfully"
-      );
       expect(mockContextMenuUseCase.register).toHaveBeenCalled();
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        "Context menu callbacks registered successfully"
-      );
+      // Context menu registration is now handled by ContextMenuBootstrapper
+      // No specific debug messages expected - success is silent
     });
 
     it("should warn when context menu use case registration fails", async () => {
@@ -378,7 +377,7 @@ describe("BootstrapInitHookService", () => {
       expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
       expect(mockContextMenuUseCase.register).toHaveBeenCalled();
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        "Failed to register context menu callbacks: Registration failed"
+        expect.stringContaining("Context menu registration failed")
       );
     });
 
@@ -432,7 +431,7 @@ describe("BootstrapInitHookService", () => {
 
       expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        "Failed to resolve RegisterContextMenuUseCase: RegisterContextMenuUseCase not found"
+        expect.stringContaining("Context menu registration failed")
       );
     });
   });

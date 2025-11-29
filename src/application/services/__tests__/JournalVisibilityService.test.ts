@@ -6,7 +6,7 @@ import {
 } from "@/application/services/JournalVisibilityService";
 import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
-import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
@@ -80,7 +80,7 @@ describe("JournalVisibilityService", () => {
   let mockJournalRepository: JournalRepository;
   let mockNotifications: PlatformNotificationPort;
   let mockCache: PlatformCachePort;
-  let mockPlatformUI: PlatformUIPort;
+  let mockJournalDirectoryUI: JournalDirectoryUiPort;
   let mockConfig: JournalVisibilityConfig;
 
   beforeEach(() => {
@@ -112,11 +112,10 @@ describe("JournalVisibilityService", () => {
       getOrSet: vi.fn(),
     } as unknown as PlatformCachePort;
 
-    mockPlatformUI = {
+    mockJournalDirectoryUI = {
       removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
       rerenderJournalDirectory: vi.fn().mockReturnValue(ok(true)),
-      notify: vi.fn().mockReturnValue(ok(undefined)),
-    } as unknown as PlatformUIPort;
+    } as unknown as JournalDirectoryUiPort;
 
     mockConfig = createMockConfig();
 
@@ -125,7 +124,7 @@ describe("JournalVisibilityService", () => {
       mockJournalRepository,
       mockNotifications,
       mockCache,
-      mockPlatformUI,
+      mockJournalDirectoryUI,
       mockConfig
     );
   });
@@ -274,7 +273,7 @@ describe("JournalVisibilityService", () => {
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1">Hidden Journal</li>`
@@ -283,7 +282,7 @@ describe("JournalVisibilityService", () => {
       const result = service.processJournalDirectory(container);
 
       expect(result.ok).toBe(true);
-      expect(mockPlatformUI.removeJournalElement).toHaveBeenCalledWith(
+      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalledWith(
         "journal-1",
         "Hidden Journal",
         container
@@ -311,7 +310,7 @@ describe("JournalVisibilityService", () => {
           channels: ["ConsoleChannel"],
         }
       );
-      expect(mockPlatformUI.removeJournalElement).not.toHaveBeenCalled();
+      expect(mockJournalDirectoryUI.removeJournalElement).not.toHaveBeenCalled();
     });
 
     it("should return error when removeEntryFromDOM fails", () => {
@@ -327,7 +326,7 @@ describe("JournalVisibilityService", () => {
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(
+      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(
         err({
           code: "DOM_MANIPULATION_FAILED",
           message: "Failed to remove",
@@ -361,7 +360,7 @@ describe("JournalVisibilityService", () => {
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal1, journal2]));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(`
         <li class="directory-item" data-entry-id="journal-1">Hidden 1</li>
@@ -371,7 +370,7 @@ describe("JournalVisibilityService", () => {
       const result = service.processJournalDirectory(container);
 
       expect(result.ok).toBe(true);
-      expect(mockPlatformUI.removeJournalElement).toHaveBeenCalledTimes(2);
+      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalledTimes(2);
     });
 
     it("should use default name when journal name is missing", () => {
@@ -382,7 +381,7 @@ describe("JournalVisibilityService", () => {
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1"></li>`
@@ -391,7 +390,7 @@ describe("JournalVisibilityService", () => {
       const result = service.processJournalDirectory(container);
 
       expect(result.ok).toBe(true);
-      expect(mockPlatformUI.removeJournalElement).toHaveBeenCalledWith(
+      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalledWith(
         "journal-1",
         mockConfig.unknownName,
         container
@@ -406,7 +405,7 @@ describe("JournalVisibilityService", () => {
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([xssJournal]));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1"></li>`
@@ -507,7 +506,7 @@ describe("JournalVisibilityService", () => {
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockPlatformUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
 
       const { container } = createMockDOM(
         `<li class="directory-item" data-entry-id="journal-1"></li>`
@@ -518,7 +517,7 @@ describe("JournalVisibilityService", () => {
         service.processJournalDirectory(container);
       }).not.toThrow();
 
-      expect(mockPlatformUI.removeJournalElement).toHaveBeenCalled();
+      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalled();
     });
 
     it("should handle mixed success/failure when reading flags", () => {

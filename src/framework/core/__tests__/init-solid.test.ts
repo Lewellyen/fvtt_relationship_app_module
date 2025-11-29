@@ -6,7 +6,7 @@ import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type { Result } from "@/domain/types/result";
 
 describe("init-solid Bootstrap", () => {
@@ -189,7 +189,7 @@ describe("init-solid Bootstrap", () => {
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
-        .mockImplementation(function (this: ServiceContainer, token: symbol) {
+        .mockImplementation(function (this: ContainerPort, token: symbol) {
           if (token === notificationCenterToken) {
             return {
               ok: false as const,
@@ -215,8 +215,8 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(warnSpy).toHaveBeenCalledWith(
-        "NotificationCenter could not be resolved during init; UI channel not attached",
-        expect.objectContaining({ message: "NotificationCenter missing" })
+        "Notification channels could not be attached: NotificationCenter could not be resolved: NotificationCenter missing",
+        expect.objectContaining({ phase: "notification-channels" })
       );
 
       resolveSpy.mockRestore();
@@ -244,7 +244,7 @@ describe("init-solid Bootstrap", () => {
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
-        .mockImplementation(function (this: ServiceContainer, token: symbol) {
+        .mockImplementation(function (this: ContainerPort, token: symbol) {
           if (token === uiChannelToken) {
             return {
               ok: false as const,
@@ -270,8 +270,8 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(warnSpy).toHaveBeenCalledWith(
-        "UI channel could not be resolved; NotificationCenter will remain console-only",
-        expect.objectContaining({ message: "UI channel missing" })
+        "Notification channels could not be attached: UIChannel could not be resolved: UI channel missing",
+        expect.objectContaining({ phase: "notification-channels" })
       );
 
       resolveSpy.mockRestore();
@@ -524,7 +524,7 @@ describe("init-solid Bootstrap", () => {
       let shouldFail = false;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
-        .mockImplementation(function (this: ServiceContainer, token: symbol) {
+        .mockImplementation(function (this: ContainerPort, token: symbol) {
           // Only fail for moduleApiInitializerToken when flag is set (during init callback)
           if (token === moduleApiInitializerToken && shouldFail) {
             return {
@@ -554,7 +554,7 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to resolve ModuleApiInitializer: ModuleApiInitializer missing"
+        "Failed to expose API: Failed to resolve ModuleApiInitializer: ModuleApiInitializer missing"
       );
 
       resolveSpy.mockRestore();
@@ -596,7 +596,7 @@ describe("init-solid Bootstrap", () => {
       let shouldFail = false;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
-        .mockImplementation(function (this: ServiceContainer, token: symbol) {
+        .mockImplementation(function (this: ContainerPort, token: symbol) {
           // Only fail for moduleSettingsRegistrarToken when flag is set (during init callback)
           if (token === moduleSettingsRegistrarToken && shouldFail) {
             return {
@@ -627,7 +627,7 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to resolve ModuleSettingsRegistrar: ModuleSettingsRegistrar missing"
+        "Failed to register settings: Failed to resolve ModuleSettingsRegistrar: ModuleSettingsRegistrar missing"
       );
 
       resolveSpy.mockRestore();
@@ -669,7 +669,7 @@ describe("init-solid Bootstrap", () => {
       let shouldFail = false;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
-        .mockImplementation(function (this: ServiceContainer, token: symbol) {
+        .mockImplementation(function (this: ContainerPort, token: symbol) {
           // Only fail for moduleEventRegistrarToken when flag is set (during init callback)
           if (token === moduleEventRegistrarToken && shouldFail) {
             return {
@@ -700,7 +700,7 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to resolve ModuleEventRegistrar: ModuleEventRegistrar missing"
+        "Failed to register events: Failed to resolve ModuleEventRegistrar: ModuleEventRegistrar missing"
       );
 
       resolveSpy.mockRestore();
@@ -1029,7 +1029,7 @@ describe("init-solid Bootstrap", () => {
       vi.spyOn(
         moduleApiInitializerModule.ModuleApiInitializer.prototype,
         "expose"
-      ).mockImplementation(function (this: any, container: ServiceContainer) {
+      ).mockImplementation(function (this: any, container: ContainerPort) {
         if (shouldFail) {
           return { ok: false, error: "Failed to expose API: test error" };
         }
@@ -1053,7 +1053,7 @@ describe("init-solid Bootstrap", () => {
 
       // Verify that error was logged (lines 105-106)
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to expose API: Failed to expose API: test error"
+        "Failed to expose API: Failed to expose API: Failed to expose API: test error"
       );
 
       errorSpy.mockRestore();
@@ -1124,12 +1124,9 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       // Verify that error was logged with error messages (lines 146-149)
-      expect(errorSpy).toHaveBeenCalledWith("Failed to register one or more event listeners", {
-        errors: [
-          "Hook registration failed: test-error-1",
-          "Hook registration failed: test-error-2",
-        ],
-      });
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Failed to register events: Failed to register one or more event listeners: Hook registration failed: test-error-1, Hook registration failed: test-error-2"
+      );
 
       errorSpy.mockRestore();
       cleanup();
@@ -1148,11 +1145,11 @@ describe("init-solid Bootstrap", () => {
 
       vi.doMock("@/framework/core/composition-root", () => {
         class MockCompositionRoot {
-          bootstrap(): Result<ServiceContainer, string> {
-            return { ok: true, value: {} as ServiceContainer };
+          bootstrap(): Result<ContainerPort, string> {
+            return { ok: true, value: {} as ContainerPort };
           }
 
-          getContainer(): Result<ServiceContainer, string> {
+          getContainer(): Result<ContainerPort, string> {
             return { ok: false, error: containerError };
           }
         }

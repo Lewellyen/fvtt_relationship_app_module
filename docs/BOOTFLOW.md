@@ -1,8 +1,8 @@
 # Bootstrap Flow & Module Lifecycle
 
 **Model:** Claude Sonnet 4.5  
-**Datum:** 2025-11-16 (aktualisiert 2025-11-23)  
-**Stand:** Version 0.30.0+ (mit Bootstrap-Services für Hook-Registrierung)
+**Datum:** 2025-11-16 (aktualisiert 2025-11-29)  
+**Stand:** Version 0.30.0+ (mit Init-Orchestratoren für SOLID-Konformität)
 
 ---
 
@@ -29,11 +29,15 @@ graph TD
     C -->|Error| D[BootstrapErrorHandler]
     D --> E[UI Notification & Abort]
     C -->|Success| F[Foundry 'init' Hook]
-    F --> G[ModuleApiInitializer.expose]
-    G --> H[Register Settings]
-    H --> I[Configure Logger]
-    I --> J[Register Module Hooks]
-    J --> K[Foundry 'ready' Hook]
+    F --> G[InitOrchestrator.execute]
+    G --> H1[Metrics Init]
+    G --> H2[Notification Channels]
+    G --> H3[API Exposure]
+    G --> H4[Settings Registration]
+    G --> H5[Logging Configuration]
+    G --> H6[Event Registration]
+    G --> H7[Context Menu Registration]
+    H7 --> K[Foundry 'ready' Hook]
     K --> L[Module Active]
 ```
 

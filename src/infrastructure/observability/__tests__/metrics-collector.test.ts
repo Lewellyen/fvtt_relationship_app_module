@@ -60,6 +60,11 @@ describe("MetricsCollector", () => {
       const persistent = new DIPersistentMetricsCollector(runtimeConfig, storage);
 
       expect(persistent).toBeInstanceOf(PersistentMetricsCollector);
+      expect(storage.load).not.toHaveBeenCalled(); // load is no longer called in constructor
+
+      // Initialize explicitly
+      const initResult = persistent.initialize();
+      expect(initResult.ok).toBe(true);
       expect(storage.load).toHaveBeenCalledTimes(1);
     });
   });
@@ -436,6 +441,11 @@ describe("PersistentMetricsCollector", () => {
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
 
     const persistentCollector = new PersistentMetricsCollector(config, storage);
+
+    // Initialize to restore state from storage
+    const initResult = persistentCollector.initialize();
+    expect(initResult.ok).toBe(true);
+
     const snapshot = persistentCollector.getSnapshot();
 
     expect(snapshot.containerResolutions).toBe(5);
@@ -487,6 +497,66 @@ describe("PersistentMetricsCollector", () => {
     const persistentCollector = new PersistentMetricsCollector(config, new ThrowingLoadStorage());
 
     expect(persistentCollector.getSnapshot().containerResolutions).toBe(0);
+
+    // Initialize should handle the error gracefully
+    const initResult = persistentCollector.initialize();
+    expect(initResult.ok).toBe(true);
+  });
+
+  it("should return success when already initialized", () => {
+    const storage = new MockMetricsStorage();
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(config, storage);
+
+    // First initialization
+    const initResult1 = persistentCollector.initialize();
+    expect(initResult1.ok).toBe(true);
+
+    // Second initialization should return success immediately
+    const initResult2 = persistentCollector.initialize();
+    expect(initResult2.ok).toBe(true);
+  });
+
+  it("should handle exceptions in initialize catch block when restoreFromPersistenceState throws", () => {
+    // Create a storage that provides state, but we'll make restoreFromPersistenceState throw
+    const storage = new MockMetricsStorage();
+    storage.state = {
+      metrics: {
+        containerResolutions: 1,
+        resolutionErrors: 0,
+        cacheHits: 0,
+        cacheMisses: 0,
+        portSelections: {},
+        portSelectionFailures: {},
+      },
+      resolutionTimes: [],
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0,
+    };
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(config, storage);
+
+    // Mock restoreFromPersistenceState to throw a non-Error exception
+    const restoreFromPersistenceStateSpy = vi
+      .spyOn(
+        persistentCollector as unknown as {
+          restoreFromPersistenceState(state: MetricsPersistenceState): void;
+        },
+        "restoreFromPersistenceState"
+      )
+      .mockImplementation(() => {
+        throw "String exception"; // Not an Error instance
+      });
+
+    const initResult = persistentCollector.initialize();
+
+    expect(initResult.ok).toBe(false);
+    if (!initResult.ok) {
+      expect(initResult.error).toContain("Failed to initialize PersistentMetricsCollector");
+      expect(initResult.error).toContain("String exception");
+    }
+
+    restoreFromPersistenceStateSpy.mockRestore();
   });
 
   it("should ignore storage save errors", () => {
@@ -590,5 +660,102 @@ describe("PersistentMetricsCollector", () => {
     snapshot = persistentCollector.getSnapshot();
     expect(snapshot.containerResolutions).toBe(0);
     expect(snapshot.portSelections[0]).toBeUndefined();
+  });
+
+  type MutablePersistentCollector = PersistentMetricsCollector & {
+    restoreFromPersistenceState: (state: MetricsPersistenceState) => void;
+  };
+
+  it("should handle Error exceptions in initialize catch block", () => {
+    // Arrange
+    const storage = new MockMetricsStorage();
+    storage.state = {
+      metrics: {
+        containerResolutions: 1,
+        resolutionErrors: 0,
+        cacheHits: 0,
+        cacheMisses: 0,
+        portSelections: {},
+        portSelectionFailures: {},
+      },
+      resolutionTimes: [],
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0,
+    };
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(config, storage);
+
+    // Override restoreFromPersistenceState to throw an Error instance
+    const mutableCollector = persistentCollector as MutablePersistentCollector;
+    const originalMethod = mutableCollector.restoreFromPersistenceState;
+    Object.defineProperty(mutableCollector, "restoreFromPersistenceState", {
+      value: () => {
+        throw new Error("Error exception");
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    const initResult = persistentCollector.initialize();
+
+    expect(initResult.ok).toBe(false);
+    if (!initResult.ok) {
+      expect(initResult.error).toContain("Failed to initialize PersistentMetricsCollector");
+      expect(initResult.error).toContain("Error exception");
+    }
+
+    mutableCollector.restoreFromPersistenceState = originalMethod;
+  });
+
+  it("should handle non-Error exceptions in initialize catch block", () => {
+    // Create a storage that provides state
+    const storage = new MockMetricsStorage();
+    storage.state = {
+      metrics: {
+        containerResolutions: 1,
+        resolutionErrors: 0,
+        cacheHits: 0,
+        cacheMisses: 0,
+        portSelections: {},
+        portSelectionFailures: {},
+      },
+      resolutionTimes: [],
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0,
+    };
+    const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
+    const persistentCollector = new PersistentMetricsCollector(config, storage);
+
+    // Override restoreFromPersistenceState to throw a non-Error exception
+    // This tests the else branch in the catch block (line 47: String(error))
+    // Since restoreFromPersistenceState is protected, we access it via type assertion
+    const mutableCollector = persistentCollector as MutablePersistentCollector;
+
+    // Override the method to throw a string (not an Error instance)
+    // This will be called from restoreFromStorage (line 83), which will propagate the exception to initialize()
+    // The exception is not caught in restoreFromStorage's try-finally (only finally runs), so it propagates to initialize()
+    // We need to ensure the override happens before initialize() is called
+    const originalMethod = mutableCollector.restoreFromPersistenceState;
+
+    // Use Object.defineProperty to ensure the override is properly set
+    Object.defineProperty(mutableCollector, "restoreFromPersistenceState", {
+      value: function (_state: MetricsPersistenceState) {
+        // Throw a string (not an Error instance) to test the else branch in catch block (line 47)
+        throw "String exception";
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    const initResult = persistentCollector.initialize();
+
+    expect(initResult.ok).toBe(false);
+    if (!initResult.ok) {
+      expect(initResult.error).toContain("Failed to initialize PersistentMetricsCollector");
+      expect(initResult.error).toContain("String exception");
+    }
+
+    // Restore original method
+    mutableCollector.restoreFromPersistenceState = originalMethod;
   });
 });

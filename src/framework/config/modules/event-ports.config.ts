@@ -11,6 +11,7 @@ import {
   hideJournalContextMenuHandlerToken,
   moduleEventRegistrarToken,
 } from "@/infrastructure/shared/tokens";
+import { journalContextMenuHandlersToken } from "@/application/tokens";
 import { DIFoundryJournalEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter";
 import { DIInvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import { DIProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
@@ -96,6 +97,28 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
   if (isErr(hideJournalHandlerResult)) {
     return err(
       `Failed to register HideJournalContextMenuHandler: ${hideJournalHandlerResult.error.message}`
+    );
+  }
+
+  // Register array of context menu handlers using a factory function
+  // This allows handlers to be resolved after container validation
+  const handlersArrayResult = container.registerFactory(
+    journalContextMenuHandlersToken,
+    () => {
+      const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
+      if (!handlerResult.ok) {
+        throw new Error(
+          `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
+        );
+      }
+      return [handlerResult.value];
+    },
+    ServiceLifecycle.SINGLETON,
+    [hideJournalContextMenuHandlerToken]
+  );
+  if (isErr(handlersArrayResult)) {
+    return err(
+      `Failed to register JournalContextMenuHandlers array: ${handlersArrayResult.error.message}`
     );
   }
 

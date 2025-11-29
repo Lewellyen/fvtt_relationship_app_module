@@ -7,6 +7,7 @@ import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
 import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
+import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 
 /**
  * Injection token for the JournalVisibilityService.
@@ -32,3 +33,13 @@ export const journalVisibilityConfigToken =
  */
 export const hideJournalContextMenuHandlerToken =
   createInjectionToken<HideJournalContextMenuHandler>("HideJournalContextMenuHandler");
+
+/**
+ * DI Token for array of JournalContextMenuHandler instances.
+ *
+ * Allows multiple handlers to be registered and composed via DI.
+ * Handlers are executed in the order they appear in the array.
+ */
+export const journalContextMenuHandlersToken = createInjectionToken<JournalContextMenuHandler[]>(
+  "JournalContextMenuHandlers"
+);

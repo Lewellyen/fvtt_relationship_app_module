@@ -41,7 +41,7 @@ describe("TranslationHandlerChain", () => {
     const local = new StubHandler("local-result", true);
     const fallback = new StubHandler("fallback-result", false);
 
-    const chain = new TranslationHandlerChain(foundry, local, fallback);
+    const chain = new TranslationHandlerChain([foundry, local, fallback]);
 
     expect(foundry.next).toBe(local);
     expect(local.next).toBe(fallback);
@@ -60,11 +60,11 @@ describe("TranslationHandlerChain", () => {
     }
   });
 
-  it("should forward setNext to foundry handler", () => {
+  it("should forward setNext to head handler", () => {
     const foundry = new StubHandler();
     const local = new StubHandler();
     const fallback = new StubHandler();
-    const chain = new TranslationHandlerChain(foundry, local, fallback);
+    const chain = new TranslationHandlerChain([foundry, local, fallback]);
 
     const custom = new StubHandler("custom");
     const returned = chain.setNext(custom);
@@ -73,12 +73,18 @@ describe("TranslationHandlerChain", () => {
     expect(foundry.next).toBe(custom);
   });
 
+  it("should throw error when handlers array is empty", () => {
+    expect(() => {
+      new TranslationHandlerChain([]);
+    }).toThrow("TranslationHandlerChain requires at least one handler");
+  });
+
   it("DITranslationHandlerChain should behave identically", () => {
     const foundry = new StubHandler(null, false);
     const local = new StubHandler(null, false);
     const fallback = new StubHandler("fallback", true);
 
-    const chain = new DITranslationHandlerChain(foundry, local, fallback);
+    const chain = new DITranslationHandlerChain([foundry, local, fallback]);
 
     const handleResult = chain.handle("key");
     expect(handleResult.ok).toBe(true);

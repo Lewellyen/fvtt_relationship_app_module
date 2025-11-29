@@ -11,6 +11,7 @@ import { ok, err, isOk } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 import type { Container } from "./interfaces";
 import type { ContainerError } from "./interfaces";
+import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import { ServiceRegistry } from "./registry/ServiceRegistry";
 import { ContainerValidator } from "./validation/ContainerValidator";
 import { InstanceCache } from "./cache/InstanceCache";
@@ -61,7 +62,7 @@ import { metricsCollectorToken } from "@/infrastructure/shared/tokens";
  * root.dispose();
  * ```
  */
-export class ServiceContainer implements Container {
+export class ServiceContainer implements Container, ContainerPort {
   private registry: ServiceRegistry;
   private validator: ContainerValidator;
   private cache: InstanceCache;

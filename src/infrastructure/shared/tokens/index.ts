@@ -86,6 +86,7 @@ import type { ModuleEventRegistrar } from "@/application/services/ModuleEventReg
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { PlatformSettingsPort } from "@/domain/ports/platform-settings-port.interface";
 import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
+import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 import type { LibWrapperService } from "@/domain/services/lib-wrapper-service.interface";
 import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
 import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
@@ -96,6 +97,9 @@ import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.int
 import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
 import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
+import type { NotificationPort } from "@/domain/ports/notification-port.interface";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 
@@ -174,4 +178,9 @@ export type ServiceType =
   | PlatformNotificationPort
   | PlatformCachePort
   | PlatformI18nPort
-  | JournalVisibilityConfig;
+  | JournalVisibilityConfig
+  | ContainerPort
+  | JournalDirectoryUiPort
+  | NotificationPort
+  | TranslationHandler[]
+  | JournalContextMenuHandler[];

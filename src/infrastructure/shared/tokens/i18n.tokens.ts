@@ -91,3 +91,12 @@ export const fallbackTranslationHandlerToken = createInjectionToken<TranslationH
  */
 export const translationHandlerChainToken =
   createInjectionToken<TranslationHandler>("TranslationHandlerChain");
+
+/**
+ * Injection token for array of TranslationHandler instances.
+ *
+ * Allows multiple handlers to be registered and composed via DI.
+ * Handlers are chained in the order they appear in the array.
+ */
+export const translationHandlersToken =
+  createInjectionToken<TranslationHandler[]>("TranslationHandlers");

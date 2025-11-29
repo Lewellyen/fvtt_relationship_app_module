@@ -10,6 +10,7 @@ import type { HealthCheckRegistry } from "@/application/health/HealthCheckRegist
 import type { ContainerHealthCheck } from "@/application/health/ContainerHealthCheck";
 import type { MetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
 import type { Container } from "@/infrastructure/di/interfaces";
+import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
 import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
 import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
@@ -139,6 +140,22 @@ export const metricsHealthCheckToken =
  * direct insight into the container state.
  */
 export const serviceContainerToken = createInjectionToken<Container>("ServiceContainer");
+
+/**
+ * Injection token for the ContainerPort interface.
+ *
+ * Provides a minimal abstraction for service resolution and validation state checking.
+ * Used by Framework layer to decouple from concrete Container implementation.
+ *
+ * @example
+ * ```typescript
+ * class MyFrameworkService {
+ *   static dependencies = [containerPortToken] as const;
+ *   constructor(private readonly container: ContainerPort) {}
+ * }
+ * ```
+ */
+export const containerPortToken = createInjectionToken<ContainerPort>("ContainerPort");
 
 /**
  * Injection token for the ModuleSettingsRegistrar.

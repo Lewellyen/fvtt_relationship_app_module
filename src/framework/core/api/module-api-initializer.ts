@@ -2,7 +2,7 @@ import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import { formatReplacementInfo } from "@/infrastructure/shared/utils/format-deprecation-info";
-import type { ServiceContainer } from "@/infrastructure/di/container";
+import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { type ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
 import { getDeprecationInfo } from "@/infrastructure/di/types/utilities/deprecated-token";
@@ -91,12 +91,12 @@ export class ModuleApiInitializer {
    * Creates the resolve() function for the public API.
    * Resolves services and applies wrappers (throws on error).
    *
-   * @param container - ServiceContainer for resolution
+   * @param container - ContainerPort for resolution
    * @returns Resolve function for ModuleApi
    * @private
    */
   private createResolveFunction(
-    container: ServiceContainer,
+    container: ContainerPort,
     wellKnownTokens: ModuleApiTokens
   ): <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType {
     return <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>): TServiceType => {
@@ -114,12 +114,12 @@ export class ModuleApiInitializer {
    * Creates the resolveWithError() function for the public API.
    * Resolves services with Result pattern (never throws).
    *
-   * @param container - ServiceContainer for resolution
+   * @param container - ContainerPort for resolution
    * @returns ResolveWithError function for ModuleApi
    * @private
    */
   private createResolveWithErrorFunction(
-    container: ServiceContainer,
+    container: ContainerPort,
     wellKnownTokens: ModuleApiTokens
   ): <TServiceType extends ServiceType>(
     token: ApiSafeToken<TServiceType>
@@ -178,15 +178,12 @@ export class ModuleApiInitializer {
   /**
    * Creates the complete ModuleApi object with all methods.
    *
-   * @param container - ServiceContainer for service resolution
+   * @param container - ContainerPort for service resolution
    * @param wellKnownTokens - Collection of API-safe tokens
    * @returns Complete ModuleApi object
    * @private
    */
-  private createApiObject(
-    container: ServiceContainer,
-    wellKnownTokens: ModuleApiTokens
-  ): ModuleApi {
+  private createApiObject(container: ContainerPort, wellKnownTokens: ModuleApiTokens): ModuleApi {
     return {
       version: MODULE_CONSTANTS.API.VERSION,
 
@@ -263,10 +260,10 @@ export class ModuleApiInitializer {
   /**
    * Exposes the module's public API to game.modules.get(MODULE_ID).api
    *
-   * @param container - Initialized and validated ServiceContainer
+   * @param container - Initialized and validated ContainerPort
    * @returns Result<void, string> - Ok if successful, Err with error message
    */
-  expose(container: ServiceContainer): Result<void, string> {
+  expose(container: ContainerPort): Result<void, string> {
     // Guard: Foundry game object available?
     if (typeof game === "undefined" || !game?.modules) {
       return err("Game modules not available - API cannot be exposed");

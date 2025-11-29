@@ -5,15 +5,18 @@
 Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Moduls.
 
 **Datum:** 2025-11-29  
-**Stand:** Version 0.38.0 → Unreleased (DIP-Violations Refactoring abgeschlossen)  
-**Detaillierte Analyse:** Siehe [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md)
+**Stand:** Version 0.38.0 → Unreleased (SOLID-Refactoring abgeschlossen)  
+**Detaillierte Analyse:** Siehe [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md), [ANALYSE_LOG.md](./docs/analysis/ANALYSE_LOG.md)
 
 ### Aktuelle Highlights (Unreleased)
-- **100% DIP-Konformität**: Vollständige Eliminierung aller DIP-Verstöße durch Domain-eigene Typen, Config-Objekte und korrekte Token-Organisation ([Details](cursor-plan://22b8d9cb-a493-4444-854e-60d0ae8cd051/DIP-Violations-Refactoring.plan.md))
-- **Domain Cache Types**: Domain-eigene Cache-Typen für vollständige Entkopplung von Infrastructure
-- **JournalVisibilityConfig**: Config-Objekt kapselt Infrastructure-Details und ermöglicht Dependency Injection
-- **Result Helpers im Domain**: Alle Result-Pattern-Utilities nach Domain-Layer verschoben für bessere Schichtentrennung
-- **Application Token-Struktur**: Neue Token-Organisation im Application-Layer mit klarer Trennung zwischen Domain-Ports und Application-Services
+- **SOLID-Prinzipien vollständig umgesetzt**: Alle identifizierten Verstöße behoben ([Details](docs/analysis/ANALYSE_LOG.md))
+- **Container-Abstraktion**: Framework-Layer nutzt `ContainerPort` statt konkreter `ServiceContainer`-Implementierung
+- **Init-Sequenz Refactoring**: Bootstrap in fokussierte Orchestratoren zerlegt mit transaktionalem Error-Handling
+- **Handler-Komposition**: Context-Menu- und Translation-Handler über DI konfigurierbar
+- **Port-Segregation**: `PlatformUIPort` in `JournalDirectoryUiPort` und `NotificationPort` aufgeteilt (ISP)
+- **Error-Handling**: Handler-Aufrufe mit Try-Catch abgesichert, Fehler-Isolation
+- **Lazy Initialization**: `PersistentMetricsCollector` ohne Konstruktor-I/O
+- **100% DIP-Konformität**: Vollständige Eliminierung aller DIP-Verstöße durch Domain-eigene Typen, Config-Objekte und korrekte Token-Organisation
 - **1856 Tests bestanden**: Alle Tests erfolgreich, 100% Code Coverage (Lines, Statements, Branches, Functions), 100% Type Coverage
 - **Quality Gates erfüllt**: Alle Quality Gates bei 100% - Keine TypeScript-Fehler, keine Linter-Fehler, alle Checks bestanden
 

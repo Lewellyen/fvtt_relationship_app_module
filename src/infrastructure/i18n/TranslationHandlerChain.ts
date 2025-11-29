@@ -1,25 +1,24 @@
-import {
-  fallbackTranslationHandlerToken,
-  foundryTranslationHandlerToken,
-  localTranslationHandlerToken,
-} from "@/infrastructure/shared/tokens";
+import { translationHandlersToken } from "@/infrastructure/shared/tokens";
 import type { TranslationHandler } from "./TranslationHandler.interface";
 import type { Result } from "@/domain/types/result";
 
 /**
  * Small façade that wires the translation handlers into a chain of responsibility.
- * The Foundry handler is considered the head of the chain and receives requests first.
+ * Handlers are chained in the order they appear in the array.
  */
 export class TranslationHandlerChain implements TranslationHandler {
   private readonly head: TranslationHandler;
 
-  constructor(
-    foundryHandler: TranslationHandler,
-    localHandler: TranslationHandler,
-    fallbackHandler: TranslationHandler
-  ) {
-    this.head = foundryHandler;
-    this.head.setNext(localHandler).setNext(fallbackHandler);
+  constructor(handlers: TranslationHandler[]) {
+    assertNonEmptyHandlers(handlers);
+    const [head, ...rest] = handlers;
+    this.head = head;
+
+    // Chain handlers in order: each handler gets the next one as its successor
+    let current: TranslationHandler = head;
+    for (const handler of rest) {
+      current = current.setNext(handler);
+    }
   }
 
   setNext(handler: TranslationHandler): TranslationHandler {
@@ -36,17 +35,19 @@ export class TranslationHandlerChain implements TranslationHandler {
 }
 
 export class DITranslationHandlerChain extends TranslationHandlerChain {
-  static dependencies = [
-    foundryTranslationHandlerToken,
-    localTranslationHandlerToken,
-    fallbackTranslationHandlerToken,
-  ] as const;
+  static dependencies = [translationHandlersToken] as const;
 
-  constructor(
-    foundryHandler: TranslationHandler,
-    localHandler: TranslationHandler,
-    fallbackHandler: TranslationHandler
-  ) {
-    super(foundryHandler, localHandler, fallbackHandler);
+  constructor(handlers: TranslationHandler[]) {
+    super(handlers);
+  }
+}
+
+type NonEmptyHandlerList = [TranslationHandler, ...TranslationHandler[]];
+
+function assertNonEmptyHandlers(
+  handlers: TranslationHandler[]
+): asserts handlers is NonEmptyHandlerList {
+  if (handlers.length === 0) {
+    throw new Error("TranslationHandlerChain requires at least one handler");
   }
 }

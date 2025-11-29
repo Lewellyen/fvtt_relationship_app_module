@@ -5,7 +5,7 @@ import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
-import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
 import type { JournalVisibilityConfig } from "./JournalVisibilityConfig";
 import { getFirstArrayElement } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import {
@@ -13,7 +13,7 @@ import {
   journalRepositoryToken,
   platformCachePortToken,
   platformNotificationPortToken,
-  platformUIPortToken,
+  journalDirectoryUiPortToken,
   journalVisibilityConfigToken,
 } from "@/application/tokens";
 import { sanitizeHtml } from "@/infrastructure/shared/utils/sanitize";
@@ -41,7 +41,7 @@ export class JournalVisibilityService {
     private readonly journalRepository: JournalRepository,
     private readonly notifications: PlatformNotificationPort,
     private readonly cache: PlatformCachePort,
-    private readonly platformUI: PlatformUIPort,
+    private readonly journalDirectoryUI: JournalDirectoryUiPort,
     private readonly config: JournalVisibilityConfig
   ) {}
 
@@ -166,7 +166,11 @@ export class JournalVisibilityService {
 
     for (const journal of entries) {
       const journalName = journal.name ?? this.config.unknownName;
-      const removeResult = this.platformUI.removeJournalElement(journal.id, journalName, html);
+      const removeResult = this.journalDirectoryUI.removeJournalElement(
+        journal.id,
+        journalName,
+        html
+      );
 
       // Map PlatformUIError to JournalVisibilityError
       if (!removeResult.ok) {
@@ -207,7 +211,7 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
     journalRepositoryToken,
     platformNotificationPortToken,
     platformCachePortToken,
-    platformUIPortToken,
+    journalDirectoryUiPortToken,
     journalVisibilityConfigToken,
   ] as const;
 
@@ -216,9 +220,9 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
     journalRepository: JournalRepository,
     notifications: PlatformNotificationPort,
     cache: PlatformCachePort,
-    platformUI: PlatformUIPort,
+    journalDirectoryUI: JournalDirectoryUiPort,
     config: JournalVisibilityConfig
   ) {
-    super(journalCollection, journalRepository, notifications, cache, platformUI, config);
+    super(journalCollection, journalRepository, notifications, cache, journalDirectoryUI, config);
   }
 }

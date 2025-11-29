@@ -178,6 +178,8 @@ const platformNotificationPortToken = createInjectionToken(
 const platformCachePortToken = createInjectionToken("PlatformCachePort");
 const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
 const platformUIPortToken = createInjectionToken("PlatformUIPort");
+const journalDirectoryUiPortToken = createInjectionToken("JournalDirectoryUiPort");
+const notificationPortToken = createInjectionToken("NotificationPort");
 const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
 const platformJournalEventPortToken = createInjectionToken(
   "PlatformJournalEventPort"
@@ -192,6 +194,9 @@ const journalVisibilityServiceToken = createInjectionToken(
 );
 const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
 const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
+const journalContextMenuHandlersToken = createInjectionToken(
+  "JournalContextMenuHandlers"
+);
 const loggerToken = createInjectionToken("Logger");
 const environmentConfigToken = createInjectionToken("EnvironmentConfig");
 const runtimeConfigToken = createInjectionToken("RuntimeConfigService");
@@ -200,6 +205,7 @@ const healthCheckRegistryToken = createInjectionToken("HealthCheckRegistry");
 const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
 const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
 const serviceContainerToken = createInjectionToken("ServiceContainer");
+const containerPortToken = createInjectionToken("ContainerPort");
 const moduleSettingsRegistrarToken = createInjectionToken("ModuleSettingsRegistrar");
 const bootstrapInitHookServiceToken = createInjectionToken(
   "BootstrapInitHookService"
@@ -227,6 +233,7 @@ const fallbackTranslationHandlerToken = createInjectionToken(
   "FallbackTranslationHandler"
 );
 const translationHandlerChainToken = createInjectionToken("TranslationHandlerChain");
+const translationHandlersToken = createInjectionToken("TranslationHandlers");
 const notificationCenterToken = createInjectionToken("NotificationCenter");
 const consoleChannelToken = createInjectionToken("ConsoleChannel");
 const uiChannelToken = createInjectionToken("UIChannel");
@@ -8340,7 +8347,26 @@ const _PersistentMetricsCollector = class _PersistentMetricsCollector extends Me
     super(config2);
     this.metricsStorage = metricsStorage;
     this.suppressPersistence = false;
-    this.restoreFromStorage();
+    this.initialized = false;
+  }
+  /**
+   * Initializes the collector by restoring state from storage.
+   * Must be called explicitly after construction.
+   *
+   * @returns Result indicating success or error
+   */
+  initialize() {
+    if (this.initialized) {
+      return ok(void 0);
+    }
+    try {
+      this.restoreFromStorage();
+      this.initialized = true;
+      return ok(void 0);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return err(`Failed to initialize PersistentMetricsCollector: ${errorMessage}`);
+    }
   }
   clearPersistentState() {
     this.metricsStorage.clear?.();
@@ -8878,7 +8904,7 @@ Reason: ${deprecationInfo.reason}
    * Creates the resolve() function for the public API.
    * Resolves services and applies wrappers (throws on error).
    *
-   * @param container - ServiceContainer for resolution
+   * @param container - ContainerPort for resolution
    * @returns Resolve function for ModuleApi
    * @private
    */
@@ -8893,7 +8919,7 @@ Reason: ${deprecationInfo.reason}
    * Creates the resolveWithError() function for the public API.
    * Resolves services with Result pattern (never throws).
    *
-   * @param container - ServiceContainer for resolution
+   * @param container - ContainerPort for resolution
    * @returns ResolveWithError function for ModuleApi
    * @private
    */
@@ -8933,7 +8959,7 @@ Reason: ${deprecationInfo.reason}
   /**
    * Creates the complete ModuleApi object with all methods.
    *
-   * @param container - ServiceContainer for service resolution
+   * @param container - ContainerPort for service resolution
    * @param wellKnownTokens - Collection of API-safe tokens
    * @returns Complete ModuleApi object
    * @private
@@ -9002,7 +9028,7 @@ Reason: ${deprecationInfo.reason}
   /**
    * Exposes the module's public API to game.modules.get(MODULE_ID).api
    *
-   * @param container - Initialized and validated ServiceContainer
+   * @param container - Initialized and validated ContainerPort
    * @returns Result<void, string> - Ok if successful, Err with error message
    */
   expose(container) {
@@ -9071,6 +9097,253 @@ const _DIHealthCheckRegistry = class _DIHealthCheckRegistry extends HealthCheckR
 __name(_DIHealthCheckRegistry, "DIHealthCheckRegistry");
 _DIHealthCheckRegistry.dependencies = [];
 let DIHealthCheckRegistry = _DIHealthCheckRegistry;
+const _MetricsBootstrapper = class _MetricsBootstrapper {
+  /**
+   * Initializes metrics collector if it supports persistence.
+   *
+   * @param container - ContainerPort for service resolution
+   * @returns Result indicating success (warnings logged but don't fail bootstrap)
+   */
+  static initializeMetrics(container) {
+    const metricsResult = container.resolveWithError(metricsCollectorToken);
+    if (!metricsResult.ok) {
+      return ok(void 0);
+    }
+    const collector = metricsResult.value;
+    if (collector instanceof PersistentMetricsCollector) {
+      const initResult = collector.initialize();
+      if (!initResult.ok) {
+        return ok(void 0);
+      }
+    }
+    return ok(void 0);
+  }
+};
+__name(_MetricsBootstrapper, "MetricsBootstrapper");
+let MetricsBootstrapper = _MetricsBootstrapper;
+const _NotificationBootstrapper = class _NotificationBootstrapper {
+  /**
+   * Attaches UI notification channel to NotificationCenter.
+   *
+   * This phase is optional - failures are logged as warnings but don't fail bootstrap.
+   *
+   * @param container - ContainerPort for service resolution
+   * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
+   */
+  static attachNotificationChannels(container) {
+    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
+    if (!notificationCenterResult.ok) {
+      return err(
+        `NotificationCenter could not be resolved: ${notificationCenterResult.error.message}`
+      );
+    }
+    const uiChannelResult = container.resolveWithError(uiChannelToken);
+    if (!uiChannelResult.ok) {
+      return err(`UIChannel could not be resolved: ${uiChannelResult.error.message}`);
+    }
+    notificationCenterResult.value.addChannel(uiChannelResult.value);
+    return ok(void 0);
+  }
+};
+__name(_NotificationBootstrapper, "NotificationBootstrapper");
+let NotificationBootstrapper = _NotificationBootstrapper;
+const _ApiBootstrapper = class _ApiBootstrapper {
+  /**
+   * Exposes the module's public API.
+   *
+   * @param container - ContainerPort for service resolution
+   * @returns Result indicating success or error
+   */
+  static exposeApi(container) {
+    const apiInitializerResult = container.resolveWithError(moduleApiInitializerToken);
+    if (!apiInitializerResult.ok) {
+      return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
+    }
+    const exposeResult = apiInitializerResult.value.expose(container);
+    if (!exposeResult.ok) {
+      return err(`Failed to expose API: ${exposeResult.error}`);
+    }
+    return ok(void 0);
+  }
+};
+__name(_ApiBootstrapper, "ApiBootstrapper");
+let ApiBootstrapper = _ApiBootstrapper;
+const _SettingsBootstrapper = class _SettingsBootstrapper {
+  /**
+   * Registers all module settings.
+   *
+   * @param container - ContainerPort for service resolution
+   * @returns Result indicating success or error
+   */
+  static registerSettings(container) {
+    const settingsRegistrarResult = container.resolveWithError(moduleSettingsRegistrarToken);
+    if (!settingsRegistrarResult.ok) {
+      return err(
+        `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
+      );
+    }
+    settingsRegistrarResult.value.registerAll();
+    return ok(void 0);
+  }
+};
+__name(_SettingsBootstrapper, "SettingsBootstrapper");
+let SettingsBootstrapper = _SettingsBootstrapper;
+const _LoggingBootstrapper = class _LoggingBootstrapper {
+  /**
+   * Configures logger with current setting value.
+   *
+   * @param container - ContainerPort for service resolution
+   * @param logger - Logger instance to configure
+   * @returns Result indicating success (always succeeds, settings are optional)
+   */
+  static configureLogging(container, logger) {
+    const settingsResult = container.resolveWithError(foundrySettingsToken);
+    if (!settingsResult.ok) {
+      return ok(void 0);
+    }
+    const settings = settingsResult.value;
+    const logLevelResult = settings.get(
+      MODULE_CONSTANTS.MODULE.ID,
+      MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+      LOG_LEVEL_SCHEMA
+    );
+    if (logLevelResult.ok && logger.setMinLevel) {
+      logger.setMinLevel(logLevelResult.value);
+      logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+    }
+    return ok(void 0);
+  }
+};
+__name(_LoggingBootstrapper, "LoggingBootstrapper");
+let LoggingBootstrapper = _LoggingBootstrapper;
+const _EventsBootstrapper = class _EventsBootstrapper {
+  /**
+   * Registers all event listeners.
+   *
+   * @param container - ContainerPort for service resolution
+   * @returns Result indicating success or error
+   */
+  static registerEvents(container) {
+    const eventRegistrarResult = container.resolveWithError(moduleEventRegistrarToken);
+    if (!eventRegistrarResult.ok) {
+      return err(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
+    }
+    const eventRegistrationResult = eventRegistrarResult.value.registerAll();
+    if (!eventRegistrationResult.ok) {
+      const errorMessages = eventRegistrationResult.error.map((e) => e.message).join(", ");
+      return err(`Failed to register one or more event listeners: ${errorMessages}`);
+    }
+    return ok(void 0);
+  }
+};
+__name(_EventsBootstrapper, "EventsBootstrapper");
+let EventsBootstrapper = _EventsBootstrapper;
+const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
+  /**
+   * Registers context menu libWrapper and callbacks.
+   *
+   * @param container - ContainerPort for service resolution
+   * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
+   */
+  static registerContextMenu(container) {
+    const contextMenuLibWrapperResult = container.resolveWithError(
+      journalContextMenuLibWrapperServiceToken
+    );
+    if (!contextMenuLibWrapperResult.ok) {
+      return err(
+        `JournalContextMenuLibWrapperService could not be resolved: ${contextMenuLibWrapperResult.error.message}`
+      );
+    }
+    const registerResult = contextMenuLibWrapperResult.value.register();
+    if (!registerResult.ok) {
+      return err(`Context menu libWrapper registration failed: ${registerResult.error.message}`);
+    }
+    const contextMenuUseCaseResult = container.resolveWithError(registerContextMenuUseCaseToken);
+    if (!contextMenuUseCaseResult.ok) {
+      return err(
+        `RegisterContextMenuUseCase could not be resolved: ${contextMenuUseCaseResult.error.message}`
+      );
+    }
+    const callbackRegisterResult = contextMenuUseCaseResult.value.register();
+    if (!callbackRegisterResult.ok) {
+      return err(
+        `Context menu callback registration failed: ${callbackRegisterResult.error.message}`
+      );
+    }
+    return ok(void 0);
+  }
+};
+__name(_ContextMenuBootstrapper, "ContextMenuBootstrapper");
+let ContextMenuBootstrapper = _ContextMenuBootstrapper;
+const _InitOrchestrator = class _InitOrchestrator {
+  /**
+   * Executes the complete initialization sequence.
+   *
+   * Phase order:
+   * 1. Metrics Initialization (optional - warnings only)
+   * 2. Notification Channels (optional - warnings only)
+   * 3. API Exposure (critical - fails on error)
+   * 4. Settings Registration (critical - fails on error)
+   * 5. Logging Configuration (optional - warnings only)
+   * 6. Event Registration (critical - fails on error)
+   * 7. Context Menu Registration (optional - warnings only)
+   *
+   * @param container - ContainerPort for service resolution
+   * @param logger - Logger for error reporting
+   * @returns Result indicating success or aggregated errors
+   */
+  static execute(container, logger) {
+    const errors = [];
+    const metricsResult = MetricsBootstrapper.initializeMetrics(container);
+    if (!metricsResult.ok) {
+      logger.warn(`Metrics initialization failed: ${metricsResult.error}`);
+    }
+    const notificationResult = NotificationBootstrapper.attachNotificationChannels(container);
+    if (!notificationResult.ok) {
+      logger.warn(`Notification channels could not be attached: ${notificationResult.error}`, {
+        phase: "notification-channels"
+      });
+    }
+    const apiResult = ApiBootstrapper.exposeApi(container);
+    if (!apiResult.ok) {
+      errors.push({
+        phase: "api-exposure",
+        message: apiResult.error
+      });
+      logger.error(`Failed to expose API: ${apiResult.error}`);
+    }
+    const settingsResult = SettingsBootstrapper.registerSettings(container);
+    if (!settingsResult.ok) {
+      errors.push({
+        phase: "settings-registration",
+        message: settingsResult.error
+      });
+      logger.error(`Failed to register settings: ${settingsResult.error}`);
+    }
+    const loggingResult = LoggingBootstrapper.configureLogging(container, logger);
+    if (!loggingResult.ok) {
+      logger.warn(`Logging configuration failed: ${loggingResult.error}`);
+    }
+    const eventsResult = EventsBootstrapper.registerEvents(container);
+    if (!eventsResult.ok) {
+      errors.push({
+        phase: "event-registration",
+        message: eventsResult.error
+      });
+      logger.error(`Failed to register events: ${eventsResult.error}`);
+    }
+    const contextMenuResult = ContextMenuBootstrapper.registerContextMenu(container);
+    if (!contextMenuResult.ok) {
+      logger.warn(`Context menu registration failed: ${contextMenuResult.error}`);
+    }
+    if (errors.length > 0) {
+      return err(errors);
+    }
+    return ok(void 0);
+  }
+};
+__name(_InitOrchestrator, "InitOrchestrator");
+let InitOrchestrator = _InitOrchestrator;
 const _BootstrapInitHookService = class _BootstrapInitHookService {
   constructor(logger, container, bootstrapHooks) {
     this.logger = logger;
@@ -9096,105 +9369,13 @@ const _BootstrapInitHookService = class _BootstrapInitHookService {
    * blenden wir diese verzweigten Pfade temporär aus und reduzieren die Ignores später gezielt. */
   handleInit() {
     this.logger.info("init-phase");
-    const notificationCenterResult = this.container.resolveWithError(notificationCenterToken);
-    if (notificationCenterResult.ok) {
-      const uiChannelResult = this.container.resolveWithError(uiChannelToken);
-      if (uiChannelResult.ok) {
-        notificationCenterResult.value.addChannel(uiChannelResult.value);
-      } else {
-        this.logger.warn(
-          "UI channel could not be resolved; NotificationCenter will remain console-only",
-          uiChannelResult.error
-        );
-      }
+    const result = InitOrchestrator.execute(this.container, this.logger);
+    if (!result.ok) {
+      const errorMessages = result.error.map((e) => `${e.phase}: ${e.message}`).join("; ");
+      this.logger.error(`Init phase completed with errors: ${errorMessages}`);
     } else {
-      this.logger.warn(
-        "NotificationCenter could not be resolved during init; UI channel not attached",
-        notificationCenterResult.error
-      );
+      this.logger.info("init-phase completed");
     }
-    const apiInitializerResult = this.container.resolveWithError(moduleApiInitializerToken);
-    if (!apiInitializerResult.ok) {
-      this.logger.error(
-        `Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`
-      );
-      return;
-    }
-    const exposeResult = apiInitializerResult.value.expose(this.container);
-    if (!exposeResult.ok) {
-      this.logger.error(`Failed to expose API: ${exposeResult.error}`);
-      return;
-    }
-    const settingsRegistrarResult = this.container.resolveWithError(moduleSettingsRegistrarToken);
-    if (!settingsRegistrarResult.ok) {
-      this.logger.error(
-        `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
-      );
-      return;
-    }
-    settingsRegistrarResult.value.registerAll();
-    const settingsResult = this.container.resolveWithError(foundrySettingsToken);
-    if (settingsResult.ok) {
-      const settings = settingsResult.value;
-      const logLevelResult = settings.get(
-        MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
-        LOG_LEVEL_SCHEMA
-      );
-      if (logLevelResult.ok && this.logger.setMinLevel) {
-        this.logger.setMinLevel(logLevelResult.value);
-        this.logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
-      }
-    }
-    const eventRegistrarResult = this.container.resolveWithError(moduleEventRegistrarToken);
-    if (!eventRegistrarResult.ok) {
-      this.logger.error(
-        `Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`
-      );
-      return;
-    }
-    const eventRegistrationResult = eventRegistrarResult.value.registerAll();
-    if (!eventRegistrationResult.ok) {
-      this.logger.error("Failed to register one or more event listeners", {
-        errors: eventRegistrationResult.error.map((e) => e.message)
-      });
-      return;
-    }
-    const contextMenuLibWrapperResult = this.container.resolveWithError(
-      journalContextMenuLibWrapperServiceToken
-    );
-    if (contextMenuLibWrapperResult.ok) {
-      const registerResult = contextMenuLibWrapperResult.value.register();
-      if (!registerResult.ok) {
-        this.logger.warn(
-          `Failed to register context menu libWrapper: ${registerResult.error.message}`
-        );
-      } else {
-        this.logger.debug("Context menu libWrapper registered successfully");
-        const contextMenuUseCaseResult = this.container.resolveWithError(
-          registerContextMenuUseCaseToken
-        );
-        if (contextMenuUseCaseResult.ok) {
-          const callbackRegisterResult = contextMenuUseCaseResult.value.register();
-          if (!callbackRegisterResult.ok) {
-            this.logger.warn(
-              `Failed to register context menu callbacks: ${callbackRegisterResult.error.message}`
-            );
-          } else {
-            this.logger.debug("Context menu callbacks registered successfully");
-          }
-        } else {
-          this.logger.warn(
-            `Failed to resolve RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
-          );
-        }
-      }
-    } else {
-      this.logger.warn(
-        `Failed to resolve JournalContextMenuLibWrapperService: ${contextMenuLibWrapperResult.error.message}`
-      );
-    }
-    this.logger.info("init-phase completed");
   }
   /* v8 ignore stop -- @preserve */
 };
@@ -9206,7 +9387,7 @@ const _DIBootstrapInitHookService = class _DIBootstrapInitHookService extends Bo
   }
 };
 __name(_DIBootstrapInitHookService, "DIBootstrapInitHookService");
-_DIBootstrapInitHookService.dependencies = [loggerToken, serviceContainerToken, bootstrapHooksPortToken];
+_DIBootstrapInitHookService.dependencies = [loggerToken, containerPortToken, bootstrapHooksPortToken];
 let DIBootstrapInitHookService = _DIBootstrapInitHookService;
 const _BootstrapReadyHookService = class _BootstrapReadyHookService {
   constructor(logger, bootstrapHooks) {
@@ -10909,6 +11090,24 @@ function registerPortInfrastructure(container) {
   if (isErr(platformUIPortResult)) {
     return err(`Failed to register PlatformUIPort: ${platformUIPortResult.error.message}`);
   }
+  const journalDirectoryUiAliasResult = container.registerAlias(
+    journalDirectoryUiPortToken,
+    platformUIPortToken
+  );
+  if (isErr(journalDirectoryUiAliasResult)) {
+    return err(
+      `Failed to register JournalDirectoryUiPort alias: ${journalDirectoryUiAliasResult.error.message}`
+    );
+  }
+  const uiNotificationAliasResult = container.registerAlias(
+    notificationPortToken,
+    platformUIPortToken
+  );
+  if (isErr(uiNotificationAliasResult)) {
+    return err(
+      `Failed to register UINotificationPort alias: ${uiNotificationAliasResult.error.message}`
+    );
+  }
   return ok(void 0);
 }
 __name(registerPortInfrastructure, "registerPortInfrastructure");
@@ -11534,12 +11733,12 @@ function sanitizeId(id) {
 __name(sanitizeId, "sanitizeId");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notifications, cache, platformUI, config2) {
+  constructor(journalCollection, journalRepository, notifications, cache, journalDirectoryUI, config2) {
     this.journalCollection = journalCollection;
     this.journalRepository = journalRepository;
     this.notifications = notifications;
     this.cache = cache;
-    this.platformUI = platformUI;
+    this.journalDirectoryUI = journalDirectoryUI;
     this.config = config2;
   }
   /**
@@ -11640,7 +11839,11 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     const errors = [];
     for (const journal of entries2) {
       const journalName = journal.name ?? this.config.unknownName;
-      const removeResult = this.platformUI.removeJournalElement(journal.id, journalName, html);
+      const removeResult = this.journalDirectoryUI.removeJournalElement(
+        journal.id,
+        journalName,
+        html
+      );
       if (!removeResult.ok) {
         const journalError = {
           code: "DOM_MANIPULATION_FAILED",
@@ -11669,8 +11872,8 @@ const _JournalVisibilityService = class _JournalVisibilityService {
 __name(_JournalVisibilityService, "JournalVisibilityService");
 let JournalVisibilityService = _JournalVisibilityService;
 const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notifications, cache, platformUI, config2) {
-    super(journalCollection, journalRepository, notifications, cache, platformUI, config2);
+  constructor(journalCollection, journalRepository, notifications, cache, journalDirectoryUI, config2) {
+    super(journalCollection, journalRepository, notifications, cache, journalDirectoryUI, config2);
   }
 };
 __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
@@ -11679,7 +11882,7 @@ _DIJournalVisibilityService.dependencies = [
   journalRepositoryToken,
   platformNotificationPortToken,
   platformCachePortToken,
-  platformUIPortToken,
+  journalDirectoryUiPortToken,
   journalVisibilityConfigToken
 ];
 let DIJournalVisibilityService = _DIJournalVisibilityService;
@@ -13154,9 +13357,14 @@ __name(_DIFallbackTranslationHandler, "DIFallbackTranslationHandler");
 _DIFallbackTranslationHandler.dependencies = [];
 let DIFallbackTranslationHandler = _DIFallbackTranslationHandler;
 const _TranslationHandlerChain = class _TranslationHandlerChain {
-  constructor(foundryHandler, localHandler, fallbackHandler) {
-    this.head = foundryHandler;
-    this.head.setNext(localHandler).setNext(fallbackHandler);
+  constructor(handlers) {
+    assertNonEmptyHandlers(handlers);
+    const [head, ...rest] = handlers;
+    this.head = head;
+    let current = head;
+    for (const handler of rest) {
+      current = current.setNext(handler);
+    }
   }
   setNext(handler) {
     return this.head.setNext(handler);
@@ -13171,17 +13379,19 @@ const _TranslationHandlerChain = class _TranslationHandlerChain {
 __name(_TranslationHandlerChain, "TranslationHandlerChain");
 let TranslationHandlerChain = _TranslationHandlerChain;
 const _DITranslationHandlerChain = class _DITranslationHandlerChain extends TranslationHandlerChain {
-  constructor(foundryHandler, localHandler, fallbackHandler) {
-    super(foundryHandler, localHandler, fallbackHandler);
+  constructor(handlers) {
+    super(handlers);
   }
 };
 __name(_DITranslationHandlerChain, "DITranslationHandlerChain");
-_DITranslationHandlerChain.dependencies = [
-  foundryTranslationHandlerToken,
-  localTranslationHandlerToken,
-  fallbackTranslationHandlerToken
-];
+_DITranslationHandlerChain.dependencies = [translationHandlersToken];
 let DITranslationHandlerChain = _DITranslationHandlerChain;
+function assertNonEmptyHandlers(handlers) {
+  if (handlers.length === 0) {
+    throw new Error("TranslationHandlerChain requires at least one handler");
+  }
+}
+__name(assertNonEmptyHandlers, "assertNonEmptyHandlers");
 const _I18nPortAdapter = class _I18nPortAdapter {
   constructor(i18nFacade) {
     this.i18nFacade = i18nFacade;
@@ -13252,6 +13462,37 @@ function registerI18nServices(container) {
   if (isErr(fallbackHandlerResult)) {
     return err(
       `Failed to register FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
+    );
+  }
+  const handlersArrayResult = container.registerFactory(
+    translationHandlersToken,
+    () => {
+      const foundryHandlerResult2 = container.resolveWithError(foundryTranslationHandlerToken);
+      if (!foundryHandlerResult2.ok) {
+        throw new Error(
+          `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult2.error.message}`
+        );
+      }
+      const localHandlerResult2 = container.resolveWithError(localTranslationHandlerToken);
+      if (!localHandlerResult2.ok) {
+        throw new Error(
+          `Failed to resolve LocalTranslationHandler: ${localHandlerResult2.error.message}`
+        );
+      }
+      const fallbackHandlerResult2 = container.resolveWithError(fallbackTranslationHandlerToken);
+      if (!fallbackHandlerResult2.ok) {
+        throw new Error(
+          `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult2.error.message}`
+        );
+      }
+      return [foundryHandlerResult2.value, localHandlerResult2.value, fallbackHandlerResult2.value];
+    },
+    ServiceLifecycle.SINGLETON,
+    [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]
+  );
+  if (isErr(handlersArrayResult)) {
+    return err(
+      `Failed to register TranslationHandlers array: ${handlersArrayResult.error.message}`
     );
   }
   const chainResult = container.registerClass(
@@ -14439,9 +14680,9 @@ _DIProcessJournalDirectoryOnRenderUseCase.dependencies = [
 ];
 let DIProcessJournalDirectoryOnRenderUseCase = _DIProcessJournalDirectoryOnRenderUseCase;
 const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryReRenderUseCase {
-  constructor(journalEvents, platformUI, notifications) {
+  constructor(journalEvents, journalDirectoryUI, notifications) {
     this.journalEvents = journalEvents;
-    this.platformUI = platformUI;
+    this.journalDirectoryUI = journalDirectoryUI;
     this.notifications = notifications;
   }
   /**
@@ -14467,7 +14708,7 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
    * Trigger journal directory re-render.
    */
   triggerReRender(journalId) {
-    const result = this.platformUI.rerenderJournalDirectory();
+    const result = this.journalDirectoryUI.rerenderJournalDirectory();
     if (!result.ok) {
       this.notifications.warn(
         "Failed to re-render journal directory after hidden flag change",
@@ -14497,31 +14738,40 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
 __name(_TriggerJournalDirectoryReRenderUseCase, "TriggerJournalDirectoryReRenderUseCase");
 let TriggerJournalDirectoryReRenderUseCase = _TriggerJournalDirectoryReRenderUseCase;
 const _DITriggerJournalDirectoryReRenderUseCase = class _DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDirectoryReRenderUseCase {
-  constructor(journalEvents, platformUI, notifications) {
-    super(journalEvents, platformUI, notifications);
+  constructor(journalEvents, journalDirectoryUI, notifications) {
+    super(journalEvents, journalDirectoryUI, notifications);
   }
 };
 __name(_DITriggerJournalDirectoryReRenderUseCase, "DITriggerJournalDirectoryReRenderUseCase");
 _DITriggerJournalDirectoryReRenderUseCase.dependencies = [
   platformJournalEventPortToken,
-  platformUIPortToken,
+  journalDirectoryUiPortToken,
   platformNotificationPortToken
 ];
 let DITriggerJournalDirectoryReRenderUseCase = _DITriggerJournalDirectoryReRenderUseCase;
 const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
-  constructor(contextMenuRegistration, hideJournalHandler) {
+  constructor(contextMenuRegistration, handlers, logger) {
     this.contextMenuRegistration = contextMenuRegistration;
-    this.hideJournalHandler = hideJournalHandler;
+    this.handlers = handlers;
+    this.logger = logger;
   }
   /**
    * Register callback for context menu events.
    * All handlers are called for each context menu event.
+   * Errors in individual handlers are caught and logged, but don't stop other handlers.
    */
   register() {
-    const handlers = [this.hideJournalHandler];
     this.callback = (event) => {
-      for (const handler of handlers) {
-        handler.handle(event);
+      for (const handler of this.handlers) {
+        try {
+          handler.handle(event);
+        } catch (error) {
+          const handlerError = error instanceof Error ? error : new Error(String(error));
+          this.logger.warn(`Context menu handler failed: ${handlerError.message}`, {
+            error: handlerError,
+            handler: handler.constructor.name
+          });
+        }
       }
     };
     this.contextMenuRegistration.addCallback(this.callback);
@@ -14540,14 +14790,15 @@ const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
 __name(_RegisterContextMenuUseCase, "RegisterContextMenuUseCase");
 let RegisterContextMenuUseCase = _RegisterContextMenuUseCase;
 const _DIRegisterContextMenuUseCase = class _DIRegisterContextMenuUseCase extends RegisterContextMenuUseCase {
-  constructor(contextMenuRegistration, hideJournalHandler) {
-    super(contextMenuRegistration, hideJournalHandler);
+  constructor(contextMenuRegistration, handlers, logger) {
+    super(contextMenuRegistration, handlers, logger);
   }
 };
 __name(_DIRegisterContextMenuUseCase, "DIRegisterContextMenuUseCase");
 _DIRegisterContextMenuUseCase.dependencies = [
   contextMenuRegistrationPortToken,
-  hideJournalContextMenuHandlerToken
+  journalContextMenuHandlersToken,
+  loggerToken
 ];
 let DIRegisterContextMenuUseCase = _DIRegisterContextMenuUseCase;
 const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
@@ -14753,6 +15004,25 @@ function registerEventPorts(container) {
   if (isErr(hideJournalHandlerResult)) {
     return err(
       `Failed to register HideJournalContextMenuHandler: ${hideJournalHandlerResult.error.message}`
+    );
+  }
+  const handlersArrayResult = container.registerFactory(
+    journalContextMenuHandlersToken,
+    () => {
+      const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
+      if (!handlerResult.ok) {
+        throw new Error(
+          `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
+        );
+      }
+      return [handlerResult.value];
+    },
+    ServiceLifecycle.SINGLETON,
+    [hideJournalContextMenuHandlerToken]
+  );
+  if (isErr(handlersArrayResult)) {
+    return err(
+      `Failed to register JournalContextMenuHandlers array: ${handlersArrayResult.error.message}`
     );
   }
   const contextMenuUseCaseResult = container.registerClass(
@@ -15584,6 +15854,7 @@ function registerStaticValues(container) {
   if (isErr(containerResult)) {
     return err(`Failed to register ServiceContainer: ${containerResult.error.message}`);
   }
+  container.registerAlias(containerPortToken, serviceContainerToken);
   return ok(void 0);
 }
 __name(registerStaticValues, "registerStaticValues");

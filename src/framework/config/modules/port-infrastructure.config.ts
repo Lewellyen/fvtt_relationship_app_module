@@ -12,6 +12,7 @@ import {
   foundryI18nPortRegistryToken,
   platformUIPortToken,
 } from "@/infrastructure/shared/tokens";
+import { journalDirectoryUiPortToken, notificationPortToken } from "@/application/tokens";
 import { DIPortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { registerV13Ports } from "@/infrastructure/adapters/foundry/ports/v13/port-registration";
@@ -116,6 +117,28 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
   );
   if (isErr(platformUIPortResult)) {
     return err(`Failed to register PlatformUIPort: ${platformUIPortResult.error.message}`);
+  }
+
+  // Register specialized ports as aliases to PlatformUIPort
+  // This allows services to depend on minimal interfaces (ISP)
+  const journalDirectoryUiAliasResult = container.registerAlias(
+    journalDirectoryUiPortToken,
+    platformUIPortToken
+  );
+  if (isErr(journalDirectoryUiAliasResult)) {
+    return err(
+      `Failed to register JournalDirectoryUiPort alias: ${journalDirectoryUiAliasResult.error.message}`
+    );
+  }
+
+  const uiNotificationAliasResult = container.registerAlias(
+    notificationPortToken,
+    platformUIPortToken
+  );
+  if (isErr(uiNotificationAliasResult)) {
+    return err(
+      `Failed to register UINotificationPort alias: ${uiNotificationAliasResult.error.message}`
+    );
   }
 
   // Note: Observability handled via self-registration pattern

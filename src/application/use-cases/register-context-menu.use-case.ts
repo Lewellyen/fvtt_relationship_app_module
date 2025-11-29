@@ -1,13 +1,14 @@
 import type { Result } from "@/domain/types/result";
+import { ok } from "@/domain/utils/result";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
 import {
   contextMenuRegistrationPortToken,
-  hideJournalContextMenuHandlerToken,
+  journalContextMenuHandlersToken,
 } from "@/application/tokens";
-import { ok } from "@/domain/utils/result";
-import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
+import { loggerToken } from "@/infrastructure/shared/tokens";
 
 /**
  * Use-Case: Register custom context menu entries for journal entries.
@@ -22,7 +23,7 @@ import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-
  * ```typescript
  * const useCase = new RegisterContextMenuUseCase(
  *   contextMenuRegistration,
- *   hideJournalHandler
+ *   [hideJournalHandler, otherHandler]
  * );
  *
  * useCase.register();  // Register callbacks
@@ -34,21 +35,31 @@ export class RegisterContextMenuUseCase {
 
   constructor(
     private readonly contextMenuRegistration: ContextMenuRegistrationPort,
-    private readonly hideJournalHandler: HideJournalContextMenuHandler
+    private readonly handlers: JournalContextMenuHandler[],
+    private readonly logger: Logger
   ) {}
 
   /**
    * Register callback for context menu events.
    * All handlers are called for each context menu event.
+   * Errors in individual handlers are caught and logged, but don't stop other handlers.
    */
   register(): Result<void, Error> {
-    const handlers: JournalContextMenuHandler[] = [this.hideJournalHandler];
-
-    // Create callback that calls all handlers
+    // Create callback that calls all handlers with error isolation
     this.callback = (event: JournalContextMenuEvent) => {
-      // Rufe alle Handler auf
-      for (const handler of handlers) {
-        handler.handle(event);
+      // Rufe alle Handler auf mit Fehler-Isolation
+      for (const handler of this.handlers) {
+        try {
+          handler.handle(event);
+        } catch (error) {
+          // Log error but continue with next handler
+          const handlerError = error instanceof Error ? error : new Error(String(error));
+          this.logger.warn(`Context menu handler failed: ${handlerError.message}`, {
+            error: handlerError,
+            handler: handler.constructor.name,
+          });
+          // Continue with next handler - don't let one handler failure stop the chain
+        }
       }
     };
 
@@ -74,13 +85,15 @@ export class RegisterContextMenuUseCase {
 export class DIRegisterContextMenuUseCase extends RegisterContextMenuUseCase {
   static dependencies = [
     contextMenuRegistrationPortToken,
-    hideJournalContextMenuHandlerToken,
+    journalContextMenuHandlersToken,
+    loggerToken,
   ] as const;
 
   constructor(
     contextMenuRegistration: ContextMenuRegistrationPort,
-    hideJournalHandler: HideJournalContextMenuHandler
+    handlers: JournalContextMenuHandler[],
+    logger: Logger
   ) {
-    super(contextMenuRegistration, hideJournalHandler);
+    super(contextMenuRegistration, handlers, logger);
   }
 }

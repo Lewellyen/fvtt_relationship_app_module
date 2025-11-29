@@ -12,6 +12,59 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.0] - 2025-11-29
+### Hinzugefügt
+- **ContainerPort Interface**: Minimales Interface für Container-Operationen im Framework-Layer ([Details](src/domain/ports/container-port.interface.ts))
+- Ermöglicht Entkopplung des Framework-Layers von konkreter `ServiceContainer`-Implementierung
+- **Init-Orchestratoren**: Fokussierte Services für Bootstrap-Phasen ([Details](src/framework/core/bootstrap/orchestrators/))
+- `NotificationBootstrapper`, `ApiBootstrapper`, `SettingsBootstrapper`, `LoggingBootstrapper`, `EventsBootstrapper`, `ContextMenuBootstrapper`, `MetricsBootstrapper`
+- Jede Phase isoliert testbar und mit eigenem Error-Handling
+- **InitOrchestrator**: Transaktionales Error-Handling für Bootstrap-Sequenz ([Details](src/framework/core/bootstrap/init-orchestrator.ts))
+- Aggregiert Fehler aus kritischen Phasen, loggt Warnungen für optionale Phasen
+- **JournalDirectoryUiPort & NotificationPort**: Spezialisierte Port-Interfaces ([Details](src/domain/ports/))
+- `JournalDirectoryUiPort` für DOM-Operationen, `NotificationPort` für Benachrichtigungen
+- Folgt Interface Segregation Principle - Services injizieren nur benötigte Ports
+- **Handler-Array-Tokens**: DI-Tokens für Handler-Komposition ([Details](src/application/tokens/application.tokens.ts), [Details](src/infrastructure/shared/tokens/i18n.tokens.ts))
+- `journalContextMenuHandlersToken`, `translationHandlersToken`
+- Ermöglicht Erweiterung ohne Codeänderungen in Use-Cases/Chains
+
+### Geändert
+- **Container-Abstraktion**: Framework-Layer nutzt `ContainerPort` statt `ServiceContainer` ([Details](src/framework/core/bootstrap-init-hook.ts))
+- `BootstrapInitHookService` und `ModuleApiInitializer` verwenden `ContainerPort`
+- `ServiceContainer` implementiert `ContainerPort` zusätzlich zu `Container`
+- **Init-Sequenz Refactoring**: `BootstrapInitHookService.handleInit()` vereinfacht ([Details](src/framework/core/bootstrap-init-hook.ts))
+- Delegiert an `InitOrchestrator.execute()` - Methode von 120+ auf < 20 Zeilen reduziert
+- Jede Bootstrap-Phase isoliert in eigenem Orchestrator
+- **Handler-Komposition**: `RegisterContextMenuUseCase` und `TranslationHandlerChain` nutzen Handler-Arrays ([Details](src/application/use-cases/register-context-menu.use-case.ts), [Details](src/infrastructure/i18n/TranslationHandlerChain.ts))
+- Handler werden über DI injiziert statt fest verdrahtet
+- Neue Handler können über DI registriert werden ohne Codeänderungen
+- **Port-Segregation**: `PlatformUIPort` als Composition-Interface ([Details](src/domain/ports/platform-ui-port.interface.ts))
+- Erweitert `JournalDirectoryUiPort` und `NotificationPort`
+- Services nutzen spezialisierte Ports: `JournalVisibilityService` → `JournalDirectoryUiPort`, `TriggerJournalDirectoryReRenderUseCase` → `JournalDirectoryUiPort`
+- **Error-Handling**: Handler-Aufrufe mit Try-Catch abgesichert ([Details](src/application/use-cases/register-context-menu.use-case.ts))
+- Einzelne Handler-Fehler blockieren nicht die gesamte Callback-Kette
+- Fehler werden geloggt, Verarbeitung setzt mit nächstem Handler fort
+- **Lazy Initialization**: `PersistentMetricsCollector` ohne Konstruktor-I/O ([Details](src/infrastructure/observability/metrics-persistence/persistent-metrics-collector.ts))
+- `restoreFromStorage()` aus Konstruktor entfernt
+- Explizite `initialize()`-Methode mit Result-Pattern
+- Initialisierung über `MetricsBootstrapper` während Bootstrap
+
+### Fehlerbehebungen
+- **SOLID-Prinzipien**: Alle identifizierten Verstöße behoben ([Details](docs/analysis/ANALYSE_LOG.md))
+- SRP: Init-Sequenz in fokussierte Orchestratoren zerlegt
+- OCP: Handler-Komposition über DI ermöglicht Erweiterung ohne Codeänderungen
+- ISP: `PlatformUIPort` in spezialisierte Ports aufgeteilt
+- DIP: Framework-Layer von konkreter DI-Implementierung entkoppelt
+- **Bootstrap-Robustheit**: Transaktionales Error-Handling mit Fehler-Aggregation
+- Kritische Phasen (API, Settings, Events) führen zu Fehler-Rückgabe
+- Optionale Phasen (Notifications, Context Menu) loggen Warnungen, blockieren nicht
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.39.0] - 2025-11-29
 ### Hinzugefügt
 - **Domain Cache Types**: Domain-eigene Cache-Typen für vollständige Entkopplung ([Details](src/domain/types/cache/cache-types.ts))

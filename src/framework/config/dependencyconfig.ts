@@ -8,6 +8,7 @@ import {
   healthCheckRegistryToken,
   metricsCollectorToken,
   serviceContainerToken,
+  containerPortToken,
   runtimeConfigToken,
 } from "@/infrastructure/shared/tokens";
 import { ENV } from "@/framework/config/environment";
@@ -52,6 +53,11 @@ function registerStaticValues(container: ServiceContainer): Result<void, string>
   if (isErr(containerResult)) {
     return err(`Failed to register ServiceContainer: ${containerResult.error.message}`);
   }
+
+  // Register ContainerPort as alias to ServiceContainer
+  // ServiceContainer implements ContainerPort, so this provides the abstraction
+  // for Framework layer without duplicating the instance
+  container.registerAlias(containerPortToken, serviceContainerToken);
 
   return ok(undefined);
 }

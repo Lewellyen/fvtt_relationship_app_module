@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TriggerJournalDirectoryReRenderUseCase } from "../trigger-journal-directory-rerender.use-case";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
-import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 
 describe("TriggerJournalDirectoryReRenderUseCase", () => {
   let mockJournalEvents: PlatformJournalEventPort;
-  let mockPlatformUI: PlatformUIPort;
+  let mockJournalDirectoryUI: JournalDirectoryUiPort;
   let mockNotificationCenter: PlatformNotificationPort;
   let useCase: TriggerJournalDirectoryReRenderUseCase;
 
@@ -21,10 +21,9 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
       unregisterListener: vi.fn(),
     };
 
-    mockPlatformUI = {
+    mockJournalDirectoryUI = {
       rerenderJournalDirectory: vi.fn().mockReturnValue({ ok: true, value: true }),
       removeJournalElement: vi.fn(),
-      notify: vi.fn(),
     };
 
     mockNotificationCenter = {
@@ -39,7 +38,7 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
 
     useCase = new TriggerJournalDirectoryReRenderUseCase(
       mockJournalEvents,
-      mockPlatformUI,
+      mockJournalDirectoryUI,
       mockNotificationCenter
     );
   });
@@ -66,7 +65,7 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
       timestamp: Date.now(),
     });
 
-    expect(mockPlatformUI.rerenderJournalDirectory).toHaveBeenCalled();
+    expect(mockJournalDirectoryUI.rerenderJournalDirectory).toHaveBeenCalled();
     expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
       "Triggered journal directory re-render after hidden flag change",
       expect.objectContaining({ journalId: "journal-123" }),
@@ -84,11 +83,11 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
       timestamp: Date.now(),
     });
 
-    expect(mockPlatformUI.rerenderJournalDirectory).not.toHaveBeenCalled();
+    expect(mockJournalDirectoryUI.rerenderJournalDirectory).not.toHaveBeenCalled();
   });
 
   it("should handle re-render failure gracefully", () => {
-    mockPlatformUI.rerenderJournalDirectory = vi.fn().mockReturnValue({
+    mockJournalDirectoryUI.rerenderJournalDirectory = vi.fn().mockReturnValue({
       ok: false,
       error: { code: "API_NOT_AVAILABLE", message: "UI not ready" },
     });
@@ -116,7 +115,9 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
   });
 
   it("should not log debug when re-render returns false", () => {
-    mockPlatformUI.rerenderJournalDirectory = vi.fn().mockReturnValue({ ok: true, value: false });
+    mockJournalDirectoryUI.rerenderJournalDirectory = vi
+      .fn()
+      .mockReturnValue({ ok: true, value: false });
 
     useCase.register();
 
@@ -133,7 +134,7 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
       timestamp: Date.now(),
     });
 
-    expect(mockPlatformUI.rerenderJournalDirectory).toHaveBeenCalled();
+    expect(mockJournalDirectoryUI.rerenderJournalDirectory).toHaveBeenCalled();
     expect(mockNotificationCenter.debug).not.toHaveBeenCalled();
   });
 

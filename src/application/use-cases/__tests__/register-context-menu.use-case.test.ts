@@ -3,47 +3,54 @@ import {
   RegisterContextMenuUseCase,
   DIRegisterContextMenuUseCase,
 } from "../register-context-menu.use-case";
-import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
-import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
+import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
+import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 
 describe("RegisterContextMenuUseCase", () => {
-  let mockContextMenuLibWrapperService: JournalContextMenuLibWrapperService;
-  let mockHideHandler: HideJournalContextMenuHandler;
+  let mockContextMenuRegistration: ContextMenuRegistrationPort;
+  let mockHandlers: JournalContextMenuHandler[];
+  let mockLogger: Logger;
   let useCase: RegisterContextMenuUseCase;
 
   beforeEach(() => {
-    mockContextMenuLibWrapperService = {
+    mockContextMenuRegistration = {
       addCallback: vi.fn(),
       removeCallback: vi.fn(),
-      register: vi.fn(),
-      dispose: vi.fn(),
-    } as unknown as JournalContextMenuLibWrapperService;
+    } as unknown as ContextMenuRegistrationPort;
 
-    mockHideHandler = {
+    const mockHandler: JournalContextMenuHandler = {
       handle: vi.fn(),
-    } as unknown as HideJournalContextMenuHandler;
+    };
+    mockHandlers = [mockHandler];
 
-    useCase = new RegisterContextMenuUseCase(mockContextMenuLibWrapperService, mockHideHandler);
+    mockLogger = {
+      info: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+    } as unknown as Logger;
+
+    useCase = new RegisterContextMenuUseCase(mockContextMenuRegistration, mockHandlers, mockLogger);
   });
 
   describe("register", () => {
-    it("should register callback with libWrapper service", () => {
+    it("should register callback with context menu registration port", () => {
       const result = useCase.register();
 
       expect(result.ok).toBe(true);
-      expect(mockContextMenuLibWrapperService.addCallback).toHaveBeenCalledTimes(1);
-      expect(mockContextMenuLibWrapperService.addCallback).toHaveBeenCalledWith(
-        expect.any(Function)
-      );
+      expect(mockContextMenuRegistration.addCallback).toHaveBeenCalledTimes(1);
+      expect(mockContextMenuRegistration.addCallback).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it("should call handler when context menu event is triggered", () => {
       const result = useCase.register();
       expect(result.ok).toBe(true);
 
-      const callback = vi.mocked(mockContextMenuLibWrapperService.addCallback).mock
-        .calls[0]![0] as (event: JournalContextMenuEvent) => void;
+      const callback = vi.mocked(mockContextMenuRegistration.addCallback).mock.calls[0]![0] as (
+        event: JournalContextMenuEvent
+      ) => void;
       const mockEvent: JournalContextMenuEvent = {
         htmlElement: document.createElement("div"),
         options: [],
@@ -52,7 +59,110 @@ describe("RegisterContextMenuUseCase", () => {
 
       callback(mockEvent);
 
-      expect(mockHideHandler.handle).toHaveBeenCalledWith(mockEvent);
+      expect(mockHandlers[0]!.handle).toHaveBeenCalledWith(mockEvent);
+    });
+
+    it("should call all handlers when context menu event is triggered", () => {
+      const handler1: JournalContextMenuHandler = { handle: vi.fn() };
+      const handler2: JournalContextMenuHandler = { handle: vi.fn() };
+      const handlers = [handler1, handler2];
+      const useCaseWithMultipleHandlers = new RegisterContextMenuUseCase(
+        mockContextMenuRegistration,
+        handlers,
+        mockLogger
+      );
+
+      const result = useCaseWithMultipleHandlers.register();
+      expect(result.ok).toBe(true);
+
+      const callback = vi.mocked(mockContextMenuRegistration.addCallback).mock.calls[0]![0] as (
+        event: JournalContextMenuEvent
+      ) => void;
+      const mockEvent: JournalContextMenuEvent = {
+        htmlElement: document.createElement("div"),
+        options: [],
+        timestamp: Date.now(),
+      };
+
+      callback(mockEvent);
+
+      expect(handler1.handle).toHaveBeenCalledWith(mockEvent);
+      expect(handler2.handle).toHaveBeenCalledWith(mockEvent);
+    });
+
+    it("should continue with next handler when one handler throws", () => {
+      const handler1: JournalContextMenuHandler = {
+        handle: vi.fn().mockImplementation(() => {
+          throw new Error("Handler 1 error");
+        }),
+      };
+      const handler2: JournalContextMenuHandler = { handle: vi.fn() };
+      const handlers = [handler1, handler2];
+      const useCaseWithErrorHandler = new RegisterContextMenuUseCase(
+        mockContextMenuRegistration,
+        handlers,
+        mockLogger
+      );
+
+      const result = useCaseWithErrorHandler.register();
+      expect(result.ok).toBe(true);
+
+      const callback = vi.mocked(mockContextMenuRegistration.addCallback).mock.calls[0]![0] as (
+        event: JournalContextMenuEvent
+      ) => void;
+      const mockEvent: JournalContextMenuEvent = {
+        htmlElement: document.createElement("div"),
+        options: [],
+        timestamp: Date.now(),
+      };
+
+      callback(mockEvent);
+
+      expect(handler1.handle).toHaveBeenCalledWith(mockEvent);
+      expect(handler2.handle).toHaveBeenCalledWith(mockEvent);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Context menu handler failed"),
+        expect.any(Object)
+      );
+    });
+
+    it("should handle non-Error exceptions", () => {
+      const handler1: JournalContextMenuHandler = {
+        handle: vi.fn().mockImplementation(() => {
+          throw "String error"; // Not an Error instance
+        }),
+      };
+      const handler2: JournalContextMenuHandler = { handle: vi.fn() };
+      const handlers = [handler1, handler2];
+      const useCaseWithNonErrorException = new RegisterContextMenuUseCase(
+        mockContextMenuRegistration,
+        handlers,
+        mockLogger
+      );
+
+      const result = useCaseWithNonErrorException.register();
+      expect(result.ok).toBe(true);
+
+      const callback = vi.mocked(mockContextMenuRegistration.addCallback).mock.calls[0]![0] as (
+        event: JournalContextMenuEvent
+      ) => void;
+      const mockEvent: JournalContextMenuEvent = {
+        htmlElement: document.createElement("div"),
+        options: [],
+        timestamp: Date.now(),
+      };
+
+      callback(mockEvent);
+
+      expect(handler1.handle).toHaveBeenCalledWith(mockEvent);
+      expect(handler2.handle).toHaveBeenCalledWith(mockEvent);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Context menu handler failed"),
+        expect.objectContaining({
+          error: expect.any(Error),
+          handler: expect.any(String),
+        })
+      );
     });
 
     it("should always return success", () => {
@@ -69,16 +179,14 @@ describe("RegisterContextMenuUseCase", () => {
 
       useCase.dispose();
 
-      expect(mockContextMenuLibWrapperService.removeCallback).toHaveBeenCalledTimes(1);
-      expect(mockContextMenuLibWrapperService.removeCallback).toHaveBeenCalledWith(
-        expect.any(Function)
-      );
+      expect(mockContextMenuRegistration.removeCallback).toHaveBeenCalledTimes(1);
+      expect(mockContextMenuRegistration.removeCallback).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it("should not remove callback if not registered", () => {
       useCase.dispose();
 
-      expect(mockContextMenuLibWrapperService.removeCallback).not.toHaveBeenCalled();
+      expect(mockContextMenuRegistration.removeCallback).not.toHaveBeenCalled();
     });
 
     it("should clear callback after dispose", () => {
@@ -87,15 +195,16 @@ describe("RegisterContextMenuUseCase", () => {
 
       // Second dispose should not call removeCallback again
       useCase.dispose();
-      expect(mockContextMenuLibWrapperService.removeCallback).toHaveBeenCalledTimes(1);
+      expect(mockContextMenuRegistration.removeCallback).toHaveBeenCalledTimes(1);
     });
   });
 
   describe("DIRegisterContextMenuUseCase", () => {
     it("should instantiate with correct dependencies", () => {
       const diUseCase = new DIRegisterContextMenuUseCase(
-        mockContextMenuLibWrapperService,
-        mockHideHandler
+        mockContextMenuRegistration,
+        mockHandlers,
+        mockLogger
       );
 
       expect(diUseCase).toBeInstanceOf(RegisterContextMenuUseCase);

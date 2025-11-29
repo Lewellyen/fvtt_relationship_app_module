@@ -1,13 +1,13 @@
 import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
-import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
 import {
   platformJournalEventPortToken,
-  platformUIPortToken,
+  journalDirectoryUiPortToken,
   platformNotificationPortToken,
 } from "@/application/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
@@ -34,7 +34,7 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
 
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
-    private readonly platformUI: PlatformUIPort,
+    private readonly journalDirectoryUI: JournalDirectoryUiPort,
     private readonly notifications: PlatformNotificationPort
   ) {}
 
@@ -66,7 +66,7 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
    * Trigger journal directory re-render.
    */
   private triggerReRender(journalId: string): void {
-    const result = this.platformUI.rerenderJournalDirectory();
+    const result = this.journalDirectoryUI.rerenderJournalDirectory();
 
     if (!result.ok) {
       this.notifications.warn(
@@ -103,15 +103,15 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
 export class DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDirectoryReRenderUseCase {
   static dependencies = [
     platformJournalEventPortToken,
-    platformUIPortToken,
+    journalDirectoryUiPortToken,
     platformNotificationPortToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
-    platformUI: PlatformUIPort,
+    journalDirectoryUI: JournalDirectoryUiPort,
     notifications: PlatformNotificationPort
   ) {
-    super(journalEvents, platformUI, notifications);
+    super(journalEvents, journalDirectoryUI, notifications);
   }
 }

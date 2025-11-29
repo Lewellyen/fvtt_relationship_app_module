@@ -5,6 +5,8 @@ import { runtimeConfigToken, metricsStorageToken } from "@/infrastructure/shared
 import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-collector";
 import { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsStorage } from "./metrics-storage";
+import type { Result } from "@/domain/types/result";
+import { ok, err } from "@/domain/utils/result";
 
 /**
  * MetricsCollector variant that persists state via MetricsStorage.
@@ -16,13 +18,35 @@ export class PersistentMetricsCollector extends MetricsCollector {
   ];
 
   private suppressPersistence = false;
+  private initialized = false;
 
   constructor(
     config: RuntimeConfigService,
     private readonly metricsStorage: MetricsStorage
   ) {
     super(config);
-    this.restoreFromStorage();
+    // I/O removed from constructor - use initialize() instead
+  }
+
+  /**
+   * Initializes the collector by restoring state from storage.
+   * Must be called explicitly after construction.
+   *
+   * @returns Result indicating success or error
+   */
+  initialize(): Result<void, string> {
+    if (this.initialized) {
+      return ok(undefined);
+    }
+
+    try {
+      this.restoreFromStorage();
+      this.initialized = true;
+      return ok(undefined);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return err(`Failed to initialize PersistentMetricsCollector: ${errorMessage}`);
+    }
   }
 
   clearPersistentState(): void {
