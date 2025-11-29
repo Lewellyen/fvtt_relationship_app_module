@@ -273,11 +273,13 @@ jobs:
           CURSOR_AI_MODEL="${CURSOR_AI_MODEL:-sonnet-4.5}"
           echo "Using model: $CURSOR_AI_MODEL"
 
-          # Lese den Prompt
-          PROMPT=$(cat /tmp/analysis-prompt.md)
+          # Prompt-Größe prüfen
+          PROMPT_SIZE=$(wc -c < /tmp/analysis-prompt.md)
+          echo "Prompt size: $PROMPT_SIZE bytes"
 
           # Führe Analyse aus
-          cursor-agent -p "$PROMPT" --model "$CURSOR_AI_MODEL" > /tmp/analysis-output.json 2>&1 || {
+          # Verwende stdin statt Argument um "Argument list too long" zu vermeiden
+          cursor-agent --model "$CURSOR_AI_MODEL" < /tmp/analysis-prompt.md > /tmp/analysis-output.json 2>&1 || {
             echo "Cursor AI analysis failed or returned non-JSON output"
             # Versuche JSON zu extrahieren falls es in Text eingebettet ist
             grep -oP '(?<=\`\`\`json\n)(.*?)(?=\n\`\`\`)|(?<=\{)(.*?)(?=\})' /tmp/analysis-output.json | head -1 > /tmp/analysis-extracted.json || true

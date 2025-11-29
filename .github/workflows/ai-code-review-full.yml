@@ -291,28 +291,41 @@ jobs:
             echo "## Dateien" >> /tmp/analysis-prompt.md
             echo "" >> /tmp/analysis-prompt.md
 
-            # Teile Dateien in Chunks auf (um Token-Limit zu vermeiden)
-            # Für große Projekte: Nur erste 50 Dateien mit vollständigem Code, Rest nur als Liste
+            # Teile Dateien in Chunks auf (um Token-Limit und Argument-Liste-Limit zu vermeiden)
+            # Für große Projekte: Begrenze auf 50 Dateien mit Code (wie lokal)
+            # Das Problem war nicht die Prompt-Größe, sondern wie timeout den Prompt übergibt
             HEAD_COUNT=50
+            MAX_FILES_WITH_CODE=50
             TOTAL_FILES=$(wc -l < files_to_analyze.txt | tr -d ' ')
 
-            if [ "$TOTAL_FILES" -le "$HEAD_COUNT" ]; then
-              # Alle Dateien mit Code
-              while IFS= read -r file; do
+            # Berechne wie viele Dateien mit Code aufgenommen werden
+            if [ "$TOTAL_FILES" -le "$MAX_FILES_WITH_CODE" ]; then
+              FILES_WITH_CODE=$TOTAL_FILES
+            else
+              FILES_WITH_CODE=$MAX_FILES_WITH_CODE
+            fi
+
+            echo "Including $FILES_WITH_CODE files with code (of $TOTAL_FILES total files)"
+
+            if [ "$TOTAL_FILES" -le "$FILES_WITH_CODE" ]; then
+              # Alle Dateien mit Code (aber begrenzt auf MAX_FILES_WITH_CODE)
+              head -$MAX_FILES_WITH_CODE files_to_analyze.txt | while IFS= read -r file; do
                 if [ -f "$file" ]; then
                   echo "### $file" >> /tmp/analysis-prompt.md
                   echo "\`\`\`typescript" >> /tmp/analysis-prompt.md
+                  # Zeige relevanten Code (erste 300 Zeilen pro Datei, wie lokal)
                   head -300 "$file" >> /tmp/analysis-prompt.md || true
                   echo "\`\`\`" >> /tmp/analysis-prompt.md
                   echo "" >> /tmp/analysis-prompt.md
                 fi
-              done < files_to_analyze.txt
+              done
             else
-              # Erste 50 Dateien mit Code, Rest nur als Liste
-              head -$HEAD_COUNT files_to_analyze.txt | while IFS= read -r file; do
+              # Erste N Dateien mit Code, Rest nur als Liste
+              head -$FILES_WITH_CODE files_to_analyze.txt | while IFS= read -r file; do
                 if [ -f "$file" ]; then
                   echo "### $file" >> /tmp/analysis-prompt.md
                   echo "\`\`\`typescript" >> /tmp/analysis-prompt.md
+                  # Zeige relevanten Code (erste 300 Zeilen pro Datei, wie lokal)
                   head -300 "$file" >> /tmp/analysis-prompt.md || true
                   echo "\`\`\`" >> /tmp/analysis-prompt.md
                   echo "" >> /tmp/analysis-prompt.md
@@ -321,7 +334,14 @@ jobs:
 
               echo "### Weitere Dateien (nur Struktur-Analyse)" >> /tmp/analysis-prompt.md
               echo "" >> /tmp/analysis-prompt.md
-              tail -n +$((HEAD_COUNT + 1)) files_to_analyze.txt >> /tmp/analysis-prompt.md
+              echo "**Hinweis:** Bei sehr großen Projekten werden nur die ersten $FILES_WITH_CODE Dateien mit Code angezeigt." >> /tmp/analysis-prompt.md
+              echo "Fokussiere die Analyse auf Architektur-Patterns und kritische Probleme." >> /tmp/analysis-prompt.md
+              echo "" >> /tmp/analysis-prompt.md
+              tail -n +$((FILES_WITH_CODE + 1)) files_to_analyze.txt | head -100 >> /tmp/analysis-prompt.md
+              if [ "$TOTAL_FILES" -gt $((FILES_WITH_CODE + 100)) ]; then
+                echo "" >> /tmp/analysis-prompt.md
+                echo "... und $((TOTAL_FILES - FILES_WITH_CODE - 100)) weitere Dateien" >> /tmp/analysis-prompt.md
+              fi
             fi
 
             echo "" >> /tmp/analysis-prompt.md
@@ -343,19 +363,65 @@ jobs:
           CURSOR_AI_MODEL="${CURSOR_AI_MODEL:-sonnet-4.5}"
           echo "Using model: $CURSOR_AI_MODEL"
 
-          # Lese den Prompt
-          PROMPT=$(cat /tmp/analysis-prompt.md)
+          # Prompt-Größe prüfen
+          PROMPT_SIZE=$(wc -c < /tmp/analysis-prompt.md)
+          echo "Prompt size: $PROMPT_SIZE bytes"
 
-          # Führe Analyse aus (mit längeren Timeouts für große Projekte)
-          timeout 1800 cursor-agent -p "$PROMPT" --model "$CURSOR_AI_MODEL" > /tmp/analysis-output-raw.txt 2>&1 || {
-            EXIT_CODE=$?
+          # Verwende immer Python subprocess um stdin zu übergeben
+          # Dies vermeidet "Argument list too long" Probleme mit timeout + großen Prompts
+          # timeout verursacht das Problem, da es den gesamten Befehl mit Argumenten aufruft
+          echo "Using Python wrapper to handle large prompts via stdin"
+          python3 << 'PYTHON_EOF'
+import subprocess
+import sys
+import os
+
+model = os.environ.get('CURSOR_AI_MODEL', 'sonnet-4.5')
+
+# Lese Prompt aus Datei
+with open('/tmp/analysis-prompt.md', 'r', encoding='utf-8') as f:
+    prompt = f.read()
+
+# Starte cursor-agent wie lokal: -p mit Prompt als Argument
+# ABER: Verwende Python statt timeout, da timeout das "Argument list too long" Problem verursacht
+# Python kann lange Argumente verarbeiten, da es nicht über Shell geht
+proc = subprocess.Popen(
+    ['cursor-agent', '--model', model, '-p', prompt],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    text=True,
+    bufsize=1
+)
+
+try:
+    # Warte auf Completion (30 Minuten Timeout)
+    stdout, _ = proc.communicate(timeout=1800)
+except subprocess.TimeoutExpired:
+    proc.kill()
+    stdout, _ = proc.communicate()
+    print("Analysis timed out after 30 minutes", file=sys.stderr)
+    sys.exit(124)
+except Exception as e:
+    proc.kill()
+    print(f"Error during analysis: {e}", file=sys.stderr)
+    sys.exit(1)
+
+# Schreibe Output
+with open('/tmp/analysis-output-raw.txt', 'w', encoding='utf-8') as f:
+    f.write(stdout)
+
+sys.exit(proc.returncode)
+PYTHON_EOF
+          EXIT_CODE=$?
+
+          if [ $EXIT_CODE -ne 0 ]; then
             if [ $EXIT_CODE -eq 124 ]; then
               echo "Analysis timed out after 30 minutes"
             else
               echo "Cursor AI analysis completed with exit code: $EXIT_CODE"
               echo "This may be normal - checking for JSON in output..."
             fi
-          }
+          fi
 
           # Kopiere Raw-Output für Debugging
           cp /tmp/analysis-output-raw.txt /tmp/analysis-output.json
