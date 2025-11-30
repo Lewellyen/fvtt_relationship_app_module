@@ -148,11 +148,13 @@ Das Projekt verwendet:
 - Respektiere die Schichttrennung (Clean Architecture)
 - Füge Tests hinzu, wenn möglich
 
-## Output - WICHTIG:
+## Output - KRITISCH - MUSS ERFÜLLT WERDEN:
 
-Nachdem du die Änderungen gemacht hast, ERSTELLE eine strukturierte Zusammenfassung in `/tmp/agent-summary.md`:
+**WICHTIG:** Du MUSST nach den Code-Änderungen eine Zusammenfassung erstellen!
 
-**Du MUSST diese Datei erstellen mit folgendem Inhalt:**
+**Schritt 1:** Erstelle die Datei `/tmp/agent-summary.md` mit dem `write` Tool!
+
+**Schritt 2:** Der Inhalt MUSS folgende Struktur haben:
 
 ```markdown
 ## Problem
@@ -161,23 +163,27 @@ Nachdem du die Änderungen gemacht hast, ERSTELLE eine strukturierte Zusammenfas
 
 ## Lösung
 
-[Erkläre wie du das Problem gelöst hast]
+[Erkläre wie du das Problem gelöst hast - welche Änderungen wurden gemacht?]
 
 ## Geänderte Dateien
 
-- `pfad/zur/datei.ts`: [Was wurde geändert]
-- `pfad/zur/datei2.ts`: [Was wurde geändert]
+- `pfad/zur/datei.ts`: [Was wurde geändert und warum]
+- `pfad/zur/datei2.ts`: [Was wurde geändert und warum]
 
 ## Technische Details
 
-[Falls relevant: Architektur-Entscheidungen, Pattern-Verwendung, etc.]
+[Architektur-Entscheidungen, Pattern-Verwendung, z.B. Result-Pattern, Clean Architecture, etc.]
 
 ## Review-Hinweise
 
 [Besondere Überlegungen für den Reviewer, z.B. Breaking Changes, Tests, etc.]
 ```
 
-**KRITISCH:** Diese Datei wird als PR-Body verwendet! Schreibe sie in `/tmp/agent-summary.md` mit dem `write` Tool!
+**KRITISCH:**
+- Diese Datei wird als PR-Body verwendet!
+- OHNE diese Datei wird der PR mit einer generischen Beschreibung erstellt!
+- Verwende das `write` Tool um `/tmp/agent-summary.md` zu erstellen!
+- Schreibe die Zusammenfassung NACH den Code-Änderungen, aber VOR dem Commit!
 
 ## Zusammenfassung der Schritte:
 
