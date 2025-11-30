@@ -54,15 +54,52 @@ jobs:
         run: |
           echo "Collecting issues to process..."
 
+          # Funktion zum Prüfen ob bereits ein PR für ein Issue existiert
+          check_existing_pr() {
+            local issue_num=$1
+            echo "Checking for existing PR for issue #$issue_num..."
+
+            # Methode 1: Prüfe PRs die das Issue in der Beschreibung erwähnen
+            PR_WITH_ISSUE=$(gh pr list --state all --search "issue #$issue_num" --json number,title,state --jq '.[0].number' 2>/dev/null || echo "")
+            if [ -n "$PR_WITH_ISSUE" ]; then
+              echo "  ✅ Found PR #$PR_WITH_ISSUE mentioning issue #$issue_num"
+              return 0
+            fi
+
+            # Methode 2: Prüfe PRs mit Branch-Namen die das Issue enthalten
+            PR_BRANCH=$(gh pr list --state all --json headRefName,number --jq ".[] | select(.headRefName | contains(\"issue-$issue_num\")) | .number" 2>/dev/null | head -1 || echo "")
+            if [ -n "$PR_BRANCH" ]; then
+              echo "  ✅ Found PR #$PR_BRANCH with branch containing issue #$issue_num"
+              return 0
+            fi
+
+            # Methode 3: Prüfe Issue-Kommentare nach PR-Links
+            PR_IN_COMMENTS=$(gh issue view "$issue_num" --json comments --jq '.comments[] | select(.body | test("PR #|pull/[0-9]+|/pull/[0-9]+")) | .body' 2>/dev/null | grep -oP 'PR #\K[0-9]+|pull/\K[0-9]+|/pull/\K[0-9]+' | head -1 || echo "")
+            if [ -n "$PR_IN_COMMENTS" ]; then
+              echo "  ✅ Found PR #$PR_IN_COMMENTS mentioned in issue comments"
+              return 0
+            fi
+
+            echo "  ℹ️  No existing PR found for issue #$issue_num"
+            return 1
+          }
+
           # Prüfe ob spezifische Issue-Nummer angegeben wurde
           if [ -n "${{ github.event.inputs.issue_number }}" ]; then
             ISSUE_NUM="${{ github.event.inputs.issue_number }}"
             echo "Processing specific issue: #$ISSUE_NUM"
-            gh issue view "$ISSUE_NUM" --json number,title,body,labels,state > /tmp/issue.json 2>&1 || {
-              echo "❌ Issue #$ISSUE_NUM not found or not accessible"
-              exit 1
-            }
-            echo "[$(cat /tmp/issue.json)]" > /tmp/issues.json
+
+            # Prüfe ob bereits ein PR existiert
+            if check_existing_pr "$ISSUE_NUM"; then
+              echo "⚠️ Issue #$ISSUE_NUM already has an associated PR, skipping"
+              echo "[]" > /tmp/issues.json
+            else
+              gh issue view "$ISSUE_NUM" --json number,title,body,labels,state > /tmp/issue.json 2>&1 || {
+                echo "❌ Issue #$ISSUE_NUM not found or not accessible"
+                exit 1
+              }
+              echo "[$(cat /tmp/issue.json)]" > /tmp/issues.json
+            fi
           else
             # Lade alle offenen Issues
             LABEL_FILTER="${{ github.event.inputs.label_filter }}"
@@ -70,21 +107,39 @@ jobs:
 
             if [ -n "$LABEL_FILTER" ]; then
               echo "Filtering issues by label: $LABEL_FILTER"
-              gh issue list --state open --label "$LABEL_FILTER" --json number,title,body,labels,state --limit "${MAX_ISSUES:-10}" > /tmp/issues.json 2>&1 || {
+              gh issue list --state open --label "$LABEL_FILTER" --json number,title,body,labels,state --limit "${MAX_ISSUES:-10}" > /tmp/all-issues.json 2>&1 || {
                 echo "⚠️ No issues found with label $LABEL_FILTER"
-                echo "[]" > /tmp/issues.json
+                echo "[]" > /tmp/all-issues.json
               }
             else
               echo "Loading all open issues (max: ${MAX_ISSUES:-10})"
-              gh issue list --state open --json number,title,body,labels,state --limit "${MAX_ISSUES:-10}" > /tmp/issues.json 2>&1 || {
+              gh issue list --state open --json number,title,body,labels,state --limit "${MAX_ISSUES:-10}" > /tmp/all-issues.json 2>&1 || {
                 echo "⚠️ No open issues found"
-                echo "[]" > /tmp/issues.json
+                echo "[]" > /tmp/all-issues.json
               }
             fi
+
+            # Filtere Issues die bereits einen PR haben
+            echo "Filtering issues without existing PRs..."
+            FILTERED_ISSUES="[]"
+            ISSUE_COUNT=$(cat /tmp/all-issues.json | jq '. | length' 2>/dev/null || echo "0")
+
+            if [ "$ISSUE_COUNT" -gt 0 ]; then
+              while IFS= read -r issue_json; do
+                ISSUE_NUM=$(echo "$issue_json" | jq -r '.number')
+                if ! check_existing_pr "$ISSUE_NUM"; then
+                  # Füge Issue zu gefilterter Liste hinzu
+                  FILTERED_ISSUES=$(echo "$FILTERED_ISSUES" | jq ". + [$issue_json]")
+                fi
+              done < <(cat /tmp/all-issues.json | jq -c '.[]')
+            fi
+
+            echo "$FILTERED_ISSUES" > /tmp/issues.json
           fi
 
           ISSUE_COUNT=$(cat /tmp/issues.json | jq '. | length' 2>/dev/null || echo "0")
-          echo "Found $ISSUE_COUNT issues to process"
+          echo ""
+          echo "Found $ISSUE_COUNT issues to process (after filtering existing PRs)"
           echo "count=$ISSUE_COUNT" >> $GITHUB_OUTPUT
 
           # Erstelle Matrix-Output für parallele Verarbeitung
@@ -269,29 +324,58 @@ jobs:
           cat /tmp/fix-output.txt | head -100
           echo ""
 
-      - name: Check for Changes
+      - name: Check and Commit Changes
         id: check-changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Prüfe ob Änderungen gemacht wurden
-          if git diff --quiet HEAD origin/${{ github.ref_name }} 2>/dev/null; then
-            if [ -z "$(git status --porcelain)" ]; then
-              echo "⚠️ No changes detected"
-              echo "has_changes=false" >> $GITHUB_OUTPUT
-            else
-              echo "✅ Changes detected in working directory"
-              echo "has_changes=true" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "✅ Changes detected"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+          # Prüfe ob es uncommitted changes gibt
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "⚠️ No changes detected in working directory"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
           fi
 
-          # Zeige Status
+          echo "✅ Changes detected in working directory"
           echo "=== Git Status ==="
           git status
           echo ""
           echo "=== Diff Summary ==="
-          git diff --stat HEAD || true
+          git diff --stat || true
+
+          # Konfiguriere Git für Commits
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stage alle Änderungen
+          git add -A
+
+          # Prüfe ob es staged changes gibt
+          if [ -z "$(git diff --cached --name-only)" ]; then
+            echo "⚠️ No changes to commit after staging"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Erstelle Commit
+          ISSUE_NUM="${{ matrix.issue_number }}"
+          COMMIT_MSG="fix: resolve issue #$ISSUE_NUM
+
+          AI-generated fix for issue #$ISSUE_NUM
+
+          This commit was automatically created by the AI Issue Fix workflow."
+
+          git commit -m "$COMMIT_MSG" || {
+            echo "❌ Failed to create commit"
+            exit 1
+          }
+
+          echo "✅ Changes committed successfully"
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+
+          # Zeige Commit-Info
+          echo "=== Commit Info ==="
+          git log -1 --stat
 
       - name: Push Changes
         if: steps.check-changes.outputs.has_changes == 'true'
@@ -390,25 +474,11 @@ jobs:
             echo "⚠️ PR already exists: #$EXISTING_PR"
             echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
           else
-            # Erstelle PR-Beschreibung
-            PR_BODY="## 🤖 AI-Generated Fix for Issue #$ISSUE_NUM
-
-          This PR was automatically generated by the AI Issue Fix workflow to resolve issue #$ISSUE_NUM.
-
-          **Issue:** $ISSUE_TITLE
-          **Issue URL:** ${{ steps.issue-details.outputs.url }}
-
-          ### Changes
-          This PR contains the AI-generated fix for the issue. Please review carefully before merging.
-
-          ### Review Checklist
-          - [ ] Code changes are correct
-          - [ ] Tests pass (if applicable)
-          - [ ] No breaking changes introduced
-          - [ ] Follows project architecture patterns
-
-          ---
-          *This PR was created automatically. Please review and test before merging.*"
+            # Erstelle PR-Beschreibung mit Python-Script (behandelt Sonderzeichen sicher)
+            PR_BODY=$(ISSUE_NUM="$ISSUE_NUM" \
+                     ISSUE_TITLE="$ISSUE_TITLE" \
+                     ISSUE_URL="${{ steps.issue-details.outputs.url }}" \
+                     python3 scripts/create-pr-body.py)
 
             # Erstelle PR mit besserer Fehlerbehandlung
             echo "Creating PR..."
@@ -416,24 +486,38 @@ jobs:
             echo "Base: $BASE_BRANCH"
             echo "Head: $BRANCH_NAME"
 
-            # Prüfe ob Labels existieren
+            # Prüfe ob Labels existieren (robustere Methode)
             LABELS_ARGS=""
-            if gh label list --json name --jq '.[] | select(.name == "ai-generated")' | grep -q "ai-generated"; then
+            LABEL_LIST=$(gh label list --json name 2>/dev/null || echo "[]")
+
+            if echo "$LABEL_LIST" | jq -r '.[] | select(.name == "ai-generated") | .name' | grep -q "ai-generated"; then
               LABELS_ARGS="$LABELS_ARGS --label ai-generated"
+              echo "✅ Label 'ai-generated' found, will add to PR"
+            else
+              echo "⚠️ Label 'ai-generated' not found, skipping"
             fi
-            if gh label list --json name --jq '.[] | select(.name == "automated")' | grep -q "automated"; then
+
+            if echo "$LABEL_LIST" | jq -r '.[] | select(.name == "automated") | .name' | grep -q "automated"; then
               LABELS_ARGS="$LABELS_ARGS --label automated"
+              echo "✅ Label 'automated' found, will add to PR"
+            else
+              echo "⚠️ Label 'automated' not found, skipping"
             fi
+
+            echo "Labels to add: $LABELS_ARGS"
 
             # Erstelle PR mit Labels (falls vorhanden)
-            PR_OUTPUT=$(gh pr create \
-              --title "fix: Resolve issue #$ISSUE_NUM - $ISSUE_TITLE" \
-              --body "$PR_BODY" \
-              --base "$BASE_BRANCH" \
-              --head "$BRANCH_NAME" \
-              $LABELS_ARGS \
-              2>&1)
+            # Baue Befehl zusammen
+            PR_CMD="gh pr create --title \"fix: Resolve issue #$ISSUE_NUM - $ISSUE_TITLE\" --body \"$PR_BODY\" --base \"$BASE_BRANCH\" --head \"$BRANCH_NAME\""
 
+            if [ -n "$LABELS_ARGS" ]; then
+              PR_CMD="$PR_CMD $LABELS_ARGS"
+            fi
+
+            echo "Executing: $PR_CMD"
+
+            # Führe Befehl aus und erfasse Ausgabe
+            PR_OUTPUT=$(eval "$PR_CMD" 2>&1)
             PR_EXIT_CODE=$?
             echo "PR command exit code: $PR_EXIT_CODE"
             echo "PR output:"
