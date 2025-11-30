@@ -107,9 +107,10 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
     () => {
       const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
       if (!handlerResult.ok) {
-        throw new Error(
+        console.error(
           `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
         );
+        return [];
       }
       return [handlerResult.value];
     },
