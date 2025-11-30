@@ -1,6 +1,7 @@
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
-import { ok, err, isErr } from "@/domain/utils/result";
+import { ok, err, isErr, getOrThrow } from "@/domain/utils/result";
+import type { ContainerError } from "@/infrastructure/di/interfaces";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import {
   platformJournalEventPortToken,
@@ -102,16 +103,22 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
 
   // Register array of context menu handlers using a factory function
   // This allows handlers to be resolved after container validation
+  // NOTE: Factory functions must return T, not Result<T, E>. The container catches
+  // exceptions and converts them to ContainerError. We use getOrThrow() to unwrap
+  // the Result, which respects the Result-Pattern by propagating the error structure.
   const handlersArrayResult = container.registerFactory(
     journalContextMenuHandlersToken,
     () => {
       const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
-      if (!handlerResult.ok) {
-        throw new Error(
-          `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
-        );
-      }
-      return [handlerResult.value];
+      // Use getOrThrow() to unwrap Result, preserving error structure for container
+      const handler = getOrThrow(
+        handlerResult,
+        (error: ContainerError) =>
+          new Error(
+            `Failed to resolve HideJournalContextMenuHandler: ${error.message} (code: ${error.code})`
+          )
+      );
+      return [handler];
     },
     ServiceLifecycle.SINGLETON,
     [hideJournalContextMenuHandlerToken]
