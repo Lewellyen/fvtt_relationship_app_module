@@ -43,9 +43,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Authentifiziere GitHub CLI mit Token
-          echo "$GH_TOKEN" | gh auth login --with-token
-          gh auth status
+          # GitHub CLI verwendet GH_TOKEN automatisch wenn gesetzt
+          # Keine explizite Authentifizierung nötig
+          echo "✅ GitHub CLI ready (using GH_TOKEN)"
 
       - name: Collect Issues
         id: filter-issues
