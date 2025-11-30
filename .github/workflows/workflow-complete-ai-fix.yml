@@ -26,11 +26,7 @@ jobs:
       issues: read
       pull-requests: read
     outputs:
-      issue_number: ${{ steps.select.outputs.issue_number }}
-      issue_title: ${{ steps.select.outputs.issue_title }}
-      issue_body: ${{ steps.select.outputs.issue_body }}
-      issue_url: ${{ steps.select.outputs.issue_url }}
-      branch_name: ${{ steps.select.outputs.branch_name }}
+      issues_matrix: ${{ steps.select.outputs.matrix }}
       count: ${{ steps.select.outputs.count }}
     steps:
       - name: Checkout code
@@ -142,39 +138,80 @@ jobs:
               exit 0
             fi
 
-            SELECTED_ISSUE=$(echo "$FILTERED_ISSUES" | jq '.[0]')
-            ISSUE_NUM=$(echo "$SELECTED_ISSUE" | jq -r '.number')
-            ISSUE_TITLE=$(echo "$SELECTED_ISSUE" | jq -r '.title')
-            ISSUE_BODY=$(echo "$SELECTED_ISSUE" | jq -r '.body // ""')
-            ISSUE_URL=$(echo "$SELECTED_ISSUE" | jq -r '.url')
-
-            echo "✅ Selected issue #$ISSUE_NUM: $ISSUE_TITLE"
+            echo "✅ Found $FILTERED_COUNT issue(s) without existing PRs"
           fi
 
-          BRANCH_NAME="fix/issue-$ISSUE_NUM-$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | cut -c1-50)"
+          # Erstelle Matrix für alle gefilterten Issues
+          if [ "$FILTERED_COUNT" -gt 0 ]; then
+            # Erstelle Matrix-Array mit allen benötigten Daten
+            MATRIX_ARRAY="[]"
+            while IFS= read -r issue_json; do
+              ISSUE_NUM=$(echo "$issue_json" | jq -r '.number')
+              ISSUE_TITLE=$(echo "$issue_json" | jq -r '.title')
+              ISSUE_BODY=$(echo "$issue_json" | jq -r '.body // ""')
+              ISSUE_URL=$(echo "$issue_json" | jq -r '.url')
 
-          echo "issue_number=$ISSUE_NUM" >> $GITHUB_OUTPUT
-          echo "issue_title<<EOF" >> $GITHUB_OUTPUT
-          echo "$ISSUE_TITLE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "issue_body<<EOF" >> $GITHUB_OUTPUT
-          echo "$ISSUE_BODY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          echo "count=1" >> $GITHUB_OUTPUT
+              # Erstelle Branch-Name
+              BRANCH_NAME="fix/issue-$ISSUE_NUM-$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | cut -c1-50)"
 
-  fix-issue:
-    name: 2. Fix Issue
+              # Erstelle Matrix-Eintrag
+              MATRIX_ENTRY=$(jq -n \
+                --arg num "$ISSUE_NUM" \
+                --arg title "$ISSUE_TITLE" \
+                --arg body "$ISSUE_BODY" \
+                --arg url "$ISSUE_URL" \
+                --arg branch "$BRANCH_NAME" \
+                '{number: $num, title: $title, body: $body, url: $url, branch_name: $branch}')
+
+              MATRIX_ARRAY=$(echo "$MATRIX_ARRAY" | jq ". + [$MATRIX_ENTRY]")
+            done < <(echo "$FILTERED_ISSUES" | jq -c '.[]')
+
+            # Setze Matrix-Output
+            echo "matrix<<EOF" >> $GITHUB_OUTPUT
+            echo "$MATRIX_ARRAY" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+
+            echo "count=$FILTERED_COUNT" >> $GITHUB_OUTPUT
+            echo "✅ Created matrix with $FILTERED_COUNT issue(s)"
+          else
+            # Fallback für einzelnes Issue (wenn spezifische Issue-Nummer angegeben)
+            if [ -n "${{ github.event.inputs.issue_number }}" ]; then
+              ISSUE_NUM="${{ github.event.inputs.issue_number }}"
+              ISSUE_TITLE=$(cat /tmp/issue.json | jq -r '.title')
+              ISSUE_BODY=$(cat /tmp/issue.json | jq -r '.body // ""')
+              ISSUE_URL=$(cat /tmp/issue.json | jq -r '.url')
+              BRANCH_NAME="fix/issue-$ISSUE_NUM-$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | cut -c1-50)"
+
+              MATRIX_ENTRY=$(jq -n \
+                --arg num "$ISSUE_NUM" \
+                --arg title "$ISSUE_TITLE" \
+                --arg body "$ISSUE_BODY" \
+                --arg url "$ISSUE_URL" \
+                --arg branch "$BRANCH_NAME" \
+                '{number: $num, title: $title, body: $body, url: $url, branch_name: $branch}')
+
+              echo "matrix<<EOF" >> $GITHUB_OUTPUT
+              echo "[$MATRIX_ENTRY]" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+              echo "count=1" >> $GITHUB_OUTPUT
+            else
+              echo "count=0" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  fix-create-link:
+    name: 2-4. Fix Issue, Create PR, Link PR
     needs: select-issue
     if: needs.select-issue.outputs.count > 0
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        issue: ${{ fromJson(needs.select-issue.outputs.issues_matrix) }}
+      fail-fast: false
     permissions:
       contents: write
-      issues: read
-    outputs:
-      branch_name: ${{ steps.setup-branch.outputs.branch_name }}
-      fix_successful: ${{ steps.run-agent.outputs.fix_successful }}
+      issues: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -224,7 +261,7 @@ jobs:
       - name: Setup Branch
         id: setup-branch
         run: |
-          BRANCH_NAME="${{ needs.select-issue.outputs.branch_name }}"
+          BRANCH_NAME="${{ matrix.issue.branch_name }}"
           BASE_BRANCH="main"
 
           git config user.name "github-actions[bot]"
@@ -241,10 +278,10 @@ jobs:
       - name: Create Fix Prompt
         if: env.cursor_available == 'true'
         env:
-          ISSUE_NUM: ${{ needs.select-issue.outputs.issue_number }}
-          ISSUE_TITLE: ${{ needs.select-issue.outputs.issue_title }}
-          ISSUE_URL: ${{ needs.select-issue.outputs.issue_url }}
-          ISSUE_BODY: ${{ needs.select-issue.outputs.issue_body }}
+          ISSUE_NUM: ${{ matrix.issue.number }}
+          ISSUE_TITLE: ${{ matrix.issue.title }}
+          ISSUE_URL: ${{ matrix.issue.url }}
+          ISSUE_BODY: ${{ matrix.issue.body }}
           BRANCH_NAME: ${{ steps.setup-branch.outputs.branch_name }}
           BASE_BRANCH: main
           OUTPUT_FILE: /tmp/fix-prompt.md
@@ -413,7 +450,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH_NAME="${{ steps.setup-branch.outputs.branch_name }}"
-          ISSUE_NUM="${{ needs.select-issue.outputs.issue_number }}"
+          ISSUE_NUM="${{ matrix.issue.number }}"
 
           echo "Committing and pushing changes (fallback)..."
 
@@ -451,24 +488,6 @@ jobs:
 
           echo "✅ Changes committed and pushed successfully"
 
-  create-pr:
-    name: 3. Create PR
-    needs: [select-issue, fix-issue]
-    if: needs.select-issue.outputs.count > 0 && needs.fix-issue.outputs.fix_successful == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    outputs:
-      pr_number: ${{ steps.create-pr-step.outputs.pr_number }}
-      pr_url: ${{ steps.create-pr-step.outputs.pr_url }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Setup GitHub CLI
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -488,8 +507,9 @@ jobs:
           done
 
       - name: Wait for branch
+        if: steps.run-agent.outputs.fix_successful == 'true'
         run: |
-          BRANCH_NAME="${{ needs.fix-issue.outputs.branch_name }}"
+          BRANCH_NAME="${{ steps.setup-branch.outputs.branch_name }}"
           MAX_RETRIES=15
           RETRY_COUNT=0
 
@@ -525,17 +545,9 @@ jobs:
             exit 1
           fi
 
-      - name: Download Agent Summary
-        if: needs.fix-issue.outputs.fix_successful == 'true'
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: agent-summary-${{ github.run_id }}
-          path: .
-
       - name: Extract Agent Summary
         id: extract-summary
-        if: needs.fix-issue.outputs.fix_successful == 'true'
+        if: steps.run-agent.outputs.fix_successful == 'true'
         run: |
           # Prüfe ob Agent-Zusammenfassung existiert (in /tmp/, Workspace-Root, oder heruntergeladenes Artifact)
           AGENT_SUMMARY_FOUND=false
@@ -575,11 +587,12 @@ jobs:
           fi
 
       - name: Create PR Body
+        if: steps.run-agent.outputs.fix_successful == 'true'
         env:
-          ISSUE_NUM: ${{ needs.select-issue.outputs.issue_number }}
-          ISSUE_TITLE: ${{ needs.select-issue.outputs.issue_title }}
-          ISSUE_URL: ${{ needs.select-issue.outputs.issue_url }}
-          BRANCH_NAME: ${{ needs.fix-issue.outputs.branch_name }}
+          ISSUE_NUM: ${{ matrix.issue.number }}
+          ISSUE_TITLE: ${{ matrix.issue.title }}
+          ISSUE_URL: ${{ matrix.issue.url }}
+          BRANCH_NAME: ${{ steps.setup-branch.outputs.branch_name }}
           BASE_BRANCH: main
           OUTPUT_FILE: /tmp/pr-body.txt
           AGENT_SUMMARY_FILE: /tmp/agent-summary.md
@@ -588,12 +601,13 @@ jobs:
 
       - name: Create Pull Request
         id: create-pr-step
+        if: steps.run-agent.outputs.fix_successful == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH_NAME="${{ needs.fix-issue.outputs.branch_name }}"
-          ISSUE_NUM="${{ needs.select-issue.outputs.issue_number }}"
-          ISSUE_TITLE="${{ needs.select-issue.outputs.issue_title }}"
+          BRANCH_NAME="${{ steps.setup-branch.outputs.branch_name }}"
+          ISSUE_NUM="${{ matrix.issue.number }}"
+          ISSUE_TITLE="${{ matrix.issue.title }}"
           PR_TITLE="fix: Resolve issue #$ISSUE_NUM - $ISSUE_TITLE"
 
           # Prüfe nur nach OFFENEN PRs - geschlossene PRs werden ignoriert
@@ -626,28 +640,14 @@ jobs:
             fi
           fi
 
-  link-pr:
-    name: 4. Link PR to Issue
-    needs: [select-issue, create-pr]
-    if: needs.select-issue.outputs.count > 0 && needs.create-pr.outputs.pr_number != ''
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      pull-requests: read
-    steps:
-      - name: Setup GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "✅ GitHub CLI ready"
-
       - name: Comment on Issue
+        if: steps.create-pr-step.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ISSUE_NUM="${{ needs.select-issue.outputs.issue_number }}"
-          PR_NUM="${{ needs.create-pr.outputs.pr_number }}"
-          PR_URL="${{ needs.create-pr.outputs.pr_url }}"
+          ISSUE_NUM="${{ matrix.issue.number }}"
+          PR_NUM="${{ steps.create-pr-step.outputs.pr_number }}"
+          PR_URL="${{ steps.create-pr-step.outputs.pr_url }}"
 
           COMMENT_BODY="🤖 AI has created a fix for this issue: $PR_URL
 
@@ -660,7 +660,7 @@ jobs:
 
   summary:
     name: Summary
-    needs: [select-issue, fix-issue, create-pr, link-pr]
+    needs: [select-issue, fix-create-link]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -669,21 +669,13 @@ jobs:
           echo "=== Complete AI Issue Fix Workflow Summary ==="
           echo ""
           echo "1. Select Issue: ${{ needs.select-issue.result }}"
-          echo "   Issue: #${{ needs.select-issue.outputs.issue_number }}"
+          echo "   Issues found: ${{ needs.select-issue.outputs.count }}"
           echo ""
-          echo "2. Fix Issue: ${{ needs.fix-issue.result }}"
-          echo "   Branch: ${{ needs.fix-issue.outputs.branch_name }}"
-          echo "   Successful: ${{ needs.fix-issue.outputs.fix_successful }}"
+          echo "2-4. Fix-Create-Link (Matrix): ${{ needs.fix-create-link.result }}"
           echo ""
-          echo "3. Create PR: ${{ needs.create-pr.result }}"
-          echo "   PR: #${{ needs.create-pr.outputs.pr_number }}"
-          echo "   URL: ${{ needs.create-pr.outputs.pr_url }}"
-          echo ""
-          echo "4. Link PR: ${{ needs.link-pr.result }}"
-          echo ""
-          if [ "${{ needs.link-pr.result }}" == "success" ]; then
-            echo "✅ All steps completed successfully!"
+          if [ "${{ needs.fix-create-link.result }}" == "success" ]; then
+            echo "✅ All issues processed successfully!"
           else
-            echo "⚠️ Some steps may have failed or been skipped"
+            echo "⚠️ Some issues may have failed or been skipped"
           fi
 
