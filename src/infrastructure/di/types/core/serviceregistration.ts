@@ -2,7 +2,7 @@ import type { ServiceLifecycle } from "./servicelifecycle";
 import type { InjectionToken } from "./injectiontoken";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
 import type { ServiceClass } from "../resolution/serviceclass";
-import type { FactoryFunction } from "../resolution/servicefactory";
+import type { FactoryFunction, ResultFactoryFunction } from "../resolution/servicefactory";
 import type { Result } from "@/domain/types/result";
 import type { ContainerError } from "../../interfaces";
 import { ok, err } from "@/domain/utils/result";
@@ -37,11 +37,12 @@ export class ServiceRegistration<TServiceType extends ServiceType = ServiceType>
   private constructor(
     public readonly lifecycle: ServiceLifecycle,
     public readonly dependencies: readonly InjectionToken<ServiceType>[], // Immutable array
-    public readonly providerType: "class" | "factory" | "value" | "alias",
+    public readonly providerType: "class" | "factory" | "resultFactory" | "value" | "alias",
 
     // Exactly one of these must be set based on providerType:
     public readonly serviceClass?: ServiceClass<TServiceType>,
     public readonly factory?: FactoryFunction<TServiceType>,
+    public readonly resultFactory?: ResultFactoryFunction<TServiceType>,
     public readonly value?: TServiceType,
     public readonly aliasTarget?: InjectionToken<TServiceType>
   ) {
@@ -68,6 +69,7 @@ export class ServiceRegistration<TServiceType extends ServiceType = ServiceType>
         dependencies,
         "class",
         serviceClass,
+        undefined,
         undefined,
         undefined,
         undefined
@@ -102,6 +104,43 @@ export class ServiceRegistration<TServiceType extends ServiceType = ServiceType>
         "factory",
         undefined,
         factory,
+        undefined,
+        undefined,
+        undefined
+      )
+    );
+  }
+
+  /**
+   * Creates a result factory-based registration.
+   * This factory returns Result<T, ContainerError> instead of throwing exceptions,
+   * adhering to the project's Result Pattern principle.
+   * @template TServiceType - The concrete service type
+   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
+   * @param dependencies - Array of dependency tokens
+   * @param resultFactory - Factory function that returns Result with instance or error
+   * @returns Result with registration or validation error
+   */
+  static createResultFactory<TServiceType extends ServiceType>(
+    lifecycle: ServiceLifecycle,
+    dependencies: readonly InjectionToken<ServiceType>[],
+    resultFactory: ResultFactoryFunction<TServiceType>
+  ): Result<ServiceRegistration<TServiceType>, ContainerError> {
+    if (!resultFactory) {
+      return err({
+        code: "InvalidOperation",
+        message: "resultFactory is required for result factory registration",
+      });
+    }
+
+    return ok(
+      new ServiceRegistration<TServiceType>(
+        lifecycle,
+        dependencies,
+        "resultFactory",
+        undefined,
+        undefined,
+        resultFactory,
         undefined,
         undefined
       )
@@ -139,6 +178,7 @@ export class ServiceRegistration<TServiceType extends ServiceType = ServiceType>
         "value",
         undefined,
         undefined,
+        undefined,
         value,
         undefined
       )
@@ -169,6 +209,7 @@ export class ServiceRegistration<TServiceType extends ServiceType = ServiceType>
         undefined,
         undefined,
         undefined,
+        undefined,
         targetToken
       )
     );
@@ -187,6 +228,7 @@ export class ServiceRegistration<TServiceType extends ServiceType = ServiceType>
       this.providerType,
       this.serviceClass,
       this.factory,
+      this.resultFactory,
       this.value,
       this.aliasTarget
     );

@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { InjectionToken } from "../types/core/injectiontoken";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
 import type { ServiceClass } from "../types/resolution/serviceclass";
-import type { FactoryFunction } from "../types/resolution/servicefactory";
+import type { FactoryFunction, ResultFactoryFunction } from "../types/resolution/servicefactory";
 import type { ServiceDependencies } from "../types/resolution/servicedependencies";
 import { ServiceLifecycle } from "../types/core/servicelifecycle";
 import type { ContainerError } from "../interfaces";
@@ -162,6 +162,57 @@ export class ServiceRegistry {
       lifecycle,
       dependencies,
       factory
+    );
+
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+
+    this.registrations.set(token, registrationResult.value);
+    this.updateLifecycleIndex(token, lifecycle);
+    return ok(undefined);
+  }
+
+  /**
+   * Registers a result factory function for creating service instances.
+   * This factory returns Result<T, ContainerError> instead of throwing exceptions,
+   * adhering to the project's Result Pattern principle.
+   *
+   * @template TServiceType - The type of service this factory creates
+   * @param token - The injection token identifying this service
+   * @param resultFactory - Factory function that returns Result with instance or error
+   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
+   * @param dependencies - Array of tokens this factory depends on
+   * @returns Result indicating success or error
+   */
+  registerResultFactory<TServiceType extends ServiceType>(
+    token: InjectionToken<TServiceType>,
+    resultFactory: ResultFactoryFunction<TServiceType>,
+    lifecycle: ServiceLifecycle,
+    dependencies: ServiceDependencies
+  ): Result<void, ContainerError> {
+    // Check registration limit (DoS protection)
+    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
+      return err({
+        code: "MaxRegistrationsExceeded",
+        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
+        tokenDescription: String(token),
+      });
+    }
+
+    if (this.registrations.has(token)) {
+      return err({
+        code: "DuplicateRegistration",
+        message: `Service ${String(token)} already registered`,
+        tokenDescription: String(token),
+      });
+    }
+
+    // Use static factory method for validation
+    const registrationResult = ServiceRegistration.createResultFactory<TServiceType>(
+      lifecycle,
+      dependencies,
+      resultFactory
     );
 
     if (isErr(registrationResult)) {

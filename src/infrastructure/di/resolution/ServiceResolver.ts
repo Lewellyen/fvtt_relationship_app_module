@@ -178,6 +178,10 @@ export class ServiceResolver {
           cause: factoryError,
         });
       }
+    } else if (registration.resultFactory) {
+      // Result Factory: Call and return Result directly (no try-catch needed)
+      // The factory already returns Result<T, ContainerError>, so we can propagate it
+      return registration.resultFactory();
     } else if (registration.value !== undefined) {
       // Value: Return as-is
       return ok(registration.value);

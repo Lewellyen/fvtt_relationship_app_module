@@ -2,6 +2,8 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
+import type { ContainerError } from "@/infrastructure/di/interfaces";
+import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandler.interface";
 import {
   foundryI18nToken,
   localI18nToken,
@@ -94,33 +96,47 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
     );
   }
 
-  // Register array of translation handlers using a factory function
+  // Register array of translation handlers using a result factory function
   // This allows handlers to be resolved after container validation
-  const handlersArrayResult = container.registerFactory(
+  // Uses Result Pattern instead of throwing exceptions
+  const handlersArrayResult = container.registerResultFactory(
     translationHandlersToken,
-    () => {
+    (): Result<TranslationHandler[], ContainerError> => {
       const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
       if (!foundryHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
-        );
+        return err({
+          code: "DependencyResolveFailed",
+          message: `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`,
+          tokenDescription: String(foundryTranslationHandlerToken),
+          cause: foundryHandlerResult.error,
+        });
       }
 
       const localHandlerResult = container.resolveWithError(localTranslationHandlerToken);
       if (!localHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve LocalTranslationHandler: ${localHandlerResult.error.message}`
-        );
+        return err({
+          code: "DependencyResolveFailed",
+          message: `Failed to resolve LocalTranslationHandler: ${localHandlerResult.error.message}`,
+          tokenDescription: String(localTranslationHandlerToken),
+          cause: localHandlerResult.error,
+        });
       }
 
       const fallbackHandlerResult = container.resolveWithError(fallbackTranslationHandlerToken);
       if (!fallbackHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
-        );
+        return err({
+          code: "DependencyResolveFailed",
+          message: `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`,
+          tokenDescription: String(fallbackTranslationHandlerToken),
+          cause: fallbackHandlerResult.error,
+        });
       }
 
-      return [foundryHandlerResult.value, localHandlerResult.value, fallbackHandlerResult.value];
+      return ok([
+        foundryHandlerResult.value,
+        localHandlerResult.value,
+        fallbackHandlerResult.value,
+      ]);
     },
     ServiceLifecycle.SINGLETON,
     [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]

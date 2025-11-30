@@ -2,6 +2,7 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
+import type { ContainerError } from "@/infrastructure/di/interfaces";
 import {
   platformJournalEventPortToken,
   invalidateJournalCacheOnChangeUseCaseToken,
@@ -12,6 +13,7 @@ import {
   moduleEventRegistrarToken,
 } from "@/infrastructure/shared/tokens";
 import { journalContextMenuHandlersToken } from "@/application/tokens";
+import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 import { DIFoundryJournalEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter";
 import { DIInvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import { DIProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
@@ -100,18 +102,22 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
     );
   }
 
-  // Register array of context menu handlers using a factory function
+  // Register array of context menu handlers using a result factory function
   // This allows handlers to be resolved after container validation
-  const handlersArrayResult = container.registerFactory(
+  // Uses Result Pattern instead of throwing exceptions
+  const handlersArrayResult = container.registerResultFactory(
     journalContextMenuHandlersToken,
-    () => {
+    (): Result<JournalContextMenuHandler[], ContainerError> => {
       const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
       if (!handlerResult.ok) {
-        throw new Error(
-          `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
-        );
+        return err({
+          code: "DependencyResolveFailed",
+          message: `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`,
+          tokenDescription: String(hideJournalContextMenuHandlerToken),
+          cause: handlerResult.error,
+        });
       }
-      return [handlerResult.value];
+      return ok([handlerResult.value]);
     },
     ServiceLifecycle.SINGLETON,
     [hideJournalContextMenuHandlerToken]

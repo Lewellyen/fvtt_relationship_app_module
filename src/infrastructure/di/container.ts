@@ -1,5 +1,5 @@
 import type { InjectionToken } from "./types/core/injectiontoken";
-import type { FactoryFunction } from "./types/resolution/servicefactory";
+import type { FactoryFunction, ResultFactoryFunction } from "./types/resolution/servicefactory";
 import type { ServiceClass } from "./types/resolution/serviceclass";
 import type { ServiceDependencies } from "./types/resolution/servicedependencies";
 import type { ContainerValidationState } from "./types/errors/containervalidationstate";
@@ -194,6 +194,47 @@ export class ServiceContainer implements Container, ContainerPort {
     }
 
     return this.registry.registerFactory(token, factory, lifecycle, dependencies);
+  }
+
+  /**
+   * Register a result factory function.
+   * This factory returns Result<T, ContainerError> instead of throwing exceptions,
+   * adhering to the project's Result Pattern principle.
+   *
+   * Use this when the factory needs to resolve dependencies using `resolveWithError()`
+   * and propagate errors using the Result Pattern.
+   */
+  registerResultFactory<TServiceType extends ServiceType>(
+    token: InjectionToken<TServiceType>,
+    resultFactory: ResultFactoryFunction<TServiceType>,
+    lifecycle: ServiceLifecycle,
+    dependencies: ServiceDependencies
+  ): Result<void, ContainerError> {
+    if (this.scopeManager.isDisposed()) {
+      return err({
+        code: "Disposed",
+        message: `Cannot register service on disposed container`,
+        tokenDescription: String(token),
+      });
+    }
+
+    if (this.validationState === "validated") {
+      return err({
+        code: "InvalidOperation",
+        message: "Cannot register after validation",
+      });
+    }
+
+    // Validate resultFactory parameter
+    if (!resultFactory || typeof resultFactory !== "function") {
+      return err({
+        code: "InvalidFactory",
+        message: "ResultFactory must be a function",
+        tokenDescription: String(token),
+      });
+    }
+
+    return this.registry.registerResultFactory(token, resultFactory, lifecycle, dependencies);
   }
 
   /**
