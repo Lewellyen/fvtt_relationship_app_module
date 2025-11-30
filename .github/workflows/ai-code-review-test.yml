@@ -448,6 +448,29 @@ jobs:
           cp /tmp/test-data.json test-results/test-data.json
           cp /tmp/test-data.toon test-results/test-data.toon
 
+          # Erstelle Info-Datei
+          cat > test-results/info.txt << INFO_EOF
+          TOON Comparison Test
+          ====================
+
+          Workflow: ${{ github.workflow }}
+          Run ID: ${{ github.run_id }}
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+
+          Model: ${CURSOR_AI_MODEL:-sonnet-4.5}
+          Test Type: toon-comparison
+
+          Files:
+          - prompt-json.md: Prompt with JSON format
+          - prompt-toon.md: Prompt with TOON format
+          - output-json.txt: AI response to JSON prompt
+          - output-toon.txt: AI response to TOON prompt
+          - test-data.json: Original test data (JSON)
+          - test-data.toon: Converted test data (TOON)
+          - comparison-report.txt: Token comparison results
+          INFO_EOF
+
           # Erstelle Vergleichs-Report
           cat > test-results/comparison-report.txt << REPORT_EOF
           TOON vs JSON Vergleichs-Report
@@ -527,13 +550,31 @@ jobs:
           cp /tmp/test-output.txt test-results/output.txt
           cp /tmp/test-prompt.md test-results/prompt.md
 
+          # Erstelle Info-Datei
+          cat > test-results/info.txt << INFO_EOF
+          AI Code Review Test
+          ===================
+
+          Workflow: ${{ github.workflow }}
+          Run ID: ${{ github.run_id }}
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+
+          Test Type: ${{ github.event.inputs.test_type }}
+          Model: ${CURSOR_AI_MODEL:-sonnet-4.5}
+
+          Files:
+          - prompt.md: Original prompt sent to AI
+          - output.txt: AI response
+          INFO_EOF
+
       - name: Upload test results
         uses: actions/upload-artifact@v5
         if: always()
         with:
-          name: repository-access-test-${{ github.event.inputs.test_type }}-${{ github.run_id }}
+          name: ai-test-${{ github.event.inputs.test_type }}-${{ github.run_id }}
           path: test-results/
-          retention-days: 7
+          retention-days: 30
 
       - name: Test Summary
         if: always()

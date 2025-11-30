@@ -380,6 +380,59 @@ jobs:
 
           echo "skipped=false" >> $GITHUB_OUTPUT
 
+      - name: Prepare artifacts
+        if: steps.changed-files.outputs.skip == 'false'
+        run: |
+          mkdir -p ai-review-artifacts
+
+          # Kopiere Prompt
+          if [ -f /tmp/analysis-prompt.md ]; then
+            cp /tmp/analysis-prompt.md ai-review-artifacts/prompt.md
+          fi
+
+          # Kopiere Raw-Output
+          if [ -f /tmp/analysis-output.json ]; then
+            cp /tmp/analysis-output.json ai-review-artifacts/output-raw.txt
+          fi
+
+          # Kopiere TOON-Output
+          if [ -f /tmp/analysis-output.toon ]; then
+            cp /tmp/analysis-output.toon ai-review-artifacts/output.toon
+          fi
+
+          # Kopiere JSON-Output (nach Extraktion)
+          if [ -f /tmp/analysis-output.json ]; then
+            cp /tmp/analysis-output.json ai-review-artifacts/output.json
+          fi
+
+          # Erstelle Info-Datei
+          cat > ai-review-artifacts/info.txt << EOF
+          AI Code Review - Incremental Analysis
+          =====================================
+
+          Workflow: ${{ github.workflow }}
+          Run ID: ${{ github.run_id }}
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+
+          Model: ${CURSOR_AI_MODEL:-sonnet-4.5}
+          Format: TOON (Token-Oriented Object Notation)
+
+          Files:
+          - prompt.md: Original prompt sent to AI
+          - output-raw.txt: Raw AI response
+          - output.toon: Extracted TOON format
+          - output.json: Converted JSON (for compatibility)
+          EOF
+
+      - name: Upload AI Review Artifacts
+        if: steps.changed-files.outputs.skip == 'false'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ai-review-incremental-${{ github.run_id }}
+          path: ai-review-artifacts/
+          retention-days: 30
+
       - name: Parse results and create issues
         if: steps.changed-files.outputs.skip == 'false' && steps.analysis.outputs.skipped == 'false'
         env:
