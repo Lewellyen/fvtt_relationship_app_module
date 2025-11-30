@@ -419,6 +419,22 @@ jobs:
             exit 1
           fi
 
+      - name: Extract Agent Summary
+        id: extract-summary
+        if: needs.fix-issue.outputs.fix_successful == 'true'
+        run: |
+          # Prüfe ob Agent-Zusammenfassung existiert
+          if [ -f /tmp/agent-summary.md ]; then
+            echo "✅ Agent summary found"
+            echo "has_summary=true" >> $GITHUB_OUTPUT
+            # Zeige ersten Teil für Debugging
+            echo "=== Agent Summary Preview ==="
+            head -20 /tmp/agent-summary.md || true
+          else
+            echo "⚠️ No agent summary found, will use default PR body"
+            echo "has_summary=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create PR Body
         env:
           ISSUE_NUM: ${{ needs.select-issue.outputs.issue_number }}
@@ -427,6 +443,7 @@ jobs:
           BRANCH_NAME: ${{ needs.fix-issue.outputs.branch_name }}
           BASE_BRANCH: main
           OUTPUT_FILE: /tmp/pr-body.txt
+          AGENT_SUMMARY_FILE: /tmp/agent-summary.md
         run: |
           python3 scripts/create-pr-body.py
 

@@ -148,13 +148,36 @@ Das Projekt verwendet:
 - Respektiere die Schichttrennung (Clean Architecture)
 - Füge Tests hinzu, wenn möglich
 
-## Output:
+## Output - WICHTIG:
 
-Nachdem du die Änderungen gemacht, committed, gepusht und die PR erstellt hast, gib eine kurze Zusammenfassung aus:
-- Welche Dateien wurden geändert?
-- Was wurde behoben?
-- PR-Nummer und Link (falls erfolgreich erstellt)
-- Gibt es besondere Überlegungen für den Reviewer?
+Nachdem du die Änderungen gemacht hast, ERSTELLE eine strukturierte Zusammenfassung in `/tmp/agent-summary.md`:
+
+**Du MUSST diese Datei erstellen mit folgendem Inhalt:**
+
+```markdown
+## Problem
+
+[Kurze Beschreibung des Problems aus dem Issue]
+
+## Lösung
+
+[Erkläre wie du das Problem gelöst hast]
+
+## Geänderte Dateien
+
+- `pfad/zur/datei.ts`: [Was wurde geändert]
+- `pfad/zur/datei2.ts`: [Was wurde geändert]
+
+## Technische Details
+
+[Falls relevant: Architektur-Entscheidungen, Pattern-Verwendung, etc.]
+
+## Review-Hinweise
+
+[Besondere Überlegungen für den Reviewer, z.B. Breaking Changes, Tests, etc.]
+```
+
+**KRITISCH:** Diese Datei wird als PR-Body verwendet! Schreibe sie in `/tmp/agent-summary.md` mit dem `write` Tool!
 
 ## Zusammenfassung der Schritte:
 
