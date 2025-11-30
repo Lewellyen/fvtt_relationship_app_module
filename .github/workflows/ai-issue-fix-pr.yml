@@ -54,33 +54,39 @@ jobs:
         run: |
           echo "Collecting issues to process..."
 
-          # Funktion zum Prüfen ob bereits ein PR für ein Issue existiert
+          # Funktion zum Prüfen ob bereits ein offener PR für ein Issue existiert
           check_existing_pr() {
             local issue_num=$1
-            echo "Checking for existing PR for issue #$issue_num..."
+            echo "Checking for existing open PR for issue #$issue_num..."
 
-            # Methode 1: Prüfe PRs die das Issue in der Beschreibung erwähnen
-            PR_WITH_ISSUE=$(gh pr list --state all --search "issue #$issue_num" --json number,title,state --jq '.[0].number' 2>/dev/null || echo "")
+            # Methode 1: Prüfe offene PRs die das Issue in der Beschreibung erwähnen
+            PR_WITH_ISSUE=$(gh pr list --state open --search "issue #$issue_num" --json number,title,state --jq '.[0].number' 2>/dev/null || echo "")
             if [ -n "$PR_WITH_ISSUE" ]; then
-              echo "  ✅ Found PR #$PR_WITH_ISSUE mentioning issue #$issue_num"
+              echo "  ✅ Found open PR #$PR_WITH_ISSUE mentioning issue #$issue_num"
               return 0
             fi
 
-            # Methode 2: Prüfe PRs mit Branch-Namen die das Issue enthalten
-            PR_BRANCH=$(gh pr list --state all --json headRefName,number --jq ".[] | select(.headRefName | contains(\"issue-$issue_num\")) | .number" 2>/dev/null | head -1 || echo "")
+            # Methode 2: Prüfe offene PRs mit Branch-Namen die das Issue enthalten
+            PR_BRANCH=$(gh pr list --state open --json headRefName,number --jq ".[] | select(.headRefName | contains(\"issue-$issue_num\")) | .number" 2>/dev/null | head -1 || echo "")
             if [ -n "$PR_BRANCH" ]; then
-              echo "  ✅ Found PR #$PR_BRANCH with branch containing issue #$issue_num"
+              echo "  ✅ Found open PR #$PR_BRANCH with branch containing issue #$issue_num"
               return 0
             fi
 
-            # Methode 3: Prüfe Issue-Kommentare nach PR-Links
+            # Methode 3: Prüfe Issue-Kommentare nach PR-Links und verifiziere dass PR noch offen ist
             PR_IN_COMMENTS=$(gh issue view "$issue_num" --json comments --jq '.comments[] | select(.body | test("PR #|pull/[0-9]+|/pull/[0-9]+")) | .body' 2>/dev/null | grep -oP 'PR #\K[0-9]+|pull/\K[0-9]+|/pull/\K[0-9]+' | head -1 || echo "")
             if [ -n "$PR_IN_COMMENTS" ]; then
-              echo "  ✅ Found PR #$PR_IN_COMMENTS mentioned in issue comments"
-              return 0
+              # Prüfe ob dieser PR noch offen ist
+              PR_STATE=$(gh pr view "$PR_IN_COMMENTS" --json state --jq '.state' 2>/dev/null || echo "")
+              if [ "$PR_STATE" = "OPEN" ]; then
+                echo "  ✅ Found open PR #$PR_IN_COMMENTS mentioned in issue comments"
+                return 0
+              else
+                echo "  ℹ️  PR #$PR_IN_COMMENTS mentioned in comments but state is: $PR_STATE"
+              fi
             fi
 
-            echo "  ℹ️  No existing PR found for issue #$issue_num"
+            echo "  ℹ️  No existing open PR found for issue #$issue_num"
             return 1
           }
 
