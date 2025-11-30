@@ -1,0 +1,437 @@
+name: "Complete AI Issue Fix (All Workflows)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Specific issue number (leave empty for all open issues)"
+        required: false
+        type: string
+      label_filter:
+        description: "Only process issues with this label (leave empty for all)"
+        required: false
+        type: string
+      max_issues:
+        description: "Maximum number of issues to process"
+        required: false
+        type: string
+        default: "5"
+
+jobs:
+  select-issue:
+    name: 1. Select Issue
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      issue_number: ${{ steps.select.outputs.issue_number }}
+      issue_title: ${{ steps.select.outputs.issue_title }}
+      issue_body: ${{ steps.select.outputs.issue_body }}
+      issue_url: ${{ steps.select.outputs.issue_url }}
+      branch_name: ${{ steps.select.outputs.branch_name }}
+      count: ${{ steps.select.outputs.count }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "✅ GitHub CLI ready (using GH_TOKEN)"
+
+      - name: Select Issue
+        id: select
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Selecting issue to fix..."
+
+          # Funktion zum Prüfen ob bereits ein offener PR für ein Issue existiert
+          check_existing_pr() {
+            local issue_num=$1
+            echo "Checking for existing open PR for issue #$issue_num..."
+
+            PR_WITH_ISSUE=$(gh pr list --state open --search "issue #$issue_num" --json number,title,state --jq '.[0].number' 2>/dev/null || echo "")
+            if [ -n "$PR_WITH_ISSUE" ]; then
+              echo "  ✅ Found open PR #$PR_WITH_ISSUE mentioning issue #$issue_num"
+              return 0
+            fi
+
+            PR_BRANCH=$(gh pr list --state open --json headRefName,number --jq ".[] | select(.headRefName | contains(\"issue-$issue_num\")) | .number" 2>/dev/null | head -1 || echo "")
+            if [ -n "$PR_BRANCH" ]; then
+              echo "  ✅ Found open PR #$PR_BRANCH with branch containing issue #$issue_num"
+              return 0
+            fi
+
+            PR_IN_COMMENTS=$(gh issue view "$issue_num" --json comments --jq '.comments[] | select(.body | test("PR #|pull/[0-9]+|/pull/[0-9]+")) | .body' 2>/dev/null | grep -oP 'PR #\K[0-9]+|pull/\K[0-9]+|/pull/\K[0-9]+' | head -1 || echo "")
+            if [ -n "$PR_IN_COMMENTS" ]; then
+              PR_STATE=$(gh pr view "$PR_IN_COMMENTS" --json state --jq '.state' 2>/dev/null || echo "")
+              if [ "$PR_STATE" = "OPEN" ]; then
+                echo "  ✅ Found open PR #$PR_IN_COMMENTS mentioned in issue comments"
+                return 0
+              fi
+            fi
+
+            echo "  ℹ️  No existing open PR found for issue #$issue_num"
+            return 1
+          }
+
+          # Prüfe ob spezifische Issue-Nummer angegeben wurde
+          if [ -n "${{ github.event.inputs.issue_number }}" ]; then
+            ISSUE_NUM="${{ github.event.inputs.issue_number }}"
+            echo "Processing specific issue: #$ISSUE_NUM"
+
+            if check_existing_pr "$ISSUE_NUM"; then
+              echo "⚠️ Issue #$ISSUE_NUM already has an associated PR, skipping"
+              echo "count=0" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            gh issue view "$ISSUE_NUM" --json number,title,body,labels,state,url > /tmp/issue.json || {
+              echo "❌ Issue #$ISSUE_NUM not found or not accessible"
+              exit 1
+            }
+
+            ISSUE_TITLE=$(cat /tmp/issue.json | jq -r '.title')
+            ISSUE_BODY=$(cat /tmp/issue.json | jq -r '.body // ""')
+            ISSUE_URL=$(cat /tmp/issue.json | jq -r '.url')
+
+            echo "✅ Selected issue #$ISSUE_NUM: $ISSUE_TITLE"
+          else
+            LABEL_FILTER="${{ github.event.inputs.label_filter }}"
+            MAX_ISSUES="${{ github.event.inputs.max_issues }}"
+
+            if [ -n "$LABEL_FILTER" ]; then
+              echo "Filtering issues by label: $LABEL_FILTER"
+              gh issue list --state open --label "$LABEL_FILTER" --json number,title,body,labels,state,url --limit "${MAX_ISSUES:-10}" > /tmp/all-issues.json || {
+                echo "⚠️ No issues found with label $LABEL_FILTER"
+                echo "count=0" >> $GITHUB_OUTPUT
+                exit 0
+              }
+            else
+              echo "Loading all open issues (max: ${MAX_ISSUES:-10})"
+              gh issue list --state open --json number,title,body,labels,state,url --limit "${MAX_ISSUES:-10}" > /tmp/all-issues.json || {
+                echo "⚠️ No open issues found"
+                echo "count=0" >> $GITHUB_OUTPUT
+                exit 0
+              }
+            fi
+
+            FILTERED_ISSUES="[]"
+            ISSUE_COUNT=$(cat /tmp/all-issues.json | jq '. | length' 2>/dev/null || echo "0")
+
+            if [ "$ISSUE_COUNT" -gt 0 ]; then
+              while IFS= read -r issue_json; do
+                ISSUE_NUM=$(echo "$issue_json" | jq -r '.number')
+                if ! check_existing_pr "$ISSUE_NUM"; then
+                  FILTERED_ISSUES=$(echo "$FILTERED_ISSUES" | jq ". + [$issue_json]")
+                fi
+              done < <(cat /tmp/all-issues.json | jq -c '.[]')
+            fi
+
+            FILTERED_COUNT=$(echo "$FILTERED_ISSUES" | jq '. | length' 2>/dev/null || echo "0")
+
+            if [ "$FILTERED_COUNT" -eq 0 ]; then
+              echo "⚠️ No issues found without existing PRs"
+              echo "count=0" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            SELECTED_ISSUE=$(echo "$FILTERED_ISSUES" | jq '.[0]')
+            ISSUE_NUM=$(echo "$SELECTED_ISSUE" | jq -r '.number')
+            ISSUE_TITLE=$(echo "$SELECTED_ISSUE" | jq -r '.title')
+            ISSUE_BODY=$(echo "$SELECTED_ISSUE" | jq -r '.body // ""')
+            ISSUE_URL=$(echo "$SELECTED_ISSUE" | jq -r '.url')
+
+            echo "✅ Selected issue #$ISSUE_NUM: $ISSUE_TITLE"
+          fi
+
+          BRANCH_NAME="fix/issue-$ISSUE_NUM-$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | cut -c1-50)"
+
+          echo "issue_number=$ISSUE_NUM" >> $GITHUB_OUTPUT
+          echo "issue_title<<EOF" >> $GITHUB_OUTPUT
+          echo "$ISSUE_TITLE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "issue_body<<EOF" >> $GITHUB_OUTPUT
+          echo "$ISSUE_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "count=1" >> $GITHUB_OUTPUT
+
+  fix-issue:
+    name: 2. Fix Issue
+    needs: select-issue
+    if: needs.select-issue.outputs.count > 0
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+    outputs:
+      branch_name: ${{ steps.setup-branch.outputs.branch_name }}
+      fix_successful: ${{ steps.run-agent.outputs.fix_successful }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install toon-formatter python-toon toons
+
+      - name: Cache Cursor Agent
+        uses: actions/cache@v4
+        with:
+          path: ~/.cursor
+          key: cursor-agent-${{ runner.os }}-v2
+          restore-keys: |
+            cursor-agent-${{ runner.os }}-
+
+      - name: Install Cursor CLI
+        continue-on-error: true
+        run: |
+          if [ -f "$HOME/.cursor/bin/cursor-agent" ]; then
+            echo "✅ Cursor CLI already installed."
+          else
+            curl https://cursor.com/install -fsS | bash || wget -qO- https://cursor.com/install | bash || exit 0
+          fi
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify Cursor CLI
+        run: |
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+          if command -v cursor-agent &> /dev/null || [ -f "$HOME/.cursor/bin/cursor-agent" ] || [ -f "$HOME/.local/bin/cursor-agent" ]; then
+            echo "cursor_available=true" >> $GITHUB_ENV
+          else
+            echo "cursor_available=false" >> $GITHUB_ENV
+          fi
+
+      - name: Setup Branch
+        id: setup-branch
+        run: |
+          BRANCH_NAME="${{ needs.select-issue.outputs.branch_name }}"
+          BASE_BRANCH="main"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout "$BASE_BRANCH"
+          git pull origin "$BASE_BRANCH"
+          git checkout -b "$BRANCH_NAME" || git checkout "$BRANCH_NAME" || git checkout -b "$BRANCH_NAME"
+
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create Fix Prompt
+        if: env.cursor_available == 'true'
+        env:
+          ISSUE_NUM: ${{ needs.select-issue.outputs.issue_number }}
+          ISSUE_TITLE: ${{ needs.select-issue.outputs.issue_title }}
+          ISSUE_URL: ${{ needs.select-issue.outputs.issue_url }}
+          ISSUE_BODY: ${{ needs.select-issue.outputs.issue_body }}
+          BRANCH_NAME: ${{ steps.setup-branch.outputs.branch_name }}
+          BASE_BRANCH: main
+          OUTPUT_FILE: /tmp/fix-prompt.md
+        run: |
+          python3 scripts/create-fix-prompt.py
+
+      - name: Run Cursor AI
+        id: run-agent
+        if: env.cursor_available == 'true'
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_AI_MODEL: ${{ secrets.CURSOR_AI_MODEL || 'sonnet-4.5' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+        run: |
+          PROMPT=$(cat /tmp/fix-prompt.md)
+          timeout 1800 cursor-agent -p "$PROMPT" --model "${CURSOR_AI_MODEL:-sonnet-4.5}" > /tmp/fix-output.txt 2>&1 || true
+
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "fix_successful=true" >> $GITHUB_OUTPUT
+          else
+            echo "fix_successful=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Execute Agent Commands
+        if: env.cursor_available == 'true' && -f /tmp/agent-commands.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x /tmp/agent-commands.sh
+          bash /tmp/agent-commands.sh || true
+
+  create-pr:
+    name: 3. Create PR
+    needs: [select-issue, fix-issue]
+    if: needs.select-issue.outputs.count > 0 && needs.fix-issue.outputs.fix_successful == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pr_number: ${{ steps.create-pr-step.outputs.pr_number }}
+      pr_url: ${{ steps.create-pr-step.outputs.pr_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "✅ GitHub CLI ready"
+
+      - name: Ensure Labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LABELS=("ai-generated:AI-generated fix:0A8B9C" "automated:Automated by workflow:0366D6")
+          for LABEL_SPEC in "${LABELS[@]}"; do
+            IFS=':' read -r NAME DESCRIPTION COLOR <<< "$LABEL_SPEC"
+            if ! gh label list --json name --jq ".[] | select(.name == \"$NAME\") | .name" | grep -q "^$NAME$"; then
+              gh label create "$NAME" --description "$DESCRIPTION" --color "$COLOR" --force || true
+            fi
+          done
+
+      - name: Wait for branch
+        run: |
+          BRANCH_NAME="${{ needs.fix-issue.outputs.branch_name }}"
+          for i in {1..10}; do
+            if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+              echo "✅ Branch available"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Create PR Body
+        env:
+          ISSUE_NUM: ${{ needs.select-issue.outputs.issue_number }}
+          ISSUE_TITLE: ${{ needs.select-issue.outputs.issue_title }}
+          ISSUE_URL: ${{ needs.select-issue.outputs.issue_url }}
+          BRANCH_NAME: ${{ needs.fix-issue.outputs.branch_name }}
+          BASE_BRANCH: main
+          OUTPUT_FILE: /tmp/pr-body.txt
+        run: |
+          python3 scripts/create-pr-body.py
+
+      - name: Create Pull Request
+        id: create-pr-step
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="${{ needs.fix-issue.outputs.branch_name }}"
+          ISSUE_NUM="${{ needs.select-issue.outputs.issue_number }}"
+          ISSUE_TITLE="${{ needs.select-issue.outputs.issue_title }}"
+          PR_TITLE="fix: Resolve issue #$ISSUE_NUM - $ISSUE_TITLE"
+
+          EXISTING_PR=$(gh pr list --base main --head "$BRANCH_NAME" --state all --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$EXISTING_PR" ]; then
+            PR_URL="https://github.com/${{ github.repository }}/pull/$EXISTING_PR"
+            echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+            echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
+          else
+            LABELS=""
+            if gh label list --json name --jq '.[].name' | grep -q "^ai-generated$"; then
+              LABELS="ai-generated"
+            fi
+            if gh label list --json name --jq '.[].name' | grep -q "^automated$"; then
+              LABELS="$LABELS,automated"
+            fi
+
+            PR_CMD="gh pr create --base main --head \"$BRANCH_NAME\" --title \"$PR_TITLE\" --body-file /tmp/pr-body.txt"
+            [ -n "$LABELS" ] && PR_CMD="$PR_CMD --label $(echo $LABELS | sed 's/^,//')"
+
+            PR_URL=$(eval "$PR_CMD" || echo "")
+
+            if [ -n "$PR_URL" ]; then
+              echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+              PR_NUMBER=$(echo "$PR_URL" | grep -oP 'pull/\K[0-9]+' || echo "")
+              echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            else
+              exit 1
+            fi
+          fi
+
+  link-pr:
+    name: 4. Link PR to Issue
+    needs: [select-issue, create-pr]
+    if: needs.select-issue.outputs.count > 0 && needs.create-pr.outputs.pr_number != ''
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Setup GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "✅ GitHub CLI ready"
+
+      - name: Comment on Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUM="${{ needs.select-issue.outputs.issue_number }}"
+          PR_NUM="${{ needs.create-pr.outputs.pr_number }}"
+          PR_URL="${{ needs.create-pr.outputs.pr_url }}"
+
+          COMMENT_BODY="🤖 AI has created a fix for this issue: $PR_URL
+
+          **Pull Request:** #$PR_NUM
+          **Status:** Ready for review
+
+          This PR was automatically created by the AI Issue Fix workflow."
+
+          gh issue comment "$ISSUE_NUM" --body "$COMMENT_BODY" || true
+
+  summary:
+    name: Summary
+    needs: [select-issue, fix-issue, create-pr, link-pr]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Workflow Summary
+        run: |
+          echo "=== Complete AI Issue Fix Workflow Summary ==="
+          echo ""
+          echo "1. Select Issue: ${{ needs.select-issue.result }}"
+          echo "   Issue: #${{ needs.select-issue.outputs.issue_number }}"
+          echo ""
+          echo "2. Fix Issue: ${{ needs.fix-issue.result }}"
+          echo "   Branch: ${{ needs.fix-issue.outputs.branch_name }}"
+          echo "   Successful: ${{ needs.fix-issue.outputs.fix_successful }}"
+          echo ""
+          echo "3. Create PR: ${{ needs.create-pr.result }}"
+          echo "   PR: #${{ needs.create-pr.outputs.pr_number }}"
+          echo "   URL: ${{ needs.create-pr.outputs.pr_url }}"
+          echo ""
+          echo "4. Link PR: ${{ needs.link-pr.result }}"
+          echo ""
+          if [ "${{ needs.link-pr.result }}" == "success" ]; then
+            echo "✅ All steps completed successfully!"
+          else
+            echo "⚠️ Some steps may have failed or been skipped"
+          fi
+

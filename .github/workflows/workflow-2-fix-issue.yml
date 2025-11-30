@@ -1,0 +1,249 @@
+name: "2. Fix Issue (with AI Agent)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to fix"
+        required: true
+        type: string
+      issue_title:
+        description: "Issue title"
+        required: true
+        type: string
+      issue_body:
+        description: "Issue body"
+        required: false
+        type: string
+      issue_url:
+        description: "Issue URL"
+        required: true
+        type: string
+      branch_name:
+        description: "Branch name for the fix"
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      issue_number:
+        required: true
+        type: string
+      issue_title:
+        required: true
+        type: string
+      issue_body:
+        required: false
+        type: string
+      issue_url:
+        required: true
+        type: string
+      branch_name:
+        required: true
+        type: string
+    outputs:
+      branch_name:
+        description: "Branch name with fixes"
+        value: ${{ jobs.fix-issue.outputs.branch_name }}
+      fix_successful:
+        description: "Whether the fix was successful"
+        value: ${{ jobs.fix-issue.outputs.fix_successful }}
+
+jobs:
+  fix-issue:
+    name: Fix Issue #${{ inputs.issue_number || github.event.inputs.issue_number }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+    outputs:
+      branch_name: ${{ steps.setup-branch.outputs.branch_name }}
+      fix_successful: ${{ steps.run-agent.outputs.fix_successful }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install toon-formatter python-toon toons
+
+      - name: Cache Cursor Agent
+        uses: actions/cache@v4
+        id: cursor-cache
+        with:
+          path: ~/.cursor
+          key: cursor-agent-${{ runner.os }}-v2
+          restore-keys: |
+            cursor-agent-${{ runner.os }}-
+
+      - name: Install Cursor CLI
+        id: cursor-setup
+        continue-on-error: true
+        run: |
+          echo "Installing Cursor CLI..."
+          if [ -f "$HOME/.cursor/bin/cursor-agent" ]; then
+            echo "✅ Cursor CLI already installed."
+          else
+            curl https://cursor.com/install -fsS | bash || {
+              echo "⚠️ curl failed, trying wget..."
+              wget -qO- https://cursor.com/install | bash || {
+                echo "❌ All installation methods failed"
+                exit 0
+              }
+            }
+          fi
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify Cursor CLI
+        id: verify-cursor
+        run: |
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+          if command -v cursor-agent &> /dev/null; then
+            echo "✅ cursor-agent verfügbar"
+            echo "cursor_available=true" >> $GITHUB_ENV
+          elif [ -f "$HOME/.cursor/bin/cursor-agent" ]; then
+            echo "✅ cursor-agent gefunden unter $HOME/.cursor/bin/cursor-agent"
+            chmod +x "$HOME/.cursor/bin/cursor-agent"
+            echo "cursor_available=true" >> $GITHUB_ENV
+          elif [ -f "$HOME/.local/bin/cursor-agent" ]; then
+            echo "✅ cursor-agent gefunden unter $HOME/.local/bin/cursor-agent"
+            chmod +x "$HOME/.local/bin/cursor-agent"
+            echo "cursor_available=true" >> $GITHUB_ENV
+          else
+            echo "⚠️ cursor-agent nicht verfügbar"
+            echo "cursor_available=false" >> $GITHUB_ENV
+          fi
+
+      - name: Setup Branch
+        id: setup-branch
+        run: |
+          ISSUE_NUM="${{ inputs.issue_number || github.event.inputs.issue_number }}"
+          BRANCH_NAME="${{ inputs.branch_name || github.event.inputs.branch_name }}"
+          BASE_BRANCH="main"
+
+          echo "Setting up branch: $BRANCH_NAME"
+
+          # Git-Konfiguration
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global init.defaultBranch main
+          git config --global advice.detachedHead false
+          git config --global core.autocrlf false
+          git config --global core.safecrlf false
+
+          # Checkout base branch
+          git checkout "$BASE_BRANCH"
+          git pull origin "$BASE_BRANCH"
+
+          # Erstelle Branch
+          git checkout -b "$BRANCH_NAME" || {
+            echo "⚠️ Branch might already exist, checking out..."
+            git checkout "$BRANCH_NAME" || git checkout -b "$BRANCH_NAME"
+          }
+
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Branch ready: $BRANCH_NAME"
+
+      - name: Create Fix Prompt
+        if: env.cursor_available == 'true'
+        env:
+          ISSUE_NUM: ${{ inputs.issue_number || github.event.inputs.issue_number }}
+          ISSUE_TITLE: ${{ inputs.issue_title || github.event.inputs.issue_title }}
+          ISSUE_URL: ${{ inputs.issue_url || github.event.inputs.issue_url }}
+          ISSUE_BODY: ${{ inputs.issue_body || github.event.inputs.issue_body }}
+          BRANCH_NAME: ${{ steps.setup-branch.outputs.branch_name }}
+          BASE_BRANCH: ${{ github.ref_name }}
+          OUTPUT_FILE: /tmp/fix-prompt.md
+        run: |
+          python3 scripts/create-fix-prompt.py
+
+      - name: Run Cursor AI to Fix Issue
+        id: run-agent
+        if: env.cursor_available == 'true'
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_AI_MODEL: ${{ secrets.CURSOR_AI_MODEL || 'sonnet-4.5' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+        run: |
+          echo "🚀 Starting Cursor AI to fix issue #${{ inputs.issue_number || github.event.inputs.issue_number }}..."
+          CURSOR_AI_MODEL="${CURSOR_AI_MODEL:-sonnet-4.5}"
+          echo "Using model: $CURSOR_AI_MODEL"
+
+          PROMPT=$(cat /tmp/fix-prompt.md)
+          timeout 1800 cursor-agent -p "$PROMPT" --model "$CURSOR_AI_MODEL" > /tmp/fix-output.txt 2>&1 || {
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 124 ]; then
+              echo "⏱️ Fix attempt timed out after 30 minutes"
+            else
+              echo "⚠️ Cursor AI completed with exit code: $EXIT_CODE"
+            fi
+          }
+
+          # Zeige Output (für Debugging)
+          echo "=== AI Output ==="
+          cat /tmp/fix-output.txt | head -100
+          echo ""
+
+          # Prüfe ob Agent Änderungen gemacht hat
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "✅ Agent has made changes"
+            echo "fix_successful=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ No changes detected"
+            echo "fix_successful=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Execute Agent Commands (if Terminal was not available)
+        if: env.cursor_available == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Prüfe ob Agent Befehlsdatei erstellt hat (Fallback wenn Terminal nicht verfügbar war)
+          if [ -f /tmp/agent-commands.sh ]; then
+            echo "✅ Agent has created command file - executing commands..."
+            echo "=== Command File Content ==="
+            cat /tmp/agent-commands.sh
+            echo ""
+
+            chmod +x /tmp/agent-commands.sh
+
+            echo "=== Executing Agent Commands ==="
+            set +e
+            bash /tmp/agent-commands.sh
+            EXIT_CODE=$?
+            set -e
+
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "✅ Agent commands executed successfully"
+            else
+              echo "⚠️ Agent commands completed with exit code: $EXIT_CODE"
+            fi
+          else
+            echo "ℹ️ No agent command file found"
+          fi
+
+      - name: Summary
+        run: |
+          echo "=== Fix Summary ==="
+          echo "Branch: ${{ steps.setup-branch.outputs.branch_name }}"
+          echo "Fix Successful: ${{ steps.run-agent.outputs.fix_successful }}"
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Changes detected:"
+            git status --short
+          fi
+

@@ -1,0 +1,228 @@
+name: "3. Create Pull Request"
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number"
+        required: true
+        type: string
+      issue_title:
+        description: "Issue title"
+        required: true
+        type: string
+      issue_url:
+        description: "Issue URL"
+        required: true
+        type: string
+      branch_name:
+        description: "Branch name for the PR"
+        required: true
+        type: string
+      base_branch:
+        description: "Base branch (default: main)"
+        required: false
+        type: string
+        default: "main"
+  workflow_call:
+    inputs:
+      issue_number:
+        required: true
+        type: string
+      issue_title:
+        required: true
+        type: string
+      issue_url:
+        required: true
+        type: string
+      branch_name:
+        required: true
+        type: string
+      base_branch:
+        required: false
+        type: string
+        default: "main"
+    outputs:
+      pr_number:
+        description: "PR number"
+        value: ${{ jobs.create-pr.outputs.pr_number }}
+      pr_url:
+        description: "PR URL"
+        value: ${{ jobs.create-pr.outputs.pr_url }}
+
+jobs:
+  ensure-labels:
+    name: Ensure Labels Exist
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Setup GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "✅ GitHub CLI ready"
+
+      - name: Create Missing Labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🏷️ Ensuring required labels exist..."
+
+          # Liste der benötigten Labels
+          LABELS=(
+            "ai-generated:AI-generated fix:0A8B9C"
+            "automated:Automated by workflow:0366D6"
+            "test:Test PR:EDEDED"
+          )
+
+          for LABEL_SPEC in "${LABELS[@]}"; do
+            IFS=':' read -r NAME DESCRIPTION COLOR <<< "$LABEL_SPEC"
+
+            # Prüfe ob Label existiert
+            if gh label list --json name --jq ".[] | select(.name == \"$NAME\") | .name" | grep -q "^$NAME$"; then
+              echo "✅ Label '$NAME' already exists"
+            else
+              echo "➕ Creating label '$NAME'..."
+              gh label create "$NAME" \
+                --description "$DESCRIPTION" \
+                --color "$COLOR" \
+                --force || {
+                echo "⚠️ Failed to create label '$NAME'"
+              }
+            fi
+          done
+
+          echo "✅ All labels ensured"
+
+  create-pr:
+    name: Create Pull Request
+    needs: ensure-labels
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pr_number: ${{ steps.create-pr-step.outputs.pr_number }}
+      pr_url: ${{ steps.create-pr-step.outputs.pr_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "✅ GitHub CLI ready (using GH_TOKEN)"
+
+      - name: Wait for branch to be available
+        run: |
+          BRANCH_NAME="${{ inputs.branch_name || github.event.inputs.branch_name }}"
+          echo "Waiting for branch to be available: $BRANCH_NAME"
+
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+              echo "✅ Branch is available on remote"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "⏳ Waiting for branch... ($RETRY_COUNT/$MAX_RETRIES)"
+              sleep 2
+            fi
+          done
+
+          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "❌ Branch not available after $MAX_RETRIES retries"
+            exit 1
+          fi
+
+      - name: Create PR Body
+        env:
+          ISSUE_NUM: ${{ inputs.issue_number || github.event.inputs.issue_number }}
+          ISSUE_TITLE: ${{ inputs.issue_title || github.event.inputs.issue_title }}
+          ISSUE_URL: ${{ inputs.issue_url || github.event.inputs.issue_url }}
+          BRANCH_NAME: ${{ inputs.branch_name || github.event.inputs.branch_name }}
+          BASE_BRANCH: ${{ inputs.base_branch || github.event.inputs.base_branch || 'main' }}
+          OUTPUT_FILE: /tmp/pr-body.txt
+        run: |
+          python3 scripts/create-pr-body.py
+
+      - name: Create Pull Request
+        id: create-pr-step
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BASE_BRANCH="${{ inputs.base_branch || github.event.inputs.base_branch || 'main' }}"
+          BRANCH_NAME="${{ inputs.branch_name || github.event.inputs.branch_name }}"
+          ISSUE_NUM="${{ inputs.issue_number || github.event.inputs.issue_number }}"
+          ISSUE_TITLE="${{ inputs.issue_title || github.event.inputs.issue_title }}"
+          PR_TITLE="fix: Resolve issue #$ISSUE_NUM - $ISSUE_TITLE"
+
+          echo "Creating PR..."
+          echo "  Base: $BASE_BRANCH"
+          echo "  Head: $BRANCH_NAME"
+          echo "  Title: $PR_TITLE"
+
+          # Prüfe ob PR bereits existiert
+          EXISTING_PR=$(gh pr list --base "$BASE_BRANCH" --head "$BRANCH_NAME" --state all --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "⚠️ PR already exists: #$EXISTING_PR"
+            PR_URL="https://github.com/${{ github.repository }}/pull/$EXISTING_PR"
+            echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+            echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
+            echo "✅ Using existing PR: $PR_URL"
+          else
+            # Prüfe welche Labels existieren
+            LABELS=""
+            if gh label list --json name --jq '.[].name' | grep -q "^ai-generated$"; then
+              LABELS="$LABELS ai-generated"
+            fi
+            if gh label list --json name --jq '.[].name' | grep -q "^automated$"; then
+              LABELS="$LABELS automated"
+            fi
+
+            # Erstelle PR mit GitHub CLI
+            PR_CMD="gh pr create \
+              --base \"$BASE_BRANCH\" \
+              --head \"$BRANCH_NAME\" \
+              --title \"$PR_TITLE\" \
+              --body-file /tmp/pr-body.txt"
+
+            if [ -n "$LABELS" ]; then
+              PR_CMD="$PR_CMD --label $(echo $LABELS | tr ' ' ',')"
+            fi
+
+            PR_URL=$(eval "$PR_CMD" || echo "")
+
+            if [ -n "$PR_URL" ]; then
+              echo "✅ PR created successfully: $PR_URL"
+              echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+
+              # Extrahiere PR-Nummer
+              PR_NUMBER=$(echo "$PR_URL" | grep -oP 'pull/\K[0-9]+' || echo "")
+              if [ -n "$PR_NUMBER" ]; then
+                echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+                echo "PR Number: #$PR_NUMBER"
+              fi
+            else
+              echo "❌ Failed to create PR"
+              exit 1
+            fi
+          fi
+
+      - name: PR Summary
+        run: |
+          echo "=== PR Creation Summary ==="
+          echo "PR URL: ${{ steps.create-pr-step.outputs.pr_url }}"
+          echo "PR Number: ${{ steps.create-pr-step.outputs.pr_number }}"
+          echo "Branch: ${{ inputs.branch_name || github.event.inputs.branch_name }}"
+          echo ""
+          echo "✅ PR created successfully!"
+
