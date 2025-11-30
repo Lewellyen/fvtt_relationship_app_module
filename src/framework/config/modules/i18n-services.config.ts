@@ -21,6 +21,7 @@ import { DILocalTranslationHandler } from "@/infrastructure/i18n/LocalTranslatio
 import { DIFallbackTranslationHandler } from "@/infrastructure/i18n/FallbackTranslationHandler";
 import { DITranslationHandlerChain } from "@/infrastructure/i18n/TranslationHandlerChain";
 import { DII18nPortAdapter } from "@/infrastructure/adapters/i18n/platform-i18n-port-adapter";
+import { resolveMultipleOrThrow } from "./factory-helpers";
 
 /**
  * Registers internationalization (i18n) services.
@@ -96,31 +97,15 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
 
   // Register array of translation handlers using a factory function
   // This allows handlers to be resolved after container validation
+  // Uses resolveMultipleOrThrow helper to respect Result Pattern while maintaining FactoryFunction<T> = () => T signature
   const handlersArrayResult = container.registerFactory(
     translationHandlersToken,
     () => {
-      const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
-      if (!foundryHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
-        );
-      }
-
-      const localHandlerResult = container.resolveWithError(localTranslationHandlerToken);
-      if (!localHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve LocalTranslationHandler: ${localHandlerResult.error.message}`
-        );
-      }
-
-      const fallbackHandlerResult = container.resolveWithError(fallbackTranslationHandlerToken);
-      if (!fallbackHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
-        );
-      }
-
-      return [foundryHandlerResult.value, localHandlerResult.value, fallbackHandlerResult.value];
+      return resolveMultipleOrThrow(
+        container,
+        [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken],
+        "Failed to resolve translation handlers"
+      );
     },
     ServiceLifecycle.SINGLETON,
     [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]

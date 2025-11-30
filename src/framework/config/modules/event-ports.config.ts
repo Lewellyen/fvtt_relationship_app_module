@@ -19,6 +19,7 @@ import { DITriggerJournalDirectoryReRenderUseCase } from "@/application/use-case
 import { DIRegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
 import { DIHideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
+import { resolveOrThrow } from "./factory-helpers";
 
 /**
  * Registers event port services.
@@ -102,16 +103,16 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
 
   // Register array of context menu handlers using a factory function
   // This allows handlers to be resolved after container validation
+  // Uses resolveOrThrow helper to respect Result Pattern while maintaining FactoryFunction<T> = () => T signature
   const handlersArrayResult = container.registerFactory(
     journalContextMenuHandlersToken,
     () => {
-      const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
-      if (!handlerResult.ok) {
-        throw new Error(
-          `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
-        );
-      }
-      return [handlerResult.value];
+      const handler = resolveOrThrow(
+        container,
+        hideJournalContextMenuHandlerToken,
+        "Failed to resolve HideJournalContextMenuHandler"
+      );
+      return [handler];
     },
     ServiceLifecycle.SINGLETON,
     [hideJournalContextMenuHandlerToken]
