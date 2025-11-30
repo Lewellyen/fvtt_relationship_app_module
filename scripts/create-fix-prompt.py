@@ -148,13 +148,17 @@ Das Projekt verwendet:
 - Respektiere die Schichttrennung (Clean Architecture)
 - Füge Tests hinzu, wenn möglich
 
-## Output - KRITISCH - MUSS ERFÜLLT WERDEN:
+## ⚠️ KRITISCH - PR-ZUSAMMENFASSUNG ERSTELLEN (OBLIGATORISCH):
 
-**WICHTIG:** Du MUSST nach den Code-Änderungen eine Zusammenfassung erstellen!
+**DU MUSST DIESE DATEI ERSTELLEN:** `/tmp/agent-summary.md`
 
-**Schritt 1:** Erstelle die Datei `/tmp/agent-summary.md` mit dem `write` Tool!
+**WARUM:** Diese Datei wird automatisch als PR-Body verwendet. OHNE diese Datei wird der PR mit einem generischen Standard-Text erstellt, der keine Informationen über das Problem oder die Lösung enthält!
 
-**Schritt 2:** Der Inhalt MUSS folgende Struktur haben:
+**WANN:** Erstelle diese Datei NACH den Code-Änderungen, aber VOR dem Commit!
+
+**WIE:** Verwende das `write` Tool um die Datei `/tmp/agent-summary.md` zu erstellen!
+
+**INHALT - MUSS DIESE STRUKTUR HABEN:**
 
 ```markdown
 ## Problem
@@ -185,16 +189,18 @@ Das Projekt verwendet:
 - Verwende das `write` Tool um `/tmp/agent-summary.md` zu erstellen!
 - Schreibe die Zusammenfassung NACH den Code-Änderungen, aber VOR dem Commit!
 
-## Zusammenfassung der Schritte:
+## Zusammenfassung der Schritte - MUSS IN DIESER REIHENFOLGE AUSGEFÜHRT WERDEN:
 
 1. ✅ Code-Änderungen implementieren (verwende `search_replace` oder `write` Tool)
-2. ✅ Commits erstellen (verwende `run_terminal_cmd` mit `git add` und `git commit`)
-3. ✅ Änderungen pushen (verwende `run_terminal_cmd` mit `git push origin {branch_name}`)
-4. ✅ PR-Body in `/tmp/pr-body.txt` schreiben (verwende `write` Tool)
+2. ✅ **KRITISCH:** Erstelle `/tmp/agent-summary.md` mit dem `write` Tool (siehe Format unten) - DIESE DATEI WIRD ALS PR-BODY VERWENDET!
+3. ✅ Commits erstellen (verwende `run_terminal_cmd` mit `git add` und `git commit`)
+4. ✅ Änderungen pushen (verwende `run_terminal_cmd` mit `git push origin {branch_name}`)
 5. ✅ PR erstellen (verwende `run_terminal_cmd` mit `gh pr create` - inkl. Labels und Base-Branch: {base_branch})
 6. ✅ Issue kommentieren (verwende `run_terminal_cmd` mit `gh issue comment`)
 
-**WICHTIG:** Für ALLE Terminal-Befehle (git, gh) musst du das `run_terminal_cmd` Tool verwenden!
+**WICHTIG:**
+- Für ALLE Terminal-Befehle (git, gh) musst du das `run_terminal_cmd` Tool verwenden!
+- **SCHRITT 2 IST OBLIGATORISCH** - ohne `/tmp/agent-summary.md` wird der PR mit generischem Text erstellt!
 
 **Beginne jetzt mit der Analyse und Implementierung!**
 """
