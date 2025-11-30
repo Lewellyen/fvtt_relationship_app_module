@@ -28,11 +28,14 @@ except ImportError:
 
 # Windows-kompatible Pfad-Erkennung
 if sys.platform == "win32":
-    OUTPUT_FILE = os.path.join(os.environ.get("TEMP", "C:\\temp"), "analysis-output.json")
-    TOON_FILE = os.path.join(os.environ.get("TEMP", "C:\\temp"), "analysis-output.toon")
+    TEMP_DIR = os.environ.get("TEMP", "C:\\temp")
+    OUTPUT_FILE = os.path.join(TEMP_DIR, "analysis-output.json")
+    TOON_FILE = os.path.join(TEMP_DIR, "analysis-output.toon")
+    RAW_FILE = os.path.join(TEMP_DIR, "analysis-output-raw.txt")
 else:
     OUTPUT_FILE = "/tmp/analysis-output.json"
     TOON_FILE = "/tmp/analysis-output.toon"
+    RAW_FILE = "/tmp/analysis-output-raw.txt"
 
 def parse_toon_manually(toon_str):
     """
@@ -87,126 +90,133 @@ def parse_toon_manually(toon_str):
 
             # Prüfe Einrückung
             current_indent = len(line) - len(line.lstrip())
-            if current_indent < indent_level and stripped:
+            # Breche ab, wenn Einrückung kleiner als erwartet (nächster Abschnitt)
+            if current_indent < indent_level:
                 break
 
             # Objekt-Struktur: key{fields}: oder key[count]{fields}:
-            key_match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)(\[(\d+)\])?(\{([^}]*)\})?:', stripped)
+            # WICHTIG: Nur matchen wenn {fields}: vorhanden ist (verschachteltes Objekt) oder [count] vorhanden ist (Array)
+            # Einfache Key-Value-Paare wie "key: value" sollen NICHT hier gematcht werden
+            # Die Zeile muss mit ":" enden UND entweder [count] oder {fields} enthalten
+            key_match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)(\[(\d+)\])?(\{([^}]*)\})?:$', stripped)
             if key_match:
                 key = key_match.group(1)
                 count = key_match.group(3)
                 fields = key_match.group(5)
 
-                i += 1
+                # Nur verarbeiten wenn es wirklich ein verschachteltes Objekt oder Array ist
+                # (nicht ein einfaches Key-Value-Paar wie "key: value")
+                if count or fields:
+                    i += 1
 
-                if count:  # Array
-                    array = []
-                    expected_count = int(count)
+                    if count:  # Array
+                        array = []
+                        expected_count = int(count)
 
-                    # Suche nach Array-Elementen mit Pattern: key[0]{...}:, key[1]{...}:, etc.
-                    # Gehe durch alle Zeilen und finde Array-Element-Header
-                    j = i
-                    while j < len(lines) and len(array) < expected_count:
-                        line = lines[j]
-                        line_stripped = line.strip()
-
-                        # Prüfe ob es ein Array-Element-Header ist (issues[0]{...}:, issues[1]{...}:, etc.)
-                        item_header_match = re.match(r'^' + re.escape(key) + r'\[(\d+)\].*?:', line_stripped)
-                        if item_header_match:
-                            item_index = int(item_header_match.group(1))
-                            if item_index == len(array):  # Erwartetes nächstes Element
-                                # Parse das Objekt nach dem Header
-                                j += 1  # Überspringe Header-Zeile
-                                item = {}
-                                item_indent = indent_level + 2  # Array-Elemente sind eingerückt
-
-                                # Lese Felder des Objekts
-                                while j < len(lines):
-                                    item_line = lines[j]
-                                    item_line_stripped = item_line.strip()
-                                    if not item_line_stripped:
-                                        j += 1
-                                        continue
-
-                                    item_line_indent = len(item_line) - len(item_line.lstrip())
-
-                                    # Prüfe ob neues Array-Element beginnt (issues[1], issues[2], etc.)
-                                    if re.match(r'^' + re.escape(key) + r'\[', item_line_stripped):
-                                        break
-
-                                    # Prüfe ob Einrückung zu gering (nächstes Top-Level-Objekt)
-                                    if item_line_indent <= indent_level and item_line_stripped:
-                                        break
-
-                                    # Key-Value-Paar
-                                    if ':' in item_line_stripped and not item_line_stripped.endswith(':'):
-                                        parts = item_line_stripped.split(':', 1)
-                                        if len(parts) == 2:
-                                            field_key = parts[0].strip()
-                                            field_value = parts[1].strip()
-                                            item[field_key] = parse_value(field_value)
-
-                                    j += 1
-
-                                if item:
-                                    array.append(item)
-                                i = j  # Setze Position für nächste Iteration
-                                continue
-
-                        j += 1
-
-                    # Falls keine Header gefunden, versuche altes Format (mit Einrückung ohne Header)
-                    if len(array) == 0:
-                        i += 1
-                        while i < len(lines) and len(array) < expected_count:
-                            line = lines[i]
+                        # Suche nach Array-Elementen mit Pattern: key[0]{...}:, key[1]{...}:, etc.
+                        # Gehe durch alle Zeilen und finde Array-Element-Header
+                        j = i
+                        while j < len(lines) and len(array) < expected_count:
+                            line = lines[j]
                             line_stripped = line.strip()
-                            if not line_stripped:
-                                i += 1
-                                continue
 
-                            current_indent = len(line) - len(line.lstrip())
-                            if current_indent <= indent_level:
-                                break
+                            # Prüfe ob es ein Array-Element-Header ist (issues[0]{...}:, issues[1]{...}:, etc.)
+                            item_header_match = re.match(r'^' + re.escape(key) + r'\[(\d+)\].*?:', line_stripped)
+                            if item_header_match:
+                                item_index = int(item_header_match.group(1))
+                                if item_index == len(array):  # Erwartetes nächstes Element
+                                    # Parse das Objekt nach dem Header
+                                    j += 1  # Überspringe Header-Zeile
+                                    item = {}
+                                    item_indent = indent_level + 2  # Array-Elemente sind eingerückt
 
-                            # Objekt in Array (mit Einrückung)
-                            if current_indent > indent_level:
-                                item = {}
-                                item_indent = current_indent
+                                    # Lese Felder des Objekts
+                                    while j < len(lines):
+                                        item_line = lines[j]
+                                        item_line_stripped = item_line.strip()
+                                        if not item_line_stripped:
+                                            j += 1
+                                            continue
 
-                                # Lese Felder des Items
-                                while i < len(lines):
-                                    line = lines[i]
-                                    line_stripped = line.strip()
-                                    if not line_stripped:
+                                        item_line_indent = len(item_line) - len(item_line.lstrip())
+
+                                        # Prüfe ob neues Array-Element beginnt (issues[1], issues[2], etc.)
+                                        if re.match(r'^' + re.escape(key) + r'\[', item_line_stripped):
+                                            break
+
+                                        # Prüfe ob Einrückung zu gering (nächstes Top-Level-Objekt)
+                                        if item_line_indent <= indent_level and item_line_stripped:
+                                            break
+
+                                        # Key-Value-Paar
+                                        if ':' in item_line_stripped and not item_line_stripped.endswith(':'):
+                                            parts = item_line_stripped.split(':', 1)
+                                            if len(parts) == 2:
+                                                field_key = parts[0].strip()
+                                                field_value = parts[1].strip()
+                                                item[field_key] = parse_value(field_value)
+
+                                        j += 1
+
+                                    if item:
+                                        array.append(item)
+                                    i = j  # Setze Position für nächste Iteration
+                                    continue
+
+                            j += 1
+
+                        # Falls keine Header gefunden, versuche altes Format (mit Einrückung ohne Header)
+                        if len(array) == 0:
+                            i += 1
+                            while i < len(lines) and len(array) < expected_count:
+                                line = lines[i]
+                                line_stripped = line.strip()
+                                if not line_stripped:
+                                    i += 1
+                                    continue
+
+                                current_indent = len(line) - len(line.lstrip())
+                                if current_indent <= indent_level:
+                                    break
+
+                                # Objekt in Array (mit Einrückung)
+                                if current_indent > indent_level:
+                                    item = {}
+                                    item_indent = current_indent
+
+                                    # Lese Felder des Items
+                                    while i < len(lines):
+                                        line = lines[i]
+                                        line_stripped = line.strip()
+                                        if not line_stripped:
+                                            i += 1
+                                            continue
+
+                                        line_indent = len(line) - len(line.lstrip())
+                                        if line_indent <= item_indent:
+                                            break
+
+                                        if ':' in line_stripped and not line_stripped.endswith(':'):
+                                            parts = line_stripped.split(':', 1)
+                                            if len(parts) == 2:
+                                                field_key = parts[0].strip()
+                                                field_value = parts[1].strip()
+                                                item[field_key] = parse_value(field_value)
                                         i += 1
-                                        continue
 
-                                    line_indent = len(line) - len(line.lstrip())
-                                    if line_indent <= item_indent:
-                                        break
-
-                                    if ':' in line_stripped and not line_stripped.endswith(':'):
-                                        parts = line_stripped.split(':', 1)
-                                        if len(parts) == 2:
-                                            field_key = parts[0].strip()
-                                            field_value = parts[1].strip()
-                                            item[field_key] = parse_value(field_value)
+                                    if item:
+                                        array.append(item)
+                                else:
                                     i += 1
 
-                                if item:
-                                    array.append(item)
-                            else:
-                                i += 1
-
-                    obj[key] = array
-                else:  # Objekt
-                    # Rekursiv Objekt parsen
-                    nested_obj, new_i = parse_object(lines, i, indent_level + 2)
-                    if nested_obj:
-                        obj[key] = nested_obj
-                    i = new_i
-                    continue
+                        obj[key] = array
+                    else:  # Objekt (verschachtelt)
+                        # Rekursiv Objekt parsen
+                        nested_obj, new_i = parse_object(lines, i, indent_level + 2)
+                        if nested_obj:
+                            obj[key] = nested_obj
+                        i = new_i
+                        continue
 
             # Key-Value-Paar: key: value (einfache Werte)
             elif ':' in stripped and not stripped.endswith(':'):
@@ -222,9 +232,91 @@ def parse_toon_manually(toon_str):
 
         return obj, i
 
-    # Starte Parsing (Top-Level)
-    obj, _ = parse_object(lines, 0)
-    return obj if obj else None
+    # Starte Parsing (Top-Level) - sammle alle Top-Level-Elemente
+    result = {}
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        if not stripped or stripped.startswith('#'):
+            i += 1
+            continue
+
+        # Prüfe ob es ein Top-Level-Element ist (keine Einrückung)
+        current_indent = len(line) - len(line.lstrip())
+        if current_indent == 0:
+            # Versuche Top-Level-Element zu parsen
+            key_match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)(\[(\d+)\])?(\{([^}]*)\})?:', stripped)
+            if key_match:
+                key = key_match.group(1)
+                count = key_match.group(3)
+
+                i += 1
+
+                if count:  # Array-Element-Header (z.B. issues[0], issues[1])
+                    # Prüfe ob bereits ein Array für diesen Key existiert
+                    if key not in result:
+                        result[key] = []
+
+                    # Parse das aktuelle Array-Element
+                    item_index = int(count)
+                    item = {}
+                    item_indent = 2  # Array-Elemente sind eingerückt
+
+                    # Lese Felder des Objekts
+                    j = i
+                    while j < len(lines):
+                        item_line = lines[j]
+                        item_line_stripped = item_line.strip()
+                        if not item_line_stripped:
+                            j += 1
+                            continue
+
+                        item_line_indent = len(item_line) - len(item_line.lstrip())
+
+                        # Prüfe ob neues Array-Element beginnt (issues[1], issues[2], etc.)
+                        next_item_match = re.match(r'^' + re.escape(key) + r'\[(\d+)\].*?:', item_line_stripped)
+                        if next_item_match:
+                            break
+
+                        # Prüfe ob Einrückung zu gering (nächstes Top-Level-Element)
+                        if item_line_indent == 0 and item_line_stripped:
+                            # Neues Top-Level-Element (nicht issues)
+                            break
+
+                        # Key-Value-Paar
+                        if ':' in item_line_stripped and not item_line_stripped.endswith(':'):
+                            parts = item_line_stripped.split(':', 1)
+                            if len(parts) == 2:
+                                field_key = parts[0].strip()
+                                field_value = parts[1].strip()
+                                item[field_key] = parse_value(field_value)
+
+                        j += 1
+
+                    if item:
+                        # Stelle sicher, dass das Array groß genug ist
+                        while len(result[key]) <= item_index:
+                            result[key].append({})
+                        result[key][item_index] = item
+
+                    i = j
+                    continue
+                else:  # Objekt (z.B. summary)
+                    nested_obj, new_i = parse_object(lines, i, 2)  # Top-Level-Objekte haben Einrückung 2
+                    # Immer zuweisen, auch wenn leer (damit summary nicht fehlt)
+                    if nested_obj is not None:
+                        result[key] = nested_obj
+                    else:
+                        # Debug: Wenn None zurückgegeben wird, erstelle leeres Objekt
+                        result[key] = {}
+                    i = new_i
+                    continue
+
+        i += 1
+
+    return result if result else None
 
 if not TOON_AVAILABLE:
     print("⚠️ TOON-Bibliothek nicht verfügbar, versuche JSON-Extraktion...", file=sys.stderr)
@@ -236,7 +328,7 @@ if not TOON_AVAILABLE:
 
 # Versuche verschiedene Input-Dateien (in dieser Reihenfolge)
 input_files = [
-    "/tmp/analysis-output-raw.txt",  # Primär: Raw-Output vom cursor-agent
+    RAW_FILE,  # Primär: Raw-Output vom cursor-agent
     TOON_FILE,  # Sekundär: Bereits gespeicherte TOON-Datei
     OUTPUT_FILE,  # Tertiär: JSON-Datei (falls bereits konvertiert)
 ]

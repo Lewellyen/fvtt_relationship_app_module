@@ -181,11 +181,42 @@ jobs:
             fi
           fi
 
+      - name: Load existing GitHub Issues
+        if: steps.files-to-analyze.outputs.skip == 'false'
+        id: existing-issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Loading existing GitHub Issues..."
+          # Lade alle offenen Issues mit Labels (falls vorhanden)
+          gh issue list --state open --json number,title,body,labels,state --limit 100 > /tmp/existing-issues.json 2>&1 || {
+            echo "⚠️ Could not load issues (might not have permissions or no issues exist)"
+            echo "[]" > /tmp/existing-issues.json
+          }
+
+          ISSUE_COUNT=$(cat /tmp/existing-issues.json | jq '. | length' 2>/dev/null || echo "0")
+          echo "Found $ISSUE_COUNT open issues"
+          echo "count=$ISSUE_COUNT" >> $GITHUB_OUTPUT
+
+          # Erstelle eine kompakte Zusammenfassung für den Prompt
+          if [ "$ISSUE_COUNT" -gt 0 ]; then
+            # Erstelle Zusammenfassung mit Issue-Nummer, Titel und Labels
+            cat /tmp/existing-issues.json | jq -r '.[] | "Issue #\(.number): \(.title) [\(.labels | map(.name) | join(", ") // "no labels")]"' > /tmp/existing-issues-summary.txt 2>/dev/null || {
+              # Fallback: einfache Liste
+              cat /tmp/existing-issues.json | jq -r '.[] | "Issue #\(.number): \(.title)"' > /tmp/existing-issues-summary.txt 2>/dev/null || echo "" > /tmp/existing-issues-summary.txt
+            }
+          else
+            echo "" > /tmp/existing-issues-summary.txt
+          fi
+
       - name: Create analysis prompt
         if: steps.files-to-analyze.outputs.skip == 'false'
         run: |
           SCOPE="${{ steps.files-to-analyze.outputs.scope }}"
           FILE_COUNT="${{ steps.files-to-analyze.outputs.file_count }}"
+          # Lade Issues-Zusammenfassung
+          EXISTING_ISSUES=$(cat /tmp/existing-issues-summary.txt 2>/dev/null || echo "")
+          ISSUE_COUNT="${{ steps.existing-issues.outputs.count }}"
 
           cat > /tmp/analysis-prompt.md << PROMPT_EOF
           Du arbeitest in einem GitHub Actions Runner.
@@ -200,10 +231,27 @@ jobs:
           - Scope: ${SCOPE}
           - Dateien zu analysieren: ${FILE_COUNT}
 
+          ## Vorhandene GitHub-Issues
+
+          Es gibt aktuell ${ISSUE_COUNT} offene Issues im Repository. Diese Issues sind bereits bekannt und sollten **NICHT** erneut als Findings gemeldet werden.
+
+          ${EXISTING_ISSUES:+**Bekannte Issues:**}
+          ${EXISTING_ISSUES}
+          ${EXISTING_ISSUES:+}
+
+          **WICHTIG:** Bevor du ein Finding meldest, prüfe ob bereits ein ähnliches Issue existiert. Du kannst die Issues mit \`gh issue list\` oder \`gh issue view <number>\` einsehen.
+
+          **Regeln für Duplikat-Vermeidung:**
+          - Wenn ein Finding bereits als Issue existiert (gleiche Datei, ähnliches Problem), **ignoriere** es in deiner Analyse
+          - Nur **neue** Probleme sollten als Findings gemeldet werden
+          - Wenn du unsicher bist, ob ein Issue bereits existiert, prüfe die Issues-Liste mit \`gh issue list\`
+
           # Deine Aufgabe:
 
           Du bist ein erfahrener Code-Reviewer für ein TypeScript/Foundry VTT Modul-Projekt.
           Analysiere das KOMPLETTE Projekt (Scope: ${SCOPE}) auf Code-Qualität, Architektur-Konformität und potentielle Probleme.
+
+          **WICHTIG:** Ignoriere alle Probleme, die bereits als GitHub-Issues existieren!
 
           **WICHTIG:** Nutze \`git\` und \`gh\` um selbst auf die Dateien zuzugreifen. Lies die Dateien direkt aus dem Repository.
           Du musst nicht Code hier im Prompt haben - du kannst alle Dateien selbst lesen!
@@ -504,6 +552,14 @@ jobs:
             cp /tmp/analysis-output.json ai-review-artifacts/output.json
           fi
 
+          # Kopiere Issues-Datei
+          if [ -f /tmp/existing-issues.json ]; then
+            cp /tmp/existing-issues.json ai-review-artifacts/existing-issues.json
+          fi
+          if [ -f /tmp/existing-issues-summary.txt ]; then
+            cp /tmp/existing-issues-summary.txt ai-review-artifacts/existing-issues-summary.txt
+          fi
+
           # Erstelle Info-Datei
           cat > ai-review-artifacts/info.txt << EOF
           AI Code Review - Full Project Analysis
@@ -524,6 +580,8 @@ jobs:
           - output-raw.txt: Raw AI response
           - output.toon: Extracted TOON format
           - output.json: Converted JSON (for compatibility)
+          - existing-issues.json: Existing GitHub Issues (JSON)
+          - existing-issues-summary.txt: Existing Issues summary (for prompt)
           EOF
 
       - name: Upload AI Review Artifacts
