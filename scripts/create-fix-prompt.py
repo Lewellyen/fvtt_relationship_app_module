@@ -22,11 +22,7 @@ def create_fix_prompt():
     prompt = f"""Du arbeitest in einem GitHub Actions Runner mit vollständigem Zugriff auf Git und GitHub CLI.
 
 **WICHTIG - Terminal-Befehle:**
-Da Terminal-Befehle in dieser Umgebung möglicherweise nicht direkt ausgeführt werden können, gibt es zwei Optionen:
-
-**Option 1 (BEVORZUGT):** Verwende das `run_terminal_cmd` Tool, falls verfügbar.
-**Option 2 (FALLBACK):** Wenn Terminal-Befehle abgelehnt werden, schreibe die Befehle in eine Datei `/tmp/agent-commands.sh`, die dann vom Workflow ausgeführt wird.
-
+Du MUSST Terminal-Befehle direkt ausführen können. Verwende das `run_terminal_cmd` Tool für alle Git- und GitHub CLI-Befehle.
 Die Terminal-Umgebung ist vollständig konfiguriert und bereit für deine Befehle.
 
 # Aufgabe: Issue #{issue_num} beheben
@@ -50,12 +46,8 @@ Die Terminal-Umgebung ist vollständig konfiguriert und bereit für deine Befehl
 ## WICHTIG - Du MUSST folgendes tun:
 
 ### Git-Operationen:
-- **WICHTIG:** Versuche zuerst das `run_terminal_cmd` Tool zu verwenden!
-- **FALLBACK:** Falls Terminal-Befehle abgelehnt werden, schreibe alle Git-Befehle in `/tmp/agent-commands.sh`:
-  1. Erstelle die Datei mit `#!/bin/bash` als erste Zeile
-  2. Füge alle Git-Befehle hinzu (z.B. `git add .`, `git commit -m "..."`, `git push origin {branch_name}`)
-  3. Mache die Datei ausführbar: `chmod +x /tmp/agent-commands.sh`
-  4. Der Workflow führt diese Datei dann aus
+- **WICHTIG:** Verwende das `run_terminal_cmd` Tool für ALLE Git-Befehle!
+- **Git-Befehle ausführen:** Nutze `run_terminal_cmd` mit Befehlen wie `git add`, `git commit`, `git push`
 - **Erstelle sinnvolle Commits:** Jeder Commit sollte eine logische Änderungseinheit sein
 - **Commit-Messages:** Verwende klare, beschreibende Messages (z.B. "fix: resolve issue #{issue_num}")
 - **Keine leeren Commits:** Nur committen wenn tatsächlich Änderungen gemacht wurden
@@ -90,27 +82,23 @@ Die Terminal-Umgebung ist vollständig konfiguriert und bereit für deine Befehl
    ```
 
 3. **PR erstellen mit GitHub CLI:**
-   **WICHTIG:** Versuche zuerst `run_terminal_cmd`, falls nicht möglich: Befehle in `/tmp/agent-commands.sh` schreiben!
+   **WICHTIG:** Verwende `run_terminal_cmd` für alle `gh`-Befehle!
 
    Zuerst PR-Body in Datei schreiben (verwende `write` Tool):
    - Erstelle `/tmp/pr-body.txt` mit dem PR-Body-Inhalt
 
-   Dann PR erstellen:
-   - **Option 1:** Verwende `run_terminal_cmd` mit:
-     ```
-     gh pr create --title "fix: Resolve issue #{issue_num} - {issue_title}" --body-file /tmp/pr-body.txt --base {base_branch} --head {branch_name} --label "ai-generated" --label "automated"
-     ```
-   - **Option 2 (Fallback):** Füge den Befehl zu `/tmp/agent-commands.sh` hinzu
+   Dann PR erstellen (verwende `run_terminal_cmd`):
+   ```
+   gh pr create --title "fix: Resolve issue #{issue_num} - {issue_title}" --body-file /tmp/pr-body.txt --base {base_branch} --head {branch_name} --label "ai-generated" --label "automated"
+   ```
 
    **WICHTIG:** Schreibe den PR-Body zuerst in eine Datei (`/tmp/pr-body.txt`), um Sonderzeichen-Probleme zu vermeiden!
 
 4. **Issue verlinken:**
-   Nach erfolgreicher PR-Erstellung füge einen Kommentar zum Issue hinzu:
-   - **Option 1:** Verwende `run_terminal_cmd` mit:
-     ```
-     gh issue comment {issue_num} --body "🤖 AI has created a fix for this issue: PR #<PR_NUMBER>"
-     ```
-   - **Option 2 (Fallback):** Füge den Befehl zu `/tmp/agent-commands.sh` hinzu
+   Nach erfolgreicher PR-Erstellung füge einen Kommentar zum Issue hinzu (verwende `run_terminal_cmd`):
+   ```
+   gh issue comment {issue_num} --body "🤖 AI has created a fix for this issue: PR #<PR_NUMBER>"
+   ```
 
    Ersetze `<PR_NUMBER>` mit der tatsächlichen PR-Nummer aus dem `gh pr create` Output.
 
@@ -149,30 +137,16 @@ Nachdem du die Änderungen gemacht, committed, gepusht und die PR erstellt hast,
 - PR-Nummer und Link (falls erfolgreich erstellt)
 - Gibt es besondere Überlegungen für den Reviewer?
 
-## KRITISCH - Du MUSST diese Schritte in dieser Reihenfolge ausführen:
+## Zusammenfassung der Schritte:
 
-1. ✅ **Code-Änderungen implementieren** (verwende `search_replace` oder `write` Tool)
-2. ✅ **Commits erstellen:**
-   - Versuche `run_terminal_cmd` mit `git add .` und `git commit -m "fix: resolve issue #{issue_num}"`
-   - Falls abgelehnt: Schreibe Befehle in `/tmp/agent-commands.sh`
-3. ✅ **Änderungen pushen:**
-   - Versuche `run_terminal_cmd` mit `git push origin {branch_name}`
-   - Falls abgelehnt: Füge Befehl zu `/tmp/agent-commands.sh` hinzu
-4. ✅ **PR-Body in `/tmp/pr-body.txt` schreiben** (verwende `write` Tool - MUSS gemacht werden!)
-5. ✅ **PR ERSTELLEN - DAS IST KRITISCH:**
-   - Versuche `run_terminal_cmd` mit: `gh pr create --title "fix: Resolve issue #{issue_num} - {issue_title}" --body-file /tmp/pr-body.txt --base {base_branch} --head {branch_name} --label "ai-generated" --label "automated"`
-   - Falls abgelehnt: Füge Befehl zu `/tmp/agent-commands.sh` hinzu
-   - **WICHTIG:** Der PR MUSS erstellt werden! Wenn Terminal abgelehnt wird, MUSS der Befehl in `/tmp/agent-commands.sh` stehen!
-6. ✅ **Issue kommentieren:**
-   - Versuche `run_terminal_cmd` mit `gh issue comment {issue_num} --body "🤖 AI has created a fix for this issue: PR #<PR_NUMBER>"`
-   - Ersetze `<PR_NUMBER>` mit der tatsächlichen PR-Nummer
-   - Falls abgelehnt: Füge Befehl zu `/tmp/agent-commands.sh` hinzu
+1. ✅ Code-Änderungen implementieren (verwende `search_replace` oder `write` Tool)
+2. ✅ Commits erstellen (verwende `run_terminal_cmd` mit `git add` und `git commit`)
+3. ✅ Änderungen pushen (verwende `run_terminal_cmd` mit `git push origin {branch_name}`)
+4. ✅ PR-Body in `/tmp/pr-body.txt` schreiben (verwende `write` Tool)
+5. ✅ PR erstellen (verwende `run_terminal_cmd` mit `gh pr create` - inkl. Labels und Base-Branch: {base_branch})
+6. ✅ Issue kommentieren (verwende `run_terminal_cmd` mit `gh issue comment`)
 
-**KRITISCH - PR-Erstellung:**
-- Der PR MUSS erstellt werden, sonst ist die Aufgabe nicht erfüllt!
-- Wenn `run_terminal_cmd` abgelehnt wird, MUSS der `gh pr create` Befehl in `/tmp/agent-commands.sh` stehen!
-- Die Datei muss mit `#!/bin/bash` beginnen und ausführbar sein (`chmod +x /tmp/agent-commands.sh`)
-- Alle Git- und GitHub CLI-Befehle müssen in der Datei stehen, wenn Terminal nicht verfügbar ist
+**WICHTIG:** Für ALLE Terminal-Befehle (git, gh) musst du das `run_terminal_cmd` Tool verwenden!
 
 **Beginne jetzt mit der Analyse und Implementierung!**
 """
