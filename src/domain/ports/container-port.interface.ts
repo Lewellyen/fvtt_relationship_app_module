@@ -1,9 +1,11 @@
-import type { ServiceType } from "@/infrastructure/shared/tokens";
-import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
-import type { ContainerError } from "@/infrastructure/di/interfaces";
-import type { ContainerValidationState } from "@/infrastructure/di/types/errors/containervalidationstate";
 import type { Result } from "@/domain/types/result";
+import type {
+  DomainServiceType,
+  DomainInjectionToken,
+  DomainApiSafeToken,
+  DomainContainerError,
+  DomainContainerValidationState,
+} from "@/domain/types/container-types";
 
 /**
  * Minimal port interface for container operations needed by the Framework layer.
@@ -44,7 +46,9 @@ export interface ContainerPort {
    * @param token - The injection token that identifies the service
    * @returns Result with the resolved service or error
    */
-  resolveWithError<T extends ServiceType>(token: InjectionToken<T>): Result<T, ContainerError>;
+  resolveWithError<T extends DomainServiceType>(
+    token: DomainInjectionToken<T>
+  ): Result<T, DomainContainerError>;
 
   /**
    * Resolve a service instance by its injection token.
@@ -55,9 +59,9 @@ export interface ContainerPort {
    * @template T - The type of service to resolve
    * @param token - The injection token that identifies the service (must be API-safe)
    * @returns The resolved service instance
-   * @throws {ContainerError} If service is not registered or resolution fails
+   * @throws {DomainContainerError} If service is not registered or resolution fails
    */
-  resolve<T extends ServiceType>(token: ApiSafeToken<T>): T;
+  resolve<T extends DomainServiceType>(token: DomainApiSafeToken<T>): T;
 
   /**
    * Check if a token is registered in this container.
@@ -65,12 +69,14 @@ export interface ContainerPort {
    * @param token - The injection token to check
    * @returns True if the token is registered
    */
-  isRegistered<T extends ServiceType>(token: InjectionToken<T>): Result<boolean, never>;
+  isRegistered<T extends DomainServiceType>(
+    token: DomainInjectionToken<T>
+  ): Result<boolean, never>;
 
   /**
    * Get the current validation state of the container.
    *
    * @returns Current validation state
    */
-  getValidationState(): ContainerValidationState;
+  getValidationState(): DomainContainerValidationState;
 }
