@@ -481,10 +481,12 @@ jobs:
             echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
           else
             # Erstelle PR-Beschreibung mit Python-Script (behandelt Sonderzeichen sicher)
-            PR_BODY=$(ISSUE_NUM="$ISSUE_NUM" \
-                     ISSUE_TITLE="$ISSUE_TITLE" \
-                     ISSUE_URL="${{ steps.issue-details.outputs.url }}" \
-                     python3 scripts/create-pr-body.py)
+            # Schreibe Body in Datei statt Variable (vermeidet Escaping-Probleme)
+            ISSUE_NUM="$ISSUE_NUM" \
+            ISSUE_TITLE="$ISSUE_TITLE" \
+            ISSUE_URL="${{ steps.issue-details.outputs.url }}" \
+            OUTPUT_FILE="/tmp/pr-body.txt" \
+            python3 scripts/create-pr-body.py > /tmp/pr-body.txt
 
             # Erstelle PR mit besserer Fehlerbehandlung
             echo "Creating PR..."
@@ -512,18 +514,33 @@ jobs:
 
             echo "Labels to add: $LABELS_ARGS"
 
-            # Erstelle PR mit Labels (falls vorhanden)
-            # Baue Befehl zusammen
-            PR_CMD="gh pr create --title \"fix: Resolve issue #$ISSUE_NUM - $ISSUE_TITLE\" --body \"$PR_BODY\" --base \"$BASE_BRANCH\" --head \"$BRANCH_NAME\""
+            # Erstelle PR mit --body-file (vermeidet Escaping-Probleme)
+            PR_TITLE="fix: Resolve issue #$ISSUE_NUM - $ISSUE_TITLE"
 
+            # Zeige PR-Body für Debugging (erste 200 Zeichen)
+            echo "PR Body preview (first 200 chars):"
+            head -c 200 /tmp/pr-body.txt || cat /tmp/pr-body.txt | head -10
+            echo ""
+
+            # Erstelle PR (ohne eval, direkter Aufruf)
             if [ -n "$LABELS_ARGS" ]; then
-              PR_CMD="$PR_CMD $LABELS_ARGS"
+              # Split LABELS_ARGS in einzelne --label Argumente
+              PR_OUTPUT=$(gh pr create \
+                --title "$PR_TITLE" \
+                --body-file /tmp/pr-body.txt \
+                --base "$BASE_BRANCH" \
+                --head "$BRANCH_NAME" \
+                --label "ai-generated" \
+                --label "automated" \
+                2>&1)
+            else
+              PR_OUTPUT=$(gh pr create \
+                --title "$PR_TITLE" \
+                --body-file /tmp/pr-body.txt \
+                --base "$BASE_BRANCH" \
+                --head "$BRANCH_NAME" \
+                2>&1)
             fi
-
-            echo "Executing: $PR_CMD"
-
-            # Führe Befehl aus und erfasse Ausgabe
-            PR_OUTPUT=$(eval "$PR_CMD" 2>&1)
             PR_EXIT_CODE=$?
             echo "PR command exit code: $PR_EXIT_CODE"
             echo "PR output:"

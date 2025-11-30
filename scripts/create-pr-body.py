@@ -41,8 +41,9 @@ This PR contains the AI-generated fix for the issue. Please review carefully bef
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(pr_body)
         print(f"✅ PR body created for issue #{issue_num} -> {output_file}", file=sys.stderr)
-        # Ausgabe für Verwendung in Shell
-        print(pr_body)
+        # Nur auf stdout ausgeben wenn OUTPUT_FILE nicht gesetzt ist (für Rückwärtskompatibilität)
+        if 'OUTPUT_FILE' not in os.environ:
+            print(pr_body)
         sys.exit(0)
     except Exception as e:
         print(f"❌ Error writing PR body file: {e}", file=sys.stderr)
