@@ -43,24 +43,41 @@ jobs:
         id: cursor-cache
         with:
           path: ~/.cursor
-          key: cursor-agent-${{ runner.os }}-v1
+          key: cursor-agent-${{ runner.os }}-v2
           restore-keys: |
             cursor-agent-${{ runner.os }}-
 
       - name: Install Cursor CLI
-        if: steps.cursor-cache.outputs.cache-hit != 'true'
         continue-on-error: true
         run: |
+          # Prüfe ob cursor-agent bereits im Cache vorhanden ist
+          if [ "${{ steps.cursor-cache.outputs.cache-hit }}" = "true" ]; then
+            if [ -f "$HOME/.cursor/bin/cursor-agent" ] || [ -f "$HOME/.local/bin/cursor-agent" ]; then
+              echo "✅ cursor-agent bereits im Cache vorhanden"
+              exit 0
+            else
+              echo "⚠️ Cache-Hit aber cursor-agent nicht gefunden - Cache ist leer, installiere neu..."
+            fi
+          fi
+
           echo "Installing Cursor CLI..."
           curl https://cursor.com/install -fsS | bash || {
-            echo "⚠️ Installation fehlgeschlagen, versuche Fallback..."
+            echo "⚠️ curl failed, trying wget..."
             wget -qO- https://cursor.com/install | bash || {
-              echo "❌ Alle Installationsmethoden fehlgeschlagen"
-              exit 0  # Workflow läuft weiter
+              echo "❌ All installation methods failed"
+              exit 0  # Workflow continues
             }
           }
+
           echo "$HOME/.cursor/bin" >> $GITHUB_PATH
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+          # Verifiziere dass Installation erfolgreich war
+          if [ -f "$HOME/.cursor/bin/cursor-agent" ] || [ -f "$HOME/.local/bin/cursor-agent" ]; then
+            echo "✅ Installation erfolgreich - cursor-agent gefunden"
+          else
+            echo "⚠️ Installation abgeschlossen aber cursor-agent nicht gefunden"
+          fi
 
       - name: Verify Cursor CLI
         id: verify-cursor
