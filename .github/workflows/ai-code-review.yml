@@ -34,6 +34,10 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install Python dependencies
+        run: |
+          pip install toon-formatter python-toon toons
+
       - name: Cache Cursor Agent
         uses: actions/cache@v4
         id: cursor-cache
@@ -233,48 +237,36 @@ jobs:
 
           ## Output-Format
 
-          **WICHTIG:** Du MUSST die Analyse-Ergebnisse AUSSCHLIESSLICH als gültiges JSON ausgeben - KEIN Markdown, KEIN zusätzlicher Text vor oder nach dem JSON!
+          **WICHTIG:** Du MUSST die Analyse-Ergebnisse AUSSCHLIESSLICH im TOON-Format (Token-Oriented Object Notation) ausgeben - KEIN Markdown, KEIN JSON, KEIN zusätzlicher Text vor oder nach dem TOON!
 
-          Beginne direkt mit dem JSON-Objekt, KEINE Markdown-Formatierung, KEIN Code-Block!
+          TOON ist ein kompaktes Format das Token spart. Beginne direkt mit dem TOON-Format, KEINE Markdown-Formatierung, KEIN Code-Block!
 
-          Gib die Analyse-Ergebnisse als strukturiertes JSON aus:
-
-          {
-            "summary": {
-              "total_issues": 0,
-              "by_type": {
-                "solid_violation": 0,
-                "result_pattern_violation": 0,
-                "architecture_violation": 0,
-                "code_smell": 0,
-                "bug": 0
-              },
-              "by_severity": {
-                "critical": 0,
-                "high": 0,
-                "medium": 0,
-                "low": 0
-              }
-            },
-            "issues": [
-              {
-                "type": "solid_violation|result_pattern_violation|architecture_violation|code_smell|bug",
-                "solid_principle": "SRP|OCP|LSP|ISP|DIP" (nur bei solid_violation),
-                "severity": "critical|high|medium|low",
-                "file": "src/path/to/file.ts",
-                "line": 42,
-                "column": 10,
-                "title": "Kurze, prägnante Beschreibung",
-                "description": "Detaillierte Beschreibung des Problems",
-                "current_code": "Relevanter Code-Ausschnitt (5-10 Zeilen)",
-                "recommendation": "Konkreter Vorschlag zur Behebung mit Beispiel",
-                "references": [
-                  "ADR-0001",
-                  "docs/architecture/event-system-hierarchy.md"
-                ]
-              }
-            ]
-          }
+          TOON-Format Beispiel:
+          summary{total_issues,by_type,by_severity}:
+            total_issues: 0
+            by_type{solid_violation,result_pattern_violation,architecture_violation,code_smell,bug}:
+              solid_violation: 0
+              result_pattern_violation: 0
+              architecture_violation: 0
+              code_smell: 0
+              bug: 0
+            by_severity{critical,high,medium,low}:
+              critical: 0
+              high: 0
+              medium: 0
+              low: 0
+          issues[0]{type,solid_principle,severity,file,line,column,title,description,current_code,recommendation,references}:
+            type: solid_violation
+            solid_principle: SRP
+            severity: high
+            file: src/path/to/file.ts
+            line: 42
+            column: 10
+            title: Kurze prägnante Beschreibung
+            description: Detaillierte Beschreibung des Problems
+            current_code: Relevanter Code-Ausschnitt
+            recommendation: Konkreter Vorschlag zur Behebung
+            references[1]: ADR-0001
           ```
 
           **Severity-Kriterien:**
@@ -371,11 +363,19 @@ jobs:
             exit 0
           fi
 
-          # Validierung: Prüfe ob es JSON ist (auch wenn es in Markdown eingebettet ist)
-          if ! python3 -m json.tool /tmp/analysis-output.json > /dev/null 2>&1; then
-            echo "Output is not valid JSON, attempting extraction..."
-            # Versuche JSON-Block aus Markdown zu extrahieren
-            python3 scripts/ai-review-extract-json.py
+          # Speichere Raw-Output auch als TOON
+          cp /tmp/analysis-output.json /tmp/analysis-output.toon
+
+          # Versuche TOON-Extraktion (konvertiert automatisch zu JSON für Kompatibilität)
+          echo "Extracting TOON format from output..."
+          if python3 scripts/ai-review-extract-toon.py; then
+            echo "✅ TOON extraction successful"
+          else
+            echo "⚠️ TOON extraction failed, trying JSON fallback..."
+            # Fallback zu JSON (Rückwärtskompatibilität)
+            if ! python3 -m json.tool /tmp/analysis-output.json > /dev/null 2>&1; then
+              python3 scripts/ai-review-extract-json.py
+            fi
           fi
 
           echo "skipped=false" >> $GITHUB_OUTPUT

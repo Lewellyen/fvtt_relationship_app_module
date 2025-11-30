@@ -44,6 +44,10 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install Python dependencies
+        run: |
+          pip install toon-formatter python-toon toons
+
       - name: Cache Cursor Agent
         uses: actions/cache@v4
         id: cursor-cache
@@ -269,53 +273,43 @@ jobs:
 
           ## Output-Format
 
-          **WICHTIG:** Du MUSST die Analyse-Ergebnisse AUSSCHLIESSLICH als gültiges JSON ausgeben - KEIN Markdown, KEIN zusätzlicher Text vor oder nach dem JSON!
+          **WICHTIG:** Du MUSST die Analyse-Ergebnisse AUSSCHLIESSLICH im TOON-Format (Token-Oriented Object Notation) ausgeben - KEIN Markdown, KEIN JSON, KEIN zusätzlicher Text vor oder nach dem TOON!
 
-          Gib die Analyse-Ergebnisse als strukturiertes JSON aus. Fokussiere auf die WICHTIGSTEN und KRITISCHSTEN Probleme, da das Projekt groß ist.
+          TOON ist ein kompaktes Format das Token spart. Gib die Analyse-Ergebnisse als TOON aus. Fokussiere auf die WICHTIGSTEN und KRITISCHSTEN Probleme, da das Projekt groß ist.
           Priorisiere:
           1. High-Severity Issues (DIP-Verstöße, Layer-Trennung, kritische Bugs)
           2. Medium-Severity Issues (SOLID-Verstöße, Result-Pattern-Missbrauch)
           3. Low-Severity Issues (Code Smells ohne direkten Impact)
 
-          Beginne direkt mit dem JSON-Objekt, KEINE Markdown-Formatierung, KEIN Code-Block!
+          Beginne direkt mit dem TOON-Format, KEINE Markdown-Formatierung, KEIN Code-Block!
 
-          {
-            "summary": {
-              "total_issues": 0,
-              "files_analyzed": 0,
-              "by_type": {
-                "solid_violation": 0,
-                "result_pattern_violation": 0,
-                "architecture_violation": 0,
-                "code_smell": 0,
-                "bug": 0
-              },
-              "by_severity": {
-                "critical": 0,
-                "high": 0,
-                "medium": 0,
-                "low": 0
-              }
-            },
-            "issues": [
-              {
-                "type": "solid_violation|result_pattern_violation|architecture_violation|code_smell|bug",
-                "solid_principle": "SRP|OCP|LSP|ISP|DIP" (nur bei solid_violation),
-                "severity": "critical|high|medium|low",
-                "file": "src/path/to/file.ts",
-                "line": 42,
-                "column": 10,
-                "title": "Kurze, prägnante Beschreibung",
-                "description": "Detaillierte Beschreibung des Problems",
-                "current_code": "Relevanter Code-Ausschnitt (5-10 Zeilen)",
-                "recommendation": "Konkreter Vorschlag zur Behebung mit Beispiel",
-                "references": [
-                  "ADR-0001",
-                  "docs/architecture/event-system-hierarchy.md"
-                ]
-              }
-            ]
-          }
+          TOON-Format Beispiel:
+          summary{total_issues,files_analyzed,by_type,by_severity}:
+            total_issues: 0
+            files_analyzed: 0
+            by_type{solid_violation,result_pattern_violation,architecture_violation,code_smell,bug}:
+              solid_violation: 0
+              result_pattern_violation: 0
+              architecture_violation: 0
+              code_smell: 0
+              bug: 0
+            by_severity{critical,high,medium,low}:
+              critical: 0
+              high: 0
+              medium: 0
+              low: 0
+          issues[0]{type,solid_principle,severity,file,line,column,title,description,current_code,recommendation,references}:
+            type: solid_violation
+            solid_principle: SRP
+            severity: high
+            file: src/path/to/file.ts
+            line: 42
+            column: 10
+            title: Kurze prägnante Beschreibung
+            description: Detaillierte Beschreibung des Problems
+            current_code: Relevanter Code-Ausschnitt
+            recommendation: Konkreter Vorschlag zur Behebung
+            references[1]: ADR-0001
 
           **Severity-Kriterien:**
           - **critical**: Kritischer Bug mit hohem Runtime-Risiko, fundamentale Architektur-Verletzung
@@ -416,20 +410,27 @@ jobs:
           head -c 500 /tmp/analysis-output.json || true
           echo ""
 
-          # Validierung: Prüfe ob es bereits gültiges JSON ist
-          if python3 -m json.tool /tmp/analysis-output.json > /dev/null 2>&1; then
-            echo "Output is valid JSON"
+          # Speichere Raw-Output auch als TOON
+          cp /tmp/analysis-output-raw.txt /tmp/analysis-output.toon
+
+          # Versuche TOON-Extraktion (konvertiert automatisch zu JSON für Kompatibilität)
+          echo "Extracting TOON format from output..."
+          if python3 scripts/ai-review-extract-toon.py; then
+            echo "✅ TOON extraction successful"
             echo "skipped=false" >> $GITHUB_OUTPUT
           else
-            echo "Output is not valid JSON, attempting extraction..."
-            if python3 scripts/ai-review-extract-json.py; then
-              echo "JSON extraction successful"
+            echo "⚠️ TOON extraction failed, trying JSON fallback..."
+            # Fallback zu JSON (Rückwärtskompatibilität)
+            if python3 -m json.tool /tmp/analysis-output-raw.txt > /tmp/analysis-output.json 2>/dev/null; then
+              echo "✅ JSON fallback successful"
+              echo "skipped=false" >> $GITHUB_OUTPUT
+            elif python3 scripts/ai-review-extract-json.py; then
+              echo "✅ JSON extraction successful"
               echo "skipped=false" >> $GITHUB_OUTPUT
             else
-              echo "⚠️ Failed to extract valid JSON from output"
+              echo "⚠️ Failed to extract valid TOON or JSON from output"
               echo "Raw output saved for inspection"
               echo "skipped=true" >> $GITHUB_OUTPUT
-              # Workflow darf weiterlaufen, aber keine Issues erstellen
             fi
           fi
 
