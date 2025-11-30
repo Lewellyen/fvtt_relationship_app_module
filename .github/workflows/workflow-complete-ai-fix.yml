@@ -457,7 +457,8 @@ jobs:
           ISSUE_TITLE="${{ needs.select-issue.outputs.issue_title }}"
           PR_TITLE="fix: Resolve issue #$ISSUE_NUM - $ISSUE_TITLE"
 
-          EXISTING_PR=$(gh pr list --base main --head "$BRANCH_NAME" --state all --json number --jq '.[0].number' 2>/dev/null || echo "")
+          # Prüfe nur nach OFFENEN PRs - geschlossene PRs werden ignoriert
+          EXISTING_PR=$(gh pr list --base main --head "$BRANCH_NAME" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
 
           if [ -n "$EXISTING_PR" ]; then
             PR_URL="https://github.com/${{ github.repository }}/pull/$EXISTING_PR"
