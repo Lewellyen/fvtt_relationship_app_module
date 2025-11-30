@@ -342,6 +342,39 @@ jobs:
           cat /tmp/fix-output.txt | head -100
           echo ""
 
+      - name: Execute Agent Commands (if Terminal was not available)
+        if: env.cursor_available == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Prüfe ob Agent Befehlsdatei erstellt hat (Fallback wenn Terminal nicht verfügbar war)
+          if [ -f /tmp/agent-commands.sh ]; then
+            echo "✅ Agent has created command file - executing commands..."
+            echo "=== Command File Content ==="
+            cat /tmp/agent-commands.sh
+            echo ""
+
+            # Mache Datei ausführbar
+            chmod +x /tmp/agent-commands.sh
+
+            # Führe Befehle aus
+            echo "=== Executing Agent Commands ==="
+            set +e  # Erlaube Fehler (für besseres Debugging)
+            bash /tmp/agent-commands.sh
+            EXIT_CODE=$?
+            set -e
+
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "✅ Agent commands executed successfully"
+            else
+              echo "⚠️ Agent commands completed with exit code: $EXIT_CODE"
+              echo "This might be expected if some commands failed (e.g., PR already exists)"
+            fi
+          else
+            echo "ℹ️ No agent command file found - agent likely used terminal directly or made no changes"
+          fi
+
       - name: Check if Agent Committed and Pushed
         id: check-agent-work
         env:

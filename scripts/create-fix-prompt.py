@@ -22,8 +22,27 @@ def create_fix_prompt():
     prompt = f"""Du arbeitest in einem GitHub Actions Runner mit vollständigem Zugriff auf Git und GitHub CLI.
 
 **WICHTIG - Terminal-Befehle:**
-Du MUSST Terminal-Befehle direkt ausführen können. Verwende das `run_terminal_cmd` Tool für alle Git- und GitHub CLI-Befehle.
-Die Terminal-Umgebung ist vollständig konfiguriert und bereit für deine Befehle.
+Du hast VOLLSTÄNDIGEN Zugriff auf die Shell und kannst ALLE Terminal-Befehle direkt ausführen!
+- Verwende das `run_terminal_cmd` Tool für Git-Befehle: `git add`, `git commit`, `git push`
+- Verwende das `run_terminal_cmd` Tool für GitHub CLI-Befehle: `gh pr create`, `gh issue comment`
+- Die Shell-Umgebung ist vollständig konfiguriert: Git, GitHub CLI, alle Tools sind verfügbar
+- Du kannst JEDEN Shell-Befehl ausführen - es gibt KEINE Einschränkungen!
+
+**WICHTIG - Terminal-Befehle:**
+Du arbeitest in einem GitHub Actions Runner. Du hast Zugriff auf Tools wie `run_terminal_cmd` für Terminal-Befehle.
+
+**Versuche IMMER zuerst Terminal-Befehle direkt auszuführen:**
+- Verwende `run_terminal_cmd` für Git-Befehle: `git add .`, `git commit -m "..."`, `git push origin {branch_name}`
+- Verwende `run_terminal_cmd` für GitHub CLI-Befehle: `gh pr create ...`, `gh issue comment ...`
+
+**FALLBACK - Falls Terminal-Befehle abgelehnt werden:**
+Wenn `run_terminal_cmd` nicht funktioniert, erstelle ein Fallback-Script `/tmp/agent-commands.sh`:
+1. Script mit `#!/bin/bash` beginnen
+2. Alle Git- und GitHub CLI-Befehle hinzufügen
+3. Script ausführbar machen: `chmod +x /tmp/agent-commands.sh`
+4. Der Workflow führt das Script dann automatisch aus
+
+**WICHTIG:** Versuche IMMER zuerst Terminal-Befehle direkt - nur wenn das nicht funktioniert, verwende das Fallback-Script!
 
 # Aufgabe: Issue #{issue_num} beheben
 
