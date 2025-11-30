@@ -2,6 +2,7 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
+import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import {
   foundryI18nToken,
   localI18nToken,
@@ -21,6 +22,30 @@ import { DILocalTranslationHandler } from "@/infrastructure/i18n/LocalTranslatio
 import { DIFallbackTranslationHandler } from "@/infrastructure/i18n/FallbackTranslationHandler";
 import { DITranslationHandlerChain } from "@/infrastructure/i18n/TranslationHandlerChain";
 import { DII18nPortAdapter } from "@/infrastructure/adapters/i18n/platform-i18n-port-adapter";
+
+/**
+ * Helper function to resolve a single service with error handling.
+ * Returns the resolved value or throws an error that the container will catch.
+ *
+ * This function encapsulates the error handling pattern for factory functions.
+ * Since FactoryFunction<T> = () => T cannot return Result<T, E>, errors must be
+ * propagated via exceptions, which the container catches and converts to ContainerError.
+ *
+ * @param container - The service container
+ * @param token - The injection token to resolve
+ * @returns The resolved service instance
+ * @throws Error if resolution fails (will be caught by container and converted to ContainerError)
+ */
+function resolveServiceOrThrow<T>(
+  container: ServiceContainer,
+  token: InjectionToken<T>
+): T {
+  const result = container.resolveWithError(token);
+  if (!result.ok) {
+    throw new Error(`Failed to resolve ${String(token)}: ${result.error.message}`);
+  }
+  return result.value;
+}
 
 /**
  * Registers internationalization (i18n) services.
@@ -96,31 +121,16 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
 
   // Register array of translation handlers using a factory function
   // This allows handlers to be resolved after container validation
+  // NOTE: Factory functions must return T directly (not Result<T, E>) per FactoryFunction<T> contract.
+  // Errors from resolveWithError() are propagated via exceptions, which the container catches
+  // and converts to ContainerError. The resolveServiceOrThrow helper encapsulates this pattern.
   const handlersArrayResult = container.registerFactory(
     translationHandlersToken,
     () => {
-      const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
-      if (!foundryHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
-        );
-      }
-
-      const localHandlerResult = container.resolveWithError(localTranslationHandlerToken);
-      if (!localHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve LocalTranslationHandler: ${localHandlerResult.error.message}`
-        );
-      }
-
-      const fallbackHandlerResult = container.resolveWithError(fallbackTranslationHandlerToken);
-      if (!fallbackHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
-        );
-      }
-
-      return [foundryHandlerResult.value, localHandlerResult.value, fallbackHandlerResult.value];
+      const foundryHandler = resolveServiceOrThrow(container, foundryTranslationHandlerToken);
+      const localHandler = resolveServiceOrThrow(container, localTranslationHandlerToken);
+      const fallbackHandler = resolveServiceOrThrow(container, fallbackTranslationHandlerToken);
+      return [foundryHandler, localHandler, fallbackHandler];
     },
     ServiceLifecycle.SINGLETON,
     [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]

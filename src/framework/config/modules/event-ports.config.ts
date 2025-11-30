@@ -2,6 +2,7 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
+import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import {
   platformJournalEventPortToken,
   invalidateJournalCacheOnChangeUseCaseToken,
@@ -19,6 +20,30 @@ import { DITriggerJournalDirectoryReRenderUseCase } from "@/application/use-case
 import { DIRegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
 import { DIHideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
+
+/**
+ * Helper function to resolve a single service with error handling.
+ * Returns the resolved value or throws an error that the container will catch.
+ *
+ * This function encapsulates the error handling pattern for factory functions.
+ * Since FactoryFunction<T> = () => T cannot return Result<T, E>, errors must be
+ * propagated via exceptions, which the container catches and converts to ContainerError.
+ *
+ * @param container - The service container
+ * @param token - The injection token to resolve
+ * @returns The resolved service instance
+ * @throws Error if resolution fails (will be caught by container and converted to ContainerError)
+ */
+function resolveServiceOrThrow<T>(
+  container: ServiceContainer,
+  token: InjectionToken<T>
+): T {
+  const result = container.resolveWithError(token);
+  if (!result.ok) {
+    throw new Error(`Failed to resolve ${String(token)}: ${result.error.message}`);
+  }
+  return result.value;
+}
 
 /**
  * Registers event port services.
@@ -102,16 +127,14 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
 
   // Register array of context menu handlers using a factory function
   // This allows handlers to be resolved after container validation
+  // NOTE: Factory functions must return T directly (not Result<T, E>) per FactoryFunction<T> contract.
+  // Errors from resolveWithError() are propagated via exceptions, which the container catches
+  // and converts to ContainerError. The resolveServiceOrThrow helper encapsulates this pattern.
   const handlersArrayResult = container.registerFactory(
     journalContextMenuHandlersToken,
     () => {
-      const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
-      if (!handlerResult.ok) {
-        throw new Error(
-          `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
-        );
-      }
-      return [handlerResult.value];
+      const handler = resolveServiceOrThrow(container, hideJournalContextMenuHandlerToken);
+      return [handler];
     },
     ServiceLifecycle.SINGLETON,
     [hideJournalContextMenuHandlerToken]
