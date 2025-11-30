@@ -251,6 +251,16 @@ jobs:
         run: |
           python3 scripts/create-fix-prompt.py
 
+          # Debug: Zeige relevanten Teil des Prompts
+          echo "=== Prompt contains agent-summary instruction? ==="
+          if grep -q "agent-summary\|KRITISCH.*PR-ZUSAMMENFASSUNG" /tmp/fix-prompt.md; then
+            echo "✅ Prompt contains agent-summary instruction"
+            echo "=== Relevant section ==="
+            grep -A 10 "KRITISCH.*PR-ZUSAMMENFASSUNG\|agent-summary" /tmp/fix-prompt.md | head -20 || true
+          else
+            echo "❌ Prompt does NOT contain agent-summary instruction!"
+          fi
+
       - name: Run Cursor AI
         id: run-agent
         if: env.cursor_available == 'true'
@@ -268,6 +278,85 @@ jobs:
           else
             echo "fix_successful=false" >> $GITHUB_OUTPUT
           fi
+
+          # Debug: Zeige Output des Agents
+          echo "=== Agent Output Analysis ==="
+          if [ -f /tmp/fix-output.txt ]; then
+            echo "File size: $(wc -l < /tmp/fix-output.txt) lines"
+            echo ""
+            echo "=== Last 100 lines of agent output ==="
+            tail -100 /tmp/fix-output.txt || true
+            echo ""
+            echo "=== Searching for key terms ==="
+            grep -i "agent-summary\|write.*tmp\|/tmp/agent-summary" /tmp/fix-output.txt | tail -20 || echo "No matches found"
+          else
+            echo "⚠️ fix-output.txt not found"
+          fi
+
+          # Prüfe ob agent-summary.md existiert
+          if [ -f /tmp/agent-summary.md ]; then
+            echo ""
+            echo "✅ agent-summary.md EXISTS!"
+            echo "=== Content preview ==="
+            head -30 /tmp/agent-summary.md || true
+          else
+            echo ""
+            echo "❌ agent-summary.md NOT FOUND"
+            echo "Listing /tmp/*.md files:"
+            ls -la /tmp/*.md 2>/dev/null || echo "No .md files in /tmp"
+          fi
+
+      - name: Collect Debug Artifacts
+        if: always() && env.cursor_available == 'true'
+        continue-on-error: true
+        run: |
+          echo "Collecting debug artifacts..."
+
+          # Erstelle Debug-Verzeichnis
+          mkdir -p /tmp/debug-artifacts
+
+          # Kopiere relevante Dateien
+          if [ -f /tmp/fix-prompt.md ]; then
+            cp /tmp/fix-prompt.md /tmp/debug-artifacts/fix-prompt.md
+            echo "✅ Copied fix-prompt.md"
+          fi
+
+          if [ -f /tmp/fix-output.txt ]; then
+            cp /tmp/fix-output.txt /tmp/debug-artifacts/fix-output.txt
+            echo "✅ Copied fix-output.txt ($(wc -l < /tmp/fix-output.txt) lines)"
+          fi
+
+          if [ -f /tmp/agent-summary.md ]; then
+            cp /tmp/agent-summary.md /tmp/debug-artifacts/agent-summary.md
+            echo "✅ Copied agent-summary.md"
+          else
+            echo "⚠️ agent-summary.md NOT FOUND" > /tmp/debug-artifacts/agent-summary-missing.txt
+            echo "⚠️ Agent did not create agent-summary.md"
+          fi
+
+          if [ -f /tmp/agent-commands.sh ]; then
+            cp /tmp/agent-commands.sh /tmp/debug-artifacts/agent-commands.sh
+            echo "✅ Copied agent-commands.sh"
+          fi
+
+          # Git Status
+          git status > /tmp/debug-artifacts/git-status.txt 2>&1 || true
+          git diff --stat > /tmp/debug-artifacts/git-diff-stat.txt 2>&1 || true
+
+          # Liste alle /tmp Dateien
+          ls -la /tmp/*.md /tmp/*.txt /tmp/*.sh 2>/dev/null > /tmp/debug-artifacts/tmp-files.txt || true
+
+          echo "=== Debug Artifacts Summary ==="
+          ls -la /tmp/debug-artifacts/
+
+      - name: Upload Debug Artifacts
+        if: always() && env.cursor_available == 'true'
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: cursor-agent-debug-${{ github.run_id }}
+          path: /tmp/debug-artifacts/*
+          retention-days: 7
 
       - name: Check for Agent Commands File
         id: check-commands
