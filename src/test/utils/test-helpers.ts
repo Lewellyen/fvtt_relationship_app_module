@@ -4,7 +4,7 @@ import { createMockGame, createMockHooks, createMockUI } from "../mocks/foundry"
 import { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsSampler } from "@/infrastructure/observability/interfaces/metrics-sampler";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { EnvironmentConfig } from "@/framework/config/environment";
+import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
 import type { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
 import { LogLevel } from "@/domain/types/log-level";

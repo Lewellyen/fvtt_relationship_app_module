@@ -1,4 +1,4 @@
-import type { EnvironmentConfig } from "@/framework/config/environment";
+import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import { RuntimeConfigService } from "./RuntimeConfigService";
 
 /**
