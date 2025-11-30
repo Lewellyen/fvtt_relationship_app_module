@@ -149,27 +149,30 @@ Nachdem du die Änderungen gemacht, committed, gepusht und die PR erstellt hast,
 - PR-Nummer und Link (falls erfolgreich erstellt)
 - Gibt es besondere Überlegungen für den Reviewer?
 
-## Zusammenfassung der Schritte:
+## KRITISCH - Du MUSST diese Schritte in dieser Reihenfolge ausführen:
 
-1. ✅ Code-Änderungen implementieren (verwende `search_replace` oder `write` Tool)
-2. ✅ Commits erstellen:
-   - Versuche `run_terminal_cmd` mit `git add` und `git commit`
+1. ✅ **Code-Änderungen implementieren** (verwende `search_replace` oder `write` Tool)
+2. ✅ **Commits erstellen:**
+   - Versuche `run_terminal_cmd` mit `git add .` und `git commit -m "fix: resolve issue #{issue_num}"`
    - Falls abgelehnt: Schreibe Befehle in `/tmp/agent-commands.sh`
-3. ✅ Änderungen pushen:
+3. ✅ **Änderungen pushen:**
    - Versuche `run_terminal_cmd` mit `git push origin {branch_name}`
    - Falls abgelehnt: Füge Befehl zu `/tmp/agent-commands.sh` hinzu
-4. ✅ PR-Body in `/tmp/pr-body.txt` schreiben (verwende `write` Tool)
-5. ✅ PR erstellen:
-   - Versuche `run_terminal_cmd` mit `gh pr create` (inkl. Labels und Base-Branch: {base_branch})
+4. ✅ **PR-Body in `/tmp/pr-body.txt` schreiben** (verwende `write` Tool - MUSS gemacht werden!)
+5. ✅ **PR ERSTELLEN - DAS IST KRITISCH:**
+   - Versuche `run_terminal_cmd` mit: `gh pr create --title "fix: Resolve issue #{issue_num} - {issue_title}" --body-file /tmp/pr-body.txt --base {base_branch} --head {branch_name} --label "ai-generated" --label "automated"`
    - Falls abgelehnt: Füge Befehl zu `/tmp/agent-commands.sh` hinzu
-6. ✅ Issue kommentieren:
-   - Versuche `run_terminal_cmd` mit `gh issue comment`
+   - **WICHTIG:** Der PR MUSS erstellt werden! Wenn Terminal abgelehnt wird, MUSS der Befehl in `/tmp/agent-commands.sh` stehen!
+6. ✅ **Issue kommentieren:**
+   - Versuche `run_terminal_cmd` mit `gh issue comment {issue_num} --body "🤖 AI has created a fix for this issue: PR #<PR_NUMBER>"`
+   - Ersetze `<PR_NUMBER>` mit der tatsächlichen PR-Nummer
    - Falls abgelehnt: Füge Befehl zu `/tmp/agent-commands.sh` hinzu
 
-**WICHTIG:**
-- Versuche IMMER zuerst `run_terminal_cmd` zu verwenden!
-- Falls Terminal-Befehle abgelehnt werden, schreibe ALLE Befehle in `/tmp/agent-commands.sh`
-- Die Datei muss mit `#!/bin/bash` beginnen und ausführbar sein (`chmod +x`)
+**KRITISCH - PR-Erstellung:**
+- Der PR MUSS erstellt werden, sonst ist die Aufgabe nicht erfüllt!
+- Wenn `run_terminal_cmd` abgelehnt wird, MUSS der `gh pr create` Befehl in `/tmp/agent-commands.sh` stehen!
+- Die Datei muss mit `#!/bin/bash` beginnen und ausführbar sein (`chmod +x /tmp/agent-commands.sh`)
+- Alle Git- und GitHub CLI-Befehle müssen in der Datei stehen, wenn Terminal nicht verfügbar ist
 
 **Beginne jetzt mit der Analyse und Implementierung!**
 """
