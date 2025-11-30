@@ -3,7 +3,7 @@
  */
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { EnvironmentConfig } from "@/framework/config/environment";
+import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
 import type { HealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
