@@ -1,0 +1,439 @@
+name: AI Issue Fix - Auto PR Creation
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Specific issue number (leave empty for all open issues)"
+        required: false
+        type: string
+      label_filter:
+        description: "Only process issues with this label (leave empty for all)"
+        required: false
+        type: string
+      max_issues:
+        description: "Maximum number of issues to process"
+        required: false
+        type: string
+        default: "5"
+  # Optional: Automatisch bei neuen Issues mit Label "ai-fix"
+  # issues:
+  #   types: [opened, labeled]
+  #   labels: ["ai-fix"]
+
+jobs:
+  collect-issues:
+    name: Collect Issues to Fix
+    runs-on: ubuntu-latest
+    outputs:
+      issues: ${{ steps.filter-issues.outputs.issues }}
+      count: ${{ steps.filter-issues.outputs.count }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup GitHub CLI
+        run: |
+          gh auth setup-git
+
+      - name: Collect Issues
+        id: filter-issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Collecting issues to process..."
+
+          # Prüfe ob spezifische Issue-Nummer angegeben wurde
+          if [ -n "${{ github.event.inputs.issue_number }}" ]; then
+            ISSUE_NUM="${{ github.event.inputs.issue_number }}"
+            echo "Processing specific issue: #$ISSUE_NUM"
+            gh issue view "$ISSUE_NUM" --json number,title,body,labels,state > /tmp/issue.json 2>&1 || {
+              echo "❌ Issue #$ISSUE_NUM not found or not accessible"
+              exit 1
+            }
+            echo "[$(cat /tmp/issue.json)]" > /tmp/issues.json
+          else
+            # Lade alle offenen Issues
+            LABEL_FILTER="${{ github.event.inputs.label_filter }}"
+            MAX_ISSUES="${{ github.event.inputs.max_issues }}"
+
+            if [ -n "$LABEL_FILTER" ]; then
+              echo "Filtering issues by label: $LABEL_FILTER"
+              gh issue list --state open --label "$LABEL_FILTER" --json number,title,body,labels,state --limit "${MAX_ISSUES:-10}" > /tmp/issues.json 2>&1 || {
+                echo "⚠️ No issues found with label $LABEL_FILTER"
+                echo "[]" > /tmp/issues.json
+              }
+            else
+              echo "Loading all open issues (max: ${MAX_ISSUES:-10})"
+              gh issue list --state open --json number,title,body,labels,state --limit "${MAX_ISSUES:-10}" > /tmp/issues.json 2>&1 || {
+                echo "⚠️ No open issues found"
+                echo "[]" > /tmp/issues.json
+              }
+            fi
+          fi
+
+          ISSUE_COUNT=$(cat /tmp/issues.json | jq '. | length' 2>/dev/null || echo "0")
+          echo "Found $ISSUE_COUNT issues to process"
+          echo "count=$ISSUE_COUNT" >> $GITHUB_OUTPUT
+
+          # Erstelle Matrix-Output für parallele Verarbeitung
+          if [ "$ISSUE_COUNT" -gt 0 ]; then
+            # Erstelle JSON-Array für Matrix
+            cat /tmp/issues.json | jq -c '.[] | {number: .number, title: .title}' > /tmp/issues-matrix.txt || true
+            # Konvertiere zu Matrix-Format
+            ISSUES_JSON=$(cat /tmp/issues.json | jq -c '[.[] | .number]' 2>/dev/null || echo "[]")
+            echo "issues=$ISSUES_JSON" >> $GITHUB_OUTPUT
+            echo "issues_json<<EOF" >> $GITHUB_OUTPUT
+            cat /tmp/issues.json >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "issues=[]" >> $GITHUB_OUTPUT
+            echo "issues_json=[]" >> $GITHUB_OUTPUT
+          fi
+
+  fix-issue:
+    name: Fix Issue #${{ matrix.issue_number }}
+    needs: collect-issues
+    if: needs.collect-issues.outputs.count > 0
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        issue_number: ${{ fromJson(needs.collect-issues.outputs.issues) }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install toon-formatter python-toon toons
+
+      - name: Cache Cursor Agent
+        uses: actions/cache@v4
+        id: cursor-cache
+        with:
+          path: ~/.cursor
+          key: cursor-agent-${{ runner.os }}-v2
+          restore-keys: |
+            cursor-agent-${{ runner.os }}-
+
+      - name: Install Cursor CLI
+        id: cursor-setup
+        continue-on-error: true
+        run: |
+          echo "Installing Cursor CLI..."
+          if [ -f "$HOME/.cursor/bin/cursor-agent" ]; then
+            echo "✅ Cursor CLI already installed."
+          else
+            curl https://cursor.com/install -fsS | bash || {
+              echo "⚠️ curl failed, trying wget..."
+              wget -qO- https://cursor.com/install | bash || {
+                echo "❌ All installation methods failed"
+                exit 0
+              }
+            }
+          fi
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify Cursor CLI
+        id: verify-cursor
+        run: |
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+          if command -v cursor-agent &> /dev/null; then
+            echo "✅ cursor-agent verfügbar"
+            echo "cursor_available=true" >> $GITHUB_ENV
+          elif [ -f "$HOME/.cursor/bin/cursor-agent" ]; then
+            echo "✅ cursor-agent gefunden unter $HOME/.cursor/bin/cursor-agent"
+            chmod +x "$HOME/.cursor/bin/cursor-agent"
+            echo "cursor_available=true" >> $GITHUB_ENV
+          elif [ -f "$HOME/.local/bin/cursor-agent" ]; then
+            echo "✅ cursor-agent gefunden unter $HOME/.local/bin/cursor-agent"
+            chmod +x "$HOME/.local/bin/cursor-agent"
+            echo "cursor_available=true" >> $GITHUB_ENV
+          else
+            echo "⚠️ cursor-agent nicht in Standard-Pfaden gefunden"
+            FOUND_AGENT=$(find "$HOME" -name "cursor-agent" -type f 2>/dev/null | head -1)
+            if [ -n "$FOUND_AGENT" ]; then
+              echo "✅ cursor-agent gefunden unter $FOUND_AGENT"
+              chmod +x "$FOUND_AGENT"
+              echo "$(dirname "$FOUND_AGENT")" >> $GITHUB_PATH
+              echo "cursor_available=true" >> $GITHUB_ENV
+            else
+              echo "⚠️ cursor-agent nicht verfügbar"
+              echo "cursor_available=false" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Load Issue Details
+        id: issue-details
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUM="${{ matrix.issue_number }}"
+          echo "Loading issue #$ISSUE_NUM..."
+
+          gh issue view "$ISSUE_NUM" --json number,title,body,labels,state,url > /tmp/issue-details.json || {
+            echo "❌ Could not load issue #$ISSUE_NUM"
+            exit 1
+          }
+
+          ISSUE_TITLE=$(cat /tmp/issue-details.json | jq -r '.title')
+          ISSUE_BODY=$(cat /tmp/issue-details.json | jq -r '.body')
+          ISSUE_URL=$(cat /tmp/issue-details.json | jq -r '.url')
+
+          echo "title=$ISSUE_TITLE" >> $GITHUB_OUTPUT
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$ISSUE_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "url=$ISSUE_URL" >> $GITHUB_OUTPUT
+
+          # Erstelle Branch-Name (sanitize)
+          BRANCH_NAME="fix/issue-$ISSUE_NUM-$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | cut -c1-50)"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create Fix Branch
+        run: |
+          BRANCH_NAME="${{ steps.issue-details.outputs.branch }}"
+          echo "Creating branch: $BRANCH_NAME"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH_NAME" || {
+            echo "⚠️ Branch might already exist, checking out..."
+            git checkout "$BRANCH_NAME" || git checkout -b "$BRANCH_NAME"
+          }
+
+      - name: Create Fix Prompt
+        run: |
+          ISSUE_NUM="${{ matrix.issue_number }}"
+          ISSUE_TITLE="${{ steps.issue-details.outputs.title }}"
+          ISSUE_BODY="${{ steps.issue-details.outputs.body }}"
+          ISSUE_URL="${{ steps.issue-details.outputs.url }}"
+
+          cat > /tmp/fix-prompt.md << PROMPT_EOF
+          Du arbeitest in einem GitHub Actions Runner mit vollständigem Zugriff auf Git und GitHub CLI.
+
+          # Aufgabe: Issue #${ISSUE_NUM} beheben
+
+          **Issue-Titel:** ${ISSUE_TITLE}
+          **Issue-URL:** ${ISSUE_URL}
+
+          **Issue-Beschreibung:**
+          ${ISSUE_BODY}
+
+          ## Deine Aufgabe:
+
+          1. **Analysiere das Problem** im Issue
+          2. **Finde die betroffenen Dateien** (nutze \`git\`, \`gh\`, oder lese Dateien direkt)
+          3. **Implementiere die Lösung** direkt im Code
+          4. **Erstelle Commits** mit \`git add\` und \`git commit\`
+          5. **Teste deine Lösung** (falls Tests vorhanden sind)
+
+          ## WICHTIG - Du MUSST folgendes tun:
+
+          - **Nutze Git-Befehle direkt:** \`git add\`, \`git commit\`, \`git push\`
+          - **Erstelle sinnvolle Commits:** Jeder Commit sollte eine logische Änderungseinheit sein
+          - **Commit-Messages:** Verwende klare, beschreibende Messages (z.B. "fix: resolve issue #${ISSUE_NUM}")
+          - **Keine leeren Commits:** Nur committen wenn tatsächlich Änderungen gemacht wurden
+          - **Keine Force-Push:** Nutze normale \`git push\`
+
+          ## Git-Konfiguration:
+
+          Git ist bereits konfiguriert:
+          - User: github-actions[bot]
+          - Email: github-actions[bot]@users.noreply.github.com
+          - Branch: ${{ steps.issue-details.outputs.branch }}
+          - Remote: origin (bereits konfiguriert)
+
+          ## Projektkontext:
+
+          Das Projekt verwendet:
+          - **Clean Architecture** mit 4 Schichten: Domain → Application → Infrastructure → Framework
+          - **Result-Pattern** statt Exceptions (siehe ADR-0001)
+          - **SOLID-Prinzipien** durchgängig
+          - **Port-Adapter-Pattern** für Foundry VTT Version-Kompatibilität
+          - **Dependency Inversion Principle (DIP)**: Abhängigkeiten nur zu Interfaces
+
+          ## Code-Qualität:
+
+          - Halte dich an die bestehenden Architektur-Patterns
+          - Verwende das Result-Pattern für Fehlerbehandlung
+          - Respektiere die Schichttrennung (Clean Architecture)
+          - Füge Tests hinzu, wenn möglich
+
+          ## Output:
+
+          Nachdem du die Änderungen gemacht und committed hast, gib eine kurze Zusammenfassung aus:
+          - Welche Dateien wurden geändert?
+          - Was wurde behoben?
+          - Gibt es besondere Überlegungen für den Reviewer?
+
+          **Beginne jetzt mit der Analyse und Implementierung!**
+          PROMPT_EOF
+
+      - name: Run Cursor AI to Fix Issue
+        if: env.cursor_available == 'true'
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CURSOR_AI_MODEL: ${{ secrets.CURSOR_AI_MODEL || 'sonnet-4.5' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+        run: |
+          echo "🚀 Starting Cursor AI to fix issue #${{ matrix.issue_number }}..."
+          CURSOR_AI_MODEL="${CURSOR_AI_MODEL:-sonnet-4.5}"
+          echo "Using model: $CURSOR_AI_MODEL"
+
+          PROMPT=$(cat /tmp/fix-prompt.md)
+          timeout 1800 cursor-agent -p "$PROMPT" --model "$CURSOR_AI_MODEL" > /tmp/fix-output.txt 2>&1 || {
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 124 ]; then
+              echo "⏱️ Fix attempt timed out after 30 minutes"
+            else
+              echo "⚠️ Cursor AI completed with exit code: $EXIT_CODE"
+            fi
+          }
+
+          # Zeige Output (für Debugging)
+          echo "=== AI Output ==="
+          cat /tmp/fix-output.txt | head -100
+          echo ""
+
+      - name: Check for Changes
+        id: check-changes
+        run: |
+          # Prüfe ob Änderungen gemacht wurden
+          if git diff --quiet HEAD origin/${{ github.ref_name }} 2>/dev/null; then
+            if [ -z "$(git status --porcelain)" ]; then
+              echo "⚠️ No changes detected"
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+            else
+              echo "✅ Changes detected in working directory"
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "✅ Changes detected"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+          # Zeige Status
+          echo "=== Git Status ==="
+          git status
+          echo ""
+          echo "=== Diff Summary ==="
+          git diff --stat HEAD || true
+
+      - name: Push Changes
+        if: steps.check-changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="${{ steps.issue-details.outputs.branch }}"
+          echo "Pushing changes to branch: $BRANCH_NAME"
+
+          # Push zum Remote
+          git push origin "$BRANCH_NAME" || {
+            echo "⚠️ Push failed, trying to set upstream..."
+            git push -u origin "$BRANCH_NAME" || {
+              echo "❌ Failed to push changes"
+              exit 1
+            }
+          }
+
+          echo "✅ Changes pushed successfully"
+
+      - name: Create Pull Request
+        if: steps.check-changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUM="${{ matrix.issue_number }}"
+          ISSUE_TITLE="${{ steps.issue-details.outputs.title }}"
+          BRANCH_NAME="${{ steps.issue-details.outputs.branch }}"
+          BASE_BRANCH="${{ github.ref_name }}"
+
+          echo "Creating PR for issue #$ISSUE_NUM..."
+
+          # Prüfe ob PR bereits existiert
+          EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "⚠️ PR already exists: #$EXISTING_PR"
+            echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
+          else
+            # Erstelle PR-Beschreibung
+            PR_BODY="## 🤖 AI-Generated Fix for Issue #$ISSUE_NUM
+
+          This PR was automatically generated by the AI Issue Fix workflow to resolve issue #$ISSUE_NUM.
+
+          **Issue:** $ISSUE_TITLE
+          **Issue URL:** ${{ steps.issue-details.outputs.url }}
+
+          ### Changes
+          This PR contains the AI-generated fix for the issue. Please review carefully before merging.
+
+          ### Review Checklist
+          - [ ] Code changes are correct
+          - [ ] Tests pass (if applicable)
+          - [ ] No breaking changes introduced
+          - [ ] Follows project architecture patterns
+
+          ---
+          *This PR was created automatically. Please review and test before merging.*"
+
+            # Erstelle PR
+            PR_NUMBER=$(gh pr create \
+              --title "fix: Resolve issue #$ISSUE_NUM - $ISSUE_TITLE" \
+              --body "$PR_BODY" \
+              --base "$BASE_BRANCH" \
+              --head "$BRANCH_NAME" \
+              --label "ai-generated" \
+              --label "automated" \
+              2>&1 | grep -oP 'pull/\K[0-9]+' || echo "")
+
+            if [ -n "$PR_NUMBER" ]; then
+              echo "✅ PR created: #$PR_NUMBER"
+              echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+              # Verknüpfe PR mit Issue
+              gh issue comment "$ISSUE_NUM" --body "🤖 AI has created a fix for this issue: PR #$PR_NUMBER" || true
+            else
+              echo "❌ Failed to create PR"
+              exit 1
+            fi
+          fi
+
+      - name: Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: ai-fix-issue-${{ matrix.issue_number }}-${{ github.run_id }}
+          path: |
+            /tmp/fix-prompt.md
+            /tmp/fix-output.txt
+            /tmp/issue-details.json
+          retention-days: 7
+
