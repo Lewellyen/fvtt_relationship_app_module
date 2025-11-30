@@ -532,23 +532,35 @@ jobs:
         with:
           name: agent-summary-${{ github.run_id }}
           path: .
-          if-no-files-found: ignore
 
       - name: Extract Agent Summary
         id: extract-summary
         if: needs.fix-issue.outputs.fix_successful == 'true'
         run: |
-          # Prüfe ob Agent-Zusammenfassung existiert (in /tmp/ oder Workspace-Root)
+          # Prüfe ob Agent-Zusammenfassung existiert (in /tmp/, Workspace-Root, oder heruntergeladenes Artifact)
           AGENT_SUMMARY_FOUND=false
+
+          # Debug: Zeige was im Workspace ist
+          echo "=== Debug: Workspace files ==="
+          ls -la *.md 2>/dev/null | head -10 || echo "No .md files in workspace root"
+          echo ""
+          echo "=== Debug: Searching for agent-summary.md ==="
+          find . -name "agent-summary.md" -type f 2>/dev/null || echo "agent-summary.md not found in workspace"
+          echo ""
 
           # Prüfe zuerst in /tmp/
           if [ -f /tmp/agent-summary.md ]; then
             echo "✅ Agent summary found in /tmp/agent-summary.md"
             AGENT_SUMMARY_FOUND=true
-          # Prüfe im Workspace-Root (Agent erstellt sie manchmal dort)
+          # Prüfe im Workspace-Root (Agent erstellt sie manchmal dort oder Artifact wurde hier entpackt)
           elif [ -f agent-summary.md ]; then
             echo "✅ Agent summary found in workspace root, copying to /tmp/"
             cp agent-summary.md /tmp/agent-summary.md
+            AGENT_SUMMARY_FOUND=true
+          # Prüfe in Unterverzeichnissen (Artifact könnte in Unterverzeichnis sein)
+          elif [ -f ./agent-summary.md ]; then
+            echo "✅ Agent summary found in current directory, copying to /tmp/"
+            cp ./agent-summary.md /tmp/agent-summary.md
             AGENT_SUMMARY_FOUND=true
           fi
 
@@ -558,11 +570,8 @@ jobs:
             echo "=== Agent Summary Preview ==="
             head -30 /tmp/agent-summary.md || true
           else
-            echo "⚠️ No agent summary found (checked /tmp/agent-summary.md and ./agent-summary.md), will use default PR body"
+            echo "⚠️ No agent summary found (checked /tmp/agent-summary.md, ./agent-summary.md, and workspace), will use default PR body"
             echo "has_summary=false" >> $GITHUB_OUTPUT
-            # Debug: Zeige was im Workspace ist
-            echo "=== Workspace files ==="
-            ls -la *.md 2>/dev/null | head -10 || echo "No .md files in workspace root"
           fi
 
       - name: Create PR Body
