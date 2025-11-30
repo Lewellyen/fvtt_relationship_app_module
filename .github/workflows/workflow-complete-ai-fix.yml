@@ -354,6 +354,18 @@ jobs:
           echo "=== Debug Artifacts Summary ==="
           ls -la /tmp/debug-artifacts/
 
+      - name: Upload Agent Summary (if exists)
+        if: always() && env.cursor_available == 'true'
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: agent-summary-${{ github.run_id }}
+          path: |
+            agent-summary.md
+            /tmp/agent-summary.md
+          retention-days: 1
+          if-no-files-found: ignore
+
       - name: Upload Debug Artifacts
         if: always() && env.cursor_available == 'true'
         uses: actions/upload-artifact@v4
@@ -512,6 +524,15 @@ jobs:
             git ls-remote --heads origin | grep -E "fix/issue" || echo "No fix/issue branches found"
             exit 1
           fi
+
+      - name: Download Agent Summary
+        if: needs.fix-issue.outputs.fix_successful == 'true'
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: agent-summary-${{ github.run_id }}
+          path: .
+          if-no-files-found: ignore
 
       - name: Extract Agent Summary
         id: extract-summary
