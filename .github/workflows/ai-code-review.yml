@@ -387,38 +387,50 @@ jobs:
 
           # Rufe cursor-agent direkt auf (wie im offiziellen Beispiel)
           # Timeout von 30 Minuten (1800 Sekunden) für große Analysen
-          timeout 1800 cursor-agent -p "$PROMPT" --model "$CURSOR_AI_MODEL" > /tmp/analysis-output.json 2>&1 || {
+          timeout 1800 cursor-agent -p "$PROMPT" --model "$CURSOR_AI_MODEL" > /tmp/analysis-output-raw.txt 2>&1 || {
             EXIT_CODE=$?
             if [ $EXIT_CODE -eq 124 ]; then
               echo "Analysis timed out after 30 minutes"
             else
               echo "Cursor AI analysis completed with exit code: $EXIT_CODE"
-              echo "This may be normal - checking for JSON in output..."
+              echo "This may be normal - checking for TOON/JSON in output..."
             fi
-            # Versuche JSON zu extrahieren falls es in Text eingebettet ist
-            grep -oP '(?<=\`\`\`json\n)(.*?)(?=\n\`\`\`)|(?<=\{)(.*?)(?=\})' /tmp/analysis-output.json | head -1 > /tmp/analysis-extracted.json || true
           }
           EXIT_CODE=${EXIT_CODE:-0}
 
           # Prüfe ob Output existiert
-          if [ ! -f /tmp/analysis-output.json ] || [ ! -s /tmp/analysis-output.json ]; then
+          if [ ! -f /tmp/analysis-output-raw.txt ] || [ ! -s /tmp/analysis-output-raw.txt ]; then
             echo "No analysis output generated"
             echo "skipped=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # Speichere Raw-Output auch als TOON
-          cp /tmp/analysis-output.json /tmp/analysis-output.toon
+          # Zeige Preview des Outputs (für Debugging)
+          echo "Output preview (first 500 chars):"
+          head -c 500 /tmp/analysis-output-raw.txt || true
+          echo ""
+
+          # Speichere Raw-Output auch als TOON (für Extraktion)
+          cp /tmp/analysis-output-raw.txt /tmp/analysis-output.toon
 
           # Versuche TOON-Extraktion (konvertiert automatisch zu JSON für Kompatibilität)
           echo "Extracting TOON format from output..."
+          # Das Skript liest /tmp/analysis-output-raw.txt und schreibt /tmp/analysis-output.json
           if python3 scripts/ai-review-extract-toon.py; then
             echo "✅ TOON extraction successful"
+            echo "skipped=false" >> $GITHUB_OUTPUT
           else
             echo "⚠️ TOON extraction failed, trying JSON fallback..."
             # Fallback zu JSON (Rückwärtskompatibilität)
-            if ! python3 -m json.tool /tmp/analysis-output.json > /dev/null 2>&1; then
-              python3 scripts/ai-review-extract-json.py
+            if python3 -m json.tool /tmp/analysis-output-raw.txt > /tmp/analysis-output.json 2>/dev/null; then
+              echo "✅ JSON fallback successful"
+              echo "skipped=false" >> $GITHUB_OUTPUT
+            elif python3 scripts/ai-review-extract-json.py; then
+              echo "✅ JSON extraction successful"
+              echo "skipped=false" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ Failed to extract valid TOON or JSON from output"
+              echo "skipped=true" >> $GITHUB_OUTPUT
             fi
           fi
 
@@ -435,7 +447,9 @@ jobs:
           fi
 
           # Kopiere Raw-Output
-          if [ -f /tmp/analysis-output.json ]; then
+          if [ -f /tmp/analysis-output-raw.txt ]; then
+            cp /tmp/analysis-output-raw.txt ai-review-artifacts/output-raw.txt
+          elif [ -f /tmp/analysis-output.json ]; then
             cp /tmp/analysis-output.json ai-review-artifacts/output-raw.txt
           fi
 

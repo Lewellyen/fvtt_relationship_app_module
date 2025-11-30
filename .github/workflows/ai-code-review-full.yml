@@ -454,11 +454,12 @@ jobs:
           head -c 500 /tmp/analysis-output.json || true
           echo ""
 
-          # Speichere Raw-Output auch als TOON
+          # Speichere Raw-Output auch als TOON (für Extraktion)
           cp /tmp/analysis-output-raw.txt /tmp/analysis-output.toon
 
           # Versuche TOON-Extraktion (konvertiert automatisch zu JSON für Kompatibilität)
           echo "Extracting TOON format from output..."
+          # Das Skript liest /tmp/analysis-output.toon und schreibt /tmp/analysis-output.json
           if python3 scripts/ai-review-extract-toon.py; then
             echo "✅ TOON extraction successful"
             echo "skipped=false" >> $GITHUB_OUTPUT

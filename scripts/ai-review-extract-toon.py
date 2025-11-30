@@ -34,6 +34,164 @@ else:
     OUTPUT_FILE = "/tmp/analysis-output.json"
     TOON_FILE = "/tmp/analysis-output.toon"
 
+def parse_toon_manually(toon_str):
+    """
+    Manueller TOON-Parser für AI-generiertes Format.
+    Konvertiert TOON-Format zu JSON-Dict.
+    """
+    result = {}
+    lines = [l.rstrip() for l in toon_str.split('\n')]
+    i = 0
+
+    def parse_value(value_str):
+        """Parse einen Wert (String, Number, Boolean, Array, Object)"""
+        value_str = value_str.strip()
+        if not value_str:
+            return None
+
+        # Boolean
+        if value_str.lower() == 'true':
+            return True
+        if value_str.lower() == 'false':
+            return False
+
+        # Number
+        try:
+            if '.' in value_str:
+                return float(value_str)
+            else:
+                return int(value_str)
+        except ValueError:
+            pass
+
+        # String (entferne Anführungszeichen)
+        if value_str.startswith('"') and value_str.endswith('"'):
+            return value_str[1:-1]
+        if value_str.startswith("'") and value_str.endswith("'"):
+            return value_str[1:-1]
+
+        return value_str
+
+    def parse_object(lines, start_idx, indent_level=0):
+        """Parse ein TOON-Objekt"""
+        obj = {}
+        i = start_idx
+
+        while i < len(lines):
+            line = lines[i]
+            stripped = line.strip()
+
+            if not stripped or stripped.startswith('#'):
+                i += 1
+                continue
+
+            # Prüfe Einrückung
+            current_indent = len(line) - len(line.lstrip())
+            if current_indent < indent_level and stripped:
+                break
+
+            # Objekt-Struktur: key{fields}: oder key[count]{fields}:
+            key_match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)(\[(\d+)\])?(\{([^}]*)\})?:', stripped)
+            if key_match:
+                key = key_match.group(1)
+                count = key_match.group(3)
+                fields = key_match.group(5)
+
+                i += 1
+
+                if count:  # Array
+                    array = []
+                    # Lese Array-Elemente (mit Einrückung)
+                    while i < len(lines):
+                        line = lines[i]
+                        line_stripped = line.strip()
+                        if not line_stripped:
+                            i += 1
+                            continue
+
+                        current_indent = len(line) - len(line.lstrip())
+                        if current_indent <= indent_level:
+                            break
+
+                        # Objekt in Array (beginnt mit - oder hat Einrückung)
+                        if line_stripped.startswith('-') or current_indent > indent_level:
+                            item = {}
+                            item_indent = current_indent
+
+                            # Entferne führendes -
+                            if line_stripped.startswith('-'):
+                                line_stripped = line_stripped[1:].strip()
+
+                            # Prüfe ob es ein verschachteltes Objekt ist
+                            nested_match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)(\[(\d+)\])?(\{([^}]*)\})?:', line_stripped)
+                            if nested_match:
+                                # Verschachteltes Objekt
+                                nested_obj, new_i = parse_object(lines, i, item_indent)
+                                if nested_obj:
+                                    array.append(nested_obj)
+                                i = new_i
+                            else:
+                                # Key-Value-Paar
+                                if ':' in line_stripped:
+                                    parts = line_stripped.split(':', 1)
+                                    if len(parts) == 2:
+                                        field_key = parts[0].strip()
+                                        field_value = parts[1].strip()
+                                        item[field_key] = parse_value(field_value)
+                                i += 1
+
+                                # Lese weitere Felder des Items
+                                while i < len(lines):
+                                    line = lines[i]
+                                    line_stripped = line.strip()
+                                    if not line_stripped:
+                                        i += 1
+                                        continue
+
+                                    line_indent = len(line) - len(line.lstrip())
+                                    if line_indent <= item_indent:
+                                        break
+
+                                    if ':' in line_stripped:
+                                        parts = line_stripped.split(':', 1)
+                                        if len(parts) == 2:
+                                            field_key = parts[0].strip()
+                                            field_value = parts[1].strip()
+                                            item[field_key] = parse_value(field_value)
+                                    i += 1
+
+                                if item:
+                                    array.append(item)
+                        else:
+                            i += 1
+
+                    obj[key] = array
+                else:  # Objekt
+                    # Rekursiv Objekt parsen
+                    nested_obj, new_i = parse_object(lines, i, indent_level + 2)
+                    if nested_obj:
+                        obj[key] = nested_obj
+                    i = new_i
+                    continue
+
+            # Key-Value-Paar: key: value (einfache Werte)
+            elif ':' in stripped and not stripped.endswith(':'):
+                parts = stripped.split(':', 1)
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip()
+                    obj[key] = parse_value(value)
+                    i += 1
+                    continue
+
+            i += 1
+
+        return obj, i
+
+    # Starte Parsing (Top-Level)
+    obj, _ = parse_object(lines, 0)
+    return obj if obj else None
+
 if not TOON_AVAILABLE:
     print("⚠️ TOON-Bibliothek nicht verfügbar, versuche JSON-Extraktion...", file=sys.stderr)
     # Fallback zu JSON-Extraktion
@@ -42,111 +200,110 @@ if not TOON_AVAILABLE:
                           capture_output=True, text=True)
     sys.exit(result.returncode)
 
-try:
-    with open(TOON_FILE, 'r', encoding='utf-8') as f:
-        content = f.read()
-except FileNotFoundError:
-    # Versuche auch JSON-Datei (Rückwärtskompatibilität)
+# Versuche verschiedene Input-Dateien (in dieser Reihenfolge)
+input_files = [
+    "/tmp/analysis-output-raw.txt",  # Primär: Raw-Output vom cursor-agent
+    TOON_FILE,  # Sekundär: Bereits gespeicherte TOON-Datei
+    OUTPUT_FILE,  # Tertiär: JSON-Datei (falls bereits konvertiert)
+]
+
+content = None
+source_file = None
+for input_file in input_files:
     try:
-        with open(OUTPUT_FILE, 'r', encoding='utf-8') as f:
+        with open(input_file, 'r', encoding='utf-8') as f:
             content = f.read()
-            # Prüfe ob es JSON ist
+            source_file = input_file
+            print(f"✅ Input-Datei gefunden: {input_file}", file=sys.stderr)
+
+            # Prüfe ob es bereits gültiges JSON ist
             try:
                 json.loads(content)
-                print("✅ JSON-Datei gefunden, bereits im richtigen Format", file=sys.stderr)
+                print("✅ Datei ist bereits gültiges JSON - kopiere direkt", file=sys.stderr)
+                with open(OUTPUT_FILE, 'w', encoding='utf-8') as out:
+                    out.write(content)
                 sys.exit(0)
             except json.JSONDecodeError:
                 pass
+            break
     except FileNotFoundError:
-        print(f"Error: {TOON_FILE} oder {OUTPUT_FILE} nicht gefunden", file=sys.stderr)
-        sys.exit(1)
+        continue
+
+if content is None:
+    print(f"❌ Keine Input-Datei gefunden. Gesucht in: {', '.join(input_files)}", file=sys.stderr)
+    sys.exit(1)
 
 if not content or not content.strip():
     print("Error: Empty output file", file=sys.stderr)
     sys.exit(1)
 
-# Versuche TOON zu extrahieren
-# TOON hat typischerweise keine geschweiften Klammern, sondern Einrückungen
-
-# Strategie 1: Suche nach TOON-Block in Markdown
-toon_match = re.search(r'```toon\s*\n(.*?)\n```', content, re.DOTALL)
+# Entferne führenden Text vor TOON
+# Suche nach erstem TOON-Key (beginnt mit Buchstabe, gefolgt von { oder :)
+toon_pattern = r'([a-zA-Z_][a-zA-Z0-9_]*(\[.*?\])?\{.*?\}:)'
+toon_match = re.search(toon_pattern, content)
 if toon_match:
-    toon_str = toon_match.group(1)
-elif re.search(r'```\s*\n([a-zA-Z_][a-zA-Z0-9_]*\[.*?\]:.*?)\n```', content, re.DOTALL):
-    # Strategie 2: Code-Block mit TOON-ähnlichem Inhalt
-    toon_match = re.search(r'```\s*\n([a-zA-Z_][a-zA-Z0-9_]*\[.*?\]:.*?)\n```', content, re.DOTALL)
-    if toon_match:
-        toon_str = toon_match.group(1)
-    else:
-        toon_match = None
+    toon_str = content[toon_match.start():]
 else:
-    toon_match = None
+    # Versuche gesamten Content als TOON
+    toon_str = content.strip()
 
-if not toon_match:
-    # Strategie 3: Suche nach TOON-Format direkt (beginnt mit key: oder key[)
-    # TOON beginnt typischerweise mit einem Key gefolgt von : oder [
-    toon_pattern = r'^[a-zA-Z_][a-zA-Z0-9_]*(\[.*?\])?\{.*?\}:'
-    if re.search(toon_pattern, content, re.MULTILINE):
-        # Extrahiere alles ab dem ersten TOON-Key bis zum Ende
-        lines = content.split('\n')
-        toon_lines = []
-        in_toon = False
-        for line in lines:
-            if re.match(toon_pattern, line.strip()):
-                in_toon = True
-            if in_toon:
-                toon_lines.append(line)
-        if toon_lines:
-            toon_str = '\n'.join(toon_lines)
-            toon_match = True
-        else:
-            toon_str = None
-            toon_match = None
+# Entferne Markdown-Formatierung falls vorhanden
+toon_str = re.sub(r'^```toon\s*', '', toon_str, flags=re.MULTILINE)
+toon_str = re.sub(r'^```\s*', '', toon_str, flags=re.MULTILINE)
+toon_str = re.sub(r'```\s*$', '', toon_str, flags=re.MULTILINE)
+toon_str = toon_str.strip()
+
+# Entferne führenden Text (z.B. "Zusammenfassung der Analyse im TOON-Format:")
+lines = toon_str.split('\n')
+start_idx = 0
+for i, line in enumerate(lines):
+    if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*(\[.*?\])?\{.*?\}:', line.strip()):
+        start_idx = i
+        break
+toon_str = '\n'.join(lines[start_idx:])
+
+# Speichere TOON-Version (vor Parsing)
+with open(TOON_FILE, 'w', encoding='utf-8') as f:
+    f.write(toon_str)
+
+# Versuche TOON zu parsen
+json_obj = None
+parse_error = None
+
+try:
+    if hasattr(toon, 'decode'):
+        json_obj = toon.decode(toon_str)
+    elif hasattr(toon, 'loads'):
+        json_obj = toon.loads(toon_str)
     else:
-        # Strategie 4: Versuche gesamten Content als TOON zu parsen
-        toon_str = content.strip()
-        toon_match = True
+        raise AttributeError("Keine decode/loads Funktion gefunden")
+except Exception as e:
+    parse_error = e
+    print(f"⚠️ TOON-Bibliothek-Parsing fehlgeschlagen: {e}", file=sys.stderr)
+    print(f"Versuche manuelle TOON→JSON Konvertierung...", file=sys.stderr)
 
-if toon_str:
+    # Versuche manuelle Konvertierung
     try:
-        # Entferne Markdown-Formatierung
-        toon_str = re.sub(r'^```toon\s*', '', toon_str, flags=re.MULTILINE)
-        toon_str = re.sub(r'^```\s*', '', toon_str, flags=re.MULTILINE)
-        toon_str = re.sub(r'```\s*$', '', toon_str, flags=re.MULTILINE)
-        toon_str = toon_str.strip()
+        json_obj = parse_toon_manually(toon_str)
+        if json_obj:
+            print("✅ Manuelle TOON-Konvertierung erfolgreich", file=sys.stderr)
+    except Exception as e2:
+        print(f"⚠️ Auch manuelle Konvertierung fehlgeschlagen: {e2}", file=sys.stderr)
+        parse_error = e2
 
-        # Konvertiere TOON zu JSON
-        if hasattr(toon, 'decode'):
-            json_obj = toon.decode(toon_str)
-        elif hasattr(toon, 'loads'):
-            json_obj = toon.loads(toon_str)
-        else:
-            raise AttributeError("Keine decode/loads Funktion gefunden")
+if json_obj:
+    # Speichere als JSON (für Kompatibilität mit bestehenden Skripten)
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+        json.dump(json_obj, f, indent=2, ensure_ascii=False)
 
-        # Speichere als JSON (für Kompatibilität mit bestehenden Skripten)
-        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-            json.dump(json_obj, f, indent=2, ensure_ascii=False)
-
-        # Speichere auch TOON-Version
-        with open(TOON_FILE, 'w', encoding='utf-8') as f:
-            f.write(toon_str)
-
-        print(f"✅ TOON extracted and converted to JSON (TOON length: {len(toon_str)} chars)", file=sys.stderr)
-        sys.exit(0)
-    except Exception as e:
-        print(f"❌ Failed to parse TOON: {e}", file=sys.stderr)
-        print(f"Attempted to parse: {toon_str[:200]}...", file=sys.stderr)
-        # Fallback zu JSON-Extraktion
-        print("⚠️ Falling back to JSON extraction...", file=sys.stderr)
-        import subprocess
-        result = subprocess.run([sys.executable, "scripts/ai-review-extract-json.py"],
-                              capture_output=True, text=True)
-        sys.exit(result.returncode)
+    print(f"✅ TOON extracted and converted to JSON (TOON length: {len(toon_str)} chars)", file=sys.stderr)
+    sys.exit(0)
 else:
-    print("⚠️ No TOON found in output, trying JSON extraction...", file=sys.stderr)
+    print(f"❌ Failed to parse TOON: {parse_error}", file=sys.stderr)
+    print(f"Attempted to parse: {toon_str[:500]}...", file=sys.stderr)
     # Fallback zu JSON-Extraktion
+    print("⚠️ Falling back to JSON extraction...", file=sys.stderr)
     import subprocess
     result = subprocess.run([sys.executable, "scripts/ai-review-extract-json.py"],
                           capture_output=True, text=True)
     sys.exit(result.returncode)
-
