@@ -231,72 +231,15 @@ jobs:
           }
 
       - name: Create Fix Prompt
+        env:
+          ISSUE_NUM: ${{ matrix.issue_number }}
+          ISSUE_TITLE: ${{ steps.issue-details.outputs.title }}
+          ISSUE_URL: ${{ steps.issue-details.outputs.url }}
+          ISSUE_BODY: ${{ steps.issue-details.outputs.body }}
+          BRANCH_NAME: ${{ steps.issue-details.outputs.branch }}
+          OUTPUT_FILE: /tmp/fix-prompt.md
         run: |
-          ISSUE_NUM="${{ matrix.issue_number }}"
-          ISSUE_TITLE="${{ steps.issue-details.outputs.title }}"
-          ISSUE_BODY="${{ steps.issue-details.outputs.body }}"
-          ISSUE_URL="${{ steps.issue-details.outputs.url }}"
-
-          cat > /tmp/fix-prompt.md << PROMPT_EOF
-          Du arbeitest in einem GitHub Actions Runner mit vollständigem Zugriff auf Git und GitHub CLI.
-
-          # Aufgabe: Issue #${ISSUE_NUM} beheben
-
-          **Issue-Titel:** ${ISSUE_TITLE}
-          **Issue-URL:** ${ISSUE_URL}
-
-          **Issue-Beschreibung:**
-          ${ISSUE_BODY}
-
-          ## Deine Aufgabe:
-
-          1. **Analysiere das Problem** im Issue
-          2. **Finde die betroffenen Dateien** (nutze \`git\`, \`gh\`, oder lese Dateien direkt)
-          3. **Implementiere die Lösung** direkt im Code
-          4. **Erstelle Commits** mit \`git add\` und \`git commit\`
-          5. **Teste deine Lösung** (falls Tests vorhanden sind)
-
-          ## WICHTIG - Du MUSST folgendes tun:
-
-          - **Nutze Git-Befehle direkt:** \`git add\`, \`git commit\`, \`git push\`
-          - **Erstelle sinnvolle Commits:** Jeder Commit sollte eine logische Änderungseinheit sein
-          - **Commit-Messages:** Verwende klare, beschreibende Messages (z.B. "fix: resolve issue #${ISSUE_NUM}")
-          - **Keine leeren Commits:** Nur committen wenn tatsächlich Änderungen gemacht wurden
-          - **Keine Force-Push:** Nutze normale \`git push\`
-
-          ## Git-Konfiguration:
-
-          Git ist bereits konfiguriert:
-          - User: github-actions[bot]
-          - Email: github-actions[bot]@users.noreply.github.com
-          - Branch: ${{ steps.issue-details.outputs.branch }}
-          - Remote: origin (bereits konfiguriert)
-
-          ## Projektkontext:
-
-          Das Projekt verwendet:
-          - **Clean Architecture** mit 4 Schichten: Domain → Application → Infrastructure → Framework
-          - **Result-Pattern** statt Exceptions (siehe ADR-0001)
-          - **SOLID-Prinzipien** durchgängig
-          - **Port-Adapter-Pattern** für Foundry VTT Version-Kompatibilität
-          - **Dependency Inversion Principle (DIP)**: Abhängigkeiten nur zu Interfaces
-
-          ## Code-Qualität:
-
-          - Halte dich an die bestehenden Architektur-Patterns
-          - Verwende das Result-Pattern für Fehlerbehandlung
-          - Respektiere die Schichttrennung (Clean Architecture)
-          - Füge Tests hinzu, wenn möglich
-
-          ## Output:
-
-          Nachdem du die Änderungen gemacht und committed hast, gib eine kurze Zusammenfassung aus:
-          - Welche Dateien wurden geändert?
-          - Was wurde behoben?
-          - Gibt es besondere Überlegungen für den Reviewer?
-
-          **Beginne jetzt mit der Analyse und Implementierung!**
-          PROMPT_EOF
+          python3 scripts/create-fix-prompt.py
 
       - name: Run Cursor AI to Fix Issue
         if: env.cursor_available == 'true'
