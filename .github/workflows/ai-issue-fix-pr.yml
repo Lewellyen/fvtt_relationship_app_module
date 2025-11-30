@@ -283,13 +283,24 @@ jobs:
           BRANCH_NAME="${{ steps.issue-details.outputs.branch }}"
           echo "Creating branch: $BRANCH_NAME"
 
+          # Git-Konfiguration für den gesamten Workflow (auch für Agent)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stelle sicher, dass Git nicht interaktive Prompts zeigt
+          git config --global init.defaultBranch main
+          git config --global advice.detachedHead false
+          git config --global core.autocrlf false
+          git config --global core.safecrlf false
 
           git checkout -b "$BRANCH_NAME" || {
             echo "⚠️ Branch might already exist, checking out..."
             git checkout "$BRANCH_NAME" || git checkout -b "$BRANCH_NAME"
           }
+
+          echo "✅ Git configured and branch ready for agent"
 
       - name: Create Fix Prompt
         env:
@@ -331,19 +342,59 @@ jobs:
           cat /tmp/fix-output.txt | head -100
           echo ""
 
-      - name: Check and Commit Changes
-        id: check-changes
+      - name: Check if Agent Committed and Pushed
+        id: check-agent-work
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Prüfe ob es uncommitted changes gibt
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "⚠️ No changes detected in working directory"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+          BRANCH_NAME="${{ steps.issue-details.outputs.branch }}"
+          ISSUE_NUM="${{ matrix.issue_number }}"
+
+          echo "Checking if AI Agent already committed and pushed changes..."
+
+          # Prüfe ob Branch bereits auf Remote existiert (Agent hat gepusht)
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "✅ Branch exists on remote - Agent has pushed changes"
+            echo "agent_pushed=true" >> $GITHUB_OUTPUT
+
+            # Prüfe ob es lokale uncommitted changes gibt
+            if [ -n "$(git status --porcelain)" ]; then
+              echo "⚠️ Local uncommitted changes detected, but branch already pushed"
+              echo "This might indicate the agent made additional changes after push"
+              echo "has_uncommitted=true" >> $GITHUB_OUTPUT
+            else
+              echo "✅ No uncommitted changes - Agent has completed all work"
+              echo "has_uncommitted=false" >> $GITHUB_OUTPUT
+            fi
             exit 0
           fi
 
-          echo "✅ Changes detected in working directory"
+          # Branch existiert nicht auf Remote - prüfe ob Agent committed hat
+          LOCAL_COMMITS=$(git log origin/main..HEAD --oneline 2>/dev/null | wc -l || echo "0")
+          if [ "$LOCAL_COMMITS" -gt 0 ]; then
+            echo "✅ Agent has created $LOCAL_COMMITS local commit(s) but not pushed yet"
+            echo "agent_committed=true" >> $GITHUB_OUTPUT
+            echo "has_uncommitted=false" >> $GITHUB_OUTPUT
+          else
+            # Prüfe ob es uncommitted changes gibt (Agent hat Änderungen gemacht aber nicht committed)
+            if [ -n "$(git status --porcelain)" ]; then
+              echo "⚠️ Agent made changes but did not commit them"
+              echo "agent_committed=false" >> $GITHUB_OUTPUT
+              echo "has_uncommitted=true" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ No changes detected - Agent may not have made any changes"
+              echo "agent_committed=false" >> $GITHUB_OUTPUT
+              echo "has_uncommitted=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Commit Changes (Fallback if Agent didn't commit)
+        id: commit-fallback
+        if: steps.check-agent-work.outputs.agent_committed == 'false' && steps.check-agent-work.outputs.has_uncommitted == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "⚠️ Agent did not commit changes - using fallback commit"
           echo "=== Git Status ==="
           git status
           echo ""
@@ -370,27 +421,35 @@ jobs:
 
           AI-generated fix for issue #$ISSUE_NUM
 
-          This commit was automatically created by the AI Issue Fix workflow."
+          This commit was automatically created by the AI Issue Fix workflow (fallback)."
 
           git commit -m "$COMMIT_MSG" || {
             echo "❌ Failed to create commit"
             exit 1
           }
 
-          echo "✅ Changes committed successfully"
+          echo "✅ Changes committed successfully (fallback)"
           echo "has_changes=true" >> $GITHUB_OUTPUT
 
           # Zeige Commit-Info
           echo "=== Commit Info ==="
           git log -1 --stat
 
-      - name: Push Changes
-        if: steps.check-changes.outputs.has_changes == 'true'
+      - name: Push Changes (Fallback if Agent didn't push)
+        id: push-fallback
+        if: steps.check-agent-work.outputs.agent_pushed != 'true' && (steps.commit-fallback.outputs.has_changes == 'true' || steps.check-agent-work.outputs.agent_committed == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH_NAME="${{ steps.issue-details.outputs.branch }}"
-          echo "Pushing changes to branch: $BRANCH_NAME"
+          echo "Pushing changes to branch: $BRANCH_NAME (fallback)"
+
+          # Prüfe nochmal ob Branch bereits existiert (Agent könnte zwischenzeitlich gepusht haben)
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "✅ Branch already exists on remote - Agent has pushed"
+            echo "Skipping push"
+            exit 0
+          fi
 
           # Zeige Git-Status vor Push
           echo "=== Git Status ==="
@@ -408,7 +467,7 @@ jobs:
 
           # Push zum Remote mit detaillierter Ausgabe
           if git push origin "$BRANCH_NAME" 2>&1; then
-            echo "✅ Changes pushed successfully"
+            echo "✅ Changes pushed successfully (fallback)"
           else
             PUSH_EXIT_CODE=$?
             echo "⚠️ Direct push failed (exit code: $PUSH_EXIT_CODE), trying with upstream..."
@@ -430,7 +489,7 @@ jobs:
           fi
 
       - name: Ensure Labels Exist
-        if: steps.check-changes.outputs.has_changes == 'true'
+        if: steps.check-agent-work.outputs.agent_pushed == 'true' || steps.check-agent-work.outputs.agent_committed == 'true' || steps.commit-fallback.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -453,7 +512,7 @@ jobs:
           done
 
       - name: Verify Pull Request Created by Agent
-        if: steps.check-changes.outputs.has_changes == 'true'
+        if: steps.check-agent-work.outputs.agent_pushed == 'true' || steps.check-agent-work.outputs.agent_committed == 'true' || steps.commit-fallback.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

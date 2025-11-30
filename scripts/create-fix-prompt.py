@@ -21,6 +21,10 @@ def create_fix_prompt():
 
     prompt = f"""Du arbeitest in einem GitHub Actions Runner mit vollständigem Zugriff auf Git und GitHub CLI.
 
+**WICHTIG - Terminal-Befehle:**
+Du MUSST Terminal-Befehle direkt ausführen können. Verwende das `run_terminal_cmd` Tool für alle Git- und GitHub CLI-Befehle.
+Die Terminal-Umgebung ist vollständig konfiguriert und bereit für deine Befehle.
+
 # Aufgabe: Issue #{issue_num} beheben
 
 **Issue-Titel:** {issue_title}
@@ -42,11 +46,13 @@ def create_fix_prompt():
 ## WICHTIG - Du MUSST folgendes tun:
 
 ### Git-Operationen:
-- **Nutze Git-Befehle direkt:** `git add`, `git commit`, `git push`
+- **WICHTIG:** Verwende das `run_terminal_cmd` Tool für ALLE Git-Befehle!
+- **Git-Befehle ausführen:** Nutze `run_terminal_cmd` mit Befehlen wie `git add`, `git commit`, `git push`
 - **Erstelle sinnvolle Commits:** Jeder Commit sollte eine logische Änderungseinheit sein
 - **Commit-Messages:** Verwende klare, beschreibende Messages (z.B. "fix: resolve issue #{issue_num}")
 - **Keine leeren Commits:** Nur committen wenn tatsächlich Änderungen gemacht wurden
 - **Keine Force-Push:** Nutze normale `git push origin {branch_name}`
+- **Git ist bereits konfiguriert:** User und Email sind gesetzt, du musst sie nicht nochmal setzen
 
 ### Pull Request erstellen:
 **NACH dem Push der Änderungen MUSST du einen Pull Request erstellen:**
@@ -76,21 +82,21 @@ def create_fix_prompt():
    ```
 
 3. **PR erstellen mit GitHub CLI:**
-   ```bash
-   gh pr create \\
-     --title "fix: Resolve issue #{issue_num} - {issue_title}" \\
-     --body-file /tmp/pr-body.txt \\
-     --base {base_branch} \\
-     --head {branch_name} \\
-     --label "ai-generated" \\
-     --label "automated"
+   **WICHTIG:** Verwende `run_terminal_cmd` für alle `gh`-Befehle!
+
+   Zuerst PR-Body in Datei schreiben (verwende `write` Tool):
+   - Erstelle `/tmp/pr-body.txt` mit dem PR-Body-Inhalt
+
+   Dann PR erstellen (verwende `run_terminal_cmd`):
+   ```
+   gh pr create --title "fix: Resolve issue #{issue_num} - {issue_title}" --body-file /tmp/pr-body.txt --base {base_branch} --head {branch_name} --label "ai-generated" --label "automated"
    ```
 
    **WICHTIG:** Schreibe den PR-Body zuerst in eine Datei (`/tmp/pr-body.txt`), um Sonderzeichen-Probleme zu vermeiden!
 
 4. **Issue verlinken:**
-   Nach erfolgreicher PR-Erstellung füge einen Kommentar zum Issue hinzu:
-   ```bash
+   Nach erfolgreicher PR-Erstellung füge einen Kommentar zum Issue hinzu (verwende `run_terminal_cmd`):
+   ```
    gh issue comment {issue_num} --body "🤖 AI has created a fix for this issue: PR #<PR_NUMBER>"
    ```
 
@@ -133,12 +139,14 @@ Nachdem du die Änderungen gemacht, committed, gepusht und die PR erstellt hast,
 
 ## Zusammenfassung der Schritte:
 
-1. ✅ Code-Änderungen implementieren
-2. ✅ Commits erstellen (`git add`, `git commit`)
-3. ✅ Änderungen pushen (`git push origin {branch_name}`)
-4. ✅ PR-Body in `/tmp/pr-body.txt` schreiben
-5. ✅ PR erstellen mit `gh pr create` (inkl. Labels und Base-Branch: {base_branch})
-6. ✅ Issue kommentieren mit PR-Link
+1. ✅ Code-Änderungen implementieren (verwende `search_replace` oder `write` Tool)
+2. ✅ Commits erstellen (verwende `run_terminal_cmd` mit `git add` und `git commit`)
+3. ✅ Änderungen pushen (verwende `run_terminal_cmd` mit `git push origin {branch_name}`)
+4. ✅ PR-Body in `/tmp/pr-body.txt` schreiben (verwende `write` Tool)
+5. ✅ PR erstellen (verwende `run_terminal_cmd` mit `gh pr create` - inkl. Labels und Base-Branch: {base_branch})
+6. ✅ Issue kommentieren (verwende `run_terminal_cmd` mit `gh issue comment`)
+
+**WICHTIG:** Für ALLE Terminal-Befehle (git, gh) musst du das `run_terminal_cmd` Tool verwenden!
 
 **Beginne jetzt mit der Analyse und Implementierung!**
 """
