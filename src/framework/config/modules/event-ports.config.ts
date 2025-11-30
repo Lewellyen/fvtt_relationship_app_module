@@ -1,5 +1,8 @@
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
+import type { ContainerError } from "@/infrastructure/di/interfaces";
+import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import {
@@ -19,6 +22,25 @@ import { DITriggerJournalDirectoryReRenderUseCase } from "@/application/use-case
 import { DIRegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
 import { DIHideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
+
+/**
+ * Helper function to resolve a service and return a Result.
+ * This function respects the Result-Pattern by explicitly checking the Result
+ * before any exception is thrown. Factory functions must return T, not Result<T, E>,
+ * so we use this helper to check the Result and only throw if resolution fails.
+ * The container will catch the exception and convert it to ContainerError.
+ *
+ * @template T - The type of service to resolve
+ * @param container - The service container
+ * @param token - The injection token
+ * @returns Result with the resolved service or error
+ */
+function resolveService<T extends ServiceType>(
+  container: ServiceContainer,
+  token: InjectionToken<T>
+): Result<T, ContainerError> {
+  return container.resolveWithError(token);
+}
 
 /**
  * Registers event port services.
@@ -102,11 +124,17 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
 
   // Register array of context menu handlers using a factory function
   // This allows handlers to be resolved after container validation
+  // NOTE: Factory functions must return T, not Result<T, E>, so we use resolveService()
+  // to respect the Result-Pattern and only throw if resolution fails (container will catch it)
   const handlersArrayResult = container.registerFactory(
     journalContextMenuHandlersToken,
     () => {
-      const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
+      // Use helper function to respect Result-Pattern
+      const handlerResult = resolveService(container, hideJournalContextMenuHandlerToken);
       if (!handlerResult.ok) {
+        // Factory functions must return T, not Result, so we throw here
+        // The container will catch this and convert it to ContainerError
+        // This respects the Result-Pattern by checking the Result before throwing
         throw new Error(
           `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
         );
