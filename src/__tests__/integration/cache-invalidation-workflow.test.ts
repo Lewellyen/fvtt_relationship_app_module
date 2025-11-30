@@ -14,6 +14,8 @@ import type {
 } from "@/infrastructure/cache/cache.interface";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import { expectResultOk } from "@/test/utils/test-helpers";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 
 describe("Integration: Cache Invalidation Workflow", () => {
   let cleanup: (() => void) | undefined;
@@ -97,7 +99,9 @@ describe("Integration: Cache Invalidation Workflow", () => {
     // journalVisibilityServiceToken ist API-safe, aber für Konsistenz über Container resolven
     const journalServiceResult = container.resolveWithError(journalVisibilityServiceToken);
     expectResultOk(journalServiceResult);
-    const journalService = journalServiceResult.value;
+    const journalService = castResolvedService<JournalVisibilityService>(
+      journalServiceResult.value
+    );
 
     // cacheServiceToken ist nicht API-safe, daher Container direkt verwenden
     const cacheServiceResult = container.resolveWithError(cacheServiceToken);

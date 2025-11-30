@@ -25,6 +25,10 @@ import {
   wrapI18nService,
   wrapNotificationCenterService,
   getRegistrationStatus,
+  castMetricsCollector,
+  castModuleHealthService,
+  castResolvedService,
+  castContainerErrorCode,
 } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import {
   journalVisibilityServiceToken,
@@ -33,6 +37,10 @@ import {
   i18nFacadeToken,
   notificationCenterToken,
 } from "@/infrastructure/shared/tokens";
+// Types are used in type assertions via cast functions (castMetricsCollector, castModuleHealthService)
+// The types are needed for the return types of the cast functions
+import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
+import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
 import {
   foundryGameToken,
   foundryHooksToken,
@@ -135,10 +143,17 @@ export class ModuleApiInitializer {
 
       // Apply wrappers if resolution succeeded
       if (!result.ok) {
-        return result; // Return error as-is
+        // Convert DomainContainerError to ContainerError
+        const containerError: ContainerError = {
+          code: castContainerErrorCode(result.error.code),
+          message: result.error.message,
+          cause: result.error.cause,
+          tokenDescription: result.error.message,
+        };
+        return err(containerError);
       }
 
-      const service = result.value;
+      const service = castResolvedService<TServiceType>(result.value);
 
       const wrappedService = this.wrapSensitiveService(token, service, wellKnownTokens);
       return ok(wrappedService);
@@ -234,7 +249,8 @@ export class ModuleApiInitializer {
             cacheHitRate: 0,
           };
         }
-        return metricsResult.value.getSnapshot();
+        const metricsCollector: MetricsCollector = castMetricsCollector(metricsResult.value);
+        return metricsCollector.getSnapshot();
       },
 
       getHealth: (): HealthStatus => {
@@ -252,7 +268,10 @@ export class ModuleApiInitializer {
             timestamp: new Date().toISOString(),
           };
         }
-        return healthServiceResult.value.getHealth();
+        const healthService: ModuleHealthService = castModuleHealthService(
+          healthServiceResult.value
+        );
+        return healthService.getHealth();
       },
     };
   }

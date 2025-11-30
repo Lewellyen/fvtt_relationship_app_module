@@ -12,6 +12,13 @@ import type { Result } from "@/domain/types/result";
 import type { Container } from "./interfaces";
 import type { ContainerError } from "./interfaces";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type {
+  DomainServiceType,
+  DomainInjectionToken,
+  DomainContainerError,
+  DomainContainerValidationState,
+} from "@/domain/types/container-types";
+import { castMetricsCollector, castResolvedService } from "./types/utilities/runtime-safe-cast";
 import { ServiceRegistry } from "./registry/ServiceRegistry";
 import { ContainerValidator } from "./validation/ContainerValidator";
 import { InstanceCache } from "./cache/InstanceCache";
@@ -325,16 +332,23 @@ export class ServiceContainer implements Container, ContainerPort {
   private injectMetricsCollector(): void {
     const metricsResult = this.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
-      this.resolver.setMetricsCollector(metricsResult.value);
-      this.cache.setMetricsCollector(metricsResult.value);
+      const metricsCollector = castMetricsCollector(metricsResult.value);
+      this.resolver.setMetricsCollector(metricsCollector);
+      this.cache.setMetricsCollector(metricsCollector);
     }
   }
 
   /**
    * Get validation state.
    */
-  getValidationState(): ContainerValidationState {
-    return this.validationState;
+  /**
+   * Get validation state.
+   * Implements both Container.getValidationState and ContainerPort.getValidationState.
+   */
+  getValidationState(): DomainContainerValidationState;
+  getValidationState(): ContainerValidationState;
+  getValidationState(): ContainerValidationState | DomainContainerValidationState {
+    return this.validationState as DomainContainerValidationState;
   }
 
   /**
@@ -504,27 +518,56 @@ export class ServiceContainer implements Container, ContainerPort {
 
   /**
    * Resolve service with Result return.
+   * Implements both Container.resolveWithError and ContainerPort.resolveWithError.
    */
+  resolveWithError<T extends DomainServiceType>(
+    token: DomainInjectionToken<T>
+  ): Result<T, DomainContainerError>;
   resolveWithError<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>
-  ): Result<TServiceType, ContainerError> {
+  ): Result<TServiceType, ContainerError>;
+  resolveWithError<TServiceType extends ServiceType>(
+    token: InjectionToken<TServiceType>
+  ): Result<TServiceType, ContainerError> | Result<DomainServiceType, DomainContainerError> {
     if (this.scopeManager.isDisposed()) {
-      return err({
+      const error: ContainerError = {
         code: "Disposed",
         message: `Cannot resolve from disposed container`,
         tokenDescription: String(token),
-      });
+      };
+      const domainError: DomainContainerError = {
+        code: error.code,
+        message: error.message,
+        cause: error.cause,
+      };
+      return err(domainError) as Result<DomainServiceType, DomainContainerError>;
     }
 
     if (this.validationState !== "validated") {
-      return err({
+      const error: ContainerError = {
         code: "NotValidated",
         message: "Container must be validated before resolving. Call validate() first.",
         tokenDescription: String(token),
-      });
+      };
+      const domainError: DomainContainerError = {
+        code: error.code,
+        message: error.message,
+        cause: error.cause,
+      };
+      return err(domainError) as Result<DomainServiceType, DomainContainerError>;
     }
 
-    return this.resolver.resolve(token);
+    const result = this.resolver.resolve(token);
+    if (!result.ok) {
+      // Convert ContainerError to DomainContainerError
+      const domainError: DomainContainerError = {
+        code: result.error.code,
+        message: result.error.message,
+        cause: result.error.cause,
+      };
+      return err(domainError) as Result<DomainServiceType, DomainContainerError>;
+    }
+    return result as Result<TServiceType, ContainerError>;
   }
 
   /**
@@ -599,7 +642,7 @@ export class ServiceContainer implements Container, ContainerPort {
     const result = this.resolveWithError(token);
 
     if (isOk(result)) {
-      return result.value;
+      return castResolvedService<TServiceType>(result.value);
     }
 
     // No fallback - throw with context
@@ -608,7 +651,12 @@ export class ServiceContainer implements Container, ContainerPort {
 
   /**
    * Check if service is registered.
+   * Implements both Container.isRegistered and ContainerPort.isRegistered.
    */
+  isRegistered<T extends DomainServiceType>(token: DomainInjectionToken<T>): Result<boolean, never>;
+  isRegistered<TServiceType extends ServiceType>(
+    token: InjectionToken<TServiceType>
+  ): Result<boolean, never>;
   isRegistered<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>
   ): Result<boolean, never> {

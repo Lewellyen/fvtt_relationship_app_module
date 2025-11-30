@@ -20,6 +20,8 @@ import { DIFoundryTranslationHandler } from "@/infrastructure/i18n/FoundryTransl
 import { DILocalTranslationHandler } from "@/infrastructure/i18n/LocalTranslationHandler";
 import { DIFallbackTranslationHandler } from "@/infrastructure/i18n/FallbackTranslationHandler";
 import { DITranslationHandlerChain } from "@/infrastructure/i18n/TranslationHandlerChain";
+import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandler.interface";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import { DII18nPortAdapter } from "@/infrastructure/adapters/i18n/platform-i18n-port-adapter";
 
 /**
@@ -98,7 +100,7 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
   // This allows handlers to be resolved after container validation
   const handlersArrayResult = container.registerFactory(
     translationHandlersToken,
-    () => {
+    (): TranslationHandler[] => {
       const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
       if (!foundryHandlerResult.ok) {
         throw new Error(
@@ -120,7 +122,10 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
         );
       }
 
-      return [foundryHandlerResult.value, localHandlerResult.value, fallbackHandlerResult.value];
+      const foundryHandler = castResolvedService<TranslationHandler>(foundryHandlerResult.value);
+      const localHandler = castResolvedService<TranslationHandler>(localHandlerResult.value);
+      const fallbackHandler = castResolvedService<TranslationHandler>(fallbackHandlerResult.value);
+      return [foundryHandler, localHandler, fallbackHandler];
     },
     ServiceLifecycle.SINGLETON,
     [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]

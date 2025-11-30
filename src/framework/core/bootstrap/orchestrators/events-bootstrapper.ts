@@ -2,6 +2,7 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import { moduleEventRegistrarToken } from "@/infrastructure/shared/tokens";
+import { castModuleEventRegistrar } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**
  * Orchestrator for registering event listeners during bootstrap.
@@ -24,9 +25,10 @@ export class EventsBootstrapper {
     }
 
     // Container parameter removed - all dependencies injected via constructor
-    const eventRegistrationResult = eventRegistrarResult.value.registerAll();
+    const eventRegistrar = castModuleEventRegistrar(eventRegistrarResult.value);
+    const eventRegistrationResult = eventRegistrar.registerAll();
     if (!eventRegistrationResult.ok) {
-      const errorMessages = eventRegistrationResult.error.map((e) => e.message).join(", ");
+      const errorMessages = eventRegistrationResult.error.map((e: Error) => e.message).join(", ");
       return err(`Failed to register one or more event listeners: ${errorMessages}`);
     }
 

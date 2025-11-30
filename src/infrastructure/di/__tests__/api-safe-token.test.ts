@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import { markAsApiSafe, isApiSafeTokenRuntime } from "@/infrastructure/di/types";
 import { ServiceContainer } from "@/infrastructure/di/container";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 
 describe("ApiSafeToken", () => {
@@ -224,7 +225,10 @@ describe("ApiSafeToken", () => {
       const result = mockApi.resolveWithError(mockApi.tokens.notificationCenterToken);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.error("test")).toBe("test");
+        const notificationCenter = castResolvedService<{ error: (msg: string) => string }>(
+          result.value
+        );
+        expect(notificationCenter.error("test")).toBe("test");
       }
     });
   });

@@ -5,6 +5,7 @@ import { expectResultOk } from "@/test/utils/test-helpers";
 import { cacheServiceToken } from "@/infrastructure/shared/tokens";
 import type { CacheService as CacheServiceContract } from "@/infrastructure/cache/cache.interface";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 interface PerformanceMemory {
   usedJSHeapSize: number;
@@ -39,7 +40,7 @@ describe("Memory Leak: Cache Cleanup", () => {
     configureDependencies(container);
     const cacheServiceResult = container.resolveWithError(cacheServiceToken);
     expectResultOk(cacheServiceResult);
-    cacheService = cacheServiceResult.value;
+    cacheService = castResolvedService<CacheServiceContract>(cacheServiceResult.value);
   });
 
   afterEach(() => {

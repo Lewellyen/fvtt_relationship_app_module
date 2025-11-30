@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 /**
  * Check for forbidden ignore directives in production code.
- * 
+ *
  * Prüft ALLE Dateien in src/** (außer Tests und Polyfills) auf Ignore-Marker.
  * Nur Dateien in der Whitelist dürfen Ignore-Marker haben.
- * 
+ *
  * Whitelist-System:
  * - Alle Dateien in src/** werden geprüft
  * - Test-Dateien (__tests__/, *.test.ts, *.spec.ts) werden automatisch ausgenommen
  * - Polyfills (src/polyfills/**) werden automatisch ausgenommen
  * - Nur dokumentierte Dateien in ALLOWED_WITH_MARKERS dürfen Marker haben
- * 
+ *
  * Sucht nach:
  * - v8 ignore
  * - type-coverage:ignore
  * - eslint-disable
  * - ts-ignore
- * 
+ *
  * Exits with error code 1 if any forbidden ignores are found.
  */
 
@@ -30,7 +30,7 @@ const repoRoot = resolve(__dirname, '..');
 
 /**
  * Whitelist: Dateien, die Ignore-Marker haben dürfen (mit Begründung)
- * 
+ *
  * Jede Datei muss dokumentiert sein mit:
  * - Welche Marker-Typen erlaubt sind
  * - Begründung warum Marker notwendig sind
@@ -68,7 +68,7 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['v8 ignore'],
     reason: 'Coverage-Tool-Limitation: Early-Return-Pfad wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
   },
-  
+
   // DI-Infrastruktur: Architektonisch notwendige Typen
   {
     file: 'src/infrastructure/di/types/resolution/serviceclass.ts',
@@ -80,7 +80,7 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore-next-line', 'ts-ignore'],
     reason: 'Nominal Branding: Return-Type-Assertion für Compile-Time-Brand-Marker (Type-Cast für Brand-Assertion)',
   },
-  
+
   // Runtime-Casts (bereits global in type-coverage.json ausgenommen)
   {
     file: 'src/infrastructure/di/types/utilities/runtime-safe-cast.ts',
@@ -97,7 +97,7 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore-next-line'],
     reason: 'Runtime Type Guards: Type-Cast für Runtime-Validierung von Methoden-Existenz (notwendig für type-safe Runtime-Checks)',
   },
-  
+
   // Domain Port Interfaces: Leere Interface-Erweiterungen
   {
     file: 'src/domain/ports/collections/journal-collection-port.interface.ts',
@@ -109,7 +109,7 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['eslint-disable-next-line'],
     reason: 'Type-Placeholder: Leere Interface-Erweiterung für zukünftige journal-spezifische Methoden (no-empty-object-type ist hier beabsichtigt für Extension-Point)',
   },
-  
+
   // Foundry Adapters: Type-Coverage für Array-Zugriffe
   {
     file: 'src/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter.ts',
@@ -121,14 +121,24 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore-next-line', 'eslint-disable-next-line'],
     reason: 'Array-Zugriffe: TypeScript kann nicht statisch beweisen, dass Array mit length > 0 ein Element bei Index 0 hat. Naming-Convention: Foundry verwendet PascalCase für Klassen-Namen (JournalEntry).',
   },
-  
+
   // Domain Types: Naming Conventions
   {
     file: 'src/domain/types/settings.ts',
     allowed: ['eslint-disable-next-line'],
     reason: 'Naming-Convention: PascalCase für namespace-ähnliches Objekt (SettingValidators) ist beabsichtigt für konsistente API-Nutzung.',
   },
-  
+  {
+    file: 'src/domain/types/container-types.ts',
+    allowed: ['eslint-disable-next-line'],
+    reason: 'Type-Parameter: TServiceType wird als Type-Parameter für generische Type-Constraints verwendet (DomainInjectionToken<TServiceType>), auch wenn er im Type-Body nicht direkt referenziert wird.',
+  },
+  {
+    file: 'src/framework/core/api/module-api-initializer.ts',
+    allowed: ['eslint-disable-next-line'],
+    reason: 'Type-Imports: MetricsCollector und ModuleHealthService werden für explizite Type-Annotations verwendet (const metricsCollector: MetricsCollector), auch wenn sie nicht direkt im Code referenziert werden.',
+  },
+
 ];
 
 // Ignore-Marker, nach denen gesucht wird
@@ -196,7 +206,7 @@ function extractMarkerFromLine(line) {
 
 /**
  * Check if a marker type is allowed for a file.
- * 
+ *
  * @param filePath - Path to the file
  * @param markerName - The pattern name that matched (e.g., "type-coverage:ignore")
  * @param actualLine - Optional: The actual line content to extract the real marker from
@@ -206,7 +216,7 @@ function isMarkerAllowed(filePath, markerName, actualLine = null) {
     return false;
   }
   const allowed = getAllowedMarkers(filePath);
-  
+
   // If we have the actual line, extract the real marker text
   let actualMarker = markerName;
   if (actualLine) {
@@ -215,7 +225,7 @@ function isMarkerAllowed(filePath, markerName, actualLine = null) {
       actualMarker = extracted;
     }
   }
-  
+
   // Check if actual marker matches any allowed pattern
   // Both directions: actual marker contains pattern OR pattern contains actual marker
   return allowed.some(pattern => {
@@ -230,10 +240,10 @@ function isMarkerAllowed(filePath, markerName, actualLine = null) {
  */
 function findAllSourceFiles() {
   const files = [];
-  
+
   function walkDir(dir) {
     if (!existsSync(dir)) return;
-    
+
     const entries = readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = resolve(dir, entry.name);
@@ -241,10 +251,10 @@ function findAllSourceFiles() {
       const normalizedRepoRoot = repoRoot.replace(/\\/g, '/');
       const normalizedFullPath = fullPath.replace(/\\/g, '/');
       const relPath = normalizedFullPath.replace(normalizedRepoRoot + '/', '');
-      
+
       // Skip if not in src/
       if (!relPath.startsWith('src/')) continue;
-      
+
       if (entry.isDirectory()) {
         walkDir(fullPath);
       } else if (
@@ -256,7 +266,7 @@ function findAllSourceFiles() {
       }
     }
   }
-  
+
   walkDir(resolve(repoRoot, 'src'));
   return files;
 }
@@ -266,15 +276,15 @@ function findAllSourceFiles() {
  */
 function searchIgnoresInFile(filePath) {
   const fullPath = resolve(repoRoot, filePath);
-  
+
   if (!existsSync(fullPath)) {
     return [];
   }
-  
+
   const content = readFileSync(fullPath, 'utf-8');
   const lines = content.split('\n');
   const matches = [];
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     for (const { pattern, name } of IGNORE_PATTERNS) {
@@ -291,7 +301,7 @@ function searchIgnoresInFile(filePath) {
       }
     }
   }
-  
+
   return matches;
 }
 
@@ -301,7 +311,7 @@ function searchIgnoresInFile(filePath) {
 async function checkNoIgnores() {
   console.log('Checking for forbidden ignore directives in production code...\n');
   console.log('Whitelist-System: Nur dokumentierte Dateien dürfen Marker haben.\n');
-  
+
   try {
     // Always use both methods for reliability: ripgrep (fast) + fallback (comprehensive)
     // This ensures we catch everything regardless of ripgrep version or availability
@@ -318,12 +328,12 @@ async function checkNoIgnores() {
         return false;
       }
     })();
-    
+
     // Method 1: Use ripgrep if available (fast)
     if (rgAvailable) {
       for (const { pattern, name } of IGNORE_PATTERNS) {
         const rgPattern = pattern.source.replace(/\\s/g, '\\s+');
-        
+
         try {
           // Search in src/ excluding tests and polyfills
           const excludePatterns = [
@@ -333,19 +343,19 @@ async function checkNoIgnores() {
             '--glob', '!**/*.spec.ts',
             '--glob', '!**/polyfills/**',
           ];
-          
+
           const result = execSync(
             `rg -n "${rgPattern}" --type ts --type js src/ ${excludePatterns.join(' ')}`,
             { cwd: repoRoot, encoding: 'utf-8', stdio: 'pipe', maxBuffer: 10 * 1024 * 1024 }
           );
-          
+
           const lines = result.split('\n').filter(Boolean);
           for (const line of lines) {
             const match = line.match(/^(.+?):(\d+):(.+)$/);
             if (match) {
               const [, filePath, lineNum, content] = match;
               const normalizedPath = filePath.replace(/\\/g, '/');
-              
+
               // Skip if in whitelist and marker is allowed (pass actual content to extract real marker)
               if (!isMarkerAllowed(normalizedPath, name, content)) {
                 allMatches.push({
@@ -362,7 +372,7 @@ async function checkNoIgnores() {
         }
       }
     }
-    
+
     // Method 2: Always use fallback as verification (comprehensive, OS-independent)
     // This ensures we catch everything even if ripgrep misses something
     const files = findAllSourceFiles();
@@ -371,13 +381,13 @@ async function checkNoIgnores() {
     } else {
       console.log(`Using fallback method (${files.length} files)...\n`);
     }
-    
+
     const fallbackMatches = [];
     for (const file of files) {
       const matches = searchIgnoresInFile(file);
       fallbackMatches.push(...matches);
     }
-    
+
     // Merge results: use ripgrep results if available, otherwise fallback
     // If both methods found results, prefer ripgrep but verify with fallback
     if (rgAvailable && allMatches.length > 0) {
@@ -396,7 +406,7 @@ async function checkNoIgnores() {
       // Use fallback results
       allMatches = fallbackMatches;
     }
-    
+
     // Remove duplicates (same file + line + pattern)
     const seen = new Set();
     allMatches = allMatches.filter(m => {
@@ -407,10 +417,10 @@ async function checkNoIgnores() {
       seen.add(key);
       return true;
     });
-    
+
     if (allMatches.length > 0) {
       console.error('❌ Forbidden ignore directives found in production code:\n');
-      
+
       // Group by file
       const byFile = {};
       for (const match of allMatches) {
@@ -419,7 +429,7 @@ async function checkNoIgnores() {
         }
         byFile[match.file].push(match);
       }
-      
+
       for (const [file, matches] of Object.entries(byFile)) {
         console.error(`  ${file}:`);
         for (const match of matches) {
@@ -428,7 +438,7 @@ async function checkNoIgnores() {
         }
         console.error('');
       }
-      
+
       console.error(`Total: ${allMatches.length} forbidden ignore directive(s) found.`);
       console.error('\nOnly files in the whitelist are allowed to have ignore markers:');
       ALLOWED_WITH_MARKERS.forEach(entry => {
@@ -437,7 +447,7 @@ async function checkNoIgnores() {
         console.error(`    Reason: ${entry.reason}`);
       });
       console.error('\nThese ignores must be removed, added to the whitelist, or replaced with proper tests/type improvements.');
-      
+
       process.exit(1);
     } else {
       console.log('✓ No forbidden ignore directives found in production code.');

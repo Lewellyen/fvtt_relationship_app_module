@@ -27,4 +27,3 @@ export const LOG_LEVEL_SCHEMA = v.picklist([
   LogLevel.WARN,
   LogLevel.ERROR,
 ]);
-

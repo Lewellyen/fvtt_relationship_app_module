@@ -6,6 +6,10 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { expectResultOk } from "@/test/utils/test-helpers";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import {
+  castLogger,
+  castResolvedService,
+} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 describe("TraceContext Integration", () => {
   let container: ServiceContainer;
@@ -26,8 +30,8 @@ describe("TraceContext Integration", () => {
     expectResultOk(loggerResult);
     expectResultOk(traceContextResult);
 
-    logger = loggerResult.value;
-    traceContext = traceContextResult.value;
+    logger = castLogger(loggerResult.value);
+    traceContext = castResolvedService<TraceContext>(traceContextResult.value);
 
     // Spy on console
     consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});

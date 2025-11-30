@@ -10,8 +10,11 @@ import { tryGetFoundryVersion } from "@/infrastructure/adapters/foundry/versioni
 import { BootstrapErrorHandler } from "@/framework/core/bootstrap-error-handler";
 import type { Result } from "@/domain/types/result";
 import type { ServiceContainer } from "@/infrastructure/di/container";
-import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
-import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
+import {
+  castLogger,
+  castBootstrapInitHookService,
+  castBootstrapReadyHookService,
+} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**
  * Boot-Orchestrierung für das Modul.
@@ -49,7 +52,7 @@ function initializeFoundryModule(): void {
     );
     return;
   }
-  const logger = loggerResult.value;
+  const logger = castLogger(loggerResult.value);
 
   // Resolve bootstrap hook services and register hooks
   // CRITICAL: Use direct Hooks.on() for init/ready hooks to avoid chicken-egg problem.
@@ -57,7 +60,7 @@ function initializeFoundryModule(): void {
   // might not be available before the init hook runs. These bootstrap hooks must be registered
   // immediately, so we use direct Foundry Hooks API here.
   // All other hooks (registered inside init) can use PlatformEventPort normally.
-  const initHookServiceResult = containerResult.value.resolveWithError<BootstrapInitHookService>(
+  const initHookServiceResult = containerResult.value.resolveWithError(
     bootstrapInitHookServiceToken
   );
   if (!initHookServiceResult.ok) {
@@ -66,9 +69,10 @@ function initializeFoundryModule(): void {
     );
     return;
   }
-  initHookServiceResult.value.register();
+  const initHookService = castBootstrapInitHookService(initHookServiceResult.value);
+  initHookService.register();
 
-  const readyHookServiceResult = containerResult.value.resolveWithError<BootstrapReadyHookService>(
+  const readyHookServiceResult = containerResult.value.resolveWithError(
     bootstrapReadyHookServiceToken
   );
   if (!readyHookServiceResult.ok) {
@@ -77,7 +81,8 @@ function initializeFoundryModule(): void {
     );
     return;
   }
-  readyHookServiceResult.value.register();
+  const readyHookService = castBootstrapReadyHookService(readyHookServiceResult.value);
+  readyHookService.register();
 }
 
 // Eager bootstrap DI before Foundry init
