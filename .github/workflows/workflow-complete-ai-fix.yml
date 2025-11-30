@@ -549,40 +549,65 @@ jobs:
         id: extract-summary
         if: steps.run-agent.outputs.fix_successful == 'true'
         run: |
-          # Prüfe ob Agent-Zusammenfassung existiert (in /tmp/, Workspace-Root, oder heruntergeladenes Artifact)
+          # Prüfe ob Agent-Zusammenfassung existiert (in /tmp/, Workspace-Root, oder im Agent-Output)
           AGENT_SUMMARY_FOUND=false
 
-          # Debug: Zeige was im Workspace ist
-          echo "=== Debug: Workspace files ==="
-          ls -la *.md 2>/dev/null | head -10 || echo "No .md files in workspace root"
-          echo ""
-          echo "=== Debug: Searching for agent-summary.md ==="
-          find . -name "agent-summary.md" -type f 2>/dev/null || echo "agent-summary.md not found in workspace"
-          echo ""
-
-          # Prüfe zuerst in /tmp/
+          # Methode 1: Prüfe ob agent-summary.md Datei existiert
           if [ -f /tmp/agent-summary.md ]; then
             echo "✅ Agent summary found in /tmp/agent-summary.md"
             AGENT_SUMMARY_FOUND=true
-          # Prüfe im Workspace-Root (Agent erstellt sie manchmal dort oder Artifact wurde hier entpackt)
           elif [ -f agent-summary.md ]; then
             echo "✅ Agent summary found in workspace root, copying to /tmp/"
             cp agent-summary.md /tmp/agent-summary.md
             AGENT_SUMMARY_FOUND=true
-          # Prüfe in Unterverzeichnissen (Artifact könnte in Unterverzeichnis sein)
           elif [ -f ./agent-summary.md ]; then
             echo "✅ Agent summary found in current directory, copying to /tmp/"
             cp ./agent-summary.md /tmp/agent-summary.md
             AGENT_SUMMARY_FOUND=true
           fi
 
+          # Methode 2: Extrahiere Zusammenfassung aus Agent-Output (fix-output.txt)
+          if [ "$AGENT_SUMMARY_FOUND" != "true" ] && [ -f /tmp/fix-output.txt ]; then
+            echo "=== Trying to extract summary from agent output ==="
+
+            # Suche nach "Zusammenfassung:" oder "Durchgeführte Änderungen" im Output
+            if grep -q "Zusammenfassung\|Durchgeführte Änderungen" /tmp/fix-output.txt; then
+              echo "✅ Found summary in agent output, extracting..."
+
+              # Finde die Zeile mit "Zusammenfassung:" oder "Durchgeführte Änderungen"
+              SUMMARY_LINE=$(grep -n "Zusammenfassung:\|Durchgeführte Änderungen" /tmp/fix-output.txt | head -1 | cut -d: -f1)
+
+              if [ -n "$SUMMARY_LINE" ]; then
+                # Extrahiere alles ab dieser Zeile
+                tail -n +$SUMMARY_LINE /tmp/fix-output.txt > /tmp/agent-summary-raw.txt
+
+                # Entferne alles ab "**Problem:**" oder "```bash" (Terminal-Befehle)
+                # Verwende awk um alles bis zum ersten Vorkommen zu nehmen
+                awk '/\*\*Problem:\*\*|```bash|Soll ich/{exit} {print}' /tmp/agent-summary-raw.txt > /tmp/agent-summary.md
+
+                # Entferne leere Zeilen am Ende
+                sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' /tmp/agent-summary.md 2>/dev/null || \
+                sed -i '/^$/d' /tmp/agent-summary.md 2>/dev/null || true
+
+                # Prüfe ob Datei nicht leer ist und mindestens 3 Zeilen hat
+                if [ -s /tmp/agent-summary.md ] && [ $(wc -l < /tmp/agent-summary.md) -ge 3 ]; then
+                  echo "✅ Extracted summary from agent output ($(wc -l < /tmp/agent-summary.md) lines)"
+                  AGENT_SUMMARY_FOUND=true
+                else
+                  echo "⚠️ Extracted summary is too short or empty"
+                  rm -f /tmp/agent-summary.md
+                fi
+              fi
+            fi
+          fi
+
           if [ "$AGENT_SUMMARY_FOUND" = "true" ]; then
             echo "has_summary=true" >> $GITHUB_OUTPUT
             # Zeige ersten Teil für Debugging
             echo "=== Agent Summary Preview ==="
-            head -30 /tmp/agent-summary.md || true
+            head -40 /tmp/agent-summary.md || true
           else
-            echo "⚠️ No agent summary found (checked /tmp/agent-summary.md, ./agent-summary.md, and workspace), will use default PR body"
+            echo "⚠️ No agent summary found (checked files and agent output), will use default PR body"
             echo "has_summary=false" >> $GITHUB_OUTPUT
           fi
 
