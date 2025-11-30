@@ -396,7 +396,7 @@ jobs:
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
-          name: agent-summary-${{ github.run_id }}
+          name: agent-summary-issue-${{ matrix.issue.number }}-${{ github.run_id }}
           path: |
             agent-summary.md
             /tmp/agent-summary.md
@@ -408,7 +408,7 @@ jobs:
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
-          name: cursor-agent-debug-${{ github.run_id }}
+          name: cursor-agent-debug-issue-${{ matrix.issue.number }}-${{ github.run_id }}
           path: /tmp/debug-artifacts/*
           retention-days: 7
 
