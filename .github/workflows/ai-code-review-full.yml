@@ -77,22 +77,50 @@ jobs:
 
       - name: Verify Cursor CLI
         run: |
-          if command -v cursor-agent &> /dev/null || [ -f "$HOME/.cursor/bin/cursor-agent" ] || [ -f "$HOME/.local/bin/cursor-agent" ]; then
+          # Füge mögliche Pfade zum PATH hinzu (auch nach Cache-Restore)
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.cursor/bin:$HOME/.local/bin:$PATH"
+
+          # Prüfe verschiedene mögliche Pfade
+          CURSOR_AGENT=""
+          if command -v cursor-agent &> /dev/null; then
+            CURSOR_AGENT=$(command -v cursor-agent)
+            echo "✅ cursor-agent gefunden im PATH: $CURSOR_AGENT"
+          elif [ -f "$HOME/.cursor/bin/cursor-agent" ]; then
+            CURSOR_AGENT="$HOME/.cursor/bin/cursor-agent"
+            echo "✅ cursor-agent gefunden: $CURSOR_AGENT"
+            chmod +x "$CURSOR_AGENT" || true
+          elif [ -f "$HOME/.local/bin/cursor-agent" ]; then
+            CURSOR_AGENT="$HOME/.local/bin/cursor-agent"
+            echo "✅ cursor-agent gefunden: $CURSOR_AGENT"
+            chmod +x "$CURSOR_AGENT" || true
+          else
+            echo "⚠️ cursor-agent nicht in Standard-Pfaden gefunden"
+            echo "Searching in $HOME..."
+            FOUND=$(find "$HOME" -name "cursor-agent" -type f 2>/dev/null | head -1)
+            if [ -n "$FOUND" ]; then
+              CURSOR_AGENT="$FOUND"
+              echo "✅ cursor-agent gefunden: $CURSOR_AGENT"
+              chmod +x "$CURSOR_AGENT" || true
+              # Füge zum PATH hinzu
+              DIR=$(dirname "$CURSOR_AGENT")
+              echo "$DIR" >> $GITHUB_PATH
+              export PATH="$DIR:$PATH"
+            fi
+          fi
+
+          if [ -n "$CURSOR_AGENT" ]; then
             echo "✅ cursor-agent verfügbar"
             echo "cursor_available=true" >> $GITHUB_ENV
-            # Zeige Pfad
-            if [ -f "$HOME/.cursor/bin/cursor-agent" ]; then
-              echo "Location: $HOME/.cursor/bin/cursor-agent"
-              ls -la "$HOME/.cursor/bin/cursor-agent"
-            elif [ -f "$HOME/.local/bin/cursor-agent" ]; then
-              echo "Location: $HOME/.local/bin/cursor-agent"
-              ls -la "$HOME/.local/bin/cursor-agent"
-            fi
+            echo "cursor_agent_path=$CURSOR_AGENT" >> $GITHUB_ENV
+            ls -la "$CURSOR_AGENT" || true
           else
             echo "⚠️ cursor-agent nicht verfügbar"
             echo "cursor_available=false" >> $GITHUB_ENV
-            echo "Searching..."
-            find "$HOME" -name "cursor-agent" -type f 2>/dev/null | head -5 || true
+            echo "Cache-Inhalt prüfen..."
+            ls -la "$HOME/.cursor" || echo "~/.cursor existiert nicht"
+            ls -la "$HOME/.cursor/bin" 2>/dev/null || echo "~/.cursor/bin existiert nicht"
           fi
 
       - name: Determine files to analyze
