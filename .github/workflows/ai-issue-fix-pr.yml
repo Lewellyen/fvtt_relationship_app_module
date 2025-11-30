@@ -40,8 +40,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh auth setup-git
+          # Authentifiziere GitHub CLI mit Token
+          echo "$GH_TOKEN" | gh auth login --with-token
+          gh auth status
 
       - name: Collect Issues
         id: filter-issues
