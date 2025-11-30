@@ -101,23 +101,23 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
     () => {
       const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
       if (!foundryHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
-        );
+        // Propagate ContainerError directly instead of wrapping in generic Error
+        // The container will catch this and convert it to a FactoryFailed error
+        throw foundryHandlerResult.error;
       }
 
       const localHandlerResult = container.resolveWithError(localTranslationHandlerToken);
       if (!localHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve LocalTranslationHandler: ${localHandlerResult.error.message}`
-        );
+        // Propagate ContainerError directly instead of wrapping in generic Error
+        // The container will catch this and convert it to a FactoryFailed error
+        throw localHandlerResult.error;
       }
 
       const fallbackHandlerResult = container.resolveWithError(fallbackTranslationHandlerToken);
       if (!fallbackHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
-        );
+        // Propagate ContainerError directly instead of wrapping in generic Error
+        // The container will catch this and convert it to a FactoryFailed error
+        throw fallbackHandlerResult.error;
       }
 
       return [foundryHandlerResult.value, localHandlerResult.value, fallbackHandlerResult.value];

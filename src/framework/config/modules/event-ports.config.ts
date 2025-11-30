@@ -107,9 +107,9 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
     () => {
       const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
       if (!handlerResult.ok) {
-        throw new Error(
-          `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
-        );
+        // Propagate ContainerError directly instead of wrapping in generic Error
+        // The container will catch this and convert it to a FactoryFailed error
+        throw handlerResult.error;
       }
       return [handlerResult.value];
     },
