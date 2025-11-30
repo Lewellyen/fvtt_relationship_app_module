@@ -208,7 +208,7 @@ export class PortSelector {
         return err(foundryError);
       }
 
-      const port = resolveResult.value;
+      const port = resolveResult.value as T;
       const durationMs = performance.now() - startTime;
 
       // Emit success event for observability

@@ -2,6 +2,7 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens";
+import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 
 /**
  * Orchestrator for exposing module API during bootstrap.
@@ -23,7 +24,8 @@ export class ApiBootstrapper {
       return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
     }
 
-    const exposeResult = apiInitializerResult.value.expose(container);
+    const apiInitializer = apiInitializerResult.value as ModuleApiInitializer;
+    const exposeResult = apiInitializer.expose(container);
     if (!exposeResult.ok) {
       return err(`Failed to expose API: ${exposeResult.error}`);
     }

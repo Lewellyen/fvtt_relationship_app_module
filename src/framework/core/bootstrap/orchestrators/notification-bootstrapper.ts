@@ -2,6 +2,8 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import { notificationCenterToken, uiChannelToken } from "@/infrastructure/shared/tokens";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
 
 /**
  * Orchestrator for attaching notification channels during bootstrap.
@@ -35,7 +37,9 @@ export class NotificationBootstrapper {
       return err(`UIChannel could not be resolved: ${uiChannelResult.error.message}`);
     }
 
-    notificationCenterResult.value.addChannel(uiChannelResult.value);
+    const notificationCenter = notificationCenterResult.value as NotificationService;
+    const uiChannel = uiChannelResult.value as NotificationChannel;
+    notificationCenter.addChannel(uiChannel);
     return ok(undefined);
   }
 }

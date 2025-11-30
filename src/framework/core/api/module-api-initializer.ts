@@ -33,6 +33,8 @@ import {
   i18nFacadeToken,
   notificationCenterToken,
 } from "@/infrastructure/shared/tokens";
+import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
+import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
 import {
   foundryGameToken,
   foundryHooksToken,
@@ -135,10 +137,17 @@ export class ModuleApiInitializer {
 
       // Apply wrappers if resolution succeeded
       if (!result.ok) {
-        return result; // Return error as-is
+        // Convert DomainContainerError to ContainerError
+        const containerError: ContainerError = {
+          code: result.error.code as ContainerError["code"],
+          message: result.error.message,
+          cause: result.error.cause,
+          tokenDescription: result.error.message,
+        };
+        return err(containerError);
       }
 
-      const service = result.value;
+      const service = result.value as TServiceType;
 
       const wrappedService = this.wrapSensitiveService(token, service, wellKnownTokens);
       return ok(wrappedService);
@@ -234,7 +243,8 @@ export class ModuleApiInitializer {
             cacheHitRate: 0,
           };
         }
-        return metricsResult.value.getSnapshot();
+        const metricsCollector = metricsResult.value as MetricsCollector;
+        return metricsCollector.getSnapshot();
       },
 
       getHealth: (): HealthStatus => {
@@ -252,7 +262,8 @@ export class ModuleApiInitializer {
             timestamp: new Date().toISOString(),
           };
         }
-        return healthServiceResult.value.getHealth();
+        const healthService = healthServiceResult.value as ModuleHealthService;
+        return healthService.getHealth();
       },
     };
   }

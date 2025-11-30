@@ -11,6 +11,22 @@
 - Alle Imports aktualisiert: `@/framework/config/environment` → `@/domain/types/log-level`
 
 ### Fehlerbehebungen
+- **Type-Coverage**: Explizite Typisierung für Error-Array-Mapping hinzugefügt ([Details](src/framework/core/bootstrap/orchestrators/events-bootstrapper.ts))
+  - Type-Coverage von 99.98% auf 100% erhöht
+  - Explizite `Error`-Typisierung in `events-bootstrapper.ts` für TypeScript-Strict-Mode
+- **TypeScript-Kompilierungsfehler**: Type Assertions für Container-Auflösungen in Bootstrapper-Dateien ([Details](src/framework/core/bootstrap/orchestrators/))
+  - Alle Bootstrapper-Dateien mit expliziten Type Assertions erweitert
+  - `api-bootstrapper.ts`, `context-menu-bootstrapper.ts`, `logging-bootstrapper.ts`, `notification-bootstrapper.ts`, `settings-bootstrapper.ts`
+  - Behebt `unknown`-Typ-Probleme bei Container-Auflösungen
+- **ContainerPort-Interface**: Methodenüberladungen für Typkompatibilität implementiert ([Details](src/infrastructure/di/container.ts))
+  - `resolveWithError`, `isRegistered`, `getValidationState` mit Überladungen für `ContainerPort` und `Container`
+  - Automatische Typkonvertierung zwischen `ContainerError` und `DomainContainerError`
+  - Behebt Inkompatibilität zwischen `ServiceContainer` und `ContainerPort`-Interface
+- **ModuleApiInitializer**: Fehlerkonvertierung und Type Assertions hinzugefügt ([Details](src/framework/core/api/module-api-initializer.ts))
+  - Konvertierung von `DomainContainerError` zu `ContainerError` für API-Kompatibilität
+  - Type Assertions für `MetricsCollector` und `ModuleHealthService`
+- **PortSelector**: Type Assertion für Port-Auflösung hinzugefügt ([Details](src/infrastructure/adapters/foundry/versioning/portselector.ts))
+  - Behebt `unknown`-Typ-Problem bei Port-Auflösung
 
 ### Bekannte Probleme
 
