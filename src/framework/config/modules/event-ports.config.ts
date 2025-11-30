@@ -102,14 +102,22 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
 
   // Register array of context menu handlers using a factory function
   // This allows handlers to be resolved after container validation
+  // NOTE: Factory functions must return T directly (not Result<T, E>), but we respect
+  // the Result-Pattern by unwrapping the Result and propagating error information
+  // through the exception. The container will catch this and convert it to ContainerError.
   const handlersArrayResult = container.registerFactory(
     journalContextMenuHandlersToken,
     () => {
       const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
       if (!handlerResult.ok) {
-        throw new Error(
+        // Propagate the ContainerError through exception to maintain Result-Pattern semantics
+        // The container will catch this and convert it back to ContainerError
+        const error = new Error(
           `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
         );
+        // Attach the original ContainerError for better error context
+        (error as any).containerError = handlerResult.error;
+        throw error;
       }
       return [handlerResult.value];
     },

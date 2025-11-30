@@ -96,28 +96,42 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
 
   // Register array of translation handlers using a factory function
   // This allows handlers to be resolved after container validation
+  // NOTE: Factory functions must return T directly (not Result<T, E>), but we respect
+  // the Result-Pattern by unwrapping the Result and propagating error information
+  // through the exception. The container will catch this and convert it to ContainerError.
   const handlersArrayResult = container.registerFactory(
     translationHandlersToken,
     () => {
       const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
       if (!foundryHandlerResult.ok) {
-        throw new Error(
+        // Propagate the ContainerError through exception to maintain Result-Pattern semantics
+        // The container will catch this and convert it back to ContainerError
+        const error = new Error(
           `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
         );
+        // Attach the original ContainerError for better error context
+        (error as any).containerError = foundryHandlerResult.error;
+        throw error;
       }
 
       const localHandlerResult = container.resolveWithError(localTranslationHandlerToken);
       if (!localHandlerResult.ok) {
-        throw new Error(
+        // Propagate the ContainerError through exception to maintain Result-Pattern semantics
+        const error = new Error(
           `Failed to resolve LocalTranslationHandler: ${localHandlerResult.error.message}`
         );
+        (error as any).containerError = localHandlerResult.error;
+        throw error;
       }
 
       const fallbackHandlerResult = container.resolveWithError(fallbackTranslationHandlerToken);
       if (!fallbackHandlerResult.ok) {
-        throw new Error(
+        // Propagate the ContainerError through exception to maintain Result-Pattern semantics
+        const error = new Error(
           `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
         );
+        (error as any).containerError = fallbackHandlerResult.error;
+        throw error;
       }
 
       return [foundryHandlerResult.value, localHandlerResult.value, fallbackHandlerResult.value];
