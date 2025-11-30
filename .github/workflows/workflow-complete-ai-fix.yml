@@ -287,6 +287,64 @@ jobs:
           chmod +x /tmp/agent-commands.sh
           bash /tmp/agent-commands.sh || true
 
+      - name: Check if Agent Pushed
+        id: check-push
+        run: |
+          BRANCH_NAME="${{ steps.setup-branch.outputs.branch_name }}"
+
+          # Prüfe ob Branch bereits auf Remote existiert
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "✅ Branch exists on remote - Agent has pushed"
+            echo "agent_pushed=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Branch not on remote - Agent did not push"
+            echo "agent_pushed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and Push Changes (Fallback)
+        if: steps.check-push.outputs.agent_pushed != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="${{ steps.setup-branch.outputs.branch_name }}"
+          ISSUE_NUM="${{ needs.select-issue.outputs.issue_number }}"
+
+          echo "Committing and pushing changes (fallback)..."
+
+          # Prüfe ob es Änderungen gibt
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "⚠️ No changes to commit"
+            exit 0
+          fi
+
+          # Git-Konfiguration
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stage alle Änderungen
+          git add -A
+
+          # Erstelle Commit
+          COMMIT_MSG="fix: resolve issue #$ISSUE_NUM
+
+          AI-generated fix for issue #$ISSUE_NUM
+
+          This commit was automatically created by the AI Issue Fix workflow (fallback)."
+
+          git commit -m "$COMMIT_MSG" || {
+            echo "⚠️ Failed to create commit (might be empty)"
+            exit 0
+          }
+
+          # Push Branch
+          echo "Pushing branch: $BRANCH_NAME"
+          git push -u origin "$BRANCH_NAME" || {
+            echo "❌ Failed to push branch"
+            exit 1
+          }
+
+          echo "✅ Changes committed and pushed successfully"
+
   create-pr:
     name: 3. Create PR
     needs: [select-issue, fix-issue]
@@ -326,13 +384,40 @@ jobs:
       - name: Wait for branch
         run: |
           BRANCH_NAME="${{ needs.fix-issue.outputs.branch_name }}"
-          for i in {1..10}; do
+          MAX_RETRIES=15
+          RETRY_COUNT=0
+
+          echo "Waiting for branch to be available: $BRANCH_NAME"
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
-              echo "✅ Branch available"
-              break
+              echo "✅ Branch is available on remote"
+
+              # Prüfe ob Branch Commits hat
+              git fetch origin "$BRANCH_NAME" || true
+              COMMITS=$(git log origin/main..origin/"$BRANCH_NAME" --oneline 2>/dev/null | wc -l || echo "0")
+
+              if [ "$COMMITS" -gt 0 ]; then
+                echo "✅ Branch has $COMMITS commit(s)"
+                break
+              else
+                echo "⚠️ Branch exists but has no commits yet, waiting..."
+              fi
+            else
+              echo "⏳ Branch not yet available... ($RETRY_COUNT/$MAX_RETRIES)"
             fi
-            sleep 2
+
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            sleep 3
           done
+
+          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "❌ Branch not available after $MAX_RETRIES retries"
+            echo "Branch name: $BRANCH_NAME"
+            echo "Available branches:"
+            git ls-remote --heads origin | grep -E "fix/issue" || echo "No fix/issue branches found"
+            exit 1
+          fi
 
       - name: Create PR Body
         env:
