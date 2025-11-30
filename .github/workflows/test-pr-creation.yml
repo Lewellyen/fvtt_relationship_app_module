@@ -166,13 +166,24 @@ jobs:
             echo "✅ Using existing PR: $PR_URL"
           else
             # Erstelle PR mit GitHub CLI
-            PR_URL=$(gh pr create \
-              --base "$BASE_BRANCH" \
-              --head "$BRANCH_NAME" \
-              --title "$PR_TITLE" \
-              --body "$PR_BODY" \
-              --label "test" \
-              --draft || echo "")
+            # Versuche Label hinzuzufügen (falls es existiert)
+            if gh label list --json name --jq '.[].name' | grep -q "^test$"; then
+              PR_URL=$(gh pr create \
+                --base "$BASE_BRANCH" \
+                --head "$BRANCH_NAME" \
+                --title "$PR_TITLE" \
+                --body "$PR_BODY" \
+                --label "test" \
+                --draft || echo "")
+            else
+              echo "⚠️ Label 'test' does not exist, creating PR without label"
+              PR_URL=$(gh pr create \
+                --base "$BASE_BRANCH" \
+                --head "$BRANCH_NAME" \
+                --title "$PR_TITLE" \
+                --body "$PR_BODY" \
+                --draft || echo "")
+            fi
 
             if [ -n "$PR_URL" ]; then
               echo "✅ PR created successfully: $PR_URL"
