@@ -269,8 +269,18 @@ jobs:
             echo "fix_successful=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check for Agent Commands File
+        id: check-commands
+        if: env.cursor_available == 'true'
+        run: |
+          if [ -f /tmp/agent-commands.sh ]; then
+            echo "file_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "file_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Execute Agent Commands
-        if: env.cursor_available == 'true' && -f /tmp/agent-commands.sh
+        if: env.cursor_available == 'true' && steps.check-commands.outputs.file_exists == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
