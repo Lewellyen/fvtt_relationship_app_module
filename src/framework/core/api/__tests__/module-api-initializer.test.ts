@@ -7,6 +7,7 @@ import {
 import { ServiceContainer } from "@/infrastructure/di/container";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { expectResultOk } from "@/test/utils/test-helpers";
+import { castMetricsCollector } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 describe("ModuleApiInitializer", () => {
   let container: ServiceContainer;
@@ -256,7 +257,8 @@ describe("ModuleApiInitializer", () => {
       const metricsResult = container.resolveWithError(metricsCollectorToken);
       if (!metricsResult.ok) throw new Error("MetricsCollector not resolved");
       const token = tokensModule.createInjectionToken("TestError");
-      metricsResult.value.recordResolution(token, 0, false);
+      const metricsCollector = castMetricsCollector(metricsResult.value);
+      metricsCollector.recordResolution(token, 0, false);
 
       const health = mod.api.getHealth();
 
@@ -274,7 +276,8 @@ describe("ModuleApiInitializer", () => {
       // Simulate port selection failure
       const metricsResult = container.resolveWithError(metricsCollectorToken);
       if (!metricsResult.ok) throw new Error("MetricsCollector not resolved");
-      metricsResult.value.recordPortSelectionFailure(12.331);
+      const metricsCollector = castMetricsCollector(metricsResult.value);
+      metricsCollector.recordPortSelectionFailure(12.331);
 
       const health = mod.api.getHealth();
 

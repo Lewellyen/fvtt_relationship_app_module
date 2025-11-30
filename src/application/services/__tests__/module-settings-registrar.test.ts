@@ -24,6 +24,7 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 const DEFAULT_SETTING_VALUES: Record<string, unknown> = {
   [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: LogLevel.INFO,
@@ -269,7 +270,7 @@ describe("ModuleSettingsRegistrar", () => {
       if (!runtimeConfigResult.ok) {
         throw new Error("RuntimeConfigService missing");
       }
-      const runtimeConfig = runtimeConfigResult.value;
+      const runtimeConfig = castResolvedService<RuntimeConfigService>(runtimeConfigResult.value);
       const setSpy = vi.spyOn(runtimeConfig, "setFromFoundry");
 
       const mockNotifications = container.resolve(
@@ -316,7 +317,7 @@ describe("ModuleSettingsRegistrar", () => {
       if (!runtimeConfigResult.ok) {
         throw new Error("RuntimeConfigService missing");
       }
-      const runtimeConfig = runtimeConfigResult.value;
+      const runtimeConfig = castResolvedService<RuntimeConfigService>(runtimeConfigResult.value);
       const setSpy = vi.spyOn(runtimeConfig, "setFromFoundry");
 
       const mockNotifications = container.resolve(

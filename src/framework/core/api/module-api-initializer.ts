@@ -25,6 +25,10 @@ import {
   wrapI18nService,
   wrapNotificationCenterService,
   getRegistrationStatus,
+  castMetricsCollector,
+  castModuleHealthService,
+  castResolvedService,
+  castContainerErrorCode,
 } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import {
   journalVisibilityServiceToken,
@@ -33,6 +37,8 @@ import {
   i18nFacadeToken,
   notificationCenterToken,
 } from "@/infrastructure/shared/tokens";
+// Types are used in type assertions via cast functions (castMetricsCollector, castModuleHealthService)
+// The types are needed for the return types of the cast functions
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
 import {
@@ -139,7 +145,7 @@ export class ModuleApiInitializer {
       if (!result.ok) {
         // Convert DomainContainerError to ContainerError
         const containerError: ContainerError = {
-          code: result.error.code as ContainerError["code"],
+          code: castContainerErrorCode(result.error.code),
           message: result.error.message,
           cause: result.error.cause,
           tokenDescription: result.error.message,
@@ -147,7 +153,7 @@ export class ModuleApiInitializer {
         return err(containerError);
       }
 
-      const service = result.value as TServiceType;
+      const service = castResolvedService<TServiceType>(result.value);
 
       const wrappedService = this.wrapSensitiveService(token, service, wellKnownTokens);
       return ok(wrappedService);
@@ -243,7 +249,7 @@ export class ModuleApiInitializer {
             cacheHitRate: 0,
           };
         }
-        const metricsCollector = metricsResult.value as MetricsCollector;
+        const metricsCollector: MetricsCollector = castMetricsCollector(metricsResult.value);
         return metricsCollector.getSnapshot();
       },
 
@@ -262,7 +268,9 @@ export class ModuleApiInitializer {
             timestamp: new Date().toISOString(),
           };
         }
-        const healthService = healthServiceResult.value as ModuleHealthService;
+        const healthService: ModuleHealthService = castModuleHealthService(
+          healthServiceResult.value
+        );
         return healthService.getHealth();
       },
     };

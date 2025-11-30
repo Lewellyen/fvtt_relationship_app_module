@@ -19,6 +19,8 @@ import { DITriggerJournalDirectoryReRenderUseCase } from "@/application/use-case
 import { DIRegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
 import { DIHideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
+import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**
  * Registers event port services.
@@ -104,14 +106,15 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
   // This allows handlers to be resolved after container validation
   const handlersArrayResult = container.registerFactory(
     journalContextMenuHandlersToken,
-    () => {
+    (): JournalContextMenuHandler[] => {
       const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
       if (!handlerResult.ok) {
         throw new Error(
           `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
         );
       }
-      return [handlerResult.value];
+      const handler = castResolvedService<JournalContextMenuHandler>(handlerResult.value);
+      return [handler];
     },
     ServiceLifecycle.SINGLETON,
     [hideJournalContextMenuHandlerToken]

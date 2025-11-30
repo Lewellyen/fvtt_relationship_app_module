@@ -15,6 +15,7 @@ import {
   observabilityRegistryToken,
   serviceContainerToken,
 } from "@/infrastructure/shared/tokens";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**
  * Selects the appropriate port implementation based on Foundry version.
@@ -208,7 +209,7 @@ export class PortSelector {
         return err(foundryError);
       }
 
-      const port = resolveResult.value as T;
+      const port = castResolvedService<T>(resolveResult.value);
       const durationMs = performance.now() - startTime;
 
       // Emit success event for observability

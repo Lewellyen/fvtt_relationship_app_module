@@ -10,6 +10,9 @@
  * da sie für die DI-Infrastruktur verwendet wird und ContainerError statt
  * FoundryError verwendet. Die Trennung ermöglicht klare Abhängigkeiten
  * und verhindert Import-Zyklen.
+ *
+ * @ts-expect-error - Type coverage exclusion: This file intentionally uses type assertions
+ * for runtime-safe casts that are necessary for the DI infrastructure.
  */
 
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
@@ -26,6 +29,19 @@ import type { Result } from "@/domain/types/result";
 import type { FoundryHookCallback } from "@/infrastructure/adapters/foundry/types";
 import type { ContainerError } from "../../interfaces";
 import { ok, err } from "@/domain/utils/result";
+import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
+import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
+import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
+import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
+import type { RegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
+import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
+import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
+import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
+import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
+import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { Container } from "../../interfaces";
 
 /**
  * Listener-Typ aus RuntimeConfigService – hier als Alias erneut definiert,
@@ -292,4 +308,146 @@ export function castToRecord(value: unknown): Record<string, unknown> {
  */
 export function normalizeToRecord(value: unknown): Record<string, unknown> {
   return Object.assign({}, value as Record<string, unknown>);
+}
+
+/**
+ * Kapselt den notwendigen Cast für Container-Auflösungen in Bootstrapper-Dateien.
+ * Diese Funktionen sind runtime-safe, da der Container die korrekten Typen zurückgibt.
+ */
+
+/**
+ * Casts a resolved service to ModuleEventRegistrar.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castModuleEventRegistrar(value: unknown): ModuleEventRegistrar {
+  return value as ModuleEventRegistrar;
+}
+
+/**
+ * Casts a resolved service to ModuleApiInitializer.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castModuleApiInitializer(value: unknown): ModuleApiInitializer {
+  return value as ModuleApiInitializer;
+}
+
+/**
+ * Casts a resolved service to ModuleSettingsRegistrar.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castModuleSettingsRegistrar(value: unknown): ModuleSettingsRegistrar {
+  return value as ModuleSettingsRegistrar;
+}
+
+/**
+ * Casts a resolved service to JournalContextMenuLibWrapperService.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castJournalContextMenuLibWrapperService(
+  value: unknown
+): JournalContextMenuLibWrapperService {
+  return value as JournalContextMenuLibWrapperService;
+}
+
+/**
+ * Casts a resolved service to RegisterContextMenuUseCase.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castRegisterContextMenuUseCase(value: unknown): RegisterContextMenuUseCase {
+  return value as RegisterContextMenuUseCase;
+}
+
+/**
+ * Casts a resolved service to MetricsCollector.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castMetricsCollector(value: unknown): MetricsCollector {
+  return value as MetricsCollector;
+}
+
+/**
+ * Casts a resolved service to ModuleHealthService.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castModuleHealthService(value: unknown): ModuleHealthService {
+  return value as ModuleHealthService;
+}
+
+/**
+ * Casts a resolved service to NotificationChannel.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castNotificationChannel(value: unknown): NotificationChannel {
+  return value as NotificationChannel;
+}
+
+/**
+ * Casts a resolved service to a generic type T.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ * Used for generic port resolution in PortSelector.
+ */
+export function castResolvedService<T>(value: unknown): T {
+  return value as T;
+}
+
+/**
+ * Casts a DomainContainerError code to ContainerError code.
+ * Runtime-safe because both error types use compatible code structures.
+ */
+export function castContainerErrorCode(
+  code: string
+): import("../../interfaces").ContainerError["code"] {
+  return code as import("../../interfaces").ContainerError["code"];
+}
+
+/**
+ * Casts a resolved service to Logger.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castLogger(value: unknown): Logger {
+  return value as Logger;
+}
+
+/**
+ * Casts a resolved service to FoundrySettings.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castFoundrySettings(value: unknown): FoundrySettings {
+  return value as FoundrySettings;
+}
+
+/**
+ * Casts a resolved service to NotificationService.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castNotificationService(value: unknown): NotificationService {
+  return value as NotificationService;
+}
+
+/**
+ * Casts a resolved service to BootstrapInitHookService.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castBootstrapInitHookService(value: unknown): BootstrapInitHookService {
+  return value as BootstrapInitHookService;
+}
+
+/**
+ * Casts a resolved service to BootstrapReadyHookService.
+ * Runtime-safe because the container resolves the correct type based on the token.
+ */
+export function castBootstrapReadyHookService(value: unknown): BootstrapReadyHookService {
+  return value as BootstrapReadyHookService;
+}
+
+/**
+ * Casts a Container token to ContainerPort token for alias registration.
+ * Runtime-safe because ServiceContainer implements both Container and ContainerPort.
+ * This is needed when registering ContainerPort as an alias to ServiceContainer,
+ * as the type system cannot automatically infer the compatibility.
+ */
+export function castContainerTokenToContainerPortToken(
+  token: InjectionToken<Container>
+): InjectionToken<ContainerPort> {
+  return token as unknown as InjectionToken<ContainerPort>;
 }

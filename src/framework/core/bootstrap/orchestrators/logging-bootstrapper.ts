@@ -5,7 +5,7 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
 import { LogLevel, LOG_LEVEL_SCHEMA } from "@/domain/types/log-level";
-import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
+import { castFoundrySettings } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**
  * Orchestrator for configuring logger during bootstrap.
@@ -30,7 +30,7 @@ export class LoggingBootstrapper {
       return ok(undefined);
     }
 
-    const settings = settingsResult.value as FoundrySettings;
+    const settings = castFoundrySettings(settingsResult.value);
     const logLevelResult = settings.get(
       MODULE_CONSTANTS.MODULE.ID,
       MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,

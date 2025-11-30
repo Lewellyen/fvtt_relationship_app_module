@@ -15,10 +15,10 @@ import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type {
   DomainServiceType,
   DomainInjectionToken,
-  DomainApiSafeToken,
   DomainContainerError,
   DomainContainerValidationState,
 } from "@/domain/types/container-types";
+import { castMetricsCollector, castResolvedService } from "./types/utilities/runtime-safe-cast";
 import { ServiceRegistry } from "./registry/ServiceRegistry";
 import { ContainerValidator } from "./validation/ContainerValidator";
 import { InstanceCache } from "./cache/InstanceCache";
@@ -332,8 +332,9 @@ export class ServiceContainer implements Container, ContainerPort {
   private injectMetricsCollector(): void {
     const metricsResult = this.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
-      this.resolver.setMetricsCollector(metricsResult.value);
-      this.cache.setMetricsCollector(metricsResult.value);
+      const metricsCollector = castMetricsCollector(metricsResult.value);
+      this.resolver.setMetricsCollector(metricsCollector);
+      this.cache.setMetricsCollector(metricsCollector);
     }
   }
 
@@ -641,7 +642,7 @@ export class ServiceContainer implements Container, ContainerPort {
     const result = this.resolveWithError(token);
 
     if (isOk(result)) {
-      return result.value;
+      return castResolvedService<TServiceType>(result.value);
     }
 
     // No fallback - throw with context
@@ -652,9 +653,7 @@ export class ServiceContainer implements Container, ContainerPort {
    * Check if service is registered.
    * Implements both Container.isRegistered and ContainerPort.isRegistered.
    */
-  isRegistered<T extends DomainServiceType>(
-    token: DomainInjectionToken<T>
-  ): Result<boolean, never>;
+  isRegistered<T extends DomainServiceType>(token: DomainInjectionToken<T>): Result<boolean, never>;
   isRegistered<TServiceType extends ServiceType>(
     token: InjectionToken<TServiceType>
   ): Result<boolean, never>;

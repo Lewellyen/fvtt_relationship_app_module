@@ -5,8 +5,10 @@ import {
   journalContextMenuLibWrapperServiceToken,
   registerContextMenuUseCaseToken,
 } from "@/infrastructure/shared/tokens";
-import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
-import type { RegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
+import {
+  castJournalContextMenuLibWrapperService,
+  castRegisterContextMenuUseCase,
+} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**
  * Orchestrator for registering context menu during bootstrap.
@@ -34,7 +36,9 @@ export class ContextMenuBootstrapper {
       );
     }
 
-    const contextMenuLibWrapper = contextMenuLibWrapperResult.value as JournalContextMenuLibWrapperService;
+    const contextMenuLibWrapper = castJournalContextMenuLibWrapperService(
+      contextMenuLibWrapperResult.value
+    );
     const registerResult = contextMenuLibWrapper.register();
     if (!registerResult.ok) {
       // Registration failure - return error so orchestrator can log warning
@@ -50,7 +54,7 @@ export class ContextMenuBootstrapper {
       );
     }
 
-    const contextMenuUseCase = contextMenuUseCaseResult.value as RegisterContextMenuUseCase;
+    const contextMenuUseCase = castRegisterContextMenuUseCase(contextMenuUseCaseResult.value);
     const callbackRegisterResult = contextMenuUseCase.register();
     if (!callbackRegisterResult.ok) {
       // Callback registration failure - return error so orchestrator can log warning

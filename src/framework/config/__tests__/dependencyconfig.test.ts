@@ -13,6 +13,7 @@ import {
   notificationCenterToken,
   uiChannelToken,
   serviceContainerToken,
+  containerPortToken,
   environmentConfigToken,
   runtimeConfigToken,
   healthCheckRegistryToken,
@@ -364,7 +365,7 @@ describe("dependencyconfig", () => {
       // Make validation succeed but health check resolution fail
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
       const originalResolve = container.resolveWithError.bind(container);
-      vi.spyOn(container, "resolveWithError").mockImplementation((token: symbol) => {
+      vi.spyOn(container, "resolveWithError").mockImplementation((token: any) => {
         if (token === runtimeConfigToken) {
           return { ok: true as const, value: createMockRuntimeConfig() };
         }
@@ -373,7 +374,7 @@ describe("dependencyconfig", () => {
             code: "TokenNotRegistered",
             message: "HealthCheckRegistry not found",
             tokenDescription: "HealthCheckRegistry",
-          });
+          } as any);
         }
         return originalResolve(token);
       });
@@ -390,7 +391,7 @@ describe("dependencyconfig", () => {
       // Make validation succeed and health check registry succeed, but metrics collector fail
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
       const originalResolve = container.resolveWithError.bind(container);
-      vi.spyOn(container, "resolveWithError").mockImplementation((token: symbol) => {
+      vi.spyOn(container, "resolveWithError").mockImplementation((token: any) => {
         if (token === runtimeConfigToken) {
           return { ok: true as const, value: createMockRuntimeConfig() };
         }
@@ -402,7 +403,7 @@ describe("dependencyconfig", () => {
             code: "TokenNotRegistered",
             message: "MetricsCollector not found",
             tokenDescription: "MetricsCollector",
-          });
+          } as any);
         }
         return originalResolve(token);
       });
@@ -462,7 +463,7 @@ describe("dependencyconfig", () => {
 
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
       const originalResolve = container.resolveWithError.bind(container);
-      vi.spyOn(container, "resolveWithError").mockImplementation((token: symbol) => {
+      vi.spyOn(container, "resolveWithError").mockImplementation((token: any) => {
         if (token === runtimeConfigToken) {
           return { ok: true as const, value: createMockRuntimeConfig() };
         }
@@ -474,7 +475,7 @@ describe("dependencyconfig", () => {
             code: "TokenNotRegistered",
             message: "ContainerHealthCheck not found",
             tokenDescription: "ContainerHealthCheck",
-          });
+          } as any);
         }
         return originalResolve(token);
       });
@@ -492,7 +493,7 @@ describe("dependencyconfig", () => {
 
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
       const originalResolveWithError = container.resolveWithError.bind(container);
-      vi.spyOn(container, "resolveWithError").mockImplementation((token: symbol) => {
+      vi.spyOn(container, "resolveWithError").mockImplementation((token: any) => {
         if (token === runtimeConfigToken) {
           return { ok: true as const, value: createMockRuntimeConfig() };
         }
@@ -508,7 +509,7 @@ describe("dependencyconfig", () => {
             code: "TokenNotRegistered",
             message: "MetricsHealthCheck not found",
             tokenDescription: "MetricsHealthCheck",
-          });
+          } as any);
         }
         return originalResolveWithError(token);
       });
@@ -584,6 +585,35 @@ describe("dependencyconfig", () => {
       expectResultErr(result);
       if (!result.ok) {
         expect(result.error).toContain("RuntimeConfigService");
+      }
+    });
+
+    it("should propagate errors when ContainerPort alias registration fails", () => {
+      const container = ServiceContainer.createRoot();
+
+      // Make all previous registrations succeed, but fail on alias registration
+      const originalRegisterValue = container.registerValue.bind(container);
+      const originalRegisterAlias = container.registerAlias.bind(container);
+
+      vi.spyOn(container, "registerValue").mockImplementation((token, value) => {
+        return originalRegisterValue(token, value);
+      });
+
+      vi.spyOn(container, "registerAlias").mockImplementation((aliasToken, targetToken) => {
+        if (aliasToken === containerPortToken) {
+          return err({
+            code: "InvalidOperation",
+            message: "ContainerPort alias registration failed",
+          } as any);
+        }
+        return originalRegisterAlias(aliasToken, targetToken);
+      });
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("Failed to register ContainerPort alias");
       }
     });
   });

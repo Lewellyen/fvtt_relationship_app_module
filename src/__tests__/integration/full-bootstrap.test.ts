@@ -4,6 +4,11 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import {
+  castLogger,
+  castResolvedService,
+} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
+import {
   loggerToken,
   moduleApiInitializerToken,
   foundryGameToken,
@@ -59,7 +64,7 @@ describe("Integration: Full Bootstrap", () => {
       const loggerResult = containerResult.value.resolveWithError(loggerToken);
       expect(loggerResult.ok).toBe(true);
       if (loggerResult.ok) {
-        const logger = loggerResult.value;
+        const logger = castLogger(loggerResult.value);
         expect(logger).toBeDefined();
         expect(typeof logger.info).toBe("function");
         expect(typeof logger.error).toBe("function");
@@ -80,7 +85,8 @@ describe("Integration: Full Bootstrap", () => {
       expect(initializerResult.ok).toBe(true);
 
       if (initializerResult.ok) {
-        const exposeResult = initializerResult.value.expose(containerResult.value);
+        const initializer = castResolvedService<ModuleApiInitializer>(initializerResult.value);
+        const exposeResult = initializer.expose(containerResult.value);
         expect(exposeResult.ok).toBe(true);
 
         const mod = (global as any).game.modules.get("fvtt_relationship_app_module");
@@ -104,7 +110,8 @@ describe("Integration: Full Bootstrap", () => {
     const initializerResult = containerResult.value.resolveWithError(moduleApiInitializerToken);
     if (!initializerResult.ok) throw new Error("ModuleApiInitializer not resolved");
 
-    const exposeResult = initializerResult.value.expose(containerResult.value);
+    const initializer = castResolvedService<ModuleApiInitializer>(initializerResult.value);
+    const exposeResult = initializer.expose(containerResult.value);
     expect(exposeResult.ok).toBe(true);
 
     const mod = (global as any).game.modules.get("fvtt_relationship_app_module");
@@ -127,7 +134,10 @@ describe("Integration: Full Bootstrap", () => {
       const gameResult = containerResult.value.resolveWithError(foundryGameToken);
       expect(gameResult.ok).toBe(true);
       if (gameResult.ok) {
-        const game = gameResult.value;
+        const game = castResolvedService<{
+          getJournalEntries: () => unknown;
+          getJournalEntryById: (id: string) => unknown;
+        }>(gameResult.value);
         expect(game).toBeDefined();
         expect(typeof game.getJournalEntries).toBe("function");
         expect(typeof game.getJournalEntryById).toBe("function");

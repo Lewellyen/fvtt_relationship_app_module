@@ -8,8 +8,6 @@
  * or implement these domain types to maintain clean architecture boundaries.
  */
 
-import type { Result } from "./result";
-
 /**
  * Base type constraint for all services that can be registered in a container.
  *
@@ -23,8 +21,13 @@ export type DomainServiceType = unknown;
  *
  * This is a minimal domain abstraction. Infrastructure-layer InjectionToken
  * extends this type with branded properties.
+ *
+ * TServiceType is used as a type parameter for generic type constraints,
+ * even though it's not directly referenced in the type body.
  */
-export type DomainInjectionToken<TServiceType extends DomainServiceType = DomainServiceType> = symbol;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type DomainInjectionToken<TServiceType extends DomainServiceType = DomainServiceType> =
+  symbol;
 
 /**
  * Base type for API-safe tokens that can be used with throwing resolve() methods.

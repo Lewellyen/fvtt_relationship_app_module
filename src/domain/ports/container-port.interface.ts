@@ -69,9 +69,7 @@ export interface ContainerPort {
    * @param token - The injection token to check
    * @returns True if the token is registered
    */
-  isRegistered<T extends DomainServiceType>(
-    token: DomainInjectionToken<T>
-  ): Result<boolean, never>;
+  isRegistered<T extends DomainServiceType>(token: DomainInjectionToken<T>): Result<boolean, never>;
 
   /**
    * Get the current validation state of the container.
