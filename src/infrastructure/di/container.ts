@@ -340,13 +340,9 @@ export class ServiceContainer implements Container, ContainerPort {
 
   /**
    * Get validation state.
-   */
-  /**
-   * Get validation state.
    * Implements both Container.getValidationState and ContainerPort.getValidationState.
+   * Both interfaces use identical types, so a single overload is sufficient.
    */
-  getValidationState(): DomainContainerValidationState;
-  getValidationState(): ContainerValidationState;
   getValidationState(): ContainerValidationState | DomainContainerValidationState {
     return this.validationState as DomainContainerValidationState;
   }

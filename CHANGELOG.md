@@ -3,61 +3,79 @@
 ## [Unreleased]
 
 ### Hinzugefügt
-- **ContainerPort Interface**: Minimales Domain-Port-Interface für Container-Operationen im Framework-Layer ([Details](src/domain/ports/container-port.interface.ts), [Issue #33](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/33))
-  - Folgt Interface Segregation Principle (ISP) - Framework-Layer nur die benötigten Methoden
-  - Ermöglicht Entkopplung des Framework-Layers von konkreter `ServiceContainer`-Implementierung
-  - `ServiceContainer` implementiert `ContainerPort` zusätzlich zu `Container`
-  - `containerPortToken` wird als Alias zu `serviceContainerToken` registriert
 
 ### Geändert
-- **Architektur-Verletzung behoben (Issue #33)**: Framework-Layer nutzt `ContainerPort` statt `ServiceContainer` ([Details](src/framework/core/bootstrap-init-hook.ts), [Details](src/framework/core/api/module-api-initializer.ts), [Issue #33](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/33))
-  - `BootstrapInitHookService` und `ModuleApiInitializer` verwenden `ContainerPort` statt direkter `ServiceContainer`-Abhängigkeit
-  - Behebt Architektur-Verletzung: Framework-Layer hatte direkte Abhängigkeit zu Infrastructure-Layer (`ServiceContainer`)
-  - Framework-Layer ist nun vollständig von konkreter DI-Implementierung entkoppelt
-  - Ermöglicht alternative Container-Implementierungen in der Zukunft
-- **LogLevel Domain-Typ**: `LogLevel` enum und `LOG_LEVEL_SCHEMA` von Framework-Layer in Domain-Layer verschoben ([Details](src/domain/types/log-level.ts))
-  - Behebt Architektur-Verletzung: Application-Layer hatte Abhängigkeit zu Framework-Layer
-  - `LogLevel` ist nun als Domain-Typ definiert, da es Teil der Business-Logik ist
-  - Alle Imports aktualisiert: `@/framework/config/environment` → `@/domain/types/log-level`
 
 ### Fehlerbehebungen
-- **Type-Coverage auf 100% erhöht**: Explizite Typisierung für Error-Array-Mapping hinzugefügt ([Details](src/framework/core/bootstrap/orchestrators/events-bootstrapper.ts))
-  - Type-Coverage von 99.98% auf 100% erhöht
-  - Explizite `Error`-Typisierung in `events-bootstrapper.ts` für TypeScript-Strict-Mode
-- **Type-Coverage auf 100% erhöht**: ContainerPort-Token-Cast über zentrale Cast-Funktion ([Details](src/framework/config/dependencyconfig.ts), [Details](src/infrastructure/di/types/utilities/runtime-safe-cast.ts))
-  - Type Assertion in `dependencyconfig.ts` durch `castContainerTokenToContainerPortToken()` ersetzt
-  - Cast-Funktion in `runtime-safe-cast.ts` (von Type-Coverage ausgenommen) zentralisiert
-  - Behebt Type-Coverage-Problem bei ContainerPort-Alias-Registrierung
-- **Test Coverage auf 100% erhöht**: Test für ContainerPort-Alias-Registrierung hinzugefügt ([Details](src/framework/config/__tests__/dependencyconfig.test.ts))
-  - Test für Fehlerfall bei ContainerPort-Alias-Registrierung ergänzt
-  - Test Coverage von 99.96% auf 100% erhöht
-  - Alle Code-Pfade in `dependencyconfig.ts` sind nun abgedeckt
-- **TypeScript-Kompilierungsfehler**: Type Assertions für Container-Auflösungen in Bootstrapper-Dateien ([Details](src/framework/core/bootstrap/orchestrators/))
-  - Alle Bootstrapper-Dateien mit expliziten Type Assertions erweitert
-  - `api-bootstrapper.ts`, `context-menu-bootstrapper.ts`, `logging-bootstrapper.ts`, `notification-bootstrapper.ts`, `settings-bootstrapper.ts`
-  - Behebt `unknown`-Typ-Probleme bei Container-Auflösungen
-- **ContainerPort-Interface**: Methodenüberladungen für Typkompatibilität implementiert ([Details](src/infrastructure/di/container.ts))
-  - `resolveWithError`, `isRegistered`, `getValidationState` mit Überladungen für `ContainerPort` und `Container`
-  - Automatische Typkonvertierung zwischen `ContainerError` und `DomainContainerError`
-  - Behebt Inkompatibilität zwischen `ServiceContainer` und `ContainerPort`-Interface
-- **ModuleApiInitializer**: Fehlerkonvertierung und Type Assertions hinzugefügt ([Details](src/framework/core/api/module-api-initializer.ts))
-  - Konvertierung von `DomainContainerError` zu `ContainerError` für API-Kompatibilität
-  - Type Assertions für `MetricsCollector` und `ModuleHealthService` mit expliziten Type-Annotations
-  - Unbenutzte Type-Imports entfernt oder mit `eslint-disable` versehen
-- **PortSelector**: Type Assertion für Port-Auflösung hinzugefügt ([Details](src/infrastructure/adapters/foundry/versioning/portselector.ts))
-  - Behebt `unknown`-Typ-Problem bei Port-Auflösung
-- **Linter-Fehler behoben**: Unbenutzte Imports und Type-Parameter korrekt behandelt ([Details](src/domain/types/container-types.ts), [Details](src/framework/core/api/module-api-initializer.ts), [Details](src/framework/core/init-solid.ts), [Details](src/infrastructure/di/container.ts))
-  - Unbenutzte Type-Imports entfernt oder mit `eslint-disable-next-line` versehen
-  - Type-Parameter `TServiceType` in `DomainInjectionToken` korrekt dokumentiert
-  - Dateien zur No-Ignores-Whitelist hinzugefügt mit Begründung
-- **No-Ignores Check**: Dateien zur Whitelist hinzugefügt ([Details](scripts/check-no-ignores.mjs))
-  - `src/domain/types/container-types.ts`: Type-Parameter für generische Type-Constraints
-  - `src/framework/core/api/module-api-initializer.ts`: Type-Imports für explizite Type-Annotations
-  - Alle `eslint-disable`-Marker sind nun dokumentiert und begründet
 
 ### Bekannte Probleme
 
 ### Upgrade-Hinweise
+
+## [0.40.1] - 2025-12-01
+### Hinzugefügt
+- **ContainerPort Interface**: Minimales Domain-Port-Interface für Container-Operationen im Framework-Layer ([Details](src/domain/ports/container-port.interface.ts), [Issue #33](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/33))
+- Folgt Interface Segregation Principle (ISP) - Framework-Layer nur die benötigten Methoden
+- Ermöglicht Entkopplung des Framework-Layers von konkreter `ServiceContainer`-Implementierung
+- `ServiceContainer` implementiert `ContainerPort` zusätzlich zu `Container`
+- `containerPortToken` wird als Alias zu `serviceContainerToken` registriert
+
+### Geändert
+- **Architektur-Verletzung behoben (Issue #33)**: Framework-Layer nutzt `ContainerPort` statt `ServiceContainer` ([Details](src/framework/core/bootstrap-init-hook.ts), [Details](src/framework/core/api/module-api-initializer.ts), [Issue #33](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/33))
+- `BootstrapInitHookService` und `ModuleApiInitializer` verwenden `ContainerPort` statt direkter `ServiceContainer`-Abhängigkeit
+- Behebt Architektur-Verletzung: Framework-Layer hatte direkte Abhängigkeit zu Infrastructure-Layer (`ServiceContainer`)
+- Framework-Layer ist nun vollständig von konkreter DI-Implementierung entkoppelt
+- Ermöglicht alternative Container-Implementierungen in der Zukunft
+- **LogLevel Domain-Typ**: `LogLevel` enum und `LOG_LEVEL_SCHEMA` von Framework-Layer in Domain-Layer verschoben ([Details](src/domain/types/log-level.ts))
+- Behebt Architektur-Verletzung: Application-Layer hatte Abhängigkeit zu Framework-Layer
+- `LogLevel` ist nun als Domain-Typ definiert, da es Teil der Business-Logik ist
+- Alle Imports aktualisiert: `@/framework/config/environment` → `@/domain/types/log-level`
+
+### Fehlerbehebungen
+- **CodeQL-Warnung behoben**: Unreachable method overloads bei `getValidationState()` entfernt ([Details](src/infrastructure/di/container.ts), [GitHub Security #10](https://github.com/Lewellyen/fvtt_relationship_app_module/security/code-scanning/10))
+- Zwei identische Overloads ohne Parameter waren vorhanden, wodurch der zweite unreachable war
+- Beide Typen (`ContainerValidationState` und `DomainContainerValidationState`) sind identisch
+- Lösung: Redundante Overloads entfernt, durch einen einzigen Overload mit Union-Type ersetzt
+- Beide Interfaces (`Container` und `ContainerPort`) werden korrekt erfüllt
+- **Type-Coverage auf 100% erhöht**: Explizite Typisierung für Error-Array-Mapping hinzugefügt ([Details](src/framework/core/bootstrap/orchestrators/events-bootstrapper.ts))
+- Type-Coverage von 99.98% auf 100% erhöht
+- Explizite `Error`-Typisierung in `events-bootstrapper.ts` für TypeScript-Strict-Mode
+- **Type-Coverage auf 100% erhöht**: ContainerPort-Token-Cast über zentrale Cast-Funktion ([Details](src/framework/config/dependencyconfig.ts), [Details](src/infrastructure/di/types/utilities/runtime-safe-cast.ts))
+- Type Assertion in `dependencyconfig.ts` durch `castContainerTokenToContainerPortToken()` ersetzt
+- Cast-Funktion in `runtime-safe-cast.ts` (von Type-Coverage ausgenommen) zentralisiert
+- Behebt Type-Coverage-Problem bei ContainerPort-Alias-Registrierung
+- **Test Coverage auf 100% erhöht**: Test für ContainerPort-Alias-Registrierung hinzugefügt ([Details](src/framework/config/__tests__/dependencyconfig.test.ts))
+- Test für Fehlerfall bei ContainerPort-Alias-Registrierung ergänzt
+- Test Coverage von 99.96% auf 100% erhöht
+- Alle Code-Pfade in `dependencyconfig.ts` sind nun abgedeckt
+- **TypeScript-Kompilierungsfehler**: Type Assertions für Container-Auflösungen in Bootstrapper-Dateien ([Details](src/framework/core/bootstrap/orchestrators/))
+- Alle Bootstrapper-Dateien mit expliziten Type Assertions erweitert
+- `api-bootstrapper.ts`, `context-menu-bootstrapper.ts`, `logging-bootstrapper.ts`, `notification-bootstrapper.ts`, `settings-bootstrapper.ts`
+- Behebt `unknown`-Typ-Probleme bei Container-Auflösungen
+- **ContainerPort-Interface**: Methodenüberladungen für Typkompatibilität implementiert ([Details](src/infrastructure/di/container.ts))
+- `resolveWithError`, `isRegistered`, `getValidationState` mit Überladungen für `ContainerPort` und `Container`
+- Automatische Typkonvertierung zwischen `ContainerError` und `DomainContainerError`
+- Behebt Inkompatibilität zwischen `ServiceContainer` und `ContainerPort`-Interface
+- **ModuleApiInitializer**: Fehlerkonvertierung und Type Assertions hinzugefügt ([Details](src/framework/core/api/module-api-initializer.ts))
+- Konvertierung von `DomainContainerError` zu `ContainerError` für API-Kompatibilität
+- Type Assertions für `MetricsCollector` und `ModuleHealthService` mit expliziten Type-Annotations
+- Unbenutzte Type-Imports entfernt oder mit `eslint-disable` versehen
+- **PortSelector**: Type Assertion für Port-Auflösung hinzugefügt ([Details](src/infrastructure/adapters/foundry/versioning/portselector.ts))
+- Behebt `unknown`-Typ-Problem bei Port-Auflösung
+- **Linter-Fehler behoben**: Unbenutzte Imports und Type-Parameter korrekt behandelt ([Details](src/domain/types/container-types.ts), [Details](src/framework/core/api/module-api-initializer.ts), [Details](src/framework/core/init-solid.ts), [Details](src/infrastructure/di/container.ts))
+- Unbenutzte Type-Imports entfernt oder mit `eslint-disable-next-line` versehen
+- Type-Parameter `TServiceType` in `DomainInjectionToken` korrekt dokumentiert
+- Dateien zur No-Ignores-Whitelist hinzugefügt mit Begründung
+- **No-Ignores Check**: Dateien zur Whitelist hinzugefügt ([Details](scripts/check-no-ignores.mjs))
+- `src/domain/types/container-types.ts`: Type-Parameter für generische Type-Constraints
+- `src/framework/core/api/module-api-initializer.ts`: Type-Imports für explizite Type-Annotations
+- Alle `eslint-disable`-Marker sind nun dokumentiert und begründet
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
 
 ## [0.40.0] - 2025-11-29
 ### Hinzugefügt

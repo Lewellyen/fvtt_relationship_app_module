@@ -298,6 +298,156 @@ var ServiceLifecycle = /* @__PURE__ */ ((ServiceLifecycle2) => {
   ServiceLifecycle2["SCOPED"] = "scoped";
   return ServiceLifecycle2;
 })(ServiceLifecycle || {});
+function widenRuntimeConfigListeners(listeners) {
+  return listeners;
+}
+__name(widenRuntimeConfigListeners, "widenRuntimeConfigListeners");
+function toStringKeyArray(allowed) {
+  return allowed;
+}
+__name(toStringKeyArray, "toStringKeyArray");
+function castCacheValue(value2) {
+  return value2;
+}
+__name(castCacheValue, "castCacheValue");
+function wrapI18nService(service, create) {
+  const concrete = service;
+  return create(concrete);
+}
+__name(wrapI18nService, "wrapI18nService");
+function wrapNotificationCenterService(service, create) {
+  const concrete = service;
+  return create(concrete);
+}
+__name(wrapNotificationCenterService, "wrapNotificationCenterService");
+function wrapFoundrySettingsPort(service, create) {
+  const concrete = service;
+  return create(concrete);
+}
+__name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
+function castCachedServiceInstance(instance2) {
+  return instance2;
+}
+__name(castCachedServiceInstance, "castCachedServiceInstance");
+function castCachedServiceInstanceForResult(instance2) {
+  if (instance2 === void 0) {
+    return err({
+      code: "TokenNotRegistered",
+      message: "castCachedServiceInstanceForResult: instance must not be undefined. Use castCachedServiceInstance() for optional instances.",
+      details: {}
+    });
+  }
+  return ok(instance2);
+}
+__name(castCachedServiceInstanceForResult, "castCachedServiceInstanceForResult");
+function castServiceRegistrationEntry(token, registration) {
+  return [token, registration];
+}
+__name(castServiceRegistrationEntry, "castServiceRegistrationEntry");
+function* iterateServiceRegistrationEntries(entries2) {
+  for (const [token, registration] of entries2) {
+    yield castServiceRegistrationEntry(token, registration);
+  }
+}
+__name(iterateServiceRegistrationEntries, "iterateServiceRegistrationEntries");
+function getRegistrationStatus(result) {
+  return result.ok ? result.value : false;
+}
+__name(getRegistrationStatus, "getRegistrationStatus");
+function getFirstArrayElement(array2) {
+  return array2[0];
+}
+__name(getFirstArrayElement, "getFirstArrayElement");
+function getFirstElementIfArray(value2, typeGuard) {
+  if (Array.isArray(value2) && value2.length > 0) {
+    const firstElement = value2[0];
+    if (typeGuard(firstElement)) {
+      return firstElement;
+    }
+  }
+  return null;
+}
+__name(getFirstElementIfArray, "getFirstElementIfArray");
+function castToFoundryHookCallback(callback) {
+  return callback;
+}
+__name(castToFoundryHookCallback, "castToFoundryHookCallback");
+function assertCacheKey(value2) {
+  return value2;
+}
+__name(assertCacheKey, "assertCacheKey");
+function castToRecord(value2) {
+  return value2;
+}
+__name(castToRecord, "castToRecord");
+function normalizeToRecord(value2) {
+  return Object.assign({}, value2);
+}
+__name(normalizeToRecord, "normalizeToRecord");
+function castModuleEventRegistrar(value2) {
+  return value2;
+}
+__name(castModuleEventRegistrar, "castModuleEventRegistrar");
+function castModuleApiInitializer(value2) {
+  return value2;
+}
+__name(castModuleApiInitializer, "castModuleApiInitializer");
+function castModuleSettingsRegistrar(value2) {
+  return value2;
+}
+__name(castModuleSettingsRegistrar, "castModuleSettingsRegistrar");
+function castJournalContextMenuLibWrapperService(value2) {
+  return value2;
+}
+__name(castJournalContextMenuLibWrapperService, "castJournalContextMenuLibWrapperService");
+function castRegisterContextMenuUseCase(value2) {
+  return value2;
+}
+__name(castRegisterContextMenuUseCase, "castRegisterContextMenuUseCase");
+function castMetricsCollector(value2) {
+  return value2;
+}
+__name(castMetricsCollector, "castMetricsCollector");
+function castModuleHealthService(value2) {
+  return value2;
+}
+__name(castModuleHealthService, "castModuleHealthService");
+function castNotificationChannel(value2) {
+  return value2;
+}
+__name(castNotificationChannel, "castNotificationChannel");
+function castResolvedService(value2) {
+  return value2;
+}
+__name(castResolvedService, "castResolvedService");
+function castContainerErrorCode(code) {
+  return code;
+}
+__name(castContainerErrorCode, "castContainerErrorCode");
+function castLogger(value2) {
+  return value2;
+}
+__name(castLogger, "castLogger");
+function castFoundrySettings(value2) {
+  return value2;
+}
+__name(castFoundrySettings, "castFoundrySettings");
+function castNotificationService(value2) {
+  return value2;
+}
+__name(castNotificationService, "castNotificationService");
+function castBootstrapInitHookService(value2) {
+  return value2;
+}
+__name(castBootstrapInitHookService, "castBootstrapInitHookService");
+function castBootstrapReadyHookService(value2) {
+  return value2;
+}
+__name(castBootstrapReadyHookService, "castBootstrapReadyHookService");
+function castContainerTokenToContainerPortToken(token) {
+  return token;
+}
+__name(castContainerTokenToContainerPortToken, "castContainerTokenToContainerPortToken");
 const _ServiceRegistration = class _ServiceRegistration {
   /**
    * Private constructor - use static factory methods instead.
@@ -521,92 +671,6 @@ const _TypeSafeRegistrationMap = class _TypeSafeRegistrationMap {
 };
 __name(_TypeSafeRegistrationMap, "TypeSafeRegistrationMap");
 let TypeSafeRegistrationMap = _TypeSafeRegistrationMap;
-function widenRuntimeConfigListeners(listeners) {
-  return listeners;
-}
-__name(widenRuntimeConfigListeners, "widenRuntimeConfigListeners");
-function toStringKeyArray(allowed) {
-  return allowed;
-}
-__name(toStringKeyArray, "toStringKeyArray");
-function castCacheValue(value2) {
-  return value2;
-}
-__name(castCacheValue, "castCacheValue");
-function wrapI18nService(service, create) {
-  const concrete = service;
-  return create(concrete);
-}
-__name(wrapI18nService, "wrapI18nService");
-function wrapNotificationCenterService(service, create) {
-  const concrete = service;
-  return create(concrete);
-}
-__name(wrapNotificationCenterService, "wrapNotificationCenterService");
-function wrapFoundrySettingsPort(service, create) {
-  const concrete = service;
-  return create(concrete);
-}
-__name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
-function castCachedServiceInstance(instance2) {
-  return instance2;
-}
-__name(castCachedServiceInstance, "castCachedServiceInstance");
-function castCachedServiceInstanceForResult(instance2) {
-  if (instance2 === void 0) {
-    return err({
-      code: "TokenNotRegistered",
-      message: "castCachedServiceInstanceForResult: instance must not be undefined. Use castCachedServiceInstance() for optional instances.",
-      details: {}
-    });
-  }
-  return ok(instance2);
-}
-__name(castCachedServiceInstanceForResult, "castCachedServiceInstanceForResult");
-function castServiceRegistrationEntry(token, registration) {
-  return [token, registration];
-}
-__name(castServiceRegistrationEntry, "castServiceRegistrationEntry");
-function* iterateServiceRegistrationEntries(entries2) {
-  for (const [token, registration] of entries2) {
-    yield castServiceRegistrationEntry(token, registration);
-  }
-}
-__name(iterateServiceRegistrationEntries, "iterateServiceRegistrationEntries");
-function getRegistrationStatus(result) {
-  return result.ok ? result.value : false;
-}
-__name(getRegistrationStatus, "getRegistrationStatus");
-function getFirstArrayElement(array2) {
-  return array2[0];
-}
-__name(getFirstArrayElement, "getFirstArrayElement");
-function getFirstElementIfArray(value2, typeGuard) {
-  if (Array.isArray(value2) && value2.length > 0) {
-    const firstElement = value2[0];
-    if (typeGuard(firstElement)) {
-      return firstElement;
-    }
-  }
-  return null;
-}
-__name(getFirstElementIfArray, "getFirstElementIfArray");
-function castToFoundryHookCallback(callback) {
-  return callback;
-}
-__name(castToFoundryHookCallback, "castToFoundryHookCallback");
-function assertCacheKey(value2) {
-  return value2;
-}
-__name(assertCacheKey, "assertCacheKey");
-function castToRecord(value2) {
-  return value2;
-}
-__name(castToRecord, "castToRecord");
-function normalizeToRecord(value2) {
-  return Object.assign({}, value2);
-}
-__name(normalizeToRecord, "normalizeToRecord");
 function hasDependencies(cls) {
   return "dependencies" in cls;
 }
@@ -7377,7 +7441,6 @@ function unwrap(schema) {
   return schema.wrapped;
 }
 __name(unwrap, "unwrap");
-const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "development", "PROD": true, "SSR": false, "VITE_ENABLE_PERF_TRACKING": "true" };
 var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
   LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
   LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
@@ -7392,6 +7455,7 @@ const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
   3
   /* ERROR */
 ]);
+const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "development", "PROD": true, "SSR": false, "VITE_ENABLE_PERF_TRACKING": "true" };
 function parseSamplingRate(envValue, fallback2) {
   const raw = parseFloat(envValue ?? String(fallback2));
   return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback2;
@@ -7425,7 +7489,7 @@ const parsedCacheMaxEntries = getEnvVar("VITE_CACHE_MAX_ENTRIES", parseOptionalP
 const ENV = {
   isDevelopment: true,
   isProduction: false,
-  logLevel: true ? 0 : 1,
+  logLevel: true ? LogLevel.DEBUG : LogLevel.INFO,
   enablePerformanceTracking: true,
   enableMetricsPersistence: getEnvVar("VITE_ENABLE_METRICS_PERSISTENCE", (val) => val === "true"),
   metricsPersistenceKey: getEnvVar(
@@ -7788,12 +7852,15 @@ const _ServiceContainer = class _ServiceContainer {
   injectMetricsCollector() {
     const metricsResult = this.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
-      this.resolver.setMetricsCollector(metricsResult.value);
-      this.cache.setMetricsCollector(metricsResult.value);
+      const metricsCollector = castMetricsCollector(metricsResult.value);
+      this.resolver.setMetricsCollector(metricsCollector);
+      this.cache.setMetricsCollector(metricsCollector);
     }
   }
   /**
    * Get validation state.
+   * Implements both Container.getValidationState and ContainerPort.getValidationState.
+   * Both interfaces use identical types, so a single overload is sufficient.
    */
   getValidationState() {
     return this.validationState;
@@ -7934,25 +8001,43 @@ const _ServiceContainer = class _ServiceContainer {
     );
     return ok(child);
   }
-  /**
-   * Resolve service with Result return.
-   */
   resolveWithError(token) {
     if (this.scopeManager.isDisposed()) {
-      return err({
+      const error = {
         code: "Disposed",
         message: `Cannot resolve from disposed container`,
         tokenDescription: String(token)
-      });
+      };
+      const domainError = {
+        code: error.code,
+        message: error.message,
+        cause: error.cause
+      };
+      return err(domainError);
     }
     if (this.validationState !== "validated") {
-      return err({
+      const error = {
         code: "NotValidated",
         message: "Container must be validated before resolving. Call validate() first.",
         tokenDescription: String(token)
-      });
+      };
+      const domainError = {
+        code: error.code,
+        message: error.message,
+        cause: error.cause
+      };
+      return err(domainError);
     }
-    return this.resolver.resolve(token);
+    const result = this.resolver.resolve(token);
+    if (!result.ok) {
+      const domainError = {
+        code: result.error.code,
+        message: result.error.message,
+        cause: result.error.cause
+      };
+      return err(domainError);
+    }
+    return result;
   }
   // Implementation (unified for both overloads)
   resolve(token) {
@@ -7970,13 +8055,10 @@ Only the public ModuleApi should expose resolve() for external modules.`
     }
     const result = this.resolveWithError(token);
     if (isOk(result)) {
-      return result.value;
+      return castResolvedService(result.value);
     }
     throw new Error(`Cannot resolve ${String(token)}: ${result.error.message}`);
   }
-  /**
-   * Check if service is registered.
-   */
   isRegistered(token) {
     return ok(this.registry.has(token));
   }
@@ -8928,9 +9010,15 @@ Reason: ${deprecationInfo.reason}
       this.handleDeprecationWarning(token);
       const result = container.resolveWithError(token);
       if (!result.ok) {
-        return result;
+        const containerError = {
+          code: castContainerErrorCode(result.error.code),
+          message: result.error.message,
+          cause: result.error.cause,
+          tokenDescription: result.error.message
+        };
+        return err(containerError);
       }
-      const service = result.value;
+      const service = castResolvedService(result.value);
       const wrappedService = this.wrapSensitiveService(token, service, wellKnownTokens);
       return ok(wrappedService);
     };
@@ -9006,7 +9094,8 @@ Reason: ${deprecationInfo.reason}
             cacheHitRate: 0
           };
         }
-        return metricsResult.value.getSnapshot();
+        const metricsCollector = castMetricsCollector(metricsResult.value);
+        return metricsCollector.getSnapshot();
       }, "getMetrics"),
       getHealth: /* @__PURE__ */ __name(() => {
         const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
@@ -9021,7 +9110,10 @@ Reason: ${deprecationInfo.reason}
             timestamp: (/* @__PURE__ */ new Date()).toISOString()
           };
         }
-        return healthServiceResult.value.getHealth();
+        const healthService = castModuleHealthService(
+          healthServiceResult.value
+        );
+        return healthService.getHealth();
       }, "getHealth")
     };
   }
@@ -9141,7 +9233,9 @@ const _NotificationBootstrapper = class _NotificationBootstrapper {
     if (!uiChannelResult.ok) {
       return err(`UIChannel could not be resolved: ${uiChannelResult.error.message}`);
     }
-    notificationCenterResult.value.addChannel(uiChannelResult.value);
+    const notificationCenter = castNotificationService(notificationCenterResult.value);
+    const uiChannel = castNotificationChannel(uiChannelResult.value);
+    notificationCenter.addChannel(uiChannel);
     return ok(void 0);
   }
 };
@@ -9159,7 +9253,8 @@ const _ApiBootstrapper = class _ApiBootstrapper {
     if (!apiInitializerResult.ok) {
       return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
     }
-    const exposeResult = apiInitializerResult.value.expose(container);
+    const apiInitializer = castModuleApiInitializer(apiInitializerResult.value);
+    const exposeResult = apiInitializer.expose(container);
     if (!exposeResult.ok) {
       return err(`Failed to expose API: ${exposeResult.error}`);
     }
@@ -9182,7 +9277,8 @@ const _SettingsBootstrapper = class _SettingsBootstrapper {
         `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
       );
     }
-    settingsRegistrarResult.value.registerAll();
+    const settingsRegistrar = castModuleSettingsRegistrar(settingsRegistrarResult.value);
+    settingsRegistrar.registerAll();
     return ok(void 0);
   }
 };
@@ -9201,7 +9297,7 @@ const _LoggingBootstrapper = class _LoggingBootstrapper {
     if (!settingsResult.ok) {
       return ok(void 0);
     }
-    const settings = settingsResult.value;
+    const settings = castFoundrySettings(settingsResult.value);
     const logLevelResult = settings.get(
       MODULE_CONSTANTS.MODULE.ID,
       MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
@@ -9228,7 +9324,8 @@ const _EventsBootstrapper = class _EventsBootstrapper {
     if (!eventRegistrarResult.ok) {
       return err(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
     }
-    const eventRegistrationResult = eventRegistrarResult.value.registerAll();
+    const eventRegistrar = castModuleEventRegistrar(eventRegistrarResult.value);
+    const eventRegistrationResult = eventRegistrar.registerAll();
     if (!eventRegistrationResult.ok) {
       const errorMessages = eventRegistrationResult.error.map((e) => e.message).join(", ");
       return err(`Failed to register one or more event listeners: ${errorMessages}`);
@@ -9254,7 +9351,10 @@ const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
         `JournalContextMenuLibWrapperService could not be resolved: ${contextMenuLibWrapperResult.error.message}`
       );
     }
-    const registerResult = contextMenuLibWrapperResult.value.register();
+    const contextMenuLibWrapper = castJournalContextMenuLibWrapperService(
+      contextMenuLibWrapperResult.value
+    );
+    const registerResult = contextMenuLibWrapper.register();
     if (!registerResult.ok) {
       return err(`Context menu libWrapper registration failed: ${registerResult.error.message}`);
     }
@@ -9264,7 +9364,8 @@ const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
         `RegisterContextMenuUseCase could not be resolved: ${contextMenuUseCaseResult.error.message}`
       );
     }
-    const callbackRegisterResult = contextMenuUseCaseResult.value.register();
+    const contextMenuUseCase = castRegisterContextMenuUseCase(contextMenuUseCaseResult.value);
+    const callbackRegisterResult = contextMenuUseCase.register();
     if (!callbackRegisterResult.ok) {
       return err(
         `Context menu callback registration failed: ${callbackRegisterResult.error.message}`
@@ -9851,7 +9952,7 @@ const _PortSelector = class _PortSelector {
         });
         return err(foundryError);
       }
-      const port = resolveResult.value;
+      const port = castResolvedService(resolveResult.value);
       const durationMs = performance.now() - startTime;
       this.eventEmitter.emit({
         type: "success",
@@ -13485,7 +13586,10 @@ function registerI18nServices(container) {
           `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult2.error.message}`
         );
       }
-      return [foundryHandlerResult2.value, localHandlerResult2.value, fallbackHandlerResult2.value];
+      const foundryHandler = castResolvedService(foundryHandlerResult2.value);
+      const localHandler = castResolvedService(localHandlerResult2.value);
+      const fallbackHandler = castResolvedService(fallbackHandlerResult2.value);
+      return [foundryHandler, localHandler, fallbackHandler];
     },
     ServiceLifecycle.SINGLETON,
     [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]
@@ -15015,7 +15119,8 @@ function registerEventPorts(container) {
           `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
         );
       }
-      return [handlerResult.value];
+      const handler = castResolvedService(handlerResult.value);
+      return [handler];
     },
     ServiceLifecycle.SINGLETON,
     [hideJournalContextMenuHandlerToken]
@@ -15854,7 +15959,13 @@ function registerStaticValues(container) {
   if (isErr(containerResult)) {
     return err(`Failed to register ServiceContainer: ${containerResult.error.message}`);
   }
-  container.registerAlias(containerPortToken, serviceContainerToken);
+  const aliasResult = container.registerAlias(
+    containerPortToken,
+    castContainerTokenToContainerPortToken(serviceContainerToken)
+  );
+  if (isErr(aliasResult)) {
+    return err(`Failed to register ContainerPort alias: ${aliasResult.error.message}`);
+  }
   return ok(void 0);
 }
 __name(registerStaticValues, "registerStaticValues");
@@ -15986,7 +16097,8 @@ const _CompositionRoot = class _CompositionRoot {
       (duration) => {
         const loggerResult = container.resolveWithError(loggerToken);
         if (loggerResult.ok) {
-          loggerResult.value.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
+          const logger = castLogger(loggerResult.value);
+          logger.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
         }
       }
     );
@@ -16051,7 +16163,7 @@ function initializeFoundryModule() {
     );
     return;
   }
-  const logger = loggerResult.value;
+  const logger = castLogger(loggerResult.value);
   const initHookServiceResult = containerResult.value.resolveWithError(
     bootstrapInitHookServiceToken
   );
@@ -16061,7 +16173,8 @@ function initializeFoundryModule() {
     );
     return;
   }
-  initHookServiceResult.value.register();
+  const initHookService = castBootstrapInitHookService(initHookServiceResult.value);
+  initHookService.register();
   const readyHookServiceResult = containerResult.value.resolveWithError(
     bootstrapReadyHookServiceToken
   );
@@ -16071,7 +16184,8 @@ function initializeFoundryModule() {
     );
     return;
   }
-  readyHookServiceResult.value.register();
+  const readyHookService = castBootstrapReadyHookService(readyHookServiceResult.value);
+  readyHookService.register();
 }
 __name(initializeFoundryModule, "initializeFoundryModule");
 const root = new CompositionRoot();
