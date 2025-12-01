@@ -43,6 +43,14 @@ issues_created = 0
 issues_skipped = 0
 
 for issue in analysis_data.get('issues', []):
+    # Prüfe auf Pflichtfelder
+    required_fields = ['type', 'file', 'line', 'title', 'severity']
+    missing_fields = [field for field in required_fields if field not in issue]
+    if missing_fields:
+        print(f"Skipping issue with missing required fields: {missing_fields}")
+        issues_skipped += 1
+        continue
+
     # Erstelle eindeutigen Titel
     file_short = issue['file'].replace('src/', '').replace('/', '-')
     title = f"[{issue['type'].upper()}] {file_short}:{issue['line']} - {issue['title']}"
@@ -71,11 +79,11 @@ for issue in analysis_data.get('issues', []):
 
 {principle_tag}**Severity:** {issue['severity'].upper()}
 **File:** `{issue['file']}`
-**Location:** Line {issue['line']}, Column {issue['column']}
+**Location:** Line {issue['line']}, Column {issue.get('column', 'N/A')}
 
 ### Problem
 
-{issue['description']}
+{issue.get('description', 'No description provided')}
 
 ### Aktueller Code
 
@@ -85,7 +93,7 @@ for issue in analysis_data.get('issues', []):
 
 ### Empfehlung
 
-{issue['recommendation']}
+{issue.get('recommendation', 'N/A')}
 
 ### Referenzen
 
@@ -113,13 +121,33 @@ for issue in analysis_data.get('issues', []):
     if principle:
         labels.append(f"solid-{principle.lower()}")
 
+    # Prüfe welche Labels existieren und filtere nicht vorhandene heraus
+    try:
+        existing_labels_result = subprocess.run(
+            ['gh', 'label', 'list', '--json', 'name'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        existing_labels = {label['name'] for label in json.loads(existing_labels_result.stdout)}
+        # Filtere nur existierende Labels
+        valid_labels = [label for label in labels if label in existing_labels]
+
+        if not valid_labels:
+            print(f"Warning: No valid labels found for issue '{title}', creating without labels")
+            valid_labels = []
+    except Exception as e:
+        print(f"Warning: Could not verify labels, using all labels: {e}")
+        valid_labels = labels
+
     # Erstelle Issue
     try:
+        cmd = ['gh', 'issue', 'create', '--title', title, '--body', body]
+        if valid_labels:
+            cmd.extend(['--label', ','.join(valid_labels)])
+
         result = subprocess.run(
-            ['gh', 'issue', 'create',
-             '--title', title,
-             '--body', body,
-             '--label', ','.join(labels)],
+            cmd,
             capture_output=True,
             text=True,
             check=True
@@ -128,6 +156,19 @@ for issue in analysis_data.get('issues', []):
         issues_created += 1
     except subprocess.CalledProcessError as e:
         print(f"Failed to create issue '{title}': {e.stderr}")
+        # Wenn Fehler wegen Labels, versuche ohne Labels
+        if 'label' in e.stderr.lower() and valid_labels:
+            try:
+                result = subprocess.run(
+                    ['gh', 'issue', 'create', '--title', title, '--body', body],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                print(f"Created issue without labels: {title}")
+                issues_created += 1
+            except subprocess.CalledProcessError as e2:
+                print(f"Failed to create issue even without labels: {e2.stderr}")
         continue
 
 print(f"\nSummary: {issues_created} issues created, {issues_skipped} skipped")

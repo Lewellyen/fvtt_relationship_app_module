@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read  # Repository-Inhalt lesen (für git, gh api)
-      issues: write   # Issues erstellen
-      pull-requests: read  # PR-Informationen lesen
+      contents: read # Repository-Inhalt lesen (für git, gh api)
+      issues: write # Issues erstellen
+      pull-requests: read # PR-Informationen lesen
 
     steps:
       - name: Checkout code
@@ -556,6 +556,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
+          # Erstelle Labels (falls nicht vorhanden)
+          python3 scripts/ai-review-create-label.py
+
+          # Erstelle Issues
           python3 scripts/ai-review-create-issues.py
 
       - name: Create summary
