@@ -547,7 +547,7 @@ jobs:
 
       - name: Extract Agent Summary
         id: extract-summary
-        if: steps.run-agent.outputs.fix_successful == 'true'
+        if: steps.run-agent.outputs.fix_successful == 'true' || always()
         run: |
           # Prüfe ob Agent-Zusammenfassung existiert (in /tmp/, Workspace-Root, oder im Agent-Output)
           AGENT_SUMMARY_FOUND=false
@@ -570,34 +570,94 @@ jobs:
           if [ "$AGENT_SUMMARY_FOUND" != "true" ] && [ -f /tmp/fix-output.txt ]; then
             echo "=== Trying to extract summary from agent output ==="
 
-            # Suche nach "Zusammenfassung:" oder "Durchgeführte Änderungen" im Output
-            if grep -q "Zusammenfassung\|Durchgeführte Änderungen" /tmp/fix-output.txt; then
-              echo "✅ Found summary in agent output, extracting..."
+            # Suche nach verschiedenen Mustern für Zusammenfassung
+            SUMMARY_START_LINE=""
 
-              # Finde die Zeile mit "Zusammenfassung:" oder "Durchgeführte Änderungen"
-              SUMMARY_LINE=$(grep -n "Zusammenfassung:\|Durchgeführte Änderungen" /tmp/fix-output.txt | head -1 | cut -d: -f1)
+            # Versuche verschiedene Startmuster zu finden
+            if grep -q "^## Zusammenfassung" /tmp/fix-output.txt; then
+              SUMMARY_START_LINE=$(grep -n "^## Zusammenfassung" /tmp/fix-output.txt | head -1 | cut -d: -f1)
+              echo "✅ Found '## Zusammenfassung' at line $SUMMARY_START_LINE"
+            elif grep -q "^Zusammenfassung:" /tmp/fix-output.txt; then
+              SUMMARY_START_LINE=$(grep -n "^Zusammenfassung:" /tmp/fix-output.txt | head -1 | cut -d: -f1)
+              echo "✅ Found 'Zusammenfassung:' at line $SUMMARY_START_LINE"
+            elif grep -q "Zusammenfassung:" /tmp/fix-output.txt; then
+              SUMMARY_START_LINE=$(grep -n "Zusammenfassung:" /tmp/fix-output.txt | head -1 | cut -d: -f1)
+              echo "✅ Found 'Zusammenfassung:' (anywhere) at line $SUMMARY_START_LINE"
+            elif grep -q "Durchgeführte Änderungen" /tmp/fix-output.txt; then
+              SUMMARY_START_LINE=$(grep -n "Durchgeführte Änderungen" /tmp/fix-output.txt | head -1 | cut -d: -f1)
+              echo "✅ Found 'Durchgeführte Änderungen' at line $SUMMARY_START_LINE"
+            fi
 
-              if [ -n "$SUMMARY_LINE" ]; then
-                # Extrahiere alles ab dieser Zeile
-                tail -n +$SUMMARY_LINE /tmp/fix-output.txt > /tmp/agent-summary-raw.txt
+            if [ -n "$SUMMARY_START_LINE" ]; then
+              echo "✅ Extracting summary starting from line $SUMMARY_START_LINE..."
 
-                # Entferne alles ab "**Problem:**" oder "```bash" (Terminal-Befehle)
-                # Verwende awk um alles bis zum ersten Vorkommen zu nehmen
-                awk '/\*\*Problem:\*\*|```bash|Soll ich/{exit} {print}' /tmp/agent-summary-raw.txt > /tmp/agent-summary.md
+              # Extrahiere alles ab dieser Zeile
+              tail -n +$SUMMARY_START_LINE /tmp/fix-output.txt > /tmp/agent-summary-raw.txt
 
-                # Entferne leere Zeilen am Ende
-                sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' /tmp/agent-summary.md 2>/dev/null || \
-                sed -i '/^$/d' /tmp/agent-summary.md 2>/dev/null || true
+              # Finde Stopp-Zeilen (irrelevante Teile nach der Zusammenfassung)
+              STOP_LINE=""
 
-                # Prüfe ob Datei nicht leer ist und mindestens 3 Zeilen hat
-                if [ -s /tmp/agent-summary.md ] && [ $(wc -l < /tmp/agent-summary.md) -ge 3 ]; then
-                  echo "✅ Extracted summary from agent output ($(wc -l < /tmp/agent-summary.md) lines)"
-                  AGENT_SUMMARY_FOUND=true
-                else
-                  echo "⚠️ Extracted summary is too short or empty"
-                  rm -f /tmp/agent-summary.md
-                fi
+              # Suche nach Stopp-Mustern (aber nicht innerhalb der Zusammenfassung)
+              if grep -n "^=== Searching for key terms" /tmp/agent-summary-raw.txt | head -1 | cut -d: -f1 > /tmp/stop-line.txt 2>/dev/null; then
+                STOP_LINE=$(cat /tmp/stop-line.txt)
+              elif grep -n "^Soll ich trotzdem" /tmp/agent-summary-raw.txt | head -1 | cut -d: -f1 > /tmp/stop-line.txt 2>/dev/null; then
+                STOP_LINE=$(cat /tmp/stop-line.txt)
+              elif grep -n "^=== " /tmp/agent-summary-raw.txt | grep -v "^## " | head -1 | cut -d: -f1 > /tmp/stop-line.txt 2>/dev/null; then
+                STOP_LINE=$(cat /tmp/stop-line.txt)
               fi
+
+              if [ -n "$STOP_LINE" ] && [ "$STOP_LINE" -gt 5 ]; then
+                # Extrahiere nur bis zur Stopp-Zeile
+                head -n $((STOP_LINE - 1)) /tmp/agent-summary-raw.txt > /tmp/agent-summary.md
+                echo "✅ Stopped extraction at line $STOP_LINE"
+              else
+                # Verwende alles, aber entferne leere Zeilen am Ende
+                cp /tmp/agent-summary-raw.txt /tmp/agent-summary.md
+              fi
+
+              # Bereinige die Datei: Entferne leere Zeilen am Ende
+              sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' /tmp/agent-summary.md 2>/dev/null || \
+              sed -i '/^$/d' /tmp/agent-summary.md 2>/dev/null || true
+
+              # Entferne führende leere Zeilen
+              sed -i '/./,$!d' /tmp/agent-summary.md 2>/dev/null || true
+
+              # Prüfe ob Datei nicht leer ist und mindestens 3 Zeilen hat
+              if [ -s /tmp/agent-summary.md ] && [ $(wc -l < /tmp/agent-summary.md) -ge 3 ]; then
+                echo "✅ Extracted summary from agent output ($(wc -l < /tmp/agent-summary.md) lines)"
+                AGENT_SUMMARY_FOUND=true
+              else
+                echo "⚠️ Extracted summary is too short or empty"
+                echo "=== First 20 lines of raw output ==="
+                head -20 /tmp/agent-summary-raw.txt || true
+                rm -f /tmp/agent-summary.md
+              fi
+            else
+              echo "⚠️ No summary pattern found in agent output"
+              echo "=== First 30 lines of agent output ==="
+              head -30 /tmp/fix-output.txt || true
+            fi
+          fi
+
+          # Methode 3: Falls keine strukturierte Zusammenfassung gefunden wurde, verwende die gesamte Agent-Ausgabe
+          if [ "$AGENT_SUMMARY_FOUND" != "true" ] && [ -f /tmp/fix-output.txt ]; then
+            echo "=== Using entire agent output as summary ==="
+
+            # Verwende die gesamte Ausgabe, aber entferne sehr lange Zeilen (wahrscheinlich Debug-Output)
+            # Entferne Zeilen die länger als 200 Zeichen sind (wahrscheinlich nicht Teil der Zusammenfassung)
+            awk 'length($0) <= 200 || /^## |^# |^\*\*|^```|^Zusammenfassung|^Problem|^Lösung|^Status|^Hinweis/' /tmp/fix-output.txt > /tmp/agent-summary-filtered.txt 2>/dev/null || \
+            cp /tmp/fix-output.txt /tmp/agent-summary-filtered.txt
+
+            # Begrenze auf die letzten 100 Zeilen (meistens ist die Zusammenfassung am Ende)
+            tail -100 /tmp/agent-summary-filtered.txt > /tmp/agent-summary.md
+
+            # Entferne leere Zeilen am Ende
+            sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' /tmp/agent-summary.md 2>/dev/null || \
+            sed -i '/^$/d' /tmp/agent-summary.md 2>/dev/null || true
+
+            if [ -s /tmp/agent-summary.md ] && [ $(wc -l < /tmp/agent-summary.md) -ge 3 ]; then
+              echo "✅ Using agent output as summary ($(wc -l < /tmp/agent-summary.md) lines)"
+              AGENT_SUMMARY_FOUND=true
             fi
           fi
 
@@ -605,11 +665,83 @@ jobs:
             echo "has_summary=true" >> $GITHUB_OUTPUT
             # Zeige ersten Teil für Debugging
             echo "=== Agent Summary Preview ==="
-            head -40 /tmp/agent-summary.md || true
+            head -50 /tmp/agent-summary.md || true
           else
             echo "⚠️ No agent summary found (checked files and agent output), will use default PR body"
             echo "has_summary=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Handle No Changes Case
+        id: handle-no-changes
+        if: (steps.run-agent.outputs.fix_successful != 'true' || steps.run-agent.outcome == 'failure') && env.cursor_available == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="${{ steps.setup-branch.outputs.branch_name }}"
+          ISSUE_NUM="${{ matrix.issue.number }}"
+          ISSUE_TITLE="${{ matrix.issue.title }}"
+
+          echo "ℹ️ No code changes detected. Posting agent analysis as comment and closing issue..."
+
+          # Erstelle Kommentar-Text
+          COMMENT_BODY="## 🤖 AI-Analyse: Keine Code-Änderungen erforderlich
+
+          Der AI-Agent hat das Issue analysiert und festgestellt, dass keine Code-Änderungen erforderlich sind.
+
+          **Issue:** #$ISSUE_NUM - $ISSUE_TITLE
+
+          ---
+
+          "
+
+          # Füge Agent-Zusammenfassung hinzu, falls vorhanden
+          if [ -f /tmp/agent-summary.md ]; then
+            echo "✅ Using extracted agent summary for comment"
+            COMMENT_BODY="${COMMENT_BODY}$(cat /tmp/agent-summary.md)"
+          elif [ -f /tmp/fix-output.txt ]; then
+            echo "✅ Using agent output for comment"
+            # Verwende die letzten 200 Zeilen der Agent-Ausgabe
+            COMMENT_BODY="${COMMENT_BODY}\`\`\`
+$(tail -200 /tmp/fix-output.txt)
+\`\`\`"
+          else
+            COMMENT_BODY="${COMMENT_BODY}Der AI-Agent hat das Issue analysiert, aber keine detaillierte Zusammenfassung erstellt."
+          fi
+
+          COMMENT_BODY="${COMMENT_BODY}
+
+          ---
+
+          *Dieses Issue wird automatisch geschlossen, da keine Code-Änderungen erforderlich sind.*"
+
+          # Poste Kommentar zum Issue
+          echo "Posting comment to issue #$ISSUE_NUM..."
+          echo "$COMMENT_BODY" | gh issue comment "$ISSUE_NUM" --body-file - || {
+            echo "⚠️ Failed to post comment, trying with shorter message..."
+            gh issue comment "$ISSUE_NUM" --body "🤖 AI-Analyse: Keine Code-Änderungen erforderlich. Das beschriebene Problem ist bereits behoben oder erfordert keine Code-Änderungen." || true
+          }
+
+          # Schließe das Issue
+          echo "Closing issue #$ISSUE_NUM..."
+          gh issue close "$ISSUE_NUM" --comment "Automatisch geschlossen: Keine Code-Änderungen erforderlich" || {
+            echo "⚠️ Failed to close issue with comment, trying without..."
+            gh issue close "$ISSUE_NUM" || true
+          }
+
+          # Lösche den Branch, falls er existiert
+          echo "Checking if branch $BRANCH_NAME exists..."
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "Deleting branch $BRANCH_NAME..."
+            gh api repos/${{ github.repository }}/git/refs/heads/"$BRANCH_NAME" -X DELETE || {
+              echo "⚠️ Failed to delete branch via API, trying git push..."
+              git push origin --delete "$BRANCH_NAME" || true
+            }
+            echo "✅ Branch $BRANCH_NAME deleted"
+          else
+            echo "ℹ️ Branch $BRANCH_NAME does not exist on remote, nothing to delete"
+          fi
+
+          echo "✅ No changes case handled successfully"
 
       - name: Create PR Body
         if: steps.run-agent.outputs.fix_successful == 'true'
@@ -703,4 +835,3 @@ jobs:
           else
             echo "⚠️ Some issues may have failed or been skipped"
           fi
-
