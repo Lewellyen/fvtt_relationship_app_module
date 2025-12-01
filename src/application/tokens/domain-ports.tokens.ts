@@ -4,7 +4,7 @@
  * These tokens define injection points for domain port interfaces,
  * keeping the Application layer decoupled from Infrastructure-specific implementations.
  */
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/domain/utils/token-factory";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
