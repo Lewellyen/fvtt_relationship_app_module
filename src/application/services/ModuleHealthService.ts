@@ -1,4 +1,4 @@
-import type { HealthStatus } from "@/framework/core/api/module-api";
+import type { HealthStatus } from "@/domain/types/health-status";
 import type { HealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
 import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens";
 

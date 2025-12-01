@@ -15,9 +15,9 @@ import { createApiTokens } from "@/framework/core/api/api-token-config";
 import type {
   ModuleApi,
   TokenInfo,
-  HealthStatus,
   ModuleApiTokens,
 } from "@/framework/core/api/module-api";
+import type { HealthStatus } from "@/domain/types/health-status";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
 import {
