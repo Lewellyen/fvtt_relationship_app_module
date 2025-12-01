@@ -40,9 +40,8 @@ describe("init-solid Bootstrap", () => {
       vi.spyOn(ModuleEventRegistrar.prototype, "registerAll");
 
       // Spy auf ModuleApiInitializer.expose() (call-through, nicht mocked)
-      const moduleApiInitializerModule = await import(
-        "@/framework/core/api/module-api-initializer"
-      );
+      const moduleApiInitializerModule =
+        await import("@/framework/core/api/module-api-initializer");
       vi.spyOn(moduleApiInitializerModule.ModuleApiInitializer.prototype, "expose");
 
       // Dynamic import NACH Mock-Setup
@@ -67,9 +66,8 @@ describe("init-solid Bootstrap", () => {
       const infoSpy = vi.spyOn(consoleLoggerModule.ConsoleLoggerService.prototype, "info");
 
       // Ensure registerAll returns success to reach line 155
-      const moduleEventRegistrarModule = await import(
-        "@/application/services/ModuleEventRegistrar"
-      );
+      const moduleEventRegistrarModule =
+        await import("@/application/services/ModuleEventRegistrar");
       const registerAllSpy = vi
         .spyOn(moduleEventRegistrarModule.ModuleEventRegistrar.prototype, "registerAll")
         .mockReturnValue({ ok: true, value: undefined });
@@ -146,9 +144,8 @@ describe("init-solid Bootstrap", () => {
         ui: createMockUI(),
       });
 
-      const notificationCenterModule = await import(
-        "@/infrastructure/notifications/NotificationCenter"
-      );
+      const notificationCenterModule =
+        await import("@/infrastructure/notifications/NotificationCenter");
       const addChannelSpy = vi.spyOn(
         notificationCenterModule.NotificationCenter.prototype,
         "addChannel"
@@ -182,9 +179,8 @@ describe("init-solid Bootstrap", () => {
         ui: createMockUI(),
       });
 
-      const { ServiceContainer: serviceContainerClass } = await import(
-        "@/infrastructure/di/container"
-      );
+      const { ServiceContainer: serviceContainerClass } =
+        await import("@/infrastructure/di/container");
       const { notificationCenterToken } = await import("@/infrastructure/shared/tokens");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
@@ -237,9 +233,8 @@ describe("init-solid Bootstrap", () => {
         ui: createMockUI(),
       });
 
-      const { ServiceContainer: serviceContainerClass } = await import(
-        "@/infrastructure/di/container"
-      );
+      const { ServiceContainer: serviceContainerClass } =
+        await import("@/infrastructure/di/container");
       const { uiChannelToken } = await import("@/infrastructure/shared/tokens");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
@@ -516,9 +511,8 @@ describe("init-solid Bootstrap", () => {
         }),
       }));
 
-      const { ServiceContainer: serviceContainerClass } = await import(
-        "@/infrastructure/di/container"
-      );
+      const { ServiceContainer: serviceContainerClass } =
+        await import("@/infrastructure/di/container");
       const { moduleApiInitializerToken } = await import("@/infrastructure/shared/tokens");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       let shouldFail = false;
@@ -588,9 +582,8 @@ describe("init-solid Bootstrap", () => {
         }),
       }));
 
-      const { ServiceContainer: serviceContainerClass } = await import(
-        "@/infrastructure/di/container"
-      );
+      const { ServiceContainer: serviceContainerClass } =
+        await import("@/infrastructure/di/container");
       const { moduleSettingsRegistrarToken } = await import("@/infrastructure/shared/tokens");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       let shouldFail = false;
@@ -661,9 +654,8 @@ describe("init-solid Bootstrap", () => {
         }),
       }));
 
-      const { ServiceContainer: serviceContainerClass } = await import(
-        "@/infrastructure/di/container"
-      );
+      const { ServiceContainer: serviceContainerClass } =
+        await import("@/infrastructure/di/container");
       const { moduleEventRegistrarToken } = await import("@/infrastructure/shared/tokens");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       let shouldFail = false;
@@ -1021,9 +1013,8 @@ describe("init-solid Bootstrap", () => {
       }));
 
       // Mock ModuleApiInitializer.expose to fail
-      const moduleApiInitializerModule = await import(
-        "@/framework/core/api/module-api-initializer"
-      );
+      const moduleApiInitializerModule =
+        await import("@/framework/core/api/module-api-initializer");
       const originalExpose = moduleApiInitializerModule.ModuleApiInitializer.prototype.expose;
       let shouldFail = false;
       vi.spyOn(
@@ -1086,9 +1077,8 @@ describe("init-solid Bootstrap", () => {
       }));
 
       // Mock ModuleEventRegistrar.registerAll to fail
-      const moduleEventRegistrarModule = await import(
-        "@/application/services/ModuleEventRegistrar"
-      );
+      const moduleEventRegistrarModule =
+        await import("@/application/services/ModuleEventRegistrar");
       const originalRegisterAll =
         moduleEventRegistrarModule.ModuleEventRegistrar.prototype.registerAll;
       let shouldFail = false;

@@ -1,4 +1,4 @@
-import type { EnvironmentConfig } from "@/framework/config/environment";
+import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { LogLevel } from "@/domain/types/log-level";
 import { widenRuntimeConfigListeners } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 

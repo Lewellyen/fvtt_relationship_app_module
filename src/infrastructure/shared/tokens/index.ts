@@ -61,7 +61,7 @@ import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-jo
 import type { LocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
-import type { EnvironmentConfig } from "@/framework/config/environment";
+import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
 import type { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";

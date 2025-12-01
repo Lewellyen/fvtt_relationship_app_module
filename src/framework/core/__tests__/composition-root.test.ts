@@ -134,9 +134,8 @@ describe("CompositionRoot", () => {
       );
 
       const mockSampler = { shouldSample: vi.fn(() => true) };
-      const bootstrapTrackerModule = await import(
-        "@/infrastructure/observability/bootstrap-performance-tracker"
-      );
+      const bootstrapTrackerModule =
+        await import("@/infrastructure/observability/bootstrap-performance-tracker");
       const _runtimeConfigModule = await import("@/application/services/RuntimeConfigService");
       const originalConstructor = bootstrapTrackerModule.BootstrapPerformanceTracker;
       type RuntimeConfigServiceType = InstanceType<
@@ -162,9 +161,8 @@ describe("CompositionRoot", () => {
       const loggerClassSpy = vi.spyOn(loggerModule.ConsoleLoggerService.prototype, "debug");
 
       // Now import CompositionRoot dynamically after the mock is in place
-      const { CompositionRoot: compositionRootClass } = await import(
-        "@/framework/core/composition-root"
-      );
+      const { CompositionRoot: compositionRootClass } =
+        await import("@/framework/core/composition-root");
       const root = new compositionRootClass();
       const result = root.bootstrap();
       expectResultOk(result);
@@ -198,9 +196,8 @@ describe("CompositionRoot", () => {
       );
 
       const mockSampler = { shouldSample: vi.fn(() => true) };
-      const bootstrapTrackerModule = await import(
-        "@/infrastructure/observability/bootstrap-performance-tracker"
-      );
+      const bootstrapTrackerModule =
+        await import("@/infrastructure/observability/bootstrap-performance-tracker");
       const _runtimeConfigModule = await import("@/application/services/RuntimeConfigService");
       const originalConstructor = bootstrapTrackerModule.BootstrapPerformanceTracker;
       type RuntimeConfigServiceType = InstanceType<
@@ -271,9 +268,8 @@ describe("CompositionRoot", () => {
         configurable: true,
       });
 
-      const { CompositionRoot: compositionRootClass } = await import(
-        "@/framework/core/composition-root"
-      );
+      const { CompositionRoot: compositionRootClass } =
+        await import("@/framework/core/composition-root");
       const root = new compositionRootClass();
       const result = root.bootstrap();
 
