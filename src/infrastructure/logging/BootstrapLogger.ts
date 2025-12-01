@@ -1,4 +1,4 @@
-import type { Logger } from "./logger.interface";
+import type { Logger } from "@/domain/ports/logger-port.interface";
 import { ConsoleLoggerService } from "./ConsoleLoggerService";
 import { ENV } from "@/framework/config/environment";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";

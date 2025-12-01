@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RetryService, DIRetryService } from "@/infrastructure/retry/RetryService";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { Logger } from "@/domain/ports/logger-port.interface";
 import { ok, err } from "@/domain/utils/result";
 
 // Test helper: Simple error mapper for test scenarios

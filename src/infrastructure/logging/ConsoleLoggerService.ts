@@ -1,6 +1,6 @@
 import { LogLevel } from "@/domain/types/log-level";
 import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
-import type { Logger } from "./logger.interface";
+import type { Logger } from "@/domain/ports/logger-port.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { runtimeConfigToken, traceContextToken } from "@/infrastructure/shared/tokens";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";

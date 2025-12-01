@@ -5,7 +5,7 @@ import {
 } from "../register-context-menu.use-case";
 import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { Logger } from "@/domain/ports/logger-port.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 
 describe("RegisterContextMenuUseCase", () => {

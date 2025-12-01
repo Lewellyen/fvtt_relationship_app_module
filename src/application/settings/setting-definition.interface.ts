@@ -13,7 +13,7 @@
  */
 
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { Logger } from "@/domain/ports/logger-port.interface";
 
 /**
  * Configuration for a Foundry setting.

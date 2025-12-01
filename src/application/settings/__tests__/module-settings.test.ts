@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { Logger } from "@/domain/ports/logger-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import { LogLevel } from "@/domain/types/log-level";
 import { ok } from "@/domain/utils/result";
