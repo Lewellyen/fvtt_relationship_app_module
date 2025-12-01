@@ -12,6 +12,35 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.3] - 2025-12-01
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Architektur-Verletzung behoben (Issue #35)**: `LogLevel` von Framework-Layer in Domain-Layer verschoben ([Details](src/domain/types/log-level.ts), [Issue #35](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/35))
+- `ModuleSettingsRegistrar` importiert `LogLevel` nun aus Domain-Layer statt Framework-Layer
+- Behebt Architektur-Verletzung: Application-Layer hatte direkte Abhängigkeit zu Framework-Layer (`@/framework/config/environment`)
+- `LogLevel` ist nun als Domain-Typ definiert, da es Teil der Business-Logik ist
+- Framework-Layer re-exportiert `LogLevel` aus Domain-Layer für Rückwärtskompatibilität
+- Alle Imports aktualisiert: `@/framework/config/environment` → `@/domain/types/log-level`
+- Dependency Rule eingehalten: Application → Domain ist erlaubt, Application → Framework war verboten
+- **Architektur-Verletzung behoben (Issue #36)**: `HealthStatus` von Framework-Layer in Domain-Layer verschoben ([Details](src/domain/types/health-status.ts), [Issue #36](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/36))
+- `ModuleHealthService` importiert `HealthStatus` nun aus Domain-Layer statt Framework-Layer
+- Behebt Architektur-Verletzung: Application-Layer hatte direkte Abhängigkeit zu Framework-Layer (`@/framework/core/api/module-api`)
+- `HealthStatus` ist nun als Domain-Typ definiert, da es Teil der Business-Logik ist
+- Framework-Layer re-exportiert `HealthStatus` aus Domain-Layer für API-Kompatibilität (`module-api.ts`)
+- Alle Imports aktualisiert: `@/framework/core/api/module-api` → `@/domain/types/health-status`
+- Dependency Rule eingehalten: Application → Domain ist erlaubt, Application → Framework war verboten
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.2] - 2025-12-01
 ### Hinzugefügt
 - Keine Einträge
