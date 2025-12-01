@@ -12,6 +12,7 @@ import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService"
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
 import type { Result } from "@/domain/types/result";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
+import type { HealthStatus } from "@/domain/types/health-status";
 
 /**
  * Information about a registered service token.
@@ -63,23 +64,11 @@ export interface ModuleApiTokens {
 
 /**
  * Health status information for the module.
- * Provides diagnostic information about module state.
+ * Re-exported from Domain layer for API compatibility.
+ *
+ * @see {@link HealthStatus} in @/domain/types/health-status
  */
-export interface HealthStatus {
-  /** Overall health status */
-  status: "healthy" | "degraded" | "unhealthy";
-  /** Individual health checks */
-  checks: {
-    /** Whether DI container is validated and ready */
-    containerValidated: boolean;
-    /** Whether Foundry ports have been selected */
-    portsSelected: boolean;
-    /** Last error encountered (if any) */
-    lastError: string | null;
-  };
-  /** Timestamp of health check */
-  timestamp: string;
-}
+export type { HealthStatus };
 
 /**
  * Public API exposed to external scripts and modules.
