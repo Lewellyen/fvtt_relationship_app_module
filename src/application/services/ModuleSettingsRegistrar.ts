@@ -24,7 +24,7 @@ import type { SettingValidator } from "@/domain/types/settings";
 import { SettingValidators } from "@/domain/types/settings";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { LoggingPort } from "@/domain/ports/logging-port.interface";
 import {
   platformNotificationPortToken,
   loggerToken,
@@ -122,7 +122,7 @@ export class ModuleSettingsRegistrar {
     private readonly runtimeConfig: RuntimeConfigService,
     private readonly notifications: PlatformNotificationPort,
     private readonly i18n: PlatformI18nPort,
-    private readonly logger: Logger
+    private readonly logger: LoggingPort
   ) {}
 
   /**
@@ -253,7 +253,7 @@ export class ModuleSettingsRegistrar {
     runtimeConfig: RuntimeConfigService,
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
-    logger: Logger
+    logger: LoggingPort
   ): void {
     const config = definition.createConfig(i18n, logger);
     const configWithRuntimeBridge = binding
@@ -305,7 +305,7 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
     runtimeConfig: RuntimeConfigService,
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
-    logger: Logger
+    logger: LoggingPort
   ) {
     super(settings, runtimeConfig, notifications, i18n, logger);
   }

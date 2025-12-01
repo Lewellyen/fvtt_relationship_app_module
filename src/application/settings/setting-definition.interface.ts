@@ -13,7 +13,7 @@
  */
 
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { LoggingPort } from "@/domain/ports/logging-port.interface";
 
 /**
  * Configuration for a Foundry setting.
@@ -64,5 +64,5 @@ export interface SettingDefinition<T> {
    * @param logger - Logger for the onChange callback
    * @returns Complete setting configuration
    */
-  createConfig(i18n: PlatformI18nPort, logger: Logger): SettingConfig<T>;
+  createConfig(i18n: PlatformI18nPort, logger: LoggingPort): SettingConfig<T>;
 }

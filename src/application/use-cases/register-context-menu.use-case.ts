@@ -3,7 +3,7 @@ import { ok } from "@/domain/utils/result";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { LoggingPort } from "@/domain/ports/logging-port.interface";
 import {
   contextMenuRegistrationPortToken,
   journalContextMenuHandlersToken,
@@ -36,7 +36,7 @@ export class RegisterContextMenuUseCase {
   constructor(
     private readonly contextMenuRegistration: ContextMenuRegistrationPort,
     private readonly handlers: JournalContextMenuHandler[],
-    private readonly logger: Logger
+    private readonly logger: LoggingPort
   ) {}
 
   /**
@@ -92,7 +92,7 @@ export class DIRegisterContextMenuUseCase extends RegisterContextMenuUseCase {
   constructor(
     contextMenuRegistration: ContextMenuRegistrationPort,
     handlers: JournalContextMenuHandler[],
-    logger: Logger
+    logger: LoggingPort
   ) {
     super(contextMenuRegistration, handlers, logger);
   }
