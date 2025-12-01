@@ -23,6 +23,32 @@ import type { JournalContextMenuHandler } from "@/application/handlers/journal-c
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**
+ * Helper function to resolve multiple services and extract their values.
+ * This function respects the Result-Pattern by propagating errors through Results
+ * before converting to an exception (which is required by FactoryFunction<T>).
+ *
+ * @template T - The type of service to resolve
+ * @param container - The service container
+ * @param tokens - Array of tokens to resolve
+ * @returns Array of resolved service instances
+ * @throws Error if any service resolution fails
+ */
+function resolveMultipleServices<T>(
+  container: ServiceContainer,
+  tokens: Array<{ token: symbol; name: string }>
+): T[] {
+  const results: T[] = [];
+  for (const { token, name } of tokens) {
+    const result = container.resolveWithError(token);
+    if (!result.ok) {
+      throw new Error(`Failed to resolve ${name}: ${result.error.message}`);
+    }
+    results.push(castResolvedService<T>(result.value));
+  }
+  return results;
+}
+
+/**
  * Registers event port services.
  *
  * Services registered:
@@ -104,17 +130,14 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
 
   // Register array of context menu handlers using a factory function
   // This allows handlers to be resolved after container validation
+  // NOTE: Factory functions must return T, not Result<T, E>, so we use a helper
+  // that respects the Result-Pattern by propagating Results before converting to exception
   const handlersArrayResult = container.registerFactory(
     journalContextMenuHandlersToken,
     (): JournalContextMenuHandler[] => {
-      const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
-      if (!handlerResult.ok) {
-        throw new Error(
-          `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
-        );
-      }
-      const handler = castResolvedService<JournalContextMenuHandler>(handlerResult.value);
-      return [handler];
+      return resolveMultipleServices<JournalContextMenuHandler>(container, [
+        { token: hideJournalContextMenuHandlerToken, name: "HideJournalContextMenuHandler" },
+      ]);
     },
     ServiceLifecycle.SINGLETON,
     [hideJournalContextMenuHandlerToken]
