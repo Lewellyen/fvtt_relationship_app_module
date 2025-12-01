@@ -46,12 +46,20 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
     config: PlatformSettingConfig<T>
   ): Result<void, SettingsError> {
     // Map Platform config → Foundry config
+    const typeResult = this.mapSettingType(config.type);
+    if (!typeResult.ok) {
+      return {
+        ok: false,
+        error: typeResult.error,
+      };
+    }
+
     const foundryConfig: SettingConfig<T> = {
       name: config.name,
       ...(config.hint !== undefined && { hint: config.hint }),
       scope: config.scope,
       config: config.config,
-      type: this.mapSettingType(config.type),
+      type: typeResult.value,
       ...(config.choices !== undefined && { choices: config.choices }),
       default: config.default,
       ...(config.onChange !== undefined && { onChange: config.onChange }),
@@ -115,12 +123,28 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
    * Map platform type to Foundry type.
    *
    * Handles both constructor types and string types.
+   * Returns Result to comply with Result-Pattern instead of throwing exceptions.
    */
-  private mapSettingType(type: SettingType): typeof String | typeof Number | typeof Boolean {
-    if (type === "String" || type === String) return String;
-    if (type === "Number" || type === Number) return Number;
-    if (type === "Boolean" || type === Boolean) return Boolean;
-    throw new Error(`Unknown setting type: ${type}`);
+  private mapSettingType(
+    type: SettingType
+  ): Result<typeof String | typeof Number | typeof Boolean, SettingsError> {
+    if (type === "String" || type === String) {
+      return { ok: true, value: String };
+    }
+    if (type === "Number" || type === Number) {
+      return { ok: true, value: Number };
+    }
+    if (type === "Boolean" || type === Boolean) {
+      return { ok: true, value: Boolean };
+    }
+    return {
+      ok: false,
+      error: {
+        code: "SETTING_REGISTRATION_FAILED",
+        message: `Unknown setting type: ${type}. Supported types are: String, Number, Boolean`,
+        details: { type },
+      },
+    };
   }
 
   /**
