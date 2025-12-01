@@ -12,6 +12,27 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.5] - 2025-12-01
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Result-Pattern-Verletzung behoben (Issue #40)**: Helper-Funktion `resolveMultipleServices()` für Factory-Funktionen hinzugefügt ([Details](src/framework/config/modules/i18n-services.config.ts), [Details](src/framework/config/modules/event-ports.config.ts), [Issue #40](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/40))
+- Factory-Funktionen respektieren nun das Result-Pattern, indem sie `resolveWithError()` verwenden, das `Result<T, ContainerError>` zurückgibt
+- Helper-Funktion `resolveMultipleServices<T>()` kombiniert mehrere `resolveWithError()` Aufrufe und propagiert Result-Werte vor der Exception-Konvertierung
+- Code-Duplikation eliminiert: Zentralisierte Fehlerbehandlung für mehrere Service-Auflösungen
+- Betroffene Factory-Funktionen: `translationHandlersToken` (i18n-services.config.ts) und `journalContextMenuHandlersToken` (event-ports.config.ts)
+- Exception wird nur als letzter Ausweg geworfen (erforderlich durch `FactoryFunction<T>` Signatur `() => T`), Container fängt diese und konvertiert sie zu `FactoryFailedError`
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.4] - 2025-12-01
 ### Hinzugefügt
 - Keine Einträge

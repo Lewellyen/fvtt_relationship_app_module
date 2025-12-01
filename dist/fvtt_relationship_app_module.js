@@ -13520,6 +13520,18 @@ const _DII18nPortAdapter = class _DII18nPortAdapter extends I18nPortAdapter {
 __name(_DII18nPortAdapter, "DII18nPortAdapter");
 _DII18nPortAdapter.dependencies = [i18nFacadeToken];
 let DII18nPortAdapter = _DII18nPortAdapter;
+function resolveMultipleServices$1(container, tokens) {
+  const results = [];
+  for (const { token, name } of tokens) {
+    const result = container.resolveWithError(token);
+    if (!result.ok) {
+      throw new Error(`Failed to resolve ${name}: ${result.error.message}`);
+    }
+    results.push(castResolvedService(result.value));
+  }
+  return results;
+}
+__name(resolveMultipleServices$1, "resolveMultipleServices$1");
 function registerI18nServices(container) {
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
@@ -13568,28 +13580,11 @@ function registerI18nServices(container) {
   const handlersArrayResult = container.registerFactory(
     translationHandlersToken,
     () => {
-      const foundryHandlerResult2 = container.resolveWithError(foundryTranslationHandlerToken);
-      if (!foundryHandlerResult2.ok) {
-        throw new Error(
-          `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult2.error.message}`
-        );
-      }
-      const localHandlerResult2 = container.resolveWithError(localTranslationHandlerToken);
-      if (!localHandlerResult2.ok) {
-        throw new Error(
-          `Failed to resolve LocalTranslationHandler: ${localHandlerResult2.error.message}`
-        );
-      }
-      const fallbackHandlerResult2 = container.resolveWithError(fallbackTranslationHandlerToken);
-      if (!fallbackHandlerResult2.ok) {
-        throw new Error(
-          `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult2.error.message}`
-        );
-      }
-      const foundryHandler = castResolvedService(foundryHandlerResult2.value);
-      const localHandler = castResolvedService(localHandlerResult2.value);
-      const fallbackHandler = castResolvedService(fallbackHandlerResult2.value);
-      return [foundryHandler, localHandler, fallbackHandler];
+      return resolveMultipleServices$1(container, [
+        { token: foundryTranslationHandlerToken, name: "FoundryTranslationHandler" },
+        { token: localTranslationHandlerToken, name: "LocalTranslationHandler" },
+        { token: fallbackTranslationHandlerToken, name: "FallbackTranslationHandler" }
+      ]);
     },
     ServiceLifecycle.SINGLETON,
     [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]
@@ -15061,6 +15056,18 @@ _DIModuleEventRegistrar.dependencies = [
   platformNotificationPortToken
 ];
 let DIModuleEventRegistrar = _DIModuleEventRegistrar;
+function resolveMultipleServices(container, tokens) {
+  const results = [];
+  for (const { token, name } of tokens) {
+    const result = container.resolveWithError(token);
+    if (!result.ok) {
+      throw new Error(`Failed to resolve ${name}: ${result.error.message}`);
+    }
+    results.push(castResolvedService(result.value));
+  }
+  return results;
+}
+__name(resolveMultipleServices, "resolveMultipleServices");
 function registerEventPorts(container) {
   const eventPortResult = container.registerClass(
     platformJournalEventPortToken,
@@ -15113,14 +15120,9 @@ function registerEventPorts(container) {
   const handlersArrayResult = container.registerFactory(
     journalContextMenuHandlersToken,
     () => {
-      const handlerResult = container.resolveWithError(hideJournalContextMenuHandlerToken);
-      if (!handlerResult.ok) {
-        throw new Error(
-          `Failed to resolve HideJournalContextMenuHandler: ${handlerResult.error.message}`
-        );
-      }
-      const handler = castResolvedService(handlerResult.value);
-      return [handler];
+      return resolveMultipleServices(container, [
+        { token: hideJournalContextMenuHandlerToken, name: "HideJournalContextMenuHandler" }
+      ]);
     },
     ServiceLifecycle.SINGLETON,
     [hideJournalContextMenuHandlerToken]
