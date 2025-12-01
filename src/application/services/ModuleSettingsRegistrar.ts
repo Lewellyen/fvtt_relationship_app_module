@@ -3,6 +3,8 @@ import type {
   SettingDefinition,
   SettingConfig as ModuleSettingConfig,
 } from "@/application/settings/setting-definition.interface";
+// LogLevel is imported from domain layer (not framework layer) to maintain Clean Architecture
+// See: https://github.com/Lewellyen/fvtt_relationship_app_module/issues/35
 import type { LogLevel } from "@/domain/types/log-level";
 import { logLevelSetting } from "@/application/settings/log-level-setting";
 import { cacheEnabledSetting } from "@/application/settings/cache-enabled-setting";
