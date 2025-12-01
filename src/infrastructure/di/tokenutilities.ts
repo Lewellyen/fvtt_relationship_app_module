@@ -1,27 +1,9 @@
 /**
  * Utility function to create type-safe injection tokens for dependency injection.
+ *
+ * @deprecated This file is kept for backward compatibility.
+ * New code should import from "@/infrastructure/shared/di" instead.
+ * This re-export allows existing Infrastructure layer code to continue working
+ * while Application layer code uses the shared location to avoid DIP violations.
  */
-import type { InjectionToken } from "./types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
-
-/**
- * Creates a unique, type-safe injection token for dependency injection.
- * Each call creates a new Symbol, ensuring uniqueness even with the same description.
- *
- * @template ServiceType - The type of service this token represents
- * @param description - A descriptive name for debugging purposes (appears in DevTools)
- * @returns A unique Symbol branded with the service type
- *
- * @example
- * // Create tokens for different services
- * const LoggerToken = createInjectionToken<Logger>('Logger');
- * const DatabaseToken = createInjectionToken<Database>('Database');
- *
- * // Tokens can be used with a DI container
- * container.register(LoggerToken, new Logger());
- */
-export function createInjectionToken<TServiceType extends ServiceType>(
-  description: string
-): InjectionToken<TServiceType> {
-  return Symbol(description) as InjectionToken<TServiceType>;
-}
+export { createInjectionToken } from "@/infrastructure/shared/di";

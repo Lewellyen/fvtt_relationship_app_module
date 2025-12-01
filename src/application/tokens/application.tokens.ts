@@ -3,7 +3,7 @@
  *
  * These tokens define injection points for Application layer services.
  */
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/shared/di";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
 import type { HideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ContainerHealthCheck } from "@/application/health/ContainerHealthCheck";
 import { ServiceContainer } from "@/infrastructure/di/container";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/shared/di";
 import { createDummyService } from "@/test/utils/test-helpers";
 
 describe("ContainerHealthCheck", () => {
