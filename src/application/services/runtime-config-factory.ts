@@ -10,6 +10,7 @@ import { RuntimeConfigService } from "./RuntimeConfigService";
  * **Usage:**
  * ```typescript
  * import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
+ * import type { EnvironmentConfig } from "@/domain/types/environment-config";
  * import { ENV } from "@/framework/config/environment";
  *
  * const config = createRuntimeConfig(ENV);
