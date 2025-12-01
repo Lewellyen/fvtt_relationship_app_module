@@ -12,6 +12,28 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.2] - 2025-12-01
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Architektur-Verletzung behoben (Issue #34)**: `EnvironmentConfig` von Framework-Layer in Domain-Layer verschoben ([Details](src/domain/types/environment-config.ts), [Issue #34](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/34))
+- Application-Services (`RuntimeConfigService`, `runtime-config-factory`) importieren `EnvironmentConfig` nun aus Domain-Layer statt Framework-Layer
+- Behebt Architektur-Verletzung: Application-Layer hatte direkte Abhängigkeit zu Framework-Layer (`@/framework/config/environment`)
+- `EnvironmentConfig` ist nun als Domain-Typ definiert, da es Teil der Business-Logik ist
+- Framework-Layer re-exportiert `EnvironmentConfig` aus Domain-Layer für Rückwärtskompatibilität
+- Alle Imports aktualisiert: `@/framework/config/environment` → `@/domain/types/environment-config`
+- Dependency Rule eingehalten: Application → Domain ist erlaubt, Application → Framework war verboten
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.1] - 2025-12-01
 ### Hinzugefügt
 - **ContainerPort Interface**: Minimales Domain-Port-Interface für Container-Operationen im Framework-Layer ([Details](src/domain/ports/container-port.interface.ts), [Issue #33](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/33))
