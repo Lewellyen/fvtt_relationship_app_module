@@ -393,7 +393,7 @@ jobs:
 
       - name: Upload Agent Summary (if exists)
         if: always() && env.cursor_available == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         continue-on-error: true
         with:
           name: agent-summary-issue-${{ matrix.issue.number }}-${{ github.run_id }}
@@ -405,7 +405,7 @@ jobs:
 
       - name: Upload Debug Artifacts
         if: always() && env.cursor_available == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         continue-on-error: true
         with:
           name: cursor-agent-debug-issue-${{ matrix.issue.number }}-${{ github.run_id }}
