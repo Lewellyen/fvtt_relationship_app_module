@@ -248,14 +248,17 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Verify Cursor CLI
+        id: verify-cursor
         run: |
           echo "$HOME/.cursor/bin" >> $GITHUB_PATH
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
           if command -v cursor-agent &> /dev/null || [ -f "$HOME/.cursor/bin/cursor-agent" ] || [ -f "$HOME/.local/bin/cursor-agent" ]; then
             echo "cursor_available=true" >> $GITHUB_ENV
+            echo "cursor_available=true" >> $GITHUB_OUTPUT
           else
             echo "cursor_available=false" >> $GITHUB_ENV
+            echo "cursor_available=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Setup Branch
@@ -276,7 +279,7 @@ jobs:
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
       - name: Create Fix Prompt
-        if: env.cursor_available == 'true'
+        if: steps.verify-cursor.outputs.cursor_available == 'true'
         env:
           ISSUE_NUM: ${{ matrix.issue.number }}
           ISSUE_TITLE: ${{ matrix.issue.title }}
@@ -300,7 +303,7 @@ jobs:
 
       - name: Run Cursor AI
         id: run-agent
-        if: env.cursor_available == 'true'
+        if: steps.verify-cursor.outputs.cursor_available == 'true'
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           CURSOR_AI_MODEL: ${{ secrets.CURSOR_AI_MODEL || 'sonnet-4.5' }}
@@ -344,7 +347,7 @@ jobs:
           fi
 
       - name: Collect Debug Artifacts
-        if: always() && env.cursor_available == 'true'
+        if: always() && steps.verify-cursor.outputs.cursor_available == 'true'
         continue-on-error: true
         run: |
           echo "Collecting debug artifacts..."
@@ -392,7 +395,7 @@ jobs:
           ls -la /tmp/debug-artifacts/
 
       - name: Upload Agent Summary (if exists)
-        if: always() && env.cursor_available == 'true'
+        if: always() && steps.verify-cursor.outputs.cursor_available == 'true'
         uses: actions/upload-artifact@v5
         continue-on-error: true
         with:
@@ -404,7 +407,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Debug Artifacts
-        if: always() && env.cursor_available == 'true'
+        if: always() && steps.verify-cursor.outputs.cursor_available == 'true'
         uses: actions/upload-artifact@v5
         continue-on-error: true
         with:
@@ -414,7 +417,7 @@ jobs:
 
       - name: Check for Agent Commands File
         id: check-commands
-        if: env.cursor_available == 'true'
+        if: steps.verify-cursor.outputs.cursor_available == 'true'
         run: |
           if [ -f /tmp/agent-commands.sh ]; then
             echo "file_exists=true" >> $GITHUB_OUTPUT
@@ -423,7 +426,7 @@ jobs:
           fi
 
       - name: Execute Agent Commands
-        if: env.cursor_available == 'true' && steps.check-commands.outputs.file_exists == 'true'
+        if: steps.verify-cursor.outputs.cursor_available == 'true' && steps.check-commands.outputs.file_exists == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -671,52 +674,32 @@ jobs:
             echo "has_summary=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Create Issue Comment (No Changes)
+        id: create-comment
+        if: steps.run-agent.outcome != 'skipped' && (steps.run-agent.outputs.fix_successful != 'true' || steps.run-agent.outcome == 'failure')
+        env:
+          ISSUE_NUM: ${{ matrix.issue.number }}
+          ISSUE_TITLE: ${{ matrix.issue.title }}
+          AGENT_SUMMARY_FILE: /tmp/agent-summary.md
+          AGENT_OUTPUT_FILE: /tmp/fix-output.txt
+          OUTPUT_FILE: /tmp/issue-comment.txt
+        run: |
+          python3 scripts/create-issue-comment.py
+
       - name: Handle No Changes Case
         id: handle-no-changes
-        if: (steps.run-agent.outputs.fix_successful != 'true' || steps.run-agent.outcome == 'failure') && env.cursor_available == 'true'
+        if: steps.run-agent.outcome != 'skipped' && (steps.run-agent.outputs.fix_successful != 'true' || steps.run-agent.outcome == 'failure')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH_NAME="${{ steps.setup-branch.outputs.branch_name }}"
           ISSUE_NUM="${{ matrix.issue.number }}"
-          ISSUE_TITLE="${{ matrix.issue.title }}"
 
           echo "ℹ️ No code changes detected. Posting agent analysis as comment and closing issue..."
 
-          # Erstelle Kommentar-Text
-          COMMENT_BODY="## 🤖 AI-Analyse: Keine Code-Änderungen erforderlich
-
-          Der AI-Agent hat das Issue analysiert und festgestellt, dass keine Code-Änderungen erforderlich sind.
-
-          **Issue:** #$ISSUE_NUM - $ISSUE_TITLE
-
-          ---
-
-          "
-
-          # Füge Agent-Zusammenfassung hinzu, falls vorhanden
-          if [ -f /tmp/agent-summary.md ]; then
-            echo "✅ Using extracted agent summary for comment"
-            COMMENT_BODY="${COMMENT_BODY}$(cat /tmp/agent-summary.md)"
-          elif [ -f /tmp/fix-output.txt ]; then
-            echo "✅ Using agent output for comment"
-            # Verwende die letzten 200 Zeilen der Agent-Ausgabe
-            COMMENT_BODY="${COMMENT_BODY}\`\`\`
-$(tail -200 /tmp/fix-output.txt)
-\`\`\`"
-          else
-            COMMENT_BODY="${COMMENT_BODY}Der AI-Agent hat das Issue analysiert, aber keine detaillierte Zusammenfassung erstellt."
-          fi
-
-          COMMENT_BODY="${COMMENT_BODY}
-
-          ---
-
-          *Dieses Issue wird automatisch geschlossen, da keine Code-Änderungen erforderlich sind.*"
-
           # Poste Kommentar zum Issue
           echo "Posting comment to issue #$ISSUE_NUM..."
-          echo "$COMMENT_BODY" | gh issue comment "$ISSUE_NUM" --body-file - || {
+          gh issue comment "$ISSUE_NUM" --body-file /tmp/issue-comment.txt || {
             echo "⚠️ Failed to post comment, trying with shorter message..."
             gh issue comment "$ISSUE_NUM" --body "🤖 AI-Analyse: Keine Code-Änderungen erforderlich. Das beschriebene Problem ist bereits behoben oder erfordert keine Code-Änderungen." || true
           }
@@ -783,7 +766,7 @@ $(tail -200 /tmp/fix-output.txt)
               LABELS="$LABELS,automated"
             fi
 
-            PR_CMD="gh pr create --base main --head \"$BRANCH_NAME\" --title \"$PR_TITLE\" --body-file /tmp/pr-body.txt"
+            PR_CMD="gh pr create --base main --head \"$BRANCH_NAME\" --title \"$PR_TITLE\" --body-file /tmp/pr-body.txt --draft"
             [ -n "$LABELS" ] && PR_CMD="$PR_CMD --label $(echo $LABELS | sed 's/^,//')"
 
             PR_URL=$(eval "$PR_CMD" || echo "")
