@@ -728,9 +728,8 @@ describe("dependencyconfig", () => {
 
       // Mock registerJournalVisibilityConfig to return an error
       // This ensures line 201 in dependencyconfig.ts is covered (if (isErr(journalVisibilityConfigResult)) return journalVisibilityConfigResult;)
-      const journalVisibilityModule = await import(
-        "@/framework/config/modules/journal-visibility.config"
-      );
+      const journalVisibilityModule =
+        await import("@/framework/config/modules/journal-visibility.config");
       vi.spyOn(journalVisibilityModule, "registerJournalVisibilityConfig").mockReturnValue(
         err("JournalVisibilityConfig registration failed")
       );

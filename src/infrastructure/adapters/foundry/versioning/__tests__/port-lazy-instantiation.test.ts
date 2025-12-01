@@ -152,9 +152,8 @@ describe("PortSelector - Lazy Instantiation", () => {
   });
 
   it("should use getFoundryVersion when version not provided", async () => {
-    const { getFoundryVersionResult } = await import(
-      "@/infrastructure/adapters/foundry/versioning/versiondetector"
-    );
+    const { getFoundryVersionResult } =
+      await import("@/infrastructure/adapters/foundry/versioning/versiondetector");
     vi.mocked(getFoundryVersionResult).mockReturnValue(ok(13));
 
     const token13 = createInjectionToken<ServiceType>("port-v13") as any;
@@ -174,9 +173,8 @@ describe("PortSelector - Lazy Instantiation", () => {
   });
 
   it("should handle version detection errors", async () => {
-    const { getFoundryVersionResult } = await import(
-      "@/infrastructure/adapters/foundry/versioning/versiondetector"
-    );
+    const { getFoundryVersionResult } =
+      await import("@/infrastructure/adapters/foundry/versioning/versiondetector");
     vi.mocked(getFoundryVersionResult).mockReturnValue(err("Version detection failed"));
 
     const token13 = createInjectionToken<ServiceType>("port-v13") as any;

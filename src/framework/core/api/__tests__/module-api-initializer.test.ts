@@ -322,15 +322,12 @@ describe("ModuleApiInitializer", () => {
     });
 
     it("should show deprecation warning for deprecated token on first resolve", async () => {
-      const { markAsDeprecated } = await import(
-        "@/infrastructure/di/types/utilities/deprecated-token"
-      );
-      const { getDeprecationInfo } = await import(
-        "@/infrastructure/di/types/utilities/deprecated-token"
-      );
-      const { notificationCenterToken: notificationTokenImport } = await import(
-        "@/infrastructure/shared/tokens"
-      );
+      const { markAsDeprecated } =
+        await import("@/infrastructure/di/types/utilities/deprecated-token");
+      const { getDeprecationInfo } =
+        await import("@/infrastructure/di/types/utilities/deprecated-token");
+      const { notificationCenterToken: notificationTokenImport } =
+        await import("@/infrastructure/shared/tokens");
 
       const existingInfo = getDeprecationInfo(notificationTokenImport);
       if (existingInfo) {
@@ -367,9 +364,8 @@ describe("ModuleApiInitializer", () => {
     });
 
     it("should resolve deprecated token normally", async () => {
-      const { markAsDeprecated } = await import(
-        "@/infrastructure/di/types/utilities/deprecated-token"
-      );
+      const { markAsDeprecated } =
+        await import("@/infrastructure/di/types/utilities/deprecated-token");
       const { notificationCenterToken } = await import("@/infrastructure/shared/tokens");
       const deprecatedNotificationToken = markAsDeprecated(
         notificationCenterToken,
