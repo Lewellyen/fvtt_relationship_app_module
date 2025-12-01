@@ -78,7 +78,7 @@
     "eslint-plugin-handlebars": "^1.0.4",
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-svelte": "^3.13.0",
-    "fvtt-types": "^13.346.0-beta.20251123053243",
+    "fvtt-types": "^13.346.0-beta.20251128075456",
     "happy-dom": "^20.0.11",
     "patch-package": "^8.0.0",
     "picomatch": "^4.0.3",
