@@ -17,7 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+          ref: ${{ github.ref }}
           fetch-depth: 0 # Full history for better context
 
       - name: Setup Node.js
@@ -554,7 +554,7 @@ jobs:
         if: steps.changed-files.outputs.skip == 'false' && steps.analysis.outputs.skipped == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           # Erstelle Labels (falls nicht vorhanden)
           python3 scripts/ai-review-create-label.py
