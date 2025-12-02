@@ -7,6 +7,14 @@
 ### Geändert
 
 ### Fehlerbehebungen
+- **Result-Pattern-Verletzung behoben (Issue #63)**: `mapSettingType()` in `foundry-settings-adapter.ts` wirft keine Exception mehr ([Details](src/infrastructure/adapters/foundry/settings-adapters/foundry-settings-adapter.ts), [Issue #63](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/63))
+- `mapSettingType()` gibt nun `Result<typeof String | typeof Number | typeof Boolean, SettingsError>` zurück statt Exception zu werfen
+- Behebt Result-Pattern-Verletzung: Fehlerbehandlung erfolgt nun über Result-Typ statt Exceptions
+- Bei unbekanntem Setting-Typ wird strukturierter `SettingsError` mit Code `SETTING_REGISTRATION_FAILED` zurückgegeben
+- `register()` behandelt das Result und propagiert Fehler korrekt
+- Fehlermeldung enthält Details zum unbekannten Typ und listet unterstützte Typen auf (String, Number, Boolean)
+- Tests aktualisiert: Prüfen nun Result-Fehler statt Exception-Handling
+- Alle Tests (1877/1877) bestanden, 100% Code Coverage und Type Coverage
 
 ### Bekannte Probleme
 
