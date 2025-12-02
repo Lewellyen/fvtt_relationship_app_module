@@ -10,7 +10,8 @@ import {
   journalDirectoryUiPortToken,
   platformNotificationPortToken,
 } from "@/application/tokens";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { DOMAIN_FLAGS, DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 
 /**
  * Use-Case: Trigger journal directory re-render when hidden flag changes.
@@ -45,8 +46,8 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
     const result = this.journalEvents.onJournalUpdated((event) => {
       // Prüfe, ob hidden flag geändert wurde
       // Flags werden in Foundry unter einem Scope gespeichert: flags[moduleId][flagKey]
-      const moduleId = MODULE_CONSTANTS.MODULE.ID;
-      const flagKey = MODULE_CONSTANTS.FLAGS.HIDDEN;
+      const moduleId = MODULE_METADATA.ID;
+      const flagKey = DOMAIN_FLAGS.HIDDEN;
 
       const moduleFlags = event.changes.flags?.[moduleId];
       if (moduleFlags && typeof moduleFlags === "object" && flagKey in moduleFlags) {

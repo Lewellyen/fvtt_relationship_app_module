@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { SETTING_KEYS, MODULE_METADATA, APP_DEFAULTS } from "@/application/constants/app-constants";
 import type { SettingDefinition } from "./setting-definition.interface";
 import { unwrapOr } from "@/domain/utils/result";
 
@@ -6,7 +6,7 @@ import { unwrapOr } from "@/domain/utils/result";
  * Foundry setting for configuring the default cache TTL (in milliseconds).
  */
 export const cacheDefaultTtlSetting: SettingDefinition<number> = {
-  key: MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS,
+  key: SETTING_KEYS.CACHE_TTL_MS,
 
   createConfig(i18n, logger) {
     return {
@@ -24,7 +24,7 @@ export const cacheDefaultTtlSetting: SettingDefinition<number> = {
       scope: "world",
       config: true,
       type: Number,
-      default: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
+      default: APP_DEFAULTS.CACHE_TTL_MS,
       onChange: (value: number) => {
         const numericValue = Number(value);
         const sanitized = Number.isFinite(numericValue) && numericValue >= 0 ? numericValue : 0;

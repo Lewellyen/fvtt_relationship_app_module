@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { SETTING_KEYS, MODULE_METADATA } from "@/application/constants/app-constants";
 import type {
   SettingDefinition,
   SettingConfig as ModuleSettingConfig,
@@ -57,42 +57,42 @@ const isLogLevel = (value: unknown): value is LogLevel =>
  * Valibot schemas from infrastructure layer.
  */
 export const runtimeConfigBindings = {
-  [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: {
+  [SETTING_KEYS.LOG_LEVEL]: {
     runtimeKey: "logLevel",
     validator: isLogLevel,
     normalize: (value: LogLevel) => value,
   } satisfies RuntimeConfigBinding<LogLevel, "logLevel">,
-  [MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED]: {
+  [SETTING_KEYS.CACHE_ENABLED]: {
     runtimeKey: "enableCacheService",
     validator: SettingValidators.boolean,
     normalize: (value: boolean) => value,
   } satisfies RuntimeConfigBinding<boolean, "enableCacheService">,
-  [MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS]: {
+  [SETTING_KEYS.CACHE_TTL_MS]: {
     runtimeKey: "cacheDefaultTtlMs",
     validator: SettingValidators.nonNegativeNumber,
     normalize: (value: number) => value,
   } satisfies RuntimeConfigBinding<number, "cacheDefaultTtlMs">,
-  [MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES]: {
+  [SETTING_KEYS.CACHE_MAX_ENTRIES]: {
     runtimeKey: "cacheMaxEntries",
     validator: SettingValidators.nonNegativeInteger,
     normalize: (value: number) => (value > 0 ? value : undefined),
   } satisfies RuntimeConfigBinding<number, "cacheMaxEntries">,
-  [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED]: {
+  [SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED]: {
     runtimeKey: "enablePerformanceTracking",
     validator: SettingValidators.boolean,
     normalize: (value: boolean) => value,
   } satisfies RuntimeConfigBinding<boolean, "enablePerformanceTracking">,
-  [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE]: {
+  [SETTING_KEYS.PERFORMANCE_SAMPLING_RATE]: {
     runtimeKey: "performanceSamplingRate",
     validator: SettingValidators.samplingRate,
     normalize: (value: number) => value,
   } satisfies RuntimeConfigBinding<number, "performanceSamplingRate">,
-  [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED]: {
+  [SETTING_KEYS.METRICS_PERSISTENCE_ENABLED]: {
     runtimeKey: "enableMetricsPersistence",
     validator: SettingValidators.boolean,
     normalize: (value: boolean) => value,
   } satisfies RuntimeConfigBinding<boolean, "enableMetricsPersistence">,
-  [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY]: {
+  [SETTING_KEYS.METRICS_PERSISTENCE_KEY]: {
     runtimeKey: "metricsPersistenceKey",
     validator: SettingValidators.nonEmptyString,
     normalize: (value: string) => value,
@@ -135,7 +135,7 @@ export class ModuleSettingsRegistrar {
     // Register all settings
     this.registerDefinition(
       logLevelSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL],
+      runtimeConfigBindings[SETTING_KEYS.LOG_LEVEL],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -144,7 +144,7 @@ export class ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       cacheEnabledSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED],
+      runtimeConfigBindings[SETTING_KEYS.CACHE_ENABLED],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -153,7 +153,7 @@ export class ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       cacheDefaultTtlSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS],
+      runtimeConfigBindings[SETTING_KEYS.CACHE_TTL_MS],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -162,7 +162,7 @@ export class ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       cacheMaxEntriesSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES],
+      runtimeConfigBindings[SETTING_KEYS.CACHE_MAX_ENTRIES],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -171,7 +171,7 @@ export class ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       performanceTrackingSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED],
+      runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -180,7 +180,7 @@ export class ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       performanceSamplingSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE],
+      runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_SAMPLING_RATE],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -189,7 +189,7 @@ export class ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       metricsPersistenceEnabledSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED],
+      runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_ENABLED],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -198,7 +198,7 @@ export class ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       metricsPersistenceKeySetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY],
+      runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -231,7 +231,7 @@ export class ModuleSettingsRegistrar {
     settingKey: string
   ): void {
     const currentValue = settings.getSettingValue(
-      MODULE_CONSTANTS.MODULE.ID,
+      MODULE_METADATA.ID,
       settingKey,
       binding.validator
     );
@@ -261,7 +261,7 @@ export class ModuleSettingsRegistrar {
       : config;
 
     const result = settings.registerSetting(
-      MODULE_CONSTANTS.MODULE.ID,
+      MODULE_METADATA.ID,
       definition.key,
       configWithRuntimeBridge
     );

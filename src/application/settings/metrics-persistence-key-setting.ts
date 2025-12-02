@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { SETTING_KEYS, MODULE_METADATA, APP_DEFAULTS } from "@/application/constants/app-constants";
 import type { SettingDefinition } from "./setting-definition.interface";
 import { unwrapOr } from "@/domain/utils/result";
 
@@ -6,7 +6,7 @@ import { unwrapOr } from "@/domain/utils/result";
  * Foundry setting to configure the LocalStorage key for persisted metrics.
  */
 export const metricsPersistenceKeySetting: SettingDefinition<string> = {
-  key: MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY,
+  key: SETTING_KEYS.METRICS_PERSISTENCE_KEY,
 
   createConfig(i18n, logger) {
     return {
@@ -24,7 +24,7 @@ export const metricsPersistenceKeySetting: SettingDefinition<string> = {
       scope: "world",
       config: true,
       type: String,
-      default: `${MODULE_CONSTANTS.MODULE.ID}.metrics`,
+      default: `${MODULE_METADATA.ID}.metrics`,
       onChange: (value: string) => {
         logger.info(`Metrics persistence key set to: ${value || "(empty)"}`);
       },

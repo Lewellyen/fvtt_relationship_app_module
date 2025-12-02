@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { SETTING_KEYS, MODULE_METADATA, APP_DEFAULTS } from "@/application/constants/app-constants";
 import type { SettingDefinition } from "./setting-definition.interface";
 import { unwrapOr } from "@/domain/utils/result";
 
@@ -6,7 +6,7 @@ import { unwrapOr } from "@/domain/utils/result";
  * Foundry setting for configuring the optional CacheService max entries (LRU limit).
  */
 export const cacheMaxEntriesSetting: SettingDefinition<number> = {
-  key: MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES,
+  key: SETTING_KEYS.CACHE_MAX_ENTRIES,
 
   createConfig(i18n, logger) {
     return {

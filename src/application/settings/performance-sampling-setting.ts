@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { SETTING_KEYS, MODULE_METADATA, APP_DEFAULTS } from "@/application/constants/app-constants";
 import type { SettingDefinition } from "./setting-definition.interface";
 import { unwrapOr } from "@/domain/utils/result";
 
@@ -6,7 +6,7 @@ import { unwrapOr } from "@/domain/utils/result";
  * Foundry setting to adjust performance sampling rate (0.0 - 1.0).
  */
 export const performanceSamplingSetting: SettingDefinition<number> = {
-  key: MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE,
+  key: SETTING_KEYS.PERFORMANCE_SAMPLING_RATE,
 
   createConfig(i18n, logger) {
     return {

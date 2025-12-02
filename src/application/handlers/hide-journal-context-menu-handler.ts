@@ -8,7 +8,8 @@ import {
   platformUIPortToken,
   platformNotificationPortToken,
 } from "@/infrastructure/shared/tokens";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 
 /**
  * Handler that adds "Journal ausblenden" menu item to journal context menus.
@@ -41,8 +42,8 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
     // Prüfe, ob Journal bereits versteckt ist
     const flagResult = this.journalRepository.getFlag(
       journalId,
-      MODULE_CONSTANTS.MODULE.ID,
-      MODULE_CONSTANTS.FLAGS.HIDDEN
+      MODULE_METADATA.ID,
+      DOMAIN_FLAGS.HIDDEN
     );
 
     // Nur hinzufügen, wenn nicht versteckt
@@ -54,8 +55,8 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
           // Journal verstecken
           const hideResult = await this.journalRepository.setFlag(
             journalId,
-            MODULE_CONSTANTS.MODULE.ID,
-            MODULE_CONSTANTS.FLAGS.HIDDEN,
+            MODULE_METADATA.ID,
+            DOMAIN_FLAGS.HIDDEN,
             true
           );
 

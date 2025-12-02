@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { SETTING_KEYS, MODULE_METADATA, APP_DEFAULTS } from "@/application/constants/app-constants";
 import type { SettingDefinition } from "./setting-definition.interface";
 import { unwrapOr } from "@/domain/utils/result";
 
@@ -6,7 +6,7 @@ import { unwrapOr } from "@/domain/utils/result";
  * Foundry setting to toggle performance tracking at runtime.
  */
 export const performanceTrackingSetting: SettingDefinition<boolean> = {
-  key: MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED,
+  key: SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED,
 
   createConfig(i18n, logger) {
     return {

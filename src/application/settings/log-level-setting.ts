@@ -5,7 +5,7 @@
  */
 
 import type { SettingDefinition } from "./setting-definition.interface";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { SETTING_KEYS, MODULE_METADATA } from "@/application/constants/app-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { LoggingPort } from "@/domain/ports/logging-port.interface";
@@ -19,7 +19,7 @@ import { unwrapOr } from "@/domain/utils/result";
  * OnChange handler dynamically reconfigures the logger.
  */
 export const logLevelSetting: SettingDefinition<LogLevel> = {
-  key: MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+  key: SETTING_KEYS.LOG_LEVEL,
 
   createConfig(i18n: PlatformI18nPort, logger: LoggingPort) {
     return {

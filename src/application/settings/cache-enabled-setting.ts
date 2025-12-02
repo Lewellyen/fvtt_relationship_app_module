@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { SETTING_KEYS } from "@/application/constants/app-constants";
 import type { SettingDefinition } from "./setting-definition.interface";
 import { unwrapOr } from "@/domain/utils/result";
 
@@ -6,7 +6,7 @@ import { unwrapOr } from "@/domain/utils/result";
  * Foundry setting that toggles the CacheService globally.
  */
 export const cacheEnabledSetting: SettingDefinition<boolean> = {
-  key: MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED,
+  key: SETTING_KEYS.CACHE_ENABLED,
 
   createConfig(i18n, logger) {
     return {
