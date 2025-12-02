@@ -15792,12 +15792,19 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
    * Maps platform config → Foundry config.
    */
   register(namespace, key, config2) {
+    const typeResult = this.mapSettingType(config2.type);
+    if (!typeResult.ok) {
+      return {
+        ok: false,
+        error: typeResult.error
+      };
+    }
     const foundryConfig = {
       name: config2.name,
       ...config2.hint !== void 0 && { hint: config2.hint },
       scope: config2.scope,
       config: config2.config,
-      type: this.mapSettingType(config2.type),
+      type: typeResult.value,
       ...config2.choices !== void 0 && { choices: config2.choices },
       default: config2.default,
       ...config2.onChange !== void 0 && { onChange: config2.onChange }
@@ -15846,12 +15853,26 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
    * Map platform type to Foundry type.
    *
    * Handles both constructor types and string types.
+   * Returns Result to comply with Result-Pattern instead of throwing exceptions.
    */
   mapSettingType(type) {
-    if (type === "String" || type === String) return String;
-    if (type === "Number" || type === Number) return Number;
-    if (type === "Boolean" || type === Boolean) return Boolean;
-    throw new Error(`Unknown setting type: ${type}`);
+    if (type === "String" || type === String) {
+      return { ok: true, value: String };
+    }
+    if (type === "Number" || type === Number) {
+      return { ok: true, value: Number };
+    }
+    if (type === "Boolean" || type === Boolean) {
+      return { ok: true, value: Boolean };
+    }
+    return {
+      ok: false,
+      error: {
+        code: "SETTING_REGISTRATION_FAILED",
+        message: `Unknown setting type: ${type}. Supported types are: String, Number, Boolean`,
+        details: { type }
+      }
+    };
   }
   /**
    * Maps FoundryError to SettingsError.

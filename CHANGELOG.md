@@ -7,6 +7,19 @@
 ### Geändert
 
 ### Fehlerbehebungen
+
+### Bekannte Probleme
+
+### Upgrade-Hinweise
+
+## [0.40.7] - 2025-12-02
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
 - **Result-Pattern-Verletzung behoben (Issue #63)**: `mapSettingType()` in `foundry-settings-adapter.ts` wirft keine Exception mehr ([Details](src/infrastructure/adapters/foundry/settings-adapters/foundry-settings-adapter.ts), [Issue #63](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/63))
 - `mapSettingType()` gibt nun `Result<typeof String | typeof Number | typeof Boolean, SettingsError>` zurück statt Exception zu werfen
 - Behebt Result-Pattern-Verletzung: Fehlerbehandlung erfolgt nun über Result-Typ statt Exceptions
@@ -21,16 +34,18 @@
 - `createInjectionToken()` ist nun als Domain-Utility definiert und kann schichtenübergreifend verwendet werden
 - Infrastructure-Layer re-exportiert die Funktion für Rückwärtskompatibilität (Datei als deprecated markiert)
 - Betroffene Dateien:
-  - `src/domain/utils/token-factory.ts` - NEU: Token-Factory im Domain-Layer
-  - `src/application/tokens/application.tokens.ts` - verwendet `token-factory` statt `tokenutilities`
-  - `src/application/tokens/domain-ports.tokens.ts` - verwendet `token-factory` statt `tokenutilities`
-  - `src/infrastructure/di/tokenutilities.ts` - re-exportiert für Rückwärtskompatibilität
+- `src/domain/utils/token-factory.ts` - NEU: Token-Factory im Domain-Layer
+- `src/application/tokens/application.tokens.ts` - verwendet `token-factory` statt `tokenutilities`
+- `src/application/tokens/domain-ports.tokens.ts` - verwendet `token-factory` statt `tokenutilities`
+- `src/infrastructure/di/tokenutilities.ts` - re-exportiert für Rückwärtskompatibilität
 - Dependency Rule eingehalten: Application → Domain ist erlaubt, Application → Infrastructure war verboten
 - Alle Tests (1877/1877) bestanden, 100% Code Coverage und Type Coverage
 
 ### Bekannte Probleme
+- Keine bekannten Probleme
 
 ### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
 
 ## [0.40.6] - 2025-12-02
 ### Hinzugefügt
