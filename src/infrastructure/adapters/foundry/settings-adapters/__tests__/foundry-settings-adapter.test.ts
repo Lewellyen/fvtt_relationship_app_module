@@ -189,28 +189,37 @@ describe("FoundrySettingsAdapter", () => {
       }
     });
 
-    it("should throw error for unknown setting type", () => {
-      expect(() => {
-        adapter.register("my-module", "unknown", {
-          name: "Unknown",
-          scope: "world",
-          config: true,
-          type: "Unknown" as any,
-          default: null,
-        });
-      }).toThrow("Unknown setting type: Unknown");
+    it("should return error for unknown setting type", () => {
+      const result = adapter.register("my-module", "unknown", {
+        name: "Unknown",
+        scope: "world",
+        config: true,
+        type: "Unknown" as any,
+        default: null,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("SETTING_REGISTRATION_FAILED");
+        expect(result.error.message).toContain("Unknown setting type");
+        expect(result.error.message).toContain("Unknown");
+      }
     });
 
-    it("should throw error for unknown setting type with constructor", () => {
-      expect(() => {
-        adapter.register("my-module", "unknown", {
-          name: "Unknown",
-          scope: "world",
-          config: true,
-          type: Object as any,
-          default: null,
-        });
-      }).toThrow(/Unknown setting type/);
+    it("should return error for unknown setting type with constructor", () => {
+      const result = adapter.register("my-module", "unknown", {
+        name: "Unknown",
+        scope: "world",
+        config: true,
+        type: Object as any,
+        default: null,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("SETTING_REGISTRATION_FAILED");
+        expect(result.error.message).toMatch(/Unknown setting type/);
+      }
     });
   });
 
