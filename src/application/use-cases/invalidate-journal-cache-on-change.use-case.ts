@@ -10,7 +10,7 @@ import {
   platformCachePortToken,
   platformNotificationPortToken,
 } from "@/application/tokens";
-import { getFirstArrayElement } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { getFirstArrayElement } from "@/application/utils/array-utils";
 
 /**
  * Use-Case: Invalidate journal cache when journal entries change.
