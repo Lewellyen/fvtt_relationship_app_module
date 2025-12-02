@@ -3,6 +3,8 @@ import type {
   SettingDefinition,
   SettingConfig as ModuleSettingConfig,
 } from "@/application/settings/setting-definition.interface";
+// LogLevel is imported from domain layer (not framework layer) to maintain Clean Architecture
+// See: https://github.com/Lewellyen/fvtt_relationship_app_module/issues/35
 import type { LogLevel } from "@/domain/types/log-level";
 import { logLevelSetting } from "@/application/settings/log-level-setting";
 import { cacheEnabledSetting } from "@/application/settings/cache-enabled-setting";
@@ -22,7 +24,7 @@ import type { SettingValidator } from "@/domain/types/settings";
 import { SettingValidators } from "@/domain/types/settings";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { LoggingPort } from "@/domain/ports/logging-port.interface";
 import {
   platformNotificationPortToken,
   loggerToken,
@@ -120,7 +122,7 @@ export class ModuleSettingsRegistrar {
     private readonly runtimeConfig: RuntimeConfigService,
     private readonly notifications: PlatformNotificationPort,
     private readonly i18n: PlatformI18nPort,
-    private readonly logger: Logger
+    private readonly logger: LoggingPort
   ) {}
 
   /**
@@ -251,7 +253,7 @@ export class ModuleSettingsRegistrar {
     runtimeConfig: RuntimeConfigService,
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
-    logger: Logger
+    logger: LoggingPort
   ): void {
     const config = definition.createConfig(i18n, logger);
     const configWithRuntimeBridge = binding
@@ -303,7 +305,7 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
     runtimeConfig: RuntimeConfigService,
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
-    logger: Logger
+    logger: LoggingPort
   ) {
     super(settings, runtimeConfig, notifications, i18n, logger);
   }

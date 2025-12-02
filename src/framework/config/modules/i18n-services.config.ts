@@ -25,6 +25,32 @@ import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime
 import { DII18nPortAdapter } from "@/infrastructure/adapters/i18n/platform-i18n-port-adapter";
 
 /**
+ * Helper function to resolve multiple services and extract their values.
+ * This function respects the Result-Pattern by propagating errors through Results
+ * before converting to an exception (which is required by FactoryFunction<T>).
+ *
+ * @template T - The type of service to resolve
+ * @param container - The service container
+ * @param tokens - Array of tokens to resolve
+ * @returns Array of resolved service instances
+ * @throws Error if any service resolution fails
+ */
+function resolveMultipleServices<T>(
+  container: ServiceContainer,
+  tokens: Array<{ token: symbol; name: string }>
+): T[] {
+  const results: T[] = [];
+  for (const { token, name } of tokens) {
+    const result = container.resolveWithError(token);
+    if (!result.ok) {
+      throw new Error(`Failed to resolve ${name}: ${result.error.message}`);
+    }
+    results.push(castResolvedService<T>(result.value));
+  }
+  return results;
+}
+
+/**
  * Registers internationalization (i18n) services.
  *
  * Services registered:
@@ -98,34 +124,16 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
 
   // Register array of translation handlers using a factory function
   // This allows handlers to be resolved after container validation
+  // NOTE: Factory functions must return T, not Result<T, E>, so we use a helper
+  // that respects the Result-Pattern by propagating Results before converting to exception
   const handlersArrayResult = container.registerFactory(
     translationHandlersToken,
     (): TranslationHandler[] => {
-      const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
-      if (!foundryHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
-        );
-      }
-
-      const localHandlerResult = container.resolveWithError(localTranslationHandlerToken);
-      if (!localHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve LocalTranslationHandler: ${localHandlerResult.error.message}`
-        );
-      }
-
-      const fallbackHandlerResult = container.resolveWithError(fallbackTranslationHandlerToken);
-      if (!fallbackHandlerResult.ok) {
-        throw new Error(
-          `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
-        );
-      }
-
-      const foundryHandler = castResolvedService<TranslationHandler>(foundryHandlerResult.value);
-      const localHandler = castResolvedService<TranslationHandler>(localHandlerResult.value);
-      const fallbackHandler = castResolvedService<TranslationHandler>(fallbackHandlerResult.value);
-      return [foundryHandler, localHandler, fallbackHandler];
+      return resolveMultipleServices<TranslationHandler>(container, [
+        { token: foundryTranslationHandlerToken, name: "FoundryTranslationHandler" },
+        { token: localTranslationHandlerToken, name: "LocalTranslationHandler" },
+        { token: fallbackTranslationHandlerToken, name: "FallbackTranslationHandler" },
+      ]);
     },
     ServiceLifecycle.SINGLETON,
     [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]

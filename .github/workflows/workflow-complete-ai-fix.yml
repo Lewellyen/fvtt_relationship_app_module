@@ -200,7 +200,7 @@ jobs:
           fi
 
   fix-create-link:
-    name: 2-4. Fix Issue, Create PR, Link PR
+    name: Fix Issue
     needs: select-issue
     if: needs.select-issue.outputs.count > 0
     runs-on: ubuntu-latest

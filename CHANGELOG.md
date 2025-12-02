@@ -15,10 +15,119 @@
 - Fehlermeldung enthält Details zum unbekannten Typ und listet unterstützte Typen auf (String, Number, Boolean)
 - Tests aktualisiert: Prüfen nun Result-Fehler statt Exception-Handling
 - Alle Tests (1877/1877) bestanden, 100% Code Coverage und Type Coverage
+- **Architektur-Verletzung behoben (Issue #62)**: `createInjectionToken()` von Infrastructure-Layer in Domain-Layer verschoben ([Details](src/domain/utils/token-factory.ts), [Issue #62](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/62))
+- Application-Layer (`application.tokens.ts`, `domain-ports.tokens.ts`) importiert nun `createInjectionToken()` aus Domain-Layer statt Infrastructure-Layer
+- Behebt DIP-Verletzung (Dependency Inversion Principle): Application-Layer hatte direkte Abhängigkeit zu Infrastructure-Layer (`@/infrastructure/di/tokenutilities`)
+- `createInjectionToken()` ist nun als Domain-Utility definiert und kann schichtenübergreifend verwendet werden
+- Infrastructure-Layer re-exportiert die Funktion für Rückwärtskompatibilität (Datei als deprecated markiert)
+- Betroffene Dateien:
+  - `src/domain/utils/token-factory.ts` - NEU: Token-Factory im Domain-Layer
+  - `src/application/tokens/application.tokens.ts` - verwendet `token-factory` statt `tokenutilities`
+  - `src/application/tokens/domain-ports.tokens.ts` - verwendet `token-factory` statt `tokenutilities`
+  - `src/infrastructure/di/tokenutilities.ts` - re-exportiert für Rückwärtskompatibilität
+- Dependency Rule eingehalten: Application → Domain ist erlaubt, Application → Infrastructure war verboten
+- Alle Tests (1877/1877) bestanden, 100% Code Coverage und Type Coverage
 
 ### Bekannte Probleme
 
 ### Upgrade-Hinweise
+
+## [0.40.6] - 2025-12-02
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Architektur-Verletzung behoben (Issue #59)**: `LoggingPort` Interface in Domain-Layer erstellt, Application-Layer von Infrastructure-Layer entkoppelt ([Details](src/domain/ports/logging-port.interface.ts), [Issue #59](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/59))
+- Application-Services (`ModuleSettingsRegistrar`, `RegisterContextMenuUseCase`) verwenden nun `LoggingPort` aus Domain-Layer statt `Logger` aus Infrastructure-Layer
+- Behebt DIP-Verletzung (Dependency Inversion Principle): Application-Layer hatte direkte Abhängigkeit zu Infrastructure-Layer (`@/infrastructure/logging/logger.interface`)
+- `LoggingPort` ist nun als Domain-Port definiert und abstrahiert alle Logging-Operationen platform-agnostisch
+- Infrastructure-Layer behält `Logger` als Type-Alias für `LoggingPort` für Backward Compatibility
+- Betroffene Dateien:
+- `ModuleSettingsRegistrar.ts` - verwendet `LoggingPort` statt `Logger`
+- `log-level-setting.ts` - verwendet `LoggingPort` statt `Logger`
+- `register-context-menu.use-case.ts` - verwendet `LoggingPort` statt `Logger`
+- `setting-definition.interface.ts` - verwendet `LoggingPort` in Interface-Definitionen
+- Dependency Rule eingehalten: Application → Domain ist erlaubt, Application → Infrastructure war verboten
+- Alle Tests (1877/1877) bestanden, 100% Code Coverage und Type Coverage
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.40.5] - 2025-12-01
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Result-Pattern-Verletzung behoben (Issue #40)**: Helper-Funktion `resolveMultipleServices()` für Factory-Funktionen hinzugefügt ([Details](src/framework/config/modules/i18n-services.config.ts), [Details](src/framework/config/modules/event-ports.config.ts), [Issue #40](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/40))
+- Factory-Funktionen respektieren nun das Result-Pattern, indem sie `resolveWithError()` verwenden, das `Result<T, ContainerError>` zurückgibt
+- Helper-Funktion `resolveMultipleServices<T>()` kombiniert mehrere `resolveWithError()` Aufrufe und propagiert Result-Werte vor der Exception-Konvertierung
+- Code-Duplikation eliminiert: Zentralisierte Fehlerbehandlung für mehrere Service-Auflösungen
+- Betroffene Factory-Funktionen: `translationHandlersToken` (i18n-services.config.ts) und `journalContextMenuHandlersToken` (event-ports.config.ts)
+- Exception wird nur als letzter Ausweg geworfen (erforderlich durch `FactoryFunction<T>` Signatur `() => T`), Container fängt diese und konvertiert sie zu `FactoryFailedError`
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.40.4] - 2025-12-01
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Architektur-Verletzung behoben (Issue #37)**: Dokumentation in `runtime-config-factory.ts` aktualisiert ([Details](src/application/services/runtime-config-factory.ts), [Issue #37](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/37))
+- Beispiel-Import in Kommentar zeigt nun korrekten Import aus Domain-Layer statt Framework-Layer
+- `runtime-config-factory.ts` importiert bereits korrekt `EnvironmentConfig` aus `@/domain/types/environment-config`
+- Dokumentation wurde aktualisiert, um den korrekten Import-Pfad zu zeigen
+- Verwandt mit Issue #34: `EnvironmentConfig` wurde bereits in Version 0.40.2 in Domain-Layer verschoben
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
+## [0.40.3] - 2025-12-01
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Architektur-Verletzung behoben (Issue #35)**: `LogLevel` von Framework-Layer in Domain-Layer verschoben ([Details](src/domain/types/log-level.ts), [Issue #35](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/35))
+- `ModuleSettingsRegistrar` importiert `LogLevel` nun aus Domain-Layer statt Framework-Layer
+- Behebt Architektur-Verletzung: Application-Layer hatte direkte Abhängigkeit zu Framework-Layer (`@/framework/config/environment`)
+- `LogLevel` ist nun als Domain-Typ definiert, da es Teil der Business-Logik ist
+- Framework-Layer re-exportiert `LogLevel` aus Domain-Layer für Rückwärtskompatibilität
+- Alle Imports aktualisiert: `@/framework/config/environment` → `@/domain/types/log-level`
+- Dependency Rule eingehalten: Application → Domain ist erlaubt, Application → Framework war verboten
+- **Architektur-Verletzung behoben (Issue #36)**: `HealthStatus` von Framework-Layer in Domain-Layer verschoben ([Details](src/domain/types/health-status.ts), [Issue #36](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/36))
+- `ModuleHealthService` importiert `HealthStatus` nun aus Domain-Layer statt Framework-Layer
+- Behebt Architektur-Verletzung: Application-Layer hatte direkte Abhängigkeit zu Framework-Layer (`@/framework/core/api/module-api`)
+- `HealthStatus` ist nun als Domain-Typ definiert, da es Teil der Business-Logik ist
+- Framework-Layer re-exportiert `HealthStatus` aus Domain-Layer für API-Kompatibilität (`module-api.ts`)
+- Alle Imports aktualisiert: `@/framework/core/api/module-api` → `@/domain/types/health-status`
+- Dependency Rule eingehalten: Application → Domain ist erlaubt, Application → Framework war verboten
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
 
 ## [0.40.2] - 2025-12-01
 ### Hinzugefügt

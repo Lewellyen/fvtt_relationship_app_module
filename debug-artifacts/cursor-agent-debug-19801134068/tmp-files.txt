@@ -1,2 +1,0 @@
--rw-r--r-- 1 runner runner 2456 Nov 30 15:40 /tmp/fix-output.txt
--rw-r--r-- 1 runner runner 9771 Nov 30 15:38 /tmp/fix-prompt.md
