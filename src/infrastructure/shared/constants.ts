@@ -1,6 +1,12 @@
 /**
- * Module-wide constants for the Foundry VTT Relationship App Module.
- * Contains metadata and configuration values used throughout the application.
+ * Infrastructure-layer constants.
+ * 
+ * Diese Datei enthält Infrastructure-spezifische Konstanten und 
+ * re-exportiert Domain/Application-Konstanten für Backward-Compatibility.
+ * 
+ * HINWEIS: Für neue Code sollten die layer-spezifischen Imports verwendet werden:
+ * - @/domain/constants/domain-constants
+ * - @/application/constants/app-constants
  *
  * @constant
  *
@@ -10,85 +16,34 @@
  * Configure your editor to use UTF-8 encoding for all .ts, .js, and .svelte files.
  */
 /* v8 ignore file -- Reine Konstanten-Definition, keine ausführbare Logik -- @preserve */
-/**
- * Throttle window for hook callbacks in milliseconds.
- * Prevents excessive processing during rapid hook fires.
- *
- * Set to 150ms to allow multiple journal entries to be created
- * before processing, while still preventing excessive calls.
- */
-export const HOOK_THROTTLE_WINDOW_MS = 150;
+
+// Re-export Domain/Application constants für Backward-Compatibility
+import { DOMAIN_FLAGS, DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
+import { 
+  MODULE_METADATA, 
+  SETTING_KEYS, 
+  APP_DEFAULTS, 
+  PUBLIC_API_VERSION,
+  LOG_PREFIX 
+} from "@/application/constants/app-constants";
 
 /**
- * Validation constraints for input data.
+ * @deprecated Import directly from @/domain/constants/domain-constants or @/application/constants/app-constants
+ * This re-export exists for backward compatibility only.
  */
-export const VALIDATION_CONSTRAINTS = {
-  /** Maximum length for IDs and keys */
-  MAX_ID_LENGTH: 100,
-  /** Maximum length for names */
-  MAX_NAME_LENGTH: 100,
-  /** Maximum length for flag keys */
-  MAX_FLAG_KEY_LENGTH: 100,
-} as const;
-
-/**
- * Metrics collection configuration.
- */
-export const METRICS_CONFIG = {
-  /** Size of circular buffer for resolution times */
-  RESOLUTION_TIMES_BUFFER_SIZE: 100,
-} as const;
-
 export const MODULE_CONSTANTS = {
-  MODULE: {
-    ID: "fvtt_relationship_app_module",
-    NAME: "Beziehungsnetzwerke für Foundry",
-    AUTHOR: "Andreas Rothe",
-    AUTHOR_EMAIL: "forenadmin.tir@gmail.com",
-    AUTHOR_DISCORD: "lewellyen",
-  },
-  LOG_PREFIX: "Relationship App |",
-  FLAGS: {
-    HIDDEN: "hidden",
-  },
-  HOOKS: {
-    RENDER_JOURNAL_DIRECTORY: "renderJournalDirectory",
-    INIT: "init",
-    READY: "ready",
-    CREATE_JOURNAL_ENTRY: "createJournalEntry",
-    UPDATE_JOURNAL_ENTRY: "updateJournalEntry",
-    DELETE_JOURNAL_ENTRY: "deleteJournalEntry",
-  },
-  SETTINGS: {
-    LOG_LEVEL: "logLevel",
-    CACHE_ENABLED: "cacheEnabled",
-    CACHE_TTL_MS: "cacheTtlMs",
-    CACHE_MAX_ENTRIES: "cacheMaxEntries",
-    PERFORMANCE_TRACKING_ENABLED: "performanceTrackingEnabled",
-    PERFORMANCE_SAMPLING_RATE: "performanceSamplingRate",
-    METRICS_PERSISTENCE_ENABLED: "metricsPersistenceEnabled",
-    METRICS_PERSISTENCE_KEY: "metricsPersistenceKey",
-  },
+  MODULE: MODULE_METADATA,
+  LOG_PREFIX: LOG_PREFIX,
+  FLAGS: DOMAIN_FLAGS,
+  HOOKS: DOMAIN_EVENTS,
+  SETTINGS: SETTING_KEYS,
   API: {
-    /**
-     * Public API version for external module consumption.
-     * Follows semantic versioning: MAJOR.MINOR.PATCH
-     *
-     * MAJOR: Breaking changes to public API
-     * MINOR: New features, backwards-compatible
-     * PATCH: Bug fixes, backwards-compatible
-     */
-    VERSION: "1.0.0",
+    VERSION: PUBLIC_API_VERSION,
   },
-  DEFAULTS: {
-    UNKNOWN_NAME: "Unknown",
-    NO_VERSION_SELECTED: -1,
-    CACHE_NOT_INITIALIZED: -1,
-    CACHE_TTL_MS: 5000,
-  },
+  DEFAULTS: APP_DEFAULTS,
 } as const;
 
-// Deep freeze constants for runtime immutability
+// Deep freeze für backward compatibility
 Object.freeze(MODULE_CONSTANTS);
 Object.freeze(MODULE_CONSTANTS.MODULE);
 Object.freeze(MODULE_CONSTANTS.API);
@@ -96,5 +51,40 @@ Object.freeze(MODULE_CONSTANTS.FLAGS);
 Object.freeze(MODULE_CONSTANTS.HOOKS);
 Object.freeze(MODULE_CONSTANTS.SETTINGS);
 Object.freeze(MODULE_CONSTANTS.DEFAULTS);
+
+/**
+ * Infrastructure-spezifische Konstanten
+ */
+
+/**
+ * Throttle window für Hook-Callbacks in Millisekunden.
+ * Verhindert exzessive Verarbeitung bei schnell aufeinanderfolgenden Hook-Aufrufen.
+ *
+ * Auf 150ms gesetzt, um mehrere Journal-Einträge zu erfassen,
+ * bevor Verarbeitung startet, während exzessive Aufrufe verhindert werden.
+ */
+export const HOOK_THROTTLE_WINDOW_MS = 150;
+
+/**
+ * Validation constraints für Input-Daten.
+ */
+export const VALIDATION_CONSTRAINTS = {
+  /** Maximale Länge für IDs und Keys */
+  MAX_ID_LENGTH: 100,
+  /** Maximale Länge für Namen */
+  MAX_NAME_LENGTH: 100,
+  /** Maximale Länge für Flag-Keys */
+  MAX_FLAG_KEY_LENGTH: 100,
+} as const;
+
+/**
+ * Metrics collection configuration.
+ */
+export const METRICS_CONFIG = {
+  /** Größe des Circular-Buffers für Resolution-Zeiten */
+  RESOLUTION_TIMES_BUFFER_SIZE: 100,
+} as const;
+
+// Deep freeze Infrastructure-Constants
 Object.freeze(VALIDATION_CONSTRAINTS);
 Object.freeze(METRICS_CONFIG);
