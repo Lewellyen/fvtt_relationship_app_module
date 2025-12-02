@@ -7,6 +7,18 @@
 ### Geändert
 
 ### Fehlerbehebungen
+- **Architektur-Verletzung behoben (Issue #62)**: `createInjectionToken()` von Infrastructure-Layer in Domain-Layer verschoben ([Details](src/domain/utils/token-factory.ts), [Issue #62](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/62))
+- Application-Layer (`application.tokens.ts`, `domain-ports.tokens.ts`) importiert nun `createInjectionToken()` aus Domain-Layer statt Infrastructure-Layer
+- Behebt DIP-Verletzung (Dependency Inversion Principle): Application-Layer hatte direkte Abhängigkeit zu Infrastructure-Layer (`@/infrastructure/di/tokenutilities`)
+- `createInjectionToken()` ist nun als Domain-Utility definiert und kann schichtenübergreifend verwendet werden
+- Infrastructure-Layer re-exportiert die Funktion für Rückwärtskompatibilität (Datei als deprecated markiert)
+- Betroffene Dateien:
+  - `src/domain/utils/token-factory.ts` - NEU: Token-Factory im Domain-Layer
+  - `src/application/tokens/application.tokens.ts` - verwendet `token-factory` statt `tokenutilities`
+  - `src/application/tokens/domain-ports.tokens.ts` - verwendet `token-factory` statt `tokenutilities`
+  - `src/infrastructure/di/tokenutilities.ts` - re-exportiert für Rückwärtskompatibilität
+- Dependency Rule eingehalten: Application → Domain ist erlaubt, Application → Infrastructure war verboten
+- Alle Tests (1877/1877) bestanden, 100% Code Coverage und Type Coverage
 
 ### Bekannte Probleme
 
