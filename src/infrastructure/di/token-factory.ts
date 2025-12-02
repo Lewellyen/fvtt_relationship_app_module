@@ -1,9 +1,7 @@
 /**
  * Token factory for creating type-safe injection tokens.
  *
- * This utility function is part of the Domain Layer to ensure that
- * Application Layer can create tokens without depending on Infrastructure Layer.
- *
+ * This utility function is part of the Infrastructure Layer for dependency injection.
  * The function creates unique, type-safe injection tokens for dependency injection.
  * Each call creates a new Symbol, ensuring uniqueness even with the same description.
  */
@@ -33,3 +31,4 @@ export function createInjectionToken<TServiceType extends ServiceType>(
 ): InjectionToken<TServiceType> {
   return Symbol(description) as InjectionToken<TServiceType>;
 }
+
