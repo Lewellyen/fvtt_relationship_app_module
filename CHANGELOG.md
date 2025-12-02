@@ -7,22 +7,37 @@
 ### Geändert
 
 ### Fehlerbehebungen
+
+### Bekannte Probleme
+
+### Upgrade-Hinweise
+
+## [0.40.6] - 2025-12-02
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
 - **Architektur-Verletzung behoben (Issue #59)**: `LoggingPort` Interface in Domain-Layer erstellt, Application-Layer von Infrastructure-Layer entkoppelt ([Details](src/domain/ports/logging-port.interface.ts), [Issue #59](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/59))
 - Application-Services (`ModuleSettingsRegistrar`, `RegisterContextMenuUseCase`) verwenden nun `LoggingPort` aus Domain-Layer statt `Logger` aus Infrastructure-Layer
 - Behebt DIP-Verletzung (Dependency Inversion Principle): Application-Layer hatte direkte Abhängigkeit zu Infrastructure-Layer (`@/infrastructure/logging/logger.interface`)
 - `LoggingPort` ist nun als Domain-Port definiert und abstrahiert alle Logging-Operationen platform-agnostisch
 - Infrastructure-Layer behält `Logger` als Type-Alias für `LoggingPort` für Backward Compatibility
 - Betroffene Dateien:
-  - `ModuleSettingsRegistrar.ts` - verwendet `LoggingPort` statt `Logger`
-  - `log-level-setting.ts` - verwendet `LoggingPort` statt `Logger`
-  - `register-context-menu.use-case.ts` - verwendet `LoggingPort` statt `Logger`
-  - `setting-definition.interface.ts` - verwendet `LoggingPort` in Interface-Definitionen
+- `ModuleSettingsRegistrar.ts` - verwendet `LoggingPort` statt `Logger`
+- `log-level-setting.ts` - verwendet `LoggingPort` statt `Logger`
+- `register-context-menu.use-case.ts` - verwendet `LoggingPort` statt `Logger`
+- `setting-definition.interface.ts` - verwendet `LoggingPort` in Interface-Definitionen
 - Dependency Rule eingehalten: Application → Domain ist erlaubt, Application → Infrastructure war verboten
 - Alle Tests (1877/1877) bestanden, 100% Code Coverage und Type Coverage
 
 ### Bekannte Probleme
+- Keine bekannten Probleme
 
 ### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
 
 ## [0.40.5] - 2025-12-01
 ### Hinzugefügt
