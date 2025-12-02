@@ -7,7 +7,7 @@ import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
 import type { JournalVisibilityConfig } from "./JournalVisibilityConfig";
-import { getFirstArrayElement } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { getFirstArrayElement } from "@/application/utils/array-utils";
 import {
   journalCollectionPortToken,
   journalRepositoryToken,
@@ -16,7 +16,7 @@ import {
   journalDirectoryUiPortToken,
   journalVisibilityConfigToken,
 } from "@/application/tokens";
-import { sanitizeHtml } from "@/infrastructure/shared/utils/sanitize";
+import { sanitizeHtml } from "@/application/utils/sanitize-utils";
 
 export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 
