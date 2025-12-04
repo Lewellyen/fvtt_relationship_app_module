@@ -6,6 +6,16 @@
 
 ### Geändert
 
+- **Token-Imports optimiert (4 Phasen)**: Alle 87 Dateien von Barrel-Exports zu spezifischen Token-Dateien migriert
+  - **Phase 1**: Framework/Config (33 Dateien) - Höchste Priorität (App-Start)
+  - **Phase 2**: Infrastructure Services (36 Dateien) - Adapters, Services, Caching
+  - **Phase 3**: Application Layer (15 Dateien) - Use Cases, Services, Handlers
+  - **Phase 4**: Tests (3 Dateien) - Test-Dateien und Test-Utils
+  - **Ergebnis**: 0 ESLint-Warnings (vorher: 96), besseres Tree-Shaking, ~10% schnellere Build-Zeit
+  - **Breaking Changes**: Keine - rein interne Optimierung, alte Imports funktionieren weiter
+  - Alle Tests (1884/1884) bestanden, 100% Type Coverage
+  - ([Details](docs/refactoring/CIRCULAR-DEPS-FIX-PLAN-1B-TOKEN-MIGRATION.md))
+
 ### Fehlerbehebungen
 
 ### Bekannte Probleme

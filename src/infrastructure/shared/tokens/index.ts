@@ -40,8 +40,11 @@ export * from "./event.tokens";
 export * from "./ports.tokens";
 
 // Re-export Application tokens for backward compatibility
-// Application layer tokens should be imported from "@/application/tokens" going forward
-export * from "@/application/tokens";
+// Application layer tokens should be imported from specific files going forward:
+// - @/application/tokens/application.tokens
+// - @/application/tokens/domain-ports.tokens
+export * from "@/application/tokens/application.tokens";
+export * from "@/application/tokens/domain-ports.tokens";
 
 // ⚠️ ServiceType wurde nach @/infrastructure/di/types/service-type-registry ausgelagert
 // Services sollten ServiceType nicht direkt importieren - nur DI-Container nutzt es.
