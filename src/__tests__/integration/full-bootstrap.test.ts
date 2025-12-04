@@ -8,11 +8,9 @@ import {
   castResolvedService,
 } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
-import {
-  loggerToken,
-  moduleApiInitializerToken,
-  foundryGameToken,
-} from "@/infrastructure/shared/tokens";
+import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
 describe("Integration: Full Bootstrap", () => {
   beforeEach(() => {

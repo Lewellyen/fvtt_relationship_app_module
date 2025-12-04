@@ -12,7 +12,8 @@ import { APP_DEFAULTS } from "@/application/constants/app-constants";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import type { ServiceContainer } from "@/infrastructure/di/container";
-import { loggerToken, journalVisibilityServiceToken } from "@/infrastructure/shared/tokens";
+import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
 /**
  * Type-safe Result assertion helpers
