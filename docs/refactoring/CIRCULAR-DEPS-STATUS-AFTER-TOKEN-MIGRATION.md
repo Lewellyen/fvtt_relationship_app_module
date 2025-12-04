@@ -24,13 +24,13 @@
 
 #### 1. **Domain Ports Zyklen** (3 Zyklen)
 ```
-1) domain/ports/collections/platform-entity-collection-port.interface.ts 
+1) domain/ports/collections/platform-entity-collection-port.interface.ts
    > entity-query-builder.interface.ts
-   
-2) domain/ports/journal-directory-ui-port.interface.ts 
+
+2) domain/ports/journal-directory-ui-port.interface.ts
    > platform-ui-port.interface.ts
-   
-3) domain/ports/platform-ui-port.interface.ts 
+
+3) domain/ports/platform-ui-port.interface.ts
    > notification-port.interface.ts
 ```
 **Priorität:** 🔴 HOCH - Basis-Architektur
@@ -48,7 +48,7 @@ infrastructure/di/types/service-type-registry.ts
   → [verschiedene Services die ServiceType Registry nutzen]
 ```
 
-**Ursache:** 
+**Ursache:**
 - `service-type-registry.ts` importiert alle Service-Klassen für Union-Type
 - Services importieren Tokens
 - Tokens importieren wieder Service-Typen (für Type-Safety)
@@ -71,8 +71,8 @@ infrastructure/di/types/service-type-registry.ts
 
 #### 3. **RuntimeConfig Zyklen** (~8-10 Zyklen)
 ```
-RuntimeConfigService.ts 
-  → runtime-safe-cast.ts 
+RuntimeConfigService.ts
+  → runtime-safe-cast.ts
   → ModuleEventRegistrar.ts
   → [verschiedene Abhängigkeiten]
 ```
@@ -113,7 +113,7 @@ import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 // infrastructure/shared/tokens/core.tokens.ts
 import type { ContainerHealthCheck } from "@/application/health/ContainerHealthCheck";
 
-export const containerHealthCheckToken = 
+export const containerHealthCheckToken =
   createInjectionToken<ContainerHealthCheck>("ContainerHealthCheck");
   //                    ^^^^^^^^^^^^^^^^^^^^ Type-Import!
 ```

@@ -38,7 +38,7 @@ Tokens (infrastructure/shared/tokens/*)
   ↓ importieren Service-Typen (für Type-Safety)
 Service-Klassen
   ↓ importieren Tokens
-  
+
 = MASSIVER ZYKLUS!
 ```
 
@@ -111,7 +111,7 @@ export class Container {
 // Runtime-Validierung hinzufügen
 export class Container {
   private readonly allowedTokens = new Set<InjectionToken<unknown>>();
-  
+
   register<T>(
     token: InjectionToken<T>,
     implementation: ServiceClass<T>
@@ -250,17 +250,17 @@ export type ServiceType = ContainerHealthCheck | MetricsHealthCheck | ...;
 // service-type-registry.ts
 export class ServiceTypeRegistry {
   private static services = new Map<string, { loader: () => Promise<any> }>();
-  
+
   static register(name: string, loader: () => Promise<any>): void {
     this.services.set(name, { loader });
   }
-  
+
   static async load(name: string): Promise<any> {
     const entry = this.services.get(name);
     if (!entry) throw new Error(`Service ${name} not registered`);
     return await entry.loader();
   }
-  
+
   static isRegistered(name: string): boolean {
     return this.services.has(name);
   }
@@ -345,20 +345,20 @@ import * as fs from 'fs';
 
 function generateServiceTypeRegistry() {
   const services: string[] = [];
-  
+
   // Scanne alle TS-Dateien nach @DIService-Annotation
   // ...
-  
+
   // Generiere service-type-registry.ts
   const output = `
 // AUTO-GENERATED - DO NOT EDIT
 // Generated at: ${new Date().toISOString()}
 
-export type ServiceType = 
+export type ServiceType =
 ${services.map(s => `  | typeof import("${s.path}").${s.name}`).join('\n')}
 ;
   `.trim();
-  
+
   fs.writeFileSync('src/infrastructure/di/types/service-type-registry.ts', output);
 }
 ```
@@ -379,7 +379,7 @@ ${services.map(s => `  | typeof import("${s.path}").${s.name}`).join('\n')}
 ```typescript
 // service-type-registry.ts (AUTO-GENERATED)
 
-export type ServiceType = 
+export type ServiceType =
   | typeof import("@/application/health/ContainerHealthCheck").ContainerHealthCheck
   | typeof import("@/application/health/MetricsHealthCheck").MetricsHealthCheck
   | typeof import("@/application/services/ModuleHealthService").ModuleHealthService
@@ -488,7 +488,7 @@ Wenn **Option A gewählt** wird:
 8. ✅ Code Review
 9. 🚀 Merge
 
-**Erwartetes Ergebnis:** 
+**Erwartetes Ergebnis:**
 - Circular Dependencies: 104 → ~15-20 (85% Reduktion)
 - Build-Zeit: Stabil bei ~2s
 - Type-Safety: Runtime-validiert statt Compile-Time
