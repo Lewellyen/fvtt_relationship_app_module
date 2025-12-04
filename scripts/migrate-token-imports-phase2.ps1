@@ -1,16 +1,16 @@
 <#
 .SYNOPSIS
-Phase 1: Migriert Framework/Config Token-Imports zu spezifischen Dateien
+Phase 2: Migriert Infrastructure Services Token-Imports zu spezifischen Dateien
 
 .DESCRIPTION
-Migriert automatisch die Token-Imports in Framework/Config-Dateien:
+Migriert automatisch die Token-Imports in Infrastructure Services-Dateien:
 - Erkennt importierte Tokens
 - Mapped zu korrekten Source-Dateien
 - Gruppiert Imports nach Ziel-Datei
 - Erhält Code-Formatierung
 #>
 
-# Token-zu-Datei Mapping
+# Token-zu-Datei Mapping (gleich wie Phase 1)
 $tokenMapping = @{
     # Core tokens
     'loggerToken' = '@/infrastructure/shared/tokens/core.tokens'
@@ -18,6 +18,15 @@ $tokenMapping = @{
     'serviceContainerToken' = '@/infrastructure/shared/tokens/core.tokens'
     'containerToken' = '@/infrastructure/shared/tokens/core.tokens'
     'containerPortToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'moduleHealthServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'moduleSettingsRegistrarToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'containerHealthCheckToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'metricsHealthCheckToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'healthCheckRegistryToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'runtimeConfigServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'runtimeConfigToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'bootstrapInitHookServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'bootstrapReadyHookServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
 
     # Observability tokens
     'metricsCollectorToken' = '@/infrastructure/shared/tokens/observability.tokens'
@@ -26,6 +35,7 @@ $tokenMapping = @{
     'metricsStorageToken' = '@/infrastructure/shared/tokens/observability.tokens'
     'traceContextToken' = '@/infrastructure/shared/tokens/observability.tokens'
     'observabilityRegistryToken' = '@/infrastructure/shared/tokens/observability.tokens'
+    'portSelectionEventEmitterToken' = '@/infrastructure/shared/tokens/observability.tokens'
 
     # I18n tokens
     'i18nFacadeServiceToken' = '@/infrastructure/shared/tokens/i18n.tokens'
@@ -57,6 +67,7 @@ $tokenMapping = @{
     'platformCachePortToken' = '@/application/tokens/domain-ports.tokens'
     'retryServiceToken' = '@/infrastructure/shared/tokens/infrastructure.tokens'
     'performanceTrackingServiceToken' = '@/infrastructure/shared/tokens/infrastructure.tokens'
+    'moduleApiInitializerToken' = '@/infrastructure/shared/tokens/infrastructure.tokens'
 
     # Foundry tokens
     'foundryGameToken' = '@/infrastructure/shared/tokens/foundry.tokens'
@@ -88,7 +99,10 @@ $tokenMapping = @{
     # Event tokens
     'platformJournalEventPortToken' = '@/application/tokens/domain-ports.tokens'
     'moduleEventRegistrarToken' = '@/infrastructure/shared/tokens/event.tokens'
-    'portSelectionEventEmitterToken' = '@/infrastructure/shared/tokens/observability.tokens'
+    'invalidateJournalCacheOnChangeUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
+    'processJournalDirectoryOnRenderUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
+    'triggerJournalDirectoryReRenderUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
+    'registerContextMenuUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
 
     # Port tokens (Domain ports)
     'platformUIPortToken' = '@/application/tokens/domain-ports.tokens'
@@ -105,43 +119,34 @@ $tokenMapping = @{
     'journalVisibilityConfigToken' = '@/application/tokens/application.tokens'
     'hideJournalContextMenuHandlerToken' = '@/application/tokens/application.tokens'
     'journalContextMenuHandlersToken' = '@/application/tokens/application.tokens'
-
-    # Core tokens (Application-level services in core.tokens)
-    'moduleHealthServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
-    'moduleSettingsRegistrarToken' = '@/infrastructure/shared/tokens/core.tokens'
-    'containerHealthCheckToken' = '@/infrastructure/shared/tokens/core.tokens'
-    'metricsHealthCheckToken' = '@/infrastructure/shared/tokens/core.tokens'
-    'healthCheckRegistryToken' = '@/infrastructure/shared/tokens/core.tokens'
-    'runtimeConfigServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
-    'runtimeConfigToken' = '@/infrastructure/shared/tokens/core.tokens'
-    'bootstrapInitHookServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
-    'bootstrapReadyHookServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
-
-    # Infrastructure tokens (Module-level services)
-    'moduleApiInitializerToken' = '@/infrastructure/shared/tokens/infrastructure.tokens'
-
-    # Event tokens (Use Cases)
-    'invalidateJournalCacheOnChangeUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
-    'processJournalDirectoryOnRenderUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
-    'triggerJournalDirectoryReRenderUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
-    'registerContextMenuUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
 }
 
 Write-Host "=====================================" -ForegroundColor Cyan
-Write-Host "Phase 1: Framework/Config Migration" -ForegroundColor Cyan
+Write-Host "Phase 2: Infrastructure Migration" -ForegroundColor Cyan
 Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Target-Verzeichnisse für Phase 1
+# Target-Verzeichnisse für Phase 2
 $targetDirs = @(
-    "src/framework/config",
-    "src/framework/core"
+    "src/infrastructure/adapters",
+    "src/infrastructure/cache",
+    "src/infrastructure/di/container.ts",
+    "src/infrastructure/i18n",
+    "src/infrastructure/logging",
+    "src/infrastructure/notifications",
+    "src/infrastructure/observability",
+    "src/infrastructure/performance",
+    "src/infrastructure/retry"
 )
 
 $files = @()
 foreach ($dir in $targetDirs) {
     if (Test-Path $dir) {
-        $files += Get-ChildItem -Path $dir -Recurse -Filter "*.ts" -Exclude "*.d.ts"
+        if ((Get-Item $dir) -is [System.IO.FileInfo]) {
+            $files += Get-Item $dir
+        } else {
+            $files += Get-ChildItem -Path $dir -Recurse -Filter "*.ts" -Exclude "*.d.ts"
+        }
     }
 }
 
@@ -230,7 +235,7 @@ foreach ($file in $files) {
 
 Write-Host ""
 Write-Host "=====================================" -ForegroundColor Cyan
-Write-Host "Zusammenfassung Phase 1:" -ForegroundColor Cyan
+Write-Host "Zusammenfassung Phase 2:" -ForegroundColor Cyan
 Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host "  Migrierte Dateien: $migratedCount" -ForegroundColor Green
 Write-Host "  Uebersprungene Dateien: $skippedCount" -ForegroundColor Gray
@@ -245,15 +250,15 @@ npm run type-check
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "=====================================" -ForegroundColor Green
-    Write-Host "Phase 1 erfolgreich abgeschlossen!" -ForegroundColor Green
+    Write-Host "Phase 2 erfolgreich abgeschlossen!" -ForegroundColor Green
     Write-Host "=====================================" -ForegroundColor Green
-    Write-Host "Naechster Schritt: Commit und Phase 2" -ForegroundColor Gray
+    Write-Host "Naechster Schritt: Commit und Phase 3" -ForegroundColor Gray
 } else {
     Write-Host ""
     Write-Host "=====================================" -ForegroundColor Red
     Write-Host "Type-Check fehlgeschlagen!" -ForegroundColor Red
     Write-Host "=====================================" -ForegroundColor Red
-    Write-Host "Rollback: git checkout src/framework" -ForegroundColor Yellow
+    Write-Host "Rollback: git checkout src/infrastructure" -ForegroundColor Yellow
     exit 1
 }
 
