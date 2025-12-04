@@ -6,13 +6,12 @@
  * Each call creates a new Symbol, ensuring uniqueness even with the same description.
  */
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 
 /**
  * Creates a unique, type-safe injection token for dependency injection.
  * Each call creates a new Symbol, ensuring uniqueness even with the same description.
  *
- * @template TServiceType - The type of service this token represents
+ * @template Tunknown - The type of service this token represents
  * @param description - A descriptive name for debugging purposes (appears in DevTools)
  * @returns A unique Symbol branded with the service type
  *
@@ -26,8 +25,6 @@ import type { ServiceType } from "@/infrastructure/di/types/service-type-registr
  * container.register(LoggerToken, new Logger());
  * ```
  */
-export function createInjectionToken<TServiceType extends ServiceType>(
-  description: string
-): InjectionToken<TServiceType> {
-  return Symbol(description) as InjectionToken<TServiceType>;
+export function createInjectionToken<T>(description: string): InjectionToken<T> {
+  return Symbol(description) as InjectionToken<T>;
 }

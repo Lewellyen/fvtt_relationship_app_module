@@ -12,7 +12,6 @@ import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/ver
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
@@ -28,10 +27,10 @@ describe("PortSelector", () => {
   let mockContainer: ServiceContainer;
 
   // Create test tokens (using ServiceType for type safety)
-  const token13 = createInjectionToken<ServiceType>("port-v13") as any;
-  const token14 = createInjectionToken<ServiceType>("port-v14") as any;
-  const token15 = createInjectionToken<ServiceType>("port-v15") as any;
-  const token16 = createInjectionToken<ServiceType>("port-v16") as any;
+  const token13 = createInjectionToken<unknown>("port-v13") as any;
+  const token14 = createInjectionToken<unknown>("port-v14") as any;
+  const token15 = createInjectionToken<unknown>("port-v15") as any;
+  const token16 = createInjectionToken<unknown>("port-v16") as any;
 
   beforeEach(() => {
     mockEventEmitter = new PortSelectionEventEmitter();
@@ -157,7 +156,7 @@ describe("PortSelector", () => {
     });
 
     it("should select exact version match when available", () => {
-      const token12 = createInjectionToken<ServiceType>("port-v12") as any;
+      const token12 = createInjectionToken<unknown>("port-v12") as any;
       const tokens = new Map([
         [12, token12],
         [13, token13],
@@ -178,7 +177,7 @@ describe("PortSelector", () => {
     });
 
     it("should skip ports with version less than or equal to selected version", () => {
-      const token12 = createInjectionToken<ServiceType>("port-v12") as any;
+      const token12 = createInjectionToken<unknown>("port-v12") as any;
       const tokens = new Map([
         [13, token13],
         [12, token12], // Lower version - should be skipped because 12 < 13
@@ -198,7 +197,7 @@ describe("PortSelector", () => {
     });
 
     it("should handle empty token map", () => {
-      const tokens = new Map<number, InjectionToken<ServiceType>>() as any;
+      const tokens = new Map<number, InjectionToken<unknown>>() as any;
 
       const result = selector.selectPortFromTokens(tokens, 13);
       expectResultErr(result);
@@ -209,7 +208,7 @@ describe("PortSelector", () => {
 
   describe("Edge Cases & Future Versions", () => {
     it("should handle future Foundry versions (v15+) by falling back to latest available port", () => {
-      const tokens = new Map<number, InjectionToken<ServiceType>>([
+      const tokens = new Map<number, InjectionToken<unknown>>([
         [13, token13],
         [14, token14],
       ]) as any;
@@ -224,7 +223,7 @@ describe("PortSelector", () => {
     });
 
     it("should handle v20+ with graceful fallback", () => {
-      const tokens = new Map<number, InjectionToken<ServiceType>>([[13, token13]]) as any;
+      const tokens = new Map<number, InjectionToken<unknown>>([[13, token13]]) as any;
 
       // Far future version
       const result = selector.selectPortFromTokens(tokens, 20);
@@ -236,7 +235,7 @@ describe("PortSelector", () => {
     });
 
     it("should fail gracefully when no compatible port exists (all ports too new)", () => {
-      const tokens = new Map<number, InjectionToken<ServiceType>>([
+      const tokens = new Map<number, InjectionToken<unknown>>([
         [14, token14],
         [15, token15],
       ]) as any;
@@ -256,7 +255,7 @@ describe("PortSelector", () => {
     });
 
     it("should handle empty token registry", () => {
-      const tokens = new Map<number, InjectionToken<ServiceType>>() as any;
+      const tokens = new Map<number, InjectionToken<unknown>>() as any;
 
       const result = selector.selectPortFromTokens(tokens, 13);
 
@@ -266,7 +265,7 @@ describe("PortSelector", () => {
     });
 
     it("should handle container resolution errors", () => {
-      const tokens = new Map<number, InjectionToken<ServiceType>>([[13, token13]]) as any;
+      const tokens = new Map<number, InjectionToken<unknown>>([[13, token13]]) as any;
 
       (mockContainer.resolveWithError as any).mockReturnValue({
         ok: false,
@@ -281,7 +280,7 @@ describe("PortSelector", () => {
     });
 
     it("should catch errors during port resolution", () => {
-      const tokens = new Map<number, InjectionToken<ServiceType>>([
+      const tokens = new Map<number, InjectionToken<unknown>>([
         [13, token13],
         [14, token14],
         [15, token15],
@@ -309,7 +308,7 @@ describe("PortSelector", () => {
     });
 
     it("should catch errors during port resolution with adapterName", () => {
-      const tokens = new Map<number, InjectionToken<ServiceType>>([
+      const tokens = new Map<number, InjectionToken<unknown>>([
         [13, token13],
         [14, token14],
       ]) as any;

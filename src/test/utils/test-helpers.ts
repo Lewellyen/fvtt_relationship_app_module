@@ -291,7 +291,7 @@ export function createMockPerformanceTrackingService(): PerformanceTrackingServi
  *
  * Use this when you need to register test services in the container
  * without complex mocking. Returns an empty object typed as any to bypass
- * ServiceType union constraints in test scenarios.
+ * unknown union constraints in test scenarios.
  *
  * @returns An empty object for test registrations
  *

@@ -9,7 +9,6 @@ import { ok, err } from "@/domain/utils/result";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
@@ -31,8 +30,8 @@ describe("PortSelector - Lazy Instantiation", () => {
     const v13Port = { version: 13 };
     const v14Port = { version: 14 };
 
-    const token13 = createInjectionToken<ServiceType>("port-v13") as any;
-    const token14 = createInjectionToken<ServiceType>("port-v14") as any;
+    const token13 = createInjectionToken<unknown>("port-v13") as any;
+    const token14 = createInjectionToken<unknown>("port-v14") as any;
 
     const resolveV13 = vi.fn(() => ({ ok: true, value: v13Port }));
     const resolveV14 = vi.fn(() => {
@@ -69,7 +68,7 @@ describe("PortSelector - Lazy Instantiation", () => {
   });
 
   it("should handle container resolution errors gracefully", () => {
-    const token14 = createInjectionToken<ServiceType>("port-v14") as any;
+    const token14 = createInjectionToken<unknown>("port-v14") as any;
 
     const mockContainer = {
       resolveWithError: vi.fn(() => {
@@ -89,9 +88,9 @@ describe("PortSelector - Lazy Instantiation", () => {
   });
 
   it("should select highest compatible version", () => {
-    const token12 = createInjectionToken<ServiceType>("port-v12") as any;
-    const token13 = createInjectionToken<ServiceType>("port-v13") as any;
-    const token14 = createInjectionToken<ServiceType>("port-v14") as any;
+    const token12 = createInjectionToken<unknown>("port-v12") as any;
+    const token13 = createInjectionToken<unknown>("port-v13") as any;
+    const token14 = createInjectionToken<unknown>("port-v14") as any;
 
     const resolveV13 = vi.fn(() => ({ ok: true, value: { version: 13 } }));
 
@@ -120,8 +119,8 @@ describe("PortSelector - Lazy Instantiation", () => {
   });
 
   it("should return error when no compatible port available", () => {
-    const token14 = createInjectionToken<ServiceType>("port-v14") as any;
-    const token15 = createInjectionToken<ServiceType>("port-v15") as any;
+    const token14 = createInjectionToken<unknown>("port-v14") as any;
+    const token15 = createInjectionToken<unknown>("port-v15") as any;
 
     const resolveV14 = vi.fn(() => ({ ok: true, value: { version: 14 } }));
     const resolveV15 = vi.fn(() => ({ ok: true, value: { version: 15 } }));
@@ -156,7 +155,7 @@ describe("PortSelector - Lazy Instantiation", () => {
       await import("@/infrastructure/adapters/foundry/versioning/versiondetector");
     vi.mocked(getFoundryVersionResult).mockReturnValue(ok(13));
 
-    const token13 = createInjectionToken<ServiceType>("port-v13") as any;
+    const token13 = createInjectionToken<unknown>("port-v13") as any;
     const tokens = new Map([[13, token13]]) as any;
 
     const mockContainer = {
@@ -177,7 +176,7 @@ describe("PortSelector - Lazy Instantiation", () => {
       await import("@/infrastructure/adapters/foundry/versioning/versiondetector");
     vi.mocked(getFoundryVersionResult).mockReturnValue(err("Version detection failed"));
 
-    const token13 = createInjectionToken<ServiceType>("port-v13") as any;
+    const token13 = createInjectionToken<unknown>("port-v13") as any;
     const tokens = new Map([[13, token13]]) as any;
 
     const mockContainer = {

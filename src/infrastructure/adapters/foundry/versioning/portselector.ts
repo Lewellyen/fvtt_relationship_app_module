@@ -9,7 +9,6 @@ import type { PortSelectionEventCallback } from "./port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import {
   portSelectionEventEmitterToken,
   observabilityRegistryToken,
@@ -91,7 +90,7 @@ export class PortSelector {
    * // On Foundry v14: resolves v14 port from container
    * ```
    */
-  selectPortFromTokens<T extends ServiceType>(
+  selectPortFromTokens<T>(
     tokens: Map<number, InjectionToken<T>>,
     foundryVersion?: number,
     adapterName?: string

@@ -1,5 +1,4 @@
 import type { InjectionToken } from "../core/injectiontoken";
-import type { ServiceType } from "../service-type-registry";
 
 /**
  * Type definition for service dependencies.
@@ -22,4 +21,4 @@ import type { ServiceType } from "../service-type-registry";
  * }
  * ```
  */
-export type ServiceDependencies = readonly InjectionToken<ServiceType>[];
+export type ServiceDependencies = readonly InjectionToken<unknown>[];

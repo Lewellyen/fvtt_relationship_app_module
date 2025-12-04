@@ -10,7 +10,7 @@ const testResolve = <T>(container: ServiceContainer, token: any): T => {
   return container.resolve(markAsApiSafe(token)) as T;
 };
 
-// Test service types (not in production ServiceType union)
+// Test service types (not in production unknown type)
 interface TestService {
   id: number;
 }

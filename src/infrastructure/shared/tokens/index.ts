@@ -46,5 +46,5 @@ export * from "./ports.tokens";
 export * from "@/application/tokens/application.tokens";
 export * from "@/application/tokens/domain-ports.tokens";
 
-// ⚠️ ServiceType wurde nach @/infrastructure/di/types/service-type-registry ausgelagert
-// Services sollten ServiceType nicht direkt importieren - nur DI-Container nutzt es.
+// ⚠️ ServiceType wurde entfernt (war Union von 80+ Service-Klassen)
+// Container nutzt jetzt freie Generics statt ServiceType-Constraint.

@@ -1,7 +1,6 @@
 import type { InjectionToken } from "../core/injectiontoken";
 import type { ApiSafeToken } from "./api-safe-token";
 import { markAsApiSafe } from "./api-safe-token";
-import type { ServiceType } from "../service-type-registry";
 
 /**
  * Deprecation metadata attached to deprecated tokens.
@@ -59,7 +58,7 @@ const deprecationMetadata = new Map<symbol, DeprecationInfo>();
  * // This token will be removed in version 2.0.0.
  * ```
  */
-export function markAsDeprecated<T extends ServiceType>(
+export function markAsDeprecated<T>(
   token: InjectionToken<T>,
   reason: string,
   replacement: InjectionToken<T> | null,

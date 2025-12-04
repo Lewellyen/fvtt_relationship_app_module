@@ -13,13 +13,12 @@ import {
   type FoundryError,
 } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 
 /**
  * Registry that holds exactly one port injection token per version.
  * @template T - The port interface type
  */
-export class PortRegistry<T extends ServiceType> {
+export class PortRegistry<T> {
   // Exactly one token per version
   private readonly tokens = new Map<number, InjectionToken<T>>();
 

@@ -6,7 +6,6 @@ import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycl
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { InjectionToken } from "../../types/core/injectiontoken";
-import type { ServiceType } from "../../types/service-type-registry";
 
 class ServiceA implements Logger {
   static dependencies = [] as const;
@@ -293,9 +292,9 @@ describe("ContainerValidator", () => {
 
       // Manually call checkCycleForToken to test the visited.has() branch
       const checkCycleForToken = validator["checkCycleForToken"].bind(validator);
-      const visiting = new Set<InjectionToken<ServiceType>>();
-      const visited = new Set<InjectionToken<ServiceType>>([tokenB]); // Pre-populate visited with tokenB
-      const path: InjectionToken<ServiceType>[] = [];
+      const visiting = new Set<InjectionToken<unknown>>();
+      const visited = new Set<InjectionToken<unknown>>([tokenB]); // Pre-populate visited with tokenB
+      const path: InjectionToken<unknown>[] = [];
 
       // Clear validatedSubgraphs to ensure visited.has() is checked
       validator["validatedSubgraphs"].clear();
@@ -345,9 +344,9 @@ describe("ContainerValidator", () => {
       // Manually manipulate the registry to simulate getRegistration returning null
       // This is an edge case that shouldn't happen in practice, but tests the branch
       const checkCycleForToken = validator["checkCycleForToken"].bind(validator);
-      const visiting = new Set<InjectionToken<ServiceType>>();
-      const visited = new Set<InjectionToken<ServiceType>>();
-      const path: InjectionToken<ServiceType>[] = [];
+      const visiting = new Set<InjectionToken<unknown>>();
+      const visited = new Set<InjectionToken<unknown>>();
+      const path: InjectionToken<unknown>[] = [];
 
       // Call checkCycleForToken with a token that's not in the registry
       // This will cause getRegistration to return null

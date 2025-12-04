@@ -1,5 +1,4 @@
 import type { InjectionToken } from "../types/core/injectiontoken";
-import type { ServiceType } from "../types/service-type-registry";
 import type { ServiceRegistration } from "../types/core/serviceregistration";
 
 /**
@@ -33,7 +32,7 @@ export class TypeSafeRegistrationMap {
    * @param token - The injection token identifying the service
    * @param registration - The service registration metadata
    */
-  set<T extends ServiceType>(token: InjectionToken<T>, registration: ServiceRegistration<T>): void {
+  set<T>(token: InjectionToken<T>, registration: ServiceRegistration<T>): void {
     this.map.set(token as symbol, registration);
   }
 
@@ -47,7 +46,7 @@ export class TypeSafeRegistrationMap {
    * @param token - The injection token identifying the service
    * @returns The service registration or undefined if not found
    */
-  get<T extends ServiceType>(token: InjectionToken<T>): ServiceRegistration<T> | undefined {
+  get<T>(token: InjectionToken<T>): ServiceRegistration<T> | undefined {
     // Type-safe by design: Token's generic guarantees registration type
     // Cast is necessary due to Map's type erasure but architecturally sound
     return this.map.get(token as symbol) as ServiceRegistration<T> | undefined;
@@ -59,7 +58,7 @@ export class TypeSafeRegistrationMap {
    * @param token - The injection token to check
    * @returns True if the service is registered
    */
-  has(token: InjectionToken<ServiceType>): boolean {
+  has(token: InjectionToken<unknown>): boolean {
     return this.map.has(token as symbol);
   }
 
@@ -69,7 +68,7 @@ export class TypeSafeRegistrationMap {
    * @param token - The injection token identifying the service
    * @returns True if the service was found and removed
    */
-  delete(token: InjectionToken<ServiceType>): boolean {
+  delete(token: InjectionToken<unknown>): boolean {
     return this.map.delete(token as symbol);
   }
 

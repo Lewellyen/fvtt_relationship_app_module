@@ -1,5 +1,4 @@
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { METRICS_CONFIG } from "@/infrastructure/shared/constants";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
@@ -79,7 +78,7 @@ interface MetricsTableData {
  * ```
  */
 export class MetricsCollector implements MetricsRecorder, MetricsSampler {
-  static dependencies: readonly InjectionToken<ServiceType>[] = [runtimeConfigToken];
+  static dependencies: readonly InjectionToken<unknown>[] = [runtimeConfigToken];
 
   private metrics = {
     containerResolutions: 0,
@@ -105,7 +104,7 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
    * @param durationMs - Time taken to resolve in milliseconds
    * @param success - Whether resolution succeeded
    */
-  recordResolution(token: InjectionToken<ServiceType>, durationMs: number, success: boolean): void {
+  recordResolution(token: InjectionToken<unknown>, durationMs: number, success: boolean): void {
     this.metrics.containerResolutions++;
 
     if (!success) {
@@ -324,7 +323,7 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
 }
 
 export class DIMetricsCollector extends MetricsCollector {
-  static override dependencies: readonly InjectionToken<ServiceType>[] = [runtimeConfigToken];
+  static override dependencies: readonly InjectionToken<unknown>[] = [runtimeConfigToken];
 
   constructor(config: RuntimeConfigService) {
     super(config);

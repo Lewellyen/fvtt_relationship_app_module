@@ -1,23 +1,22 @@
 import { describe, it, expect } from "vitest";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 
 describe("PortRegistry", () => {
   describe("register", () => {
     it("should register port token", () => {
-      const registry = new PortRegistry<ServiceType>();
-      const token = createInjectionToken<ServiceType>("port-instance");
+      const registry = new PortRegistry<unknown>();
+      const token = createInjectionToken<unknown>("port-instance");
 
       const result = registry.register(13, token);
       expectResultOk(result);
     });
 
     it("should reject duplicate version registration", () => {
-      const registry = new PortRegistry<ServiceType>();
-      const token1 = createInjectionToken<ServiceType>("port-1");
-      const token2 = createInjectionToken<ServiceType>("port-2");
+      const registry = new PortRegistry<unknown>();
+      const token1 = createInjectionToken<unknown>("port-1");
+      const token2 = createInjectionToken<unknown>("port-2");
 
       registry.register(13, token1);
       const result = registry.register(13, token2);
@@ -30,18 +29,18 @@ describe("PortRegistry", () => {
 
   describe("getAvailableVersions", () => {
     it("should return sorted versions", () => {
-      const registry = new PortRegistry<ServiceType>();
+      const registry = new PortRegistry<unknown>();
 
-      registry.register(15, createInjectionToken<ServiceType>("port-15"));
-      registry.register(13, createInjectionToken<ServiceType>("port-13"));
-      registry.register(14, createInjectionToken<ServiceType>("port-14"));
+      registry.register(15, createInjectionToken<unknown>("port-15"));
+      registry.register(13, createInjectionToken<unknown>("port-13"));
+      registry.register(14, createInjectionToken<unknown>("port-14"));
 
       const versions = registry.getAvailableVersions();
       expect(versions).toEqual([13, 14, 15]);
     });
 
     it("should return empty array when no ports registered", () => {
-      const registry = new PortRegistry<ServiceType>();
+      const registry = new PortRegistry<unknown>();
       const versions = registry.getAvailableVersions();
       expect(versions).toEqual([]);
     });
@@ -49,10 +48,10 @@ describe("PortRegistry", () => {
 
   describe("getTokens", () => {
     it("should return all registered injection tokens", () => {
-      const registry = new PortRegistry<ServiceType>();
+      const registry = new PortRegistry<unknown>();
 
-      const token13 = createInjectionToken<ServiceType>("port-13");
-      const token14 = createInjectionToken<ServiceType>("port-14");
+      const token13 = createInjectionToken<unknown>("port-13");
+      const token14 = createInjectionToken<unknown>("port-14");
 
       registry.register(13, token13);
       registry.register(14, token14);
@@ -66,8 +65,8 @@ describe("PortRegistry", () => {
     });
 
     it("should return a copy of the token map", () => {
-      const registry = new PortRegistry<ServiceType>();
-      const token13 = createInjectionToken<ServiceType>("port-13");
+      const registry = new PortRegistry<unknown>();
+      const token13 = createInjectionToken<unknown>("port-13");
 
       registry.register(13, token13);
 
@@ -83,15 +82,15 @@ describe("PortRegistry", () => {
 
   describe("hasVersion", () => {
     it("should return true for registered version", () => {
-      const registry = new PortRegistry<ServiceType>();
-      registry.register(13, createInjectionToken<ServiceType>("port-13"));
+      const registry = new PortRegistry<unknown>();
+      registry.register(13, createInjectionToken<unknown>("port-13"));
 
       expect(registry.hasVersion(13)).toBe(true);
     });
 
     it("should return false for unregistered version", () => {
-      const registry = new PortRegistry<ServiceType>();
-      registry.register(13, createInjectionToken<ServiceType>("port-13"));
+      const registry = new PortRegistry<unknown>();
+      registry.register(13, createInjectionToken<unknown>("port-13"));
 
       expect(registry.hasVersion(14)).toBe(false);
     });
@@ -99,17 +98,17 @@ describe("PortRegistry", () => {
 
   describe("getHighestVersion", () => {
     it("should return highest registered version", () => {
-      const registry = new PortRegistry<ServiceType>();
+      const registry = new PortRegistry<unknown>();
 
-      registry.register(13, createInjectionToken<ServiceType>("port-13"));
-      registry.register(15, createInjectionToken<ServiceType>("port-15"));
-      registry.register(14, createInjectionToken<ServiceType>("port-14"));
+      registry.register(13, createInjectionToken<unknown>("port-13"));
+      registry.register(15, createInjectionToken<unknown>("port-15"));
+      registry.register(14, createInjectionToken<unknown>("port-14"));
 
       expect(registry.getHighestVersion()).toBe(15);
     });
 
     it("should return undefined when no ports registered", () => {
-      const registry = new PortRegistry<ServiceType>();
+      const registry = new PortRegistry<unknown>();
       expect(registry.getHighestVersion()).toBeUndefined();
     });
   });

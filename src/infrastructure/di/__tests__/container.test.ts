@@ -6,7 +6,6 @@ import { ServiceContainer } from "@/infrastructure/di/container";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import { ServiceLifecycle } from "@/infrastructure/di/types";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok, err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
@@ -14,7 +13,7 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 // Helper for tests: Wrap tokens for resolve() testing (simulates external API usage)
 // In production, only composition-root marks tokens as API-safe
 
-const testResolve = <T extends ServiceType>(container: ServiceContainer, token: any): T => {
+const testResolve = <T>(container: ServiceContainer, token: any): T => {
   return container.resolve(markAsApiSafe(token));
 };
 

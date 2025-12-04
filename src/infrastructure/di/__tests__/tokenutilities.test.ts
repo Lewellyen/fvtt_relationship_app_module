@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 
 class TestService implements Logger {
   log(): void {}
@@ -46,7 +45,7 @@ describe("tokenutilities", () => {
     it("should work with different service types", () => {
       const loggerToken = createInjectionToken<Logger>("Logger");
       const testServiceToken = createInjectionToken<TestService>("TestService");
-      const serviceTypeToken = createInjectionToken<ServiceType>("ServiceType");
+      const serviceTypeToken = createInjectionToken<unknown>("ServiceType");
 
       expect(typeof loggerToken).toBe("symbol");
       expect(typeof testServiceToken).toBe("symbol");

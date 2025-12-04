@@ -14,7 +14,6 @@
  */
 
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 
 /**
  * Minimal interface for recording performance metrics.
@@ -45,7 +44,7 @@ export interface MetricsRecorder {
    * @param durationMs - Time taken to resolve in milliseconds
    * @param success - Whether resolution succeeded
    */
-  recordResolution(token: InjectionToken<ServiceType>, durationMs: number, success: boolean): void;
+  recordResolution(token: InjectionToken<unknown>, durationMs: number, success: boolean): void;
 
   /**
    * Records a port selection event.

@@ -1,5 +1,4 @@
 import type { ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
@@ -132,7 +131,7 @@ export interface ModuleApi {
    * }
    * ```
    */
-  resolve: <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType;
+  resolve: <TServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType;
 
   /**
    * Resolves a service by its injection token with Result-Pattern (never throws).
@@ -170,7 +169,7 @@ export interface ModuleApi {
    * }
    * ```
    */
-  resolveWithError: <TServiceType extends ServiceType>(
+  resolveWithError: <TServiceType>(
     token: ApiSafeToken<TServiceType>
   ) => Result<TServiceType, ContainerError>;
 
@@ -203,11 +202,11 @@ export interface ModuleApi {
    * ```typescript
    * const api = game.modules.get('fvtt_relationship_app_module').api;
    *
-   * // notifications has type NotificationCenter (not ServiceType)
+   * // notifications has type NotificationCenter (not unknown)
    * const notifications = api.resolve(api.tokens.notificationCenterToken);
    * notifications.error("Hello users", { code: "DEMO", message: "Type-safe notifications!" });
    *
-   * // game has type FoundryGame (not ServiceType)
+   * // game has type FoundryGame (not unknown)
    * const game = api.resolve(api.tokens.foundryGameToken);
    * const journals = game.getJournalEntries();
    * ```

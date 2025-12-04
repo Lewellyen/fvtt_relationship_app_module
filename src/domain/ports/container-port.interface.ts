@@ -1,6 +1,5 @@
 import type { Result } from "@/domain/types/result";
 import type {
-  DomainServiceType,
   DomainInjectionToken,
   DomainApiSafeToken,
   DomainContainerError,
@@ -46,9 +45,7 @@ export interface ContainerPort {
    * @param token - The injection token that identifies the service
    * @returns Result with the resolved service or error
    */
-  resolveWithError<T extends DomainServiceType>(
-    token: DomainInjectionToken<T>
-  ): Result<T, DomainContainerError>;
+  resolveWithError<T>(token: DomainInjectionToken<T>): Result<T, DomainContainerError>;
 
   /**
    * Resolve a service instance by its injection token.
@@ -61,7 +58,7 @@ export interface ContainerPort {
    * @returns The resolved service instance
    * @throws {DomainContainerError} If service is not registered or resolution fails
    */
-  resolve<T extends DomainServiceType>(token: DomainApiSafeToken<T>): T;
+  resolve<T>(token: DomainApiSafeToken<T>): T;
 
   /**
    * Check if a token is registered in this container.
@@ -69,7 +66,7 @@ export interface ContainerPort {
    * @param token - The injection token to check
    * @returns True if the token is registered
    */
-  isRegistered<T extends DomainServiceType>(token: DomainInjectionToken<T>): Result<boolean, never>;
+  isRegistered<T>(token: DomainInjectionToken<T>): Result<boolean, never>;
 
   /**
    * Get the current validation state of the container.

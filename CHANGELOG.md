@@ -12,6 +12,31 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.14] - 2025-12-04
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **ServiceType komplett entfernt**: Vollständige Bereinigung aller ServiceType-Reste
+- `service-type-registry.ts` **GELÖSCHT** (Datei komplett entfernt)
+- Alle `extends ServiceType` Constraints entfernt (67 Verwendungen)
+- Alle ServiceType-Imports entfernt (30+ Dateien)
+- `DomainServiceType` ebenfalls entfernt aus Domain-Types
+- Container nutzt jetzt durchgehend freie Generics (`<T>` statt `<T extends ServiceType>`)
+- Dokumentation und Tests aktualisiert (39 Dateien bereinigt)
+- Alle Quality Gates: ✅ 100% (Tests, Coverage, Type-Coverage, Linter)
+- Circular Dependencies: Stabil bei **48** (54% Reduktion von ursprünglich 104)
+- ([Details](docs/refactoring/CIRCULAR-DEPS-FIX-PLAN-4-SERVICE-TYPE-REGISTRY.md))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.13] - 2025-12-04
 ### Hinzugefügt
 - Keine Einträge

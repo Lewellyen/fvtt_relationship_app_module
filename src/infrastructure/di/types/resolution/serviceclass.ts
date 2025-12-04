@@ -1,4 +1,3 @@
-import type { ServiceType } from "../service-type-registry";
 import type { ServiceDependencies } from "./servicedependencies";
 
 /**
@@ -10,7 +9,7 @@ import type { ServiceDependencies } from "./servicedependencies";
  * - Optional static dependencies: `static dependencies?: ServiceDependencies`
  *
  * @interface ServiceClass
- * @template T - The service type this class implements (must extend ServiceType)
+ * @template T - The service type this class implements (must extend unknown)
  *
  * @example
  * ```typescript
@@ -32,7 +31,7 @@ import type { ServiceDependencies } from "./servicedependencies";
  * }
  * ```
  */
-export interface ServiceClass<T extends ServiceType> {
+export interface ServiceClass<T> {
   /* type-coverage:ignore-next-line -- Variadic constructor: Constructor needs `any[]` to accept variable arguments during dependency injection */
   new (...args: any[]): T;
   dependencies?: ServiceDependencies;

@@ -14,7 +14,6 @@ import {
 import { createApiTokens } from "@/framework/core/api/api-token-config";
 import type { ModuleApi, TokenInfo, ModuleApiTokens } from "@/framework/core/api/module-api";
 import type { HealthStatus } from "@/domain/types/health-status";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
 import {
   wrapFoundrySettingsPort,
@@ -73,9 +72,7 @@ export class ModuleApiInitializer {
    * @param token - Token to check for deprecation
    * @private
    */
-  private handleDeprecationWarning<TServiceType extends ServiceType>(
-    token: ApiSafeToken<TServiceType>
-  ): void {
+  private handleDeprecationWarning<TServiceType>(token: ApiSafeToken<TServiceType>): void {
     const deprecationInfo = getDeprecationInfo(token);
     if (deprecationInfo && !deprecationInfo.warningShown) {
       const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
@@ -100,8 +97,8 @@ export class ModuleApiInitializer {
   private createResolveFunction(
     container: ContainerPort,
     wellKnownTokens: ModuleApiTokens
-  ): <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType {
-    return <TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>): TServiceType => {
+  ): <TServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType {
+    return <TServiceType>(token: ApiSafeToken<TServiceType>): TServiceType => {
       // Handle deprecation warnings
       this.handleDeprecationWarning(token);
 
@@ -123,10 +120,8 @@ export class ModuleApiInitializer {
   private createResolveWithErrorFunction(
     container: ContainerPort,
     wellKnownTokens: ModuleApiTokens
-  ): <TServiceType extends ServiceType>(
-    token: ApiSafeToken<TServiceType>
-  ) => Result<TServiceType, ContainerError> {
-    return <TServiceType extends ServiceType>(
+  ): <TServiceType>(token: ApiSafeToken<TServiceType>) => Result<TServiceType, ContainerError> {
+    return <TServiceType>(
       token: ApiSafeToken<TServiceType>
     ): Result<TServiceType, ContainerError> => {
       // Handle deprecation warnings
@@ -163,7 +158,7 @@ export class ModuleApiInitializer {
    * @returns Wrapped service when applicable
    * @private
    */
-  private wrapSensitiveService<TServiceType extends ServiceType>(
+  private wrapSensitiveService<TServiceType>(
     token: ApiSafeToken<TServiceType>,
     service: TServiceType,
     wellKnownTokens: ModuleApiTokens
@@ -206,7 +201,7 @@ export class ModuleApiInitializer {
         const tokenMap = new Map<symbol, TokenInfo>();
 
         // Add well-known tokens with their registration status
-        const tokenEntries: Array<[string, InjectionToken<ServiceType>]> = [
+        const tokenEntries: Array<[string, InjectionToken<unknown>]> = [
           ["journalVisibilityServiceToken", journalVisibilityServiceToken],
           ["foundryGameToken", foundryGameToken],
           ["foundryHooksToken", foundryHooksToken],

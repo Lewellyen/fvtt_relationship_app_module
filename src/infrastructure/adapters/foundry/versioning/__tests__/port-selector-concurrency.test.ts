@@ -11,7 +11,6 @@ import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/ver
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
@@ -24,8 +23,8 @@ describe("Concurrency: Port Selection", () => {
   let mockEventEmitter: PortSelectionEventEmitter;
   let mockObservability: ObservabilityRegistry;
   let mockContainer: ServiceContainer;
-  const token13 = createInjectionToken<ServiceType>("port-v13") as any;
-  const token14 = createInjectionToken<ServiceType>("port-v14") as any;
+  const token13 = createInjectionToken<unknown>("port-v13") as any;
+  const token14 = createInjectionToken<unknown>("port-v14") as any;
 
   beforeEach(() => {
     mockEventEmitter = new PortSelectionEventEmitter();

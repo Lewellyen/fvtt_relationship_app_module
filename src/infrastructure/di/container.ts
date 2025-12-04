@@ -6,14 +6,12 @@ import type { ContainerValidationState } from "./types/errors/containervalidatio
 import type { ApiSafeToken } from "./types/utilities/api-safe-token";
 import { isApiSafeTokenRuntime } from "./types/utilities/api-safe-token";
 import { ServiceLifecycle } from "./types/core/servicelifecycle";
-import type { ServiceType } from "./types/service-type-registry";
 import { ok, err, isOk } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 import type { Container } from "./interfaces";
 import type { ContainerError } from "./interfaces";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type {
-  DomainServiceType,
   DomainInjectionToken,
   DomainContainerError,
   DomainContainerValidationState,
@@ -144,9 +142,9 @@ export class ServiceContainer implements Container, ContainerPort {
   /**
    * Register a service class with automatic dependency injection.
    */
-  registerClass<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    serviceClass: ServiceClass<TServiceType>,
+  registerClass<T>(
+    token: InjectionToken<T>,
+    serviceClass: ServiceClass<T>,
     lifecycle: ServiceLifecycle
   ): Result<void, ContainerError> {
     if (this.scopeManager.isDisposed()) {
@@ -170,9 +168,9 @@ export class ServiceContainer implements Container, ContainerPort {
   /**
    * Register a factory function.
    */
-  registerFactory<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    factory: FactoryFunction<TServiceType>,
+  registerFactory<T>(
+    token: InjectionToken<T>,
+    factory: FactoryFunction<T>,
     lifecycle: ServiceLifecycle,
     dependencies: ServiceDependencies
   ): Result<void, ContainerError> {
@@ -206,10 +204,7 @@ export class ServiceContainer implements Container, ContainerPort {
   /**
    * Register a constant value.
    */
-  registerValue<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    value: TServiceType
-  ): Result<void, ContainerError> {
+  registerValue<T>(token: InjectionToken<T>, value: T): Result<void, ContainerError> {
     if (this.scopeManager.isDisposed()) {
       return err({
         code: "Disposed",
@@ -232,10 +227,7 @@ export class ServiceContainer implements Container, ContainerPort {
    * Register an already created instance.
    * Internally treated the same as a value registration.
    */
-  registerInstance<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    instance: TServiceType
-  ): Result<void, ContainerError> {
+  registerInstance<T>(token: InjectionToken<T>, instance: T): Result<void, ContainerError> {
     return this.registerValue(token, instance);
   }
 
@@ -243,9 +235,7 @@ export class ServiceContainer implements Container, ContainerPort {
    * Returns a previously registered constant value without requiring validation.
    * Useful for bootstrap/static values that are needed while the container is still registering services.
    */
-  getRegisteredValue<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>
-  ): TServiceType | null {
+  getRegisteredValue<T>(token: InjectionToken<T>): T | null {
     const registration = this.registry.getRegistration(token);
     if (!registration) {
       return null;
@@ -253,7 +243,7 @@ export class ServiceContainer implements Container, ContainerPort {
     if (registration.providerType !== "value") {
       return null;
     }
-    const value = registration.value as TServiceType | undefined;
+    const value = registration.value as T | undefined;
     if (value === undefined) {
       return null;
     }
@@ -263,9 +253,9 @@ export class ServiceContainer implements Container, ContainerPort {
   /**
    * Register an alias.
    */
-  registerAlias<TServiceType extends ServiceType>(
-    aliasToken: InjectionToken<TServiceType>,
-    targetToken: InjectionToken<TServiceType>
+  registerAlias<T>(
+    aliasToken: InjectionToken<T>,
+    targetToken: InjectionToken<T>
   ): Result<void, ContainerError> {
     if (this.scopeManager.isDisposed()) {
       return err({
@@ -516,15 +506,11 @@ export class ServiceContainer implements Container, ContainerPort {
    * Resolve service with Result return.
    * Implements both Container.resolveWithError and ContainerPort.resolveWithError.
    */
-  resolveWithError<T extends DomainServiceType>(
-    token: DomainInjectionToken<T>
-  ): Result<T, DomainContainerError>;
-  resolveWithError<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>
-  ): Result<TServiceType, ContainerError>;
-  resolveWithError<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>
-  ): Result<TServiceType, ContainerError> | Result<DomainServiceType, DomainContainerError> {
+  resolveWithError<T>(token: DomainInjectionToken<T>): Result<T, DomainContainerError>;
+  resolveWithError<T>(token: InjectionToken<T>): Result<T, ContainerError>;
+  resolveWithError<T>(
+    token: InjectionToken<T>
+  ): Result<T, ContainerError> | Result<unknown, DomainContainerError> {
     if (this.scopeManager.isDisposed()) {
       const error: ContainerError = {
         code: "Disposed",
@@ -536,7 +522,7 @@ export class ServiceContainer implements Container, ContainerPort {
         message: error.message,
         cause: error.cause,
       };
-      return err(domainError) as Result<DomainServiceType, DomainContainerError>;
+      return err(domainError) as Result<unknown, DomainContainerError>;
     }
 
     if (this.validationState !== "validated") {
@@ -550,7 +536,7 @@ export class ServiceContainer implements Container, ContainerPort {
         message: error.message,
         cause: error.cause,
       };
-      return err(domainError) as Result<DomainServiceType, DomainContainerError>;
+      return err(domainError) as Result<unknown, DomainContainerError>;
     }
 
     const result = this.resolver.resolve(token);
@@ -561,9 +547,9 @@ export class ServiceContainer implements Container, ContainerPort {
         message: result.error.message,
         cause: result.error.cause,
       };
-      return err(domainError) as Result<DomainServiceType, DomainContainerError>;
+      return err(domainError) as Result<unknown, DomainContainerError>;
     }
-    return result as Result<TServiceType, ContainerError>;
+    return result as Result<T, ContainerError>;
   }
 
   /**
@@ -608,18 +594,16 @@ export class ServiceContainer implements Container, ContainerPort {
    * }
    * ```
    */
-  resolve<TServiceType extends ServiceType>(token: ApiSafeToken<TServiceType>): TServiceType;
+  resolve<T>(token: ApiSafeToken<T>): T;
 
   /**
    * @deprecated Internal code must use resolveWithError()
    * @internal This overload prevents direct calls with non-branded tokens
    */
-  resolve<TServiceType extends ServiceType>(token: InjectionToken<TServiceType>): never;
+  resolve<T>(token: InjectionToken<T>): never;
 
   // Implementation (unified for both overloads)
-  resolve<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType> | ApiSafeToken<TServiceType>
-  ): TServiceType {
+  resolve<T>(token: InjectionToken<T> | ApiSafeToken<T>): T {
     // 🛡️ RUNTIME GUARD (always active for defense-in-depth)
     if (!isApiSafeTokenRuntime(token)) {
       throw new Error(
@@ -638,7 +622,7 @@ export class ServiceContainer implements Container, ContainerPort {
     const result = this.resolveWithError(token);
 
     if (isOk(result)) {
-      return castResolvedService<TServiceType>(result.value);
+      return castResolvedService<T>(result.value);
     }
 
     // No fallback - throw with context
@@ -649,20 +633,16 @@ export class ServiceContainer implements Container, ContainerPort {
    * Check if service is registered.
    * Implements both Container.isRegistered and ContainerPort.isRegistered.
    */
-  isRegistered<T extends DomainServiceType>(token: DomainInjectionToken<T>): Result<boolean, never>;
-  isRegistered<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>
-  ): Result<boolean, never>;
-  isRegistered<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>
-  ): Result<boolean, never> {
+  isRegistered<T>(token: DomainInjectionToken<T>): Result<boolean, never>;
+  isRegistered<T>(token: InjectionToken<T>): Result<boolean, never>;
+  isRegistered<T>(token: InjectionToken<T>): Result<boolean, never> {
     return ok(this.registry.has(token));
   }
 
   /**
    * Returns API-safe token metadata for external consumption.
    */
-  getApiSafeToken<T extends ServiceType>(
+  getApiSafeToken<T>(
     token: ApiSafeToken<T>
   ): { description: string; isRegistered: boolean } | null {
     if (!isApiSafeTokenRuntime(token)) {

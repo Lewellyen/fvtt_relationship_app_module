@@ -1,6 +1,5 @@
 import type { Result } from "@/domain/types/result";
 import type { InjectionToken } from "../types/core/injectiontoken";
-import type { ServiceType } from "../types/service-type-registry";
 import type { ServiceClass } from "../types/resolution/serviceclass";
 import type { FactoryFunction } from "../types/resolution/servicefactory";
 import type { ServiceDependencies } from "../types/resolution/servicedependencies";
@@ -14,8 +13,8 @@ import { iterateServiceRegistrationEntries } from "../types/utilities/runtime-sa
 /**
  * Type for service classes that declare their dependencies.
  */
-type ServiceClassWithDependencies<T extends ServiceType> = ServiceClass<T> & {
-  dependencies?: ReadonlyArray<InjectionToken<ServiceType>>;
+type ServiceClassWithDependencies<T> = ServiceClass<T> & {
+  dependencies?: ReadonlyArray<InjectionToken<unknown>>;
 };
 
 /**
@@ -25,9 +24,7 @@ type ServiceClassWithDependencies<T extends ServiceType> = ServiceClass<T> & {
  * @param cls - The service class to check
  * @returns True if the class has a dependencies property
  */
-function hasDependencies<T extends ServiceType>(
-  cls: ServiceClass<T>
-): cls is ServiceClassWithDependencies<T> {
+function hasDependencies<T>(cls: ServiceClass<T>): cls is ServiceClassWithDependencies<T> {
   return "dependencies" in cls;
 }
 
@@ -47,7 +44,7 @@ function hasDependencies<T extends ServiceType>(
 export class ServiceRegistry {
   private readonly MAX_REGISTRATIONS = 10000; // DoS protection: prevent unlimited registrations
   private registrations = new TypeSafeRegistrationMap();
-  private lifecycleIndex = new Map<ServiceLifecycle, Set<InjectionToken<ServiceType>>>();
+  private lifecycleIndex = new Map<ServiceLifecycle, Set<InjectionToken<unknown>>>();
 
   /**
    * Updates the lifecycle index when a service is registered.
@@ -55,10 +52,7 @@ export class ServiceRegistry {
    * @param token - The injection token
    * @param lifecycle - The service lifecycle
    */
-  private updateLifecycleIndex(
-    token: InjectionToken<ServiceType>,
-    lifecycle: ServiceLifecycle
-  ): void {
+  private updateLifecycleIndex(token: InjectionToken<unknown>, lifecycle: ServiceLifecycle): void {
     let tokenSet = this.lifecycleIndex.get(lifecycle);
     if (!tokenSet) {
       tokenSet = new Set();
@@ -70,15 +64,15 @@ export class ServiceRegistry {
   /**
    * Registers a service class with automatic dependency injection.
    *
-   * @template TServiceType - The type of service to register
+   * @template Tunknown - The type of service to register
    * @param token - The injection token identifying this service
    * @param serviceClass - The class to instantiate
    * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
    * @returns Result indicating success or error
    */
-  registerClass<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    serviceClass: ServiceClass<TServiceType>,
+  registerClass<T>(
+    token: InjectionToken<T>,
+    serviceClass: ServiceClass<T>,
     lifecycle: ServiceLifecycle
   ): Result<void, ContainerError> {
     // Check registration limit (DoS protection)
@@ -109,7 +103,7 @@ export class ServiceRegistry {
     const dependencies = hasDependencies(serviceClass) ? (serviceClass.dependencies ?? []) : [];
 
     // Use static factory method for validation
-    const registrationResult = ServiceRegistration.createClass<TServiceType>(
+    const registrationResult = ServiceRegistration.createClass<T>(
       lifecycle,
       dependencies,
       serviceClass
@@ -127,16 +121,16 @@ export class ServiceRegistry {
   /**
    * Registers a factory function for creating service instances.
    *
-   * @template TServiceType - The type of service this factory creates
+   * @template Tunknown - The type of service this factory creates
    * @param token - The injection token identifying this service
    * @param factory - Factory function that creates instances
    * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
    * @param dependencies - Array of tokens this factory depends on
    * @returns Result indicating success or error
    */
-  registerFactory<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    factory: FactoryFunction<TServiceType>,
+  registerFactory<T>(
+    token: InjectionToken<T>,
+    factory: FactoryFunction<T>,
     lifecycle: ServiceLifecycle,
     dependencies: ServiceDependencies
   ): Result<void, ContainerError> {
@@ -158,7 +152,7 @@ export class ServiceRegistry {
     }
 
     // Use static factory method for validation
-    const registrationResult = ServiceRegistration.createFactory<TServiceType>(
+    const registrationResult = ServiceRegistration.createFactory<T>(
       lifecycle,
       dependencies,
       factory
@@ -176,15 +170,12 @@ export class ServiceRegistry {
   /**
    * Registers a constant value (always SINGLETON lifecycle).
    *
-   * @template TServiceType - The type of value to register
+   * @template Tunknown - The type of value to register
    * @param token - The injection token identifying this value
    * @param value - The value to register
    * @returns Result indicating success or error
    */
-  registerValue<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    value: TServiceType
-  ): Result<void, ContainerError> {
+  registerValue<T>(token: InjectionToken<T>, value: T): Result<void, ContainerError> {
     // Check registration limit (DoS protection)
     if (this.registrations.size >= this.MAX_REGISTRATIONS) {
       return err({
@@ -203,7 +194,7 @@ export class ServiceRegistry {
     }
 
     // Use static factory method for validation (includes function check)
-    const registrationResult = ServiceRegistration.createValue<TServiceType>(value);
+    const registrationResult = ServiceRegistration.createValue<T>(value);
 
     if (isErr(registrationResult)) {
       return registrationResult;
@@ -217,14 +208,14 @@ export class ServiceRegistry {
   /**
    * Registers an alias that points to another token.
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param aliasToken - The alias token
    * @param targetToken - The token to resolve instead
    * @returns Result indicating success or error
    */
-  registerAlias<TServiceType extends ServiceType>(
-    aliasToken: InjectionToken<TServiceType>,
-    targetToken: InjectionToken<TServiceType>
+  registerAlias<T>(
+    aliasToken: InjectionToken<T>,
+    targetToken: InjectionToken<T>
   ): Result<void, ContainerError> {
     // Check registration limit (DoS protection)
     if (this.registrations.size >= this.MAX_REGISTRATIONS) {
@@ -244,7 +235,7 @@ export class ServiceRegistry {
     }
 
     // Use static factory method for validation
-    const registrationResult = ServiceRegistration.createAlias<TServiceType>(targetToken);
+    const registrationResult = ServiceRegistration.createAlias<T>(targetToken);
 
     if (isErr(registrationResult)) {
       return registrationResult;
@@ -257,13 +248,11 @@ export class ServiceRegistry {
   /**
    * Retrieves a service registration.
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param token - The injection token identifying the service
    * @returns The registration or undefined if not found
    */
-  getRegistration<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>
-  ): ServiceRegistration<TServiceType> | undefined {
+  getRegistration<T>(token: InjectionToken<T>): ServiceRegistration<T> | undefined {
     return this.registrations.get(token);
   }
 
@@ -273,7 +262,7 @@ export class ServiceRegistry {
    *
    * @returns Map of all registrations
    */
-  getAllRegistrations(): Map<InjectionToken<ServiceType>, ServiceRegistration> {
+  getAllRegistrations(): Map<InjectionToken<unknown>, ServiceRegistration> {
     return new Map(iterateServiceRegistrationEntries(this.registrations.entries())); // Defensive copy
   }
 
@@ -294,11 +283,11 @@ export class ServiceRegistry {
   /**
    * Checks if a service is registered.
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param token - The injection token to check
    * @returns True if registered, false otherwise
    */
-  has<TServiceType extends ServiceType>(token: InjectionToken<TServiceType>): boolean {
+  has<T>(token: InjectionToken<T>): boolean {
     return this.registrations.has(token);
   }
 

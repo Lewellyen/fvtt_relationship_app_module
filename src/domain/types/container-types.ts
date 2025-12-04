@@ -9,25 +9,16 @@
  */
 
 /**
- * Base type constraint for all services that can be registered in a container.
- *
- * This is a minimal domain abstraction. Infrastructure-layer ServiceType
- * extends this constraint.
- */
-export type DomainServiceType = unknown;
-
-/**
  * Base type for dependency injection tokens.
  *
  * This is a minimal domain abstraction. Infrastructure-layer InjectionToken
  * extends this type with branded properties.
  *
- * TServiceType is used as a type parameter for generic type constraints,
+ * T is used as a type parameter for generic type constraints,
  * even though it's not directly referenced in the type body.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type DomainInjectionToken<TServiceType extends DomainServiceType = DomainServiceType> =
-  symbol;
+export type DomainInjectionToken<T = unknown> = symbol;
 
 /**
  * Base type for API-safe tokens that can be used with throwing resolve() methods.
@@ -35,8 +26,7 @@ export type DomainInjectionToken<TServiceType extends DomainServiceType = Domain
  * This is a minimal domain abstraction. Infrastructure-layer ApiSafeToken
  * extends this type with branded properties.
  */
-export type DomainApiSafeToken<TServiceType extends DomainServiceType = DomainServiceType> =
-  DomainInjectionToken<TServiceType>;
+export type DomainApiSafeToken<T = unknown> = DomainInjectionToken<T>;
 
 /**
  * Base interface for container errors.

@@ -8,7 +8,6 @@ import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { Disposable } from "@/infrastructure/di/interfaces";
 import type { InjectionToken } from "../../types/core/injectiontoken";
-import type { ServiceType } from "../../types/service-type-registry";
 
 class DisposableService implements Logger {
   disposed = false;
@@ -453,8 +452,8 @@ describe("ScopeManager", () => {
         debug(): void {}
       }
 
-      const asyncToken = Symbol("AsyncDisposable") as InjectionToken<ServiceType>;
-      const syncToken = Symbol("SyncDisposable") as InjectionToken<ServiceType>;
+      const asyncToken = Symbol("AsyncDisposable") as InjectionToken<unknown>;
+      const syncToken = Symbol("SyncDisposable") as InjectionToken<unknown>;
       const asyncInstance = new AsyncDisposable();
       const syncInstance = new SyncDisposable();
       cache.set(asyncToken, asyncInstance);
@@ -486,7 +485,7 @@ describe("ScopeManager", () => {
         debug(): void {}
       }
 
-      const token = Symbol("SyncOnlyDisposable") as InjectionToken<ServiceType>;
+      const token = Symbol("SyncOnlyDisposable") as InjectionToken<unknown>;
       const instance = new SyncOnlyDisposable();
       cache.set(token, instance);
 

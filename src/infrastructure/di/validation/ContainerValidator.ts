@@ -1,7 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import type { ContainerError } from "../interfaces";
 import type { InjectionToken } from "../types/core/injectiontoken";
-import type { ServiceType } from "../types/service-type-registry";
 import type { ServiceRegistry } from "../registry/ServiceRegistry";
 import { ok, err } from "@/domain/utils/result";
 
@@ -26,7 +25,7 @@ import { ok, err } from "@/domain/utils/result";
 export class ContainerValidator {
   // Performance optimization: Cache for validated sub-graphs
   // Prevents redundant DFS traversals in large dependency trees (>500 services)
-  private validatedSubgraphs = new Set<InjectionToken<ServiceType>>();
+  private validatedSubgraphs = new Set<InjectionToken<unknown>>();
   /**
    * Validates all registrations in the registry.
    *
@@ -40,7 +39,7 @@ export class ContainerValidator {
    */
   validate(registry: ServiceRegistry): Result<void, ContainerError[]> {
     // Clear cache for fresh validation
-    this.validatedSubgraphs = new Set<InjectionToken<ServiceType>>();
+    this.validatedSubgraphs = new Set<InjectionToken<unknown>>();
 
     const errors: ContainerError[] = [
       ...this.validateDependencies(registry),
@@ -109,12 +108,12 @@ export class ContainerValidator {
    */
   private detectCircularDependencies(registry: ServiceRegistry): ContainerError[] {
     const errors: ContainerError[] = [];
-    const visited = new Set<InjectionToken<ServiceType>>();
+    const visited = new Set<InjectionToken<unknown>>();
     const registrations = registry.getAllRegistrations();
 
     for (const token of registrations.keys()) {
-      const visiting = new Set<InjectionToken<ServiceType>>();
-      const path: InjectionToken<ServiceType>[] = [];
+      const visiting = new Set<InjectionToken<unknown>>();
+      const path: InjectionToken<unknown>[] = [];
 
       const error = this.checkCycleForToken(registry, token, visiting, visited, path);
       if (error) {
@@ -164,10 +163,10 @@ export class ContainerValidator {
    */
   private checkCycleForToken(
     registry: ServiceRegistry,
-    token: InjectionToken<ServiceType>,
-    visiting: Set<InjectionToken<ServiceType>>,
-    visited: Set<InjectionToken<ServiceType>>,
-    path: InjectionToken<ServiceType>[]
+    token: InjectionToken<unknown>,
+    visiting: Set<InjectionToken<unknown>>,
+    visited: Set<InjectionToken<unknown>>,
+    path: InjectionToken<unknown>[]
   ): ContainerError | null {
     // GRAY node encountered: Back edge detected → Cycle exists
     // This token is already in the current DFS path (visiting set)

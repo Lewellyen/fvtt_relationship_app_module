@@ -1,6 +1,5 @@
 import type { Result } from "@/domain/types/result";
 import type { InjectionToken } from "../types/core/injectiontoken";
-import type { ServiceType } from "../types/service-type-registry";
 import type { ContainerError } from "../interfaces";
 import type { ServiceRegistry } from "../registry/ServiceRegistry";
 import type { ServiceRegistration } from "../types/core/serviceregistration";
@@ -59,13 +58,11 @@ export class ServiceResolver {
    *
    * Performance tracking is handled by the injected PerformanceTracker.
    *
-   * @template TServiceType - The type of service to resolve
+   * @template Tunknown - The type of service to resolve
    * @param token - The injection token identifying the service
    * @returns Result with service instance or error
    */
-  resolve<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>
-  ): Result<TServiceType, ContainerError> {
+  resolve<T>(token: InjectionToken<T>): Result<T, ContainerError> {
     return this.performanceTracker.track(
       () => {
         // Check if service is registered
@@ -89,7 +86,7 @@ export class ServiceResolver {
         }
 
         // Resolve based on lifecycle (all methods already return Result)
-        let result: Result<TServiceType, ContainerError>;
+        let result: Result<T, ContainerError>;
 
         switch (registration.lifecycle) {
           case ServiceLifecycle.SINGLETON:
@@ -128,18 +125,18 @@ export class ServiceResolver {
    * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
    * Handles dependency resolution for classes, direct factory calls, and value returns.
    *
-   * @template TServiceType - The type of service to instantiate
+   * @template Tunknown - The type of service to instantiate
    * @param token - The injection token (used for error messages)
    * @param registration - The service registration metadata
    * @returns Result with instance or detailed error (DependencyResolveFailed, FactoryFailed, etc.)
    */
-  private instantiateService<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    registration: ServiceRegistration<TServiceType>
-  ): Result<TServiceType, ContainerError> {
+  private instantiateService<T>(
+    token: InjectionToken<T>,
+    registration: ServiceRegistration<T>
+  ): Result<T, ContainerError> {
     if (registration.serviceClass) {
       // Class: Resolve all dependencies first
-      const resolvedDeps: ServiceType[] = [];
+      const resolvedDeps: unknown[] = [];
 
       for (const dep of registration.dependencies) {
         const depResult = this.resolve(dep);
@@ -201,15 +198,15 @@ export class ServiceResolver {
    *    - TokenNotRegistered → fallback to own cache (child-specific singleton)
    * 3. Use own cache for root container or child-specific singletons
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param token - The injection token
    * @param registration - The service registration
    * @returns Result with instance or error
    */
-  private resolveSingleton<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    registration: ServiceRegistration<TServiceType>
-  ): Result<TServiceType, ContainerError> {
+  private resolveSingleton<T>(
+    token: InjectionToken<T>,
+    registration: ServiceRegistration<T>
+  ): Result<T, ContainerError> {
     // Try parent resolver first for shared singletons
     if (this.parentResolver !== null) {
       const parentResult = this.parentResolver.resolve(token);
@@ -238,7 +235,7 @@ export class ServiceResolver {
       this.cache.set(token, instanceResult.value);
     }
 
-    const instanceResult = castCachedServiceInstanceForResult<TServiceType>(this.cache.get(token));
+    const instanceResult = castCachedServiceInstanceForResult<T>(this.cache.get(token));
     if (!instanceResult.ok) {
       return instanceResult; // Propagate error
     }
@@ -251,15 +248,15 @@ export class ServiceResolver {
    * Strategy:
    * - Always create new instance (no caching)
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param token - The injection token
    * @param registration - The service registration
    * @returns Result with new instance
    */
-  private resolveTransient<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    registration: ServiceRegistration<TServiceType>
-  ): Result<TServiceType, ContainerError> {
+  private resolveTransient<T>(
+    token: InjectionToken<T>,
+    registration: ServiceRegistration<T>
+  ): Result<T, ContainerError> {
     return this.instantiateService(token, registration);
   }
 
@@ -277,7 +274,7 @@ export class ServiceResolver {
    *
    * Use createScope() to create a child container before resolving scoped services.
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param token - The injection token
    * @param registration - The service registration
    * @returns Result with scoped instance or ScopeRequired error
@@ -296,10 +293,10 @@ export class ServiceResolver {
    * const ctx = child.resolve(RequestToken); // OK
    * ```
    */
-  private resolveScoped<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    registration: ServiceRegistration<TServiceType>
-  ): Result<TServiceType, ContainerError> {
+  private resolveScoped<T>(
+    token: InjectionToken<T>,
+    registration: ServiceRegistration<T>
+  ): Result<T, ContainerError> {
     // Scoped services require a child scope
     if (this.parentResolver === null) {
       return err({
@@ -318,7 +315,7 @@ export class ServiceResolver {
       this.cache.set(token, instanceResult.value);
     }
 
-    const instanceResult = castCachedServiceInstanceForResult<TServiceType>(this.cache.get(token));
+    const instanceResult = castCachedServiceInstanceForResult<T>(this.cache.get(token));
     if (!instanceResult.ok) {
       return instanceResult; // Propagate error
     }

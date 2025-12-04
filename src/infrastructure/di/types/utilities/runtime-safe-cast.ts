@@ -22,7 +22,6 @@ import type {
   RuntimeConfigKey,
   RuntimeConfigValues,
 } from "@/application/services/RuntimeConfigService";
-import type { ServiceType } from "../../types/service-type-registry";
 import type { InjectionToken } from "../core/injectiontoken";
 import type { ServiceRegistration } from "../core/serviceregistration";
 import type { Result } from "@/domain/types/result";
@@ -83,37 +82,37 @@ export function castCacheValue<TValue>(value: unknown): TValue {
 
 /**
  * Wrapper für I18nFacadeService im Module-API-Kontext.
- * Kapselt die notwendige Umwandlung von ServiceType → I18nFacadeService
- * und wieder zurück zu generischem TServiceType.
+ * Kapselt die notwendige Umwandlung von unknown → I18nFacadeService
+ * und wieder zurück zu generischem T.
  */
-export function wrapI18nService<TServiceType>(
-  service: TServiceType,
+export function wrapI18nService<T>(
+  service: T,
   create: (i18n: I18nFacadeService) => I18nFacadeService
-): TServiceType {
+): T {
   const concrete = service as unknown as I18nFacadeService;
-  return create(concrete) as unknown as TServiceType;
+  return create(concrete) as unknown as T;
 }
 
 /**
  * Entspricht wrapI18nService, aber für NotificationCenter.
  */
-export function wrapNotificationCenterService<TServiceType>(
-  service: TServiceType,
+export function wrapNotificationCenterService<T>(
+  service: T,
   create: (center: NotificationService) => NotificationService
-): TServiceType {
+): T {
   const concrete = service as unknown as NotificationService;
-  return create(concrete) as unknown as TServiceType;
+  return create(concrete) as unknown as T;
 }
 
 /**
  * Entspricht wrapI18nService, aber für FoundrySettings.
  */
-export function wrapFoundrySettingsPort<TServiceType>(
-  service: TServiceType,
+export function wrapFoundrySettingsPort<T>(
+  service: T,
   create: (settings: FoundrySettings) => FoundrySettings
-): TServiceType {
+): T {
   const concrete = service as unknown as FoundrySettings;
-  return create(concrete) as unknown as TServiceType;
+  return create(concrete) as unknown as T;
 }
 
 /**
@@ -121,13 +120,11 @@ export function wrapFoundrySettingsPort<TServiceType>(
  * Die Typsicherheit wird durch die Aufrufer gewährleistet, die sicherstellen,
  * dass der Token mit dem korrekten generischen Typ registriert wurde.
  *
- * @param instance - Die gecachte Service-Instanz (ServiceType union)
+ * @param instance - Die gecachte Service-Instanz (unknown)
  * @returns Die Instanz als spezifischer generischer Typ
  */
-export function castCachedServiceInstance<TServiceType extends ServiceType>(
-  instance: ServiceType | undefined
-): TServiceType | undefined {
-  return instance as TServiceType | undefined;
+export function castCachedServiceInstance<T>(instance: unknown | undefined): T | undefined {
+  return instance as T | undefined;
 }
 
 /**
@@ -139,8 +136,8 @@ export function castCachedServiceInstance<TServiceType extends ServiceType>(
  * zurückgegeben statt einen Error zu werfen, um konsistent mit dem Result-Pattern
  * zu bleiben.
  *
- * @template TServiceType - Der spezifische Service-Typ
- * @param instance - Die gecachte Service-Instanz (ServiceType union oder undefined)
+ * @template T - Der spezifische Service-Typ
+ * @param instance - Die gecachte Service-Instanz (unknown oder undefined)
  * @returns Result mit der Instanz als spezifischer generischer Typ oder ContainerError
  *
  * @remarks
@@ -150,9 +147,9 @@ export function castCachedServiceInstance<TServiceType extends ServiceType>(
  *
  * @see {@link castCachedServiceInstance} Für optionale Service-Instanzen
  */
-export function castCachedServiceInstanceForResult<TServiceType extends ServiceType>(
-  instance: ServiceType | undefined
-): Result<TServiceType, ContainerError> {
+export function castCachedServiceInstanceForResult<T>(
+  instance: unknown | undefined
+): Result<T, ContainerError> {
   if (instance === undefined) {
     return err({
       code: "TokenNotRegistered",
@@ -161,7 +158,7 @@ export function castCachedServiceInstanceForResult<TServiceType extends ServiceT
       details: {},
     });
   }
-  return ok(instance as TServiceType);
+  return ok(instance as T);
 }
 
 /**
@@ -170,14 +167,14 @@ export function castCachedServiceInstanceForResult<TServiceType extends ServiceT
  * daher ist dieser Cast notwendig, um die korrekten Typen wiederherzustellen.
  *
  * @param token - Der Injection Token (symbol)
- * @param registration - Die ServiceRegistration (ServiceType union)
+ * @param registration - Die ServiceRegistration (unknown)
  * @returns Tuple mit typisierten Token und Registration
  */
 export function castServiceRegistrationEntry(
   token: symbol,
-  registration: ServiceRegistration<ServiceType>
-): [InjectionToken<ServiceType>, ServiceRegistration<ServiceType>] {
-  return [token as InjectionToken<ServiceType>, registration as ServiceRegistration<ServiceType>];
+  registration: ServiceRegistration<unknown>
+): [InjectionToken<unknown>, ServiceRegistration<unknown>] {
+  return [token as InjectionToken<unknown>, registration as ServiceRegistration<unknown>];
 }
 
 /**
@@ -185,12 +182,12 @@ export function castServiceRegistrationEntry(
  * Map.entries() verliert generische Typ-Information während der Iteration,
  * daher ist diese Funktion notwendig, um die korrekten Typen wiederherzustellen.
  *
- * @param entries - Die Map-Einträge (Iterable von [symbol, ServiceRegistration<ServiceType>])
+ * @param entries - Die Map-Einträge (Iterable von [symbol, ServiceRegistration<unknown>])
  * @returns Iterable von typisierten [InjectionToken, ServiceRegistration] Tuples
  */
 export function* iterateServiceRegistrationEntries(
-  entries: Iterable<[symbol, ServiceRegistration<ServiceType>]>
-): IterableIterator<[InjectionToken<ServiceType>, ServiceRegistration<ServiceType>]> {
+  entries: Iterable<[symbol, ServiceRegistration<unknown>]>
+): IterableIterator<[InjectionToken<unknown>, ServiceRegistration<unknown>]> {
   for (const [token, registration] of entries) {
     yield castServiceRegistrationEntry(token, registration);
   }

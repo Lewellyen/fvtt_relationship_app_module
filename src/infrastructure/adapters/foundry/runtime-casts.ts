@@ -139,14 +139,14 @@ export function castFoundryError(error: unknown): FoundryError {
 
 /**
  * Kapselt den Cast für Disposable-Interface in FoundryServiceBase.
- * Ports sind als generischer ServiceType typisiert, aber zur Laufzeit
+ * Ports sind als generischer unknown typisiert, aber zur Laufzeit
  * kann geprüft werden, ob sie das Disposable-Interface implementieren.
  *
  * Diese Funktion führt eine Runtime-Validierung durch, um sicherzustellen,
  * dass der Port das `dispose`-Interface implementiert. Wenn nicht, wird `null`
  * zurückgegeben (analog zu `extractHtmlElement`), da dies ein optionales Feature ist.
  *
- * @param port - Der Port (unknown, da generischer ServiceType)
+ * @param port - Der Port (unknown, da generischer unknown)
  * @returns Der Port als Disposable gecastet oder null, wenn nicht verfügbar
  *
  * @remarks

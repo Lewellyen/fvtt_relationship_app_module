@@ -1,5 +1,4 @@
 import type { InjectionToken } from "../core/injectiontoken";
-import type { ServiceType } from "../service-type-registry";
 
 /**
  * Compile-time brand marker for API-safe tokens.
@@ -43,7 +42,7 @@ const apiSafeTokens = new Set<symbol>();
  * @see markAsApiSafe - Function to mark tokens as API-safe
  * @see https://github.com/tc39/proposal-type-annotations (future TC39 standard alignment)
  */
-export type ApiSafeToken<T extends ServiceType> = InjectionToken<T> & {
+export type ApiSafeToken<T> = InjectionToken<T> & {
   readonly [API_SAFE_BRAND]: true;
 };
 
@@ -84,7 +83,7 @@ export type ApiSafeToken<T extends ServiceType> = InjectionToken<T> & {
  * // Use resolveWithError() instead!
  * ```
  */
-export function markAsApiSafe<T extends ServiceType>(token: InjectionToken<T>): ApiSafeToken<T> {
+export function markAsApiSafe<T>(token: InjectionToken<T>): ApiSafeToken<T> {
   // Add to Set registry (O(1) lookup)
   apiSafeTokens.add(token);
 
@@ -124,9 +123,7 @@ export function markAsApiSafe<T extends ServiceType>(token: InjectionToken<T>): 
  * }
  * ```
  */
-export function isApiSafeTokenRuntime<T extends ServiceType>(
-  token: InjectionToken<T>
-): token is ApiSafeToken<T> {
+export function isApiSafeTokenRuntime<T>(token: InjectionToken<T>): token is ApiSafeToken<T> {
   // Check Set registry
   return apiSafeTokens.has(token);
 }

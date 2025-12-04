@@ -1,4 +1,3 @@
-import type { ServiceType } from "./types/service-type-registry";
 import type { InjectionToken } from "./types/core/injectiontoken";
 import type { ApiSafeToken } from "./types/utilities/api-safe-token";
 import type { ServiceLifecycle } from "./types/core/servicelifecycle";
@@ -128,7 +127,7 @@ export interface Container {
    * The service class should have a static `dependencies` property that declares its dependencies.
    * The container will automatically resolve and inject these dependencies when creating instances.
    *
-   * @template TServiceType - The type of service to register (must extend ServiceType)
+   * @template Tunknown - The type of service to register (must extend unknown)
    * @param token - The injection token that identifies this service
    * @param serviceClass - The service class to instantiate (must have static dependencies property)
    * @param lifecycle - Service lifecycle strategy (SINGLETON, TRANSIENT, or SCOPED)
@@ -144,9 +143,9 @@ export interface Container {
    * const result = container.registerClass(UserServiceToken, UserService, SINGLETON);
    * ```
    */
-  registerClass<TServiceType extends ServiceType>(
-    token: InjectionToken<TServiceType>,
-    serviceClass: ServiceClass<TServiceType>,
+  registerClass<T>(
+    token: InjectionToken<T>,
+    serviceClass: ServiceClass<T>,
     lifecycle: ServiceLifecycle
   ): Result<void, ContainerError>;
 
@@ -171,7 +170,7 @@ export interface Container {
    * );
    * ```
    */
-  registerFactory<T extends ServiceType>(
+  registerFactory<T>(
     token: InjectionToken<T>,
     factory: FactoryFunction<T>,
     lifecycle: ServiceLifecycle,
@@ -195,10 +194,7 @@ export interface Container {
    * const result = container.registerInstance(LoggerToken, logger);
    * ```
    */
-  registerInstance<T extends ServiceType>(
-    token: InjectionToken<T>,
-    instance: T
-  ): Result<void, ContainerError>;
+  registerInstance<T>(token: InjectionToken<T>, instance: T): Result<void, ContainerError>;
 
   /**
    * Resolve a service instance by its injection token.
@@ -217,7 +213,7 @@ export interface Container {
    * logger.info("Service resolved");
    * ```
    */
-  resolve<T extends ServiceType>(token: InjectionToken<T>): T;
+  resolve<T>(token: InjectionToken<T>): T;
 
   /**
    * Resolve a service instance with explicit error handling.
@@ -238,7 +234,7 @@ export interface Container {
    * }
    * ```
    */
-  resolveWithError<T extends ServiceType>(token: InjectionToken<T>): Result<T, ContainerError>;
+  resolveWithError<T>(token: InjectionToken<T>): Result<T, ContainerError>;
 
   /**
    * Validate the container's dependency graph.
@@ -314,7 +310,7 @@ export interface Container {
    * @param token - The injection token to check
    * @returns True if the token is registered
    */
-  isRegistered<T extends ServiceType>(token: InjectionToken<T>): Result<boolean, never>;
+  isRegistered<T>(token: InjectionToken<T>): Result<boolean, never>;
 
   /**
    * Get API-safe token information for external API exposure.
@@ -322,7 +318,5 @@ export interface Container {
    * @param token - The injection token
    * @returns API-safe token information or null if not registered
    */
-  getApiSafeToken<T extends ServiceType>(
-    token: ApiSafeToken<T>
-  ): { description: string; isRegistered: boolean } | null;
+  getApiSafeToken<T>(token: ApiSafeToken<T>): { description: string; isRegistered: boolean } | null;
 }

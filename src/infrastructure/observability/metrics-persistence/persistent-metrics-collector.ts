@@ -1,5 +1,4 @@
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { metricsStorageToken } from "@/infrastructure/shared/tokens/observability.tokens";
 import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
@@ -13,7 +12,7 @@ import { ok, err } from "@/domain/utils/result";
  * MetricsCollector variant that persists state via MetricsStorage.
  */
 export class PersistentMetricsCollector extends MetricsCollector {
-  static override dependencies: readonly InjectionToken<ServiceType>[] = [
+  static override dependencies: readonly InjectionToken<unknown>[] = [
     runtimeConfigToken,
     metricsStorageToken,
   ];
@@ -97,7 +96,7 @@ export class PersistentMetricsCollector extends MetricsCollector {
 }
 
 export class DIPersistentMetricsCollector extends PersistentMetricsCollector {
-  static override dependencies: readonly InjectionToken<ServiceType>[] = [
+  static override dependencies: readonly InjectionToken<unknown>[] = [
     runtimeConfigToken,
     metricsStorageToken,
   ];

@@ -10,7 +10,6 @@ import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { markAsApiSafe } from "@/infrastructure/di/types";
-import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { ModuleApi } from "@/framework/core/api/module-api";
 
@@ -64,7 +63,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
       const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
-      const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("InvalidService"));
+      const invalidToken = markAsApiSafe(createInjectionToken<unknown>("InvalidService"));
 
       // api.resolve() SOLL Exception werfen (erwartetes Verhalten)
       expect(() => {
@@ -75,7 +74,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
     it("should throw exception when container is not validated", () => {
       // Dieser Test ist schwierig zu simulieren, da Container bereits validiert ist
       // Aber wir können prüfen, dass api.resolve() bei ungültigen Tokens wirft
-      const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("NonExistentService"));
+      const invalidToken = markAsApiSafe(createInjectionToken<unknown>("NonExistentService"));
 
       expect(() => {
         api.resolve(invalidToken);
@@ -86,7 +85,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
       const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
-      const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("InvalidService"));
+      const invalidToken = markAsApiSafe(createInjectionToken<unknown>("InvalidService"));
 
       try {
         api.resolve(invalidToken);
@@ -110,7 +109,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
       const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
-      const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("InvalidService"));
+      const invalidToken = markAsApiSafe(createInjectionToken<unknown>("InvalidService"));
 
       // api.resolveWithError() SOLLTE nie Exception werfen
       const result = api.resolveWithError(invalidToken);
@@ -123,7 +122,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
 
     it("should return Result with ok: false when container is not validated", () => {
       // Container ist bereits validiert, aber wir können prüfen, dass Result zurückgegeben wird
-      const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("NonExistentService"));
+      const invalidToken = markAsApiSafe(createInjectionToken<unknown>("NonExistentService"));
 
       // Sollte nie Exception werfen, auch bei Fehlern
       expect(() => {
@@ -136,7 +135,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
       const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
-      const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("InvalidService"));
+      const invalidToken = markAsApiSafe(createInjectionToken<unknown>("InvalidService"));
 
       // Sollte nie Exception werfen, auch bei Fehlern
       expect(() => {
@@ -180,7 +179,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
       const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
-      const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("InvalidService"));
+      const invalidToken = markAsApiSafe(createInjectionToken<unknown>("InvalidService"));
 
       // api.resolve() wirft Exception
       expect(() => {
