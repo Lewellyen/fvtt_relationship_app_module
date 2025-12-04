@@ -313,8 +313,10 @@ export class ScopeManager {
    * @param instance - The service instance to check
    * @returns True if instance has dispose() method
    */
-  private isDisposable(instance: ServiceType): instance is ServiceType & Disposable {
+  private isDisposable(instance: unknown): instance is Disposable {
     return (
+      instance !== null &&
+      typeof instance === "object" &&
       "dispose" in instance &&
       // Narrowing via Partial so we can check dispose presence without full interface
       typeof (instance as Partial<Disposable>).dispose === "function"
@@ -327,8 +329,10 @@ export class ScopeManager {
    * @param instance - The service instance to check
    * @returns True if instance has disposeAsync() method
    */
-  private isAsyncDisposable(instance: ServiceType): instance is ServiceType & AsyncDisposable {
+  private isAsyncDisposable(instance: unknown): instance is AsyncDisposable {
     return (
+      instance !== null &&
+      typeof instance === "object" &&
       "disposeAsync" in instance &&
       // Narrowing via Partial so we can check disposeAsync presence without full interface
       typeof (instance as { disposeAsync?: unknown }).disposeAsync === "function"
