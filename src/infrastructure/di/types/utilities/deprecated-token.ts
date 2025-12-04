@@ -1,7 +1,7 @@
 import type { InjectionToken } from "../core/injectiontoken";
 import type { ApiSafeToken } from "./api-safe-token";
 import { markAsApiSafe } from "./api-safe-token";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../service-type-registry";
 
 /**
  * Deprecation metadata attached to deprecated tokens.

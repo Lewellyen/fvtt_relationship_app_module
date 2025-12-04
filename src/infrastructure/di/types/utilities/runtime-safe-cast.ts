@@ -22,7 +22,7 @@ import type {
   RuntimeConfigKey,
   RuntimeConfigValues,
 } from "@/application/services/RuntimeConfigService";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../../types/service-type-registry";
 import type { InjectionToken } from "../core/injectiontoken";
 import type { ServiceRegistration } from "../core/serviceregistration";
 import type { Result } from "@/domain/types/result";

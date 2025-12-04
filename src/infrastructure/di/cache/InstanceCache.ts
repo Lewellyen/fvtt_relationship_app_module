@@ -1,5 +1,5 @@
 import type { InjectionToken } from "../types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../types/service-type-registry";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { castCachedServiceInstance } from "../types/utilities/runtime-safe-cast";
 

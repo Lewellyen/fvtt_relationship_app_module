@@ -58,3 +58,12 @@ tests
 
 # Foundry Source Code (optional, für Analyse)
 foundry-source/
+
+# Madge Analyse-Dateien
+architecture.svg
+domain.svg
+application.svg
+infrastructure.svg
+framework.svg
+dependencies.json
+circular-dependencies.json

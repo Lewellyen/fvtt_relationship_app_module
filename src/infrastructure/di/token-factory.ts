@@ -6,7 +6,7 @@
  * Each call creates a new Symbol, ensuring uniqueness even with the same description.
  */
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 
 /**
  * Creates a unique, type-safe injection token for dependency injection.

@@ -14,7 +14,7 @@ import {
 import { createApiTokens } from "@/framework/core/api/api-token-config";
 import type { ModuleApi, TokenInfo, ModuleApiTokens } from "@/framework/core/api/module-api";
 import type { HealthStatus } from "@/domain/types/health-status";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
 import {
   wrapFoundrySettingsPort,

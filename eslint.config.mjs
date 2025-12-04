@@ -119,7 +119,7 @@ export default [
   {
     ignores: ['node_modules/', 'dist/', 'packs/', 'assets/', 'tailwind.config.js', 'postcss.config.js']
   },
-  
+
   // Valibot-Schemas: PascalCase für Schema-Exports erlauben
   {
     files: ['**/schemas.ts', '**/validation/schemas.ts'],
@@ -171,7 +171,7 @@ export default [
       ]
     }
   },
-  
+
   // console.table Kompatibilität: String-Literal-Keys in Interfaces erlauben
   {
     files: ['**/metrics-collector.ts'],
@@ -232,7 +232,7 @@ export default [
       ]
     }
   },
-  
+
   // Heterogene Service-Typen: any ist architektonisch notwendig
   {
     files: ['**/TypeSafeRegistrationMap.ts'],
@@ -240,7 +240,7 @@ export default [
       '@typescript-eslint/no-explicit-any': 'off'
     }
   },
-  
+
   // Variadische Konstruktoren: any[] ist für DI notwendig
   {
     files: ['**/serviceclass.ts'],
@@ -248,13 +248,47 @@ export default [
       '@typescript-eslint/no-explicit-any': 'off'
     }
   },
-  
+
   // Type-Definitionen: deprecated APIs erlauben
   {
     files: ['**/*.d.ts'],
     rules: {
       '@typescript-eslint/no-deprecated': 'off'
     }
+  },
+
+  // Deprecated Barrel-Exports: Warnung bei Import von deprecated Token-Barrel-Exports
+  {
+    files: ['**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'warn',
+        {
+          paths: [
+            {
+              name: '@/infrastructure/shared/tokens',
+              message:
+                'Please import tokens from specific files (e.g., @/infrastructure/shared/tokens/core.tokens) for better tree-shaking.',
+            },
+            {
+              name: '@/infrastructure/shared/tokens/index',
+              message:
+                'Please import tokens from specific files (e.g., @/infrastructure/shared/tokens/core.tokens) for better tree-shaking.',
+            },
+            {
+              name: '@/application/tokens',
+              message:
+                'Please import tokens from specific files (e.g., @/application/tokens/application.tokens) for better tree-shaking.',
+            },
+            {
+              name: '@/application/tokens/index',
+              message:
+                'Please import tokens from specific files (e.g., @/application/tokens/application.tokens) for better tree-shaking.',
+            },
+          ],
+        },
+      ],
+    },
   }
 ];
 

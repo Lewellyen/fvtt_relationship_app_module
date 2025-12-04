@@ -13,7 +13,7 @@ import {
   type FoundryError,
 } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 
 /**
  * Registry that holds exactly one port injection token per version.

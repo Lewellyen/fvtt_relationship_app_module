@@ -10,7 +10,7 @@ import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { markAsApiSafe } from "@/infrastructure/di/types";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { ModuleApi } from "@/framework/core/api/module-api";
 

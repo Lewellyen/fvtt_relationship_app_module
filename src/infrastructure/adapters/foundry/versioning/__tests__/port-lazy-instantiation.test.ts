@@ -9,7 +9,7 @@ import { ok, err } from "@/domain/utils/result";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({

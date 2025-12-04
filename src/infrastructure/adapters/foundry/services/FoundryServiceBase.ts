@@ -24,7 +24,7 @@ import type { Disposable } from "@/infrastructure/di/interfaces";
 import type { PortSelector } from "../versioning/portselector";
 import type { PortRegistry } from "../versioning/portregistry";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { castDisposablePort } from "@/infrastructure/adapters/foundry/runtime-casts";
 
 export abstract class FoundryServiceBase<TPort extends ServiceType> implements Disposable {

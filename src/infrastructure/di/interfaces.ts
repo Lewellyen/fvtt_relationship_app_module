@@ -1,4 +1,4 @@
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "./types/service-type-registry";
 import type { InjectionToken } from "./types/core/injectiontoken";
 import type { ApiSafeToken } from "./types/utilities/api-safe-token";
 import type { ServiceLifecycle } from "./types/core/servicelifecycle";

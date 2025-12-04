@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import type { InjectionToken } from "../types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../types/service-type-registry";
 import type { ServiceClass } from "../types/resolution/serviceclass";
 import type { FactoryFunction } from "../types/resolution/servicefactory";
 import type { ServiceDependencies } from "../types/resolution/servicedependencies";

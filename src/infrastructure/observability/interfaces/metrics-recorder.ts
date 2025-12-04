@@ -14,7 +14,7 @@
  */
 
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 
 /**
  * Minimal interface for recording performance metrics.

@@ -6,7 +6,7 @@ import { ServiceContainer } from "@/infrastructure/di/container";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import { ServiceLifecycle } from "@/infrastructure/di/types";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok, err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";

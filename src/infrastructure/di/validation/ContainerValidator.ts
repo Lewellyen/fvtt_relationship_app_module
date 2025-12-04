@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import type { ContainerError } from "../interfaces";
 import type { InjectionToken } from "../types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../types/service-type-registry";
 import type { ServiceRegistry } from "../registry/ServiceRegistry";
 import { ok, err } from "@/domain/utils/result";
 

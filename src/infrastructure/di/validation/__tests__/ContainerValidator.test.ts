@@ -6,7 +6,7 @@ import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycl
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { InjectionToken } from "../../types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../../types/service-type-registry";
 
 class ServiceA implements Logger {
   static dependencies = [] as const;

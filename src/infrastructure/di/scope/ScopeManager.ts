@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import type { ContainerError } from "../interfaces";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../types/service-type-registry";
 import type { Disposable, AsyncDisposable } from "../interfaces";
 import { InstanceCache } from "../cache/InstanceCache";
 import { ok, err, tryCatch, isErr } from "@/domain/utils/result";

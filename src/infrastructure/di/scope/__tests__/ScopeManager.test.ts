@@ -8,7 +8,7 @@ import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { Disposable } from "@/infrastructure/di/interfaces";
 import type { InjectionToken } from "../../types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../../types/service-type-registry";
 
 class DisposableService implements Logger {
   disposed = false;

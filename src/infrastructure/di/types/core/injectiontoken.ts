@@ -5,7 +5,7 @@
  *
  * @template TServiceType - The type of service this token represents
  */
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../service-type-registry";
 
 export type InjectionToken<TServiceType extends ServiceType> = symbol & {
   __serviceType?: TServiceType;

@@ -6,7 +6,7 @@ import type { ContainerValidationState } from "./types/errors/containervalidatio
 import type { ApiSafeToken } from "./types/utilities/api-safe-token";
 import { isApiSafeTokenRuntime } from "./types/utilities/api-safe-token";
 import { ServiceLifecycle } from "./types/core/servicelifecycle";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "./types/service-type-registry";
 import { ok, err, isOk } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 import type { Container } from "./interfaces";

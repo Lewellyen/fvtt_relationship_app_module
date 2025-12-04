@@ -1,5 +1,5 @@
 import type { InjectionToken } from "../core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../service-type-registry";
 
 /**
  * Type definition for service dependencies.

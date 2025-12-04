@@ -15,7 +15,7 @@ import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/Fou
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type { FoundryI18n } from "@/infrastructure/adapters/foundry/interfaces/FoundryI18n";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { FoundryV13GamePort } from "./FoundryV13GamePort";
 import { FoundryV13HooksPort } from "./FoundryV13HooksPort";
 import { FoundryV13DocumentPort } from "./FoundryV13DocumentPort";

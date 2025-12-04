@@ -1,4 +1,4 @@
-import type { ServiceType } from "@/infrastructure/shared/tokens";
+import type { ServiceType } from "../service-type-registry";
 import type { ServiceDependencies } from "./servicedependencies";
 
 /**
