@@ -25,13 +25,9 @@ import { SettingValidators } from "@/domain/types/settings";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { LoggingPort } from "@/domain/ports/logging-port.interface";
-import {
-  platformNotificationPortToken,
-  loggerToken,
-  platformI18nPortToken,
-  runtimeConfigToken,
-  settingsRegistrationPortToken,
-} from "@/infrastructure/shared/tokens";
+import { loggerToken, runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { settingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { platformNotificationPortToken, platformI18nPortToken } from "@/application/tokens/domain-ports.tokens";
 
 /**
  * Binding configuration for syncing a setting with RuntimeConfig.

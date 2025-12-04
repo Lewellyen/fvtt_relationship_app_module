@@ -3,12 +3,8 @@ import type { PlatformNotificationPort } from "@/domain/ports/platform-notificat
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import { disposeHooks } from "@/infrastructure/shared/utils/dispose-hooks";
-import {
-  platformNotificationPortToken,
-  invalidateJournalCacheOnChangeUseCaseToken,
-  processJournalDirectoryOnRenderUseCaseToken,
-  triggerJournalDirectoryReRenderUseCaseToken,
-} from "@/infrastructure/shared/tokens";
+import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
+import { invalidateJournalCacheOnChangeUseCaseToken, processJournalDirectoryOnRenderUseCaseToken, triggerJournalDirectoryReRenderUseCaseToken } from "@/infrastructure/shared/tokens/event.tokens";
 
 /**
  * ModuleEventRegistrar

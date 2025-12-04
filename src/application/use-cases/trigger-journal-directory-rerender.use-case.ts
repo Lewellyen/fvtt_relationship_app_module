@@ -5,11 +5,7 @@ import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
-import {
-  platformJournalEventPortToken,
-  journalDirectoryUiPortToken,
-  platformNotificationPortToken,
-} from "@/application/tokens";
+import { platformJournalEventPortToken, journalDirectoryUiPortToken, platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 

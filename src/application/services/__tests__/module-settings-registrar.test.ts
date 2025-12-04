@@ -10,13 +10,9 @@ import {
 import { ServiceContainer } from "@/infrastructure/di/container";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { markAsApiSafe } from "@/infrastructure/di/types";
-import {
-  loggerToken,
-  platformNotificationPortToken,
-  runtimeConfigToken,
-  platformI18nPortToken,
-  settingsRegistrationPortToken,
-} from "@/infrastructure/shared/tokens";
+import { loggerToken, runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { settingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { platformNotificationPortToken, platformI18nPortToken } from "@/application/tokens/domain-ports.tokens";
 import { SETTING_KEYS, MODULE_METADATA } from "@/application/constants/app-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import { ok, err } from "@/domain/utils/result";

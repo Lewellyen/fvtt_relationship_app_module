@@ -4,11 +4,9 @@ import type { JournalContextMenuHandler } from "@/application/handlers/journal-c
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
 import type { LoggingPort } from "@/domain/ports/logging-port.interface";
-import {
-  contextMenuRegistrationPortToken,
-  journalContextMenuHandlersToken,
-} from "@/application/tokens";
-import { loggerToken } from "@/infrastructure/shared/tokens";
+import { journalContextMenuHandlersToken } from "@/application/tokens/application.tokens";
+import { contextMenuRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
 /**
  * Use-Case: Register custom context menu entries for journal entries.

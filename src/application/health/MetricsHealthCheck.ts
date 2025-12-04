@@ -1,5 +1,6 @@
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
-import { healthCheckRegistryToken, metricsCollectorToken } from "@/infrastructure/shared/tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core.tokens";
 import type { HealthCheck } from "./health-check.interface";
 import type { HealthCheckRegistry } from "./HealthCheckRegistry";
 

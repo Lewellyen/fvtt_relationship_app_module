@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ServiceContainer } from "@/infrastructure/di/container";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
-import { loggerToken } from "@/infrastructure/shared/tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
 interface PerformanceMemory {
   usedJSHeapSize: number;

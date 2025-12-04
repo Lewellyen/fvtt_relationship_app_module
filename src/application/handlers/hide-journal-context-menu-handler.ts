@@ -3,11 +3,7 @@ import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-jou
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
-import {
-  journalRepositoryToken,
-  platformUIPortToken,
-  platformNotificationPortToken,
-} from "@/infrastructure/shared/tokens";
+import { journalRepositoryToken, platformUIPortToken, platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 

@@ -1,7 +1,7 @@
 import type { Container } from "@/infrastructure/di/interfaces";
 import type { HealthCheck } from "./health-check.interface";
 import type { HealthCheckRegistry } from "./HealthCheckRegistry";
-import { healthCheckRegistryToken, serviceContainerToken } from "@/infrastructure/shared/tokens";
+import { healthCheckRegistryToken, serviceContainerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
 /**
  * Health check validating that the service container completed its bootstrap phase.

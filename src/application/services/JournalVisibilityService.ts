@@ -8,14 +8,8 @@ import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.inter
 import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
 import type { JournalVisibilityConfig } from "./JournalVisibilityConfig";
 import { getFirstArrayElement } from "@/application/utils/array-utils";
-import {
-  journalCollectionPortToken,
-  journalRepositoryToken,
-  platformCachePortToken,
-  platformNotificationPortToken,
-  journalDirectoryUiPortToken,
-  journalVisibilityConfigToken,
-} from "@/application/tokens";
+import { journalVisibilityConfigToken } from "@/application/tokens/application.tokens";
+import { journalCollectionPortToken, journalRepositoryToken, platformCachePortToken, platformNotificationPortToken, journalDirectoryUiPortToken } from "@/application/tokens/domain-ports.tokens";
 import { sanitizeHtml } from "@/application/utils/sanitize-utils";
 
 export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
