@@ -4,6 +4,14 @@
 
 ### Hinzugefügt
 
+- **Token Migration Scripts**: PowerShell-Scripts für automatisierte Token-Import-Migration
+  - `scripts/migrate-token-imports-phase1.ps1` - Framework/Config Migration (33 Dateien)
+  - `scripts/migrate-token-imports-phase2.ps1` - Infrastructure Services Migration (36 Dateien)
+  - `scripts/migrate-token-imports-phase3.ps1` - Application Layer Migration (15 Dateien)
+  - `scripts/migrate-token-imports-phase4.ps1` - Tests Migration (3 Dateien)
+  - Automatisches Token-Mapping, Gruppierung nach Ziel-Dateien, Type-Check nach jeder Phase
+  - ([Details](docs/refactoring/CIRCULAR-DEPS-FIX-PLAN-1B-TOKEN-MIGRATION.md))
+
 ### Geändert
 
 - **Token-Imports optimiert (4 Phasen)**: Alle 87 Dateien von Barrel-Exports zu spezifischen Token-Dateien migriert
