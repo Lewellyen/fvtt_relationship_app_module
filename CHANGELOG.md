@@ -28,7 +28,7 @@
 - **Phase 2**: Infrastructure Services (36 Dateien) - Adapters, Services, Caching
 - **Phase 3**: Application Layer (15 Dateien) - Use Cases, Services, Handlers
 - **Phase 4**: Tests (3 Dateien) - Test-Dateien und Test-Utils
-- **Ergebnis**: 0 ESLint-Warnings (vorher: 96), besseres Tree-Shaking, ~10% schnellere Build-Zeit
+  - **Ergebnis**: 0 ESLint-Warnings (vorher: 96), besseres Tree-Shaking, **~71% schnellere Build-Zeit** (von ~7s auf ~2s)
 - **Breaking Changes**: Keine - rein interne Optimierung, alte Imports funktionieren weiter
 - Alle Tests (1884/1884) bestanden, 100% Type Coverage
 - ([Details](docs/refactoring/CIRCULAR-DEPS-FIX-PLAN-1B-TOKEN-MIGRATION.md))
