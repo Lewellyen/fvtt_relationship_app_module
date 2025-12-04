@@ -5,7 +5,7 @@ import { loggerToken, traceContextToken } from "@/infrastructure/shared/tokens";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { expectResultOk } from "@/test/utils/test-helpers";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { LOG_PREFIX } from "@/application/constants/app-constants";
 import {
   castLogger,
   castResolvedService,
@@ -74,7 +74,7 @@ describe("TraceContext Integration", () => {
       }, "integration-trace-123");
 
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [integration-trace-123] Integration test message`
+        `${LOG_PREFIX} [integration-trace-123] Integration test message`
       );
     });
 
@@ -94,15 +94,15 @@ describe("TraceContext Integration", () => {
 
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         1,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [outer-service-trace] Outer service call`
+        `${LOG_PREFIX} [outer-service-trace] Outer service call`
       );
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         2,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [inner-service-trace] Inner service call`
+        `${LOG_PREFIX} [inner-service-trace] Inner service call`
       );
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         3,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [outer-service-trace] Back to outer service`
+        `${LOG_PREFIX} [outer-service-trace] Back to outer service`
       );
     });
 
@@ -117,11 +117,11 @@ describe("TraceContext Integration", () => {
 
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         1,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [async-integration-trace] Start async operation`
+        `${LOG_PREFIX} [async-integration-trace] Start async operation`
       );
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         2,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [async-integration-trace] End async operation`
+        `${LOG_PREFIX} [async-integration-trace] End async operation`
       );
     });
 
@@ -132,9 +132,7 @@ describe("TraceContext Integration", () => {
         logger.error("Third message");
       }, "multi-call-trace");
 
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [multi-call-trace] First message`
-      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [multi-call-trace] First message`);
     });
   });
 
@@ -150,14 +148,8 @@ describe("TraceContext Integration", () => {
         logger.info("Trace 2 message");
       }, "trace-2");
 
-      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
-        1,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [trace-1] Trace 1 message`
-      );
-      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
-        2,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [trace-2] Trace 2 message`
-      );
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(1, `${LOG_PREFIX} [trace-1] Trace 1 message`);
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(2, `${LOG_PREFIX} [trace-2] Trace 2 message`);
     });
 
     it("should handle trace within async operation", async () => {
@@ -174,15 +166,15 @@ describe("TraceContext Integration", () => {
 
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         1,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [outer-async-trace] Outer async`
+        `${LOG_PREFIX} [outer-async-trace] Outer async`
       );
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         2,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [inner-sync-trace] Inner sync`
+        `${LOG_PREFIX} [inner-sync-trace] Inner sync`
       );
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         3,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [outer-async-trace] Back to outer async`
+        `${LOG_PREFIX} [outer-async-trace] Back to outer async`
       );
     });
   });
@@ -200,9 +192,7 @@ describe("TraceContext Integration", () => {
       expect(traceContext.getCurrentTraceId()).toBeNull();
 
       // Log from before error should have trace
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [error-trace] Before error`
-      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [error-trace] Before error`);
     });
 
     it("should restore trace context when async function throws", async () => {
@@ -224,7 +214,7 @@ describe("TraceContext Integration", () => {
       tracedLogger.info("Explicit traced message");
 
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [explicit-trace-123] Explicit traced message`
+        `${LOG_PREFIX} [explicit-trace-123] Explicit traced message`
       );
     });
 
@@ -242,11 +232,11 @@ describe("TraceContext Integration", () => {
       // TracedLogger adds explicit trace to already-traced base logger
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         1,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [context-trace-id] [explicit-override] Explicit wins`
+        `${LOG_PREFIX} [context-trace-id] [explicit-override] Explicit wins`
       );
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         2,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [context-trace-id] Context trace`
+        `${LOG_PREFIX} [context-trace-id] Context trace`
       );
     });
   });

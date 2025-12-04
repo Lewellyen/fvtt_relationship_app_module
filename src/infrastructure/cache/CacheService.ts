@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { APP_DEFAULTS } from "@/application/constants/app-constants";
 import type {
   CacheEntryMetadata,
   CacheInvalidationPredicate,
@@ -28,7 +28,7 @@ type InternalCacheEntry = {
 
 export const DEFAULT_CACHE_SERVICE_CONFIG: CacheServiceConfig = {
   enabled: true,
-  defaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
+  defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
   namespace: "global",
 };
 

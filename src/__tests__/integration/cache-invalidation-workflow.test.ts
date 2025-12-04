@@ -5,7 +5,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { createMockJournalEntry } from "@/test/mocks/foundry";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
 import { HIDDEN_JOURNAL_CACHE_TAG } from "@/application/services/JournalVisibilityService";
 import type {
   CacheService,
@@ -38,7 +39,7 @@ describe("Integration: Cache Invalidation Workflow", () => {
       id: "test-entry-123",
       name: "Test Entry",
       flags: {
-        [`${MODULE_CONSTANTS.MODULE.ID}.hidden`]: true,
+        [`${MODULE_METADATA.ID}.hidden`]: true,
       },
     });
 
@@ -53,7 +54,7 @@ describe("Integration: Cache Invalidation Workflow", () => {
       api: undefined as unknown,
     };
     if (mockGame.modules) {
-      mockGame.modules.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules.set(MODULE_METADATA.ID, mockModule as any);
     }
 
     // game.settings für Settings-Registrierung benötigt
@@ -77,9 +78,7 @@ describe("Integration: Cache Invalidation Workflow", () => {
 
     // 3. init Hook feuern (registriert Hooks)
     const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-    const initCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.INIT
-    );
+    const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === DOMAIN_EVENTS.INIT);
     const initCallback = initCall?.[1] as (() => void) | undefined;
     expect(initCallback).toBeDefined();
     initCallback!();
@@ -120,7 +119,7 @@ describe("Integration: Cache Invalidation Workflow", () => {
 
     // 6. Hook-Callback extrahieren (updateJournalEntry)
     const updateCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.UPDATE_JOURNAL_ENTRY
+      ([hookName]) => hookName === DOMAIN_EVENTS.UPDATE_JOURNAL_ENTRY
     );
     const updateCallback = updateCall?.[1] as ((entry: any) => void) | undefined;
 

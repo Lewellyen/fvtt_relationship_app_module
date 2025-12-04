@@ -3,7 +3,8 @@ import { TriggerJournalDirectoryReRenderUseCase } from "../trigger-journal-direc
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 
 describe("TriggerJournalDirectoryReRenderUseCase", () => {
   let mockJournalEvents: PlatformJournalEventPort;
@@ -57,8 +58,8 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
       journalId: "journal-123",
       changes: {
         flags: {
-          [MODULE_CONSTANTS.MODULE.ID]: {
-            [MODULE_CONSTANTS.FLAGS.HIDDEN]: true,
+          [MODULE_METADATA.ID]: {
+            [DOMAIN_FLAGS.HIDDEN]: true,
           },
         },
       },
@@ -99,8 +100,8 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
       journalId: "journal-789",
       changes: {
         flags: {
-          [MODULE_CONSTANTS.MODULE.ID]: {
-            [MODULE_CONSTANTS.FLAGS.HIDDEN]: false,
+          [MODULE_METADATA.ID]: {
+            [DOMAIN_FLAGS.HIDDEN]: false,
           },
         },
       },
@@ -126,8 +127,8 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
       journalId: "journal-999",
       changes: {
         flags: {
-          [MODULE_CONSTANTS.MODULE.ID]: {
-            [MODULE_CONSTANTS.FLAGS.HIDDEN]: true,
+          [MODULE_METADATA.ID]: {
+            [DOMAIN_FLAGS.HIDDEN]: true,
           },
         },
       },

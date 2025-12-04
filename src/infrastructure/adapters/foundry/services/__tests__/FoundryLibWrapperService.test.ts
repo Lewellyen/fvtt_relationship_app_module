@@ -5,7 +5,7 @@ import type {
   LibWrapperFunction,
   LibWrapperType,
 } from "@/domain/services/lib-wrapper-service.interface";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 
 describe("FoundryLibWrapperService", () => {
   let service: FoundryLibWrapperService;
@@ -328,7 +328,7 @@ describe("FoundryLibWrapperService", () => {
   });
 
   describe("DIFoundryLibWrapperService", () => {
-    it("should use MODULE_CONSTANTS.MODULE.ID in constructor", () => {
+    it("should use MODULE_METADATA.ID in constructor", () => {
       const diService = new DIFoundryLibWrapperService(mockLogger);
 
       // Verify it uses the correct module ID by registering something
@@ -339,7 +339,7 @@ describe("FoundryLibWrapperService", () => {
 
       expect(result.ok).toBe(true);
       expect(mockLibWrapper.register).toHaveBeenCalledWith(
-        MODULE_CONSTANTS.MODULE.ID,
+        MODULE_METADATA.ID,
         target,
         wrapperFn,
         "WRAPPER"

@@ -8,7 +8,7 @@ import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
 import { createMockGame, createMockUI } from "@/test/mocks/foundry";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import {
   notificationCenterToken,
   uiChannelToken,
@@ -44,7 +44,7 @@ describe("BootstrapInitHookService", () => {
     const mockModule = {
       api: undefined as unknown,
     };
-    mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+    mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
     cleanup = withFoundryGlobals({
       game: mockGame,

@@ -17,7 +17,7 @@ import {
   platformI18nPortToken,
   settingsRegistrationPortToken,
 } from "@/infrastructure/shared/tokens";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { SETTING_KEYS, MODULE_METADATA } from "@/application/constants/app-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import { ok, err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
@@ -27,14 +27,14 @@ import type { RuntimeConfigService } from "@/application/services/RuntimeConfigS
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 const DEFAULT_SETTING_VALUES: Record<string, unknown> = {
-  [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: LogLevel.INFO,
-  [MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED]: true,
-  [MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS]: 5000,
-  [MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES]: 250,
-  [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED]: false,
-  [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE]: 0.5,
-  [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED]: false,
-  [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY]: "fvtt_relationship_app_module.metrics",
+  [SETTING_KEYS.LOG_LEVEL]: LogLevel.INFO,
+  [SETTING_KEYS.CACHE_ENABLED]: true,
+  [SETTING_KEYS.CACHE_TTL_MS]: 5000,
+  [SETTING_KEYS.CACHE_MAX_ENTRIES]: 250,
+  [SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED]: false,
+  [SETTING_KEYS.PERFORMANCE_SAMPLING_RATE]: 0.5,
+  [SETTING_KEYS.METRICS_PERSISTENCE_ENABLED]: false,
+  [SETTING_KEYS.METRICS_PERSISTENCE_KEY]: "fvtt_relationship_app_module.metrics",
 };
 
 function stubPlatformGetSettingValue(
@@ -77,12 +77,10 @@ describe("ModuleSettingsRegistrar", () => {
       );
       registrar.registerAll();
 
-      const logLevelCall = registerSpy.mock.calls.find(
-        ([, key]) => key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
-      );
+      const logLevelCall = registerSpy.mock.calls.find(([, key]) => key === SETTING_KEYS.LOG_LEVEL);
 
       expect(logLevelCall).toBeDefined();
-      expect(logLevelCall?.[0]).toBe(MODULE_CONSTANTS.MODULE.ID);
+      expect(logLevelCall?.[0]).toBe(MODULE_METADATA.ID);
       expect(logLevelCall?.[2]).toEqual(
         expect.objectContaining({
           name: "Log Level",
@@ -127,8 +125,8 @@ describe("ModuleSettingsRegistrar", () => {
       registrar.registerAll();
 
       // Trigger onChange callback
-      expect(callbacks[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]).toBeDefined();
-      callbacks[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]!(LogLevel.DEBUG);
+      expect(callbacks[SETTING_KEYS.LOG_LEVEL]).toBeDefined();
+      callbacks[SETTING_KEYS.LOG_LEVEL]!(LogLevel.DEBUG);
 
       // Logger should be reconfigured
       expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining("Log level changed to"));
@@ -170,7 +168,7 @@ describe("ModuleSettingsRegistrar", () => {
       registrar.registerAll();
 
       // Should not throw when onChange is called
-      expect(() => callbacks[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]?.(LogLevel.WARN)).not.toThrow();
+      expect(() => callbacks[SETTING_KEYS.LOG_LEVEL]?.(LogLevel.WARN)).not.toThrow();
     });
 
     it("should log error when setting registration fails", () => {
@@ -181,7 +179,7 @@ describe("ModuleSettingsRegistrar", () => {
       const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
       vi.spyOn(mockSettings, "registerSetting").mockImplementation((...args: unknown[]) => {
         const [, key] = args as [unknown, string];
-        if (key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL) {
+        if (key === SETTING_KEYS.LOG_LEVEL) {
           return err({ code: "OPERATION_FAILED", message: "Registration failed" });
         }
         return ok(undefined);
@@ -242,9 +240,7 @@ describe("ModuleSettingsRegistrar", () => {
       );
       registrar.registerAll();
 
-      const logLevelCall = registerSpy.mock.calls.find(
-        ([, key]) => key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL
-      );
+      const logLevelCall = registerSpy.mock.calls.find(([, key]) => key === SETTING_KEYS.LOG_LEVEL);
       const config = logLevelCall?.[2] as any;
 
       expect(config?.choices).toBeDefined();
@@ -262,8 +258,8 @@ describe("ModuleSettingsRegistrar", () => {
       const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
       const registerSpy = vi.spyOn(mockSettings, "registerSetting").mockReturnValue(ok(undefined));
       stubPlatformGetSettingValue(mockSettings, {
-        [MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED]: true,
-        [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED]: true,
+        [SETTING_KEYS.CACHE_ENABLED]: true,
+        [SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED]: true,
       });
 
       const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
@@ -291,7 +287,7 @@ describe("ModuleSettingsRegistrar", () => {
       expect(setSpy).toHaveBeenCalledWith("enableCacheService", true);
 
       const cacheEnabledConfig = registerSpy.mock.calls.find(
-        ([, key]) => key === MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED
+        ([, key]) => key === SETTING_KEYS.CACHE_ENABLED
       )?.[2] as { onChange?: (value: boolean) => void } | undefined;
       expect(cacheEnabledConfig).toBeDefined();
       if (!cacheEnabledConfig?.onChange) {
@@ -310,7 +306,7 @@ describe("ModuleSettingsRegistrar", () => {
       const mockSettings = container.resolve(markAsApiSafe(settingsRegistrationPortToken)) as any;
       const registerSpy = vi.spyOn(mockSettings, "registerSetting").mockReturnValue(ok(undefined));
       stubPlatformGetSettingValue(mockSettings, {
-        [MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES]: 0,
+        [SETTING_KEYS.CACHE_MAX_ENTRIES]: 0,
       });
 
       const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
@@ -338,7 +334,7 @@ describe("ModuleSettingsRegistrar", () => {
       expect(setSpy).toHaveBeenCalledWith("cacheMaxEntries", undefined);
 
       const maxEntriesConfig = registerSpy.mock.calls.find(
-        ([, key]) => key === MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES
+        ([, key]) => key === SETTING_KEYS.CACHE_MAX_ENTRIES
       )?.[2] as { onChange?: (value: number) => void } | undefined;
       expect(maxEntriesConfig).toBeDefined();
       if (!maxEntriesConfig?.onChange) {
@@ -428,14 +424,14 @@ describe("ModuleSettingsRegistrar DI metadata", () => {
 
 describe("runtimeConfigBindings", () => {
   it("should have binding for logLevel", () => {
-    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL];
+    const binding = runtimeConfigBindings[SETTING_KEYS.LOG_LEVEL];
     expect(binding).toBeDefined();
     expect(binding.runtimeKey).toBe("logLevel");
     expect(binding.normalize(LogLevel.DEBUG)).toBe(LogLevel.DEBUG);
   });
 
   it("should have binding for cacheEnabled", () => {
-    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED];
+    const binding = runtimeConfigBindings[SETTING_KEYS.CACHE_ENABLED];
     expect(binding).toBeDefined();
     expect(binding.runtimeKey).toBe("enableCacheService");
     expect(binding.normalize(true)).toBe(true);
@@ -443,14 +439,14 @@ describe("runtimeConfigBindings", () => {
   });
 
   it("should have binding for cacheTtlMs", () => {
-    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS];
+    const binding = runtimeConfigBindings[SETTING_KEYS.CACHE_TTL_MS];
     expect(binding).toBeDefined();
     expect(binding.runtimeKey).toBe("cacheDefaultTtlMs");
     expect(binding.normalize(5000)).toBe(5000);
   });
 
   it("should have binding for cacheMaxEntries with transform", () => {
-    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES];
+    const binding = runtimeConfigBindings[SETTING_KEYS.CACHE_MAX_ENTRIES];
     expect(binding).toBeDefined();
     expect(binding.runtimeKey).toBe("cacheMaxEntries");
     // Transform: 0 becomes undefined, positive values stay
@@ -459,28 +455,28 @@ describe("runtimeConfigBindings", () => {
   });
 
   it("should have binding for performanceTrackingEnabled", () => {
-    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED];
+    const binding = runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED];
     expect(binding).toBeDefined();
     expect(binding.runtimeKey).toBe("enablePerformanceTracking");
     expect(binding.normalize(true)).toBe(true);
   });
 
   it("should have binding for performanceSamplingRate", () => {
-    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE];
+    const binding = runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_SAMPLING_RATE];
     expect(binding).toBeDefined();
     expect(binding.runtimeKey).toBe("performanceSamplingRate");
     expect(binding.normalize(0.5)).toBe(0.5);
   });
 
   it("should have binding for metricsPersistenceEnabled", () => {
-    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED];
+    const binding = runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_ENABLED];
     expect(binding).toBeDefined();
     expect(binding.runtimeKey).toBe("enableMetricsPersistence");
     expect(binding.normalize(true)).toBe(true);
   });
 
   it("should have binding for metricsPersistenceKey", () => {
-    const binding = runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY];
+    const binding = runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY];
     expect(binding).toBeDefined();
     expect(binding.runtimeKey).toBe("metricsPersistenceKey");
     expect(binding.normalize("test-key")).toBe("test-key");

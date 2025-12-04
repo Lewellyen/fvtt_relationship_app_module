@@ -6,7 +6,7 @@ import { tryCatch, err } from "@/domain/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
 import { validateJournalEntries } from "../../validation/schemas";
 import { validateJournalId } from "../../validation/input-validators";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { APP_DEFAULTS } from "@/application/constants/app-constants";
 
 /**
  * v13 implementation of FoundryGame interface.
@@ -19,7 +19,7 @@ export class FoundryV13GamePort implements FoundryGame {
   #disposed = false;
   private cachedEntries: FoundryJournalEntry[] | null = null;
   private lastCheckTimestamp = 0;
-  private readonly cacheTtlMs = MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS;
+  private readonly cacheTtlMs = APP_DEFAULTS.CACHE_TTL_MS;
 
   getJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
     if (this.#disposed) {

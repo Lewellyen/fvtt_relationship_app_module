@@ -7,7 +7,7 @@ import { createMockGame } from "@/test/mocks/foundry";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
@@ -24,13 +24,13 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
 
     // Setup Foundry game mock with modules Map
     const mockModule = {
-      id: MODULE_CONSTANTS.MODULE.ID,
+      id: MODULE_METADATA.ID,
       api: undefined as unknown,
     };
 
     const mockGame = createMockGame();
 
-    (mockGame as any).modules = new Map([[MODULE_CONSTANTS.MODULE.ID, mockModule]]);
+    (mockGame as any).modules = new Map([[MODULE_METADATA.ID, mockModule]]);
 
     cleanup = withFoundryGlobals({
       game: mockGame,
@@ -49,7 +49,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
     const exposeResult = initializer.expose(container);
     expectResultOk(exposeResult);
 
-    const mod = (global as any).game.modules.get(MODULE_CONSTANTS.MODULE.ID);
+    const mod = (global as any).game.modules.get(MODULE_METADATA.ID);
     api = mod.api as ModuleApi;
   });
 

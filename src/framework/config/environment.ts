@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { APP_DEFAULTS } from "@/application/constants/app-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 
@@ -86,7 +86,7 @@ export const ENV: EnvironmentConfig = {
     val === undefined ? true : val === "true"
   ),
   cacheDefaultTtlMs: getEnvVar("VITE_CACHE_TTL_MS", (val) =>
-    parseNonNegativeNumber(val, MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS)
+    parseNonNegativeNumber(val, APP_DEFAULTS.CACHE_TTL_MS)
   ),
   ...(parsedCacheMaxEntries !== undefined ? { cacheMaxEntries: parsedCacheMaxEntries } : {}),
 };

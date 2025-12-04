@@ -31,4 +31,3 @@ export function createInjectionToken<TServiceType extends ServiceType>(
 ): InjectionToken<TServiceType> {
   return Symbol(description) as InjectionToken<TServiceType>;
 }
-

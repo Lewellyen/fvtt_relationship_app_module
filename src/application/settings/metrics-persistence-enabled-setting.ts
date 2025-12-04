@@ -1,4 +1,4 @@
-import { SETTING_KEYS, MODULE_METADATA, APP_DEFAULTS } from "@/application/constants/app-constants";
+import { SETTING_KEYS } from "@/application/constants/app-constants";
 import type { SettingDefinition } from "./setting-definition.interface";
 import { unwrapOr } from "@/domain/utils/result";
 

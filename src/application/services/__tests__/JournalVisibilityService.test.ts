@@ -10,7 +10,8 @@ import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { APP_DEFAULTS, MODULE_METADATA } from "@/application/constants/app-constants";
+import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { ok, err } from "@/domain/utils/result";
 import { createMockDOM } from "@/test/utils/test-helpers";
 import type { CacheEntryMetadata, CacheKey } from "@/infrastructure/cache/cache.interface";
@@ -65,9 +66,9 @@ function createMockJournalRepository(): JournalRepository {
 
 function createMockConfig(): JournalVisibilityConfig {
   return {
-    moduleNamespace: MODULE_CONSTANTS.MODULE.ID,
-    hiddenFlagKey: MODULE_CONSTANTS.FLAGS.HIDDEN,
-    unknownName: MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
+    moduleNamespace: MODULE_METADATA.ID,
+    hiddenFlagKey: DOMAIN_FLAGS.HIDDEN,
+    unknownName: APP_DEFAULTS.UNKNOWN_NAME,
     cacheKeyFactory: (resource: string): DomainCacheKey => {
       return `mock-cache-key-${resource}` as DomainCacheKey;
     },

@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { Result } from "@/domain/types/result";
 import { assertCacheKey } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
@@ -115,7 +115,7 @@ function normalizeSegment(segment: string): string {
  */
 export function createCacheKey(parts: CacheKeyParts): CacheKey {
   const { namespace, resource, identifier } = parts;
-  const payload = [MODULE_CONSTANTS.MODULE.ID, namespace, resource];
+  const payload = [MODULE_METADATA.ID, namespace, resource];
   if (identifier !== null && identifier !== undefined) {
     payload.push(String(identifier));
   }

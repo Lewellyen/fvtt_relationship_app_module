@@ -6,7 +6,8 @@ import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { createMockJournalEntry } from "@/test/mocks/foundry";
 import { createMockDOM } from "@/test/utils/test-helpers";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
 
 describe("Integration: Journal Visibility End-to-End", () => {
   let cleanup: (() => void) | undefined;
@@ -32,7 +33,7 @@ describe("Integration: Journal Visibility End-to-End", () => {
       id: "test-entry-123",
       name: "Hidden Entry",
       flags: {
-        [`${MODULE_CONSTANTS.MODULE.ID}.hidden`]: true,
+        [`${MODULE_METADATA.ID}.hidden`]: true,
       },
     });
 
@@ -55,7 +56,7 @@ describe("Integration: Journal Visibility End-to-End", () => {
       api: undefined as unknown,
     };
     if (mockGame.modules) {
-      mockGame.modules.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules.set(MODULE_METADATA.ID, mockModule as any);
     }
 
     cleanup = withFoundryGlobals({
@@ -69,16 +70,14 @@ describe("Integration: Journal Visibility End-to-End", () => {
 
     // 3. init Hook feuern, damit Hooks registriert werden
     const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-    const initCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.INIT
-    );
+    const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === DOMAIN_EVENTS.INIT);
     const initCallback = initCall?.[1] as (() => void) | undefined;
     expect(initCallback).toBeDefined();
     initCallback!();
 
     // 4. Hook-Callback extrahieren (renderJournalDirectory)
     const renderCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
+      ([hookName]) => hookName === DOMAIN_EVENTS.RENDER_JOURNAL_DIRECTORY
     );
     const renderCallback = renderCall?.[1] as ((app: any, html: HTMLElement) => void) | undefined;
 
@@ -111,7 +110,7 @@ describe("Integration: Journal Visibility End-to-End", () => {
       id: "test-entry-456",
       name: "Visible Entry",
       flags: {
-        [`${MODULE_CONSTANTS.MODULE.ID}.hidden`]: false,
+        [`${MODULE_METADATA.ID}.hidden`]: false,
       },
     });
 
@@ -134,7 +133,7 @@ describe("Integration: Journal Visibility End-to-End", () => {
       api: undefined as unknown,
     };
     if (mockGame.modules) {
-      mockGame.modules.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules.set(MODULE_METADATA.ID, mockModule as any);
     }
 
     cleanup = withFoundryGlobals({
@@ -148,16 +147,14 @@ describe("Integration: Journal Visibility End-to-End", () => {
 
     // 3. init Hook feuern, damit Hooks registriert werden
     const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-    const initCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.INIT
-    );
+    const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === DOMAIN_EVENTS.INIT);
     const initCallback = initCall?.[1] as (() => void) | undefined;
     expect(initCallback).toBeDefined();
     initCallback!();
 
     // 4. Hook-Callback extrahieren
     const renderCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
+      ([hookName]) => hookName === DOMAIN_EVENTS.RENDER_JOURNAL_DIRECTORY
     );
     const renderCallback = renderCall?.[1] as ((app: any, html: HTMLElement) => void) | undefined;
 

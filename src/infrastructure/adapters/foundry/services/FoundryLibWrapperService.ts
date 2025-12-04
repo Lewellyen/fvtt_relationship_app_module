@@ -8,7 +8,7 @@ import type {
 } from "@/domain/services/lib-wrapper-service.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { loggerToken } from "@/infrastructure/shared/tokens";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { tryCatch } from "@/domain/utils/result";
 import { err, ok } from "@/domain/utils/result";
 
@@ -178,12 +178,12 @@ export class FoundryLibWrapperService implements LibWrapperService {
 /**
  * DI-enabled wrapper for FoundryLibWrapperService.
  *
- * Uses MODULE_CONSTANTS.MODULE.ID directly, consistent with other services.
+ * Uses MODULE_METADATA.ID directly, consistent with other services.
  */
 export class DIFoundryLibWrapperService extends FoundryLibWrapperService {
   static dependencies = [loggerToken] as const;
 
   constructor(logger: Logger) {
-    super(MODULE_CONSTANTS.MODULE.ID, logger);
+    super(MODULE_METADATA.ID, logger);
   }
 }

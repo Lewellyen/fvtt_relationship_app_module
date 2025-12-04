@@ -10,7 +10,7 @@ import {
   journalDirectoryUiPortToken,
   platformNotificationPortToken,
 } from "@/application/tokens";
-import { DOMAIN_FLAGS, DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
+import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 
 /**

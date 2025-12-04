@@ -3,7 +3,7 @@ import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/Foun
 import { err, ok } from "@/domain/utils/result";
 import { getFoundryVersionResult } from "./versiondetector";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { APP_DEFAULTS } from "@/application/constants/app-constants";
 import type { PortSelectionEventEmitter } from "./port-selection-events";
 import type { PortSelectionEventCallback } from "./port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
@@ -142,7 +142,7 @@ export class PortSelector {
      * A v13 port should work on v14+ unless breaking API changes occur.
      */
     let selectedToken: InjectionToken<T> | undefined;
-    let selectedVersion: number = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
+    let selectedVersion: number = APP_DEFAULTS.NO_VERSION_SELECTED;
 
     // Linear search for highest compatible version
     // Could be optimized with sorted array + binary search, but n is typically small (2-5 ports)

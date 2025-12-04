@@ -4,7 +4,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
 
 describe("Integration: Module Lifecycle", () => {
   let cleanup: (() => void) | undefined;
@@ -26,7 +27,7 @@ describe("Integration: Module Lifecycle", () => {
       api: undefined as unknown,
     };
     if (mockGame.modules) {
-      mockGame.modules.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules.set(MODULE_METADATA.ID, mockModule as any);
     }
 
     // game.settings für Settings-Registrierung benötigt
@@ -51,14 +52,10 @@ describe("Integration: Module Lifecycle", () => {
     // 3. Hook-Callbacks extrahieren
     const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
 
-    const initCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.INIT
-    );
+    const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === DOMAIN_EVENTS.INIT);
     const initCallback = initCall?.[1] as (() => void) | undefined;
 
-    const readyCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.READY
-    );
+    const readyCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === DOMAIN_EVENTS.READY);
     const readyCallback = readyCall?.[1] as (() => void) | undefined;
 
     expect(initCallback).toBeDefined();
@@ -81,12 +78,12 @@ describe("Integration: Module Lifecycle", () => {
 
     // Prüfen dass Hooks registriert wurden
     const renderJournalCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
+      ([hookName]) => hookName === DOMAIN_EVENTS.RENDER_JOURNAL_DIRECTORY
     );
     expect(renderJournalCall).toBeDefined();
 
     const updateJournalCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.UPDATE_JOURNAL_ENTRY
+      ([hookName]) => hookName === DOMAIN_EVENTS.UPDATE_JOURNAL_ENTRY
     );
     expect(updateJournalCall).toBeDefined();
 
@@ -94,7 +91,7 @@ describe("Integration: Module Lifecycle", () => {
     readyCallback!();
 
     // Prüfen dass Services bereit sind (Container sollte funktionieren)
-    const mod = (global as any).game.modules.get(MODULE_CONSTANTS.MODULE.ID);
+    const mod = (global as any).game.modules.get(MODULE_METADATA.ID);
     expect(mod.api).toBeDefined();
 
     // Container sollte funktionieren (kann Services resolven)

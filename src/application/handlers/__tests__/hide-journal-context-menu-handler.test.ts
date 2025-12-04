@@ -7,7 +7,8 @@ import type { JournalRepository } from "@/domain/ports/repositories/journal-repo
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { ok } from "@/domain/utils/result";
 
 function createMockJournalRepository(): JournalRepository {
@@ -113,8 +114,8 @@ describe("HideJournalContextMenuHandler", () => {
       expect(event.options).toHaveLength(0);
       expect(mockJournalRepository.getFlag).toHaveBeenCalledWith(
         "journal-123",
-        MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.FLAGS.HIDDEN
+        MODULE_METADATA.ID,
+        DOMAIN_FLAGS.HIDDEN
       );
     });
 
@@ -135,8 +136,8 @@ describe("HideJournalContextMenuHandler", () => {
       expect(typeof event.options[0]?.callback).toBe("function");
       expect(mockJournalRepository.getFlag).toHaveBeenCalledWith(
         "journal-123",
-        MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.FLAGS.HIDDEN
+        MODULE_METADATA.ID,
+        DOMAIN_FLAGS.HIDDEN
       );
     });
 
@@ -153,8 +154,8 @@ describe("HideJournalContextMenuHandler", () => {
 
       expect(mockJournalRepository.getFlag).toHaveBeenCalledWith(
         "journal-456",
-        MODULE_CONSTANTS.MODULE.ID,
-        MODULE_CONSTANTS.FLAGS.HIDDEN
+        MODULE_METADATA.ID,
+        DOMAIN_FLAGS.HIDDEN
       );
     });
 
@@ -177,8 +178,8 @@ describe("HideJournalContextMenuHandler", () => {
 
         expect(mockJournalRepository.setFlag).toHaveBeenCalledWith(
           "journal-123",
-          MODULE_CONSTANTS.MODULE.ID,
-          MODULE_CONSTANTS.FLAGS.HIDDEN,
+          MODULE_METADATA.ID,
+          DOMAIN_FLAGS.HIDDEN,
           true
         );
         expect(mockJournalRepository.getById).toHaveBeenCalledWith("journal-123");

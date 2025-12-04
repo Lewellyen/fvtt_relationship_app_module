@@ -1,5 +1,5 @@
 import { LogLevel } from "@/domain/types/log-level";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { LOG_PREFIX } from "@/application/constants/app-constants";
 import type { Logger } from "./logger.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { runtimeConfigToken, traceContextToken } from "@/infrastructure/shared/tokens";
@@ -26,31 +26,31 @@ export class ConsoleLoggerService implements Logger {
 
   log(message: string, ...optionalParams: unknown[]): void {
     const formattedMessage = this.formatWithContextTrace(message);
-    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    console.log(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
 
   error(message: string, ...optionalParams: unknown[]): void {
     if (LogLevel.ERROR < this.minLevel) return;
     const formattedMessage = this.formatWithContextTrace(message);
-    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    console.error(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
 
   warn(message: string, ...optionalParams: unknown[]): void {
     if (LogLevel.WARN < this.minLevel) return;
     const formattedMessage = this.formatWithContextTrace(message);
-    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    console.warn(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
 
   info(message: string, ...optionalParams: unknown[]): void {
     if (LogLevel.INFO < this.minLevel) return;
     const formattedMessage = this.formatWithContextTrace(message);
-    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    console.info(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
 
   debug(message: string, ...optionalParams: unknown[]): void {
     if (LogLevel.DEBUG < this.minLevel) return;
     const formattedMessage = this.formatWithContextTrace(message);
-    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    console.debug(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
 
   withTraceId(traceId: string): Logger {

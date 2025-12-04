@@ -5,7 +5,7 @@
  */
 
 import type { SettingDefinition } from "./setting-definition.interface";
-import { SETTING_KEYS, MODULE_METADATA } from "@/application/constants/app-constants";
+import { SETTING_KEYS } from "@/application/constants/app-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { LoggingPort } from "@/domain/ports/logging-port.interface";

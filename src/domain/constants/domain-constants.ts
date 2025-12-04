@@ -42,4 +42,3 @@ export const DOMAIN_EVENTS = {
 // Deep freeze für Runtime-Immutability
 Object.freeze(DOMAIN_FLAGS);
 Object.freeze(DOMAIN_EVENTS);
-

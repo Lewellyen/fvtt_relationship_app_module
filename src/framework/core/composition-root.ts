@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { LOG_PREFIX } from "@/application/constants/app-constants";
 import type { Result } from "@/domain/types/result";
 import { ServiceContainer } from "@/infrastructure/di/container";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
@@ -76,7 +76,7 @@ export class CompositionRoot {
    */
   getContainer(): Result<ServiceContainer, string> {
     if (!this.container) {
-      return { ok: false, error: `${MODULE_CONSTANTS.LOG_PREFIX} Container not initialized` };
+      return { ok: false, error: `${LOG_PREFIX} Container not initialized` };
     }
     return { ok: true, value: this.container };
   }

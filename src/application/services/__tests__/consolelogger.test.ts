@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { LOG_PREFIX } from "@/application/constants/app-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
@@ -36,55 +36,46 @@ describe("ConsoleLoggerService", () => {
   describe("log", () => {
     it("should log message with prefix", () => {
       logger.log("Test message");
-      expect(consoleLogSpy).toHaveBeenCalledWith(`${MODULE_CONSTANTS.LOG_PREFIX} Test message`);
+      expect(consoleLogSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Test message`);
     });
 
     it("should log with additional parameters", () => {
       const obj = { key: "value" };
       logger.log("Test message", obj);
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Test message`,
-        obj
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Test message`, obj);
     });
   });
 
   describe("error", () => {
     it("should log error message with prefix", () => {
       logger.error("Error message");
-      expect(consoleErrorSpy).toHaveBeenCalledWith(`${MODULE_CONSTANTS.LOG_PREFIX} Error message`);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Error message`);
     });
 
     it("should log error with stack trace", () => {
       const error = new Error("Test error");
       logger.error("Error occurred", error);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Error occurred`,
-        error
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Error occurred`, error);
     });
   });
 
   describe("warn", () => {
     it("should log warning message with prefix", () => {
       logger.warn("Warning message");
-      expect(consoleWarnSpy).toHaveBeenCalledWith(`${MODULE_CONSTANTS.LOG_PREFIX} Warning message`);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Warning message`);
     });
 
     it("should log warning with additional data", () => {
       const data = { count: 5 };
       logger.warn("Warning message", data);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Warning message`,
-        data
-      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Warning message`, data);
     });
   });
 
   describe("info", () => {
     it("should log info message with prefix", () => {
       logger.info("Info message");
-      expect(consoleInfoSpy).toHaveBeenCalledWith(`${MODULE_CONSTANTS.LOG_PREFIX} Info message`);
+      expect(consoleInfoSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Info message`);
     });
   });
 
@@ -92,17 +83,14 @@ describe("ConsoleLoggerService", () => {
     it("should log debug message with prefix when minLevel allows", () => {
       logger.setMinLevel(LogLevel.DEBUG); // Enable debug logging
       logger.debug("Debug message");
-      expect(consoleDebugSpy).toHaveBeenCalledWith(`${MODULE_CONSTANTS.LOG_PREFIX} Debug message`);
+      expect(consoleDebugSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Debug message`);
     });
 
     it("should log debug with complex objects when minLevel allows", () => {
       logger.setMinLevel(LogLevel.DEBUG); // Enable debug logging
       const complexObj = { nested: { data: [1, 2, 3] } };
       logger.debug("Debug message", complexObj);
-      expect(consoleDebugSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Debug message`,
-        complexObj
-      );
+      expect(consoleDebugSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Debug message`, complexObj);
     });
 
     it("should be filtered by default (minLevel = INFO)", () => {
@@ -121,21 +109,11 @@ describe("ConsoleLoggerService", () => {
       logger.info("info");
       logger.debug("debug");
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining(MODULE_CONSTANTS.LOG_PREFIX)
-      );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(MODULE_CONSTANTS.LOG_PREFIX)
-      );
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(MODULE_CONSTANTS.LOG_PREFIX)
-      );
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        expect.stringContaining(MODULE_CONSTANTS.LOG_PREFIX)
-      );
-      expect(consoleDebugSpy).toHaveBeenCalledWith(
-        expect.stringContaining(MODULE_CONSTANTS.LOG_PREFIX)
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining(LOG_PREFIX));
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining(LOG_PREFIX));
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining(LOG_PREFIX));
+      expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining(LOG_PREFIX));
+      expect(consoleDebugSpy).toHaveBeenCalledWith(expect.stringContaining(LOG_PREFIX));
     });
   });
 
@@ -232,9 +210,7 @@ describe("ConsoleLoggerService", () => {
 
       tracedLogger.info("Test message");
 
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Test message`
-      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [${traceId}] Test message`);
     });
 
     it("should include trace ID in all log methods", () => {
@@ -248,21 +224,11 @@ describe("ConsoleLoggerService", () => {
       tracedLogger.info("Info message");
       tracedLogger.debug("Debug message");
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Log message`
-      );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Error message`
-      );
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Warn message`
-      );
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Info message`
-      );
-      expect(consoleDebugSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Debug message`
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [${traceId}] Log message`);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [${traceId}] Error message`);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [${traceId}] Warn message`);
+      expect(consoleInfoSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [${traceId}] Info message`);
+      expect(consoleDebugSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [${traceId}] Debug message`);
     });
 
     it("should preserve additional parameters in traced logs", () => {
@@ -275,11 +241,11 @@ describe("ConsoleLoggerService", () => {
       tracedLogger.info("Info with data", dataObj);
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Error with object`,
+        `${LOG_PREFIX} [${traceId}] Error with object`,
         errorObj
       );
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Info with data`,
+        `${LOG_PREFIX} [${traceId}] Info with data`,
         dataObj
       );
     });
@@ -308,7 +274,7 @@ describe("ConsoleLoggerService", () => {
 
       // Nested trace IDs should be combined
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId1}/${traceId2}] Nested trace`
+        `${LOG_PREFIX} [${traceId1}/${traceId2}] Nested trace`
       );
     });
 
@@ -321,14 +287,8 @@ describe("ConsoleLoggerService", () => {
       tracedLogger1.info("Message 1");
       tracedLogger2.info("Message 2");
 
-      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
-        1,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId1}] Message 1`
-      );
-      expect(consoleInfoSpy).toHaveBeenNthCalledWith(
-        2,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId2}] Message 2`
-      );
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(1, `${LOG_PREFIX} [${traceId1}] Message 1`);
+      expect(consoleInfoSpy).toHaveBeenNthCalledWith(2, `${LOG_PREFIX} [${traceId2}] Message 2`);
     });
 
     it("should allow setting min level on traced logger", () => {
@@ -341,9 +301,7 @@ describe("ConsoleLoggerService", () => {
 
       // Info should be filtered, error should be shown
       expect(consoleInfoSpy).not.toHaveBeenCalled();
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [${traceId}] Error message`
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [${traceId}] Error message`);
     });
   });
 
@@ -362,16 +320,14 @@ describe("ConsoleLoggerService", () => {
       }, "auto-trace-123");
 
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [auto-trace-123] Message with auto trace`
+        `${LOG_PREFIX} [auto-trace-123] Message with auto trace`
       );
     });
 
     it("should log normally when no trace context is active", () => {
       loggerWithContext.info("Message without trace");
 
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Message without trace`
-      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Message without trace`);
     });
 
     it("should auto-inject trace ID for all log levels", () => {
@@ -383,18 +339,12 @@ describe("ConsoleLoggerService", () => {
         loggerWithContext.debug("Debug message");
       }, "multi-level-trace");
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [multi-level-trace] Log message`
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [multi-level-trace] Log message`);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [multi-level-trace] Error message`
+        `${LOG_PREFIX} [multi-level-trace] Error message`
       );
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [multi-level-trace] Warn message`
-      );
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [multi-level-trace] Info message`
-      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [multi-level-trace] Warn message`);
+      expect(consoleInfoSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [multi-level-trace] Info message`);
       expect(consoleDebugSpy).not.toHaveBeenCalled(); // LogLevel.INFO filters out DEBUG
     });
 
@@ -411,15 +361,15 @@ describe("ConsoleLoggerService", () => {
 
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         1,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [outer-trace] Outer message`
+        `${LOG_PREFIX} [outer-trace] Outer message`
       );
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         2,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [inner-trace] Inner message`
+        `${LOG_PREFIX} [inner-trace] Inner message`
       );
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         3,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [outer-trace] Back to outer`
+        `${LOG_PREFIX} [outer-trace] Back to outer`
       );
     });
 
@@ -432,11 +382,11 @@ describe("ConsoleLoggerService", () => {
 
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         1,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [async-trace-456] Async message`
+        `${LOG_PREFIX} [async-trace-456] Async message`
       );
       expect(consoleInfoSpy).toHaveBeenNthCalledWith(
         2,
-        `${MODULE_CONSTANTS.LOG_PREFIX} [async-trace-456] After delay`
+        `${LOG_PREFIX} [async-trace-456] After delay`
       );
     });
 
@@ -446,7 +396,7 @@ describe("ConsoleLoggerService", () => {
       loggerWithoutContext.info("Message without context injection");
 
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} Message without context injection`
+        `${LOG_PREFIX} Message without context injection`
       );
     });
 
@@ -459,7 +409,7 @@ describe("ConsoleLoggerService", () => {
       // TracedLogger wraps the base logger which already has context trace
       // So we get both: [context-trace] from base logger, then [explicit-trace] from TracedLogger
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [context-trace] [explicit-trace] Message with explicit trace`
+        `${LOG_PREFIX} [context-trace] [explicit-trace] Message with explicit trace`
       );
     });
 
@@ -470,7 +420,7 @@ describe("ConsoleLoggerService", () => {
       }, "trace-with-params");
 
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [trace-with-params] Message with data`,
+        `${LOG_PREFIX} [trace-with-params] Message with data`,
         { data: "value" }
       );
     });
@@ -489,9 +439,7 @@ describe("ConsoleLoggerService", () => {
         loggerWithContext.info("After error");
       }, "outer-error-trace");
 
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} [outer-error-trace] After error`
-      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(`${LOG_PREFIX} [outer-error-trace] After error`);
     });
   });
 

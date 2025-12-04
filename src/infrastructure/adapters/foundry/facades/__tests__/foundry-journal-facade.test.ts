@@ -12,7 +12,7 @@ import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfac
 import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import type { FoundryJournalEntry } from "@/infrastructure/adapters/foundry/types";
 import { ok, err } from "@/domain/utils/result";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import * as v from "valibot";
 
 describe("FoundryJournalFacade", () => {
@@ -98,7 +98,7 @@ describe("FoundryJournalFacade", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const calls = (mockDocument.getFlag as any).mock.calls;
       expect(calls[0][0]).toBe(entry);
-      expect(calls[0][1]).toBe(MODULE_CONSTANTS.MODULE.ID);
+      expect(calls[0][1]).toBe(MODULE_METADATA.ID);
       expect(calls[0][2]).toBe("hidden");
       expect(calls[0][3]).toBeDefined(); // schema
       expect(result.ok).toBe(true);
@@ -185,7 +185,7 @@ describe("FoundryJournalFacade", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const calls = (mockDocument.setFlag as any).mock.calls;
       expect(calls[0][0]).toBe(entry);
-      expect(calls[0][1]).toBe(MODULE_CONSTANTS.MODULE.ID);
+      expect(calls[0][1]).toBe(MODULE_METADATA.ID);
       expect(calls[0][2]).toBe("hidden");
       expect(calls[0][3]).toBe(true);
       expect(result.ok).toBe(true);

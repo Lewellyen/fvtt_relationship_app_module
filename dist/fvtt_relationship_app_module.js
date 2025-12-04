@@ -8,76 +8,34 @@ var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read fr
 var __privateAdd = (obj, member, value2) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value2);
 var __privateSet = (obj, member, value2, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value2) : member.set(obj, value2), value2);
 var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6;
-const HOOK_THROTTLE_WINDOW_MS = 150;
-const VALIDATION_CONSTRAINTS = {
-  /** Maximum length for IDs and keys */
-  MAX_ID_LENGTH: 100,
-  /** Maximum length for names */
-  MAX_NAME_LENGTH: 100,
-  /** Maximum length for flag keys */
-  MAX_FLAG_KEY_LENGTH: 100
+const MODULE_METADATA = {
+  ID: "fvtt_relationship_app_module",
+  NAME: "Beziehungsnetzwerke für Foundry",
+  AUTHOR: "Andreas Rothe",
+  AUTHOR_EMAIL: "forenadmin.tir@gmail.com",
+  AUTHOR_DISCORD: "lewellyen"
 };
-const METRICS_CONFIG = {
-  /** Size of circular buffer for resolution times */
-  RESOLUTION_TIMES_BUFFER_SIZE: 100
+const SETTING_KEYS = {
+  LOG_LEVEL: "logLevel",
+  CACHE_ENABLED: "cacheEnabled",
+  CACHE_TTL_MS: "cacheTtlMs",
+  CACHE_MAX_ENTRIES: "cacheMaxEntries",
+  PERFORMANCE_TRACKING_ENABLED: "performanceTrackingEnabled",
+  PERFORMANCE_SAMPLING_RATE: "performanceSamplingRate",
+  METRICS_PERSISTENCE_ENABLED: "metricsPersistenceEnabled",
+  METRICS_PERSISTENCE_KEY: "metricsPersistenceKey"
 };
-const MODULE_CONSTANTS = {
-  MODULE: {
-    ID: "fvtt_relationship_app_module",
-    NAME: "Beziehungsnetzwerke für Foundry",
-    AUTHOR: "Andreas Rothe",
-    AUTHOR_EMAIL: "forenadmin.tir@gmail.com",
-    AUTHOR_DISCORD: "lewellyen"
-  },
-  LOG_PREFIX: "Relationship App |",
-  FLAGS: {
-    HIDDEN: "hidden"
-  },
-  HOOKS: {
-    RENDER_JOURNAL_DIRECTORY: "renderJournalDirectory",
-    INIT: "init",
-    READY: "ready",
-    CREATE_JOURNAL_ENTRY: "createJournalEntry",
-    UPDATE_JOURNAL_ENTRY: "updateJournalEntry",
-    DELETE_JOURNAL_ENTRY: "deleteJournalEntry"
-  },
-  SETTINGS: {
-    LOG_LEVEL: "logLevel",
-    CACHE_ENABLED: "cacheEnabled",
-    CACHE_TTL_MS: "cacheTtlMs",
-    CACHE_MAX_ENTRIES: "cacheMaxEntries",
-    PERFORMANCE_TRACKING_ENABLED: "performanceTrackingEnabled",
-    PERFORMANCE_SAMPLING_RATE: "performanceSamplingRate",
-    METRICS_PERSISTENCE_ENABLED: "metricsPersistenceEnabled",
-    METRICS_PERSISTENCE_KEY: "metricsPersistenceKey"
-  },
-  API: {
-    /**
-     * Public API version for external module consumption.
-     * Follows semantic versioning: MAJOR.MINOR.PATCH
-     *
-     * MAJOR: Breaking changes to public API
-     * MINOR: New features, backwards-compatible
-     * PATCH: Bug fixes, backwards-compatible
-     */
-    VERSION: "1.0.0"
-  },
-  DEFAULTS: {
-    UNKNOWN_NAME: "Unknown",
-    NO_VERSION_SELECTED: -1,
-    CACHE_NOT_INITIALIZED: -1,
-    CACHE_TTL_MS: 5e3
-  }
+const APP_DEFAULTS = {
+  UNKNOWN_NAME: "Unknown",
+  NO_VERSION_SELECTED: -1,
+  CACHE_NOT_INITIALIZED: -1,
+  CACHE_TTL_MS: 5e3
 };
-Object.freeze(MODULE_CONSTANTS);
-Object.freeze(MODULE_CONSTANTS.MODULE);
-Object.freeze(MODULE_CONSTANTS.API);
-Object.freeze(MODULE_CONSTANTS.FLAGS);
-Object.freeze(MODULE_CONSTANTS.HOOKS);
-Object.freeze(MODULE_CONSTANTS.SETTINGS);
-Object.freeze(MODULE_CONSTANTS.DEFAULTS);
-Object.freeze(VALIDATION_CONSTRAINTS);
-Object.freeze(METRICS_CONFIG);
+const PUBLIC_API_VERSION = "1.0.0";
+const LOG_PREFIX = "Relationship App |";
+Object.freeze(MODULE_METADATA);
+Object.freeze(SETTING_KEYS);
+Object.freeze(APP_DEFAULTS);
 function ok(value2) {
   return { ok: true, value: value2 };
 }
@@ -354,10 +312,10 @@ function getRegistrationStatus(result) {
   return result.ok ? result.value : false;
 }
 __name(getRegistrationStatus, "getRegistrationStatus");
-function getFirstArrayElement(array2) {
+function getFirstArrayElement$1(array2) {
   return array2[0];
 }
-__name(getFirstArrayElement, "getFirstArrayElement");
+__name(getFirstArrayElement$1, "getFirstArrayElement$1");
 function getFirstElementIfArray(value2, typeGuard) {
   if (Array.isArray(value2) && value2.length > 0) {
     const firstElement = value2[0];
@@ -7504,7 +7462,7 @@ const ENV = {
   ),
   cacheDefaultTtlMs: getEnvVar(
     "VITE_CACHE_TTL_MS",
-    (val) => parseNonNegativeNumber(val, MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS)
+    (val) => parseNonNegativeNumber(val, APP_DEFAULTS.CACHE_TTL_MS)
   ),
   ...parsedCacheMaxEntries !== void 0 ? { cacheMaxEntries: parsedCacheMaxEntries } : {}
 };
@@ -8200,6 +8158,57 @@ const _DIMetricsHealthCheck = class _DIMetricsHealthCheck extends MetricsHealthC
 __name(_DIMetricsHealthCheck, "DIMetricsHealthCheck");
 _DIMetricsHealthCheck.dependencies = [metricsCollectorToken, healthCheckRegistryToken];
 let DIMetricsHealthCheck = _DIMetricsHealthCheck;
+const DOMAIN_FLAGS = {
+  /** Flag key für versteckte Journal-Einträge */
+  HIDDEN: "hidden"
+};
+const DOMAIN_EVENTS = {
+  /** Event: Journal Directory wird gerendert */
+  RENDER_JOURNAL_DIRECTORY: "renderJournalDirectory",
+  /** Event: System-Initialisierung */
+  INIT: "init",
+  /** Event: System ist bereit */
+  READY: "ready",
+  /** Event: Journal Entry wird erstellt */
+  CREATE_JOURNAL_ENTRY: "createJournalEntry",
+  /** Event: Journal Entry wird aktualisiert */
+  UPDATE_JOURNAL_ENTRY: "updateJournalEntry",
+  /** Event: Journal Entry wird gelöscht */
+  DELETE_JOURNAL_ENTRY: "deleteJournalEntry"
+};
+Object.freeze(DOMAIN_FLAGS);
+Object.freeze(DOMAIN_EVENTS);
+const MODULE_CONSTANTS = {
+  MODULE: MODULE_METADATA,
+  LOG_PREFIX,
+  FLAGS: DOMAIN_FLAGS,
+  HOOKS: DOMAIN_EVENTS,
+  SETTINGS: SETTING_KEYS,
+  API: {
+    VERSION: PUBLIC_API_VERSION
+  },
+  DEFAULTS: APP_DEFAULTS
+};
+Object.freeze(MODULE_METADATA);
+Object.freeze(DOMAIN_FLAGS);
+Object.freeze(DOMAIN_EVENTS);
+Object.freeze(SETTING_KEYS);
+Object.freeze(APP_DEFAULTS);
+const HOOK_THROTTLE_WINDOW_MS = 150;
+const VALIDATION_CONSTRAINTS = {
+  /** Maximale Länge für IDs und Keys */
+  MAX_ID_LENGTH: 100,
+  /** Maximale Länge für Namen */
+  MAX_NAME_LENGTH: 100,
+  /** Maximale Länge für Flag-Keys */
+  MAX_FLAG_KEY_LENGTH: 100
+};
+const METRICS_CONFIG = {
+  /** Größe des Circular-Buffers für Resolution-Zeiten */
+  RESOLUTION_TIMES_BUFFER_SIZE: 100
+};
+Object.freeze(VALIDATION_CONSTRAINTS);
+Object.freeze(METRICS_CONFIG);
 const _MetricsCollector = class _MetricsCollector {
   constructor(config2) {
     this.config = config2;
@@ -8587,27 +8596,27 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
   }
   log(message2, ...optionalParams) {
     const formattedMessage = this.formatWithContextTrace(message2);
-    console.log(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    console.log(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
   error(message2, ...optionalParams) {
     if (LogLevel.ERROR < this.minLevel) return;
     const formattedMessage = this.formatWithContextTrace(message2);
-    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    console.error(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
   warn(message2, ...optionalParams) {
     if (LogLevel.WARN < this.minLevel) return;
     const formattedMessage = this.formatWithContextTrace(message2);
-    console.warn(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    console.warn(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
   info(message2, ...optionalParams) {
     if (LogLevel.INFO < this.minLevel) return;
     const formattedMessage = this.formatWithContextTrace(message2);
-    console.info(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    console.info(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
   debug(message2, ...optionalParams) {
     if (LogLevel.DEBUG < this.minLevel) return;
     const formattedMessage = this.formatWithContextTrace(message2);
-    console.debug(`${MODULE_CONSTANTS.LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    console.debug(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
   }
   withTraceId(traceId) {
     return new TracedLogger(this, traceId);
@@ -8975,7 +8984,7 @@ const _ModuleApiInitializer = class _ModuleApiInitializer {
     if (deprecationInfo && !deprecationInfo.warningShown) {
       const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
       console.warn(
-        `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
+        `[${MODULE_METADATA.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
 Reason: ${deprecationInfo.reason}
 ` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
       );
@@ -9054,7 +9063,7 @@ Reason: ${deprecationInfo.reason}
    */
   createApiObject(container, wellKnownTokens) {
     return {
-      version: MODULE_CONSTANTS.API.VERSION,
+      version: PUBLIC_API_VERSION,
       // Overloaded resolve method (throws on error)
       resolve: this.createResolveFunction(container, wellKnownTokens),
       // Result-Pattern method (safe, never throws)
@@ -9127,9 +9136,9 @@ Reason: ${deprecationInfo.reason}
     if (typeof game === "undefined" || !game?.modules) {
       return err("Game modules not available - API cannot be exposed");
     }
-    const mod = game.modules.get(MODULE_CONSTANTS.MODULE.ID);
+    const mod = game.modules.get(MODULE_METADATA.ID);
     if (!mod) {
-      return err(`Module '${MODULE_CONSTANTS.MODULE.ID}' not found in game.modules`);
+      return err(`Module '${MODULE_METADATA.ID}' not found in game.modules`);
     }
     const wellKnownTokens = createApiTokens();
     const api = this.createApiObject(container, wellKnownTokens);
@@ -9299,8 +9308,8 @@ const _LoggingBootstrapper = class _LoggingBootstrapper {
     }
     const settings = castFoundrySettings(settingsResult.value);
     const logLevelResult = settings.get(
-      MODULE_CONSTANTS.MODULE.ID,
-      MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+      MODULE_METADATA.ID,
+      SETTING_KEYS.LOG_LEVEL,
       LOG_LEVEL_SCHEMA
     );
     if (logLevelResult.ok && logger.setMinLevel) {
@@ -9908,7 +9917,7 @@ const _PortSelector = class _PortSelector {
       version = versionResult.value;
     }
     let selectedToken;
-    let selectedVersion = MODULE_CONSTANTS.DEFAULTS.NO_VERSION_SELECTED;
+    let selectedVersion = APP_DEFAULTS.NO_VERSION_SELECTED;
     for (const [portVersion, token] of tokens.entries()) {
       if (portVersion > version) {
         continue;
@@ -10190,10 +10199,10 @@ function validateSettingConfig(namespace, key, config2) {
   return ok(result.output);
 }
 __name(validateSettingConfig, "validateSettingConfig");
-function sanitizeId$1(id) {
+function sanitizeId(id) {
   return id.replace(/[^a-zA-Z0-9-_]/g, "");
 }
-__name(sanitizeId$1, "sanitizeId$1");
+__name(sanitizeId, "sanitizeId");
 function sanitizeHtml$1(text) {
   const div = document.createElement("div");
   div.textContent = text;
@@ -10283,7 +10292,7 @@ const _FoundryV13GamePort = class _FoundryV13GamePort {
     __privateSet(this, _disposed, false);
     this.cachedEntries = null;
     this.lastCheckTimestamp = 0;
-    this.cacheTtlMs = MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS;
+    this.cacheTtlMs = APP_DEFAULTS.CACHE_TTL_MS;
   }
   getJournalEntries() {
     if (__privateGet(this, _disposed)) {
@@ -10705,7 +10714,7 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
     if (__privateGet(this, _disposed4)) {
       return err(createFoundryError("DISPOSED", "Cannot remove journal element on disposed port"));
     }
-    const safeId = sanitizeId$1(journalId);
+    const safeId = sanitizeId(journalId);
     const element = html.querySelector(
       `li.directory-item[data-document-id="${safeId}"], li.directory-item[data-entry-id="${safeId}"]`
     );
@@ -11775,7 +11784,7 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
     if (!documentResult.ok) {
       return documentResult;
     }
-    return this.document.getFlag(documentResult.value, MODULE_CONSTANTS.MODULE.ID, key, schema);
+    return this.document.getFlag(documentResult.value, MODULE_METADATA.ID, key, schema);
   }
   /**
    * Remove a journal element from the UI.
@@ -11804,12 +11813,7 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
     if (!documentResult.ok) {
       return documentResult;
     }
-    return await this.document.setFlag(
-      documentResult.value,
-      MODULE_CONSTANTS.MODULE.ID,
-      key,
-      value2
-    );
+    return await this.document.setFlag(documentResult.value, MODULE_METADATA.ID, key, value2);
   }
 };
 __name(_FoundryJournalFacade, "FoundryJournalFacade");
@@ -11822,16 +11826,23 @@ const _DIFoundryJournalFacade = class _DIFoundryJournalFacade extends FoundryJou
 __name(_DIFoundryJournalFacade, "DIFoundryJournalFacade");
 _DIFoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
 let DIFoundryJournalFacade = _DIFoundryJournalFacade;
+function isNonEmptyArray(array2) {
+  return array2.length > 0;
+}
+__name(isNonEmptyArray, "isNonEmptyArray");
+function getFirstArrayElement(array2) {
+  if (!isNonEmptyArray(array2)) {
+    throw new Error("Cannot get first element from empty array");
+  }
+  return array2[0];
+}
+__name(getFirstArrayElement, "getFirstArrayElement");
 function sanitizeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
 }
 __name(sanitizeHtml, "sanitizeHtml");
-function sanitizeId(id) {
-  return id.replace(/[^a-zA-Z0-9-_]/g, "");
-}
-__name(sanitizeId, "sanitizeId");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
   constructor(journalCollection, journalRepository, notifications, cache, journalDirectoryUI, config2) {
@@ -12086,7 +12097,7 @@ __name(_FoundryLibWrapperService, "FoundryLibWrapperService");
 let FoundryLibWrapperService = _FoundryLibWrapperService;
 const _DIFoundryLibWrapperService = class _DIFoundryLibWrapperService extends FoundryLibWrapperService {
   constructor(logger) {
-    super(MODULE_CONSTANTS.MODULE.ID, logger);
+    super(MODULE_METADATA.ID, logger);
   }
 };
 __name(_DIFoundryLibWrapperService, "DIFoundryLibWrapperService");
@@ -12634,7 +12645,7 @@ function registerUtilityServices(container) {
 __name(registerUtilityServices, "registerUtilityServices");
 const DEFAULT_CACHE_SERVICE_CONFIG = {
   enabled: true,
-  defaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
+  defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
   namespace: "global"
 };
 function clampTtl(ttl, fallback2) {
@@ -13065,7 +13076,7 @@ function registerCacheServices(container) {
   const config2 = {
     enabled: runtimeConfig.get("enableCacheService"),
     defaultTtlMs: runtimeConfig.get("cacheDefaultTtlMs"),
-    namespace: MODULE_CONSTANTS.MODULE.ID,
+    namespace: MODULE_METADATA.ID,
     ...typeof maxEntries2 === "number" && maxEntries2 > 0 ? { maxEntries: maxEntries2 } : {}
   };
   const configResult = container.registerValue(cacheServiceConfigToken, config2);
@@ -13970,7 +13981,7 @@ function validateAndSetLogLevel(value2, logger) {
 }
 __name(validateAndSetLogLevel, "validateAndSetLogLevel");
 const logLevelSetting = {
-  key: MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+  key: SETTING_KEYS.LOG_LEVEL,
   createConfig(i18n, logger) {
     return {
       name: unwrapOr(i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"), "Log Level"),
@@ -14016,7 +14027,7 @@ const logLevelSetting = {
   }
 };
 const cacheEnabledSetting = {
-  key: MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED,
+  key: SETTING_KEYS.CACHE_ENABLED,
   createConfig(i18n, logger) {
     return {
       name: unwrapOr(
@@ -14042,7 +14053,7 @@ const cacheEnabledSetting = {
   }
 };
 const cacheDefaultTtlSetting = {
-  key: MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS,
+  key: SETTING_KEYS.CACHE_TTL_MS,
   createConfig(i18n, logger) {
     return {
       name: unwrapOr(
@@ -14059,7 +14070,7 @@ const cacheDefaultTtlSetting = {
       scope: "world",
       config: true,
       type: Number,
-      default: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
+      default: APP_DEFAULTS.CACHE_TTL_MS,
       onChange: /* @__PURE__ */ __name((value2) => {
         const numericValue = Number(value2);
         const sanitized = Number.isFinite(numericValue) && numericValue >= 0 ? numericValue : 0;
@@ -14069,7 +14080,7 @@ const cacheDefaultTtlSetting = {
   }
 };
 const cacheMaxEntriesSetting = {
-  key: MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES,
+  key: SETTING_KEYS.CACHE_MAX_ENTRIES,
   createConfig(i18n, logger) {
     return {
       name: unwrapOr(
@@ -14100,7 +14111,7 @@ const cacheMaxEntriesSetting = {
   }
 };
 const performanceTrackingSetting = {
-  key: MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED,
+  key: SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED,
   createConfig(i18n, logger) {
     return {
       name: unwrapOr(
@@ -14126,7 +14137,7 @@ const performanceTrackingSetting = {
   }
 };
 const performanceSamplingSetting = {
-  key: MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE,
+  key: SETTING_KEYS.PERFORMANCE_SAMPLING_RATE,
   createConfig(i18n, logger) {
     return {
       name: unwrapOr(
@@ -14154,7 +14165,7 @@ const performanceSamplingSetting = {
   }
 };
 const metricsPersistenceEnabledSetting = {
-  key: MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED,
+  key: SETTING_KEYS.METRICS_PERSISTENCE_ENABLED,
   createConfig(i18n, logger) {
     return {
       name: unwrapOr(
@@ -14180,7 +14191,7 @@ const metricsPersistenceEnabledSetting = {
   }
 };
 const metricsPersistenceKeySetting = {
-  key: MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY,
+  key: SETTING_KEYS.METRICS_PERSISTENCE_KEY,
   createConfig(i18n, logger) {
     return {
       name: unwrapOr(
@@ -14197,7 +14208,7 @@ const metricsPersistenceKeySetting = {
       scope: "world",
       config: true,
       type: String,
-      default: `${MODULE_CONSTANTS.MODULE.ID}.metrics`,
+      default: `${MODULE_METADATA.ID}.metrics`,
       onChange: /* @__PURE__ */ __name((value2) => {
         logger.info(`Metrics persistence key set to: ${value2 || "(empty)"}`);
       }, "onChange")
@@ -14240,42 +14251,42 @@ const SettingValidators = {
 };
 const isLogLevel = /* @__PURE__ */ __name((value2) => typeof value2 === "number" && value2 >= 0 && value2 <= 3, "isLogLevel");
 const runtimeConfigBindings = {
-  [MODULE_CONSTANTS.SETTINGS.LOG_LEVEL]: {
+  [SETTING_KEYS.LOG_LEVEL]: {
     runtimeKey: "logLevel",
     validator: isLogLevel,
     normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
   },
-  [MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED]: {
+  [SETTING_KEYS.CACHE_ENABLED]: {
     runtimeKey: "enableCacheService",
     validator: SettingValidators.boolean,
     normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
   },
-  [MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS]: {
+  [SETTING_KEYS.CACHE_TTL_MS]: {
     runtimeKey: "cacheDefaultTtlMs",
     validator: SettingValidators.nonNegativeNumber,
     normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
   },
-  [MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES]: {
+  [SETTING_KEYS.CACHE_MAX_ENTRIES]: {
     runtimeKey: "cacheMaxEntries",
     validator: SettingValidators.nonNegativeInteger,
     normalize: /* @__PURE__ */ __name((value2) => value2 > 0 ? value2 : void 0, "normalize")
   },
-  [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED]: {
+  [SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED]: {
     runtimeKey: "enablePerformanceTracking",
     validator: SettingValidators.boolean,
     normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
   },
-  [MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE]: {
+  [SETTING_KEYS.PERFORMANCE_SAMPLING_RATE]: {
     runtimeKey: "performanceSamplingRate",
     validator: SettingValidators.samplingRate,
     normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
   },
-  [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED]: {
+  [SETTING_KEYS.METRICS_PERSISTENCE_ENABLED]: {
     runtimeKey: "enableMetricsPersistence",
     validator: SettingValidators.boolean,
     normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
   },
-  [MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY]: {
+  [SETTING_KEYS.METRICS_PERSISTENCE_KEY]: {
     runtimeKey: "metricsPersistenceKey",
     validator: SettingValidators.nonEmptyString,
     normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
@@ -14298,7 +14309,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
   registerAll() {
     this.registerDefinition(
       logLevelSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.LOG_LEVEL],
+      runtimeConfigBindings[SETTING_KEYS.LOG_LEVEL],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -14307,7 +14318,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       cacheEnabledSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_ENABLED],
+      runtimeConfigBindings[SETTING_KEYS.CACHE_ENABLED],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -14316,7 +14327,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       cacheDefaultTtlSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_TTL_MS],
+      runtimeConfigBindings[SETTING_KEYS.CACHE_TTL_MS],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -14325,7 +14336,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       cacheMaxEntriesSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.CACHE_MAX_ENTRIES],
+      runtimeConfigBindings[SETTING_KEYS.CACHE_MAX_ENTRIES],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -14334,7 +14345,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       performanceTrackingSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_TRACKING_ENABLED],
+      runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -14343,7 +14354,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       performanceSamplingSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.PERFORMANCE_SAMPLING_RATE],
+      runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_SAMPLING_RATE],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -14352,7 +14363,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       metricsPersistenceEnabledSetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_ENABLED],
+      runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_ENABLED],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -14361,7 +14372,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     );
     this.registerDefinition(
       metricsPersistenceKeySetting,
-      runtimeConfigBindings[MODULE_CONSTANTS.SETTINGS.METRICS_PERSISTENCE_KEY],
+      runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY],
       this.settings,
       this.runtimeConfig,
       this.notifications,
@@ -14382,7 +14393,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
   }
   syncRuntimeConfigFromSettings(settings, runtimeConfig, binding, notifications, settingKey) {
     const currentValue = settings.getSettingValue(
-      MODULE_CONSTANTS.MODULE.ID,
+      MODULE_METADATA.ID,
       settingKey,
       binding.validator
     );
@@ -14398,7 +14409,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     const config2 = definition.createConfig(i18n, logger);
     const configWithRuntimeBridge = binding ? this.attachRuntimeConfigBridge(config2, runtimeConfig, binding) : config2;
     const result = settings.registerSetting(
-      MODULE_CONSTANTS.MODULE.ID,
+      MODULE_METADATA.ID,
       definition.key,
       configWithRuntimeBridge
     );
@@ -14789,8 +14800,8 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
    */
   register() {
     const result = this.journalEvents.onJournalUpdated((event) => {
-      const moduleId = MODULE_CONSTANTS.MODULE.ID;
-      const flagKey = MODULE_CONSTANTS.FLAGS.HIDDEN;
+      const moduleId = MODULE_METADATA.ID;
+      const flagKey = DOMAIN_FLAGS.HIDDEN;
       const moduleFlags = event.changes.flags?.[moduleId];
       if (moduleFlags && typeof moduleFlags === "object" && flagKey in moduleFlags) {
         this.triggerReRender(event.journalId);
@@ -14917,8 +14928,8 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
     }
     const flagResult = this.journalRepository.getFlag(
       journalId,
-      MODULE_CONSTANTS.MODULE.ID,
-      MODULE_CONSTANTS.FLAGS.HIDDEN
+      MODULE_METADATA.ID,
+      DOMAIN_FLAGS.HIDDEN
     );
     if (flagResult.ok && flagResult.value !== true) {
       event.options.push({
@@ -14927,8 +14938,8 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
         callback: /* @__PURE__ */ __name(async (_li) => {
           const hideResult = await this.journalRepository.setFlag(
             journalId,
-            MODULE_CONSTANTS.MODULE.ID,
-            MODULE_CONSTANTS.FLAGS.HIDDEN,
+            MODULE_METADATA.ID,
+            DOMAIN_FLAGS.HIDDEN,
             true
           );
           if (hideResult.ok) {
@@ -15939,7 +15950,7 @@ function normalizeSegment(segment) {
 __name(normalizeSegment, "normalizeSegment");
 function createCacheKey(parts) {
   const { namespace, resource, identifier } = parts;
-  const payload = [MODULE_CONSTANTS.MODULE.ID, namespace, resource];
+  const payload = [MODULE_METADATA.ID, namespace, resource];
   if (identifier !== null && identifier !== void 0) {
     payload.push(String(identifier));
   }
@@ -15957,9 +15968,9 @@ function registerJournalVisibilityConfig(container) {
     return buildCacheKey(resource);
   }, "cacheKeyFactory");
   const config2 = {
-    moduleNamespace: MODULE_CONSTANTS.MODULE.ID,
-    hiddenFlagKey: MODULE_CONSTANTS.FLAGS.HIDDEN,
-    unknownName: MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
+    moduleNamespace: MODULE_METADATA.ID,
+    hiddenFlagKey: DOMAIN_FLAGS.HIDDEN,
+    unknownName: APP_DEFAULTS.UNKNOWN_NAME,
     cacheKeyFactory
   };
   const configResult = container.registerValue(journalVisibilityConfigToken, config2);
@@ -16141,7 +16152,7 @@ const _CompositionRoot = class _CompositionRoot {
    */
   getContainer() {
     if (!this.container) {
-      return { ok: false, error: `${MODULE_CONSTANTS.LOG_PREFIX} Container not initialized` };
+      return { ok: false, error: `${LOG_PREFIX} Container not initialized` };
     }
     return { ok: true, value: this.container };
   }
@@ -16160,7 +16171,7 @@ const _BootstrapErrorHandler = class _BootstrapErrorHandler {
    */
   static logError(error, context) {
     const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-    console.group(`[${timestamp}] ${MODULE_CONSTANTS.LOG_PREFIX} Error in ${context.phase}`);
+    console.group(`[${timestamp}] ${LOG_PREFIX} Error in ${context.phase}`);
     if (context.component) {
       console.error("Component:", context.component);
     }
@@ -16176,14 +16187,12 @@ let BootstrapErrorHandler = _BootstrapErrorHandler;
 function initializeFoundryModule() {
   const containerResult = root.getContainer();
   if (!containerResult.ok) {
-    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${containerResult.error}`);
+    console.error(`${LOG_PREFIX} ${containerResult.error}`);
     return;
   }
   const loggerResult = containerResult.value.resolveWithError(loggerToken);
   if (!loggerResult.ok) {
-    console.error(
-      `${MODULE_CONSTANTS.LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`
-    );
+    console.error(`${LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`);
     return;
   }
   const logger = castLogger(loggerResult.value);
@@ -16233,7 +16242,7 @@ if (!bootstrapOk) {
       isOldFoundryVersion = true;
       if (typeof ui !== "undefined" && ui?.notifications) {
         ui.notifications.error(
-          `${MODULE_CONSTANTS.MODULE.NAME} benötigt mindestens Foundry VTT Version 13. Ihre Version: ${foundryVersion}. Bitte aktualisieren Sie Foundry VTT.`,
+          `${MODULE_METADATA.NAME} benötigt mindestens Foundry VTT Version 13. Ihre Version: ${foundryVersion}. Bitte aktualisieren Sie Foundry VTT.`,
           { permanent: true }
         );
       }
@@ -16241,7 +16250,7 @@ if (!bootstrapOk) {
   }
   if (!isOldFoundryVersion && typeof ui !== "undefined" && ui?.notifications) {
     ui.notifications?.error(
-      `${MODULE_CONSTANTS.MODULE.NAME} failed to initialize. Check console for details.`,
+      `${MODULE_METADATA.NAME} failed to initialize. Check console for details.`,
       { permanent: true }
     );
   }

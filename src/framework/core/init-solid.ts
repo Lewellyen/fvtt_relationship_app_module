@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA, LOG_PREFIX } from "@/application/constants/app-constants";
 import { isOk } from "@/domain/utils/result";
 import {
   loggerToken,
@@ -40,16 +40,14 @@ function initializeFoundryModule(): void {
   // The root instance is created at module level (line 162), making it difficult to mock
   // this specific error path in tests. The code path exists and will execute in real scenarios.
   if (!containerResult.ok) {
-    console.error(`${MODULE_CONSTANTS.LOG_PREFIX} ${containerResult.error}`);
+    console.error(`${LOG_PREFIX} ${containerResult.error}`);
     return;
   }
   /* v8 ignore stop -- @preserve */
 
   const loggerResult = containerResult.value.resolveWithError(loggerToken);
   if (!loggerResult.ok) {
-    console.error(
-      `${MODULE_CONSTANTS.LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`
-    );
+    console.error(`${LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`);
     return;
   }
   const logger = castLogger(loggerResult.value);
@@ -128,7 +126,7 @@ if (!bootstrapOk) {
       /* v8 ignore next -- @preserve */
       if (typeof ui !== "undefined" && ui?.notifications) {
         ui.notifications.error(
-          `${MODULE_CONSTANTS.MODULE.NAME} benötigt mindestens Foundry VTT Version 13. ` +
+          `${MODULE_METADATA.NAME} benötigt mindestens Foundry VTT Version 13. ` +
             `Ihre Version: ${foundryVersion}. Bitte aktualisieren Sie Foundry VTT.`,
           { permanent: true }
         );
@@ -139,7 +137,7 @@ if (!bootstrapOk) {
   // Show generic error notification (only if not old Foundry version)
   if (!isOldFoundryVersion && typeof ui !== "undefined" && ui?.notifications) {
     ui.notifications?.error(
-      `${MODULE_CONSTANTS.MODULE.NAME} failed to initialize. Check console for details.`,
+      `${MODULE_METADATA.NAME} failed to initialize. Check console for details.`,
       { permanent: true }
     );
   }

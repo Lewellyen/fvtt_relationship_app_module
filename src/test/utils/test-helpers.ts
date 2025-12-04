@@ -8,7 +8,7 @@ import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
 import type { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
 import { LogLevel } from "@/domain/types/log-level";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { APP_DEFAULTS } from "@/application/constants/app-constants";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import type { ServiceContainer } from "@/infrastructure/di/container";
@@ -194,7 +194,7 @@ export function createMockEnvironmentConfig(
     metricsPersistenceKey: "test.metrics",
     performanceSamplingRate: 1.0,
     enableCacheService: true,
-    cacheDefaultTtlMs: MODULE_CONSTANTS.DEFAULTS.CACHE_TTL_MS,
+    cacheDefaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
     ...restOverrides,
     ...(cacheMaxEntries !== undefined ? { cacheMaxEntries } : {}),
   };

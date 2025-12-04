@@ -5,7 +5,7 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA, LOG_PREFIX } from "@/application/constants/app-constants";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type { Result } from "@/domain/types/result";
 
@@ -27,7 +27,7 @@ describe("init-solid Bootstrap", () => {
         api: undefined as unknown,
       };
       if (mockGame.modules) {
-        mockGame.modules.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+        mockGame.modules.set(MODULE_METADATA.ID, mockModule as any);
       }
 
       const cleanup = withFoundryGlobals({
@@ -106,7 +106,7 @@ describe("init-solid Bootstrap", () => {
       const mockModule = {
         api: undefined as unknown,
       };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -136,7 +136,7 @@ describe("init-solid Bootstrap", () => {
       const mockModule = {
         api: undefined as unknown,
       };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -171,7 +171,7 @@ describe("init-solid Bootstrap", () => {
 
       const mockGame = createMockGame();
       const mockModule = { api: undefined as unknown };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -225,7 +225,7 @@ describe("init-solid Bootstrap", () => {
 
       const mockGame = createMockGame();
       const mockModule = { api: undefined as unknown };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -279,7 +279,7 @@ describe("init-solid Bootstrap", () => {
 
       const mockGame = createMockGame();
       const mockModule = { api: undefined as unknown };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -490,7 +490,7 @@ describe("init-solid Bootstrap", () => {
 
       const mockGame = createMockGame();
       const mockModule = { api: undefined as unknown };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -561,7 +561,7 @@ describe("init-solid Bootstrap", () => {
 
       const mockGame = createMockGame();
       const mockModule = { api: undefined as unknown };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -633,7 +633,7 @@ describe("init-solid Bootstrap", () => {
 
       const mockGame = createMockGame();
       const mockModule = { api: undefined as unknown };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -992,7 +992,7 @@ describe("init-solid Bootstrap", () => {
 
       const mockGame = createMockGame();
       const mockModule = { api: undefined as unknown };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -1056,7 +1056,7 @@ describe("init-solid Bootstrap", () => {
 
       const mockGame = createMockGame();
       const mockModule = { api: undefined as unknown };
-      mockGame.modules?.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules?.set(MODULE_METADATA.ID, mockModule as any);
 
       const cleanup = withFoundryGlobals({
         game: mockGame,
@@ -1151,9 +1151,7 @@ describe("init-solid Bootstrap", () => {
 
       await import("@/framework/core/init-solid");
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `${MODULE_CONSTANTS.LOG_PREFIX} ${containerError}`
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(`${LOG_PREFIX} ${containerError}`);
 
       consoleErrorSpy.mockRestore();
       cleanup();

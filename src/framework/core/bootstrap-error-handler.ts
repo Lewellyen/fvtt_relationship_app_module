@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { LOG_PREFIX } from "@/application/constants/app-constants";
 
 /**
  * Context information for error logging.
@@ -46,7 +46,7 @@ export class BootstrapErrorHandler {
   static logError(error: unknown, context: ErrorContext): void {
     const timestamp = new Date().toISOString();
 
-    console.group(`[${timestamp}] ${MODULE_CONSTANTS.LOG_PREFIX} Error in ${context.phase}`);
+    console.group(`[${timestamp}] ${LOG_PREFIX} Error in ${context.phase}`);
 
     if (context.component) {
       console.error("Component:", context.component);

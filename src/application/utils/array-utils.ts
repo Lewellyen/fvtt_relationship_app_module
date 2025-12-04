@@ -5,29 +5,40 @@
  */
 
 /**
- * Safely gets the first element from an array that has been checked for length > 0.
- *
- * This helper encapsulates the non-null assertion for array access after a length check.
- * TypeScript requires this cast because it cannot infer that array[0] is defined
- * even when array.length > 0 has been verified.
- *
- * The caller must ensure that array.length > 0 before calling this function.
+ * Type guard to check if an array is non-empty.
+ * Narrows the type to ensure at least one element exists.
  *
  * @template T - The type of array elements
- * @param array - Array that has been verified to have length > 0
- * @returns The first element of the array (guaranteed to be defined)
+ * @param array - Array to check
+ * @returns True if array has at least one element
+ */
+export function isNonEmptyArray<T>(array: T[]): array is [T, ...T[]] {
+  return array.length > 0;
+}
+
+/**
+ * Safely gets the first element from a non-empty array.
+ *
+ * This function performs a runtime check to ensure the array is not empty.
+ * If the array is empty, it throws an error to prevent undefined access.
+ *
+ * @template T - The type of array elements
+ * @param array - Array that should have length > 0
+ * @returns The first element of the array
+ * @throws {Error} If the array is empty
  *
  * @example
  * ```typescript
  * const errors: Error[] = [new Error("test")];
- * if (errors.length > 0) {
+ * if (isNonEmptyArray(errors)) {
  *   const firstError = getFirstArrayElement(errors);
  *   console.log(firstError.message);
  * }
  * ```
  */
 export function getFirstArrayElement<T>(array: T[]): T {
-  // Type assertion is safe because caller must verify array.length > 0
-  return array[0] as T;
+  if (!isNonEmptyArray(array)) {
+    throw new Error("Cannot get first element from empty array");
+  }
+  return array[0];
 }
-

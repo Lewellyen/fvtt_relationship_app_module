@@ -4,7 +4,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA, SETTING_KEYS } from "@/application/constants/app-constants";
+import { DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import { expectResultOk } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
@@ -33,13 +34,13 @@ describe("Integration: Settings Change + Service Reaction", () => {
       api: undefined as unknown,
     };
     if (mockGame.modules) {
-      mockGame.modules.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules.set(MODULE_METADATA.ID, mockModule as any);
     }
 
     // Settings-Mock mit onChange Callback-Speicherung
     const mockSettingsRegister = vi.fn((moduleId, key, config) => {
       // onChange Callback speichern (nur für logLevel setting)
-      if (key === MODULE_CONSTANTS.SETTINGS.LOG_LEVEL && config.onChange) {
+      if (key === SETTING_KEYS.LOG_LEVEL && config.onChange) {
         mockSettingsOnChange = config.onChange as (value: number) => void;
       }
       return { ok: true as const, value: undefined };
@@ -85,17 +86,15 @@ describe("Integration: Settings Change + Service Reaction", () => {
 
     // 4. init Hook feuern (registriert Settings mit dem Logger)
     const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
-    const initCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.INIT
-    );
+    const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === DOMAIN_EVENTS.INIT);
     const initCallback = initCall?.[1] as (() => void) | undefined;
     expect(initCallback).toBeDefined();
     initCallback!();
 
     // 5. Prüfen dass Setting registriert wurde (nach init Hook)
     expect(mockSettingsRegister).toHaveBeenCalledWith(
-      MODULE_CONSTANTS.MODULE.ID,
-      MODULE_CONSTANTS.SETTINGS.LOG_LEVEL,
+      MODULE_METADATA.ID,
+      SETTING_KEYS.LOG_LEVEL,
       expect.objectContaining({
         onChange: expect.any(Function),
       })

@@ -17,7 +17,7 @@ import {
   foundryDocumentToken,
   foundryUIToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { castFoundryDocumentForFlag } from "@/infrastructure/adapters/foundry/runtime-casts";
 import * as v from "valibot";
 
@@ -67,7 +67,7 @@ export class FoundryJournalFacade implements IFoundryJournalFacade {
     if (!documentResult.ok) {
       return documentResult; // Propagate error
     }
-    return this.document.getFlag<T>(documentResult.value, MODULE_CONSTANTS.MODULE.ID, key, schema);
+    return this.document.getFlag<T>(documentResult.value, MODULE_METADATA.ID, key, schema);
   }
 
   /**
@@ -102,12 +102,7 @@ export class FoundryJournalFacade implements IFoundryJournalFacade {
     if (!documentResult.ok) {
       return documentResult; // Propagate error
     }
-    return await this.document.setFlag(
-      documentResult.value,
-      MODULE_CONSTANTS.MODULE.ID,
-      key,
-      value
-    );
+    return await this.document.setFlag(documentResult.value, MODULE_METADATA.ID, key, value);
   }
 }
 

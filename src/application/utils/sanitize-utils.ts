@@ -28,4 +28,3 @@ export function sanitizeHtml(text: string): string {
   div.textContent = text;
   return div.innerHTML;
 }
-

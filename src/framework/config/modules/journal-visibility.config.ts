@@ -4,7 +4,8 @@ import { ok, err, isErr } from "@/domain/utils/result";
 import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
 import { journalVisibilityConfigToken } from "@/infrastructure/shared/tokens";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA, APP_DEFAULTS } from "@/application/constants/app-constants";
+import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import type { DomainCacheKey } from "@/domain/types/cache/cache-types";
 
 /**
@@ -25,9 +26,9 @@ export function registerJournalVisibilityConfig(container: ServiceContainer): Re
   };
 
   const config: JournalVisibilityConfig = {
-    moduleNamespace: MODULE_CONSTANTS.MODULE.ID,
-    hiddenFlagKey: MODULE_CONSTANTS.FLAGS.HIDDEN,
-    unknownName: MODULE_CONSTANTS.DEFAULTS.UNKNOWN_NAME,
+    moduleNamespace: MODULE_METADATA.ID,
+    hiddenFlagKey: DOMAIN_FLAGS.HIDDEN,
+    unknownName: APP_DEFAULTS.UNKNOWN_NAME,
     cacheKeyFactory,
   };
 

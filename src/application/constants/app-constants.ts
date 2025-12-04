@@ -61,4 +61,3 @@ export const LOG_PREFIX = "Relationship App |";
 Object.freeze(MODULE_METADATA);
 Object.freeze(SETTING_KEYS);
 Object.freeze(APP_DEFAULTS);
-

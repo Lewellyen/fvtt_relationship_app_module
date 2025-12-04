@@ -11,7 +11,7 @@ import {
 import type { CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import { DICacheService } from "@/infrastructure/cache/CacheService";
 import { DICachePortAdapter } from "@/infrastructure/adapters/cache/platform-cache-port-adapter";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 
 /**
@@ -34,7 +34,7 @@ export function registerCacheServices(container: ServiceContainer): Result<void,
   const config: CacheServiceConfig = {
     enabled: runtimeConfig.get("enableCacheService"),
     defaultTtlMs: runtimeConfig.get("cacheDefaultTtlMs"),
-    namespace: MODULE_CONSTANTS.MODULE.ID,
+    namespace: MODULE_METADATA.ID,
     ...(typeof maxEntries === "number" && maxEntries > 0 ? { maxEntries } : {}),
   };
 

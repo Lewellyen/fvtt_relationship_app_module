@@ -1,4 +1,4 @@
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA, PUBLIC_API_VERSION } from "@/application/constants/app-constants";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import { formatReplacementInfo } from "@/infrastructure/shared/utils/format-deprecation-info";
@@ -82,7 +82,7 @@ export class ModuleApiInitializer {
     if (deprecationInfo && !deprecationInfo.warningShown) {
       const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
       console.warn(
-        `[${MODULE_CONSTANTS.MODULE.ID}] DEPRECATED: Token "${String(token)}" is deprecated.\n` +
+        `[${MODULE_METADATA.ID}] DEPRECATED: Token "${String(token)}" is deprecated.\n` +
           `Reason: ${deprecationInfo.reason}\n` +
           replacementInfo +
           `This token will be removed in version ${deprecationInfo.removedInVersion}.`
@@ -196,7 +196,7 @@ export class ModuleApiInitializer {
    */
   private createApiObject(container: ContainerPort, wellKnownTokens: ModuleApiTokens): ModuleApi {
     return {
-      version: MODULE_CONSTANTS.API.VERSION,
+      version: PUBLIC_API_VERSION,
 
       // Overloaded resolve method (throws on error)
       resolve: this.createResolveFunction(container, wellKnownTokens),
@@ -284,9 +284,9 @@ export class ModuleApiInitializer {
       return err("Game modules not available - API cannot be exposed");
     }
 
-    const mod = game.modules.get(MODULE_CONSTANTS.MODULE.ID);
+    const mod = game.modules.get(MODULE_METADATA.ID);
     if (!mod) {
-      return err(`Module '${MODULE_CONSTANTS.MODULE.ID}' not found in game.modules`);
+      return err(`Module '${MODULE_METADATA.ID}' not found in game.modules`);
     }
 
     // Create well-known tokens collection

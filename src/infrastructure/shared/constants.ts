@@ -1,9 +1,9 @@
 /**
  * Infrastructure-layer constants.
- * 
- * Diese Datei enthält Infrastructure-spezifische Konstanten und 
+ *
+ * Diese Datei enthält Infrastructure-spezifische Konstanten und
  * re-exportiert Domain/Application-Konstanten für Backward-Compatibility.
- * 
+ *
  * HINWEIS: Für neue Code sollten die layer-spezifischen Imports verwendet werden:
  * - @/domain/constants/domain-constants
  * - @/application/constants/app-constants
@@ -19,12 +19,12 @@
 
 // Re-export Domain/Application constants für Backward-Compatibility
 import { DOMAIN_FLAGS, DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
-import { 
-  MODULE_METADATA, 
-  SETTING_KEYS, 
-  APP_DEFAULTS, 
+import {
+  MODULE_METADATA,
+  SETTING_KEYS,
+  APP_DEFAULTS,
   PUBLIC_API_VERSION,
-  LOG_PREFIX 
+  LOG_PREFIX,
 } from "@/application/constants/app-constants";
 
 /**
@@ -43,14 +43,12 @@ export const MODULE_CONSTANTS = {
   DEFAULTS: APP_DEFAULTS,
 } as const;
 
-// Deep freeze für backward compatibility
-Object.freeze(MODULE_CONSTANTS);
-Object.freeze(MODULE_CONSTANTS.MODULE);
-Object.freeze(MODULE_CONSTANTS.API);
-Object.freeze(MODULE_CONSTANTS.FLAGS);
-Object.freeze(MODULE_CONSTANTS.HOOKS);
-Object.freeze(MODULE_CONSTANTS.SETTINGS);
-Object.freeze(MODULE_CONSTANTS.DEFAULTS);
+// Deep freeze underlying constants (MODULE_CONSTANTS inherits immutability from these)
+Object.freeze(MODULE_METADATA);
+Object.freeze(DOMAIN_FLAGS);
+Object.freeze(DOMAIN_EVENTS);
+Object.freeze(SETTING_KEYS);
+Object.freeze(APP_DEFAULTS);
 
 /**
  * Infrastructure-spezifische Konstanten

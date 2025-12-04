@@ -4,7 +4,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
-import { MODULE_CONSTANTS } from "@/infrastructure/shared/constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
 
 describe("Integration: Hook Registration + Execution", () => {
   let cleanup: (() => void) | undefined;
@@ -29,7 +30,7 @@ describe("Integration: Hook Registration + Execution", () => {
       api: undefined as unknown,
     };
     if (mockGame.modules) {
-      mockGame.modules.set(MODULE_CONSTANTS.MODULE.ID, mockModule as any);
+      mockGame.modules.set(MODULE_METADATA.ID, mockModule as any);
     }
 
     cleanup = withFoundryGlobals({
@@ -45,22 +46,20 @@ describe("Integration: Hook Registration + Execution", () => {
     const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
 
     // 4. init Hook feuern, damit Hooks registriert werden
-    const initCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.INIT
-    );
+    const initCall = hooksOnMock.mock.calls.find(([hookName]) => hookName === DOMAIN_EVENTS.INIT);
     const initCallback = initCall?.[1] as (() => void) | undefined;
     expect(initCallback).toBeDefined();
     initCallback!();
 
     // 5. Prüfen dass Hook registriert wurde (nach init Hook)
     expect(hooksOnMock).toHaveBeenCalledWith(
-      MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY,
+      DOMAIN_EVENTS.RENDER_JOURNAL_DIRECTORY,
       expect.any(Function)
     );
 
     // 6. Service-Methode spyen (JournalVisibilityService)
     // Container über Module API holen (nach init Hook)
-    const mod = (global as any).game.modules.get(MODULE_CONSTANTS.MODULE.ID);
+    const mod = (global as any).game.modules.get(MODULE_METADATA.ID);
     expect(mod).toBeDefined();
     expect(mod.api).toBeDefined();
 
@@ -71,7 +70,7 @@ describe("Integration: Hook Registration + Execution", () => {
 
     // 7. Hook-Callback extrahieren
     const renderCall = hooksOnMock.mock.calls.find(
-      ([hookName]) => hookName === MODULE_CONSTANTS.HOOKS.RENDER_JOURNAL_DIRECTORY
+      ([hookName]) => hookName === DOMAIN_EVENTS.RENDER_JOURNAL_DIRECTORY
     );
     const renderCallback = renderCall?.[1] as ((app: any, html: HTMLElement) => void) | undefined;
 
