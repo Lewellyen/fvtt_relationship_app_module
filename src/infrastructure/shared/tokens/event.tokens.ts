@@ -8,7 +8,7 @@ export {
   hideJournalContextMenuHandlerToken,
 } from "@/application/tokens";
 
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { InvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import type { ProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
 import type { TriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";

@@ -8,7 +8,7 @@ import { CompositionRoot } from "@/framework/core/composition-root";
 import { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
 import type { ServiceContainer } from "@/infrastructure/di/container";
@@ -61,7 +61,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
 
   describe("api.resolve() - Exception-based (expected behavior)", () => {
     it("should throw exception when token is invalid", async () => {
-      const { createInjectionToken } = await import("@/infrastructure/di/tokenutilities");
+      const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
       const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("InvalidService"));
@@ -83,7 +83,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
     });
 
     it("should throw exception with helpful error message", async () => {
-      const { createInjectionToken } = await import("@/infrastructure/di/tokenutilities");
+      const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
       const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("InvalidService"));
@@ -107,7 +107,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
 
   describe("api.resolveWithError() - Result-Pattern (never throws)", () => {
     it("should return Result with ok: false when token is invalid", async () => {
-      const { createInjectionToken } = await import("@/infrastructure/di/tokenutilities");
+      const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
       const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("InvalidService"));
@@ -133,7 +133,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
     });
 
     it("should never throw exceptions, even on errors", async () => {
-      const { createInjectionToken } = await import("@/infrastructure/di/tokenutilities");
+      const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
       const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("InvalidService"));
@@ -177,7 +177,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
     });
 
     it("should handle errors consistently (Exception vs Result)", async () => {
-      const { createInjectionToken } = await import("@/infrastructure/di/tokenutilities");
+      const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
       const invalidToken = markAsApiSafe(createInjectionToken<ServiceType>("InvalidService"));

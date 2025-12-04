@@ -28,12 +28,6 @@ export * from "./event.tokens";
 // Port tokens
 export * from "./ports.tokens";
 
-// Collection tokens
-export * from "./collection-tokens";
-
-// Repository tokens
-export * from "./repository-tokens";
-
 // Re-export Application tokens for backward compatibility
 // Application layer tokens should be imported from "@/application/tokens" going forward
 export * from "@/application/tokens";

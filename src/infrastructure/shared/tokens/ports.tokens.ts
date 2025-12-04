@@ -16,7 +16,7 @@ export {
 } from "@/application/tokens";
 
 // Keep BootstrapHooksPort and SettingsRegistrationPort here as they're not in Application tokens yet
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
 import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { markAsApiSafe, isApiSafeTokenRuntime } from "@/infrastructure/di/types";
 import { ServiceContainer } from "@/infrastructure/di/container";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";

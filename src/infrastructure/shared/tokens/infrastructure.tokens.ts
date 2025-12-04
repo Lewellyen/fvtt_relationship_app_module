@@ -1,7 +1,7 @@
 /**
  * Infrastructure service tokens for caching, performance, and retry.
  */
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { CacheService, CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import type { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
 import type { RetryService } from "@/infrastructure/retry/RetryService";

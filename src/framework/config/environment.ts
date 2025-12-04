@@ -2,9 +2,6 @@ import { APP_DEFAULTS } from "@/application/constants/app-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 
-// Re-export EnvironmentConfig from domain layer for backward compatibility
-export type { EnvironmentConfig } from "@/domain/types/environment-config";
-
 /**
  * Safely parses a sampling rate from an environment variable.
  * Ensures the value is a valid number between 0 and 1.

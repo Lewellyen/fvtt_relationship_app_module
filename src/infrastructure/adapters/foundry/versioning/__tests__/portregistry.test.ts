@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 
 describe("PortRegistry", () => {
   describe("register", () => {

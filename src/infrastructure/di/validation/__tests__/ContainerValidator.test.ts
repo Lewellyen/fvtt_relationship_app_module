@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ContainerValidator } from "@/infrastructure/di/validation/ContainerValidator";
 import { ServiceRegistry } from "../../registry/ServiceRegistry";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";

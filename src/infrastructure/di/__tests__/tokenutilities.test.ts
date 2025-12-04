@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
 

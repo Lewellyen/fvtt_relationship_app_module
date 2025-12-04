@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { TypeSafeRegistrationMap } from "@/infrastructure/di/registry/TypeSafeRegistrationMap";
 import { ServiceRegistration } from "../../types/core/serviceregistration";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";

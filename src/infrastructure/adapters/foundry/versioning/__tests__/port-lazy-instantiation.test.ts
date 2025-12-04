@@ -10,7 +10,7 @@ import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/ver
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import type { ServiceType } from "@/infrastructure/shared/tokens";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),

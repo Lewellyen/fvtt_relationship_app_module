@@ -4,7 +4,7 @@
 import { describe, it, expect } from "vitest";
 import { ServiceRegistration } from "@/infrastructure/di/types";
 import { ServiceLifecycle } from "@/infrastructure/di/types";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 
 class TestService implements Logger {

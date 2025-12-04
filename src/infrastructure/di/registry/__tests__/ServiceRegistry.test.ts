@@ -3,7 +3,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { ServiceRegistry } from "@/infrastructure/di/registry/ServiceRegistry";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { err } from "@/domain/utils/result";

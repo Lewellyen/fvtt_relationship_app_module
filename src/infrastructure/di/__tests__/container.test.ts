@@ -3,7 +3,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ServiceContainer } from "@/infrastructure/di/container";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import { ServiceLifecycle } from "@/infrastructure/di/types";
 import type { ServiceType } from "@/infrastructure/shared/tokens";

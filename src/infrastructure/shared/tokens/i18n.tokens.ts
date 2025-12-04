@@ -1,7 +1,7 @@
 /**
  * Internationalization (i18n) tokens for translation services and handlers.
  */
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { FoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import type { LocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";

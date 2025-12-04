@@ -4,7 +4,7 @@ import {
   DIMetricsCollector,
   type MetricsPersistenceState,
 } from "@/infrastructure/observability/metrics-collector";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";

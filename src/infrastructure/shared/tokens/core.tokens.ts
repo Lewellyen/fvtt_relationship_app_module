@@ -1,7 +1,7 @@
 /**
  * Core application tokens for logging, domain services, configuration, and health.
  */
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";

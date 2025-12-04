@@ -1,7 +1,7 @@
 /**
  * Observability tokens for metrics, tracing, and port selection monitoring.
  */
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsRecorder } from "@/infrastructure/observability/interfaces/metrics-recorder";
 import type { MetricsSampler } from "@/infrastructure/observability/interfaces/metrics-sampler";

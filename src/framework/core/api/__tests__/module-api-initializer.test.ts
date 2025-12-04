@@ -253,7 +253,7 @@ describe("ModuleApiInitializer", () => {
       // Health checks are now auto-registered during configureDependencies
       // No need to eagerly resolve them
       const { metricsCollectorToken } = await import("@/infrastructure/shared/tokens");
-      const tokensModule = await import("@/infrastructure/di/tokenutilities");
+      const tokensModule = await import("@/infrastructure/di/token-factory");
       const metricsResult = container.resolveWithError(metricsCollectorToken);
       if (!metricsResult.ok) throw new Error("MetricsCollector not resolved");
       const token = tokensModule.createInjectionToken("TestError");
@@ -478,7 +478,7 @@ describe("ModuleApiInitializer", () => {
 
     it("should return error for unknown tokens via resolveWithError", async () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-      const { createInjectionToken } = await import("@/infrastructure/di/tokenutilities");
+      const { createInjectionToken } = await import("@/infrastructure/di/token-factory");
       const { markAsApiSafe } = await import("@/infrastructure/di/types");
 
       const unknownToken = markAsApiSafe(createInjectionToken("UnknownService"));

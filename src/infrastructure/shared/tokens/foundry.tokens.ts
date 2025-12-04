@@ -4,7 +4,7 @@
  * directly depending on concrete implementations.
  */
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";

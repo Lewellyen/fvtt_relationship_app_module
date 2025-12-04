@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest";
 import { markAsDeprecated, getDeprecationInfo } from "@/infrastructure/di/types";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 
 describe("deprecated-token", () => {

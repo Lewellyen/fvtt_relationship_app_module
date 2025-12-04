@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from "vitest";
 import { ServiceResolver } from "@/infrastructure/di/resolution/ServiceResolver";
 import { ServiceRegistry } from "../../registry/ServiceRegistry";
 import { InstanceCache } from "@/infrastructure/di/cache/InstanceCache";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import {
   expectResultOk,

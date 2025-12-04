@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { InstanceCache } from "@/infrastructure/di/cache/InstanceCache";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 

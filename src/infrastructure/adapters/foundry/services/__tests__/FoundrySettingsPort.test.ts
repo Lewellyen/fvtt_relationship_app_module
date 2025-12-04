@@ -14,7 +14,7 @@ import type { ObservabilityRegistry } from "@/infrastructure/observability/obser
 import type { RetryService } from "@/infrastructure/retry/RetryService";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import { createInjectionToken } from "@/infrastructure/di/tokenutilities";
+import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import * as v from "valibot";
 
 describe("FoundrySettingsPort", () => {

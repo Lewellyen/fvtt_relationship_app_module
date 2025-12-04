@@ -8158,42 +8158,6 @@ const _DIMetricsHealthCheck = class _DIMetricsHealthCheck extends MetricsHealthC
 __name(_DIMetricsHealthCheck, "DIMetricsHealthCheck");
 _DIMetricsHealthCheck.dependencies = [metricsCollectorToken, healthCheckRegistryToken];
 let DIMetricsHealthCheck = _DIMetricsHealthCheck;
-const DOMAIN_FLAGS = {
-  /** Flag key für versteckte Journal-Einträge */
-  HIDDEN: "hidden"
-};
-const DOMAIN_EVENTS = {
-  /** Event: Journal Directory wird gerendert */
-  RENDER_JOURNAL_DIRECTORY: "renderJournalDirectory",
-  /** Event: System-Initialisierung */
-  INIT: "init",
-  /** Event: System ist bereit */
-  READY: "ready",
-  /** Event: Journal Entry wird erstellt */
-  CREATE_JOURNAL_ENTRY: "createJournalEntry",
-  /** Event: Journal Entry wird aktualisiert */
-  UPDATE_JOURNAL_ENTRY: "updateJournalEntry",
-  /** Event: Journal Entry wird gelöscht */
-  DELETE_JOURNAL_ENTRY: "deleteJournalEntry"
-};
-Object.freeze(DOMAIN_FLAGS);
-Object.freeze(DOMAIN_EVENTS);
-const MODULE_CONSTANTS = {
-  MODULE: MODULE_METADATA,
-  LOG_PREFIX,
-  FLAGS: DOMAIN_FLAGS,
-  HOOKS: DOMAIN_EVENTS,
-  SETTINGS: SETTING_KEYS,
-  API: {
-    VERSION: PUBLIC_API_VERSION
-  },
-  DEFAULTS: APP_DEFAULTS
-};
-Object.freeze(MODULE_METADATA);
-Object.freeze(DOMAIN_FLAGS);
-Object.freeze(DOMAIN_EVENTS);
-Object.freeze(SETTING_KEYS);
-Object.freeze(APP_DEFAULTS);
 const HOOK_THROTTLE_WINDOW_MS = 150;
 const VALIDATION_CONSTRAINTS = {
   /** Maximale Länge für IDs und Keys */
@@ -14789,6 +14753,26 @@ _DIProcessJournalDirectoryOnRenderUseCase.dependencies = [
   platformNotificationPortToken
 ];
 let DIProcessJournalDirectoryOnRenderUseCase = _DIProcessJournalDirectoryOnRenderUseCase;
+const DOMAIN_FLAGS = {
+  /** Flag key für versteckte Journal-Einträge */
+  HIDDEN: "hidden"
+};
+const DOMAIN_EVENTS = {
+  /** Event: Journal Directory wird gerendert */
+  RENDER_JOURNAL_DIRECTORY: "renderJournalDirectory",
+  /** Event: System-Initialisierung */
+  INIT: "init",
+  /** Event: System ist bereit */
+  READY: "ready",
+  /** Event: Journal Entry wird erstellt */
+  CREATE_JOURNAL_ENTRY: "createJournalEntry",
+  /** Event: Journal Entry wird aktualisiert */
+  UPDATE_JOURNAL_ENTRY: "updateJournalEntry",
+  /** Event: Journal Entry wird gelöscht */
+  DELETE_JOURNAL_ENTRY: "deleteJournalEntry"
+};
+Object.freeze(DOMAIN_FLAGS);
+Object.freeze(DOMAIN_EVENTS);
 const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryReRenderUseCase {
   constructor(journalEvents, journalDirectoryUI, notifications) {
     this.journalEvents = journalEvents;
