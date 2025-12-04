@@ -146,100 +146,6 @@ const bootstrapInitHookServiceToken = createInjectionToken(
 const bootstrapReadyHookServiceToken = createInjectionToken(
   "BootstrapReadyHookService"
 );
-const metricsCollectorToken = createInjectionToken("MetricsCollector");
-const metricsRecorderToken = createInjectionToken("MetricsRecorder");
-const metricsSamplerToken = createInjectionToken("MetricsSampler");
-const metricsStorageToken = createInjectionToken("MetricsStorage");
-const traceContextToken = createInjectionToken("TraceContext");
-const portSelectionEventEmitterToken = createInjectionToken(
-  "PortSelectionEventEmitter"
-);
-const observabilityRegistryToken = createInjectionToken("ObservabilityRegistry");
-const foundryI18nToken = createInjectionToken("FoundryI18nPort");
-const localI18nToken = createInjectionToken("LocalI18nService");
-const i18nFacadeToken = createInjectionToken("I18nFacadeService");
-const foundryTranslationHandlerToken = createInjectionToken(
-  "FoundryTranslationHandler"
-);
-const localTranslationHandlerToken = createInjectionToken("LocalTranslationHandler");
-const fallbackTranslationHandlerToken = createInjectionToken(
-  "FallbackTranslationHandler"
-);
-const translationHandlerChainToken = createInjectionToken("TranslationHandlerChain");
-const translationHandlersToken = createInjectionToken("TranslationHandlers");
-const notificationCenterToken = createInjectionToken("NotificationCenter");
-const consoleChannelToken = createInjectionToken("ConsoleChannel");
-const uiChannelToken = createInjectionToken("UIChannel");
-const cacheServiceConfigToken = createInjectionToken("CacheServiceConfig");
-const cacheServiceToken = createInjectionToken("CacheService");
-const performanceTrackingServiceToken = createInjectionToken(
-  "PerformanceTrackingService"
-);
-const retryServiceToken = createInjectionToken("RetryService");
-const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
-const foundryGameToken = createInjectionToken("FoundryGame");
-const foundryHooksToken = createInjectionToken("FoundryHooks");
-const foundryDocumentToken = createInjectionToken("FoundryDocument");
-const foundryUIToken = createInjectionToken("FoundryUI");
-const portSelectorToken = createInjectionToken("PortSelector");
-const foundryGamePortRegistryToken = createInjectionToken("FoundryGamePortRegistry");
-const foundryHooksPortRegistryToken = createInjectionToken("FoundryHooksPortRegistry");
-const foundryDocumentPortRegistryToken = createInjectionToken("FoundryDocumentPortRegistry");
-const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry");
-const foundrySettingsToken = createInjectionToken("FoundrySettings");
-const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
-const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
-const foundryV13GamePortToken = createInjectionToken("FoundryV13GamePort");
-const foundryV13HooksPortToken = createInjectionToken("FoundryV13HooksPort");
-const foundryV13DocumentPortToken = createInjectionToken("FoundryV13DocumentPort");
-const foundryV13UIPortToken = createInjectionToken("FoundryV13UIPort");
-const foundryV13SettingsPortToken = createInjectionToken("FoundryV13SettingsPort");
-const foundryV13I18nPortToken = createInjectionToken("FoundryV13I18nPort");
-const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
-const libWrapperServiceToken = createInjectionToken("LibWrapperService");
-const journalContextMenuLibWrapperServiceToken = createInjectionToken("JournalContextMenuLibWrapperService");
-const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
-  "InvalidateJournalCacheOnChangeUseCase"
-);
-const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken(
-  "ProcessJournalDirectoryOnRenderUseCase"
-);
-const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken(
-  "TriggerJournalDirectoryReRenderUseCase"
-);
-const registerContextMenuUseCaseToken = createInjectionToken(
-  "RegisterContextMenuUseCase"
-);
-const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
-const bootstrapHooksPortToken = createInjectionToken("BootstrapHooksPort");
-const settingsRegistrationPortToken = createInjectionToken(
-  "SettingsRegistrationPort"
-);
-const platformNotificationPortToken = createInjectionToken(
-  "PlatformNotificationPort"
-);
-const platformCachePortToken = createInjectionToken("PlatformCachePort");
-const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
-const platformUIPortToken = createInjectionToken("PlatformUIPort");
-const journalDirectoryUiPortToken = createInjectionToken("JournalDirectoryUiPort");
-const notificationPortToken = createInjectionToken("NotificationPort");
-const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
-const platformJournalEventPortToken = createInjectionToken(
-  "PlatformJournalEventPort"
-);
-const journalCollectionPortToken = createInjectionToken("JournalCollectionPort");
-const journalRepositoryToken = createInjectionToken("JournalRepository");
-const contextMenuRegistrationPortToken = createInjectionToken(
-  "ContextMenuRegistrationPort"
-);
-const journalVisibilityServiceToken = createInjectionToken(
-  "JournalVisibilityService"
-);
-const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
-const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
-const journalContextMenuHandlersToken = createInjectionToken(
-  "JournalContextMenuHandlers"
-);
 const apiSafeTokens = /* @__PURE__ */ new Set();
 function markAsApiSafe(token) {
   apiSafeTokens.add(token);
@@ -7609,6 +7515,15 @@ function createRuntimeConfig(env) {
   return new RuntimeConfigService(env);
 }
 __name(createRuntimeConfig, "createRuntimeConfig");
+const metricsCollectorToken = createInjectionToken("MetricsCollector");
+const metricsRecorderToken = createInjectionToken("MetricsRecorder");
+const metricsSamplerToken = createInjectionToken("MetricsSampler");
+const metricsStorageToken = createInjectionToken("MetricsStorage");
+const traceContextToken = createInjectionToken("TraceContext");
+const portSelectionEventEmitterToken = createInjectionToken(
+  "PortSelectionEventEmitter"
+);
+const observabilityRegistryToken = createInjectionToken("ObservabilityRegistry");
 const _ServiceContainer = class _ServiceContainer {
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
@@ -8158,6 +8073,17 @@ const _DIMetricsHealthCheck = class _DIMetricsHealthCheck extends MetricsHealthC
 __name(_DIMetricsHealthCheck, "DIMetricsHealthCheck");
 _DIMetricsHealthCheck.dependencies = [metricsCollectorToken, healthCheckRegistryToken];
 let DIMetricsHealthCheck = _DIMetricsHealthCheck;
+const bootstrapHooksPortToken = createInjectionToken("BootstrapHooksPort");
+const settingsRegistrationPortToken = createInjectionToken(
+  "SettingsRegistrationPort"
+);
+const cacheServiceConfigToken = createInjectionToken("CacheServiceConfig");
+const cacheServiceToken = createInjectionToken("CacheService");
+const performanceTrackingServiceToken = createInjectionToken(
+  "PerformanceTrackingService"
+);
+const retryServiceToken = createInjectionToken("RetryService");
+const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
 const HOOK_THROTTLE_WINDOW_MS = 150;
 const VALIDATION_CONSTRAINTS = {
   /** Maximale Länge für IDs und Keys */
@@ -8916,6 +8842,50 @@ function createPublicFoundrySettings(foundrySettings) {
   return createReadOnlyWrapper(foundrySettings, ["get"]);
 }
 __name(createPublicFoundrySettings, "createPublicFoundrySettings");
+const notificationCenterToken = createInjectionToken("NotificationCenter");
+const consoleChannelToken = createInjectionToken("ConsoleChannel");
+const uiChannelToken = createInjectionToken("UIChannel");
+const journalVisibilityServiceToken = createInjectionToken(
+  "JournalVisibilityService"
+);
+const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
+const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
+const journalContextMenuHandlersToken = createInjectionToken(
+  "JournalContextMenuHandlers"
+);
+const foundryI18nToken = createInjectionToken("FoundryI18nPort");
+const localI18nToken = createInjectionToken("LocalI18nService");
+const i18nFacadeToken = createInjectionToken("I18nFacadeService");
+const foundryTranslationHandlerToken = createInjectionToken(
+  "FoundryTranslationHandler"
+);
+const localTranslationHandlerToken = createInjectionToken("LocalTranslationHandler");
+const fallbackTranslationHandlerToken = createInjectionToken(
+  "FallbackTranslationHandler"
+);
+const translationHandlerChainToken = createInjectionToken("TranslationHandlerChain");
+const translationHandlersToken = createInjectionToken("TranslationHandlers");
+const foundryGameToken = createInjectionToken("FoundryGame");
+const foundryHooksToken = createInjectionToken("FoundryHooks");
+const foundryDocumentToken = createInjectionToken("FoundryDocument");
+const foundryUIToken = createInjectionToken("FoundryUI");
+const portSelectorToken = createInjectionToken("PortSelector");
+const foundryGamePortRegistryToken = createInjectionToken("FoundryGamePortRegistry");
+const foundryHooksPortRegistryToken = createInjectionToken("FoundryHooksPortRegistry");
+const foundryDocumentPortRegistryToken = createInjectionToken("FoundryDocumentPortRegistry");
+const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry");
+const foundrySettingsToken = createInjectionToken("FoundrySettings");
+const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
+const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
+const foundryV13GamePortToken = createInjectionToken("FoundryV13GamePort");
+const foundryV13HooksPortToken = createInjectionToken("FoundryV13HooksPort");
+const foundryV13DocumentPortToken = createInjectionToken("FoundryV13DocumentPort");
+const foundryV13UIPortToken = createInjectionToken("FoundryV13UIPort");
+const foundryV13SettingsPortToken = createInjectionToken("FoundryV13SettingsPort");
+const foundryV13I18nPortToken = createInjectionToken("FoundryV13I18nPort");
+const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
+const libWrapperServiceToken = createInjectionToken("LibWrapperService");
+const journalContextMenuLibWrapperServiceToken = createInjectionToken("JournalContextMenuLibWrapperService");
 function createApiTokens() {
   return {
     notificationCenterToken: markAsApiSafe(notificationCenterToken),
@@ -9285,6 +9255,19 @@ const _LoggingBootstrapper = class _LoggingBootstrapper {
 };
 __name(_LoggingBootstrapper, "LoggingBootstrapper");
 let LoggingBootstrapper = _LoggingBootstrapper;
+const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
+  "InvalidateJournalCacheOnChangeUseCase"
+);
+const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken(
+  "ProcessJournalDirectoryOnRenderUseCase"
+);
+const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken(
+  "TriggerJournalDirectoryReRenderUseCase"
+);
+const registerContextMenuUseCaseToken = createInjectionToken(
+  "RegisterContextMenuUseCase"
+);
+const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
 const _EventsBootstrapper = class _EventsBootstrapper {
   /**
    * Registers all event listeners.
@@ -9763,6 +9746,23 @@ function registerObservability(container) {
   return ok(void 0);
 }
 __name(registerObservability, "registerObservability");
+const platformNotificationPortToken = createInjectionToken(
+  "PlatformNotificationPort"
+);
+const platformCachePortToken = createInjectionToken("PlatformCachePort");
+const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
+const platformUIPortToken = createInjectionToken("PlatformUIPort");
+const journalDirectoryUiPortToken = createInjectionToken("JournalDirectoryUiPort");
+const notificationPortToken = createInjectionToken("NotificationPort");
+const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
+const platformJournalEventPortToken = createInjectionToken(
+  "PlatformJournalEventPort"
+);
+const journalCollectionPortToken = createInjectionToken("JournalCollectionPort");
+const journalRepositoryToken = createInjectionToken("JournalRepository");
+const contextMenuRegistrationPortToken = createInjectionToken(
+  "ContextMenuRegistrationPort"
+);
 let cachedVersion = null;
 function detectFoundryVersion() {
   if (typeof game === "undefined") {

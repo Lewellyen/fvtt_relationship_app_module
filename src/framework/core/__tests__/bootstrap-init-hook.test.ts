@@ -9,11 +9,20 @@ import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.int
 import { createMockGame, createMockUI } from "@/test/mocks/foundry";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
-import { foundrySettingsToken, journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { notificationCenterToken, uiChannelToken } from "@/infrastructure/shared/tokens/notifications.tokens";
+import {
+  foundrySettingsToken,
+  journalContextMenuLibWrapperServiceToken,
+} from "@/infrastructure/shared/tokens/foundry.tokens";
+import {
+  notificationCenterToken,
+  uiChannelToken,
+} from "@/infrastructure/shared/tokens/notifications.tokens";
 import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
-import { moduleEventRegistrarToken, registerContextMenuUseCaseToken } from "@/infrastructure/shared/tokens/event.tokens";
+import {
+  moduleEventRegistrarToken,
+  registerContextMenuUseCaseToken,
+} from "@/infrastructure/shared/tokens/event.tokens";
 import { ok, err } from "@/domain/utils/result";
 
 describe("BootstrapInitHookService", () => {

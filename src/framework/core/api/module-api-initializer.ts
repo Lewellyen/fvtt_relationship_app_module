@@ -35,7 +35,14 @@ import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observabil
 // The types are needed for the return types of the cast functions
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
-import { foundryGameToken, foundryHooksToken, foundryDocumentToken, foundryUIToken, foundrySettingsToken, foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import {
+  foundryGameToken,
+  foundryHooksToken,
+  foundryDocumentToken,
+  foundryUIToken,
+  foundrySettingsToken,
+  foundryJournalFacadeToken,
+} from "@/infrastructure/shared/tokens/foundry.tokens";
 
 /**
  * ModuleApiInitializer

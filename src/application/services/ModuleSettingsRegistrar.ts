@@ -27,7 +27,10 @@ import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interfa
 import type { LoggingPort } from "@/domain/ports/logging-port.interface";
 import { loggerToken, runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { settingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
-import { platformNotificationPortToken, platformI18nPortToken } from "@/application/tokens/domain-ports.tokens";
+import {
+  platformNotificationPortToken,
+  platformI18nPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 
 /**
  * Binding configuration for syncing a setting with RuntimeConfig.

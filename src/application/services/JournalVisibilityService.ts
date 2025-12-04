@@ -9,7 +9,13 @@ import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui
 import type { JournalVisibilityConfig } from "./JournalVisibilityConfig";
 import { getFirstArrayElement } from "@/application/utils/array-utils";
 import { journalVisibilityConfigToken } from "@/application/tokens/application.tokens";
-import { journalCollectionPortToken, journalRepositoryToken, platformCachePortToken, platformNotificationPortToken, journalDirectoryUiPortToken } from "@/application/tokens/domain-ports.tokens";
+import {
+  journalCollectionPortToken,
+  journalRepositoryToken,
+  platformCachePortToken,
+  platformNotificationPortToken,
+  journalDirectoryUiPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 import { sanitizeHtml } from "@/application/utils/sanitize-utils";
 
 export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";

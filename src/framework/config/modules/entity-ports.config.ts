@@ -2,7 +2,10 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { journalCollectionPortToken, journalRepositoryToken } from "@/application/tokens/domain-ports.tokens";
+import {
+  journalCollectionPortToken,
+  journalRepositoryToken,
+} from "@/application/tokens/domain-ports.tokens";
 import { DIFoundryJournalCollectionAdapter } from "@/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter";
 import { DIFoundryJournalRepositoryAdapter } from "@/infrastructure/adapters/foundry/repository-adapters/foundry-journal-repository-adapter";
 

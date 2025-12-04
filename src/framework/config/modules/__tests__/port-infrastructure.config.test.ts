@@ -4,7 +4,15 @@ import {
   registerPortInfrastructure,
   registerPortRegistries,
 } from "@/framework/config/modules/port-infrastructure.config";
-import { portSelectorToken, foundryGamePortRegistryToken, foundryHooksPortRegistryToken, foundryDocumentPortRegistryToken, foundryUIPortRegistryToken, foundrySettingsPortRegistryToken, foundryI18nPortRegistryToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import {
+  portSelectorToken,
+  foundryGamePortRegistryToken,
+  foundryHooksPortRegistryToken,
+  foundryDocumentPortRegistryToken,
+  foundryUIPortRegistryToken,
+  foundrySettingsPortRegistryToken,
+  foundryI18nPortRegistryToken,
+} from "@/infrastructure/shared/tokens/foundry.tokens";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { err } from "@/domain/utils/result";

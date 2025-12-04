@@ -4,7 +4,13 @@ import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { platformJournalEventPortToken } from "@/application/tokens/domain-ports.tokens";
 import { hideJournalContextMenuHandlerToken } from "@/application/tokens/application.tokens";
-import { invalidateJournalCacheOnChangeUseCaseToken, processJournalDirectoryOnRenderUseCaseToken, triggerJournalDirectoryReRenderUseCaseToken, registerContextMenuUseCaseToken, moduleEventRegistrarToken } from "@/infrastructure/shared/tokens/event.tokens";
+import {
+  invalidateJournalCacheOnChangeUseCaseToken,
+  processJournalDirectoryOnRenderUseCaseToken,
+  triggerJournalDirectoryReRenderUseCaseToken,
+  registerContextMenuUseCaseToken,
+  moduleEventRegistrarToken,
+} from "@/infrastructure/shared/tokens/event.tokens";
 import { journalContextMenuHandlersToken } from "@/application/tokens/application.tokens";
 import { DIFoundryJournalEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter";
 import { DIInvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";

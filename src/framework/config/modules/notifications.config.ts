@@ -2,7 +2,11 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { notificationCenterToken, consoleChannelToken, uiChannelToken } from "@/infrastructure/shared/tokens/notifications.tokens";
+import {
+  notificationCenterToken,
+  consoleChannelToken,
+  uiChannelToken,
+} from "@/infrastructure/shared/tokens/notifications.tokens";
 import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
 import { DINotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
 import { DIConsoleChannel } from "@/infrastructure/notifications/channels/ConsoleChannel";

@@ -6,7 +6,10 @@ import type { PlatformNotificationPort } from "@/domain/ports/platform-notificat
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
 import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
-import { platformJournalEventPortToken, platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
+import {
+  platformJournalEventPortToken,
+  platformNotificationPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 
 /**
  * Use-Case: Process journal directory when it's rendered.

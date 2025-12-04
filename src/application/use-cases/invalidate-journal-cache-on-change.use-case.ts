@@ -5,7 +5,11 @@ import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.inter
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
-import { platformJournalEventPortToken, platformCachePortToken, platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
+import {
+  platformJournalEventPortToken,
+  platformCachePortToken,
+  platformNotificationPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 import { getFirstArrayElement } from "@/application/utils/array-utils";
 
 /**
