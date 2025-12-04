@@ -13,7 +13,7 @@ import type {
   PlatformEventError,
 } from "@/domain/ports/events/platform-event-port.interface";
 import type { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
-import { foundryHooksToken } from "@/infrastructure/shared/tokens";
+import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry.tokens";
 import {
   getFirstElementIfArray,
   castToRecord,

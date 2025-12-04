@@ -8,7 +8,7 @@ import {
   portSelectorToken,
   foundryUIPortRegistryToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { retryServiceToken } from "@/infrastructure/shared/tokens";
+import { retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
 import { FoundryServiceBase } from "./FoundryServiceBase";
 
 /**

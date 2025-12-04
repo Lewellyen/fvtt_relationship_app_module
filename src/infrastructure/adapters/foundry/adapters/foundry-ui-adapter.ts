@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { PlatformUIPort, PlatformUIError } from "@/domain/ports/platform-ui-port.interface";
 import type { FoundryUI } from "../interfaces/FoundryUI";
 import { ok, err } from "@/domain/utils/result";
-import { foundryUIToken } from "@/infrastructure/shared/tokens";
+import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry.tokens";
 
 /**
  * Foundry-specific implementation of PlatformUIPort.

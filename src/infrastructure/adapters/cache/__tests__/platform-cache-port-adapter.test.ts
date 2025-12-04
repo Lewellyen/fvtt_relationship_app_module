@@ -13,7 +13,7 @@ import type {
   DomainCacheSetOptions,
 } from "@/domain/types/cache/cache-types";
 import { ok } from "@/domain/utils/result";
-import { cacheServiceToken } from "@/infrastructure/shared/tokens";
+import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
 
 describe("CachePortAdapter", () => {
   let adapter: CachePortAdapter;

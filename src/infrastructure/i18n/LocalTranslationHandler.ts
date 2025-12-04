@@ -1,5 +1,5 @@
 import type { LocalI18nService } from "./LocalI18nService";
-import { localI18nToken } from "@/infrastructure/shared/tokens";
+import { localI18nToken } from "@/infrastructure/shared/tokens/i18n.tokens";
 import { AbstractTranslationHandler } from "./AbstractTranslationHandler";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";

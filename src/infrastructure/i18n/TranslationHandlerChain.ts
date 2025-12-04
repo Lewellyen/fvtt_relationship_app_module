@@ -1,4 +1,4 @@
-import { translationHandlersToken } from "@/infrastructure/shared/tokens";
+import { translationHandlersToken } from "@/infrastructure/shared/tokens/i18n.tokens";
 import type { TranslationHandler } from "./TranslationHandler.interface";
 import type { Result } from "@/domain/types/result";
 

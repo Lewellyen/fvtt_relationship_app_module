@@ -1,7 +1,8 @@
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { MetricsRecorder } from "./interfaces/metrics-recorder";
 import type { PortSelectionEvent } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
-import { loggerToken, metricsRecorderToken } from "@/infrastructure/shared/tokens";
+import { metricsRecorderToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
 /**
  * Observable service interface.

@@ -12,11 +12,9 @@ import type {
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { castCacheValue } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
-import {
-  cacheServiceConfigToken,
-  metricsCollectorToken,
-  runtimeConfigToken,
-} from "@/infrastructure/shared/tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
 import type { Result } from "@/domain/types/result";
 import { ok, err, fromPromise } from "@/domain/utils/result";
 

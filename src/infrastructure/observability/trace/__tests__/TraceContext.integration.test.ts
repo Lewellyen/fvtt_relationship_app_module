@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { ServiceContainer } from "@/infrastructure/di/container";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
-import { loggerToken, traceContextToken } from "@/infrastructure/shared/tokens";
+import { traceContextToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { expectResultOk } from "@/test/utils/test-helpers";

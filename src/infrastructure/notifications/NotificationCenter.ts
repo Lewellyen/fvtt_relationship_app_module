@@ -33,7 +33,7 @@
  * ```
  */
 
-import { consoleChannelToken } from "@/infrastructure/shared/tokens";
+import { consoleChannelToken } from "@/infrastructure/shared/tokens/notifications.tokens";
 import { err, ok } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 import type {

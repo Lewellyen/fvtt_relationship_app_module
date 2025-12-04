@@ -12,7 +12,7 @@
 import type { Result } from "@/domain/types/result";
 import { err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import { loggerToken } from "@/infrastructure/shared/tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
 /**
  * Options for retry operations.

@@ -28,7 +28,7 @@ import { withTimeout, TimeoutError } from "@/infrastructure/shared/utils/promise
 import { ENV } from "@/framework/config/environment";
 import { BootstrapPerformanceTracker } from "@/infrastructure/observability/bootstrap-performance-tracker";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
 
 /**
  * Dependency injection container (Facade pattern).

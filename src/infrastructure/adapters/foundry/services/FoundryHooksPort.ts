@@ -15,7 +15,8 @@ import {
   portSelectorToken,
   foundryHooksPortRegistryToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { loggerToken, retryServiceToken } from "@/infrastructure/shared/tokens";
+import { retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { FoundryServiceBase } from "./FoundryServiceBase";
 import { err, ok } from "@/domain/utils/result";
 

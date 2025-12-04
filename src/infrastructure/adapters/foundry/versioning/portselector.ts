@@ -10,11 +10,8 @@ import type { ObservabilityRegistry } from "@/infrastructure/observability/obser
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
-import {
-  portSelectionEventEmitterToken,
-  observabilityRegistryToken,
-  serviceContainerToken,
-} from "@/infrastructure/shared/tokens";
+import { portSelectionEventEmitterToken, observabilityRegistryToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { serviceContainerToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**

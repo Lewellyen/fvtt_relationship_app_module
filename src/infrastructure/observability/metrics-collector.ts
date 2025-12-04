@@ -2,7 +2,7 @@ import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontok
 import type { ServiceType } from "@/infrastructure/di/types/service-type-registry";
 import { METRICS_CONFIG } from "@/infrastructure/shared/constants";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
 import type { MetricsRecorder } from "./interfaces/metrics-recorder";
 import type { MetricsSampler } from "./interfaces/metrics-sampler";
 

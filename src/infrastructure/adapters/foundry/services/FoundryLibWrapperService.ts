@@ -7,7 +7,7 @@ import type {
   LibWrapperError,
 } from "@/domain/services/lib-wrapper-service.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import { loggerToken } from "@/infrastructure/shared/tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { tryCatch } from "@/domain/utils/result";
 import { err, ok } from "@/domain/utils/result";

@@ -2,7 +2,8 @@ import { LogLevel } from "@/domain/types/log-level";
 import { LOG_PREFIX } from "@/application/constants/app-constants";
 import type { Logger } from "./logger.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
-import { runtimeConfigToken, traceContextToken } from "@/infrastructure/shared/tokens";
+import { traceContextToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 
 /**
