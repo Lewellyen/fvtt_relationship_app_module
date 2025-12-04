@@ -1459,7 +1459,7 @@ const _ScopeManager = class _ScopeManager {
    * @returns True if instance has dispose() method
    */
   isDisposable(instance2) {
-    return "dispose" in instance2 && // Narrowing via Partial so we can check dispose presence without full interface
+    return instance2 !== null && typeof instance2 === "object" && "dispose" in instance2 && // Type-safe check: instance has 'dispose' property (checked above)
     typeof instance2.dispose === "function";
   }
   /**
@@ -1469,7 +1469,7 @@ const _ScopeManager = class _ScopeManager {
    * @returns True if instance has disposeAsync() method
    */
   isAsyncDisposable(instance2) {
-    return "disposeAsync" in instance2 && // Narrowing via Partial so we can check disposeAsync presence without full interface
+    return instance2 !== null && typeof instance2 === "object" && "disposeAsync" in instance2 && // Type-safe check: instance has 'disposeAsync' property (checked above)
     typeof instance2.disposeAsync === "function";
   }
   /**

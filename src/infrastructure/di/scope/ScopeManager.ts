@@ -1,6 +1,5 @@
 import type { Result } from "@/domain/types/result";
 import type { ContainerError } from "../interfaces";
-import type { ServiceType } from "../types/service-type-registry";
 import type { Disposable, AsyncDisposable } from "../interfaces";
 import { InstanceCache } from "../cache/InstanceCache";
 import { ok, err, tryCatch, isErr } from "@/domain/utils/result";
@@ -318,8 +317,8 @@ export class ScopeManager {
       instance !== null &&
       typeof instance === "object" &&
       "dispose" in instance &&
-      // Narrowing via Partial so we can check dispose presence without full interface
-      typeof (instance as Partial<Disposable>).dispose === "function"
+      // Type-safe check: instance has 'dispose' property (checked above)
+      typeof (instance as Record<string, unknown>).dispose === "function"
     );
   }
 
@@ -334,8 +333,8 @@ export class ScopeManager {
       instance !== null &&
       typeof instance === "object" &&
       "disposeAsync" in instance &&
-      // Narrowing via Partial so we can check disposeAsync presence without full interface
-      typeof (instance as { disposeAsync?: unknown }).disposeAsync === "function"
+      // Type-safe check: instance has 'disposeAsync' property (checked above)
+      typeof (instance as Record<string, unknown>).disposeAsync === "function"
     );
   }
 

@@ -93,14 +93,6 @@ export class ServiceContainer implements Container, ContainerPort {
    * @param scopeManager - Scope manager
    * @param validationState - Initial validation state
    */
-  /**
-   * Runtime token validation (optional, DEV-mode only).
-   * 
-   * Note: This is NOT required for correctness (Token types + tests provide safety).
-   * This is a helpful developer tool to catch obvious mistakes early.
-   */
-  private static DEV_MODE_TOKEN_VALIDATION = ENV.isDevelopment;
-
   private constructor(
     registry: ServiceRegistry,
     validator: ContainerValidator,
@@ -115,30 +107,6 @@ export class ServiceContainer implements Container, ContainerPort {
     this.resolver = resolver;
     this.scopeManager = scopeManager;
     this.validationState = validationState;
-  }
-
-  /**
-   * Validates a token in DEV mode (optional safety check).
-   * 
-   * This is NOT required for correctness:
-   * - Token types ensure type-safety (InjectionToken<T> matches ServiceClass<T>)
-   * - Container.validate() checks dependency graph
-   * - Tests catch all registration errors
-   * 
-   * This is a helpful developer tool that warns in console if an unexpected token is used.
-   * 
-   * @param token - The token to validate
-   */
-  private validateTokenInDevMode(token: InjectionToken<unknown>): void {
-    if (!ServiceContainer.DEV_MODE_TOKEN_VALIDATION) {
-      return; // Skip in production
-    }
-
-    // Token validation logic could be added here if needed
-    // For now, we trust the type system + tests
-    // 
-    // Future enhancement: Maintain a Set of known token names and warn on unknowns
-    // But this would require manual maintenance, so we skip it for now
   }
 
   /**

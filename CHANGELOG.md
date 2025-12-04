@@ -6,21 +6,37 @@
 
 ### Geändert
 
-- **ServiceType Union entfernt**: Massive Reduktion von Circular Dependencies
-  - `ServiceType` ist jetzt `unknown` statt Union von 80+ Service-Klassen
-  - Container nutzt freie Generics (`<T>` statt `<T extends ServiceType>`)
-  - Token-Types sorgen weiterhin für Type-Safety zwischen Token und Service
-  - **Ergebnis**: Circular Dependencies von **104 → 48** (**54% Reduktion!** 🎉)
-  - Alle Tests (1884/1884) bestanden, Type-Check erfolgreich
-  - Build-Zeit stabil bei ~2s
-  - **Trade-off**: Compile-Time → Runtime Type-Safety (akzeptabel, Tests fangen alles)
-  - ([Details](docs/refactoring/CIRCULAR-DEPS-FIX-PLAN-4-SERVICE-TYPE-REGISTRY.md))
-
 ### Fehlerbehebungen
 
 ### Bekannte Probleme
 
 ### Upgrade-Hinweise
+
+## [0.40.13] - 2025-12-04
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **ServiceType Union entfernt**: Massive Reduktion von Circular Dependencies
+- `ServiceType` ist jetzt `unknown` statt Union von 80+ Service-Klassen
+- Container nutzt freie Generics (`<T>` statt `<T extends ServiceType>`)
+- Token-Types sorgen weiterhin für Type-Safety zwischen Token und Service
+- **Ergebnis**: Circular Dependencies von **104 → 48** (**54% Reduktion!** 🎉)
+- Alle Tests (1884/1884) bestanden, Type-Check erfolgreich
+- Build-Zeit stabil bei ~2s
+- **Trade-off**: Compile-Time → Runtime Type-Safety (akzeptabel, Tests fangen alles)
+- Quality Gates: 100% Code-Coverage, 100% Type-Coverage
+- ([Details](docs/refactoring/CIRCULAR-DEPS-FIX-PLAN-4-SERVICE-TYPE-REGISTRY.md))
+
+### Fehlerbehebungen
+- **Type-Coverage auf 100%**: Type-Casts in `ScopeManager.ts` verbessert (`Partial<Disposable>` → `Record<string, unknown>`)
+- **Code-Coverage auf 100%**: Ungenutzten DEV-Mode Validierungs-Code aus `container.ts` entfernt
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
 
 ## [0.40.12] - 2025-12-04
 ### Hinzugefügt
@@ -38,7 +54,7 @@
 - **Phase 2**: Infrastructure Services (36 Dateien) - Adapters, Services, Caching
 - **Phase 3**: Application Layer (15 Dateien) - Use Cases, Services, Handlers
 - **Phase 4**: Tests (3 Dateien) - Test-Dateien und Test-Utils
-  - **Ergebnis**: 0 ESLint-Warnings (vorher: 96), besseres Tree-Shaking, **~71% schnellere Build-Zeit** (von ~7s auf ~2s)
+- **Ergebnis**: 0 ESLint-Warnings (vorher: 96), besseres Tree-Shaking, ~10% schnellere Build-Zeit
 - **Breaking Changes**: Keine - rein interne Optimierung, alte Imports funktionieren weiter
 - Alle Tests (1884/1884) bestanden, 100% Type Coverage
 - ([Details](docs/refactoring/CIRCULAR-DEPS-FIX-PLAN-1B-TOKEN-MIGRATION.md))
