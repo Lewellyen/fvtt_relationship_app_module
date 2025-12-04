@@ -272,9 +272,3 @@ export const libWrapperServiceToken: InjectionToken<LibWrapperService> =
  */
 export const journalContextMenuLibWrapperServiceToken: InjectionToken<JournalContextMenuLibWrapperService> =
   createInjectionToken<JournalContextMenuLibWrapperService>("JournalContextMenuLibWrapperService");
-
-/**
- * @deprecated ContextMenuRegistrationPort token is now exported from @/application/tokens.
- * This file re-exports it for backward compatibility.
- */
-export { contextMenuRegistrationPortToken } from "@/application/tokens";

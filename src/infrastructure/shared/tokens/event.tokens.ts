@@ -1,13 +1,9 @@
 /**
- * @deprecated PlatformJournalEventPort and HideJournalContextMenuHandler tokens are now exported from @/application/tokens.
- * This file re-exports them for backward compatibility.
+ * Infrastructure-specific tokens for event-related use cases.
+ *
+ * Note: PlatformJournalEventPort and HideJournalContextMenuHandler tokens have been moved to @/application/tokens.
+ * This file only contains infrastructure-layer specific use case tokens.
  */
-// Re-export domain port tokens from Application layer
-export {
-  platformJournalEventPortToken,
-  hideJournalContextMenuHandlerToken,
-} from "@/application/tokens";
-
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { InvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import type { ProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";

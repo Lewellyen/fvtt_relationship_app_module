@@ -31,12 +31,6 @@ import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready
 export const loggerToken = createInjectionToken<Logger>("Logger");
 
 /**
- * @deprecated JournalVisibilityService and JournalVisibilityConfig tokens are now exported from @/application/tokens.
- * This file re-exports them for backward compatibility.
- */
-export { journalVisibilityServiceToken, journalVisibilityConfigToken } from "@/application/tokens";
-
-/**
  * Injection token for the EnvironmentConfig.
  *
  * Provides access to environment configuration (development/production mode,

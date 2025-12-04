@@ -1,21 +1,9 @@
 /**
- * @deprecated This file re-exports tokens from @/application/tokens for backward compatibility.
- * New code should import directly from @/application/tokens.
+ * Infrastructure-specific tokens for bootstrap and settings registration ports.
+ *
+ * Note: Most port tokens have been moved to @/application/tokens.
+ * This file only contains infrastructure-layer specific tokens.
  */
-// Re-export domain port tokens from Application layer
-export {
-  platformUIPortToken,
-  platformSettingsPortToken,
-  platformNotificationPortToken,
-  platformCachePortToken,
-  platformI18nPortToken,
-  platformJournalEventPortToken,
-  journalCollectionPortToken,
-  journalRepositoryToken,
-  contextMenuRegistrationPortToken,
-} from "@/application/tokens";
-
-// Keep BootstrapHooksPort and SettingsRegistrationPort here as they're not in Application tokens yet
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
 import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";

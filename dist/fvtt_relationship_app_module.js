@@ -130,31 +130,6 @@ function createInjectionToken(description2) {
   return Symbol(description2);
 }
 __name(createInjectionToken, "createInjectionToken");
-const platformNotificationPortToken = createInjectionToken(
-  "PlatformNotificationPort"
-);
-const platformCachePortToken = createInjectionToken("PlatformCachePort");
-const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
-const platformUIPortToken = createInjectionToken("PlatformUIPort");
-const journalDirectoryUiPortToken = createInjectionToken("JournalDirectoryUiPort");
-const notificationPortToken = createInjectionToken("NotificationPort");
-const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
-const platformJournalEventPortToken = createInjectionToken(
-  "PlatformJournalEventPort"
-);
-const journalCollectionPortToken = createInjectionToken("JournalCollectionPort");
-const journalRepositoryToken = createInjectionToken("JournalRepository");
-const contextMenuRegistrationPortToken = createInjectionToken(
-  "ContextMenuRegistrationPort"
-);
-const journalVisibilityServiceToken = createInjectionToken(
-  "JournalVisibilityService"
-);
-const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
-const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
-const journalContextMenuHandlersToken = createInjectionToken(
-  "JournalContextMenuHandlers"
-);
 const loggerToken = createInjectionToken("Logger");
 const environmentConfigToken = createInjectionToken("EnvironmentConfig");
 const runtimeConfigToken = createInjectionToken("RuntimeConfigService");
@@ -239,6 +214,31 @@ const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
 const bootstrapHooksPortToken = createInjectionToken("BootstrapHooksPort");
 const settingsRegistrationPortToken = createInjectionToken(
   "SettingsRegistrationPort"
+);
+const platformNotificationPortToken = createInjectionToken(
+  "PlatformNotificationPort"
+);
+const platformCachePortToken = createInjectionToken("PlatformCachePort");
+const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
+const platformUIPortToken = createInjectionToken("PlatformUIPort");
+const journalDirectoryUiPortToken = createInjectionToken("JournalDirectoryUiPort");
+const notificationPortToken = createInjectionToken("NotificationPort");
+const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
+const platformJournalEventPortToken = createInjectionToken(
+  "PlatformJournalEventPort"
+);
+const journalCollectionPortToken = createInjectionToken("JournalCollectionPort");
+const journalRepositoryToken = createInjectionToken("JournalRepository");
+const contextMenuRegistrationPortToken = createInjectionToken(
+  "ContextMenuRegistrationPort"
+);
+const journalVisibilityServiceToken = createInjectionToken(
+  "JournalVisibilityService"
+);
+const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
+const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
+const journalContextMenuHandlersToken = createInjectionToken(
+  "JournalContextMenuHandlers"
 );
 const apiSafeTokens = /* @__PURE__ */ new Set();
 function markAsApiSafe(token) {
