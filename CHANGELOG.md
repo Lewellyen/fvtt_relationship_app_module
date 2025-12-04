@@ -6,6 +6,16 @@
 
 ### Geändert
 
+- **ServiceType Union entfernt**: Massive Reduktion von Circular Dependencies
+  - `ServiceType` ist jetzt `unknown` statt Union von 80+ Service-Klassen
+  - Container nutzt freie Generics (`<T>` statt `<T extends ServiceType>`)
+  - Token-Types sorgen weiterhin für Type-Safety zwischen Token und Service
+  - **Ergebnis**: Circular Dependencies von **104 → 48** (**54% Reduktion!** 🎉)
+  - Alle Tests (1884/1884) bestanden, Type-Check erfolgreich
+  - Build-Zeit stabil bei ~2s
+  - **Trade-off**: Compile-Time → Runtime Type-Safety (akzeptabel, Tests fangen alles)
+  - ([Details](docs/refactoring/CIRCULAR-DEPS-FIX-PLAN-4-SERVICE-TYPE-REGISTRY.md))
+
 ### Fehlerbehebungen
 
 ### Bekannte Probleme
