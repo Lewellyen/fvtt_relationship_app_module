@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import { ok } from "@/domain/utils/result";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import { foundrySettingsToken } from "@/infrastructure/shared/tokens";
+import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry.tokens";
 import { MODULE_METADATA, SETTING_KEYS } from "@/application/constants/app-constants";
 import { LogLevel, LOG_LEVEL_SCHEMA } from "@/domain/types/log-level";
 import { castFoundrySettings } from "@/infrastructure/di/types/utilities/runtime-safe-cast";

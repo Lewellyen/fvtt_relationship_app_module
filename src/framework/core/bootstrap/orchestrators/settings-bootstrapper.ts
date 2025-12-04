@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
-import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens";
+import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { castModuleSettingsRegistrar } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**

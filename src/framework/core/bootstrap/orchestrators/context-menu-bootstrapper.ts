@@ -1,10 +1,8 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
-import {
-  journalContextMenuLibWrapperServiceToken,
-  registerContextMenuUseCaseToken,
-} from "@/infrastructure/shared/tokens";
+import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { registerContextMenuUseCaseToken } from "@/infrastructure/shared/tokens/event.tokens";
 import {
   castJournalContextMenuLibWrapperService,
   castRegisterContextMenuUseCase,

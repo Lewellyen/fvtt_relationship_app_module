@@ -26,25 +26,16 @@ import {
   castResolvedService,
   castContainerErrorCode,
 } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
-import {
-  journalVisibilityServiceToken,
-  metricsCollectorToken,
-  moduleHealthServiceToken,
-  i18nFacadeToken,
-  notificationCenterToken,
-} from "@/infrastructure/shared/tokens";
+import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications.tokens";
+import { moduleHealthServiceToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n.tokens";
+import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
 // Types are used in type assertions via cast functions (castMetricsCollector, castModuleHealthService)
 // The types are needed for the return types of the cast functions
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
-import {
-  foundryGameToken,
-  foundryHooksToken,
-  foundryDocumentToken,
-  foundryUIToken,
-  foundrySettingsToken,
-  foundryJournalFacadeToken,
-} from "@/infrastructure/shared/tokens";
+import { foundryGameToken, foundryHooksToken, foundryDocumentToken, foundryUIToken, foundrySettingsToken, foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry.tokens";
 
 /**
  * ModuleApiInitializer

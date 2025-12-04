@@ -10,7 +10,8 @@
 
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
-import { loggerToken, bootstrapHooksPortToken } from "@/infrastructure/shared/tokens";
+import { bootstrapHooksPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
 /**
  * Service responsible for registering the Foundry 'ready' hook.

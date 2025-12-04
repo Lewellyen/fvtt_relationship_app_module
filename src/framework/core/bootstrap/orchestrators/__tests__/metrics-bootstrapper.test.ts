@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MetricsBootstrapper } from "../metrics-bootstrapper";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
 import { ok, err } from "@/domain/utils/result";
 import { PersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";

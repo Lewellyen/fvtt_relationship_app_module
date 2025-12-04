@@ -2,21 +2,10 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import {
-  metricsCollectorToken,
-  metricsRecorderToken,
-  metricsSamplerToken,
-  loggerToken,
-  traceContextToken,
-  moduleHealthServiceToken,
-  moduleApiInitializerToken,
-  healthCheckRegistryToken,
-  metricsStorageToken,
-  runtimeConfigToken,
-  bootstrapInitHookServiceToken,
-  bootstrapReadyHookServiceToken,
-  bootstrapHooksPortToken,
-} from "@/infrastructure/shared/tokens";
+import { bootstrapHooksPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { metricsCollectorToken, metricsRecorderToken, metricsSamplerToken, traceContextToken, metricsStorageToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { loggerToken, moduleHealthServiceToken, healthCheckRegistryToken, runtimeConfigToken, bootstrapInitHookServiceToken, bootstrapReadyHookServiceToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { DIMetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { DIPersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
 import { createMetricsStorage } from "@/infrastructure/observability/metrics-persistence/metrics-storage-factory";

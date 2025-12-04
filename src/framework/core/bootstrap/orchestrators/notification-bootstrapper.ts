@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
-import { notificationCenterToken, uiChannelToken } from "@/infrastructure/shared/tokens";
+import { notificationCenterToken, uiChannelToken } from "@/infrastructure/shared/tokens/notifications.tokens";
 import {
   castNotificationService,
   castNotificationChannel,

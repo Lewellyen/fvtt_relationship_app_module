@@ -2,16 +2,9 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import {
-  foundryGameToken,
-  foundryHooksToken,
-  foundryDocumentToken,
-  foundryUIToken,
-  foundrySettingsToken,
-  foundryJournalFacadeToken,
-  settingsRegistrationPortToken,
-} from "@/infrastructure/shared/tokens";
-import { journalVisibilityServiceToken } from "@/infrastructure/shared/tokens";
+import { foundryGameToken, foundryHooksToken, foundryDocumentToken, foundryUIToken, foundrySettingsToken, foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { settingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
 import { DIFoundryGamePort } from "@/infrastructure/adapters/foundry/services/FoundryGamePort";
 import { DIFoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 import { DIFoundryDocumentPort } from "@/infrastructure/adapters/foundry/services/FoundryDocumentPort";
@@ -22,11 +15,8 @@ import { DIJournalVisibilityService } from "@/application/services/JournalVisibi
 import { DIFoundryLibWrapperService } from "@/infrastructure/adapters/foundry/services/FoundryLibWrapperService";
 import { DIJournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
 import { DIFoundrySettingsRegistrationAdapter } from "@/infrastructure/adapters/foundry/settings-adapters/foundry-settings-registration-adapter";
-import {
-  libWrapperServiceToken,
-  journalContextMenuLibWrapperServiceToken,
-  contextMenuRegistrationPortToken,
-} from "@/infrastructure/shared/tokens";
+import { libWrapperServiceToken, journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { contextMenuRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 
 /**
  * Registers Foundry service wrappers.

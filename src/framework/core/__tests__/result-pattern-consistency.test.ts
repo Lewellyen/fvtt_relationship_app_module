@@ -6,7 +6,7 @@ import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame } from "@/test/mocks/foundry";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import { expectResultOk } from "@/test/utils/test-helpers";
-import { foundryGameToken } from "@/infrastructure/shared/tokens";
+import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry.tokens";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 

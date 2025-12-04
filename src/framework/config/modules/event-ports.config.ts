@@ -2,16 +2,10 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import {
-  platformJournalEventPortToken,
-  invalidateJournalCacheOnChangeUseCaseToken,
-  processJournalDirectoryOnRenderUseCaseToken,
-  triggerJournalDirectoryReRenderUseCaseToken,
-  registerContextMenuUseCaseToken,
-  hideJournalContextMenuHandlerToken,
-  moduleEventRegistrarToken,
-} from "@/infrastructure/shared/tokens";
-import { journalContextMenuHandlersToken } from "@/application/tokens";
+import { platformJournalEventPortToken } from "@/application/tokens/domain-ports.tokens";
+import { hideJournalContextMenuHandlerToken } from "@/application/tokens/application.tokens";
+import { invalidateJournalCacheOnChangeUseCaseToken, processJournalDirectoryOnRenderUseCaseToken, triggerJournalDirectoryReRenderUseCaseToken, registerContextMenuUseCaseToken, moduleEventRegistrarToken } from "@/infrastructure/shared/tokens/event.tokens";
+import { journalContextMenuHandlersToken } from "@/application/tokens/application.tokens";
 import { DIFoundryJournalEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter";
 import { DIInvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import { DIProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";

@@ -17,7 +17,7 @@ $tokenMapping = @{
     'environmentConfigToken' = '@/infrastructure/shared/tokens/core.tokens'
     'serviceContainerToken' = '@/infrastructure/shared/tokens/core.tokens'
     'containerToken' = '@/infrastructure/shared/tokens/core.tokens'
-    'containerPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
+    'containerPortToken' = '@/infrastructure/shared/tokens/core.tokens'
 
     # Observability tokens
     'metricsCollectorToken' = '@/infrastructure/shared/tokens/observability.tokens'
@@ -25,29 +25,38 @@ $tokenMapping = @{
     'metricsSamplerToken' = '@/infrastructure/shared/tokens/observability.tokens'
     'metricsStorageToken' = '@/infrastructure/shared/tokens/observability.tokens'
     'traceContextToken' = '@/infrastructure/shared/tokens/observability.tokens'
-    'performanceTrackingServiceToken' = '@/infrastructure/shared/tokens/observability.tokens'
     'observabilityRegistryToken' = '@/infrastructure/shared/tokens/observability.tokens'
 
     # I18n tokens
     'i18nFacadeServiceToken' = '@/infrastructure/shared/tokens/i18n.tokens'
     'i18nFacadeToken' = '@/infrastructure/shared/tokens/i18n.tokens'
     'localI18nServiceToken' = '@/infrastructure/shared/tokens/i18n.tokens'
+    'localI18nToken' = '@/infrastructure/shared/tokens/i18n.tokens'
     'foundryI18nPortToken' = '@/infrastructure/shared/tokens/i18n.tokens'
+    'foundryI18nToken' = '@/infrastructure/shared/tokens/i18n.tokens'
     'translationHandlerToken' = '@/infrastructure/shared/tokens/i18n.tokens'
-    'platformI18nPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
+    'foundryTranslationHandlerToken' = '@/infrastructure/shared/tokens/i18n.tokens'
+    'localTranslationHandlerToken' = '@/infrastructure/shared/tokens/i18n.tokens'
+    'fallbackTranslationHandlerToken' = '@/infrastructure/shared/tokens/i18n.tokens'
+    'translationHandlersToken' = '@/infrastructure/shared/tokens/i18n.tokens'
+    'translationHandlerChainToken' = '@/infrastructure/shared/tokens/i18n.tokens'
+    'platformI18nPortToken' = '@/application/tokens/domain-ports.tokens'
 
     # Notification tokens
     'notificationServiceToken' = '@/infrastructure/shared/tokens/notifications.tokens'
     'notificationCenterToken' = '@/infrastructure/shared/tokens/notifications.tokens'
     'notificationChannelToken' = '@/infrastructure/shared/tokens/notifications.tokens'
-    'platformNotificationPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
-    'notificationPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
+    'uiChannelToken' = '@/infrastructure/shared/tokens/notifications.tokens'
+    'consoleChannelToken' = '@/infrastructure/shared/tokens/notifications.tokens'
+    'platformNotificationPortToken' = '@/application/tokens/domain-ports.tokens'
+    'notificationPortToken' = '@/application/tokens/domain-ports.tokens'
 
     # Infrastructure tokens
     'cacheServiceToken' = '@/infrastructure/shared/tokens/infrastructure.tokens'
     'cacheServiceConfigToken' = '@/infrastructure/shared/tokens/infrastructure.tokens'
-    'platformCachePortToken' = '@/infrastructure/shared/tokens/ports.tokens'
+    'platformCachePortToken' = '@/application/tokens/domain-ports.tokens'
     'retryServiceToken' = '@/infrastructure/shared/tokens/infrastructure.tokens'
+    'performanceTrackingServiceToken' = '@/infrastructure/shared/tokens/infrastructure.tokens'
 
     # Foundry tokens
     'foundryGameToken' = '@/infrastructure/shared/tokens/foundry.tokens'
@@ -55,7 +64,6 @@ $tokenMapping = @{
     'foundryDocumentToken' = '@/infrastructure/shared/tokens/foundry.tokens'
     'foundryUIToken' = '@/infrastructure/shared/tokens/foundry.tokens'
     'foundrySettingsToken' = '@/infrastructure/shared/tokens/foundry.tokens'
-    'foundryI18nToken' = '@/infrastructure/shared/tokens/foundry.tokens'
     'portSelectorToken' = '@/infrastructure/shared/tokens/foundry.tokens'
     'foundryJournalFacadeToken' = '@/infrastructure/shared/tokens/foundry.tokens'
     'libWrapperServiceToken' = '@/infrastructure/shared/tokens/foundry.tokens'
@@ -78,41 +86,45 @@ $tokenMapping = @{
     'foundryV13I18nPortToken' = '@/infrastructure/shared/tokens/foundry.tokens'
 
     # Event tokens
-    'platformJournalEventPortToken' = '@/infrastructure/shared/tokens/event.tokens'
+    'platformJournalEventPortToken' = '@/application/tokens/domain-ports.tokens'
     'moduleEventRegistrarToken' = '@/infrastructure/shared/tokens/event.tokens'
-    'portSelectionEventEmitterToken' = '@/infrastructure/shared/tokens/foundry.tokens'
+    'portSelectionEventEmitterToken' = '@/infrastructure/shared/tokens/observability.tokens'
 
     # Port tokens (Domain ports)
-    'platformUIPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
-    'platformSettingsPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
-    'journalDirectoryUiPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
-    'journalCollectionPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
-    'journalRepositoryToken' = '@/infrastructure/shared/tokens/ports.tokens'
+    'platformUIPortToken' = '@/application/tokens/domain-ports.tokens'
+    'platformSettingsPortToken' = '@/application/tokens/domain-ports.tokens'
+    'journalDirectoryUiPortToken' = '@/application/tokens/domain-ports.tokens'
+    'journalCollectionPortToken' = '@/application/tokens/domain-ports.tokens'
+    'journalRepositoryToken' = '@/application/tokens/domain-ports.tokens'
+    'contextMenuRegistrationPortToken' = '@/application/tokens/domain-ports.tokens'
     'bootstrapHooksPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
     'settingsRegistrationPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
-    'contextMenuRegistrationPortToken' = '@/infrastructure/shared/tokens/ports.tokens'
 
     # Application tokens
     'journalVisibilityServiceToken' = '@/application/tokens/application.tokens'
     'journalVisibilityConfigToken' = '@/application/tokens/application.tokens'
-    'moduleHealthServiceToken' = '@/application/tokens/application.tokens'
-    'moduleSettingsRegistrarToken' = '@/application/tokens/application.tokens'
-    'moduleApiInitializerToken' = '@/application/tokens/application.tokens'
-    'containerHealthCheckToken' = '@/application/tokens/application.tokens'
-    'metricsHealthCheckToken' = '@/application/tokens/application.tokens'
-    'healthCheckRegistryToken' = '@/application/tokens/application.tokens'
-    'runtimeConfigServiceToken' = '@/application/tokens/application.tokens'
-    'runtimeConfigToken' = '@/application/tokens/application.tokens'
-    'invalidateJournalCacheOnChangeUseCaseToken' = '@/application/tokens/application.tokens'
-    'processJournalDirectoryOnRenderUseCaseToken' = '@/application/tokens/application.tokens'
-    'triggerJournalDirectoryReRenderUseCaseToken' = '@/application/tokens/application.tokens'
-    'registerContextMenuUseCaseToken' = '@/application/tokens/application.tokens'
     'hideJournalContextMenuHandlerToken' = '@/application/tokens/application.tokens'
-    'journalContextMenuHandlerToken' = '@/application/tokens/application.tokens'
-
-    # Framework tokens
-    'bootstrapInitHookServiceToken' = '@/application/tokens/application.tokens'
-    'bootstrapReadyHookServiceToken' = '@/application/tokens/application.tokens'
+    'journalContextMenuHandlersToken' = '@/application/tokens/application.tokens'
+    
+    # Core tokens (Application-level services in core.tokens)
+    'moduleHealthServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'moduleSettingsRegistrarToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'containerHealthCheckToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'metricsHealthCheckToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'healthCheckRegistryToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'runtimeConfigServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'runtimeConfigToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'bootstrapInitHookServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
+    'bootstrapReadyHookServiceToken' = '@/infrastructure/shared/tokens/core.tokens'
+    
+    # Infrastructure tokens (Module-level services)
+    'moduleApiInitializerToken' = '@/infrastructure/shared/tokens/infrastructure.tokens'
+    
+    # Event tokens (Use Cases)
+    'invalidateJournalCacheOnChangeUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
+    'processJournalDirectoryOnRenderUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
+    'triggerJournalDirectoryReRenderUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
+    'registerContextMenuUseCaseToken' = '@/infrastructure/shared/tokens/event.tokens'
 }
 
 Write-Host "=====================================" -ForegroundColor Cyan
@@ -148,7 +160,8 @@ foreach ($file in $files) {
     # Pattern für Token-Imports aus Barrel-Exports
     $patterns = @(
         'import\s*\{([^}]+)\}\s*from\s*[''"]@/infrastructure/shared/tokens[''"];?',
-        'import\s*\{([^}]+)\}\s*from\s*[''"]@/application/tokens[''"];?'
+        'import\s*\{([^}]+)\}\s*from\s*[''"]@/application/tokens[''"];?',
+        'import\s*\{([^}]+)\}\s*from\s*[''"]@/domain/tokens[''"];?'
     )
 
     foreach ($pattern in $patterns) {

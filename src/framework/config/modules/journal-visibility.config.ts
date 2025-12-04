@@ -2,7 +2,7 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
-import { journalVisibilityConfigToken } from "@/infrastructure/shared/tokens";
+import { journalVisibilityConfigToken } from "@/application/tokens/application.tokens";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import { MODULE_METADATA, APP_DEFAULTS } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";

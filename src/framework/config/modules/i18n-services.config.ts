@@ -2,17 +2,8 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import {
-  foundryI18nToken,
-  localI18nToken,
-  i18nFacadeToken,
-  foundryTranslationHandlerToken,
-  localTranslationHandlerToken,
-  fallbackTranslationHandlerToken,
-  translationHandlerChainToken,
-  translationHandlersToken,
-  platformI18nPortToken,
-} from "@/infrastructure/shared/tokens";
+import { platformI18nPortToken } from "@/application/tokens/domain-ports.tokens";
+import { foundryI18nToken, localI18nToken, i18nFacadeToken, foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken, translationHandlerChainToken, translationHandlersToken } from "@/infrastructure/shared/tokens/i18n.tokens";
 import { DIFoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import { DILocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
 import { DII18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";

@@ -5,32 +5,12 @@ import { describe, it, expect, vi } from "vitest";
 import { ServiceContainer } from "@/infrastructure/di/container";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { markAsApiSafe } from "@/infrastructure/di/types";
-import {
-  loggerToken,
-  journalVisibilityServiceToken,
-  containerHealthCheckToken,
-  metricsHealthCheckToken,
-  notificationCenterToken,
-  uiChannelToken,
-  serviceContainerToken,
-  containerPortToken,
-  environmentConfigToken,
-  runtimeConfigToken,
-  healthCheckRegistryToken,
-  metricsCollectorToken,
-} from "@/infrastructure/shared/tokens";
-import {
-  foundryGameToken,
-  foundryHooksToken,
-  foundryDocumentToken,
-  foundryUIToken,
-  foundryGamePortRegistryToken,
-  foundrySettingsToken,
-  foundrySettingsPortRegistryToken,
-  journalCollectionPortToken,
-  journalRepositoryToken,
-  platformSettingsPortToken,
-} from "@/infrastructure/shared/tokens";
+import { notificationCenterToken, uiChannelToken } from "@/infrastructure/shared/tokens/notifications.tokens";
+import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { loggerToken, containerHealthCheckToken, metricsHealthCheckToken, serviceContainerToken, containerPortToken, environmentConfigToken, runtimeConfigToken, healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { foundryGameToken, foundryHooksToken, foundryDocumentToken, foundryUIToken, foundryGamePortRegistryToken, foundrySettingsToken, foundrySettingsPortRegistryToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { journalCollectionPortToken, journalRepositoryToken, platformSettingsPortToken } from "@/application/tokens/domain-ports.tokens";
 import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
 import { err } from "@/domain/utils/result";
 import {

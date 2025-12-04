@@ -2,7 +2,7 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { performanceTrackingServiceToken, retryServiceToken } from "@/infrastructure/shared/tokens";
+import { performanceTrackingServiceToken, retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
 import { DIPerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
 import { DIRetryService } from "@/infrastructure/retry/RetryService";
 

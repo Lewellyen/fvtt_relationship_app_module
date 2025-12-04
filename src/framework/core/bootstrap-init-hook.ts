@@ -11,11 +11,8 @@
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
-import {
-  loggerToken,
-  containerPortToken,
-  bootstrapHooksPortToken,
-} from "@/infrastructure/shared/tokens";
+import { bootstrapHooksPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { loggerToken, containerPortToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { InitOrchestrator } from "./bootstrap/init-orchestrator";
 
 /**

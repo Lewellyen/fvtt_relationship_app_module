@@ -1,16 +1,8 @@
 import { ServiceContainer } from "@/infrastructure/di/container";
 import { ok, err, isErr } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
-import {
-  environmentConfigToken,
-  containerHealthCheckToken,
-  metricsHealthCheckToken,
-  healthCheckRegistryToken,
-  metricsCollectorToken,
-  serviceContainerToken,
-  containerPortToken,
-  runtimeConfigToken,
-} from "@/infrastructure/shared/tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { environmentConfigToken, containerHealthCheckToken, metricsHealthCheckToken, healthCheckRegistryToken, serviceContainerToken, containerPortToken, runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { ENV } from "@/framework/config/environment";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import { DIContainerHealthCheck } from "@/application/health/ContainerHealthCheck";

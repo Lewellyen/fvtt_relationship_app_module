@@ -2,17 +2,9 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import {
-  portSelectorToken,
-  foundryGamePortRegistryToken,
-  foundryHooksPortRegistryToken,
-  foundryDocumentPortRegistryToken,
-  foundryUIPortRegistryToken,
-  foundrySettingsPortRegistryToken,
-  foundryI18nPortRegistryToken,
-  platformUIPortToken,
-} from "@/infrastructure/shared/tokens";
-import { journalDirectoryUiPortToken, notificationPortToken } from "@/application/tokens";
+import { portSelectorToken, foundryGamePortRegistryToken, foundryHooksPortRegistryToken, foundryDocumentPortRegistryToken, foundryUIPortRegistryToken, foundrySettingsPortRegistryToken, foundryI18nPortRegistryToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { platformUIPortToken } from "@/application/tokens/domain-ports.tokens";
+import { journalDirectoryUiPortToken, notificationPortToken } from "@/application/tokens/domain-ports.tokens";
 import { DIPortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { registerV13Ports } from "@/infrastructure/adapters/foundry/ports/v13/port-registration";

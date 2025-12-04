@@ -2,12 +2,9 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import {
-  cacheServiceConfigToken,
-  cacheServiceToken,
-  runtimeConfigToken,
-  platformCachePortToken,
-} from "@/infrastructure/shared/tokens";
+import { platformCachePortToken } from "@/application/tokens/domain-ports.tokens";
+import { cacheServiceConfigToken, cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
 import type { CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import { DICacheService } from "@/infrastructure/cache/CacheService";
 import { DICachePortAdapter } from "@/infrastructure/adapters/cache/platform-cache-port-adapter";
