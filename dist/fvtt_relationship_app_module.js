@@ -11711,11 +11711,15 @@ function isNonEmptyArray(array2) {
 __name(isNonEmptyArray, "isNonEmptyArray");
 function getFirstArrayElement$1(array2) {
   if (!isNonEmptyArray(array2)) {
-    throw new Error("Cannot get first element from empty array");
+    throw new Error("Array must have length > 0 (caller violated precondition)");
   }
   return array2[0];
 }
 __name(getFirstArrayElement$1, "getFirstArrayElement$1");
+function getFirstArrayElementSafe(array2) {
+  return isNonEmptyArray(array2) ? array2[0] : null;
+}
+__name(getFirstArrayElementSafe, "getFirstArrayElementSafe");
 function sanitizeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;

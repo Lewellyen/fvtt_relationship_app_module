@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.16] - 2025-12-05
+### Hinzugefügt
+- **getFirstArrayElementSafe()**: Neue sichere Variante mit eingebautem Empty-Check, gibt `T | null` zurück ([Details](src/application/utils/array-utils.ts))
+
+### Geändert
+- **getFirstArrayElement()**: Exception-Throwing entfernt, gibt jetzt `array[0] as T` zurück ohne Runtime-Check. Aufrufer müssen `array.length > 0` vorher prüfen ([Details](src/application/utils/array-utils.ts))
+
+### Fehlerbehebungen
+- **Result-Pattern-Violation [#85]**: `getFirstArrayElement()` wirft keine Exception mehr in Result-Pattern-Kontexten (JournalVisibilityService, invalidate-journal-cache-on-change.use-case). Duale API stellt sicher, dass Code mit Guards die unchecked-Version nutzt, Code ohne Guards die safe-Version ([Issue #85](https://github.com/Lewellyen/fvtt_relationship_app_module/issues/85))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.15] - 2025-12-05
 ### Hinzugefügt
 - **Neue Cast-Utilities**: `bootstrap-casts.ts` und `api-casts.ts` für kontextspezifische Type-Casts ohne zirkuläre Dependencies ([Details](docs/refactoring/CIRCULAR-DEPS-FIX-PLAN-4-TOKEN-HEALTH-BOOTSTRAP.md))
