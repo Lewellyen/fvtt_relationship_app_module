@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Hinzugefügt
+- **SRP Refactoring-Pläne**: Vollständige Refactoring-Pläne für alle identifizierten Single Responsibility Principle Verletzungen
+  - **SRP-REFACTORING-01**: JournalVisibilityService - Trennung von Business-Logik und DOM-Verarbeitung ([Details](docs/refactoring/SRP-REFACTORING-01-JOURNAL-VISIBILITY-SERVICE.md))
+  - **SRP-REFACTORING-02**: ModuleSettingsRegistrar - Trennung von Settings-Registrierung und RuntimeConfig-Synchronisation ([Details](docs/refactoring/SRP-REFACTORING-02-MODULE-SETTINGS-REGISTRAR.md))
+  - **SRP-REFACTORING-03**: CacheService - Trennung von Cache-Operationen, Capacity-Management und Metrics-Tracking ([Details](docs/refactoring/SRP-REFACTORING-03-CACHE-SERVICE.md))
+  - **SRP-REFACTORING-04**: ServiceResolver - Trennung von Service-Resolution und Lifecycle-Management ([Details](docs/refactoring/SRP-REFACTORING-04-SERVICE-RESOLVER.md))
+  - **SRP-REFACTORING-05**: MetricsCollector - Trennung von Metrics-Sammlung, Sampling-Logik und Reporting ([Details](docs/refactoring/SRP-REFACTORING-05-METRICS-COLLECTOR.md))
+  - **SRP-REFACTORING-06**: PortSelector - Trennung von Port-Auswahl und Version-Detection ([Details](docs/refactoring/SRP-REFACTORING-06-PORT-SELECTOR.md))
+  - **SRP-REFACTORING-OVERVIEW**: Übersicht aller SRP-Refactoring-Pläne mit Priorisierung und Implementierungsreihenfolge ([Details](docs/refactoring/SRP-REFACTORING-OVERVIEW.md))
 
 ### Geändert
 
