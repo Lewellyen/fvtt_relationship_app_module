@@ -1,5 +1,5 @@
 import type { Result } from "@/domain/types/result";
-import type { EntityCollectionError } from "./platform-entity-collection-port.interface";
+import type { EntityCollectionError } from "./entity-collection-error.interface";
 
 /**
  * Fluent query builder for entity collections.

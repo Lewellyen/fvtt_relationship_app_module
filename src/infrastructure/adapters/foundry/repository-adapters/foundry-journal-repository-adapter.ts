@@ -5,7 +5,7 @@ import type {
   CreateEntityData,
   EntityChanges,
 } from "@/domain/ports/repositories/platform-entity-repository.interface";
-import type { EntityCollectionError } from "@/domain/ports/collections/platform-entity-collection-port.interface";
+import type { EntityCollectionError } from "@/domain/ports/collections/entity-collection-error.interface";
 import type { EntitySearchQuery } from "@/domain/ports/collections/entity-search-query.interface";
 import type { EntityQueryBuilder } from "@/domain/ports/collections/entity-query-builder.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";

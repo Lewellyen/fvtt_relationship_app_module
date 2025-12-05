@@ -140,9 +140,7 @@ const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
 const serviceContainerToken = createInjectionToken("ServiceContainer");
 const containerPortToken = createInjectionToken("ContainerPort");
 const moduleSettingsRegistrarToken = createInjectionToken("ModuleSettingsRegistrar");
-const bootstrapInitHookServiceToken = createInjectionToken(
-  "BootstrapInitHookService"
-);
+const bootstrapInitHookServiceToken = createInjectionToken("BootstrapInitHookService");
 const bootstrapReadyHookServiceToken = createInjectionToken(
   "BootstrapReadyHookService"
 );
@@ -162,33 +160,6 @@ var ServiceLifecycle = /* @__PURE__ */ ((ServiceLifecycle2) => {
   ServiceLifecycle2["SCOPED"] = "scoped";
   return ServiceLifecycle2;
 })(ServiceLifecycle || {});
-function widenRuntimeConfigListeners(listeners) {
-  return listeners;
-}
-__name(widenRuntimeConfigListeners, "widenRuntimeConfigListeners");
-function toStringKeyArray(allowed) {
-  return allowed;
-}
-__name(toStringKeyArray, "toStringKeyArray");
-function castCacheValue(value2) {
-  return value2;
-}
-__name(castCacheValue, "castCacheValue");
-function wrapI18nService(service, create) {
-  const concrete = service;
-  return create(concrete);
-}
-__name(wrapI18nService, "wrapI18nService");
-function wrapNotificationCenterService(service, create) {
-  const concrete = service;
-  return create(concrete);
-}
-__name(wrapNotificationCenterService, "wrapNotificationCenterService");
-function wrapFoundrySettingsPort(service, create) {
-  const concrete = service;
-  return create(concrete);
-}
-__name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
 function castCachedServiceInstance(instance2) {
   return instance2;
 }
@@ -218,68 +189,10 @@ function getRegistrationStatus(result) {
   return result.ok ? result.value : false;
 }
 __name(getRegistrationStatus, "getRegistrationStatus");
-function getFirstArrayElement$1(array2) {
-  return array2[0];
-}
-__name(getFirstArrayElement$1, "getFirstArrayElement$1");
-function getFirstElementIfArray(value2, typeGuard) {
-  if (Array.isArray(value2) && value2.length > 0) {
-    const firstElement = value2[0];
-    if (typeGuard(firstElement)) {
-      return firstElement;
-    }
-  }
-  return null;
-}
-__name(getFirstElementIfArray, "getFirstElementIfArray");
 function castToFoundryHookCallback(callback) {
   return callback;
 }
 __name(castToFoundryHookCallback, "castToFoundryHookCallback");
-function assertCacheKey(value2) {
-  return value2;
-}
-__name(assertCacheKey, "assertCacheKey");
-function castToRecord(value2) {
-  return value2;
-}
-__name(castToRecord, "castToRecord");
-function normalizeToRecord(value2) {
-  return Object.assign({}, value2);
-}
-__name(normalizeToRecord, "normalizeToRecord");
-function castModuleEventRegistrar(value2) {
-  return value2;
-}
-__name(castModuleEventRegistrar, "castModuleEventRegistrar");
-function castModuleApiInitializer(value2) {
-  return value2;
-}
-__name(castModuleApiInitializer, "castModuleApiInitializer");
-function castModuleSettingsRegistrar(value2) {
-  return value2;
-}
-__name(castModuleSettingsRegistrar, "castModuleSettingsRegistrar");
-function castJournalContextMenuLibWrapperService(value2) {
-  return value2;
-}
-__name(castJournalContextMenuLibWrapperService, "castJournalContextMenuLibWrapperService");
-function castRegisterContextMenuUseCase(value2) {
-  return value2;
-}
-__name(castRegisterContextMenuUseCase, "castRegisterContextMenuUseCase");
-function castMetricsCollector(value2) {
-  return value2;
-}
-__name(castMetricsCollector, "castMetricsCollector");
-function castModuleHealthService(value2) {
-  return value2;
-}
-__name(castModuleHealthService, "castModuleHealthService");
-function castNotificationChannel(value2) {
-  return value2;
-}
-__name(castNotificationChannel, "castNotificationChannel");
 function castResolvedService(value2) {
   return value2;
 }
@@ -288,26 +201,6 @@ function castContainerErrorCode(code) {
   return code;
 }
 __name(castContainerErrorCode, "castContainerErrorCode");
-function castLogger(value2) {
-  return value2;
-}
-__name(castLogger, "castLogger");
-function castFoundrySettings(value2) {
-  return value2;
-}
-__name(castFoundrySettings, "castFoundrySettings");
-function castNotificationService(value2) {
-  return value2;
-}
-__name(castNotificationService, "castNotificationService");
-function castBootstrapInitHookService(value2) {
-  return value2;
-}
-__name(castBootstrapInitHookService, "castBootstrapInitHookService");
-function castBootstrapReadyHookService(value2) {
-  return value2;
-}
-__name(castBootstrapReadyHookService, "castBootstrapReadyHookService");
 function castContainerTokenToContainerPortToken(token) {
   return token;
 }
@@ -329,7 +222,7 @@ const _ServiceRegistration = class _ServiceRegistration {
   }
   /**
    * Creates a class-based registration.
-   * @template TServiceType - The concrete service type
+   * @template Tunknown - The concrete service type
    * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
    * @param dependencies - Array of dependency tokens
    * @param serviceClass - The class to instantiate
@@ -350,7 +243,7 @@ const _ServiceRegistration = class _ServiceRegistration {
   }
   /**
    * Creates a factory-based registration.
-   * @template TServiceType - The concrete service type
+   * @template Tunknown - The concrete service type
    * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
    * @param dependencies - Array of dependency tokens
    * @param factory - Factory function that creates instances
@@ -377,7 +270,7 @@ const _ServiceRegistration = class _ServiceRegistration {
   }
   /**
    * Creates a value-based registration (always SINGLETON).
-   * @template TServiceType - The concrete service type
+   * @template Tunknown - The concrete service type
    * @param value - The value to register
    * @returns Result with registration or validation error
    */
@@ -395,20 +288,12 @@ const _ServiceRegistration = class _ServiceRegistration {
       });
     }
     return ok(
-      new _ServiceRegistration(
-        ServiceLifecycle.SINGLETON,
-        [],
-        "value",
-        void 0,
-        void 0,
-        value2,
-        void 0
-      )
+      new _ServiceRegistration(ServiceLifecycle.SINGLETON, [], "value", void 0, void 0, value2, void 0)
     );
   }
   /**
    * Creates an alias registration (always SINGLETON).
-   * @template TServiceType - The concrete service type
+   * @template Tunknown - The concrete service type
    * @param targetToken - The token to resolve instead
    * @returns Result with registration or validation error
    */
@@ -562,7 +447,7 @@ const _ServiceRegistry = class _ServiceRegistry {
   /**
    * Registers a service class with automatic dependency injection.
    *
-   * @template TServiceType - The type of service to register
+   * @template Tunknown - The type of service to register
    * @param token - The injection token identifying this service
    * @param serviceClass - The class to instantiate
    * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
@@ -605,7 +490,7 @@ const _ServiceRegistry = class _ServiceRegistry {
   /**
    * Registers a factory function for creating service instances.
    *
-   * @template TServiceType - The type of service this factory creates
+   * @template Tunknown - The type of service this factory creates
    * @param token - The injection token identifying this service
    * @param factory - Factory function that creates instances
    * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
@@ -642,7 +527,7 @@ const _ServiceRegistry = class _ServiceRegistry {
   /**
    * Registers a constant value (always SINGLETON lifecycle).
    *
-   * @template TServiceType - The type of value to register
+   * @template Tunknown - The type of value to register
    * @param token - The injection token identifying this value
    * @param value - The value to register
    * @returns Result indicating success or error
@@ -673,7 +558,7 @@ const _ServiceRegistry = class _ServiceRegistry {
   /**
    * Registers an alias that points to another token.
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param aliasToken - The alias token
    * @param targetToken - The token to resolve instead
    * @returns Result indicating success or error
@@ -703,7 +588,7 @@ const _ServiceRegistry = class _ServiceRegistry {
   /**
    * Retrieves a service registration.
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param token - The injection token identifying the service
    * @returns The registration or undefined if not found
    */
@@ -733,7 +618,7 @@ const _ServiceRegistry = class _ServiceRegistry {
   /**
    * Checks if a service is registered.
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param token - The injection token to check
    * @returns True if registered, false otherwise
    */
@@ -946,7 +831,7 @@ const _InstanceCache = class _InstanceCache {
   /**
    * Retrieves a cached service instance.
    *
-   * @template TServiceType - The type of service to retrieve
+   * @template Tunknown - The type of service to retrieve
    * @param token - The injection token identifying the service
    * @returns The cached instance or undefined if not found
    */
@@ -958,7 +843,7 @@ const _InstanceCache = class _InstanceCache {
   /**
    * Stores a service instance in the cache.
    *
-   * @template TServiceType - The type of service to store
+   * @template Tunknown - The type of service to store
    * @param token - The injection token identifying the service
    * @param instance - The service instance to cache
    */
@@ -968,7 +853,7 @@ const _InstanceCache = class _InstanceCache {
   /**
    * Checks if a service instance is cached.
    *
-   * @template TServiceType - The type of service to check
+   * @template Tunknown - The type of service to check
    * @param token - The injection token identifying the service
    * @returns True if the instance is cached, false otherwise
    */
@@ -1025,7 +910,7 @@ const _ServiceResolver = class _ServiceResolver {
    *
    * Performance tracking is handled by the injected PerformanceTracker.
    *
-   * @template TServiceType - The type of service to resolve
+   * @template Tunknown - The type of service to resolve
    * @param token - The injection token identifying the service
    * @returns Result with service instance or error
    */
@@ -1081,7 +966,7 @@ const _ServiceResolver = class _ServiceResolver {
    * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
    * Handles dependency resolution for classes, direct factory calls, and value returns.
    *
-   * @template TServiceType - The type of service to instantiate
+   * @template Tunknown - The type of service to instantiate
    * @param token - The injection token (used for error messages)
    * @param registration - The service registration metadata
    * @returns Result with instance or detailed error (DependencyResolveFailed, FactoryFailed, etc.)
@@ -1142,7 +1027,7 @@ const _ServiceResolver = class _ServiceResolver {
    *    - TokenNotRegistered → fallback to own cache (child-specific singleton)
    * 3. Use own cache for root container or child-specific singletons
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param token - The injection token
    * @param registration - The service registration
    * @returns Result with instance or error
@@ -1176,7 +1061,7 @@ const _ServiceResolver = class _ServiceResolver {
    * Strategy:
    * - Always create new instance (no caching)
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param token - The injection token
    * @param registration - The service registration
    * @returns Result with new instance
@@ -1198,7 +1083,7 @@ const _ServiceResolver = class _ServiceResolver {
    *
    * Use createScope() to create a child container before resolving scoped services.
    *
-   * @template TServiceType - The type of service
+   * @template Tunknown - The type of service
    * @param token - The injection token
    * @param registration - The service registration
    * @returns Result with scoped instance or ScopeRequired error
@@ -7482,17 +7367,31 @@ const _RuntimeConfigService = class _RuntimeConfigService {
    * Registers a listener for the given key. Returns an unsubscribe function.
    */
   onChange(key, listener) {
-    const existing = this.listeners.get(key);
+    const existing = this.getListenersForKey(key);
     const listeners = existing ?? /* @__PURE__ */ new Set();
     listeners.add(listener);
-    this.listeners.set(key, widenRuntimeConfigListeners(listeners));
+    this.setListenersForKey(key, listeners);
     return () => {
-      const activeListeners = this.listeners.get(key);
+      const activeListeners = this.getListenersForKey(key);
       activeListeners?.delete(listener);
       if (!activeListeners || activeListeners.size === 0) {
         this.listeners.delete(key);
       }
     };
+  }
+  /**
+   * Type-safe helper to get listeners for a specific key.
+   * @ts-expect-error - Type coverage exclusion for generic Set cast
+   */
+  getListenersForKey(key) {
+    return this.listeners.get(key);
+  }
+  /**
+   * Type-safe helper to set listeners for a specific key.
+   * @ts-expect-error - Type coverage exclusion for generic Set cast
+   */
+  setListenersForKey(key, listeners) {
+    this.listeners.set(key, listeners);
   }
   updateValue(key, value2) {
     const current = this.values[key];
@@ -7725,7 +7624,7 @@ const _ServiceContainer = class _ServiceContainer {
   injectMetricsCollector() {
     const metricsResult = this.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
-      const metricsCollector = castMetricsCollector(metricsResult.value);
+      const metricsCollector = castResolvedService(metricsResult.value);
       this.resolver.setMetricsCollector(metricsCollector);
       this.cache.setMetricsCollector(metricsCollector);
     }
@@ -8845,11 +8744,11 @@ __name(createPublicFoundrySettings, "createPublicFoundrySettings");
 const notificationCenterToken = createInjectionToken("NotificationCenter");
 const consoleChannelToken = createInjectionToken("ConsoleChannel");
 const uiChannelToken = createInjectionToken("UIChannel");
-const journalVisibilityServiceToken = createInjectionToken(
-  "JournalVisibilityService"
-);
+const journalVisibilityServiceToken = createInjectionToken("JournalVisibilityService");
 const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
-const hideJournalContextMenuHandlerToken = createInjectionToken("HideJournalContextMenuHandler");
+const hideJournalContextMenuHandlerToken = createInjectionToken(
+  "HideJournalContextMenuHandler"
+);
 const journalContextMenuHandlersToken = createInjectionToken(
   "JournalContextMenuHandlers"
 );
@@ -8900,6 +8799,18 @@ function createApiTokens() {
   };
 }
 __name(createApiTokens, "createApiTokens");
+function wrapI18nService(service, create) {
+  return create(service);
+}
+__name(wrapI18nService, "wrapI18nService");
+function wrapNotificationCenterService(service, create) {
+  return create(service);
+}
+__name(wrapNotificationCenterService, "wrapNotificationCenterService");
+function wrapFoundrySettingsPort(service, create) {
+  return create(service);
+}
+__name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
 const _ModuleApiInitializer = class _ModuleApiInitializer {
   /**
    * Handles deprecation warnings for tokens.
@@ -9037,7 +8948,7 @@ Reason: ${deprecationInfo.reason}
             cacheHitRate: 0
           };
         }
-        const metricsCollector = castMetricsCollector(metricsResult.value);
+        const metricsCollector = castResolvedService(metricsResult.value);
         return metricsCollector.getSnapshot();
       }, "getMetrics"),
       getHealth: /* @__PURE__ */ __name(() => {
@@ -9053,9 +8964,7 @@ Reason: ${deprecationInfo.reason}
             timestamp: (/* @__PURE__ */ new Date()).toISOString()
           };
         }
-        const healthService = castModuleHealthService(
-          healthServiceResult.value
-        );
+        const healthService = castResolvedService(healthServiceResult.value);
         return healthService.getHealth();
       }, "getHealth")
     };
@@ -9176,8 +9085,10 @@ const _NotificationBootstrapper = class _NotificationBootstrapper {
     if (!uiChannelResult.ok) {
       return err(`UIChannel could not be resolved: ${uiChannelResult.error.message}`);
     }
-    const notificationCenter = castNotificationService(notificationCenterResult.value);
-    const uiChannel = castNotificationChannel(uiChannelResult.value);
+    const notificationCenter = castResolvedService(
+      notificationCenterResult.value
+    );
+    const uiChannel = castResolvedService(uiChannelResult.value);
     notificationCenter.addChannel(uiChannel);
     return ok(void 0);
   }
@@ -9196,7 +9107,7 @@ const _ApiBootstrapper = class _ApiBootstrapper {
     if (!apiInitializerResult.ok) {
       return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
     }
-    const apiInitializer = castModuleApiInitializer(apiInitializerResult.value);
+    const apiInitializer = castResolvedService(apiInitializerResult.value);
     const exposeResult = apiInitializer.expose(container);
     if (!exposeResult.ok) {
       return err(`Failed to expose API: ${exposeResult.error}`);
@@ -9220,7 +9131,9 @@ const _SettingsBootstrapper = class _SettingsBootstrapper {
         `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
       );
     }
-    const settingsRegistrar = castModuleSettingsRegistrar(settingsRegistrarResult.value);
+    const settingsRegistrar = castResolvedService(
+      settingsRegistrarResult.value
+    );
     settingsRegistrar.registerAll();
     return ok(void 0);
   }
@@ -9240,7 +9153,7 @@ const _LoggingBootstrapper = class _LoggingBootstrapper {
     if (!settingsResult.ok) {
       return ok(void 0);
     }
-    const settings = castFoundrySettings(settingsResult.value);
+    const settings = castResolvedService(settingsResult.value);
     const logLevelResult = settings.get(
       MODULE_METADATA.ID,
       SETTING_KEYS.LOG_LEVEL,
@@ -9280,7 +9193,7 @@ const _EventsBootstrapper = class _EventsBootstrapper {
     if (!eventRegistrarResult.ok) {
       return err(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
     }
-    const eventRegistrar = castModuleEventRegistrar(eventRegistrarResult.value);
+    const eventRegistrar = castResolvedService(eventRegistrarResult.value);
     const eventRegistrationResult = eventRegistrar.registerAll();
     if (!eventRegistrationResult.ok) {
       const errorMessages = eventRegistrationResult.error.map((e) => e.message).join(", ");
@@ -9307,7 +9220,7 @@ const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
         `JournalContextMenuLibWrapperService could not be resolved: ${contextMenuLibWrapperResult.error.message}`
       );
     }
-    const contextMenuLibWrapper = castJournalContextMenuLibWrapperService(
+    const contextMenuLibWrapper = castResolvedService(
       contextMenuLibWrapperResult.value
     );
     const registerResult = contextMenuLibWrapper.register();
@@ -9320,7 +9233,9 @@ const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
         `RegisterContextMenuUseCase could not be resolved: ${contextMenuUseCaseResult.error.message}`
       );
     }
-    const contextMenuUseCase = castRegisterContextMenuUseCase(contextMenuUseCaseResult.value);
+    const contextMenuUseCase = castResolvedService(
+      contextMenuUseCaseResult.value
+    );
     const callbackRegisterResult = contextMenuUseCase.register();
     if (!callbackRegisterResult.ok) {
       return err(
@@ -11794,13 +11709,13 @@ function isNonEmptyArray(array2) {
   return array2.length > 0;
 }
 __name(isNonEmptyArray, "isNonEmptyArray");
-function getFirstArrayElement(array2) {
+function getFirstArrayElement$1(array2) {
   if (!isNonEmptyArray(array2)) {
     throw new Error("Cannot get first element from empty array");
   }
   return array2[0];
 }
-__name(getFirstArrayElement, "getFirstArrayElement");
+__name(getFirstArrayElement$1, "getFirstArrayElement$1");
 function sanitizeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
@@ -11939,7 +11854,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
       }
     }
     if (errors.length > 0) {
-      const firstError = getFirstArrayElement(errors);
+      const firstError = getFirstArrayElement$1(errors);
       return { ok: false, error: firstError };
     }
     return { ok: true, value: void 0 };
@@ -12607,6 +12522,40 @@ function registerUtilityServices(container) {
   return ok(void 0);
 }
 __name(registerUtilityServices, "registerUtilityServices");
+function toStringKeyArray(allowed) {
+  return allowed;
+}
+__name(toStringKeyArray, "toStringKeyArray");
+function castCacheValue(value2) {
+  return value2;
+}
+__name(castCacheValue, "castCacheValue");
+function getFirstArrayElement(array2) {
+  return array2[0];
+}
+__name(getFirstArrayElement, "getFirstArrayElement");
+function getFirstElementIfArray(value2, typeGuard) {
+  if (Array.isArray(value2) && value2.length > 0) {
+    const firstElement = value2[0];
+    if (typeGuard(firstElement)) {
+      return firstElement;
+    }
+  }
+  return null;
+}
+__name(getFirstElementIfArray, "getFirstElementIfArray");
+function castToRecord(value2) {
+  return value2;
+}
+__name(castToRecord, "castToRecord");
+function normalizeToRecord(value2) {
+  return Object.assign({}, value2);
+}
+__name(normalizeToRecord, "normalizeToRecord");
+function assertCacheKey(value2) {
+  return value2;
+}
+__name(assertCacheKey, "assertCacheKey");
 const DEFAULT_CACHE_SERVICE_CONFIG = {
   enabled: true,
   defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
@@ -14648,7 +14597,7 @@ const _InvalidateJournalCacheOnChangeUseCase = class _InvalidateJournalCacheOnCh
     }
     if (errors.length > 0) {
       this.dispose();
-      return err(getFirstArrayElement(errors));
+      return err(getFirstArrayElement$1(errors));
     }
     return ok(void 0);
   }
@@ -16115,7 +16064,7 @@ const _CompositionRoot = class _CompositionRoot {
       (duration) => {
         const loggerResult = container.resolveWithError(loggerToken);
         if (loggerResult.ok) {
-          const logger = castLogger(loggerResult.value);
+          const logger = castResolvedService(loggerResult.value);
           logger.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
         }
       }
@@ -16179,7 +16128,7 @@ function initializeFoundryModule() {
     console.error(`${LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`);
     return;
   }
-  const logger = castLogger(loggerResult.value);
+  const logger = castResolvedService(loggerResult.value);
   const initHookServiceResult = containerResult.value.resolveWithError(
     bootstrapInitHookServiceToken
   );
@@ -16189,7 +16138,9 @@ function initializeFoundryModule() {
     );
     return;
   }
-  const initHookService = castBootstrapInitHookService(initHookServiceResult.value);
+  const initHookService = castResolvedService(
+    initHookServiceResult.value
+  );
   initHookService.register();
   const readyHookServiceResult = containerResult.value.resolveWithError(
     bootstrapReadyHookServiceToken
@@ -16200,7 +16151,9 @@ function initializeFoundryModule() {
     );
     return;
   }
-  const readyHookService = castBootstrapReadyHookService(readyHookServiceResult.value);
+  const readyHookService = castResolvedService(
+    readyHookServiceResult.value
+  );
   readyHookService.register();
 }
 __name(initializeFoundryModule, "initializeFoundryModule");

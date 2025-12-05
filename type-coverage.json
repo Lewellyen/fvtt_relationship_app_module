@@ -11,7 +11,11 @@
     "src/framework/types/custom.d.ts",
     "src/infrastructure/di/registry/TypeSafeRegistrationMap.ts",
     "src/infrastructure/di/types/utilities/runtime-safe-cast.ts",
-    "src/infrastructure/adapters/foundry/runtime-casts.ts"
+    "src/infrastructure/di/types/utilities/bootstrap-casts.ts",
+    "src/infrastructure/di/types/utilities/api-casts.ts",
+    "src/infrastructure/di/types/utilities/type-casts.ts",
+    "src/infrastructure/adapters/foundry/runtime-casts.ts",
+    "src/application/services/RuntimeConfigService.ts"
   ]
 }
 

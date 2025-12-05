@@ -1,6 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import type { EntitySearchQuery } from "./entity-search-query.interface";
 import type { EntityQueryBuilder } from "./entity-query-builder.interface";
+import type { EntityCollectionError } from "./entity-collection-error.interface";
 
 /**
  * Generic port for read-only entity collection access.
@@ -125,18 +126,4 @@ export interface PlatformEntityCollectionPort<TEntity> {
    * ```
    */
   query(): EntityQueryBuilder<TEntity>;
-}
-
-/**
- * Platform-agnostic error for entity collection operations.
- */
-export interface EntityCollectionError {
-  code:
-    | "COLLECTION_NOT_AVAILABLE" // Platform not initialized
-    | "ENTITY_NOT_FOUND" // Specific entity not found
-    | "INVALID_ENTITY_DATA" // Entity data corrupted
-    | "INVALID_QUERY" // Search query invalid
-    | "PLATFORM_ERROR"; // Generic platform error
-  message: string;
-  details?: unknown;
 }

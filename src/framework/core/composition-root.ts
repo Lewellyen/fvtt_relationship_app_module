@@ -7,7 +7,8 @@ import { BootstrapPerformanceTracker } from "@/infrastructure/observability/boot
 import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { createBootstrapLogger } from "@/infrastructure/logging/BootstrapLogger";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
-import { castLogger } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
 
 /**
  * CompositionRoot
@@ -52,7 +53,7 @@ export class CompositionRoot {
         // Use logger from container if available (container is validated at this point)
         const loggerResult = container.resolveWithError(loggerToken);
         if (loggerResult.ok) {
-          const logger = castLogger(loggerResult.value);
+          const logger = castResolvedService<Logger>(loggerResult.value);
           logger.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
         }
       }

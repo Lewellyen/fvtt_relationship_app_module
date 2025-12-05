@@ -19,21 +19,19 @@ import {
   wrapFoundrySettingsPort,
   wrapI18nService,
   wrapNotificationCenterService,
+} from "@/infrastructure/di/types/utilities/api-casts";
+import {
   getRegistrationStatus,
-  castMetricsCollector,
-  castModuleHealthService,
   castResolvedService,
   castContainerErrorCode,
 } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
+import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
 import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications.tokens";
 import { moduleHealthServiceToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n.tokens";
 import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
-// Types are used in type assertions via cast functions (castMetricsCollector, castModuleHealthService)
-// The types are needed for the return types of the cast functions
-import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
-import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
 import {
   foundryGameToken,
   foundryHooksToken,
@@ -238,7 +236,7 @@ export class ModuleApiInitializer {
             cacheHitRate: 0,
           };
         }
-        const metricsCollector: MetricsCollector = castMetricsCollector(metricsResult.value);
+        const metricsCollector = castResolvedService<MetricsCollector>(metricsResult.value);
         return metricsCollector.getSnapshot();
       },
 
@@ -257,9 +255,7 @@ export class ModuleApiInitializer {
             timestamp: new Date().toISOString(),
           };
         }
-        const healthService: ModuleHealthService = castModuleHealthService(
-          healthServiceResult.value
-        );
+        const healthService = castResolvedService<ModuleHealthService>(healthServiceResult.value);
         return healthService.getHealth();
       },
     };

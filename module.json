@@ -2,7 +2,7 @@
   "id": "fvtt_relationship_app_module",
   "title": "Beziehungsnetzwerke f\u00fcr Foundry",
   "description": "Ein Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken in Foundry VTT.",
-  "version": "0.40.14",
+  "version": "0.40.15",
   "compatibility": {
     "minimum": 13,
     "verified": 13,

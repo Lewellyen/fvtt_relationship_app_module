@@ -18,7 +18,7 @@ import {
   getFirstElementIfArray,
   castToRecord,
   normalizeToRecord,
-} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+} from "@/infrastructure/di/types/utilities/type-casts";
 
 /**
  * Foundry-specific implementation of PlatformJournalEventPort.

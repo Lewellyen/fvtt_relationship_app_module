@@ -1,13 +1,3 @@
-/**
- * Platform-agnostic error for UI operations.
- */
-export interface PlatformUIError {
-  code: string;
-  message: string;
-  operation?: string;
-  details?: unknown;
-}
-
 import type { JournalDirectoryUiPort } from "./journal-directory-ui-port.interface";
 import type { NotificationPort } from "./notification-port.interface";
 

@@ -5,10 +5,9 @@ import {
   notificationCenterToken,
   uiChannelToken,
 } from "@/infrastructure/shared/tokens/notifications.tokens";
-import {
-  castNotificationService,
-  castNotificationChannel,
-} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
+import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
 
 /**
  * Orchestrator for attaching notification channels during bootstrap.
@@ -42,8 +41,10 @@ export class NotificationBootstrapper {
       return err(`UIChannel could not be resolved: ${uiChannelResult.error.message}`);
     }
 
-    const notificationCenter = castNotificationService(notificationCenterResult.value);
-    const uiChannel = castNotificationChannel(uiChannelResult.value);
+    const notificationCenter = castResolvedService<NotificationService>(
+      notificationCenterResult.value
+    );
+    const uiChannel = castResolvedService<NotificationChannel>(uiChannelResult.value);
     notificationCenter.addChannel(uiChannel);
     return ok(undefined);
   }

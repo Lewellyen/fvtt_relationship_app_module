@@ -1,6 +1,5 @@
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { LogLevel } from "@/domain/types/log-level";
-import { widenRuntimeConfigListeners } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 export type RuntimeConfigValues = {
   isDevelopment: boolean;
@@ -67,19 +66,41 @@ export class RuntimeConfigService {
    * Registers a listener for the given key. Returns an unsubscribe function.
    */
   onChange<K extends RuntimeConfigKey>(key: K, listener: RuntimeConfigListener<K>): () => void {
-    const existing = this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined;
+    const existing = this.getListenersForKey<K>(key);
     const listeners: Set<RuntimeConfigListener<K>> =
       existing ?? new Set<RuntimeConfigListener<K>>();
     listeners.add(listener);
-    this.listeners.set(key, widenRuntimeConfigListeners(listeners));
+
+    this.setListenersForKey(key, listeners);
 
     return () => {
-      const activeListeners = this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined;
+      const activeListeners = this.getListenersForKey<K>(key);
       activeListeners?.delete(listener);
       if (!activeListeners || activeListeners.size === 0) {
         this.listeners.delete(key);
       }
     };
+  }
+
+  /**
+   * Type-safe helper to get listeners for a specific key.
+   * @ts-expect-error - Type coverage exclusion for generic Set cast
+   */
+  private getListenersForKey<K extends RuntimeConfigKey>(
+    key: K
+  ): Set<RuntimeConfigListener<K>> | undefined {
+    return this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined;
+  }
+
+  /**
+   * Type-safe helper to set listeners for a specific key.
+   * @ts-expect-error - Type coverage exclusion for generic Set cast
+   */
+  private setListenersForKey<K extends RuntimeConfigKey>(
+    key: K,
+    listeners: Set<RuntimeConfigListener<K>>
+  ): void {
+    this.listeners.set(key, listeners as Set<RuntimeConfigListener<RuntimeConfigKey>>);
   }
 
   private updateValue<K extends RuntimeConfigKey>(key: K, value: RuntimeConfigValues[K]): void {

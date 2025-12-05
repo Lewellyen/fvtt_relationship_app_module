@@ -2,7 +2,8 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
 import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core.tokens";
-import { castModuleSettingsRegistrar } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
+import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
 
 /**
  * Orchestrator for registering module settings during bootstrap.
@@ -27,7 +28,9 @@ export class SettingsBootstrapper {
     }
 
     // Container parameter removed - all dependencies injected via constructor
-    const settingsRegistrar = castModuleSettingsRegistrar(settingsRegistrarResult.value);
+    const settingsRegistrar = castResolvedService<ModuleSettingsRegistrar>(
+      settingsRegistrarResult.value
+    );
     settingsRegistrar.registerAll();
     return ok(undefined);
   }

@@ -1,13 +1,16 @@
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { Result } from "@/domain/types/result";
-import { assertCacheKey } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
-
-const KEY_SEPARATOR = ":";
+import { assertCacheKey, type CacheKey } from "@/infrastructure/di/types/utilities/type-casts";
 
 /**
- * Normalized cache key used by CacheService.
+ * CacheKey Brand-Type - re-exportiert von type-casts für Konsistenz.
+ *
+ * Inline-Definition in type-casts.ts verhindert zirkuläre Dependency!
+ * Diese Datei importiert und re-exportiert, damit bestehender Code weiterhin funktioniert.
  */
-export type CacheKey = string & { readonly __cacheKeyBrand: unique symbol };
+export type { CacheKey } from "@/infrastructure/di/types/utilities/type-casts";
+
+const KEY_SEPARATOR = ":";
 
 /**
  * Parts required to build a cache key.

@@ -11,7 +11,7 @@ import type {
 } from "./cache.interface";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
-import { castCacheValue } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { castCacheValue } from "@/infrastructure/di/types/utilities/type-casts";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
 import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
 import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";

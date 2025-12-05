@@ -1,10 +1,13 @@
 /**
  * Internationalization (i18n) tokens for translation services and handlers.
+ *
+ * WICHTIG: I18nFacadeService Type-Import entfernt, um Zyklus zu vermeiden!
+ * Token-Generics werden beim resolve() aufgelöst.
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { FoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import type { LocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandler.interface";
 
 /**
@@ -45,6 +48,9 @@ export const localI18nToken = createInjectionToken<LocalI18nService>("LocalI18nS
  * Combines Foundry's i18n and local translations with intelligent fallback.
  * This is the recommended token to use for all internationalization needs.
  *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ * Dies verhindert Zyklus: i18n.tokens ↔ I18nFacadeService
+ *
  * @example
  * ```typescript
  * const i18n = container.resolve(i18nFacadeToken);
@@ -52,7 +58,7 @@ export const localI18nToken = createInjectionToken<LocalI18nService>("LocalI18nS
  * console.log(text);
  * ```
  */
-export const i18nFacadeToken = createInjectionToken<I18nFacadeService>("I18nFacadeService");
+export const i18nFacadeToken = createInjectionToken<any>("I18nFacadeService");
 
 /**
  * Injection token for the FoundryTranslationHandler.

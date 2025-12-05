@@ -80,6 +80,11 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore-next-line', 'ts-ignore'],
     reason: 'Nominal Branding: Return-Type-Assertion für Compile-Time-Brand-Marker (Type-Cast für Brand-Assertion)',
   },
+  {
+    file: 'src/infrastructure/di/types/utilities/api-casts.ts',
+    allowed: ['eslint-disable'],
+    reason: 'API Cast Utilities: any ist notwendig für API-Wrapper-Funktionen, um zirkuläre Dependencies zu vermeiden (API-spezifische Type-Casts)',
+  },
 
   // Runtime-Casts (bereits global in type-coverage.json ausgenommen)
   {
@@ -137,6 +142,48 @@ const ALLOWED_WITH_MARKERS = [
     file: 'src/framework/core/api/module-api-initializer.ts',
     allowed: ['eslint-disable-next-line'],
     reason: 'Type-Imports: MetricsCollector und ModuleHealthService werden für explizite Type-Annotations verwendet (const metricsCollector: MetricsCollector), auch wenn sie nicht direkt im Code referenziert werden.',
+  },
+
+  // DI Token Files: eslint-disable für @typescript-eslint/no-explicit-any
+  {
+    file: 'src/application/tokens/application.tokens.ts',
+    allowed: ['eslint-disable'],
+    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
+  },
+  {
+    file: 'src/application/tokens/domain-ports.tokens.ts',
+    allowed: ['eslint-disable'],
+    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
+  },
+  {
+    file: 'src/infrastructure/shared/tokens/core.tokens.ts',
+    allowed: ['eslint-disable'],
+    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
+  },
+  {
+    file: 'src/infrastructure/shared/tokens/event.tokens.ts',
+    allowed: ['eslint-disable'],
+    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
+  },
+  {
+    file: 'src/infrastructure/shared/tokens/foundry.tokens.ts',
+    allowed: ['eslint-disable'],
+    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
+  },
+  {
+    file: 'src/infrastructure/shared/tokens/i18n.tokens.ts',
+    allowed: ['eslint-disable'],
+    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
+  },
+  {
+    file: 'src/infrastructure/shared/tokens/infrastructure.tokens.ts',
+    allowed: ['eslint-disable'],
+    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
+  },
+  {
+    file: 'src/infrastructure/shared/tokens/observability.tokens.ts',
+    allowed: ['eslint-disable'],
+    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
   },
 
 ];

@@ -1,119 +1,25 @@
 /**
- * Centralized helpers for a handful of runtime casts that are required by
- * the DI / cache / API infrastructure.
+ * Runtime-safe cast utilities für DI container internals.
  *
- * Diese Datei ist absichtlich von der Type-Coverage ausgenommen, damit
- * wir an wenigen wohldokumentierten Stellen mit Runtime-Casts arbeiten
- * können, ohne den 100%-Anspruch für den restlichen Code zu verletzen.
+ * NUR Container-interne Operationen!
+ * Für Bootstrap: siehe bootstrap-casts.ts
+ * Für API: siehe api-casts.ts
+ * Für Generics: siehe type-casts.ts
  *
- * Diese Datei ist getrennt von `runtime-casts.ts` (Foundry-spezifische Casts),
- * da sie für die DI-Infrastruktur verwendet wird und ContainerError statt
- * FoundryError verwendet. Die Trennung ermöglicht klare Abhängigkeiten
- * und verhindert Import-Zyklen.
+ * Diese Datei enthält KEINE spezifischen Service-Imports mehr!
+ * Alle Service-spezifischen Casts wurden in separate Dateien ausgelagert.
  *
  * @ts-expect-error - Type coverage exclusion: This file intentionally uses type assertions
  * for runtime-safe casts that are necessary for the DI infrastructure.
  */
 
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
-import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
-import type {
-  RuntimeConfigKey,
-  RuntimeConfigValues,
-} from "@/application/services/RuntimeConfigService";
 import type { InjectionToken } from "../core/injectiontoken";
 import type { ServiceRegistration } from "../core/serviceregistration";
 import type { Result } from "@/domain/types/result";
 import type { FoundryHookCallback } from "@/infrastructure/adapters/foundry/types";
-import type { ContainerError } from "../../interfaces";
-import { ok, err } from "@/domain/utils/result";
-import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
-import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
-import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
-import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
-import type { RegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
-import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
-import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
-import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
-import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
+import type { ContainerError, Container } from "../../interfaces";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
-import type { Container } from "../../interfaces";
-
-/**
- * Listener-Typ aus RuntimeConfigService – hier als Alias erneut definiert,
- * um Import-Zyklen zu vermeiden.
- */
-export type RuntimeConfigListener<K extends RuntimeConfigKey> = (
-  value: RuntimeConfigValues[K]
-) => void;
-
-/**
- * Hebt die Generik der Listener-Set-Instanz auf den gemeinsamen Key-Typ an.
- * Zur Laufzeit sind alle Listener gleichförmig, daher ist dieser Cast
- * rein für den TypeScript-Typchecker relevant.
- */
-export function widenRuntimeConfigListeners<K extends RuntimeConfigKey>(
-  listeners: Set<RuntimeConfigListener<K>>
-): Set<RuntimeConfigListener<RuntimeConfigKey>> {
-  return listeners as Set<RuntimeConfigListener<RuntimeConfigKey>>;
-}
-
-/**
- * Hilfsfunktion für ReadOnly-Wrapper: konvertiert eine Schlüssel-Liste,
- * die als keyof T getypt ist, in ein string-Array für includes().
- */
-export function toStringKeyArray<T extends Record<string, unknown>>(
-  allowed: readonly (keyof T)[]
-): readonly string[] {
-  return allowed as readonly string[];
-}
-
-/**
- * Kapselt den notwendigen Cast vom Cache-Wert (unknown) auf den
- * erwarteten TValue. Die Typsicherheit wird durch die Aufrufer
- * (strukturierte Nutzung von CacheKeys) gewährleistet.
- */
-export function castCacheValue<TValue>(value: unknown): TValue {
-  return value as TValue;
-}
-
-/**
- * Wrapper für I18nFacadeService im Module-API-Kontext.
- * Kapselt die notwendige Umwandlung von unknown → I18nFacadeService
- * und wieder zurück zu generischem T.
- */
-export function wrapI18nService<T>(
-  service: T,
-  create: (i18n: I18nFacadeService) => I18nFacadeService
-): T {
-  const concrete = service as unknown as I18nFacadeService;
-  return create(concrete) as unknown as T;
-}
-
-/**
- * Entspricht wrapI18nService, aber für NotificationCenter.
- */
-export function wrapNotificationCenterService<T>(
-  service: T,
-  create: (center: NotificationService) => NotificationService
-): T {
-  const concrete = service as unknown as NotificationService;
-  return create(concrete) as unknown as T;
-}
-
-/**
- * Entspricht wrapI18nService, aber für FoundrySettings.
- */
-export function wrapFoundrySettingsPort<T>(
-  service: T,
-  create: (settings: FoundrySettings) => FoundrySettings
-): T {
-  const concrete = service as unknown as FoundrySettings;
-  return create(concrete) as unknown as T;
-}
+import { ok, err } from "@/domain/utils/result";
 
 /**
  * Kapselt den notwendigen Cast für gecachte Service-Instanzen.
@@ -207,45 +113,6 @@ export function getRegistrationStatus(result: Result<boolean, ContainerError>): 
 }
 
 /**
- * Safely gets the first element from an array that has been checked for length > 0.
- *
- * This helper encapsulates the non-null assertion for array access after a length check.
- * TypeScript requires this cast because it cannot infer that array[0] is defined
- * even when array.length > 0 has been verified.
- *
- * The caller must ensure that array.length > 0 before calling this function.
- *
- * @param array - Array that has been verified to have length > 0
- * @returns The first element of the array (guaranteed to be defined)
- */
-export function getFirstArrayElement<T>(array: T[]): T {
-  // Type assertion is safe because caller must verify array.length > 0
-  return array[0] as T;
-}
-
-/**
- * Safely checks if a value is an array and returns its first element if it exists.
- *
- * This helper provides type-safe array access with a type guard check.
- * It returns null if the input is not an array or the array is empty.
- *
- * @param value - Unknown value that might be an array
- * @returns The first element of the array if it exists and is of type T, null otherwise
- */
-export function getFirstElementIfArray<T>(
-  value: unknown,
-  typeGuard: (element: unknown) => element is T
-): T | null {
-  if (Array.isArray(value) && value.length > 0) {
-    const firstElement: unknown = value[0] as unknown;
-    if (typeGuard(firstElement)) {
-      return firstElement;
-    }
-  }
-  return null;
-}
-
-/**
  * Casts a callback function to FoundryHookCallback.
  *
  * This is needed because TypeScript cannot infer that a generic callback
@@ -260,181 +127,24 @@ export function castToFoundryHookCallback(callback: unknown): FoundryHookCallbac
 }
 
 /**
- * Type-safe assertion for CacheKey brand.
- *
- * This function encapsulates the brand assertion required for CacheKey.
- * The type safety is guaranteed by the structured usage of CacheKey creation
- * through createCacheKey() and the normalization process.
- *
- * @param value - The normalized string value to assert as CacheKey
- * @returns The value branded as CacheKey
- *
- * @example
- * ```typescript
- * const key = assertCacheKey("namespace:resource:id");
- * ```
- */
-export function assertCacheKey(
-  value: string
-): import("@/infrastructure/cache/cache.interface").CacheKey {
-  return value as import("@/infrastructure/cache/cache.interface").CacheKey;
-}
-
-/**
- * Safely casts an object to Record<string, unknown>.
- *
- * This function encapsulates the cast required when TypeScript cannot
- * narrow an object type to Record<string, unknown> even after runtime validation.
- * The caller must ensure that the value is an object before calling this function.
- *
- * @param value - The object value that has been validated as an object
- * @returns The value as Record<string, unknown>
- */
-export function castToRecord(value: unknown): Record<string, unknown> {
-  return value as Record<string, unknown>;
-}
-
-/**
- * Safely normalizes an object to Record<string, unknown>.
- *
- * This function creates a new Record from an object, ensuring type safety.
- * The caller must ensure that the value is an object before calling this function.
- *
- * @param value - The object value that has been validated as an object
- * @returns A new Record<string, unknown> with the object's properties
- */
-export function normalizeToRecord(value: unknown): Record<string, unknown> {
-  return Object.assign({}, value as Record<string, unknown>);
-}
-
-/**
  * Kapselt den notwendigen Cast für Container-Auflösungen in Bootstrapper-Dateien.
  * Diese Funktionen sind runtime-safe, da der Container die korrekten Typen zurückgibt.
  */
 
 /**
- * Casts a resolved service to ModuleEventRegistrar.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castModuleEventRegistrar(value: unknown): ModuleEventRegistrar {
-  return value as ModuleEventRegistrar;
-}
-
-/**
- * Casts a resolved service to ModuleApiInitializer.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castModuleApiInitializer(value: unknown): ModuleApiInitializer {
-  return value as ModuleApiInitializer;
-}
-
-/**
- * Casts a resolved service to ModuleSettingsRegistrar.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castModuleSettingsRegistrar(value: unknown): ModuleSettingsRegistrar {
-  return value as ModuleSettingsRegistrar;
-}
-
-/**
- * Casts a resolved service to JournalContextMenuLibWrapperService.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castJournalContextMenuLibWrapperService(
-  value: unknown
-): JournalContextMenuLibWrapperService {
-  return value as JournalContextMenuLibWrapperService;
-}
-
-/**
- * Casts a resolved service to RegisterContextMenuUseCase.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castRegisterContextMenuUseCase(value: unknown): RegisterContextMenuUseCase {
-  return value as RegisterContextMenuUseCase;
-}
-
-/**
- * Casts a resolved service to MetricsCollector.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castMetricsCollector(value: unknown): MetricsCollector {
-  return value as MetricsCollector;
-}
-
-/**
- * Casts a resolved service to ModuleHealthService.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castModuleHealthService(value: unknown): ModuleHealthService {
-  return value as ModuleHealthService;
-}
-
-/**
- * Casts a resolved service to NotificationChannel.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castNotificationChannel(value: unknown): NotificationChannel {
-  return value as NotificationChannel;
-}
-
-/**
- * Casts a resolved service to a generic type T.
- * Runtime-safe because the container resolves the correct type based on the token.
- * Used for generic port resolution in PortSelector.
+ * Generic Service Resolution Cast
+ * Nur für interne Container-Operationen!
+ * Für Bootstrap-spezifische Casts: siehe bootstrap-casts.ts
  */
 export function castResolvedService<T>(value: unknown): T {
   return value as T;
 }
 
 /**
- * Casts a DomainContainerError code to ContainerError code.
- * Runtime-safe because both error types use compatible code structures.
+ * Container Error Code Cast
  */
-export function castContainerErrorCode(
-  code: string
-): import("../../interfaces").ContainerError["code"] {
-  return code as import("../../interfaces").ContainerError["code"];
-}
-
-/**
- * Casts a resolved service to Logger.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castLogger(value: unknown): Logger {
-  return value as Logger;
-}
-
-/**
- * Casts a resolved service to FoundrySettings.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castFoundrySettings(value: unknown): FoundrySettings {
-  return value as FoundrySettings;
-}
-
-/**
- * Casts a resolved service to NotificationService.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castNotificationService(value: unknown): NotificationService {
-  return value as NotificationService;
-}
-
-/**
- * Casts a resolved service to BootstrapInitHookService.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castBootstrapInitHookService(value: unknown): BootstrapInitHookService {
-  return value as BootstrapInitHookService;
-}
-
-/**
- * Casts a resolved service to BootstrapReadyHookService.
- * Runtime-safe because the container resolves the correct type based on the token.
- */
-export function castBootstrapReadyHookService(value: unknown): BootstrapReadyHookService {
-  return value as BootstrapReadyHookService;
+export function castContainerErrorCode(code: string): ContainerError["code"] {
+  return code as ContainerError["code"];
 }
 
 /**

@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
-import type { EntityCollectionError } from "@/domain/ports/collections/platform-entity-collection-port.interface";
+import type { EntityCollectionError } from "@/domain/ports/collections/entity-collection-error.interface";
 import type { EntitySearchQuery } from "@/domain/ports/collections/entity-search-query.interface";
 import type { EntityQueryBuilder } from "@/domain/ports/collections/entity-query-builder.interface";
 import type { EntityFilter } from "@/domain/ports/collections/entity-search-query.interface";

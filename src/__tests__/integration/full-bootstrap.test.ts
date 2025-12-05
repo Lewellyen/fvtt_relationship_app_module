@@ -3,10 +3,8 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { CompositionRoot } from "@/framework/core/composition-root";
-import {
-  castLogger,
-  castResolvedService,
-} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry.tokens";
 import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
@@ -62,7 +60,7 @@ describe("Integration: Full Bootstrap", () => {
       const loggerResult = containerResult.value.resolveWithError(loggerToken);
       expect(loggerResult.ok).toBe(true);
       if (loggerResult.ok) {
-        const logger = castLogger(loggerResult.value);
+        const logger = castResolvedService<Logger>(loggerResult.value);
         expect(logger).toBeDefined();
         expect(typeof logger.info).toBe("function");
         expect(typeof logger.error).toBe("function");

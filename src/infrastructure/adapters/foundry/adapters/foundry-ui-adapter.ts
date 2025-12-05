@@ -1,5 +1,6 @@
 import type { Result } from "@/domain/types/result";
-import type { PlatformUIPort, PlatformUIError } from "@/domain/ports/platform-ui-port.interface";
+import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { PlatformUIError } from "@/domain/ports/errors/platform-ui-error.interface";
 import type { FoundryUI } from "../interfaces/FoundryUI";
 import { ok, err } from "@/domain/utils/result";
 import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry.tokens";

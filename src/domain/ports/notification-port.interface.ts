@@ -1,5 +1,5 @@
 import type { Result } from "@/domain/types/result";
-import type { PlatformUIError } from "./platform-ui-port.interface";
+import type { PlatformUIError } from "./errors/platform-ui-error.interface";
 
 /**
  * Platform-agnostic port for user notifications.

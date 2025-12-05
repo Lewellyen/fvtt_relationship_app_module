@@ -10,11 +10,10 @@ import { tryGetFoundryVersion } from "@/infrastructure/adapters/foundry/versioni
 import { BootstrapErrorHandler } from "@/framework/core/bootstrap-error-handler";
 import type { Result } from "@/domain/types/result";
 import type { ServiceContainer } from "@/infrastructure/di/container";
-import {
-  castLogger,
-  castBootstrapInitHookService,
-  castBootstrapReadyHookService,
-} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
+import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
 
 /**
  * Boot-Orchestrierung für das Modul.
@@ -50,7 +49,7 @@ function initializeFoundryModule(): void {
     console.error(`${LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`);
     return;
   }
-  const logger = castLogger(loggerResult.value);
+  const logger = castResolvedService<Logger>(loggerResult.value);
 
   // Resolve bootstrap hook services and register hooks
   // CRITICAL: Use direct Hooks.on() for init/ready hooks to avoid chicken-egg problem.
@@ -67,7 +66,9 @@ function initializeFoundryModule(): void {
     );
     return;
   }
-  const initHookService = castBootstrapInitHookService(initHookServiceResult.value);
+  const initHookService = castResolvedService<BootstrapInitHookService>(
+    initHookServiceResult.value
+  );
   initHookService.register();
 
   const readyHookServiceResult = containerResult.value.resolveWithError(
@@ -79,7 +80,9 @@ function initializeFoundryModule(): void {
     );
     return;
   }
-  const readyHookService = castBootstrapReadyHookService(readyHookServiceResult.value);
+  const readyHookService = castResolvedService<BootstrapReadyHookService>(
+    readyHookServiceResult.value
+  );
   readyHookService.register();
 }
 

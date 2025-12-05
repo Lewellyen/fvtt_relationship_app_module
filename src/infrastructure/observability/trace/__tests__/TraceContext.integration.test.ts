@@ -7,10 +7,7 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { expectResultOk } from "@/test/utils/test-helpers";
 import { LOG_PREFIX } from "@/application/constants/app-constants";
-import {
-  castLogger,
-  castResolvedService,
-} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 describe("TraceContext Integration", () => {
   let container: ServiceContainer;
@@ -31,7 +28,7 @@ describe("TraceContext Integration", () => {
     expectResultOk(loggerResult);
     expectResultOk(traceContextResult);
 
-    logger = castLogger(loggerResult.value);
+    logger = castResolvedService<Logger>(loggerResult.value);
     traceContext = castResolvedService<TraceContext>(traceContextResult.value);
 
     // Spy on console

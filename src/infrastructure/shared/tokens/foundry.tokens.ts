@@ -2,7 +2,11 @@
  * Injection tokens for the Foundry abstraction layer and its versioned ports.
  * These tokens allow services to be resolved via the DI container without
  * directly depending on concrete implementations.
+ *
+ * WICHTIG: JournalContextMenuLibWrapperService Type-Import entfernt, um Zyklus zu vermeiden!
+ * Token-Generics werden beim resolve() aufgelöst.
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
@@ -15,7 +19,6 @@ import type { PortSelector } from "@/infrastructure/adapters/foundry/versioning/
 import type { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
 import type { LibWrapperService } from "@/domain/services/lib-wrapper-service.interface";
-import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
 
 /**
  * Injection token for FoundryGame port.
@@ -250,6 +253,9 @@ export const libWrapperServiceToken: InjectionToken<LibWrapperService> =
  * Handles the registration of the libWrapper wrapper function for the Foundry
  * ContextMenu.render method and manages callbacks that can modify context menu options.
  *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ * Dies verhindert Zyklus: foundry.tokens ↔ JournalContextMenuLibWrapperService
+ *
  * NOTE: This is NOT an event system. The libWrapper is registered once during init,
  * and callbacks are registered separately.
  *
@@ -270,5 +276,5 @@ export const libWrapperServiceToken: InjectionToken<LibWrapperService> =
  * });
  * ```
  */
-export const journalContextMenuLibWrapperServiceToken: InjectionToken<JournalContextMenuLibWrapperService> =
-  createInjectionToken<JournalContextMenuLibWrapperService>("JournalContextMenuLibWrapperService");
+export const journalContextMenuLibWrapperServiceToken: InjectionToken<any> =
+  createInjectionToken<any>("JournalContextMenuLibWrapperService");

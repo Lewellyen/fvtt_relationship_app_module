@@ -1,11 +1,14 @@
 /**
  * Infrastructure service tokens for caching, performance, and retry.
+ *
+ * WICHTIG: ModuleApiInitializer Type-Import entfernt, um letzten Zyklus zu beheben!
+ * Token-Generics werden beim resolve() aufgelöst.
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { CacheService, CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import type { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
-import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 
 /**
  * Injection token for the CacheService configuration.
@@ -56,6 +59,8 @@ export const retryServiceToken = createInjectionToken<RetryService>("RetryServic
  *
  * Initializes and exposes the public module API to external consumers.
  * Manages API-safe tokens and provides health status.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ * Dies behebt den letzten Zyklus: infrastructure.tokens ↔ module-api-initializer ↔ ... ↔ FoundryI18nPort
  */
-export const moduleApiInitializerToken =
-  createInjectionToken<ModuleApiInitializer>("ModuleApiInitializer");
+export const moduleApiInitializerToken = createInjectionToken<any>("ModuleApiInitializer");

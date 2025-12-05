@@ -1,6 +1,10 @@
 /**
  * Observability tokens for metrics, tracing, and port selection monitoring.
+ *
+ * WICHTIG: ObservabilityRegistry Type-Import entfernt, um Zyklus zu vermeiden!
+ * Token-Generics werden beim resolve() aufgelöst.
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsRecorder } from "@/infrastructure/observability/interfaces/metrics-recorder";
@@ -8,7 +12,6 @@ import type { MetricsSampler } from "@/infrastructure/observability/interfaces/m
 import type { MetricsStorage } from "@/infrastructure/observability/metrics-persistence/metrics-storage";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import type { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
-import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 
 /**
  * Injection token for the MetricsCollector service.
@@ -125,6 +128,9 @@ export const portSelectionEventEmitterToken = createInjectionToken<PortSelection
  * Central registry for self-registering observable services.
  * Services register themselves at construction time for automatic observability.
  *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ * Dies verhindert Zyklus: observability.tokens ↔ observability-registry
+ *
  * @example
  * ```typescript
  * class PortSelector {
@@ -134,5 +140,4 @@ export const portSelectionEventEmitterToken = createInjectionToken<PortSelection
  * }
  * ```
  */
-export const observabilityRegistryToken =
-  createInjectionToken<ObservabilityRegistry>("ObservabilityRegistry");
+export const observabilityRegistryToken = createInjectionToken<any>("ObservabilityRegistry");

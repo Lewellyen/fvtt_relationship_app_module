@@ -16,7 +16,8 @@ import type {
   DomainContainerError,
   DomainContainerValidationState,
 } from "@/domain/types/container-types";
-import { castMetricsCollector, castResolvedService } from "./types/utilities/runtime-safe-cast";
+import { castResolvedService } from "./types/utilities/runtime-safe-cast";
+import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { ServiceRegistry } from "./registry/ServiceRegistry";
 import { ContainerValidator } from "./validation/ContainerValidator";
 import { InstanceCache } from "./cache/InstanceCache";
@@ -322,7 +323,7 @@ export class ServiceContainer implements Container, ContainerPort {
   private injectMetricsCollector(): void {
     const metricsResult = this.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
-      const metricsCollector = castMetricsCollector(metricsResult.value);
+      const metricsCollector = castResolvedService<MetricsCollector>(metricsResult.value);
       this.resolver.setMetricsCollector(metricsCollector);
       this.cache.setMetricsCollector(metricsCollector);
     }

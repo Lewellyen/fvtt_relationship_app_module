@@ -1,19 +1,17 @@
 /**
  * Core application tokens for logging, domain services, configuration, and health.
+ *
+ * WICHTIG: Diese Datei importiert KEINE Service-Types mehr!
+ * Token-Generics werden erst beim resolve() aufgelöst.
+ * Dies verhindert zirkuläre Dependencies zwischen Tokens und Services.
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
-import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
-import type { HealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
-import type { ContainerHealthCheck } from "@/application/health/ContainerHealthCheck";
-import type { MetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
 import type { Container } from "@/infrastructure/di/interfaces";
 import type { ContainerPort } from "@/domain/ports/container-port.interface";
-import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
-import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
-import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
 
 /**
  * Injection token for the application logger service.
@@ -73,6 +71,8 @@ export const runtimeConfigToken =
  * Provides module health monitoring and diagnostics.
  * Checks container validation, port selection, and metrics for health assessment.
  *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ *
  * @example
  * ```typescript
  * const healthService = container.resolve(moduleHealthServiceToken);
@@ -80,14 +80,16 @@ export const runtimeConfigToken =
  * console.log(`Module status: ${health.status}`);
  * ```
  */
-export const moduleHealthServiceToken =
-  createInjectionToken<ModuleHealthService>("ModuleHealthService");
+
+export const moduleHealthServiceToken = createInjectionToken<any>("ModuleHealthService");
 
 /**
  * Injection token for the HealthCheckRegistry.
  *
  * Central registry for health checks that can be dynamically registered.
  * Services implement HealthCheck interface and register themselves.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  *
  * @example
  * ```typescript
@@ -96,13 +98,15 @@ export const moduleHealthServiceToken =
  * const results = registry.runAll();
  * ```
  */
-export const healthCheckRegistryToken =
-  createInjectionToken<HealthCheckRegistry>("HealthCheckRegistry");
+
+export const healthCheckRegistryToken = createInjectionToken<any>("HealthCheckRegistry");
 
 /**
  * Injection token for the ContainerHealthCheck.
  *
  * Health check that validates the DI container state.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  *
  * @example
  * ```typescript
@@ -110,13 +114,15 @@ export const healthCheckRegistryToken =
  * const isHealthy = check.check(); // Returns true if container is validated
  * ```
  */
-export const containerHealthCheckToken =
-  createInjectionToken<ContainerHealthCheck>("ContainerHealthCheck");
+
+export const containerHealthCheckToken = createInjectionToken<any>("ContainerHealthCheck");
 
 /**
  * Injection token for the MetricsHealthCheck.
  *
  * Health check that validates metrics and port selection status.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  *
  * @example
  * ```typescript
@@ -124,8 +130,8 @@ export const containerHealthCheckToken =
  * const isHealthy = check.check(); // Returns true if no port failures
  * ```
  */
-export const metricsHealthCheckToken =
-  createInjectionToken<MetricsHealthCheck>("MetricsHealthCheck");
+
+export const metricsHealthCheckToken = createInjectionToken<any>("MetricsHealthCheck");
 
 /**
  * Injection token for accessing the ServiceContainer itself.
@@ -157,14 +163,16 @@ export const containerPortToken = createInjectionToken<ContainerPort>("Container
  * Manages registration of all Foundry module settings.
  * Must be called during or after the 'init' hook.
  *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ *
  * @example
  * ```typescript
  * const settingsRegistrar = container.resolve(moduleSettingsRegistrarToken);
  * settingsRegistrar.registerAll(container);
  * ```
  */
-export const moduleSettingsRegistrarToken =
-  createInjectionToken<ModuleSettingsRegistrar>("ModuleSettingsRegistrar");
+
+export const moduleSettingsRegistrarToken = createInjectionToken<any>("ModuleSettingsRegistrar");
 
 /**
  * Injection token for the BootstrapInitHookService.
@@ -172,15 +180,16 @@ export const moduleSettingsRegistrarToken =
  * Service responsible for registering the Foundry 'init' hook.
  * Uses direct Hooks.on() to avoid chicken-egg problem with version detection.
  *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ *
  * @example
  * ```typescript
  * const initHookService = container.resolve(bootstrapInitHookServiceToken);
  * initHookService.register();
  * ```
  */
-export const bootstrapInitHookServiceToken = createInjectionToken<BootstrapInitHookService>(
-  "BootstrapInitHookService"
-);
+
+export const bootstrapInitHookServiceToken = createInjectionToken<any>("BootstrapInitHookService");
 
 /**
  * Injection token for the BootstrapReadyHookService.
@@ -188,12 +197,15 @@ export const bootstrapInitHookServiceToken = createInjectionToken<BootstrapInitH
  * Service responsible for registering the Foundry 'ready' hook.
  * Uses direct Hooks.on() to avoid chicken-egg problem with version detection.
  *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ *
  * @example
  * ```typescript
  * const readyHookService = container.resolve(bootstrapReadyHookServiceToken);
  * readyHookService.register();
  * ```
  */
-export const bootstrapReadyHookServiceToken = createInjectionToken<BootstrapReadyHookService>(
+
+export const bootstrapReadyHookServiceToken = createInjectionToken<any>(
   "BootstrapReadyHookService"
 );
