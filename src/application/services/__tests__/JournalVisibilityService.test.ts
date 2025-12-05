@@ -6,14 +6,12 @@ import {
 } from "@/application/services/JournalVisibilityService";
 import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
 import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
-import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
-import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
+import type { JournalEntry } from "@/domain/entities/journal-entry";
 import { APP_DEFAULTS, MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { ok, err } from "@/domain/utils/result";
-import { createMockDOM } from "@/test/utils/test-helpers";
 import type { CacheEntryMetadata, CacheKey } from "@/infrastructure/cache/cache.interface";
 import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
 import type { DomainCacheKey } from "@/domain/types/cache/cache-types";
@@ -81,7 +79,6 @@ describe("JournalVisibilityService", () => {
   let mockJournalRepository: JournalRepository;
   let mockNotifications: PlatformNotificationPort;
   let mockCache: PlatformCachePort;
-  let mockJournalDirectoryUI: JournalDirectoryUiPort;
   let mockConfig: JournalVisibilityConfig;
 
   beforeEach(() => {
@@ -113,11 +110,6 @@ describe("JournalVisibilityService", () => {
       getOrSet: vi.fn(),
     } as unknown as PlatformCachePort;
 
-    mockJournalDirectoryUI = {
-      removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
-      rerenderJournalDirectory: vi.fn().mockReturnValue(ok(true)),
-    } as unknown as JournalDirectoryUiPort;
-
     mockConfig = createMockConfig();
 
     service = new JournalVisibilityService(
@@ -125,7 +117,6 @@ describe("JournalVisibilityService", () => {
       mockJournalRepository,
       mockNotifications,
       mockCache,
-      mockJournalDirectoryUI,
       mockConfig
     );
   });
@@ -263,170 +254,6 @@ describe("JournalVisibilityService", () => {
         { channels: ["ConsoleChannel"] }
       );
     });
-  });
-
-  describe("processJournalDirectory", () => {
-    it("should hide hidden entries", () => {
-      const journal: JournalEntry = {
-        id: "journal-1",
-        name: "Hidden Journal",
-      };
-
-      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
-      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
-
-      const { container } = createMockDOM(
-        `<li class="directory-item" data-entry-id="journal-1">Hidden Journal</li>`
-      );
-
-      const result = service.processJournalDirectory(container);
-
-      expect(result.ok).toBe(true);
-      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalledWith(
-        "journal-1",
-        "Hidden Journal",
-        container
-      );
-      expect(mockNotifications.debug).toHaveBeenCalled();
-    });
-
-    it("should handle error when getHiddenJournalEntries fails", () => {
-      vi.mocked(mockJournalCollection.getAll).mockReturnValue(
-        err({
-          code: "COLLECTION_NOT_AVAILABLE",
-          message: "Error getting entries",
-        })
-      );
-
-      const { container } = createMockDOM(`<div>Content</div>`);
-
-      const result = service.processJournalDirectory(container);
-
-      expect(result.ok).toBe(false);
-      expect(mockNotifications.error).toHaveBeenCalledWith(
-        "Error getting hidden journal entries",
-        expect.any(Object),
-        {
-          channels: ["ConsoleChannel"],
-        }
-      );
-      expect(mockJournalDirectoryUI.removeJournalElement).not.toHaveBeenCalled();
-    });
-
-    it("should return error when removeEntryFromDOM fails", () => {
-      const journal: JournalEntry = {
-        id: "journal-1",
-        name: "Hidden Journal",
-      };
-      const error: JournalVisibilityError = {
-        code: "DOM_MANIPULATION_FAILED",
-        entryId: "journal-1",
-        message: "Failed to remove",
-      };
-
-      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
-      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(
-        err({
-          code: "DOM_MANIPULATION_FAILED",
-          message: "Failed to remove",
-          operation: "remove",
-          details: { journalId: "journal-1", journalName: "Hidden Journal" },
-        })
-      );
-
-      const { container } = createMockDOM(`<div>Content</div>`);
-
-      const result = service.processJournalDirectory(container);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error).toEqual(error);
-      }
-      expect(mockNotifications.warn).toHaveBeenCalledWith("Error removing journal entry", error, {
-        channels: ["ConsoleChannel"],
-      });
-    });
-
-    it("should process multiple hidden entries", () => {
-      const journal1: JournalEntry = {
-        id: "journal-1",
-        name: "Hidden 1",
-      };
-      const journal2: JournalEntry = {
-        id: "journal-2",
-        name: "Hidden 2",
-      };
-
-      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal1, journal2]));
-      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
-
-      const { container } = createMockDOM(`
-        <li class="directory-item" data-entry-id="journal-1">Hidden 1</li>
-        <li class="directory-item" data-entry-id="journal-2">Hidden 2</li>
-      `);
-
-      const result = service.processJournalDirectory(container);
-
-      expect(result.ok).toBe(true);
-      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalledTimes(2);
-    });
-
-    it("should use default name when journal name is missing", () => {
-      const journal: JournalEntry = {
-        id: "journal-1",
-        name: null,
-      };
-
-      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
-      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
-
-      const { container } = createMockDOM(
-        `<li class="directory-item" data-entry-id="journal-1"></li>`
-      );
-
-      const result = service.processJournalDirectory(container);
-
-      expect(result.ok).toBe(true);
-      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalledWith(
-        "journal-1",
-        mockConfig.unknownName,
-        container
-      );
-    });
-
-    it("should sanitize XSS attempts in journal names when logging", () => {
-      const xssJournal: JournalEntry = {
-        id: "journal-1",
-        name: '<script>alert("XSS")</script>',
-      };
-
-      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([xssJournal]));
-      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
-
-      const { container } = createMockDOM(
-        `<li class="directory-item" data-entry-id="journal-1"></li>`
-      );
-
-      const result = service.processJournalDirectory(container);
-      expect(result.ok).toBe(true);
-
-      // Verify logger was called with sanitized name
-      expect(mockNotifications.debug).toHaveBeenCalledWith(
-        expect.stringContaining("&lt;script&gt;"),
-        expect.any(Object),
-        expect.objectContaining({ channels: ["ConsoleChannel"] })
-      );
-      expect(mockNotifications.debug).not.toHaveBeenCalledWith(
-        expect.stringContaining("<script>"),
-        expect.anything(),
-        expect.objectContaining({ channels: ["ConsoleChannel"] })
-      );
-    });
 
     it("should sanitize journal names in error logs", () => {
       const xssJournal: JournalEntry = {
@@ -507,18 +334,14 @@ describe("JournalVisibilityService", () => {
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
 
-      const { container } = createMockDOM(
-        `<li class="directory-item" data-entry-id="journal-1"></li>`
-      );
+      const result = service.getHiddenJournalEntries();
 
-      // Should not crash or hang
-      expect(() => {
-        service.processJournalDirectory(container);
-      }).not.toThrow();
-
-      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalled();
+      // Should not crash, should return result
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+      }
     });
 
     it("should handle mixed success/failure when reading flags", () => {

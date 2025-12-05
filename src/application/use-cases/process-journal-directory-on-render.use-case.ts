@@ -2,10 +2,14 @@ import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
+import type { JournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
-import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
+import {
+  journalVisibilityServiceToken,
+  journalDirectoryProcessorToken,
+} from "@/application/tokens/application.tokens";
 import {
   platformJournalEventPortToken,
   platformNotificationPortToken,
@@ -16,11 +20,16 @@ import {
  *
  * Platform-agnostic - works with any PlatformJournalEventPort implementation.
  *
+ * Orchestrates the flow:
+ * 1. JournalVisibilityService retrieves hidden entries (business logic)
+ * 2. JournalDirectoryProcessor processes DOM (UI manipulation)
+ *
  * @example
  * ```typescript
  * const useCase = new ProcessJournalDirectoryOnRenderUseCase(
  *   journalEventPort,
  *   journalVisibilityService,
+ *   directoryProcessor,
  *   notifications
  * );
  *
@@ -34,6 +43,7 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
     private readonly journalVisibility: JournalVisibilityService,
+    private readonly directoryProcessor: JournalDirectoryProcessor,
     private readonly notifications: PlatformNotificationPort
   ) {}
 
@@ -48,10 +58,23 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
         { channels: ["ConsoleChannel"] }
       );
 
-      const processResult = this.journalVisibility.processJournalDirectory(event.htmlElement);
+      // 1. Get hidden entries (business logic)
+      const hiddenResult = this.journalVisibility.getHiddenJournalEntries();
+      if (!hiddenResult.ok) {
+        this.notifications.error("Failed to get hidden entries", hiddenResult.error, {
+          channels: ["ConsoleChannel"],
+        });
+        return;
+      }
+
+      // 2. Process DOM (UI manipulation)
+      const processResult = this.directoryProcessor.processDirectory(
+        event.htmlElement,
+        hiddenResult.value
+      );
 
       if (!processResult.ok) {
-        this.notifications.error("Failed to process journal directory", processResult.error, {
+        this.notifications.error("Failed to process directory", processResult.error, {
           channels: ["ConsoleChannel"],
         });
       }
@@ -83,14 +106,16 @@ export class DIProcessJournalDirectoryOnRenderUseCase extends ProcessJournalDire
   static dependencies = [
     platformJournalEventPortToken,
     journalVisibilityServiceToken,
+    journalDirectoryProcessorToken,
     platformNotificationPortToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
     journalVisibility: JournalVisibilityService,
+    directoryProcessor: JournalDirectoryProcessor,
     notifications: PlatformNotificationPort
   ) {
-    super(journalEvents, journalVisibility, notifications);
+    super(journalEvents, journalVisibility, directoryProcessor, notifications);
   }
 }

@@ -57,7 +57,7 @@ describe("Integration: Hook Registration + Execution", () => {
       expect.any(Function)
     );
 
-    // 6. Service-Methode spyen (JournalVisibilityService)
+    // 6. Services spyen (JournalVisibilityService + JournalDirectoryProcessor)
     // Container über Module API holen (nach init Hook)
     const mod = (global as any).game.modules.get(MODULE_METADATA.ID);
     expect(mod).toBeDefined();
@@ -65,8 +65,11 @@ describe("Integration: Hook Registration + Execution", () => {
 
     // journalVisibilityServiceToken ist API-safe
     const journalService = mod.api.resolve(mod.api.tokens.journalVisibilityServiceToken);
+    const getHiddenJournalEntriesSpy = vi.spyOn(journalService, "getHiddenJournalEntries");
 
-    const processJournalDirectorySpy = vi.spyOn(journalService, "processJournalDirectory");
+    // journalDirectoryProcessorToken ist API-safe
+    const directoryProcessor = mod.api.resolve(mod.api.tokens.journalDirectoryProcessorToken);
+    const processDirectorySpy = vi.spyOn(directoryProcessor, "processDirectory");
 
     // 7. Hook-Callback extrahieren
     const renderCall = hooksOnMock.mock.calls.find(
@@ -85,7 +88,11 @@ describe("Integration: Hook Registration + Execution", () => {
     const mockHtml = document.createElement("div");
     renderCallback!(mockApp, mockHtml);
 
-    // 9. Prüfen ob Service-Methode aufgerufen wurde
-    expect(processJournalDirectorySpy).toHaveBeenCalledWith(mockHtml);
+    // 9. Prüfen ob Service-Methoden aufgerufen wurden
+    expect(getHiddenJournalEntriesSpy).toHaveBeenCalled();
+    expect(processDirectorySpy).toHaveBeenCalledWith(
+      mockHtml,
+      expect.any(Array) // hidden entries array
+    );
   });
 });

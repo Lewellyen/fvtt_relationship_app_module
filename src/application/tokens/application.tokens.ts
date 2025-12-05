@@ -50,3 +50,15 @@ export const hideJournalContextMenuHandlerToken = createInjectionToken<any>(
 export const journalContextMenuHandlersToken = createInjectionToken<any>(
   "JournalContextMenuHandlers"
 );
+
+/**
+ * Injection token for the JournalDirectoryProcessor.
+ *
+ * Processes journal directory DOM to hide flagged entries.
+ * Handles DOM manipulation and UI coordination.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const journalDirectoryProcessorToken = createInjectionToken<any>(
+  "JournalDirectoryProcessor"
+);

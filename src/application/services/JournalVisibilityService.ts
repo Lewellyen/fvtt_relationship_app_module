@@ -5,16 +5,13 @@ import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
-import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
 import type { JournalVisibilityConfig } from "./JournalVisibilityConfig";
-import { getFirstArrayElement } from "@/application/utils/array-utils";
 import { journalVisibilityConfigToken } from "@/application/tokens/application.tokens";
 import {
   journalCollectionPortToken,
   journalRepositoryToken,
   platformCachePortToken,
   platformNotificationPortToken,
-  journalDirectoryUiPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { sanitizeHtml } from "@/application/utils/sanitize-utils";
 
@@ -22,14 +19,17 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 
 /**
  * Service for managing journal entry visibility based on module flags.
- * Handles business logic for hiding/showing journal entries in the UI.
+ * Handles business logic for hiding/showing journal entries.
+ *
+ * **Responsibilities:**
+ * - Business logic for journal visibility (flag checking, caching)
+ * - Does NOT handle DOM manipulation (delegated to JournalDirectoryProcessor)
  *
  * **Dependencies:**
  * - JournalCollectionPort: Platform-agnostic port for journal collection queries
  * - JournalRepository: Platform-agnostic port for journal CRUD and flag operations
  * - PlatformNotificationPort: Platform-agnostic port for logging and notifications
  * - PlatformCachePort: Platform-agnostic port for caching hidden entries
- * - PlatformUIPort: Platform-agnostic port for UI operations
  *
  * **DIP-Compliance:**
  * - Depends on domain-neutral ports, not Foundry-specific types
@@ -41,22 +41,8 @@ export class JournalVisibilityService {
     private readonly journalRepository: JournalRepository,
     private readonly notifications: PlatformNotificationPort,
     private readonly cache: PlatformCachePort,
-    private readonly journalDirectoryUI: JournalDirectoryUiPort,
     private readonly config: JournalVisibilityConfig
   ) {}
-
-  /**
-   * Sanitizes a string for safe use in log messages.
-   * Escapes HTML entities to prevent log injection or display issues.
-   *
-   * Delegates to sanitizeHtml for robust DOM-based sanitization.
-   *
-   * @param input - The string to sanitize
-   * @returns HTML-safe string
-   */
-  private sanitizeForLog(input: string): string {
-    return sanitizeHtml(input);
-  }
 
   /**
    * Gets journal entries marked as hidden via module flag.
@@ -105,7 +91,7 @@ export class JournalVisibilityService {
         // Log flag read errors for diagnosis without interrupting processing
         const journalIdentifier = journal.name ?? journal.id;
         this.notifications.warn(
-          `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
+          `Failed to read hidden flag for journal "${sanitizeHtml(journalIdentifier)}"`,
           {
             errorCode: flagResult.error.code,
             errorMessage: flagResult.error.message,
@@ -123,86 +109,6 @@ export class JournalVisibilityService {
 
     return { ok: true, value: hidden };
   }
-
-  /**
-   * Processes journal directory HTML to hide flagged entries.
-   * @returns Result indicating success or failure with aggregated errors
-   */
-  processJournalDirectory(htmlElement: HTMLElement): Result<void, JournalVisibilityError> {
-    this.notifications.debug(
-      "Processing journal directory for hidden entries",
-      { context: { htmlElement } },
-      {
-        channels: ["ConsoleChannel"],
-      }
-    );
-
-    const hiddenResult = this.getHiddenJournalEntries();
-    if (!hiddenResult.ok) {
-      // Log error but return it for caller to handle
-      this.notifications.error("Error getting hidden journal entries", hiddenResult.error, {
-        channels: ["ConsoleChannel"],
-      });
-      return hiddenResult;
-    }
-
-    const hidden = hiddenResult.value;
-    this.notifications.debug(
-      `Found ${hidden.length} hidden journal entries`,
-      { context: { hidden } },
-      {
-        channels: ["ConsoleChannel"],
-      }
-    );
-
-    return this.hideEntries(hidden, htmlElement);
-  }
-
-  private hideEntries(
-    entries: JournalEntry[],
-    html: HTMLElement
-  ): Result<void, JournalVisibilityError> {
-    const errors: JournalVisibilityError[] = [];
-
-    for (const journal of entries) {
-      const journalName = journal.name ?? this.config.unknownName;
-      const removeResult = this.journalDirectoryUI.removeJournalElement(
-        journal.id,
-        journalName,
-        html
-      );
-
-      // Map PlatformUIError to JournalVisibilityError
-      if (!removeResult.ok) {
-        const journalError: JournalVisibilityError = {
-          code: "DOM_MANIPULATION_FAILED",
-          entryId: journal.id,
-          message: removeResult.error.message,
-        };
-        errors.push(journalError);
-        this.notifications.warn("Error removing journal entry", journalError, {
-          channels: ["ConsoleChannel"],
-        });
-      } else {
-        this.notifications.debug(
-          `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
-          { context: { journal } },
-          { channels: ["ConsoleChannel"] }
-        );
-      }
-    }
-
-    // If any errors occurred, return the first one
-    // In future, could aggregate multiple errors into a single error
-    if (errors.length > 0) {
-      // errors[0] is always defined when errors.length > 0
-      // Use helper from runtime-safe-cast to maintain type coverage
-      const firstError = getFirstArrayElement(errors);
-      return { ok: false, error: firstError };
-    }
-
-    return { ok: true, value: undefined };
-  }
 }
 
 export class DIJournalVisibilityService extends JournalVisibilityService {
@@ -211,7 +117,6 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
     journalRepositoryToken,
     platformNotificationPortToken,
     platformCachePortToken,
-    journalDirectoryUiPortToken,
     journalVisibilityConfigToken,
   ] as const;
 
@@ -220,9 +125,8 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
     journalRepository: JournalRepository,
     notifications: PlatformNotificationPort,
     cache: PlatformCachePort,
-    journalDirectoryUI: JournalDirectoryUiPort,
     config: JournalVisibilityConfig
   ) {
-    super(journalCollection, journalRepository, notifications, cache, journalDirectoryUI, config);
+    super(journalCollection, journalRepository, notifications, cache, config);
   }
 }

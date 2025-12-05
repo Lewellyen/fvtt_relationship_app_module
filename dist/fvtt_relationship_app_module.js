@@ -8752,6 +8752,9 @@ const hideJournalContextMenuHandlerToken = createInjectionToken(
 const journalContextMenuHandlersToken = createInjectionToken(
   "JournalContextMenuHandlers"
 );
+const journalDirectoryProcessorToken = createInjectionToken(
+  "JournalDirectoryProcessor"
+);
 const foundryI18nToken = createInjectionToken("FoundryI18nPort");
 const localI18nToken = createInjectionToken("LocalI18nService");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
@@ -8789,6 +8792,7 @@ function createApiTokens() {
   return {
     notificationCenterToken: markAsApiSafe(notificationCenterToken),
     journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
+    journalDirectoryProcessorToken: markAsApiSafe(journalDirectoryProcessorToken),
     foundryGameToken: markAsApiSafe(foundryGameToken),
     foundryHooksToken: markAsApiSafe(foundryHooksToken),
     foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
@@ -8917,6 +8921,7 @@ Reason: ${deprecationInfo.reason}
         const tokenMap = /* @__PURE__ */ new Map();
         const tokenEntries = [
           ["journalVisibilityServiceToken", journalVisibilityServiceToken],
+          ["journalDirectoryProcessorToken", journalDirectoryProcessorToken],
           ["foundryGameToken", foundryGameToken],
           ["foundryHooksToken", foundryHooksToken],
           ["foundryDocumentToken", foundryDocumentToken],
@@ -11705,21 +11710,6 @@ const _DIFoundryJournalFacade = class _DIFoundryJournalFacade extends FoundryJou
 __name(_DIFoundryJournalFacade, "DIFoundryJournalFacade");
 _DIFoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
 let DIFoundryJournalFacade = _DIFoundryJournalFacade;
-function isNonEmptyArray(array2) {
-  return array2.length > 0;
-}
-__name(isNonEmptyArray, "isNonEmptyArray");
-function getFirstArrayElement$1(array2) {
-  if (!isNonEmptyArray(array2)) {
-    throw new Error("Array must have length > 0 (caller violated precondition)");
-  }
-  return array2[0];
-}
-__name(getFirstArrayElement$1, "getFirstArrayElement$1");
-function getFirstArrayElementSafe(array2) {
-  return isNonEmptyArray(array2) ? array2[0] : null;
-}
-__name(getFirstArrayElementSafe, "getFirstArrayElementSafe");
 function sanitizeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
@@ -11728,25 +11718,12 @@ function sanitizeHtml(text) {
 __name(sanitizeHtml, "sanitizeHtml");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notifications, cache, journalDirectoryUI, config2) {
+  constructor(journalCollection, journalRepository, notifications, cache, config2) {
     this.journalCollection = journalCollection;
     this.journalRepository = journalRepository;
     this.notifications = notifications;
     this.cache = cache;
-    this.journalDirectoryUI = journalDirectoryUI;
     this.config = config2;
-  }
-  /**
-   * Sanitizes a string for safe use in log messages.
-   * Escapes HTML entities to prevent log injection or display issues.
-   *
-   * Delegates to sanitizeHtml for robust DOM-based sanitization.
-   *
-   * @param input - The string to sanitize
-   * @returns HTML-safe string
-   */
-  sanitizeForLog(input) {
-    return sanitizeHtml(input);
   }
   /**
    * Gets journal entries marked as hidden via module flag.
@@ -11787,7 +11764,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
       } else {
         const journalIdentifier = journal.name ?? journal.id;
         this.notifications.warn(
-          `Failed to read hidden flag for journal "${this.sanitizeForLog(journalIdentifier)}"`,
+          `Failed to read hidden flag for journal "${sanitizeHtml(journalIdentifier)}"`,
           {
             errorCode: flagResult.error.code,
             errorMessage: flagResult.error.message
@@ -11801,35 +11778,83 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     });
     return { ok: true, value: hidden };
   }
+};
+__name(_JournalVisibilityService, "JournalVisibilityService");
+let JournalVisibilityService = _JournalVisibilityService;
+const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
+  constructor(journalCollection, journalRepository, notifications, cache, config2) {
+    super(journalCollection, journalRepository, notifications, cache, config2);
+  }
+};
+__name(_DIJournalVisibilityService, "DIJournalVisibilityService");
+_DIJournalVisibilityService.dependencies = [
+  journalCollectionPortToken,
+  journalRepositoryToken,
+  platformNotificationPortToken,
+  platformCachePortToken,
+  journalVisibilityConfigToken
+];
+let DIJournalVisibilityService = _DIJournalVisibilityService;
+function isNonEmptyArray(array2) {
+  return array2.length > 0;
+}
+__name(isNonEmptyArray, "isNonEmptyArray");
+function getFirstArrayElement$1(array2) {
+  if (!isNonEmptyArray(array2)) {
+    throw new Error("Array must have length > 0 (caller violated precondition)");
+  }
+  return array2[0];
+}
+__name(getFirstArrayElement$1, "getFirstArrayElement$1");
+function getFirstArrayElementSafe(array2) {
+  return isNonEmptyArray(array2) ? array2[0] : null;
+}
+__name(getFirstArrayElementSafe, "getFirstArrayElementSafe");
+const _JournalDirectoryProcessor = class _JournalDirectoryProcessor {
+  constructor(journalDirectoryUI, notifications, config2) {
+    this.journalDirectoryUI = journalDirectoryUI;
+    this.notifications = notifications;
+    this.config = config2;
+  }
   /**
    * Processes journal directory HTML to hide flagged entries.
+   * @param htmlElement - The HTML element containing the journal directory
+   * @param hiddenEntries - Array of journal entries that should be hidden
    * @returns Result indicating success or failure with aggregated errors
    */
-  processJournalDirectory(htmlElement) {
+  processDirectory(htmlElement, hiddenEntries) {
     this.notifications.debug(
       "Processing journal directory for hidden entries",
-      { context: { htmlElement } },
+      { context: { htmlElement, hiddenCount: hiddenEntries.length } },
       {
         channels: ["ConsoleChannel"]
       }
     );
-    const hiddenResult = this.getHiddenJournalEntries();
-    if (!hiddenResult.ok) {
-      this.notifications.error("Error getting hidden journal entries", hiddenResult.error, {
-        channels: ["ConsoleChannel"]
-      });
-      return hiddenResult;
+    if (hiddenEntries.length === 0) {
+      this.notifications.debug(
+        "No hidden entries to process",
+        { context: {} },
+        {
+          channels: ["ConsoleChannel"]
+        }
+      );
+      return { ok: true, value: void 0 };
     }
-    const hidden = hiddenResult.value;
     this.notifications.debug(
-      `Found ${hidden.length} hidden journal entries`,
-      { context: { hidden } },
+      `Found ${hiddenEntries.length} hidden journal entries`,
+      { context: { hidden: hiddenEntries } },
       {
         channels: ["ConsoleChannel"]
       }
     );
-    return this.hideEntries(hidden, htmlElement);
+    return this.hideEntries(hiddenEntries, htmlElement);
   }
+  /**
+   * Hides multiple journal entries in the DOM.
+   * @param entries - Array of journal entries to hide
+   * @param html - The HTML element containing the journal directory
+   * @returns Result indicating success or failure with aggregated errors
+   */
   hideEntries(entries2, html) {
     const errors = [];
     for (const journal of entries2) {
@@ -11851,7 +11876,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         });
       } else {
         this.notifications.debug(
-          `Removing journal entry: ${this.sanitizeForLog(journalName)}`,
+          `Removing journal entry: ${sanitizeHtml(journalName)}`,
           { context: { journal } },
           { channels: ["ConsoleChannel"] }
         );
@@ -11864,23 +11889,20 @@ const _JournalVisibilityService = class _JournalVisibilityService {
     return { ok: true, value: void 0 };
   }
 };
-__name(_JournalVisibilityService, "JournalVisibilityService");
-let JournalVisibilityService = _JournalVisibilityService;
-const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notifications, cache, journalDirectoryUI, config2) {
-    super(journalCollection, journalRepository, notifications, cache, journalDirectoryUI, config2);
+__name(_JournalDirectoryProcessor, "JournalDirectoryProcessor");
+let JournalDirectoryProcessor = _JournalDirectoryProcessor;
+const _DIJournalDirectoryProcessor = class _DIJournalDirectoryProcessor extends JournalDirectoryProcessor {
+  constructor(journalDirectoryUI, notifications, config2) {
+    super(journalDirectoryUI, notifications, config2);
   }
 };
-__name(_DIJournalVisibilityService, "DIJournalVisibilityService");
-_DIJournalVisibilityService.dependencies = [
-  journalCollectionPortToken,
-  journalRepositoryToken,
-  platformNotificationPortToken,
-  platformCachePortToken,
+__name(_DIJournalDirectoryProcessor, "DIJournalDirectoryProcessor");
+_DIJournalDirectoryProcessor.dependencies = [
   journalDirectoryUiPortToken,
+  platformNotificationPortToken,
   journalVisibilityConfigToken
 ];
-let DIJournalVisibilityService = _DIJournalVisibilityService;
+let DIJournalDirectoryProcessor = _DIJournalDirectoryProcessor;
 const _FoundryLibWrapperService = class _FoundryLibWrapperService {
   constructor(moduleId, logger) {
     this.moduleId = moduleId;
@@ -12287,6 +12309,16 @@ function registerFoundryServices(container) {
   if (isErr(journalVisibilityResult)) {
     return err(
       `Failed to register JournalVisibility service: ${journalVisibilityResult.error.message}`
+    );
+  }
+  const journalDirectoryProcessorResult = container.registerClass(
+    journalDirectoryProcessorToken,
+    DIJournalDirectoryProcessor,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(journalDirectoryProcessorResult)) {
+    return err(
+      `Failed to register JournalDirectoryProcessor: ${journalDirectoryProcessorResult.error.message}`
     );
   }
   const libWrapperServiceResult = container.registerClass(
@@ -14653,9 +14685,10 @@ _DIInvalidateJournalCacheOnChangeUseCase.dependencies = [
 ];
 let DIInvalidateJournalCacheOnChangeUseCase = _DIInvalidateJournalCacheOnChangeUseCase;
 const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOnRenderUseCase {
-  constructor(journalEvents, journalVisibility, notifications) {
+  constructor(journalEvents, journalVisibility, directoryProcessor, notifications) {
     this.journalEvents = journalEvents;
     this.journalVisibility = journalVisibility;
+    this.directoryProcessor = directoryProcessor;
     this.notifications = notifications;
   }
   /**
@@ -14668,9 +14701,19 @@ const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOn
         { timestamp: event.timestamp },
         { channels: ["ConsoleChannel"] }
       );
-      const processResult = this.journalVisibility.processJournalDirectory(event.htmlElement);
+      const hiddenResult = this.journalVisibility.getHiddenJournalEntries();
+      if (!hiddenResult.ok) {
+        this.notifications.error("Failed to get hidden entries", hiddenResult.error, {
+          channels: ["ConsoleChannel"]
+        });
+        return;
+      }
+      const processResult = this.directoryProcessor.processDirectory(
+        event.htmlElement,
+        hiddenResult.value
+      );
       if (!processResult.ok) {
-        this.notifications.error("Failed to process journal directory", processResult.error, {
+        this.notifications.error("Failed to process directory", processResult.error, {
           channels: ["ConsoleChannel"]
         });
       }
@@ -14695,14 +14738,15 @@ const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOn
 __name(_ProcessJournalDirectoryOnRenderUseCase, "ProcessJournalDirectoryOnRenderUseCase");
 let ProcessJournalDirectoryOnRenderUseCase = _ProcessJournalDirectoryOnRenderUseCase;
 const _DIProcessJournalDirectoryOnRenderUseCase = class _DIProcessJournalDirectoryOnRenderUseCase extends ProcessJournalDirectoryOnRenderUseCase {
-  constructor(journalEvents, journalVisibility, notifications) {
-    super(journalEvents, journalVisibility, notifications);
+  constructor(journalEvents, journalVisibility, directoryProcessor, notifications) {
+    super(journalEvents, journalVisibility, directoryProcessor, notifications);
   }
 };
 __name(_DIProcessJournalDirectoryOnRenderUseCase, "DIProcessJournalDirectoryOnRenderUseCase");
 _DIProcessJournalDirectoryOnRenderUseCase.dependencies = [
   platformJournalEventPortToken,
   journalVisibilityServiceToken,
+  journalDirectoryProcessorToken,
   platformNotificationPortToken
 ];
 let DIProcessJournalDirectoryOnRenderUseCase = _DIProcessJournalDirectoryOnRenderUseCase;

@@ -30,7 +30,10 @@ import type { ModuleHealthService } from "@/application/services/ModuleHealthSer
 import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications.tokens";
 import { moduleHealthServiceToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n.tokens";
-import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
+import {
+  journalVisibilityServiceToken,
+  journalDirectoryProcessorToken,
+} from "@/application/tokens/application.tokens";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
 import {
   foundryGameToken,
@@ -201,6 +204,7 @@ export class ModuleApiInitializer {
         // Add well-known tokens with their registration status
         const tokenEntries: Array<[string, InjectionToken<unknown>]> = [
           ["journalVisibilityServiceToken", journalVisibilityServiceToken],
+          ["journalDirectoryProcessorToken", journalDirectoryProcessorToken],
           ["foundryGameToken", foundryGameToken],
           ["foundryHooksToken", foundryHooksToken],
           ["foundryDocumentToken", foundryDocumentToken],

@@ -11,7 +11,10 @@ import {
   foundryJournalFacadeToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
 import { settingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
-import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
+import {
+  journalVisibilityServiceToken,
+  journalDirectoryProcessorToken,
+} from "@/application/tokens/application.tokens";
 import { DIFoundryGamePort } from "@/infrastructure/adapters/foundry/services/FoundryGamePort";
 import { DIFoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 import { DIFoundryDocumentPort } from "@/infrastructure/adapters/foundry/services/FoundryDocumentPort";
@@ -19,6 +22,7 @@ import { DIFoundryUIPort } from "@/infrastructure/adapters/foundry/services/Foun
 import { DIFoundrySettingsPort } from "@/infrastructure/adapters/foundry/services/FoundrySettingsPort";
 import { DIFoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade";
 import { DIJournalVisibilityService } from "@/application/services/JournalVisibilityService";
+import { DIJournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
 import { DIFoundryLibWrapperService } from "@/infrastructure/adapters/foundry/services/FoundryLibWrapperService";
 import { DIJournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
 import { DIFoundrySettingsRegistrationAdapter } from "@/infrastructure/adapters/foundry/settings-adapters/foundry-settings-registration-adapter";
@@ -39,6 +43,7 @@ import { contextMenuRegistrationPortToken } from "@/application/tokens/domain-po
  * - FoundrySettingsPort (singleton)
  * - FoundryJournalFacade (singleton)
  * - JournalVisibilityService (singleton)
+ * - JournalDirectoryProcessor (singleton) - Processes journal directory DOM
  * - FoundryLibWrapperService (singleton) - Facade for libWrapper
  * - JournalContextMenuLibWrapperService (singleton) - Manages libWrapper for journal context menu
  *
@@ -136,6 +141,19 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   if (isErr(journalVisibilityResult)) {
     return err(
       `Failed to register JournalVisibility service: ${journalVisibilityResult.error.message}`
+    );
+  }
+
+  // Register JournalDirectoryProcessor
+  // Processes journal directory DOM to hide flagged entries
+  const journalDirectoryProcessorResult = container.registerClass(
+    journalDirectoryProcessorToken,
+    DIJournalDirectoryProcessor,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(journalDirectoryProcessorResult)) {
+    return err(
+      `Failed to register JournalDirectoryProcessor: ${journalDirectoryProcessorResult.error.message}`
     );
   }
 

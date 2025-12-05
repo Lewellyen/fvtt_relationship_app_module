@@ -1,6 +1,7 @@
 import type { ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
 import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
+import type { JournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
@@ -52,6 +53,7 @@ export interface DeprecationInfo {
 export interface ModuleApiTokens {
   notificationCenterToken: ApiSafeToken<NotificationService>;
   journalVisibilityServiceToken: ApiSafeToken<JournalVisibilityService>;
+  journalDirectoryProcessorToken: ApiSafeToken<JournalDirectoryProcessor>;
   foundryGameToken: ApiSafeToken<FoundryGame>;
   foundryHooksToken: ApiSafeToken<FoundryHooks>;
   foundryDocumentToken: ApiSafeToken<FoundryDocument>;

@@ -1,6 +1,6 @@
 # SRP Refactoring Plan: JournalVisibilityService
 
-**Status:** 📋 Geplant
+**Status:** ✅ Abgeschlossen
 **Priorität:** 🔴 Hoch
 **Erstellt:** 2025-01-XX
 **Zweck:** Trennung der Verantwortlichkeiten in JournalVisibilityService

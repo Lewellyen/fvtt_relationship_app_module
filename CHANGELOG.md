@@ -3,14 +3,6 @@
 ## [Unreleased]
 
 ### Hinzugefügt
-- **SRP Refactoring-Pläne**: Vollständige Refactoring-Pläne für alle identifizierten Single Responsibility Principle Verletzungen
-  - **SRP-REFACTORING-01**: JournalVisibilityService - Trennung von Business-Logik und DOM-Verarbeitung ([Details](docs/refactoring/SRP-REFACTORING-01-JOURNAL-VISIBILITY-SERVICE.md))
-  - **SRP-REFACTORING-02**: ModuleSettingsRegistrar - Trennung von Settings-Registrierung und RuntimeConfig-Synchronisation ([Details](docs/refactoring/SRP-REFACTORING-02-MODULE-SETTINGS-REGISTRAR.md))
-  - **SRP-REFACTORING-03**: CacheService - Trennung von Cache-Operationen, Capacity-Management und Metrics-Tracking ([Details](docs/refactoring/SRP-REFACTORING-03-CACHE-SERVICE.md))
-  - **SRP-REFACTORING-04**: ServiceResolver - Trennung von Service-Resolution und Lifecycle-Management ([Details](docs/refactoring/SRP-REFACTORING-04-SERVICE-RESOLVER.md))
-  - **SRP-REFACTORING-05**: MetricsCollector - Trennung von Metrics-Sammlung, Sampling-Logik und Reporting ([Details](docs/refactoring/SRP-REFACTORING-05-METRICS-COLLECTOR.md))
-  - **SRP-REFACTORING-06**: PortSelector - Trennung von Port-Auswahl und Version-Detection ([Details](docs/refactoring/SRP-REFACTORING-06-PORT-SELECTOR.md))
-  - **SRP-REFACTORING-OVERVIEW**: Übersicht aller SRP-Refactoring-Pläne mit Priorisierung und Implementierungsreihenfolge ([Details](docs/refactoring/SRP-REFACTORING-OVERVIEW.md))
 
 ### Geändert
 
@@ -19,6 +11,38 @@
 ### Bekannte Probleme
 
 ### Upgrade-Hinweise
+
+## [0.40.17] - 2025-12-05
+### Hinzugefügt
+- **SRP Refactoring-Pläne**: Vollständige Refactoring-Pläne für alle identifizierten Single Responsibility Principle Verletzungen
+- **SRP-REFACTORING-01**: JournalVisibilityService - Trennung von Business-Logik und DOM-Verarbeitung ([Details](docs/refactoring/SRP-REFACTORING-01-JOURNAL-VISIBILITY-SERVICE.md))
+- **SRP-REFACTORING-02**: ModuleSettingsRegistrar - Trennung von Settings-Registrierung und RuntimeConfig-Synchronisation ([Details](docs/refactoring/SRP-REFACTORING-02-MODULE-SETTINGS-REGISTRAR.md))
+- **SRP-REFACTORING-03**: CacheService - Trennung von Cache-Operationen, Capacity-Management und Metrics-Tracking ([Details](docs/refactoring/SRP-REFACTORING-03-CACHE-SERVICE.md))
+- **SRP-REFACTORING-04**: ServiceResolver - Trennung von Service-Resolution und Lifecycle-Management ([Details](docs/refactoring/SRP-REFACTORING-04-SERVICE-RESOLVER.md))
+- **SRP-REFACTORING-05**: MetricsCollector - Trennung von Metrics-Sammlung, Sampling-Logik und Reporting ([Details](docs/refactoring/SRP-REFACTORING-05-METRICS-COLLECTOR.md))
+- **SRP-REFACTORING-06**: PortSelector - Trennung von Port-Auswahl und Version-Detection ([Details](docs/refactoring/SRP-REFACTORING-06-PORT-SELECTOR.md))
+- **SRP-REFACTORING-OVERVIEW**: Übersicht aller SRP-Refactoring-Pläne mit Priorisierung und Implementierungsreihenfolge ([Details](docs/refactoring/SRP-REFACTORING-OVERVIEW.md))
+
+### Geändert
+- **JournalVisibilityService SRP-Refactoring**: Business-Logik und DOM-Verarbeitung getrennt
+- **JournalDirectoryProcessor**: Neue Klasse für DOM-Manipulation und UI-Koordination ([Details](src/application/services/JournalDirectoryProcessor.ts))
+- **JournalVisibilityService**: Fokus nur noch auf Business-Logik (Flag-Checking, Caching)
+- `processJournalDirectory()` entfernt (DOM-Logik → JournalDirectoryProcessor)
+- `sanitizeForLog()` entfernt (direkte Verwendung von `sanitizeHtml()` aus Utils)
+- `journalDirectoryUI` Dependency entfernt (nicht mehr benötigt)
+- **ProcessJournalDirectoryOnRenderUseCase**: Orchestriert jetzt beide Services (Business-Logik + DOM-Verarbeitung)
+- **Bessere Testbarkeit**: Business-Logik ohne DOM-Mocks testbar, DOM-Logik isoliert testbar
+- **SRP-Konformität**: Jede Klasse hat jetzt eine einzige Verantwortlichkeit
+- ([Details](docs/refactoring/SRP-REFACTORING-01-JOURNAL-VISIBILITY-SERVICE.md))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
 
 ## [0.40.16] - 2025-12-05
 ### Hinzugefügt
