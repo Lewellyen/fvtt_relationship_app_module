@@ -16,7 +16,7 @@ import type { JournalEntry } from "@/domain/entities/journal-entry";
  * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface JournalCollectionPort extends PlatformEntityCollectionPort<JournalEntry> {
+export interface PlatformJournalCollectionPort extends PlatformEntityCollectionPort<JournalEntry> {
   // Aktuell keine journal-spezifischen Erweiterungen nötig
   // Bei Bedarf später hinzufügen, z.B.:
   // getByFolder(folderId: string): Result<JournalEntry[], EntityCollectionError>;

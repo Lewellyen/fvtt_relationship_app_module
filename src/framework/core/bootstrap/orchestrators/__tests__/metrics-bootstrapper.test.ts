@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MetricsBootstrapper } from "../metrics-bootstrapper";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
 import { ok, err } from "@/domain/utils/result";
 import { PersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
@@ -10,7 +10,7 @@ import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 
 describe("MetricsBootstrapper", () => {
-  let mockContainer: ContainerPort;
+  let mockContainer: PlatformContainerPort;
 
   beforeEach(() => {
     mockContainer = {
@@ -18,7 +18,7 @@ describe("MetricsBootstrapper", () => {
       resolve: vi.fn(),
       getValidationState: vi.fn(),
       isRegistered: vi.fn(),
-    } as unknown as ContainerPort;
+    } as unknown as PlatformContainerPort;
   });
 
   it("should return success when metrics collector is not available", () => {

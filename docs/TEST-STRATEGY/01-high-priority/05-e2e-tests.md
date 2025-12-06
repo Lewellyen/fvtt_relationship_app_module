@@ -1,9 +1,12 @@
 # E2E (End-to-End) Tests
 
-**Status:** ⚠️ TODO  
-**Priorität:** 🥇 Hohe Priorität  
-**Aufwand:** 15-22 Stunden  
-**Tool:** Playwright (neu installieren)
+**Status:** ✅ **IMPLEMENTIERT**
+**Priorität:** 🥇 Hohe Priorität
+**Aufwand:** Abgeschlossen
+**Tool:** Playwright (bereits installiert)
+**Implementiert:** 2025-01-18
+
+**Detaillierte Analyse:** Siehe [E2E-TESTS-ANALYSIS.md](./E2E-TESTS-ANALYSIS.md)
 
 ---
 
@@ -13,8 +16,18 @@ E2E-Tests stellen sicher, dass das Modul in einer realen Foundry VTT-Instanz ink
 
 **Test-Pyramide:**
 - **Phase 1:** Unit Tests ✅ (95 Tests, 100% Coverage)
-- **Phase 2:** Integration Tests ✅ (2 vorhanden, 5 empfohlen)
-- **Phase 3:** E2E Tests ⚠️ (noch nicht implementiert)
+- **Phase 2:** Integration Tests ✅ (7 Test-Dateien, 24+ Tests)
+- **Phase 3:** E2E Tests ✅ (4 Test-Suites, 13+ Tests) **IMPLEMENTIERT**
+
+**Aktueller Stand:**
+- ✅ 4 E2E-Test-Suites implementiert:
+  - `tests/e2e/bootstrap.spec.ts` (4 Tests)
+  - `tests/e2e/journal-visibility.spec.ts` (4 Tests)
+  - `tests/e2e/notifications.spec.ts` (2 Tests)
+  - `tests/e2e/settings.spec.ts` (3 Tests)
+- ✅ Playwright-Konfiguration vollständig
+- ✅ Helper-Funktionen für Foundry-Integration
+- ✅ Debugging-Dokumentation vorhanden
 
 **Voraussetzungen:**
 - ✅ Lokale Foundry VTT-Instanz vorhanden
@@ -102,7 +115,7 @@ npm install --save-dev @playwright/test dotenv
 npx playwright install
 ```
 
-**Wichtig:** 
+**Wichtig:**
 - `npx playwright install` installiert die Browser (Chromium, Firefox, WebKit)
 - `dotenv` wird für `.env`-Datei-Support benötigt
 
@@ -161,7 +174,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
-  
+
   use: {
     baseURL: process.env.FOUNDRY_URL || 'http://localhost:30001',
     trace: 'on-first-retry',
@@ -362,27 +375,27 @@ export async function changeSetting(
   value: string | number
 ): Promise<void> {
   await openSettings(page);
-  
+
   // Setting-Input finden und ändern
   const selector = `[name="${settingName}"]`;
   await page.waitForSelector(selector);
-  
+
   if (typeof value === 'number') {
     await page.selectOption(selector, value.toString());
   } else {
     await page.fill(selector, value);
   }
-  
+
   // Speichern
   await page.click('button[type="submit"]');
-  
+
   // Warten bis Settings geschlossen sind
   await page.waitForSelector('.module-settings', { state: 'hidden' });
 }
 
 /**
  * Öffnet die Relationship-Graph-UI
- * 
+ *
  * ⚠️ HINWEIS: UI-Komponenten existieren noch nicht!
  * Diese Funktion sollte erst implementiert werden, wenn die UI-Komponenten vorhanden sind.
  */
@@ -432,10 +445,10 @@ export const test = base.extend<FoundryFixtures>({
   moduleAPI: async ({ page }, use) => {
     // Warten bis Modul geladen ist
     await waitForModuleLoaded(page);
-    
+
     // API abrufen
     const api = await getModuleAPI(page);
-    
+
     // API für Tests bereitstellen
     await use(api);
   },
@@ -519,7 +532,7 @@ test.describe('E2E: Module Bootstrap', () => {
 
     // Foundry-Seite öffnen
     await page.goto('/');
-    
+
     // Warten bis Modul geladen ist
     await waitForModuleLoaded(page);
 

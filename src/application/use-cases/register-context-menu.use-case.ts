@@ -2,17 +2,17 @@ import type { Result } from "@/domain/types/result";
 import { ok } from "@/domain/utils/result";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
-import type { ContextMenuRegistrationPort } from "@/domain/ports/context-menu-registration-port.interface";
-import type { LoggingPort } from "@/domain/ports/logging-port.interface";
+import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import { journalContextMenuHandlersToken } from "@/application/tokens/application.tokens";
-import { contextMenuRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
+import { platformContextMenuRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
 /**
  * Use-Case: Register custom context menu entries for journal entries.
  *
  * Orchestrates multiple handlers that can add menu items.
- * Registers callbacks with the ContextMenuRegistrationPort.
+ * Registers callbacks with the PlatformContextMenuRegistrationPort.
  *
  * NOTE: This is NOT an EventRegistrar. The libWrapper is registered separately
  * during init, and this use-case only manages callback registration.
@@ -32,9 +32,9 @@ export class RegisterContextMenuUseCase {
   private callback: ((event: JournalContextMenuEvent) => void) | undefined;
 
   constructor(
-    private readonly contextMenuRegistration: ContextMenuRegistrationPort,
+    private readonly contextMenuRegistration: PlatformContextMenuRegistrationPort,
     private readonly handlers: JournalContextMenuHandler[],
-    private readonly logger: LoggingPort
+    private readonly logger: PlatformLoggingPort
   ) {}
 
   /**
@@ -82,15 +82,15 @@ export class RegisterContextMenuUseCase {
  */
 export class DIRegisterContextMenuUseCase extends RegisterContextMenuUseCase {
   static dependencies = [
-    contextMenuRegistrationPortToken,
+    platformContextMenuRegistrationPortToken,
     journalContextMenuHandlersToken,
     loggerToken,
   ] as const;
 
   constructor(
-    contextMenuRegistration: ContextMenuRegistrationPort,
+    contextMenuRegistration: PlatformContextMenuRegistrationPort,
     handlers: JournalContextMenuHandler[],
-    logger: LoggingPort
+    logger: PlatformLoggingPort
   ) {
     super(contextMenuRegistration, handlers, logger);
   }

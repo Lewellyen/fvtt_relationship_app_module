@@ -1,4 +1,4 @@
-import type { LoggingPort } from "@/domain/ports/logging-port.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import { LogLevel, LOG_LEVEL_SCHEMA } from "@/domain/types/log-level";
 import * as v from "valibot";
 
@@ -11,7 +11,7 @@ import * as v from "valibot";
  * @param value - The log level value to validate and set
  * @param logger - The logger instance to configure
  */
-export function validateAndSetLogLevel(value: number, logger: LoggingPort): void {
+export function validateAndSetLogLevel(value: number, logger: PlatformLoggingPort): void {
   // Validate value before using it (security!)
   const validationResult = v.safeParse(LOG_LEVEL_SCHEMA, value);
 

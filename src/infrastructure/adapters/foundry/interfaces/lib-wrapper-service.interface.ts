@@ -1,10 +1,15 @@
 import type { Result } from "@/domain/types/result";
 
 /**
- * Platform-agnostic service for wrapping Foundry methods using libWrapper.
+ * Foundry-specific service for wrapping methods using libWrapper.
  *
- * This service provides a clean facade over libWrapper, allowing registration
- * and unregistration of method wrappers without direct access to globalThis.libWrapper.
+ * This service provides a facade over libWrapper (a Foundry VTT module),
+ * allowing registration and unregistration of method wrappers without
+ * direct access to globalThis.libWrapper.
+ *
+ * NOTE: This is Foundry-specific and should only be used within the
+ * Infrastructure layer. For platform-agnostic context menu registration,
+ * use PlatformContextMenuRegistrationPort instead.
  *
  * @example
  * ```typescript
@@ -81,7 +86,7 @@ export type LibWrapperType = "WRAPPER" | "MIXED" | "OVERRIDE";
 export type LibWrapperRegistrationId = string | number;
 
 /**
- * Platform-agnostic libWrapper error.
+ * Foundry-specific libWrapper error.
  */
 export interface LibWrapperError {
   code:

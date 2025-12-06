@@ -1,7 +1,7 @@
 /**
  * Bootstrap ready hook registration service.
  *
- * DIP-Compliant: Uses BootstrapHooksPort instead of direct Hooks.on().
+ * DIP-Compliant: Uses PlatformBootstrapEventPort instead of direct Hooks.on().
  * The port abstracts the platform-specific hook registration while still
  * allowing the adapter to use direct APIs to avoid the chicken-egg problem.
  *
@@ -9,29 +9,32 @@
  */
 
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
-import { bootstrapHooksPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstrap-event-port.interface";
+import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
 import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import type { ModuleReadyService } from "@/application/services/module-ready-service";
+import { moduleReadyServiceToken } from "@/application/services/module-ready-service";
 
 /**
  * Service responsible for registering the Foundry 'ready' hook.
  * Handles ready-phase logic when the ready hook fires.
  *
- * DIP-Compliant: Uses BootstrapHooksPort for hook registration instead of
+ * DIP-Compliant: Uses PlatformBootstrapEventPort for event registration instead of
  * direct platform API access.
  */
 export class BootstrapReadyHookService {
   constructor(
     private readonly logger: Logger,
-    private readonly bootstrapHooks: BootstrapHooksPort
+    private readonly bootstrapEvents: PlatformBootstrapEventPort,
+    private readonly moduleReadyService: ModuleReadyService
   ) {}
 
   /**
-   * Registers the ready hook via BootstrapHooksPort.
+   * Registers the ready event via PlatformBootstrapEventPort.
    * Must be called before the platform's ready hook fires.
    */
   register(): void {
-    const result = this.bootstrapHooks.onReady(() => this.handleReady());
+    const result = this.bootstrapEvents.onReady(() => this.handleReady());
 
     if (!result.ok) {
       this.logger.warn(
@@ -47,6 +50,12 @@ export class BootstrapReadyHookService {
    * blenden wir diese verzweigten Pfade temporär aus und reduzieren die Ignores später gezielt. */
   private handleReady(): void {
     this.logger.info("ready-phase");
+
+    // Setze module.ready = true, sobald Bootstrap-Ready-Hook fertig ist
+    // Ähnlich wie game.ready, aber für unser Modul
+    this.moduleReadyService.setReady();
+    this.logger.info("module.ready set to true");
+
     this.logger.info("ready-phase completed");
   }
   /* v8 ignore stop -- @preserve */
@@ -57,9 +66,17 @@ export class BootstrapReadyHookService {
  * Injects dependencies via constructor.
  */
 export class DIBootstrapReadyHookService extends BootstrapReadyHookService {
-  static dependencies = [loggerToken, bootstrapHooksPortToken] as const;
+  static dependencies = [
+    loggerToken,
+    platformBootstrapEventPortToken,
+    moduleReadyServiceToken,
+  ] as const;
 
-  constructor(logger: Logger, bootstrapHooks: BootstrapHooksPort) {
-    super(logger, bootstrapHooks);
+  constructor(
+    logger: Logger,
+    bootstrapEvents: PlatformBootstrapEventPort,
+    moduleReadyService: ModuleReadyService
+  ) {
+    super(logger, bootstrapEvents, moduleReadyService);
   }
 }

@@ -5,26 +5,39 @@
  * This file only contains infrastructure-layer specific tokens.
  */
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
-import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
-import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
+import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstrap-event-port.interface";
+import type { PlatformModuleReadyPort } from "@/domain/ports/platform-module-ready-port.interface";
+import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 
 /**
- * DI Token for BootstrapHooksPort.
+ * DI Token for PlatformBootstrapEventPort.
  *
- * Platform-agnostic bootstrap lifecycle hooks port.
+ * Platform-agnostic bootstrap lifecycle events port.
  * Used for registering init/ready callbacks during module bootstrap.
  *
  * CRITICAL: This port uses direct platform APIs (e.g., Foundry Hooks.on())
  * because the full event system requires version detection which may not
- * be available before the init hook runs.
+ * be available before the init event runs.
  *
- * Default implementation: FoundryBootstrapHooksAdapter (for Foundry VTT)
+ * Default implementation: FoundryBootstrapEventAdapter (for Foundry VTT)
  */
-export const bootstrapHooksPortToken =
-  createInjectionToken<BootstrapHooksPort>("BootstrapHooksPort");
+export const platformBootstrapEventPortToken = createInjectionToken<PlatformBootstrapEventPort>(
+  "PlatformBootstrapEventPort"
+);
 
 /**
- * DI Token for SettingsRegistrationPort.
+ * DI Token for PlatformModuleReadyPort.
+ *
+ * Platform-agnostic port for managing module ready state.
+ * Used to set module.ready = true when bootstrap is complete.
+ *
+ * Default implementation: FoundryModuleReadyPort (for Foundry VTT)
+ */
+export const platformModuleReadyPortToken =
+  createInjectionToken<PlatformModuleReadyPort>("PlatformModuleReadyPort");
+
+/**
+ * DI Token for PlatformSettingsRegistrationPort.
  *
  * Domain-neutral settings port that doesn't expose Valibot schemas.
  * Uses validator functions instead of schemas for type safety.
@@ -34,6 +47,5 @@ export const bootstrapHooksPortToken =
  *
  * Default implementation: FoundrySettingsRegistrationAdapter (for Foundry VTT)
  */
-export const settingsRegistrationPortToken = createInjectionToken<SettingsRegistrationPort>(
-  "SettingsRegistrationPort"
-);
+export const platformSettingsRegistrationPortToken =
+  createInjectionToken<PlatformSettingsRegistrationPort>("PlatformSettingsRegistrationPort");

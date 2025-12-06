@@ -14,7 +14,7 @@ import type { EntityCollectionError } from "./entity-collection-error.interface"
  * @example
  * ```typescript
  * // Journal Collection
- * interface JournalCollectionPort extends PlatformEntityCollectionPort<JournalEntry> {}
+ * interface PlatformJournalCollectionPort extends PlatformEntityCollectionPort<JournalEntry> {}
  *
  * // Actor Collection
  * interface ActorCollectionPort extends PlatformEntityCollectionPort<Actor> {}

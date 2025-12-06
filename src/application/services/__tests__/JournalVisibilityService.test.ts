@@ -4,8 +4,8 @@ import {
   JournalVisibilityService,
   HIDDEN_JOURNAL_CACHE_TAG,
 } from "@/application/services/JournalVisibilityService";
-import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
-import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
+import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
+import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
@@ -27,7 +27,7 @@ function createMetadata(): CacheEntryMetadata {
   };
 }
 
-function createMockJournalCollectionPort(): JournalCollectionPort {
+function createMockJournalCollectionPort(): PlatformJournalCollectionPort {
   return {
     getAll: vi.fn().mockReturnValue(ok([])),
     getById: vi.fn().mockReturnValue(ok(null)),
@@ -36,10 +36,10 @@ function createMockJournalCollectionPort(): JournalCollectionPort {
     count: vi.fn().mockReturnValue(ok(0)),
     search: vi.fn().mockReturnValue(ok([])),
     query: vi.fn(),
-  } as unknown as JournalCollectionPort;
+  } as unknown as PlatformJournalCollectionPort;
 }
 
-function createMockJournalRepository(): JournalRepository {
+function createMockJournalRepository(): PlatformJournalRepository {
   return {
     getAll: vi.fn().mockReturnValue(ok([])),
     getById: vi.fn().mockReturnValue(ok(null)),
@@ -59,7 +59,7 @@ function createMockJournalRepository(): JournalRepository {
     getFlag: vi.fn().mockReturnValue(ok(null)),
     setFlag: vi.fn().mockResolvedValue(ok(undefined)),
     unsetFlag: vi.fn().mockResolvedValue(ok(undefined)),
-  } as unknown as JournalRepository;
+  } as unknown as PlatformJournalRepository;
 }
 
 function createMockConfig(): JournalVisibilityConfig {
@@ -75,8 +75,8 @@ function createMockConfig(): JournalVisibilityConfig {
 
 describe("JournalVisibilityService", () => {
   let service: JournalVisibilityService;
-  let mockJournalCollection: JournalCollectionPort;
-  let mockJournalRepository: JournalRepository;
+  let mockJournalCollection: PlatformJournalCollectionPort;
+  let mockJournalRepository: PlatformJournalRepository;
   let mockNotifications: PlatformNotificationPort;
   let mockCache: PlatformCachePort;
   let mockConfig: JournalVisibilityConfig;

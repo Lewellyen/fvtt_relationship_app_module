@@ -138,7 +138,7 @@ const healthCheckRegistryToken = createInjectionToken("HealthCheckRegistry");
 const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
 const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
 const serviceContainerToken = createInjectionToken("ServiceContainer");
-const containerPortToken = createInjectionToken("ContainerPort");
+const platformContainerPortToken = createInjectionToken("PlatformContainerPort");
 const moduleSettingsRegistrarToken = createInjectionToken("ModuleSettingsRegistrar");
 const bootstrapInitHookServiceToken = createInjectionToken("BootstrapInitHookService");
 const bootstrapReadyHookServiceToken = createInjectionToken(
@@ -201,10 +201,10 @@ function castContainerErrorCode(code) {
   return code;
 }
 __name(castContainerErrorCode, "castContainerErrorCode");
-function castContainerTokenToContainerPortToken(token) {
+function castContainerTokenToPlatformContainerPortToken(token) {
   return token;
 }
-__name(castContainerTokenToContainerPortToken, "castContainerTokenToContainerPortToken");
+__name(castContainerTokenToPlatformContainerPortToken, "castContainerTokenToPlatformContainerPortToken");
 const _ServiceRegistration = class _ServiceRegistration {
   /**
    * Private constructor - use static factory methods instead.
@@ -7631,7 +7631,7 @@ const _ServiceContainer = class _ServiceContainer {
   }
   /**
    * Get validation state.
-   * Implements both Container.getValidationState and ContainerPort.getValidationState.
+   * Implements both Container.getValidationState and PlatformContainerPort.getValidationState.
    * Both interfaces use identical types, so a single overload is sufficient.
    */
   getValidationState() {
@@ -7972,10 +7972,6 @@ const _DIMetricsHealthCheck = class _DIMetricsHealthCheck extends MetricsHealthC
 __name(_DIMetricsHealthCheck, "DIMetricsHealthCheck");
 _DIMetricsHealthCheck.dependencies = [metricsCollectorToken, healthCheckRegistryToken];
 let DIMetricsHealthCheck = _DIMetricsHealthCheck;
-const bootstrapHooksPortToken = createInjectionToken("BootstrapHooksPort");
-const settingsRegistrationPortToken = createInjectionToken(
-  "SettingsRegistrationPort"
-);
 const cacheServiceConfigToken = createInjectionToken("CacheServiceConfig");
 const cacheServiceToken = createInjectionToken("CacheService");
 const performanceTrackingServiceToken = createInjectionToken(
@@ -7983,6 +7979,12 @@ const performanceTrackingServiceToken = createInjectionToken(
 );
 const retryServiceToken = createInjectionToken("RetryService");
 const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
+const moduleIdToken = createInjectionToken("ModuleId");
+const platformBootstrapEventPortToken = createInjectionToken(
+  "PlatformBootstrapEventPort"
+);
+const platformModuleReadyPortToken = createInjectionToken("PlatformModuleReadyPort");
+const platformSettingsRegistrationPortToken = createInjectionToken("PlatformSettingsRegistrationPort");
 const HOOK_THROTTLE_WINDOW_MS = 150;
 const VALIDATION_CONSTRAINTS = {
   /** Maximale Länge für IDs und Keys */
@@ -8779,12 +8781,14 @@ const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry")
 const foundrySettingsToken = createInjectionToken("FoundrySettings");
 const foundrySettingsPortRegistryToken = createInjectionToken("FoundrySettingsPortRegistry");
 const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
+const foundryModulePortRegistryToken = createInjectionToken("FoundryModulePortRegistry");
 const foundryV13GamePortToken = createInjectionToken("FoundryV13GamePort");
 const foundryV13HooksPortToken = createInjectionToken("FoundryV13HooksPort");
 const foundryV13DocumentPortToken = createInjectionToken("FoundryV13DocumentPort");
 const foundryV13UIPortToken = createInjectionToken("FoundryV13UIPort");
 const foundryV13SettingsPortToken = createInjectionToken("FoundryV13SettingsPort");
 const foundryV13I18nPortToken = createInjectionToken("FoundryV13I18nPort");
+const foundryV13ModulePortToken = createInjectionToken("FoundryV13ModulePort");
 const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
 const libWrapperServiceToken = createInjectionToken("LibWrapperService");
 const journalContextMenuLibWrapperServiceToken = createInjectionToken("JournalContextMenuLibWrapperService");
@@ -8844,7 +8848,7 @@ Reason: ${deprecationInfo.reason}
    * Creates the resolve() function for the public API.
    * Resolves services and applies wrappers (throws on error).
    *
-   * @param container - ContainerPort for resolution
+   * @param container - PlatformContainerPort for resolution
    * @returns Resolve function for ModuleApi
    * @private
    */
@@ -8859,7 +8863,7 @@ Reason: ${deprecationInfo.reason}
    * Creates the resolveWithError() function for the public API.
    * Resolves services with Result pattern (never throws).
    *
-   * @param container - ContainerPort for resolution
+   * @param container - PlatformContainerPort for resolution
    * @returns ResolveWithError function for ModuleApi
    * @private
    */
@@ -8905,7 +8909,7 @@ Reason: ${deprecationInfo.reason}
   /**
    * Creates the complete ModuleApi object with all methods.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @param wellKnownTokens - Collection of API-safe tokens
    * @returns Complete ModuleApi object
    * @private
@@ -8977,7 +8981,7 @@ Reason: ${deprecationInfo.reason}
   /**
    * Exposes the module's public API to game.modules.get(MODULE_ID).api
    *
-   * @param container - Initialized and validated ContainerPort
+   * @param container - Initialized and validated PlatformContainerPort
    * @returns Result<void, string> - Ok if successful, Err with error message
    */
   expose(container) {
@@ -9050,7 +9054,7 @@ const _MetricsBootstrapper = class _MetricsBootstrapper {
   /**
    * Initializes metrics collector if it supports persistence.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success (warnings logged but don't fail bootstrap)
    */
   static initializeMetrics(container) {
@@ -9076,7 +9080,7 @@ const _NotificationBootstrapper = class _NotificationBootstrapper {
    *
    * This phase is optional - failures are logged as warnings but don't fail bootstrap.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
    */
   static attachNotificationChannels(container) {
@@ -9104,7 +9108,7 @@ const _ApiBootstrapper = class _ApiBootstrapper {
   /**
    * Exposes the module's public API.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success or error
    */
   static exposeApi(container) {
@@ -9126,7 +9130,7 @@ const _SettingsBootstrapper = class _SettingsBootstrapper {
   /**
    * Registers all module settings.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success or error
    */
   static registerSettings(container) {
@@ -9149,7 +9153,7 @@ const _LoggingBootstrapper = class _LoggingBootstrapper {
   /**
    * Configures logger with current setting value.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @param logger - Logger instance to configure
    * @returns Result indicating success (always succeeds, settings are optional)
    */
@@ -9190,7 +9194,7 @@ const _EventsBootstrapper = class _EventsBootstrapper {
   /**
    * Registers all event listeners.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success or error
    */
   static registerEvents(container) {
@@ -9213,7 +9217,7 @@ const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
   /**
    * Registers context menu libWrapper and callbacks.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
    */
   static registerContextMenu(container) {
@@ -9265,7 +9269,7 @@ const _InitOrchestrator = class _InitOrchestrator {
    * 6. Event Registration (critical - fails on error)
    * 7. Context Menu Registration (optional - warnings only)
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @param logger - Logger for error reporting
    * @returns Result indicating success or aggregated errors
    */
@@ -9322,17 +9326,17 @@ const _InitOrchestrator = class _InitOrchestrator {
 __name(_InitOrchestrator, "InitOrchestrator");
 let InitOrchestrator = _InitOrchestrator;
 const _BootstrapInitHookService = class _BootstrapInitHookService {
-  constructor(logger, container, bootstrapHooks) {
+  constructor(logger, container, bootstrapEvents) {
     this.logger = logger;
     this.container = container;
-    this.bootstrapHooks = bootstrapHooks;
+    this.bootstrapEvents = bootstrapEvents;
   }
   /**
-   * Registers the init hook via BootstrapHooksPort.
+   * Registers the init event via PlatformBootstrapEventPort.
    * Must be called before the platform's init hook fires.
    */
   register() {
-    const result = this.bootstrapHooks.onInit(() => this.handleInit());
+    const result = this.bootstrapEvents.onInit(() => this.handleInit());
     if (!result.ok) {
       this.logger.warn(
         `Init hook registration failed: ${result.error.message}`,
@@ -9359,24 +9363,58 @@ const _BootstrapInitHookService = class _BootstrapInitHookService {
 __name(_BootstrapInitHookService, "BootstrapInitHookService");
 let BootstrapInitHookService = _BootstrapInitHookService;
 const _DIBootstrapInitHookService = class _DIBootstrapInitHookService extends BootstrapInitHookService {
-  constructor(logger, container, bootstrapHooks) {
-    super(logger, container, bootstrapHooks);
+  constructor(logger, container, bootstrapEvents) {
+    super(logger, container, bootstrapEvents);
   }
 };
 __name(_DIBootstrapInitHookService, "DIBootstrapInitHookService");
-_DIBootstrapInitHookService.dependencies = [loggerToken, containerPortToken, bootstrapHooksPortToken];
+_DIBootstrapInitHookService.dependencies = [
+  loggerToken,
+  platformContainerPortToken,
+  platformBootstrapEventPortToken
+];
 let DIBootstrapInitHookService = _DIBootstrapInitHookService;
-const _BootstrapReadyHookService = class _BootstrapReadyHookService {
-  constructor(logger, bootstrapHooks) {
+const _ModuleReadyService = class _ModuleReadyService {
+  constructor(moduleReadyPort, logger) {
+    this.moduleReadyPort = moduleReadyPort;
     this.logger = logger;
-    this.bootstrapHooks = bootstrapHooks;
   }
   /**
-   * Registers the ready hook via BootstrapHooksPort.
+   * Sets module.ready to true (ready state).
+   * Should be called when bootstrap-ready-hook completes.
+   */
+  setReady() {
+    const result = this.moduleReadyPort.setReady();
+    if (!result.ok) {
+      this.logger.warn(`Failed to set module.ready: ${result.error.message}`, result.error.details);
+    } else {
+      this.logger.info("module.ready set to true");
+    }
+  }
+};
+__name(_ModuleReadyService, "ModuleReadyService");
+let ModuleReadyService = _ModuleReadyService;
+const _DIModuleReadyService = class _DIModuleReadyService extends ModuleReadyService {
+  constructor(moduleReadyPort, logger) {
+    super(moduleReadyPort, logger);
+  }
+};
+__name(_DIModuleReadyService, "DIModuleReadyService");
+_DIModuleReadyService.dependencies = [platformModuleReadyPortToken, loggerToken];
+let DIModuleReadyService = _DIModuleReadyService;
+const moduleReadyServiceToken = createInjectionToken("ModuleReadyService");
+const _BootstrapReadyHookService = class _BootstrapReadyHookService {
+  constructor(logger, bootstrapEvents, moduleReadyService) {
+    this.logger = logger;
+    this.bootstrapEvents = bootstrapEvents;
+    this.moduleReadyService = moduleReadyService;
+  }
+  /**
+   * Registers the ready event via PlatformBootstrapEventPort.
    * Must be called before the platform's ready hook fires.
    */
   register() {
-    const result = this.bootstrapHooks.onReady(() => this.handleReady());
+    const result = this.bootstrapEvents.onReady(() => this.handleReady());
     if (!result.ok) {
       this.logger.warn(
         `Ready hook registration failed: ${result.error.message}`,
@@ -9390,6 +9428,8 @@ const _BootstrapReadyHookService = class _BootstrapReadyHookService {
    * blenden wir diese verzweigten Pfade temporär aus und reduzieren die Ignores später gezielt. */
   handleReady() {
     this.logger.info("ready-phase");
+    this.moduleReadyService.setReady();
+    this.logger.info("module.ready set to true");
     this.logger.info("ready-phase completed");
   }
   /* v8 ignore stop -- @preserve */
@@ -9397,14 +9437,18 @@ const _BootstrapReadyHookService = class _BootstrapReadyHookService {
 __name(_BootstrapReadyHookService, "BootstrapReadyHookService");
 let BootstrapReadyHookService = _BootstrapReadyHookService;
 const _DIBootstrapReadyHookService = class _DIBootstrapReadyHookService extends BootstrapReadyHookService {
-  constructor(logger, bootstrapHooks) {
-    super(logger, bootstrapHooks);
+  constructor(logger, bootstrapEvents, moduleReadyService) {
+    super(logger, bootstrapEvents, moduleReadyService);
   }
 };
 __name(_DIBootstrapReadyHookService, "DIBootstrapReadyHookService");
-_DIBootstrapReadyHookService.dependencies = [loggerToken, bootstrapHooksPortToken];
+_DIBootstrapReadyHookService.dependencies = [
+  loggerToken,
+  platformBootstrapEventPortToken,
+  moduleReadyServiceToken
+];
 let DIBootstrapReadyHookService = _DIBootstrapReadyHookService;
-const _FoundryBootstrapHooksAdapter = class _FoundryBootstrapHooksAdapter {
+const _FoundryBootstrapEventAdapter = class _FoundryBootstrapEventAdapter {
   onInit(callback) {
     if (typeof Hooks === "undefined") {
       return err({
@@ -9417,8 +9461,8 @@ const _FoundryBootstrapHooksAdapter = class _FoundryBootstrapHooksAdapter {
       return ok(void 0);
     } catch (error) {
       return err({
-        code: "HOOK_REGISTRATION_FAILED",
-        message: `Failed to register init hook: ${error instanceof Error ? error.message : String(error)}`,
+        code: "EVENT_REGISTRATION_FAILED",
+        message: `Failed to register init event: ${error instanceof Error ? error.message : String(error)}`,
         details: error
       });
     }
@@ -9435,20 +9479,336 @@ const _FoundryBootstrapHooksAdapter = class _FoundryBootstrapHooksAdapter {
       return ok(void 0);
     } catch (error) {
       return err({
-        code: "HOOK_REGISTRATION_FAILED",
-        message: `Failed to register ready hook: ${error instanceof Error ? error.message : String(error)}`,
+        code: "EVENT_REGISTRATION_FAILED",
+        message: `Failed to register ready event: ${error instanceof Error ? error.message : String(error)}`,
         details: error
       });
     }
   }
 };
-__name(_FoundryBootstrapHooksAdapter, "FoundryBootstrapHooksAdapter");
-let FoundryBootstrapHooksAdapter = _FoundryBootstrapHooksAdapter;
-const _DIFoundryBootstrapHooksAdapter = class _DIFoundryBootstrapHooksAdapter extends FoundryBootstrapHooksAdapter {
+__name(_FoundryBootstrapEventAdapter, "FoundryBootstrapEventAdapter");
+let FoundryBootstrapEventAdapter = _FoundryBootstrapEventAdapter;
+const _DIFoundryBootstrapEventAdapter = class _DIFoundryBootstrapEventAdapter extends FoundryBootstrapEventAdapter {
 };
-__name(_DIFoundryBootstrapHooksAdapter, "DIFoundryBootstrapHooksAdapter");
-_DIFoundryBootstrapHooksAdapter.dependencies = [];
-let DIFoundryBootstrapHooksAdapter = _DIFoundryBootstrapHooksAdapter;
+__name(_DIFoundryBootstrapEventAdapter, "DIFoundryBootstrapEventAdapter");
+_DIFoundryBootstrapEventAdapter.dependencies = [];
+let DIFoundryBootstrapEventAdapter = _DIFoundryBootstrapEventAdapter;
+function createFoundryError(code, message2, details, cause) {
+  return { code, message: message2, details, cause };
+}
+__name(createFoundryError, "createFoundryError");
+function isErrorLike(obj) {
+  return typeof obj === "object" && obj !== null;
+}
+__name(isErrorLike, "isErrorLike");
+function isFoundryError(error) {
+  if (!isErrorLike(error)) return false;
+  return "code" in error && "message" in error && typeof error.code === "string" && typeof error.message === "string";
+}
+__name(isFoundryError, "isFoundryError");
+function hasMethod(obj, methodName) {
+  return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
+  typeof obj[methodName] === "function";
+}
+__name(hasMethod, "hasMethod");
+function hasProperty(obj, propertyName) {
+  return obj !== null && obj !== void 0 && typeof obj === "object" && propertyName in obj;
+}
+__name(hasProperty, "hasProperty");
+function isObjectWithMethods(obj, methodNames) {
+  if (obj === null || obj === void 0 || typeof obj !== "object") {
+    return false;
+  }
+  return methodNames.every((methodName) => hasMethod(obj, methodName));
+}
+__name(isObjectWithMethods, "isObjectWithMethods");
+function castFoundrySettingsApi(settings) {
+  if (!isObjectWithMethods(settings, ["register", "get", "set"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "game.settings does not have required methods (register, get, set)",
+        {
+          missingMethods: ["register", "get", "set"]
+        }
+      )
+    );
+  }
+  return ok(settings);
+}
+__name(castFoundrySettingsApi, "castFoundrySettingsApi");
+function castFoundryDocumentForFlag(document2) {
+  if (!isObjectWithMethods(document2, ["getFlag", "setFlag"])) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Document does not have required methods (getFlag, setFlag)",
+        {
+          missingMethods: ["getFlag", "setFlag"]
+        }
+      )
+    );
+  }
+  return ok(document2);
+}
+__name(castFoundryDocumentForFlag, "castFoundryDocumentForFlag");
+function castFoundryError(error) {
+  return error;
+}
+__name(castFoundryError, "castFoundryError");
+function castDisposablePort(port) {
+  if (!port || typeof port !== "object") {
+    return null;
+  }
+  if (hasMethod(port, "dispose")) {
+    return port;
+  }
+  return null;
+}
+__name(castDisposablePort, "castDisposablePort");
+function ensureNonEmptyArray(arr) {
+  if (arr.length === 0) {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Array must not be empty", { arrayLength: 0 })
+    );
+  }
+  return ok(arr);
+}
+__name(ensureNonEmptyArray, "ensureNonEmptyArray");
+function extractHtmlElement(html) {
+  return html instanceof HTMLElement ? html : null;
+}
+__name(extractHtmlElement, "extractHtmlElement");
+function getFactoryOrError(factories, version) {
+  const factory = factories.get(version);
+  if (!factory) {
+    return err(
+      createFoundryError("PORT_NOT_FOUND", `Factory for version ${version} not found in registry`, {
+        version
+      })
+    );
+  }
+  return ok(factory);
+}
+__name(getFactoryOrError, "getFactoryOrError");
+function castFoundryDocumentWithUpdate(document2) {
+  if (!isObjectWithMethods(document2, ["update"])) {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Document does not have required method (update)", {
+        missingMethods: ["update"]
+      })
+    );
+  }
+  return ok(document2);
+}
+__name(castFoundryDocumentWithUpdate, "castFoundryDocumentWithUpdate");
+function castFoundryJournalEntryClass() {
+  if (typeof globalThis !== "object" || globalThis === null || !("JournalEntry" in globalThis)) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "Foundry JournalEntry class not available in globalThis",
+        {}
+      )
+    );
+  }
+  const journalEntryClass = globalThis.JournalEntry;
+  if (!isObjectWithMethods(journalEntryClass, ["create"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "Foundry JournalEntry class does not have required method (create)",
+        {
+          missingMethods: ["create"]
+        }
+      )
+    );
+  }
+  return ok(journalEntryClass);
+}
+__name(castFoundryJournalEntryClass, "castFoundryJournalEntryClass");
+const _FoundryServiceBase = class _FoundryServiceBase {
+  constructor(portSelector, portRegistry, retryService) {
+    this.port = null;
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+    this.retryService = retryService;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with token-based selection to resolve ports from the DI container.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version. Ports are resolved
+   * from the DI container, ensuring DIP (Dependency Inversion Principle) compliance.
+   *
+   * @param adapterName - Name for logging purposes (e.g., "FoundryGame")
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
+   */
+  getPort(adapterName) {
+    if (this.port === null) {
+      const tokens = this.portRegistry.getTokens();
+      const portResult = this.portSelector.selectPortFromTokens(tokens, void 0, adapterName);
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  /**
+   * Executes a Foundry API operation with automatic retry on transient failures.
+   *
+   * Use this for any port method call to handle:
+   * - Race conditions (Foundry not fully initialized)
+   * - Timing issues (DOM/Settings not ready)
+   * - Transient port selection failures
+   *
+   * @template T - The success type
+   * @param fn - Function to execute (should call port methods)
+   * @param operationName - Operation name for logging (e.g., "FoundryGame.getJournalEntries")
+   * @param maxAttempts - Max retry attempts (default: 2 = 1 retry)
+   * @returns Result from operation or mapped error
+   *
+   * @example
+   * ```typescript
+   * getJournalEntries(): Result<Entry[], FoundryError> {
+   *   return this.withRetry(
+   *     () => {
+   *       const portResult = this.getPort("FoundryGame");
+   *       if (!portResult.ok) return portResult;
+   *       return portResult.value.getJournalEntries();
+   *     },
+   *     "FoundryGame.getJournalEntries"
+   *   );
+   * }
+   * ```
+   */
+  withRetry(fn, operationName, maxAttempts = 2) {
+    return this.retryService.retrySync(fn, {
+      maxAttempts,
+      operationName,
+      mapException: /* @__PURE__ */ __name((error) => ({
+        code: "OPERATION_FAILED",
+        message: `${operationName} failed: ${String(error)}`,
+        cause: error instanceof Error ? error : void 0
+      }), "mapException")
+    });
+  }
+  /**
+   * Async variant of withRetry for async operations.
+   *
+   * @template T - The success type
+   * @param fn - Async function to execute
+   * @param operationName - Operation name for logging
+   * @param maxAttempts - Max retry attempts (default: 2)
+   * @returns Promise resolving to Result
+   *
+   * @example
+   * ```typescript
+   * async setFlag<T>(doc, scope, key, value): Promise<Result<void, FoundryError>> {
+   *   return this.withRetryAsync(
+   *     async () => {
+   *       const portResult = this.getPort("FoundryDocument");
+   *       if (!portResult.ok) return portResult;
+   *       return await portResult.value.setFlag(doc, scope, key, value);
+   *     },
+   *     "FoundryDocument.setFlag"
+   *   );
+   * }
+   * ```
+   */
+  async withRetryAsync(fn, operationName, maxAttempts = 2) {
+    return this.retryService.retry(fn, {
+      maxAttempts,
+      delayMs: 100,
+      // 100ms delay between retries
+      operationName,
+      mapException: /* @__PURE__ */ __name((error) => ({
+        code: "OPERATION_FAILED",
+        message: `${operationName} failed: ${String(error)}`,
+        cause: error instanceof Error ? error : void 0
+      }), "mapException")
+    });
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then resets the reference.
+   * All ports now implement dispose() with #disposed state guards.
+   */
+  dispose() {
+    const disposable = castDisposablePort(this.port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.port = null;
+  }
+};
+__name(_FoundryServiceBase, "FoundryServiceBase");
+let FoundryServiceBase = _FoundryServiceBase;
+const _FoundryModuleReadyPort = class _FoundryModuleReadyPort extends FoundryServiceBase {
+  constructor(portSelector, portRegistry, retryService, moduleId) {
+    super(portSelector, portRegistry, retryService);
+    this.moduleId = moduleId;
+  }
+  setReady() {
+    const result = this.withRetry(() => {
+      const portResult = this.getPort("FoundryModule");
+      if (!portResult.ok) {
+        return {
+          ok: false,
+          error: createFoundryError(
+            "PORT_SELECTION_FAILED",
+            portResult.error.message,
+            portResult.error.details
+          )
+        };
+      }
+      const success = portResult.value.setModuleReady(this.moduleId);
+      if (!success) {
+        return {
+          ok: false,
+          error: createFoundryError("OPERATION_FAILED", `Module ${this.moduleId} not found`)
+        };
+      }
+      return { ok: true, value: void 0 };
+    }, "FoundryModule.setReady");
+    if (!result.ok) {
+      let errorCode;
+      if (result.error.code === "PORT_SELECTION_FAILED" || result.error.code === "API_NOT_AVAILABLE") {
+        errorCode = "PLATFORM_NOT_AVAILABLE";
+      } else if (result.error.code === "OPERATION_FAILED") {
+        errorCode = "OPERATION_FAILED";
+      } else {
+        errorCode = "OPERATION_FAILED";
+      }
+      return {
+        ok: false,
+        error: {
+          code: errorCode,
+          message: result.error.message,
+          details: result.error.details
+        }
+      };
+    }
+    return { ok: true, value: void 0 };
+  }
+};
+__name(_FoundryModuleReadyPort, "FoundryModuleReadyPort");
+let FoundryModuleReadyPort = _FoundryModuleReadyPort;
+const _DIFoundryModuleReadyPort = class _DIFoundryModuleReadyPort extends FoundryModuleReadyPort {
+  constructor(portSelector, portRegistry, retryService, moduleId) {
+    super(portSelector, portRegistry, retryService, moduleId);
+  }
+};
+__name(_DIFoundryModuleReadyPort, "DIFoundryModuleReadyPort");
+_DIFoundryModuleReadyPort.dependencies = [
+  portSelectorToken,
+  foundryModulePortRegistryToken,
+  retryServiceToken,
+  moduleIdToken
+];
+let DIFoundryModuleReadyPort = _DIFoundryModuleReadyPort;
 function registerCoreServices(container) {
   const runtimeConfig = container.getRegisteredValue(runtimeConfigToken);
   if (!runtimeConfig) {
@@ -9524,13 +9884,15 @@ function registerCoreServices(container) {
   if (isErr(apiInitResult)) {
     return err(`Failed to register ModuleApiInitializer: ${apiInitResult.error.message}`);
   }
-  const bootstrapHooksResult = container.registerClass(
-    bootstrapHooksPortToken,
-    DIFoundryBootstrapHooksAdapter,
+  const bootstrapEventsResult = container.registerClass(
+    platformBootstrapEventPortToken,
+    DIFoundryBootstrapEventAdapter,
     ServiceLifecycle.SINGLETON
   );
-  if (isErr(bootstrapHooksResult)) {
-    return err(`Failed to register BootstrapHooksPort: ${bootstrapHooksResult.error.message}`);
+  if (isErr(bootstrapEventsResult)) {
+    return err(
+      `Failed to register PlatformBootstrapEventPort: ${bootstrapEventsResult.error.message}`
+    );
   }
   const initHookResult = container.registerClass(
     bootstrapInitHookServiceToken,
@@ -9539,6 +9901,24 @@ function registerCoreServices(container) {
   );
   if (isErr(initHookResult)) {
     return err(`Failed to register BootstrapInitHookService: ${initHookResult.error.message}`);
+  }
+  const moduleReadyPortResult = container.registerClass(
+    platformModuleReadyPortToken,
+    DIFoundryModuleReadyPort,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(moduleReadyPortResult)) {
+    return err(
+      `Failed to register PlatformModuleReadyPort: ${moduleReadyPortResult.error.message}`
+    );
+  }
+  const moduleReadyResult = container.registerClass(
+    moduleReadyServiceToken,
+    DIModuleReadyService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(moduleReadyResult)) {
+    return err(`Failed to register ModuleReadyService: ${moduleReadyResult.error.message}`);
   }
   const readyHookResult = container.registerClass(
     bootstrapReadyHookServiceToken,
@@ -9672,17 +10052,19 @@ const platformNotificationPortToken = createInjectionToken(
 const platformCachePortToken = createInjectionToken("PlatformCachePort");
 const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
 const platformUIPortToken = createInjectionToken("PlatformUIPort");
-const journalDirectoryUiPortToken = createInjectionToken("JournalDirectoryUiPort");
-const notificationPortToken = createInjectionToken("NotificationPort");
+const platformJournalDirectoryUiPortToken = createInjectionToken("PlatformJournalDirectoryUiPort");
+const platformUINotificationPortToken = createInjectionToken(
+  "PlatformUINotificationPort"
+);
 const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
 const platformJournalEventPortToken = createInjectionToken(
   "PlatformJournalEventPort"
 );
-const journalCollectionPortToken = createInjectionToken("JournalCollectionPort");
-const journalRepositoryToken = createInjectionToken("JournalRepository");
-const contextMenuRegistrationPortToken = createInjectionToken(
-  "ContextMenuRegistrationPort"
+const platformJournalCollectionPortToken = createInjectionToken("PlatformJournalCollectionPort");
+const platformJournalRepositoryToken = createInjectionToken(
+  "PlatformJournalRepository"
 );
+const platformContextMenuRegistrationPortToken = createInjectionToken("PlatformContextMenuRegistrationPort");
 let cachedVersion = null;
 function detectFoundryVersion() {
   if (typeof game === "undefined") {
@@ -9715,19 +10097,6 @@ function tryGetFoundryVersion() {
   return result.ok ? result.value : void 0;
 }
 __name(tryGetFoundryVersion, "tryGetFoundryVersion");
-function createFoundryError(code, message2, details, cause) {
-  return { code, message: message2, details, cause };
-}
-__name(createFoundryError, "createFoundryError");
-function isErrorLike(obj) {
-  return typeof obj === "object" && obj !== null;
-}
-__name(isErrorLike, "isErrorLike");
-function isFoundryError(error) {
-  if (!isErrorLike(error)) return false;
-  return "code" in error && "message" in error && typeof error.code === "string" && typeof error.message === "string";
-}
-__name(isFoundryError, "isFoundryError");
 const _PortSelector = class _PortSelector {
   constructor(eventEmitter, observability, container) {
     this.eventEmitter = eventEmitter;
@@ -10334,127 +10703,6 @@ const _FoundryV13HooksPort = class _FoundryV13HooksPort {
 _disposed2 = new WeakMap();
 __name(_FoundryV13HooksPort, "FoundryV13HooksPort");
 let FoundryV13HooksPort = _FoundryV13HooksPort;
-function hasMethod(obj, methodName) {
-  return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
-  typeof obj[methodName] === "function";
-}
-__name(hasMethod, "hasMethod");
-function hasProperty(obj, propertyName) {
-  return obj !== null && obj !== void 0 && typeof obj === "object" && propertyName in obj;
-}
-__name(hasProperty, "hasProperty");
-function isObjectWithMethods(obj, methodNames) {
-  if (obj === null || obj === void 0 || typeof obj !== "object") {
-    return false;
-  }
-  return methodNames.every((methodName) => hasMethod(obj, methodName));
-}
-__name(isObjectWithMethods, "isObjectWithMethods");
-function castFoundrySettingsApi(settings) {
-  if (!isObjectWithMethods(settings, ["register", "get", "set"])) {
-    return err(
-      createFoundryError(
-        "API_NOT_AVAILABLE",
-        "game.settings does not have required methods (register, get, set)",
-        {
-          missingMethods: ["register", "get", "set"]
-        }
-      )
-    );
-  }
-  return ok(settings);
-}
-__name(castFoundrySettingsApi, "castFoundrySettingsApi");
-function castFoundryDocumentForFlag(document2) {
-  if (!isObjectWithMethods(document2, ["getFlag", "setFlag"])) {
-    return err(
-      createFoundryError(
-        "VALIDATION_FAILED",
-        "Document does not have required methods (getFlag, setFlag)",
-        {
-          missingMethods: ["getFlag", "setFlag"]
-        }
-      )
-    );
-  }
-  return ok(document2);
-}
-__name(castFoundryDocumentForFlag, "castFoundryDocumentForFlag");
-function castFoundryError(error) {
-  return error;
-}
-__name(castFoundryError, "castFoundryError");
-function castDisposablePort(port) {
-  if (!port || typeof port !== "object") {
-    return null;
-  }
-  if (hasMethod(port, "dispose")) {
-    return port;
-  }
-  return null;
-}
-__name(castDisposablePort, "castDisposablePort");
-function ensureNonEmptyArray(arr) {
-  if (arr.length === 0) {
-    return err(
-      createFoundryError("VALIDATION_FAILED", "Array must not be empty", { arrayLength: 0 })
-    );
-  }
-  return ok(arr);
-}
-__name(ensureNonEmptyArray, "ensureNonEmptyArray");
-function extractHtmlElement(html) {
-  return html instanceof HTMLElement ? html : null;
-}
-__name(extractHtmlElement, "extractHtmlElement");
-function getFactoryOrError(factories, version) {
-  const factory = factories.get(version);
-  if (!factory) {
-    return err(
-      createFoundryError("PORT_NOT_FOUND", `Factory for version ${version} not found in registry`, {
-        version
-      })
-    );
-  }
-  return ok(factory);
-}
-__name(getFactoryOrError, "getFactoryOrError");
-function castFoundryDocumentWithUpdate(document2) {
-  if (!isObjectWithMethods(document2, ["update"])) {
-    return err(
-      createFoundryError("VALIDATION_FAILED", "Document does not have required method (update)", {
-        missingMethods: ["update"]
-      })
-    );
-  }
-  return ok(document2);
-}
-__name(castFoundryDocumentWithUpdate, "castFoundryDocumentWithUpdate");
-function castFoundryJournalEntryClass() {
-  if (typeof globalThis !== "object" || globalThis === null || !("JournalEntry" in globalThis)) {
-    return err(
-      createFoundryError(
-        "API_NOT_AVAILABLE",
-        "Foundry JournalEntry class not available in globalThis",
-        {}
-      )
-    );
-  }
-  const journalEntryClass = globalThis.JournalEntry;
-  if (!isObjectWithMethods(journalEntryClass, ["create"])) {
-    return err(
-      createFoundryError(
-        "API_NOT_AVAILABLE",
-        "Foundry JournalEntry class does not have required method (create)",
-        {
-          missingMethods: ["create"]
-        }
-      )
-    );
-  }
-  return ok(journalEntryClass);
-}
-__name(castFoundryJournalEntryClass, "castFoundryJournalEntryClass");
 const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
   constructor() {
     __privateAdd(this, _disposed3, false);
@@ -10910,6 +11158,25 @@ _disposed6 = new WeakMap();
 __name(_FoundryV13I18nPort, "FoundryV13I18nPort");
 _FoundryV13I18nPort.dependencies = [];
 let FoundryV13I18nPort = _FoundryV13I18nPort;
+const _FoundryV13ModulePort = class _FoundryV13ModulePort {
+  setModuleReady(moduleId) {
+    if (typeof game === "undefined" || !game?.modules) {
+      return false;
+    }
+    const mod = game.modules.get(moduleId);
+    if (!mod) {
+      return false;
+    }
+    mod.ready = true;
+    return true;
+  }
+};
+__name(_FoundryV13ModulePort, "FoundryV13ModulePort");
+let FoundryV13ModulePort = _FoundryV13ModulePort;
+function createFoundryV13ModulePort() {
+  return new FoundryV13ModulePort();
+}
+__name(createFoundryV13ModulePort, "createFoundryV13ModulePort");
 function registerPortToRegistry(registry, version, token, portName, errors) {
   const result = registry.register(version, token);
   if (isErr(result)) {
@@ -10937,6 +11204,7 @@ function registerV13Ports(registries, container) {
     ServiceLifecycle.SINGLETON
   );
   container.registerClass(foundryV13I18nPortToken, FoundryV13I18nPort, ServiceLifecycle.SINGLETON);
+  container.registerValue(foundryV13ModulePortToken, createFoundryV13ModulePort());
   registerPortToRegistry(
     registries.gamePortRegistry,
     13,
@@ -10977,6 +11245,13 @@ function registerV13Ports(registries, container) {
     13,
     foundryV13I18nPortToken,
     "FoundryI18n",
+    portRegistrationErrors
+  );
+  registerPortToRegistry(
+    registries.modulePortRegistry,
+    13,
+    foundryV13ModulePortToken,
+    "FoundryModule",
     portRegistrationErrors
   );
   if (portRegistrationErrors.length > 0) {
@@ -11043,6 +11318,7 @@ function createPortRegistries(container) {
   const uiPortRegistry = new PortRegistry();
   const settingsPortRegistry = new PortRegistry();
   const i18nPortRegistry = new PortRegistry();
+  const modulePortRegistry = new PortRegistry();
   const v13RegistrationResult = registerV13Ports(
     {
       gamePortRegistry,
@@ -11050,7 +11326,8 @@ function createPortRegistries(container) {
       documentPortRegistry,
       uiPortRegistry,
       settingsPortRegistry,
-      i18nPortRegistry
+      i18nPortRegistry,
+      modulePortRegistry
     },
     container
   );
@@ -11063,7 +11340,8 @@ function createPortRegistries(container) {
     documentPortRegistry,
     uiPortRegistry,
     settingsPortRegistry,
-    i18nPortRegistry
+    i18nPortRegistry,
+    modulePortRegistry
   });
 }
 __name(createPortRegistries, "createPortRegistries");
@@ -11085,16 +11363,16 @@ function registerPortInfrastructure(container) {
     return err(`Failed to register PlatformUIPort: ${platformUIPortResult.error.message}`);
   }
   const journalDirectoryUiAliasResult = container.registerAlias(
-    journalDirectoryUiPortToken,
+    platformJournalDirectoryUiPortToken,
     platformUIPortToken
   );
   if (isErr(journalDirectoryUiAliasResult)) {
     return err(
-      `Failed to register JournalDirectoryUiPort alias: ${journalDirectoryUiAliasResult.error.message}`
+      `Failed to register PlatformJournalDirectoryUiPort alias: ${journalDirectoryUiAliasResult.error.message}`
     );
   }
   const uiNotificationAliasResult = container.registerAlias(
-    notificationPortToken,
+    platformUINotificationPortToken,
     platformUIPortToken
   );
   if (isErr(uiNotificationAliasResult)) {
@@ -11114,7 +11392,8 @@ function registerPortRegistries(container) {
     documentPortRegistry,
     uiPortRegistry,
     settingsPortRegistry,
-    i18nPortRegistry
+    i18nPortRegistry,
+    modulePortRegistry
   } = portsResult.value;
   const gameRegistryResult = container.registerValue(
     foundryGamePortRegistryToken,
@@ -11161,128 +11440,18 @@ function registerPortRegistries(container) {
   if (isErr(i18nRegistryResult)) {
     return err(`Failed to register FoundryI18n PortRegistry: ${i18nRegistryResult.error.message}`);
   }
+  const moduleRegistryResult = container.registerValue(
+    foundryModulePortRegistryToken,
+    modulePortRegistry
+  );
+  if (isErr(moduleRegistryResult)) {
+    return err(
+      `Failed to register FoundryModule PortRegistry: ${moduleRegistryResult.error.message}`
+    );
+  }
   return ok(void 0);
 }
 __name(registerPortRegistries, "registerPortRegistries");
-const _FoundryServiceBase = class _FoundryServiceBase {
-  constructor(portSelector, portRegistry, retryService) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-    this.retryService = retryService;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with token-based selection to resolve ports from the DI container.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version. Ports are resolved
-   * from the DI container, ensuring DIP (Dependency Inversion Principle) compliance.
-   *
-   * @param adapterName - Name for logging purposes (e.g., "FoundryGame")
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort(adapterName) {
-    if (this.port === null) {
-      const tokens = this.portRegistry.getTokens();
-      const portResult = this.portSelector.selectPortFromTokens(tokens, void 0, adapterName);
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-  /**
-   * Executes a Foundry API operation with automatic retry on transient failures.
-   *
-   * Use this for any port method call to handle:
-   * - Race conditions (Foundry not fully initialized)
-   * - Timing issues (DOM/Settings not ready)
-   * - Transient port selection failures
-   *
-   * @template T - The success type
-   * @param fn - Function to execute (should call port methods)
-   * @param operationName - Operation name for logging (e.g., "FoundryGame.getJournalEntries")
-   * @param maxAttempts - Max retry attempts (default: 2 = 1 retry)
-   * @returns Result from operation or mapped error
-   *
-   * @example
-   * ```typescript
-   * getJournalEntries(): Result<Entry[], FoundryError> {
-   *   return this.withRetry(
-   *     () => {
-   *       const portResult = this.getPort("FoundryGame");
-   *       if (!portResult.ok) return portResult;
-   *       return portResult.value.getJournalEntries();
-   *     },
-   *     "FoundryGame.getJournalEntries"
-   *   );
-   * }
-   * ```
-   */
-  withRetry(fn, operationName, maxAttempts = 2) {
-    return this.retryService.retrySync(fn, {
-      maxAttempts,
-      operationName,
-      mapException: /* @__PURE__ */ __name((error) => ({
-        code: "OPERATION_FAILED",
-        message: `${operationName} failed: ${String(error)}`,
-        cause: error instanceof Error ? error : void 0
-      }), "mapException")
-    });
-  }
-  /**
-   * Async variant of withRetry for async operations.
-   *
-   * @template T - The success type
-   * @param fn - Async function to execute
-   * @param operationName - Operation name for logging
-   * @param maxAttempts - Max retry attempts (default: 2)
-   * @returns Promise resolving to Result
-   *
-   * @example
-   * ```typescript
-   * async setFlag<T>(doc, scope, key, value): Promise<Result<void, FoundryError>> {
-   *   return this.withRetryAsync(
-   *     async () => {
-   *       const portResult = this.getPort("FoundryDocument");
-   *       if (!portResult.ok) return portResult;
-   *       return await portResult.value.setFlag(doc, scope, key, value);
-   *     },
-   *     "FoundryDocument.setFlag"
-   *   );
-   * }
-   * ```
-   */
-  async withRetryAsync(fn, operationName, maxAttempts = 2) {
-    return this.retryService.retry(fn, {
-      maxAttempts,
-      delayMs: 100,
-      // 100ms delay between retries
-      operationName,
-      mapException: /* @__PURE__ */ __name((error) => ({
-        code: "OPERATION_FAILED",
-        message: `${operationName} failed: ${String(error)}`,
-        cause: error instanceof Error ? error : void 0
-      }), "mapException")
-    });
-  }
-  /**
-   * Cleans up resources.
-   * Disposes the port if it implements Disposable, then resets the reference.
-   * All ports now implement dispose() with #disposed state guards.
-   */
-  dispose() {
-    const disposable = castDisposablePort(this.port);
-    if (disposable) {
-      disposable.dispose();
-    }
-    this.port = null;
-  }
-};
-__name(_FoundryServiceBase, "FoundryServiceBase");
-let FoundryServiceBase = _FoundryServiceBase;
 const _FoundryGamePort = class _FoundryGamePort extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
@@ -11640,10 +11809,11 @@ _DIFoundrySettingsPort.dependencies = [
 ];
 let DIFoundrySettingsPort = _DIFoundrySettingsPort;
 const _FoundryJournalFacade = class _FoundryJournalFacade {
-  constructor(game2, document2, ui2) {
+  constructor(game2, document2, ui2, moduleId) {
     this.game = game2;
     this.document = document2;
     this.ui = ui2;
+    this.moduleId = moduleId;
   }
   /**
    * Get all journal entries from Foundry.
@@ -11668,7 +11838,7 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
     if (!documentResult.ok) {
       return documentResult;
     }
-    return this.document.getFlag(documentResult.value, MODULE_METADATA.ID, key, schema);
+    return this.document.getFlag(documentResult.value, this.moduleId, key, schema);
   }
   /**
    * Remove a journal element from the UI.
@@ -11697,18 +11867,23 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
     if (!documentResult.ok) {
       return documentResult;
     }
-    return await this.document.setFlag(documentResult.value, MODULE_METADATA.ID, key, value2);
+    return await this.document.setFlag(documentResult.value, this.moduleId, key, value2);
   }
 };
 __name(_FoundryJournalFacade, "FoundryJournalFacade");
 let FoundryJournalFacade = _FoundryJournalFacade;
 const _DIFoundryJournalFacade = class _DIFoundryJournalFacade extends FoundryJournalFacade {
-  constructor(game2, document2, ui2) {
-    super(game2, document2, ui2);
+  constructor(game2, document2, ui2, moduleId) {
+    super(game2, document2, ui2, moduleId);
   }
 };
 __name(_DIFoundryJournalFacade, "DIFoundryJournalFacade");
-_DIFoundryJournalFacade.dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken];
+_DIFoundryJournalFacade.dependencies = [
+  foundryGameToken,
+  foundryDocumentToken,
+  foundryUIToken,
+  moduleIdToken
+];
 let DIFoundryJournalFacade = _DIFoundryJournalFacade;
 function sanitizeHtml(text) {
   const div = document.createElement("div");
@@ -11788,8 +11963,8 @@ const _DIJournalVisibilityService = class _DIJournalVisibilityService extends Jo
 };
 __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
 _DIJournalVisibilityService.dependencies = [
-  journalCollectionPortToken,
-  journalRepositoryToken,
+  platformJournalCollectionPortToken,
+  platformJournalRepositoryToken,
   platformNotificationPortToken,
   platformCachePortToken,
   journalVisibilityConfigToken
@@ -11898,7 +12073,7 @@ const _DIJournalDirectoryProcessor = class _DIJournalDirectoryProcessor extends 
 };
 __name(_DIJournalDirectoryProcessor, "DIJournalDirectoryProcessor");
 _DIJournalDirectoryProcessor.dependencies = [
-  journalDirectoryUiPortToken,
+  platformJournalDirectoryUiPortToken,
   platformNotificationPortToken,
   journalVisibilityConfigToken
 ];
@@ -12001,12 +12176,12 @@ const _FoundryLibWrapperService = class _FoundryLibWrapperService {
 __name(_FoundryLibWrapperService, "FoundryLibWrapperService");
 let FoundryLibWrapperService = _FoundryLibWrapperService;
 const _DIFoundryLibWrapperService = class _DIFoundryLibWrapperService extends FoundryLibWrapperService {
-  constructor(logger) {
-    super(MODULE_METADATA.ID, logger);
+  constructor(moduleId, logger) {
+    super(moduleId, logger);
   }
 };
 __name(_DIFoundryLibWrapperService, "DIFoundryLibWrapperService");
-_DIFoundryLibWrapperService.dependencies = [loggerToken];
+_DIFoundryLibWrapperService.dependencies = [moduleIdToken, loggerToken];
 let DIFoundryLibWrapperService = _DIFoundryLibWrapperService;
 const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapperService {
   constructor(libWrapperService, logger) {
@@ -12284,13 +12459,13 @@ function registerFoundryServices(container) {
     );
   }
   const settingsRegistrationResult = container.registerClass(
-    settingsRegistrationPortToken,
+    platformSettingsRegistrationPortToken,
     DIFoundrySettingsRegistrationAdapter,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(settingsRegistrationResult)) {
     return err(
-      `Failed to register SettingsRegistrationPort: ${settingsRegistrationResult.error.message}`
+      `Failed to register PlatformSettingsRegistrationPort: ${settingsRegistrationResult.error.message}`
     );
   }
   const journalFacadeResult = container.registerClass(
@@ -12340,12 +12515,12 @@ function registerFoundryServices(container) {
     );
   }
   const contextMenuPortResult = container.registerAlias(
-    contextMenuRegistrationPortToken,
+    platformContextMenuRegistrationPortToken,
     journalContextMenuLibWrapperServiceToken
   );
   if (isErr(contextMenuPortResult)) {
     return err(
-      `Failed to register ContextMenuRegistrationPort: ${contextMenuPortResult.error.message}`
+      `Failed to register PlatformContextMenuRegistrationPort: ${contextMenuPortResult.error.message}`
     );
   }
   return ok(void 0);
@@ -14393,7 +14568,7 @@ const _DIModuleSettingsRegistrar = class _DIModuleSettingsRegistrar extends Modu
 };
 __name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
 _DIModuleSettingsRegistrar.dependencies = [
-  settingsRegistrationPortToken,
+  platformSettingsRegistrationPortToken,
   runtimeConfigToken,
   platformNotificationPortToken,
   platformI18nPortToken,
@@ -14836,7 +15011,7 @@ const _DITriggerJournalDirectoryReRenderUseCase = class _DITriggerJournalDirecto
 __name(_DITriggerJournalDirectoryReRenderUseCase, "DITriggerJournalDirectoryReRenderUseCase");
 _DITriggerJournalDirectoryReRenderUseCase.dependencies = [
   platformJournalEventPortToken,
-  journalDirectoryUiPortToken,
+  platformJournalDirectoryUiPortToken,
   platformNotificationPortToken
 ];
 let DITriggerJournalDirectoryReRenderUseCase = _DITriggerJournalDirectoryReRenderUseCase;
@@ -14887,7 +15062,7 @@ const _DIRegisterContextMenuUseCase = class _DIRegisterContextMenuUseCase extend
 };
 __name(_DIRegisterContextMenuUseCase, "DIRegisterContextMenuUseCase");
 _DIRegisterContextMenuUseCase.dependencies = [
-  contextMenuRegistrationPortToken,
+  platformContextMenuRegistrationPortToken,
   journalContextMenuHandlersToken,
   loggerToken
 ];
@@ -14975,7 +15150,7 @@ const _DIHideJournalContextMenuHandler = class _DIHideJournalContextMenuHandler 
 };
 __name(_DIHideJournalContextMenuHandler, "DIHideJournalContextMenuHandler");
 _DIHideJournalContextMenuHandler.dependencies = [
-  journalRepositoryToken,
+  platformJournalRepositoryToken,
   platformUIPortToken,
   platformNotificationPortToken
 ];
@@ -15756,20 +15931,22 @@ _DIFoundryJournalRepositoryAdapter.dependencies = [foundryGameToken, foundryDocu
 let DIFoundryJournalRepositoryAdapter = _DIFoundryJournalRepositoryAdapter;
 function registerEntityPorts(container) {
   const collectionResult = container.registerClass(
-    journalCollectionPortToken,
+    platformJournalCollectionPortToken,
     DIFoundryJournalCollectionAdapter,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(collectionResult)) {
-    return err(`Failed to register JournalCollectionPort: ${collectionResult.error.message}`);
+    return err(
+      `Failed to register PlatformJournalCollectionPort: ${collectionResult.error.message}`
+    );
   }
   const repositoryResult = container.registerClass(
-    journalRepositoryToken,
+    platformJournalRepositoryToken,
     DIFoundryJournalRepositoryAdapter,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(repositoryResult)) {
-    return err(`Failed to register JournalRepository: ${repositoryResult.error.message}`);
+    return err(`Failed to register PlatformJournalRepository: ${repositoryResult.error.message}`);
   }
   return ok(void 0);
 }
@@ -15929,22 +16106,22 @@ function normalizeSegment(segment) {
   return segment.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-_]/g, "").toLowerCase();
 }
 __name(normalizeSegment, "normalizeSegment");
-function createCacheKey(parts) {
+function createCacheKey(parts, moduleId) {
   const { namespace, resource, identifier } = parts;
-  const payload = [MODULE_METADATA.ID, namespace, resource];
+  const payload = [moduleId, namespace, resource];
   if (identifier !== null && identifier !== void 0) {
     payload.push(String(identifier));
   }
   return assertCacheKey(payload.map(normalizeSegment).join(KEY_SEPARATOR));
 }
 __name(createCacheKey, "createCacheKey");
-function createCacheNamespace(namespace) {
+function createCacheNamespace(namespace, moduleId) {
   const normalizedNamespace = normalizeSegment(namespace);
-  return (resource, identifier) => identifier === void 0 ? createCacheKey({ namespace: normalizedNamespace, resource }) : createCacheKey({ namespace: normalizedNamespace, resource, identifier });
+  return (resource, identifier) => identifier === void 0 ? createCacheKey({ namespace: normalizedNamespace, resource }, moduleId) : createCacheKey({ namespace: normalizedNamespace, resource, identifier }, moduleId);
 }
 __name(createCacheNamespace, "createCacheNamespace");
 function registerJournalVisibilityConfig(container) {
-  const buildCacheKey = createCacheNamespace("journal-visibility");
+  const buildCacheKey = createCacheNamespace("journal-visibility", MODULE_METADATA.ID);
   const cacheKeyFactory = /* @__PURE__ */ __name((resource) => {
     return buildCacheKey(resource);
   }, "cacheKeyFactory");
@@ -15975,11 +16152,15 @@ function registerStaticValues(container) {
     return err(`Failed to register ServiceContainer: ${containerResult.error.message}`);
   }
   const aliasResult = container.registerAlias(
-    containerPortToken,
-    castContainerTokenToContainerPortToken(serviceContainerToken)
+    platformContainerPortToken,
+    castContainerTokenToPlatformContainerPortToken(serviceContainerToken)
   );
   if (isErr(aliasResult)) {
-    return err(`Failed to register ContainerPort alias: ${aliasResult.error.message}`);
+    return err(`Failed to register PlatformContainerPort alias: ${aliasResult.error.message}`);
+  }
+  const moduleIdResult = container.registerValue(moduleIdToken, MODULE_METADATA.ID);
+  if (isErr(moduleIdResult)) {
+    return err(`Failed to register ModuleId: ${moduleIdResult.error.message}`);
   }
   return ok(void 0);
 }

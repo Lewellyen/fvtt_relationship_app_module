@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { MetricsBootstrapper } from "./orchestrators/metrics-bootstrapper";
 import { NotificationBootstrapper } from "./orchestrators/notification-bootstrapper";
@@ -46,11 +46,11 @@ export class InitOrchestrator {
    * 6. Event Registration (critical - fails on error)
    * 7. Context Menu Registration (optional - warnings only)
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @param logger - Logger for error reporting
    * @returns Result indicating success or aggregated errors
    */
-  static execute(container: ContainerPort, logger: Logger): Result<void, InitError[]> {
+  static execute(container: PlatformContainerPort, logger: Logger): Result<void, InitError[]> {
     const errors: InitError[] = [];
 
     // Phase 1: Metrics Initialization (optional)

@@ -105,12 +105,12 @@ const ALLOWED_WITH_MARKERS = [
 
   // Domain Port Interfaces: Leere Interface-Erweiterungen
   {
-    file: 'src/domain/ports/collections/journal-collection-port.interface.ts',
+    file: 'src/domain/ports/collections/platform-journal-collection-port.interface.ts',
     allowed: ['eslint-disable-next-line'],
     reason: 'Type-Placeholder: Leere Interface-Erweiterung für zukünftige journal-spezifische Methoden (no-empty-object-type ist hier beabsichtigt für Extension-Point)',
   },
   {
-    file: 'src/domain/ports/repositories/journal-repository.interface.ts',
+    file: 'src/domain/ports/repositories/platform-journal-repository.interface.ts',
     allowed: ['eslint-disable-next-line'],
     reason: 'Type-Placeholder: Leere Interface-Erweiterung für zukünftige journal-spezifische Methoden (no-empty-object-type ist hier beabsichtigt für Extension-Point)',
   },

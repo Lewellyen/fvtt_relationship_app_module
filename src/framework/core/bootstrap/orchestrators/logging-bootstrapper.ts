@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import { ok } from "@/domain/utils/result";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry.tokens";
 import { MODULE_METADATA, SETTING_KEYS } from "@/application/constants/app-constants";
@@ -20,11 +20,11 @@ export class LoggingBootstrapper {
   /**
    * Configures logger with current setting value.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @param logger - Logger instance to configure
    * @returns Result indicating success (always succeeds, settings are optional)
    */
-  static configureLogging(container: ContainerPort, logger: Logger): Result<void, string> {
+  static configureLogging(container: PlatformContainerPort, logger: Logger): Result<void, string> {
     const settingsResult = container.resolveWithError(foundrySettingsToken);
     if (!settingsResult.ok) {
       // Settings are optional - return success

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import type { JournalCollectionPort } from "../journal-collection-port.interface";
+import type { PlatformJournalCollectionPort } from "../platform-journal-collection-port.interface";
 
-describe("JournalCollectionPort (Contract Test)", () => {
+describe("PlatformJournalCollectionPort (Contract Test)", () => {
   it("should define all required methods", () => {
-    const mockPort: JournalCollectionPort = {
+    const mockPort: PlatformJournalCollectionPort = {
       getAll: vi.fn(),
       getById: vi.fn(),
       getByIds: vi.fn(),

@@ -18,7 +18,7 @@ import type { ServiceRegistration } from "../core/serviceregistration";
 import type { Result } from "@/domain/types/result";
 import type { FoundryHookCallback } from "@/infrastructure/adapters/foundry/types";
 import type { ContainerError, Container } from "../../interfaces";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { ok, err } from "@/domain/utils/result";
 
 /**
@@ -148,13 +148,13 @@ export function castContainerErrorCode(code: string): ContainerError["code"] {
 }
 
 /**
- * Casts a Container token to ContainerPort token for alias registration.
- * Runtime-safe because ServiceContainer implements both Container and ContainerPort.
- * This is needed when registering ContainerPort as an alias to ServiceContainer,
+ * Casts a Container token to PlatformContainerPort token for alias registration.
+ * Runtime-safe because ServiceContainer implements both Container and PlatformContainerPort.
+ * This is needed when registering PlatformContainerPort as an alias to ServiceContainer,
  * as the type system cannot automatically infer the compatibility.
  */
-export function castContainerTokenToContainerPortToken(
+export function castContainerTokenToPlatformContainerPortToken(
   token: InjectionToken<Container>
-): InjectionToken<ContainerPort> {
-  return token as unknown as InjectionToken<ContainerPort>;
+): InjectionToken<PlatformContainerPort> {
+  return token as unknown as InjectionToken<PlatformContainerPort>;
 }

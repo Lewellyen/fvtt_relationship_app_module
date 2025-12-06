@@ -10,18 +10,18 @@ import type { LogLevel } from "@/domain/types/log-level";
  * All methods accept optional additional parameters which will be passed
  * to the console for rich object inspection in the browser's developer tools.
  *
- * @interface LoggingPort
+ * @interface PlatformLoggingPort
  *
  * @example
  * ```typescript
- * const logger: LoggingPort = container.resolve(loggerToken);
+ * const logger: PlatformLoggingPort = container.resolve(loggerToken);
  * logger.setMinLevel(LogLevel.INFO);
  * logger.info("Application started");
  * logger.error("An error occurred", error);
  * logger.debug("User data:", user, { additional: "context" });
  * ```
  */
-export interface LoggingPort {
+export interface PlatformLoggingPort {
   /**
    * Sets the minimum log level. Messages below this level will be ignored.
    * Optional - not all logger implementations support runtime level changes.
@@ -71,7 +71,7 @@ export interface LoggingPort {
    * Optional: Not all logger implementations need to support trace IDs.
    *
    * @param traceId - Unique trace ID to include in log messages
-   * @returns A new LoggingPort instance that includes the trace ID in all messages
+   * @returns A new PlatformLoggingPort instance that includes the trace ID in all messages
    *
    * @example
    * ```typescript
@@ -82,5 +82,5 @@ export interface LoggingPort {
    * tracedLogger?.error('Operation failed'); // [trace-123-abc] Operation failed
    * ```
    */
-  withTraceId?(traceId: string): LoggingPort;
+  withTraceId?(traceId: string): PlatformLoggingPort;
 }

@@ -7,12 +7,15 @@ import type { PlatformUIError } from "./errors/platform-ui-error.interface";
  * Focused interface for displaying notifications to users.
  * Separated from DOM manipulation operations to follow Interface Segregation Principle.
  *
+ * This is a simple UI notification port (only notify() method).
+ * For full notification capabilities (debug, info, warn, error, channels), use PlatformNotificationPort.
+ *
  * Implementations:
  * - Foundry: FoundryNotificationAdapter (wraps FoundryV13UIPort)
  * - Roll20: Roll20NotificationAdapter
  * - CSV/Headless: NoOpNotificationAdapter
  */
-export interface NotificationPort {
+export interface PlatformUINotificationPort {
   /**
    * Shows a notification to the user.
    * @param message - The message to display

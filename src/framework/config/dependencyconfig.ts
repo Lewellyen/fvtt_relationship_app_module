@@ -8,7 +8,7 @@ import {
   metricsHealthCheckToken,
   healthCheckRegistryToken,
   serviceContainerToken,
-  containerPortToken,
+  platformContainerPortToken,
   runtimeConfigToken,
 } from "@/infrastructure/shared/tokens/core.tokens";
 import { ENV } from "@/framework/config/environment";
@@ -16,7 +16,9 @@ import { createRuntimeConfig } from "@/application/services/runtime-config-facto
 import { DIContainerHealthCheck } from "@/application/health/ContainerHealthCheck";
 import { DIMetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { castContainerTokenToContainerPortToken } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { castContainerTokenToPlatformContainerPortToken } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 
 // Import config modules
 import { registerCoreServices } from "@/framework/config/modules/core-services.config";
@@ -55,21 +57,28 @@ function registerStaticValues(container: ServiceContainer): Result<void, string>
     return err(`Failed to register ServiceContainer: ${containerResult.error.message}`);
   }
 
-  // Register ContainerPort as alias to ServiceContainer
-  // ServiceContainer implements ContainerPort, so this provides the abstraction
+  // Register PlatformContainerPort as alias to ServiceContainer
+  // ServiceContainer implements PlatformContainerPort, so this provides the abstraction
   // for Framework layer without duplicating the instance
-  // Note: Type assertion is required because ContainerPort and Container are different types,
+  // Note: Type assertion is required because PlatformContainerPort and Container are different types,
   // even though ServiceContainer implements both. This is a known limitation of the type system
   // when dealing with interface aliases. The runtime behavior is correct.
-  // Type assertion needed because ContainerPort and Container are different types,
+  // Type assertion needed because PlatformContainerPort and Container are different types,
   // even though ServiceContainer implements both. The cast function is in runtime-safe-cast.ts
   // which is excluded from type coverage, so we use a direct assertion here.
   const aliasResult = container.registerAlias(
-    containerPortToken,
-    castContainerTokenToContainerPortToken(serviceContainerToken)
+    platformContainerPortToken,
+    castContainerTokenToPlatformContainerPortToken(serviceContainerToken)
   );
   if (isErr(aliasResult)) {
-    return err(`Failed to register ContainerPort alias: ${aliasResult.error.message}`);
+    return err(`Failed to register PlatformContainerPort alias: ${aliasResult.error.message}`);
+  }
+
+  // Register module ID as static value
+  // This allows Infrastructure services to access module ID without importing from Application layer
+  const moduleIdResult = container.registerValue(moduleIdToken, MODULE_METADATA.ID);
+  if (isErr(moduleIdResult)) {
+    return err(`Failed to register ModuleId: ${moduleIdResult.error.message}`);
   }
 
   return ok(undefined);

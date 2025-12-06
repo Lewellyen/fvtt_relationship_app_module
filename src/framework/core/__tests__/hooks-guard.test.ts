@@ -31,7 +31,7 @@ describe("init-solid Hooks Guard", () => {
       await import("@/framework/core/init-solid");
 
       // Prüfen dass logger.warn() mit der erwarteten Nachricht aufgerufen wurde
-      // Services warnen jetzt über BootstrapHooksPort für init und ready hooks
+      // Services warnen jetzt über PlatformBootstrapEventPort für init und ready events
       expect(warnSpy).toHaveBeenCalledWith(
         "Init hook registration failed: Foundry Hooks API not available",
         undefined

@@ -4,8 +4,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
-import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
+import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstrap-event-port.interface";
 import { createMockGame, createMockUI } from "@/test/mocks/foundry";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
@@ -27,8 +27,8 @@ import { ok, err } from "@/domain/utils/result";
 
 describe("BootstrapInitHookService", () => {
   let mockLogger: Logger;
-  let mockContainer: ContainerPort;
-  let mockBootstrapHooks: BootstrapHooksPort;
+  let mockContainer: PlatformContainerPort;
+  let mockBootstrapEvents: PlatformBootstrapEventPort;
   let cleanup: (() => void) | undefined;
   let capturedInitCallback: (() => void) | undefined;
 
@@ -60,10 +60,10 @@ describe("BootstrapInitHookService", () => {
       resolve: vi.fn(),
       isRegistered: vi.fn(),
       getValidationState: vi.fn(),
-    } as unknown as ContainerPort;
+    } as unknown as PlatformContainerPort;
 
-    // Mock BootstrapHooksPort that captures the callback
-    mockBootstrapHooks = {
+    // Mock PlatformBootstrapEventPort that captures the callback
+    mockBootstrapEvents = {
       onInit: vi.fn().mockImplementation((callback: () => void) => {
         capturedInitCallback = callback;
         return ok(undefined);
@@ -79,15 +79,15 @@ describe("BootstrapInitHookService", () => {
   });
 
   describe("register()", () => {
-    it("should register init hook via BootstrapHooksPort", () => {
-      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
+    it("should register init event via PlatformBootstrapEventPort", () => {
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapEvents);
       service.register();
 
-      expect(mockBootstrapHooks.onInit).toHaveBeenCalledWith(expect.any(Function));
+      expect(mockBootstrapEvents.onInit).toHaveBeenCalledWith(expect.any(Function));
     });
 
-    it("should warn when hook registration fails", () => {
-      const failingBootstrapHooks: BootstrapHooksPort = {
+    it("should warn when event registration fails", () => {
+      const failingBootstrapEvents: PlatformBootstrapEventPort = {
         onInit: vi.fn().mockReturnValue(
           err({
             code: "PLATFORM_NOT_AVAILABLE",
@@ -100,7 +100,7 @@ describe("BootstrapInitHookService", () => {
       const service = new BootstrapInitHookService(
         mockLogger,
         mockContainer,
-        failingBootstrapHooks
+        failingBootstrapEvents
       );
       service.register();
 
@@ -139,7 +139,7 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapEvents);
       service.register();
 
       expect(capturedInitCallback).toBeDefined();
@@ -163,7 +163,7 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapEvents);
       service.register();
 
       expect(capturedInitCallback).toBeDefined();
@@ -218,7 +218,7 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapEvents);
       service.register();
 
       expect(capturedInitCallback).toBeDefined();
@@ -262,7 +262,7 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapEvents);
       service.register();
 
       expect(capturedInitCallback).toBeDefined();
@@ -317,7 +317,7 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapEvents);
       service.register();
 
       expect(capturedInitCallback).toBeDefined();
@@ -372,7 +372,7 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapEvents);
       service.register();
 
       expect(capturedInitCallback).toBeDefined();
@@ -427,7 +427,7 @@ describe("BootstrapInitHookService", () => {
         return err({ code: "NotFound", message: "Token not found" });
       });
 
-      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapHooks);
+      const service = new BootstrapInitHookService(mockLogger, mockContainer, mockBootstrapEvents);
       service.register();
 
       expect(capturedInitCallback).toBeDefined();

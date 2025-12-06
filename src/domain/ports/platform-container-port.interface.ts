@@ -22,7 +22,7 @@ import type {
  * @example
  * ```typescript
  * class MyFrameworkService {
- *   constructor(private readonly container: ContainerPort) {}
+ *   constructor(private readonly container: PlatformContainerPort) {}
  *
  *   initialize(): Result<void, string> {
  *     const loggerResult = this.container.resolveWithError(loggerToken);
@@ -35,7 +35,7 @@ import type {
  * }
  * ```
  */
-export interface ContainerPort {
+export interface PlatformContainerPort {
   /**
    * Resolve a service instance with explicit error handling.
    *

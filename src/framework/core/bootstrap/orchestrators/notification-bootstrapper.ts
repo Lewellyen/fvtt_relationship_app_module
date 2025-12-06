@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import {
   notificationCenterToken,
   uiChannelToken,
@@ -23,10 +23,10 @@ export class NotificationBootstrapper {
    *
    * This phase is optional - failures are logged as warnings but don't fail bootstrap.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
    */
-  static attachNotificationChannels(container: ContainerPort): Result<void, string> {
+  static attachNotificationChannels(container: PlatformContainerPort): Result<void, string> {
     const notificationCenterResult = container.resolveWithError(notificationCenterToken);
     if (!notificationCenterResult.ok) {
       // NotificationCenter resolution failure - return error so orchestrator can log warning

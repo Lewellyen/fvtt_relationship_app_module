@@ -1,5 +1,5 @@
 import type { Result } from "@/domain/types/result";
-import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
+import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type {
   EntityRepositoryError,
   CreateEntityData,
@@ -25,11 +25,11 @@ import {
 import * as v from "valibot";
 
 /**
- * Foundry-specific implementation of JournalRepository.
+ * Foundry-specific implementation of PlatformJournalRepository.
  *
  * Combines collection adapter with CRUD operations.
  */
-export class FoundryJournalRepositoryAdapter implements JournalRepository {
+export class FoundryJournalRepositoryAdapter implements PlatformJournalRepository {
   private readonly collection: FoundryJournalCollectionAdapter;
 
   constructor(

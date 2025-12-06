@@ -12,7 +12,7 @@ import type { PlatformEntityCollectionPort } from "../collections/platform-entit
  * @example
  * ```typescript
  * // Journal Repository
- * interface JournalRepository extends PlatformEntityRepository<JournalEntry> {}
+ * interface PlatformJournalRepository extends PlatformEntityRepository<JournalEntry> {}
  *
  * // Actor Repository
  * interface ActorRepository extends PlatformEntityRepository<Actor> {}

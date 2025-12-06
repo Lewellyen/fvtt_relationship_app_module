@@ -10,11 +10,12 @@ import {
   foundryUIPortRegistryToken,
   foundrySettingsPortRegistryToken,
   foundryI18nPortRegistryToken,
+  foundryModulePortRegistryToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
 import { platformUIPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
-  journalDirectoryUiPortToken,
-  notificationPortToken,
+  platformJournalDirectoryUiPortToken,
+  platformUINotificationPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { DIPortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
@@ -26,6 +27,7 @@ import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfac
 import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type { FoundryI18n } from "@/infrastructure/adapters/foundry/interfaces/FoundryI18n";
+import type { FoundryModule } from "@/infrastructure/adapters/foundry/interfaces/FoundryModule";
 
 /**
  * Creates and registers all port implementations to their respective registries.
@@ -44,6 +46,7 @@ function createPortRegistries(container: ServiceContainer): Result<
     uiPortRegistry: PortRegistry<FoundryUI>;
     settingsPortRegistry: PortRegistry<FoundrySettings>;
     i18nPortRegistry: PortRegistry<FoundryI18n>;
+    modulePortRegistry: PortRegistry<FoundryModule>;
   },
   string
 > {
@@ -54,6 +57,7 @@ function createPortRegistries(container: ServiceContainer): Result<
   const uiPortRegistry = new PortRegistry<FoundryUI>();
   const settingsPortRegistry = new PortRegistry<FoundrySettings>();
   const i18nPortRegistry = new PortRegistry<FoundryI18n>();
+  const modulePortRegistry = new PortRegistry<FoundryModule>();
 
   // Register v13 ports (version-specific registration is delegated to v13 layer)
   // Container is passed to allow future ports to use DI, even though current v13 ports don't need it
@@ -65,6 +69,7 @@ function createPortRegistries(container: ServiceContainer): Result<
       uiPortRegistry,
       settingsPortRegistry,
       i18nPortRegistry,
+      modulePortRegistry,
     },
     container
   );
@@ -83,6 +88,7 @@ function createPortRegistries(container: ServiceContainer): Result<
     uiPortRegistry,
     settingsPortRegistry,
     i18nPortRegistry,
+    modulePortRegistry,
   });
 }
 
@@ -125,17 +131,17 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
   // Register specialized ports as aliases to PlatformUIPort
   // This allows services to depend on minimal interfaces (ISP)
   const journalDirectoryUiAliasResult = container.registerAlias(
-    journalDirectoryUiPortToken,
+    platformJournalDirectoryUiPortToken,
     platformUIPortToken
   );
   if (isErr(journalDirectoryUiAliasResult)) {
     return err(
-      `Failed to register JournalDirectoryUiPort alias: ${journalDirectoryUiAliasResult.error.message}`
+      `Failed to register PlatformJournalDirectoryUiPort alias: ${journalDirectoryUiAliasResult.error.message}`
     );
   }
 
   const uiNotificationAliasResult = container.registerAlias(
-    notificationPortToken,
+    platformUINotificationPortToken,
     platformUIPortToken
   );
   if (isErr(uiNotificationAliasResult)) {
@@ -170,6 +176,7 @@ export function registerPortRegistries(container: ServiceContainer): Result<void
     uiPortRegistry,
     settingsPortRegistry,
     i18nPortRegistry,
+    modulePortRegistry,
   } = portsResult.value;
 
   // Register FoundryGame PortRegistry
@@ -227,6 +234,17 @@ export function registerPortRegistries(container: ServiceContainer): Result<void
   );
   if (isErr(i18nRegistryResult)) {
     return err(`Failed to register FoundryI18n PortRegistry: ${i18nRegistryResult.error.message}`);
+  }
+
+  // Register FoundryModule PortRegistry
+  const moduleRegistryResult = container.registerValue(
+    foundryModulePortRegistryToken,
+    modulePortRegistry
+  );
+  if (isErr(moduleRegistryResult)) {
+    return err(
+      `Failed to register FoundryModule PortRegistry: ${moduleRegistryResult.error.message}`
+    );
   }
 
   return ok(undefined);

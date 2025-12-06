@@ -12,7 +12,7 @@ import type { PlatformUIError } from "./errors/platform-ui-error.interface";
  * - Roll20: Roll20JournalDirectoryUIAdapter
  * - CSV/Headless: NoOpJournalDirectoryUIAdapter
  */
-export interface JournalDirectoryUiPort {
+export interface PlatformJournalDirectoryUiPort {
   /**
    * Removes a journal entry element from the journal directory UI.
    * @param journalId - The ID of the journal entry

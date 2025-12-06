@@ -2,7 +2,7 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { bootstrapHooksPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
 import {
   metricsCollectorToken,
   metricsRecorderToken,
@@ -29,7 +29,13 @@ import { DIModuleApiInitializer } from "@/framework/core/api/module-api-initiali
 import { DIHealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
 import { DIBootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
 import { DIBootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
-import { DIFoundryBootstrapHooksAdapter } from "@/infrastructure/adapters/foundry/bootstrap-hooks-adapter";
+import { DIFoundryBootstrapEventAdapter } from "@/infrastructure/adapters/foundry/bootstrap-hooks-adapter";
+import {
+  DIModuleReadyService,
+  moduleReadyServiceToken,
+} from "@/application/services/module-ready-service";
+import { platformModuleReadyPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { DIFoundryModuleReadyPort } from "@/infrastructure/adapters/foundry/services/FoundryModuleReadyPort";
 
 /**
  * Registers core infrastructure services.
@@ -150,18 +156,20 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
     return err(`Failed to register ModuleApiInitializer: ${apiInitResult.error.message}`);
   }
 
-  // Register BootstrapHooksPort (no dependencies, uses direct platform API)
+  // Register PlatformBootstrapEventPort (no dependencies, uses direct platform API)
   // Must be registered before Bootstrap services that depend on it
-  const bootstrapHooksResult = container.registerClass(
-    bootstrapHooksPortToken,
-    DIFoundryBootstrapHooksAdapter,
+  const bootstrapEventsResult = container.registerClass(
+    platformBootstrapEventPortToken,
+    DIFoundryBootstrapEventAdapter,
     ServiceLifecycle.SINGLETON
   );
-  if (isErr(bootstrapHooksResult)) {
-    return err(`Failed to register BootstrapHooksPort: ${bootstrapHooksResult.error.message}`);
+  if (isErr(bootstrapEventsResult)) {
+    return err(
+      `Failed to register PlatformBootstrapEventPort: ${bootstrapEventsResult.error.message}`
+    );
   }
 
-  // Register BootstrapInitHookService (deps: [loggerToken, serviceContainerToken, bootstrapHooksPortToken])
+  // Register BootstrapInitHookService (deps: [loggerToken, serviceContainerToken, platformBootstrapEventPortToken])
   const initHookResult = container.registerClass(
     bootstrapInitHookServiceToken,
     DIBootstrapInitHookService,
@@ -171,7 +179,31 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
     return err(`Failed to register BootstrapInitHookService: ${initHookResult.error.message}`);
   }
 
-  // Register BootstrapReadyHookService (deps: [loggerToken, bootstrapHooksPortToken])
+  // Register PlatformModuleReadyPort (must be before ModuleReadyService)
+  // NOTE: This is a Foundry-specific port, but we register it here because ModuleReadyService needs it
+  const moduleReadyPortResult = container.registerClass(
+    platformModuleReadyPortToken,
+    DIFoundryModuleReadyPort,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(moduleReadyPortResult)) {
+    return err(
+      `Failed to register PlatformModuleReadyPort: ${moduleReadyPortResult.error.message}`
+    );
+  }
+
+  // Register ModuleReadyService (deps: [platformModuleReadyPortToken, loggerToken])
+  // Must be registered before BootstrapReadyHookService which depends on it
+  const moduleReadyResult = container.registerClass(
+    moduleReadyServiceToken,
+    DIModuleReadyService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(moduleReadyResult)) {
+    return err(`Failed to register ModuleReadyService: ${moduleReadyResult.error.message}`);
+  }
+
+  // Register BootstrapReadyHookService (deps: [loggerToken, platformBootstrapEventPortToken, moduleReadyServiceToken])
   const readyHookResult = container.registerClass(
     bootstrapReadyHookServiceToken,
     DIBootstrapReadyHookService,

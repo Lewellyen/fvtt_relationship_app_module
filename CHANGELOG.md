@@ -12,6 +12,49 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.18] - 2025-12-06
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Domain Ports umbenannt**: Alle Domain Ports folgen jetzt der konsistenten Namenskonvention mit `Platform`-Präfix ([Details](src/domain/ports/))
+- `BootstrapHooksPort` → `PlatformBootstrapEventPort` (platform-agnostische Terminologie)
+- `ModuleReadyPort` → `PlatformModuleReadyPort`
+- `JournalCollectionPort` → `PlatformJournalCollectionPort`
+- `JournalRepository` → `PlatformJournalRepository`
+- `LoggingPort` → `PlatformLoggingPort`
+- `JournalDirectoryUiPort` → `PlatformJournalDirectoryUiPort`
+- `NotificationPort` → `PlatformUINotificationPort` (UI-spezifisch)
+- `ContainerPort` → `PlatformContainerPort`
+- `SettingsRegistrationPort` → `PlatformSettingsRegistrationPort`
+- `ContextMenuRegistrationPort` → `PlatformContextMenuRegistrationPort`
+- Alle Imports, Referenzen und Token wurden aktualisiert
+- Namenskonvention: Domain-Ports haben `Platform`-Präfix, Spezialisierungen zeigen Generalisierung (z.B. `PlatformJournalCollectionPort` erweitert `PlatformEntityCollectionPort`)
+- **createCacheNamespace API**: `moduleId` Parameter hinzugefügt für korrekte Module-Scoping ([Details](src/infrastructure/cache/cache.interface.ts))
+- `createCacheNamespace(namespace: string, moduleId: string)` erfordert jetzt `moduleId` als zweiten Parameter
+- Alle Aufrufe wurden aktualisiert (Tests, Config-Dateien)
+- **LibWrapperService**: Von Domain-Schicht nach Infrastructure-Schicht verschoben ([Details](src/infrastructure/adapters/foundry/interfaces/lib-wrapper-service.interface.ts))
+- `LibWrapperService` ist Foundry-spezifisch und wird nur intern in der Infrastructure-Schicht verwendet
+- Der Use-Case (Context Menu) ist bereits über `PlatformContextMenuRegistrationPort` abstrahiert
+- Neue Position: `src/infrastructure/adapters/foundry/interfaces/lib-wrapper-service.interface.ts`
+- Alle Imports wurden aktualisiert (5 Dateien)
+
+### Fehlerbehebungen
+- **Cache-Tests**: Alle Cache-Tests behoben - `createCacheNamespace` benötigt jetzt `moduleId` Parameter ([Details](src/application/services/__tests__/CacheService.test.ts))
+- **Bootstrap-Hooks-Adapter-Tests**: Fehlercodes von `HOOK_REGISTRATION_FAILED` zu `EVENT_REGISTRATION_FAILED` aktualisiert ([Details](src/infrastructure/adapters/foundry/__tests__/bootstrap-hooks-adapter.test.ts))
+- **FoundryJournalFacade-Tests**: `moduleId` Parameter hinzugefügt und static dependencies aktualisiert ([Details](src/infrastructure/adapters/foundry/facades/__tests__/foundry-journal-facade.test.ts))
+- **FoundryLibWrapperService-Test**: `moduleId` Parameter hinzugefügt und dependencies-Reihenfolge korrigiert ([Details](src/infrastructure/adapters/foundry/services/__tests__/FoundryLibWrapperService.test.ts))
+- **Coverage-Lücken geschlossen**: Tests für `else`-Zweige in `FoundryModuleReadyPort.ts` und Fehlerbehandlung in `dependencyconfig.ts` hinzugefügt ([Details](src/infrastructure/adapters/foundry/services/__tests__/FoundryModuleReadyPort.test.ts))
+- **TypeScript-Fehler behoben**: `PLATFORM_NOT_AVAILABLE` ist kein gültiger `FoundryErrorCode`, daher auf `PORT_SELECTION_FAILED` geändert und Mapping angepasst ([Details](src/infrastructure/adapters/foundry/services/FoundryModuleReadyPort.ts))
+- **ESLint-Fehler behoben**: Unbenutzte Parameter mit `_` Präfix versehen, `any`-Typen mit `eslint-disable-next-line` Kommentaren versehen ([Details](src/infrastructure/adapters/foundry/services/__tests__/FoundryModuleReadyPort.test.ts))
+- **Whitelist aktualisiert**: Neue Domain Port Dateinamen zur Whitelist hinzugefügt ([Details](scripts/check-no-ignores.mjs))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.17] - 2025-12-05
 ### Hinzugefügt
 - **SRP Refactoring-Pläne**: Vollständige Refactoring-Pläne für alle identifizierten Single Responsibility Principle Verletzungen

@@ -3,7 +3,7 @@ import {
   HideJournalContextMenuHandler,
   DIHideJournalContextMenuHandler,
 } from "../hide-journal-context-menu-handler";
-import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
+import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
@@ -11,7 +11,7 @@ import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { ok } from "@/domain/utils/result";
 
-function createMockJournalRepository(): JournalRepository {
+function createMockJournalRepository(): PlatformJournalRepository {
   return {
     getAll: vi.fn().mockReturnValue(ok([])),
     getById: vi.fn().mockReturnValue(ok(null)),
@@ -31,11 +31,11 @@ function createMockJournalRepository(): JournalRepository {
     getFlag: vi.fn().mockReturnValue(ok(false)),
     setFlag: vi.fn().mockResolvedValue(ok(undefined)),
     unsetFlag: vi.fn().mockResolvedValue(ok(undefined)),
-  } as unknown as JournalRepository;
+  } as unknown as PlatformJournalRepository;
 }
 
 describe("HideJournalContextMenuHandler", () => {
-  let mockJournalRepository: JournalRepository;
+  let mockJournalRepository: PlatformJournalRepository;
   let mockPlatformUI: PlatformUIPort;
   let mockNotificationCenter: PlatformNotificationPort;
   let handler: HideJournalContextMenuHandler;

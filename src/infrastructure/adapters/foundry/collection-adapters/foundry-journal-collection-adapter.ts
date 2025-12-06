@@ -1,5 +1,5 @@
 import type { Result } from "@/domain/types/result";
-import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
+import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
 import type { EntityCollectionError } from "@/domain/ports/collections/entity-collection-error.interface";
 import type { EntitySearchQuery } from "@/domain/ports/collections/entity-search-query.interface";
 import type { EntityQueryBuilder } from "@/domain/ports/collections/entity-query-builder.interface";
@@ -10,11 +10,11 @@ import { ok, err } from "@/domain/utils/result";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry.tokens";
 
 /**
- * Foundry-specific implementation of JournalCollectionPort.
+ * Foundry-specific implementation of PlatformJournalCollectionPort.
  *
  * Maps Foundry's game.journal collection to platform-agnostic journal collection port.
  */
-export class FoundryJournalCollectionAdapter implements JournalCollectionPort {
+export class FoundryJournalCollectionAdapter implements PlatformJournalCollectionPort {
   constructor(
     private readonly foundryGame: FoundryGame // FoundryGamePort (version-agnostisch), nicht FoundryV13GamePort!
   ) {}

@@ -11,7 +11,7 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { Container } from "@/infrastructure/di/interfaces";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 
 /**
  * Injection token for the application logger service.
@@ -142,7 +142,7 @@ export const metricsHealthCheckToken = createInjectionToken<any>("MetricsHealthC
 export const serviceContainerToken = createInjectionToken<Container>("ServiceContainer");
 
 /**
- * Injection token for the ContainerPort interface.
+ * Injection token for the PlatformContainerPort interface.
  *
  * Provides a minimal abstraction for service resolution and validation state checking.
  * Used by Framework layer to decouple from concrete Container implementation.
@@ -150,12 +150,13 @@ export const serviceContainerToken = createInjectionToken<Container>("ServiceCon
  * @example
  * ```typescript
  * class MyFrameworkService {
- *   static dependencies = [containerPortToken] as const;
- *   constructor(private readonly container: ContainerPort) {}
+ *   static dependencies = [platformContainerPortToken] as const;
+ *   constructor(private readonly container: PlatformContainerPort) {}
  * }
  * ```
  */
-export const containerPortToken = createInjectionToken<ContainerPort>("ContainerPort");
+export const platformContainerPortToken =
+  createInjectionToken<PlatformContainerPort>("PlatformContainerPort");
 
 /**
  * Injection token for the ModuleSettingsRegistrar.

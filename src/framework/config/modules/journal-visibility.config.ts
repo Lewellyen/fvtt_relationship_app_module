@@ -19,7 +19,7 @@ import type { DomainCacheKey } from "@/domain/types/cache/cache-types";
  */
 export function registerJournalVisibilityConfig(container: ServiceContainer): Result<void, string> {
   // Create cache key factory using Infrastructure utilities
-  const buildCacheKey = createCacheNamespace("journal-visibility");
+  const buildCacheKey = createCacheNamespace("journal-visibility", MODULE_METADATA.ID);
   const cacheKeyFactory = (resource: string): DomainCacheKey => {
     // Convert Infrastructure CacheKey (branded) to DomainCacheKey (string)
     return buildCacheKey(resource) as DomainCacheKey;

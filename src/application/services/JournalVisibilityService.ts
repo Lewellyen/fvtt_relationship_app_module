@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
-import type { JournalCollectionPort } from "@/domain/ports/collections/journal-collection-port.interface";
-import type { JournalRepository } from "@/domain/ports/repositories/journal-repository.interface";
+import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
+import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
@@ -8,8 +8,8 @@ import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.inter
 import type { JournalVisibilityConfig } from "./JournalVisibilityConfig";
 import { journalVisibilityConfigToken } from "@/application/tokens/application.tokens";
 import {
-  journalCollectionPortToken,
-  journalRepositoryToken,
+  platformJournalCollectionPortToken,
+  platformJournalRepositoryToken,
   platformCachePortToken,
   platformNotificationPortToken,
 } from "@/application/tokens/domain-ports.tokens";
@@ -26,8 +26,8 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  * - Does NOT handle DOM manipulation (delegated to JournalDirectoryProcessor)
  *
  * **Dependencies:**
- * - JournalCollectionPort: Platform-agnostic port for journal collection queries
- * - JournalRepository: Platform-agnostic port for journal CRUD and flag operations
+ * - PlatformJournalCollectionPort: Platform-agnostic port for journal collection queries
+ * - PlatformJournalRepository: Platform-agnostic port for journal CRUD and flag operations
  * - PlatformNotificationPort: Platform-agnostic port for logging and notifications
  * - PlatformCachePort: Platform-agnostic port for caching hidden entries
  *
@@ -37,8 +37,8 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  */
 export class JournalVisibilityService {
   constructor(
-    private readonly journalCollection: JournalCollectionPort,
-    private readonly journalRepository: JournalRepository,
+    private readonly journalCollection: PlatformJournalCollectionPort,
+    private readonly journalRepository: PlatformJournalRepository,
     private readonly notifications: PlatformNotificationPort,
     private readonly cache: PlatformCachePort,
     private readonly config: JournalVisibilityConfig
@@ -113,16 +113,16 @@ export class JournalVisibilityService {
 
 export class DIJournalVisibilityService extends JournalVisibilityService {
   static dependencies = [
-    journalCollectionPortToken,
-    journalRepositoryToken,
+    platformJournalCollectionPortToken,
+    platformJournalRepositoryToken,
     platformNotificationPortToken,
     platformCachePortToken,
     journalVisibilityConfigToken,
   ] as const;
 
   constructor(
-    journalCollection: JournalCollectionPort,
-    journalRepository: JournalRepository,
+    journalCollection: PlatformJournalCollectionPort,
+    journalRepository: PlatformJournalRepository,
     notifications: PlatformNotificationPort,
     cache: PlatformCachePort,
     config: JournalVisibilityConfig

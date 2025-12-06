@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { CacheService, DEFAULT_CACHE_SERVICE_CONFIG } from "@/infrastructure/cache/CacheService";
 import type { CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import { createCacheKey } from "@/infrastructure/cache/cache.interface";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 
 describe("Concurrency: Cache Access", () => {
@@ -30,10 +31,13 @@ describe("Concurrency: Cache Access", () => {
 
   it.concurrent("should handle concurrent reads", async () => {
     // Cache mit Daten füllen
-    const key = createCacheKey({
-      namespace: "test",
-      resource: "concurrent-read",
-    });
+    const key = createCacheKey(
+      {
+        namespace: "test",
+        resource: "concurrent-read",
+      },
+      MODULE_METADATA.ID
+    );
     service.set(key, "test-value");
 
     // 50 parallele Reads
@@ -50,10 +54,13 @@ describe("Concurrency: Cache Access", () => {
   });
 
   it.concurrent("should handle concurrent writes", async () => {
-    const key = createCacheKey({
-      namespace: "test",
-      resource: "concurrent-write",
-    });
+    const key = createCacheKey(
+      {
+        namespace: "test",
+        resource: "concurrent-write",
+      },
+      MODULE_METADATA.ID
+    );
 
     // 50 parallele Writes (gleicher Key)
     const promises = Array.from({ length: 50 }, (_, i) =>
@@ -75,10 +82,13 @@ describe("Concurrency: Cache Access", () => {
   });
 
   it.concurrent("should handle concurrent read-write mix", async () => {
-    const key = createCacheKey({
-      namespace: "test",
-      resource: "concurrent-mix",
-    });
+    const key = createCacheKey(
+      {
+        namespace: "test",
+        resource: "concurrent-mix",
+      },
+      MODULE_METADATA.ID
+    );
 
     // Initialer Wert
     service.set(key, "initial");

@@ -17,7 +17,7 @@ import {
   foundryDocumentToken,
   foundryUIToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
 import { castFoundryDocumentForFlag } from "@/infrastructure/adapters/foundry/runtime-casts";
 import * as v from "valibot";
 
@@ -34,7 +34,8 @@ export class FoundryJournalFacade implements IFoundryJournalFacade {
   constructor(
     private readonly game: FoundryGame,
     private readonly document: FoundryDocument,
-    private readonly ui: FoundryUI
+    private readonly ui: FoundryUI,
+    private readonly moduleId: string
   ) {}
 
   /**
@@ -67,7 +68,7 @@ export class FoundryJournalFacade implements IFoundryJournalFacade {
     if (!documentResult.ok) {
       return documentResult; // Propagate error
     }
-    return this.document.getFlag<T>(documentResult.value, MODULE_METADATA.ID, key, schema);
+    return this.document.getFlag<T>(documentResult.value, this.moduleId, key, schema);
   }
 
   /**
@@ -102,14 +103,19 @@ export class FoundryJournalFacade implements IFoundryJournalFacade {
     if (!documentResult.ok) {
       return documentResult; // Propagate error
     }
-    return await this.document.setFlag(documentResult.value, MODULE_METADATA.ID, key, value);
+    return await this.document.setFlag(documentResult.value, this.moduleId, key, value);
   }
 }
 
 export class DIFoundryJournalFacade extends FoundryJournalFacade {
-  static dependencies = [foundryGameToken, foundryDocumentToken, foundryUIToken] as const;
+  static dependencies = [
+    foundryGameToken,
+    foundryDocumentToken,
+    foundryUIToken,
+    moduleIdToken,
+  ] as const;
 
-  constructor(game: FoundryGame, document: FoundryDocument, ui: FoundryUI) {
-    super(game, document, ui);
+  constructor(game: FoundryGame, document: FoundryDocument, ui: FoundryUI, moduleId: string) {
+    super(game, document, ui, moduleId);
   }
 }

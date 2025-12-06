@@ -8,7 +8,7 @@ import type { JournalEntry } from "@/domain/entities/journal-entry";
  * Currently just type-safe wrapper around generic repository.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface JournalRepository extends PlatformEntityRepository<JournalEntry> {
+export interface PlatformJournalRepository extends PlatformEntityRepository<JournalEntry> {
   // Aktuell keine journal-spezifischen Erweiterungen nötig
   // Bei Bedarf später hinzufügen
 }

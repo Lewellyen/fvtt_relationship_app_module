@@ -41,7 +41,7 @@ import type {
  * );
  * ```
  */
-export interface SettingsRegistrationPort {
+export interface PlatformSettingsRegistrationPort {
   /**
    * Registers a new module setting.
    *

@@ -8,7 +8,7 @@ import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-jou
  *
  * @example
  * ```typescript
- * const port = container.resolve(contextMenuRegistrationPortToken);
+ * const port = container.resolve(platformContextMenuRegistrationPortToken);
  *
  * // Add callback
  * const callback = (event: JournalContextMenuEvent) => {
@@ -20,7 +20,7 @@ import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-jou
  * port.removeCallback(callback);
  * ```
  */
-export interface ContextMenuRegistrationPort {
+export interface PlatformContextMenuRegistrationPort {
   /**
    * Add a callback that will be called when a journal context menu is rendered.
    *

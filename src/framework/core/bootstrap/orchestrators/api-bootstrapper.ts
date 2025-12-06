@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
@@ -16,10 +16,10 @@ export class ApiBootstrapper {
   /**
    * Exposes the module's public API.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success or error
    */
-  static exposeApi(container: ContainerPort): Result<void, string> {
+  static exposeApi(container: PlatformContainerPort): Result<void, string> {
     const apiInitializerResult = container.resolveWithError(moduleApiInitializerToken);
     if (!apiInitializerResult.ok) {
       return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);

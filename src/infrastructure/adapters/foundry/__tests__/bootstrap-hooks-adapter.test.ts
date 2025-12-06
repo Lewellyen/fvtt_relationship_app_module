@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
-  DIFoundryBootstrapHooksAdapter,
-  FoundryBootstrapHooksAdapter,
+  DIFoundryBootstrapEventAdapter,
+  FoundryBootstrapEventAdapter,
 } from "@/infrastructure/adapters/foundry/bootstrap-hooks-adapter";
 
 type HooksLike = {
@@ -10,12 +10,12 @@ type HooksLike = {
 
 const hooksGlobal = globalThis as typeof globalThis & { Hooks?: HooksLike };
 
-describe("FoundryBootstrapHooksAdapter", () => {
-  let adapter: FoundryBootstrapHooksAdapter;
+describe("FoundryBootstrapEventAdapter", () => {
+  let adapter: FoundryBootstrapEventAdapter;
   let originalHooks: HooksLike | undefined;
 
   beforeEach(() => {
-    adapter = new FoundryBootstrapHooksAdapter();
+    adapter = new FoundryBootstrapEventAdapter();
     originalHooks = hooksGlobal.Hooks;
   });
 
@@ -68,7 +68,7 @@ describe("FoundryBootstrapHooksAdapter", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("HOOK_REGISTRATION_FAILED");
+      expect(result.error.code).toBe("EVENT_REGISTRATION_FAILED");
       expect(result.error.message).toContain("ready");
       expect(result.error.details).toBe(error);
     }
@@ -87,7 +87,7 @@ describe("FoundryBootstrapHooksAdapter", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("HOOK_REGISTRATION_FAILED");
+      expect(result.error.code).toBe("EVENT_REGISTRATION_FAILED");
       expect(result.error.message).toContain("ready");
       expect(result.error.details).toBe(error);
     }
@@ -106,7 +106,7 @@ describe("FoundryBootstrapHooksAdapter", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("HOOK_REGISTRATION_FAILED");
+      expect(result.error.code).toBe("EVENT_REGISTRATION_FAILED");
       expect(result.error.message).toContain("init");
       expect(result.error.details).toBe(error);
     }
@@ -125,7 +125,7 @@ describe("FoundryBootstrapHooksAdapter", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("HOOK_REGISTRATION_FAILED");
+      expect(result.error.code).toBe("EVENT_REGISTRATION_FAILED");
       expect(result.error.message).toContain("init");
       expect(result.error.details).toBe(error);
     }
@@ -134,12 +134,12 @@ describe("FoundryBootstrapHooksAdapter", () => {
   it("shares behavior in DI wrapper", () => {
     const on = vi.fn();
     hooksGlobal.Hooks = { on };
-    const diAdapter = new DIFoundryBootstrapHooksAdapter();
+    const diAdapter = new DIFoundryBootstrapEventAdapter();
 
     const result = diAdapter.onReady(() => undefined);
 
     expect(result.ok).toBe(true);
     expect(on).toHaveBeenCalledWith("ready", expect.any(Function));
-    expect(DIFoundryBootstrapHooksAdapter.dependencies).toEqual([]);
+    expect(DIFoundryBootstrapEventAdapter.dependencies).toEqual([]);
   });
 });

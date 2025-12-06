@@ -19,14 +19,14 @@ import type {
   RuntimeConfigKey,
   RuntimeConfigValues,
 } from "@/application/services/RuntimeConfigService";
-import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
+import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import type { SettingValidator } from "@/domain/types/settings";
 import { SettingValidators } from "@/domain/types/settings";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
-import type { LoggingPort } from "@/domain/ports/logging-port.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import { loggerToken, runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
-import { settingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
 import {
   platformNotificationPortToken,
   platformI18nPortToken,
@@ -111,17 +111,17 @@ export const runtimeConfigBindings = {
  * - Full DI: All dependencies injected via constructor (no Service Locator)
  *
  * **DIP-Compliant:**
- * - Uses SettingsRegistrationPort instead of PlatformSettingsPort
+ * - Uses PlatformSettingsRegistrationPort instead of PlatformSettingsPort
  * - Uses domain-neutral SettingValidators instead of Valibot schemas
  * - No infrastructure layer imports for validation
  */
 export class ModuleSettingsRegistrar {
   constructor(
-    private readonly settings: SettingsRegistrationPort,
+    private readonly settings: PlatformSettingsRegistrationPort,
     private readonly runtimeConfig: RuntimeConfigService,
     private readonly notifications: PlatformNotificationPort,
     private readonly i18n: PlatformI18nPort,
-    private readonly logger: LoggingPort
+    private readonly logger: PlatformLoggingPort
   ) {}
 
   /**
@@ -223,7 +223,7 @@ export class ModuleSettingsRegistrar {
   }
 
   private syncRuntimeConfigFromSettings<TSchema, K extends RuntimeConfigKey>(
-    settings: SettingsRegistrationPort,
+    settings: PlatformSettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
     binding: RuntimeConfigBinding<TSchema, K>,
     notifications: PlatformNotificationPort,
@@ -248,11 +248,11 @@ export class ModuleSettingsRegistrar {
   private registerDefinition<TSchema, K extends RuntimeConfigKey>(
     definition: SettingDefinition<TSchema>,
     binding: RuntimeConfigBinding<TSchema, K> | undefined,
-    settings: SettingsRegistrationPort,
+    settings: PlatformSettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
-    logger: LoggingPort
+    logger: PlatformLoggingPort
   ): void {
     const config = definition.createConfig(i18n, logger);
     const configWithRuntimeBridge = binding
@@ -292,7 +292,7 @@ export class ModuleSettingsRegistrar {
 
 export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   static dependencies = [
-    settingsRegistrationPortToken,
+    platformSettingsRegistrationPortToken,
     runtimeConfigToken,
     platformNotificationPortToken,
     platformI18nPortToken,
@@ -300,11 +300,11 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   ] as const;
 
   constructor(
-    settings: SettingsRegistrationPort,
+    settings: PlatformSettingsRegistrationPort,
     runtimeConfig: RuntimeConfigService,
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
-    logger: LoggingPort
+    logger: PlatformLoggingPort
   ) {
     super(settings, runtimeConfig, notifications, i18n, logger);
   }

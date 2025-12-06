@@ -1,5 +1,5 @@
 import type { Result } from "@/domain/types/result";
-import type { SettingsRegistrationPort } from "@/domain/ports/settings-registration-port.interface";
+import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import type {
   DomainSettingConfig,
   DomainSettingsError,
@@ -11,7 +11,7 @@ import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry.tok
 import * as v from "valibot";
 
 /**
- * Foundry-specific adapter for SettingsRegistrationPort.
+ * Foundry-specific adapter for PlatformSettingsRegistrationPort.
  *
  * Translates between domain types (DomainSettingConfig, SettingValidator) and
  * Foundry types (SettingConfig, Valibot schemas).
@@ -38,7 +38,7 @@ import * as v from "valibot";
  * );
  * ```
  */
-export class FoundrySettingsRegistrationAdapter implements SettingsRegistrationPort {
+export class FoundrySettingsRegistrationAdapter implements PlatformSettingsRegistrationPort {
   constructor(private readonly foundrySettings: FoundrySettings) {}
 
   registerSetting<T>(

@@ -16,7 +16,7 @@ import {
   containerHealthCheckToken,
   metricsHealthCheckToken,
   serviceContainerToken,
-  containerPortToken,
+  platformContainerPortToken,
   environmentConfigToken,
   runtimeConfigToken,
   healthCheckRegistryToken,
@@ -30,9 +30,10 @@ import {
   foundrySettingsToken,
   foundrySettingsPortRegistryToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
 import {
-  journalCollectionPortToken,
-  journalRepositoryToken,
+  platformJournalCollectionPortToken,
+  platformJournalRepositoryToken,
   platformSettingsPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
@@ -79,6 +80,31 @@ describe("dependencyconfig", () => {
   });
 
   describe("Error Injection", () => {
+    it("should return error when moduleId registration fails", () => {
+      const container = ServiceContainer.createRoot();
+      const originalRegisterValue = container.registerValue.bind(container);
+
+      const registerValueSpy = vi
+        .spyOn(container, "registerValue")
+        .mockImplementation((token, value) => {
+          if (token === moduleIdToken) {
+            return err({
+              code: "InvalidOperation",
+              message: "Mocked moduleId registration failure",
+            });
+          }
+          return originalRegisterValue(token, value);
+        });
+
+      const result = configureDependencies(container);
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("Failed to register ModuleId");
+      }
+
+      registerValueSpy.mockRestore();
+    });
+
     it("should return error when logger registration fails", () => {
       const container = ServiceContainer.createRoot();
       const originalRegisterClass = container.registerClass.bind(container);
@@ -592,7 +618,7 @@ describe("dependencyconfig", () => {
       }
     });
 
-    it("should propagate errors when ContainerPort alias registration fails", () => {
+    it("should propagate errors when PlatformContainerPort alias registration fails", () => {
       const container = ServiceContainer.createRoot();
 
       // Make all previous registrations succeed, but fail on alias registration
@@ -604,10 +630,10 @@ describe("dependencyconfig", () => {
       });
 
       vi.spyOn(container, "registerAlias").mockImplementation((aliasToken, targetToken) => {
-        if (aliasToken === containerPortToken) {
+        if (aliasToken === platformContainerPortToken) {
           return err({
             code: "InvalidOperation",
-            message: "ContainerPort alias registration failed",
+            message: "PlatformContainerPort alias registration failed",
           } as any);
         }
         return originalRegisterAlias(aliasToken, targetToken);
@@ -617,7 +643,7 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
-        expect(result.error).toContain("Failed to register ContainerPort alias");
+        expect(result.error).toContain("Failed to register PlatformContainerPort alias");
       }
     });
   });
@@ -816,7 +842,10 @@ describe("dependencyconfig", () => {
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
         // Fail entity port registration
-        if (token === journalCollectionPortToken || token === journalRepositoryToken) {
+        if (
+          token === platformJournalCollectionPortToken ||
+          token === platformJournalRepositoryToken
+        ) {
           return err({
             code: "InvalidOperation",
             message: "Entity port registration failed",
@@ -829,7 +858,7 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
-        expect(result.error).toContain("JournalCollectionPort");
+        expect(result.error).toContain("PlatformJournalCollectionPort");
       }
     });
 

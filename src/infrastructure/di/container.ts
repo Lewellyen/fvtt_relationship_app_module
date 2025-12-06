@@ -10,7 +10,7 @@ import { ok, err, isOk } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 import type { Container } from "./interfaces";
 import type { ContainerError } from "./interfaces";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type {
   DomainInjectionToken,
   DomainContainerError,
@@ -68,7 +68,7 @@ import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observabil
  * root.dispose();
  * ```
  */
-export class ServiceContainer implements Container, ContainerPort {
+export class ServiceContainer implements Container, PlatformContainerPort {
   private registry: ServiceRegistry;
   private validator: ContainerValidator;
   private cache: InstanceCache;
@@ -331,7 +331,7 @@ export class ServiceContainer implements Container, ContainerPort {
 
   /**
    * Get validation state.
-   * Implements both Container.getValidationState and ContainerPort.getValidationState.
+   * Implements both Container.getValidationState and PlatformContainerPort.getValidationState.
    * Both interfaces use identical types, so a single overload is sufficient.
    */
   getValidationState(): ContainerValidationState | DomainContainerValidationState {
@@ -505,7 +505,7 @@ export class ServiceContainer implements Container, ContainerPort {
 
   /**
    * Resolve service with Result return.
-   * Implements both Container.resolveWithError and ContainerPort.resolveWithError.
+   * Implements both Container.resolveWithError and PlatformContainerPort.resolveWithError.
    */
   resolveWithError<T>(token: DomainInjectionToken<T>): Result<T, DomainContainerError>;
   resolveWithError<T>(token: InjectionToken<T>): Result<T, ContainerError>;
@@ -632,7 +632,7 @@ export class ServiceContainer implements Container, ContainerPort {
 
   /**
    * Check if service is registered.
-   * Implements both Container.isRegistered and ContainerPort.isRegistered.
+   * Implements both Container.isRegistered and PlatformContainerPort.isRegistered.
    */
   isRegistered<T>(token: DomainInjectionToken<T>): Result<boolean, never>;
   isRegistered<T>(token: InjectionToken<T>): Result<boolean, never>;

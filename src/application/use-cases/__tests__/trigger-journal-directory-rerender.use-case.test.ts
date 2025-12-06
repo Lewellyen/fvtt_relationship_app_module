@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TriggerJournalDirectoryReRenderUseCase } from "../trigger-journal-directory-rerender.use-case";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
-import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
+import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 
 describe("TriggerJournalDirectoryReRenderUseCase", () => {
   let mockJournalEvents: PlatformJournalEventPort;
-  let mockJournalDirectoryUI: JournalDirectoryUiPort;
+  let mockJournalDirectoryUI: PlatformJournalDirectoryUiPort;
   let mockNotificationCenter: PlatformNotificationPort;
   let useCase: TriggerJournalDirectoryReRenderUseCase;
 

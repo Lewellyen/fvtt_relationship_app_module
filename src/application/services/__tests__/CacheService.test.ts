@@ -15,8 +15,9 @@ import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastr
 import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { LogLevel } from "@/domain/types/log-level";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 
-const buildCacheKey = createCacheNamespace("journal");
+const buildCacheKey = createCacheNamespace("journal", MODULE_METADATA.ID);
 
 describe("CacheService", () => {
   let now: number;

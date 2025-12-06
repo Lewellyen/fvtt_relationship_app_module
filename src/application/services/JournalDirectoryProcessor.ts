@@ -1,12 +1,12 @@
 import type { Result } from "@/domain/types/result";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
-import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
+import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalVisibilityConfig } from "./JournalVisibilityConfig";
 import { getFirstArrayElement } from "@/application/utils/array-utils";
 import { sanitizeHtml } from "@/application/utils/sanitize-utils";
 import {
-  journalDirectoryUiPortToken,
+  platformJournalDirectoryUiPortToken,
   platformNotificationPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { journalVisibilityConfigToken } from "@/application/tokens/application.tokens";
@@ -17,11 +17,11 @@ import { journalVisibilityConfigToken } from "@/application/tokens/application.t
  *
  * **Responsibilities:**
  * - DOM manipulation for journal directory
- * - UI coordination via JournalDirectoryUiPort
+ * - UI coordination via PlatformJournalDirectoryUiPort
  * - Error handling and logging for DOM operations
  *
  * **Dependencies:**
- * - JournalDirectoryUiPort: Platform-agnostic port for journal directory UI operations
+ * - PlatformJournalDirectoryUiPort: Platform-agnostic port for journal directory UI operations
  * - PlatformNotificationPort: Platform-agnostic port for logging and notifications
  * - JournalVisibilityConfig: Configuration for default names and cache keys
  *
@@ -31,7 +31,7 @@ import { journalVisibilityConfigToken } from "@/application/tokens/application.t
  */
 export class JournalDirectoryProcessor {
   constructor(
-    private readonly journalDirectoryUI: JournalDirectoryUiPort,
+    private readonly journalDirectoryUI: PlatformJournalDirectoryUiPort,
     private readonly notifications: PlatformNotificationPort,
     private readonly config: JournalVisibilityConfig
   ) {}
@@ -134,13 +134,13 @@ export class JournalDirectoryProcessor {
  */
 export class DIJournalDirectoryProcessor extends JournalDirectoryProcessor {
   static dependencies = [
-    journalDirectoryUiPortToken,
+    platformJournalDirectoryUiPortToken,
     platformNotificationPortToken,
     journalVisibilityConfigToken,
   ] as const;
 
   constructor(
-    journalDirectoryUI: JournalDirectoryUiPort,
+    journalDirectoryUI: PlatformJournalDirectoryUiPort,
     notifications: PlatformNotificationPort,
     config: JournalVisibilityConfig
   ) {

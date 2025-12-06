@@ -64,3 +64,12 @@ export const retryServiceToken = createInjectionToken<RetryService>("RetryServic
  * Dies behebt den letzten Zyklus: infrastructure.tokens ↔ module-api-initializer ↔ ... ↔ FoundryI18nPort
  */
 export const moduleApiInitializerToken = createInjectionToken<any>("ModuleApiInitializer");
+
+/**
+ * Injection token for the module ID.
+ *
+ * Provides the module identifier string for Infrastructure services.
+ * Registered as a static value in static-values.config.ts to avoid
+ * Infrastructure layer depending on Application layer constants.
+ */
+export const moduleIdToken = createInjectionToken<string>("ModuleId");

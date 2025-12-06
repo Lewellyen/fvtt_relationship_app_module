@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import { ok } from "@/domain/utils/result";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
 import { PersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
 
@@ -16,10 +16,10 @@ export class MetricsBootstrapper {
   /**
    * Initializes metrics collector if it supports persistence.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success (warnings logged but don't fail bootstrap)
    */
-  static initializeMetrics(container: ContainerPort): Result<void, string> {
+  static initializeMetrics(container: PlatformContainerPort): Result<void, string> {
     const metricsResult = container.resolveWithError(metricsCollectorToken);
     if (!metricsResult.ok) {
       // Metrics collector not available - return success (optional)

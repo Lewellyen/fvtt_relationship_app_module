@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { JournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
-import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
+import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
 import { APP_DEFAULTS, MODULE_METADATA } from "@/application/constants/app-constants";
@@ -23,7 +23,7 @@ function createMockConfig(): JournalVisibilityConfig {
 
 describe("JournalDirectoryProcessor", () => {
   let processor: JournalDirectoryProcessor;
-  let mockJournalDirectoryUI: JournalDirectoryUiPort;
+  let mockJournalDirectoryUI: PlatformJournalDirectoryUiPort;
   let mockNotifications: PlatformNotificationPort;
   let mockConfig: JournalVisibilityConfig;
 
@@ -31,7 +31,7 @@ describe("JournalDirectoryProcessor", () => {
     mockJournalDirectoryUI = {
       removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
       rerenderJournalDirectory: vi.fn().mockReturnValue(ok(true)),
-    } as unknown as JournalDirectoryUiPort;
+    } as unknown as PlatformJournalDirectoryUiPort;
 
     mockNotifications = {
       debug: vi.fn().mockReturnValue(ok(undefined)),

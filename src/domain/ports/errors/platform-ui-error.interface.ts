@@ -3,8 +3,8 @@
  *
  * Diese Error-Types werden von mehreren Port-Interfaces verwendet:
  * - PlatformUIPort
- * - JournalDirectoryUiPort
- * - NotificationPort
+ * - PlatformJournalDirectoryUiPort
+ * - PlatformUINotificationPort
  *
  * Ausgelagert in separate Datei, um zirkuläre Abhängigkeiten zu vermeiden.
  */

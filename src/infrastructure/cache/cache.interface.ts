@@ -1,4 +1,3 @@
-import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { Result } from "@/domain/types/result";
 import { assertCacheKey, type CacheKey } from "@/infrastructure/di/types/utilities/type-casts";
 
@@ -115,10 +114,14 @@ function normalizeSegment(segment: string): string {
 
 /**
  * Creates a module-scoped cache key.
+ *
+ * @param parts - Cache key parts (namespace, resource, identifier)
+ * @param moduleId - Module ID for scoping (injected via DI to avoid Infrastructure → Application dependency)
+ * @returns Branded CacheKey
  */
-export function createCacheKey(parts: CacheKeyParts): CacheKey {
+export function createCacheKey(parts: CacheKeyParts, moduleId: string): CacheKey {
   const { namespace, resource, identifier } = parts;
-  const payload = [MODULE_METADATA.ID, namespace, resource];
+  const payload = [moduleId, namespace, resource];
   if (identifier !== null && identifier !== undefined) {
     payload.push(String(identifier));
   }
@@ -127,11 +130,15 @@ export function createCacheKey(parts: CacheKeyParts): CacheKey {
 
 /**
  * Helper to build cache key factories for a namespace.
+ *
+ * @param namespace - Cache namespace
+ * @param moduleId - Module ID for scoping (injected via DI to avoid Infrastructure → Application dependency)
+ * @returns Factory function that creates cache keys for the namespace
  */
-export function createCacheNamespace(namespace: string) {
+export function createCacheNamespace(namespace: string, moduleId: string) {
   const normalizedNamespace = normalizeSegment(namespace);
   return (resource: string, identifier?: string | number | null): CacheKey =>
     identifier === undefined
-      ? createCacheKey({ namespace: normalizedNamespace, resource })
-      : createCacheKey({ namespace: normalizedNamespace, resource, identifier });
+      ? createCacheKey({ namespace: normalizedNamespace, resource }, moduleId)
+      : createCacheKey({ namespace: normalizedNamespace, resource, identifier }, moduleId);
 }

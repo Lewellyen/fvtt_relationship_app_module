@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
@@ -16,10 +16,10 @@ export class SettingsBootstrapper {
   /**
    * Registers all module settings.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success or error
    */
-  static registerSettings(container: ContainerPort): Result<void, string> {
+  static registerSettings(container: PlatformContainerPort): Result<void, string> {
     const settingsRegistrarResult = container.resolveWithError(moduleSettingsRegistrarToken);
     if (!settingsRegistrarResult.ok) {
       return err(

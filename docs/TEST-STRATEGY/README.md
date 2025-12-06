@@ -14,13 +14,13 @@ Tests sind nach Priorität gruppiert:
 
 ### 🥇 Hohe Priorität
 
-- [ ] [Erweiterte Integration Tests](01-high-priority/01-extended-integration-tests.md) - ⭐ HÖCHSTE PRIORITÄT
-- [ ] [Concurrency Tests](01-high-priority/02-concurrency-tests.md)
-- [ ] [Memory Leak Tests](01-high-priority/03-memory-leak-tests.md)
+- [x] [Erweiterte Integration Tests](01-high-priority/01-extended-integration-tests.md) ✅ Implementiert
+- [x] [Concurrency Tests](01-high-priority/02-concurrency-tests.md) ✅ Implementiert
+- [x] [Memory Leak Tests](01-high-priority/03-memory-leak-tests.md) ✅ Implementiert
 - [x] [Runtime Error Monitoring Tests](01-high-priority/04-runtime-error-monitoring-tests.md) ✅ Implementiert
-- [ ] [E2E Tests](01-high-priority/05-e2e-tests.md) - 🎭 End-to-End Tests
+- [x] [E2E Tests](01-high-priority/05-e2e-tests.md) ✅ Implementiert - 🎭 End-to-End Tests
 
-**Gesamtaufwand:** ~24-37 Stunden
+**Gesamtaufwand:** ✅ Abgeschlossen (alle 5 Test-Strategien implementiert)
 
 ### 🥈 Mittlere Priorität
 
@@ -47,20 +47,34 @@ Tests sind nach Priorität gruppiert:
 - `03-extended-security-tests.md` - Unit-Tests für Input-Validation
 
 ### 🔗 Integration-Tests
-**Bereits vorhanden:** ✅ 2 Integration-Tests
+**Status:** ✅ **Vollständig implementiert** (7 Test-Dateien, 24+ Tests)
+
+**Implementiert:**
+- ✅ `01-extended-integration-tests.md` - **Integration-Tests** (End-to-End-Workflows)
+  - `full-bootstrap.test.ts` (6 Tests)
+  - `journal-visibility-e2e.test.ts` (2 Tests)
+  - `hook-registration-execution.test.ts` (1 Test)
+  - `cache-invalidation-workflow.test.ts` (1 Test)
+  - `module-lifecycle.test.ts` (1 Test)
+  - `settings-change-reaction.test.ts` (1 Test)
+  - `TraceContext.integration.test.ts` (12 Tests)
+- ✅ `02-concurrency-tests.md` - Concurrency-Tests (parallele Zugriffe)
+- ✅ `03-memory-leak-tests.md` - Memory Leak Tests (Service-Lifecycle)
+- ✅ `04-runtime-error-monitoring-tests.md` - Runtime Error Monitoring Tests
 
 **In den TODOs:**
-- `01-extended-integration-tests.md` - ⭐ **Integration-Tests** (End-to-End-Workflows)
-- `02-concurrency-tests.md` - Integration-Tests (mehrere Komponenten parallel)
-- `03-memory-leak-tests.md` - Integration-Tests (Service-Lifecycle)
-- `04-runtime-error-monitoring-tests.md` - Integration-Tests (Fehlerbehandlung)
-- `01-performance-tests.md` - Integration-Tests (Performance mehrerer Komponenten)
+- `01-performance-tests.md` - Performance-Tests (Performance mehrerer Komponenten)
 
 ### 🎭 E2E-Tests
-**Status:** ⚠️ TODO (lokale Foundry-Instanz erforderlich)
+**Status:** ✅ **IMPLEMENTIERT** (4 Test-Suites, 13+ Tests)
 
-**In den TODOs:**
-- `05-e2e-tests.md` - ⭐ **E2E-Tests** (Playwright, reale Foundry-Instanz)
+**Implementiert:**
+- ✅ `05-e2e-tests.md` - **E2E-Tests** (Playwright, reale Foundry-Instanz)
+  - Bootstrap & Initialisierung (4 Tests)
+  - Journal Visibility (4 Tests)
+  - Notifications (2 Tests)
+  - Settings (3 Tests)
+  - **Detaillierte Analyse:** [E2E-TESTS-ANALYSIS.md](01-high-priority/E2E-TESTS-ANALYSIS.md)
 
 ### 🔧 Meta-Tests / Analyse-Tools
 **In den TODOs:**
@@ -83,8 +97,8 @@ Tests sind nach Priorität gruppiert:
 
 **Aktueller Stand:**
 - ✅ **Phase 1 (Unit):** 95 Tests, 100% Coverage
-- ⚠️ **Phase 2 (Integration):** 2 vorhanden, 5 weitere in TODOs
-- ⚠️ **Phase 3 (E2E):** TODO (Playwright-Setup erforderlich)
+- ✅ **Phase 2 (Integration):** 7 Test-Dateien, 24+ Tests (vollständig implementiert)
+- ✅ **Phase 3 (E2E):** 4 Test-Suites, 13+ Tests (vollständig implementiert)
 
 ---
 
@@ -103,5 +117,5 @@ Tests sind nach Priorität gruppiert:
 
 ---
 
-**Letzte Aktualisierung:** 2025-01-XX
+**Letzte Aktualisierung:** 2025-01-18
 

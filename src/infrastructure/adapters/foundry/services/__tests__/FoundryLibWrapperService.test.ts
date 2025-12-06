@@ -4,7 +4,7 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type {
   LibWrapperFunction,
   LibWrapperType,
-} from "@/domain/services/lib-wrapper-service.interface";
+} from "@/infrastructure/adapters/foundry/interfaces/lib-wrapper-service.interface";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 
 describe("FoundryLibWrapperService", () => {
@@ -329,7 +329,7 @@ describe("FoundryLibWrapperService", () => {
 
   describe("DIFoundryLibWrapperService", () => {
     it("should use MODULE_METADATA.ID in constructor", () => {
-      const diService = new DIFoundryLibWrapperService(mockLogger);
+      const diService = new DIFoundryLibWrapperService(MODULE_METADATA.ID, mockLogger);
 
       // Verify it uses the correct module ID by registering something
       const target = "test-target";

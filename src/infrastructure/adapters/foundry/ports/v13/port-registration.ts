@@ -14,6 +14,7 @@ import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfac
 import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type { FoundryI18n } from "@/infrastructure/adapters/foundry/interfaces/FoundryI18n";
+import type { FoundryModule } from "@/infrastructure/adapters/foundry/interfaces/FoundryModule";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { FoundryV13GamePort } from "./FoundryV13GamePort";
 import { FoundryV13HooksPort } from "./FoundryV13HooksPort";
@@ -21,6 +22,7 @@ import { FoundryV13DocumentPort } from "./FoundryV13DocumentPort";
 import { FoundryV13UIPort } from "./FoundryV13UIPort";
 import { FoundryV13SettingsPort } from "./FoundryV13SettingsPort";
 import { FoundryV13I18nPort } from "./FoundryV13I18nPort";
+import { createFoundryV13ModulePort } from "./FoundryV13ModulePort";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import {
   foundryV13GamePortToken,
@@ -29,6 +31,7 @@ import {
   foundryV13UIPortToken,
   foundryV13SettingsPortToken,
   foundryV13I18nPortToken,
+  foundryV13ModulePortToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
 
 /**
@@ -67,6 +70,7 @@ export function registerV13Ports(
     uiPortRegistry: PortRegistry<FoundryUI>;
     settingsPortRegistry: PortRegistry<FoundrySettings>;
     i18nPortRegistry: PortRegistry<FoundryI18n>;
+    modulePortRegistry: PortRegistry<FoundryModule>;
   },
   container: ServiceContainer
 ): Result<void, string> {
@@ -91,6 +95,7 @@ export function registerV13Ports(
     ServiceLifecycle.SINGLETON
   );
   container.registerClass(foundryV13I18nPortToken, FoundryV13I18nPort, ServiceLifecycle.SINGLETON);
+  container.registerValue(foundryV13ModulePortToken, createFoundryV13ModulePort());
 
   // Register FoundryGame port token in registry
   registerPortToRegistry(
@@ -143,6 +148,15 @@ export function registerV13Ports(
     13,
     foundryV13I18nPortToken,
     "FoundryI18n",
+    portRegistrationErrors
+  );
+
+  // Register FoundryModule port token in registry
+  registerPortToRegistry(
+    registries.modulePortRegistry,
+    13,
+    foundryV13ModulePortToken,
+    "FoundryModule",
     portRegistrationErrors
   );
 

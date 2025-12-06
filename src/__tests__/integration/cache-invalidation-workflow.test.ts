@@ -112,7 +112,7 @@ describe("Integration: Cache Invalidation Workflow", () => {
     expect(hiddenResult.value.length).toBeGreaterThan(0);
 
     // Prüfen dass Entry im Cache ist
-    const buildCacheKey = createCacheNamespace("journal-visibility");
+    const buildCacheKey = createCacheNamespace("journal-visibility", MODULE_METADATA.ID);
     const cacheKey: CacheKey = buildCacheKey("hidden-directory");
     const cacheGetResult = cacheService.get(cacheKey);
     expect(cacheGetResult).toBeDefined();

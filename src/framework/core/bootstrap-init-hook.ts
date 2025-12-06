@@ -1,7 +1,7 @@
 /**
  * Bootstrap init hook registration service.
  *
- * DIP-Compliant: Uses BootstrapHooksPort instead of direct Hooks.on().
+ * DIP-Compliant: Uses PlatformBootstrapEventPort instead of direct Hooks.on().
  * The port abstracts the platform-specific hook registration while still
  * allowing the adapter to use direct APIs to avoid the chicken-egg problem.
  *
@@ -9,32 +9,35 @@
  */
 
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
-import type { BootstrapHooksPort } from "@/domain/ports/bootstrap-hooks-port.interface";
-import { bootstrapHooksPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
-import { loggerToken, containerPortToken } from "@/infrastructure/shared/tokens/core.tokens";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
+import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstrap-event-port.interface";
+import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import {
+  loggerToken,
+  platformContainerPortToken,
+} from "@/infrastructure/shared/tokens/core.tokens";
 import { InitOrchestrator } from "./bootstrap/init-orchestrator";
 
 /**
  * Service responsible for registering the Foundry 'init' hook.
  * Handles all initialization logic when the init hook fires.
  *
- * DIP-Compliant: Uses BootstrapHooksPort for hook registration instead of
+ * DIP-Compliant: Uses PlatformBootstrapEventPort for event registration instead of
  * direct platform API access.
  */
 export class BootstrapInitHookService {
   constructor(
     private readonly logger: Logger,
-    private readonly container: ContainerPort,
-    private readonly bootstrapHooks: BootstrapHooksPort
+    private readonly container: PlatformContainerPort,
+    private readonly bootstrapEvents: PlatformBootstrapEventPort
   ) {}
 
   /**
-   * Registers the init hook via BootstrapHooksPort.
+   * Registers the init event via PlatformBootstrapEventPort.
    * Must be called before the platform's init hook fires.
    */
   register(): void {
-    const result = this.bootstrapHooks.onInit(() => this.handleInit());
+    const result = this.bootstrapEvents.onInit(() => this.handleInit());
 
     if (!result.ok) {
       this.logger.warn(
@@ -70,9 +73,17 @@ export class BootstrapInitHookService {
  * Injects dependencies via constructor.
  */
 export class DIBootstrapInitHookService extends BootstrapInitHookService {
-  static dependencies = [loggerToken, containerPortToken, bootstrapHooksPortToken] as const;
+  static dependencies = [
+    loggerToken,
+    platformContainerPortToken,
+    platformBootstrapEventPortToken,
+  ] as const;
 
-  constructor(logger: Logger, container: ContainerPort, bootstrapHooks: BootstrapHooksPort) {
-    super(logger, container, bootstrapHooks);
+  constructor(
+    logger: Logger,
+    container: PlatformContainerPort,
+    bootstrapEvents: PlatformBootstrapEventPort
+  ) {
+    super(logger, container, bootstrapEvents);
   }
 }

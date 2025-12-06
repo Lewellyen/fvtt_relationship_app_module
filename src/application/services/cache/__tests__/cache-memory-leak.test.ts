@@ -29,7 +29,9 @@ function forceGC(): void {
   }
 }
 
-const buildCacheKey = createCacheNamespace("test");
+import { MODULE_METADATA } from "@/application/constants/app-constants";
+
+const buildCacheKey = createCacheNamespace("test", MODULE_METADATA.ID);
 
 describe("Memory Leak: Cache Cleanup", () => {
   let container: ServiceContainer;

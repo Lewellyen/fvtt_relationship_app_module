@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry.tokens";
 import { registerContextMenuUseCaseToken } from "@/infrastructure/shared/tokens/event.tokens";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
@@ -19,10 +19,10 @@ export class ContextMenuBootstrapper {
   /**
    * Registers context menu libWrapper and callbacks.
    *
-   * @param container - ContainerPort for service resolution
+   * @param container - PlatformContainerPort for service resolution
    * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
    */
-  static registerContextMenu(container: ContainerPort): Result<void, string> {
+  static registerContextMenu(container: PlatformContainerPort): Result<void, string> {
     const contextMenuLibWrapperResult = container.resolveWithError(
       journalContextMenuLibWrapperServiceToken
     );

@@ -1,13 +1,13 @@
 import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
-import type { JournalDirectoryUiPort } from "@/domain/ports/journal-directory-ui-port.interface";
+import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
 import {
   platformJournalEventPortToken,
-  journalDirectoryUiPortToken,
+  platformJournalDirectoryUiPortToken,
   platformNotificationPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
@@ -35,7 +35,7 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
 
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
-    private readonly journalDirectoryUI: JournalDirectoryUiPort,
+    private readonly journalDirectoryUI: PlatformJournalDirectoryUiPort,
     private readonly notifications: PlatformNotificationPort
   ) {}
 
@@ -104,13 +104,13 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
 export class DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDirectoryReRenderUseCase {
   static dependencies = [
     platformJournalEventPortToken,
-    journalDirectoryUiPortToken,
+    platformJournalDirectoryUiPortToken,
     platformNotificationPortToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
-    journalDirectoryUI: JournalDirectoryUiPort,
+    journalDirectoryUI: PlatformJournalDirectoryUiPort,
     notifications: PlatformNotificationPort
   ) {
     super(journalEvents, journalDirectoryUI, notifications);

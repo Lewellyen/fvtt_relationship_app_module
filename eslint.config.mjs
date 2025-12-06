@@ -6,6 +6,7 @@ import svelteParser from 'svelte-eslint-parser';
 export default [
   {
     files: ['**/*.{ts,js}'],
+    ignores: ['tests/**/*'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -118,6 +119,34 @@ export default [
   },
   {
     ignores: ['node_modules/', 'dist/', 'packs/', 'assets/', 'tailwind.config.js', 'postcss.config.js']
+  },
+  // Test-Dateien: Verwende tests/tsconfig.json
+  // In Tests ist `any` erlaubt, da wir mit Foundry's globalen Objekten arbeiten
+  {
+    files: ['tests/**/*.{ts,js}'],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        project: './tests/tsconfig.json',
+        sourceType: 'module'
+      }
+    },
+    plugins: {
+      '@typescript-eslint': typescript
+    },
+    rules: {
+      ...typescript.configs.recommended.rules,
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        }
+      ],
+      '@typescript-eslint/no-explicit-any': 'off', // any ist in Tests erlaubt (Foundry Globals)
+      '@typescript-eslint/explicit-function-return-type': 'off', // Optional für Tests
+    }
   },
 
   // Valibot-Schemas: PascalCase für Schema-Exports erlauben

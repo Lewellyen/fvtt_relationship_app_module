@@ -15,10 +15,11 @@ import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfac
 import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type { FoundryI18n } from "@/infrastructure/adapters/foundry/interfaces/FoundryI18n";
+import type { FoundryModule } from "@/infrastructure/adapters/foundry/interfaces/FoundryModule";
 import type { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import type { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
-import type { LibWrapperService } from "@/domain/services/lib-wrapper-service.interface";
+import type { LibWrapperService } from "@/infrastructure/adapters/foundry/interfaces/lib-wrapper-service.interface";
 
 /**
  * Injection token for FoundryGame port.
@@ -157,6 +158,12 @@ export const foundryI18nPortRegistryToken: InjectionToken<PortRegistry<FoundryI1
   createInjectionToken<PortRegistry<FoundryI18n>>("FoundryI18nPortRegistry");
 
 /**
+ * Injection token for FoundryModule PortRegistry.
+ */
+export const foundryModulePortRegistryToken: InjectionToken<PortRegistry<FoundryModule>> =
+  createInjectionToken<PortRegistry<FoundryModule>>("FoundryModulePortRegistry");
+
+/**
  * Version-specific port tokens for Foundry VTT v13.
  * These tokens are used to register and resolve version-specific port implementations
  * via the DI container, ensuring DIP (Dependency Inversion Principle) compliance.
@@ -200,6 +207,12 @@ export const foundryV13SettingsPortToken: InjectionToken<FoundrySettings> =
  */
 export const foundryV13I18nPortToken: InjectionToken<FoundryI18n> =
   createInjectionToken<FoundryI18n>("FoundryV13I18nPort");
+
+/**
+ * Injection token for FoundryModule port v13 implementation.
+ */
+export const foundryV13ModulePortToken: InjectionToken<FoundryModule> =
+  createInjectionToken<FoundryModule>("FoundryV13ModulePort");
 
 /**
  * Injection token for FoundryJournalFacade.

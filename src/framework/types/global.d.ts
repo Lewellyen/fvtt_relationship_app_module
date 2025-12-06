@@ -25,6 +25,11 @@ declare global {
          * Our module exposes a resolve() method for external DI access.
          */
         api?: ModuleApi;
+        /**
+         * Module ready state (similar to game.ready).
+         * Set to false initially, true when bootstrap-ready-hook completes.
+         */
+        ready?: boolean;
       }
     }
   }

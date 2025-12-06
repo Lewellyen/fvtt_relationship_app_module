@@ -47,7 +47,7 @@ describe("FoundryJournalFacade", () => {
       dispose: vi.fn(),
     };
 
-    facade = new FoundryJournalFacade(mockGame, mockDocument, mockUI);
+    facade = new FoundryJournalFacade(mockGame, mockDocument, mockUI, MODULE_METADATA.ID);
   });
 
   describe("getJournalEntries", () => {
@@ -232,8 +232,9 @@ describe("FoundryJournalFacade", () => {
         expect.any(Symbol), // foundryGameToken
         expect.any(Symbol), // foundryDocumentToken
         expect.any(Symbol), // foundryUIToken
+        expect.any(Symbol), // moduleIdToken
       ]);
-      expect(DIFoundryJournalFacade.dependencies).toHaveLength(3);
+      expect(DIFoundryJournalFacade.dependencies).toHaveLength(4);
     });
   });
 });

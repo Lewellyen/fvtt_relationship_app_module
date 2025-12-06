@@ -6,7 +6,7 @@ import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 import { MODULE_METADATA, LOG_PREFIX } from "@/application/constants/app-constants";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { Result } from "@/domain/types/result";
 
 describe("init-solid Bootstrap", () => {
@@ -185,7 +185,7 @@ describe("init-solid Bootstrap", () => {
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
-        .mockImplementation(function (this: ContainerPort, token: symbol) {
+        .mockImplementation(function (this: PlatformContainerPort, token: symbol) {
           if (token === notificationCenterToken) {
             return {
               ok: false as const,
@@ -239,7 +239,7 @@ describe("init-solid Bootstrap", () => {
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
-        .mockImplementation(function (this: ContainerPort, token: symbol) {
+        .mockImplementation(function (this: PlatformContainerPort, token: symbol) {
           if (token === uiChannelToken) {
             return {
               ok: false as const,
@@ -518,7 +518,7 @@ describe("init-solid Bootstrap", () => {
       let shouldFail = false;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
-        .mockImplementation(function (this: ContainerPort, token: symbol) {
+        .mockImplementation(function (this: PlatformContainerPort, token: symbol) {
           // Only fail for moduleApiInitializerToken when flag is set (during init callback)
           if (token === moduleApiInitializerToken && shouldFail) {
             return {
@@ -589,7 +589,7 @@ describe("init-solid Bootstrap", () => {
       let shouldFail = false;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
-        .mockImplementation(function (this: ContainerPort, token: symbol) {
+        .mockImplementation(function (this: PlatformContainerPort, token: symbol) {
           // Only fail for moduleSettingsRegistrarToken when flag is set (during init callback)
           if (token === moduleSettingsRegistrarToken && shouldFail) {
             return {
@@ -661,7 +661,7 @@ describe("init-solid Bootstrap", () => {
       let shouldFail = false;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
-        .mockImplementation(function (this: ContainerPort, token: symbol) {
+        .mockImplementation(function (this: PlatformContainerPort, token: symbol) {
           // Only fail for moduleEventRegistrarToken when flag is set (during init callback)
           if (token === moduleEventRegistrarToken && shouldFail) {
             return {
@@ -1020,7 +1020,7 @@ describe("init-solid Bootstrap", () => {
       vi.spyOn(
         moduleApiInitializerModule.ModuleApiInitializer.prototype,
         "expose"
-      ).mockImplementation(function (this: any, container: ContainerPort) {
+      ).mockImplementation(function (this: any, container: PlatformContainerPort) {
         if (shouldFail) {
           return { ok: false, error: "Failed to expose API: test error" };
         }
@@ -1135,11 +1135,11 @@ describe("init-solid Bootstrap", () => {
 
       vi.doMock("@/framework/core/composition-root", () => {
         class MockCompositionRoot {
-          bootstrap(): Result<ContainerPort, string> {
-            return { ok: true, value: {} as ContainerPort };
+          bootstrap(): Result<PlatformContainerPort, string> {
+            return { ok: true, value: {} as PlatformContainerPort };
           }
 
-          getContainer(): Result<ContainerPort, string> {
+          getContainer(): Result<PlatformContainerPort, string> {
             return { ok: false, error: containerError };
           }
         }

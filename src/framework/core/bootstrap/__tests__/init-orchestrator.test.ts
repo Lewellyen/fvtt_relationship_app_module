@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { InitOrchestrator } from "../init-orchestrator";
-import type { ContainerPort } from "@/domain/ports/container-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { MetricsBootstrapper } from "../orchestrators/metrics-bootstrapper";
 import { LoggingBootstrapper } from "../orchestrators/logging-bootstrapper";
@@ -20,7 +20,7 @@ vi.mock("../orchestrators/events-bootstrapper");
 vi.mock("../orchestrators/context-menu-bootstrapper");
 
 describe("InitOrchestrator", () => {
-  let mockContainer: ContainerPort;
+  let mockContainer: PlatformContainerPort;
   let mockLogger: Logger;
 
   beforeEach(() => {
@@ -29,7 +29,7 @@ describe("InitOrchestrator", () => {
       resolve: vi.fn(),
       getValidationState: vi.fn(),
       isRegistered: vi.fn(),
-    } as unknown as ContainerPort;
+    } as unknown as PlatformContainerPort;
 
     mockLogger = {
       info: vi.fn(),

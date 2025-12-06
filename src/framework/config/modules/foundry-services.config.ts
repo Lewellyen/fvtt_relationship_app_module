@@ -10,7 +10,7 @@ import {
   foundrySettingsToken,
   foundryJournalFacadeToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { settingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
 import {
   journalVisibilityServiceToken,
   journalDirectoryProcessorToken,
@@ -30,7 +30,7 @@ import {
   libWrapperServiceToken,
   journalContextMenuLibWrapperServiceToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { contextMenuRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
+import { platformContextMenuRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 
 /**
  * Registers Foundry service wrappers.
@@ -107,16 +107,16 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
     );
   }
 
-  // Register SettingsRegistrationPort (domain-neutral adapter)
+  // Register PlatformSettingsRegistrationPort (domain-neutral adapter)
   // Uses FoundrySettingsPort internally but exposes domain-neutral interface
   const settingsRegistrationResult = container.registerClass(
-    settingsRegistrationPortToken,
+    platformSettingsRegistrationPortToken,
     DIFoundrySettingsRegistrationAdapter,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(settingsRegistrationResult)) {
     return err(
-      `Failed to register SettingsRegistrationPort: ${settingsRegistrationResult.error.message}`
+      `Failed to register PlatformSettingsRegistrationPort: ${settingsRegistrationResult.error.message}`
     );
   }
 
@@ -132,7 +132,7 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   }
 
   // Register JournalVisibilityService
-  // Uses JournalCollectionPort and JournalRepository (registered in entity-ports.config.ts)
+  // Uses PlatformJournalCollectionPort and PlatformJournalRepository (registered in entity-ports.config.ts)
   const journalVisibilityResult = container.registerClass(
     journalVisibilityServiceToken,
     DIJournalVisibilityService,
@@ -179,15 +179,15 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
     );
   }
 
-  // Register ContextMenuRegistrationPort (alias to JournalContextMenuLibWrapperService)
+  // Register PlatformContextMenuRegistrationPort (alias to JournalContextMenuLibWrapperService)
   // This provides the domain-neutral port interface for context menu registration
   const contextMenuPortResult = container.registerAlias(
-    contextMenuRegistrationPortToken,
+    platformContextMenuRegistrationPortToken,
     journalContextMenuLibWrapperServiceToken
   );
   if (isErr(contextMenuPortResult)) {
     return err(
-      `Failed to register ContextMenuRegistrationPort: ${contextMenuPortResult.error.message}`
+      `Failed to register PlatformContextMenuRegistrationPort: ${contextMenuPortResult.error.message}`
     );
   }
 
