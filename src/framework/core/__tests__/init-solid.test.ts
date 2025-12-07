@@ -656,7 +656,7 @@ describe("init-solid Bootstrap", () => {
 
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
-      const { moduleEventRegistrarToken } = await import("@/infrastructure/shared/tokens");
+      const { moduleEventRegistrarToken } = await import("@/application/tokens/event.tokens");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       let shouldFail = false;
       const resolveSpy = vi

@@ -7,7 +7,7 @@ import {
   DIModuleSettingsRegistrar,
   runtimeConfigBindings,
 } from "@/application/services/ModuleSettingsRegistrar";
-import { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import { loggerToken, runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
@@ -15,7 +15,10 @@ import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/t
 import {
   platformNotificationPortToken,
   platformI18nPortToken,
+  platformValidationPortToken,
+  platformLoggingPortToken,
 } from "@/application/tokens/domain-ports.tokens";
+import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
 import { SETTING_KEYS, MODULE_METADATA } from "@/application/constants/app-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import { ok, err } from "@/domain/utils/result";
@@ -51,7 +54,7 @@ function stubPlatformGetSettingValue(
 describe("ModuleSettingsRegistrar", () => {
   describe("registerAll()", () => {
     it("should register log level setting", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       configureDependencies(container);
       container.validate();
 
@@ -68,13 +71,17 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformNotificationPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+      const mockValidator = container.resolve(
+        markAsApiSafe(platformValidationPortToken)
+      ) as PlatformValidationPort;
 
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfig,
         mockNotifications,
         mockI18n,
-        mockLogger
+        mockLogger,
+        mockValidator
       );
       registrar.registerAll();
 
@@ -93,7 +100,7 @@ describe("ModuleSettingsRegistrar", () => {
     });
 
     it("should configure onChange callback to update logger", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       configureDependencies(container);
       container.validate();
 
@@ -117,13 +124,17 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(platformNotificationPortToken)
       ) as PlatformNotificationPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
+      const mockValidator = container.resolve(
+        markAsApiSafe(platformValidationPortToken)
+      ) as PlatformValidationPort;
 
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfig,
         mockNotifications,
         mockI18n,
-        mockLogger
+        mockLogger,
+        mockValidator
       );
       registrar.registerAll();
 
@@ -136,7 +147,7 @@ describe("ModuleSettingsRegistrar", () => {
     });
 
     it("should handle logger without setMinLevel gracefully", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       configureDependencies(container);
       container.validate();
 
@@ -162,13 +173,17 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(platformNotificationPortToken)
       ) as PlatformNotificationPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
+      const mockValidator = container.resolve(
+        markAsApiSafe(platformValidationPortToken)
+      ) as PlatformValidationPort;
 
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfig,
         mockNotifications,
         mockI18n,
-        mockLogger
+        mockLogger,
+        mockValidator
       );
       registrar.registerAll();
 
@@ -177,7 +192,7 @@ describe("ModuleSettingsRegistrar", () => {
     });
 
     it("should log error when setting registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       configureDependencies(container);
       container.validate();
 
@@ -202,13 +217,17 @@ describe("ModuleSettingsRegistrar", () => {
       ) as RuntimeConfigService;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+      const mockValidator = container.resolve(
+        markAsApiSafe(platformValidationPortToken)
+      ) as PlatformValidationPort;
 
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfig,
         mockNotificationCenter,
         mockI18n,
-        mockLogger
+        mockLogger,
+        mockValidator
       );
       registrar.registerAll();
 
@@ -222,7 +241,7 @@ describe("ModuleSettingsRegistrar", () => {
     });
 
     it("should register with correct choices", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       configureDependencies(container);
       container.validate();
 
@@ -239,13 +258,17 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformNotificationPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+      const mockValidator = container.resolve(
+        markAsApiSafe(platformValidationPortToken)
+      ) as PlatformValidationPort;
 
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfig,
         mockNotifications,
         mockI18n,
-        mockLogger
+        mockLogger,
+        mockValidator
       );
       registrar.registerAll();
 
@@ -260,7 +283,7 @@ describe("ModuleSettingsRegistrar", () => {
     });
 
     it("should synchronize runtime config for bound settings", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       configureDependencies(container);
       container.validate();
 
@@ -285,13 +308,17 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformNotificationPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+      const mockValidator = container.resolve(
+        markAsApiSafe(platformValidationPortToken)
+      ) as PlatformValidationPort;
 
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         runtimeConfig,
         mockNotifications,
         mockI18n,
-        mockLogger
+        mockLogger,
+        mockValidator
       );
       registrar.registerAll();
 
@@ -310,7 +337,7 @@ describe("ModuleSettingsRegistrar", () => {
     });
 
     it("should apply binding transform for cacheMaxEntries", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       configureDependencies(container);
       container.validate();
 
@@ -334,13 +361,17 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformNotificationPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+      const mockValidator = container.resolve(
+        markAsApiSafe(platformValidationPortToken)
+      ) as PlatformValidationPort;
 
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         runtimeConfig,
         mockNotifications,
         mockI18n,
-        mockLogger
+        mockLogger,
+        mockValidator
       );
       registrar.registerAll();
 
@@ -363,7 +394,7 @@ describe("ModuleSettingsRegistrar", () => {
     it("should handle settings without binding (coverage for binding branch)", () => {
       // This test covers the case where binding is undefined
       // In practice all current settings have bindings, but this allows for future extensibility
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       configureDependencies(container);
       container.validate();
 
@@ -380,13 +411,17 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformNotificationPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
+      const mockValidator = container.resolve(
+        markAsApiSafe(platformValidationPortToken)
+      ) as PlatformValidationPort;
 
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfig,
         mockNotifications,
         mockI18n,
-        mockLogger
+        mockLogger,
+        mockValidator
       );
 
       // Spy on syncRuntimeConfigFromSettings before calling registerDefinition
@@ -432,7 +467,8 @@ describe("ModuleSettingsRegistrar DI metadata", () => {
       runtimeConfigToken,
       platformNotificationPortToken,
       platformI18nPortToken,
-      loggerToken,
+      platformLoggingPortToken,
+      platformValidationPortToken,
     ]);
   });
 });

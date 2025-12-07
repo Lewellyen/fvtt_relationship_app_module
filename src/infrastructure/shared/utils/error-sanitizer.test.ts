@@ -11,6 +11,8 @@ describe("Error Sanitizer", () => {
   describe("sanitizeErrorForProduction", () => {
     it("should return full error in development mode", () => {
       const devConfig = createMockRuntimeConfig({
+        isDevelopment: true,
+        isProduction: false,
         enablePerformanceTracking: false,
       });
 
@@ -77,6 +79,8 @@ describe("Error Sanitizer", () => {
   describe("sanitizeMessageForProduction", () => {
     it("should return full message in development", () => {
       const devConfig = createMockRuntimeConfig({
+        isDevelopment: true,
+        isProduction: false,
         enablePerformanceTracking: false,
       });
 

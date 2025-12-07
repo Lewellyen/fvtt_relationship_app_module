@@ -5,8 +5,10 @@ import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-jou
 import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import { journalContextMenuHandlersToken } from "@/application/tokens/application.tokens";
-import { platformContextMenuRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import {
+  platformContextMenuRegistrationPortToken,
+  platformLoggingPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 
 /**
  * Use-Case: Register custom context menu entries for journal entries.
@@ -84,7 +86,7 @@ export class DIRegisterContextMenuUseCase extends RegisterContextMenuUseCase {
   static dependencies = [
     platformContextMenuRegistrationPortToken,
     journalContextMenuHandlersToken,
-    loggerToken,
+    platformLoggingPortToken,
   ] as const;
 
   constructor(

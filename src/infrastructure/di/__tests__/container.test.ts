@@ -3,6 +3,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import { ServiceLifecycle } from "@/infrastructure/di/types";
@@ -41,13 +42,13 @@ class TestServiceWithDeps implements Logger {
 describe("ServiceContainer", () => {
   describe("Container Creation", () => {
     it("should create root container", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       expect(container).toBeInstanceOf(ServiceContainer);
       expect(container.getValidationState()).toBe("registering");
     });
 
     it("should start in registering state", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       expect(container.getValidationState()).toBe("registering");
     });
   });
@@ -57,7 +58,7 @@ describe("ServiceContainer", () => {
     let token: ReturnType<typeof createInjectionToken<TestService>>;
 
     beforeEach(() => {
-      container = ServiceContainer.createRoot();
+      container = createTestContainer();
       token = createInjectionToken<TestService>("TestService");
     });
 
@@ -175,7 +176,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should return null when getRegisteredValue resolves undefined", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const valueToken = createInjectionToken<Logger>("OptionalValue");
 
       const registry = (container as any).registry;
@@ -194,7 +195,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should return null when getRegisteredValue targets non-value providers", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("ClassToken");
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
 
@@ -203,7 +204,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should return null when getRegisteredValue is called for missing tokens", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const missingToken = createInjectionToken<TestService>("MissingValueToken");
 
       const resolved = container.getRegisteredValue(missingToken);
@@ -213,7 +214,7 @@ describe("ServiceContainer", () => {
 
   describe("Lifecycle: Singleton", () => {
     it("should return same instance on multiple resolves", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("SingletonService");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -227,7 +228,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should share singleton between parent and child", () => {
-      const parent = ServiceContainer.createRoot();
+      const parent = createTestContainer();
       const token = createInjectionToken<TestService>("SharedSingleton");
 
       parent.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -248,7 +249,7 @@ describe("ServiceContainer", () => {
 
   describe("Lifecycle: Transient", () => {
     it("should return new instance on each resolve", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("TransientService");
 
       container.registerClass(token, TestService, ServiceLifecycle.TRANSIENT);
@@ -264,7 +265,7 @@ describe("ServiceContainer", () => {
 
   describe("Lifecycle: Scoped", () => {
     it("should require child scope", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("ScopedService");
 
       container.registerClass(token, TestService, ServiceLifecycle.SCOPED);
@@ -276,7 +277,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should return same instance within scope", () => {
-      const parent = ServiceContainer.createRoot();
+      const parent = createTestContainer();
       const token = createInjectionToken<TestService>("ScopedService");
 
       parent.registerClass(token, TestService, ServiceLifecycle.SCOPED);
@@ -294,7 +295,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should isolate scoped instances between scopes", () => {
-      const parent = ServiceContainer.createRoot();
+      const parent = createTestContainer();
       const token = createInjectionToken<TestService>("ScopedService");
 
       parent.registerClass(token, TestService, ServiceLifecycle.SCOPED);
@@ -319,7 +320,7 @@ describe("ServiceContainer", () => {
 
   describe("Validation", () => {
     it("should validate successfully with valid dependencies", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const depToken = createInjectionToken<TestService>("Dep");
       const serviceToken = createInjectionToken<TestServiceWithDeps>("Service");
 
@@ -332,7 +333,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should detect missing dependencies", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const depToken = createInjectionToken<TestService>("MissingDep");
       const serviceToken = createInjectionToken<TestServiceWithDeps>("Service");
 
@@ -346,7 +347,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should allow only one validation", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Service");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -358,7 +359,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should prevent concurrent validation", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Mock validator to hang
       vi.spyOn((container as any).validator, "validate").mockImplementation(() => {
@@ -376,7 +377,7 @@ describe("ServiceContainer", () => {
 
   describe("Resolution", () => {
     it("should fail resolution before validation", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Service");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -387,7 +388,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should resolve registered service after validation", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Service");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -398,7 +399,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should fail resolution for unregistered token", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Unregistered");
 
       container.validate();
@@ -411,7 +412,7 @@ describe("ServiceContainer", () => {
 
   describe("clear() and isRegistered()", () => {
     it("should clear all registrations", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Service");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -429,7 +430,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should reset validation state after clear", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       container.validate();
 
       expect(container.getValidationState()).toBe("validated");
@@ -440,14 +441,14 @@ describe("ServiceContainer", () => {
     });
 
     it("should allow multiple clear() calls", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       container.clear();
       container.clear();
       expect(container.getValidationState()).toBe("registering");
     });
 
     it("isRegistered() should return correct boolean", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Service");
 
       const beforeReg = container.isRegistered(token);
@@ -463,7 +464,7 @@ describe("ServiceContainer", () => {
 
   describe("getApiSafeToken()", () => {
     it("should return metadata for API-safe token", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = markAsApiSafe(createInjectionToken<TestService>("ApiSafe"));
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
 
@@ -475,7 +476,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should report unregistered state for API-safe token", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = markAsApiSafe(createInjectionToken<TestService>("ApiSafeMissing"));
 
       const info = container.getApiSafeToken(token);
@@ -485,7 +486,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should return null for non-API-safe token", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("RegularToken");
 
       const info = container.getApiSafeToken(token as unknown as ReturnType<typeof markAsApiSafe>);
@@ -496,7 +497,7 @@ describe("ServiceContainer", () => {
 
   describe("Disposed Container", () => {
     it("should fail registration on disposed container", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       container.dispose();
 
       const token = createInjectionToken<TestService>("Test");
@@ -507,7 +508,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should fail resolution on disposed container", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       container.validate();
@@ -520,7 +521,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should fail registerAlias on disposed container", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const targetToken = createInjectionToken<TestService>("Target");
       const aliasToken = createInjectionToken<TestService>("Alias");
 
@@ -533,7 +534,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should fail createScope on disposed container", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       container.validate();
       container.dispose();
 
@@ -545,7 +546,7 @@ describe("ServiceContainer", () => {
 
   describe("Scopes (Parent-Child)", () => {
     it("should create child scope", () => {
-      const parent = ServiceContainer.createRoot();
+      const parent = createTestContainer();
       parent.validate();
 
       const result = parent.createScope("child");
@@ -554,7 +555,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should require parent validation before creating scope", () => {
-      const parent = ServiceContainer.createRoot();
+      const parent = createTestContainer();
 
       const result = parent.createScope("child");
       expectResultErr(result);
@@ -563,7 +564,7 @@ describe("ServiceContainer", () => {
 
     it("should propagate scope manager errors from createScope", () => {
       // Create a container and validate it
-      const parent = ServiceContainer.createRoot();
+      const parent = createTestContainer();
       parent.validate();
 
       // Try to create child - should fail because max depth is already reached
@@ -583,7 +584,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should inherit parent registrations", () => {
-      const parent = ServiceContainer.createRoot();
+      const parent = createTestContainer();
       const token = createInjectionToken<TestService>("ParentService");
 
       parent.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -601,7 +602,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should allow child-specific registrations", () => {
-      const parent = ServiceContainer.createRoot();
+      const parent = createTestContainer();
       const parentToken = createInjectionToken<TestService>("Parent");
       const childToken = createInjectionToken<TestService>("Child");
 
@@ -626,7 +627,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should dispose children when parent is disposed", () => {
-      const parent = ServiceContainer.createRoot();
+      const parent = createTestContainer();
       parent.validate();
 
       const child1Result = parent.createScope("child1");
@@ -657,7 +658,7 @@ describe("ServiceContainer", () => {
 
     it("should not reset validation state when dispose fails", () => {
       // This covers lines 623-659: if (result.ok) - the case where result.ok is false
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       container.validate();
 
       // Mock scopeManager.dispose to return an error
@@ -686,7 +687,7 @@ describe("ServiceContainer", () => {
 
     it("should not reset validation state when disposeAsync fails", async () => {
       // This covers lines 659: if (result.ok) - the case where result.ok is false
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       container.validate();
 
       // Mock scopeManager.disposeAsync to return an error
@@ -716,7 +717,7 @@ describe("ServiceContainer", () => {
 
   describe("Edge Cases & Scalability", () => {
     it("should handle deep dependency chains (10+ levels)", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Create a 10-level deep dependency chain
       const tokens = Array.from({ length: 10 }, (_, i) =>
@@ -747,7 +748,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should handle many transient services without memory leak", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.TRANSIENT);
@@ -768,7 +769,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should handle 100+ service registrations efficiently", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const tokens = Array.from({ length: 100 }, (_, i) =>
         createInjectionToken<TestService>(`Service${i}`)
       );
@@ -796,7 +797,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should detect circular dependencies in deep chains", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const tokenA = createInjectionToken<TestService>("A");
       const tokenB = createInjectionToken<TestService>("B");
       const tokenC = createInjectionToken<TestService>("C");
@@ -826,7 +827,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should handle empty container (no registrations)", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const validationResult = container.validate();
 
       // Empty container is valid
@@ -842,7 +843,7 @@ describe("ServiceContainer", () => {
 
   describe("Async Validation", () => {
     it("should validate asynchronously without blocking", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -853,7 +854,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should set validation state correctly during async validation", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -867,7 +868,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should reset validationState on validation failure (sync)", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const tokenA = createInjectionToken<TestService>("ServiceA");
       const tokenB = createInjectionToken<TestService>("ServiceB");
 
@@ -884,7 +885,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should reset validationState on validation failure (async)", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const tokenA = createInjectionToken<TestService>("ServiceA");
       const tokenB = createInjectionToken<TestService>("ServiceB");
 
@@ -901,7 +902,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should return fast-path when already validated", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -915,7 +916,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should handle concurrent validateAsync calls", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -935,7 +936,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should handle mixed sync/async validation conflict", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -963,7 +964,7 @@ describe("ServiceContainer", () => {
 
       // Now try async - but sync already completed, so this should work
       // To test the conflict, we need to mock the state
-      const testContainer = ServiceContainer.createRoot();
+      const testContainer = createTestContainer();
       testContainer.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       // Manually set state to "validating" to simulate sync validation in progress
       testContainer["validationState"] = "validating";
@@ -976,7 +977,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should handle timeout in validateAsync", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -1004,7 +1005,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should cleanup validationPromise in finally block", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -1023,7 +1024,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should cleanup validationPromise in finally block even on timeout", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -1056,7 +1057,7 @@ describe("ServiceContainer", () => {
 
   describe("Concurrent Sync Validation", () => {
     it("should handle concurrent validate() calls", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -1071,7 +1072,7 @@ describe("ServiceContainer", () => {
     });
 
     it("should detect concurrent validate() calls during validation", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -1090,7 +1091,7 @@ describe("ServiceContainer", () => {
 
   describe("resolve() error handling", () => {
     it("should throw error when resolve() fails (no fallback)", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Unregistered");
 
       // resolve() should throw when service is not registered (lines 593-595)
@@ -1102,7 +1103,7 @@ describe("ServiceContainer", () => {
 
   describe("validateAsync() error handling", () => {
     it("should re-throw unexpected errors in validateAsync", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
@@ -1130,7 +1131,7 @@ describe("ServiceContainer", () => {
     it("should return error when validate() is called while validation is in progress", () => {
       // This test covers lines 277-283 in container.ts
       // We need to simulate a scenario where validate() is called while validation is already in progress
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const token = createInjectionToken<TestService>("Test");
 
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);

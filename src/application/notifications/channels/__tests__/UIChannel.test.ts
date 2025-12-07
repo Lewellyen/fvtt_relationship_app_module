@@ -23,6 +23,8 @@ describe("UIChannel", () => {
     } as unknown as FoundryUI;
 
     devConfig = createMockRuntimeConfig({
+      isDevelopment: true,
+      isProduction: false,
       logLevel: LogLevel.DEBUG,
       enablePerformanceTracking: false,
     });

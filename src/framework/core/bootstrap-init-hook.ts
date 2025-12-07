@@ -12,10 +12,8 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstrap-event-port.interface";
 import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
-import {
-  loggerToken,
-  platformContainerPortToken,
-} from "@/infrastructure/shared/tokens/core.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 import { InitOrchestrator } from "./bootstrap/init-orchestrator";
 
 /**

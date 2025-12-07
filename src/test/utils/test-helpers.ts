@@ -3,15 +3,16 @@ import type { Result, Ok, Err } from "@/domain/types/result";
 import { createMockGame, createMockHooks, createMockUI } from "../mocks/foundry";
 import { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsSampler } from "@/infrastructure/observability/interfaces/metrics-sampler";
+import type { MetricsCollector as MetricsCollectorType } from "@/infrastructure/observability/metrics-collector";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
-import type { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
+import { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
 import { LogLevel } from "@/domain/types/log-level";
-import { APP_DEFAULTS } from "@/application/constants/app-constants";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import type { ServiceContainer } from "@/infrastructure/di/container";
+import { ServiceContainer as ServiceContainerImpl } from "@/infrastructure/di/container";
 import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
 import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
@@ -48,77 +49,135 @@ export type MockFoundryGlobals = {
 
 /**
  * Setup/Cleanup-Helper für globale Foundry-Mocks
+ */
+export function setupFoundryGlobals(mocks: MockFoundryGlobals): void {
+  if (mocks.game) {
+    (globalThis as { game?: unknown }).game = mocks.game;
+  }
+  if (mocks.Hooks) {
+    (globalThis as { Hooks?: unknown }).Hooks = mocks.Hooks;
+  }
+  if (mocks.ui) {
+    (globalThis as { ui?: unknown }).ui = mocks.ui;
+  }
+}
+
+/**
+ * Cleanup-Helper für globale Foundry-Mocks
+ */
+export function cleanupFoundryGlobals(): void {
+  delete (globalThis as { game?: unknown }).game;
+  delete (globalThis as { Hooks?: unknown }).Hooks;
+  delete (globalThis as { ui?: unknown }).ui;
+}
+
+/**
+ * Helper function that sets up Foundry globals and returns a cleanup function.
+ * This is a convenience wrapper around setupFoundryGlobals and cleanupFoundryGlobals.
  *
- * KRITISCH: Mocks werden pro Test gesetzt, nicht global!
- * Erlaubt Tests verschiedener Szenarien (Hooks available, undefined, etc.)
- *
- * @param overrides - Optionale Overrides für Default-Mocks
- * @returns Cleanup-Funktion die Mocks entfernt
+ * @param mocks - Foundry global mocks to set up
+ * @returns Cleanup function that restores the original state
  *
  * @example
  * ```typescript
- * it('test case', () => {
- *   const cleanup = withFoundryGlobals({ Hooks: undefined });
- *   // Test code...
- *   cleanup();
+ * const cleanup = withFoundryGlobals({
+ *   game: createMockGame(),
+ *   Hooks: createMockHooks(),
  * });
+ * // Test code...
+ * cleanup(); // Always cleanup!
  * ```
  */
-export function withFoundryGlobals(overrides: Partial<MockFoundryGlobals> = {}): () => void {
-  const globals: MockFoundryGlobals = {
-    game: createMockGame(),
-    Hooks: createMockHooks(),
-    ...overrides,
-  };
-
-  Object.entries(globals).forEach(([key, value]) => {
-    if (value !== undefined) {
-      vi.stubGlobal(key, value);
-    }
-  });
-
-  return () => {
-    vi.unstubAllGlobals();
-  };
+export function withFoundryGlobals(mocks: MockFoundryGlobals): () => void {
+  setupFoundryGlobals(mocks);
+  return () => cleanupFoundryGlobals();
 }
 
 /**
- * Erstellt DOM-Struktur für UI-Tests
- * @param htmlString - HTML-String der eingefügt werden soll
- * @param selector - Optional: CSS-Selector um ein spezifisches Element zurückzugeben
- * @returns Container-Element und optional das gefundene Element
+ * Creates a mock service instance for testing.
+ * Useful for creating dummy services that satisfy type requirements.
  */
-export function createMockDOM(
-  htmlString: string,
-  selector?: string
-): {
-  container: HTMLElement;
-  element?: HTMLElement | null;
-} {
-  const container = document.createElement("div");
-  container.innerHTML = htmlString;
-
-  if (selector) {
-    const element = container.querySelector(selector) as HTMLElement | null;
-    return { container, element };
-  }
-
-  return { container };
+export function createDummyService(): { dispose: () => void } {
+  return {
+    dispose: vi.fn(),
+  };
 }
 
 /**
- * Bootstrap-Helper für Integration-Tests
+ * Creates a mock logger for testing.
+ */
+export function createMockLogger(): Logger {
+  return {
+    log: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    setMinLevel: vi.fn(),
+  };
+}
+
+/**
+ * Creates a mock metrics sampler for testing.
+ */
+export function createMockMetricsSampler(): MetricsSampler {
+  return {
+    shouldSample: vi.fn().mockReturnValue(true),
+  };
+}
+
+/**
+ * Alias for createMockMetricsSampler for convenience.
+ * @param _config - Optional RuntimeConfigService (unused, kept for API compatibility)
+ */
+export function createMockSampler(_config?: RuntimeConfigService): MetricsSampler {
+  return createMockMetricsSampler();
+}
+
+/**
+ * Creates a mock MetricsCollector for testing.
+ */
+export function createMockMetricsCollector(): MetricsCollectorType {
+  const runtimeConfig = createMockRuntimeConfig();
+  return new MetricsCollector(runtimeConfig);
+}
+
+/**
+ * Creates a mock performance tracker for testing.
+ */
+export function createMockPerformanceTracker(): PerformanceTracker {
+  return {
+    track: vi.fn((fn) => fn()),
+    trackAsync: vi.fn((fn) => Promise.resolve(fn())),
+  };
+}
+
+/**
+ * Creates a mock performance tracking service for testing.
+ */
+export function createMockPerformanceTrackingService(): PerformanceTrackingService {
+  const mockConfig = createMockRuntimeConfig();
+  const mockSampler = createMockMetricsSampler();
+  const service = new PerformanceTrackingService(mockConfig, mockSampler);
+  return service;
+}
+
+/**
+ * Bootstraps a test container with all services registered and validated.
  *
- * Dupliziert den Bootstrap-Ablauf aus init-solid.ts für Tests.
- * Erstellt einen neuen CompositionRoot, bootstrappt ihn und gibt den Container zurück.
+ * This is a convenience function for tests that need a fully configured container.
+ * It uses CompositionRoot to bootstrap the container, ensuring all services are
+ * registered in the correct order.
  *
- * @returns Result mit dem gebootstrapten Container oder Fehler
+ * @returns Result with validated ServiceContainer or error message
  *
  * @example
  * ```typescript
  * const containerResult = bootstrapTestContainer();
- * expectResultOk(containerResult);
- * const container = containerResult.value;
+ * if (containerResult.ok) {
+ *   const logger = containerResult.value.resolve(loggerToken);
+ *   logger.info("Test started");
+ * }
  * ```
  */
 export function bootstrapTestContainer(): Result<ServiceContainer, string> {
@@ -183,125 +242,44 @@ export function bootstrapTestContainer(): Result<ServiceContainer, string> {
  * @returns A mock EnvironmentConfig
  */
 export function createMockEnvironmentConfig(
-  overrides?: Partial<EnvironmentConfig>
+  overrides: Partial<EnvironmentConfig> = {}
 ): EnvironmentConfig {
-  const { cacheMaxEntries, ...restOverrides } = overrides ?? {};
   return {
-    isDevelopment: true,
-    isProduction: false,
-    logLevel: LogLevel.DEBUG,
+    isDevelopment: false,
+    isProduction: true,
+    logLevel: LogLevel.INFO,
     enablePerformanceTracking: true,
     enableMetricsPersistence: false,
     metricsPersistenceKey: "test.metrics",
     performanceSamplingRate: 1.0,
     enableCacheService: true,
-    cacheDefaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
-    ...restOverrides,
-    ...(cacheMaxEntries !== undefined ? { cacheMaxEntries } : {}),
+    cacheDefaultTtlMs: 5000,
+    cacheMaxEntries: undefined,
+    ...overrides,
   };
 }
 
+/**
+ * Creates a RuntimeConfigService with mock environment config.
+ * @param overrides - Optional overrides for environment config
+ * @returns A RuntimeConfigService instance
+ */
 export function createMockRuntimeConfig(
-  overrides?: Partial<EnvironmentConfig>
+  overrides: Partial<EnvironmentConfig> = {}
 ): RuntimeConfigService {
   return new RuntimeConfigService(createMockEnvironmentConfig(overrides));
 }
 
 /**
- * Creates a mock MetricsCollector for testing.
- * @param config - Optional RuntimeConfigService (uses mock if not provided)
- * @returns A new MetricsCollector instance
- */
-export function createMockMetricsCollector(config?: RuntimeConfigService): MetricsCollector {
-  return new MetricsCollector(config ?? createMockRuntimeConfig());
-}
-
-/**
- * Creates a mock MetricsSampler for testing.
- * @param env - Optional EnvironmentConfig (uses mock if not provided)
- * @returns A MetricsCollector instance (implements MetricsSampler interface)
- */
-export function createMockSampler(config?: RuntimeConfigService): MetricsSampler {
-  // MetricsCollector implements MetricsSampler, so we can use it as a mock
-  return new MetricsCollector(config ?? createMockRuntimeConfig());
-}
-
-/**
- * Creates a mock Logger for testing.
- * @returns A mock Logger with spy functions
- */
-export function createMockLogger(): Logger {
-  return {
-    log: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-    debug: vi.fn(),
-    setMinLevel: vi.fn(),
-  };
-}
-
-/**
- * Creates a mock PerformanceTracker for testing
- * @returns Mock implementation of PerformanceTracker interface
- */
-export function createMockPerformanceTracker(): PerformanceTracker {
-  return {
-    track: vi
-      .fn()
-      .mockImplementation(
-        <T>(operation: () => T, onComplete?: (duration: number, result: T) => void) => {
-          const result = operation();
-          // Call onComplete with mock duration (0ms) if provided
-          if (onComplete) {
-            onComplete(0, result);
-          }
-          return result;
-        }
-      ),
-    trackAsync: vi
-      .fn()
-      .mockImplementation(
-        async <T>(
-          operation: () => Promise<T>,
-          onComplete?: (duration: number, result: T) => void
-        ) => {
-          const result = await operation();
-          // Call onComplete with mock duration (0ms) if provided
-          if (onComplete) {
-            onComplete(0, result);
-          }
-          return result;
-        }
-      ),
-  };
-}
-
-/**
- * Creates a mock PerformanceTrackingService for testing
- * @returns Mock implementation of PerformanceTrackingService
- */
-export function createMockPerformanceTrackingService(): PerformanceTrackingService {
-  // Reuse PerformanceTracker mock as base (same interface)
-  return createMockPerformanceTracker() as unknown as PerformanceTrackingService;
-}
-
-/**
- * Creates a minimal dummy service object for DI container test registrations.
+ * Creates a test container with mock environment config.
+ * This is a convenience function for tests that need a container but don't need full bootstrap.
  *
- * Use this when you need to register test services in the container
- * without complex mocking. Returns an empty object typed as any to bypass
- * unknown union constraints in test scenarios.
- *
- * @returns An empty object for test registrations
- *
- * @example
- * ```typescript
- * const token = createInjectionToken("test");
- * container.registerValue(token, createDummyService());
- * ```
+ * @param env - Optional environment config (defaults to mock config)
+ * @returns A new ServiceContainer instance (not validated)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createDummyService(): any {
-  return {};
+export function createTestContainer(env?: EnvironmentConfig): ServiceContainer {
+  return ServiceContainerImpl.createRoot(env ?? createMockEnvironmentConfig());
 }
+
+// Re-export createMockDOM from foundry mocks for convenience
+export { createMockDOM } from "@/test/mocks/foundry";

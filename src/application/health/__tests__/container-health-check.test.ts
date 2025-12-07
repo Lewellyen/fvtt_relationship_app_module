@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ContainerHealthCheck } from "@/application/health/ContainerHealthCheck";
-import { ServiceContainer } from "@/infrastructure/di/container";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { createDummyService } from "@/test/utils/test-helpers";
 
@@ -9,7 +10,7 @@ describe("ContainerHealthCheck", () => {
   let check: ContainerHealthCheck;
 
   beforeEach(() => {
-    container = ServiceContainer.createRoot();
+    container = createTestContainer();
     check = new ContainerHealthCheck(container);
   });
 

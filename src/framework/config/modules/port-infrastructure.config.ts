@@ -12,15 +12,21 @@ import {
   foundryI18nPortRegistryToken,
   foundryModulePortRegistryToken,
 } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { platformUIPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
+  platformUIPortToken,
+  platformValidationPortToken,
+  platformLoggingPortToken,
+  platformMetricsSnapshotPortToken,
   platformJournalDirectoryUiPortToken,
   platformUINotificationPortToken,
 } from "@/application/tokens/domain-ports.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { DIPortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { registerV13Ports } from "@/infrastructure/adapters/foundry/ports/v13/port-registration";
 import { DIFoundryUIAdapter } from "@/infrastructure/adapters/foundry/adapters/foundry-ui-adapter";
+import { DIValibotValidationAdapter } from "@/infrastructure/validation/di-valibot-validation-adapter";
+import { DIMetricsSnapshotAdapter } from "@/infrastructure/observability/di-metrics-snapshot-adapter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
@@ -147,6 +153,41 @@ export function registerPortInfrastructure(container: ServiceContainer): Result<
   if (isErr(uiNotificationAliasResult)) {
     return err(
       `Failed to register UINotificationPort alias: ${uiNotificationAliasResult.error.message}`
+    );
+  }
+
+  // Register PlatformValidationPort (Valibot implementation via adapter)
+  const platformValidationPortResult = container.registerClass(
+    platformValidationPortToken,
+    DIValibotValidationAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(platformValidationPortResult)) {
+    return err(
+      `Failed to register PlatformValidationPort: ${platformValidationPortResult.error.message}`
+    );
+  }
+
+  // Register PlatformLoggingPort as alias to loggerToken
+  // Logger is already a type alias for PlatformLoggingPort, so we can use an alias
+  // This allows Application Layer to use platformLoggingPortToken while Infrastructure
+  // continues to use loggerToken (backward compatibility)
+  const loggingPortAliasResult = container.registerAlias(platformLoggingPortToken, loggerToken);
+  if (isErr(loggingPortAliasResult)) {
+    return err(
+      `Failed to register PlatformLoggingPort alias: ${loggingPortAliasResult.error.message}`
+    );
+  }
+
+  // Register PlatformMetricsSnapshotPort (adapter wrapping MetricsCollector)
+  const metricsSnapshotPortResult = container.registerClass(
+    platformMetricsSnapshotPortToken,
+    DIMetricsSnapshotAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(metricsSnapshotPortResult)) {
+    return err(
+      `Failed to register PlatformMetricsSnapshotPort: ${metricsSnapshotPortResult.error.message}`
     );
   }
 

@@ -7,6 +7,17 @@
 	"settings": {
 		"cSpell.words": [
 			"fvtt"
-		]
+		],
+		"terminal.integrated.profiles.windows": {
+			"PowerShell (Cursor)": {
+				"source": "PowerShell",
+				"args": [
+					"-NoExit",
+					"-Command",
+					"& { $cursorHistory = Join-Path $env:APPDATA 'Microsoft\\Windows\\PowerShell\\PSReadLine\\CursorConsoleHost_history.txt'; if (Get-Module -ListAvailable PSReadLine) { Import-Module PSReadLine; Set-PSReadLineOption -HistorySavePath $cursorHistory -MaximumHistoryCount 1000 } }"
+				]
+			}
+		},
+		"terminal.integrated.defaultProfile.windows": "PowerShell (Cursor)"
 	}
 }

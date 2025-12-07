@@ -2,7 +2,7 @@
 // Test file: `any` needed for mocking ENV and container methods
 
 import { describe, it, expect, vi } from "vitest";
-import { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import {
@@ -16,11 +16,11 @@ import {
   containerHealthCheckToken,
   metricsHealthCheckToken,
   serviceContainerToken,
-  platformContainerPortToken,
   environmentConfigToken,
   runtimeConfigToken,
   healthCheckRegistryToken,
 } from "@/infrastructure/shared/tokens/core.tokens";
+import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
   foundryGameToken,
   foundryHooksToken,
@@ -49,7 +49,7 @@ import { LogLevel } from "@/domain/types/log-level";
 describe("dependencyconfig", () => {
   describe("Success Path", () => {
     it("should successfully configure all dependencies", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const result = configureDependencies(container);
 
       expectResultOk(result);
@@ -65,7 +65,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should validate container after configuration", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const result = configureDependencies(container);
 
       expectResultOk(result);
@@ -81,7 +81,7 @@ describe("dependencyconfig", () => {
 
   describe("Error Injection", () => {
     it("should return error when moduleId registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterValue = container.registerValue.bind(container);
 
       const registerValueSpy = vi
@@ -106,7 +106,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should return error when logger registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       const registerClassSpy = vi
@@ -131,7 +131,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should return error when port registry registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       const originalRegisterValue = container.registerValue.bind(container);
       const registerValueSpy = vi
@@ -158,7 +158,7 @@ describe("dependencyconfig", () => {
 
   describe("All Service Registration Errors", () => {
     it("should handle FoundryHooks service registration failure", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -174,7 +174,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should handle FoundryDocument service registration failure", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -190,7 +190,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should handle FoundryUI service registration failure", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -206,7 +206,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should handle JournalVisibility service registration failure", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -225,7 +225,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should handle port registration failures in PortRegistry", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Test path where PortRegistry.register() itself fails
       // This would happen if v13 port was already registered (duplicate)
@@ -235,7 +235,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should handle FoundrySettings registry registration failure", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       const originalRegisterValue = container.registerValue.bind(container);
       const registerValueSpy = vi
@@ -260,7 +260,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should handle FoundrySettings service registration failure", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -281,7 +281,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should handle FoundryGame service registration failure", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -304,7 +304,7 @@ describe("dependencyconfig", () => {
 
   describe("Validation", () => {
     it("should have no circular dependencies after configuration", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const result = configureDependencies(container);
 
       expectResultOk(result);
@@ -317,7 +317,7 @@ describe("dependencyconfig", () => {
 
   describe("Logger Configuration", () => {
     it("should configure logger with ENV.logLevel", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalLogLevel = ENV.logLevel;
 
       // Set to ERROR level
@@ -345,7 +345,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should respect DEBUG level from ENV", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalLogLevel = ENV.logLevel;
 
       // Set to DEBUG level
@@ -369,7 +369,7 @@ describe("dependencyconfig", () => {
 
   describe("Error Propagation", () => {
     it("should propagate validation errors", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Mock container.validate() to fail
       vi.spyOn(container, "validate").mockReturnValue(
@@ -390,7 +390,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate health check resolution errors", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Make validation succeed but health check resolution fail
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
@@ -416,7 +416,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate metrics collector resolution errors", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Make validation succeed and health check registry succeed, but metrics collector fail
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
@@ -445,7 +445,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors when ContainerHealthCheck registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -467,7 +467,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors when MetricsHealthCheck registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -489,7 +489,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors when ContainerHealthCheck resolution fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
       const originalResolve = container.resolveWithError.bind(container);
@@ -519,7 +519,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors when MetricsHealthCheck resolution fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       vi.spyOn(container, "validate").mockReturnValue({ ok: true, value: undefined });
       const originalResolveWithError = container.resolveWithError.bind(container);
@@ -553,7 +553,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors when ServiceContainer value registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterValue = container.registerValue.bind(container);
 
       vi.spyOn(container, "registerValue").mockImplementation((token, value) => {
@@ -575,7 +575,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors when EnvironmentConfig registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterValue = container.registerValue.bind(container);
 
       vi.spyOn(container, "registerValue").mockImplementation((token, value) => {
@@ -597,7 +597,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors when RuntimeConfigService registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterValue = container.registerValue.bind(container);
 
       vi.spyOn(container, "registerValue").mockImplementation((token, value) => {
@@ -619,7 +619,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors when PlatformContainerPort alias registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Make all previous registrations succeed, but fail on alias registration
       const originalRegisterValue = container.registerValue.bind(container);
@@ -653,7 +653,7 @@ describe("dependencyconfig", () => {
     // where sub-module registration functions return errors
 
     it("should propagate errors from registerObservability", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Mock registerObservability to return an error
       // This ensures line 175 in dependencyconfig.ts is covered (if (isErr(observabilityResult)) return observabilityResult;)
@@ -672,7 +672,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors from registerUtilityServices", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       vi.spyOn(container, "registerClass").mockImplementation((token) => {
         // Let core and observability succeed, but fail utility
@@ -692,7 +692,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors from registerCacheServices", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       vi.spyOn(container, "registerClass").mockImplementation((token) => {
         // Let core, observability, and utility succeed, but fail cache services
@@ -711,7 +711,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors from registerPortInfrastructure", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Mock registerPortInfrastructure to return an error
       // This ensures line 184 in dependencyconfig.ts is covered (if (isErr(portInfraResult)) return portInfraResult;)
@@ -730,7 +730,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors from registerSettingsPorts", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       // Mock registerClass to fail for platformSettingsPortToken
@@ -754,7 +754,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors from registerJournalVisibilityConfig", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Mock registerJournalVisibilityConfig to return an error
       // This ensures line 201 in dependencyconfig.ts is covered (if (isErr(journalVisibilityConfigResult)) return journalVisibilityConfigResult;)
@@ -774,7 +774,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors from registerI18nServices", async () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       // Mock registerI18nServices to return an error
       // This ensures line 193 in dependencyconfig.ts is covered (if (isErr(i18nServicesResult)) return i18nServicesResult;)
@@ -793,7 +793,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors from registerRegistrars", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       // Mock to fail specifically at ModuleSettingsRegistrar registration
@@ -814,7 +814,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors from registerEventPorts", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -837,7 +837,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors from registerEntityPorts", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -863,7 +863,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors from registerNotifications", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -885,7 +885,7 @@ describe("dependencyconfig", () => {
     });
 
     it("should propagate errors when NotificationCenter registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       const registerClassSpy = vi

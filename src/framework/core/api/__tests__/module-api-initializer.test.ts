@@ -4,7 +4,8 @@ import {
   ModuleApiInitializer,
   DIModuleApiInitializer,
 } from "@/framework/core/api/module-api-initializer";
-import { ServiceContainer } from "@/infrastructure/di/container";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { expectResultOk } from "@/test/utils/test-helpers";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
@@ -27,7 +28,7 @@ describe("ModuleApiInitializer", () => {
     });
 
     // Create and bootstrap container
-    container = ServiceContainer.createRoot();
+    container = createTestContainer();
     const configResult = configureDependencies(container);
     expectResultOk(configResult);
 
@@ -204,7 +205,7 @@ describe("ModuleApiInitializer", () => {
 
     it("should return empty metrics when MetricsCollector is not registered", async () => {
       // Create a container without MetricsCollector
-      const emptyContainer = ServiceContainer.createRoot();
+      const emptyContainer = createTestContainer();
       const emptyInitializer = new ModuleApiInitializer();
       const result = emptyInitializer.expose(emptyContainer);
       expectResultOk(result);
@@ -300,7 +301,7 @@ describe("ModuleApiInitializer", () => {
 
     it("should return fallback health status when ModuleHealthService is not registered", () => {
       // Create a container without ModuleHealthService
-      const emptyContainer = ServiceContainer.createRoot();
+      const emptyContainer = createTestContainer();
       const emptyInitializer = new ModuleApiInitializer();
       const result = emptyInitializer.expose(emptyContainer);
       expectResultOk(result);

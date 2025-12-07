@@ -1,19 +1,17 @@
-import type { Container } from "@/infrastructure/di/interfaces";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { HealthCheck } from "./health-check.interface";
 import type { HealthCheckRegistry } from "./HealthCheckRegistry";
-import {
-  healthCheckRegistryToken,
-  serviceContainerToken,
-} from "@/infrastructure/shared/tokens/core.tokens";
+import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 
 /**
  * Health check validating that the service container completed its bootstrap phase.
  */
 export class ContainerHealthCheck implements HealthCheck {
   readonly name = "container";
-  private readonly container: Container;
+  private readonly container: PlatformContainerPort;
 
-  constructor(container: Container) {
+  constructor(container: PlatformContainerPort) {
     this.container = container;
   }
 
@@ -35,9 +33,9 @@ export class ContainerHealthCheck implements HealthCheck {
 }
 
 export class DIContainerHealthCheck extends ContainerHealthCheck {
-  static dependencies = [serviceContainerToken, healthCheckRegistryToken] as const;
+  static dependencies = [platformContainerPortToken, healthCheckRegistryToken] as const;
 
-  constructor(container: Container, registry: HealthCheckRegistry) {
+  constructor(container: PlatformContainerPort, registry: HealthCheckRegistry) {
     super(container);
     registry.register(this);
   }

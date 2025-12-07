@@ -1,10 +1,10 @@
-import type { Disposable } from "@/infrastructure/di/interfaces";
+import type { ApplicationDisposable } from "@/application/interfaces/application-disposable.interface";
 
 /**
  * Interface for health checks.
  * Services can implement this to provide health status.
  */
-export interface HealthCheck extends Disposable {
+export interface HealthCheck extends ApplicationDisposable {
   /**
    * Unique identifier for this health check.
    */

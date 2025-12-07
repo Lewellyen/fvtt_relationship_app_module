@@ -1,5 +1,5 @@
-import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import type { PlatformMetricsSnapshotPort } from "@/domain/ports/platform-metrics-snapshot-port.interface";
+import { platformMetricsSnapshotPortToken } from "@/application/tokens/domain-ports.tokens";
 import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core.tokens";
 import type { HealthCheck } from "./health-check.interface";
 import type { HealthCheckRegistry } from "./HealthCheckRegistry";
@@ -10,21 +10,21 @@ import type { HealthCheckRegistry } from "./HealthCheckRegistry";
  */
 export class MetricsHealthCheck implements HealthCheck {
   readonly name = "metrics";
-  private readonly metricsCollector: MetricsCollector;
+  private readonly metricsSnapshotPort: PlatformMetricsSnapshotPort;
 
-  constructor(metricsCollector: MetricsCollector) {
-    this.metricsCollector = metricsCollector;
+  constructor(metricsSnapshotPort: PlatformMetricsSnapshotPort) {
+    this.metricsSnapshotPort = metricsSnapshotPort;
   }
 
   check(): boolean {
-    const snapshot = this.metricsCollector.getSnapshot();
+    const snapshot = this.metricsSnapshotPort.getSnapshot();
     const hasPortFailures = Object.keys(snapshot.portSelectionFailures).length > 0;
     const hasResolutionErrors = snapshot.resolutionErrors > 0;
     return !hasPortFailures && !hasResolutionErrors;
   }
 
   getDetails(): string | null {
-    const snapshot = this.metricsCollector.getSnapshot();
+    const snapshot = this.metricsSnapshotPort.getSnapshot();
     const failures = Object.keys(snapshot.portSelectionFailures);
 
     if (failures.length > 0) {
@@ -44,10 +44,10 @@ export class MetricsHealthCheck implements HealthCheck {
 }
 
 export class DIMetricsHealthCheck extends MetricsHealthCheck {
-  static dependencies = [metricsCollectorToken, healthCheckRegistryToken] as const;
+  static dependencies = [platformMetricsSnapshotPortToken, healthCheckRegistryToken] as const;
 
-  constructor(metricsCollector: MetricsCollector, registry: HealthCheckRegistry) {
-    super(metricsCollector);
+  constructor(metricsSnapshotPort: PlatformMetricsSnapshotPort, registry: HealthCheckRegistry) {
+    super(metricsSnapshotPort);
     registry.register(this);
   }
 }

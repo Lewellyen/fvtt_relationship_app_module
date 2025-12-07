@@ -54,7 +54,6 @@ export class BootstrapReadyHookService {
     // Setze module.ready = true, sobald Bootstrap-Ready-Hook fertig ist
     // Ähnlich wie game.ready, aber für unser Modul
     this.moduleReadyService.setReady();
-    this.logger.info("module.ready set to true");
 
     this.logger.info("ready-phase completed");
   }

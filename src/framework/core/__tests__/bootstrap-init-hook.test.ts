@@ -22,7 +22,7 @@ import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infras
 import {
   moduleEventRegistrarToken,
   registerContextMenuUseCaseToken,
-} from "@/infrastructure/shared/tokens/event.tokens";
+} from "@/application/tokens/event.tokens";
 import { ok, err } from "@/domain/utils/result";
 
 describe("BootstrapInitHookService", () => {

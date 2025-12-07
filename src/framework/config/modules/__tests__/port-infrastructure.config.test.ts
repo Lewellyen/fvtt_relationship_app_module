@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import {
   registerPortInfrastructure,
   registerPortRegistries,
@@ -25,7 +25,7 @@ describe("port-infrastructure.config", () => {
 
   describe("registerPortInfrastructure", () => {
     it("should register PortSelector as singleton", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       const result = registerPortInfrastructure(container);
 
@@ -34,7 +34,7 @@ describe("port-infrastructure.config", () => {
     });
 
     it("should propagate errors when PortSelector registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterClass = container.registerClass.bind(container);
 
       vi.spyOn(container, "registerClass").mockImplementation((token, serviceClass, lifecycle) => {
@@ -58,7 +58,7 @@ describe("port-infrastructure.config", () => {
 
   describe("registerPortRegistries", () => {
     it("should register all Foundry port registries as values", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       const result = registerPortRegistries(container);
 
@@ -72,7 +72,7 @@ describe("port-infrastructure.config", () => {
     });
 
     it("should propagate errors when PortRegistry registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
 
       vi.spyOn(PortRegistry.prototype, "register").mockImplementationOnce(() =>
         err(
@@ -91,7 +91,7 @@ describe("port-infrastructure.config", () => {
     });
 
     it("should propagate errors when value registration fails", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       const originalRegisterValue = container.registerValue.bind(container);
 
       vi.spyOn(container, "registerValue").mockImplementation((token, value) => {

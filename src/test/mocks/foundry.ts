@@ -112,6 +112,41 @@ export function createMockHTMLElement(tagName = "div"): HTMLElement {
 }
 
 /**
+ * Creates a mock DOM structure for testing.
+ * Parses HTML string and returns container and optionally selected element.
+ *
+ * @param htmlString - HTML string to parse
+ * @param selector - Optional CSS selector to find specific element
+ * @returns Object with container and optionally selected element
+ *
+ * @example
+ * ```typescript
+ * const { container, element } = createMockDOM(
+ *   '<div class="journal-entry" data-entry-id="test-123"></div>',
+ *   ".journal-entry"
+ * );
+ * expect(element?.getAttribute("data-entry-id")).toBe("test-123");
+ * ```
+ */
+export function createMockDOM(
+  htmlString: string,
+  selector?: string
+): {
+  container: HTMLElement;
+  element?: HTMLElement | null;
+} {
+  const container = document.createElement("div");
+  container.innerHTML = htmlString;
+
+  let element: HTMLElement | null = null;
+  if (selector) {
+    element = container.querySelector<HTMLElement>(selector) || null;
+  }
+
+  return { container, element };
+}
+
+/**
  * Mock-Container für ModuleHookRegistrar Tests
  * Verwendet resolve-Spies statt echten Container-Resolution
  */

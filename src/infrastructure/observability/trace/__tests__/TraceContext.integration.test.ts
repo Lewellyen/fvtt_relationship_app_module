@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { ServiceContainer } from "@/infrastructure/di/container";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { traceContextToken } from "@/infrastructure/shared/tokens/observability.tokens";
 import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
@@ -17,7 +18,7 @@ describe("TraceContext Integration", () => {
 
   beforeEach(() => {
     // Create and configure container
-    container = ServiceContainer.createRoot();
+    container = createTestContainer();
     const configResult = configureDependencies(container);
     expectResultOk(configResult);
 

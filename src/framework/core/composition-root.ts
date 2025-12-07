@@ -41,7 +41,7 @@ export class CompositionRoot {
    * @returns Result mit initialisiertem Container oder Fehlermeldung
    */
   bootstrap(): Result<ServiceContainer, string> {
-    const container = ServiceContainer.createRoot();
+    const container = ServiceContainer.createRoot(ENV);
 
     // Track bootstrap performance (no MetricsCollector yet)
     const runtimeConfig = createRuntimeConfig(ENV);
@@ -64,7 +64,7 @@ export class CompositionRoot {
       return { ok: true, value: container };
     }
 
-    createBootstrapLogger().error(
+    createBootstrapLogger(ENV).error(
       "Failed to configure dependencies during bootstrap",
       configured.error
     );

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { markAsApiSafe, isApiSafeTokenRuntime } from "@/infrastructure/di/types";
-import { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 
@@ -57,7 +57,7 @@ describe("ApiSafeToken", () => {
 
   describe("Container API Boundary Enforcement", () => {
     it("container.resolve() should reject non-API-safe tokens", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const token = createInjectionToken<any>("TestToken");
 
@@ -72,7 +72,7 @@ describe("ApiSafeToken", () => {
     });
 
     it("container.resolve() should accept API-safe tokens", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const token = createInjectionToken<any>("TestToken");
       const apiToken = markAsApiSafe(token);
@@ -86,7 +86,7 @@ describe("ApiSafeToken", () => {
     });
 
     it("container.resolveWithError() should accept any token", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const token = createInjectionToken<any>("TestToken");
 
@@ -102,7 +102,7 @@ describe("ApiSafeToken", () => {
     });
 
     it("container.resolveWithError() should also accept API-safe tokens", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const token = createInjectionToken<any>("TestToken");
       const apiToken = markAsApiSafe(token);
@@ -119,7 +119,7 @@ describe("ApiSafeToken", () => {
     });
 
     it("should provide helpful error message for non-API-safe tokens", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const token = createInjectionToken<any>("MyService");
 
@@ -138,7 +138,7 @@ describe("ApiSafeToken", () => {
     });
 
     it("should work with classes that have dependencies", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const depToken = createInjectionToken<any>("Dependency");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -166,7 +166,7 @@ describe("ApiSafeToken", () => {
     });
 
     it("should prevent type assertion bypass at runtime", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const token = createInjectionToken<any>("TestToken");
 
@@ -183,7 +183,7 @@ describe("ApiSafeToken", () => {
 
   describe("External API Usage Simulation", () => {
     it("should simulate external module using api.resolve()", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const token = createInjectionToken<any>("NotificationCenter");
       const apiToken = markAsApiSafe(token);
@@ -205,7 +205,7 @@ describe("ApiSafeToken", () => {
     });
 
     it("should simulate external module using api.resolveWithError()", () => {
-      const container = ServiceContainer.createRoot();
+      const container = createTestContainer();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const token = createInjectionToken<any>("NotificationCenter");
       const apiToken = markAsApiSafe(token);

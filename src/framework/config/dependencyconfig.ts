@@ -8,9 +8,9 @@ import {
   metricsHealthCheckToken,
   healthCheckRegistryToken,
   serviceContainerToken,
-  platformContainerPortToken,
   runtimeConfigToken,
 } from "@/infrastructure/shared/tokens/core.tokens";
+import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 import { ENV } from "@/framework/config/environment";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import { DIContainerHealthCheck } from "@/application/health/ContainerHealthCheck";

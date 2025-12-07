@@ -14,6 +14,7 @@
 
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
+import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
 
 /**
  * Configuration for a Foundry setting.
@@ -62,7 +63,12 @@ export interface SettingDefinition<T> {
    *
    * @param i18n - I18n facade for translating strings
    * @param logger - Logger for the onChange callback
+   * @param validator - Validation port for validating setting values
    * @returns Complete setting configuration
    */
-  createConfig(i18n: PlatformI18nPort, logger: PlatformLoggingPort): SettingConfig<T>;
+  createConfig(
+    i18n: PlatformI18nPort,
+    logger: PlatformLoggingPort,
+    validator: PlatformValidationPort
+  ): SettingConfig<T>;
 }

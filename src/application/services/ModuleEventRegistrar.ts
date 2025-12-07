@@ -2,13 +2,13 @@ import type { EventRegistrar } from "@/application/use-cases/event-registrar.int
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
-import { disposeHooks } from "@/infrastructure/shared/utils/dispose-hooks";
+import { disposeHooks } from "@/application/utils/dispose-hooks";
 import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
   invalidateJournalCacheOnChangeUseCaseToken,
   processJournalDirectoryOnRenderUseCaseToken,
   triggerJournalDirectoryReRenderUseCaseToken,
-} from "@/infrastructure/shared/tokens/event.tokens";
+} from "@/application/tokens/event.tokens";
 
 /**
  * ModuleEventRegistrar

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
+import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
 import { LogLevel } from "@/domain/types/log-level";
 import { ok } from "@/domain/utils/result";
 import { logLevelSetting } from "@/application/settings/log-level-setting";
@@ -21,7 +22,11 @@ type MockLogger = Logger & {
   setMinLevel: ReturnType<typeof vi.fn>;
 };
 
-function createMocks(): { logger: MockLogger; i18n: PlatformI18nPort } {
+function createMocks(): {
+  logger: MockLogger;
+  i18n: PlatformI18nPort;
+  validator: PlatformValidationPort;
+} {
   const logger = {
     info: vi.fn(),
     warn: vi.fn(),
@@ -40,20 +45,29 @@ function createMocks(): { logger: MockLogger; i18n: PlatformI18nPort } {
     loadLocalTranslations: vi.fn(),
   } as unknown as PlatformI18nPort;
 
-  return { logger, i18n };
+  const validator = {
+    validateLogLevel: vi.fn((value: number) => {
+      if (value >= LogLevel.DEBUG && value <= LogLevel.ERROR) {
+        return ok(value as LogLevel);
+      }
+      return { ok: false, error: "Invalid log level" };
+    }),
+  } as unknown as PlatformValidationPort;
+
+  return { logger, i18n, validator };
 }
 
 describe("module settings definitions", () => {
   it("updates logger level via logLevelSetting", () => {
-    const { logger, i18n } = createMocks();
-    const config = logLevelSetting.createConfig(i18n, logger);
+    const { logger, i18n, validator } = createMocks();
+    const config = logLevelSetting.createConfig(i18n, logger, validator);
     config.onChange?.(LogLevel.DEBUG);
     expect(logger.setMinLevel).toHaveBeenCalledWith(LogLevel.DEBUG);
   });
 
   it("logs cache toggle changes", () => {
-    const { logger, i18n } = createMocks();
-    const config = cacheEnabledSetting.createConfig(i18n, logger);
+    const { logger, i18n, validator } = createMocks();
+    const config = cacheEnabledSetting.createConfig(i18n, logger, validator);
     config.onChange?.(false);
     expect(logger.info).toHaveBeenCalledWith("CacheService disabled via module setting.");
     logger.info.mockClear();
@@ -62,8 +76,8 @@ describe("module settings definitions", () => {
   });
 
   it("sanitizes cache TTL updates", () => {
-    const { logger, i18n } = createMocks();
-    const config = cacheDefaultTtlSetting.createConfig(i18n, logger);
+    const { logger, i18n, validator } = createMocks();
+    const config = cacheDefaultTtlSetting.createConfig(i18n, logger, validator);
     config.onChange?.(-5);
     expect(logger.info).toHaveBeenCalledWith("Cache TTL updated via settings: 0ms");
     logger.info.mockClear();
@@ -72,8 +86,8 @@ describe("module settings definitions", () => {
   });
 
   it("reports cache max entries for unlimited and bounded values", () => {
-    const { logger, i18n } = createMocks();
-    const config = cacheMaxEntriesSetting.createConfig(i18n, logger);
+    const { logger, i18n, validator } = createMocks();
+    const config = cacheMaxEntriesSetting.createConfig(i18n, logger, validator);
 
     config.onChange?.(0);
     expect(logger.info).toHaveBeenCalledWith("Cache max entries reset to unlimited via settings.");
@@ -84,8 +98,8 @@ describe("module settings definitions", () => {
   });
 
   it("logs performance tracking toggles", () => {
-    const { logger, i18n } = createMocks();
-    const config = performanceTrackingSetting.createConfig(i18n, logger);
+    const { logger, i18n, validator } = createMocks();
+    const config = performanceTrackingSetting.createConfig(i18n, logger, validator);
     config.onChange?.(true);
     expect(logger.info).toHaveBeenCalledWith("Performance tracking enabled via module setting.");
     logger.info.mockClear();
@@ -94,8 +108,8 @@ describe("module settings definitions", () => {
   });
 
   it("logs performance sampling rate updates", () => {
-    const { logger, i18n } = createMocks();
-    const config = performanceSamplingSetting.createConfig(i18n, logger);
+    const { logger, i18n, validator } = createMocks();
+    const config = performanceSamplingSetting.createConfig(i18n, logger, validator);
     config.onChange?.(0.25);
     expect(logger.info).toHaveBeenCalledWith(
       "Performance sampling rate updated via settings: 25.0%"
@@ -108,8 +122,8 @@ describe("module settings definitions", () => {
   });
 
   it("logs metrics persistence toggles", () => {
-    const { logger, i18n } = createMocks();
-    const config = metricsPersistenceEnabledSetting.createConfig(i18n, logger);
+    const { logger, i18n, validator } = createMocks();
+    const config = metricsPersistenceEnabledSetting.createConfig(i18n, logger, validator);
     config.onChange?.(true);
     expect(logger.info).toHaveBeenCalledWith("Metrics persistence enabled via module setting.");
     logger.info.mockClear();
@@ -118,8 +132,8 @@ describe("module settings definitions", () => {
   });
 
   it("logs metrics persistence key changes", () => {
-    const { logger, i18n } = createMocks();
-    const config = metricsPersistenceKeySetting.createConfig(i18n, logger);
+    const { logger, i18n, validator } = createMocks();
+    const config = metricsPersistenceKeySetting.createConfig(i18n, logger, validator);
     config.onChange?.("custom.metrics");
     expect(logger.info).toHaveBeenCalledWith("Metrics persistence key set to: custom.metrics");
     logger.info.mockClear();

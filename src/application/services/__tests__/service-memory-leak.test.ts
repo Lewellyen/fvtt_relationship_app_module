@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ServiceContainer } from "@/infrastructure/di/container";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
 
@@ -29,7 +30,7 @@ describe("Memory Leak: Service Disposal", () => {
   let container: ServiceContainer;
 
   beforeEach(() => {
-    container = ServiceContainer.createRoot();
+    container = createTestContainer();
     configureDependencies(container);
     const validateResult = container.validate();
     expect(validateResult.ok).toBe(true);

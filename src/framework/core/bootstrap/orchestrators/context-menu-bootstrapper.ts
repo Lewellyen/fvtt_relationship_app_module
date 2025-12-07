@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { registerContextMenuUseCaseToken } from "@/infrastructure/shared/tokens/event.tokens";
+import { registerContextMenuUseCaseToken } from "@/application/tokens/event.tokens";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
 import type { RegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";

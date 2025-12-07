@@ -4,7 +4,7 @@
  * These tokens define injection points for domain port interfaces,
  * keeping the Application layer decoupled from Infrastructure-specific implementations.
  */
-import { createInjectionToken } from "@/infrastructure/di/token-factory";
+import { createInjectionToken } from "@/application/utils/token-factory";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
@@ -16,6 +16,10 @@ import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-jo
 import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
+import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
+import type { PlatformMetricsSnapshotPort } from "@/domain/ports/platform-metrics-snapshot-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 
 /**
  * DI Token for PlatformNotificationPort.
@@ -108,3 +112,36 @@ export const platformJournalRepositoryToken = createInjectionToken<PlatformJourn
  */
 export const platformContextMenuRegistrationPortToken =
   createInjectionToken<PlatformContextMenuRegistrationPort>("PlatformContextMenuRegistrationPort");
+
+/**
+ * DI Token for PlatformValidationPort.
+ *
+ * Platform-agnostic validation port.
+ */
+export const platformValidationPortToken =
+  createInjectionToken<PlatformValidationPort>("PlatformValidationPort");
+
+/**
+ * DI Token for PlatformLoggingPort.
+ *
+ * Platform-agnostic logging port.
+ */
+export const platformLoggingPortToken =
+  createInjectionToken<PlatformLoggingPort>("PlatformLoggingPort");
+
+/**
+ * DI Token for PlatformMetricsSnapshotPort.
+ *
+ * Platform-agnostic metrics snapshot port.
+ */
+export const platformMetricsSnapshotPortToken = createInjectionToken<PlatformMetricsSnapshotPort>(
+  "PlatformMetricsSnapshotPort"
+);
+
+/**
+ * DI Token for PlatformContainerPort.
+ *
+ * Platform-agnostic container port for service resolution and validation state.
+ */
+export const platformContainerPortToken =
+  createInjectionToken<PlatformContainerPort>("PlatformContainerPort");

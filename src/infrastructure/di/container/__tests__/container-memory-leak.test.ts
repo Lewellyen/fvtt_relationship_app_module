@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ServiceContainer } from "@/infrastructure/di/container";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 
 interface PerformanceMemory {
@@ -28,7 +29,7 @@ describe("Memory Leak: Container Scope Cleanup", () => {
   let rootContainer: ServiceContainer;
 
   beforeEach(() => {
-    rootContainer = ServiceContainer.createRoot();
+    rootContainer = createTestContainer();
     configureDependencies(rootContainer);
   });
 

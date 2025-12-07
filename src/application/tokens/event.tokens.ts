@@ -1,15 +1,11 @@
 /**
- * Infrastructure-specific tokens for event-related use cases.
+ * Application layer tokens for event-related use cases.
  *
- * WICHTIG: Diese Datei importiert KEINE Service-Types mehr!
- * Token-Generics werden erst beim resolve() aufgelöst.
- * Dies verhindert zirkuläre Dependencies zwischen Tokens und Services.
- *
- * Note: PlatformJournalEventPort and HideJournalContextMenuHandler tokens have been moved to @/application/tokens.
- * This file only contains infrastructure-layer specific use case tokens.
+ * These tokens define injection points for event use cases,
+ * keeping the Application layer decoupled from Infrastructure-specific implementations.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createInjectionToken } from "@/infrastructure/di/token-factory";
+import { createInjectionToken } from "@/application/utils/token-factory";
 
 /**
  * DI Token for InvalidateJournalCacheOnChangeUseCase.

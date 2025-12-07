@@ -12,6 +12,8 @@ describe("ContainerErrorHandler", () => {
   describe("sanitize", () => {
     it("should return full error in development mode", () => {
       const config = createMockRuntimeConfig({
+        isDevelopment: true,
+        isProduction: false,
         logLevel: LogLevel.DEBUG,
         enablePerformanceTracking: true,
       });
@@ -83,6 +85,8 @@ describe("ContainerErrorHandler", () => {
 
     it("should preserve error in development", () => {
       const config = createMockRuntimeConfig({
+        isDevelopment: true,
+        isProduction: false,
         logLevel: LogLevel.DEBUG,
         enablePerformanceTracking: true,
       });

@@ -1,5 +1,6 @@
 import { SETTING_KEYS } from "@/application/constants/app-constants";
 import type { SettingDefinition } from "./setting-definition.interface";
+import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
 import { unwrapOr } from "@/domain/utils/result";
 
 /**
@@ -8,7 +9,7 @@ import { unwrapOr } from "@/domain/utils/result";
 export const performanceSamplingSetting: SettingDefinition<number> = {
   key: SETTING_KEYS.PERFORMANCE_SAMPLING_RATE,
 
-  createConfig(i18n, logger) {
+  createConfig(i18n, logger, _validator: PlatformValidationPort) {
     return {
       name: unwrapOr(
         i18n.translate("MODULE.SETTINGS.performanceSamplingRate.name", "Performance Sampling Rate"),

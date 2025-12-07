@@ -156,6 +156,11 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
   },
   {
+    file: 'src/application/tokens/event.tokens.ts',
+    allowed: ['eslint-disable'],
+    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
+  },
+  {
     file: 'src/infrastructure/shared/tokens/core.tokens.ts',
     allowed: ['eslint-disable'],
     reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',

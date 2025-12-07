@@ -6,10 +6,10 @@
  */
 
 import type { PlatformModuleReadyPort } from "@/domain/ports/platform-module-ready-port.interface";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import { platformModuleReadyPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
-import { createInjectionToken } from "@/infrastructure/di/token-factory";
+import { platformLoggingPortToken } from "@/application/tokens/domain-ports.tokens";
+import { createInjectionToken } from "@/application/utils/token-factory";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 
 /**
@@ -21,7 +21,7 @@ import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontok
 export class ModuleReadyService {
   constructor(
     private readonly moduleReadyPort: PlatformModuleReadyPort,
-    private readonly logger: Logger
+    private readonly loggingPort: PlatformLoggingPort
   ) {}
 
   /**
@@ -31,9 +31,12 @@ export class ModuleReadyService {
   setReady(): void {
     const result = this.moduleReadyPort.setReady();
     if (!result.ok) {
-      this.logger.warn(`Failed to set module.ready: ${result.error.message}`, result.error.details);
+      this.loggingPort.warn(
+        `Failed to set module.ready: ${result.error.message}`,
+        result.error.details
+      );
     } else {
-      this.logger.info("module.ready set to true");
+      this.loggingPort.info("module.ready set to true");
     }
   }
 }
@@ -43,10 +46,10 @@ export class ModuleReadyService {
  * Injects dependencies via constructor.
  */
 export class DIModuleReadyService extends ModuleReadyService {
-  static dependencies = [platformModuleReadyPortToken, loggerToken] as const;
+  static dependencies = [platformModuleReadyPortToken, platformLoggingPortToken] as const;
 
-  constructor(moduleReadyPort: PlatformModuleReadyPort, logger: Logger) {
-    super(moduleReadyPort, logger);
+  constructor(moduleReadyPort: PlatformModuleReadyPort, loggingPort: PlatformLoggingPort) {
+    super(moduleReadyPort, loggingPort);
   }
 }
 

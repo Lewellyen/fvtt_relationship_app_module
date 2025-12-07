@@ -86,8 +86,10 @@ describe("Integration: Cache Invalidation Workflow", () => {
     // 4. Container aus init-solid.ts holen (gleicher Container wie der Hook verwendet)
     // WICHTIG: Token dynamisch importieren nach vi.resetModules() um sicherzustellen,
     // dass wir die gleichen Symbol-Instanzen verwenden
-    const { cacheServiceToken, journalVisibilityServiceToken } =
-      await import("@/infrastructure/shared/tokens");
+    const { cacheServiceToken } =
+      await import("@/infrastructure/shared/tokens/infrastructure.tokens");
+    const { journalVisibilityServiceToken } =
+      await import("@/application/tokens/application.tokens");
     const { getRootContainer } = await import("@/framework/core/init-solid");
 
     const containerResult = getRootContainer();

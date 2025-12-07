@@ -24,7 +24,7 @@ import { InstanceCache } from "./cache/InstanceCache";
 import { ServiceResolver } from "./resolution/ServiceResolver";
 import { ScopeManager } from "./scope/ScopeManager";
 import { withTimeout, TimeoutError } from "@/infrastructure/shared/utils/promise-timeout";
-import { ENV } from "@/framework/config/environment";
+import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import { BootstrapPerformanceTracker } from "@/infrastructure/observability/bootstrap-performance-tracker";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
@@ -76,6 +76,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   private scopeManager: ScopeManager;
   private validationState: ContainerValidationState;
   private validationPromise: Promise<Result<void, ContainerError[]>> | null = null;
+  private readonly env: EnvironmentConfig;
 
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
@@ -98,7 +99,8 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     cache: InstanceCache,
     resolver: ServiceResolver,
     scopeManager: ScopeManager,
-    validationState: ContainerValidationState
+    validationState: ContainerValidationState,
+    env: EnvironmentConfig
   ) {
     this.registry = registry;
     this.validator = validator;
@@ -106,6 +108,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     this.resolver = resolver;
     this.scopeManager = scopeManager;
     this.validationState = validationState;
+    this.env = env;
   }
 
   /**
@@ -115,29 +118,38 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    * All components are created fresh for the root container.
    *
    * **Bootstrap Performance Tracking:**
-   * Uses BootstrapPerformanceTracker with RuntimeConfigService(ENV) und null MetricsCollector.
+   * Uses BootstrapPerformanceTracker with RuntimeConfigService(env) und null MetricsCollector.
    * MetricsCollector is injected later via setMetricsCollector() after validation.
    *
+   * @param env - Environment configuration (required for bootstrap performance tracking)
    * @returns A new root ServiceContainer
    *
    * @example
    * ```typescript
-   * const container = ServiceContainer.createRoot();
+   * const container = ServiceContainer.createRoot(ENV);
    * container.registerClass(LoggerToken, Logger, SINGLETON);
    * container.validate();
    * ```
    */
-  static createRoot(): ServiceContainer {
+  static createRoot(env: EnvironmentConfig): ServiceContainer {
     const registry = new ServiceRegistry();
     const validator = new ContainerValidator();
     const cache = new InstanceCache();
     const scopeManager = new ScopeManager("root", null, cache);
 
     // Bootstrap performance tracker (no MetricsCollector yet)
-    const performanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(ENV), null);
+    const performanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(env), null);
     const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
 
-    return new ServiceContainer(registry, validator, cache, resolver, scopeManager, "registering");
+    return new ServiceContainer(
+      registry,
+      validator,
+      cache,
+      resolver,
+      scopeManager,
+      "registering",
+      env
+    );
   }
 
   /**
@@ -481,7 +493,11 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     const childManager = scopeResult.value.manager;
 
     // Create performance tracker for child (same as root)
-    const childPerformanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(ENV), null);
+    // Use ENV from parent container (stored during createRoot)
+    const childPerformanceTracker = new BootstrapPerformanceTracker(
+      createRuntimeConfig(this.env),
+      null
+    );
     const childResolver = new ServiceResolver(
       childRegistry,
       childCache,
@@ -491,13 +507,15 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     );
 
     // Create child using private constructor
+    // Child inherits ENV from parent
     const child = new ServiceContainer(
       childRegistry,
       this.validator, // Shared (stateless)
       childCache,
       childResolver,
       childManager,
-      "registering" // FIX: Child starts in registering state, not validated!
+      "registering", // FIX: Child starts in registering state, not validated!
+      this.env // Inherit ENV from parent
     );
 
     return ok(child);

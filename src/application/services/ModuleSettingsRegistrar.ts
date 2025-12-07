@@ -25,11 +25,14 @@ import { SettingValidators } from "@/domain/types/settings";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
-import { loggerToken, runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
 import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
 import {
   platformNotificationPortToken,
   platformI18nPortToken,
+  platformValidationPortToken,
+  platformLoggingPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 
 /**
@@ -121,7 +124,8 @@ export class ModuleSettingsRegistrar {
     private readonly runtimeConfig: RuntimeConfigService,
     private readonly notifications: PlatformNotificationPort,
     private readonly i18n: PlatformI18nPort,
-    private readonly logger: PlatformLoggingPort
+    private readonly logger: PlatformLoggingPort,
+    private readonly validator: PlatformValidationPort
   ) {}
 
   /**
@@ -139,7 +143,8 @@ export class ModuleSettingsRegistrar {
       this.runtimeConfig,
       this.notifications,
       this.i18n,
-      this.logger
+      this.logger,
+      this.validator
     );
     this.registerDefinition(
       cacheEnabledSetting,
@@ -148,7 +153,8 @@ export class ModuleSettingsRegistrar {
       this.runtimeConfig,
       this.notifications,
       this.i18n,
-      this.logger
+      this.logger,
+      this.validator
     );
     this.registerDefinition(
       cacheDefaultTtlSetting,
@@ -157,7 +163,8 @@ export class ModuleSettingsRegistrar {
       this.runtimeConfig,
       this.notifications,
       this.i18n,
-      this.logger
+      this.logger,
+      this.validator
     );
     this.registerDefinition(
       cacheMaxEntriesSetting,
@@ -166,7 +173,8 @@ export class ModuleSettingsRegistrar {
       this.runtimeConfig,
       this.notifications,
       this.i18n,
-      this.logger
+      this.logger,
+      this.validator
     );
     this.registerDefinition(
       performanceTrackingSetting,
@@ -175,7 +183,8 @@ export class ModuleSettingsRegistrar {
       this.runtimeConfig,
       this.notifications,
       this.i18n,
-      this.logger
+      this.logger,
+      this.validator
     );
     this.registerDefinition(
       performanceSamplingSetting,
@@ -184,7 +193,8 @@ export class ModuleSettingsRegistrar {
       this.runtimeConfig,
       this.notifications,
       this.i18n,
-      this.logger
+      this.logger,
+      this.validator
     );
     this.registerDefinition(
       metricsPersistenceEnabledSetting,
@@ -193,7 +203,8 @@ export class ModuleSettingsRegistrar {
       this.runtimeConfig,
       this.notifications,
       this.i18n,
-      this.logger
+      this.logger,
+      this.validator
     );
     this.registerDefinition(
       metricsPersistenceKeySetting,
@@ -202,7 +213,8 @@ export class ModuleSettingsRegistrar {
       this.runtimeConfig,
       this.notifications,
       this.i18n,
-      this.logger
+      this.logger,
+      this.validator
     );
   }
 
@@ -252,9 +264,10 @@ export class ModuleSettingsRegistrar {
     runtimeConfig: RuntimeConfigService,
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
-    logger: PlatformLoggingPort
+    logger: PlatformLoggingPort,
+    validator: PlatformValidationPort
   ): void {
-    const config = definition.createConfig(i18n, logger);
+    const config = definition.createConfig(i18n, logger, validator);
     const configWithRuntimeBridge = binding
       ? this.attachRuntimeConfigBridge(config, runtimeConfig, binding)
       : config;
@@ -296,7 +309,8 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
     runtimeConfigToken,
     platformNotificationPortToken,
     platformI18nPortToken,
-    loggerToken,
+    platformLoggingPortToken,
+    platformValidationPortToken,
   ] as const;
 
   constructor(
@@ -304,8 +318,9 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
     runtimeConfig: RuntimeConfigService,
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
-    logger: PlatformLoggingPort
+    logger: PlatformLoggingPort,
+    validator: PlatformValidationPort
   ) {
-    super(settings, runtimeConfig, notifications, i18n, logger);
+    super(settings, runtimeConfig, notifications, i18n, logger, validator);
   }
 }

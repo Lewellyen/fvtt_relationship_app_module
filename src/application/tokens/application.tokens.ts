@@ -8,7 +8,7 @@
  * These tokens define injection points for Application layer services.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createInjectionToken } from "@/infrastructure/di/token-factory";
+import { createInjectionToken } from "@/application/utils/token-factory";
 
 /**
  * Injection token for the JournalVisibilityService.

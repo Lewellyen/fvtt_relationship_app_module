@@ -10,7 +10,7 @@ import {
   triggerJournalDirectoryReRenderUseCaseToken,
   registerContextMenuUseCaseToken,
   moduleEventRegistrarToken,
-} from "@/infrastructure/shared/tokens/event.tokens";
+} from "@/application/tokens/event.tokens";
 import { journalContextMenuHandlersToken } from "@/application/tokens/application.tokens";
 import { DIFoundryJournalEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter";
 import { DIInvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";

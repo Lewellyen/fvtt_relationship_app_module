@@ -186,9 +186,11 @@ describe("CompositionRoot", () => {
       const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
       vi.resetModules();
 
+      const { createMockEnvironmentConfig: createMockEnv } =
+        await import("@/test/utils/test-helpers");
       const envModule = await import("@/framework/config/environment");
       vi.spyOn(envModule, "ENV", "get").mockReturnValue(
-        createMockEnvironmentConfig({
+        createMockEnv({
           logLevel: 0,
           enablePerformanceTracking: true,
           performanceSamplingRate: 1.0,
@@ -213,7 +215,7 @@ describe("CompositionRoot", () => {
 
       const realCreateRoot = serviceContainer.createRoot;
       vi.spyOn(serviceContainer, "createRoot").mockImplementation(() => {
-        const container = realCreateRoot();
+        const container = realCreateRoot(createMockEnv());
         capturedContainer = container;
         return container;
       });

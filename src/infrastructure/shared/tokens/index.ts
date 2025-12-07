@@ -33,18 +33,21 @@ export * from "./infrastructure.tokens";
 // Foundry tokens
 export * from "./foundry.tokens";
 
-// Event tokens
-export * from "./event.tokens";
+// Event tokens (moved to @/application/tokens/event.tokens)
+// Kept for backward compatibility only - use direct imports from @/application/tokens/event.tokens
 
 // Port tokens
 export * from "./ports.tokens";
 
-// Re-export Application tokens for backward compatibility
-// Application layer tokens should be imported from specific files going forward:
+// Validation tokens
+export * from "./validation.tokens";
+
+// Application layer tokens should be imported directly from:
 // - @/application/tokens/application.tokens
 // - @/application/tokens/domain-ports.tokens
-export * from "@/application/tokens/application.tokens";
-export * from "@/application/tokens/domain-ports.tokens";
+// - @/application/tokens/event.tokens
+// Re-exports removed to maintain Clean Architecture dependency rules.
+// Infrastructure layer should not re-export Application layer tokens.
 
 // ⚠️ ServiceType wurde entfernt (war Union von 80+ Service-Klassen)
 // Container nutzt jetzt freie Generics statt ServiceType-Constraint.

@@ -9,7 +9,8 @@ import { SETTING_KEYS } from "@/application/constants/app-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
-import { validateAndSetLogLevel } from "@/infrastructure/shared/utils/validate-log-level";
+import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
+import { validateAndSetLogLevel } from "@/application/utils/validate-log-level";
 import { unwrapOr } from "@/domain/utils/result";
 
 /**
@@ -21,7 +22,11 @@ import { unwrapOr } from "@/domain/utils/result";
 export const logLevelSetting: SettingDefinition<LogLevel> = {
   key: SETTING_KEYS.LOG_LEVEL,
 
-  createConfig(i18n: PlatformI18nPort, logger: PlatformLoggingPort) {
+  createConfig(
+    i18n: PlatformI18nPort,
+    logger: PlatformLoggingPort,
+    validator: PlatformValidationPort
+  ) {
     return {
       name: unwrapOr(i18n.translate("MODULE.SETTINGS.logLevel.name", "Log Level"), "Log Level"),
       hint: unwrapOr(
@@ -60,7 +65,7 @@ export const logLevelSetting: SettingDefinition<LogLevel> = {
       },
       default: LogLevel.INFO,
       onChange: (value: number) => {
-        validateAndSetLogLevel(value, logger);
+        validateAndSetLogLevel(value, logger, validator);
       },
     };
   },

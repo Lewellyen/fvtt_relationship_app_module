@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ServiceContainer } from "@/infrastructure/di/container";
+import type { ServiceContainer } from "@/infrastructure/di/container";
+import { createTestContainer } from "@/test/utils/test-helpers";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import { ServiceLifecycle } from "@/infrastructure/di/types";
@@ -24,7 +25,7 @@ class TestService implements Logger {
 
 describe("Container Performance", () => {
   it("should resolve 1000 singleton services in < 100ms", () => {
-    const container = ServiceContainer.createRoot();
+    const container = createTestContainer();
 
     // Register 1000 services
     const tokens = Array.from({ length: 1000 }, (_, i) => {
@@ -44,7 +45,7 @@ describe("Container Performance", () => {
   });
 
   it("should validate 500 services with dependencies in < 50ms", () => {
-    const container = ServiceContainer.createRoot();
+    const container = createTestContainer();
 
     // Create dependency chain
     const tokens = Array.from({ length: 500 }, (_, i) => {
@@ -66,7 +67,7 @@ describe("Container Performance", () => {
   });
 
   it("should create and dispose 100 child scopes in < 200ms", () => {
-    const parent = ServiceContainer.createRoot();
+    const parent = createTestContainer();
     parent.registerFactory(
       createInjectionToken<TestService>("Service"),
       () => new TestService(1),
@@ -89,7 +90,7 @@ describe("Container Performance", () => {
   });
 
   it("should handle MaxRegistrationsExceeded without performance degradation", () => {
-    const container = ServiceContainer.createRoot();
+    const container = createTestContainer();
 
     // Register exactly to the limit (10000)
     for (let i = 0; i < 10000; i++) {
@@ -122,7 +123,7 @@ describe("Container Performance", () => {
   });
 
   it("should resolve transient services efficiently", () => {
-    const container = ServiceContainer.createRoot();
+    const container = createTestContainer();
     const token = createInjectionToken<TestService>("TransientService");
 
     container.registerFactory(
@@ -149,7 +150,7 @@ describe("Container Performance", () => {
   });
 
   it("should handle deep dependency trees efficiently", () => {
-    const container = ServiceContainer.createRoot();
+    const container = createTestContainer();
     const depth = 50;
 
     // Create a deep dependency tree

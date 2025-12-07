@@ -3,10 +3,10 @@
  * Services can register themselves for health monitoring.
  */
 
-import type { Disposable } from "@/infrastructure/di/interfaces";
+import type { ApplicationDisposable } from "@/application/interfaces/application-disposable.interface";
 import type { HealthCheck } from "./health-check.interface";
 
-export class HealthCheckRegistry implements Disposable {
+export class HealthCheckRegistry implements ApplicationDisposable {
   static dependencies = [] as const;
 
   private checks = new Map<string, HealthCheck>();
