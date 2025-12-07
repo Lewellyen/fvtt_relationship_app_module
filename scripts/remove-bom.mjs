@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 
 const patterns = ['src/**/*.ts', 'docs/**/*.md'];
-const UTF8_BOM = Buffer.from([0xEF, 0xBB, 0xBF]);
+
 
 function globSync(pattern, cwd) {
   const results = [];
