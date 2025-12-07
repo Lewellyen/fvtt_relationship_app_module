@@ -3,16 +3,14 @@ import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { platformI18nPortToken } from "@/application/tokens/domain-ports.tokens";
-import {
-  foundryI18nToken,
-  localI18nToken,
-  i18nFacadeToken,
-  foundryTranslationHandlerToken,
-  localTranslationHandlerToken,
-  fallbackTranslationHandlerToken,
-  translationHandlerChainToken,
-  translationHandlersToken,
-} from "@/infrastructure/shared/tokens/i18n.tokens";
+import { foundryI18nToken } from "@/infrastructure/shared/tokens/i18n/foundry-i18n.token";
+import { localI18nToken } from "@/infrastructure/shared/tokens/i18n/local-i18n.token";
+import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n/i18n-facade.token";
+import { foundryTranslationHandlerToken } from "@/infrastructure/shared/tokens/i18n/foundry-translation-handler.token";
+import { localTranslationHandlerToken } from "@/infrastructure/shared/tokens/i18n/local-translation-handler.token";
+import { fallbackTranslationHandlerToken } from "@/infrastructure/shared/tokens/i18n/fallback-translation-handler.token";
+import { translationHandlerChainToken } from "@/infrastructure/shared/tokens/i18n/translation-handler-chain.token";
+import { translationHandlersToken } from "@/infrastructure/shared/tokens/i18n/translation-handlers.token";
 import { DIFoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
 import { DILocalI18nService } from "@/infrastructure/i18n/LocalI18nService";
 import { DII18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";

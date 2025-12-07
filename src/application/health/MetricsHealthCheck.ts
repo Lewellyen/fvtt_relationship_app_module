@@ -1,6 +1,6 @@
 import type { PlatformMetricsSnapshotPort } from "@/domain/ports/platform-metrics-snapshot-port.interface";
 import { platformMetricsSnapshotPortToken } from "@/application/tokens/domain-ports.tokens";
-import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
 import type { HealthCheck } from "./health-check.interface";
 import type { HealthCheckRegistry } from "./HealthCheckRegistry";
 

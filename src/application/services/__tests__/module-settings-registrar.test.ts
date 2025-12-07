@@ -11,9 +11,10 @@ import { RuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
 import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { markAsApiSafe } from "@/infrastructure/di/types";
-import { loggerToken, runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
 import { runtimeConfigSyncToken } from "@/application/tokens/application.tokens";
-import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports/platform-settings-registration-port.token";
 import {
   platformNotificationPortToken,
   platformI18nPortToken,

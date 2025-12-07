@@ -12,12 +12,10 @@ import type { FoundryGame } from "../interfaces/FoundryGame";
 import type { FoundryDocument } from "../interfaces/FoundryDocument";
 import type { FoundryUI } from "../interfaces/FoundryUI";
 import type { FoundryJournalFacade as IFoundryJournalFacade } from "./foundry-journal-facade.interface";
-import {
-  foundryGameToken,
-  foundryDocumentToken,
-  foundryUIToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
-import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
+import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
+import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui.token";
+import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure/module-id.token";
 import { castFoundryDocumentForFlag } from "@/infrastructure/adapters/foundry/runtime-casts";
 import * as v from "valibot";
 

@@ -18,10 +18,8 @@ import {
   castFoundryDocumentWithUpdate,
   castFoundryJournalEntryClass,
 } from "@/infrastructure/adapters/foundry/runtime-casts";
-import {
-  foundryGameToken,
-  foundryDocumentToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
+import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
+import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
 import * as v from "valibot";
 
 /**

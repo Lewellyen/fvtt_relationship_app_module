@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import { ok } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 import { PersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
 
 /**

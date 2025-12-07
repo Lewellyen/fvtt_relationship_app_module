@@ -11,12 +11,10 @@ import type {
   EventRegistrationId,
   PlatformEventError,
 } from "@/domain/ports/events/platform-event-port.interface";
-import {
-  portSelectorToken,
-  foundryHooksPortRegistryToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
-import { retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { portSelectorToken } from "@/infrastructure/shared/tokens/foundry/port-selector.token";
+import { foundryHooksPortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks-port-registry.token";
+import { retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure/retry-service.token";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { FoundryServiceBase } from "./FoundryServiceBase";
 import { err, ok } from "@/domain/utils/result";
 

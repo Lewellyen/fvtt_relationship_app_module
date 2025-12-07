@@ -4,15 +4,13 @@ import {
   registerPortInfrastructure,
   registerPortRegistries,
 } from "@/framework/config/modules/port-infrastructure.config";
-import {
-  portSelectorToken,
-  foundryGamePortRegistryToken,
-  foundryHooksPortRegistryToken,
-  foundryDocumentPortRegistryToken,
-  foundryUIPortRegistryToken,
-  foundrySettingsPortRegistryToken,
-  foundryI18nPortRegistryToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
+import { portSelectorToken } from "@/infrastructure/shared/tokens/foundry/port-selector.token";
+import { foundryGamePortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-game-port-registry.token";
+import { foundryHooksPortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks-port-registry.token";
+import { foundryDocumentPortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-document-port-registry.token";
+import { foundryUIPortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui-port-registry.token";
+import { foundrySettingsPortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings-port-registry.token";
+import { foundryI18nPortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-i18n-port-registry.token";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { err } from "@/domain/utils/result";

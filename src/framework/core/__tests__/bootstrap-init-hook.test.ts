@@ -9,16 +9,12 @@ import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstr
 import { createMockGame, createMockUI } from "@/test/mocks/foundry";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
-import {
-  foundrySettingsToken,
-  journalContextMenuLibWrapperServiceToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
-import {
-  notificationCenterToken,
-  uiChannelToken,
-} from "@/infrastructure/shared/tokens/notifications.tokens";
-import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core.tokens";
-import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
+import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/journal-context-menu-lib-wrapper-service.token";
+import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
+import { uiChannelToken } from "@/infrastructure/shared/tokens/notifications/ui-channel.token";
+import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
+import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
 import {
   moduleEventRegistrarToken,
   registerContextMenuUseCaseToken,

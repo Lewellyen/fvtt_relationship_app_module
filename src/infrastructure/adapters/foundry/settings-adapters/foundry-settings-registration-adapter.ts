@@ -7,7 +7,7 @@ import type {
 } from "@/domain/types/settings";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
-import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 import * as v from "valibot";
 
 /**

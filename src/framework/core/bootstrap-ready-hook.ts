@@ -10,8 +10,8 @@
 
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstrap-event-port.interface";
-import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports/platform-bootstrap-event-port.token";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import type { ModuleReadyService } from "@/application/services/module-ready-service";
 import { moduleReadyServiceToken } from "@/application/services/module-ready-service";
 

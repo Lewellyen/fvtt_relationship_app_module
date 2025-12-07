@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import { expectResultOk, createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import { markAsApiSafe } from "@/infrastructure/di/types/utilities/api-safe-token";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 
@@ -206,7 +206,8 @@ describe("CompositionRoot", () => {
         typeof _runtimeConfigModule.RuntimeConfigService
       >;
 
-      const { loggerToken: testLoggerToken } = await import("@/infrastructure/shared/tokens");
+      const { loggerToken: testLoggerToken } =
+        await import("@/infrastructure/shared/tokens/core/logger.token");
 
       // We need to capture the container created in bootstrap to mock resolveWithError
       // The container is created before track is called, so we intercept ServiceContainer.createRoot

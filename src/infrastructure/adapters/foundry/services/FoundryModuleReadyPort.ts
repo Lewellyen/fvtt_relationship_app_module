@@ -9,14 +9,10 @@ import { createFoundryError } from "../errors/FoundryErrors";
 import type { PortSelector } from "../versioning/portselector";
 import type { PortRegistry } from "../versioning/portregistry";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
-import {
-  portSelectorToken,
-  foundryModulePortRegistryToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
-import {
-  retryServiceToken,
-  moduleIdToken,
-} from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { portSelectorToken } from "@/infrastructure/shared/tokens/foundry/port-selector.token";
+import { foundryModulePortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-module-port-registry.token";
+import { retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure/retry-service.token";
+import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure/module-id.token";
 import { FoundryServiceBase } from "./FoundryServiceBase";
 
 /**

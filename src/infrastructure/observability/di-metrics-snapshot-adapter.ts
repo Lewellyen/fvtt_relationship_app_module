@@ -1,5 +1,5 @@
 import { MetricsSnapshotAdapter } from "./metrics-snapshot-adapter";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 import type { MetricsCollector } from "./metrics-collector";
 
 /**

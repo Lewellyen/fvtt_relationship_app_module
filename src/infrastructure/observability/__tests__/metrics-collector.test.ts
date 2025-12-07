@@ -291,7 +291,6 @@ describe("MetricsCollector", () => {
       expect(snapshot.cacheHitRate).toBeCloseTo(66.66, 1);
     });
   });
-
 });
 
 describe("PersistentMetricsCollector", () => {

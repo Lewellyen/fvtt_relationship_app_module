@@ -3,11 +3,9 @@ import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { platformCachePortToken } from "@/application/tokens/domain-ports.tokens";
-import {
-  cacheServiceConfigToken,
-  cacheServiceToken,
-} from "@/infrastructure/shared/tokens/infrastructure.tokens";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
+import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service.token";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
 import type { CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import { DICacheService } from "@/infrastructure/cache/CacheService";
 import { DICachePortAdapter } from "@/infrastructure/adapters/cache/platform-cache-port-adapter";

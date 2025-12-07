@@ -1,7 +1,7 @@
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { Result } from "@/domain/types/result";
-import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n.tokens";
+import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n/i18n-facade.token";
 
 /**
  * Adapter that implements PlatformI18nPort by wrapping I18nFacadeService.

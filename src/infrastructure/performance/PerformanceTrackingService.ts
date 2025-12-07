@@ -17,8 +17,8 @@
 
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { MetricsSampler } from "@/infrastructure/observability/interfaces/metrics-sampler";
-import { metricsSamplerToken } from "@/infrastructure/shared/tokens/observability.tokens";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { metricsSamplerToken } from "@/infrastructure/shared/tokens/observability/metrics-sampler.token";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
 import { PerformanceTrackerImpl } from "@/infrastructure/observability/performance-tracker-impl";
 
 /**

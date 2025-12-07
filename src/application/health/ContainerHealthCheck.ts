@@ -1,7 +1,7 @@
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { HealthCheck } from "./health-check.interface";
 import type { HealthCheckRegistry } from "./HealthCheckRegistry";
-import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
 import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 
 /**

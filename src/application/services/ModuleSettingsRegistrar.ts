@@ -15,7 +15,7 @@ import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interfa
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
 import { runtimeConfigSyncToken } from "@/application/tokens/application.tokens";
-import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports/platform-settings-registration-port.token";
 import {
   platformNotificationPortToken,
   platformI18nPortToken,

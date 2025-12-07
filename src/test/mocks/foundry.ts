@@ -3,10 +3,10 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
-import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications.tokens";
-import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
+import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
 import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import type { FoundryJournalEntry } from "@/infrastructure/adapters/foundry/types";
 
 /**

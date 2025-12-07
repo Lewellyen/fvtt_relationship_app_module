@@ -2,10 +2,8 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import {
-  portSelectionEventEmitterToken,
-  observabilityRegistryToken,
-} from "@/infrastructure/shared/tokens/observability.tokens";
+import { portSelectionEventEmitterToken } from "@/infrastructure/shared/tokens/observability/port-selection-event-emitter.token";
+import { observabilityRegistryToken } from "@/infrastructure/shared/tokens/observability/observability-registry.token";
 import { DIPortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import { DIObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 

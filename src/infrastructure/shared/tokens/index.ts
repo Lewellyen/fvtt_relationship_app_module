@@ -1,46 +1,25 @@
 /**
  * Central token registry.
  *
- * ⚠️ DEPRECATED: Direct imports from specific token files are preferred for tree-shaking.
- * This file is kept for backward compatibility only.
+ * All tokens are now organized in subdirectories (core/, observability/, foundry/, etc.)
+ * with one token per file to prevent circular dependencies.
  *
- * @deprecated Import tokens from specific files instead:
- * @example
- * ```typescript
- * // ❌ OLD (imports everything):
- * import { loggerToken } from "@/infrastructure/shared/tokens";
+ * **Import Strategy:**
+ * **Feingranular (empfohlen):** Import direkt aus Token-Datei
+ *    ```typescript
+ *    import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+ *    ```
  *
- * // ✅ NEW (tree-shakeable):
- * import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
- * ```
+ * **Vorteile der feingranularen Struktur:**
+ * - ✅ Keine zirkulären Abhängigkeiten mehr möglich (strukturell verhindert)
+ * - ✅ Besseres Tree-Shaking (nur benötigte Tokens werden gebündelt)
+ * - ✅ Klarere Dependency-Grenzen
+ * - ✅ Keine Barrel-Exports mehr (verhindert zirkuläre Abhängigkeiten strukturell)
+ *
+ * **Hinweis:**
+ * Barrel-Exports wurden entfernt. Alle Token müssen direkt aus ihren individuellen
+ * Token-Dateien importiert werden.
  */
-
-// Core tokens
-export * from "./core.tokens";
-
-// Observability tokens
-export * from "./observability.tokens";
-
-// I18n tokens
-export * from "./i18n.tokens";
-
-// Notification tokens
-export * from "./notifications.tokens";
-
-// Infrastructure tokens
-export * from "./infrastructure.tokens";
-
-// Foundry tokens
-export * from "./foundry.tokens";
-
-// Event tokens (moved to @/application/tokens/event.tokens)
-// Kept for backward compatibility only - use direct imports from @/application/tokens/event.tokens
-
-// Port tokens
-export * from "./ports.tokens";
-
-// Validation tokens
-export * from "./validation.tokens";
 
 // Application layer tokens should be imported directly from:
 // - @/application/tokens/application.tokens

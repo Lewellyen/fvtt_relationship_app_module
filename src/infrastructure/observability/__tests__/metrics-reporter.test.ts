@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { MetricsReporter, DIMetricsReporter } from "@/infrastructure/observability/metrics-reporter";
+import {
+  MetricsReporter,
+  DIMetricsReporter,
+} from "@/infrastructure/observability/metrics-reporter";
 import { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 
 describe("MetricsReporter", () => {
   let reporter: MetricsReporter;
@@ -158,6 +161,7 @@ describe("MetricsReporter", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
+        log: vi.fn(),
       };
 
       const reporterWithLogger = new MetricsReporter(collector, mockLogger);
@@ -173,6 +177,7 @@ describe("MetricsReporter", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
+        log: vi.fn(),
       };
 
       const diReporter = new DIMetricsReporter(collector, mockLogger);
@@ -182,4 +187,3 @@ describe("MetricsReporter", () => {
     });
   });
 });
-

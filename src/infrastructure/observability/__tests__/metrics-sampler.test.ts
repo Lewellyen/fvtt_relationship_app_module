@@ -4,12 +4,10 @@ import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 
 describe("MetricsSampler", () => {
-  let sampler: MetricsSampler;
   let runtimeConfig: RuntimeConfigService;
 
   beforeEach(() => {
     runtimeConfig = createMockRuntimeConfig();
-    sampler = new MetricsSampler(runtimeConfig);
   });
 
   afterEach(() => {
@@ -122,4 +120,3 @@ describe("MetricsSampler", () => {
     });
   });
 });
-

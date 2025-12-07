@@ -11,9 +11,9 @@ import type {
 } from "@/infrastructure/cache/cache.interface";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
-import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
+import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { LogLevel } from "@/domain/types/log-level";
 import { MODULE_METADATA } from "@/application/constants/app-constants";

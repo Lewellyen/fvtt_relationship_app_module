@@ -44,11 +44,7 @@ export class ServiceResolver implements DependencyResolver, ServiceInstantiator 
     private readonly performanceTracker: PerformanceTracker
   ) {
     // Pass parentResolver as DependencyResolver to break circular dependency
-    this.lifecycleResolver = new LifecycleResolver(
-      cache,
-      parentResolver,
-      scopeName
-    );
+    this.lifecycleResolver = new LifecycleResolver(cache, parentResolver, scopeName);
     // Pass this as DependencyResolver to break circular dependency
     this.instantiator = new ServiceInstantiatorImpl(this);
   }

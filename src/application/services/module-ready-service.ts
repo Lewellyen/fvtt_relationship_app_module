@@ -7,7 +7,7 @@
 
 import type { PlatformModuleReadyPort } from "@/domain/ports/platform-module-ready-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
-import { platformModuleReadyPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { platformModuleReadyPortToken } from "@/infrastructure/shared/tokens/ports/platform-module-ready-port.token";
 import { platformLoggingPortToken } from "@/application/tokens/domain-ports.tokens";
 import { createInjectionToken } from "@/application/utils/token-factory";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";

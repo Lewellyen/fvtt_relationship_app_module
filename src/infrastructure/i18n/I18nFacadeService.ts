@@ -1,8 +1,6 @@
 import type { LocalI18nService } from "./LocalI18nService";
-import {
-  localI18nToken,
-  translationHandlerChainToken,
-} from "@/infrastructure/shared/tokens/i18n.tokens";
+import { localI18nToken } from "@/infrastructure/shared/tokens/i18n/local-i18n.token";
+import { translationHandlerChainToken } from "@/infrastructure/shared/tokens/i18n/translation-handler-chain.token";
 import type { TranslationHandler } from "./TranslationHandler.interface";
 import type { Result } from "@/domain/types/result";
 

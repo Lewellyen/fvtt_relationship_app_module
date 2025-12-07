@@ -3,7 +3,7 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { expectResultOk } from "@/test/utils/test-helpers";
-import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service.token";
 import type { CacheService as CacheServiceContract } from "@/infrastructure/cache/cache.interface";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";

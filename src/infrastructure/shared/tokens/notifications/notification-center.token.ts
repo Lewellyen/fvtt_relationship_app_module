@@ -1,8 +1,10 @@
 /**
- * Notification tokens for message routing and channels.
+ * Injection token for the NotificationCenter.
+ *
+ * Uses type-only import to prevent circular dependencies while maintaining type safety.
+ * TypeScript removes type imports at compile time, so they don't create runtime dependencies.
  */
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
-import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
 import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
 
 /**
@@ -20,13 +22,3 @@ import type { NotificationService } from "@/infrastructure/notifications/notific
  */
 export const notificationCenterToken =
   createInjectionToken<NotificationService>("NotificationCenter");
-
-/**
- * Injection token for ConsoleChannel.
- */
-export const consoleChannelToken = createInjectionToken<NotificationChannel>("ConsoleChannel");
-
-/**
- * Injection token for UIChannel.
- */
-export const uiChannelToken = createInjectionToken<NotificationChannel>("UIChannel");

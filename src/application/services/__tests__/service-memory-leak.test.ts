@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 
 interface PerformanceMemory {
   usedJSHeapSize: number;

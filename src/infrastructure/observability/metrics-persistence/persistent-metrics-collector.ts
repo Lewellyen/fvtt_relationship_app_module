@@ -1,7 +1,7 @@
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
-import { metricsStorageToken } from "@/infrastructure/shared/tokens/observability.tokens";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { metricsStorageToken } from "@/infrastructure/shared/tokens/observability/metrics-storage.token";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
 import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-collector";
 import { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsStorage } from "./metrics-storage";

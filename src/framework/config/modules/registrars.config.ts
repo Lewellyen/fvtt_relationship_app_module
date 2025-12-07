@@ -2,7 +2,7 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
 import { runtimeConfigSyncToken } from "@/application/tokens/application.tokens";
 import { DIModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
 import { DIRuntimeConfigSync } from "@/application/services/RuntimeConfigSync";

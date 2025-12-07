@@ -7,8 +7,8 @@ import type {
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
-import { libWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { libWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/lib-wrapper-service.token";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { err, ok } from "@/domain/utils/result";
 
 // Type for Foundry ContextMenu instance (used by libWrapper)

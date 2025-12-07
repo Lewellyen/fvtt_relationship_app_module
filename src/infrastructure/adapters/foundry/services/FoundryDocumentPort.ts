@@ -4,11 +4,9 @@ import type { FoundryError } from "../errors/FoundryErrors";
 import type { PortSelector } from "../versioning/portselector";
 import type { PortRegistry } from "../versioning/portregistry";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
-import {
-  portSelectorToken,
-  foundryDocumentPortRegistryToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
-import { retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { portSelectorToken } from "@/infrastructure/shared/tokens/foundry/port-selector.token";
+import { foundryDocumentPortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-document-port-registry.token";
+import { retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure/retry-service.token";
 import { FoundryServiceBase } from "./FoundryServiceBase";
 import type * as v from "valibot";
 

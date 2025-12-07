@@ -7,7 +7,7 @@ import type { EntityFilter } from "@/domain/ports/collections/entity-search-quer
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import { ok, err } from "@/domain/utils/result";
-import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
 
 /**
  * Foundry-specific implementation of PlatformJournalCollectionPort.

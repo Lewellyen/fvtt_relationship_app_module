@@ -87,7 +87,7 @@ describe("Integration: Cache Invalidation Workflow", () => {
     // WICHTIG: Token dynamisch importieren nach vi.resetModules() um sicherzustellen,
     // dass wir die gleichen Symbol-Instanzen verwenden
     const { cacheServiceToken } =
-      await import("@/infrastructure/shared/tokens/infrastructure.tokens");
+      await import("@/infrastructure/shared/tokens/infrastructure/cache-service.token");
     const { journalVisibilityServiceToken } =
       await import("@/application/tokens/application.tokens");
     const { getRootContainer } = await import("@/framework/core/init-solid");

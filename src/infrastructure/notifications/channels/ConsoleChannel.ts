@@ -18,7 +18,7 @@ import type {
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { Result } from "@/domain/types/result";
 import { ok } from "@/domain/utils/result";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 
 export class ConsoleChannel implements NotificationChannel {
   readonly name = "ConsoleChannel";

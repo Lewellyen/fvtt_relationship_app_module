@@ -1,5 +1,5 @@
 import type { FoundryI18nPort } from "@/infrastructure/adapters/foundry/services/FoundryI18nPort";
-import { foundryI18nToken } from "@/infrastructure/shared/tokens/i18n.tokens";
+import { foundryI18nToken } from "@/infrastructure/shared/tokens/i18n/foundry-i18n.token";
 import { AbstractTranslationHandler } from "./AbstractTranslationHandler";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";

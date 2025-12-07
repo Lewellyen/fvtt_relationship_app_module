@@ -12,9 +12,9 @@ import type {
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { castCacheValue } from "@/infrastructure/di/types/utilities/type-casts";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
-import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
+import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
 import type { Result } from "@/domain/types/result";
 import { ok, err, fromPromise } from "@/domain/utils/result";
 import type { InternalCacheEntry } from "./eviction-strategy.interface";

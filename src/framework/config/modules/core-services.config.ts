@@ -2,24 +2,20 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
-import {
-  metricsCollectorToken,
-  metricsRecorderToken,
-  metricsSamplerToken,
-  metricsReporterToken,
-  traceContextToken,
-  metricsStorageToken,
-} from "@/infrastructure/shared/tokens/observability.tokens";
-import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
-import {
-  loggerToken,
-  moduleHealthServiceToken,
-  healthCheckRegistryToken,
-  runtimeConfigToken,
-  bootstrapInitHookServiceToken,
-  bootstrapReadyHookServiceToken,
-} from "@/infrastructure/shared/tokens/core.tokens";
+import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports/platform-bootstrap-event-port.token";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
+import { metricsRecorderToken } from "@/infrastructure/shared/tokens/observability/metrics-recorder.token";
+import { metricsSamplerToken } from "@/infrastructure/shared/tokens/observability/metrics-sampler.token";
+import { metricsReporterToken } from "@/infrastructure/shared/tokens/observability/metrics-reporter.token";
+import { traceContextToken } from "@/infrastructure/shared/tokens/observability/trace-context.token";
+import { metricsStorageToken } from "@/infrastructure/shared/tokens/observability/metrics-storage.token";
+import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import { moduleHealthServiceToken } from "@/infrastructure/shared/tokens/core/module-health-service.token";
+import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
+import { bootstrapInitHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-init-hook-service.token";
+import { bootstrapReadyHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-ready-hook-service.token";
 import { DIMetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { DIPersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
 import { DIMetricsSampler } from "@/infrastructure/observability/metrics-sampler";
@@ -37,7 +33,7 @@ import {
   DIModuleReadyService,
   moduleReadyServiceToken,
 } from "@/application/services/module-ready-service";
-import { platformModuleReadyPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { platformModuleReadyPortToken } from "@/infrastructure/shared/tokens/ports/platform-module-ready-port.token";
 import { DIFoundryModuleReadyPort } from "@/infrastructure/adapters/foundry/services/FoundryModuleReadyPort";
 
 /**

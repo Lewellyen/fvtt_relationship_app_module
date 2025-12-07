@@ -7,8 +7,8 @@ import type {
   LibWrapperError,
 } from "@/infrastructure/adapters/foundry/interfaces/lib-wrapper-service.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
-import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure/module-id.token";
 import { tryCatch } from "@/domain/utils/result";
 import { err, ok } from "@/domain/utils/result";
 

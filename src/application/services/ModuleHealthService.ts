@@ -1,6 +1,6 @@
 import type { HealthStatus } from "@/domain/types/health-status";
 import type { HealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
-import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
 
 /**
  * Service for monitoring module health and diagnostics.

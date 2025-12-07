@@ -10,7 +10,7 @@ import type { PlatformNotificationPort } from "@/domain/ports/platform-notificat
 import type { SettingValidator } from "@/domain/types/settings";
 import { SettingValidators } from "@/domain/types/settings";
 import type { LogLevel } from "@/domain/types/log-level";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
 import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
 
 /**

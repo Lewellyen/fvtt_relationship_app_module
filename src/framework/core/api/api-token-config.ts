@@ -1,18 +1,16 @@
 import { markAsApiSafe } from "@/infrastructure/di/types/utilities/api-safe-token";
-import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications.tokens";
+import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
 import {
   journalVisibilityServiceToken,
   journalDirectoryProcessorToken,
 } from "@/application/tokens/application.tokens";
-import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n.tokens";
-import {
-  foundryGameToken,
-  foundryHooksToken,
-  foundryDocumentToken,
-  foundryUIToken,
-  foundrySettingsToken,
-  foundryJournalFacadeToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
+import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n/i18n-facade.token";
+import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
+import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
+import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
+import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui.token";
+import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
+import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry/foundry-journal-facade.token";
 import type { ModuleApiTokens } from "@/framework/core/api/module-api";
 
 /**

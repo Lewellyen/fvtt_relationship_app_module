@@ -181,7 +181,8 @@ describe("init-solid Bootstrap", () => {
 
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
-      const { notificationCenterToken } = await import("@/infrastructure/shared/tokens");
+      const { notificationCenterToken } =
+        await import("@/infrastructure/shared/tokens/notifications/notification-center.token");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
@@ -235,7 +236,8 @@ describe("init-solid Bootstrap", () => {
 
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
-      const { uiChannelToken } = await import("@/infrastructure/shared/tokens");
+      const { uiChannelToken } =
+        await import("@/infrastructure/shared/tokens/notifications/ui-channel.token");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
@@ -290,7 +292,8 @@ describe("init-solid Bootstrap", () => {
       const originalDependencyConfig = await vi.importActual<
         typeof import("@/framework/config/dependencyconfig")
       >("@/framework/config/dependencyconfig");
-      const foundryTokens = await import("@/infrastructure/shared/tokens");
+      const { foundrySettingsToken } =
+        await import("@/infrastructure/shared/tokens/foundry/foundry-settings.token");
 
       vi.doMock("@/framework/config/dependencyconfig", () => ({
         ...originalDependencyConfig,
@@ -299,7 +302,7 @@ describe("init-solid Bootstrap", () => {
           if (configured.ok) {
             const originalResolveWithError = container.resolveWithError.bind(container);
             vi.spyOn(container, "resolveWithError").mockImplementation((token) => {
-              if (token === foundryTokens.foundrySettingsToken) {
+              if (token === foundrySettingsToken) {
                 return {
                   ok: false,
                   error: { code: "SETTINGS_UNAVAILABLE", message: "Settings not available" },
@@ -513,7 +516,8 @@ describe("init-solid Bootstrap", () => {
 
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
-      const { moduleApiInitializerToken } = await import("@/infrastructure/shared/tokens");
+      const { moduleApiInitializerToken } =
+        await import("@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       let shouldFail = false;
       const resolveSpy = vi
@@ -584,7 +588,8 @@ describe("init-solid Bootstrap", () => {
 
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
-      const { moduleSettingsRegistrarToken } = await import("@/infrastructure/shared/tokens");
+      const { moduleSettingsRegistrarToken } =
+        await import("@/infrastructure/shared/tokens/core/module-settings-registrar.token");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       let shouldFail = false;
       const resolveSpy = vi
@@ -820,8 +825,7 @@ describe("init-solid Bootstrap", () => {
       >("@/framework/config/dependencyconfig");
 
       // Import loggerToken BEFORE vi.doMock (can't use await in vi.doMock callback)
-      const loggerTokenModule = await import("@/infrastructure/shared/tokens");
-      const loggerToken = loggerTokenModule.loggerToken;
+      const { loggerToken } = await import("@/infrastructure/shared/tokens/core/logger.token");
 
       vi.doMock("@/framework/config/dependencyconfig", () => ({
         ...originalModule,
@@ -876,8 +880,8 @@ describe("init-solid Bootstrap", () => {
         typeof import("@/framework/config/dependencyconfig")
       >("@/framework/config/dependencyconfig");
 
-      const tokensModule = await import("@/infrastructure/shared/tokens");
-      const bootstrapInitHookServiceToken = tokensModule.bootstrapInitHookServiceToken;
+      const { bootstrapInitHookServiceToken } =
+        await import("@/infrastructure/shared/tokens/core/bootstrap-init-hook-service.token");
 
       vi.doMock("@/framework/config/dependencyconfig", () => ({
         ...originalModule,
@@ -939,8 +943,8 @@ describe("init-solid Bootstrap", () => {
         typeof import("@/framework/config/dependencyconfig")
       >("@/framework/config/dependencyconfig");
 
-      const tokensModule = await import("@/infrastructure/shared/tokens");
-      const bootstrapReadyHookServiceToken = tokensModule.bootstrapReadyHookServiceToken;
+      const { bootstrapReadyHookServiceToken } =
+        await import("@/infrastructure/shared/tokens/core/bootstrap-ready-hook-service.token");
 
       vi.doMock("@/framework/config/dependencyconfig", () => ({
         ...originalModule,

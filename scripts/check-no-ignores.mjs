@@ -190,6 +190,11 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['eslint-disable'],
     reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
   },
+  {
+    file: 'src/infrastructure/observability/metrics-reporter.ts',
+    allowed: ['eslint-disable'],
+    reason: 'Console Table Output: Property-Namen müssen mit Leerzeichen sein für console.table() Ausgabe (Naming-Convention für Tabellen-Header)',
+  },
 
 ];
 

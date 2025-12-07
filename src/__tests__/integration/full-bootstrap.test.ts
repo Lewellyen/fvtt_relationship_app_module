@@ -6,9 +6,9 @@ import { CompositionRoot } from "@/framework/core/composition-root";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
-import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry.tokens";
-import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
+import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 
 describe("Integration: Full Bootstrap", () => {
   beforeEach(() => {

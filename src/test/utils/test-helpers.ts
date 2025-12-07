@@ -14,7 +14,7 @@ import { CompositionRoot } from "@/framework/core/composition-root";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import { ServiceContainer as ServiceContainerImpl } from "@/infrastructure/di/container";
 import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 
 /**
  * Type-safe Result assertion helpers

@@ -9,11 +9,9 @@ import type { PortSelectionEventCallback } from "./port-selection-events";
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import {
-  portSelectionEventEmitterToken,
-  observabilityRegistryToken,
-} from "@/infrastructure/shared/tokens/observability.tokens";
-import { serviceContainerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { portSelectionEventEmitterToken } from "@/infrastructure/shared/tokens/observability/port-selection-event-emitter.token";
+import { observabilityRegistryToken } from "@/infrastructure/shared/tokens/observability/observability-registry.token";
+import { serviceContainerToken } from "@/infrastructure/shared/tokens/core/service-container.token";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**

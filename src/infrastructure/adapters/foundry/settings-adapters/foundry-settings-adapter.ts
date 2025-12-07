@@ -11,7 +11,7 @@ import type {
 } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import type * as v from "valibot";
-import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry.tokens";
+import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 
 /**
  * Foundry-specific implementation of PlatformSettingsPort.

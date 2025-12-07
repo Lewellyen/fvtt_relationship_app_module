@@ -30,4 +30,3 @@ export interface ServiceInstantiator {
     registration: ServiceRegistration<T>
   ): Result<T, ContainerError>;
 }
-

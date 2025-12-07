@@ -254,7 +254,8 @@ describe("ModuleApiInitializer", () => {
 
       // Health checks are now auto-registered during configureDependencies
       // No need to eagerly resolve them
-      const { metricsCollectorToken } = await import("@/infrastructure/shared/tokens");
+      const { metricsCollectorToken } =
+        await import("@/infrastructure/shared/tokens/observability/metrics-collector.token");
       const tokensModule = await import("@/infrastructure/di/token-factory");
       const metricsResult = container.resolveWithError(metricsCollectorToken);
       if (!metricsResult.ok) throw new Error("MetricsCollector not resolved");
@@ -273,7 +274,8 @@ describe("ModuleApiInitializer", () => {
 
       // Health checks are now auto-registered during configureDependencies
       // No need to eagerly resolve them
-      const { metricsCollectorToken } = await import("@/infrastructure/shared/tokens");
+      const { metricsCollectorToken } =
+        await import("@/infrastructure/shared/tokens/observability/metrics-collector.token");
 
       // Simulate port selection failure
       const metricsResult = container.resolveWithError(metricsCollectorToken);
@@ -329,7 +331,7 @@ describe("ModuleApiInitializer", () => {
       const { getDeprecationInfo } =
         await import("@/infrastructure/di/types/utilities/deprecated-token");
       const { notificationCenterToken: notificationTokenImport } =
-        await import("@/infrastructure/shared/tokens");
+        await import("@/infrastructure/shared/tokens/notifications/notification-center.token");
 
       const existingInfo = getDeprecationInfo(notificationTokenImport);
       if (existingInfo) {
@@ -368,7 +370,8 @@ describe("ModuleApiInitializer", () => {
     it("should resolve deprecated token normally", async () => {
       const { markAsDeprecated } =
         await import("@/infrastructure/di/types/utilities/deprecated-token");
-      const { notificationCenterToken } = await import("@/infrastructure/shared/tokens");
+      const { notificationCenterToken } =
+        await import("@/infrastructure/shared/tokens/notifications/notification-center.token");
       const deprecatedNotificationToken = markAsDeprecated(
         notificationCenterToken,
         "Test",

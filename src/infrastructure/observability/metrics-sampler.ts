@@ -10,8 +10,7 @@
 
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { MetricsSampler as MetricsSamplerInterface } from "./interfaces/metrics-sampler";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
-import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
 
 /**
  * Metrics sampler implementation.
@@ -70,4 +69,3 @@ export class DIMetricsSampler extends MetricsSampler {
     super(config);
   }
 }
-

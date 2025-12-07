@@ -9,22 +9,23 @@
  */
 
 import type { MetricsCollector } from "./metrics-collector";
-import type { Logger } from "@/infrastructure/logging/Logger";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
-import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 
 /**
  * Table data structure for console.table() output in logSummary().
  * Uses string keys to match console.table() expectations.
  * Naming convention disabled for console.table() compatibility.
  */
+/* eslint-disable @typescript-eslint/naming-convention */
 interface MetricsTableData {
   "Total Resolutions": number;
   Errors: number;
   "Avg Time (ms)": string;
   "Cache Hit Rate": string;
 }
+/* eslint-enable @typescript-eslint/naming-convention */
 
 /**
  * Metrics reporter for formatting and logging metrics.
@@ -52,12 +53,14 @@ export class MetricsReporter {
   logSummary(): void {
     const snapshot = this.collector.getSnapshot();
 
+    /* eslint-disable @typescript-eslint/naming-convention */
     const tableData: MetricsTableData = {
       "Total Resolutions": snapshot.containerResolutions,
       Errors: snapshot.resolutionErrors,
       "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
       "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`,
     };
+    /* eslint-enable @typescript-eslint/naming-convention */
     console.table(tableData);
   }
 
@@ -77,11 +80,7 @@ export class MetricsReporter {
 export class DIMetricsReporter extends MetricsReporter {
   static dependencies = [metricsCollectorToken, loggerToken] as const;
 
-  constructor(
-    collector: MetricsCollector,
-    logger: Logger
-  ) {
+  constructor(collector: MetricsCollector, logger: Logger) {
     super(collector, logger);
   }
 }
-

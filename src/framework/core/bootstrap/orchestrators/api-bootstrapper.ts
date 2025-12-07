@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 

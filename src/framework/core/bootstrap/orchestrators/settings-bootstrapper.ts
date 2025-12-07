@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
 

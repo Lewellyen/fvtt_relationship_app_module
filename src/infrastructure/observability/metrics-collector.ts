@@ -1,7 +1,7 @@
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { METRICS_CONFIG } from "@/infrastructure/shared/constants";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
 import type { MetricsRecorder } from "./interfaces/metrics-recorder";
 
 /**

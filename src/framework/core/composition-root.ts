@@ -4,7 +4,7 @@ import { ServiceContainer } from "@/infrastructure/di/container";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { ENV } from "@/framework/config/environment";
 import { BootstrapPerformanceTracker } from "@/infrastructure/observability/bootstrap-performance-tracker";
-import { loggerToken } from "@/infrastructure/shared/tokens/core.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { createBootstrapLogger } from "@/infrastructure/logging/BootstrapLogger";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";

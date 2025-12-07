@@ -1,10 +1,8 @@
 import { MODULE_METADATA, LOG_PREFIX } from "@/application/constants/app-constants";
 import { isOk } from "@/domain/utils/result";
-import {
-  loggerToken,
-  bootstrapInitHookServiceToken,
-  bootstrapReadyHookServiceToken,
-} from "@/infrastructure/shared/tokens/core.tokens";
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import { bootstrapInitHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-init-hook-service.token";
+import { bootstrapReadyHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-ready-hook-service.token";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import { tryGetFoundryVersion } from "@/infrastructure/adapters/foundry/versioning/versiondetector";
 import { BootstrapErrorHandler } from "@/framework/core/bootstrap-error-handler";

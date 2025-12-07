@@ -17,7 +17,7 @@ import type {
   DomainCacheInvalidationPredicate,
 } from "@/domain/types/cache/cache-types";
 import type { Result } from "@/domain/types/result";
-import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service.token";
 import { assertCacheKey } from "@/infrastructure/di/types/utilities/type-casts";
 
 /**

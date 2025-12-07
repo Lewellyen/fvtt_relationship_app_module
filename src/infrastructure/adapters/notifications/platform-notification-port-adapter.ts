@@ -10,7 +10,7 @@ import type {
 } from "@/infrastructure/notifications/notification-center.interface";
 import type { FoundryNotificationOptions } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import { ok, err } from "@/domain/utils/result";
-import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications.tokens";
+import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
 
 /**
  * Adapter that implements PlatformNotificationPort by wrapping NotificationCenter.

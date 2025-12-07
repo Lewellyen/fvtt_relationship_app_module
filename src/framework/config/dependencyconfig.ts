@@ -1,15 +1,13 @@
 import { ServiceContainer } from "@/infrastructure/di/container";
 import { ok, err, isErr } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability.tokens";
-import {
-  environmentConfigToken,
-  containerHealthCheckToken,
-  metricsHealthCheckToken,
-  healthCheckRegistryToken,
-  serviceContainerToken,
-  runtimeConfigToken,
-} from "@/infrastructure/shared/tokens/core.tokens";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
+import { environmentConfigToken } from "@/infrastructure/shared/tokens/core/environment-config.token";
+import { containerHealthCheckToken } from "@/infrastructure/shared/tokens/core/container-health-check.token";
+import { metricsHealthCheckToken } from "@/infrastructure/shared/tokens/core/metrics-health-check.token";
+import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
+import { serviceContainerToken } from "@/infrastructure/shared/tokens/core/service-container.token";
+import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
 import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 import { ENV } from "@/framework/config/environment";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
@@ -17,7 +15,7 @@ import { DIContainerHealthCheck } from "@/application/health/ContainerHealthChec
 import { DIMetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { castContainerTokenToPlatformContainerPortToken } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
-import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure.tokens";
+import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure/module-id.token";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 
 // Import config modules

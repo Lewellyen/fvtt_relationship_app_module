@@ -71,7 +71,7 @@ describe("Integration: Settings Change + Service Reaction", () => {
     // WICHTIG: Logger muss vor init Hook geholt werden, damit es die gleiche Instanz ist,
     // die bei der Settings-Registrierung verwendet wird
     const { getRootContainer } = await import("@/framework/core/init-solid");
-    const { loggerToken } = await import("@/infrastructure/shared/tokens");
+    const { loggerToken } = await import("@/infrastructure/shared/tokens/core/logger.token");
 
     const containerResultBeforeInit = getRootContainer();
     expectResultOk(containerResultBeforeInit);

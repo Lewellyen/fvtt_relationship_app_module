@@ -24,15 +24,13 @@ import { FoundryV13SettingsPort } from "./FoundryV13SettingsPort";
 import { FoundryV13I18nPort } from "./FoundryV13I18nPort";
 import { createFoundryV13ModulePort } from "./FoundryV13ModulePort";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import {
-  foundryV13GamePortToken,
-  foundryV13HooksPortToken,
-  foundryV13DocumentPortToken,
-  foundryV13UIPortToken,
-  foundryV13SettingsPortToken,
-  foundryV13I18nPortToken,
-  foundryV13ModulePortToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
+import { foundryV13GamePortToken } from "@/infrastructure/shared/tokens/foundry/foundry-v13-game-port.token";
+import { foundryV13HooksPortToken } from "@/infrastructure/shared/tokens/foundry/foundry-v13-hooks-port.token";
+import { foundryV13DocumentPortToken } from "@/infrastructure/shared/tokens/foundry/foundry-v13-document-port.token";
+import { foundryV13UIPortToken } from "@/infrastructure/shared/tokens/foundry/foundry-v13-ui-port.token";
+import { foundryV13SettingsPortToken } from "@/infrastructure/shared/tokens/foundry/foundry-v13-settings-port.token";
+import { foundryV13I18nPortToken } from "@/infrastructure/shared/tokens/foundry/foundry-v13-i18n-port.token";
+import { foundryV13ModulePortToken } from "@/infrastructure/shared/tokens/foundry/foundry-v13-module-port.token";
 
 /**
  * Helper function for port registration.

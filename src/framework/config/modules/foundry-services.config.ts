@@ -2,15 +2,13 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import {
-  foundryGameToken,
-  foundryHooksToken,
-  foundryDocumentToken,
-  foundryUIToken,
-  foundrySettingsToken,
-  foundryJournalFacadeToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
-import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports.tokens";
+import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
+import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
+import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
+import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui.token";
+import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
+import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry/foundry-journal-facade.token";
+import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports/platform-settings-registration-port.token";
 import {
   journalVisibilityServiceToken,
   journalDirectoryProcessorToken,
@@ -26,10 +24,8 @@ import { DIJournalDirectoryProcessor } from "@/application/services/JournalDirec
 import { DIFoundryLibWrapperService } from "@/infrastructure/adapters/foundry/services/FoundryLibWrapperService";
 import { DIJournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
 import { DIFoundrySettingsRegistrationAdapter } from "@/infrastructure/adapters/foundry/settings-adapters/foundry-settings-registration-adapter";
-import {
-  libWrapperServiceToken,
-  journalContextMenuLibWrapperServiceToken,
-} from "@/infrastructure/shared/tokens/foundry.tokens";
+import { libWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/lib-wrapper-service.token";
+import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/journal-context-menu-lib-wrapper-service.token";
 import { platformContextMenuRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 
 /**

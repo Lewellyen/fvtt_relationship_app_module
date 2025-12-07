@@ -24,4 +24,3 @@ export interface DependencyResolver {
    */
   resolve<T>(token: InjectionToken<T>): Result<T, ContainerError>;
 }
-
