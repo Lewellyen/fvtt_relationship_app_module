@@ -4,20 +4,22 @@ import type { ContainerError } from "../interfaces";
 import type { ServiceRegistry } from "../registry/ServiceRegistry";
 import type { ServiceRegistration } from "../types/core/serviceregistration";
 import { InstanceCache } from "../cache/InstanceCache";
-import { ServiceLifecycle } from "../types/core/servicelifecycle";
-import { ok, err } from "@/domain/utils/result";
+import { err } from "@/domain/utils/result";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
-import { castCachedServiceInstanceForResult } from "../types/utilities/runtime-safe-cast";
+import { LifecycleResolver } from "./lifecycle-resolver";
+import { ServiceInstantiatorImpl } from "./service-instantiator";
+import type { DependencyResolver } from "./dependency-resolver.interface";
+import type { ServiceInstantiator } from "./service-instantiation.interface";
 
 /**
  * Resolves service instances based on lifecycle and registration.
  *
  * Responsibilities:
  * - Resolve services by token
- * - Handle lifecycle strategies (Singleton, Transient, Scoped)
  * - Handle alias resolution
- * - Delegate to parent resolver for Singletons
+ * - Delegate lifecycle resolution to LifecycleResolver
+ * - Delegate service instantiation to ServiceInstantiator
  *
  * Design:
  * - Works with Result pattern (no throws)
@@ -25,9 +27,14 @@ import { castCachedServiceInstanceForResult } from "../types/utilities/runtime-s
  * - Parent resolver for Singleton sharing across scopes
  * - PerformanceTracker injected via constructor (avoids circular dependency)
  * - MetricsCollector injected after container validation for metrics recording
+ * - Lifecycle-specific resolution delegated to LifecycleResolver (SRP)
+ * - Service instantiation delegated to ServiceInstantiator (SRP)
+ * - Implements DependencyResolver and ServiceInstantiator interfaces to break circular dependencies
  */
-export class ServiceResolver {
+export class ServiceResolver implements DependencyResolver, ServiceInstantiator {
   private metricsCollector: MetricsCollector | null = null;
+  private readonly lifecycleResolver: LifecycleResolver;
+  private readonly instantiator: ServiceInstantiatorImpl;
 
   constructor(
     private readonly registry: ServiceRegistry,
@@ -35,7 +42,16 @@ export class ServiceResolver {
     private readonly parentResolver: ServiceResolver | null,
     private readonly scopeName: string,
     private readonly performanceTracker: PerformanceTracker
-  ) {}
+  ) {
+    // Pass parentResolver as DependencyResolver to break circular dependency
+    this.lifecycleResolver = new LifecycleResolver(
+      cache,
+      parentResolver,
+      scopeName
+    );
+    // Pass this as DependencyResolver to break circular dependency
+    this.instantiator = new ServiceInstantiatorImpl(this);
+  }
 
   /**
    * Sets the MetricsCollector for metrics recording.
@@ -52,13 +68,13 @@ export class ServiceResolver {
    *
    * Handles:
    * - Alias resolution (recursive)
-   * - Lifecycle-specific resolution (Singleton/Transient/Scoped)
-   * - Parent delegation for Singletons
-   * - Factory error wrapping
+   * - Lifecycle-specific resolution (delegated to LifecycleResolver)
+   * - Performance tracking
+   * - Metrics recording
    *
    * Performance tracking is handled by the injected PerformanceTracker.
    *
-   * @template Tunknown - The type of service to resolve
+   * @template T - The type of service to resolve
    * @param token - The injection token identifying the service
    * @returns Result with service instance or error
    */
@@ -85,33 +101,8 @@ export class ServiceResolver {
           return this.resolve(registration.aliasTarget);
         }
 
-        // Resolve based on lifecycle (all methods already return Result)
-        let result: Result<T, ContainerError>;
-
-        switch (registration.lifecycle) {
-          case ServiceLifecycle.SINGLETON:
-            result = this.resolveSingleton(token, registration);
-            break;
-
-          case ServiceLifecycle.TRANSIENT:
-            result = this.resolveTransient(token, registration);
-            break;
-
-          case ServiceLifecycle.SCOPED:
-            result = this.resolveScoped(token, registration);
-            break;
-
-          default:
-            // TypeScript exhaustive check: ensures all enum values are handled
-            const _exhaustiveCheck: never = registration.lifecycle;
-            result = err({
-              code: "InvalidLifecycle",
-              message: `Invalid service lifecycle: ${String(_exhaustiveCheck)}`,
-              tokenDescription: String(token),
-            });
-        }
-
-        return result;
+        // Delegate to LifecycleResolver
+        return this.lifecycleResolver.resolve(token, registration, this, this);
       },
       (duration, result) => {
         this.metricsCollector?.recordResolution(token, duration, result.ok);
@@ -123,202 +114,20 @@ export class ServiceResolver {
    * Instantiates a service based on registration type.
    *
    * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
-   * Handles dependency resolution for classes, direct factory calls, and value returns.
+   * Delegates to ServiceInstantiatorImpl for actual instantiation logic.
    *
-   * @template Tunknown - The type of service to instantiate
+   * This method implements the ServiceInstantiator interface, allowing lifecycle
+   * strategies to instantiate services without depending on ServiceResolver directly.
+   *
+   * @template T - The type of service to instantiate
    * @param token - The injection token (used for error messages)
    * @param registration - The service registration metadata
    * @returns Result with instance or detailed error (DependencyResolveFailed, FactoryFailed, etc.)
    */
-  private instantiateService<T>(
+  instantiate<T>(
     token: InjectionToken<T>,
     registration: ServiceRegistration<T>
   ): Result<T, ContainerError> {
-    if (registration.serviceClass) {
-      // Class: Resolve all dependencies first
-      const resolvedDeps: unknown[] = [];
-
-      for (const dep of registration.dependencies) {
-        const depResult = this.resolve(dep);
-        if (!depResult.ok) {
-          // Return structured error with cause chain
-          return err({
-            code: "DependencyResolveFailed",
-            message: `Cannot resolve dependency ${String(dep)} for ${String(token)}`,
-            tokenDescription: String(dep),
-            cause: depResult.error,
-          });
-        }
-        resolvedDeps.push(depResult.value);
-      }
-
-      // Instantiate class with resolved dependencies
-      try {
-        return ok(new registration.serviceClass(...resolvedDeps));
-      } catch (constructorError) {
-        return err({
-          code: "FactoryFailed",
-          message: `Constructor failed for ${String(token)}: ${String(constructorError)}`,
-          tokenDescription: String(token),
-          cause: constructorError,
-        });
-      }
-    } else if (registration.factory) {
-      // Factory: Call directly
-      try {
-        return ok(registration.factory());
-      } catch (factoryError) {
-        return err({
-          code: "FactoryFailed",
-          message: `Factory failed for ${String(token)}: ${String(factoryError)}`,
-          tokenDescription: String(token),
-          cause: factoryError,
-        });
-      }
-    } else if (registration.value !== undefined) {
-      // Value: Return as-is
-      return ok(registration.value);
-    } else {
-      // Invalid registration
-      return err({
-        code: "InvalidOperation",
-        message: `Invalid registration for ${String(token)} - no class, factory, or value`,
-        tokenDescription: String(token),
-      });
-    }
-  }
-
-  /**
-   * Resolves a Singleton service.
-   *
-   * Strategy:
-   * 1. Try parent resolver first (for shared parent singletons)
-   * 2. If parent returns error:
-   *    - CircularDependency → propagate error
-   *    - TokenNotRegistered → fallback to own cache (child-specific singleton)
-   * 3. Use own cache for root container or child-specific singletons
-   *
-   * @template Tunknown - The type of service
-   * @param token - The injection token
-   * @param registration - The service registration
-   * @returns Result with instance or error
-   */
-  private resolveSingleton<T>(
-    token: InjectionToken<T>,
-    registration: ServiceRegistration<T>
-  ): Result<T, ContainerError> {
-    // Try parent resolver first for shared singletons
-    if (this.parentResolver !== null) {
-      const parentResult = this.parentResolver.resolve(token);
-
-      if (parentResult.ok) {
-        // Parent has it - use parent's singleton instance (shared)
-        return parentResult;
-      }
-
-      // Check error code to determine action
-      if (parentResult.error.code === "CircularDependency") {
-        // Real circular dependency - propagate as-is
-        return parentResult;
-      }
-
-      // TokenNotRegistered or other error -> fallback to own cache
-      // This allows child-specific singleton registrations
-    }
-
-    // Root container OR parent doesn't have it: use own cache
-    if (!this.cache.has(token)) {
-      const instanceResult = this.instantiateService(token, registration);
-      if (!instanceResult.ok) {
-        return instanceResult; // Propagate error without wrapping
-      }
-      this.cache.set(token, instanceResult.value);
-    }
-
-    const instanceResult = castCachedServiceInstanceForResult<T>(this.cache.get(token));
-    if (!instanceResult.ok) {
-      return instanceResult; // Propagate error
-    }
-    return ok(instanceResult.value);
-  }
-
-  /**
-   * Resolves a Transient service.
-   *
-   * Strategy:
-   * - Always create new instance (no caching)
-   *
-   * @template Tunknown - The type of service
-   * @param token - The injection token
-   * @param registration - The service registration
-   * @returns Result with new instance
-   */
-  private resolveTransient<T>(
-    token: InjectionToken<T>,
-    registration: ServiceRegistration<T>
-  ): Result<T, ContainerError> {
-    return this.instantiateService(token, registration);
-  }
-
-  /**
-   * Resolves a Scoped service.
-   *
-   * ⚠️ IMPORTANT: Scoped services can ONLY be resolved in child containers.
-   * Attempting to resolve a scoped service in the root container will return
-   * a ScopeRequired error.
-   *
-   * Strategy:
-   * - Must be in child scope (not root)
-   * - One instance per scope (cached)
-   * - Each child scope gets its own isolated instance
-   *
-   * Use createScope() to create a child container before resolving scoped services.
-   *
-   * @template Tunknown - The type of service
-   * @param token - The injection token
-   * @param registration - The service registration
-   * @returns Result with scoped instance or ScopeRequired error
-   *
-   * @example
-   * ```typescript
-   * // ❌ WRONG: Trying to resolve scoped service in root
-   * const root = ServiceContainer.createRoot();
-   * root.registerClass(RequestToken, RequestContext, SCOPED);
-   * root.validate();
-   * const result = root.resolve(RequestToken); // Error: ScopeRequired
-   *
-   * // ✅ CORRECT: Create child scope first
-   * const child = root.createScope("request").value!;
-   * child.validate(); // Child must validate separately
-   * const ctx = child.resolve(RequestToken); // OK
-   * ```
-   */
-  private resolveScoped<T>(
-    token: InjectionToken<T>,
-    registration: ServiceRegistration<T>
-  ): Result<T, ContainerError> {
-    // Scoped services require a child scope
-    if (this.parentResolver === null) {
-      return err({
-        code: "ScopeRequired",
-        message: `Scoped service ${String(token)} requires a scope container. Use createScope() to create a child container first.`,
-        tokenDescription: String(token),
-      });
-    }
-
-    // Check cache (one instance per scope)
-    if (!this.cache.has(token)) {
-      const instanceResult = this.instantiateService(token, registration);
-      if (!instanceResult.ok) {
-        return instanceResult; // Propagate error
-      }
-      this.cache.set(token, instanceResult.value);
-    }
-
-    const instanceResult = castCachedServiceInstanceForResult<T>(this.cache.get(token));
-    if (!instanceResult.ok) {
-      return instanceResult; // Propagate error
-    }
-    return ok(instanceResult.value);
+    return this.instantiator.instantiate(token, registration);
   }
 }

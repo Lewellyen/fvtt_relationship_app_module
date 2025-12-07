@@ -12,6 +12,42 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.22] - 2025-12-07
+### Hinzugefügt
+- **DependencyResolver Interface**: Abstraktion für Dependency-Resolution zur Auflösung zirkulärer Abhängigkeiten ([Details](src/infrastructure/di/resolution/dependency-resolver.interface.ts))
+- **ServiceInstantiator Interface**: Abstraktion für Service-Instanziierung zur Auflösung zirkulärer Abhängigkeiten ([Details](src/infrastructure/di/resolution/service-instantiation.interface.ts))
+- **LifecycleResolutionStrategy Interface**: Abstraktion für Lifecycle-spezifische Resolution-Strategien ([Details](src/infrastructure/di/resolution/lifecycle-resolution-strategy.interface.ts))
+- **SingletonResolutionStrategy**: Implementierung der Singleton-Resolution-Strategie ([Details](src/infrastructure/di/resolution/strategies/singleton-resolution-strategy.ts))
+- **TransientResolutionStrategy**: Implementierung der Transient-Resolution-Strategie ([Details](src/infrastructure/di/resolution/strategies/transient-resolution-strategy.ts))
+- **ScopedResolutionStrategy**: Implementierung der Scoped-Resolution-Strategie ([Details](src/infrastructure/di/resolution/strategies/scoped-resolution-strategy.ts))
+- **LifecycleResolver**: Separate Klasse für Lifecycle-Management mit Strategy-Pattern ([Details](src/infrastructure/di/resolution/lifecycle-resolver.ts))
+- **ServiceInstantiatorImpl**: Separate Klasse für Service-Instanziierung ([Details](src/infrastructure/di/resolution/service-instantiator.ts))
+
+### Geändert
+- **Zirkuläre Abhängigkeiten aufgelöst**: Dependency Inversion Principle angewendet zur Auflösung zirkulärer Abhängigkeiten zwischen ServiceResolver, ServiceInstantiator und LifecycleResolver ([Details](docs/refactoring/CIRCULAR-DEPENDENCY-SOLUTIONS.md))
+- `ServiceResolver` implementiert jetzt `DependencyResolver` und `ServiceInstantiator` Interfaces
+- `ServiceInstantiator` Klasse wurde zu `ServiceInstantiatorImpl` umbenannt und implementiert `ServiceInstantiator` Interface
+- `ServiceInstantiatorImpl` nutzt `DependencyResolver` Interface statt `ServiceResolver` Klasse
+- Lifecycle-Strategien nutzen `DependencyResolver` und `ServiceInstantiator` Interfaces statt `ServiceResolver` Klasse
+- `LifecycleResolver` nutzt Interfaces statt konkrete `ServiceResolver` Klasse
+- Verbesserte Architektur durch Dependency Inversion Principle
+- Keine Breaking Changes - öffentliche API bleibt stabil
+- **ServiceResolver SRP-Refactoring**: Trennung der Service-Resolution von Lifecycle-Management und Instanziierung ([Details](src/infrastructure/di/resolution/ServiceResolver.ts), [Details](docs/refactoring/SRP-REFACTORING-04-SERVICE-RESOLVER.md))
+- `ServiceResolver` fokussiert sich nur noch auf Service-Resolution und Alias-Auflösung
+- `LifecycleResolver` übernimmt Lifecycle-spezifische Resolution mit Strategy-Pattern
+- `ServiceInstantiatorImpl` übernimmt Service-Instanziierung (Class, Factory, Value)
+- Lifecycle-Strategien sind jetzt austauschbar (Strategy-Pattern)
+- Verbesserte Testbarkeit durch isolierte Verantwortlichkeiten
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.21] - 2025-12-07
 ### Hinzugefügt
 - **CacheEvictionStrategy Interface**: Abstraktion für Cache-Eviction-Algorithmen ([Details](src/infrastructure/cache/eviction-strategy.interface.ts))
