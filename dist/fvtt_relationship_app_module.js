@@ -2073,13 +2073,15 @@ let ServiceContainer = _ServiceContainer;
 const environmentConfigToken = createInjectionToken$1("EnvironmentConfig");
 const containerHealthCheckToken = createInjectionToken$1("ContainerHealthCheck");
 const metricsHealthCheckToken = createInjectionToken$1("MetricsHealthCheck");
-const healthCheckRegistryToken = createInjectionToken$1("HealthCheckRegistry");
-const serviceContainerToken = createInjectionToken$1("ServiceContainer");
-const runtimeConfigToken = createInjectionToken$1("RuntimeConfigService");
 function createInjectionToken(description2) {
   return createInjectionToken$1(description2);
 }
 __name(createInjectionToken, "createInjectionToken");
+const healthCheckRegistryToken = createInjectionToken("PlatformHealthCheckPort");
+const serviceContainerToken = createInjectionToken$1("ServiceContainer");
+const runtimeConfigToken = createInjectionToken(
+  "PlatformRuntimeConfigPort"
+);
 const platformNotificationPortToken = createInjectionToken(
   "PlatformNotificationPort"
 );
@@ -2105,6 +2107,8 @@ const platformMetricsSnapshotPortToken = createInjectionToken(
   "PlatformMetricsSnapshotPort"
 );
 const platformContainerPortToken = createInjectionToken("PlatformContainerPort");
+const platformSettingsRegistrationPortToken = createInjectionToken("PlatformSettingsRegistrationPort");
+const platformModuleReadyPortToken = createInjectionToken("PlatformModuleReadyPort");
 let store$4;
 function setGlobalConfig(config$1) {
   store$4 = {
@@ -7944,6 +7948,22 @@ const ENV = {
   ),
   ...parsedCacheMaxEntries !== void 0 ? { cacheMaxEntries: parsedCacheMaxEntries } : {}
 };
+const _RuntimeConfigAdapter = class _RuntimeConfigAdapter {
+  constructor(env) {
+    this.service = new RuntimeConfigService(env);
+  }
+  get(key) {
+    return this.service.get(key);
+  }
+  setFromPlatform(key, value2) {
+    this.service.setFromFoundry(key, value2);
+  }
+  onChange(key, listener) {
+    return this.service.onChange(key, listener);
+  }
+};
+__name(_RuntimeConfigAdapter, "RuntimeConfigAdapter");
+let RuntimeConfigAdapter = _RuntimeConfigAdapter;
 const _ContainerHealthCheck = class _ContainerHealthCheck {
   constructor(container) {
     this.name = "container";
@@ -9095,6 +9115,28 @@ const _DIHealthCheckRegistry = class _DIHealthCheckRegistry extends HealthCheckR
 __name(_DIHealthCheckRegistry, "DIHealthCheckRegistry");
 _DIHealthCheckRegistry.dependencies = [];
 let DIHealthCheckRegistry = _DIHealthCheckRegistry;
+const _HealthCheckRegistryAdapter = class _HealthCheckRegistryAdapter {
+  constructor() {
+    this.registry = new HealthCheckRegistry();
+  }
+  register(check2) {
+    this.registry.register(check2);
+  }
+  unregister(name) {
+    this.registry.unregister(name);
+  }
+  runAll() {
+    return this.registry.runAll();
+  }
+  getCheck(name) {
+    return this.registry.getCheck(name);
+  }
+  getAllChecks() {
+    return this.registry.getAllChecks();
+  }
+};
+__name(_HealthCheckRegistryAdapter, "HealthCheckRegistryAdapter");
+let HealthCheckRegistryAdapter = _HealthCheckRegistryAdapter;
 const _MetricsBootstrapper = class _MetricsBootstrapper {
   /**
    * Initializes metrics collector if it supports persistence.
@@ -9422,7 +9464,6 @@ _DIBootstrapInitHookService.dependencies = [
   platformBootstrapEventPortToken
 ];
 let DIBootstrapInitHookService = _DIBootstrapInitHookService;
-const platformModuleReadyPortToken = createInjectionToken$1("PlatformModuleReadyPort");
 const _ModuleReadyService = class _ModuleReadyService {
   constructor(moduleReadyPort, loggingPort) {
     this.moduleReadyPort = moduleReadyPort;
@@ -9933,7 +9974,7 @@ function registerCoreServices(container) {
   }
   const registryResult = container.registerClass(
     healthCheckRegistryToken,
-    DIHealthCheckRegistry,
+    HealthCheckRegistryAdapter,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(registryResult)) {
@@ -11600,7 +11641,6 @@ function registerPortRegistries(container) {
   return ok(void 0);
 }
 __name(registerPortRegistries, "registerPortRegistries");
-const platformSettingsRegistrationPortToken = createInjectionToken$1("PlatformSettingsRegistrationPort");
 const _FoundryGamePort = class _FoundryGamePort extends FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     super(portSelector, portRegistry, retryService);
@@ -13430,7 +13470,7 @@ let DICachePortAdapter = _DICachePortAdapter;
 function registerCacheServices(container) {
   const runtimeConfig = container.getRegisteredValue(runtimeConfigToken);
   if (!runtimeConfig) {
-    return err("RuntimeConfigService not registered");
+    return err("PlatformRuntimeConfigPort not registered");
   }
   const maxEntries2 = runtimeConfig.get("cacheMaxEntries");
   const config2 = {
@@ -14641,7 +14681,7 @@ const _RuntimeConfigSync = class _RuntimeConfigSync {
       ...config2,
       onChange: /* @__PURE__ */ __name((value2) => {
         const normalized = binding.normalize(value2);
-        this.runtimeConfig.setFromFoundry(binding.runtimeKey, normalized);
+        this.runtimeConfig.setFromPlatform(binding.runtimeKey, normalized);
         originalOnChange?.(value2);
       }, "onChange")
     };
@@ -14671,7 +14711,7 @@ const _RuntimeConfigSync = class _RuntimeConfigSync {
       );
       return;
     }
-    this.runtimeConfig.setFromFoundry(binding.runtimeKey, binding.normalize(currentValue.value));
+    this.runtimeConfig.setFromPlatform(binding.runtimeKey, binding.normalize(currentValue.value));
   }
 };
 __name(_RuntimeConfigSync, "RuntimeConfigSync");
@@ -16441,9 +16481,10 @@ function registerStaticValues(container) {
   if (isErr(envResult)) {
     return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
   }
-  const runtimeConfigResult = container.registerValue(runtimeConfigToken, createRuntimeConfig(ENV));
+  const runtimeConfigAdapter = new RuntimeConfigAdapter(ENV);
+  const runtimeConfigResult = container.registerValue(runtimeConfigToken, runtimeConfigAdapter);
   if (isErr(runtimeConfigResult)) {
-    return err(`Failed to register RuntimeConfigService: ${runtimeConfigResult.error.message}`);
+    return err(`Failed to register RuntimeConfigAdapter: ${runtimeConfigResult.error.message}`);
   }
   const containerResult = container.registerValue(serviceContainerToken, container);
   if (isErr(containerResult)) {

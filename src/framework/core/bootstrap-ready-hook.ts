@@ -14,6 +14,7 @@ import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import type { ModuleReadyService } from "@/application/services/module-ready-service";
 import { moduleReadyServiceToken } from "@/application/services/module-ready-service";
+import type { BootstrapReadyHookService as IBootstrapReadyHookService } from "@/infrastructure/shared/types/bootstrap-ready-hook-service.interface";
 
 /**
  * Service responsible for registering the Foundry 'ready' hook.
@@ -22,7 +23,7 @@ import { moduleReadyServiceToken } from "@/application/services/module-ready-ser
  * DIP-Compliant: Uses PlatformBootstrapEventPort for event registration instead of
  * direct platform API access.
  */
-export class BootstrapReadyHookService {
+export class BootstrapReadyHookService implements IBootstrapReadyHookService {
   constructor(
     private readonly logger: Logger,
     private readonly bootstrapEvents: PlatformBootstrapEventPort,

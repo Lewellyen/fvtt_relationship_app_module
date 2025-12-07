@@ -5,27 +5,27 @@ import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycl
 import { platformCachePortToken } from "@/application/tokens/domain-ports.tokens";
 import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
 import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service.token";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
+import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import type { CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import { DICacheService } from "@/infrastructure/cache/CacheService";
 import { DICachePortAdapter } from "@/infrastructure/adapters/cache/platform-cache-port-adapter";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 
 /**
  * Registers CacheService and its configuration.
  *
- * Reads defaults from RuntimeConfigService to make cache tuning possible
+ * Reads defaults from PlatformRuntimeConfigPort to make cache tuning possible
  * through build-time variables and Foundry settings instead of code changes.
  *
  * @param container - Root service container used during bootstrap
  * @returns Result with `void` on success or error message if registration fails
  */
 export function registerCacheServices(container: ServiceContainer): Result<void, string> {
-  const runtimeConfig: RuntimeConfigService | null =
+  const runtimeConfig: PlatformRuntimeConfigPort | null =
     container.getRegisteredValue(runtimeConfigToken);
   if (!runtimeConfig) {
-    return err("RuntimeConfigService not registered");
+    return err("PlatformRuntimeConfigPort not registered");
   }
 
   const maxEntries = runtimeConfig.get("cacheMaxEntries");

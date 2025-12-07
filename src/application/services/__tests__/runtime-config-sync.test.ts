@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { RuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import { ok, err } from "@/domain/utils/result";
@@ -11,8 +11,10 @@ describe("RuntimeConfigSync", () => {
   describe("attachBinding", () => {
     it("should wrap onChange callback to sync with RuntimeConfig", () => {
       const mockRuntimeConfig = {
-        setFromFoundry: vi.fn(),
-      } as unknown as RuntimeConfigService;
+        get: vi.fn(),
+        setFromPlatform: vi.fn(),
+        onChange: vi.fn(),
+      } as unknown as PlatformRuntimeConfigPort;
 
       const mockNotifications = {
         warn: vi.fn(),
@@ -42,14 +44,16 @@ describe("RuntimeConfigSync", () => {
       // Call the wrapped onChange
       result.onChange?.(LogLevel.DEBUG);
 
-      expect(mockRuntimeConfig.setFromFoundry).toHaveBeenCalledWith("logLevel", LogLevel.DEBUG);
+      expect(mockRuntimeConfig.setFromPlatform).toHaveBeenCalledWith("logLevel", LogLevel.DEBUG);
       expect(originalOnChange).toHaveBeenCalledWith(LogLevel.DEBUG);
     });
 
     it("should handle config without onChange callback", () => {
       const mockRuntimeConfig = {
-        setFromFoundry: vi.fn(),
-      } as unknown as RuntimeConfigService;
+        get: vi.fn(),
+        setFromPlatform: vi.fn(),
+        onChange: vi.fn(),
+      } as unknown as PlatformRuntimeConfigPort;
 
       const mockNotifications = {
         warn: vi.fn(),
@@ -76,13 +80,15 @@ describe("RuntimeConfigSync", () => {
 
       // Should not throw
       expect(() => result.onChange?.(LogLevel.DEBUG)).not.toThrow();
-      expect(mockRuntimeConfig.setFromFoundry).toHaveBeenCalledWith("logLevel", LogLevel.DEBUG);
+      expect(mockRuntimeConfig.setFromPlatform).toHaveBeenCalledWith("logLevel", LogLevel.DEBUG);
     });
 
     it("should apply normalize function correctly", () => {
       const mockRuntimeConfig = {
-        setFromFoundry: vi.fn(),
-      } as unknown as RuntimeConfigService;
+        get: vi.fn(),
+        setFromPlatform: vi.fn(),
+        onChange: vi.fn(),
+      } as unknown as PlatformRuntimeConfigPort;
 
       const mockNotifications = {
         warn: vi.fn(),
@@ -109,18 +115,20 @@ describe("RuntimeConfigSync", () => {
       const result = sync.attachBinding(config, binding);
 
       result.onChange?.(0);
-      expect(mockRuntimeConfig.setFromFoundry).toHaveBeenCalledWith("cacheMaxEntries", undefined);
+      expect(mockRuntimeConfig.setFromPlatform).toHaveBeenCalledWith("cacheMaxEntries", undefined);
 
       result.onChange?.(100);
-      expect(mockRuntimeConfig.setFromFoundry).toHaveBeenCalledWith("cacheMaxEntries", 100);
+      expect(mockRuntimeConfig.setFromPlatform).toHaveBeenCalledWith("cacheMaxEntries", 100);
     });
   });
 
   describe("syncInitialValue", () => {
     it("should sync initial value from settings to RuntimeConfig", () => {
       const mockRuntimeConfig = {
-        setFromFoundry: vi.fn(),
-      } as unknown as RuntimeConfigService;
+        get: vi.fn(),
+        setFromPlatform: vi.fn(),
+        onChange: vi.fn(),
+      } as unknown as PlatformRuntimeConfigPort;
 
       const mockNotifications = {
         warn: vi.fn(),
@@ -145,14 +153,16 @@ describe("RuntimeConfigSync", () => {
         "logLevel",
         binding.validator
       );
-      expect(mockRuntimeConfig.setFromFoundry).toHaveBeenCalledWith("logLevel", LogLevel.WARN);
+      expect(mockRuntimeConfig.setFromPlatform).toHaveBeenCalledWith("logLevel", LogLevel.WARN);
       expect(mockNotifications.warn).not.toHaveBeenCalled();
     });
 
     it("should handle error when reading setting value", () => {
       const mockRuntimeConfig = {
-        setFromFoundry: vi.fn(),
-      } as unknown as RuntimeConfigService;
+        get: vi.fn(),
+        setFromPlatform: vi.fn(),
+        onChange: vi.fn(),
+      } as unknown as PlatformRuntimeConfigPort;
 
       const mockNotifications = {
         warn: vi.fn(),
@@ -185,13 +195,15 @@ describe("RuntimeConfigSync", () => {
         }),
         { channels: ["ConsoleChannel"] }
       );
-      expect(mockRuntimeConfig.setFromFoundry).not.toHaveBeenCalled();
+      expect(mockRuntimeConfig.setFromPlatform).not.toHaveBeenCalled();
     });
 
     it("should apply normalize function when syncing", () => {
       const mockRuntimeConfig = {
-        setFromFoundry: vi.fn(),
-      } as unknown as RuntimeConfigService;
+        get: vi.fn(),
+        setFromPlatform: vi.fn(),
+        onChange: vi.fn(),
+      } as unknown as PlatformRuntimeConfigPort;
 
       const mockNotifications = {
         warn: vi.fn(),
@@ -211,7 +223,7 @@ describe("RuntimeConfigSync", () => {
 
       sync.syncInitialValue(mockSettings, binding, "cacheMaxEntries");
 
-      expect(mockRuntimeConfig.setFromFoundry).toHaveBeenCalledWith("cacheMaxEntries", undefined);
+      expect(mockRuntimeConfig.setFromPlatform).toHaveBeenCalledWith("cacheMaxEntries", undefined);
     });
   });
 });

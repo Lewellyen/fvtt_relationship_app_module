@@ -5,7 +5,7 @@
  * TypeScript removes type imports at compile time, so they don't create runtime dependencies.
  */
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
-import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
+import type { ModuleApiInitializer } from "@/infrastructure/shared/types/module-api-initializer.interface";
 
 /**
  * Injection token for the ModuleApiInitializer.

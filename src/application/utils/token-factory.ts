@@ -9,7 +9,7 @@
  * but provides an Application Layer abstraction point.
  */
 import { createInjectionToken as createInfrastructureToken } from "@/infrastructure/di/token-factory";
-import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
+import type { InjectionToken } from "@/domain/types/injection-token";
 
 /**
  * Creates a unique, type-safe injection token for dependency injection.

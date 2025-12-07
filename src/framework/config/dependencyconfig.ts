@@ -5,12 +5,12 @@ import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observabil
 import { environmentConfigToken } from "@/infrastructure/shared/tokens/core/environment-config.token";
 import { containerHealthCheckToken } from "@/infrastructure/shared/tokens/core/container-health-check.token";
 import { metricsHealthCheckToken } from "@/infrastructure/shared/tokens/core/metrics-health-check.token";
-import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
+import { healthCheckRegistryToken } from "@/application/tokens/health-check-registry.token";
 import { serviceContainerToken } from "@/infrastructure/shared/tokens/core/service-container.token";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
+import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 import { ENV } from "@/framework/config/environment";
-import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
+import { RuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
 import { DIContainerHealthCheck } from "@/application/health/ContainerHealthCheck";
 import { DIMetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
@@ -45,9 +45,10 @@ function registerStaticValues(container: ServiceContainer): Result<void, string>
     return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
   }
 
-  const runtimeConfigResult = container.registerValue(runtimeConfigToken, createRuntimeConfig(ENV));
+  const runtimeConfigAdapter = new RuntimeConfigAdapter(ENV);
+  const runtimeConfigResult = container.registerValue(runtimeConfigToken, runtimeConfigAdapter);
   if (isErr(runtimeConfigResult)) {
-    return err(`Failed to register RuntimeConfigService: ${runtimeConfigResult.error.message}`);
+    return err(`Failed to register RuntimeConfigAdapter: ${runtimeConfigResult.error.message}`);
   }
 
   const containerResult = container.registerValue(serviceContainerToken, container);

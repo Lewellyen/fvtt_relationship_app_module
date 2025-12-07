@@ -14,8 +14,8 @@ import { containerHealthCheckToken } from "@/infrastructure/shared/tokens/core/c
 import { metricsHealthCheckToken } from "@/infrastructure/shared/tokens/core/metrics-health-check.token";
 import { serviceContainerToken } from "@/infrastructure/shared/tokens/core/service-container.token";
 import { environmentConfigToken } from "@/infrastructure/shared/tokens/core/environment-config.token";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
-import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
+import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
+import { healthCheckRegistryToken } from "@/application/tokens/health-check-registry.token";
 import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
 import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";

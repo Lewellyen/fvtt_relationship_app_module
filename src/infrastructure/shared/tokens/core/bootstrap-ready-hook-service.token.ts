@@ -5,7 +5,7 @@
  * TypeScript removes type imports at compile time, so they don't create runtime dependencies.
  */
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
-import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
+import type { BootstrapReadyHookService } from "@/infrastructure/shared/types/bootstrap-ready-hook-service.interface";
 
 /**
  * Injection token for the BootstrapReadyHookService.

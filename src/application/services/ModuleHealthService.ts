@@ -1,6 +1,6 @@
 import type { HealthStatus } from "@/domain/types/health-status";
-import type { HealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
-import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
+import type { PlatformHealthCheckPort } from "@/domain/ports/platform-health-check-port.interface";
+import { healthCheckRegistryToken } from "@/application/tokens/health-check-registry.token";
 
 /**
  * Service for monitoring module health and diagnostics.
@@ -17,7 +17,7 @@ import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/he
 export class ModuleHealthService {
   private healthChecksInitialized = false;
 
-  constructor(private readonly registry: HealthCheckRegistry) {}
+  constructor(private readonly registry: PlatformHealthCheckPort) {}
 
   /**
    * Gets the current health status of the module.
@@ -87,7 +87,7 @@ export class ModuleHealthService {
 export class DIModuleHealthService extends ModuleHealthService {
   static dependencies = [healthCheckRegistryToken] as const;
 
-  constructor(registry: HealthCheckRegistry) {
+  constructor(registry: PlatformHealthCheckPort) {
     super(registry);
   }
 }

@@ -1,7 +1,7 @@
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import type { HealthCheck } from "./health-check.interface";
-import type { HealthCheckRegistry } from "./HealthCheckRegistry";
-import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
+import type { HealthCheck } from "@/domain/types/health-check";
+import type { PlatformHealthCheckPort } from "@/domain/ports/platform-health-check-port.interface";
+import { healthCheckRegistryToken } from "@/application/tokens/health-check-registry.token";
 import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 
 /**
@@ -35,7 +35,7 @@ export class ContainerHealthCheck implements HealthCheck {
 export class DIContainerHealthCheck extends ContainerHealthCheck {
   static dependencies = [platformContainerPortToken, healthCheckRegistryToken] as const;
 
-  constructor(container: PlatformContainerPort, registry: HealthCheckRegistry) {
+  constructor(container: PlatformContainerPort, registry: PlatformHealthCheckPort) {
     super(container);
     registry.register(this);
   }

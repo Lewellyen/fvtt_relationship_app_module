@@ -8,7 +8,7 @@ import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/fou
 import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui.token";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry/foundry-journal-facade.token";
-import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports/platform-settings-registration-port.token";
+import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
   journalVisibilityServiceToken,
   journalDirectoryProcessorToken,

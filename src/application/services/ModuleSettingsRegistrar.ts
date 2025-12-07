@@ -8,14 +8,14 @@ import { performanceTrackingSetting } from "@/application/settings/performance-t
 import { performanceSamplingSetting } from "@/application/settings/performance-sampling-setting";
 import { metricsPersistenceEnabledSetting } from "@/application/settings/metrics-persistence-enabled-setting";
 import { metricsPersistenceKeySetting } from "@/application/settings/metrics-persistence-key-setting";
-import type { RuntimeConfigKey } from "@/application/services/RuntimeConfigService";
+import type { RuntimeConfigKey } from "@/domain/types/runtime-config";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
 import { runtimeConfigSyncToken } from "@/application/tokens/application.tokens";
-import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports/platform-settings-registration-port.token";
+import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
   platformNotificationPortToken,
   platformI18nPortToken,

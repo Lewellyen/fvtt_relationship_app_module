@@ -20,6 +20,8 @@ import type { PlatformValidationPort } from "@/domain/ports/platform-validation-
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import type { PlatformMetricsSnapshotPort } from "@/domain/ports/platform-metrics-snapshot-port.interface";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
+import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
+import type { PlatformModuleReadyPort } from "@/domain/ports/platform-module-ready-port.interface";
 
 /**
  * DI Token for PlatformNotificationPort.
@@ -145,3 +147,24 @@ export const platformMetricsSnapshotPortToken = createInjectionToken<PlatformMet
  */
 export const platformContainerPortToken =
   createInjectionToken<PlatformContainerPort>("PlatformContainerPort");
+
+/**
+ * DI Token for PlatformSettingsRegistrationPort.
+ *
+ * Domain-neutral settings port that doesn't expose Valibot schemas.
+ * Uses validator functions instead of schemas for type safety.
+ *
+ * This port is preferred over PlatformSettingsPort when the caller
+ * doesn't need Valibot schema validation (e.g., in application layer).
+ */
+export const platformSettingsRegistrationPortToken =
+  createInjectionToken<PlatformSettingsRegistrationPort>("PlatformSettingsRegistrationPort");
+
+/**
+ * DI Token for PlatformModuleReadyPort.
+ *
+ * Platform-agnostic port for managing module ready state.
+ * Used to set module.ready = true when bootstrap is complete.
+ */
+export const platformModuleReadyPortToken =
+  createInjectionToken<PlatformModuleReadyPort>("PlatformModuleReadyPort");

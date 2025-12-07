@@ -15,6 +15,7 @@ import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 import { InitOrchestrator } from "./bootstrap/init-orchestrator";
+import type { BootstrapInitHookService as IBootstrapInitHookService } from "@/infrastructure/shared/types/bootstrap-init-hook-service.interface";
 
 /**
  * Service responsible for registering the Foundry 'init' hook.
@@ -23,7 +24,7 @@ import { InitOrchestrator } from "./bootstrap/init-orchestrator";
  * DIP-Compliant: Uses PlatformBootstrapEventPort for event registration instead of
  * direct platform API access.
  */
-export class BootstrapInitHookService {
+export class BootstrapInitHookService implements IBootstrapInitHookService {
   constructor(
     private readonly logger: Logger,
     private readonly container: PlatformContainerPort,

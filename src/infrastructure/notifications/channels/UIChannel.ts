@@ -21,7 +21,7 @@ import type { RuntimeConfigService } from "@/application/services/RuntimeConfigS
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui.token";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
+import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 
 export class UIChannel implements NotificationChannel {
   readonly name = "UIChannel";

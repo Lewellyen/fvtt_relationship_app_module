@@ -1,16 +1,13 @@
 import { MODULE_METADATA, SETTING_KEYS } from "@/application/constants/app-constants";
-import type {
-  RuntimeConfigService,
-  RuntimeConfigKey,
-  RuntimeConfigValues,
-} from "@/application/services/RuntimeConfigService";
+import type { RuntimeConfigKey, RuntimeConfigValues } from "@/domain/types/runtime-config";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { SettingConfig as ModuleSettingConfig } from "@/application/settings/setting-definition.interface";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { SettingValidator } from "@/domain/types/settings";
 import { SettingValidators } from "@/domain/types/settings";
 import type { LogLevel } from "@/domain/types/log-level";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
+import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
 
 /**
@@ -41,7 +38,7 @@ export interface RuntimeConfigBinding<TSchema, K extends RuntimeConfigKey> {
  */
 export class RuntimeConfigSync {
   constructor(
-    private readonly runtimeConfig: RuntimeConfigService,
+    private readonly runtimeConfig: PlatformRuntimeConfigPort,
     private readonly notifications: PlatformNotificationPort
   ) {}
 
@@ -63,7 +60,7 @@ export class RuntimeConfigSync {
       ...config,
       onChange: (value: TSchema) => {
         const normalized = binding.normalize(value);
-        this.runtimeConfig.setFromFoundry(binding.runtimeKey, normalized);
+        this.runtimeConfig.setFromPlatform(binding.runtimeKey, normalized);
         originalOnChange?.(value);
       },
     };
@@ -100,7 +97,7 @@ export class RuntimeConfigSync {
       return;
     }
 
-    this.runtimeConfig.setFromFoundry(binding.runtimeKey, binding.normalize(currentValue.value));
+    this.runtimeConfig.setFromPlatform(binding.runtimeKey, binding.normalize(currentValue.value));
   }
 }
 
@@ -165,7 +162,7 @@ export const runtimeConfigBindings = {
 export class DIRuntimeConfigSync extends RuntimeConfigSync {
   static dependencies = [runtimeConfigToken, platformNotificationPortToken] as const;
 
-  constructor(runtimeConfig: RuntimeConfigService, notifications: PlatformNotificationPort) {
+  constructor(runtimeConfig: PlatformRuntimeConfigPort, notifications: PlatformNotificationPort) {
     super(runtimeConfig, notifications);
   }
 }

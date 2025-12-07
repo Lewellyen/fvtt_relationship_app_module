@@ -12,6 +12,63 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.25] - 2025-12-07
+### Hinzugefügt
+- **Domain Ports für RuntimeConfig und HealthCheck**: Neue Domain Port Interfaces für bessere Schichttrennung ([Details](docs/analysis/LAYER-VIOLATIONS-SOLUTION-PLAN.md#phase-1-domain-layer-erweiterungen))
+- `PlatformRuntimeConfigPort`: Platform-agnostisches Interface für Runtime-Konfiguration ([Details](src/domain/ports/platform-runtime-config-port.interface.ts))
+- `PlatformHealthCheckPort`: Platform-agnostisches Interface für Health-Check-Registry ([Details](src/domain/ports/platform-health-check-port.interface.ts))
+- **Domain Types**: Neue Type-Definitionen im Domain Layer ([Details](src/domain/types/))
+- `runtime-config.ts`: RuntimeConfigKey und RuntimeConfigValues Types
+- `health-check.ts`: HealthCheck Interface
+- `injection-token.ts`: InjectionToken Type (aus Infrastructure verschoben)
+- **Infrastructure Adapter**: Adapter-Pattern Implementierungen für Domain Ports ([Details](src/infrastructure/))
+- `RuntimeConfigAdapter`: Wraps RuntimeConfigService als PlatformRuntimeConfigPort ([Details](src/infrastructure/config/runtime-config-adapter.ts))
+- `HealthCheckRegistryAdapter`: Wraps HealthCheckRegistry als PlatformHealthCheckPort ([Details](src/infrastructure/health/health-check-registry-adapter.ts))
+- **Infrastructure Interfaces**: Framework-Interfaces in Infrastructure extrahiert ([Details](src/infrastructure/shared/types/))
+- `ModuleApiInitializer` Interface
+- `BootstrapReadyHookService` Interface
+- `BootstrapInitHookService` Interface
+
+### Geändert
+- **Layer-Violations behoben**: Alle 10 Layer-Verletzungen der Clean Architecture wurden behoben ([Details](docs/analysis/LAYER-VIOLATIONS-SOLUTION-PLAN.md))
+- **Application → Infrastructure (7 Verletzungen behoben)**:
+- `RuntimeConfigService` wird jetzt über `PlatformRuntimeConfigPort` verwendet
+- `HealthCheckRegistry` wird jetzt über `PlatformHealthCheckPort` verwendet
+- `InjectionToken` Type wird jetzt aus Domain importiert
+- Alle Application-Services verwenden jetzt Domain Ports statt direkter Infrastructure-Imports
+- **Infrastructure → Framework (3 Verletzungen behoben)**:
+- Framework-Interfaces wurden in Infrastructure extrahiert
+- Framework-Klassen implementieren jetzt Infrastructure-Interfaces
+- **Token-Migration**: Application-spezifische Tokens nach Application Layer verschoben ([Details](src/application/tokens/))
+- `runtimeConfigToken` nach `src/application/tokens/runtime-config.token.ts` verschoben
+- `healthCheckRegistryToken` nach `src/application/tokens/health-check-registry.token.ts` verschoben
+- `platformSettingsRegistrationPortToken` und `platformModuleReadyPortToken` in `domain-ports.tokens.ts` konsolidiert
+- Alte Token-Dateien in Infrastructure entfernt
+- **Service-Anpassungen**: Alle Services verwenden jetzt Domain Ports ([Details](src/application/services/))
+- `RuntimeConfigSync` verwendet `PlatformRuntimeConfigPort` mit `setFromPlatform()` statt `setFromFoundry()`
+- `ModuleHealthService` verwendet `PlatformHealthCheckPort`
+- `ModuleSettingsRegistrar` importiert `RuntimeConfigKey` aus Domain statt Application
+- `ContainerHealthCheck` und `MetricsHealthCheck` verwenden `PlatformHealthCheckPort`
+- **Container-Registrierung**: Adapter werden jetzt statt direkter Services registriert ([Details](src/framework/config/modules/core-services.config.ts))
+- `HealthCheckRegistryAdapter` statt `DIHealthCheckRegistry` registriert
+- `RuntimeConfigAdapter` bereits korrekt registriert
+- **Test-Anpassungen**: Alle Tests verwenden jetzt Domain Ports ([Details](src/application/services/__tests__/))
+- Tests verwenden `PlatformRuntimeConfigPort` statt `RuntimeConfigService`
+- Mock-Objekte implementieren jetzt Domain Port Interfaces
+- `setFromPlatform()` statt `setFromFoundry()` in Tests
+
+### Fehlerbehebungen
+- **Layer-Violations**: Alle 10 Verletzungen der Clean Architecture Schichttrennung behoben
+- Application Layer importiert nicht mehr direkt aus Infrastructure
+- Infrastructure Layer importiert nicht mehr direkt aus Framework (außer Type-Imports)
+- Dependency Inversion Principle korrekt implementiert
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.24] - 2025-12-07
 ### Hinzugefügt
 - **Feingranulare Token-Struktur**: Alle Tokens sind jetzt in einzelnen Dateien organisiert (ein Token pro Datei) ([Details](src/infrastructure/shared/tokens/))

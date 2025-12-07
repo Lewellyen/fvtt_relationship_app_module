@@ -12,8 +12,8 @@ import { metricsStorageToken } from "@/infrastructure/shared/tokens/observabilit
 import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { moduleHealthServiceToken } from "@/infrastructure/shared/tokens/core/module-health-service.token";
-import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
+import { healthCheckRegistryToken } from "@/application/tokens/health-check-registry.token";
+import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import { bootstrapInitHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-init-hook-service.token";
 import { bootstrapReadyHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-ready-hook-service.token";
 import { DIMetricsCollector } from "@/infrastructure/observability/metrics-collector";
@@ -25,7 +25,7 @@ import { DIConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerSe
 import { DITraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { DIModuleHealthService } from "@/application/services/ModuleHealthService";
 import { DIModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
-import { DIHealthCheckRegistry } from "@/application/health/HealthCheckRegistry";
+import { HealthCheckRegistryAdapter } from "@/infrastructure/health/health-check-registry-adapter";
 import { DIBootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
 import { DIBootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
 import { DIFoundryBootstrapEventAdapter } from "@/infrastructure/adapters/foundry/bootstrap-hooks-adapter";
@@ -33,7 +33,7 @@ import {
   DIModuleReadyService,
   moduleReadyServiceToken,
 } from "@/application/services/module-ready-service";
-import { platformModuleReadyPortToken } from "@/infrastructure/shared/tokens/ports/platform-module-ready-port.token";
+import { platformModuleReadyPortToken } from "@/application/tokens/domain-ports.tokens";
 import { DIFoundryModuleReadyPort } from "@/infrastructure/adapters/foundry/services/FoundryModuleReadyPort";
 
 /**
@@ -152,7 +152,7 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
   // Register HealthCheckRegistry (but don't resolve yet - needs container validation first)
   const registryResult = container.registerClass(
     healthCheckRegistryToken,
-    DIHealthCheckRegistry,
+    HealthCheckRegistryAdapter,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(registryResult)) {

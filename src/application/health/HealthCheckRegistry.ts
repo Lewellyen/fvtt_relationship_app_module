@@ -4,7 +4,7 @@
  */
 
 import type { ApplicationDisposable } from "@/application/interfaces/application-disposable.interface";
-import type { HealthCheck } from "./health-check.interface";
+import type { HealthCheck } from "@/domain/types/health-check";
 
 export class HealthCheckRegistry implements ApplicationDisposable {
   static dependencies = [] as const;

@@ -3,7 +3,8 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import { formatReplacementInfo } from "@/infrastructure/shared/utils/format-deprecation-info";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
+import type { InjectionToken } from "@/domain/types/injection-token";
+import type { ModuleApiInitializer as IModuleApiInitializer } from "@/infrastructure/shared/types/module-api-initializer.interface";
 import { type ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
 import { getDeprecationInfo } from "@/infrastructure/di/types/utilities/deprecated-token";
 import {
@@ -57,7 +58,7 @@ import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundr
  *
  * Design: No dependencies, uses Result-Pattern for error handling.
  */
-export class ModuleApiInitializer {
+export class ModuleApiInitializer implements IModuleApiInitializer {
   static dependencies = [] as const;
   /**
    * Handles deprecation warnings for tokens.

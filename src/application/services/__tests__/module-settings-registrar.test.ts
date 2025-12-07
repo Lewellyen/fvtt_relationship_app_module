@@ -12,9 +12,9 @@ import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
-import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core/runtime-config.token";
+import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import { runtimeConfigSyncToken } from "@/application/tokens/application.tokens";
-import { platformSettingsRegistrationPortToken } from "@/infrastructure/shared/tokens/ports/platform-settings-registration-port.token";
+import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
   platformNotificationPortToken,
   platformI18nPortToken,
@@ -28,7 +28,7 @@ import { ok, err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 const DEFAULT_SETTING_VALUES: Record<string, unknown> = {
@@ -68,7 +68,7 @@ describe("ModuleSettingsRegistrar", () => {
 
       const mockRuntimeConfig = container.resolve(
         markAsApiSafe(runtimeConfigToken)
-      ) as RuntimeConfigService;
+      ) as PlatformRuntimeConfigPort;
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
       ) as PlatformNotificationPort;
@@ -123,7 +123,7 @@ describe("ModuleSettingsRegistrar", () => {
       const infoSpy = vi.spyOn(mockLogger, "info");
       const mockRuntimeConfig = container.resolve(
         markAsApiSafe(runtimeConfigToken)
-      ) as RuntimeConfigService;
+      ) as PlatformRuntimeConfigPort;
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
       ) as PlatformNotificationPort;
@@ -173,7 +173,7 @@ describe("ModuleSettingsRegistrar", () => {
 
       const mockRuntimeConfig = container.resolve(
         markAsApiSafe(runtimeConfigToken)
-      ) as RuntimeConfigService;
+      ) as PlatformRuntimeConfigPort;
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
       ) as PlatformNotificationPort;
@@ -220,7 +220,7 @@ describe("ModuleSettingsRegistrar", () => {
 
       const mockRuntimeConfig = container.resolve(
         markAsApiSafe(runtimeConfigToken)
-      ) as RuntimeConfigService;
+      ) as PlatformRuntimeConfigPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
       const mockValidator = container.resolve(
@@ -262,7 +262,7 @@ describe("ModuleSettingsRegistrar", () => {
 
       const mockRuntimeConfig = container.resolve(
         markAsApiSafe(runtimeConfigToken)
-      ) as RuntimeConfigService;
+      ) as PlatformRuntimeConfigPort;
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
       ) as PlatformNotificationPort;
@@ -309,10 +309,12 @@ describe("ModuleSettingsRegistrar", () => {
 
       const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
       if (!runtimeConfigResult.ok) {
-        throw new Error("RuntimeConfigService missing");
+        throw new Error("PlatformRuntimeConfigPort missing");
       }
-      const runtimeConfig = castResolvedService<RuntimeConfigService>(runtimeConfigResult.value);
-      const setSpy = vi.spyOn(runtimeConfig, "setFromFoundry");
+      const runtimeConfig = castResolvedService<PlatformRuntimeConfigPort>(
+        runtimeConfigResult.value
+      );
+      const setSpy = vi.spyOn(runtimeConfig, "setFromPlatform");
 
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
@@ -363,10 +365,12 @@ describe("ModuleSettingsRegistrar", () => {
 
       const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
       if (!runtimeConfigResult.ok) {
-        throw new Error("RuntimeConfigService missing");
+        throw new Error("PlatformRuntimeConfigPort missing");
       }
-      const runtimeConfig = castResolvedService<RuntimeConfigService>(runtimeConfigResult.value);
-      const setSpy = vi.spyOn(runtimeConfig, "setFromFoundry");
+      const runtimeConfig = castResolvedService<PlatformRuntimeConfigPort>(
+        runtimeConfigResult.value
+      );
+      const setSpy = vi.spyOn(runtimeConfig, "setFromPlatform");
 
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
@@ -418,7 +422,7 @@ describe("ModuleSettingsRegistrar", () => {
 
       const mockRuntimeConfig = container.resolve(
         markAsApiSafe(runtimeConfigToken)
-      ) as RuntimeConfigService;
+      ) as PlatformRuntimeConfigPort;
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
       ) as PlatformNotificationPort;

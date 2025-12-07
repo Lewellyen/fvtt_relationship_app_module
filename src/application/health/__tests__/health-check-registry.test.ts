@@ -169,4 +169,24 @@ describe("HealthCheckRegistry", () => {
       expect(DIHealthCheckRegistry.dependencies).toHaveLength(0);
     });
   });
+
+  describe("DIHealthCheckRegistry", () => {
+    it("should instantiate correctly", () => {
+      const diRegistry = new DIHealthCheckRegistry();
+      expect(diRegistry).toBeInstanceOf(HealthCheckRegistry);
+      expect(diRegistry).toBeInstanceOf(DIHealthCheckRegistry);
+    });
+
+    it("should work like HealthCheckRegistry", () => {
+      const diRegistry = new DIHealthCheckRegistry();
+      const check: HealthCheck = {
+        name: "test",
+        check: vi.fn().mockReturnValue(true),
+        dispose: vi.fn(),
+      };
+
+      diRegistry.register(check);
+      expect(diRegistry.getCheck("test")).toBe(check);
+    });
+  });
 });

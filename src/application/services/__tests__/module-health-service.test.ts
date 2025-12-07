@@ -182,7 +182,7 @@ describe("ModuleHealthService", () => {
     it("should declare healthCheckRegistryToken as dependency", () => {
       expect(DIModuleHealthService.dependencies).toHaveLength(1);
       expect(DIModuleHealthService.dependencies[0]).toBeDefined();
-      expect(String(DIModuleHealthService.dependencies[0])).toContain("HealthCheckRegistry");
+      expect(String(DIModuleHealthService.dependencies[0])).toContain("PlatformHealthCheckPort");
     });
   });
 });

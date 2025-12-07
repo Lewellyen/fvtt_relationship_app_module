@@ -1,8 +1,8 @@
 import type { PlatformMetricsSnapshotPort } from "@/domain/ports/platform-metrics-snapshot-port.interface";
 import { platformMetricsSnapshotPortToken } from "@/application/tokens/domain-ports.tokens";
-import { healthCheckRegistryToken } from "@/infrastructure/shared/tokens/core/health-check-registry.token";
-import type { HealthCheck } from "./health-check.interface";
-import type { HealthCheckRegistry } from "./HealthCheckRegistry";
+import { healthCheckRegistryToken } from "@/application/tokens/health-check-registry.token";
+import type { HealthCheck } from "@/domain/types/health-check";
+import type { PlatformHealthCheckPort } from "@/domain/ports/platform-health-check-port.interface";
 
 /**
  * Health check that surfaces critical issues from the metrics collector
@@ -46,7 +46,7 @@ export class MetricsHealthCheck implements HealthCheck {
 export class DIMetricsHealthCheck extends MetricsHealthCheck {
   static dependencies = [platformMetricsSnapshotPortToken, healthCheckRegistryToken] as const;
 
-  constructor(metricsSnapshotPort: PlatformMetricsSnapshotPort, registry: HealthCheckRegistry) {
+  constructor(metricsSnapshotPort: PlatformMetricsSnapshotPort, registry: PlatformHealthCheckPort) {
     super(metricsSnapshotPort);
     registry.register(this);
   }
