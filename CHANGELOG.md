@@ -12,6 +12,35 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.23] - 2025-12-07
+### Hinzugefügt
+- **MetricsSampler Klasse**: Separate Klasse für Sampling-Entscheidungen ([Details](src/infrastructure/observability/metrics-sampler.ts))
+- **MetricsReporter Klasse**: Separate Klasse für Metrics-Reporting und Logging ([Details](src/infrastructure/observability/metrics-reporter.ts))
+- **metricsReporterToken**: Neuer Injection Token für MetricsReporter ([Details](src/infrastructure/shared/tokens/observability.tokens.ts))
+- **Unit-Tests für MetricsSampler**: Vollständige Test-Abdeckung für Sampling-Logik ([Details](src/infrastructure/observability/__tests__/metrics-sampler.test.ts))
+- **Unit-Tests für MetricsReporter**: Vollständige Test-Abdeckung für Reporting-Logik ([Details](src/infrastructure/observability/__tests__/metrics-reporter.test.ts))
+
+### Geändert
+- **MetricsCollector SRP-Refactoring**: Trennung der Metrics-Sammlung von Sampling-Logik und Reporting ([Details](src/infrastructure/observability/metrics-collector.ts), [Details](docs/refactoring/SRP-REFACTORING-05-METRICS-COLLECTOR.md))
+- `MetricsCollector` fokussiert sich nur noch auf Metrics-Sammlung und Speicherung
+- `MetricsSampler` übernimmt Sampling-Entscheidungen (separater Service)
+- `MetricsReporter` übernimmt Metrics-Reporting und Logging (separater Service)
+- `MetricsCollector.shouldSample()` entfernt → `MetricsSampler.shouldSample()` verwenden
+- `MetricsCollector.logSummary()` entfernt → `MetricsReporter.logSummary()` verwenden
+- `MetricsCollector` implementiert nur noch `MetricsRecorder` Interface (nicht mehr `MetricsSampler`)
+- `MetricsSampler` ist jetzt ein separater Service (nicht mehr Alias zu `MetricsCollector`)
+- Verbesserte Testbarkeit durch isolierte Verantwortlichkeiten
+- Wiederverwendbare Sampling-Logik für andere Observability-Kontexte
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.22] - 2025-12-07
 ### Hinzugefügt
 - **DependencyResolver Interface**: Abstraktion für Dependency-Resolution zur Auflösung zirkulärer Abhängigkeiten ([Details](src/infrastructure/di/resolution/dependency-resolver.interface.ts))

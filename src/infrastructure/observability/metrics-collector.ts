@@ -3,7 +3,6 @@ import { METRICS_CONFIG } from "@/infrastructure/shared/constants";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
 import type { MetricsRecorder } from "./interfaces/metrics-recorder";
-import type { MetricsSampler } from "./interfaces/metrics-sampler";
 
 /**
  * Snapshot of current metrics data.
@@ -42,22 +41,10 @@ export interface MetricsPersistenceState {
 }
 
 /**
- * Table data structure for console.table() output in logSummary().
- * Uses string keys to match console.table() expectations.
- * Naming convention disabled for console.table() compatibility.
- */
-interface MetricsTableData {
-  "Total Resolutions": number;
-  Errors: number;
-  "Avg Time (ms)": string;
-  "Cache Hit Rate": string;
-}
-
-/**
  * Metrics collector for observability and performance tracking.
  *
- * Implements MetricsRecorder and MetricsSampler interfaces to provide
- * segregated access for different use cases (Interface Segregation Principle).
+ * Implements MetricsRecorder interface to provide
+ * segregated access for recording metrics (Interface Segregation Principle).
  *
  * Collects performance metrics for:
  * - Container service resolutions
@@ -68,6 +55,11 @@ interface MetricsTableData {
  *
  * Now managed via Dependency Injection as a Singleton service.
  *
+ * **Design:** Follows Single Responsibility Principle:
+ * - Metrics collection only (this class)
+ * - Sampling decisions: MetricsSampler
+ * - Reporting/logging: MetricsReporter
+ *
  * @example
  * ```typescript
  * const collector = container.resolve(metricsCollectorToken);
@@ -77,7 +69,7 @@ interface MetricsTableData {
  * console.log(`Avg resolution time: ${snapshot.avgResolutionTimeMs}ms`);
  * ```
  */
-export class MetricsCollector implements MetricsRecorder, MetricsSampler {
+export class MetricsCollector implements MetricsRecorder {
   static dependencies: readonly InjectionToken<unknown>[] = [runtimeConfigToken];
 
   private metrics = {
@@ -158,35 +150,6 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
   }
 
   /**
-   * Determines if a performance operation should be sampled based on sampling rate.
-   *
-   * In production mode, uses probabilistic sampling to reduce overhead.
-   * In development mode, always samples (returns true).
-   *
-   * @returns True if the operation should be measured/recorded
-   *
-   * @example
-   * ```typescript
-   * const metrics = container.resolve(metricsCollectorToken);
-   * if (metrics.shouldSample()) {
-   *   performance.mark('operation-start');
-   *   // ... operation ...
-   *   performance.mark('operation-end');
-   *   performance.measure('operation', 'operation-start', 'operation-end');
-   * }
-   * ```
-   */
-  shouldSample(): boolean {
-    // Always sample in development mode
-    if (this.config.get("isDevelopment")) {
-      return true;
-    }
-
-    // Probabilistic sampling in production based on configured rate
-    return Math.random() < this.config.get("performanceSamplingRate");
-  }
-
-  /**
    * Gets a snapshot of current metrics.
    *
    * @returns Immutable snapshot of metrics data
@@ -209,22 +172,6 @@ export class MetricsCollector implements MetricsRecorder, MetricsSampler {
       portSelectionFailures: Object.fromEntries(this.metrics.portSelectionFailures),
       cacheHitRate,
     };
-  }
-
-  /**
-   * Logs a formatted metrics summary to the console.
-   * Uses console.table() for easy-to-read tabular output.
-   */
-  logSummary(): void {
-    const snapshot = this.getSnapshot();
-
-    const tableData: MetricsTableData = {
-      "Total Resolutions": snapshot.containerResolutions,
-      Errors: snapshot.resolutionErrors,
-      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
-      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`,
-    };
-    console.table(tableData);
   }
 
   /**

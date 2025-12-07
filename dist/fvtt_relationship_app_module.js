@@ -880,84 +880,110 @@ const _InstanceCache = class _InstanceCache {
 };
 __name(_InstanceCache, "InstanceCache");
 let InstanceCache = _InstanceCache;
-const _ServiceResolver = class _ServiceResolver {
-  constructor(registry, cache, parentResolver, scopeName, performanceTracker) {
-    this.registry = registry;
+const _SingletonResolutionStrategy = class _SingletonResolutionStrategy {
+  resolve(token, registration, dependencyResolver, instantiator, cache, parentResolver, _scopeName) {
+    if (parentResolver !== null) {
+      const parentResult = parentResolver.resolve(token);
+      if (parentResult.ok) {
+        return parentResult;
+      }
+      if (parentResult.error.code === "CircularDependency") {
+        return parentResult;
+      }
+    }
+    if (!cache.has(token)) {
+      const instanceResult2 = instantiator.instantiate(token, registration);
+      if (!instanceResult2.ok) {
+        return instanceResult2;
+      }
+      cache.set(token, instanceResult2.value);
+    }
+    const instanceResult = castCachedServiceInstanceForResult(cache.get(token));
+    if (!instanceResult.ok) {
+      return instanceResult;
+    }
+    return ok(instanceResult.value);
+  }
+};
+__name(_SingletonResolutionStrategy, "SingletonResolutionStrategy");
+let SingletonResolutionStrategy = _SingletonResolutionStrategy;
+const _TransientResolutionStrategy = class _TransientResolutionStrategy {
+  resolve(token, registration, _dependencyResolver, instantiator, _cache, _parentResolver, _scopeName) {
+    return instantiator.instantiate(token, registration);
+  }
+};
+__name(_TransientResolutionStrategy, "TransientResolutionStrategy");
+let TransientResolutionStrategy = _TransientResolutionStrategy;
+const _ScopedResolutionStrategy = class _ScopedResolutionStrategy {
+  resolve(token, registration, _dependencyResolver, instantiator, cache, parentResolver, _scopeName) {
+    if (parentResolver === null) {
+      return err({
+        code: "ScopeRequired",
+        message: `Scoped service ${String(token)} requires a scope container. Use createScope() to create a child container first.`,
+        tokenDescription: String(token)
+      });
+    }
+    if (!cache.has(token)) {
+      const instanceResult2 = instantiator.instantiate(token, registration);
+      if (!instanceResult2.ok) {
+        return instanceResult2;
+      }
+      cache.set(token, instanceResult2.value);
+    }
+    const instanceResult = castCachedServiceInstanceForResult(cache.get(token));
+    if (!instanceResult.ok) {
+      return instanceResult;
+    }
+    return ok(instanceResult.value);
+  }
+};
+__name(_ScopedResolutionStrategy, "ScopedResolutionStrategy");
+let ScopedResolutionStrategy = _ScopedResolutionStrategy;
+const _LifecycleResolver = class _LifecycleResolver {
+  constructor(cache, parentResolver, scopeName) {
     this.cache = cache;
     this.parentResolver = parentResolver;
     this.scopeName = scopeName;
-    this.performanceTracker = performanceTracker;
-    this.metricsCollector = null;
+    this.strategies = /* @__PURE__ */ new Map();
+    this.strategies.set(ServiceLifecycle.SINGLETON, new SingletonResolutionStrategy());
+    this.strategies.set(ServiceLifecycle.TRANSIENT, new TransientResolutionStrategy());
+    this.strategies.set(ServiceLifecycle.SCOPED, new ScopedResolutionStrategy());
   }
   /**
-   * Sets the MetricsCollector for metrics recording.
-   * Called by ServiceContainer after validation.
+   * Resolves a service based on its lifecycle.
    *
-   * @param collector - The metrics collector instance
-   */
-  setMetricsCollector(collector) {
-    this.metricsCollector = collector;
-  }
-  /**
-   * Resolves a service by token.
-   *
-   * Handles:
-   * - Alias resolution (recursive)
-   * - Lifecycle-specific resolution (Singleton/Transient/Scoped)
-   * - Parent delegation for Singletons
-   * - Factory error wrapping
-   *
-   * Performance tracking is handled by the injected PerformanceTracker.
-   *
-   * @template Tunknown - The type of service to resolve
+   * @template T - The type of service to resolve
    * @param token - The injection token identifying the service
+   * @param registration - The service registration metadata
+   * @param dependencyResolver - The DependencyResolver for dependency resolution
+   * @param instantiator - The ServiceInstantiator for service instantiation
    * @returns Result with service instance or error
    */
-  resolve(token) {
-    return this.performanceTracker.track(
-      () => {
-        const registration = this.registry.getRegistration(token);
-        if (!registration) {
-          const stack = new Error().stack;
-          const error = {
-            code: "TokenNotRegistered",
-            message: `Service ${String(token)} not registered`,
-            tokenDescription: String(token),
-            ...stack !== void 0 && { stack },
-            // Only include stack if defined
-            timestamp: Date.now(),
-            containerScope: this.scopeName
-          };
-          return err(error);
-        }
-        if (registration.providerType === "alias" && registration.aliasTarget) {
-          return this.resolve(registration.aliasTarget);
-        }
-        let result;
-        switch (registration.lifecycle) {
-          case ServiceLifecycle.SINGLETON:
-            result = this.resolveSingleton(token, registration);
-            break;
-          case ServiceLifecycle.TRANSIENT:
-            result = this.resolveTransient(token, registration);
-            break;
-          case ServiceLifecycle.SCOPED:
-            result = this.resolveScoped(token, registration);
-            break;
-          default:
-            const _exhaustiveCheck = registration.lifecycle;
-            result = err({
-              code: "InvalidLifecycle",
-              message: `Invalid service lifecycle: ${String(_exhaustiveCheck)}`,
-              tokenDescription: String(token)
-            });
-        }
-        return result;
-      },
-      (duration, result) => {
-        this.metricsCollector?.recordResolution(token, duration, result.ok);
-      }
+  resolve(token, registration, dependencyResolver, instantiator) {
+    const strategy = this.strategies.get(registration.lifecycle);
+    if (!strategy) {
+      return err({
+        code: "InvalidLifecycle",
+        message: `Invalid service lifecycle: ${String(registration.lifecycle)}`,
+        tokenDescription: String(token)
+      });
+    }
+    return strategy.resolve(
+      token,
+      registration,
+      dependencyResolver,
+      instantiator,
+      this.cache,
+      this.parentResolver,
+      this.scopeName
     );
+  }
+};
+__name(_LifecycleResolver, "LifecycleResolver");
+let LifecycleResolver = _LifecycleResolver;
+const _ServiceInstantiatorImpl = class _ServiceInstantiatorImpl {
+  constructor(dependencyResolver) {
+    this.dependencyResolver = dependencyResolver;
   }
   /**
    * Instantiates a service based on registration type.
@@ -965,16 +991,16 @@ const _ServiceResolver = class _ServiceResolver {
    * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
    * Handles dependency resolution for classes, direct factory calls, and value returns.
    *
-   * @template Tunknown - The type of service to instantiate
+   * @template T - The type of service to instantiate
    * @param token - The injection token (used for error messages)
    * @param registration - The service registration metadata
    * @returns Result with instance or detailed error (DependencyResolveFailed, FactoryFailed, etc.)
    */
-  instantiateService(token, registration) {
+  instantiate(token, registration) {
     if (registration.serviceClass) {
       const resolvedDeps = [];
       for (const dep of registration.dependencies) {
-        const depResult = this.resolve(dep);
+        const depResult = this.dependencyResolver.resolve(dep);
         if (!depResult.ok) {
           return err({
             code: "DependencyResolveFailed",
@@ -1016,111 +1042,91 @@ const _ServiceResolver = class _ServiceResolver {
       });
     }
   }
-  /**
-   * Resolves a Singleton service.
-   *
-   * Strategy:
-   * 1. Try parent resolver first (for shared parent singletons)
-   * 2. If parent returns error:
-   *    - CircularDependency → propagate error
-   *    - TokenNotRegistered → fallback to own cache (child-specific singleton)
-   * 3. Use own cache for root container or child-specific singletons
-   *
-   * @template Tunknown - The type of service
-   * @param token - The injection token
-   * @param registration - The service registration
-   * @returns Result with instance or error
-   */
-  resolveSingleton(token, registration) {
-    if (this.parentResolver !== null) {
-      const parentResult = this.parentResolver.resolve(token);
-      if (parentResult.ok) {
-        return parentResult;
-      }
-      if (parentResult.error.code === "CircularDependency") {
-        return parentResult;
-      }
-    }
-    if (!this.cache.has(token)) {
-      const instanceResult2 = this.instantiateService(token, registration);
-      if (!instanceResult2.ok) {
-        return instanceResult2;
-      }
-      this.cache.set(token, instanceResult2.value);
-    }
-    const instanceResult = castCachedServiceInstanceForResult(this.cache.get(token));
-    if (!instanceResult.ok) {
-      return instanceResult;
-    }
-    return ok(instanceResult.value);
+};
+__name(_ServiceInstantiatorImpl, "ServiceInstantiatorImpl");
+let ServiceInstantiatorImpl = _ServiceInstantiatorImpl;
+const _ServiceResolver = class _ServiceResolver {
+  constructor(registry, cache, parentResolver, scopeName, performanceTracker) {
+    this.registry = registry;
+    this.cache = cache;
+    this.parentResolver = parentResolver;
+    this.scopeName = scopeName;
+    this.performanceTracker = performanceTracker;
+    this.metricsCollector = null;
+    this.lifecycleResolver = new LifecycleResolver(
+      cache,
+      parentResolver,
+      scopeName
+    );
+    this.instantiator = new ServiceInstantiatorImpl(this);
   }
   /**
-   * Resolves a Transient service.
+   * Sets the MetricsCollector for metrics recording.
+   * Called by ServiceContainer after validation.
    *
-   * Strategy:
-   * - Always create new instance (no caching)
-   *
-   * @template Tunknown - The type of service
-   * @param token - The injection token
-   * @param registration - The service registration
-   * @returns Result with new instance
+   * @param collector - The metrics collector instance
    */
-  resolveTransient(token, registration) {
-    return this.instantiateService(token, registration);
+  setMetricsCollector(collector) {
+    this.metricsCollector = collector;
   }
   /**
-   * Resolves a Scoped service.
+   * Resolves a service by token.
    *
-   * ⚠️ IMPORTANT: Scoped services can ONLY be resolved in child containers.
-   * Attempting to resolve a scoped service in the root container will return
-   * a ScopeRequired error.
+   * Handles:
+   * - Alias resolution (recursive)
+   * - Lifecycle-specific resolution (delegated to LifecycleResolver)
+   * - Performance tracking
+   * - Metrics recording
    *
-   * Strategy:
-   * - Must be in child scope (not root)
-   * - One instance per scope (cached)
-   * - Each child scope gets its own isolated instance
+   * Performance tracking is handled by the injected PerformanceTracker.
    *
-   * Use createScope() to create a child container before resolving scoped services.
-   *
-   * @template Tunknown - The type of service
-   * @param token - The injection token
-   * @param registration - The service registration
-   * @returns Result with scoped instance or ScopeRequired error
-   *
-   * @example
-   * ```typescript
-   * // ❌ WRONG: Trying to resolve scoped service in root
-   * const root = ServiceContainer.createRoot();
-   * root.registerClass(RequestToken, RequestContext, SCOPED);
-   * root.validate();
-   * const result = root.resolve(RequestToken); // Error: ScopeRequired
-   *
-   * // ✅ CORRECT: Create child scope first
-   * const child = root.createScope("request").value!;
-   * child.validate(); // Child must validate separately
-   * const ctx = child.resolve(RequestToken); // OK
-   * ```
+   * @template T - The type of service to resolve
+   * @param token - The injection token identifying the service
+   * @returns Result with service instance or error
    */
-  resolveScoped(token, registration) {
-    if (this.parentResolver === null) {
-      return err({
-        code: "ScopeRequired",
-        message: `Scoped service ${String(token)} requires a scope container. Use createScope() to create a child container first.`,
-        tokenDescription: String(token)
-      });
-    }
-    if (!this.cache.has(token)) {
-      const instanceResult2 = this.instantiateService(token, registration);
-      if (!instanceResult2.ok) {
-        return instanceResult2;
+  resolve(token) {
+    return this.performanceTracker.track(
+      () => {
+        const registration = this.registry.getRegistration(token);
+        if (!registration) {
+          const stack = new Error().stack;
+          const error = {
+            code: "TokenNotRegistered",
+            message: `Service ${String(token)} not registered`,
+            tokenDescription: String(token),
+            ...stack !== void 0 && { stack },
+            // Only include stack if defined
+            timestamp: Date.now(),
+            containerScope: this.scopeName
+          };
+          return err(error);
+        }
+        if (registration.providerType === "alias" && registration.aliasTarget) {
+          return this.resolve(registration.aliasTarget);
+        }
+        return this.lifecycleResolver.resolve(token, registration, this, this);
+      },
+      (duration, result) => {
+        this.metricsCollector?.recordResolution(token, duration, result.ok);
       }
-      this.cache.set(token, instanceResult2.value);
-    }
-    const instanceResult = castCachedServiceInstanceForResult(this.cache.get(token));
-    if (!instanceResult.ok) {
-      return instanceResult;
-    }
-    return ok(instanceResult.value);
+    );
+  }
+  /**
+   * Instantiates a service based on registration type.
+   *
+   * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
+   * Delegates to ServiceInstantiatorImpl for actual instantiation logic.
+   *
+   * This method implements the ServiceInstantiator interface, allowing lifecycle
+   * strategies to instantiate services without depending on ServiceResolver directly.
+   *
+   * @template T - The type of service to instantiate
+   * @param token - The injection token (used for error messages)
+   * @param registration - The service registration metadata
+   * @returns Result with instance or detailed error (DependencyResolveFailed, FactoryFailed, etc.)
+   */
+  instantiate(token, registration) {
+    return this.instantiator.instantiate(token, registration);
   }
 };
 __name(_ServiceResolver, "ServiceResolver");
@@ -1577,6 +1583,7 @@ __name(createRuntimeConfig, "createRuntimeConfig");
 const metricsCollectorToken = createInjectionToken$1("MetricsCollector");
 const metricsRecorderToken = createInjectionToken$1("MetricsRecorder");
 const metricsSamplerToken = createInjectionToken$1("MetricsSampler");
+const metricsReporterToken = createInjectionToken$1("MetricsReporter");
 const metricsStorageToken = createInjectionToken$1("MetricsStorage");
 const traceContextToken = createInjectionToken$1("TraceContext");
 const portSelectionEventEmitterToken = createInjectionToken$1(
@@ -8112,31 +8119,6 @@ const _MetricsCollector = class _MetricsCollector {
     this.onStateChanged();
   }
   /**
-   * Determines if a performance operation should be sampled based on sampling rate.
-   *
-   * In production mode, uses probabilistic sampling to reduce overhead.
-   * In development mode, always samples (returns true).
-   *
-   * @returns True if the operation should be measured/recorded
-   *
-   * @example
-   * ```typescript
-   * const metrics = container.resolve(metricsCollectorToken);
-   * if (metrics.shouldSample()) {
-   *   performance.mark('operation-start');
-   *   // ... operation ...
-   *   performance.mark('operation-end');
-   *   performance.measure('operation', 'operation-start', 'operation-end');
-   * }
-   * ```
-   */
-  shouldSample() {
-    if (this.config.get("isDevelopment")) {
-      return true;
-    }
-    return Math.random() < this.config.get("performanceSamplingRate");
-  }
-  /**
    * Gets a snapshot of current metrics.
    *
    * @returns Immutable snapshot of metrics data
@@ -8155,20 +8137,6 @@ const _MetricsCollector = class _MetricsCollector {
       portSelectionFailures: Object.fromEntries(this.metrics.portSelectionFailures),
       cacheHitRate
     };
-  }
-  /**
-   * Logs a formatted metrics summary to the console.
-   * Uses console.table() for easy-to-read tabular output.
-   */
-  logSummary() {
-    const snapshot = this.getSnapshot();
-    const tableData = {
-      "Total Resolutions": snapshot.containerResolutions,
-      Errors: snapshot.resolutionErrors,
-      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
-      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
-    };
-    console.table(tableData);
   }
   /**
    * Resets all collected metrics.
@@ -8349,6 +8317,84 @@ _DIPersistentMetricsCollector.dependencies = [
   metricsStorageToken
 ];
 let DIPersistentMetricsCollector = _DIPersistentMetricsCollector;
+const _MetricsSampler = class _MetricsSampler {
+  constructor(config2) {
+    this.config = config2;
+  }
+  /**
+   * Determines if a performance operation should be sampled based on sampling rate.
+   *
+   * In production mode, uses probabilistic sampling to reduce overhead.
+   * In development mode, always samples (returns true).
+   *
+   * @returns True if the operation should be measured/recorded
+   *
+   * @example
+   * ```typescript
+   * const sampler = container.resolve(metricsSamplerToken);
+   * if (sampler.shouldSample()) {
+   *   performance.mark('operation-start');
+   *   // ... operation ...
+   *   performance.mark('operation-end');
+   *   performance.measure('operation', 'operation-start', 'operation-end');
+   * }
+   * ```
+   */
+  shouldSample() {
+    if (this.config.get("isDevelopment")) {
+      return true;
+    }
+    return Math.random() < this.config.get("performanceSamplingRate");
+  }
+};
+__name(_MetricsSampler, "MetricsSampler");
+let MetricsSampler = _MetricsSampler;
+const _DIMetricsSampler = class _DIMetricsSampler extends MetricsSampler {
+  constructor(config2) {
+    super(config2);
+  }
+};
+__name(_DIMetricsSampler, "DIMetricsSampler");
+_DIMetricsSampler.dependencies = [runtimeConfigToken];
+let DIMetricsSampler = _DIMetricsSampler;
+const _MetricsReporter = class _MetricsReporter {
+  constructor(collector, logger) {
+    this.collector = collector;
+    this.logger = logger;
+  }
+  /**
+   * Logs a formatted metrics summary to the console.
+   * Uses console.table() for easy-to-read tabular output.
+   */
+  logSummary() {
+    const snapshot = this.collector.getSnapshot();
+    const tableData = {
+      "Total Resolutions": snapshot.containerResolutions,
+      Errors: snapshot.resolutionErrors,
+      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
+      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
+    };
+    console.table(tableData);
+  }
+  /**
+   * Gibt Metrics als JSON zurück.
+   *
+   * @returns JSON string representation of metrics snapshot
+   */
+  toJSON() {
+    return JSON.stringify(this.collector.getSnapshot(), null, 2);
+  }
+};
+__name(_MetricsReporter, "MetricsReporter");
+let MetricsReporter = _MetricsReporter;
+const _DIMetricsReporter = class _DIMetricsReporter extends MetricsReporter {
+  constructor(collector, logger) {
+    super(collector, logger);
+  }
+};
+__name(_DIMetricsReporter, "DIMetricsReporter");
+_DIMetricsReporter.dependencies = [metricsCollectorToken, loggerToken];
+let DIMetricsReporter = _DIMetricsReporter;
 const _LocalStorageMetricsStorage = class _LocalStorageMetricsStorage {
   constructor(storageKey, storage = getStorage()) {
     this.storageKey = storageKey;
@@ -9888,8 +9934,15 @@ function registerCoreServices(container) {
       return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
     }
   }
+  const samplerResult = container.registerClass(
+    metricsSamplerToken,
+    DIMetricsSampler,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(samplerResult)) {
+    return err(`Failed to register MetricsSampler: ${samplerResult.error.message}`);
+  }
   container.registerAlias(metricsRecorderToken, metricsCollectorToken);
-  container.registerAlias(metricsSamplerToken, metricsCollectorToken);
   const traceContextResult = container.registerClass(
     traceContextToken,
     DITraceContext,
@@ -9905,6 +9958,14 @@ function registerCoreServices(container) {
   );
   if (isErr(loggerResult)) {
     return err(`Failed to register Logger: ${loggerResult.error.message}`);
+  }
+  const reporterResult = container.registerClass(
+    metricsReporterToken,
+    DIMetricsReporter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(reporterResult)) {
+    return err(`Failed to register MetricsReporter: ${reporterResult.error.message}`);
   }
   const registryResult = container.registerClass(
     healthCheckRegistryToken,

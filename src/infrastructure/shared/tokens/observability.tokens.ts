@@ -9,6 +9,7 @@ import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsRecorder } from "@/infrastructure/observability/interfaces/metrics-recorder";
 import type { MetricsSampler } from "@/infrastructure/observability/interfaces/metrics-sampler";
+import type { MetricsReporter } from "@/infrastructure/observability/metrics-reporter";
 import type { MetricsStorage } from "@/infrastructure/observability/metrics-persistence/metrics-storage";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import type { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
@@ -66,6 +67,23 @@ export const metricsRecorderToken = createInjectionToken<MetricsRecorder>("Metri
  * ```
  */
 export const metricsSamplerToken = createInjectionToken<MetricsSampler>("MetricsSampler");
+
+/**
+ * Injection token for the MetricsReporter service.
+ *
+ * Provides metrics reporting and logging capability without full MetricsCollector features.
+ * Use this token when you need to format or log metrics, not collect them.
+ *
+ * **Design:** Implements Interface Segregation Principle - separate reporting from collection.
+ *
+ * @example
+ * ```typescript
+ * const reporter = container.resolve(metricsReporterToken);
+ * reporter.logSummary();
+ * const json = reporter.toJSON();
+ * ```
+ */
+export const metricsReporterToken = createInjectionToken<MetricsReporter>("MetricsReporter");
 
 /**
  * Injection token for metrics persistence storage.

@@ -204,49 +204,6 @@ describe("MetricsCollector", () => {
     });
   });
 
-  describe("logSummary", () => {
-    it("should call console.table with formatted metrics", () => {
-      const token = createInjectionToken<Logger>("TestService");
-      const consoleTableSpy = vi.spyOn(console, "table").mockImplementation(() => {});
-
-      collector.recordResolution(token, 2.5, true);
-      collector.recordResolution(token, 3.5, false);
-      collector.recordCacheAccess(true);
-      collector.recordCacheAccess(false);
-
-      collector.logSummary();
-
-      expect(consoleTableSpy).toHaveBeenCalledOnce();
-      /* eslint-disable @typescript-eslint/naming-convention */
-      expect(consoleTableSpy).toHaveBeenCalledWith({
-        "Total Resolutions": 2,
-        Errors: 1,
-        "Avg Time (ms)": "3.00",
-        "Cache Hit Rate": "50.0%",
-      });
-      /* eslint-enable @typescript-eslint/naming-convention */
-
-      consoleTableSpy.mockRestore();
-    });
-
-    it("should handle empty metrics gracefully", () => {
-      const consoleTableSpy = vi.spyOn(console, "table").mockImplementation(() => {});
-
-      collector.logSummary();
-
-      /* eslint-disable @typescript-eslint/naming-convention */
-      expect(consoleTableSpy).toHaveBeenCalledWith({
-        "Total Resolutions": 0,
-        Errors: 0,
-        "Avg Time (ms)": "0.00",
-        "Cache Hit Rate": "0.0%",
-      });
-      /* eslint-enable @typescript-eslint/naming-convention */
-
-      consoleTableSpy.mockRestore();
-    });
-  });
-
   describe("reset", () => {
     it("should reset all metrics to initial state", () => {
       const token = createInjectionToken<Logger>("TestService");
@@ -335,75 +292,6 @@ describe("MetricsCollector", () => {
     });
   });
 
-  describe("shouldSample", () => {
-    it("should always return true in development mode", () => {
-      const devConfig = createMockRuntimeConfig({ isDevelopment: true });
-      const collector = new MetricsCollector(devConfig);
-
-      // In development mode (env.isDevelopment is true), shouldSample always returns true
-      const result = collector.shouldSample();
-
-      expect(result).toBe(true);
-    });
-
-    it("should sample when Math.random() < samplingRate (production)", () => {
-      const prodConfig = createMockRuntimeConfig({
-        isDevelopment: false,
-        performanceSamplingRate: 0.7,
-      });
-      const collector = new MetricsCollector(prodConfig);
-
-      // Mock Math.random to return 0.5 (< 0.7 = should sample)
-      vi.spyOn(Math, "random").mockReturnValue(0.5);
-
-      const result = collector.shouldSample();
-
-      expect(result).toBe(true);
-    });
-
-    it("should not sample when Math.random() >= samplingRate (production)", () => {
-      const prodConfig = createMockRuntimeConfig({
-        isDevelopment: false,
-        performanceSamplingRate: 0.3,
-      });
-      const collector = new MetricsCollector(prodConfig);
-
-      // Mock Math.random to return 0.5 (>= 0.3 = should NOT sample)
-      vi.spyOn(Math, "random").mockReturnValue(0.5);
-
-      const result = collector.shouldSample();
-
-      expect(result).toBe(false);
-    });
-
-    it("should handle edge case: samplingRate = 0", () => {
-      const prodConfig = createMockRuntimeConfig({
-        isDevelopment: false,
-        performanceSamplingRate: 0,
-      });
-      const collector = new MetricsCollector(prodConfig);
-
-      vi.spyOn(Math, "random").mockReturnValue(0);
-
-      const result = collector.shouldSample();
-
-      expect(result).toBe(false); // 0 < 0 = false
-    });
-
-    it("should handle edge case: samplingRate = 1", () => {
-      const prodConfig = createMockRuntimeConfig({
-        isDevelopment: false,
-        performanceSamplingRate: 1,
-      });
-      const collector = new MetricsCollector(prodConfig);
-
-      vi.spyOn(Math, "random").mockReturnValue(0.999);
-
-      const result = collector.shouldSample();
-
-      expect(result).toBe(true); // 0.999 < 1 = true
-    });
-  });
 });
 
 describe("PersistentMetricsCollector", () => {

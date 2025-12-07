@@ -7,6 +7,7 @@ import {
   metricsCollectorToken,
   metricsRecorderToken,
   metricsSamplerToken,
+  metricsReporterToken,
   traceContextToken,
   metricsStorageToken,
 } from "@/infrastructure/shared/tokens/observability.tokens";
@@ -21,6 +22,8 @@ import {
 } from "@/infrastructure/shared/tokens/core.tokens";
 import { DIMetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { DIPersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
+import { DIMetricsSampler } from "@/infrastructure/observability/metrics-sampler";
+import { DIMetricsReporter } from "@/infrastructure/observability/metrics-reporter";
 import { createMetricsStorage } from "@/infrastructure/observability/metrics-persistence/metrics-storage-factory";
 import { DIConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
 import { DITraceContext } from "@/infrastructure/observability/trace/TraceContext";
@@ -41,8 +44,10 @@ import { DIFoundryModuleReadyPort } from "@/infrastructure/adapters/foundry/serv
  * Registers core infrastructure services.
  *
  * Services registered:
- * - MetricsCollector (singleton)
- * - MetricsRecorder/MetricsSampler (aliases to MetricsCollector)
+ * - MetricsCollector (singleton, deps: [runtimeConfigToken])
+ * - MetricsSampler (singleton, deps: [runtimeConfigToken]) - separate service for SRP
+ * - MetricsReporter (singleton, deps: [metricsCollectorToken, loggerToken]) - separate service for SRP
+ * - MetricsRecorder (alias to MetricsCollector) - for backward compatibility
  * - Logger (singleton, self-configuring via RuntimeConfigService, optional TraceContext)
  * - TraceContext (singleton, deps: [loggerToken])
  * - HealthCheckRegistry (singleton)
@@ -53,12 +58,14 @@ import { DIFoundryModuleReadyPort } from "@/infrastructure/adapters/foundry/serv
  *
  * INITIALIZATION ORDER:
  * 1. MetricsCollector (deps: [runtimeConfigToken])
- * 2. TraceContext (no dependencies)
- * 3. Logger (klassische DI mit deps: [runtimeConfigToken, traceContextToken])
- * 4. HealthCheckRegistry (no dependencies)
- * 5. ContainerHealthCheck & MetricsHealthCheck (auto-register to registry)
- * 6. ModuleHealthService (deps: [healthCheckRegistryToken])
- * 7. ModuleApiInitializer (no dependencies)
+ * 2. MetricsSampler (deps: [runtimeConfigToken])
+ * 3. TraceContext (no dependencies)
+ * 4. Logger (klassische DI mit deps: [runtimeConfigToken, traceContextToken])
+ * 5. MetricsReporter (deps: [metricsCollectorToken, loggerToken])
+ * 6. HealthCheckRegistry (no dependencies)
+ * 7. ContainerHealthCheck & MetricsHealthCheck (auto-register to registry)
+ * 8. ModuleHealthService (deps: [healthCheckRegistryToken])
+ * 9. ModuleApiInitializer (no dependencies)
  *
  * @param container - The service container to register services in
  * @returns Result indicating success or error with details
@@ -100,10 +107,19 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
     }
   }
 
-  // Register MetricsRecorder and MetricsSampler as aliases to MetricsCollector
-  // This provides segregated interfaces (ISP - Interface Segregation Principle)
+  // Register MetricsSampler (separate service for SRP - Single Responsibility Principle)
+  const samplerResult = container.registerClass(
+    metricsSamplerToken,
+    DIMetricsSampler,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(samplerResult)) {
+    return err(`Failed to register MetricsSampler: ${samplerResult.error.message}`);
+  }
+
+  // Register MetricsRecorder as alias to MetricsCollector (for backward compatibility)
+  // MetricsSampler is now a separate service, not an alias
   container.registerAlias(metricsRecorderToken, metricsCollectorToken);
-  container.registerAlias(metricsSamplerToken, metricsCollectorToken);
 
   // Register TraceContext first (no dependencies)
   // TraceContext must be registered before Logger to avoid circular dependency
@@ -124,6 +140,17 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
   );
   if (isErr(loggerResult)) {
     return err(`Failed to register Logger: ${loggerResult.error.message}`);
+  }
+
+  // Register MetricsReporter (separate service for SRP - Single Responsibility Principle)
+  // Must be registered after Logger (depends on loggerToken)
+  const reporterResult = container.registerClass(
+    metricsReporterToken,
+    DIMetricsReporter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(reporterResult)) {
+    return err(`Failed to register MetricsReporter: ${reporterResult.error.message}`);
   }
 
   // Register HealthCheckRegistry (but don't resolve yet - needs container validation first)
