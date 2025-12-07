@@ -8800,6 +8800,7 @@ const journalContextMenuHandlersToken = createInjectionToken(
 const journalDirectoryProcessorToken = createInjectionToken(
   "JournalDirectoryProcessor"
 );
+const runtimeConfigSyncToken = createInjectionToken("RuntimeConfigSync");
 const foundryI18nToken = createInjectionToken$1("FoundryI18nPort");
 const localI18nToken = createInjectionToken$1("LocalI18nService");
 const i18nFacadeToken = createInjectionToken$1("I18nFacadeService");
@@ -14472,6 +14473,61 @@ const SettingValidators = {
    */
   oneOf: /* @__PURE__ */ __name((validValues) => (value2) => (typeof value2 === "string" || typeof value2 === "number") && validValues.includes(value2), "oneOf")
 };
+const _RuntimeConfigSync = class _RuntimeConfigSync {
+  constructor(runtimeConfig, notifications) {
+    this.runtimeConfig = runtimeConfig;
+    this.notifications = notifications;
+  }
+  /**
+   * Bindet RuntimeConfig-Synchronisation an ein Setting.
+   *
+   * Wraps the original onChange callback and adds RuntimeConfig synchronization.
+   *
+   * @param config - The Setting configuration
+   * @param binding - Binding configuration for RuntimeConfig sync
+   * @returns Modified config with RuntimeConfig bridge attached
+   */
+  attachBinding(config2, binding) {
+    const originalOnChange = config2.onChange;
+    return {
+      ...config2,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const normalized = binding.normalize(value2);
+        this.runtimeConfig.setFromFoundry(binding.runtimeKey, normalized);
+        originalOnChange?.(value2);
+      }, "onChange")
+    };
+  }
+  /**
+   * Synchronisiert initialen Setting-Wert zu RuntimeConfig.
+   *
+   * Reads the current Setting value and updates RuntimeConfig accordingly.
+   *
+   * @param settings - Settings port for reading values
+   * @param binding - Binding configuration for RuntimeConfig sync
+   * @param settingKey - The Setting key to read
+   */
+  syncInitialValue(settings, binding, settingKey) {
+    const currentValue = settings.getSettingValue(
+      MODULE_METADATA.ID,
+      settingKey,
+      binding.validator
+    );
+    if (!currentValue.ok) {
+      this.notifications.warn(
+        `Failed to read initial value for ${settingKey}`,
+        currentValue.error,
+        {
+          channels: ["ConsoleChannel"]
+        }
+      );
+      return;
+    }
+    this.runtimeConfig.setFromFoundry(binding.runtimeKey, binding.normalize(currentValue.value));
+  }
+};
+__name(_RuntimeConfigSync, "RuntimeConfigSync");
+let RuntimeConfigSync = _RuntimeConfigSync;
 const isLogLevel = /* @__PURE__ */ __name((value2) => typeof value2 === "number" && value2 >= 0 && value2 <= 3, "isLogLevel");
 const runtimeConfigBindings = {
   [SETTING_KEYS.LOG_LEVEL]: {
@@ -14515,10 +14571,18 @@ const runtimeConfigBindings = {
     normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
   }
 };
+const _DIRuntimeConfigSync = class _DIRuntimeConfigSync extends RuntimeConfigSync {
+  constructor(runtimeConfig, notifications) {
+    super(runtimeConfig, notifications);
+  }
+};
+__name(_DIRuntimeConfigSync, "DIRuntimeConfigSync");
+_DIRuntimeConfigSync.dependencies = [runtimeConfigToken, platformNotificationPortToken];
+let DIRuntimeConfigSync = _DIRuntimeConfigSync;
 const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
-  constructor(settings, runtimeConfig, notifications, i18n, logger, validator) {
+  constructor(settings, runtimeConfigSync, notifications, i18n, logger, validator) {
     this.settings = settings;
-    this.runtimeConfig = runtimeConfig;
+    this.runtimeConfigSync = runtimeConfigSync;
     this.notifications = notifications;
     this.i18n = i18n;
     this.logger = logger;
@@ -14535,7 +14599,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       logLevelSetting,
       runtimeConfigBindings[SETTING_KEYS.LOG_LEVEL],
       this.settings,
-      this.runtimeConfig,
+      this.runtimeConfigSync,
       this.notifications,
       this.i18n,
       this.logger,
@@ -14545,7 +14609,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       cacheEnabledSetting,
       runtimeConfigBindings[SETTING_KEYS.CACHE_ENABLED],
       this.settings,
-      this.runtimeConfig,
+      this.runtimeConfigSync,
       this.notifications,
       this.i18n,
       this.logger,
@@ -14555,7 +14619,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       cacheDefaultTtlSetting,
       runtimeConfigBindings[SETTING_KEYS.CACHE_TTL_MS],
       this.settings,
-      this.runtimeConfig,
+      this.runtimeConfigSync,
       this.notifications,
       this.i18n,
       this.logger,
@@ -14565,7 +14629,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       cacheMaxEntriesSetting,
       runtimeConfigBindings[SETTING_KEYS.CACHE_MAX_ENTRIES],
       this.settings,
-      this.runtimeConfig,
+      this.runtimeConfigSync,
       this.notifications,
       this.i18n,
       this.logger,
@@ -14575,7 +14639,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       performanceTrackingSetting,
       runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED],
       this.settings,
-      this.runtimeConfig,
+      this.runtimeConfigSync,
       this.notifications,
       this.i18n,
       this.logger,
@@ -14585,7 +14649,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       performanceSamplingSetting,
       runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_SAMPLING_RATE],
       this.settings,
-      this.runtimeConfig,
+      this.runtimeConfigSync,
       this.notifications,
       this.i18n,
       this.logger,
@@ -14595,7 +14659,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       metricsPersistenceEnabledSetting,
       runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_ENABLED],
       this.settings,
-      this.runtimeConfig,
+      this.runtimeConfigSync,
       this.notifications,
       this.i18n,
       this.logger,
@@ -14605,41 +14669,16 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       metricsPersistenceKeySetting,
       runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY],
       this.settings,
-      this.runtimeConfig,
+      this.runtimeConfigSync,
       this.notifications,
       this.i18n,
       this.logger,
       this.validator
     );
   }
-  attachRuntimeConfigBridge(config2, runtimeConfig, binding) {
-    const originalOnChange = config2.onChange;
-    return {
-      ...config2,
-      onChange: /* @__PURE__ */ __name((value2) => {
-        const normalized = binding.normalize(value2);
-        runtimeConfig.setFromFoundry(binding.runtimeKey, normalized);
-        originalOnChange?.(value2);
-      }, "onChange")
-    };
-  }
-  syncRuntimeConfigFromSettings(settings, runtimeConfig, binding, notifications, settingKey) {
-    const currentValue = settings.getSettingValue(
-      MODULE_METADATA.ID,
-      settingKey,
-      binding.validator
-    );
-    if (!currentValue.ok) {
-      notifications.warn(`Failed to read initial value for ${settingKey}`, currentValue.error, {
-        channels: ["ConsoleChannel"]
-      });
-      return;
-    }
-    runtimeConfig.setFromFoundry(binding.runtimeKey, binding.normalize(currentValue.value));
-  }
-  registerDefinition(definition, binding, settings, runtimeConfig, notifications, i18n, logger, validator) {
+  registerDefinition(definition, binding, settings, runtimeConfigSync, notifications, i18n, logger, validator) {
     const config2 = definition.createConfig(i18n, logger, validator);
-    const configWithRuntimeBridge = binding ? this.attachRuntimeConfigBridge(config2, runtimeConfig, binding) : config2;
+    const configWithRuntimeBridge = binding ? runtimeConfigSync.attachBinding(config2, binding) : config2;
     const result = settings.registerSetting(
       MODULE_METADATA.ID,
       definition.key,
@@ -14657,27 +14696,21 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       return;
     }
     if (binding) {
-      this.syncRuntimeConfigFromSettings(
-        settings,
-        runtimeConfig,
-        binding,
-        notifications,
-        definition.key
-      );
+      runtimeConfigSync.syncInitialValue(settings, binding, definition.key);
     }
   }
 };
 __name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
 let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
 const _DIModuleSettingsRegistrar = class _DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
-  constructor(settings, runtimeConfig, notifications, i18n, logger, validator) {
-    super(settings, runtimeConfig, notifications, i18n, logger, validator);
+  constructor(settings, runtimeConfigSync, notifications, i18n, logger, validator) {
+    super(settings, runtimeConfigSync, notifications, i18n, logger, validator);
   }
 };
 __name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
 _DIModuleSettingsRegistrar.dependencies = [
   platformSettingsRegistrationPortToken,
-  runtimeConfigToken,
+  runtimeConfigSyncToken,
   platformNotificationPortToken,
   platformI18nPortToken,
   platformLoggingPortToken,
@@ -14685,6 +14718,14 @@ _DIModuleSettingsRegistrar.dependencies = [
 ];
 let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
 function registerRegistrars(container) {
+  const runtimeConfigSyncResult = container.registerClass(
+    runtimeConfigSyncToken,
+    DIRuntimeConfigSync,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(runtimeConfigSyncResult)) {
+    return err(`Failed to register RuntimeConfigSync: ${runtimeConfigSyncResult.error.message}`);
+  }
   const settingsRegistrarResult = container.registerClass(
     moduleSettingsRegistrarToken,
     DIModuleSettingsRegistrar,

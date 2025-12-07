@@ -62,3 +62,12 @@ export const journalContextMenuHandlersToken = createInjectionToken<any>(
 export const journalDirectoryProcessorToken = createInjectionToken<any>(
   "JournalDirectoryProcessor"
 );
+
+/**
+ * Injection token for the RuntimeConfigSync.
+ *
+ * Handles synchronization between Foundry Settings and RuntimeConfigService.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const runtimeConfigSyncToken = createInjectionToken<any>("RuntimeConfigSync");

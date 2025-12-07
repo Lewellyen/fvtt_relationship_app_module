@@ -1,6 +1,7 @@
 # SRP Refactoring Plan: JournalVisibilityService
 
 **Status:** ✅ Abgeschlossen
+**Abgeschlossen:** 2025-12-05 (v0.40.17)
 **Priorität:** 🔴 Hoch
 **Erstellt:** 2025-01-XX
 **Zweck:** Trennung der Verantwortlichkeiten in JournalVisibilityService
@@ -283,17 +284,17 @@ useCase.register();
 
 ## Checkliste
 
-- [ ] `JournalDirectoryProcessor` Klasse erstellen
-- [ ] DI-Wrapper und Token erstellen
-- [ ] In DI-Config registrieren
-- [ ] `JournalVisibilityService.processJournalDirectory()` entfernen
-- [ ] `JournalVisibilityService.sanitizeForLog()` entfernen
-- [ ] Use-Case aktualisieren
-- [ ] Unit-Tests für `JournalDirectoryProcessor` schreiben
-- [ ] Unit-Tests für `JournalVisibilityService` aktualisieren
-- [ ] Integration-Tests aktualisieren
-- [ ] API-Dokumentation aktualisieren
-- [ ] CHANGELOG.md aktualisieren
+- [x] `JournalDirectoryProcessor` Klasse erstellen
+- [x] DI-Wrapper und Token erstellen
+- [x] In DI-Config registrieren
+- [x] `JournalVisibilityService.processJournalDirectory()` entfernen
+- [x] `JournalVisibilityService.sanitizeForLog()` entfernen
+- [x] Use-Case aktualisieren
+- [x] Unit-Tests für `JournalDirectoryProcessor` schreiben
+- [x] Unit-Tests für `JournalVisibilityService` aktualisieren
+- [x] Integration-Tests aktualisieren
+- [x] API-Dokumentation aktualisieren
+- [x] CHANGELOG.md aktualisieren
 
 ---
 

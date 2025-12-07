@@ -18,7 +18,7 @@ Diese Übersicht dokumentiert alle identifizierten Single Responsibility Princip
 
 | # | Klasse | Priorität | Status | Refactoring-Plan |
 |---|--------|-----------|--------|------------------|
-| 1 | `JournalVisibilityService` | 🔴 Hoch | 📋 Geplant | [SRP-REFACTORING-01](./SRP-REFACTORING-01-JOURNAL-VISIBILITY-SERVICE.md) |
+| 1 | `JournalVisibilityService` | 🔴 Hoch | ✅ Abgeschlossen (v0.40.17) | [SRP-REFACTORING-01](./SRP-REFACTORING-01-JOURNAL-VISIBILITY-SERVICE.md) |
 | 2 | `ModuleSettingsRegistrar` | 🟡 Niedrig | 📋 Geplant | [SRP-REFACTORING-02](./SRP-REFACTORING-02-MODULE-SETTINGS-REGISTRAR.md) |
 | 3 | `CacheService` | 🟡 Mittel | 📋 Geplant | [SRP-REFACTORING-03](./SRP-REFACTORING-03-CACHE-SERVICE.md) |
 | 4 | `ServiceResolver` | 🟡 Niedrig | 📋 Geplant | [SRP-REFACTORING-04](./SRP-REFACTORING-04-SERVICE-RESOLVER.md) |
@@ -206,7 +206,7 @@ Diese Übersicht dokumentiert alle identifizierten Single Responsibility Princip
 
 | Refactoring | Status | Startdatum | Abschlussdatum | Notizen |
 |-------------|--------|------------|----------------|---------|
-| JournalVisibilityService | 📋 Geplant | - | - | - |
+| JournalVisibilityService | ✅ Abgeschlossen | 2025-12-05 | 2025-12-05 | JournalDirectoryProcessor extrahiert, processJournalDirectory() entfernt |
 | ModuleSettingsRegistrar | 📋 Geplant | - | - | - |
 | CacheService | 📋 Geplant | - | - | - |
 | ServiceResolver | 📋 Geplant | - | - | - |
@@ -215,5 +215,5 @@ Diese Übersicht dokumentiert alle identifizierten Single Responsibility Princip
 
 ---
 
-**Letzte Aktualisierung:** 2025-01-XX
+**Letzte Aktualisierung:** 2025-12-05
 

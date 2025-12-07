@@ -12,6 +12,30 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.20] - 2025-12-07
+### Hinzugefügt
+- **RuntimeConfigSync Service**: Neue Klasse für Synchronisation zwischen Foundry Settings und RuntimeConfigService ([Details](src/application/services/RuntimeConfigSync.ts))
+- Trennt RuntimeConfig-Synchronisation von Settings-Registrierung
+- Bietet `attachBinding()` zum Anhängen von RuntimeConfig-Bridges an Settings
+- Bietet `syncInitialValue()` zur initialen Synchronisation von Setting-Werten
+
+### Geändert
+- **ModuleSettingsRegistrar SRP-Refactoring**: RuntimeConfig-Synchronisation in separate RuntimeConfigSync-Klasse ausgelagert ([Details](src/application/services/ModuleSettingsRegistrar.ts))
+- `ModuleSettingsRegistrar` fokussiert sich nur noch auf Settings-Registrierung
+- `RuntimeConfigSync` übernimmt alle RuntimeConfig-Synchronisations-Logik
+- `RuntimeConfigBinding` Interface und `runtimeConfigBindings` nach RuntimeConfigSync verschoben
+- Verbesserte Testbarkeit durch isolierte Verantwortlichkeiten
+- Wiederverwendbare RuntimeConfig-Sync-Logik für andere Settings-Kontexte
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.19] - 2025-12-07
 ### Hinzugefügt
 - **Clean Architecture Analyse**: Vollständige Analyse der Schichtschranken mit konkreten Behebungsvorschlägen ([Details](docs/analysis/CLEAN_ARCHITECTURE_VIOLATIONS.md))
