@@ -6,6 +6,7 @@ import {
 } from "@/infrastructure/cache/CacheService";
 import type {
   CacheEntryMetadata,
+  CacheKey,
   CacheServiceConfig,
 } from "@/infrastructure/cache/cache.interface";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
@@ -162,6 +163,42 @@ describe("CacheService", () => {
     expect(service.getStatistics().evictions).toBe(0);
   });
 
+  it("invalidateWhere handles race condition where key is deleted before eviction", () => {
+    const keyA = buildCacheKey("race", "a");
+    const keyB = buildCacheKey("race", "b");
+
+    service.set(keyA, ["a"], { tags: ["test"] });
+    service.set(keyB, ["b"], { tags: ["test"] });
+
+    // Simulate race condition: keyA is in keysToEvict, but gets deleted between
+    // the predicate check and the actual delete() call (line 186: if (this.store.delete(key)))
+    const internal = service as unknown as {
+      store: Map<CacheKey, unknown>;
+    };
+
+    // Mock store.delete to return false for keyA (simulating it was already deleted)
+    const originalDelete = internal.store.delete.bind(internal.store);
+    let deleteCallCount = 0;
+    const mockDelete = vi.fn((key: CacheKey) => {
+      deleteCallCount++;
+      // On first delete call (keyA), return false to simulate race condition
+      if (deleteCallCount === 1 && key === keyA) {
+        return false;
+      }
+      return originalDelete(key);
+    });
+    internal.store.delete = mockDelete as typeof originalDelete;
+
+    const removed = service.invalidateWhere((meta) => meta.tags.includes("test"));
+
+    // keyA delete returned false (race condition), so only keyB should be removed
+    expect(removed).toBe(1);
+    expect(mockDelete).toHaveBeenCalledTimes(2); // keyA and keyB
+    expect(service.has(keyB)).toBe(false); // Was removed by invalidateWhere
+    // keyA still exists because delete() returned false
+    expect(service.has(keyA)).toBe(true);
+  });
+
   it("applies basic LRU eviction when maxEntries exceeded", () => {
     createService({ maxEntries: 1 });
     const keyA = buildCacheKey("hidden", "a");
@@ -172,6 +209,52 @@ describe("CacheService", () => {
 
     expect(service.has(keyA)).toBe(false);
     expect(service.has(keyB)).toBe(true);
+  });
+
+  it("enforceCapacity handles case where no evictions are needed (evicted === 0)", () => {
+    // To test the branch where evicted === 0 (line 284), we need to mock
+    // the capacityManager to return 0 even when size > maxEntries
+    createService({ maxEntries: 1 });
+    const keyA = buildCacheKey("capacity", "a");
+    const keyB = buildCacheKey("capacity", "b");
+
+    service.set(keyA, ["a"]);
+    // Now size is 1, which equals maxEntries, so enforceCapacity returns early
+    // We need to force it to call capacityManager.enforceCapacity() and return 0
+
+    const internal = service as unknown as {
+      capacityManager: { enforceCapacity: (maxEntries: number) => number };
+      config: { maxEntries?: number };
+      store: Map<CacheKey, unknown>;
+      enforceCapacity: () => void;
+    };
+
+    // Mock capacityManager to return 0 evictions even when size > maxEntries
+    const originalEnforceCapacity = internal.capacityManager.enforceCapacity;
+    internal.capacityManager.enforceCapacity = vi.fn().mockReturnValue(0);
+
+    // Manually add another entry to make size > maxEntries
+    internal.store.set(keyB, {
+      value: ["b"],
+      expiresAt: null,
+      metadata: {
+        key: keyB,
+        createdAt: now,
+        expiresAt: null,
+        lastAccessedAt: now,
+        hits: 0,
+        tags: [],
+      },
+    });
+
+    // Now trigger enforceCapacity - it should call capacityManager, get 0, and skip the if branch
+    internal.enforceCapacity();
+
+    // Verify that capacityManager was called and returned 0
+    expect(internal.capacityManager.enforceCapacity).toHaveBeenCalledWith(1);
+
+    // Restore original
+    internal.capacityManager.enforceCapacity = originalEnforceCapacity;
   });
 
   it("handles defensive LRU guard without throwing when no entry is selected", () => {

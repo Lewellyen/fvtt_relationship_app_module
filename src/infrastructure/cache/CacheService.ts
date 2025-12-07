@@ -17,12 +17,11 @@ import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastr
 import { runtimeConfigToken } from "@/infrastructure/shared/tokens/core.tokens";
 import type { Result } from "@/domain/types/result";
 import { ok, err, fromPromise } from "@/domain/utils/result";
-
-type InternalCacheEntry = {
-  value: unknown;
-  expiresAt: number | null;
-  metadata: CacheEntryMetadata;
-};
+import type { InternalCacheEntry } from "./eviction-strategy.interface";
+import { CacheCapacityManager } from "./cache-capacity-manager";
+import { LRUEvictionStrategy } from "./lru-eviction-strategy";
+import type { CacheMetricsObserver } from "./cache-metrics-observer.interface";
+import { CacheMetricsCollector } from "./cache-metrics-collector";
 
 export const DEFAULT_CACHE_SERVICE_CONFIG: CacheServiceConfig = {
   enabled: true,
@@ -47,12 +46,16 @@ export class CacheService implements CacheServiceContract {
 
   private config: CacheServiceConfig;
   private runtimeConfigUnsubscribe: (() => void) | null = null;
+  private readonly capacityManager: CacheCapacityManager;
+  private readonly metricsObserver: CacheMetricsObserver;
 
   constructor(
     config: CacheServiceConfig = DEFAULT_CACHE_SERVICE_CONFIG,
     private readonly metricsCollector?: MetricsCollector,
     private readonly clock: () => number = () => Date.now(),
-    runtimeConfig?: RuntimeConfigService
+    runtimeConfig?: RuntimeConfigService,
+    capacityManager?: CacheCapacityManager,
+    metricsObserver?: CacheMetricsObserver
   ) {
     const resolvedMaxEntries =
       typeof config?.maxEntries === "number" && config.maxEntries > 0
@@ -65,6 +68,11 @@ export class CacheService implements CacheServiceContract {
       defaultTtlMs: clampTtl(config?.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs),
       ...(resolvedMaxEntries !== undefined ? { maxEntries: resolvedMaxEntries } : {}),
     };
+
+    // Initialize capacity manager and metrics observer (injectable for tests)
+    this.capacityManager =
+      capacityManager ?? new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
+    this.metricsObserver = metricsObserver ?? new CacheMetricsCollector(metricsCollector);
 
     this.bindRuntimeConfig(runtimeConfig);
   }
@@ -147,6 +155,7 @@ export class CacheService implements CacheServiceContract {
     const removed = this.store.delete(key);
     if (removed) {
       this.stats.evictions++;
+      this.metricsObserver.onCacheEviction(key);
     }
     return removed;
   }
@@ -164,10 +173,17 @@ export class CacheService implements CacheServiceContract {
     if (!this.isEnabled) return 0;
 
     let removed = 0;
+    const keysToEvict: CacheKey[] = [];
     for (const [key, entry] of this.store.entries()) {
       if (predicate(entry.metadata)) {
-        this.store.delete(key);
+        keysToEvict.push(key);
+      }
+    }
+
+    for (const key of keysToEvict) {
+      if (this.store.delete(key)) {
         removed++;
+        this.metricsObserver.onCacheEviction(key);
       }
     }
 
@@ -210,13 +226,13 @@ export class CacheService implements CacheServiceContract {
 
     const entry = this.store.get(key);
     if (!entry) {
-      this.recordMiss();
+      this.recordMiss(key);
       return null;
     }
 
     if (this.isExpired(entry)) {
       this.handleExpiration(key);
-      this.recordMiss();
+      this.recordMiss(key);
       return null;
     }
 
@@ -225,7 +241,7 @@ export class CacheService implements CacheServiceContract {
       entry.metadata.lastAccessedAt = this.clock();
     }
 
-    this.recordHit();
+    this.recordHit(key);
 
     return {
       hit: true,
@@ -234,19 +250,20 @@ export class CacheService implements CacheServiceContract {
     };
   }
 
-  private recordHit(): void {
-    this.metricsCollector?.recordCacheAccess(true);
+  private recordHit(key: CacheKey): void {
+    this.metricsObserver.onCacheHit(key);
     this.stats.hits++;
   }
 
-  private recordMiss(): void {
-    this.metricsCollector?.recordCacheAccess(false);
+  private recordMiss(key: CacheKey): void {
+    this.metricsObserver.onCacheMiss(key);
     this.stats.misses++;
   }
 
   private handleExpiration(key: CacheKey): void {
     if (this.store.delete(key)) {
       this.stats.evictions++;
+      this.metricsObserver.onCacheEviction(key);
     }
   }
 
@@ -261,23 +278,11 @@ export class CacheService implements CacheServiceContract {
       return;
     }
 
-    while (this.store.size > this.config.maxEntries) {
-      let lruKey: CacheKey | null = null;
-      let oldestTimestamp = Number.POSITIVE_INFINITY;
-
-      for (const [key, entry] of this.store.entries()) {
-        if (entry.metadata.lastAccessedAt < oldestTimestamp) {
-          oldestTimestamp = entry.metadata.lastAccessedAt;
-          lruKey = key;
-        }
-      }
-
-      if (!lruKey) {
-        break;
-      }
-
-      this.store.delete(lruKey);
-      this.stats.evictions++;
+    const evicted = this.capacityManager.enforceCapacity(this.config.maxEntries);
+    if (evicted > 0) {
+      this.stats.evictions += evicted;
+      // Note: Individual eviction notifications are handled by CacheCapacityManager
+      // if needed, but for now we track via stats only
     }
   }
 
@@ -362,9 +367,14 @@ export class CacheService implements CacheServiceContract {
 
   private clearStore(): number {
     const removed = this.store.size;
+    const keysToEvict = Array.from(this.store.keys());
     this.store.clear();
     if (removed > 0) {
       this.stats.evictions += removed;
+      // Notify about each evicted key
+      for (const key of keysToEvict) {
+        this.metricsObserver.onCacheEviction(key);
+      }
     }
     return removed;
   }
