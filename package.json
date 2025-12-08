@@ -89,7 +89,7 @@
     "eslint-plugin-handlebars": "^1.0.4",
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-svelte": "^3.13.0",
-    "fvtt-types": "^13.346.0-beta.20251128075456",
+    "fvtt-types": "^13.346.0-beta.20251208062556",
     "happy-dom": "^20.0.11",
     "madge": "^8.0.0",
     "patch-package": "^8.0.0",
