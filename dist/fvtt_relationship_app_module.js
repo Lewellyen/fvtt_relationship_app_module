@@ -12999,6 +12999,7 @@ function registerUtilityServices(container) {
 __name(registerUtilityServices, "registerUtilityServices");
 const cacheServiceConfigToken = createInjectionToken("CacheServiceConfig");
 const cacheServiceToken = createInjectionToken("CacheService");
+const cacheConfigSyncToken = createInjectionToken("CacheConfigSync");
 function toStringKeyArray(allowed) {
   return allowed;
 }
@@ -13124,7 +13125,7 @@ function clampTtl(ttl, fallback2) {
 }
 __name(clampTtl, "clampTtl");
 const _CacheService = class _CacheService {
-  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG, metricsCollector, clock = () => Date.now(), runtimeConfig, capacityManager, metricsObserver) {
+  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG, metricsCollector, clock = () => Date.now(), capacityManager, metricsObserver) {
     this.metricsCollector = metricsCollector;
     this.clock = clock;
     this.store = /* @__PURE__ */ new Map();
@@ -13133,7 +13134,6 @@ const _CacheService = class _CacheService {
       misses: 0,
       evictions: 0
     };
-    this.runtimeConfigUnsubscribe = null;
     const resolvedMaxEntries = typeof config2?.maxEntries === "number" && config2.maxEntries > 0 ? config2.maxEntries : void 0;
     this.config = {
       ...DEFAULT_CACHE_SERVICE_CONFIG,
@@ -13143,7 +13143,6 @@ const _CacheService = class _CacheService {
     };
     this.capacityManager = capacityManager ?? new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
     this.metricsObserver = metricsObserver ?? new CacheMetricsCollector(metricsCollector);
-    this.bindRuntimeConfig(runtimeConfig);
   }
   get isEnabled() {
     return this.config.enabled;
@@ -13324,6 +13323,12 @@ const _CacheService = class _CacheService {
       tags: [...metadata2.tags]
     };
   }
+  /**
+   * Updates the cache service configuration at runtime.
+   * Used by CacheConfigSync to synchronize RuntimeConfig changes.
+   *
+   * @param partial - Partial configuration to merge with existing config
+   */
   updateConfig(partial2) {
     const merged = {
       ...this.config,
@@ -13338,35 +13343,6 @@ const _CacheService = class _CacheService {
     if (typeof this.config.maxEntries === "number") {
       this.enforceCapacity();
     }
-  }
-  bindRuntimeConfig(runtimeConfig) {
-    if (!runtimeConfig) {
-      return;
-    }
-    this.runtimeConfigUnsubscribe?.();
-    const unsubscribers = [];
-    unsubscribers.push(
-      runtimeConfig.onChange("enableCacheService", (enabled) => {
-        this.updateConfig({ enabled });
-      })
-    );
-    unsubscribers.push(
-      runtimeConfig.onChange("cacheDefaultTtlMs", (ttl) => {
-        this.updateConfig({ defaultTtlMs: ttl });
-      })
-    );
-    unsubscribers.push(
-      runtimeConfig.onChange("cacheMaxEntries", (maxEntries2) => {
-        this.updateConfig({
-          maxEntries: typeof maxEntries2 === "number" && maxEntries2 > 0 ? maxEntries2 : void 0
-        });
-      })
-    );
-    this.runtimeConfigUnsubscribe = () => {
-      for (const unsubscribe of unsubscribers) {
-        unsubscribe();
-      }
-    };
   }
   clearStore() {
     const removed = this.store.size;
@@ -13384,17 +13360,72 @@ const _CacheService = class _CacheService {
 __name(_CacheService, "CacheService");
 let CacheService = _CacheService;
 const _DICacheService = class _DICacheService extends CacheService {
-  constructor(config2, metrics, runtimeConfig) {
-    super(config2, metrics, void 0, runtimeConfig);
+  constructor(config2, metrics) {
+    super(config2, metrics);
   }
 };
 __name(_DICacheService, "DICacheService");
-_DICacheService.dependencies = [
-  cacheServiceConfigToken,
-  metricsCollectorToken,
-  runtimeConfigToken
-];
+_DICacheService.dependencies = [cacheServiceConfigToken, metricsCollectorToken];
 let DICacheService = _DICacheService;
+const _CacheConfigSync = class _CacheConfigSync {
+  constructor(runtimeConfig, cache) {
+    this.runtimeConfig = runtimeConfig;
+    this.cache = cache;
+    this.unsubscribe = null;
+  }
+  /**
+   * Binds RuntimeConfig changes to CacheService.
+   * Returns unsubscribe function for cleanup.
+   *
+   * @returns Unsubscribe function to clean up all subscriptions
+   */
+  bind() {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
+    const unsubscribers = [];
+    unsubscribers.push(
+      this.runtimeConfig.onChange("enableCacheService", (enabled) => {
+        this.cache.updateConfig({ enabled });
+      })
+    );
+    unsubscribers.push(
+      this.runtimeConfig.onChange("cacheDefaultTtlMs", (ttl) => {
+        this.cache.updateConfig({ defaultTtlMs: ttl });
+      })
+    );
+    unsubscribers.push(
+      this.runtimeConfig.onChange("cacheMaxEntries", (maxEntries2) => {
+        this.cache.updateConfig({
+          maxEntries: typeof maxEntries2 === "number" && maxEntries2 > 0 ? maxEntries2 : void 0
+        });
+      })
+    );
+    this.unsubscribe = () => {
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe();
+      }
+      this.unsubscribe = null;
+    };
+    return this.unsubscribe;
+  }
+  /**
+   * Unbinds RuntimeConfig synchronization.
+   */
+  unbind() {
+    this.unsubscribe?.();
+  }
+};
+__name(_CacheConfigSync, "CacheConfigSync");
+let CacheConfigSync = _CacheConfigSync;
+const _DICacheConfigSync = class _DICacheConfigSync extends CacheConfigSync {
+  constructor(runtimeConfig, cache) {
+    super(runtimeConfig, cache);
+  }
+};
+__name(_DICacheConfigSync, "DICacheConfigSync");
+_DICacheConfigSync.dependencies = [runtimeConfigToken, cacheServiceToken];
+let DICacheConfigSync = _DICacheConfigSync;
 const _CachePortAdapter = class _CachePortAdapter {
   constructor(cacheService) {
     this.cacheService = cacheService;
@@ -13570,9 +13601,27 @@ function registerCacheServices(container) {
   if (isErr(cachePortResult)) {
     return err(`Failed to register PlatformCachePort: ${cachePortResult.error.message}`);
   }
+  const configSyncResult = container.registerClass(
+    cacheConfigSyncToken,
+    DICacheConfigSync,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(configSyncResult)) {
+    return err(`Failed to register CacheConfigSync: ${configSyncResult.error.message}`);
+  }
   return ok(void 0);
 }
 __name(registerCacheServices, "registerCacheServices");
+function initializeCacheConfigSync(container) {
+  const configSyncResult = container.resolveWithError(cacheConfigSyncToken);
+  if (!configSyncResult.ok) {
+    return ok(void 0);
+  }
+  const configSync = configSyncResult.value;
+  configSync.bind();
+  return ok(void 0);
+}
+__name(initializeCacheConfigSync, "initializeCacheConfigSync");
 const foundryI18nToken = createInjectionToken("FoundryI18nPort");
 const localI18nToken = createInjectionToken("LocalI18nService");
 const foundryTranslationHandlerToken = createInjectionToken(
@@ -16665,6 +16714,8 @@ function configureDependencies(container) {
   if (isErr(validationResult)) return validationResult;
   const loopPreventionInitResult = initializeLoopPreventionValues(container);
   if (isErr(loopPreventionInitResult)) return loopPreventionInitResult;
+  const cacheConfigSyncInitResult = initializeCacheConfigSync(container);
+  if (isErr(cacheConfigSyncInitResult)) return cacheConfigSyncInitResult;
   return ok(void 0);
 }
 __name(configureDependencies, "configureDependencies");

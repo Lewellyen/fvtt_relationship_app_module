@@ -5,9 +5,11 @@ import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycl
 import { platformCachePortToken } from "@/application/tokens/domain-ports.tokens";
 import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
 import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service.token";
+import { cacheConfigSyncToken } from "@/infrastructure/shared/tokens/infrastructure/cache-config-sync.token";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import type { CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import { DICacheService } from "@/infrastructure/cache/CacheService";
+import { DICacheConfigSync, type CacheConfigSync } from "@/infrastructure/cache/CacheConfigSync";
 import { DICachePortAdapter } from "@/infrastructure/adapters/cache/platform-cache-port-adapter";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
@@ -59,6 +61,37 @@ export function registerCacheServices(container: ServiceContainer): Result<void,
   if (isErr(cachePortResult)) {
     return err(`Failed to register PlatformCachePort: ${cachePortResult.error.message}`);
   }
+
+  // Register CacheConfigSync
+  const configSyncResult = container.registerClass(
+    cacheConfigSyncToken,
+    DICacheConfigSync,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(configSyncResult)) {
+    return err(`Failed to register CacheConfigSync: ${configSyncResult.error.message}`);
+  }
+
+  return ok(undefined);
+}
+
+/**
+ * Initializes CacheConfigSync binding after container validation.
+ * This ensures all dependencies are resolved before activating the binding.
+ *
+ * @param container - Service container with validated dependencies
+ * @returns Result indicating success or initialization errors
+ */
+export function initializeCacheConfigSync(container: ServiceContainer): Result<void, string> {
+  const configSyncResult = container.resolveWithError<CacheConfigSync>(cacheConfigSyncToken);
+  if (!configSyncResult.ok) {
+    // If CacheConfigSync is not available, it's not critical - binding will be skipped
+    // This allows the system to work without RuntimeConfig synchronization
+    return ok(undefined);
+  }
+
+  const configSync = configSyncResult.value;
+  configSync.bind();
 
   return ok(undefined);
 }

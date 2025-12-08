@@ -13,9 +13,6 @@ import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
-import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
-import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
-import { LogLevel } from "@/domain/types/log-level";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 
 const buildCacheKey = createCacheNamespace("journal", MODULE_METADATA.ID);
@@ -446,20 +443,7 @@ describe("CacheService", () => {
     expect(metadata.tags).toEqual(["A", "a"]);
   });
 
-  it("reacts to runtime config updates", () => {
-    const runtimeConfig = new RuntimeConfigService({
-      isDevelopment: false,
-      isProduction: true,
-      logLevel: LogLevel.INFO,
-      enablePerformanceTracking: false,
-      performanceSamplingRate: 1,
-      enableMetricsPersistence: false,
-      metricsPersistenceKey: "cache-metrics",
-      enableCacheService: true,
-      cacheDefaultTtlMs: 1000,
-      cacheMaxEntries: 2,
-    });
-
+  it("updates config via updateConfig method", () => {
     const dynamicCache = new CacheService(
       {
         enabled: true,
@@ -468,63 +452,39 @@ describe("CacheService", () => {
         maxEntries: 2,
       },
       metrics,
-      () => now,
-      runtimeConfig
+      () => now
     );
 
     const keyA = buildCacheKey("dynamic", "a");
     const keyB = buildCacheKey("dynamic", "b");
 
     dynamicCache.set(keyA, ["entry-a"]);
-    runtimeConfig.setFromFoundry("enableCacheService", false);
+    dynamicCache.updateConfig({ enabled: false });
     expect(dynamicCache.isEnabled).toBe(false);
     expect(dynamicCache.get<string[]>(keyA)).toBeNull();
 
-    runtimeConfig.setFromFoundry("enableCacheService", true);
+    dynamicCache.updateConfig({ enabled: true });
     dynamicCache.set(keyA, ["entry-a"]);
     expect(dynamicCache.get<string[]>(keyA)).not.toBeNull();
 
-    runtimeConfig.setFromFoundry("cacheDefaultTtlMs", 50);
+    dynamicCache.updateConfig({ defaultTtlMs: 50 });
     dynamicCache.set(keyA, ["entry-ttl"]);
     now += 100;
     expect(dynamicCache.get<string[]>(keyA)).toBeNull();
 
-    runtimeConfig.setFromFoundry("cacheMaxEntries", 1);
+    dynamicCache.updateConfig({ maxEntries: 1 });
     dynamicCache.set(keyA, ["entry-a"]);
     dynamicCache.set(keyB, ["entry-b"]);
     expect(dynamicCache.has(keyA)).toBe(false);
     expect(dynamicCache.has(keyB)).toBe(true);
 
-    // When cacheMaxEntries is set to a non-positive number, the config
-    // should drop the maxEntries setting (defensive branch in updateConfig).
-    runtimeConfig.setFromFoundry("cacheMaxEntries", 0);
+    // When cacheMaxEntries is set to undefined, the config should drop the maxEntries setting
+    dynamicCache.updateConfig({ maxEntries: undefined });
     dynamicCache.set(keyA, ["entry-reset-a"]);
     dynamicCache.set(keyB, ["entry-reset-b"]);
-
-    // Trigger the unsubscribe handler to cover the runtimeConfigUnsubscribe
-    // closure created during bindRuntimeConfig, and then re-bind with a new
-    // RuntimeConfigService to exercise the optional chaining branch.
-    const anyCache = dynamicCache as unknown as {
-      runtimeConfigUnsubscribe: () => void;
-      bindRuntimeConfig: (config: RuntimeConfigService) => void;
-    };
-    expect(() => {
-      anyCache.runtimeConfigUnsubscribe();
-      anyCache.bindRuntimeConfig(
-        new RuntimeConfigService({
-          isDevelopment: false,
-          isProduction: true,
-          logLevel: LogLevel.INFO,
-          enablePerformanceTracking: false,
-          performanceSamplingRate: 1,
-          enableMetricsPersistence: false,
-          metricsPersistenceKey: "cache-metrics-2",
-          enableCacheService: true,
-          cacheDefaultTtlMs: 500,
-          cacheMaxEntries: 3,
-        })
-      );
-    }).not.toThrow();
+    // Both should be present now (no limit)
+    expect(dynamicCache.has(keyA)).toBe(true);
+    expect(dynamicCache.has(keyB)).toBe(true);
   });
 
   it("DI wrapper exposes dependencies and forwards constructor args", () => {
@@ -534,27 +494,11 @@ describe("CacheService", () => {
         defaultTtlMs: 1,
         namespace: "test",
       },
-      metrics,
-      new RuntimeConfigService({
-        isDevelopment: false,
-        isProduction: true,
-        logLevel: LogLevel.INFO,
-        enablePerformanceTracking: false,
-        performanceSamplingRate: 1,
-        enableMetricsPersistence: false,
-        metricsPersistenceKey: "cache-metrics",
-        enableCacheService: true,
-        cacheDefaultTtlMs: 1,
-        cacheMaxEntries: undefined,
-      })
+      metrics
     );
 
     expect(wrapper.isEnabled).toBe(true);
-    expect(DICacheService.dependencies).toEqual([
-      cacheServiceConfigToken,
-      metricsCollectorToken,
-      runtimeConfigToken,
-    ]);
+    expect(DICacheService.dependencies).toEqual([cacheServiceConfigToken, metricsCollectorToken]);
   });
 
   it("falls back to default clock when none provided", () => {

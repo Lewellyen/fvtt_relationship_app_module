@@ -903,5 +903,22 @@ describe("dependencyconfig", () => {
 
       registerClassSpy.mockRestore();
     });
+
+    it("should propagate errors from initializeCacheConfigSync", async () => {
+      const container = createTestContainer();
+
+      // Mock initializeCacheConfigSync to return an error
+      const cacheServicesModule = await import("@/framework/config/modules/cache-services.config");
+      vi.spyOn(cacheServicesModule, "initializeCacheConfigSync").mockReturnValue(
+        err("Failed to initialize CacheConfigSync: Mocked error")
+      );
+
+      const result = configureDependencies(container);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error).toContain("CacheConfigSync");
+      }
+    });
   });
 });

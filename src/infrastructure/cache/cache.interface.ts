@@ -99,6 +99,11 @@ export interface CacheService {
     factory: () => TValue | Promise<TValue>,
     options?: CacheSetOptions
   ): Promise<Result<CacheLookupResult<TValue>, string>>;
+  /**
+   * Updates the cache service configuration at runtime.
+   * Used by CacheConfigSync to synchronize RuntimeConfig changes.
+   */
+  updateConfig(partial: Partial<CacheServiceConfig>): void;
 }
 
 /**

@@ -27,7 +27,10 @@ import {
 } from "@/framework/config/modules/port-infrastructure.config";
 import { registerFoundryServices } from "@/framework/config/modules/foundry-services.config";
 import { registerUtilityServices } from "@/framework/config/modules/utility-services.config";
-import { registerCacheServices } from "@/framework/config/modules/cache-services.config";
+import {
+  registerCacheServices,
+  initializeCacheConfigSync,
+} from "@/framework/config/modules/cache-services.config";
 import { registerI18nServices } from "@/framework/config/modules/i18n-services.config";
 import { registerNotifications } from "@/framework/config/modules/notifications.config";
 import { registerRegistrars } from "@/framework/config/modules/registrars.config";
@@ -248,6 +251,9 @@ export function configureDependencies(container: ServiceContainer): Result<void,
 
   const loopPreventionInitResult = initializeLoopPreventionValues(container);
   if (isErr(loopPreventionInitResult)) return loopPreventionInitResult;
+
+  const cacheConfigSyncInitResult = initializeCacheConfigSync(container);
+  if (isErr(cacheConfigSyncInitResult)) return cacheConfigSyncInitResult;
 
   return ok(undefined);
 }

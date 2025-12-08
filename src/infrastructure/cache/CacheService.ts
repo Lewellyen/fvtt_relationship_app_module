@@ -10,11 +10,9 @@ import type {
   CacheStatistics,
 } from "./cache.interface";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { castCacheValue } from "@/infrastructure/di/types/utilities/type-casts";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
-import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import type { Result } from "@/domain/types/result";
 import { ok, err, fromPromise } from "@/domain/utils/result";
 import type { InternalCacheEntry } from "./eviction-strategy.interface";
@@ -45,7 +43,6 @@ export class CacheService implements CacheServiceContract {
   };
 
   private config: CacheServiceConfig;
-  private runtimeConfigUnsubscribe: (() => void) | null = null;
   private readonly capacityManager: CacheCapacityManager;
   private readonly metricsObserver: CacheMetricsObserver;
 
@@ -53,7 +50,6 @@ export class CacheService implements CacheServiceContract {
     config: CacheServiceConfig = DEFAULT_CACHE_SERVICE_CONFIG,
     private readonly metricsCollector?: MetricsCollector,
     private readonly clock: () => number = () => Date.now(),
-    runtimeConfig?: RuntimeConfigService,
     capacityManager?: CacheCapacityManager,
     metricsObserver?: CacheMetricsObserver
   ) {
@@ -73,8 +69,6 @@ export class CacheService implements CacheServiceContract {
     this.capacityManager =
       capacityManager ?? new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
     this.metricsObserver = metricsObserver ?? new CacheMetricsCollector(metricsCollector);
-
-    this.bindRuntimeConfig(runtimeConfig);
   }
 
   get isEnabled(): boolean {
@@ -312,7 +306,13 @@ export class CacheService implements CacheServiceContract {
     };
   }
 
-  private updateConfig(partial: Partial<CacheServiceConfig>): void {
+  /**
+   * Updates the cache service configuration at runtime.
+   * Used by CacheConfigSync to synchronize RuntimeConfig changes.
+   *
+   * @param partial - Partial configuration to merge with existing config
+   */
+  public updateConfig(partial: Partial<CacheServiceConfig>): void {
     const merged: CacheServiceConfig = {
       ...this.config,
       ...partial,
@@ -332,39 +332,6 @@ export class CacheService implements CacheServiceContract {
     }
   }
 
-  private bindRuntimeConfig(runtimeConfig?: RuntimeConfigService): void {
-    if (!runtimeConfig) {
-      return;
-    }
-
-    this.runtimeConfigUnsubscribe?.();
-
-    const unsubscribers: Array<() => void> = [];
-    unsubscribers.push(
-      runtimeConfig.onChange("enableCacheService", (enabled) => {
-        this.updateConfig({ enabled });
-      })
-    );
-    unsubscribers.push(
-      runtimeConfig.onChange("cacheDefaultTtlMs", (ttl) => {
-        this.updateConfig({ defaultTtlMs: ttl });
-      })
-    );
-    unsubscribers.push(
-      runtimeConfig.onChange("cacheMaxEntries", (maxEntries) => {
-        this.updateConfig({
-          maxEntries: typeof maxEntries === "number" && maxEntries > 0 ? maxEntries : undefined,
-        });
-      })
-    );
-
-    this.runtimeConfigUnsubscribe = () => {
-      for (const unsubscribe of unsubscribers) {
-        unsubscribe();
-      }
-    };
-  }
-
   private clearStore(): number {
     const removed = this.store.size;
     const keysToEvict = Array.from(this.store.keys());
@@ -381,17 +348,9 @@ export class CacheService implements CacheServiceContract {
 }
 
 export class DICacheService extends CacheService {
-  static dependencies = [
-    cacheServiceConfigToken,
-    metricsCollectorToken,
-    runtimeConfigToken,
-  ] as const;
+  static dependencies = [cacheServiceConfigToken, metricsCollectorToken] as const;
 
-  constructor(
-    config: CacheServiceConfig,
-    metrics: MetricsCollector,
-    runtimeConfig: RuntimeConfigService
-  ) {
-    super(config, metrics, undefined, runtimeConfig);
+  constructor(config: CacheServiceConfig, metrics: MetricsCollector) {
+    super(config, metrics);
   }
 }

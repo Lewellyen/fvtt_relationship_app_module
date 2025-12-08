@@ -12,6 +12,31 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.31] - 2025-12-08
+### Hinzugefügt
+- **SRP-Refactoring-Dokumentationen**: Detaillierte Analysen für alle identifizierten SRP-Findings ([Details](docs/refactoring/))
+- `srp-cacheservice-runtimeconfig-binding.md`: CacheService RuntimeConfig-Binding Refactoring (Priorität: Niedrig)
+- `srp-module-settings-registrar-analysis.md`: ModuleSettingsRegistrar SRP-Analyse (Keine Änderung erforderlich)
+- `srp-service-container-facade-validation.md`: ServiceContainer Facade Pattern Validierung (Keine Änderung erforderlich)
+- `srp-port-selector-analysis.md`: PortSelector Struktur-Analyse (Keine Änderung erforderlich)
+- `srp-configure-dependencies-analysis.md`: configureDependencies Orchestrierung-Analyse (Keine Änderung erforderlich)
+
+### Geändert
+- **CacheService SRP-Refactoring**: RuntimeConfig-Synchronisation aus `CacheService` in separaten `CacheConfigSync` Service ausgelagert ([Details](docs/refactoring/srp-cacheservice-runtimeconfig-binding.md))
+- `CacheService` hat keine direkte RuntimeConfig-Abhängigkeit mehr
+- `updateConfig()` ist jetzt public und Teil des CacheService-Interfaces
+- `CacheConfigSync` übernimmt die Synchronisation zwischen RuntimeConfig und CacheService
+- DI-Konfiguration: `CacheConfigSync` wird automatisch nach Container-Validierung initialisiert
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.30] - 2025-12-08
 ### Hinzugefügt
 - Keine Einträge
