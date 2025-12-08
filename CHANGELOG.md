@@ -12,6 +12,24 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.29] - 2025-12-08
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Dokumentations-Aufräumung**: Veraltete SRP-Refactoring-Dokumente aus dem Archiv entfernt (SRP-REFACTORING-05-METRICS-COLLECTOR.md, SRP-REFACTORING-06-PORT-SELECTOR.md, SRP-REFACTORING-OVERVIEW.md)
+- **Zeilenende-Normalisierung**: Test-Dateien und FoundryErrors.ts auf CRLF normalisiert für konsistente Zeilenenden in Windows-Umgebung
+- **package-lock.json**: Version auf 0.40.28 aktualisiert
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.28] - 2025-12-08
 ### Hinzugefügt
 - **Domänengrenzen-Prüfung mit ESLint**: ESLint-Regel `import/no-restricted-paths` wurde konfiguriert, um Clean Architecture Domänengrenzen automatisch zu prüfen ([Details](eslint.config.mjs))
