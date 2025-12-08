@@ -5,6 +5,7 @@
 ### Hinzugefügt
 
 ### Geändert
+- **Code-Qualität**: Ungenutzte Variable `UTF8_BOM` aus `scripts/remove-bom.mjs` entfernt ([Details](scripts/remove-bom.mjs))
 
 ### Fehlerbehebungen
 
