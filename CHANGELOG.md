@@ -12,6 +12,25 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.32] - 2025-12-08
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **ModuleSettingsRegistrar SRP-Refactoring**: Fehler-Mapping aus `ModuleSettingsRegistrar` in separate `SettingRegistrationErrorMapper` Komponente extrahiert ([Details](docs/refactoring/01-module-settings-registrar-error-mapping.md))
+- `SettingRegistrationErrorMapper` übernimmt ausschließlich das Mapping von `DomainSettingsError` zu Notification-Format
+- `ModuleSettingsRegistrar` ist jetzt fokussiert auf Settings-Registrierung und RuntimeConfig-Synchronisation
+- DI-Konfiguration: `SettingRegistrationErrorMapper` wird als Singleton registriert und an `ModuleSettingsRegistrar` injiziert
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.31] - 2025-12-08
 ### Hinzugefügt
 - **SRP-Refactoring-Dokumentationen**: Detaillierte Analysen für alle identifizierten SRP-Findings ([Details](docs/refactoring/))

@@ -8,12 +8,16 @@ import {
 } from "@/application/services/ModuleSettingsRegistrar";
 import { runtimeConfigBindings } from "@/application/services/RuntimeConfigSync";
 import { RuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
+import { SettingRegistrationErrorMapper } from "@/application/services/SettingRegistrationErrorMapper";
 import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
-import { runtimeConfigSyncToken } from "@/application/tokens/application.tokens";
+import {
+  runtimeConfigSyncToken,
+  settingRegistrationErrorMapperToken,
+} from "@/application/tokens/application.tokens";
 import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
   platformNotificationPortToken,
@@ -79,9 +83,11 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformValidationPort;
 
       const mockRuntimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSync,
+        errorMapper,
         mockNotifications,
         mockI18n,
         mockLogger,
@@ -133,9 +139,11 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformValidationPort;
 
       const mockRuntimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSync,
+        errorMapper,
         mockNotifications,
         mockI18n,
         mockLogger,
@@ -183,9 +191,11 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformValidationPort;
 
       const mockRuntimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSync,
+        errorMapper,
         mockNotifications,
         mockI18n,
         mockLogger,
@@ -208,7 +218,7 @@ describe("ModuleSettingsRegistrar", () => {
       vi.spyOn(mockSettings, "registerSetting").mockImplementation((...args: unknown[]) => {
         const [, key] = args as [unknown, string];
         if (key === SETTING_KEYS.LOG_LEVEL) {
-          return err({ code: "OPERATION_FAILED", message: "Registration failed" });
+          return err({ code: "SETTING_REGISTRATION_FAILED", message: "Registration failed" });
         }
         return ok(undefined);
       });
@@ -231,9 +241,11 @@ describe("ModuleSettingsRegistrar", () => {
         mockRuntimeConfig,
         mockNotificationCenter
       );
+      const errorMapper = new SettingRegistrationErrorMapper(mockNotificationCenter);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSync,
+        errorMapper,
         mockNotificationCenter,
         mockI18n,
         mockLogger,
@@ -244,7 +256,7 @@ describe("ModuleSettingsRegistrar", () => {
       expect(errorSpy).toHaveBeenCalledWith(
         "Failed to register logLevel setting",
         expect.objectContaining({
-          code: "OPERATION_FAILED",
+          code: "SETTING_REGISTRATION_FAILED",
         }),
         { channels: ["ConsoleChannel"] }
       );
@@ -273,9 +285,11 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformValidationPort;
 
       const mockRuntimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSync,
+        errorMapper,
         mockNotifications,
         mockI18n,
         mockLogger,
@@ -326,9 +340,11 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformValidationPort;
 
       const mockRuntimeConfigSync = new RuntimeConfigSync(runtimeConfig, mockNotifications);
+      const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSync,
+        errorMapper,
         mockNotifications,
         mockI18n,
         mockLogger,
@@ -382,9 +398,11 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformValidationPort;
 
       const mockRuntimeConfigSync = new RuntimeConfigSync(runtimeConfig, mockNotifications);
+      const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSync,
+        errorMapper,
         mockNotifications,
         mockI18n,
         mockLogger,
@@ -433,9 +451,11 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformValidationPort;
 
       const mockRuntimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSync,
+        errorMapper,
         mockNotifications,
         mockI18n,
         mockLogger,
@@ -461,9 +481,10 @@ describe("ModuleSettingsRegistrar", () => {
         undefined, // No binding
         mockSettings,
         mockRuntimeConfig,
-        mockNotifications,
+        errorMapper,
         mockI18n,
-        mockLogger
+        mockLogger,
+        mockValidator
       );
 
       // Should still register the setting even without binding
@@ -480,6 +501,7 @@ describe("ModuleSettingsRegistrar DI metadata", () => {
     expect(DIModuleSettingsRegistrar.dependencies).toEqual([
       platformSettingsRegistrationPortToken,
       runtimeConfigSyncToken,
+      settingRegistrationErrorMapperToken,
       platformNotificationPortToken,
       platformI18nPortToken,
       platformLoggingPortToken,

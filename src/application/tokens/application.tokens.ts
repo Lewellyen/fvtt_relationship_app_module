@@ -71,3 +71,15 @@ export const journalDirectoryProcessorToken = createInjectionToken<any>(
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
 export const runtimeConfigSyncToken = createInjectionToken<any>("RuntimeConfigSync");
+
+/**
+ * Injection token for the SettingRegistrationErrorMapper.
+ *
+ * Maps DomainSettingsError to notification format.
+ * Single Responsibility: Only handles error format conversion and notification.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const settingRegistrationErrorMapperToken = createInjectionToken<any>(
+  "SettingRegistrationErrorMapper"
+);

@@ -8846,6 +8846,9 @@ const journalDirectoryProcessorToken = createInjectionToken(
   "JournalDirectoryProcessor"
 );
 const runtimeConfigSyncToken = createInjectionToken("RuntimeConfigSync");
+const settingRegistrationErrorMapperToken = createInjectionToken(
+  "SettingRegistrationErrorMapper"
+);
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 const foundryGameToken = createInjectionToken("FoundryGame");
 const foundryHooksToken = createInjectionToken("FoundryHooks");
@@ -14888,9 +14891,10 @@ __name(_DIRuntimeConfigSync, "DIRuntimeConfigSync");
 _DIRuntimeConfigSync.dependencies = [runtimeConfigToken, platformNotificationPortToken];
 let DIRuntimeConfigSync = _DIRuntimeConfigSync;
 const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
-  constructor(settings, runtimeConfigSync, notifications, i18n, logger, validator) {
+  constructor(settings, runtimeConfigSync, errorMapper, notifications, i18n, logger, validator) {
     this.settings = settings;
     this.runtimeConfigSync = runtimeConfigSync;
+    this.errorMapper = errorMapper;
     this.notifications = notifications;
     this.i18n = i18n;
     this.logger = logger;
@@ -14908,7 +14912,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.LOG_LEVEL],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -14918,7 +14922,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.CACHE_ENABLED],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -14928,7 +14932,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.CACHE_TTL_MS],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -14938,7 +14942,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.CACHE_MAX_ENTRIES],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -14948,7 +14952,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -14958,7 +14962,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_SAMPLING_RATE],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -14968,7 +14972,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_ENABLED],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -14978,13 +14982,13 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
     );
   }
-  registerDefinition(definition, binding, settings, runtimeConfigSync, notifications, i18n, logger, validator) {
+  registerDefinition(definition, binding, settings, runtimeConfigSync, errorMapper, i18n, logger, validator) {
     const config2 = definition.createConfig(i18n, logger, validator);
     const configWithRuntimeBridge = binding ? runtimeConfigSync.attachBinding(config2, binding) : config2;
     const result = settings.registerSetting(
@@ -14993,14 +14997,7 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
       configWithRuntimeBridge
     );
     if (!result.ok) {
-      const error = {
-        code: result.error.code,
-        message: result.error.message,
-        ...result.error.details !== void 0 && { details: result.error.details }
-      };
-      notifications.error(`Failed to register ${definition.key} setting`, error, {
-        channels: ["ConsoleChannel"]
-      });
+      errorMapper.mapAndNotify(result.error, definition.key);
       return;
     }
     if (binding) {
@@ -15011,20 +15008,46 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
 __name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
 let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
 const _DIModuleSettingsRegistrar = class _DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
-  constructor(settings, runtimeConfigSync, notifications, i18n, logger, validator) {
-    super(settings, runtimeConfigSync, notifications, i18n, logger, validator);
+  constructor(settings, runtimeConfigSync, errorMapper, notifications, i18n, logger, validator) {
+    super(settings, runtimeConfigSync, errorMapper, notifications, i18n, logger, validator);
   }
 };
 __name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
 _DIModuleSettingsRegistrar.dependencies = [
   platformSettingsRegistrationPortToken,
   runtimeConfigSyncToken,
+  settingRegistrationErrorMapperToken,
   platformNotificationPortToken,
   platformI18nPortToken,
   platformLoggingPortToken,
   platformValidationPortToken
 ];
 let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
+const _SettingRegistrationErrorMapper = class _SettingRegistrationErrorMapper {
+  constructor(notifications) {
+    this.notifications = notifications;
+  }
+  mapAndNotify(error, settingKey) {
+    const notificationError = {
+      code: error.code,
+      message: error.message,
+      ...error.details !== void 0 && { details: error.details }
+    };
+    this.notifications.error(`Failed to register ${settingKey} setting`, notificationError, {
+      channels: ["ConsoleChannel"]
+    });
+  }
+};
+__name(_SettingRegistrationErrorMapper, "SettingRegistrationErrorMapper");
+let SettingRegistrationErrorMapper = _SettingRegistrationErrorMapper;
+const _DISettingRegistrationErrorMapper = class _DISettingRegistrationErrorMapper extends SettingRegistrationErrorMapper {
+  constructor(notifications) {
+    super(notifications);
+  }
+};
+__name(_DISettingRegistrationErrorMapper, "DISettingRegistrationErrorMapper");
+_DISettingRegistrationErrorMapper.dependencies = [platformNotificationPortToken];
+let DISettingRegistrationErrorMapper = _DISettingRegistrationErrorMapper;
 function registerRegistrars(container) {
   const runtimeConfigSyncResult = container.registerClass(
     runtimeConfigSyncToken,
@@ -15033,6 +15056,16 @@ function registerRegistrars(container) {
   );
   if (isErr(runtimeConfigSyncResult)) {
     return err(`Failed to register RuntimeConfigSync: ${runtimeConfigSyncResult.error.message}`);
+  }
+  const errorMapperResult = container.registerClass(
+    settingRegistrationErrorMapperToken,
+    DISettingRegistrationErrorMapper,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(errorMapperResult)) {
+    return err(
+      `Failed to register SettingRegistrationErrorMapper: ${errorMapperResult.error.message}`
+    );
   }
   const settingsRegistrarResult = container.registerClass(
     moduleSettingsRegistrarToken,

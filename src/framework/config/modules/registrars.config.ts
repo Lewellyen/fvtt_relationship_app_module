@@ -3,9 +3,13 @@ import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
-import { runtimeConfigSyncToken } from "@/application/tokens/application.tokens";
+import {
+  runtimeConfigSyncToken,
+  settingRegistrationErrorMapperToken,
+} from "@/application/tokens/application.tokens";
 import { DIModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
 import { DIRuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
+import { DISettingRegistrationErrorMapper } from "@/application/services/SettingRegistrationErrorMapper";
 
 /**
  * Registers registrar services.
@@ -32,6 +36,18 @@ export function registerRegistrars(container: ServiceContainer): Result<void, st
   );
   if (isErr(runtimeConfigSyncResult)) {
     return err(`Failed to register RuntimeConfigSync: ${runtimeConfigSyncResult.error.message}`);
+  }
+
+  // Register SettingRegistrationErrorMapper (required by ModuleSettingsRegistrar)
+  const errorMapperResult = container.registerClass(
+    settingRegistrationErrorMapperToken,
+    DISettingRegistrationErrorMapper,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(errorMapperResult)) {
+    return err(
+      `Failed to register SettingRegistrationErrorMapper: ${errorMapperResult.error.message}`
+    );
   }
 
   // Register ModuleSettingsRegistrar

@@ -14,7 +14,10 @@ import type { PlatformNotificationPort } from "@/domain/ports/platform-notificat
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
-import { runtimeConfigSyncToken } from "@/application/tokens/application.tokens";
+import {
+  runtimeConfigSyncToken,
+  settingRegistrationErrorMapperToken,
+} from "@/application/tokens/application.tokens";
 import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
   platformNotificationPortToken,
@@ -27,6 +30,7 @@ import type {
   RuntimeConfigBinding,
 } from "@/application/services/RuntimeConfigSync";
 import { runtimeConfigBindings } from "@/application/services/RuntimeConfigSync";
+import type { SettingRegistrationErrorMapper } from "./SettingRegistrationErrorMapper";
 
 /**
  * ModuleSettingsRegistrar
@@ -49,6 +53,7 @@ export class ModuleSettingsRegistrar {
   constructor(
     private readonly settings: PlatformSettingsRegistrationPort,
     private readonly runtimeConfigSync: RuntimeConfigSync,
+    private readonly errorMapper: SettingRegistrationErrorMapper,
     private readonly notifications: PlatformNotificationPort,
     private readonly i18n: PlatformI18nPort,
     private readonly logger: PlatformLoggingPort,
@@ -68,7 +73,7 @@ export class ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.LOG_LEVEL],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -78,7 +83,7 @@ export class ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.CACHE_ENABLED],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -88,7 +93,7 @@ export class ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.CACHE_TTL_MS],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -98,7 +103,7 @@ export class ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.CACHE_MAX_ENTRIES],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -108,7 +113,7 @@ export class ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -118,7 +123,7 @@ export class ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_SAMPLING_RATE],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -128,7 +133,7 @@ export class ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_ENABLED],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -138,7 +143,7 @@ export class ModuleSettingsRegistrar {
       runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY],
       this.settings,
       this.runtimeConfigSync,
-      this.notifications,
+      this.errorMapper,
       this.i18n,
       this.logger,
       this.validator
@@ -150,7 +155,7 @@ export class ModuleSettingsRegistrar {
     binding: RuntimeConfigBinding<TSchema, K> | undefined,
     settings: PlatformSettingsRegistrationPort,
     runtimeConfigSync: RuntimeConfigSync,
-    notifications: PlatformNotificationPort,
+    errorMapper: SettingRegistrationErrorMapper,
     i18n: PlatformI18nPort,
     logger: PlatformLoggingPort,
     validator: PlatformValidationPort
@@ -167,15 +172,7 @@ export class ModuleSettingsRegistrar {
     );
 
     if (!result.ok) {
-      // Convert DomainSettingsError to PlatformNotificationPort's error format
-      const error: { code: string; message: string; [key: string]: unknown } = {
-        code: result.error.code,
-        message: result.error.message,
-        ...(result.error.details !== undefined && { details: result.error.details }),
-      };
-      notifications.error(`Failed to register ${definition.key} setting`, error, {
-        channels: ["ConsoleChannel"],
-      });
+      errorMapper.mapAndNotify(result.error, definition.key);
       return;
     }
 
@@ -189,6 +186,7 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   static dependencies = [
     platformSettingsRegistrationPortToken,
     runtimeConfigSyncToken,
+    settingRegistrationErrorMapperToken,
     platformNotificationPortToken,
     platformI18nPortToken,
     platformLoggingPortToken,
@@ -198,11 +196,12 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   constructor(
     settings: PlatformSettingsRegistrationPort,
     runtimeConfigSync: RuntimeConfigSync,
+    errorMapper: SettingRegistrationErrorMapper,
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
     logger: PlatformLoggingPort,
     validator: PlatformValidationPort
   ) {
-    super(settings, runtimeConfigSync, notifications, i18n, logger, validator);
+    super(settings, runtimeConfigSync, errorMapper, notifications, i18n, logger, validator);
   }
 }
