@@ -2,6 +2,7 @@ import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
 import sveltePlugin from 'eslint-plugin-svelte';
 import svelteParser from 'svelte-eslint-parser';
+import importPlugin from 'eslint-plugin-import';
 
 export default [
   {
@@ -12,14 +13,15 @@ export default [
       parserOptions: {
         projectService: true, // Verbessert Performance durch Caching - ersetzt 'project'
         sourceType: 'module',
-        tsconfigRootDir: import.meta.dirname || process.cwd()
-      }
-    },
-    plugins: {
-      '@typescript-eslint': typescript
-    },
-    rules: {
-      ...typescript.configs.recommended.rules,
+      tsconfigRootDir: import.meta.dirname || process.cwd()
+    }
+  },
+  plugins: {
+    '@typescript-eslint': typescript,
+    'import': importPlugin
+  },
+  rules: {
+    ...typescript.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -38,6 +40,53 @@ export default [
       }],
       'prefer-const': 'error',
       'eqeqeq': ['error', 'always'],
+
+      // 👇 Domänengrenzen-Prüfung (Clean Architecture)
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            // Domain Layer darf NICHT von anderen Layern abhängen
+            {
+              target: './src/domain/**',
+              from: './src/application/**',
+              message: 'Domain Layer darf nicht von Application Layer abhängen (Clean Architecture Verletzung)',
+            },
+            {
+              target: './src/domain/**',
+              from: './src/infrastructure/**',
+              message: 'Domain Layer darf nicht von Infrastructure Layer abhängen (Clean Architecture Verletzung)',
+            },
+            {
+              target: './src/domain/**',
+              from: './src/framework/**',
+              message: 'Domain Layer darf nicht von Framework Layer abhängen (Clean Architecture Verletzung)',
+            },
+            // Application Layer darf NICHT von Infrastructure/Framework abhängen (außer Port-Interfaces)
+            {
+              target: './src/application/**',
+              from: './src/infrastructure/**',
+              except: [
+                './src/infrastructure/adapters/foundry/interfaces/**', // Port-Interfaces erlauben
+                './src/infrastructure/adapters/foundry/ports/**', // Port-Interfaces erlauben
+                './src/infrastructure/shared/tokens/**', // Tokens erlauben
+              ],
+              message: 'Application Layer darf nicht direkt von Infrastructure Layer abhängen (nur Port-Interfaces und Tokens erlaubt)',
+            },
+            {
+              target: './src/application/**',
+              from: './src/framework/**',
+              message: 'Application Layer darf nicht von Framework Layer abhängen (Clean Architecture Verletzung)',
+            },
+            // Infrastructure Layer darf NICHT von Framework abhängen
+            {
+              target: './src/infrastructure/**',
+              from: './src/framework/**',
+              message: 'Infrastructure Layer darf nicht von Framework Layer abhängen (Clean Architecture Verletzung)',
+            },
+          ],
+        },
+      ],
 
       // 👇 Namenskonventionen für lesbaren, konsistenten Code
       '@typescript-eslint/naming-convention': [

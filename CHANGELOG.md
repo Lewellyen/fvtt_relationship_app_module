@@ -12,6 +12,31 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.28] - 2025-12-08
+### Hinzugefügt
+- **Domänengrenzen-Prüfung mit ESLint**: ESLint-Regel `import/no-restricted-paths` wurde konfiguriert, um Clean Architecture Domänengrenzen automatisch zu prüfen ([Details](eslint.config.mjs))
+- Domain Layer darf nicht von Application/Infrastructure/Framework importieren
+- Application Layer darf nicht von Framework importieren (nur Port-Interfaces und Tokens von Infrastructure erlaubt)
+- Infrastructure Layer darf nicht von Framework importieren
+- **Test-Utilities für Domänengrenzen-Prüfung**: Neue Test-Utilities zur Laufzeit-Prüfung von Domänengrenzen-Verletzungen ([Details](src/test/utils/domain-boundary-checker.ts))
+- `checkDomainBoundary()`: Prüft einzelne Importe auf Domänengrenzen-Verletzungen
+- `validateAllDomainBoundaries()`: Prüft alle Dateien im Projekt auf Verletzungen
+- Unterstützt ES6 imports, dynamic imports und require()
+- **npm Script für Domänengrenzen-Prüfung**: Neues Script `check:domain-boundaries` für manuelle Prüfung ([Details](package.json))
+- **Integration in Prüf-Sequenz**: Domänengrenzen-Prüfung wurde in `check:all` und `check-all` integriert ([Details](scripts/run-checks-sequential.mjs))
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.27] - 2025-12-08
 ### Hinzugefügt
 - **Token-Factory im Domain-Layer**: `createInjectionToken` Funktion wurde in den Domain-Layer verschoben (`src/domain/utils/token-factory.ts`), da InjectionTokens framework-unabhängig sind und Teil der DI-Infrastruktur zur Verbindung von Implementierungen mit Domain-Contracts ([Details](src/domain/utils/token-factory.ts))

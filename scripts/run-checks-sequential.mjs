@@ -26,6 +26,7 @@ const readOnlyChecks = [
   'type-coverage',
   'test:coverage',
   'check:no-ignores',
+  'check:domain-boundaries',
   'analyze:circular',
 ];
 
@@ -41,6 +42,7 @@ const writeChecks = [
   'type-coverage',
   'test:coverage',
   'check:no-ignores',
+  'check:domain-boundaries',
   'analyze:circular',
 ];
 
