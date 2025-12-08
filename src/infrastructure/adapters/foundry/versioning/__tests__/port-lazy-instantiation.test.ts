@@ -10,6 +10,8 @@ import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/ver
 import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
+import type { FoundryVersionDetector } from "@/infrastructure/adapters/foundry/versioning/foundry-version-detector";
+import { ok as resultOk } from "@/domain/utils/result";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -56,7 +58,15 @@ describe("PortSelector - Lazy Instantiation", () => {
     } as any;
 
     const mockEventEmitter = new PortSelectionEventEmitter();
-    const selector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    const mockVersionDetector: FoundryVersionDetector = {
+      getVersion: vi.fn().mockReturnValue(resultOk(13)),
+    } as any;
+    const selector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
     const result = selector.selectPortFromTokens(tokens, 13);
 
     expectResultOk(result);
@@ -78,13 +88,51 @@ describe("PortSelector - Lazy Instantiation", () => {
 
     const tokens = new Map([[14, token14]]) as any;
     const mockEventEmitter = new PortSelectionEventEmitter();
-    const selector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    const mockVersionDetector: FoundryVersionDetector = {
+      getVersion: vi.fn().mockReturnValue(resultOk(13)),
+    } as any;
+    const selector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
 
     const result = selector.selectPortFromTokens(tokens, 14);
 
     expectResultErr(result);
-    expect(result.error.code).toBe("PORT_SELECTION_FAILED");
-    expect(result.error.message).toContain("Failed to resolve port v14 from container");
+    expect(result.error.code).toBe("PORT_RESOLUTION_FAILED");
+    expect(result.error.message).toContain("Failed to resolve port from container");
+  });
+
+  it("should handle non-Error exceptions during container resolution", () => {
+    const token13 = createInjectionToken<unknown>("port-v13") as any;
+
+    const mockContainer = {
+      resolveWithError: vi.fn(() => {
+        // Throw a non-Error value to test the else branch in catch block
+        throw "String error";
+      }),
+    } as any;
+
+    const tokens = new Map([[13, token13]]) as any;
+    const mockEventEmitter = new PortSelectionEventEmitter();
+    const mockVersionDetector: FoundryVersionDetector = {
+      getVersion: vi.fn().mockReturnValue(resultOk(13)),
+    } as any;
+    const selector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
+
+    const result = selector.selectPortFromTokens(tokens, 13);
+
+    expectResultErr(result);
+    expect(result.error.code).toBe("PORT_RESOLUTION_FAILED");
+    expect(result.error.message).toContain("Failed to resolve port from container");
+    expect(result.error.cause).toBeInstanceOf(Error);
   });
 
   it("should select highest compatible version", () => {
@@ -110,7 +158,15 @@ describe("PortSelector - Lazy Instantiation", () => {
     ]) as any;
 
     const mockEventEmitter = new PortSelectionEventEmitter();
-    const selector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    const mockVersionDetector: FoundryVersionDetector = {
+      getVersion: vi.fn().mockReturnValue(resultOk(13)),
+    } as any;
+    const selector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
     const result = selector.selectPortFromTokens(tokens, 13);
 
     expectResultOk(result);
@@ -139,7 +195,15 @@ describe("PortSelector - Lazy Instantiation", () => {
     ]) as any;
 
     const mockEventEmitter = new PortSelectionEventEmitter();
-    const selector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    const mockVersionDetector: FoundryVersionDetector = {
+      getVersion: vi.fn().mockReturnValue(resultOk(13)),
+    } as any;
+    const selector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
     const result = selector.selectPortFromTokens(tokens, 13);
 
     expectResultErr(result);
@@ -163,12 +227,21 @@ describe("PortSelector - Lazy Instantiation", () => {
     } as any;
 
     const mockEventEmitter = new PortSelectionEventEmitter();
-    const selector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    const getVersionSpy = vi.fn().mockReturnValue(resultOk(13));
+    const mockVersionDetector: FoundryVersionDetector = {
+      getVersion: getVersionSpy,
+    } as any;
+    const selector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
     const result = selector.selectPortFromTokens(tokens);
 
     expectResultOk(result);
     expect((result.value as any).version).toBe(13);
-    expect(getFoundryVersionResult).toHaveBeenCalled();
+    expect(getVersionSpy).toHaveBeenCalled();
   });
 
   it("should handle version detection errors", async () => {
@@ -184,7 +257,15 @@ describe("PortSelector - Lazy Instantiation", () => {
     } as any;
 
     const mockEventEmitter = new PortSelectionEventEmitter();
-    const selector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    const mockVersionDetector: FoundryVersionDetector = {
+      getVersion: vi.fn().mockReturnValue(err("Version detection failed")),
+    } as any;
+    const selector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
     const result = selector.selectPortFromTokens(tokens);
 
     expectResultErr(result);

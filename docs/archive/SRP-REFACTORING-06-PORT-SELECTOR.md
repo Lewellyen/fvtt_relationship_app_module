@@ -1,8 +1,9 @@
 # SRP Refactoring Plan: PortSelector
 
-**Status:** 📋 Geplant
+**Status:** ✅ Erledigt
 **Priorität:** 🟡 Niedrig
 **Erstellt:** 2025-01-XX
+**Abgeschlossen:** 2025-01-XX
 **Zweck:** Trennung der Port-Auswahl von Version-Detection
 
 ---
@@ -360,24 +361,28 @@ export class CachedVersionDetector extends FoundryVersionDetector {
 
 ## Checkliste
 
-- [ ] `FoundryVersionDetector` Klasse erstellen
-- [ ] DI-Wrapper und Token erstellen
-- [ ] In DI-Config registrieren
-- [ ] `PortResolutionStrategy` erstellen (optional)
-- [ ] `PortSelector` refactoren
-- [ ] Version-Detection via `FoundryVersionDetector` verwenden
-- [ ] Container-Resolution via `PortResolutionStrategy` verwenden
-- [ ] Unit-Tests für `FoundryVersionDetector` schreiben
-- [ ] Unit-Tests für `PortSelector` aktualisieren
-- [ ] Integration-Tests aktualisieren
+- [x] `FoundryVersionDetector` Klasse erstellen
+- [x] DI-Wrapper und Token erstellen
+- [x] In DI-Config registrieren
+- [x] `PortResolutionStrategy` erstellen (optional)
+- [x] `PortSelector` refactoren
+- [x] Version-Detection via `FoundryVersionDetector` verwenden
+- [x] Container-Resolution via `PortResolutionStrategy` verwenden
+- [x] Unit-Tests für `FoundryVersionDetector` schreiben
+- [x] Unit-Tests für `PortSelector` aktualisieren
+- [x] Integration-Tests aktualisieren
 - [ ] CHANGELOG.md aktualisieren
 
 ---
 
 ## Referenzen
 
-- **Aktuelle Implementierung:** `src/infrastructure/adapters/foundry/versioning/portselector.ts`
-- **Version Detector:** `src/infrastructure/adapters/foundry/versioning/versiondetector.ts`
+- **PortSelector:** `src/infrastructure/adapters/foundry/versioning/portselector.ts`
+- **FoundryVersionDetector:** `src/infrastructure/adapters/foundry/versioning/foundry-version-detector.ts`
+- **PortResolutionStrategy:** `src/infrastructure/adapters/foundry/versioning/port-resolution-strategy.ts`
+- **Version Detector (Low-Level):** `src/infrastructure/adapters/foundry/versioning/versiondetector.ts`
 - **Port Selection Events:** `src/infrastructure/adapters/foundry/versioning/port-selection-events.ts`
 - **ServiceContainer:** `src/infrastructure/di/container.ts`
+- **DI-Config:** `src/framework/config/modules/port-infrastructure.config.ts`
+- **Tests:** `src/infrastructure/adapters/foundry/versioning/__tests__/foundry-version-detector.test.ts`
 

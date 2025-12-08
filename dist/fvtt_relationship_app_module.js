@@ -10174,43 +10174,61 @@ const foundrySettingsPortRegistryToken = createInjectionToken$1(
   "FoundrySettingsPortRegistry"
 );
 const foundryI18nPortRegistryToken = createInjectionToken$1("FoundryI18nPortRegistry");
-let cachedVersion = null;
-function detectFoundryVersion() {
-  if (typeof game === "undefined") {
-    return err("Foundry game object is not available or version cannot be determined");
-  }
-  const versionString = game.version;
-  if (!versionString) {
-    return err("Foundry version is not available on the game object");
-  }
-  const versionStr = versionString.match(/^(\d+)/)?.[1];
-  if (!versionStr) {
-    return err(`Could not parse Foundry version from: ${versionString}`);
-  }
-  return ok(Number.parseInt(versionStr, 10));
-}
-__name(detectFoundryVersion, "detectFoundryVersion");
-function getFoundryVersionResult() {
-  if (cachedVersion === null) {
-    cachedVersion = detectFoundryVersion();
-  }
-  return cachedVersion;
-}
-__name(getFoundryVersionResult, "getFoundryVersionResult");
-function resetVersionCache() {
-  cachedVersion = null;
-}
-__name(resetVersionCache, "resetVersionCache");
-function tryGetFoundryVersion() {
-  const result = getFoundryVersionResult();
-  return result.ok ? result.value : void 0;
-}
-__name(tryGetFoundryVersion, "tryGetFoundryVersion");
-const _PortSelector = class _PortSelector {
-  constructor(eventEmitter, observability, container) {
-    this.eventEmitter = eventEmitter;
+const foundryVersionDetectorToken = createInjectionToken$1("FoundryVersionDetector");
+const _PortResolutionStrategy = class _PortResolutionStrategy {
+  constructor(container) {
     this.container = container;
+  }
+  /**
+   * Resolves a port from the DI container using the provided injection token.
+   *
+   * @template T - The port type
+   * @param token - The injection token for the port
+   * @returns Result with resolved port or FoundryError
+   *
+   * @example
+   * ```typescript
+   * const strategy = new PortResolutionStrategy(container);
+   * const portResult = strategy.resolve(foundryV13GamePortToken);
+   * if (portResult.ok) {
+   *   const port = portResult.value;
+   * }
+   * ```
+   */
+  resolve(token) {
+    try {
+      const resolveResult = this.container.resolveWithError(token);
+      if (!resolveResult.ok) {
+        return err(
+          createFoundryError(
+            "PORT_RESOLUTION_FAILED",
+            `Failed to resolve port from container`,
+            { token: String(token) },
+            resolveResult.error
+          )
+        );
+      }
+      return ok(castResolvedService(resolveResult.value));
+    } catch (error) {
+      return err(
+        createFoundryError(
+          "PORT_RESOLUTION_FAILED",
+          `Failed to resolve port from container`,
+          { token: String(token) },
+          error instanceof Error ? error : new Error(String(error))
+        )
+      );
+    }
+  }
+};
+__name(_PortResolutionStrategy, "PortResolutionStrategy");
+let PortResolutionStrategy = _PortResolutionStrategy;
+const _PortSelector = class _PortSelector {
+  constructor(versionDetector, eventEmitter, observability, container) {
+    this.versionDetector = versionDetector;
+    this.eventEmitter = eventEmitter;
     observability.registerPortSelector(this);
+    this.resolutionStrategy = new PortResolutionStrategy(container);
   }
   /**
    * Subscribe to port selection events.
@@ -10265,7 +10283,7 @@ const _PortSelector = class _PortSelector {
     if (foundryVersion !== void 0) {
       version = foundryVersion;
     } else {
-      const versionResult = getFoundryVersionResult();
+      const versionResult = this.versionDetector.getVersion();
       if (!versionResult.ok) {
         return err(
           createFoundryError(
@@ -10305,66 +10323,115 @@ const _PortSelector = class _PortSelector {
       });
       return err(error);
     }
-    try {
-      const resolveResult = this.container.resolveWithError(selectedToken);
-      if (!resolveResult.ok) {
-        const foundryError = createFoundryError(
-          "PORT_SELECTION_FAILED",
-          `Failed to resolve port v${selectedVersion} from container`,
-          { selectedVersion },
-          resolveResult.error
-        );
-        this.eventEmitter.emit({
-          type: "failure",
-          foundryVersion: version,
-          availableVersions: Array.from(tokens.keys()).sort((a, b) => a - b).join(", "),
-          ...adapterName !== void 0 ? { adapterName } : {},
-          error: foundryError
-        });
-        return err(foundryError);
-      }
-      const port = castResolvedService(resolveResult.value);
-      const durationMs = performance.now() - startTime;
-      this.eventEmitter.emit({
-        type: "success",
-        selectedVersion,
-        foundryVersion: version,
-        ...adapterName !== void 0 ? { adapterName } : {},
-        durationMs
-      });
-      return ok(port);
-    } catch (error) {
-      const foundryError = createFoundryError(
-        "PORT_SELECTION_FAILED",
-        `Failed to resolve port v${selectedVersion} from container`,
-        { selectedVersion },
-        error
-      );
+    const portResult = this.resolutionStrategy.resolve(selectedToken);
+    if (!portResult.ok) {
       this.eventEmitter.emit({
         type: "failure",
         foundryVersion: version,
         availableVersions: Array.from(tokens.keys()).sort((a, b) => a - b).join(", "),
         ...adapterName !== void 0 ? { adapterName } : {},
-        error: foundryError
+        error: portResult.error
       });
-      return err(foundryError);
+      return err(portResult.error);
     }
+    const durationMs = performance.now() - startTime;
+    this.eventEmitter.emit({
+      type: "success",
+      selectedVersion,
+      foundryVersion: version,
+      ...adapterName !== void 0 ? { adapterName } : {},
+      durationMs
+    });
+    return ok(portResult.value);
   }
 };
 __name(_PortSelector, "PortSelector");
 let PortSelector = _PortSelector;
 const _DIPortSelector = class _DIPortSelector extends PortSelector {
-  constructor(eventEmitter, observability, container) {
-    super(eventEmitter, observability, container);
+  constructor(versionDetector, eventEmitter, observability, container) {
+    super(versionDetector, eventEmitter, observability, container);
   }
 };
 __name(_DIPortSelector, "DIPortSelector");
 _DIPortSelector.dependencies = [
+  foundryVersionDetectorToken,
   portSelectionEventEmitterToken,
   observabilityRegistryToken,
   serviceContainerToken
 ];
 let DIPortSelector = _DIPortSelector;
+let cachedVersion = null;
+function detectFoundryVersion() {
+  if (typeof game === "undefined") {
+    return err("Foundry game object is not available or version cannot be determined");
+  }
+  const versionString = game.version;
+  if (!versionString) {
+    return err("Foundry version is not available on the game object");
+  }
+  const versionStr = versionString.match(/^(\d+)/)?.[1];
+  if (!versionStr) {
+    return err(`Could not parse Foundry version from: ${versionString}`);
+  }
+  return ok(Number.parseInt(versionStr, 10));
+}
+__name(detectFoundryVersion, "detectFoundryVersion");
+function getFoundryVersionResult() {
+  if (cachedVersion === null) {
+    cachedVersion = detectFoundryVersion();
+  }
+  return cachedVersion;
+}
+__name(getFoundryVersionResult, "getFoundryVersionResult");
+function resetVersionCache() {
+  cachedVersion = null;
+}
+__name(resetVersionCache, "resetVersionCache");
+function tryGetFoundryVersion() {
+  const result = getFoundryVersionResult();
+  return result.ok ? result.value : void 0;
+}
+__name(tryGetFoundryVersion, "tryGetFoundryVersion");
+const _FoundryVersionDetector = class _FoundryVersionDetector {
+  /**
+   * Gets the major version number of the currently running Foundry VTT instance.
+   *
+   * @returns Result with major version number (e.g., 13 for "13.348") or FoundryError
+   *
+   * @example
+   * ```typescript
+   * const detector = new FoundryVersionDetector();
+   * const versionResult = detector.getVersion();
+   * if (versionResult.ok) {
+   *   console.log(`Foundry version: ${versionResult.value}`);
+   * }
+   * ```
+   */
+  getVersion() {
+    const versionResult = getFoundryVersionResult();
+    if (!versionResult.ok) {
+      return err(
+        createFoundryError(
+          "VERSION_DETECTION_FAILED",
+          "Could not determine Foundry version",
+          void 0,
+          versionResult.error
+        )
+      );
+    }
+    return ok(versionResult.value);
+  }
+};
+__name(_FoundryVersionDetector, "FoundryVersionDetector");
+let FoundryVersionDetector = _FoundryVersionDetector;
+const _DIFoundryVersionDetector = class _DIFoundryVersionDetector extends FoundryVersionDetector {
+  constructor() {
+    super();
+  }
+};
+__name(_DIFoundryVersionDetector, "DIFoundryVersionDetector");
+_DIFoundryVersionDetector.dependencies = [];
+let DIFoundryVersionDetector = _DIFoundryVersionDetector;
 const _PortRegistry = class _PortRegistry {
   constructor() {
     this.tokens = /* @__PURE__ */ new Map();
@@ -11509,6 +11576,14 @@ function createPortRegistries(container) {
 }
 __name(createPortRegistries, "createPortRegistries");
 function registerPortInfrastructure(container) {
+  const versionDetectorResult = container.registerClass(
+    foundryVersionDetectorToken,
+    DIFoundryVersionDetector,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(versionDetectorResult)) {
+    return err(`Failed to register FoundryVersionDetector: ${versionDetectorResult.error.message}`);
+  }
   const portSelectorResult = container.registerClass(
     portSelectorToken,
     DIPortSelector,

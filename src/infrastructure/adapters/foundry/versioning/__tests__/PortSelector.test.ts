@@ -13,6 +13,8 @@ import type { ObservabilityRegistry } from "@/infrastructure/observability/obser
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
+import type { FoundryVersionDetector } from "@/infrastructure/adapters/foundry/versioning/foundry-version-detector";
+import { ok as resultOk } from "@/domain/utils/result";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -49,7 +51,15 @@ describe("PortSelector", () => {
       }),
     } as any;
 
-    selector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    const mockVersionDetector: FoundryVersionDetector = {
+      getVersion: vi.fn().mockReturnValue(resultOk(13)),
+    } as any;
+    selector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
     capturedEvents = [];
     // Subscribe to events for testing
     selector.onEvent((event) => capturedEvents.push(event));
@@ -69,9 +79,17 @@ describe("PortSelector", () => {
         [15, token15],
       ]) as any;
 
-      vi.mocked(getFoundryVersionResult).mockReturnValue(ok(14));
+      const mockVersionDetectorV14: FoundryVersionDetector = {
+        getVersion: vi.fn().mockReturnValue(resultOk(14)),
+      } as any;
+      const selectorV14 = new PortSelector(
+        mockVersionDetectorV14,
+        mockEventEmitter,
+        mockObservability,
+        mockContainer
+      );
 
-      const result = selector.selectPortFromTokens(tokens);
+      const result = selectorV14.selectPortFromTokens(tokens);
       expectResultOk(result);
       expect(result.value).toBe("port-v14");
       expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token14);
@@ -135,21 +153,38 @@ describe("PortSelector", () => {
     it("should detect Foundry version when not provided", () => {
       const tokens = new Map([[13, token13]]) as any;
 
-      vi.mocked(getFoundryVersionResult).mockReturnValue(ok(13));
+      const getVersionSpy = vi.fn().mockReturnValue(resultOk(13));
+      const mockVersionDetectorWithSpy: FoundryVersionDetector = {
+        getVersion: getVersionSpy,
+      } as any;
+      const selectorWithSpy = new PortSelector(
+        mockVersionDetectorWithSpy,
+        mockEventEmitter,
+        mockObservability,
+        mockContainer
+      );
 
-      const result = selector.selectPortFromTokens(tokens);
+      const result = selectorWithSpy.selectPortFromTokens(tokens);
       expectResultOk(result);
       expect(result.value).toBe("port-v13");
-      expect(getFoundryVersionResult).toHaveBeenCalled();
+      expect(getVersionSpy).toHaveBeenCalled();
       expect(mockContainer.resolveWithError).toHaveBeenCalledWith(token13);
     });
 
     it("should handle version detection errors", () => {
       const tokens = new Map([[13, token13]]) as any;
 
-      vi.mocked(getFoundryVersionResult).mockReturnValue(err("Version detection failed"));
+      const mockVersionDetectorWithError: FoundryVersionDetector = {
+        getVersion: vi.fn().mockReturnValue(err("Version detection failed")),
+      } as any;
+      const selectorWithError = new PortSelector(
+        mockVersionDetectorWithError,
+        mockEventEmitter,
+        mockObservability,
+        mockContainer
+      );
 
-      const result = selector.selectPortFromTokens(tokens);
+      const result = selectorWithError.selectPortFromTokens(tokens);
       expectResultErr(result);
       expect(result.error.code).toBe("PORT_SELECTION_FAILED");
       expect(result.error.message).toContain("Could not determine Foundry version");
@@ -275,8 +310,8 @@ describe("PortSelector", () => {
       const result = selector.selectPortFromTokens(tokens, 13);
 
       expectResultErr(result);
-      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
-      expect(result.error.message).toContain("Failed to resolve port v13 from container");
+      expect(result.error.code).toBe("PORT_RESOLUTION_FAILED");
+      expect(result.error.message).toContain("Failed to resolve port from container");
     });
 
     it("should catch errors during port resolution", () => {
@@ -290,16 +325,19 @@ describe("PortSelector", () => {
         throw new Error("Container resolution failed");
       });
 
+      const testEvents: PortSelectionEvent[] = [];
+      selector.onEvent((event) => testEvents.push(event));
+
       const result = selector.selectPortFromTokens(tokens, 13);
 
       expectResultErr(result);
-      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
-      expect(result.error.message).toContain("Failed to resolve port v13 from container");
+      expect(result.error.code).toBe("PORT_RESOLUTION_FAILED");
+      expect(result.error.message).toContain("Failed to resolve port from container");
       expect(result.error.cause).toBeInstanceOf(Error);
 
       // Verify that failure event includes sorted availableVersions (covers line 237)
-      expect(capturedEvents).toHaveLength(1);
-      const event = capturedEvents[0];
+      expect(testEvents).toHaveLength(1);
+      const event = testEvents[0];
       expect(event?.type).toBe("failure");
       if (event?.type === "failure") {
         expect(event.availableVersions).toBe("13, 14, 15");
@@ -317,16 +355,19 @@ describe("PortSelector", () => {
         throw new Error("Container resolution failed");
       });
 
+      const testEvents: PortSelectionEvent[] = [];
+      selector.onEvent((event) => testEvents.push(event));
+
       const result = selector.selectPortFromTokens(tokens, 13, "FoundryGame");
 
       expectResultErr(result);
-      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
-      expect(result.error.message).toContain("Failed to resolve port v13 from container");
+      expect(result.error.code).toBe("PORT_RESOLUTION_FAILED");
+      expect(result.error.message).toContain("Failed to resolve port from container");
       expect(result.error.cause).toBeInstanceOf(Error);
 
       // Verify that failure event includes adapterName (covers true branch of line 239)
-      expect(capturedEvents).toHaveLength(1);
-      const event = capturedEvents[0];
+      expect(testEvents).toHaveLength(1);
+      const event = testEvents[0];
       expect(event?.type).toBe("failure");
       if (event?.type === "failure") {
         expect(event.adapterName).toBe("FoundryGame");

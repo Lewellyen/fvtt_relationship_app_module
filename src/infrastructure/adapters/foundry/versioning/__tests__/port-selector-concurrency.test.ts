@@ -12,6 +12,8 @@ import type { ObservabilityRegistry } from "@/infrastructure/observability/obser
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
+import type { FoundryVersionDetector } from "@/infrastructure/adapters/foundry/versioning/foundry-version-detector";
+import { ok as resultOk } from "@/domain/utils/result";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -40,7 +42,15 @@ describe("Concurrency: Port Selection", () => {
       }),
     } as any;
 
-    selector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    const mockVersionDetector: FoundryVersionDetector = {
+      getVersion: vi.fn().mockReturnValue(resultOk(13)),
+    } as any;
+    selector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
     vi.clearAllMocks();
   });
 

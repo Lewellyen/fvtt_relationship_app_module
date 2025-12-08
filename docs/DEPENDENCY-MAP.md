@@ -1,12 +1,12 @@
 # Dependency Map - FVTT Relationship App Module
 
-**Erstellungsdatum:** 2025-11-09  
-**Aktualisiert:** 2025-11-29 (Unreleased - DIP-Violations Refactoring abgeschlossen, 100% DIP-Konformität, 100% Coverage)  
-**Zweck:** Detaillierte Abhängigkeits-Visualisierung für Refactoring  
-**Model:** Claude Sonnet 4.5  
-**Projekt-Status:** Version 0.26.3 → Unreleased (Pre-Release)  
-**Breaking Changes:** ✅ Erlaubt (bis Modul 1.0.0)  
-**Legacy-Code:** ❌ Wird unmittelbar bereinigt  
+**Erstellungsdatum:** 2025-11-09
+**Aktualisiert:** 2025-11-29 (Unreleased - DIP-Violations Refactoring abgeschlossen, 100% DIP-Konformität, 100% Coverage)
+**Zweck:** Detaillierte Abhängigkeits-Visualisierung für Refactoring
+**Model:** Claude Sonnet 4.5
+**Projekt-Status:** Version 0.26.3 → Unreleased (Pre-Release)
+**Breaking Changes:** ✅ Erlaubt (bis Modul 1.0.0)
+**Legacy-Code:** ❌ Wird unmittelbar bereinigt
 **Versioning:** Siehe [VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md)
 
 ---
@@ -70,8 +70,8 @@ Layer 4: Business Services & Facades
 ## Layer 0: Configuration & Constants
 
 ### EnvironmentConfig (ENV)
-**Datei:** `src/config/environment.ts`  
-**Dependencies:** Keine  
+**Datei:** `src/config/environment.ts`
+**Dependencies:** Keine
 **Exports:**
 - `ENV` - Singleton Environment Configuration
 - `LogLevel` - Enum
@@ -88,8 +88,8 @@ Layer 4: Business Services & Facades
 ---
 
 ### MODULE_CONSTANTS
-**Datei:** `src/constants.ts`  
-**Dependencies:** Keine  
+**Datei:** `src/constants.ts`
+**Dependencies:** Keine
 **Exports:**
 - `MODULE_CONSTANTS` - Zentrale Konstanten (Module ID, Log Prefix, Flags, etc.)
 
@@ -104,9 +104,9 @@ Layer 4: Business Services & Facades
 ## Layer 1: Utilities (Zero Dependencies)
 
 ### Result Utilities
-**Datei:** `src/utils/functional/result.ts`  
-**Dependencies:** Keine  
-**Exports:** 
+**Datei:** `src/utils/functional/result.ts`
+**Dependencies:** Keine
+**Exports:**
 - `ok()`, `err()`, `isOk()`, `isErr()`
 - `map()`, `mapError()`, `andThen()`
 - `unwrapOr()`, `unwrapOrElse()`, `getOrThrow()`
@@ -118,8 +118,8 @@ Layer 4: Business Services & Facades
 ---
 
 ### Promise Timeout Utilities
-**Datei:** `src/utils/async/promise-timeout.ts`  
-**Dependencies:** Keine  
+**Datei:** `src/utils/async/promise-timeout.ts`
+**Dependencies:** Keine
 **Exports:**
 - `withTimeout(promise, timeoutMs)` - Promise mit Timeout
 - `TimeoutError` - Custom Error
@@ -130,8 +130,8 @@ Layer 4: Business Services & Facades
 ---
 
 ### Event Utilities (Throttle, Debounce)
-**Datei:** `src/utils/events/throttle.ts`  
-**Dependencies:** Keine  
+**Datei:** `src/utils/events/throttle.ts`
+**Dependencies:** Keine
 **Exports:**
 - `throttle(fn, windowMs)` - Rate Limiting
 - `debounce(fn, delayMs)` - Debouncing mit Cancel-Support
@@ -142,8 +142,8 @@ Layer 4: Business Services & Facades
 ---
 
 ### Trace Utilities
-**Datei:** `src/utils/observability/trace.ts`  
-**Dependencies:** Keine  
+**Datei:** `src/utils/observability/trace.ts`
+**Dependencies:** Keine
 **Exports:**
 - `generateTraceId()` - Format: `{timestamp}-{random}`
 - `getTraceTimestamp(traceId)` - Timestamp-Extraktion
@@ -154,8 +154,8 @@ Layer 4: Business Services & Facades
 ---
 
 ### Error Sanitizer
-**Datei:** `src/utils/security/error-sanitizer.ts`  
-**Dependencies:** `EnvironmentConfig`  
+**Datei:** `src/utils/security/error-sanitizer.ts`
+**Dependencies:** `EnvironmentConfig`
 **Exports:**
 - `sanitizeErrorForProduction(env, error)`
 - `sanitizeMessageForProduction(env, message)`
@@ -168,8 +168,8 @@ Layer 4: Business Services & Facades
 ## Layer 2: Infrastructure
 
 ### MetricsCollector
-**Datei:** `src/observability/metrics-collector.ts`  
-**Token:** `metricsCollectorToken`  
+**Datei:** `src/observability/metrics-collector.ts`
+**Token:** `metricsCollectorToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -203,8 +203,8 @@ Layer 4: Business Services & Facades
 ---
 
 ### ConsoleLoggerService ⭐ UPDATED v0.8.0
-**Datei:** `src/services/consolelogger.ts`  
-**Token:** `loggerToken`  
+**Datei:** `src/services/consolelogger.ts`
+**Token:** `loggerToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -238,8 +238,8 @@ Layer 4: Business Services & Facades
 ---
 
 ### ModuleHealthService
-**Datei:** `src/core/module-health-service.ts`  
-**Token:** `moduleHealthServiceToken`  
+**Datei:** `src/core/module-health-service.ts`
+**Token:** `moduleHealthServiceToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -264,7 +264,7 @@ Layer 4: Business Services & Facades
 ---
 
 ### PerformanceTrackerImpl (Base Class)
-**Datei:** `src/observability/performance-tracker-impl.ts`  
+**Datei:** `src/observability/performance-tracker-impl.ts`
 **Token:** Keine (Base Class, nicht registriert)
 
 **Dependencies:**
@@ -287,7 +287,7 @@ Layer 4: Business Services & Facades
 ---
 
 ### BootstrapPerformanceTracker
-**Datei:** `src/observability/bootstrap-performance-tracker.ts`  
+**Datei:** `src/observability/bootstrap-performance-tracker.ts`
 **Token:** Keine (Bootstrap-Phase, kein DI)
 
 **Dependencies:**
@@ -307,8 +307,8 @@ Layer 4: Business Services & Facades
 ---
 
 ### CacheService ⭐ NEW v0.22.0
-**Datei:** `src/services/CacheService.ts`  
-**Token:** `cacheServiceToken`  
+**Datei:** `src/services/CacheService.ts`
+**Token:** `cacheServiceToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -339,8 +339,8 @@ Layer 4: Business Services & Facades
 ### Port Selection Infrastructure
 
 #### PortSelector ⭐ UPDATED v0.8.0
-**Datei:** `src/foundry/versioning/portselector.ts`  
-**Token:** `portSelectorToken`  
+**Datei:** `src/foundry/versioning/portselector.ts`
+**Token:** `portSelectorToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -372,8 +372,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### PortRegistry<T>
-**Datei:** `src/foundry/versioning/portregistry.ts`  
-**Token:** 
+**Datei:** `src/foundry/versioning/portregistry.ts`
+**Token:**
 - `foundryGamePortRegistryToken` (PortRegistry<FoundryGame>)
 - `foundryHooksPortRegistryToken` (PortRegistry<FoundryHooks>)
 - `foundryDocumentPortRegistryToken` (PortRegistry<FoundryDocument>)
@@ -396,8 +396,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### ObservabilityRegistry ⭐ NEW v0.8.0 (ersetzt PortSelectionObserver)
-**Datei:** `src/observability/observability-registry.ts`  
-**Token:** `observabilityRegistryToken`  
+**Datei:** `src/observability/observability-registry.ts`
+**Token:** `observabilityRegistryToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -415,7 +415,7 @@ Layer 4: Business Services & Facades
 **Consumed By:**
 - `PortSelector` (Self-Registration im Constructor)
 
-**Purpose:** 
+**Purpose:**
 - Zentraler Hub für Self-Registration Pattern
 - Routet Events zu Logger & Metrics
 - Decoupling von Event-Emission und Observability
@@ -427,8 +427,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### PortSelectionEventEmitter ⭐ NEW v0.8.0
-**Datei:** `src/foundry/versioning/port-selection-events.ts`  
-**Token:** `portSelectionEventEmitterToken`  
+**Datei:** `src/foundry/versioning/port-selection-events.ts`
+**Token:** `portSelectionEventEmitterToken`
 **Lifecycle:** TRANSIENT (neue Instanz pro Resolution)
 
 **Dependencies:**
@@ -450,8 +450,8 @@ Layer 4: Business Services & Facades
 ### Foundry Service Wrappers
 
 #### FoundryGameService
-**Datei:** `src/foundry/services/FoundryGameService.ts`  
-**Token:** `foundryGameToken`  
+**Datei:** `src/foundry/services/FoundryGameService.ts`
+**Token:** `foundryGameToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -478,8 +478,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### FoundryHooksService
-**Datei:** `src/foundry/services/FoundryHooksService.ts`  
-**Token:** `foundryHooksToken`  
+**Datei:** `src/foundry/services/FoundryHooksService.ts`
+**Token:** `foundryHooksToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -512,8 +512,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### FoundryDocumentService
-**Datei:** `src/foundry/services/FoundryDocumentService.ts`  
-**Token:** `foundryDocumentToken`  
+**Datei:** `src/foundry/services/FoundryDocumentService.ts`
+**Token:** `foundryDocumentToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -540,8 +540,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### FoundryUIService
-**Datei:** `src/foundry/services/FoundryUIService.ts`  
-**Token:** `foundryUIToken`  
+**Datei:** `src/foundry/services/FoundryUIService.ts`
+**Token:** `foundryUIToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -569,8 +569,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### FoundrySettingsService
-**Datei:** `src/foundry/services/FoundrySettingsService.ts`  
-**Token:** `foundrySettingsToken`  
+**Datei:** `src/foundry/services/FoundrySettingsService.ts`
+**Token:** `foundrySettingsToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -598,8 +598,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### FoundryI18nService
-**Datei:** `src/foundry/services/FoundryI18nService.ts`  
-**Token:** `foundryI18nToken`  
+**Datei:** `src/foundry/services/FoundryI18nService.ts`
+**Token:** `foundryI18nToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -628,8 +628,8 @@ Layer 4: Business Services & Facades
 ### Registrars & Hooks ⭐ NEW v0.8.0
 
 #### ModuleSettingsRegistrar
-**Datei:** `src/core/module-settings-registrar.ts`  
-**Token:** `moduleSettingsRegistrarToken`  
+**Datei:** `src/core/module-settings-registrar.ts`
+**Token:** `moduleSettingsRegistrarToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -649,8 +649,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### ModuleHookRegistrar
-**Datei:** `src/core/module-hook-registrar.ts`  
-**Token:** `moduleHookRegistrarToken`  
+**Datei:** `src/core/module-hook-registrar.ts`
+**Token:** `moduleHookRegistrarToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -673,8 +673,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### RenderJournalDirectoryHook
-**Datei:** `src/core/hooks/render-journal-directory-hook.ts`  
-**Token:** `renderJournalDirectoryHookToken`  
+**Datei:** `src/core/hooks/render-journal-directory-hook.ts`
+**Token:** `renderJournalDirectoryHookToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -697,8 +697,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### JournalCacheInvalidationHook
-**Datei:** `src/core/hooks/journal-cache-invalidation-hook.ts`  
-**Token:** `journalCacheInvalidationHookToken`  
+**Datei:** `src/core/hooks/journal-cache-invalidation-hook.ts`
+**Token:** `journalCacheInvalidationHookToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -720,8 +720,8 @@ Layer 4: Business Services & Facades
 ### Facades
 
 #### FoundryJournalFacade
-**Datei:** `src/foundry/facades/foundry-journal-facade.ts`  
-**Token:** `foundryJournalFacadeToken`  
+**Datei:** `src/foundry/facades/foundry-journal-facade.ts`
+**Token:** `foundryJournalFacadeToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -752,8 +752,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### I18nFacadeService
-**Datei:** `src/services/I18nFacadeService.ts`  
-**Token:** `i18nFacadeToken`  
+**Datei:** `src/services/I18nFacadeService.ts`
+**Token:** `i18nFacadeToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -782,8 +782,8 @@ Layer 4: Business Services & Facades
 ### Business Services
 
 #### JournalVisibilityService
-**Datei:** `src/services/JournalVisibilityService.ts`  
-**Token:** `journalVisibilityServiceToken`  
+**Datei:** `src/services/JournalVisibilityService.ts`
+**Token:** `journalVisibilityServiceToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -814,8 +814,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### LocalI18nService
-**Datei:** `src/services/LocalI18nService.ts`  
-**Token:** `localI18nToken`  
+**Datei:** `src/services/LocalI18nService.ts`
+**Token:** `localI18nToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -843,8 +843,8 @@ Layer 4: Business Services & Facades
 ### Utility Services
 
 #### PerformanceTrackingService
-**Datei:** `src/services/PerformanceTrackingService.ts`  
-**Token:** `performanceTrackingServiceToken`  
+**Datei:** `src/services/PerformanceTrackingService.ts`
+**Token:** `performanceTrackingServiceToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -869,8 +869,8 @@ Layer 4: Business Services & Facades
 ---
 
 #### RetryService
-**Datei:** `src/services/RetryService.ts`  
-**Token:** `retryServiceToken`  
+**Datei:** `src/services/RetryService.ts`
+**Token:** `retryServiceToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**
@@ -1154,7 +1154,7 @@ ModuleHealthService → ServiceContainer (Self-Reference)
 ---
 
 #### 2. v14 Ports implementieren (sobald API verfügbar)
-**Status:** ⏳ **Wartend auf Foundry v14 API-Release** (Stand: Nov 2025)  
+**Status:** ⏳ **Wartend auf Foundry v14 API-Release** (Stand: Nov 2025)
 **Versionskompatibilität:** Definiert in `module.json` (aktuell: `maximum: 13`)
 
 **Vorbereitung abgeschlossen:**
@@ -1343,7 +1343,7 @@ export class MyNewService {
     private readonly logger: Logger,
     private readonly metrics: MetricsCollector
   ) {}
-  
+
   doSomething(): Result<string, MyError> {
     this.logger.debug("Doing something");
     return ok("done");
@@ -1454,8 +1454,8 @@ if (!validationResult.ok) {
 ### Platform-Agnostic Ports
 
 #### PlatformNotificationPort
-**Datei:** `src/domain/ports/platform-notification-port.interface.ts`  
-**Token:** `platformNotificationPortToken`  
+**Datei:** `src/domain/ports/platform-notification-port.interface.ts`
+**Token:** `platformNotificationPortToken`
 **Typ:** Domain Port Interface
 
 **Implementierungen:**
@@ -1477,8 +1477,8 @@ if (!validationResult.ok) {
 ---
 
 #### NotificationPortAdapter
-**Datei:** `src/infrastructure/adapters/notifications/platform-notification-port-adapter.ts`  
-**Token:** `platformNotificationPortToken`  
+**Datei:** `src/infrastructure/adapters/notifications/platform-notification-port-adapter.ts`
+**Token:** `platformNotificationPortToken`
 **Lifecycle:** SINGLETON
 
 **Implementiert:** `PlatformNotificationPort`
@@ -1494,8 +1494,8 @@ if (!validationResult.ok) {
 ---
 
 #### PlatformCachePort
-**Datei:** `src/domain/ports/platform-cache-port.interface.ts`  
-**Token:** `platformCachePortToken`  
+**Datei:** `src/domain/ports/platform-cache-port.interface.ts`
+**Token:** `platformCachePortToken`
 **Typ:** Domain Port Interface
 
 **Implementierungen:**
@@ -1517,8 +1517,8 @@ if (!validationResult.ok) {
 ---
 
 #### CachePortAdapter
-**Datei:** `src/infrastructure/adapters/cache/platform-cache-port-adapter.ts`  
-**Token:** `platformCachePortToken`  
+**Datei:** `src/infrastructure/adapters/cache/platform-cache-port-adapter.ts`
+**Token:** `platformCachePortToken`
 **Lifecycle:** SINGLETON
 
 **Implementiert:** `PlatformCachePort`
@@ -1534,8 +1534,8 @@ if (!validationResult.ok) {
 ---
 
 #### PlatformI18nPort
-**Datei:** `src/domain/ports/platform-i18n-port.interface.ts`  
-**Token:** `platformI18nPortToken`  
+**Datei:** `src/domain/ports/platform-i18n-port.interface.ts`
+**Token:** `platformI18nPortToken`
 **Typ:** Domain Port Interface
 
 **Implementierungen:**
@@ -1558,8 +1558,8 @@ if (!validationResult.ok) {
 ---
 
 #### I18nPortAdapter
-**Datei:** `src/infrastructure/adapters/i18n/platform-i18n-port-adapter.ts`  
-**Token:** `platformI18nPortToken`  
+**Datei:** `src/infrastructure/adapters/i18n/platform-i18n-port-adapter.ts`
+**Token:** `platformI18nPortToken`
 **Lifecycle:** SINGLETON
 
 **Implementiert:** `PlatformI18nPort`
@@ -1575,8 +1575,8 @@ if (!validationResult.ok) {
 ---
 
 #### PlatformUIPort
-**Datei:** `src/domain/ports/platform-ui-port.interface.ts`  
-**Token:** `platformUIPortToken`  
+**Datei:** `src/domain/ports/platform-ui-port.interface.ts`
+**Token:** `platformUIPortToken`
 **Typ:** Domain Port Interface
 
 **Implementierungen:**
@@ -1595,8 +1595,8 @@ if (!validationResult.ok) {
 ---
 
 #### FoundryUIAdapter
-**Datei:** `src/infrastructure/adapters/foundry/adapters/foundry-ui-adapter.ts`  
-**Token:** `platformUIPortToken`  
+**Datei:** `src/infrastructure/adapters/foundry/adapters/foundry-ui-adapter.ts`
+**Token:** `platformUIPortToken`
 **Lifecycle:** SINGLETON
 
 **Implementiert:** `PlatformUIPort`
@@ -1614,8 +1614,8 @@ if (!validationResult.ok) {
 ### Entity Collections & Repositories (Phase 2)
 
 #### JournalCollectionPort
-**Datei:** `src/domain/ports/collections/journal-collection-port.interface.ts`  
-**Token:** `journalCollectionPortToken`  
+**Datei:** `src/domain/ports/collections/journal-collection-port.interface.ts`
+**Token:** `journalCollectionPortToken`
 **Typ:** Domain Port Interface
 
 **Erweitert:** `PlatformEntityCollectionPort<JournalEntry>`
@@ -1639,8 +1639,8 @@ if (!validationResult.ok) {
 ---
 
 #### FoundryJournalCollectionAdapter
-**Datei:** `src/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter.ts`  
-**Token:** `journalCollectionPortToken`  
+**Datei:** `src/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter.ts`
+**Token:** `journalCollectionPortToken`
 **Lifecycle:** SINGLETON
 
 **Implementiert:** `JournalCollectionPort`
@@ -1660,8 +1660,8 @@ if (!validationResult.ok) {
 ---
 
 #### JournalRepository
-**Datei:** `src/domain/ports/repositories/journal-repository.interface.ts`  
-**Token:** `journalRepositoryToken`  
+**Datei:** `src/domain/ports/repositories/journal-repository.interface.ts`
+**Token:** `journalRepositoryToken`
 **Typ:** Domain Port Interface
 
 **Erweitert:** `PlatformEntityRepository<JournalEntry>`, `JournalCollectionPort`
@@ -1689,8 +1689,8 @@ if (!validationResult.ok) {
 ---
 
 #### FoundryJournalRepositoryAdapter
-**Datei:** `src/infrastructure/adapters/foundry/repository-adapters/foundry-journal-repository-adapter.ts`  
-**Token:** `journalRepositoryToken`  
+**Datei:** `src/infrastructure/adapters/foundry/repository-adapters/foundry-journal-repository-adapter.ts`
+**Token:** `journalRepositoryToken`
 **Lifecycle:** SINGLETON
 
 **Implementiert:** `JournalRepository`
@@ -1715,8 +1715,8 @@ if (!validationResult.ok) {
 ### Application Use-Cases
 
 #### TriggerJournalDirectoryReRenderUseCase
-**Datei:** `src/application/use-cases/trigger-journal-directory-rerender.use-case.ts`  
-**Token:** `triggerJournalDirectoryReRenderUseCaseToken`  
+**Datei:** `src/application/use-cases/trigger-journal-directory-rerender.use-case.ts`
+**Token:** `triggerJournalDirectoryReRenderUseCaseToken`
 **Lifecycle:** SINGLETON
 
 **Dependencies:**

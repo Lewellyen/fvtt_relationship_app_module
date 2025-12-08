@@ -12,6 +12,8 @@ import type { RetryService } from "@/infrastructure/retry/RetryService";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
+import type { FoundryVersionDetector } from "@/infrastructure/adapters/foundry/versioning/foundry-version-detector";
+import { ok as resultOk } from "@/domain/utils/result";
 import * as v from "valibot";
 
 describe("FoundryDocumentPort", () => {
@@ -21,6 +23,7 @@ describe("FoundryDocumentPort", () => {
   let mockPort: FoundryDocument;
   let mockRetryService: RetryService;
   let mockContainer: ServiceContainer;
+  let mockVersionDetector: FoundryVersionDetector;
   const mockToken = createInjectionToken<FoundryDocument>("mock-port");
 
   beforeEach(() => {
@@ -48,11 +51,19 @@ describe("FoundryDocumentPort", () => {
     mockRegistry = new PortRegistry<FoundryDocument>();
     vi.spyOn(mockRegistry, "getTokens").mockReturnValue(new Map([[13, mockToken]]));
 
+    mockVersionDetector = {
+      getVersion: vi.fn().mockReturnValue(resultOk(13)),
+    } as any;
     const mockEventEmitter = new PortSelectionEventEmitter();
     const mockObservability: ObservabilityRegistry = {
       registerPortSelector: vi.fn(),
     } as any;
-    mockSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    mockSelector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
     vi.spyOn(mockSelector, "selectPortFromTokens").mockReturnValue(ok(mockPort));
 
     // Mock RetryService - just executes fn directly without retry logic
@@ -90,7 +101,12 @@ describe("FoundryDocumentPort", () => {
       const mockObservability: ObservabilityRegistry = {
         registerPortSelector: vi.fn(),
       } as any;
-      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const failingSelector = new PortSelector(
+        mockVersionDetector,
+        mockEventEmitter,
+        mockObservability,
+        mockContainer
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed",
@@ -161,7 +177,12 @@ describe("FoundryDocumentPort", () => {
       const mockObservability: ObservabilityRegistry = {
         registerPortSelector: vi.fn(),
       } as any;
-      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const failingSelector = new PortSelector(
+        mockVersionDetector,
+        mockEventEmitter,
+        mockObservability,
+        mockContainer
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "No compatible port found",
@@ -307,7 +328,12 @@ describe("FoundryDocumentPort", () => {
       const mockObservability: ObservabilityRegistry = {
         registerPortSelector: vi.fn(),
       } as any;
-      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const failingSelector = new PortSelector(
+        mockVersionDetector,
+        mockEventEmitter,
+        mockObservability,
+        mockContainer
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed in setFlag",
@@ -331,7 +357,12 @@ describe("FoundryDocumentPort", () => {
       const mockObservability: ObservabilityRegistry = {
         registerPortSelector: vi.fn(),
       } as any;
-      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const failingSelector = new PortSelector(
+        mockVersionDetector,
+        mockEventEmitter,
+        mockObservability,
+        mockContainer
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed in create",
@@ -355,7 +386,12 @@ describe("FoundryDocumentPort", () => {
       const mockObservability: ObservabilityRegistry = {
         registerPortSelector: vi.fn(),
       } as any;
-      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const failingSelector = new PortSelector(
+        mockVersionDetector,
+        mockEventEmitter,
+        mockObservability,
+        mockContainer
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed in update",
@@ -379,7 +415,12 @@ describe("FoundryDocumentPort", () => {
       const mockObservability: ObservabilityRegistry = {
         registerPortSelector: vi.fn(),
       } as any;
-      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const failingSelector = new PortSelector(
+        mockVersionDetector,
+        mockEventEmitter,
+        mockObservability,
+        mockContainer
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed in delete",
@@ -403,7 +444,12 @@ describe("FoundryDocumentPort", () => {
       const mockObservability: ObservabilityRegistry = {
         registerPortSelector: vi.fn(),
       } as any;
-      const failingSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+      const failingSelector = new PortSelector(
+        mockVersionDetector,
+        mockEventEmitter,
+        mockObservability,
+        mockContainer
+      );
       const mockError = {
         code: "PORT_SELECTION_FAILED" as const,
         message: "Port selection failed in unsetFlag",

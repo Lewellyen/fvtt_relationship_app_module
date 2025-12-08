@@ -1,7 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import { err, ok } from "@/domain/utils/result";
-import { getFoundryVersionResult } from "./versiondetector";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import { APP_DEFAULTS } from "@/application/constants/app-constants";
 import type { PortSelectionEventEmitter } from "./port-selection-events";
@@ -12,7 +11,9 @@ import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontok
 import { portSelectionEventEmitterToken } from "@/infrastructure/shared/tokens/observability/port-selection-event-emitter.token";
 import { observabilityRegistryToken } from "@/infrastructure/shared/tokens/observability/observability-registry.token";
 import { serviceContainerToken } from "@/infrastructure/shared/tokens/core/service-container.token";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { foundryVersionDetectorToken } from "@/infrastructure/shared/tokens/foundry/foundry-version-detector.token";
+import type { FoundryVersionDetector } from "./foundry-version-detector";
+import { PortResolutionStrategy } from "./port-resolution-strategy";
 
 /**
  * Selects the appropriate port implementation based on Foundry version.
@@ -31,13 +32,18 @@ import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime
  * - Ensures DIP (Dependency Inversion Principle) compliance
  */
 export class PortSelector {
+  private readonly resolutionStrategy: PortResolutionStrategy;
+
   constructor(
+    private readonly versionDetector: FoundryVersionDetector,
     private readonly eventEmitter: PortSelectionEventEmitter,
     observability: ObservabilityRegistry,
-    private readonly container: ServiceContainer
+    container: ServiceContainer
   ) {
     // Self-register for observability
     observability.registerPortSelector(this);
+    // Create resolution strategy for container resolution
+    this.resolutionStrategy = new PortResolutionStrategy(container);
   }
 
   /**
@@ -96,12 +102,12 @@ export class PortSelector {
     // Inline performance tracking (no dependency on PerformanceTrackingService)
     const startTime = performance.now();
 
-    // Use central version detection
+    // Use version detector for version detection
     let version: number;
     if (foundryVersion !== undefined) {
       version = foundryVersion;
     } else {
-      const versionResult = getFoundryVersionResult();
+      const versionResult = this.versionDetector.getVersion();
       if (!versionResult.ok) {
         return err(
           createFoundryError(
@@ -182,51 +188,8 @@ export class PortSelector {
     }
 
     // CRITICAL: Only now resolve the selected port from the DI container
-    try {
-      const resolveResult = this.container.resolveWithError(selectedToken);
-      if (!resolveResult.ok) {
-        const foundryError = createFoundryError(
-          "PORT_SELECTION_FAILED",
-          `Failed to resolve port v${selectedVersion} from container`,
-          { selectedVersion },
-          resolveResult.error
-        );
-
-        // Emit failure event for observability
-        this.eventEmitter.emit({
-          type: "failure",
-          foundryVersion: version,
-          availableVersions: Array.from(tokens.keys())
-            .sort((a, b) => a - b)
-            .join(", "),
-          ...(adapterName !== undefined ? { adapterName } : {}),
-          error: foundryError,
-        });
-
-        return err(foundryError);
-      }
-
-      const port = castResolvedService<T>(resolveResult.value);
-      const durationMs = performance.now() - startTime;
-
-      // Emit success event for observability
-      this.eventEmitter.emit({
-        type: "success",
-        selectedVersion,
-        foundryVersion: version,
-        ...(adapterName !== undefined ? { adapterName } : {}),
-        durationMs,
-      });
-
-      return ok(port);
-    } catch (error) {
-      const foundryError = createFoundryError(
-        "PORT_SELECTION_FAILED",
-        `Failed to resolve port v${selectedVersion} from container`,
-        { selectedVersion },
-        error
-      );
-
+    const portResult = this.resolutionStrategy.resolve(selectedToken);
+    if (!portResult.ok) {
       // Emit failure event for observability
       this.eventEmitter.emit({
         type: "failure",
@@ -235,26 +198,41 @@ export class PortSelector {
           .sort((a, b) => a - b)
           .join(", "),
         ...(adapterName !== undefined ? { adapterName } : {}),
-        error: foundryError,
+        error: portResult.error,
       });
 
-      return err(foundryError);
+      return err(portResult.error);
     }
+
+    const durationMs = performance.now() - startTime;
+
+    // Emit success event for observability
+    this.eventEmitter.emit({
+      type: "success",
+      selectedVersion,
+      foundryVersion: version,
+      ...(adapterName !== undefined ? { adapterName } : {}),
+      durationMs,
+    });
+
+    return ok(portResult.value);
   }
 }
 
 export class DIPortSelector extends PortSelector {
   static dependencies = [
+    foundryVersionDetectorToken,
     portSelectionEventEmitterToken,
     observabilityRegistryToken,
     serviceContainerToken,
   ] as const;
 
   constructor(
+    versionDetector: FoundryVersionDetector,
     eventEmitter: PortSelectionEventEmitter,
     observability: ObservabilityRegistry,
     container: ServiceContainer
   ) {
-    super(eventEmitter, observability, container);
+    super(versionDetector, eventEmitter, observability, container);
   }
 }

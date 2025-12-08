@@ -10,8 +10,9 @@ export default [
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
-        project: './tsconfig.json',
-        sourceType: 'module'
+        projectService: true, // Verbessert Performance durch Caching - ersetzt 'project'
+        sourceType: 'module',
+        tsconfigRootDir: import.meta.dirname || process.cwd()
       }
     },
     plugins: {
@@ -127,7 +128,7 @@ export default [
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
-        project: './tests/tsconfig.json',
+        projectService: true, // Verbessert Performance durch Caching - ersetzt 'project'
         sourceType: 'module'
       }
     },

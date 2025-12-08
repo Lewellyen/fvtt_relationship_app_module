@@ -1,8 +1,9 @@
 # SRP Refactoring Plan: MetricsCollector
 
-**Status:** 📋 Geplant
+**Status:** ✅ Abgeschlossen
 **Priorität:** 🟡 Niedrig
 **Erstellt:** 2025-01-XX
+**Abgeschlossen:** 2025-01-XX
 **Zweck:** Trennung der Metrics-Sammlung von Sampling-Logik und Reporting
 
 ---
@@ -350,21 +351,22 @@ export class AdaptiveSamplingStrategy implements MetricsSamplerInterface {
 
 ## Checkliste
 
-- [ ] `MetricsSampler` Klasse erstellen
-- [ ] DI-Wrapper und Token erstellen
-- [ ] In DI-Config registrieren
-- [ ] `MetricsReporter` Klasse erstellen
-- [ ] DI-Wrapper und Token erstellen
-- [ ] In DI-Config registrieren
-- [ ] `MetricsCollector.shouldSample()` entfernen
-- [ ] `MetricsCollector.logSummary()` entfernen
-- [ ] `PerformanceTrackingService` aktualisieren
-- [ ] Unit-Tests für `MetricsSampler` schreiben
-- [ ] Unit-Tests für `MetricsReporter` schreiben
-- [ ] Unit-Tests für `MetricsCollector` aktualisieren
-- [ ] Integration-Tests aktualisieren
-- [ ] API-Dokumentation aktualisieren
-- [ ] CHANGELOG.md aktualisieren
+- [x] `MetricsSampler` Klasse erstellen
+- [x] DI-Wrapper und Token erstellen
+- [x] In DI-Config registrieren
+- [x] `MetricsReporter` Klasse erstellen
+- [x] DI-Wrapper und Token erstellen
+- [x] In DI-Config registrieren
+- [x] `MetricsCollector.shouldSample()` entfernen
+- [x] `MetricsCollector.logSummary()` entfernen
+- [x] `PerformanceTrackingService` aktualisieren
+- [x] Unit-Tests für `MetricsSampler` schreiben
+- [x] Unit-Tests für `MetricsReporter` schreiben
+- [x] Unit-Tests für `MetricsCollector` aktualisieren
+- [x] Integration-Tests aktualisieren
+- [x] API-Dokumentation aktualisieren
+- [x] Kommentare in `performance-tracker-impl.ts` aktualisieren
+- [x] DEPENDENCY-MAP.md aktualisieren
 
 ---
 

@@ -20,6 +20,8 @@ import {
 } from "@/application/tokens/domain-ports.tokens";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { DIPortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
+import { DIFoundryVersionDetector } from "@/infrastructure/adapters/foundry/versioning/foundry-version-detector";
+import { foundryVersionDetectorToken } from "@/infrastructure/shared/tokens/foundry/foundry-version-detector.token";
 import { PortRegistry } from "@/infrastructure/adapters/foundry/versioning/portregistry";
 import { registerV13Ports } from "@/infrastructure/adapters/foundry/ports/v13/port-registration";
 import { DIFoundryUIAdapter } from "@/infrastructure/adapters/foundry/adapters/foundry-ui-adapter";
@@ -100,7 +102,8 @@ function createPortRegistries(container: ServiceContainer): Result<
  * Registers port infrastructure root services.
  *
  * Services registered:
- * - PortSelector (singleton, with EventEmitter, ObservabilityRegistry, and ServiceContainer dependencies)
+ * - FoundryVersionDetector (singleton, no dependencies)
+ * - PortSelector (singleton, with FoundryVersionDetector, EventEmitter, ObservabilityRegistry, and ServiceContainer dependencies)
  * - PlatformUIPort (singleton, via FoundryUIAdapter)
  *
  * OBSERVABILITY: PortSelector self-registers with ObservabilityRegistry for automatic
@@ -110,8 +113,18 @@ function createPortRegistries(container: ServiceContainer): Result<
  * @returns Result indicating success or error with details
  */
 export function registerPortInfrastructure(container: ServiceContainer): Result<void, string> {
+  // Register FoundryVersionDetector (must be registered before PortSelector)
+  const versionDetectorResult = container.registerClass(
+    foundryVersionDetectorToken,
+    DIFoundryVersionDetector,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(versionDetectorResult)) {
+    return err(`Failed to register FoundryVersionDetector: ${versionDetectorResult.error.message}`);
+  }
+
   // Register PortSelector
-  // Dependencies: [portSelectionEventEmitterToken, observabilityRegistryToken, serviceContainerToken]
+  // Dependencies: [foundryVersionDetectorToken, portSelectionEventEmitterToken, observabilityRegistryToken, serviceContainerToken]
   const portSelectorResult = container.registerClass(
     portSelectorToken,
     DIPortSelector,

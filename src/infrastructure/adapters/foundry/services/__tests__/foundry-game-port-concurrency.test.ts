@@ -12,6 +12,8 @@ import type { RetryService } from "@/infrastructure/retry/RetryService";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
+import type { FoundryVersionDetector } from "@/infrastructure/adapters/foundry/versioning/foundry-version-detector";
+import { ok as resultOk } from "@/domain/utils/result";
 import { createMockJournalEntry } from "@/test/mocks/foundry";
 import type { FoundryJournalEntry } from "@/infrastructure/adapters/foundry/types";
 
@@ -56,11 +58,19 @@ describe("Concurrency: Journal Access", () => {
     mockRegistry = new PortRegistry<FoundryGame>();
     vi.spyOn(mockRegistry, "getTokens").mockReturnValue(new Map([[13, mockToken]]));
 
+    const mockVersionDetector: FoundryVersionDetector = {
+      getVersion: vi.fn().mockReturnValue(resultOk(13)),
+    } as any;
     const mockEventEmitter = new PortSelectionEventEmitter();
     const mockObservability: ObservabilityRegistry = {
       registerPortSelector: vi.fn(),
     } as any;
-    mockSelector = new PortSelector(mockEventEmitter, mockObservability, mockContainer);
+    mockSelector = new PortSelector(
+      mockVersionDetector,
+      mockEventEmitter,
+      mockObservability,
+      mockContainer
+    );
     vi.spyOn(mockSelector, "selectPortFromTokens").mockReturnValue(ok(mockPort));
 
     // Mock RetryService - just executes fn directly without retry logic
