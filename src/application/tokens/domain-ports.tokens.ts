@@ -22,6 +22,9 @@ import type { PlatformMetricsSnapshotPort } from "@/domain/ports/platform-metric
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import type { PlatformModuleReadyPort } from "@/domain/ports/platform-module-ready-port.interface";
+import type { PlatformChannelPort } from "@/domain/ports/notifications/platform-channel-port.interface";
+import type { PlatformUINotificationChannelPort } from "@/domain/ports/notifications/platform-ui-notification-channel-port.interface";
+import type { PlatformConsoleChannelPort } from "@/domain/ports/notifications/platform-console-channel-port.interface";
 
 /**
  * DI Token for PlatformNotificationPort.
@@ -168,3 +171,31 @@ export const platformSettingsRegistrationPortToken =
  */
 export const platformModuleReadyPortToken =
   createInjectionToken<PlatformModuleReadyPort>("PlatformModuleReadyPort");
+
+/**
+ * DI Token for PlatformChannelPort.
+ *
+ * Platform-agnostic port for notification channels.
+ * Base interface for all channel types.
+ */
+export const platformChannelPortToken =
+  createInjectionToken<PlatformChannelPort>("PlatformChannelPort");
+
+/**
+ * DI Token for PlatformUINotificationChannelPort.
+ *
+ * Platform-agnostic port for UI notification channels.
+ * Specialized channel port for user interface notifications.
+ */
+export const platformUINotificationChannelPortToken =
+  createInjectionToken<PlatformUINotificationChannelPort>("PlatformUINotificationChannelPort");
+
+/**
+ * DI Token for PlatformConsoleChannelPort.
+ *
+ * Platform-agnostic port for console logging channels.
+ * Specialized channel port for console output.
+ */
+export const platformConsoleChannelPortToken = createInjectionToken<PlatformConsoleChannelPort>(
+  "PlatformConsoleChannelPort"
+);

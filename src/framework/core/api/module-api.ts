@@ -1,5 +1,5 @@
 import type { ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationService } from "@/application/services/notification-center.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { JournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConsoleChannel } from "@/infrastructure/notifications/channels/ConsoleChannel";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { Notification } from "@/infrastructure/notifications/notification-channel.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
+import type { PlatformNotification } from "@/domain/ports/notifications/platform-channel-port.interface";
 
 describe("ConsoleChannel", () => {
   let channel: ConsoleChannel;
-  let mockLogger: Logger;
+  let mockLogger: PlatformLoggingPort;
 
   beforeEach(() => {
     mockLogger = {
@@ -14,7 +14,7 @@ describe("ConsoleChannel", () => {
       warn: vi.fn(),
       error: vi.fn(),
       log: vi.fn(),
-    } as unknown as Logger;
+    } as unknown as PlatformLoggingPort;
 
     channel = new ConsoleChannel(mockLogger);
   });
@@ -27,7 +27,7 @@ describe("ConsoleChannel", () => {
 
   describe("send", () => {
     it("should route debug to logger.debug", () => {
-      const notification: Notification = {
+      const notification: PlatformNotification = {
         level: "debug",
         context: "Debug message",
         data: { key: "value" },
@@ -41,7 +41,7 @@ describe("ConsoleChannel", () => {
     });
 
     it("should route info to logger.info", () => {
-      const notification: Notification = {
+      const notification: PlatformNotification = {
         level: "info",
         context: "Info message",
         data: { count: 42 },
@@ -55,7 +55,7 @@ describe("ConsoleChannel", () => {
     });
 
     it("should route warn to logger.warn", () => {
-      const notification: Notification = {
+      const notification: PlatformNotification = {
         level: "warn",
         context: "Warning message",
         data: { deprecated: true },
@@ -70,7 +70,7 @@ describe("ConsoleChannel", () => {
 
     it("should route error to logger.error", () => {
       const error = { code: "OPERATION_FAILED", message: "Failed" };
-      const notification: Notification = {
+      const notification: PlatformNotification = {
         level: "error",
         context: "Error message",
         error,
@@ -85,7 +85,7 @@ describe("ConsoleChannel", () => {
 
     it("should use error instead of data for error level", () => {
       const error = { code: "TEST", message: "Error" };
-      const notification: Notification = {
+      const notification: PlatformNotification = {
         level: "error",
         context: "Test",
         data: { ignored: true },
@@ -100,7 +100,7 @@ describe("ConsoleChannel", () => {
     });
 
     it("should use data as fallback if error is missing for warn level", () => {
-      const notification: Notification = {
+      const notification: PlatformNotification = {
         level: "warn",
         context: "Warning",
         data: { info: "details" },
@@ -114,7 +114,7 @@ describe("ConsoleChannel", () => {
 
     it("should use error fallback when warn has no data", () => {
       const error = { code: "WARN", message: "Problem" };
-      const notification: Notification = {
+      const notification: PlatformNotification = {
         level: "warn",
         context: "Warning",
         error,
@@ -127,7 +127,7 @@ describe("ConsoleChannel", () => {
     });
 
     it("should use data as fallback if error is missing for error level", () => {
-      const notification: Notification = {
+      const notification: PlatformNotification = {
         level: "error",
         context: "Error",
         data: { fallback: "data" },

@@ -3,7 +3,7 @@ import {
   NotificationPortAdapter,
   DINotificationPortAdapter,
 } from "../platform-notification-port-adapter";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationService } from "@/application/services/notification-center.interface";
 import type { PlatformNotificationOptions } from "@/domain/ports/platform-notification-port.interface";
 import type { FoundryNotificationOptions } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import { ok, err } from "@/domain/utils/result";
@@ -255,6 +255,54 @@ describe("NotificationPortAdapter", () => {
         undefined,
         expect.objectContaining({
           uiOptions: expect.objectContaining({ progress: true }),
+        })
+      );
+    });
+
+    it("should detect Foundry options with clean property", () => {
+      const options = {
+        clean: true,
+      } as unknown as PlatformNotificationOptions & FoundryNotificationOptions;
+
+      adapter.info("Test", undefined, options);
+
+      expect(mockNotificationCenter.info).toHaveBeenCalledWith(
+        "Test",
+        undefined,
+        expect.objectContaining({
+          uiOptions: expect.objectContaining({ clean: true }),
+        })
+      );
+    });
+
+    it("should detect Foundry options with escape property", () => {
+      const options = {
+        escape: true,
+      } as unknown as PlatformNotificationOptions & FoundryNotificationOptions;
+
+      adapter.warn("Test", undefined, options);
+
+      expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
+        "Test",
+        undefined,
+        expect.objectContaining({
+          uiOptions: expect.objectContaining({ escape: true }),
+        })
+      );
+    });
+
+    it("should detect Foundry options with format property", () => {
+      const options = {
+        format: { key: "value" },
+      } as unknown as PlatformNotificationOptions & FoundryNotificationOptions;
+
+      adapter.error("Test", undefined, options);
+
+      expect(mockNotificationCenter.error).toHaveBeenCalledWith(
+        "Test",
+        undefined,
+        expect.objectContaining({
+          uiOptions: expect.objectContaining({ format: { key: "value" } }),
         })
       );
     });

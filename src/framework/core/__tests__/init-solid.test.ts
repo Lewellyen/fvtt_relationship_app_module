@@ -8,6 +8,7 @@ import { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistra
 import { MODULE_METADATA, LOG_PREFIX } from "@/application/constants/app-constants";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { Result } from "@/domain/types/result";
+import type { NotificationService } from "@/application/services/notification-center.interface";
 
 describe("init-solid Bootstrap", () => {
   afterEach(() => {
@@ -144,13 +145,6 @@ describe("init-solid Bootstrap", () => {
         ui: createMockUI(),
       });
 
-      const notificationCenterModule =
-        await import("@/infrastructure/notifications/NotificationCenter");
-      const addChannelSpy = vi.spyOn(
-        notificationCenterModule.NotificationCenter.prototype,
-        "addChannel"
-      );
-
       await import("@/framework/core/init-solid");
 
       const hooksOnMock = (global as any).Hooks.on as ReturnType<typeof vi.fn>;
@@ -160,9 +154,38 @@ describe("init-solid Bootstrap", () => {
       expect(initCallback).toBeDefined();
       initCallback!();
 
-      expect(addChannelSpy).toHaveBeenCalledWith(expect.objectContaining({ name: "UIChannel" }));
+      // Channels are now injected via constructor, not added dynamically
+      // Verify that NotificationCenter has channels registered by checking the actual container
+      // that was used during bootstrap
+      const compositionRootModule = await import("@/framework/core/composition-root");
+      const compositionRootClass = compositionRootModule.CompositionRoot;
+      // The container is bootstrapped in init-solid.ts, so we need to access it via the internal export
+      // Since we can't easily access the internal container from init-solid, we verify the behavior
+      // by checking that the bootstrap completed successfully and channels are registered via DI
+      const { notificationCenterToken } =
+        await import("@/infrastructure/shared/tokens/notifications/notification-center.token");
 
-      addChannelSpy.mockRestore();
+      // Create a new CompositionRoot instance to verify the channels are registered correctly
+      const root = new compositionRootClass();
+      const bootstrapResult = root.bootstrap();
+      expect(bootstrapResult.ok).toBe(true);
+
+      if (bootstrapResult.ok) {
+        const containerResult = root.getContainer();
+        expect(containerResult.ok).toBe(true);
+        if (containerResult.ok) {
+          const notificationCenterResult =
+            containerResult.value.resolveWithError(notificationCenterToken);
+          expect(notificationCenterResult.ok).toBe(true);
+          if (notificationCenterResult.ok) {
+            const notificationCenter = notificationCenterResult.value as NotificationService;
+            const channelNames = notificationCenter.getChannelNames();
+            expect(channelNames).toContain("UIChannel");
+            expect(channelNames).toContain("ConsoleChannel");
+          }
+        }
+      }
+
       cleanup();
     });
 

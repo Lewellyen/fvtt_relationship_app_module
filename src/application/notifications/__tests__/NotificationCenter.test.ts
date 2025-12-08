@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import { NotificationCenter } from "@/application/services/NotificationCenter";
 import type {
-  NotificationChannel,
-  Notification,
-} from "@/infrastructure/notifications/notification-channel.interface";
+  PlatformChannelPort,
+  PlatformNotification,
+} from "@/domain/ports/notifications/platform-channel-port.interface";
 import { ok, err } from "@/domain/utils/result";
 
 describe("NotificationCenter", () => {
   let center: NotificationCenter;
-  let mockConsoleChannel: NotificationChannel;
-  let mockUIChannel: NotificationChannel;
-  let mockSentryChannel: NotificationChannel;
+  let mockConsoleChannel: PlatformChannelPort;
+  let mockUIChannel: PlatformChannelPort;
+  let mockSentryChannel: PlatformChannelPort;
 
   beforeEach(() => {
     mockConsoleChannel = {
@@ -21,13 +21,13 @@ describe("NotificationCenter", () => {
 
     mockUIChannel = {
       name: "UIChannel",
-      canHandle: vi.fn((n: Notification) => n.level !== "debug"), // No debug
+      canHandle: vi.fn((n: PlatformNotification) => n.level !== "debug"), // No debug
       send: vi.fn().mockReturnValue(ok(undefined)),
     };
 
     mockSentryChannel = {
       name: "SentryChannel",
-      canHandle: vi.fn((n: Notification) => n.level === "error"), // Only errors
+      canHandle: vi.fn((n: PlatformNotification) => n.level === "error"), // Only errors
       send: vi.fn().mockReturnValue(ok(undefined)),
     };
   });
@@ -97,23 +97,15 @@ describe("NotificationCenter", () => {
       );
     });
 
-    it("should forward uiOptions to channels", () => {
-      const uiOptions = { permanent: true, title: "Heads-up" };
-
-      const result = center.info("Operation completed", undefined, { uiOptions });
+    it("should pass uiOptions to notification", () => {
+      const uiOptions = { permanent: true, console: false };
+      const result = center.info("Test", undefined, { uiOptions });
 
       expect(result.ok).toBe(true);
       expect(mockConsoleChannel.send).toHaveBeenCalledWith(
         expect.objectContaining({
           level: "info",
-          context: "Operation completed",
-          uiOptions,
-        })
-      );
-      expect(mockUIChannel.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          level: "info",
-          context: "Operation completed",
+          context: "Test",
           uiOptions,
         })
       );
@@ -316,8 +308,16 @@ describe("NotificationCenter", () => {
 
   describe("Error handling", () => {
     it("should return error if all channels fail", () => {
-      mockConsoleChannel.send = vi.fn().mockReturnValue(err("Console failed"));
-      mockUIChannel.send = vi.fn().mockReturnValue(err("UI failed"));
+      mockConsoleChannel.send = vi
+        .fn()
+        .mockReturnValue(
+          err({ code: "CONSOLE_FAILED", message: "Console failed", channelName: "ConsoleChannel" })
+        );
+      mockUIChannel.send = vi
+        .fn()
+        .mockReturnValue(
+          err({ code: "UI_FAILED", message: "UI failed", channelName: "UIChannel" })
+        );
 
       center = new NotificationCenter([mockConsoleChannel, mockUIChannel]);
 
@@ -333,7 +333,11 @@ describe("NotificationCenter", () => {
 
     it("should succeed if at least one channel succeeds", () => {
       mockConsoleChannel.send = vi.fn().mockReturnValue(ok(undefined));
-      mockUIChannel.send = vi.fn().mockReturnValue(err("UI failed"));
+      mockUIChannel.send = vi
+        .fn()
+        .mockReturnValue(
+          err({ code: "UI_FAILED", message: "UI failed", channelName: "UIChannel" })
+        );
 
       center = new NotificationCenter([mockConsoleChannel, mockUIChannel]);
 

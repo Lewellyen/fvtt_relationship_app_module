@@ -2105,6 +2105,11 @@ const platformMetricsSnapshotPortToken = createInjectionToken(
 const platformContainerPortToken = createInjectionToken("PlatformContainerPort");
 const platformSettingsRegistrationPortToken = createInjectionToken("PlatformSettingsRegistrationPort");
 const platformModuleReadyPortToken = createInjectionToken("PlatformModuleReadyPort");
+const platformChannelPortToken = createInjectionToken("PlatformChannelPort");
+const platformUINotificationChannelPortToken = createInjectionToken("PlatformUINotificationChannelPort");
+const platformConsoleChannelPortToken = createInjectionToken(
+  "PlatformConsoleChannelPort"
+);
 let store$4;
 function setGlobalConfig(config$1) {
   store$4 = {
@@ -14227,7 +14232,7 @@ const _NotificationCenter = class _NotificationCenter {
       if (result.ok) {
         succeeded = true;
       } else {
-        failures.push(`${channel.name}: ${result.error}`);
+        failures.push(`${channel.name}: ${result.error.message}`);
       }
     }
     if (!attempted) {
@@ -14253,12 +14258,12 @@ const _NotificationCenter = class _NotificationCenter {
 __name(_NotificationCenter, "NotificationCenter");
 let NotificationCenter = _NotificationCenter;
 const _DINotificationCenter = class _DINotificationCenter extends NotificationCenter {
-  constructor(consoleChannel) {
-    super([consoleChannel]);
+  constructor(consoleChannel, uiChannel) {
+    super([consoleChannel, uiChannel]);
   }
 };
 __name(_DINotificationCenter, "DINotificationCenter");
-_DINotificationCenter.dependencies = [consoleChannelToken];
+_DINotificationCenter.dependencies = [consoleChannelToken, uiChannelToken];
 let DINotificationCenter = _DINotificationCenter;
 const _ConsoleChannel = class _ConsoleChannel {
   constructor(logger) {
@@ -14270,21 +14275,25 @@ const _ConsoleChannel = class _ConsoleChannel {
   }
   send(notification) {
     const { level, context, data, error } = notification;
+    const payload = level === "error" ? error ?? data : data ?? error;
+    this.log(level, context, payload);
+    return ok(void 0);
+  }
+  log(level, message2, data) {
     switch (level) {
       case "debug":
-        this.logger.debug(context, data);
+        this.logger.debug(message2, data);
         break;
       case "info":
-        this.logger.info(context, data);
+        this.logger.info(message2, data);
         break;
       case "warn":
-        this.logger.warn(context, data ?? error);
+        this.logger.warn(message2, data);
         break;
       case "error":
-        this.logger.error(context, error ?? data);
+        this.logger.error(message2, data);
         break;
     }
-    return ok(void 0);
   }
 };
 __name(_ConsoleChannel, "ConsoleChannel");
@@ -14295,11 +14304,11 @@ const _DIConsoleChannel = class _DIConsoleChannel extends ConsoleChannel {
   }
 };
 __name(_DIConsoleChannel, "DIConsoleChannel");
-_DIConsoleChannel.dependencies = [loggerToken];
+_DIConsoleChannel.dependencies = [platformLoggingPortToken];
 let DIConsoleChannel = _DIConsoleChannel;
 const _UIChannel = class _UIChannel {
-  constructor(foundryUI, config2) {
-    this.foundryUI = foundryUI;
+  constructor(platformUI, config2) {
+    this.platformUI = platformUI;
     this.config = config2;
     this.name = "UIChannel";
   }
@@ -14310,13 +14319,32 @@ const _UIChannel = class _UIChannel {
     const sanitizedMessage = this.sanitizeForUI(notification);
     const uiTypeResult = this.mapLevelToUIType(notification.level);
     if (!uiTypeResult.ok) {
-      return uiTypeResult;
+      return err({
+        code: "MAPPING_FAILED",
+        message: uiTypeResult.error,
+        channelName: this.name
+      });
     }
-    const uiType = uiTypeResult.value;
-    const uiOptions = notification.uiOptions;
-    const notifyResult = this.foundryUI.notify(sanitizedMessage, uiType, uiOptions);
-    if (!notifyResult.ok) {
-      return err(`UI notification failed: ${notifyResult.error.message}`);
+    const result = this.platformUI.notify(sanitizedMessage, uiTypeResult.value);
+    if (!result.ok) {
+      return err({
+        code: "UI_NOTIFICATION_FAILED",
+        message: result.error.message,
+        channelName: this.name,
+        details: result.error
+      });
+    }
+    return ok(void 0);
+  }
+  notify(message2, type) {
+    const result = this.platformUI.notify(message2, type);
+    if (!result.ok) {
+      return err({
+        code: "UI_NOTIFICATION_FAILED",
+        message: result.error.message,
+        channelName: this.name,
+        details: result.error
+      });
     }
     return ok(void 0);
   }
@@ -14343,7 +14371,7 @@ const _UIChannel = class _UIChannel {
     return context;
   }
   /**
-   * Maps notification level to Foundry UI notification type.
+   * Maps notification level to UI notification type.
    * Protected to allow testing of exhaustive type check.
    */
   mapLevelToUIType(level) {
@@ -14363,12 +14391,12 @@ const _UIChannel = class _UIChannel {
 __name(_UIChannel, "UIChannel");
 let UIChannel = _UIChannel;
 const _DIUIChannel = class _DIUIChannel extends UIChannel {
-  constructor(foundryUI, config2) {
-    super(foundryUI, config2);
+  constructor(platformUI, config2) {
+    super(platformUI, config2);
   }
 };
 __name(_DIUIChannel, "DIUIChannel");
-_DIUIChannel.dependencies = [foundryUIToken, runtimeConfigToken];
+_DIUIChannel.dependencies = [platformUINotificationPortToken, runtimeConfigToken];
 let DIUIChannel = _DIUIChannel;
 const _NotificationPortAdapter = class _NotificationPortAdapter {
   constructor(notificationCenter) {
@@ -14425,7 +14453,10 @@ const _NotificationPortAdapter = class _NotificationPortAdapter {
         ...options.permanent !== void 0 && { permanent: options.permanent },
         ...options.console !== void 0 && { console: options.console },
         ...options.localize !== void 0 && { localize: options.localize },
-        ...options.progress !== void 0 && { progress: options.progress }
+        ...options.progress !== void 0 && { progress: options.progress },
+        ...options.clean !== void 0 && { clean: options.clean },
+        ...options.escape !== void 0 && { escape: options.escape },
+        ...options.format !== void 0 && { format: options.format }
       };
       centerOptions.uiOptions = foundryOptions;
     }
@@ -14436,7 +14467,7 @@ const _NotificationPortAdapter = class _NotificationPortAdapter {
    * This allows adapters to pass Foundry options without exposing them in the domain interface.
    */
   isFoundryNotificationOptions(options) {
-    return typeof options === "object" && options !== null && ("permanent" in options || "console" in options || "localize" in options || "progress" in options);
+    return typeof options === "object" && options !== null && ("permanent" in options || "console" in options || "localize" in options || "progress" in options || "clean" in options || "escape" in options || "format" in options);
   }
   /**
    * Maps NotificationCenter Result to PlatformNotificationPort Result.

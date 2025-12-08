@@ -41,6 +41,28 @@ Die Refactoring-Vorschläge wurden aus der [SRP-Review vom 2024-12-02](../analys
 **Komplexität**: ⭐⭐ Mittel
 **Priorität**: Hoch (gute Testbarkeit, klare Trennung)
 
+### 4. Notification Queue UI Channel
+
+**Datei**: [`04-notification-queue-ui-channel.md`](./04-notification-queue-ui-channel.md)
+
+**Problem**: UI-Notifications gehen verloren, wenn sie vor der Verfügbarkeit von Foundry UI gesendet werden.
+
+**Lösung**: `QueuedUIChannel` als Decorator, der Notifications sammelt und ausgibt, sobald UI verfügbar ist.
+
+**Komplexität**: ⭐⭐ Mittel
+**Priorität**: Mittel
+
+### 5. Notification Channel Port Hierarchy ⭐ **NEU**
+
+**Datei**: [`05-notification-channel-port-hierarchy.md`](./05-notification-channel-port-hierarchy.md)
+
+**Problem**: `NotificationCenter` nutzt Infrastructure-Interfaces direkt statt Domain-Ports. Keine Port-Hierarchie wie beim Event-System.
+
+**Lösung**: Port-Hierarchie analog zum Event-System: `PlatformChannelPort` → `PlatformUINotificationChannelPort` / `PlatformConsoleChannelPort`. `NotificationCenter` nutzt nur Domain-Ports.
+
+**Komplexität**: ⭐⭐⭐ Hoch (Architektur-Refactoring)
+**Priorität**: Hoch (Architektur-Konsistenz, OCP-Konformität)
+
 ## Umsetzungsreihenfolge
 
 Empfohlene Reihenfolge für die Umsetzung:
@@ -69,6 +91,8 @@ Empfohlene Reihenfolge für die Umsetzung:
 | ModuleSettingsRegistrar | 📋 Geplant | Hoch | ⭐ Niedrig |
 | ConsoleLoggerService | 📋 Geplant | Mittel | ⭐⭐⭐ Hoch |
 | RetryService | 📋 Geplant | Hoch | ⭐⭐ Mittel |
+| Notification Queue UI Channel | 📋 Geplant | Mittel | ⭐⭐ Mittel |
+| Notification Channel Port Hierarchy | 📋 Geplant | Hoch | ⭐⭐⭐ Hoch |
 
 **Legende**:
 - 📋 Geplant

@@ -8,7 +8,7 @@ import {
 } from "@/framework/core/api/public-api-wrappers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import type { NotificationCenter } from "@/infrastructure/notifications/NotificationCenter";
+import type { NotificationCenter } from "@/application/services/NotificationCenter";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import { ok } from "@/domain/utils/result";
 

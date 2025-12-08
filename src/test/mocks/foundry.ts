@@ -2,7 +2,7 @@ import { vi } from "vitest";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationService } from "@/application/services/notification-center.interface";
 import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
 import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
 import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";

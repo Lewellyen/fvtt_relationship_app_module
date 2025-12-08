@@ -1,6 +1,6 @@
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
+import type { NotificationService } from "@/application/services/notification-center.interface";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import { createReadOnlyWrapper } from "./readonly-wrapper";
 

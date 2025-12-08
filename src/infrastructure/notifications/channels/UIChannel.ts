@@ -1,57 +1,75 @@
 /**
- * UI Channel - Routes notifications to Foundry UI notifications.
+ * UI Channel - Routes notifications to platform UI.
+ *
+ * **Platform-Agnostic:**
+ * - Uses PlatformUINotificationPort (Domain-Port)
+ * - Works with Foundry, Roll20, Headless
  *
  * **Responsibilities:**
- * - Send user-facing notifications to Foundry UI
  * - Filter out debug messages (not relevant for end-users)
  * - Sanitize messages in production mode
  * - Map notification levels to UI notification types
- *
- * **Design:**
- * UI is for end-users - sanitization required in production.
- * Debug messages are never shown in UI (too technical).
  */
 
 import type {
-  NotificationChannel,
-  Notification,
-} from "@/infrastructure/notifications/notification-channel.interface";
-import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
+  PlatformUINotificationChannelPort,
+  PlatformNotification,
+  PlatformChannelError,
+} from "@/domain/ports/notifications/platform-ui-notification-channel-port.interface";
+import type { PlatformUINotificationPort } from "@/domain/ports/platform-ui-notification-port.interface";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
-import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui.token";
+import { platformUINotificationPortToken } from "@/application/tokens/domain-ports.tokens";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 
-export class UIChannel implements NotificationChannel {
+export class UIChannel implements PlatformUINotificationChannelPort {
   readonly name = "UIChannel";
 
   constructor(
-    private readonly foundryUI: FoundryUI,
+    private readonly platformUI: PlatformUINotificationPort,
     private readonly config: RuntimeConfigService
   ) {}
 
-  canHandle(notification: Notification): boolean {
+  canHandle(notification: PlatformNotification): boolean {
     // Debug messages are too technical for UI
-    // Only info, warn, and error are user-facing
     return notification.level !== "debug";
   }
 
-  send(notification: Notification): Result<void, string> {
+  send(notification: PlatformNotification): Result<void, PlatformChannelError> {
     const sanitizedMessage = this.sanitizeForUI(notification);
     const uiTypeResult = this.mapLevelToUIType(notification.level);
     if (!uiTypeResult.ok) {
-      return uiTypeResult;
-    }
-    const uiType = uiTypeResult.value;
-    const uiOptions = notification.uiOptions;
-
-    const notifyResult = this.foundryUI.notify(sanitizedMessage, uiType, uiOptions);
-
-    if (!notifyResult.ok) {
-      return err(`UI notification failed: ${notifyResult.error.message}`);
+      return err({
+        code: "MAPPING_FAILED",
+        message: uiTypeResult.error,
+        channelName: this.name,
+      });
     }
 
+    const result = this.platformUI.notify(sanitizedMessage, uiTypeResult.value);
+    if (!result.ok) {
+      return err({
+        code: "UI_NOTIFICATION_FAILED",
+        message: result.error.message,
+        channelName: this.name,
+        details: result.error,
+      });
+    }
+
+    return ok(undefined);
+  }
+
+  notify(message: string, type: "info" | "warning" | "error"): Result<void, PlatformChannelError> {
+    const result = this.platformUI.notify(message, type);
+    if (!result.ok) {
+      return err({
+        code: "UI_NOTIFICATION_FAILED",
+        message: result.error.message,
+        channelName: this.name,
+        details: result.error,
+      });
+    }
     return ok(undefined);
   }
 
@@ -61,7 +79,7 @@ export class UIChannel implements NotificationChannel {
    * Development: Shows detailed messages
    * Production: Shows generic messages to prevent information leakage
    */
-  private sanitizeForUI(notification: Notification): string {
+  private sanitizeForUI(notification: PlatformNotification): string {
     const { level, context, data, error } = notification;
 
     if (this.config.get("isDevelopment")) {
@@ -86,11 +104,11 @@ export class UIChannel implements NotificationChannel {
   }
 
   /**
-   * Maps notification level to Foundry UI notification type.
+   * Maps notification level to UI notification type.
    * Protected to allow testing of exhaustive type check.
    */
   protected mapLevelToUIType(
-    level: Notification["level"]
+    level: PlatformNotification["level"]
   ): Result<"info" | "warning" | "error", string> {
     switch (level) {
       case "info":
@@ -110,9 +128,9 @@ export class UIChannel implements NotificationChannel {
 }
 
 export class DIUIChannel extends UIChannel {
-  static dependencies = [foundryUIToken, runtimeConfigToken] as const;
+  static dependencies = [platformUINotificationPortToken, runtimeConfigToken] as const;
 
-  constructor(foundryUI: FoundryUI, config: RuntimeConfigService) {
-    super(foundryUI, config);
+  constructor(platformUI: PlatformUINotificationPort, config: RuntimeConfigService) {
+    super(platformUI, config);
   }
 }

@@ -5,9 +5,9 @@
  * TypeScript removes type imports at compile time, so they don't create runtime dependencies.
  */
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
-import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
+import type { PlatformUINotificationChannelPort } from "@/domain/ports/notifications/platform-ui-notification-channel-port.interface";
 
 /**
  * Injection token for UIChannel.
  */
-export const uiChannelToken = createInjectionToken<NotificationChannel>("UIChannel");
+export const uiChannelToken = createInjectionToken<PlatformUINotificationChannelPort>("UIChannel");

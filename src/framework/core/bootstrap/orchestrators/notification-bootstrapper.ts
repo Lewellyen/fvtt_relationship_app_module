@@ -4,8 +4,8 @@ import type { PlatformContainerPort } from "@/domain/ports/platform-container-po
 import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
 import { uiChannelToken } from "@/infrastructure/shared/tokens/notifications/ui-channel.token";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
-import type { NotificationService } from "@/infrastructure/notifications/notification-center.interface";
-import type { NotificationChannel } from "@/infrastructure/notifications/notification-channel.interface";
+import type { NotificationService } from "@/application/services/notification-center.interface";
+import type { PlatformChannelPort } from "@/domain/ports/notifications/platform-channel-port.interface";
 
 /**
  * Orchestrator for attaching notification channels during bootstrap.
@@ -42,7 +42,7 @@ export class NotificationBootstrapper {
     const notificationCenter = castResolvedService<NotificationService>(
       notificationCenterResult.value
     );
-    const uiChannel = castResolvedService<NotificationChannel>(uiChannelResult.value);
+    const uiChannel = castResolvedService<PlatformChannelPort>(uiChannelResult.value);
     notificationCenter.addChannel(uiChannel);
     return ok(undefined);
   }

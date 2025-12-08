@@ -7,7 +7,7 @@ import type {
 import type {
   NotificationService,
   NotificationCenterOptions,
-} from "@/infrastructure/notifications/notification-center.interface";
+} from "@/application/services/notification-center.interface";
 import type { FoundryNotificationOptions } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import { ok, err } from "@/domain/utils/result";
 import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
@@ -107,6 +107,9 @@ export class NotificationPortAdapter implements PlatformNotificationPort {
         ...(options.console !== undefined && { console: options.console }),
         ...(options.localize !== undefined && { localize: options.localize }),
         ...(options.progress !== undefined && { progress: options.progress }),
+        ...(options.clean !== undefined && { clean: options.clean }),
+        ...(options.escape !== undefined && { escape: options.escape }),
+        ...(options.format !== undefined && { format: options.format }),
       };
       centerOptions.uiOptions = foundryOptions;
     }
@@ -127,7 +130,10 @@ export class NotificationPortAdapter implements PlatformNotificationPort {
       ("permanent" in options ||
         "console" in options ||
         "localize" in options ||
-        "progress" in options)
+        "progress" in options ||
+        "clean" in options ||
+        "escape" in options ||
+        "format" in options)
     );
   }
 

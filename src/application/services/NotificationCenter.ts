@@ -8,9 +8,9 @@
  * - Provide a single point to route notifications across channels
  *
  * **Architecture:**
- * - Strategy Pattern: Channels are pluggable strategies
- * - Observer Pattern: Channels observe notifications
- * - Open/Closed Principle: Extensible without modification
+ * - Uses only Domain-Ports (PlatformChannelPort)
+ * - Application-Layer (Business-Logic: Routing-Entscheidungen)
+ * - Platform-agnostic
  *
  * **Channel Flow:**
  * ```
@@ -33,18 +33,18 @@
  * ```
  */
 
-import { consoleChannelToken } from "@/infrastructure/shared/tokens/notifications/console-channel.token";
 import { err, ok } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
+import type {
+  PlatformChannelPort,
+  PlatformNotification,
+} from "@/domain/ports/notifications/platform-channel-port.interface";
 import type {
   NotificationService,
   NotificationCenterOptions,
 } from "./notification-center.interface";
-import type {
-  Notification,
-  NotificationChannel,
-  NotificationLevel,
-} from "./notification-channel.interface";
+import { consoleChannelToken } from "@/infrastructure/shared/tokens/notifications/console-channel.token";
+import { uiChannelToken } from "@/infrastructure/shared/tokens/notifications/ui-channel.token";
 
 /**
  * Central hub for module notifications. Routes notifications to registered channels
@@ -52,9 +52,9 @@ import type {
  * errors when deliveries fail.
  */
 export class NotificationCenter implements NotificationService {
-  private readonly channels: NotificationChannel[];
+  private readonly channels: PlatformChannelPort[];
 
-  constructor(initialChannels: NotificationChannel[]) {
+  constructor(initialChannels: PlatformChannelPort[]) {
     this.channels = [...initialChannels];
   }
 
@@ -79,14 +79,14 @@ export class NotificationCenter implements NotificationService {
 
   error(
     context: string,
-    error?: Notification["error"],
+    error?: PlatformNotification["error"],
     options?: NotificationCenterOptions
   ): Result<void, string> {
     const payload = error === undefined ? {} : { error };
     return this.notify("error", context, payload, options);
   }
 
-  addChannel(channel: NotificationChannel): void {
+  addChannel(channel: PlatformChannelPort): void {
     const alreadyRegistered = this.channels.some((existing) => existing.name === channel.name);
     if (!alreadyRegistered) {
       this.channels.push(channel);
@@ -108,12 +108,12 @@ export class NotificationCenter implements NotificationService {
   }
 
   private notify(
-    level: NotificationLevel,
+    level: PlatformNotification["level"],
     context: string,
-    payload: Partial<Pick<Notification, "data" | "error">>,
+    payload: Partial<Pick<PlatformNotification, "data" | "error">>,
     options?: NotificationCenterOptions
   ): Result<void, string> {
-    const notification: Notification = {
+    const notification: PlatformNotification = {
       level,
       context,
       timestamp: new Date(),
@@ -138,7 +138,7 @@ export class NotificationCenter implements NotificationService {
       if (result.ok) {
         succeeded = true;
       } else {
-        failures.push(`${channel.name}: ${result.error}`);
+        failures.push(`${channel.name}: ${result.error.message}`);
       }
     }
 
@@ -162,7 +162,7 @@ export class NotificationCenter implements NotificationService {
     return err(`All channels failed: ${failures.join("; ")}`);
   }
 
-  private selectChannels(channelNames?: string[]): NotificationChannel[] {
+  private selectChannels(channelNames?: string[]): PlatformChannelPort[] {
     if (!channelNames || channelNames.length === 0) {
       return this.channels;
     }
@@ -171,10 +171,14 @@ export class NotificationCenter implements NotificationService {
   }
 }
 
+/**
+ * DI wrapper for NotificationCenter.
+ * Injects channels via constructor.
+ */
 export class DINotificationCenter extends NotificationCenter {
-  static dependencies = [consoleChannelToken] as const;
+  static dependencies = [consoleChannelToken, uiChannelToken] as const;
 
-  constructor(consoleChannel: NotificationChannel) {
-    super([consoleChannel]);
+  constructor(consoleChannel: PlatformChannelPort, uiChannel: PlatformChannelPort) {
+    super([consoleChannel, uiChannel]);
   }
 }
