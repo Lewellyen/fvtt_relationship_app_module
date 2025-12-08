@@ -94,6 +94,27 @@ export function checkDomainBoundary(
 }
 
 /**
+ * Entfernt Kommentare aus dem Dateiinhalt
+ *
+ * @param content - Dateiinhalt
+ * @returns Dateiinhalt ohne Kommentare
+ */
+function removeComments(content: string): string {
+  let result = content;
+
+  // Single-line comments: // ...
+  result = result.replace(/\/\/.*$/gm, "");
+
+  // Multi-line comments: /* ... */
+  result = result.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  // JSDoc-style comments in code blocks innerhalb von /** */ können noch übrig bleiben
+  // aber das sollte für unseren Use-Case ausreichen
+
+  return result;
+}
+
+/**
  * Extrahiert alle Import-Statements aus einem TypeScript/JavaScript File
  *
  * @param content - Dateiinhalt
@@ -102,10 +123,13 @@ export function checkDomainBoundary(
 function extractImports(content: string): string[] {
   const imports: string[] = [];
 
+  // Kommentare entfernen, um Imports in Kommentaren zu ignorieren
+  const contentWithoutComments = removeComments(content);
+
   // Standard ES6 imports: import ... from '...'
   const es6ImportRegex = /import\s+.*?\s+from\s+['"](@\/[^'"]+)['"]/g;
   let match;
-  while ((match = es6ImportRegex.exec(content)) !== null) {
+  while ((match = es6ImportRegex.exec(contentWithoutComments)) !== null) {
     if (match[1]) {
       imports.push(match[1]);
     }
@@ -113,7 +137,7 @@ function extractImports(content: string): string[] {
 
   // Dynamic imports: import('...')
   const dynamicImportRegex = /import\s*\(\s*['"](@\/[^'"]+)['"]\s*\)/g;
-  while ((match = dynamicImportRegex.exec(content)) !== null) {
+  while ((match = dynamicImportRegex.exec(contentWithoutComments)) !== null) {
     if (match[1]) {
       imports.push(match[1]);
     }
@@ -121,7 +145,7 @@ function extractImports(content: string): string[] {
 
   // require() calls: require('...')
   const requireRegex = /require\s*\(\s*['"](@\/[^'"]+)['"]\s*\)/g;
-  while ((match = requireRegex.exec(content)) !== null) {
+  while ((match = requireRegex.exec(contentWithoutComments)) !== null) {
     if (match[1]) {
       imports.push(match[1]);
     }

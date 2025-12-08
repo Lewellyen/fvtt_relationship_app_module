@@ -11,9 +11,9 @@ import { RuntimeConfigService } from "./RuntimeConfigService";
  * ```typescript
  * import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
  * import type { EnvironmentConfig } from "@/domain/types/environment-config";
- * import { ENV } from "@/framework/config/environment";
+ * // ENV should be obtained from domain layer or passed as parameter
  *
- * const config = createRuntimeConfig(ENV);
+ * const config = createRuntimeConfig(envConfig);
  * ```
  *
  * @param env - The environment configuration to use

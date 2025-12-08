@@ -12,6 +12,23 @@
 
 ### Upgrade-Hinweise
 
+## [0.40.30] - 2025-12-08
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Domain Boundary Checker**: Kommentare werden jetzt vor der Import-Extraktion entfernt, um Imports in Kommentaren zu ignorieren
+- **runtime-config-factory.ts**: Framework-Import aus JSDoc-Kommentar entfernt, um Domain-Boundary-Verletzung zu beheben
+
+### Fehlerbehebungen
+- **Domain Boundary Checker Test**: Verletzung durch Framework-Import in Kommentar behoben - Domain Boundary Checker ignoriert jetzt Imports in Kommentaren korrekt
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.40.29] - 2025-12-08
 ### Hinzugefügt
 - Keine Einträge
