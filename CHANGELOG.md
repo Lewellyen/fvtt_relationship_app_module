@@ -12,6 +12,28 @@
 
 ### Upgrade-Hinweise
 
+## [0.42.0] - 2025-12-09
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **ConsoleLoggerService Decorator-Pattern**: ConsoleLoggerService wurde nach Decorator-Pattern refactored, um Single Responsibility Principle (SRP) zu erfüllen ([Details](docs/refactoring/02-console-logger-service-decorator-pattern.md))
+- `BaseConsoleLogger`: Kern-Logger ohne Config/Trace-Verantwortlichkeiten
+- `RuntimeConfigLoggerDecorator`: Decorator für RuntimeConfig-Subscription
+- `TraceContextLoggerDecorator`: Decorator für Trace-Context-Formatierung
+- `TracedLogger`: In separate Datei extrahiert für bessere Wiederverwendbarkeit
+- `ConsoleLoggerService`: Jetzt als Komposition der Decorators implementiert
+- Verbesserte Testbarkeit und Flexibilität durch klare Trennung der Verantwortlichkeiten
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.41.2] - 2025-12-09
 ### Hinzugefügt
 - **Infrastructure Services Übersicht**: Vollständige Dokumentation aller Services in der Infrastruktur-Schicht mit Verantwortlichkeiten, Abhängigkeiten und Design-Patterns ([Details](docs/INFRASTRUCTURE-SERVICES.md))

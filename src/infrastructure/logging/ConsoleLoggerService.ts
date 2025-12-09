@@ -1,120 +1,55 @@
-import { LogLevel } from "@/domain/types/log-level";
-import { LOG_PREFIX } from "@/application/constants/app-constants";
 import type { Logger } from "./logger.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { traceContextToken } from "@/infrastructure/shared/tokens/observability/trace-context.token";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { LogLevel } from "@/domain/types/log-level";
+import { BaseConsoleLogger } from "./BaseConsoleLogger";
+import { RuntimeConfigLoggerDecorator } from "./RuntimeConfigLoggerDecorator";
+import { TraceContextLoggerDecorator } from "./TraceContextLoggerDecorator";
 
 /**
- * Logger implementation that writes to the browser console with module prefix
- * and optional trace context correlation.
+ * Console logger with RuntimeConfig and TraceContext support.
+ * Composed from base logger and decorators.
  */
 export class ConsoleLoggerService implements Logger {
-  private minLevel: LogLevel;
-  private readonly traceContext: TraceContext | null;
-  private runtimeConfigUnsubscribe: (() => void) | null = null;
+  private readonly logger: Logger;
 
   constructor(config: RuntimeConfigService, traceContext?: TraceContext) {
-    this.traceContext = traceContext ?? null;
-    this.minLevel = config.get("logLevel");
-    this.bindRuntimeConfig(config);
+    const baseLogger = new BaseConsoleLogger(config.get("logLevel"));
+    const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config);
+    this.logger = traceContext
+      ? new TraceContextLoggerDecorator(withConfig, traceContext)
+      : withConfig;
   }
 
+  // Delegate all methods to composed logger
   setMinLevel(level: LogLevel): void {
-    this.minLevel = level;
+    this.logger.setMinLevel?.(level);
   }
 
   log(message: string, ...optionalParams: unknown[]): void {
-    const formattedMessage = this.formatWithContextTrace(message);
-    console.log(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    this.logger.log(message, ...optionalParams);
   }
 
   error(message: string, ...optionalParams: unknown[]): void {
-    if (LogLevel.ERROR < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message);
-    console.error(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    this.logger.error(message, ...optionalParams);
   }
 
   warn(message: string, ...optionalParams: unknown[]): void {
-    if (LogLevel.WARN < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message);
-    console.warn(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    this.logger.warn(message, ...optionalParams);
   }
 
   info(message: string, ...optionalParams: unknown[]): void {
-    if (LogLevel.INFO < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message);
-    console.info(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    this.logger.info(message, ...optionalParams);
   }
 
   debug(message: string, ...optionalParams: unknown[]): void {
-    if (LogLevel.DEBUG < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message);
-    console.debug(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
+    this.logger.debug(message, ...optionalParams);
   }
 
   withTraceId(traceId: string): Logger {
-    return new TracedLogger(this, traceId);
-  }
-
-  private bindRuntimeConfig(runtimeConfig: RuntimeConfigService): void {
-    this.minLevel = runtimeConfig.get("logLevel");
-    this.runtimeConfigUnsubscribe?.();
-    this.runtimeConfigUnsubscribe = runtimeConfig.onChange("logLevel", (level) => {
-      this.setMinLevel(level);
-    });
-  }
-
-  private getContextTraceId(): string | null {
-    return this.traceContext?.getCurrentTraceId() ?? null;
-  }
-
-  private formatWithContextTrace(message: string): string {
-    const contextTraceId = this.getContextTraceId();
-    if (contextTraceId) {
-      return `[${contextTraceId}] ${message}`;
-    }
-    return message;
-  }
-}
-
-class TracedLogger implements Logger {
-  constructor(
-    private readonly baseLogger: Logger,
-    private readonly traceId: string
-  ) {}
-
-  setMinLevel?(level: LogLevel): void {
-    this.baseLogger.setMinLevel?.(level);
-  }
-
-  log(message: string, ...optionalParams: unknown[]): void {
-    this.baseLogger.log(this.formatMessage(message), ...optionalParams);
-  }
-
-  error(message: string, ...optionalParams: unknown[]): void {
-    this.baseLogger.error(this.formatMessage(message), ...optionalParams);
-  }
-
-  warn(message: string, ...optionalParams: unknown[]): void {
-    this.baseLogger.warn(this.formatMessage(message), ...optionalParams);
-  }
-
-  info(message: string, ...optionalParams: unknown[]): void {
-    this.baseLogger.info(this.formatMessage(message), ...optionalParams);
-  }
-
-  debug(message: string, ...optionalParams: unknown[]): void {
-    this.baseLogger.debug(this.formatMessage(message), ...optionalParams);
-  }
-
-  withTraceId?(newTraceId: string): Logger {
-    return new TracedLogger(this.baseLogger, `${this.traceId}/${newTraceId}`);
-  }
-
-  private formatMessage(message: string): string {
-    return `[${this.traceId}] ${message}`;
+    return this.logger.withTraceId?.(traceId) ?? this.logger;
   }
 }
 

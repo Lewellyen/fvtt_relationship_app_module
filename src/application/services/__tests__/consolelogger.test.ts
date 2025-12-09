@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
+import {
+  ConsoleLoggerService,
+  DIConsoleLoggerService,
+} from "@/infrastructure/logging/ConsoleLoggerService";
 import { LOG_PREFIX } from "@/application/constants/app-constants";
 import { LogLevel } from "@/domain/types/log-level";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
@@ -7,6 +10,7 @@ import { TraceContext } from "@/infrastructure/observability/trace/TraceContext"
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
+import type { Logger } from "@/infrastructure/logging/logger.interface";
 
 describe("ConsoleLoggerService", () => {
   let logger: ConsoleLoggerService;
@@ -444,32 +448,80 @@ describe("ConsoleLoggerService", () => {
   });
 
   describe("Runtime config binding", () => {
-    it("should unsubscribe previous listener before re-binding", () => {
-      const firstConfig = createRuntimeConfig(
-        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
-      );
-      const cleanupSpy = vi.fn();
-      const firstOnChangeSpy = vi.spyOn(firstConfig, "onChange").mockReturnValue(cleanupSpy);
-      const localLogger = new ConsoleLoggerService(firstConfig);
+    it("should sync log level from RuntimeConfig on initialization", () => {
+      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.WARN }));
+      const onChangeSpy = vi.spyOn(config, "onChange");
+      const localLogger = new ConsoleLoggerService(config);
 
-      const secondConfig = createRuntimeConfig(
-        createMockEnvironmentConfig({ logLevel: LogLevel.WARN })
-      );
-      const secondCleanupSpy = vi.fn();
-      const secondOnChangeSpy = vi
-        .spyOn(secondConfig, "onChange")
-        .mockReturnValue(secondCleanupSpy);
+      // Logger should be initialized with WARN level
+      localLogger.debug("Debug message");
+      localLogger.warn("Warn message");
 
-      (
-        localLogger as unknown as { bindRuntimeConfig(config: RuntimeConfigService): void }
-      ).bindRuntimeConfig(secondConfig);
+      expect(consoleDebugSpy).not.toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalled();
+      expect(onChangeSpy).toHaveBeenCalledWith("logLevel", expect.any(Function));
 
-      expect(cleanupSpy).toHaveBeenCalledTimes(1);
-      expect(secondOnChangeSpy).toHaveBeenCalledTimes(1);
-      expect(secondCleanupSpy).not.toHaveBeenCalled();
+      onChangeSpy.mockRestore();
+    });
 
-      firstOnChangeSpy.mockRestore();
-      secondOnChangeSpy.mockRestore();
+    it("should update log level when RuntimeConfig changes", () => {
+      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+      const localLogger = new ConsoleLoggerService(config);
+
+      // Initially INFO level
+      localLogger.debug("Debug message");
+      expect(consoleDebugSpy).not.toHaveBeenCalled();
+
+      // Change to DEBUG level via RuntimeConfig
+      config.setFromFoundry("logLevel", LogLevel.DEBUG);
+
+      // Now debug should be visible
+      localLogger.debug("Debug message");
+      expect(consoleDebugSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe("withTraceId fallback", () => {
+    it("should return logger itself if withTraceId is not available", () => {
+      // Create a mock logger without withTraceId
+      const mockLogger: Logger = {
+        log: vi.fn(),
+        error: vi.fn(),
+        warn: vi.fn(),
+        info: vi.fn(),
+        debug: vi.fn(),
+        setMinLevel: vi.fn(),
+        // withTraceId is intentionally missing
+      };
+
+      const config = createRuntimeConfig(createMockEnvironmentConfig());
+      const logger = new ConsoleLoggerService(config);
+
+      // Replace internal logger with mock that has no withTraceId
+      (logger as unknown as { logger: Logger }).logger = mockLogger;
+
+      const result = logger.withTraceId("test-trace");
+
+      // Should return the logger itself (fallback)
+      expect(result).toBe(mockLogger);
+    });
+  });
+
+  describe("DIConsoleLoggerService", () => {
+    it("should extend ConsoleLoggerService with DI dependencies", () => {
+      expect(DIConsoleLoggerService.dependencies).toEqual([
+        expect.anything(), // runtimeConfigToken
+        expect.anything(), // traceContextToken
+      ]);
+      expect(DIConsoleLoggerService.dependencies).toHaveLength(2);
+    });
+
+    it("should create instance with same behavior as ConsoleLoggerService", () => {
+      const config = createRuntimeConfig(createMockEnvironmentConfig());
+      const diLogger = new DIConsoleLoggerService(config);
+
+      diLogger.info("Test message");
+      expect(consoleInfoSpy).toHaveBeenCalledWith(`${LOG_PREFIX} Test message`);
     });
   });
 });

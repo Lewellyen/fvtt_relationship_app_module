@@ -8495,63 +8495,6 @@ function createInMemoryMetricsStorage() {
   };
 }
 __name(createInMemoryMetricsStorage, "createInMemoryMetricsStorage");
-const _ConsoleLoggerService = class _ConsoleLoggerService {
-  constructor(config2, traceContext) {
-    this.runtimeConfigUnsubscribe = null;
-    this.traceContext = traceContext ?? null;
-    this.minLevel = config2.get("logLevel");
-    this.bindRuntimeConfig(config2);
-  }
-  setMinLevel(level) {
-    this.minLevel = level;
-  }
-  log(message2, ...optionalParams) {
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.log(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    if (LogLevel.ERROR < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.error(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    if (LogLevel.WARN < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.warn(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    if (LogLevel.INFO < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.info(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    if (LogLevel.DEBUG < this.minLevel) return;
-    const formattedMessage = this.formatWithContextTrace(message2);
-    console.debug(`${LOG_PREFIX} ${formattedMessage}`, ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return new TracedLogger(this, traceId);
-  }
-  bindRuntimeConfig(runtimeConfig) {
-    this.minLevel = runtimeConfig.get("logLevel");
-    this.runtimeConfigUnsubscribe?.();
-    this.runtimeConfigUnsubscribe = runtimeConfig.onChange("logLevel", (level) => {
-      this.setMinLevel(level);
-    });
-  }
-  getContextTraceId() {
-    return this.traceContext?.getCurrentTraceId() ?? null;
-  }
-  formatWithContextTrace(message2) {
-    const contextTraceId = this.getContextTraceId();
-    if (contextTraceId) {
-      return `[${contextTraceId}] ${message2}`;
-    }
-    return message2;
-  }
-};
-__name(_ConsoleLoggerService, "ConsoleLoggerService");
-let ConsoleLoggerService = _ConsoleLoggerService;
 const _TracedLogger = class _TracedLogger {
   constructor(baseLogger, traceId) {
     this.baseLogger = baseLogger;
@@ -8584,6 +8527,143 @@ const _TracedLogger = class _TracedLogger {
 };
 __name(_TracedLogger, "TracedLogger");
 let TracedLogger = _TracedLogger;
+const _BaseConsoleLogger = class _BaseConsoleLogger {
+  constructor(minLevel) {
+    this.minLevel = minLevel;
+  }
+  setMinLevel(level) {
+    this.minLevel = level;
+  }
+  log(message2, ...optionalParams) {
+    console.log(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    if (LogLevel.ERROR < this.minLevel) return;
+    console.error(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    if (LogLevel.WARN < this.minLevel) return;
+    console.warn(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    if (LogLevel.INFO < this.minLevel) return;
+    console.info(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    if (LogLevel.DEBUG < this.minLevel) return;
+    console.debug(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return new TracedLogger(this, traceId);
+  }
+};
+__name(_BaseConsoleLogger, "BaseConsoleLogger");
+let BaseConsoleLogger = _BaseConsoleLogger;
+const _RuntimeConfigLoggerDecorator = class _RuntimeConfigLoggerDecorator {
+  constructor(baseLogger, runtimeConfig) {
+    this.baseLogger = baseLogger;
+    this.runtimeConfig = runtimeConfig;
+    this.unsubscribe = null;
+    this.syncLogLevel();
+  }
+  syncLogLevel() {
+    this.baseLogger.setMinLevel?.(this.runtimeConfig.get("logLevel"));
+    this.unsubscribe?.();
+    this.unsubscribe = this.runtimeConfig.onChange("logLevel", (level) => {
+      this.baseLogger.setMinLevel?.(level);
+    });
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(message2, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(message2, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(message2, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(message2, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(message2, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return this.baseLogger.withTraceId?.(traceId) ?? this.baseLogger;
+  }
+  dispose() {
+    this.unsubscribe?.();
+  }
+};
+__name(_RuntimeConfigLoggerDecorator, "RuntimeConfigLoggerDecorator");
+let RuntimeConfigLoggerDecorator = _RuntimeConfigLoggerDecorator;
+const _TraceContextLoggerDecorator = class _TraceContextLoggerDecorator {
+  constructor(baseLogger, traceContext) {
+    this.baseLogger = baseLogger;
+    this.traceContext = traceContext;
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  formatWithTrace(message2) {
+    const traceId = this.traceContext?.getCurrentTraceId();
+    return traceId ? `[${traceId}] ${message2}` : message2;
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(this.formatWithTrace(message2), ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(this.formatWithTrace(message2), ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(this.formatWithTrace(message2), ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(this.formatWithTrace(message2), ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(this.formatWithTrace(message2), ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return new TracedLogger(this, traceId);
+  }
+};
+__name(_TraceContextLoggerDecorator, "TraceContextLoggerDecorator");
+let TraceContextLoggerDecorator = _TraceContextLoggerDecorator;
+const _ConsoleLoggerService = class _ConsoleLoggerService {
+  constructor(config2, traceContext) {
+    const baseLogger = new BaseConsoleLogger(config2.get("logLevel"));
+    const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config2);
+    this.logger = traceContext ? new TraceContextLoggerDecorator(withConfig, traceContext) : withConfig;
+  }
+  // Delegate all methods to composed logger
+  setMinLevel(level) {
+    this.logger.setMinLevel?.(level);
+  }
+  log(message2, ...optionalParams) {
+    this.logger.log(message2, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.logger.error(message2, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.logger.warn(message2, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.logger.info(message2, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.logger.debug(message2, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return this.logger.withTraceId?.(traceId) ?? this.logger;
+  }
+};
+__name(_ConsoleLoggerService, "ConsoleLoggerService");
+let ConsoleLoggerService = _ConsoleLoggerService;
 const _DIConsoleLoggerService = class _DIConsoleLoggerService extends ConsoleLoggerService {
   constructor(config2, traceContext) {
     super(config2, traceContext);
