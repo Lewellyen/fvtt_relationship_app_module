@@ -18,6 +18,9 @@ Diese Variablen werden zur Build-Zeit gesetzt und beeinflussen das kompilierte M
 | `VITE_CACHE_ENABLED` | boolean | `true` | Aktiviert/Deaktiviert den globalen CacheService |
 | `VITE_CACHE_TTL_MS` | number | `5000` | Standard-TTL (Millisekunden) für Cache-Einträge |
 | `VITE_CACHE_MAX_ENTRIES` | number | — | Optionales LRU-Limit (leer = unbegrenzt) |
+| `VITE_NOTIFICATION_QUEUE_MIN_SIZE` | number | `10` | Minimum Queue-Größe für UI-Notifications (Build-Time, fest verdrahtet) |
+| `VITE_NOTIFICATION_QUEUE_MAX_SIZE` | number | `1000` | Maximum Queue-Größe für UI-Notifications (Build-Time, fest verdrahtet) |
+| `VITE_NOTIFICATION_QUEUE_DEFAULT_SIZE` | number | `50` | Standard Queue-Größe für UI-Notifications (Build-Time, Runtime überschreibbar via Setting) |
 
 ### Nutzung
 
@@ -80,11 +83,11 @@ Performance-Metriken sind verfügbar wenn `VITE_ENABLE_PERF_TRACKING=true` geset
 
 ### Persistente Metriken
 
-- Aktivierung: `VITE_ENABLE_METRICS_PERSISTENCE=true` (optional)  
+- Aktivierung: `VITE_ENABLE_METRICS_PERSISTENCE=true` (optional)
 - Storage-Key: `VITE_METRICS_PERSISTENCE_KEY` (Default siehe Tabelle)
 - Persistenz nutzt `LocalStorage`; in Sandbox-/Testszenarien ohne Storage fällt der Collector automatisch auf In-Memory zurück.
 
-**Zurücksetzen:**  
+**Zurücksetzen:**
 LocalStorage-Eintrag (`VITE_METRICS_PERSISTENCE_KEY`) löschen oder Flag wieder deaktivieren und Foundry neu laden.
 
 ### Zugriff auf Metriken
@@ -143,6 +146,32 @@ console.log(`Avg Resolution Time: ${metrics.avgResolutionTimeMs.toFixed(2)}ms`);
 // Reduziert Performance-Overhead auf 25 %
 game.settings.set('fvtt_relationship_app_module', 'performanceSamplingRate', 0.25);
 ```
+
+---
+
+## Notification Queue Configuration
+
+### Notification Queue Max Size
+
+Die Notification Queue sammelt UI-Notifications, die vor der Verfügbarkeit von Foundry UI gesendet werden, und gibt sie automatisch aus, sobald der UIChannel verfügbar ist.
+
+- **Setting-Key:** `notificationQueueMaxSize`
+- **Default:** `50` (konfigurierbar via `VITE_NOTIFICATION_QUEUE_DEFAULT_SIZE`)
+- **Min:** `10` (fest verdrahtet via `VITE_NOTIFICATION_QUEUE_MIN_SIZE`, Build-Time)
+- **Max:** `1000` (fest verdrahtet via `VITE_NOTIFICATION_QUEUE_MAX_SIZE`, Build-Time)
+- **Scope:** `world`
+
+**Beispiel:**
+
+```javascript
+// Erhöhe Queue-Größe auf 100
+game.settings.set('fvtt_relationship_app_module', 'notificationQueueMaxSize', 100);
+
+// Reduziere Queue-Größe auf 25
+game.settings.set('fvtt_relationship_app_module', 'notificationQueueMaxSize', 25);
+```
+
+**Hinweis:** Wenn die Queue voll ist, werden die ältesten Notifications automatisch entfernt, um Platz für neue zu schaffen.
 
 Weitere Details, einschließlich der zusätzlichen ENV-Felder (`isDevelopment`, `isProduction`, `logLevel`, `enablePerformanceTracking`, `performanceSamplingRate`, `enableMetricsPersistence`, `metricsPersistenceKey`, `enableCacheService`, `cacheDefaultTtlMs`, `cacheMaxEntries`), sind in `docs/runtime-config-layer.md` beschrieben.
 

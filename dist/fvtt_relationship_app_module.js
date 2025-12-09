@@ -23,7 +23,8 @@ const SETTING_KEYS = {
   PERFORMANCE_TRACKING_ENABLED: "performanceTrackingEnabled",
   PERFORMANCE_SAMPLING_RATE: "performanceSamplingRate",
   METRICS_PERSISTENCE_ENABLED: "metricsPersistenceEnabled",
-  METRICS_PERSISTENCE_KEY: "metricsPersistenceKey"
+  METRICS_PERSISTENCE_KEY: "metricsPersistenceKey",
+  NOTIFICATION_QUEUE_MAX_SIZE: "notificationQueueMaxSize"
 };
 const APP_DEFAULTS = {
   UNKNOWN_NAME: "Unknown",
@@ -1503,7 +1504,8 @@ const _RuntimeConfigService = class _RuntimeConfigService {
       metricsPersistenceKey: env.metricsPersistenceKey,
       enableCacheService: env.enableCacheService,
       cacheDefaultTtlMs: env.cacheDefaultTtlMs,
-      cacheMaxEntries: env.cacheMaxEntries
+      cacheMaxEntries: env.cacheMaxEntries,
+      notificationQueueMaxSize: env.notificationQueueDefaultSize
     };
   }
   /**
@@ -2109,6 +2111,9 @@ const platformChannelPortToken = createInjectionToken("PlatformChannelPort");
 const platformUINotificationChannelPortToken = createInjectionToken("PlatformUINotificationChannelPort");
 const platformConsoleChannelPortToken = createInjectionToken(
   "PlatformConsoleChannelPort"
+);
+const platformUIAvailabilityPortToken = createInjectionToken(
+  "PlatformUIAvailabilityPort"
 );
 let store$4;
 function setGlobalConfig(config$1) {
@@ -7921,6 +7926,14 @@ function parseOptionalPositiveInteger(envValue) {
   return Math.floor(parsed);
 }
 __name(parseOptionalPositiveInteger, "parseOptionalPositiveInteger");
+function parsePositiveInteger(envValue, fallback2) {
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback2;
+  }
+  return Math.floor(parsed);
+}
+__name(parsePositiveInteger, "parsePositiveInteger");
 function getEnvVar(key, parser2) {
   const value2 = __vite_import_meta_env__[key];
   return parser2(value2);
@@ -7947,7 +7960,19 @@ const ENV = {
     "VITE_CACHE_TTL_MS",
     (val) => parseNonNegativeNumber(val, APP_DEFAULTS.CACHE_TTL_MS)
   ),
-  ...parsedCacheMaxEntries !== void 0 ? { cacheMaxEntries: parsedCacheMaxEntries } : {}
+  ...parsedCacheMaxEntries !== void 0 ? { cacheMaxEntries: parsedCacheMaxEntries } : {},
+  notificationQueueMinSize: getEnvVar(
+    "VITE_NOTIFICATION_QUEUE_MIN_SIZE",
+    (val) => parsePositiveInteger(val, 10)
+  ),
+  notificationQueueMaxSize: getEnvVar(
+    "VITE_NOTIFICATION_QUEUE_MAX_SIZE",
+    (val) => parsePositiveInteger(val, 1e3)
+  ),
+  notificationQueueDefaultSize: getEnvVar(
+    "VITE_NOTIFICATION_QUEUE_DEFAULT_SIZE",
+    (val) => parsePositiveInteger(val, 50)
+  )
 };
 const _RuntimeConfigAdapter = class _RuntimeConfigAdapter {
   constructor(env) {
@@ -9165,10 +9190,13 @@ const _MetricsBootstrapper = class _MetricsBootstrapper {
 };
 __name(_MetricsBootstrapper, "MetricsBootstrapper");
 let MetricsBootstrapper = _MetricsBootstrapper;
-const uiChannelToken = createInjectionToken("UIChannel");
+const queuedUIChannelToken = createInjectionToken("QueuedUIChannel");
 const _NotificationBootstrapper = class _NotificationBootstrapper {
   /**
    * Attaches UI notification channel to NotificationCenter.
+   *
+   * Uses QueuedUIChannel which queues notifications before UI is available
+   * and flushes them when UI becomes available.
    *
    * This phase is optional - failures are logged as warnings but don't fail bootstrap.
    *
@@ -9182,15 +9210,15 @@ const _NotificationBootstrapper = class _NotificationBootstrapper {
         `NotificationCenter could not be resolved: ${notificationCenterResult.error.message}`
       );
     }
-    const uiChannelResult = container.resolveWithError(uiChannelToken);
-    if (!uiChannelResult.ok) {
-      return err(`UIChannel could not be resolved: ${uiChannelResult.error.message}`);
+    const queuedUIChannelResult = container.resolveWithError(queuedUIChannelToken);
+    if (!queuedUIChannelResult.ok) {
+      return err(`QueuedUIChannel could not be resolved: ${queuedUIChannelResult.error.message}`);
     }
     const notificationCenter = castResolvedService(
       notificationCenterResult.value
     );
-    const uiChannel = castResolvedService(uiChannelResult.value);
-    notificationCenter.addChannel(uiChannel);
+    const queuedUIChannel = castResolvedService(queuedUIChannelResult.value);
+    notificationCenter.addChannel(queuedUIChannel);
     return ok(void 0);
   }
 };
@@ -14172,6 +14200,8 @@ function registerI18nServices(container) {
 }
 __name(registerI18nServices, "registerI18nServices");
 const consoleChannelToken = createInjectionToken("ConsoleChannel");
+const uiChannelToken = createInjectionToken("UIChannel");
+const notificationQueueToken = createInjectionToken("NotificationQueue");
 const _NotificationCenter = class _NotificationCenter {
   constructor(initialChannels) {
     this.channels = [...initialChannels];
@@ -14398,6 +14428,108 @@ const _DIUIChannel = class _DIUIChannel extends UIChannel {
 __name(_DIUIChannel, "DIUIChannel");
 _DIUIChannel.dependencies = [platformUINotificationPortToken, runtimeConfigToken];
 let DIUIChannel = _DIUIChannel;
+const _QueuedUIChannel = class _QueuedUIChannel {
+  constructor(queue, uiAvailability, container) {
+    this.queue = queue;
+    this.uiAvailability = uiAvailability;
+    this.container = container;
+    this.name = "UIChannel";
+    this.realChannel = null;
+    this.hasFlushed = false;
+  }
+  /**
+   * Gets or creates the real UIChannel.
+   * Uses lazy initialization to avoid creating channel before UI is available.
+   */
+  getRealChannel() {
+    if (this.realChannel) {
+      return this.realChannel;
+    }
+    const channelResult = this.container.resolveWithError(uiChannelToken);
+    if (!channelResult.ok) {
+      return null;
+    }
+    this.realChannel = channelResult.value;
+    return this.realChannel;
+  }
+  /**
+   * Determines if this channel should handle the notification.
+   * Delegates to real channel if available, otherwise uses same logic as UIChannel.
+   */
+  canHandle(notification) {
+    if (notification.level === "debug") {
+      return false;
+    }
+    const realChannel = this.getRealChannel();
+    if (realChannel) {
+      return realChannel.canHandle(notification);
+    }
+    return true;
+  }
+  /**
+   * Sends notification to UI or queues it if UI is not available.
+   */
+  send(notification) {
+    if (this.uiAvailability.isAvailable()) {
+      if (!this.hasFlushed && this.queue.size > 0) {
+        const realChannel2 = this.getRealChannel();
+        if (realChannel2) {
+          this.queue.flush((n) => {
+            realChannel2.send(n);
+          });
+        }
+        this.hasFlushed = true;
+      }
+      const realChannel = this.getRealChannel();
+      if (!realChannel) {
+        this.queue.enqueue(notification);
+        return ok(void 0);
+      }
+      return realChannel.send(notification);
+    }
+    if (notification.level === "debug") {
+      return ok(void 0);
+    }
+    this.queue.enqueue(notification);
+    return ok(void 0);
+  }
+  /**
+   * Sends notification directly to UI (bypasses queue).
+   * Used for immediate notifications when UI is available.
+   */
+  notify(message2, type) {
+    if (this.uiAvailability.isAvailable()) {
+      const realChannel = this.getRealChannel();
+      if (!realChannel) {
+        return err({
+          code: "CHANNEL_NOT_AVAILABLE",
+          message: "UIChannel could not be resolved",
+          channelName: this.name
+        });
+      }
+      return realChannel.notify(message2, type);
+    }
+    return err({
+      code: "UI_NOT_AVAILABLE",
+      message: "UI is not available for immediate notifications",
+      channelName: this.name
+    });
+  }
+};
+__name(_QueuedUIChannel, "QueuedUIChannel");
+let QueuedUIChannel = _QueuedUIChannel;
+const _DIQueuedUIChannel = class _DIQueuedUIChannel extends QueuedUIChannel {
+  constructor(queue, uiAvailability, container) {
+    super(queue, uiAvailability, container);
+  }
+};
+__name(_DIQueuedUIChannel, "DIQueuedUIChannel");
+_DIQueuedUIChannel.dependencies = [
+  notificationQueueToken,
+  platformUIAvailabilityPortToken,
+  platformContainerPortToken
+];
+let DIQueuedUIChannel = _DIQueuedUIChannel;
 const _NotificationPortAdapter = class _NotificationPortAdapter {
   constructor(notificationCenter) {
     this.notificationCenter = notificationCenter;
@@ -14493,7 +14625,110 @@ const _DINotificationPortAdapter = class _DINotificationPortAdapter extends Noti
 __name(_DINotificationPortAdapter, "DINotificationPortAdapter");
 _DINotificationPortAdapter.dependencies = [notificationCenterToken];
 let DINotificationPortAdapter = _DINotificationPortAdapter;
+const _NotificationQueue = class _NotificationQueue {
+  constructor(runtimeConfig, env) {
+    this.runtimeConfig = runtimeConfig;
+    this.env = env;
+    this.queue = [];
+  }
+  /**
+   * Gets the maximum queue size from RuntimeConfig, with ENV fallback.
+   */
+  getMaxSize() {
+    const value2 = this.runtimeConfig.get("notificationQueueMaxSize");
+    return value2 ?? this.env.notificationQueueDefaultSize;
+  }
+  /**
+   * Adds a notification to the queue.
+   * If the queue is full, removes the oldest notification.
+   */
+  enqueue(notification) {
+    const maxSize2 = this.getMaxSize();
+    if (this.queue.length >= maxSize2) {
+      this.queue.shift();
+    }
+    this.queue.push(notification);
+  }
+  /**
+   * Flushes all queued notifications by calling the handler for each.
+   * Queue is cleared after flushing.
+   */
+  flush(handler) {
+    for (const notification of this.queue) {
+      try {
+        handler(notification);
+      } catch (_error) {
+      }
+    }
+    this.queue.length = 0;
+  }
+  /**
+   * Clears all queued notifications without processing them.
+   */
+  clear() {
+    this.queue.length = 0;
+  }
+  /**
+   * Gets the current number of queued notifications.
+   */
+  get size() {
+    return this.queue.length;
+  }
+};
+__name(_NotificationQueue, "NotificationQueue");
+let NotificationQueue = _NotificationQueue;
+const _DINotificationQueue = class _DINotificationQueue extends NotificationQueue {
+  constructor(runtimeConfig, env) {
+    super(runtimeConfig, env);
+  }
+};
+__name(_DINotificationQueue, "DINotificationQueue");
+_DINotificationQueue.dependencies = [runtimeConfigToken, environmentConfigToken];
+let DINotificationQueue = _DINotificationQueue;
+const _FoundryUIAvailabilityPort = class _FoundryUIAvailabilityPort {
+  /**
+   * Checks if Foundry UI is available.
+   * UI is available when `ui` is defined and `ui.notifications` exists.
+   */
+  isAvailable() {
+    return typeof ui !== "undefined" && ui?.notifications !== void 0;
+  }
+  /**
+   * Optional callback registration for when UI becomes available.
+   * Not implemented for now - can be extended with event-based approach later.
+   */
+  onAvailable(_callback) {
+  }
+};
+__name(_FoundryUIAvailabilityPort, "FoundryUIAvailabilityPort");
+let FoundryUIAvailabilityPort = _FoundryUIAvailabilityPort;
+const _DIFoundryUIAvailabilityPort = class _DIFoundryUIAvailabilityPort extends FoundryUIAvailabilityPort {
+  constructor() {
+    super();
+  }
+};
+__name(_DIFoundryUIAvailabilityPort, "DIFoundryUIAvailabilityPort");
+_DIFoundryUIAvailabilityPort.dependencies = [];
+let DIFoundryUIAvailabilityPort = _DIFoundryUIAvailabilityPort;
 function registerNotifications(container) {
+  const notificationQueueResult = container.registerClass(
+    notificationQueueToken,
+    DINotificationQueue,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(notificationQueueResult)) {
+    return err(`Failed to register NotificationQueue: ${notificationQueueResult.error.message}`);
+  }
+  const uiAvailabilityResult = container.registerClass(
+    platformUIAvailabilityPortToken,
+    DIFoundryUIAvailabilityPort,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(uiAvailabilityResult)) {
+    return err(
+      `Failed to register PlatformUIAvailabilityPort: ${uiAvailabilityResult.error.message}`
+    );
+  }
   const consoleChannelResult = container.registerClass(
     consoleChannelToken,
     DIConsoleChannel,
@@ -14509,6 +14744,14 @@ function registerNotifications(container) {
   );
   if (isErr(uiChannelResult)) {
     return err(`Failed to register UIChannel: ${uiChannelResult.error.message}`);
+  }
+  const queuedUIChannelResult = container.registerClass(
+    queuedUIChannelToken,
+    DIQueuedUIChannel,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(queuedUIChannelResult)) {
+    return err(`Failed to register QueuedUIChannel: ${queuedUIChannelResult.error.message}`);
   }
   const notificationCenterResult = container.registerClass(
     notificationCenterToken,
@@ -14781,6 +15024,55 @@ const metricsPersistenceKeySetting = {
     };
   }
 };
+const NOTIFICATION_QUEUE_CONSTANTS = {
+  minSize: 10,
+  maxSize: 1e3,
+  defaultSize: 50
+};
+function getNotificationQueueConstants() {
+  return NOTIFICATION_QUEUE_CONSTANTS;
+}
+__name(getNotificationQueueConstants, "getNotificationQueueConstants");
+const notificationQueueMaxSizeSetting = {
+  key: SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE,
+  createConfig(i18n, logger, _validator) {
+    const constants = getNotificationQueueConstants();
+    return {
+      name: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.notificationQueueMaxSize.name",
+          "Notification Queue Max Size"
+        ),
+        "Notification Queue Max Size"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.notificationQueueMaxSize.hint",
+          `Maximum number of notifications queued before UI is available. Range: ${constants.minSize}-${constants.maxSize}.`
+        ),
+        `Maximum number of notifications queued before UI is available. Range: ${constants.minSize}-${constants.maxSize}.`
+      ),
+      scope: "world",
+      config: true,
+      type: Number,
+      default: constants.defaultSize,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const numericValue = Number(value2);
+        const clamped = Math.max(
+          constants.minSize,
+          Math.min(constants.maxSize, Math.floor(numericValue))
+        );
+        if (clamped !== numericValue) {
+          logger.info(
+            `Notification queue max size clamped from ${numericValue} to ${clamped} (range: ${constants.minSize}-${constants.maxSize})`
+          );
+        } else {
+          logger.info(`Notification queue max size updated via settings: ${clamped}`);
+        }
+      }, "onChange")
+    };
+  }
+};
 const SettingValidators = {
   /**
    * Validates that value is a boolean.
@@ -14798,6 +15090,10 @@ const SettingValidators = {
    * Validates that value is a non-negative integer.
    */
   nonNegativeInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 >= 0, "nonNegativeInteger"),
+  /**
+   * Validates that value is a positive integer (greater than 0).
+   */
+  positiveInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 > 0, "positiveInteger"),
   /**
    * Validates that value is a string.
    */
@@ -14911,6 +15207,14 @@ const runtimeConfigBindings = {
     runtimeKey: "metricsPersistenceKey",
     validator: SettingValidators.nonEmptyString,
     normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE]: {
+    runtimeKey: "notificationQueueMaxSize",
+    validator: SettingValidators.positiveInteger,
+    normalize: /* @__PURE__ */ __name((value2) => {
+      const constants = getNotificationQueueConstants();
+      return Math.max(constants.minSize, Math.min(constants.maxSize, Math.floor(value2)));
+    }, "normalize")
   }
 };
 const _DIRuntimeConfigSync = class _DIRuntimeConfigSync extends RuntimeConfigSync {
@@ -15011,6 +15315,16 @@ const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
     this.registerDefinition(
       metricsPersistenceKeySetting,
       runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY],
+      this.settings,
+      this.runtimeConfigSync,
+      this.errorMapper,
+      this.i18n,
+      this.logger,
+      this.validator
+    );
+    this.registerDefinition(
+      notificationQueueMaxSizeSetting,
+      runtimeConfigBindings[SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE],
       this.settings,
       this.runtimeConfigSync,
       this.errorMapper,

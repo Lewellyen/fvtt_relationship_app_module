@@ -11,7 +11,7 @@ import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/journal-context-menu-lib-wrapper-service.token";
 import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
-import { uiChannelToken } from "@/application/tokens/notifications/ui-channel.token";
+import { queuedUIChannelToken } from "@/application/tokens/notifications/queued-ui-channel.token";
 import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
 import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
 import {
@@ -170,12 +170,12 @@ describe("BootstrapInitHookService", () => {
       expect(mockLogger.info).not.toHaveBeenCalledWith("init-phase completed");
     });
 
-    it("should attach UI channel to NotificationCenter when available", async () => {
+    it("should attach QueuedUI channel to NotificationCenter when available", async () => {
       const mockNotificationCenter = {
         addChannel: vi.fn(),
       };
 
-      const mockUIChannel = {
+      const mockQueuedUIChannel = {
         name: "UIChannel",
       };
 
@@ -195,8 +195,8 @@ describe("BootstrapInitHookService", () => {
         if (token === notificationCenterToken) {
           return ok(mockNotificationCenter);
         }
-        if (token === uiChannelToken) {
-          return ok(mockUIChannel);
+        if (token === queuedUIChannelToken) {
+          return ok(mockQueuedUIChannel);
         }
         if (token === moduleApiInitializerToken) {
           return ok(mockApiInitializer);
@@ -219,7 +219,7 @@ describe("BootstrapInitHookService", () => {
       expect(capturedInitCallback).toBeDefined();
       capturedInitCallback!();
 
-      expect(mockNotificationCenter.addChannel).toHaveBeenCalledWith(mockUIChannel);
+      expect(mockNotificationCenter.addChannel).toHaveBeenCalledWith(mockQueuedUIChannel);
     });
 
     it("should warn when NotificationCenter cannot be resolved", async () => {

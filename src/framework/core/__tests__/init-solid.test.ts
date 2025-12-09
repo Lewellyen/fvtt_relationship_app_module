@@ -258,18 +258,18 @@ describe("init-solid Bootstrap", () => {
 
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
-      const { uiChannelToken } =
-        await import("@/application/tokens/notifications/ui-channel.token");
+      const { queuedUIChannelToken } =
+        await import("@/application/tokens/notifications/queued-ui-channel.token");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
         .mockImplementation(function (this: PlatformContainerPort, token: symbol) {
-          if (token === uiChannelToken) {
+          if (token === queuedUIChannelToken) {
             return {
               ok: false as const,
               error: {
                 code: "DependencyResolveFailed" as const,
-                message: "UI channel missing",
+                message: "QueuedUI channel missing",
               },
             };
           }
@@ -289,7 +289,7 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(warnSpy).toHaveBeenCalledWith(
-        "Notification channels could not be attached: UIChannel could not be resolved: UI channel missing",
+        "Notification channels could not be attached: QueuedUIChannel could not be resolved: QueuedUI channel missing",
         expect.objectContaining({ phase: "notification-channels" })
       );
 

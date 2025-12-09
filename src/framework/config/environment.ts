@@ -37,6 +37,23 @@ function parseOptionalPositiveInteger(envValue: string | undefined): number | un
 }
 
 /**
+ * Parses a positive integer from an environment variable.
+ * Ensures the value is a valid positive integer.
+ *
+ * @param envValue - Environment variable value to parse
+ * @param fallback - Fallback value if parsing fails
+ * @returns Valid positive integer
+ * @internal Exported for testing
+ */
+export function parsePositiveInteger(envValue: string | undefined, fallback: number): number {
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return Math.floor(parsed);
+}
+
+/**
  * Type-safe wrapper for accessing Vite environment variables.
  *
  * Vite's import.meta.env is available at build-time, but TypeScript
@@ -86,4 +103,13 @@ export const ENV: EnvironmentConfig = {
     parseNonNegativeNumber(val, APP_DEFAULTS.CACHE_TTL_MS)
   ),
   ...(parsedCacheMaxEntries !== undefined ? { cacheMaxEntries: parsedCacheMaxEntries } : {}),
+  notificationQueueMinSize: getEnvVar("VITE_NOTIFICATION_QUEUE_MIN_SIZE", (val) =>
+    parsePositiveInteger(val, 10)
+  ),
+  notificationQueueMaxSize: getEnvVar("VITE_NOTIFICATION_QUEUE_MAX_SIZE", (val) =>
+    parsePositiveInteger(val, 1000)
+  ),
+  notificationQueueDefaultSize: getEnvVar("VITE_NOTIFICATION_QUEUE_DEFAULT_SIZE", (val) =>
+    parsePositiveInteger(val, 50)
+  ),
 };

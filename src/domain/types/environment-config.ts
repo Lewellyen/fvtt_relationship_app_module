@@ -42,4 +42,13 @@ export interface EnvironmentConfig {
 
   /** Optional maximum number of cached entries */
   cacheMaxEntries?: number | undefined;
+
+  /** Minimum notification queue size (Build-Time, fixed after build) */
+  notificationQueueMinSize: number;
+
+  /** Maximum notification queue size (Build-Time, fixed after build) */
+  notificationQueueMaxSize: number;
+
+  /** Default notification queue size (Build-Time, Runtime überschreibbar via Setting) */
+  notificationQueueDefaultSize: number;
 }

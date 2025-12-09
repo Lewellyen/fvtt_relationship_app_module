@@ -30,6 +30,7 @@ export const SETTING_KEYS = {
   PERFORMANCE_SAMPLING_RATE: "performanceSamplingRate",
   METRICS_PERSISTENCE_ENABLED: "metricsPersistenceEnabled",
   METRICS_PERSISTENCE_KEY: "metricsPersistenceKey",
+  NOTIFICATION_QUEUE_MAX_SIZE: "notificationQueueMaxSize",
 } as const;
 
 /**

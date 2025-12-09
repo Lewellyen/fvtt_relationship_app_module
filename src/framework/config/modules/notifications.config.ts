@@ -5,21 +5,30 @@ import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycl
 import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
 import { consoleChannelToken } from "@/application/tokens/notifications/console-channel.token";
 import { uiChannelToken } from "@/application/tokens/notifications/ui-channel.token";
+import { queuedUIChannelToken } from "@/application/tokens/notifications/queued-ui-channel.token";
 import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
+import { platformUIAvailabilityPortToken } from "@/application/tokens/domain-ports.tokens";
+import { notificationQueueToken } from "@/infrastructure/shared/tokens/notifications/notification-queue.token";
 import { DINotificationCenter } from "@/application/services/NotificationCenter";
 import { DIConsoleChannel } from "@/infrastructure/notifications/channels/ConsoleChannel";
 import { DIUIChannel } from "@/infrastructure/notifications/channels/UIChannel";
+import { DIQueuedUIChannel } from "@/infrastructure/notifications/channels/QueuedUIChannel";
 import { DINotificationPortAdapter } from "@/infrastructure/adapters/notifications/platform-notification-port-adapter";
+import { DINotificationQueue } from "@/infrastructure/notifications/NotificationQueue";
+import { DIFoundryUIAvailabilityPort } from "@/infrastructure/adapters/foundry/services/FoundryUIAvailabilityPort";
 
 /**
  * Registers notification services and channels.
  *
  * **Architecture:**
- * 1. Register Channels (ConsoleChannel, UIChannel) als Singletons
- * 2. Register NotificationCenter via DI-Wrapper (erhält Channels injiziert)
+ * 1. Register NotificationQueue (for queuing notifications before UI is available)
+ * 2. Register PlatformUIAvailabilityPort (for checking UI availability)
+ * 3. Register Channels (ConsoleChannel, UIChannel, QueuedUIChannel) als Singletons
+ * 4. Register NotificationCenter via DI-Wrapper (erhält Channels injiziert)
  *
  * **Channel Flow:**
- * NotificationCenter → [ConsoleChannel, UIChannel, ...]
+ * NotificationCenter → [ConsoleChannel, QueuedUIChannel, ...]
+ * QueuedUIChannel → [Queue] → UIChannel (when UI available)
  *
  * **Extensibility:**
  * Add new channels by:
@@ -31,6 +40,28 @@ import { DINotificationPortAdapter } from "@/infrastructure/adapters/notificatio
  * @returns Result indicating success or error with details
  */
 export function registerNotifications(container: ServiceContainer): Result<void, string> {
+  // Register NotificationQueue (required by QueuedUIChannel)
+  const notificationQueueResult = container.registerClass(
+    notificationQueueToken,
+    DINotificationQueue,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(notificationQueueResult)) {
+    return err(`Failed to register NotificationQueue: ${notificationQueueResult.error.message}`);
+  }
+
+  // Register PlatformUIAvailabilityPort (required by QueuedUIChannel)
+  const uiAvailabilityResult = container.registerClass(
+    platformUIAvailabilityPortToken,
+    DIFoundryUIAvailabilityPort,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(uiAvailabilityResult)) {
+    return err(
+      `Failed to register PlatformUIAvailabilityPort: ${uiAvailabilityResult.error.message}`
+    );
+  }
+
   // Register ConsoleChannel
   const consoleChannelResult = container.registerClass(
     consoleChannelToken,
@@ -41,7 +72,7 @@ export function registerNotifications(container: ServiceContainer): Result<void,
     return err(`Failed to register ConsoleChannel: ${consoleChannelResult.error.message}`);
   }
 
-  // Register UIChannel
+  // Register UIChannel (required by QueuedUIChannel)
   const uiChannelResult = container.registerClass(
     uiChannelToken,
     DIUIChannel,
@@ -49,6 +80,16 @@ export function registerNotifications(container: ServiceContainer): Result<void,
   );
   if (isErr(uiChannelResult)) {
     return err(`Failed to register UIChannel: ${uiChannelResult.error.message}`);
+  }
+
+  // Register QueuedUIChannel (wraps UIChannel with queue functionality)
+  const queuedUIChannelResult = container.registerClass(
+    queuedUIChannelToken,
+    DIQueuedUIChannel,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(queuedUIChannelResult)) {
+    return err(`Failed to register QueuedUIChannel: ${queuedUIChannelResult.error.message}`);
   }
 
   // Register NotificationCenter as singleton (with ConsoleChannel and UIChannel)

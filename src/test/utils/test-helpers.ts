@@ -255,6 +255,9 @@ export function createMockEnvironmentConfig(
     enableCacheService: true,
     cacheDefaultTtlMs: 5000,
     cacheMaxEntries: undefined,
+    notificationQueueMinSize: 10,
+    notificationQueueMaxSize: 1000,
+    notificationQueueDefaultSize: 50,
     ...overrides,
   };
 }

@@ -29,6 +29,7 @@ export class RuntimeConfigService {
       enableCacheService: env.enableCacheService,
       cacheDefaultTtlMs: env.cacheDefaultTtlMs,
       cacheMaxEntries: env.cacheMaxEntries,
+      notificationQueueMaxSize: env.notificationQueueDefaultSize,
     };
   }
 

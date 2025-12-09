@@ -12,6 +12,30 @@
 
 ### Upgrade-Hinweise
 
+## [0.41.2] - 2025-12-09
+### Hinzugefügt
+- **Infrastructure Services Übersicht**: Vollständige Dokumentation aller Services in der Infrastruktur-Schicht mit Verantwortlichkeiten, Abhängigkeiten und Design-Patterns ([Details](docs/INFRASTRUCTURE-SERVICES.md))
+- **NotificationQueue für UI-Channel**: Queue-System für UI-Notifications, die vor der Verfügbarkeit von Foundry UI gesendet werden ([Details](docs/refactoring/04-notification-queue-ui-channel.md))
+- **QueuedUIChannel**: Decorator für UIChannel, der Notifications queued, wenn UI nicht verfügbar ist, und sie automatisch ausgibt, sobald UI verfügbar wird
+- **PlatformUIAvailabilityPort**: Domain-Port für UI-Verfügbarkeits-Checks (platform-agnostisch)
+- **FoundryUIAvailabilityPort**: Foundry-spezifische Implementierung von PlatformUIAvailabilityPort
+- **Setting `notificationQueueMaxSize`**: Runtime-konfigurierbare Einstellung für die maximale Queue-Größe (Default: 50, Min: 10, Max: 1000)
+- **ENV-Variablen für Notification Queue**: Build-Time konfigurierbare Grenzwerte via `VITE_NOTIFICATION_QUEUE_MIN_SIZE`, `VITE_NOTIFICATION_QUEUE_MAX_SIZE`, `VITE_NOTIFICATION_QUEUE_DEFAULT_SIZE` ([Details](src/framework/config/environment.ts))
+- **Setting-Validator `positiveInteger`**: Neuer Validator für positive Ganzzahlen in Setting-Definitionen
+
+### Geändert
+- **UIChannel wird jetzt über QueuedUIChannel geroutet**: NotificationBootstrapper verwendet jetzt QueuedUIChannel statt direktem UIChannel ([Details](src/framework/core/bootstrap/orchestrators/notification-bootstrapper.ts))
+- **NotificationBootstrapper**: Verwendet jetzt QueuedUIChannel für automatisches Queue-Management
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.41.1] - 2025-12-09
 ### Hinzugefügt
 - Keine Einträge

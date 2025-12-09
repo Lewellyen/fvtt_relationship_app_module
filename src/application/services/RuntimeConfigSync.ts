@@ -9,6 +9,7 @@ import { SettingValidators } from "@/domain/types/settings";
 import type { LogLevel } from "@/domain/types/log-level";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
+import { getNotificationQueueConstants } from "@/application/settings/notification-queue-max-size-setting";
 
 /**
  * Binding configuration for syncing a setting with RuntimeConfig.
@@ -154,6 +155,14 @@ export const runtimeConfigBindings = {
     validator: SettingValidators.nonEmptyString,
     normalize: (value: string) => value,
   } satisfies RuntimeConfigBinding<string, "metricsPersistenceKey">,
+  [SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE]: {
+    runtimeKey: "notificationQueueMaxSize",
+    validator: SettingValidators.positiveInteger,
+    normalize: (value: number) => {
+      const constants = getNotificationQueueConstants();
+      return Math.max(constants.minSize, Math.min(constants.maxSize, Math.floor(value)));
+    },
+  } satisfies RuntimeConfigBinding<number, "notificationQueueMaxSize">,
 } as const;
 
 /**

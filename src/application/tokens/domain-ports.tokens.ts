@@ -25,6 +25,7 @@ import type { PlatformModuleReadyPort } from "@/domain/ports/platform-module-rea
 import type { PlatformChannelPort } from "@/domain/ports/notifications/platform-channel-port.interface";
 import type { PlatformUINotificationChannelPort } from "@/domain/ports/notifications/platform-ui-notification-channel-port.interface";
 import type { PlatformConsoleChannelPort } from "@/domain/ports/notifications/platform-console-channel-port.interface";
+import type { PlatformUIAvailabilityPort } from "@/domain/ports/platform-ui-availability-port.interface";
 
 /**
  * DI Token for PlatformNotificationPort.
@@ -198,4 +199,13 @@ export const platformUINotificationChannelPortToken =
  */
 export const platformConsoleChannelPortToken = createInjectionToken<PlatformConsoleChannelPort>(
   "PlatformConsoleChannelPort"
+);
+
+/**
+ * DI Token for PlatformUIAvailabilityPort.
+ *
+ * Platform-agnostic port for checking UI availability.
+ */
+export const platformUIAvailabilityPortToken = createInjectionToken<PlatformUIAvailabilityPort>(
+  "PlatformUIAvailabilityPort"
 );

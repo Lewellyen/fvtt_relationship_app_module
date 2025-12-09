@@ -11,6 +11,7 @@ export type RuntimeConfigValues = {
   enableCacheService: boolean;
   cacheDefaultTtlMs: number;
   cacheMaxEntries: number | undefined;
+  notificationQueueMaxSize: number;
 };
 
 export type RuntimeConfigKey = keyof RuntimeConfigValues;

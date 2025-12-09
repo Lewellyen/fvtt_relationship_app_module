@@ -85,6 +85,12 @@ export const SettingValidators = {
     typeof value === "number" && Number.isInteger(value) && value >= 0,
 
   /**
+   * Validates that value is a positive integer (greater than 0).
+   */
+  positiveInteger: (value: unknown): value is number =>
+    typeof value === "number" && Number.isInteger(value) && value > 0,
+
+  /**
    * Validates that value is a string.
    */
   string: (value: unknown): value is string => typeof value === "string",

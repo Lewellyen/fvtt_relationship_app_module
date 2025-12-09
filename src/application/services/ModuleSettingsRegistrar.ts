@@ -8,6 +8,7 @@ import { performanceTrackingSetting } from "@/application/settings/performance-t
 import { performanceSamplingSetting } from "@/application/settings/performance-sampling-setting";
 import { metricsPersistenceEnabledSetting } from "@/application/settings/metrics-persistence-enabled-setting";
 import { metricsPersistenceKeySetting } from "@/application/settings/metrics-persistence-key-setting";
+import { notificationQueueMaxSizeSetting } from "@/application/settings/notification-queue-max-size-setting";
 import type { RuntimeConfigKey } from "@/domain/types/runtime-config";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
@@ -141,6 +142,16 @@ export class ModuleSettingsRegistrar {
     this.registerDefinition(
       metricsPersistenceKeySetting,
       runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY],
+      this.settings,
+      this.runtimeConfigSync,
+      this.errorMapper,
+      this.i18n,
+      this.logger,
+      this.validator
+    );
+    this.registerDefinition(
+      notificationQueueMaxSizeSetting,
+      runtimeConfigBindings[SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE],
       this.settings,
       this.runtimeConfigSync,
       this.errorMapper,

@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
-import { uiChannelToken } from "@/application/tokens/notifications/ui-channel.token";
+import { queuedUIChannelToken } from "@/application/tokens/notifications/queued-ui-channel.token";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { NotificationService } from "@/application/services/notification-center.interface";
 import type { PlatformChannelPort } from "@/domain/ports/notifications/platform-channel-port.interface";
@@ -11,13 +11,16 @@ import type { PlatformChannelPort } from "@/domain/ports/notifications/platform-
  * Orchestrator for attaching notification channels during bootstrap.
  *
  * Responsibilities:
- * - Resolve NotificationCenter and UIChannel
- * - Attach UIChannel to NotificationCenter
+ * - Resolve NotificationCenter and QueuedUIChannel
+ * - Attach QueuedUIChannel to NotificationCenter
  * - Handle errors gracefully (warnings, not failures - this phase is optional)
  */
 export class NotificationBootstrapper {
   /**
    * Attaches UI notification channel to NotificationCenter.
+   *
+   * Uses QueuedUIChannel which queues notifications before UI is available
+   * and flushes them when UI becomes available.
    *
    * This phase is optional - failures are logged as warnings but don't fail bootstrap.
    *
@@ -33,17 +36,17 @@ export class NotificationBootstrapper {
       );
     }
 
-    const uiChannelResult = container.resolveWithError(uiChannelToken);
-    if (!uiChannelResult.ok) {
+    const queuedUIChannelResult = container.resolveWithError(queuedUIChannelToken);
+    if (!queuedUIChannelResult.ok) {
       // UI channel is optional - return error so orchestrator can log warning
-      return err(`UIChannel could not be resolved: ${uiChannelResult.error.message}`);
+      return err(`QueuedUIChannel could not be resolved: ${queuedUIChannelResult.error.message}`);
     }
 
     const notificationCenter = castResolvedService<NotificationService>(
       notificationCenterResult.value
     );
-    const uiChannel = castResolvedService<PlatformChannelPort>(uiChannelResult.value);
-    notificationCenter.addChannel(uiChannel);
+    const queuedUIChannel = castResolvedService<PlatformChannelPort>(queuedUIChannelResult.value);
+    notificationCenter.addChannel(queuedUIChannel);
     return ok(undefined);
   }
 }

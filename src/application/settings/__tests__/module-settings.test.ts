@@ -12,6 +12,7 @@ import { performanceTrackingSetting } from "@/application/settings/performance-t
 import { performanceSamplingSetting } from "@/application/settings/performance-sampling-setting";
 import { metricsPersistenceEnabledSetting } from "@/application/settings/metrics-persistence-enabled-setting";
 import { metricsPersistenceKeySetting } from "@/application/settings/metrics-persistence-key-setting";
+import { notificationQueueMaxSizeSetting } from "@/application/settings/notification-queue-max-size-setting";
 
 type MockLogger = Logger & {
   info: ReturnType<typeof vi.fn>;
@@ -139,5 +140,37 @@ describe("module settings definitions", () => {
     logger.info.mockClear();
     config.onChange?.("");
     expect(logger.info).toHaveBeenCalledWith("Metrics persistence key set to: (empty)");
+  });
+
+  it("logs notification queue max size updates and clamps values", () => {
+    const { logger, i18n, validator } = createMocks();
+    const config = notificationQueueMaxSizeSetting.createConfig(i18n, logger, validator);
+
+    // Test normal update
+    config.onChange?.(100);
+    expect(logger.info).toHaveBeenCalledWith(
+      "Notification queue max size updated via settings: 100"
+    );
+    logger.info.mockClear();
+
+    // Test clamping from value below min (ENV min is 10)
+    config.onChange?.(5);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining("Notification queue max size clamped from 5 to 10")
+    );
+    logger.info.mockClear();
+
+    // Test clamping from value above max (ENV max is 1000)
+    config.onChange?.(2000);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining("Notification queue max size clamped from 2000 to 1000")
+    );
+    logger.info.mockClear();
+
+    // Test with decimal value (should be floored and clamped)
+    config.onChange?.(75.7);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining("Notification queue max size clamped from 75.7 to 75")
+    );
   });
 });
