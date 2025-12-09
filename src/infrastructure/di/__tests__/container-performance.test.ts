@@ -7,7 +7,7 @@ import { ServiceLifecycle } from "@/infrastructure/di/types";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 
 // Helper for tests: Wrap tokens for resolve() testing (simulates external API usage)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const testResolve = <T>(container: ServiceContainer, token: any): T => {
   return container.resolve(markAsApiSafe(token)) as T;
 };

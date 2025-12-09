@@ -3,23 +3,22 @@ import type {
   PlatformChannelPort,
   PlatformNotification,
 } from "@/domain/ports/notifications/platform-channel-port.interface";
-import type { FoundryNotificationOptions } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 
 /**
  * Platform-agnostic options for NotificationCenter.
  *
- * Platform-specific options (like FoundryNotificationOptions) are passed through
- * via uiOptions and handled by the channels themselves.
+ * Platform-specific options are passed through via uiOptions and handled by the channels themselves.
+ * The Application Layer does not know about platform-specific types (Clean Architecture).
  */
 export type NotificationCenterOptions = {
   channels?: string[];
   traceId?: string;
   /**
    * UI-specific options passed through to channels.
-   * These are platform-specific (e.g., FoundryNotificationOptions) and are
-   * handled by the channels themselves.
+   * These are platform-specific and are handled by the channels themselves.
+   * Type is `unknown` to maintain Clean Architecture (Application Layer should not know about Foundry-specific types).
    */
-  uiOptions?: FoundryNotificationOptions;
+  uiOptions?: unknown;
 };
 
 /**

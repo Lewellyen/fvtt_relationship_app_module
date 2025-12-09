@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FoundryGamePort } from "@/infrastructure/adapters/foundry/services/FoundryGamePort";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";

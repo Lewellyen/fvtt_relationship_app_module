@@ -62,7 +62,7 @@ describe("PortSelectionEventEmitter", () => {
         type: "failure",
         foundryVersion: 13,
         availableVersions: "15",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         error: { code: "PORT_SELECTION_FAILED" as const, message: "No compatible port" } as any,
       };
 

@@ -28,7 +28,7 @@ import {
 } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
-import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
+import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
 import { moduleHealthServiceToken } from "@/infrastructure/shared/tokens/core/module-health-service.token";
 import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n/i18n-facade.token";
 import {

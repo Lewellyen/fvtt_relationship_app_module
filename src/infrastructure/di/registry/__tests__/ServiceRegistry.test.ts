@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for testing invalid service classes
 
 import { describe, it, expect, vi } from "vitest";

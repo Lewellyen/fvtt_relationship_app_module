@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for mocking Foundry global objects (Hooks)
 
 import { describe, it, expect, afterEach, vi } from "vitest";

@@ -1,12 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for mocking ENV and container methods
 
 import { describe, it, expect, vi } from "vitest";
 import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { markAsApiSafe } from "@/infrastructure/di/types";
-import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
-import { uiChannelToken } from "@/infrastructure/shared/tokens/notifications/ui-channel.token";
+import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
+import { uiChannelToken } from "@/application/tokens/notifications/ui-channel.token";
 import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";

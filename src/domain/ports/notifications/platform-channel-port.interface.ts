@@ -1,5 +1,4 @@
 import type { Result } from "@/domain/types/result";
-import type { FoundryNotificationOptions } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 
 /**
  * Platform-agnostic error for channel operations.
@@ -29,8 +28,11 @@ export interface PlatformNotification {
    * and are platform-specific. They are part of the domain notification
    * to allow the application layer to specify UI behavior without knowing
    * the concrete UI implementation.
+   *
+   * Typed as `unknown` in the domain layer to avoid infrastructure dependencies.
+   * Application/Infrastructure layers can use concrete types (e.g., FoundryNotificationOptions).
    */
-  uiOptions?: FoundryNotificationOptions;
+  uiOptions?: unknown;
 }
 
 /**

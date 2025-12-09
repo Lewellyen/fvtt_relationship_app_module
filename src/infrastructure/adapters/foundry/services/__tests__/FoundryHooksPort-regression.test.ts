@@ -3,7 +3,6 @@
  * Tests edge cases with callback reuse across multiple hooks
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   ModuleApiInitializer,
@@ -331,7 +330,7 @@ describe("ModuleApiInitializer", () => {
       const { getDeprecationInfo } =
         await import("@/infrastructure/di/types/utilities/deprecated-token");
       const { notificationCenterToken: notificationTokenImport } =
-        await import("@/infrastructure/shared/tokens/notifications/notification-center.token");
+        await import("@/application/tokens/notifications/notification-center.token");
 
       const existingInfo = getDeprecationInfo(notificationTokenImport);
       if (existingInfo) {
@@ -371,7 +370,7 @@ describe("ModuleApiInitializer", () => {
       const { markAsDeprecated } =
         await import("@/infrastructure/di/types/utilities/deprecated-token");
       const { notificationCenterToken } =
-        await import("@/infrastructure/shared/tokens/notifications/notification-center.token");
+        await import("@/application/tokens/notifications/notification-center.token");
       const deprecatedNotificationToken = markAsDeprecated(
         notificationCenterToken,
         "Test",

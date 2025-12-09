@@ -20,9 +20,9 @@ describe("Runtime Error: Graceful Degradation", () => {
   it("should bootstrap even when Foundry APIs are partially missing", () => {
     const mockGame = createMockGame();
     // Teilweise APIs entfernen
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     delete (mockGame as any).journal;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     delete (mockGame as any).actors;
 
     cleanup = withFoundryGlobals({

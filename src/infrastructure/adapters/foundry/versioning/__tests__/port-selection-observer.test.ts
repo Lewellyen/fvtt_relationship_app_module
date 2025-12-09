@@ -68,7 +68,7 @@ describe("PortSelectionObserver", () => {
         type: "failure",
         foundryVersion: 13,
         availableVersions: "14, 15",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         error: { code: "PORT_SELECTION_FAILED" as const, message: "No compatible port" } as any,
       };
 
@@ -90,7 +90,7 @@ describe("PortSelectionObserver", () => {
         foundryVersion: 13,
         availableVersions: "15",
         adapterName: "FoundryGame",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         error: { code: "PORT_SELECTION_FAILED" as const, message: "No compatible port" } as any,
       };
 

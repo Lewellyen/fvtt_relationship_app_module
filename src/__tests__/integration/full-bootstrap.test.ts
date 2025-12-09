@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for mocking game.modules
 
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for testing invalid journal entry types
 
 import { describe, it, expect } from "vitest";

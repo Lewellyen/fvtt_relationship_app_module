@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for type manipulation in edge case tests
 
 import { describe, it, expect, beforeEach, vi } from "vitest";

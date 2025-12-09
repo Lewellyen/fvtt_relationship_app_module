@@ -1,5 +1,5 @@
 import { markAsApiSafe } from "@/infrastructure/di/types/utilities/api-safe-token";
-import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
+import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
 import {
   journalVisibilityServiceToken,
   journalDirectoryProcessorToken,

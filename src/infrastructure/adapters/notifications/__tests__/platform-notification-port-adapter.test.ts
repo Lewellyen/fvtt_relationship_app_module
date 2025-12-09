@@ -7,7 +7,7 @@ import type { NotificationService } from "@/application/services/notification-ce
 import type { PlatformNotificationOptions } from "@/domain/ports/platform-notification-port.interface";
 import type { FoundryNotificationOptions } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import { ok, err } from "@/domain/utils/result";
-import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
+import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
 
 describe("NotificationPortAdapter", () => {
   let adapter: NotificationPortAdapter;

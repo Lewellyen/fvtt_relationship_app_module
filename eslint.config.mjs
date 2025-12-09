@@ -20,6 +20,17 @@ export default [
     '@typescript-eslint': typescript,
     'import': importPlugin
   },
+  settings: {
+    'import/resolver': {
+      typescript: {
+        alwaysTryTypes: true,
+        project: './tsconfig.json',
+      },
+      node: {
+        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+      },
+    },
+  },
   rules: {
     ...typescript.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': [
@@ -42,11 +53,14 @@ export default [
       'eqeqeq': ['error', 'always'],
 
       // 👇 Domänengrenzen-Prüfung (Clean Architecture)
+      // Unterstützt sowohl relative Pfade (./src/...) als auch @/ Aliase
+      // Hinweis: Arrays in target/from werden möglicherweise nicht unterstützt,
+      // daher separate Zone-Einträge für @/ Aliase
       'import/no-restricted-paths': [
         'error',
         {
           zones: [
-            // Domain Layer darf NICHT von anderen Layern abhängen
+            // Domain Layer darf NICHT von anderen Layern abhängen (relative Pfade)
             {
               target: './src/domain/**',
               from: './src/application/**',
@@ -62,26 +76,54 @@ export default [
               from: './src/framework/**',
               message: 'Domain Layer darf nicht von Framework Layer abhängen (Clean Architecture Verletzung)',
             },
-            // Application Layer darf NICHT von Infrastructure/Framework abhängen (außer Port-Interfaces)
+            // Domain Layer darf NICHT von anderen Layern abhängen (@/ Aliase)
+            {
+              target: '@/domain/**',
+              from: '@/application/**',
+              message: 'Domain Layer darf nicht von Application Layer abhängen (Clean Architecture Verletzung)',
+            },
+            {
+              target: '@/domain/**',
+              from: '@/infrastructure/**',
+              message: 'Domain Layer darf nicht von Infrastructure Layer abhängen (Clean Architecture Verletzung)',
+            },
+            {
+              target: '@/domain/**',
+              from: '@/framework/**',
+              message: 'Domain Layer darf nicht von Framework Layer abhängen (Clean Architecture Verletzung)',
+            },
+            // Application Layer darf NICHT von Infrastructure/Framework abhängen (Clean Architecture)
             {
               target: './src/application/**',
               from: './src/infrastructure/**',
-              except: [
-                './src/infrastructure/adapters/foundry/interfaces/**', // Port-Interfaces erlauben
-                './src/infrastructure/adapters/foundry/ports/**', // Port-Interfaces erlauben
-                './src/infrastructure/shared/tokens/**', // Tokens erlauben
-              ],
-              message: 'Application Layer darf nicht direkt von Infrastructure Layer abhängen (nur Port-Interfaces und Tokens erlaubt)',
+              message: 'Application Layer darf nicht direkt von Infrastructure Layer abhängen (Clean Architecture Verletzung)',
             },
             {
               target: './src/application/**',
               from: './src/framework/**',
               message: 'Application Layer darf nicht von Framework Layer abhängen (Clean Architecture Verletzung)',
             },
-            // Infrastructure Layer darf NICHT von Framework abhängen
+            // Application Layer darf NICHT von Infrastructure/Framework abhängen (Clean Architecture)
+            {
+              target: '@/application/**',
+              from: '@/infrastructure/**',
+              message: 'Application Layer darf nicht direkt von Infrastructure Layer abhängen (Clean Architecture Verletzung)',
+            },
+            {
+              target: '@/application/**',
+              from: '@/framework/**',
+              message: 'Application Layer darf nicht von Framework Layer abhängen (Clean Architecture Verletzung)',
+            },
+            // Infrastructure Layer darf NICHT von Framework abhängen - relative Pfade
             {
               target: './src/infrastructure/**',
               from: './src/framework/**',
+              message: 'Infrastructure Layer darf nicht von Framework Layer abhängen (Clean Architecture Verletzung)',
+            },
+            // Infrastructure Layer darf NICHT von Framework abhängen - @/ Aliase
+            {
+              target: '@/infrastructure/**',
+              from: '@/framework/**',
               message: 'Infrastructure Layer darf nicht von Framework Layer abhängen (Clean Architecture Verletzung)',
             },
           ],
@@ -172,8 +214,9 @@ export default [
   },
   // Test-Dateien: Verwende tests/tsconfig.json
   // In Tests ist `any` erlaubt, da wir mit Foundry's globalen Objekten arbeiten
+  // Test-Dateien dürfen auch direkt aus Infrastructure importieren (für Testing)
   {
-    files: ['tests/**/*.{ts,js}'],
+    files: ['**/__tests__/**/*.{ts,js}', '**/*.test.ts', '**/*.spec.ts', 'tests/**/*.{ts,js}'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -196,6 +239,7 @@ export default [
       ],
       '@typescript-eslint/no-explicit-any': 'off', // any ist in Tests erlaubt (Foundry Globals)
       '@typescript-eslint/explicit-function-return-type': 'off', // Optional für Tests
+      'import/no-restricted-paths': 'off', // Tests dürfen direkt aus Infrastructure importieren (für Testing)
     }
   },
 

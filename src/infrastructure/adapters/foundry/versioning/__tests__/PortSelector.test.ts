@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { PortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 import {

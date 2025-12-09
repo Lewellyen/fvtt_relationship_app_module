@@ -43,8 +43,8 @@ import type {
   NotificationService,
   NotificationCenterOptions,
 } from "./notification-center.interface";
-import { consoleChannelToken } from "@/infrastructure/shared/tokens/notifications/console-channel.token";
-import { uiChannelToken } from "@/infrastructure/shared/tokens/notifications/ui-channel.token";
+import { consoleChannelToken } from "@/application/tokens/notifications/console-channel.token";
+import { uiChannelToken } from "@/application/tokens/notifications/ui-channel.token";
 
 /**
  * Central hub for module notifications. Routes notifications to registered channels

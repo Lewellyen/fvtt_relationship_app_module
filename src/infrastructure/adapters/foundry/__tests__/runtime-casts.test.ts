@@ -76,9 +76,9 @@ describe("castFoundrySettingsApi", () => {
   it("should return ok with settings when object has all required methods", () => {
     const settings: DynamicSettingsApi = {
       register: () => {},
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       get: <T>() => "value" as any as T,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       set: async <T>(_namespace: string, _key: string, _value: T) => "value" as any as T,
     };
 

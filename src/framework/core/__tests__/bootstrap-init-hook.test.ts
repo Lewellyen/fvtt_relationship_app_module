@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for mocking Foundry global objects (game, Hooks, ui)
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -11,8 +10,8 @@ import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/journal-context-menu-lib-wrapper-service.token";
-import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
-import { uiChannelToken } from "@/infrastructure/shared/tokens/notifications/ui-channel.token";
+import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
+import { uiChannelToken } from "@/application/tokens/notifications/ui-channel.token";
 import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
 import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
 import {

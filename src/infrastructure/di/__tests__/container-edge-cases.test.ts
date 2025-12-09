@@ -6,7 +6,7 @@ import { markAsApiSafe } from "@/infrastructure/di/types";
 import { ServiceLifecycle } from "@/infrastructure/di/types";
 
 // Helper for tests: Wrap tokens for resolve() testing (simulates external API usage)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const testResolve = <T>(container: ServiceContainer, token: any): T => {
   return container.resolve(markAsApiSafe(token)) as T;
 };
@@ -20,7 +20,7 @@ describe("ServiceContainer - Edge Cases", () => {
   describe("Concurrent Resolution", () => {
     it("should handle concurrent singleton resolves safely", async () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const token = createInjectionToken<any>("TestService");
       let instanceCount = 0;
 
@@ -50,7 +50,7 @@ describe("ServiceContainer - Edge Cases", () => {
 
     it("should handle concurrent validation calls", async () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const token = createInjectionToken<any>("Service");
 
       container.registerFactory(token, () => ({}), ServiceLifecycle.SINGLETON, []);
@@ -70,9 +70,9 @@ describe("ServiceContainer - Edge Cases", () => {
   describe("Circular Dependencies", () => {
     it("should detect direct circular dependency", () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const tokenA = createInjectionToken<any>("ServiceA");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const tokenB = createInjectionToken<any>("ServiceB");
 
       // A depends on B, B depends on A
@@ -90,11 +90,11 @@ describe("ServiceContainer - Edge Cases", () => {
 
     it("should detect indirect circular dependency (A→B→C→A)", () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const tokenA = createInjectionToken<any>("A");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const tokenB = createInjectionToken<any>("B");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const tokenC = createInjectionToken<any>("C");
 
       // A → B → C → A
@@ -111,7 +111,7 @@ describe("ServiceContainer - Edge Cases", () => {
   describe("Disposal", () => {
     it("should reject registerClass on disposed container", () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const token = createInjectionToken<any>("Service");
 
       container.dispose();
@@ -125,7 +125,7 @@ describe("ServiceContainer - Edge Cases", () => {
 
     it("should reject registerFactory on disposed container", () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const token = createInjectionToken<any>("Factory");
 
       container.dispose();
@@ -139,7 +139,7 @@ describe("ServiceContainer - Edge Cases", () => {
 
     it("should reject registerValue on disposed container", () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const token = createInjectionToken<any>("Value");
 
       container.dispose();
@@ -153,9 +153,9 @@ describe("ServiceContainer - Edge Cases", () => {
 
     it("should reject registerAlias on disposed container", () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const targetToken = createInjectionToken<any>("Target");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const aliasToken = createInjectionToken<any>("Alias");
 
       container.registerClass(targetToken, class {}, ServiceLifecycle.SINGLETON);
@@ -170,7 +170,7 @@ describe("ServiceContainer - Edge Cases", () => {
 
     it("should clean up all registered hooks on dispose (sync)", () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const token = createInjectionToken<any>("Disposable");
 
       let disposed = false;
@@ -181,7 +181,7 @@ describe("ServiceContainer - Edge Cases", () => {
           disposed: false,
           dispose() {
             disposed = true;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             (this as any).disposed = true;
           },
         }),
@@ -201,7 +201,7 @@ describe("ServiceContainer - Edge Cases", () => {
 
     it("should clean up all registered hooks on disposeAsync (async)", async () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const token = createInjectionToken<any>("AsyncDisposable");
 
       let disposed = false;
@@ -216,7 +216,7 @@ describe("ServiceContainer - Edge Cases", () => {
             await new Promise((resolve) => setTimeout(resolve, 10));
             asyncDisposed = true;
             disposed = true;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             (this as any).disposed = true;
           },
         }),
@@ -237,9 +237,9 @@ describe("ServiceContainer - Edge Cases", () => {
 
     it("should handle both sync and async disposables together", async () => {
       const container = createTestContainer();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const syncToken = createInjectionToken<any>("Sync");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const asyncToken = createInjectionToken<any>("Async");
 
       let syncDisposed = false;

@@ -27,7 +27,6 @@ describe("FoundryV13ModulePort", () => {
         ready: false,
       };
       if (mockGame.modules) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mockGame.modules.set(MODULE_METADATA.ID, mockModule as any);
       }
 
@@ -39,7 +38,7 @@ describe("FoundryV13ModulePort", () => {
       const result = port.setModuleReady(MODULE_METADATA.ID);
 
       expect(result).toBe(true);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       expect((mockModule as any).ready).toBe(true);
     });
 
@@ -48,7 +47,7 @@ describe("FoundryV13ModulePort", () => {
       // withFoundryGlobals({}) would create a default game mock, so we need to delete it
       cleanup = withFoundryGlobals({});
       // Explicitly remove game global to test the unavailable case
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       delete (globalThis as any).game;
 
       const port = new FoundryV13ModulePort();
@@ -59,7 +58,7 @@ describe("FoundryV13ModulePort", () => {
 
     it("should return false when game.modules is not available", () => {
       const mockGame = createMockGame();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       delete (mockGame as any).modules;
 
       cleanup = withFoundryGlobals({

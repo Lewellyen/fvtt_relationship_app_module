@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.41.1] - 2025-12-09
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Domain Boundary Checker**: Domain-Boundary-Verletzung in `PlatformNotification` behoben - `uiOptions` ist jetzt als `unknown` typisiert, um Abhängigkeiten zur Infrastructure-Schicht zu vermeiden ([Details](src/domain/ports/notifications/platform-channel-port.interface.ts))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.41.0] - 2025-12-09
 ### Hinzugefügt
 - **Notification Channel Port Hierarchy**: Neue Domain-Port-Hierarchie für Notification-Channels analog zum Event-System ([Details](docs/refactoring/05-notification-channel-port-hierarchy.md))

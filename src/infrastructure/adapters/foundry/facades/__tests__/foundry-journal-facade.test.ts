@@ -87,7 +87,6 @@ describe("FoundryJournalFacade", () => {
         id: "j1",
         getFlag: vi.fn(),
         setFlag: vi.fn(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
       mockDocument.getFlag = vi.fn().mockReturnValue(ok(true));
 
@@ -95,7 +94,7 @@ describe("FoundryJournalFacade", () => {
 
       expect(mockDocument.getFlag).toHaveBeenCalled();
       // Verify document was called with correct arguments
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const calls = (mockDocument.getFlag as any).mock.calls;
       expect(calls[0][0]).toBe(entry);
       expect(calls[0][1]).toBe(MODULE_METADATA.ID);
@@ -114,7 +113,6 @@ describe("FoundryJournalFacade", () => {
         id: "j1",
         getFlag: vi.fn(),
         setFlag: vi.fn(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
       const error = { code: "OPERATION_FAILED" as const, message: "Flag read failed" };
       mockDocument.getFlag = vi.fn().mockReturnValue(err(error));
@@ -129,7 +127,7 @@ describe("FoundryJournalFacade", () => {
 
     it("should return VALIDATION_FAILED when entry lacks required methods", () => {
       // Entry missing setFlag method
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const entry = { id: "j1", getFlag: vi.fn() } as any;
 
       const result = facade.getEntryFlag(entry, "hidden", v.boolean());
@@ -175,14 +173,13 @@ describe("FoundryJournalFacade", () => {
         id: "j1",
         getFlag: vi.fn(),
         setFlag: vi.fn(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
       mockDocument.setFlag = vi.fn().mockResolvedValue(ok(undefined));
 
       const result = await facade.setEntryFlag(entry, "hidden", true);
 
       expect(mockDocument.setFlag).toHaveBeenCalled();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const calls = (mockDocument.setFlag as any).mock.calls;
       expect(calls[0][0]).toBe(entry);
       expect(calls[0][1]).toBe(MODULE_METADATA.ID);
@@ -198,7 +195,6 @@ describe("FoundryJournalFacade", () => {
         id: "j1",
         getFlag: vi.fn(),
         setFlag: vi.fn(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
       const error = { code: "OPERATION_FAILED" as const, message: "Flag set failed" };
       mockDocument.setFlag = vi.fn().mockResolvedValue(err(error));
@@ -213,7 +209,7 @@ describe("FoundryJournalFacade", () => {
 
     it("should return VALIDATION_FAILED when entry lacks required methods", async () => {
       // Entry missing getFlag method
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const entry = { id: "j1", setFlag: vi.fn() } as any;
 
       const result = await facade.setEntryFlag(entry, "hidden", true);

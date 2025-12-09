@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for mocking FoundrySettings
 
 import { describe, it, expect, vi, beforeEach } from "vitest";

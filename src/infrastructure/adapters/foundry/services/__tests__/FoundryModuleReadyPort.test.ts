@@ -179,7 +179,6 @@ describe("FoundryModuleReadyPort", () => {
           } catch (_error) {
             // mapException would map this, but we'll return a different code to test else branch
             return err({
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               code: "VALIDATION_FAILED" as any, // This triggers the else branch
               message: "Validation failed",
               details: undefined,

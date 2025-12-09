@@ -33,9 +33,8 @@ describe("MetricsHealthCheck", () => {
     });
 
     it("should return false when resolution errors exist", () => {
-      /* eslint-disable @typescript-eslint/no-explicit-any */
       const token = { description: "test" } as any;
-      /* eslint-enable @typescript-eslint/no-explicit-any */
+
       metricsCollector.recordResolution(token, 1.0, false);
 
       expect(check.check()).toBe(false);
@@ -58,9 +57,8 @@ describe("MetricsHealthCheck", () => {
     });
 
     it("should return resolution error details", () => {
-      /* eslint-disable @typescript-eslint/no-explicit-any */
       const token = { description: "test" } as any;
-      /* eslint-enable @typescript-eslint/no-explicit-any */
+
       metricsCollector.recordResolution(token, 1.0, false);
       metricsCollector.recordResolution(token, 1.0, false);
 
@@ -69,9 +67,8 @@ describe("MetricsHealthCheck", () => {
     });
 
     it("should prioritize port failures over resolution errors in details", () => {
-      /* eslint-disable @typescript-eslint/no-explicit-any */
       const token = { description: "test" } as any;
-      /* eslint-enable @typescript-eslint/no-explicit-any */
+
       metricsCollector.recordResolution(token, 1.0, false);
       metricsCollector.recordPortSelectionFailure(14);
 

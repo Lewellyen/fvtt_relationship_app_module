@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest";
 import { markAsDeprecated, getDeprecationInfo } from "@/infrastructure/di/types";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";

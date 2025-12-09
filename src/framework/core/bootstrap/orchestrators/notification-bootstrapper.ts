@@ -1,8 +1,8 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { notificationCenterToken } from "@/infrastructure/shared/tokens/notifications/notification-center.token";
-import { uiChannelToken } from "@/infrastructure/shared/tokens/notifications/ui-channel.token";
+import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
+import { uiChannelToken } from "@/application/tokens/notifications/ui-channel.token";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { NotificationService } from "@/application/services/notification-center.interface";
 import type { PlatformChannelPort } from "@/domain/ports/notifications/platform-channel-port.interface";

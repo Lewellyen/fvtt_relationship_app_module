@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for testing error scenarios with invalid types
 
 import { describe, it, expect, vi } from "vitest";

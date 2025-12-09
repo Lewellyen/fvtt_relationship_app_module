@@ -54,9 +54,9 @@ describe("Memory Leak: Hook Registration", () => {
     if (!globalHooks) {
       throw new Error("Hooks not available");
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-deprecated
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const hooksOnMock = globalHooks.on as any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-deprecated
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const hooksOffMock = globalHooks.off as any;
 
     // 1000 Hooks registrieren (simuliert viele Hook-Registrierungen)

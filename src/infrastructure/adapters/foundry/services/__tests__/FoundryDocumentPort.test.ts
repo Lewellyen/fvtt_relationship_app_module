@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FoundryDocumentPort } from "@/infrastructure/adapters/foundry/services/FoundryDocumentPort";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";

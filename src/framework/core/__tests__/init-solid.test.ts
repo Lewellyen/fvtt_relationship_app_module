@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Test file: `any` needed for mocking Foundry global objects (game, Hooks, ui)
 
 import { describe, it, expect, afterEach, vi } from "vitest";
@@ -163,7 +162,7 @@ describe("init-solid Bootstrap", () => {
       // Since we can't easily access the internal container from init-solid, we verify the behavior
       // by checking that the bootstrap completed successfully and channels are registered via DI
       const { notificationCenterToken } =
-        await import("@/infrastructure/shared/tokens/notifications/notification-center.token");
+        await import("@/application/tokens/notifications/notification-center.token");
 
       // Create a new CompositionRoot instance to verify the channels are registered correctly
       const root = new compositionRootClass();
@@ -205,7 +204,7 @@ describe("init-solid Bootstrap", () => {
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
       const { notificationCenterToken } =
-        await import("@/infrastructure/shared/tokens/notifications/notification-center.token");
+        await import("@/application/tokens/notifications/notification-center.token");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
@@ -260,7 +259,7 @@ describe("init-solid Bootstrap", () => {
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
       const { uiChannelToken } =
-        await import("@/infrastructure/shared/tokens/notifications/ui-channel.token");
+        await import("@/application/tokens/notifications/ui-channel.token");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")

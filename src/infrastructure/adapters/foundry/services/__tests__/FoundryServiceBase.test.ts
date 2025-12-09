@@ -283,7 +283,7 @@ describe("FoundryServiceBase", () => {
       const mockPort = new MockPort();
 
       // Inject port via protected property (for testing)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       (service as any).port = mockPort;
 
       service.dispose();
@@ -293,17 +293,15 @@ describe("FoundryServiceBase", () => {
 
     it("should set port to null after disposal", () => {
       const mockPort = new MockPort();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       (service as any).port = mockPort;
 
       service.dispose();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((service as any).port).toBeNull();
     });
 
     it("should not throw if port is already null", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).port = null;
 
       expect(() => service.dispose()).not.toThrow();
@@ -311,11 +309,11 @@ describe("FoundryServiceBase", () => {
 
     it("should not throw if port does not have dispose method", () => {
       const portWithoutDispose = { getJournalEntries: vi.fn() };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       (service as any).port = portWithoutDispose;
 
       expect(() => service.dispose()).not.toThrow();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       expect((service as any).port).toBeNull();
     });
   });
