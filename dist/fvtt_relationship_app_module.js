@@ -8600,6 +8600,84 @@ const _RuntimeConfigLoggerDecorator = class _RuntimeConfigLoggerDecorator {
 };
 __name(_RuntimeConfigLoggerDecorator, "RuntimeConfigLoggerDecorator");
 let RuntimeConfigLoggerDecorator = _RuntimeConfigLoggerDecorator;
+const _StackTraceLoggerDecorator = class _StackTraceLoggerDecorator {
+  constructor(baseLogger, runtimeConfig) {
+    this.baseLogger = baseLogger;
+    this.runtimeConfig = runtimeConfig;
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  /**
+   * Extracts the caller information from stack trace when debug mode is enabled.
+   * Filters out logger-related frames to show the actual source of the log call.
+   *
+   * @returns Caller info in format "filename:line" or undefined if not in debug mode or extraction fails
+   */
+  getCallerInfo() {
+    const currentLogLevel = this.runtimeConfig.get("logLevel");
+    if (currentLogLevel !== LogLevel.DEBUG) {
+      return void 0;
+    }
+    try {
+      const stack = new Error().stack;
+      if (!stack) return void 0;
+      const lines = stack.split("\n");
+      const loggerPatterns = [
+        /StackTraceLoggerDecorator/,
+        /BaseConsoleLogger/,
+        /ConsoleLoggerService/,
+        /RuntimeConfigLoggerDecorator/,
+        /TraceContextLoggerDecorator/,
+        /TracedLogger/,
+        /at Object\./
+      ];
+      for (let i = 3; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+        const isLoggerFrame = loggerPatterns.some((pattern) => pattern.test(line));
+        if (!isLoggerFrame && line.trim()) {
+          const match2 = line.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/) || line.match(/at\s+(.+?):(\d+):(\d+)/);
+          if (match2) {
+            const filePath = match2[2] || match2[1];
+            const lineNum = match2[3] || match2[2];
+            if (filePath && lineNum) {
+              const fileName = filePath.split(/[/\\]/).pop() || filePath;
+              return `${fileName}:${lineNum}`;
+            }
+          }
+          return line.trim().replace(/^at\s+/, "");
+        }
+      }
+    } catch {
+    }
+    return void 0;
+  }
+  formatWithCallerInfo(message2) {
+    const callerInfo = this.getCallerInfo();
+    return callerInfo ? `${message2} [${callerInfo}]` : message2;
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return this.baseLogger.withTraceId?.(traceId) ?? this.baseLogger;
+  }
+};
+__name(_StackTraceLoggerDecorator, "StackTraceLoggerDecorator");
+let StackTraceLoggerDecorator = _StackTraceLoggerDecorator;
 const _TraceContextLoggerDecorator = class _TraceContextLoggerDecorator {
   constructor(baseLogger, traceContext) {
     this.baseLogger = baseLogger;
@@ -8637,7 +8715,8 @@ const _ConsoleLoggerService = class _ConsoleLoggerService {
   constructor(config2, traceContext) {
     const baseLogger = new BaseConsoleLogger(config2.get("logLevel"));
     const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config2);
-    this.logger = traceContext ? new TraceContextLoggerDecorator(withConfig, traceContext) : withConfig;
+    const withStackTrace = new StackTraceLoggerDecorator(withConfig, config2);
+    this.logger = traceContext ? new TraceContextLoggerDecorator(withStackTrace, traceContext) : withStackTrace;
   }
   // Delegate all methods to composed logger
   setMinLevel(level) {

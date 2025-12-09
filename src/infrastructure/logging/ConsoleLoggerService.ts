@@ -6,6 +6,7 @@ import type { RuntimeConfigService } from "@/application/services/RuntimeConfigS
 import type { LogLevel } from "@/domain/types/log-level";
 import { BaseConsoleLogger } from "./BaseConsoleLogger";
 import { RuntimeConfigLoggerDecorator } from "./RuntimeConfigLoggerDecorator";
+import { StackTraceLoggerDecorator } from "./StackTraceLoggerDecorator";
 import { TraceContextLoggerDecorator } from "./TraceContextLoggerDecorator";
 
 /**
@@ -18,9 +19,10 @@ export class ConsoleLoggerService implements Logger {
   constructor(config: RuntimeConfigService, traceContext?: TraceContext) {
     const baseLogger = new BaseConsoleLogger(config.get("logLevel"));
     const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config);
+    const withStackTrace = new StackTraceLoggerDecorator(withConfig, config);
     this.logger = traceContext
-      ? new TraceContextLoggerDecorator(withConfig, traceContext)
-      : withConfig;
+      ? new TraceContextLoggerDecorator(withStackTrace, traceContext)
+      : withStackTrace;
   }
 
   // Delegate all methods to composed logger
