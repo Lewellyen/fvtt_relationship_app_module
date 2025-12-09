@@ -24,6 +24,18 @@ export default defineConfig({
     nodeOptions: {
       exposeGc: true,
     },
+    // Test result caching enabled for better performance
+    // Cache is safe now that all branches (including ?? 3 default values) are properly tested
+    cache: true,
+    // Optimize pool options for better performance
+    pool: "threads",
+    poolOptions: {
+      threads: {
+        // Use all available CPU cores for parallel test execution
+        minThreads: 1,
+        maxThreads: undefined, // Auto-detect based on CPU cores
+      },
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],

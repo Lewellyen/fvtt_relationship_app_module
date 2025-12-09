@@ -12921,9 +12921,194 @@ const _DIPerformanceTrackingService = class _DIPerformanceTrackingService extend
 __name(_DIPerformanceTrackingService, "DIPerformanceTrackingService");
 _DIPerformanceTrackingService.dependencies = [runtimeConfigToken, metricsSamplerToken];
 let DIPerformanceTrackingService = _DIPerformanceTrackingService;
-const _RetryService = class _RetryService {
+const _BaseRetryService = class _BaseRetryService {
+  /**
+   * Retries an async operation with exponential backoff.
+   *
+   * @template SuccessType - The success type of the operation
+   * @template ErrorType - The error type of the operation
+   * @param fn - Async function that returns a Result
+   * @param options - Retry configuration options
+   * @returns Promise resolving to the Result (success or last error)
+   */
+  async retry(fn, options) {
+    const maxAttempts = options.maxAttempts ?? 3;
+    const delayMs = options.delayMs ?? 100;
+    const backoffFactor = options.backoffFactor ?? 1;
+    const { mapException } = options;
+    if (maxAttempts < 1) {
+      return err(mapException("maxAttempts must be >= 1", 0));
+    }
+    let lastError = mapException("Initial retry error", 0);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const result = await fn();
+        if (result.ok) {
+          return result;
+        }
+        lastError = result.error;
+        if (attempt === maxAttempts) {
+          break;
+        }
+        const delay = delayMs * Math.pow(attempt, backoffFactor);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } catch (error) {
+        lastError = mapException(error, attempt);
+        if (attempt === maxAttempts) {
+          break;
+        }
+        const delay = delayMs * Math.pow(attempt, backoffFactor);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    return err(lastError);
+  }
+  /**
+   * Retries a synchronous operation.
+   * Similar to retry but for sync functions.
+   *
+   * @template SuccessType - The success type
+   * @template ErrorType - The error type
+   * @param fn - Function that returns a Result
+   * @param options - Retry configuration options (without delayMs and backoffFactor)
+   * @returns The Result (success or last error)
+   */
+  retrySync(fn, options) {
+    const maxAttempts = options.maxAttempts ?? 3;
+    const { mapException } = options;
+    if (maxAttempts < 1) {
+      return err(mapException("maxAttempts must be >= 1", 0));
+    }
+    let lastError = mapException("Initial retry error", 0);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const result = fn();
+        if (result.ok) {
+          return result;
+        }
+        lastError = result.error;
+        if (attempt === maxAttempts) {
+          break;
+        }
+      } catch (error) {
+        lastError = mapException(error, attempt);
+        if (attempt === maxAttempts) {
+          break;
+        }
+      }
+    }
+    return err(lastError);
+  }
+};
+__name(_BaseRetryService, "BaseRetryService");
+let BaseRetryService = _BaseRetryService;
+const _RetryObservabilityDecorator = class _RetryObservabilityDecorator extends BaseRetryService {
   constructor(logger) {
+    super();
     this.logger = logger;
+  }
+  /**
+   * Retries an async operation with exponential backoff and observability.
+   *
+   * @template SuccessType - The success type of the operation
+   * @template ErrorType - The error type of the operation
+   * @param fn - Async function that returns a Result
+   * @param options - Retry configuration options with optional observability
+   * @returns Promise resolving to the Result (success or last error)
+   */
+  async retry(fn, options) {
+    const { operationName, ...baseOptions } = options;
+    const startTime = performance.now();
+    let attemptCount = 0;
+    const wrappedFn = /* @__PURE__ */ __name(async () => {
+      attemptCount++;
+      try {
+        const result2 = await fn();
+        if (!result2.ok && attemptCount < (baseOptions.maxAttempts ?? 3)) {
+          if (operationName) {
+            this.logger.debug(
+              `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} failed for "${operationName}"`,
+              { error: result2.error }
+            );
+          }
+        }
+        return result2;
+      } catch (error) {
+        if (attemptCount < (baseOptions.maxAttempts ?? 3) && operationName) {
+          this.logger.warn(
+            `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} threw exception for "${operationName}"`,
+            { error }
+          );
+        }
+        throw error;
+      }
+    }, "wrappedFn");
+    const result = await super.retry(wrappedFn, baseOptions);
+    const duration = performance.now() - startTime;
+    if (operationName) {
+      if (result.ok && attemptCount > 1) {
+        this.logger.debug(
+          `Retry succeeded for "${operationName}" after ${attemptCount} attempts (${duration.toFixed(2)}ms)`
+        );
+      } else if (!result.ok) {
+        this.logger.warn(
+          `All retry attempts exhausted for "${operationName}" after ${baseOptions.maxAttempts ?? 3} attempts (${duration.toFixed(2)}ms)`
+        );
+      }
+    }
+    return result;
+  }
+  /**
+   * Retries a synchronous operation with observability.
+   *
+   * @template SuccessType - The success type
+   * @template ErrorType - The error type
+   * @param fn - Function that returns a Result
+   * @param options - Retry configuration options (without delayMs and backoffFactor)
+   * @returns The Result (success or last error)
+   */
+  retrySync(fn, options) {
+    const { operationName, ...baseOptions } = options;
+    let attemptCount = 0;
+    const wrappedFn = /* @__PURE__ */ __name(() => {
+      attemptCount++;
+      try {
+        const result2 = fn();
+        if (!result2.ok && attemptCount < (baseOptions.maxAttempts ?? 3)) {
+          if (operationName) {
+            this.logger.debug(
+              `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} failed for "${operationName}"`,
+              { error: result2.error }
+            );
+          }
+        }
+        return result2;
+      } catch (error) {
+        if (attemptCount < (baseOptions.maxAttempts ?? 3) && operationName) {
+          this.logger.warn(
+            `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} threw exception for "${operationName}"`,
+            { error }
+          );
+        }
+        throw error;
+      }
+    }, "wrappedFn");
+    const result = super.retrySync(wrappedFn, baseOptions);
+    if (operationName && !result.ok) {
+      this.logger.warn(
+        `All retry attempts exhausted for "${operationName}" after ${baseOptions.maxAttempts ?? 3} attempts`
+      );
+    } else if (operationName && result.ok && attemptCount > 1) {
+      this.logger.debug(`Retry succeeded for "${operationName}" after ${attemptCount} attempts`);
+    }
+    return result;
+  }
+};
+__name(_RetryObservabilityDecorator, "RetryObservabilityDecorator");
+let RetryObservabilityDecorator = _RetryObservabilityDecorator;
+const _RetryService = class _RetryService extends RetryObservabilityDecorator {
+  constructor(logger) {
+    super(logger);
   }
   /**
    * Retries an async operation with exponential backoff.
@@ -12953,61 +13138,7 @@ const _RetryService = class _RetryService {
    * ```
    */
   async retry(fn, options) {
-    const maxAttempts = options.maxAttempts ?? 3;
-    const delayMs = options.delayMs ?? 100;
-    const backoffFactor = options.backoffFactor ?? 1;
-    const { mapException, operationName } = options;
-    if (maxAttempts < 1) {
-      return err(mapException("maxAttempts must be >= 1", 0));
-    }
-    let lastError = mapException("Initial retry error", 0);
-    const startTime = performance.now();
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        const result = await fn();
-        if (result.ok) {
-          if (attempt > 1 && operationName) {
-            const duration = performance.now() - startTime;
-            this.logger.debug(
-              `Retry succeeded for "${operationName}" after ${attempt} attempts (${duration.toFixed(2)}ms)`
-            );
-          }
-          return result;
-        }
-        lastError = result.error;
-        if (attempt === maxAttempts) {
-          break;
-        }
-        if (operationName) {
-          this.logger.debug(
-            `Retry attempt ${attempt}/${maxAttempts} failed for "${operationName}"`,
-            { error: lastError }
-          );
-        }
-        const delay = delayMs * Math.pow(attempt, backoffFactor);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      } catch (error) {
-        lastError = mapException(error, attempt);
-        if (attempt === maxAttempts) {
-          break;
-        }
-        if (operationName) {
-          this.logger.warn(
-            `Retry attempt ${attempt}/${maxAttempts} threw exception for "${operationName}"`,
-            { error }
-          );
-        }
-        const delay = delayMs * Math.pow(attempt, backoffFactor);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
-    if (operationName) {
-      const duration = performance.now() - startTime;
-      this.logger.warn(
-        `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts (${duration.toFixed(2)}ms)`
-      );
-    }
-    return err(lastError);
+    return super.retry(fn, options);
   }
   /**
    * Retries a synchronous operation.
@@ -13035,50 +13166,7 @@ const _RetryService = class _RetryService {
    * ```
    */
   retrySync(fn, options) {
-    const maxAttempts = options.maxAttempts ?? 3;
-    const { mapException, operationName } = options;
-    if (maxAttempts < 1) {
-      return err(mapException("maxAttempts must be >= 1", 0));
-    }
-    let lastError = mapException("Initial retry error", 0);
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        const result = fn();
-        if (result.ok) {
-          if (attempt > 1 && operationName) {
-            this.logger.debug(`Retry succeeded for "${operationName}" after ${attempt} attempts`);
-          }
-          return result;
-        }
-        lastError = result.error;
-        if (attempt === maxAttempts) {
-          break;
-        }
-        if (operationName) {
-          this.logger.debug(
-            `Retry attempt ${attempt}/${maxAttempts} failed for "${operationName}"`,
-            { error: lastError }
-          );
-        }
-      } catch (error) {
-        lastError = mapException(error, attempt);
-        if (attempt === maxAttempts) {
-          break;
-        }
-        if (operationName) {
-          this.logger.warn(
-            `Retry attempt ${attempt}/${maxAttempts} threw exception for "${operationName}"`,
-            { error }
-          );
-        }
-      }
-    }
-    if (operationName) {
-      this.logger.warn(
-        `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts`
-      );
-    }
-    return err(lastError);
+    return super.retrySync(fn, options);
   }
 };
 __name(_RetryService, "RetryService");

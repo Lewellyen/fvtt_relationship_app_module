@@ -12,6 +12,28 @@
 
 ### Upgrade-Hinweise
 
+## [0.42.1] - 2025-12-09
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **RetryService Observability-Decorator**: RetryService wurde nach Decorator-Pattern refactored, um Single Responsibility Principle (SRP) zu erfüllen ([Details](docs/refactoring/03-retry-service-observability-decorator.md))
+- `BaseRetryService`: Kern-Retry-Logik ohne Observability-Verantwortlichkeiten
+- `RetryObservabilityDecorator`: Decorator für Logging und Performance-Timing
+- `RetryService`: Jetzt als Komposition aus BaseRetryService und RetryObservabilityDecorator
+- Verbesserte Testbarkeit: Retry-Algorithmus kann ohne Logger getestet werden
+- Flexibilität: BaseRetryService kann optional ohne Observability genutzt werden
+- **Vitest Cache**: Test-Result-Cache wurde deaktiviert (`cache: false`), um genaue Coverage-Reports zu gewährleisten und veraltete Coverage-Daten zu vermeiden
+
+### Fehlerbehebungen
+- **RetryObservabilityDecorator Coverage**: Erweiterte Testabdeckung für alle Logging-Pfade im RetryObservabilityDecorator (Zeilen 73-84, 102-105, 138-149, 163) - Branch-Coverage von 84.21% auf 100% verbessert
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.42.0] - 2025-12-09
 ### Hinzugefügt
 - Keine Einträge

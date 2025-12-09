@@ -2,78 +2,36 @@
  * Service for handling transient failures with automatic retry logic.
  * Provides retry operations with exponential backoff and optional logging.
  *
- * This service wraps the retry logic that was previously implemented
- * as utility functions, making it easier to:
- * - Inject via DI
- * - Add logging for retry attempts (via Logger)
- * - Configure default retry strategies zentral an einer Stelle
+ * This service is composed from BaseRetryService (core retry algorithm) and
+ * RetryObservabilityDecorator (logging and timing). This separation follows
+ * the Single Responsibility Principle, making it easier to:
+ * - Test retry logic without observability concerns
+ * - Use retry logic without logging in performance-critical paths
+ * - Modify observability without affecting retry algorithm
  */
 
 import type { Result } from "@/domain/types/result";
-import { err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import {
+  RetryObservabilityDecorator,
+  type ObservableRetryOptions,
+} from "./RetryObservabilityDecorator";
 
 /**
  * Options for retry operations.
  * Allows customization of retry behavior and error handling.
+ *
+ * This is an alias for ObservableRetryOptions to maintain backward compatibility.
+ * The operationName field is optional, so existing code continues to work.
  */
-export interface RetryOptions<ErrorType> {
-  /**
-   * Maximum number of retry attempts.
-   * Must be >= 1.
-   * @default 3
-   */
-  maxAttempts?: number;
-
-  /**
-   * Base delay in milliseconds between retry attempts.
-   * With exponential backoff: delayMs * attempt (100ms, 200ms, 300ms, ...)
-   * @default 100
-   */
-  delayMs?: number;
-
-  /**
-   * Exponential backoff factor.
-   * Delay = delayMs * (attempt ^ backoffFactor)
-   * @default 1 (linear backoff)
-   */
-  backoffFactor?: number;
-
-  /**
-   * Maps exceptions (thrown errors or unknown errors) to the expected ErrorType.
-   *
-   * REQUIRED for type safety. Prevents unsafe 'as ErrorType' casts that violate type guarantees.
-   *
-   * @param error - The caught exception (unknown type)
-   * @param attempt - The current attempt number (1-based)
-   * @returns A valid ErrorType instance
-   *
-   * @example
-   * ```typescript
-   * const result = await retryService.retry(
-   *   () => fetchData(),
-   *   {
-   *     maxAttempts: 3,
-   *     mapException: (error, attempt) => ({
-   *       code: 'OPERATION_FAILED' as const,
-   *       message: `Attempt ${attempt} failed: ${String(error)}`
-   *     })
-   *   }
-   * );
-   * ```
-   */
-  mapException: (error: unknown, attempt: number) => ErrorType;
-
-  /**
-   * Optional operation name for logging purposes.
-   * If provided, retry attempts will be logged.
-   */
-  operationName?: string;
-}
+export type RetryOptions<ErrorType> = ObservableRetryOptions<ErrorType>;
 
 /**
  * Service for retrying operations with exponential backoff.
+ *
+ * Composed from BaseRetryService (core retry algorithm) and
+ * RetryObservabilityDecorator (logging and timing).
  *
  * @example
  * ```typescript
@@ -100,8 +58,10 @@ export interface RetryOptions<ErrorType> {
  * );
  * ```
  */
-export class RetryService {
-  constructor(private readonly logger: Logger) {}
+export class RetryService extends RetryObservabilityDecorator {
+  constructor(logger: Logger) {
+    super(logger);
+  }
 
   /**
    * Retries an async operation with exponential backoff.
@@ -130,91 +90,11 @@ export class RetryService {
    * );
    * ```
    */
-  async retry<SuccessType, ErrorType>(
+  override async retry<SuccessType, ErrorType>(
     fn: () => Promise<Result<SuccessType, ErrorType>>,
     options: RetryOptions<ErrorType>
   ): Promise<Result<SuccessType, ErrorType>> {
-    const maxAttempts = options.maxAttempts ?? 3;
-    const delayMs = options.delayMs ?? 100;
-    const backoffFactor = options.backoffFactor ?? 1;
-    const { mapException, operationName } = options;
-
-    // Validate maxAttempts to prevent undefined errors
-    if (maxAttempts < 1) {
-      return err(mapException("maxAttempts must be >= 1", 0));
-    }
-
-    // Sentinel-Wert, damit lastError auch in theoretisch unerreichbaren Pfaden
-    // niemals undefined ist. Die eigentlichen Fehler werden in der Schleife gesetzt.
-    let lastError: ErrorType = mapException("Initial retry error", 0);
-    const startTime = performance.now();
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        // Wrap fn() in try/catch to handle thrown errors (breaks Result-Pattern)
-        const result = await fn();
-
-        if (result.ok) {
-          // Log success if this wasn't the first attempt
-          if (attempt > 1 && operationName) {
-            const duration = performance.now() - startTime;
-            this.logger.debug(
-              `Retry succeeded for "${operationName}" after ${attempt} attempts (${duration.toFixed(2)}ms)`
-            );
-          }
-          return result;
-        }
-
-        lastError = result.error;
-
-        // Last attempt? Return error immediately
-        if (attempt === maxAttempts) {
-          break;
-        }
-
-        // Log retry attempt
-        if (operationName) {
-          this.logger.debug(
-            `Retry attempt ${attempt}/${maxAttempts} failed for "${operationName}"`,
-            { error: lastError }
-          );
-        }
-
-        // Exponential backoff: delay * (attempt ^ backoffFactor)
-        const delay = delayMs * Math.pow(attempt, backoffFactor);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      } catch (error) {
-        // Handle exception-based code that breaks Result-Pattern
-        // Use mapException to convert unknown error to ErrorType
-        lastError = mapException(error, attempt);
-
-        // Last attempt? Return error immediately
-        if (attempt === maxAttempts) {
-          break;
-        }
-
-        // Log exception
-        if (operationName) {
-          this.logger.warn(
-            `Retry attempt ${attempt}/${maxAttempts} threw exception for "${operationName}"`,
-            { error }
-          );
-        }
-
-        const delay = delayMs * Math.pow(attempt, backoffFactor);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
-
-    // Record retry failure metric
-    if (operationName) {
-      const duration = performance.now() - startTime;
-      this.logger.warn(
-        `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts (${duration.toFixed(2)}ms)`
-      );
-    }
-
-    return err(lastError);
+    return super.retry(fn, options);
   }
 
   /**
@@ -242,77 +122,11 @@ export class RetryService {
    * );
    * ```
    */
-  retrySync<SuccessType, ErrorType>(
+  override retrySync<SuccessType, ErrorType>(
     fn: () => Result<SuccessType, ErrorType>,
     options: Omit<RetryOptions<ErrorType>, "delayMs" | "backoffFactor">
   ): Result<SuccessType, ErrorType> {
-    const maxAttempts = options.maxAttempts ?? 3;
-    const { mapException, operationName } = options;
-
-    // Validate maxAttempts to prevent undefined errors
-    if (maxAttempts < 1) {
-      return err(mapException("maxAttempts must be >= 1", 0));
-    }
-
-    // Sentinel-Wert, damit lastError auch in theoretisch unerreichbaren Pfaden
-    // niemals undefined ist. Die eigentlichen Fehler werden in der Schleife gesetzt.
-    let lastError: ErrorType = mapException("Initial retry error", 0);
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        // Wrap fn() in try/catch to handle thrown errors (breaks Result-Pattern)
-        const result = fn();
-
-        if (result.ok) {
-          // Log success if this wasn't the first attempt
-          if (attempt > 1 && operationName) {
-            this.logger.debug(`Retry succeeded for "${operationName}" after ${attempt} attempts`);
-          }
-          return result;
-        }
-
-        lastError = result.error;
-
-        // Last attempt? Return error immediately
-        if (attempt === maxAttempts) {
-          break;
-        }
-
-        // Log retry attempt
-        if (operationName) {
-          this.logger.debug(
-            `Retry attempt ${attempt}/${maxAttempts} failed for "${operationName}"`,
-            { error: lastError }
-          );
-        }
-      } catch (error) {
-        // Handle exception-based code that breaks Result-Pattern
-        // Use mapException to convert unknown error to ErrorType
-        lastError = mapException(error, attempt);
-
-        // Last attempt? Return error immediately
-        if (attempt === maxAttempts) {
-          break;
-        }
-
-        // Log exception
-        if (operationName) {
-          this.logger.warn(
-            `Retry attempt ${attempt}/${maxAttempts} threw exception for "${operationName}"`,
-            { error }
-          );
-        }
-      }
-    }
-
-    // Log retry failure
-    if (operationName) {
-      this.logger.warn(
-        `All retry attempts exhausted for "${operationName}" after ${maxAttempts} attempts`
-      );
-    }
-
-    return err(lastError);
+    return super.retrySync(fn, options);
   }
 }
 
