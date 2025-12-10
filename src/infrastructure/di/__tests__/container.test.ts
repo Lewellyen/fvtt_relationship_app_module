@@ -9,6 +9,8 @@ import { ServiceLifecycle } from "@/infrastructure/di/types";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok, err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 
 // Helper for tests: Wrap tokens for resolve() testing (simulates external API usage)
 // In production, only composition-root marks tokens as API-safe
@@ -966,7 +968,8 @@ describe("ServiceContainer", () => {
       const testContainer = createTestContainer();
       testContainer.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
       // Manually set state to "validating" to simulate sync validation in progress
-      testContainer["validationState"] = "validating";
+      // Access validationManager through container
+      testContainer["validationManager"]["validationState"] = "validating";
 
       const asyncResult = await testContainer.validateAsync();
       expectResultErr(asyncResult);
@@ -1014,7 +1017,7 @@ describe("ServiceContainer", () => {
       expectResultOk(result1);
 
       // validationPromise should be null after completion
-      expect(container["validationPromise"]).toBeNull();
+      expect(container["validationManager"]["validationPromise"]).toBeNull();
 
       // Should be able to validate again
       const promise2 = container.validateAsync();
@@ -1046,8 +1049,8 @@ describe("ServiceContainer", () => {
       }
 
       // Verify that the finally block executed by checking validationPromise is null
-      // This ensures the finally block (line 425) is covered even in timeout scenario
-      expect(container["validationPromise"]).toBeNull();
+      // This ensures the finally block is covered even in timeout scenario
+      expect(container["validationManager"]["validationPromise"]).toBeNull();
 
       // Restore
       vi.restoreAllMocks();
@@ -1114,13 +1117,13 @@ describe("ServiceContainer", () => {
         throw unexpectedError;
       });
 
-      // validateAsync should re-throw the unexpected error (line 407)
-      // The finally block (line 408) should execute to clean up validationPromise
+      // validateAsync should re-throw the unexpected error
+      // The finally block should execute to clean up validationPromise
       await expect(container.validateAsync()).rejects.toThrow("Unexpected validation error");
 
       // Verify that the finally block executed by checking validationPromise is null
-      // This ensures line 408 (finally block) is covered
-      expect(container["validationPromise"]).toBeNull();
+      // This ensures finally block is covered
+      expect(container["validationManager"]["validationPromise"]).toBeNull();
 
       vi.restoreAllMocks();
     });
@@ -1136,7 +1139,7 @@ describe("ServiceContainer", () => {
       container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
 
       // Manually set validation state to "validating" to simulate validation in progress
-      container["validationState"] = "validating";
+      container["validationManager"]["validationState"] = "validating";
 
       // Now call validate() - it should detect that validation is already in progress
       const result = container.validate();
@@ -1146,6 +1149,76 @@ describe("ServiceContainer", () => {
         expect(result.error[0]?.code).toBe("InvalidOperation");
         expect(result.error[0]?.message).toBe("Validation already in progress");
       }
+    });
+  });
+
+  describe("MetricsInjectionManager factory function", () => {
+    it("should handle error when resolving metricsCollectorToken fails", () => {
+      // This test covers lines 139-151 in container.ts (factory function error path)
+      const container = createTestContainer();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+      container.validate(); // Validate container so resolution can proceed
+
+      // Get the factory function from MetricsInjectionManager
+      const metricsInjectionManager = container["metricsInjectionManager"];
+      const factoryFunction = metricsInjectionManager["resolveMetricsCollector"];
+
+      // Create a token that is not registered to trigger error path
+      // Use MetricsCollector type to match factory function signature
+      const unregisteredToken = createInjectionToken<MetricsCollector>("Unregistered");
+
+      // Call factory function with unregistered token to test error path (lines 141-148)
+      const result = factoryFunction(unregisteredToken);
+
+      expectResultErr(result);
+      if (!result.ok) {
+        expect(result.error.code).toBe("TokenNotRegistered");
+        expect(result.error.tokenDescription).toContain("Unregistered");
+      }
+    });
+
+    it("should handle success when resolving metricsCollectorToken succeeds", () => {
+      // This test covers lines 150-151 in container.ts (factory function success path)
+      // Note: This test requires metricsCollectorToken to be registered, which happens
+      // during bootstrap. We test the code path by calling the factory function directly
+      // with a mock that returns success.
+      const container = createTestContainer();
+      const token = createInjectionToken<TestService>("Test");
+
+      container.registerClass(token, TestService, ServiceLifecycle.SINGLETON);
+      container.validate(); // Validate container so resolution can proceed
+
+      // Get the factory function from MetricsInjectionManager
+      const metricsInjectionManager = container["metricsInjectionManager"];
+      const factoryFunction = metricsInjectionManager["resolveMetricsCollector"];
+
+      // Mock resolutionManager to return success for metricsCollectorToken
+      // This tests the success path (lines 150-151)
+      const originalResolve = container["resolutionManager"].resolveWithError;
+      const mockMetricsCollector = {
+        recordResolution: vi.fn(),
+        recordCacheAccess: vi.fn(),
+      } as unknown as MetricsCollector;
+
+      container["resolutionManager"].resolveWithError = vi.fn((t) => {
+        if (t === metricsCollectorToken) {
+          return ok(mockMetricsCollector);
+        }
+        return originalResolve.call(container["resolutionManager"], t);
+      });
+
+      // Call factory function with metricsCollectorToken to test success path (lines 150-151)
+      const result = factoryFunction(metricsCollectorToken);
+
+      expectResultOk(result);
+      if (result.ok) {
+        expect(result.value).toBe(mockMetricsCollector);
+      }
+
+      // Restore
+      container["resolutionManager"].resolveWithError = originalResolve;
     });
   });
 });

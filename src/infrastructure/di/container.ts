@@ -6,7 +6,7 @@ import type { ContainerValidationState } from "./types/errors/containervalidatio
 import type { ApiSafeToken } from "./types/utilities/api-safe-token";
 import { isApiSafeTokenRuntime } from "./types/utilities/api-safe-token";
 import { ServiceLifecycle } from "./types/core/servicelifecycle";
-import { ok, err, isOk } from "@/domain/utils/result";
+import { ok, err } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 import type { Container } from "./interfaces";
 import type { ContainerError } from "./interfaces";
@@ -16,7 +16,7 @@ import type {
   DomainContainerError,
   DomainContainerValidationState,
 } from "@/domain/types/container-types";
-import { castResolvedService } from "./types/utilities/runtime-safe-cast";
+import { castResolvedService, castContainerErrorCode } from "./types/utilities/runtime-safe-cast";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { ServiceRegistry } from "./registry/ServiceRegistry";
 import { ContainerValidator } from "./validation/ContainerValidator";
@@ -28,29 +28,36 @@ import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import { BootstrapPerformanceTracker } from "@/infrastructure/observability/bootstrap-performance-tracker";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
+import { ServiceRegistrationManager } from "./registration/ServiceRegistrationManager";
+import { ContainerValidationManager } from "./validation/ContainerValidationManager";
+import { ServiceResolutionManager } from "./resolution/ServiceResolutionManager";
+import { ScopeManagementFacade } from "./scope/ScopeManagementFacade";
+import { MetricsInjectionManager } from "./metrics/MetricsInjectionManager";
+import { ApiSecurityManager } from "./security/ApiSecurityManager";
 
 /**
  * Dependency injection container (Facade pattern).
  *
- * Delegates to specialized components:
- * - ServiceRegistry: manages registrations
- * - ContainerValidator: validates dependencies
- * - InstanceCache: caches instances
- * - ServiceResolver: resolves services
- * - ScopeManager: manages lifecycle and disposal
+ * Delegates to specialized manager components:
+ * - ServiceRegistrationManager: manages service registrations
+ * - ContainerValidationManager: manages validation and validation state
+ * - ServiceResolutionManager: manages service resolution
+ * - ScopeManagementFacade: manages scope creation
+ * - MetricsInjectionManager: manages metrics collector injection
+ * - ApiSecurityManager: manages API security validation
  *
  * **Scope Chain Behavior:**
  * When a parent container is disposed, all child containers are automatically disposed.
  * This ensures proper cleanup of resources across the container hierarchy.
  *
  * **Architecture:**
- * This is a Facade that coordinates specialized components, adhering to Single Responsibility Principle.
- * Each component has a focused responsibility, making the system testable and maintainable.
+ * This is a Facade that coordinates specialized manager components, adhering to Single Responsibility Principle.
+ * Each manager has a focused responsibility, making the system testable and maintainable.
  *
  * @example
  * ```typescript
  * // Basic usage
- * const container = ServiceContainer.createRoot();
+ * const container = ServiceContainer.createRoot(ENV);
  * container.registerClass(LoggerToken, Logger, ServiceLifecycle.SINGLETON);
  * container.validate();
  * const logger = container.resolve(LoggerToken);
@@ -59,7 +66,7 @@ import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observabil
  * @example
  * ```typescript
  * // Scope chain with cascading disposal
- * const root = ServiceContainer.createRoot();
+ * const root = ServiceContainer.createRoot(ENV);
  * root.validate();
  * const child1 = root.createScope("child1").value!;
  * const child2 = root.createScope("child2").value!;
@@ -74,9 +81,15 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   private cache: InstanceCache;
   private resolver: ServiceResolver;
   private scopeManager: ScopeManager;
-  private validationState: ContainerValidationState;
-  private validationPromise: Promise<Result<void, ContainerError[]>> | null = null;
   private readonly env: EnvironmentConfig;
+
+  // Manager components (SRP refactoring)
+  private registrationManager: ServiceRegistrationManager;
+  private validationManager: ContainerValidationManager;
+  private resolutionManager: ServiceResolutionManager;
+  private scopeFacade: ScopeManagementFacade;
+  private metricsInjectionManager: MetricsInjectionManager;
+  private apiSecurityManager: ApiSecurityManager;
 
   /**
    * Private constructor - use ServiceContainer.createRoot() instead.
@@ -92,6 +105,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    * @param resolver - Service resolver
    * @param scopeManager - Scope manager
    * @param validationState - Initial validation state
+   * @param env - Environment configuration
    */
   private constructor(
     registry: ServiceRegistry,
@@ -107,8 +121,43 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     this.cache = cache;
     this.resolver = resolver;
     this.scopeManager = scopeManager;
-    this.validationState = validationState;
     this.env = env;
+
+    // Initialize manager components
+    this.validationManager = new ContainerValidationManager(validator, registry, validationState);
+    this.registrationManager = new ServiceRegistrationManager(
+      registry,
+      () => this.scopeManager.isDisposed(),
+      () => this.validationManager.getValidationState()
+    );
+    this.resolutionManager = new ServiceResolutionManager(
+      resolver,
+      () => this.scopeManager.isDisposed(),
+      () => this.validationManager.getValidationState()
+    );
+    this.metricsInjectionManager = new MetricsInjectionManager(resolver, cache, (token) => {
+      const result = this.resolutionManager.resolveWithError(token);
+      // Convert DomainContainerError to ContainerError if needed
+      if (!result.ok) {
+        // DomainContainerError.code is string, but ContainerError.code is ContainerErrorCode
+        // Use castContainerErrorCode to safely convert
+        const containerError: ContainerError = {
+          code: castContainerErrorCode(result.error.code),
+          message: result.error.message,
+          cause: result.error.cause,
+          tokenDescription: String(token),
+        };
+        return err(containerError);
+      }
+      const metricsCollector = castResolvedService<MetricsCollector>(result.value);
+      return ok(metricsCollector);
+    });
+    this.apiSecurityManager = new ApiSecurityManager();
+    this.scopeFacade = new ScopeManagementFacade(
+      scopeManager,
+      () => this.scopeManager.isDisposed(),
+      () => this.validationManager.getValidationState()
+    );
   }
 
   /**
@@ -160,22 +209,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     serviceClass: ServiceClass<T>,
     lifecycle: ServiceLifecycle
   ): Result<void, ContainerError> {
-    if (this.scopeManager.isDisposed()) {
-      return err({
-        code: "Disposed",
-        message: `Cannot register service on disposed container`,
-        tokenDescription: String(token),
-      });
-    }
-
-    if (this.validationState === "validated") {
-      return err({
-        code: "InvalidOperation",
-        message: "Cannot register after validation",
-      });
-    }
-
-    return this.registry.registerClass(token, serviceClass, lifecycle);
+    return this.registrationManager.registerClass(token, serviceClass, lifecycle);
   }
 
   /**
@@ -187,53 +221,14 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     lifecycle: ServiceLifecycle,
     dependencies: ServiceDependencies
   ): Result<void, ContainerError> {
-    if (this.scopeManager.isDisposed()) {
-      return err({
-        code: "Disposed",
-        message: `Cannot register service on disposed container`,
-        tokenDescription: String(token),
-      });
-    }
-
-    if (this.validationState === "validated") {
-      return err({
-        code: "InvalidOperation",
-        message: "Cannot register after validation",
-      });
-    }
-
-    // Validate factory parameter
-    if (!factory || typeof factory !== "function") {
-      return err({
-        code: "InvalidFactory",
-        message: "Factory must be a function",
-        tokenDescription: String(token),
-      });
-    }
-
-    return this.registry.registerFactory(token, factory, lifecycle, dependencies);
+    return this.registrationManager.registerFactory(token, factory, lifecycle, dependencies);
   }
 
   /**
    * Register a constant value.
    */
   registerValue<T>(token: InjectionToken<T>, value: T): Result<void, ContainerError> {
-    if (this.scopeManager.isDisposed()) {
-      return err({
-        code: "Disposed",
-        message: `Cannot register service on disposed container`,
-        tokenDescription: String(token),
-      });
-    }
-
-    if (this.validationState === "validated") {
-      return err({
-        code: "InvalidOperation",
-        message: "Cannot register after validation",
-      });
-    }
-
-    return this.registry.registerValue(token, value);
+    return this.registrationManager.registerValue(token, value);
   }
 
   /**
@@ -249,18 +244,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    * Useful for bootstrap/static values that are needed while the container is still registering services.
    */
   getRegisteredValue<T>(token: InjectionToken<T>): T | null {
-    const registration = this.registry.getRegistration(token);
-    if (!registration) {
-      return null;
-    }
-    if (registration.providerType !== "value") {
-      return null;
-    }
-    const value = registration.value as T | undefined;
-    if (value === undefined) {
-      return null;
-    }
-    return value;
+    return this.registrationManager.getRegisteredValue(token);
   }
 
   /**
@@ -270,51 +254,18 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     aliasToken: InjectionToken<T>,
     targetToken: InjectionToken<T>
   ): Result<void, ContainerError> {
-    if (this.scopeManager.isDisposed()) {
-      return err({
-        code: "Disposed",
-        message: `Cannot register service on disposed container`,
-        tokenDescription: String(aliasToken),
-      });
-    }
-
-    if (this.validationState === "validated") {
-      return err({
-        code: "InvalidOperation",
-        message: "Cannot register after validation",
-      });
-    }
-
-    return this.registry.registerAlias(aliasToken, targetToken);
+    return this.registrationManager.registerAlias(aliasToken, targetToken);
   }
 
   /**
    * Validate all registrations.
    */
   validate(): Result<void, ContainerError[]> {
-    if (this.validationState === "validated") {
-      return ok(undefined);
-    }
-
-    if (this.validationState === "validating") {
-      return err([
-        {
-          code: "InvalidOperation",
-          message: "Validation already in progress",
-        },
-      ]);
-    }
-
-    this.validationState = "validating";
-
-    const result = this.validator.validate(this.registry);
+    const result = this.validationManager.validate();
 
     if (result.ok) {
-      this.validationState = "validated";
       // Inject MetricsCollector into resolver after validation (if available)
       this.injectMetricsCollector();
-    } else {
-      this.validationState = "registering";
     }
 
     return result;
@@ -333,11 +284,10 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    * - Container is already validated when this is called
    */
   private injectMetricsCollector(): void {
-    const metricsResult = this.resolveWithError(metricsCollectorToken);
+    const metricsResult = this.resolutionManager.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
       const metricsCollector = castResolvedService<MetricsCollector>(metricsResult.value);
-      this.resolver.setMetricsCollector(metricsCollector);
-      this.cache.setMetricsCollector(metricsCollector);
+      this.metricsInjectionManager.performInjection(metricsCollector);
     }
   }
 
@@ -347,7 +297,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    * Both interfaces use identical types, so a single overload is sufficient.
    */
   getValidationState(): ContainerValidationState | DomainContainerValidationState {
-    return this.validationState as DomainContainerValidationState;
+    return this.validationManager.getValidationState() as DomainContainerValidationState;
   }
 
   /**
@@ -361,82 +311,21 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    *
    * @example
    * ```typescript
-   * const container = ServiceContainer.createRoot();
+   * const container = ServiceContainer.createRoot(ENV);
    * // ... register services
    * await container.validateAsync(); // Safe for concurrent calls
    * await container.validateAsync(5000); // With 5 second timeout
    * ```
    */
   async validateAsync(timeoutMs: number = 30000): Promise<Result<void, ContainerError[]>> {
-    // Return immediately if already validated
-    if (this.validationState === "validated") {
-      return ok(undefined);
+    const result = await this.validationManager.validateAsync(timeoutMs, withTimeout, TimeoutError);
+
+    // Inject MetricsCollector if validation succeeded
+    if (result.ok) {
+      this.injectMetricsCollector();
     }
 
-    // Wait for ongoing validation
-    if (this.validationPromise !== null) {
-      return this.validationPromise;
-    }
-
-    // Validation already in progress (sync)
-    if (this.validationState === "validating") {
-      return err([
-        {
-          code: "InvalidOperation",
-          message: "Validation already in progress",
-        },
-      ]);
-    }
-
-    this.validationState = "validating";
-
-    // Track if timeout occurred to prevent state changes after timeout
-    let timedOut = false;
-
-    // Create validation task
-    const validationTask = Promise.resolve().then(() => {
-      const result = this.validator.validate(this.registry);
-
-      // Only update state if no timeout occurred
-      if (!timedOut) {
-        if (result.ok) {
-          this.validationState = "validated";
-        } else {
-          this.validationState = "registering";
-        }
-      }
-
-      return result;
-    });
-
-    // Wrap validation with timeout
-    try {
-      this.validationPromise = withTimeout(validationTask, timeoutMs);
-      const result = await this.validationPromise;
-
-      // Inject MetricsCollector if validation succeeded
-      if (result.ok) {
-        this.injectMetricsCollector();
-      }
-
-      return result;
-    } catch (error) {
-      // Handle timeout
-      if (error instanceof TimeoutError) {
-        timedOut = true; // Mark timeout occurred
-        this.validationState = "registering"; // Deterministisch zurücksetzen
-        return err([
-          {
-            code: "InvalidOperation",
-            message: `Validation timed out after ${timeoutMs}ms`,
-          },
-        ]);
-      }
-      // Re-throw unexpected errors
-      throw error;
-    } finally {
-      this.validationPromise = null;
-    }
+    return result;
   }
 
   /**
@@ -454,7 +343,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    *
    * @example
    * ```typescript
-   * const parent = ServiceContainer.createRoot();
+   * const parent = ServiceContainer.createRoot(ENV);
    * parent.registerClass(LoggerToken, Logger, SINGLETON);
    * parent.validate();
    *
@@ -467,24 +356,10 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    * ```
    */
   createScope(name?: string): Result<ServiceContainer, ContainerError> {
-    if (this.scopeManager.isDisposed()) {
-      return err({
-        code: "Disposed",
-        message: `Cannot create scope from disposed container`,
-      });
-    }
-
-    if (this.validationState !== "validated") {
-      return err({
-        code: "NotValidated",
-        message: "Parent must be validated before creating scopes. Call validate() first.",
-      });
-    }
-
-    // Create child scope (pure Result, no throws)
-    const scopeResult = this.scopeManager.createChild(name);
+    // Validate scope creation
+    const scopeResult = this.scopeFacade.validateScopeCreation(name);
     if (!scopeResult.ok) {
-      return err(scopeResult.error); // Structured error, not exception
+      return err(scopeResult.error);
     }
 
     // Build child container components
@@ -514,7 +389,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
       childCache,
       childResolver,
       childManager,
-      "registering", // FIX: Child starts in registering state, not validated!
+      "registering", // Child starts in registering state
       this.env // Inherit ENV from parent
     );
 
@@ -530,45 +405,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   resolveWithError<T>(
     token: InjectionToken<T>
   ): Result<T, ContainerError> | Result<unknown, DomainContainerError> {
-    if (this.scopeManager.isDisposed()) {
-      const error: ContainerError = {
-        code: "Disposed",
-        message: `Cannot resolve from disposed container`,
-        tokenDescription: String(token),
-      };
-      const domainError: DomainContainerError = {
-        code: error.code,
-        message: error.message,
-        cause: error.cause,
-      };
-      return err(domainError) as Result<unknown, DomainContainerError>;
-    }
-
-    if (this.validationState !== "validated") {
-      const error: ContainerError = {
-        code: "NotValidated",
-        message: "Container must be validated before resolving. Call validate() first.",
-        tokenDescription: String(token),
-      };
-      const domainError: DomainContainerError = {
-        code: error.code,
-        message: error.message,
-        cause: error.cause,
-      };
-      return err(domainError) as Result<unknown, DomainContainerError>;
-    }
-
-    const result = this.resolver.resolve(token);
-    if (!result.ok) {
-      // Convert ContainerError to DomainContainerError
-      const domainError: DomainContainerError = {
-        code: result.error.code,
-        message: result.error.message,
-        cause: result.error.cause,
-      };
-      return err(domainError) as Result<unknown, DomainContainerError>;
-    }
-    return result as Result<T, ContainerError>;
+    return this.resolutionManager.resolveWithError(token);
   }
 
   /**
@@ -624,28 +461,13 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   // Implementation (unified for both overloads)
   resolve<T>(token: InjectionToken<T> | ApiSafeToken<T>): T {
     // 🛡️ RUNTIME GUARD (always active for defense-in-depth)
-    if (!isApiSafeTokenRuntime(token)) {
-      throw new Error(
-        `API Boundary Violation: resolve() called with non-API-safe token: ${String(token)}.\n` +
-          `This token was not marked via markAsApiSafe().\n` +
-          `\n` +
-          `Internal code MUST use resolveWithError() instead:\n` +
-          `  const result = container.resolveWithError(${String(token)});\n` +
-          `  if (result.ok) { /* use result.value */ }\n` +
-          `\n` +
-          `Only the public ModuleApi should expose resolve() for external modules.`
-      );
+    const securityResult = this.apiSecurityManager.validateApiSafeToken(token);
+    if (!securityResult.ok) {
+      throw new Error(securityResult.error.message);
     }
 
     // Standard resolution via Result pattern
-    const result = this.resolveWithError(token);
-
-    if (isOk(result)) {
-      return castResolvedService<T>(result.value);
-    }
-
-    // No fallback - throw with context
-    throw new Error(`Cannot resolve ${String(token)}: ${result.error.message}`);
+    return this.resolutionManager.resolve(token);
   }
 
   /**
@@ -655,7 +477,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   isRegistered<T>(token: DomainInjectionToken<T>): Result<boolean, never>;
   isRegistered<T>(token: InjectionToken<T>): Result<boolean, never>;
   isRegistered<T>(token: InjectionToken<T>): Result<boolean, never> {
-    return ok(this.registry.has(token));
+    return ok(this.registrationManager.isRegistered(token));
   }
 
   /**
@@ -670,7 +492,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
 
     return {
       description: String(token),
-      isRegistered: this.registry.has(token),
+      isRegistered: this.registrationManager.isRegistered(token),
     };
   }
 
@@ -687,7 +509,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
 
     // Reset validation state after disposal (per review feedback)
     if (result.ok) {
-      this.validationState = "registering";
+      this.validationManager.resetValidationState();
     }
 
     return result;
@@ -723,7 +545,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
 
     // Reset validation state after disposal (per review feedback)
     if (result.ok) {
-      this.validationState = "registering";
+      this.validationManager.resetValidationState();
     }
 
     return result;
@@ -737,7 +559,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   clear(): Result<void, never> {
     this.registry.clear();
     this.cache.clear();
-    this.validationState = "registering"; // Critical: reset validation state
+    this.validationManager.resetValidationState(); // Critical: reset validation state
     return ok(undefined);
   }
 }

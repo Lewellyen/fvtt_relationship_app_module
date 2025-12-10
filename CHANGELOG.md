@@ -12,6 +12,32 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.1] - 2025-12-10
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **ServiceContainer SRP-Refactoring**: ServiceContainer wurde nach Single Responsibility Principle (SRP) refactored, um die 8 verschiedenen Verantwortlichkeiten in spezialisierte Manager-Klassen aufzuteilen ([Details](docs/refactoring/01-service-container-srp-refactoring.md))
+- `ServiceRegistrationManager`: Verwaltet Service-Registrierungen (delegiert zu ServiceRegistry)
+- `ContainerValidationManager`: Verwaltet Validierung und Validation State
+- `ServiceResolutionManager`: Verwaltet Service-Auflösung (delegiert zu ServiceResolver)
+- `ScopeManagementFacade`: Verwaltet Scope-Erstellung (delegiert zu ScopeManager)
+- `MetricsInjectionManager`: Verwaltet MetricsCollector-Injection nach Validierung
+- `ApiSecurityManager`: Verwaltet API-Sicherheits-Validierung für ApiSafeToken
+- `ServiceContainer`: Jetzt reine Facade, die nur Manager koordiniert
+- Verbesserte Testbarkeit: Jeder Manager kann isoliert getestet werden
+- Keine Breaking Changes: Public API bleibt unverändert
+- Zirkuläre Abhängigkeiten behoben: ScopeManagementFacade verwendet keine direkten ServiceContainer-Imports mehr
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.0] - 2025-12-09
 ### Hinzugefügt
 - **StackTraceLoggerDecorator**: Neuer Logger-Decorator, der bei aktivem DEBUG-Log-Level automatisch Caller-Informationen (Dateiname und Zeilennummer) an Log-Meldungen anhängt, um die Herkunft von Warnings und Errors in der Browser-Console besser nachvollziehen zu können ([Details](src/infrastructure/logging/StackTraceLoggerDecorator.ts))
