@@ -1,274 +1,64 @@
-import { MODULE_METADATA, PUBLIC_API_VERSION } from "@/application/constants/app-constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
-import { formatReplacementInfo } from "@/infrastructure/shared/utils/format-deprecation-info";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import type { InjectionToken } from "@/domain/types/injection-token";
 import type { ModuleApiInitializer as IModuleApiInitializer } from "@/infrastructure/shared/types/module-api-initializer.interface";
-import { type ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
-import { getDeprecationInfo } from "@/infrastructure/di/types/utilities/deprecated-token";
-import {
-  createPublicI18n,
-  createPublicNotificationCenter,
-  createPublicFoundrySettings,
-} from "@/framework/core/api/public-api-wrappers";
-import { createApiTokens } from "@/framework/core/api/api-token-config";
-import type { ModuleApi, TokenInfo, ModuleApiTokens } from "@/framework/core/api/module-api";
-import type { HealthStatus } from "@/domain/types/health-status";
-import type { ContainerError } from "@/infrastructure/di/interfaces";
-import {
-  wrapFoundrySettingsPort,
-  wrapI18nService,
-  wrapNotificationCenterService,
-} from "@/infrastructure/di/types/utilities/api-casts";
-import {
-  getRegistrationStatus,
-  castResolvedService,
-  castContainerErrorCode,
-} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
-import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
-import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
-import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
-import { moduleHealthServiceToken } from "@/infrastructure/shared/tokens/core/module-health-service.token";
-import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n/i18n-facade.token";
-import {
-  journalVisibilityServiceToken,
-  journalDirectoryProcessorToken,
-} from "@/application/tokens/application.tokens";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
-import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
-import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
-import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
-import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui.token";
-import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
-import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry/foundry-journal-facade.token";
+import { ModuleApiBuilder } from "./builder/module-api-builder";
+import { ServiceWrapperFactory } from "./wrappers/service-wrapper-factory";
+import { DeprecationHandler } from "./deprecation/deprecation-handler";
+import { ApiServiceResolver } from "./resolution/api-service-resolver";
+import { ApiHealthMetricsProvider } from "./health/api-health-metrics-provider";
 
 /**
  * ModuleApiInitializer
  *
- * Responsible for exposing the module's public API to external consumers.
- * Separated from CompositionRoot for Single Responsibility Principle.
+ * Facade for exposing the module's public API to external consumers.
+ * Coordinates all API-related components following Single Responsibility Principle.
  *
- * Responsibilities:
- * - Create API token collection
- * - Create API object with resolve(), getMetrics(), getHealth(), etc.
- * - Apply deprecation warnings (via console.warn for external visibility)
- * - Apply read-only wrappers for sensitive services
- * - Expose API to game.modules.get(MODULE_ID).api
+ * Responsibilities (delegated to specialized components):
+ * - ModuleApiBuilder: Creates API objects and token collections
+ * - ServiceWrapperFactory: Applies read-only wrappers for sensitive services
+ * - DeprecationHandler: Handles deprecation warnings
+ * - ApiServiceResolver: Creates resolve functions
+ * - ApiHealthMetricsProvider: Provides health and metrics information
  *
- * Design: No dependencies, uses Result-Pattern for error handling.
+ * This class acts as a pure Facade - it only coordinates the components
+ * and exposes the API to game.modules.get(MODULE_ID).api
+ *
+ * Design: Uses dependency injection for all components, uses Result-Pattern for error handling.
  */
 export class ModuleApiInitializer implements IModuleApiInitializer {
   static dependencies = [] as const;
-  /**
-   * Handles deprecation warnings for tokens.
-   * Logs warning to console if token is deprecated and warning hasn't been shown yet.
-   *
-   * Uses console.warn instead of Logger because:
-   * - Deprecation warnings are for external API consumers (not internal logs)
-   * - Should be visible even if Logger is disabled/configured differently
-   * - Follows npm/Node.js convention for deprecation warnings
-   *
-   * @param token - Token to check for deprecation
-   * @private
-   */
-  private handleDeprecationWarning<TServiceType>(token: ApiSafeToken<TServiceType>): void {
-    const deprecationInfo = getDeprecationInfo(token);
-    if (deprecationInfo && !deprecationInfo.warningShown) {
-      const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
-      console.warn(
-        `[${MODULE_METADATA.ID}] DEPRECATED: Token "${String(token)}" is deprecated.\n` +
-          `Reason: ${deprecationInfo.reason}\n` +
-          replacementInfo +
-          `This token will be removed in version ${deprecationInfo.removedInVersion}.`
-      );
-      deprecationInfo.warningShown = true; // Only warn once per session
-    }
-  }
 
-  /**
-   * Creates the resolve() function for the public API.
-   * Resolves services and applies wrappers (throws on error).
-   *
-   * @param container - PlatformContainerPort for resolution
-   * @returns Resolve function for ModuleApi
-   * @private
-   */
-  private createResolveFunction(
-    container: PlatformContainerPort,
-    wellKnownTokens: ModuleApiTokens
-  ): <TServiceType>(token: ApiSafeToken<TServiceType>) => TServiceType {
-    return <TServiceType>(token: ApiSafeToken<TServiceType>): TServiceType => {
-      // Handle deprecation warnings
-      this.handleDeprecationWarning(token);
+  private readonly deprecationHandler: DeprecationHandler;
+  private readonly serviceWrapperFactory: ServiceWrapperFactory;
+  private readonly apiServiceResolver: ApiServiceResolver;
+  private readonly healthMetricsProvider: ApiHealthMetricsProvider;
+  private readonly apiBuilder: ModuleApiBuilder;
 
-      // Resolve service from container
-      const service: TServiceType = container.resolve(token);
-
-      return this.wrapSensitiveService(token, service, wellKnownTokens);
-    };
-  }
-
-  /**
-   * Creates the resolveWithError() function for the public API.
-   * Resolves services with Result pattern (never throws).
-   *
-   * @param container - PlatformContainerPort for resolution
-   * @returns ResolveWithError function for ModuleApi
-   * @private
-   */
-  private createResolveWithErrorFunction(
-    container: PlatformContainerPort,
-    wellKnownTokens: ModuleApiTokens
-  ): <TServiceType>(token: ApiSafeToken<TServiceType>) => Result<TServiceType, ContainerError> {
-    return <TServiceType>(
-      token: ApiSafeToken<TServiceType>
-    ): Result<TServiceType, ContainerError> => {
-      // Handle deprecation warnings
-      this.handleDeprecationWarning(token);
-
-      // Resolve with Result-Pattern (never throws)
-      const result = container.resolveWithError(token);
-
-      // Apply wrappers if resolution succeeded
-      if (!result.ok) {
-        // Convert DomainContainerError to ContainerError
-        const containerError: ContainerError = {
-          code: castContainerErrorCode(result.error.code),
-          message: result.error.message,
-          cause: result.error.cause,
-          tokenDescription: result.error.message,
-        };
-        return err(containerError);
-      }
-
-      const service = castResolvedService<TServiceType>(result.value);
-
-      const wrappedService = this.wrapSensitiveService(token, service, wellKnownTokens);
-      return ok(wrappedService);
-    };
-  }
-
-  /**
-   * Applies read-only wrappers when API consumers resolve sensitive services.
-   *
-   * @param token - API token used for resolution
-   * @param service - Service resolved from the container
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Wrapped service when applicable
-   * @private
-   */
-  private wrapSensitiveService<TServiceType>(
-    token: ApiSafeToken<TServiceType>,
-    service: TServiceType,
-    wellKnownTokens: ModuleApiTokens
-  ): TServiceType {
-    if (token === wellKnownTokens.i18nFacadeToken) {
-      return wrapI18nService(service, createPublicI18n);
-    }
-
-    if (token === wellKnownTokens.notificationCenterToken) {
-      return wrapNotificationCenterService(service, createPublicNotificationCenter);
-    }
-
-    if (token === wellKnownTokens.foundrySettingsToken) {
-      return wrapFoundrySettingsPort(service, createPublicFoundrySettings);
-    }
-
-    // Default: return original service for read-only or safe services
-    return service;
-  }
-
-  /**
-   * Creates the complete ModuleApi object with all methods.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Complete ModuleApi object
-   * @private
-   */
-  private createApiObject(
-    container: PlatformContainerPort,
-    wellKnownTokens: ModuleApiTokens
-  ): ModuleApi {
-    return {
-      version: PUBLIC_API_VERSION,
-
-      // Overloaded resolve method (throws on error)
-      resolve: this.createResolveFunction(container, wellKnownTokens),
-
-      // Result-Pattern method (safe, never throws)
-      resolveWithError: this.createResolveWithErrorFunction(container, wellKnownTokens),
-
-      getAvailableTokens: (): Map<symbol, TokenInfo> => {
-        const tokenMap = new Map<symbol, TokenInfo>();
-
-        // Add well-known tokens with their registration status
-        const tokenEntries: Array<[string, InjectionToken<unknown>]> = [
-          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
-          ["journalDirectoryProcessorToken", journalDirectoryProcessorToken],
-          ["foundryGameToken", foundryGameToken],
-          ["foundryHooksToken", foundryHooksToken],
-          ["foundryDocumentToken", foundryDocumentToken],
-          ["foundryUIToken", foundryUIToken],
-          ["foundrySettingsToken", foundrySettingsToken],
-          ["i18nFacadeToken", i18nFacadeToken],
-          ["foundryJournalFacadeToken", foundryJournalFacadeToken],
-          ["notificationCenterToken", notificationCenterToken],
-        ];
-
-        for (const [, token] of tokenEntries) {
-          const isRegisteredResult = container.isRegistered(token);
-          tokenMap.set(token, {
-            description: String(token).replace("Symbol(", "").replace(")", ""),
-            isRegistered: getRegistrationStatus(isRegisteredResult),
-          });
-        }
-
-        return tokenMap;
-      },
-
-      tokens: wellKnownTokens,
-
-      getMetrics: () => {
-        const metricsResult = container.resolveWithError(metricsCollectorToken);
-        if (!metricsResult.ok) {
-          return {
-            containerResolutions: 0,
-            resolutionErrors: 0,
-            avgResolutionTimeMs: 0,
-            portSelections: {},
-            portSelectionFailures: {},
-            cacheHitRate: 0,
-          };
-        }
-        const metricsCollector = castResolvedService<MetricsCollector>(metricsResult.value);
-        return metricsCollector.getSnapshot();
-      },
-
-      getHealth: (): HealthStatus => {
-        // Delegate to ModuleHealthService for health checks
-        const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
-        if (!healthServiceResult.ok) {
-          // Fallback health status if service cannot be resolved
-          return {
-            status: "unhealthy",
-            checks: {
-              containerValidated: false,
-              portsSelected: false,
-              lastError: "ModuleHealthService not available",
-            },
-            timestamp: new Date().toISOString(),
-          };
-        }
-        const healthService = castResolvedService<ModuleHealthService>(healthServiceResult.value);
-        return healthService.getHealth();
-      },
-    };
+  constructor(
+    deprecationHandler?: DeprecationHandler,
+    serviceWrapperFactory?: ServiceWrapperFactory,
+    apiServiceResolver?: ApiServiceResolver,
+    healthMetricsProvider?: ApiHealthMetricsProvider,
+    apiBuilder?: ModuleApiBuilder
+  ) {
+    // Initialize components with dependency injection or create defaults
+    this.deprecationHandler = deprecationHandler ?? new DeprecationHandler();
+    this.serviceWrapperFactory = serviceWrapperFactory ?? new ServiceWrapperFactory();
+    this.apiServiceResolver =
+      apiServiceResolver ??
+      new ApiServiceResolver(this.deprecationHandler, this.serviceWrapperFactory);
+    this.healthMetricsProvider = healthMetricsProvider ?? new ApiHealthMetricsProvider();
+    this.apiBuilder =
+      apiBuilder ?? new ModuleApiBuilder(this.apiServiceResolver, this.healthMetricsProvider);
   }
 
   /**
    * Exposes the module's public API to game.modules.get(MODULE_ID).api
+   *
+   * This method coordinates all components to create and expose the API.
+   * It acts as a Facade, delegating to specialized components.
    *
    * @param container - Initialized and validated PlatformContainerPort
    * @returns Result<void, string> - Ok if successful, Err with error message
@@ -284,11 +74,11 @@ export class ModuleApiInitializer implements IModuleApiInitializer {
       return err(`Module '${MODULE_METADATA.ID}' not found in game.modules`);
     }
 
-    // Create well-known tokens collection
-    const wellKnownTokens = createApiTokens();
+    // Create well-known tokens collection (delegated to builder)
+    const wellKnownTokens = this.apiBuilder.createApiTokens();
 
-    // Create complete API object
-    const api = this.createApiObject(container, wellKnownTokens);
+    // Create complete API object (delegated to builder)
+    const api = this.apiBuilder.createApi(container, wellKnownTokens);
 
     // Expose API to Foundry module
     mod.api = api;

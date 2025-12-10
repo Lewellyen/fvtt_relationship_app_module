@@ -9322,30 +9322,105 @@ const _DIModuleHealthService = class _DIModuleHealthService extends ModuleHealth
 __name(_DIModuleHealthService, "DIModuleHealthService");
 _DIModuleHealthService.dependencies = [healthCheckRegistryToken];
 let DIModuleHealthService = _DIModuleHealthService;
-function formatReplacementInfo(replacement) {
-  return replacement ? `Use "${replacement}" instead.
-` : "";
+const notificationCenterToken = createInjectionToken("NotificationCenter");
+const journalVisibilityServiceToken = createInjectionToken("JournalVisibilityService");
+const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
+const hideJournalContextMenuHandlerToken = createInjectionToken(
+  "HideJournalContextMenuHandler"
+);
+const journalContextMenuHandlersToken = createInjectionToken(
+  "JournalContextMenuHandlers"
+);
+const journalDirectoryProcessorToken = createInjectionToken(
+  "JournalDirectoryProcessor"
+);
+const runtimeConfigSyncToken = createInjectionToken("RuntimeConfigSync");
+const settingRegistrationErrorMapperToken = createInjectionToken(
+  "SettingRegistrationErrorMapper"
+);
+const i18nFacadeToken = createInjectionToken("I18nFacadeService");
+const foundryGameToken = createInjectionToken("FoundryGame");
+const foundryHooksToken = createInjectionToken("FoundryHooks");
+const foundryDocumentToken = createInjectionToken("FoundryDocument");
+const foundryUIToken = createInjectionToken("FoundryUI");
+const foundrySettingsToken = createInjectionToken("FoundrySettings");
+const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
+function createApiTokens() {
+  return {
+    notificationCenterToken: markAsApiSafe(notificationCenterToken),
+    journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
+    journalDirectoryProcessorToken: markAsApiSafe(journalDirectoryProcessorToken),
+    foundryGameToken: markAsApiSafe(foundryGameToken),
+    foundryHooksToken: markAsApiSafe(foundryHooksToken),
+    foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
+    foundryUIToken: markAsApiSafe(foundryUIToken),
+    foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
+    i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
+    foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken)
+  };
 }
-__name(formatReplacementInfo, "formatReplacementInfo");
-const deprecationMetadata = /* @__PURE__ */ new Map();
-function markAsDeprecated(token, reason, replacement, removedInVersion) {
-  const apiSafeToken = markAsApiSafe(token);
-  deprecationMetadata.set(apiSafeToken, {
-    reason,
-    replacement: replacement ? String(replacement) : null,
-    removedInVersion,
-    warningShown: false
-  });
-  return apiSafeToken;
-}
-__name(markAsDeprecated, "markAsDeprecated");
-function getDeprecationInfo(token) {
-  if (!token || typeof token !== "symbol") {
-    return null;
+__name(createApiTokens, "createApiTokens");
+const _ModuleApiBuilder = class _ModuleApiBuilder {
+  constructor(serviceResolver, healthMetricsProvider) {
+    this.serviceResolver = serviceResolver;
+    this.healthMetricsProvider = healthMetricsProvider;
   }
-  return deprecationMetadata.get(token) || null;
-}
-__name(getDeprecationInfo, "getDeprecationInfo");
+  /**
+   * Creates the well-known API tokens collection.
+   *
+   * @returns Type-safe token collection for external modules
+   */
+  createApiTokens() {
+    return createApiTokens();
+  }
+  /**
+   * Creates the complete ModuleApi object with all methods.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Complete ModuleApi object
+   */
+  createApi(container, wellKnownTokens) {
+    return {
+      version: PUBLIC_API_VERSION,
+      // Overloaded resolve method (throws on error)
+      resolve: this.serviceResolver.createResolveFunction(container, wellKnownTokens),
+      // Result-Pattern method (safe, never throws)
+      resolveWithError: this.serviceResolver.createResolveWithErrorFunction(
+        container,
+        wellKnownTokens
+      ),
+      getAvailableTokens: /* @__PURE__ */ __name(() => {
+        const tokenMap = /* @__PURE__ */ new Map();
+        const tokenEntries = [
+          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
+          ["journalDirectoryProcessorToken", journalDirectoryProcessorToken],
+          ["foundryGameToken", foundryGameToken],
+          ["foundryHooksToken", foundryHooksToken],
+          ["foundryDocumentToken", foundryDocumentToken],
+          ["foundryUIToken", foundryUIToken],
+          ["foundrySettingsToken", foundrySettingsToken],
+          ["i18nFacadeToken", i18nFacadeToken],
+          ["foundryJournalFacadeToken", foundryJournalFacadeToken],
+          ["notificationCenterToken", notificationCenterToken]
+        ];
+        for (const [, token] of tokenEntries) {
+          const isRegisteredResult = container.isRegistered(token);
+          tokenMap.set(token, {
+            description: String(token).replace("Symbol(", "").replace(")", ""),
+            isRegistered: getRegistrationStatus(isRegisteredResult)
+          });
+        }
+        return tokenMap;
+      }, "getAvailableTokens"),
+      tokens: wellKnownTokens,
+      getMetrics: /* @__PURE__ */ __name(() => this.healthMetricsProvider.getMetrics(container), "getMetrics"),
+      getHealth: /* @__PURE__ */ __name(() => this.healthMetricsProvider.getHealth(container), "getHealth")
+    };
+  }
+};
+__name(_ModuleApiBuilder, "ModuleApiBuilder");
+let ModuleApiBuilder = _ModuleApiBuilder;
 function isAllowedKey(prop, allowed) {
   if (typeof prop !== "string") {
     return false;
@@ -9406,44 +9481,6 @@ function createPublicFoundrySettings(foundrySettings) {
   return createReadOnlyWrapper(foundrySettings, ["get"]);
 }
 __name(createPublicFoundrySettings, "createPublicFoundrySettings");
-const notificationCenterToken = createInjectionToken("NotificationCenter");
-const journalVisibilityServiceToken = createInjectionToken("JournalVisibilityService");
-const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
-const hideJournalContextMenuHandlerToken = createInjectionToken(
-  "HideJournalContextMenuHandler"
-);
-const journalContextMenuHandlersToken = createInjectionToken(
-  "JournalContextMenuHandlers"
-);
-const journalDirectoryProcessorToken = createInjectionToken(
-  "JournalDirectoryProcessor"
-);
-const runtimeConfigSyncToken = createInjectionToken("RuntimeConfigSync");
-const settingRegistrationErrorMapperToken = createInjectionToken(
-  "SettingRegistrationErrorMapper"
-);
-const i18nFacadeToken = createInjectionToken("I18nFacadeService");
-const foundryGameToken = createInjectionToken("FoundryGame");
-const foundryHooksToken = createInjectionToken("FoundryHooks");
-const foundryDocumentToken = createInjectionToken("FoundryDocument");
-const foundryUIToken = createInjectionToken("FoundryUI");
-const foundrySettingsToken = createInjectionToken("FoundrySettings");
-const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
-function createApiTokens() {
-  return {
-    notificationCenterToken: markAsApiSafe(notificationCenterToken),
-    journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
-    journalDirectoryProcessorToken: markAsApiSafe(journalDirectoryProcessorToken),
-    foundryGameToken: markAsApiSafe(foundryGameToken),
-    foundryHooksToken: markAsApiSafe(foundryHooksToken),
-    foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
-    foundryUIToken: markAsApiSafe(foundryUIToken),
-    foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
-    i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
-    foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken)
-  };
-}
-__name(createApiTokens, "createApiTokens");
 function wrapI18nService(service, create) {
   return create(service);
 }
@@ -9456,72 +9493,7 @@ function wrapFoundrySettingsPort(service, create) {
   return create(service);
 }
 __name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
-const _ModuleApiInitializer = class _ModuleApiInitializer {
-  /**
-   * Handles deprecation warnings for tokens.
-   * Logs warning to console if token is deprecated and warning hasn't been shown yet.
-   *
-   * Uses console.warn instead of Logger because:
-   * - Deprecation warnings are for external API consumers (not internal logs)
-   * - Should be visible even if Logger is disabled/configured differently
-   * - Follows npm/Node.js convention for deprecation warnings
-   *
-   * @param token - Token to check for deprecation
-   * @private
-   */
-  handleDeprecationWarning(token) {
-    const deprecationInfo = getDeprecationInfo(token);
-    if (deprecationInfo && !deprecationInfo.warningShown) {
-      const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
-      console.warn(
-        `[${MODULE_METADATA.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
-Reason: ${deprecationInfo.reason}
-` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
-      );
-      deprecationInfo.warningShown = true;
-    }
-  }
-  /**
-   * Creates the resolve() function for the public API.
-   * Resolves services and applies wrappers (throws on error).
-   *
-   * @param container - PlatformContainerPort for resolution
-   * @returns Resolve function for ModuleApi
-   * @private
-   */
-  createResolveFunction(container, wellKnownTokens) {
-    return (token) => {
-      this.handleDeprecationWarning(token);
-      const service = container.resolve(token);
-      return this.wrapSensitiveService(token, service, wellKnownTokens);
-    };
-  }
-  /**
-   * Creates the resolveWithError() function for the public API.
-   * Resolves services with Result pattern (never throws).
-   *
-   * @param container - PlatformContainerPort for resolution
-   * @returns ResolveWithError function for ModuleApi
-   * @private
-   */
-  createResolveWithErrorFunction(container, wellKnownTokens) {
-    return (token) => {
-      this.handleDeprecationWarning(token);
-      const result = container.resolveWithError(token);
-      if (!result.ok) {
-        const containerError = {
-          code: castContainerErrorCode(result.error.code),
-          message: result.error.message,
-          cause: result.error.cause,
-          tokenDescription: result.error.message
-        };
-        return err(containerError);
-      }
-      const service = castResolvedService(result.value);
-      const wrappedService = this.wrapSensitiveService(token, service, wellKnownTokens);
-      return ok(wrappedService);
-    };
-  }
+const _ServiceWrapperFactory = class _ServiceWrapperFactory {
   /**
    * Applies read-only wrappers when API consumers resolve sensitive services.
    *
@@ -9529,7 +9501,6 @@ Reason: ${deprecationInfo.reason}
    * @param service - Service resolved from the container
    * @param wellKnownTokens - Collection of API-safe tokens
    * @returns Wrapped service when applicable
-   * @private
    */
   wrapSensitiveService(token, service, wellKnownTokens) {
     if (token === wellKnownTokens.i18nFacadeToken) {
@@ -9543,80 +9514,182 @@ Reason: ${deprecationInfo.reason}
     }
     return service;
   }
+};
+__name(_ServiceWrapperFactory, "ServiceWrapperFactory");
+let ServiceWrapperFactory = _ServiceWrapperFactory;
+function formatReplacementInfo(replacement) {
+  return replacement ? `Use "${replacement}" instead.
+` : "";
+}
+__name(formatReplacementInfo, "formatReplacementInfo");
+const deprecationMetadata = /* @__PURE__ */ new Map();
+function markAsDeprecated(token, reason, replacement, removedInVersion) {
+  const apiSafeToken = markAsApiSafe(token);
+  deprecationMetadata.set(apiSafeToken, {
+    reason,
+    replacement: replacement ? String(replacement) : null,
+    removedInVersion,
+    warningShown: false
+  });
+  return apiSafeToken;
+}
+__name(markAsDeprecated, "markAsDeprecated");
+function getDeprecationInfo(token) {
+  if (!token || typeof token !== "symbol") {
+    return null;
+  }
+  return deprecationMetadata.get(token) || null;
+}
+__name(getDeprecationInfo, "getDeprecationInfo");
+const _DeprecationHandler = class _DeprecationHandler {
   /**
-   * Creates the complete ModuleApi object with all methods.
+   * Checks if a token is deprecated.
    *
-   * @param container - PlatformContainerPort for service resolution
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Complete ModuleApi object
-   * @private
+   * @param token - Token to check
+   * @returns DeprecationInfo if deprecated, null otherwise
    */
-  createApiObject(container, wellKnownTokens) {
-    return {
-      version: PUBLIC_API_VERSION,
-      // Overloaded resolve method (throws on error)
-      resolve: this.createResolveFunction(container, wellKnownTokens),
-      // Result-Pattern method (safe, never throws)
-      resolveWithError: this.createResolveWithErrorFunction(container, wellKnownTokens),
-      getAvailableTokens: /* @__PURE__ */ __name(() => {
-        const tokenMap = /* @__PURE__ */ new Map();
-        const tokenEntries = [
-          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
-          ["journalDirectoryProcessorToken", journalDirectoryProcessorToken],
-          ["foundryGameToken", foundryGameToken],
-          ["foundryHooksToken", foundryHooksToken],
-          ["foundryDocumentToken", foundryDocumentToken],
-          ["foundryUIToken", foundryUIToken],
-          ["foundrySettingsToken", foundrySettingsToken],
-          ["i18nFacadeToken", i18nFacadeToken],
-          ["foundryJournalFacadeToken", foundryJournalFacadeToken],
-          ["notificationCenterToken", notificationCenterToken]
-        ];
-        for (const [, token] of tokenEntries) {
-          const isRegisteredResult = container.isRegistered(token);
-          tokenMap.set(token, {
-            description: String(token).replace("Symbol(", "").replace(")", ""),
-            isRegistered: getRegistrationStatus(isRegisteredResult)
-          });
-        }
-        return tokenMap;
-      }, "getAvailableTokens"),
-      tokens: wellKnownTokens,
-      getMetrics: /* @__PURE__ */ __name(() => {
-        const metricsResult = container.resolveWithError(metricsCollectorToken);
-        if (!metricsResult.ok) {
-          return {
-            containerResolutions: 0,
-            resolutionErrors: 0,
-            avgResolutionTimeMs: 0,
-            portSelections: {},
-            portSelectionFailures: {},
-            cacheHitRate: 0
-          };
-        }
-        const metricsCollector = castResolvedService(metricsResult.value);
-        return metricsCollector.getSnapshot();
-      }, "getMetrics"),
-      getHealth: /* @__PURE__ */ __name(() => {
-        const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
-        if (!healthServiceResult.ok) {
-          return {
-            status: "unhealthy",
-            checks: {
-              containerValidated: false,
-              portsSelected: false,
-              lastError: "ModuleHealthService not available"
-            },
-            timestamp: (/* @__PURE__ */ new Date()).toISOString()
-          };
-        }
-        const healthService = castResolvedService(healthServiceResult.value);
-        return healthService.getHealth();
-      }, "getHealth")
+  checkDeprecation(token) {
+    return getDeprecationInfo(token) ?? null;
+  }
+  /**
+   * Handles deprecation warnings for tokens.
+   * Logs warning to console if token is deprecated and warning hasn't been shown yet.
+   *
+   * Uses console.warn instead of Logger because:
+   * - Deprecation warnings are for external API consumers (not internal logs)
+   * - Should be visible even if Logger is disabled/configured differently
+   * - Follows npm/Node.js convention for deprecation warnings
+   *
+   * @param token - Token to check for deprecation
+   */
+  handleDeprecationWarning(token) {
+    const deprecationInfo = getDeprecationInfo(token);
+    if (deprecationInfo && !deprecationInfo.warningShown) {
+      const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
+      console.warn(
+        `[${MODULE_METADATA.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
+Reason: ${deprecationInfo.reason}
+` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
+      );
+      deprecationInfo.warningShown = true;
+    }
+  }
+};
+__name(_DeprecationHandler, "DeprecationHandler");
+let DeprecationHandler = _DeprecationHandler;
+const _ApiServiceResolver = class _ApiServiceResolver {
+  constructor(deprecationHandler, serviceWrapperFactory) {
+    this.deprecationHandler = deprecationHandler;
+    this.serviceWrapperFactory = serviceWrapperFactory;
+  }
+  /**
+   * Creates the resolve() function for the public API.
+   * Resolves services and applies wrappers (throws on error).
+   *
+   * @param container - PlatformContainerPort for resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Resolve function for ModuleApi
+   */
+  createResolveFunction(container, wellKnownTokens) {
+    return (token) => {
+      this.deprecationHandler.handleDeprecationWarning(token);
+      const service = container.resolve(token);
+      return this.serviceWrapperFactory.wrapSensitiveService(token, service, wellKnownTokens);
     };
   }
   /**
+   * Creates the resolveWithError() function for the public API.
+   * Resolves services with Result pattern (never throws).
+   *
+   * @param container - PlatformContainerPort for resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns ResolveWithError function for ModuleApi
+   */
+  createResolveWithErrorFunction(container, wellKnownTokens) {
+    return (token) => {
+      this.deprecationHandler.handleDeprecationWarning(token);
+      const result = container.resolveWithError(token);
+      if (!result.ok) {
+        const containerError = {
+          code: castContainerErrorCode(result.error.code),
+          message: result.error.message,
+          cause: result.error.cause,
+          tokenDescription: result.error.message
+        };
+        return err(containerError);
+      }
+      const service = castResolvedService(result.value);
+      const wrappedService = this.serviceWrapperFactory.wrapSensitiveService(
+        token,
+        service,
+        wellKnownTokens
+      );
+      return ok(wrappedService);
+    };
+  }
+};
+__name(_ApiServiceResolver, "ApiServiceResolver");
+let ApiServiceResolver = _ApiServiceResolver;
+const _ApiHealthMetricsProvider = class _ApiHealthMetricsProvider {
+  /**
+   * Gets a snapshot of performance metrics.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Current metrics snapshot
+   */
+  getMetrics(container) {
+    const metricsResult = container.resolveWithError(metricsCollectorToken);
+    if (!metricsResult.ok) {
+      return {
+        containerResolutions: 0,
+        resolutionErrors: 0,
+        avgResolutionTimeMs: 0,
+        portSelections: {},
+        portSelectionFailures: {},
+        cacheHitRate: 0
+      };
+    }
+    const metricsCollector = castResolvedService(metricsResult.value);
+    return metricsCollector.getSnapshot();
+  }
+  /**
+   * Gets module health status.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Health status with checks and overall status
+   */
+  getHealth(container) {
+    const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
+    if (!healthServiceResult.ok) {
+      return {
+        status: "unhealthy",
+        checks: {
+          containerValidated: false,
+          portsSelected: false,
+          lastError: "ModuleHealthService not available"
+        },
+        timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      };
+    }
+    const healthService = castResolvedService(healthServiceResult.value);
+    return healthService.getHealth();
+  }
+};
+__name(_ApiHealthMetricsProvider, "ApiHealthMetricsProvider");
+let ApiHealthMetricsProvider = _ApiHealthMetricsProvider;
+const _ModuleApiInitializer = class _ModuleApiInitializer {
+  constructor(deprecationHandler, serviceWrapperFactory, apiServiceResolver, healthMetricsProvider, apiBuilder) {
+    this.deprecationHandler = deprecationHandler ?? new DeprecationHandler();
+    this.serviceWrapperFactory = serviceWrapperFactory ?? new ServiceWrapperFactory();
+    this.apiServiceResolver = apiServiceResolver ?? new ApiServiceResolver(this.deprecationHandler, this.serviceWrapperFactory);
+    this.healthMetricsProvider = healthMetricsProvider ?? new ApiHealthMetricsProvider();
+    this.apiBuilder = apiBuilder ?? new ModuleApiBuilder(this.apiServiceResolver, this.healthMetricsProvider);
+  }
+  /**
    * Exposes the module's public API to game.modules.get(MODULE_ID).api
+   *
+   * This method coordinates all components to create and expose the API.
+   * It acts as a Facade, delegating to specialized components.
    *
    * @param container - Initialized and validated PlatformContainerPort
    * @returns Result<void, string> - Ok if successful, Err with error message
@@ -9629,8 +9702,8 @@ Reason: ${deprecationInfo.reason}
     if (!mod) {
       return err(`Module '${MODULE_METADATA.ID}' not found in game.modules`);
     }
-    const wellKnownTokens = createApiTokens();
-    const api = this.createApiObject(container, wellKnownTokens);
+    const wellKnownTokens = this.apiBuilder.createApiTokens();
+    const api = this.apiBuilder.createApi(container, wellKnownTokens);
     mod.api = api;
     return ok(void 0);
   }
