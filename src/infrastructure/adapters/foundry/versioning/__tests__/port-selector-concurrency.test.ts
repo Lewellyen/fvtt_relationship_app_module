@@ -7,12 +7,15 @@ import {
 import { expectResultOk } from "@/test/utils/test-helpers";
 import { ok } from "@/domain/utils/result";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
-import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { FoundryVersionDetector } from "@/infrastructure/adapters/foundry/versioning/foundry-version-detector";
 import { ok as resultOk } from "@/domain/utils/result";
+import type { IPortSelectionObservability } from "@/infrastructure/adapters/foundry/versioning/port-selection-observability.interface";
+import type { IPortSelectionPerformanceTracker } from "@/infrastructure/adapters/foundry/versioning/port-selection-performance-tracker.interface";
+import type { PortSelectionObserver } from "@/infrastructure/adapters/foundry/versioning/port-selection-observer";
+import type { PortSelectionEvent } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -22,7 +25,9 @@ vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
 describe("Concurrency: Port Selection", () => {
   let selector: PortSelector;
   let mockEventEmitter: PortSelectionEventEmitter;
-  let mockObservability: ObservabilityRegistry;
+  let mockObservability: IPortSelectionObservability;
+  let mockPerformanceTracker: IPortSelectionPerformanceTracker;
+  let mockObserver: PortSelectionObserver;
   let mockContainer: ServiceContainer;
   const token13 = createInjectionToken<unknown>("port-v13") as any;
   const token14 = createInjectionToken<unknown>("port-v14") as any;
@@ -30,7 +35,17 @@ describe("Concurrency: Port Selection", () => {
   beforeEach(() => {
     mockEventEmitter = new PortSelectionEventEmitter();
     mockObservability = {
-      registerPortSelector: vi.fn(),
+      registerWithObservabilityRegistry: vi.fn(),
+      setupObservability: vi.fn(),
+    } as any;
+    mockPerformanceTracker = {
+      startTracking: vi.fn(),
+      endTracking: vi.fn().mockReturnValue(0),
+    } as any;
+    mockObserver = {
+      handleEvent: vi.fn((event: PortSelectionEvent) => {
+        mockEventEmitter.emit(event);
+      }),
     } as any;
 
     mockContainer = {
@@ -48,6 +63,8 @@ describe("Concurrency: Port Selection", () => {
       mockVersionDetector,
       mockEventEmitter,
       mockObservability,
+      mockPerformanceTracker,
+      mockObserver,
       mockContainer
     );
     vi.clearAllMocks();

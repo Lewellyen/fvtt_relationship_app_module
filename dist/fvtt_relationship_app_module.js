@@ -10622,6 +10622,11 @@ const portSelectionEventEmitterToken = createInjectionToken(
   "PortSelectionEventEmitter"
 );
 const observabilityRegistryToken = createInjectionToken("ObservabilityRegistry");
+const portSelectionObservabilityToken = createInjectionToken(
+  "PortSelectionObservability"
+);
+const portSelectionPerformanceTrackerToken = createInjectionToken("PortSelectionPerformanceTracker");
+const portSelectionObserverToken = createInjectionToken("PortSelectionObserver");
 const _PortSelectionEventEmitter = class _PortSelectionEventEmitter {
   constructor() {
     this.subscribers = /* @__PURE__ */ new Set();
@@ -10717,6 +10722,128 @@ const _DIObservabilityRegistry = class _DIObservabilityRegistry extends Observab
 __name(_DIObservabilityRegistry, "DIObservabilityRegistry");
 _DIObservabilityRegistry.dependencies = [loggerToken, metricsRecorderToken];
 let DIObservabilityRegistry = _DIObservabilityRegistry;
+const _PortSelectionObservability = class _PortSelectionObservability {
+  constructor(observabilityRegistry) {
+    this.observabilityRegistry = observabilityRegistry;
+  }
+  /**
+   * Register PortSelector with ObservabilityRegistry.
+   * This enables automatic logging and metrics collection.
+   */
+  registerWithObservabilityRegistry(selector) {
+    this.observabilityRegistry.registerPortSelector(selector);
+  }
+  /**
+   * Setup observability for PortSelector.
+   * Wires PortSelector events to PortSelectionObserver.
+   */
+  setupObservability(selector, observer) {
+    selector.onEvent((event) => {
+      observer.handleEvent(event);
+    });
+  }
+};
+__name(_PortSelectionObservability, "PortSelectionObservability");
+let PortSelectionObservability = _PortSelectionObservability;
+const _DIPortSelectionObservability = class _DIPortSelectionObservability extends PortSelectionObservability {
+  constructor(observabilityRegistry) {
+    super(observabilityRegistry);
+  }
+};
+__name(_DIPortSelectionObservability, "DIPortSelectionObservability");
+_DIPortSelectionObservability.dependencies = [observabilityRegistryToken];
+let DIPortSelectionObservability = _DIPortSelectionObservability;
+const _PortSelectionPerformanceTracker = class _PortSelectionPerformanceTracker {
+  /**
+   * Start performance tracking.
+   * Records the current high-resolution timestamp.
+   */
+  startTracking() {
+    this.startTime = performance.now();
+  }
+  /**
+   * End performance tracking and return duration in milliseconds.
+   * @returns Duration in milliseconds, or 0 if tracking was not started
+   */
+  endTracking() {
+    if (this.startTime === void 0) {
+      return 0;
+    }
+    const durationMs = performance.now() - this.startTime;
+    this.startTime = void 0;
+    return durationMs;
+  }
+};
+__name(_PortSelectionPerformanceTracker, "PortSelectionPerformanceTracker");
+let PortSelectionPerformanceTracker = _PortSelectionPerformanceTracker;
+const _DIPortSelectionPerformanceTracker = class _DIPortSelectionPerformanceTracker extends PortSelectionPerformanceTracker {
+  constructor() {
+    super();
+  }
+};
+__name(_DIPortSelectionPerformanceTracker, "DIPortSelectionPerformanceTracker");
+_DIPortSelectionPerformanceTracker.dependencies = [];
+let DIPortSelectionPerformanceTracker = _DIPortSelectionPerformanceTracker;
+const _PortSelectionObserver = class _PortSelectionObserver {
+  constructor(logger, metrics, eventEmitter) {
+    this.logger = logger;
+    this.metrics = metrics;
+    this.eventEmitter = eventEmitter;
+  }
+  /**
+   * Handle a port selection event.
+   *
+   * Performs appropriate logging, metrics recording, and event emission.
+   *
+   * @param event - The port selection event to handle
+   */
+  handleEvent(event) {
+    this.eventEmitter.emit(event);
+    if (event.type === "success") {
+      this.handleSuccess(event);
+    } else {
+      this.handleFailure(event);
+    }
+  }
+  /**
+   * Handle successful port selection.
+   *
+   * Logs debug message and records metrics.
+   */
+  handleSuccess(event) {
+    this.logger.debug(
+      `Port selection completed in ${event.durationMs.toFixed(2)}ms (selected: v${event.selectedVersion}${event.adapterName ? ` for ${event.adapterName}` : ""})`
+    );
+    this.metrics.recordPortSelection(event.selectedVersion);
+  }
+  /**
+   * Handle failed port selection.
+   *
+   * Logs error and records failure metrics.
+   */
+  handleFailure(event) {
+    this.logger.error("No compatible port found", {
+      foundryVersion: event.foundryVersion,
+      availableVersions: event.availableVersions,
+      adapterName: event.adapterName
+    });
+    this.metrics.recordPortSelectionFailure(event.foundryVersion);
+  }
+};
+__name(_PortSelectionObserver, "PortSelectionObserver");
+let PortSelectionObserver = _PortSelectionObserver;
+const _DIPortSelectionObserver = class _DIPortSelectionObserver extends PortSelectionObserver {
+  constructor(logger, metrics, eventEmitter) {
+    super(logger, metrics, eventEmitter);
+  }
+};
+__name(_DIPortSelectionObserver, "DIPortSelectionObserver");
+_DIPortSelectionObserver.dependencies = [
+  loggerToken,
+  metricsRecorderToken,
+  portSelectionEventEmitterToken
+];
+let DIPortSelectionObserver = _DIPortSelectionObserver;
 function registerObservability(container) {
   const emitterResult = container.registerClass(
     portSelectionEventEmitterToken,
@@ -10733,6 +10860,34 @@ function registerObservability(container) {
   );
   if (isErr(registryResult)) {
     return err(`Failed to register ObservabilityRegistry: ${registryResult.error.message}`);
+  }
+  const observabilityResult = container.registerClass(
+    portSelectionObservabilityToken,
+    DIPortSelectionObservability,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(observabilityResult)) {
+    return err(
+      `Failed to register PortSelectionObservability: ${observabilityResult.error.message}`
+    );
+  }
+  const performanceTrackerResult = container.registerClass(
+    portSelectionPerformanceTrackerToken,
+    DIPortSelectionPerformanceTracker,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(performanceTrackerResult)) {
+    return err(
+      `Failed to register PortSelectionPerformanceTracker: ${performanceTrackerResult.error.message}`
+    );
+  }
+  const observerResult = container.registerClass(
+    portSelectionObserverToken,
+    DIPortSelectionObserver,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(observerResult)) {
+    return err(`Failed to register PortSelectionObserver: ${observerResult.error.message}`);
   }
   return ok(void 0);
 }
@@ -10799,10 +10954,14 @@ const _PortResolutionStrategy = class _PortResolutionStrategy {
 __name(_PortResolutionStrategy, "PortResolutionStrategy");
 let PortResolutionStrategy = _PortResolutionStrategy;
 const _PortSelector = class _PortSelector {
-  constructor(versionDetector, eventEmitter, observability, container) {
+  constructor(versionDetector, eventEmitter, observability, performanceTracker, observer, container) {
     this.versionDetector = versionDetector;
     this.eventEmitter = eventEmitter;
-    observability.registerPortSelector(this);
+    this.observability = observability;
+    this.performanceTracker = performanceTracker;
+    this.observer = observer;
+    this.observability.registerWithObservabilityRegistry(this);
+    this.observability.setupObservability(this, this.observer);
     this.resolutionStrategy = new PortResolutionStrategy(container);
   }
   /**
@@ -10853,13 +11012,27 @@ const _PortSelector = class _PortSelector {
    * ```
    */
   selectPortFromTokens(tokens, foundryVersion, adapterName) {
-    const startTime = performance.now();
+    this.performanceTracker.startTracking();
     let version;
     if (foundryVersion !== void 0) {
       version = foundryVersion;
     } else {
       const versionResult = this.versionDetector.getVersion();
       if (!versionResult.ok) {
+        this.performanceTracker.endTracking();
+        this.observer.handleEvent({
+          type: "failure",
+          foundryVersion: 0,
+          // Unknown version
+          availableVersions: Array.from(tokens.keys()).sort((a, b) => a - b).join(", "),
+          ...adapterName !== void 0 ? { adapterName } : {},
+          error: createFoundryError(
+            "PORT_SELECTION_FAILED",
+            "Could not determine Foundry version",
+            void 0,
+            versionResult.error
+          )
+        });
         return err(
           createFoundryError(
             "PORT_SELECTION_FAILED",
@@ -10889,7 +11062,8 @@ const _PortSelector = class _PortSelector {
         `No compatible port found for Foundry version ${version}`,
         { version, availableVersions: availableVersions || "none" }
       );
-      this.eventEmitter.emit({
+      this.performanceTracker.endTracking();
+      this.observer.handleEvent({
         type: "failure",
         foundryVersion: version,
         availableVersions,
@@ -10900,7 +11074,8 @@ const _PortSelector = class _PortSelector {
     }
     const portResult = this.resolutionStrategy.resolve(selectedToken);
     if (!portResult.ok) {
-      this.eventEmitter.emit({
+      this.performanceTracker.endTracking();
+      this.observer.handleEvent({
         type: "failure",
         foundryVersion: version,
         availableVersions: Array.from(tokens.keys()).sort((a, b) => a - b).join(", "),
@@ -10909,8 +11084,8 @@ const _PortSelector = class _PortSelector {
       });
       return err(portResult.error);
     }
-    const durationMs = performance.now() - startTime;
-    this.eventEmitter.emit({
+    const durationMs = this.performanceTracker.endTracking();
+    this.observer.handleEvent({
       type: "success",
       selectedVersion,
       foundryVersion: version,
@@ -10923,15 +11098,17 @@ const _PortSelector = class _PortSelector {
 __name(_PortSelector, "PortSelector");
 let PortSelector = _PortSelector;
 const _DIPortSelector = class _DIPortSelector extends PortSelector {
-  constructor(versionDetector, eventEmitter, observability, container) {
-    super(versionDetector, eventEmitter, observability, container);
+  constructor(versionDetector, eventEmitter, observability, performanceTracker, observer, container) {
+    super(versionDetector, eventEmitter, observability, performanceTracker, observer, container);
   }
 };
 __name(_DIPortSelector, "DIPortSelector");
 _DIPortSelector.dependencies = [
   foundryVersionDetectorToken,
   portSelectionEventEmitterToken,
-  observabilityRegistryToken,
+  portSelectionObservabilityToken,
+  portSelectionPerformanceTrackerToken,
+  portSelectionObserverToken,
   serviceContainerToken
 ];
 let DIPortSelector = _DIPortSelector;

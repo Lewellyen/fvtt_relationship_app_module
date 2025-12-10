@@ -5,15 +5,19 @@ import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/Fou
 import { APP_DEFAULTS } from "@/application/constants/app-constants";
 import type { PortSelectionEventEmitter } from "./port-selection-events";
 import type { PortSelectionEventCallback } from "./port-selection-events";
-import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { portSelectionEventEmitterToken } from "@/infrastructure/shared/tokens/observability/port-selection-event-emitter.token";
-import { observabilityRegistryToken } from "@/infrastructure/shared/tokens/observability/observability-registry.token";
 import { serviceContainerToken } from "@/infrastructure/shared/tokens/core/service-container.token";
 import { foundryVersionDetectorToken } from "@/infrastructure/shared/tokens/foundry/foundry-version-detector.token";
 import type { FoundryVersionDetector } from "./foundry-version-detector";
 import { PortResolutionStrategy } from "./port-resolution-strategy";
+import type { PortSelectionObserver } from "./port-selection-observer";
+import type { IPortSelectionObservability } from "./port-selection-observability.interface";
+import type { IPortSelectionPerformanceTracker } from "./port-selection-performance-tracker.interface";
+import { portSelectionObservabilityToken } from "@/infrastructure/shared/tokens/observability/port-selection-observability.token";
+import { portSelectionPerformanceTrackerToken } from "@/infrastructure/shared/tokens/observability/port-selection-performance-tracker.token";
+import { portSelectionObserverToken } from "@/infrastructure/shared/tokens/observability/port-selection-observer.token";
 
 /**
  * Selects the appropriate port implementation based on Foundry version.
@@ -23,9 +27,10 @@ import { PortResolutionStrategy } from "./port-resolution-strategy";
  * - Never uses ports with version number higher than current Foundry version
  *
  * **Observability:**
- * - Emits events for success/failure via injected EventEmitter
- * - Self-registers with ObservabilityRegistry for automatic logging/metrics
- * - Conforms to DI architecture: EventEmitter as TRANSIENT service
+ * - Delegates event emission to PortSelectionObserver
+ * - Delegates observability setup to PortSelectionObservability
+ * - Delegates performance tracking to PortSelectionPerformanceTracker
+ * - Conforms to SRP: Only responsible for port selection logic
  *
  * **Dependency Injection:**
  * - Resolves ports from the DI container using injection tokens
@@ -37,11 +42,15 @@ export class PortSelector {
   constructor(
     private readonly versionDetector: FoundryVersionDetector,
     private readonly eventEmitter: PortSelectionEventEmitter,
-    observability: ObservabilityRegistry,
+    private readonly observability: IPortSelectionObservability,
+    private readonly performanceTracker: IPortSelectionPerformanceTracker,
+    private readonly observer: PortSelectionObserver,
     container: ServiceContainer
   ) {
-    // Self-register for observability
-    observability.registerPortSelector(this);
+    // Delegate observability registration
+    this.observability.registerWithObservabilityRegistry(this);
+    // Setup observability wiring
+    this.observability.setupObservability(this, this.observer);
     // Create resolution strategy for container resolution
     this.resolutionStrategy = new PortResolutionStrategy(container);
   }
@@ -99,8 +108,8 @@ export class PortSelector {
     foundryVersion?: number,
     adapterName?: string
   ): Result<T, FoundryError> {
-    // Inline performance tracking (no dependency on PerformanceTrackingService)
-    const startTime = performance.now();
+    // Start performance tracking
+    this.performanceTracker.startTracking();
 
     // Use version detector for version detection
     let version: number;
@@ -109,6 +118,22 @@ export class PortSelector {
     } else {
       const versionResult = this.versionDetector.getVersion();
       if (!versionResult.ok) {
+        this.performanceTracker.endTracking(); // Track duration even on failure
+        // Emit failure event via observer
+        this.observer.handleEvent({
+          type: "failure",
+          foundryVersion: 0, // Unknown version
+          availableVersions: Array.from(tokens.keys())
+            .sort((a, b) => a - b)
+            .join(", "),
+          ...(adapterName !== undefined ? { adapterName } : {}),
+          error: createFoundryError(
+            "PORT_SELECTION_FAILED",
+            "Could not determine Foundry version",
+            undefined,
+            versionResult.error
+          ),
+        });
         return err(
           createFoundryError(
             "PORT_SELECTION_FAILED",
@@ -175,8 +200,10 @@ export class PortSelector {
         { version, availableVersions: availableVersions || "none" }
       );
 
-      // Emit failure event for observability
-      this.eventEmitter.emit({
+      this.performanceTracker.endTracking(); // Track duration even on failure
+
+      // Emit failure event via observer
+      this.observer.handleEvent({
         type: "failure",
         foundryVersion: version,
         availableVersions,
@@ -190,8 +217,10 @@ export class PortSelector {
     // CRITICAL: Only now resolve the selected port from the DI container
     const portResult = this.resolutionStrategy.resolve(selectedToken);
     if (!portResult.ok) {
-      // Emit failure event for observability
-      this.eventEmitter.emit({
+      this.performanceTracker.endTracking(); // Track duration even on failure
+
+      // Emit failure event via observer
+      this.observer.handleEvent({
         type: "failure",
         foundryVersion: version,
         availableVersions: Array.from(tokens.keys())
@@ -204,10 +233,11 @@ export class PortSelector {
       return err(portResult.error);
     }
 
-    const durationMs = performance.now() - startTime;
+    const durationMs = this.performanceTracker.endTracking();
 
-    // Emit success event for observability
-    this.eventEmitter.emit({
+    // Emit success event via observer
+    // Observer will call eventEmitter.emit() internally and handle logging/metrics
+    this.observer.handleEvent({
       type: "success",
       selectedVersion,
       foundryVersion: version,
@@ -223,16 +253,20 @@ export class DIPortSelector extends PortSelector {
   static dependencies = [
     foundryVersionDetectorToken,
     portSelectionEventEmitterToken,
-    observabilityRegistryToken,
+    portSelectionObservabilityToken,
+    portSelectionPerformanceTrackerToken,
+    portSelectionObserverToken,
     serviceContainerToken,
   ] as const;
 
   constructor(
     versionDetector: FoundryVersionDetector,
     eventEmitter: PortSelectionEventEmitter,
-    observability: ObservabilityRegistry,
+    observability: IPortSelectionObservability,
+    performanceTracker: IPortSelectionPerformanceTracker,
+    observer: PortSelectionObserver,
     container: ServiceContainer
   ) {
-    super(versionDetector, eventEmitter, observability, container);
+    super(versionDetector, eventEmitter, observability, performanceTracker, observer, container);
   }
 }

@@ -6,7 +6,10 @@ import { PortSelector } from "@/infrastructure/adapters/foundry/versioning/ports
 import { ok, err } from "@/domain/utils/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
-import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
+import type { IPortSelectionObservability } from "@/infrastructure/adapters/foundry/versioning/port-selection-observability.interface";
+import type { IPortSelectionPerformanceTracker } from "@/infrastructure/adapters/foundry/versioning/port-selection-performance-tracker.interface";
+import type { PortSelectionObserver } from "@/infrastructure/adapters/foundry/versioning/port-selection-observer";
+import type { PortSelectionEvent } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
@@ -51,13 +54,25 @@ describe("FoundryUIPort", () => {
       getVersion: vi.fn().mockReturnValue(resultOk(13)),
     } as any;
     const mockEventEmitter = new PortSelectionEventEmitter();
-    const mockObservability: ObservabilityRegistry = {
-      registerPortSelector: vi.fn(),
+    const mockObservability: IPortSelectionObservability = {
+      registerWithObservabilityRegistry: vi.fn(),
+      setupObservability: vi.fn(),
+    } as any;
+    const mockPerformanceTracker: IPortSelectionPerformanceTracker = {
+      startTracking: vi.fn(),
+      endTracking: vi.fn().mockReturnValue(0),
+    } as any;
+    const mockObserver: PortSelectionObserver = {
+      handleEvent: vi.fn((event: PortSelectionEvent) => {
+        mockEventEmitter.emit(event);
+      }),
     } as any;
     mockSelector = new PortSelector(
       mockVersionDetector,
       mockEventEmitter,
       mockObservability,
+      mockPerformanceTracker,
+      mockObserver,
       mockContainer
     );
     vi.spyOn(mockSelector, "selectPortFromTokens").mockReturnValue(ok(mockPort));
@@ -94,8 +109,18 @@ describe("FoundryUIPort", () => {
 
     it("should propagate port selection errors", () => {
       const mockEventEmitter = new PortSelectionEventEmitter();
-      const mockObservability: ObservabilityRegistry = {
-        registerPortSelector: vi.fn(),
+      const mockObservability: IPortSelectionObservability = {
+        registerWithObservabilityRegistry: vi.fn(),
+        setupObservability: vi.fn(),
+      } as any;
+      const mockPerformanceTracker: IPortSelectionPerformanceTracker = {
+        startTracking: vi.fn(),
+        endTracking: vi.fn().mockReturnValue(0),
+      } as any;
+      const mockObserver: PortSelectionObserver = {
+        handleEvent: vi.fn((event: PortSelectionEvent) => {
+          mockEventEmitter.emit(event);
+        }),
       } as any;
       const mockVersionDetector: FoundryVersionDetector = {
         getVersion: vi.fn().mockReturnValue(resultOk(13)),
@@ -104,6 +129,8 @@ describe("FoundryUIPort", () => {
         mockVersionDetector,
         mockEventEmitter,
         mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
         mockContainer
       );
       const mockError = {
@@ -207,8 +234,18 @@ describe("FoundryUIPort", () => {
   describe("Version Detection Failures", () => {
     it("should handle port selector errors", () => {
       const mockEventEmitter = new PortSelectionEventEmitter();
-      const mockObservability: ObservabilityRegistry = {
-        registerPortSelector: vi.fn(),
+      const mockObservability: IPortSelectionObservability = {
+        registerWithObservabilityRegistry: vi.fn(),
+        setupObservability: vi.fn(),
+      } as any;
+      const mockPerformanceTracker: IPortSelectionPerformanceTracker = {
+        startTracking: vi.fn(),
+        endTracking: vi.fn().mockReturnValue(0),
+      } as any;
+      const mockObserver: PortSelectionObserver = {
+        handleEvent: vi.fn((event: PortSelectionEvent) => {
+          mockEventEmitter.emit(event);
+        }),
       } as any;
       const mockVersionDetector: FoundryVersionDetector = {
         getVersion: vi.fn().mockReturnValue(resultOk(13)),
@@ -217,6 +254,8 @@ describe("FoundryUIPort", () => {
         mockVersionDetector,
         mockEventEmitter,
         mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
         mockContainer
       );
       const mockError = {
@@ -274,8 +313,18 @@ describe("FoundryUIPort", () => {
   describe("Port Error Branches", () => {
     it("should handle port selection failure in findElement", () => {
       const mockEventEmitter = new PortSelectionEventEmitter();
-      const mockObservability: ObservabilityRegistry = {
-        registerPortSelector: vi.fn(),
+      const mockObservability: IPortSelectionObservability = {
+        registerWithObservabilityRegistry: vi.fn(),
+        setupObservability: vi.fn(),
+      } as any;
+      const mockPerformanceTracker: IPortSelectionPerformanceTracker = {
+        startTracking: vi.fn(),
+        endTracking: vi.fn().mockReturnValue(0),
+      } as any;
+      const mockObserver: PortSelectionObserver = {
+        handleEvent: vi.fn((event: PortSelectionEvent) => {
+          mockEventEmitter.emit(event);
+        }),
       } as any;
       const mockVersionDetector: FoundryVersionDetector = {
         getVersion: vi.fn().mockReturnValue(resultOk(13)),
@@ -284,6 +333,8 @@ describe("FoundryUIPort", () => {
         mockVersionDetector,
         mockEventEmitter,
         mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
         mockContainer
       );
       const mockError = {
@@ -302,8 +353,18 @@ describe("FoundryUIPort", () => {
 
     it("should handle port selection failure in notify", () => {
       const mockEventEmitter = new PortSelectionEventEmitter();
-      const mockObservability: ObservabilityRegistry = {
-        registerPortSelector: vi.fn(),
+      const mockObservability: IPortSelectionObservability = {
+        registerWithObservabilityRegistry: vi.fn(),
+        setupObservability: vi.fn(),
+      } as any;
+      const mockPerformanceTracker: IPortSelectionPerformanceTracker = {
+        startTracking: vi.fn(),
+        endTracking: vi.fn().mockReturnValue(0),
+      } as any;
+      const mockObserver: PortSelectionObserver = {
+        handleEvent: vi.fn((event: PortSelectionEvent) => {
+          mockEventEmitter.emit(event);
+        }),
       } as any;
       const mockVersionDetector: FoundryVersionDetector = {
         getVersion: vi.fn().mockReturnValue(resultOk(13)),
@@ -312,6 +373,8 @@ describe("FoundryUIPort", () => {
         mockVersionDetector,
         mockEventEmitter,
         mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
         mockContainer
       );
       const mockError = {
@@ -329,8 +392,18 @@ describe("FoundryUIPort", () => {
 
     it("should handle port selection failure in rerenderJournalDirectory", () => {
       const mockEventEmitter = new PortSelectionEventEmitter();
-      const mockObservability: ObservabilityRegistry = {
-        registerPortSelector: vi.fn(),
+      const mockObservability: IPortSelectionObservability = {
+        registerWithObservabilityRegistry: vi.fn(),
+        setupObservability: vi.fn(),
+      } as any;
+      const mockPerformanceTracker: IPortSelectionPerformanceTracker = {
+        startTracking: vi.fn(),
+        endTracking: vi.fn().mockReturnValue(0),
+      } as any;
+      const mockObserver: PortSelectionObserver = {
+        handleEvent: vi.fn((event: PortSelectionEvent) => {
+          mockEventEmitter.emit(event);
+        }),
       } as any;
       const mockVersionDetector: FoundryVersionDetector = {
         getVersion: vi.fn().mockReturnValue(resultOk(13)),
@@ -339,6 +412,8 @@ describe("FoundryUIPort", () => {
         mockVersionDetector,
         mockEventEmitter,
         mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
         mockContainer
       );
       const mockError = {

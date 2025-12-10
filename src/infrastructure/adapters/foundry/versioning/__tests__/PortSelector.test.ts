@@ -8,12 +8,14 @@ import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok, err } from "@/domain/utils/result";
 import type { PortSelectionEvent } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
-import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { FoundryVersionDetector } from "@/infrastructure/adapters/foundry/versioning/foundry-version-detector";
 import { ok as resultOk } from "@/domain/utils/result";
+import type { IPortSelectionObservability } from "@/infrastructure/adapters/foundry/versioning/port-selection-observability.interface";
+import type { IPortSelectionPerformanceTracker } from "@/infrastructure/adapters/foundry/versioning/port-selection-performance-tracker.interface";
+import type { PortSelectionObserver } from "@/infrastructure/adapters/foundry/versioning/port-selection-observer";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -24,7 +26,9 @@ describe("PortSelector", () => {
   let selector: PortSelector;
   let capturedEvents: PortSelectionEvent[];
   let mockEventEmitter: PortSelectionEventEmitter;
-  let mockObservability: ObservabilityRegistry;
+  let mockObservability: IPortSelectionObservability;
+  let mockPerformanceTracker: IPortSelectionPerformanceTracker;
+  let mockObserver: PortSelectionObserver;
   let mockContainer: ServiceContainer;
 
   // Create test tokens (using ServiceType for type safety)
@@ -36,7 +40,18 @@ describe("PortSelector", () => {
   beforeEach(() => {
     mockEventEmitter = new PortSelectionEventEmitter();
     mockObservability = {
-      registerPortSelector: vi.fn(),
+      registerWithObservabilityRegistry: vi.fn(),
+      setupObservability: vi.fn(),
+    } as any;
+    mockPerformanceTracker = {
+      startTracking: vi.fn(),
+      endTracking: vi.fn().mockReturnValue(0),
+    } as any;
+    mockObserver = {
+      handleEvent: vi.fn((event: PortSelectionEvent) => {
+        // Emit event via EventEmitter for test capture
+        mockEventEmitter.emit(event);
+      }),
     } as any;
 
     // Create mock container
@@ -57,6 +72,8 @@ describe("PortSelector", () => {
       mockVersionDetector,
       mockEventEmitter,
       mockObservability,
+      mockPerformanceTracker,
+      mockObserver,
       mockContainer
     );
     capturedEvents = [];
@@ -85,6 +102,8 @@ describe("PortSelector", () => {
         mockVersionDetectorV14,
         mockEventEmitter,
         mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
         mockContainer
       );
 
@@ -160,6 +179,8 @@ describe("PortSelector", () => {
         mockVersionDetectorWithSpy,
         mockEventEmitter,
         mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
         mockContainer
       );
 
@@ -180,6 +201,8 @@ describe("PortSelector", () => {
         mockVersionDetectorWithError,
         mockEventEmitter,
         mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
         mockContainer
       );
 
@@ -187,6 +210,37 @@ describe("PortSelector", () => {
       expectResultErr(result);
       expect(result.error.code).toBe("PORT_SELECTION_FAILED");
       expect(result.error.message).toContain("Could not determine Foundry version");
+    });
+
+    it("should handle version detection errors with multiple tokens (sorts availableVersions)", () => {
+      const tokens = new Map([
+        [15, token15],
+        [13, token13],
+        [14, token14],
+      ]) as any;
+
+      const mockVersionDetectorWithError: FoundryVersionDetector = {
+        getVersion: vi.fn().mockReturnValue(err("Version detection failed")),
+      } as any;
+      const selectorWithError = new PortSelector(
+        mockVersionDetectorWithError,
+        mockEventEmitter,
+        mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
+        mockContainer
+      );
+
+      const result = selectorWithError.selectPortFromTokens(tokens);
+      expectResultErr(result);
+      expect(result.error.code).toBe("PORT_SELECTION_FAILED");
+      expect(result.error.message).toContain("Could not determine Foundry version");
+
+      // Verify that observer was called with sorted availableVersions
+      expect(mockObserver.handleEvent).toHaveBeenCalledTimes(1);
+      const eventCall = (mockObserver.handleEvent as any).mock.calls[0][0];
+      expect(eventCall.type).toBe("failure");
+      expect(eventCall.availableVersions).toBe("13, 14, 15"); // Should be sorted
     });
 
     it("should select exact version match when available", () => {

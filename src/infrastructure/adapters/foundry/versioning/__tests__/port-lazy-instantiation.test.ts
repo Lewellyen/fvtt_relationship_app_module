@@ -6,11 +6,14 @@ import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
 import { ok, err } from "@/domain/utils/result";
 import { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
-import type { ObservabilityRegistry } from "@/infrastructure/observability/observability-registry";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { FoundryVersionDetector } from "@/infrastructure/adapters/foundry/versioning/foundry-version-detector";
 import { ok as resultOk } from "@/domain/utils/result";
+import type { IPortSelectionObservability } from "@/infrastructure/adapters/foundry/versioning/port-selection-observability.interface";
+import type { IPortSelectionPerformanceTracker } from "@/infrastructure/adapters/foundry/versioning/port-selection-performance-tracker.interface";
+import type { PortSelectionObserver } from "@/infrastructure/adapters/foundry/versioning/port-selection-observer";
+import type { PortSelectionEvent } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -19,11 +22,25 @@ vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
 }));
 
 describe("PortSelector - Lazy Instantiation", () => {
-  let mockObservability: ObservabilityRegistry;
+  let mockObservability: IPortSelectionObservability;
+  let mockPerformanceTracker: IPortSelectionPerformanceTracker;
+  let mockObserver: PortSelectionObserver;
+  let mockEventEmitter: PortSelectionEventEmitter;
 
   beforeEach(() => {
+    mockEventEmitter = new PortSelectionEventEmitter();
     mockObservability = {
-      registerPortSelector: vi.fn(),
+      registerWithObservabilityRegistry: vi.fn(),
+      setupObservability: vi.fn(),
+    } as any;
+    mockPerformanceTracker = {
+      startTracking: vi.fn(),
+      endTracking: vi.fn().mockReturnValue(0),
+    } as any;
+    mockObserver = {
+      handleEvent: vi.fn((event: PortSelectionEvent) => {
+        mockEventEmitter.emit(event);
+      }),
     } as any;
   });
 
@@ -56,7 +73,6 @@ describe("PortSelector - Lazy Instantiation", () => {
       }),
     } as any;
 
-    const mockEventEmitter = new PortSelectionEventEmitter();
     const mockVersionDetector: FoundryVersionDetector = {
       getVersion: vi.fn().mockReturnValue(resultOk(13)),
     } as any;
@@ -64,6 +80,8 @@ describe("PortSelector - Lazy Instantiation", () => {
       mockVersionDetector,
       mockEventEmitter,
       mockObservability,
+      mockPerformanceTracker,
+      mockObserver,
       mockContainer
     );
     const result = selector.selectPortFromTokens(tokens, 13);
@@ -86,7 +104,6 @@ describe("PortSelector - Lazy Instantiation", () => {
     } as any;
 
     const tokens = new Map([[14, token14]]) as any;
-    const mockEventEmitter = new PortSelectionEventEmitter();
     const mockVersionDetector: FoundryVersionDetector = {
       getVersion: vi.fn().mockReturnValue(resultOk(13)),
     } as any;
@@ -94,6 +111,8 @@ describe("PortSelector - Lazy Instantiation", () => {
       mockVersionDetector,
       mockEventEmitter,
       mockObservability,
+      mockPerformanceTracker,
+      mockObserver,
       mockContainer
     );
 
@@ -115,7 +134,6 @@ describe("PortSelector - Lazy Instantiation", () => {
     } as any;
 
     const tokens = new Map([[13, token13]]) as any;
-    const mockEventEmitter = new PortSelectionEventEmitter();
     const mockVersionDetector: FoundryVersionDetector = {
       getVersion: vi.fn().mockReturnValue(resultOk(13)),
     } as any;
@@ -123,6 +141,8 @@ describe("PortSelector - Lazy Instantiation", () => {
       mockVersionDetector,
       mockEventEmitter,
       mockObservability,
+      mockPerformanceTracker,
+      mockObserver,
       mockContainer
     );
 
@@ -156,7 +176,6 @@ describe("PortSelector - Lazy Instantiation", () => {
       [14, token14],
     ]) as any;
 
-    const mockEventEmitter = new PortSelectionEventEmitter();
     const mockVersionDetector: FoundryVersionDetector = {
       getVersion: vi.fn().mockReturnValue(resultOk(13)),
     } as any;
@@ -164,6 +183,8 @@ describe("PortSelector - Lazy Instantiation", () => {
       mockVersionDetector,
       mockEventEmitter,
       mockObservability,
+      mockPerformanceTracker,
+      mockObserver,
       mockContainer
     );
     const result = selector.selectPortFromTokens(tokens, 13);
@@ -193,7 +214,6 @@ describe("PortSelector - Lazy Instantiation", () => {
       [15, token15],
     ]) as any;
 
-    const mockEventEmitter = new PortSelectionEventEmitter();
     const mockVersionDetector: FoundryVersionDetector = {
       getVersion: vi.fn().mockReturnValue(resultOk(13)),
     } as any;
@@ -201,6 +221,8 @@ describe("PortSelector - Lazy Instantiation", () => {
       mockVersionDetector,
       mockEventEmitter,
       mockObservability,
+      mockPerformanceTracker,
+      mockObserver,
       mockContainer
     );
     const result = selector.selectPortFromTokens(tokens, 13);
@@ -225,7 +247,6 @@ describe("PortSelector - Lazy Instantiation", () => {
       resolveWithError: vi.fn(() => ({ ok: true, value: { version: 13 } })),
     } as any;
 
-    const mockEventEmitter = new PortSelectionEventEmitter();
     const getVersionSpy = vi.fn().mockReturnValue(resultOk(13));
     const mockVersionDetector: FoundryVersionDetector = {
       getVersion: getVersionSpy,
@@ -234,6 +255,8 @@ describe("PortSelector - Lazy Instantiation", () => {
       mockVersionDetector,
       mockEventEmitter,
       mockObservability,
+      mockPerformanceTracker,
+      mockObserver,
       mockContainer
     );
     const result = selector.selectPortFromTokens(tokens);
@@ -255,7 +278,6 @@ describe("PortSelector - Lazy Instantiation", () => {
       resolveWithError: vi.fn(() => ({ ok: true, value: { version: 13 } })),
     } as any;
 
-    const mockEventEmitter = new PortSelectionEventEmitter();
     const mockVersionDetector: FoundryVersionDetector = {
       getVersion: vi.fn().mockReturnValue(err("Version detection failed")),
     } as any;
@@ -263,6 +285,8 @@ describe("PortSelector - Lazy Instantiation", () => {
       mockVersionDetector,
       mockEventEmitter,
       mockObservability,
+      mockPerformanceTracker,
+      mockObserver,
       mockContainer
     );
     const result = selector.selectPortFromTokens(tokens);

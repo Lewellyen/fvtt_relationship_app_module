@@ -12,6 +12,33 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.4] - 2025-12-10
+### Hinzugefügt
+- **PortSelectionObservability**: Neue Klasse für Observability-Setup und Self-Registration ([Details](docs/refactoring/04-port-selector-srp-refactoring.md))
+- **PortSelectionPerformanceTracker**: Neue Klasse für Performance-Tracking mit performance.now() ([Details](docs/refactoring/04-port-selector-srp-refactoring.md))
+- **IPortSelectionObservability Interface**: Interface für Observability-Setup
+- **IPortSelectionPerformanceTracker Interface**: Interface für Performance-Tracking
+- **DI-Tokens**: Neue Tokens für PortSelectionObservability, PortSelectionPerformanceTracker und PortSelectionObserver
+
+### Geändert
+- **PortSelector SRP-Refactoring**: PortSelector wurde nach Single Responsibility Principle (SRP) refactored, um die 4 verschiedenen Verantwortlichkeiten in spezialisierte Klassen aufzuteilen ([Details](docs/refactoring/04-port-selector-srp-refactoring.md))
+- `PortSelector`: Jetzt nur noch für Port-Auswahl zuständig (selectPortFromTokens, Version-Matching-Algorithmus)
+- `PortSelectionObservability`: Übernimmt Self-Registration bei ObservabilityRegistry
+- `PortSelectionPerformanceTracker`: Übernimmt Performance-Tracking (startTracking, endTracking)
+- `PortSelectionObserver`: Erweitert um EventEmitter-Integration, übernimmt Event-Emission und Observability-Handling
+- `PortSelector.selectPortFromTokens()`: Delegiert Performance-Tracking zu PortSelectionPerformanceTracker, Event-Emission zu PortSelectionObserver
+- Verbesserte Testbarkeit: Jede Komponente kann isoliert getestet werden
+- Keine Breaking Changes: Public API bleibt unverändert
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.3] - 2025-12-10
 ### Hinzugefügt
 - **CacheStore**: Neue Klasse für Cache-Storage-Operationen (get, set, delete, has, clear) ([Details](docs/refactoring/03-cache-service-srp-refactoring.md))

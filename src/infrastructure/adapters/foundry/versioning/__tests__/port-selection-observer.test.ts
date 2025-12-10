@@ -7,10 +7,12 @@ import { PortSelectionObserver } from "@/infrastructure/adapters/foundry/version
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { MetricsRecorder } from "@/infrastructure/observability/interfaces/metrics-recorder";
 import type { PortSelectionEvent } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
+import type { PortSelectionEventEmitter } from "@/infrastructure/adapters/foundry/versioning/port-selection-events";
 
 describe("PortSelectionObserver", () => {
   let mockLogger: Logger;
   let mockMetrics: MetricsRecorder;
+  let mockEventEmitter: PortSelectionEventEmitter;
   let observer: PortSelectionObserver;
 
   beforeEach(() => {
@@ -29,7 +31,14 @@ describe("PortSelectionObserver", () => {
       recordCacheAccess: vi.fn(),
     };
 
-    observer = new PortSelectionObserver(mockLogger, mockMetrics);
+    mockEventEmitter = {
+      emit: vi.fn(),
+      subscribe: vi.fn(),
+      clear: vi.fn(),
+      getSubscriberCount: vi.fn(),
+    } as unknown as PortSelectionEventEmitter;
+
+    observer = new PortSelectionObserver(mockLogger, mockMetrics, mockEventEmitter);
   });
 
   describe("handleEvent", () => {

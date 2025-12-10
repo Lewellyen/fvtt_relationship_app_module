@@ -14,6 +14,7 @@
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { MetricsRecorder } from "@/infrastructure/observability/interfaces/metrics-recorder";
 import type { PortSelectionEvent } from "./port-selection-events";
+import type { PortSelectionEventEmitter } from "./port-selection-events";
 
 /**
  * Observes port selection events and handles logging and metrics.
@@ -21,28 +22,34 @@ import type { PortSelectionEvent } from "./port-selection-events";
  * **Responsibilities:**
  * - Log port selection success/failure
  * - Record port selection metrics
+ * - Emit events via EventEmitter (for other listeners)
  * - No business logic, pure observability
  *
  * @example
  * ```typescript
- * const observer = new PortSelectionObserver(logger, metricsRecorder);
+ * const observer = new PortSelectionObserver(logger, metricsRecorder, eventEmitter);
  * portSelector.onEvent((event) => observer.handleEvent(event));
  * ```
  */
 export class PortSelectionObserver {
   constructor(
     private readonly logger: Logger,
-    private readonly metrics: MetricsRecorder
+    private readonly metrics: MetricsRecorder,
+    private readonly eventEmitter: PortSelectionEventEmitter
   ) {}
 
   /**
    * Handle a port selection event.
    *
-   * Performs appropriate logging and metrics recording based on event type.
+   * Performs appropriate logging, metrics recording, and event emission.
    *
    * @param event - The port selection event to handle
    */
   handleEvent(event: PortSelectionEvent): void {
+    // Emit event via EventEmitter for other listeners (e.g., ObservabilityRegistry)
+    this.eventEmitter.emit(event);
+
+    // Handle observability concerns
     if (event.type === "success") {
       this.handleSuccess(event);
     } else {
@@ -80,5 +87,22 @@ export class PortSelectionObserver {
 
     // Record port selection failure in metrics
     this.metrics.recordPortSelectionFailure(event.foundryVersion);
+  }
+}
+
+// DI-Wrapper-Klasse - Import am Ende, um zirkuläre Abhängigkeiten zu vermeiden
+import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import { metricsRecorderToken } from "@/infrastructure/shared/tokens/observability/metrics-recorder.token";
+import { portSelectionEventEmitterToken } from "@/infrastructure/shared/tokens/observability/port-selection-event-emitter.token";
+
+export class DIPortSelectionObserver extends PortSelectionObserver {
+  static dependencies = [
+    loggerToken,
+    metricsRecorderToken,
+    portSelectionEventEmitterToken,
+  ] as const;
+
+  constructor(logger: Logger, metrics: MetricsRecorder, eventEmitter: PortSelectionEventEmitter) {
+    super(logger, metrics, eventEmitter);
   }
 }
