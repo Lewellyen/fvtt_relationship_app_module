@@ -1,13 +1,13 @@
-# Refactoring-Dokumentation: SRP-Verletzungen
+# Refactoring-Dokumentation: SRP- und OCP-Verletzungen
 
 **Erstellungsdatum:** 2025-12-10
-**Zweck:** Detaillierte Refactoring-Pläne für alle identifizierten SRP-Verletzungen
+**Zweck:** Detaillierte Refactoring-Pläne für alle identifizierten SRP- und OCP-Verletzungen
 
 ---
 
 ## Übersicht
 
-Diese Dokumentation enthält detaillierte Refactoring-Pläne für alle 9 identifizierten SRP-Verletzungen aus der [SOLID-Analyse](../Analyse/solid-01-single-responsibility-principle.md).
+Diese Dokumentation enthält detaillierte Refactoring-Pläne für alle 9 identifizierten SRP-Verletzungen aus der [SOLID-Analyse](../Analyse/solid-01-single-responsibility-principle.md) sowie ergänzende OCP-Härtungen aus `docs/analysis/solid-02-open-closed-principle.md` und `docs/analysis/2025-12-10-ocp-nachpruefung.md`.
 
 ## Refactoring-Pläne
 
@@ -111,6 +111,76 @@ Diese Dokumentation enthält detaillierte Refactoring-Pläne für alle 9 identif
 
 ---
 
+### 11. OCP-Härtung – Überblick & Leitplanken
+**Priorität:** Mittel
+**Datei:** [11-ocp-hardening.md](./11-ocp-hardening.md)
+
+**Problem:** Mehrere Kernklassen nutzen harte Listen/Algorithmen und benötigen OCP-Härtung.
+
+**Lösung:** Leitplanken und gemeinsame Muster für die OCP-Pläne 12–17 (Registry-/Strategie-Ansatz, DI-first, Tests für Erweiterbarkeit).
+
+---
+
+### 12. ModuleSettingsRegistrar – OCP: registrierbare Settings
+**Priorität:** Mittel
+**Datei:** [12-ocp-module-settings-registrar.md](./12-ocp-module-settings-registrar.md)
+
+**Problem:** Harte Setting- und Binding-Listen in `registerAll()` verhindern Erweiterbarkeit.
+
+**Lösung:** Registry-basierte Settings- und Binding-Definitionen; Registrar iteriert nur über injizierte Registries.
+
+---
+
+### 13. InitOrchestrator – OCP: Bootstrapper-Registry
+**Priorität:** Mittel
+**Datei:** [13-ocp-init-orchestrator.md](./13-ocp-init-orchestrator.md)
+
+**Problem:** Feste Bootstrapper-Reihenfolge; neue Phasen erfordern Codeänderung.
+
+**Lösung:** InitPhasen als Registry/Interface; Orchestrator iteriert nur über registrierte Phasen inkl. Fehlerstrategie.
+
+---
+
+### 14. ModuleApiInitializer – OCP: Wrapper-Strategien
+**Priorität:** Mittel
+**Datei:** [14-ocp-module-api-initializer.md](./14-ocp-module-api-initializer.md)
+
+**Problem:** Token-spezifische If/Else-Ketten für API-Wrapping.
+
+**Lösung:** Strategy-Registry (`ApiWrapperStrategy`) für Tokens/Services; Initializer delegiert nur noch an Strategien.
+
+---
+
+### 15. PortSelector – OCP: austauschbare Matching-Strategie
+**Priorität:** Mittel
+**Datei:** [15-ocp-port-selector.md](./15-ocp-port-selector.md)
+
+**Problem:** Hart codierte greedy-Matching-Logik.
+
+**Lösung:** `PortMatchStrategy`-Injection/Registry; Selector bleibt unverändert bei neuen Matching-Varianten.
+
+---
+
+### 16. MetricsCollector – OCP: dynamische Metrik-Registrierung
+**Priorität:** Mittel
+**Datei:** [16-ocp-metrics-collector.md](./16-ocp-metrics-collector.md)
+
+**Problem:** Feste Metrik-Properties und Snapshot/Persistence an konkrete Felder gekoppelt.
+
+**Lösung:** `MetricDefinition`-Registry und generischer Collector/Snapshotter ohne hartkodierte Properties.
+
+---
+
+### 17. FoundryJournalRepositoryAdapter – OCP: Mapper-Registry
+**Priorität:** Niedrig
+**Datei:** [17-ocp-foundry-journal-repository-adapter.md](./17-ocp-foundry-journal-repository-adapter.md)
+
+**Problem:** Hartes Field-Mapping id/name; neue Varianten erfordern Codeänderung.
+
+**Lösung:** `JournalMapper`-Registry mit priorisierten Strategien für Mapping-Varianten.
+
+---
+
 ## Priorisierung
 
 ### Hoch (sofort angehen)
@@ -130,6 +200,14 @@ Diese Dokumentation enthält detaillierte Refactoring-Pläne für alle 9 identif
 7. FoundryJournalRepositoryAdapter - Combines Collection + Repository
 8. ConsoleLoggerService - Multiple Concerns
 9. RetryService - Observability + Retry Logic
+
+### OCP (neu) – Erweiterbarkeit absichern
+- 12. ModuleSettingsRegistrar – Registry-basierte Settings/Bindings
+- 13. InitOrchestrator – Registry-basierte Bootstrap-Phasen
+- 14. ModuleApiInitializer – Strategy-basiertes API-Wrapping
+- 15. PortSelector – austauschbare Matching-Strategie
+- 16. MetricsCollector – dynamische Metrik-Registrierung
+- 17. FoundryJournalRepositoryAdapter – Mapper-Registry
 
 ---
 
