@@ -8276,6 +8276,197 @@ const METRICS_CONFIG = {
 };
 Object.freeze(VALIDATION_CONSTRAINTS);
 Object.freeze(METRICS_CONFIG);
+const _MetricsAggregator = class _MetricsAggregator {
+  /**
+   * Aggregates raw metrics into a snapshot.
+   *
+   * @param metrics - Raw metrics data
+   * @returns Aggregated metrics snapshot
+   */
+  aggregate(metrics) {
+    const avgTime = this.calculateAverage(metrics.resolutionTimes, metrics.resolutionTimesCount);
+    const cacheHitRate = this.calculateCacheHitRate(metrics.cacheHits, metrics.cacheMisses);
+    return {
+      containerResolutions: metrics.containerResolutions,
+      resolutionErrors: metrics.resolutionErrors,
+      avgResolutionTimeMs: avgTime,
+      portSelections: Object.fromEntries(metrics.portSelections),
+      portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures),
+      cacheHitRate
+    };
+  }
+  /**
+   * Calculates the average of resolution times.
+   *
+   * @param times - Array of resolution times
+   * @param count - Number of valid entries in the array
+   * @returns Average time in milliseconds
+   */
+  calculateAverage(times, count) {
+    if (count === 0) {
+      return 0;
+    }
+    const slice = times.slice(0, count);
+    const sum = slice.reduce((acc, time) => acc + time, 0);
+    return sum / count;
+  }
+  /**
+   * Calculates the cache hit rate as a percentage.
+   *
+   * @param hits - Number of cache hits
+   * @param misses - Number of cache misses
+   * @returns Cache hit rate (0-100)
+   */
+  calculateCacheHitRate(hits, misses) {
+    const totalAccess = hits + misses;
+    if (totalAccess === 0) {
+      return 0;
+    }
+    return hits / totalAccess * 100;
+  }
+};
+__name(_MetricsAggregator, "MetricsAggregator");
+let MetricsAggregator = _MetricsAggregator;
+const _MetricsPersistenceManager = class _MetricsPersistenceManager {
+  /**
+   * Serializes raw metrics into a persistence state.
+   *
+   * @param metrics - Raw metrics data
+   * @returns Serializable persistence state
+   */
+  serialize(metrics) {
+    return {
+      metrics: {
+        containerResolutions: metrics.containerResolutions,
+        resolutionErrors: metrics.resolutionErrors,
+        cacheHits: metrics.cacheHits,
+        cacheMisses: metrics.cacheMisses,
+        portSelections: Object.fromEntries(metrics.portSelections),
+        portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures)
+      },
+      resolutionTimes: Array.from(metrics.resolutionTimes),
+      resolutionTimesIndex: metrics.resolutionTimesIndex,
+      resolutionTimesCount: metrics.resolutionTimesCount
+    };
+  }
+  /**
+   * Deserializes a persistence state into raw metrics.
+   *
+   * @param state - Persisted state (can be null or undefined)
+   * @returns Raw metrics data
+   */
+  deserialize(state) {
+    if (!state) {
+      return this.createEmptyRawMetrics();
+    }
+    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
+    const rawMetrics = {
+      containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
+      resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
+      cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
+      cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
+      portSelections: new Map(
+        Object.entries(metrics?.portSelections ?? {}).map(([key, value2]) => [
+          Number(key),
+          Number.isFinite(Number(value2)) ? Number(value2) : 0
+        ])
+      ),
+      portSelectionFailures: new Map(
+        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value2]) => [
+          Number(key),
+          Number.isFinite(Number(value2)) ? Number(value2) : 0
+        ])
+      ),
+      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0
+    };
+    if (Array.isArray(resolutionTimes)) {
+      const maxLength2 = Math.min(resolutionTimes.length, rawMetrics.resolutionTimes.length);
+      for (let index = 0; index < maxLength2; index++) {
+        const value2 = Number(resolutionTimes[index]);
+        rawMetrics.resolutionTimes[index] = Number.isFinite(value2) ? value2 : 0;
+      }
+      const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
+      const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
+      rawMetrics.resolutionTimesIndex = Math.min(
+        Math.max(0, safeIndex),
+        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE - 1
+      );
+      rawMetrics.resolutionTimesCount = Math.min(
+        Math.max(0, safeCount),
+        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE
+      );
+    } else {
+      rawMetrics.resolutionTimesIndex = 0;
+      rawMetrics.resolutionTimesCount = 0;
+    }
+    return rawMetrics;
+  }
+  /**
+   * Creates an empty raw metrics structure.
+   *
+   * @returns Empty raw metrics
+   */
+  createEmptyRawMetrics() {
+    return {
+      containerResolutions: 0,
+      resolutionErrors: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      portSelections: /* @__PURE__ */ new Map(),
+      portSelectionFailures: /* @__PURE__ */ new Map(),
+      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0
+    };
+  }
+};
+__name(_MetricsPersistenceManager, "MetricsPersistenceManager");
+let MetricsPersistenceManager = _MetricsPersistenceManager;
+const _MetricsStateManager = class _MetricsStateManager {
+  constructor() {
+    this.callbacks = /* @__PURE__ */ new Set();
+  }
+  /**
+   * Resets the state manager.
+   * Clears all registered callbacks.
+   */
+  reset() {
+    this.callbacks.clear();
+  }
+  /**
+   * Subscribes to state changes.
+   *
+   * @param callback - Callback to invoke on state changes
+   */
+  onStateChanged(callback) {
+    this.callbacks.add(callback);
+  }
+  /**
+   * Unsubscribes from state changes.
+   *
+   * @param callback - Callback to remove
+   */
+  unsubscribe(callback) {
+    this.callbacks.delete(callback);
+  }
+  /**
+   * Notifies all registered callbacks of a state change.
+   * Internal method used by MetricsCollector.
+   */
+  notifyStateChanged() {
+    for (const callback of this.callbacks) {
+      try {
+        callback();
+      } catch (error) {
+        console.error("Error in metrics state change callback:", error);
+      }
+    }
+  }
+};
+__name(_MetricsStateManager, "MetricsStateManager");
+let MetricsStateManager = _MetricsStateManager;
 const _MetricsCollector = class _MetricsCollector {
   constructor(config2) {
     this.config = config2;
@@ -8291,6 +8482,9 @@ const _MetricsCollector = class _MetricsCollector {
     this.resolutionTimesIndex = 0;
     this.resolutionTimesCount = 0;
     this.MAX_RESOLUTION_TIMES = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
+    this.aggregator = new MetricsAggregator();
+    this.persistenceManager = new MetricsPersistenceManager();
+    this.stateManager = new MetricsStateManager();
   }
   /**
    * Records a service resolution attempt.
@@ -8307,7 +8501,7 @@ const _MetricsCollector = class _MetricsCollector {
     this.resolutionTimes[this.resolutionTimesIndex] = durationMs;
     this.resolutionTimesIndex = (this.resolutionTimesIndex + 1) % this.MAX_RESOLUTION_TIMES;
     this.resolutionTimesCount = Math.min(this.resolutionTimesCount + 1, this.MAX_RESOLUTION_TIMES);
-    this.onStateChanged();
+    this.notifyStateChanged();
   }
   /**
    * Records a port selection event.
@@ -8317,7 +8511,7 @@ const _MetricsCollector = class _MetricsCollector {
   recordPortSelection(version) {
     const count = this.metrics.portSelections.get(version) ?? 0;
     this.metrics.portSelections.set(version, count + 1);
-    this.onStateChanged();
+    this.notifyStateChanged();
   }
   /**
    * Records a port selection failure.
@@ -8329,7 +8523,7 @@ const _MetricsCollector = class _MetricsCollector {
   recordPortSelectionFailure(version) {
     const count = this.metrics.portSelectionFailures.get(version) ?? 0;
     this.metrics.portSelectionFailures.set(version, count + 1);
-    this.onStateChanged();
+    this.notifyStateChanged();
   }
   /**
    * Records a cache access (hit or miss).
@@ -8342,26 +8536,34 @@ const _MetricsCollector = class _MetricsCollector {
     } else {
       this.metrics.cacheMisses++;
     }
-    this.onStateChanged();
+    this.notifyStateChanged();
   }
   /**
    * Gets a snapshot of current metrics.
+   * Delegates aggregation to MetricsAggregator.
    *
    * @returns Immutable snapshot of metrics data
    */
   getSnapshot() {
-    const times = this.resolutionTimes.slice(0, this.resolutionTimesCount);
-    const sum = times.reduce((acc, time) => acc + time, 0);
-    const avgTime = this.resolutionTimesCount > 0 ? sum / this.resolutionTimesCount : 0;
-    const totalCacheAccess = this.metrics.cacheHits + this.metrics.cacheMisses;
-    const cacheHitRate = totalCacheAccess > 0 ? this.metrics.cacheHits / totalCacheAccess * 100 : 0;
+    return this.aggregator.aggregate(this.getRawMetrics());
+  }
+  /**
+   * Gets raw metrics data without aggregation.
+   * Used internally by aggregator and persistence manager.
+   *
+   * @returns Raw metrics data
+   */
+  getRawMetrics() {
     return {
       containerResolutions: this.metrics.containerResolutions,
       resolutionErrors: this.metrics.resolutionErrors,
-      avgResolutionTimeMs: avgTime,
-      portSelections: Object.fromEntries(this.metrics.portSelections),
-      portSelectionFailures: Object.fromEntries(this.metrics.portSelectionFailures),
-      cacheHitRate
+      cacheHits: this.metrics.cacheHits,
+      cacheMisses: this.metrics.cacheMisses,
+      portSelections: this.metrics.portSelections,
+      portSelectionFailures: this.metrics.portSelectionFailures,
+      resolutionTimes: this.resolutionTimes,
+      resolutionTimesIndex: this.resolutionTimesIndex,
+      resolutionTimesCount: this.resolutionTimesCount
     };
   }
   /**
@@ -8380,74 +8582,60 @@ const _MetricsCollector = class _MetricsCollector {
     this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
     this.resolutionTimesIndex = 0;
     this.resolutionTimesCount = 0;
-    this.onStateChanged();
+    this.stateManager.reset();
+    this.notifyStateChanged();
   }
   /**
    * Hook invoked after state mutations. Subclasses can override to react
    * (e.g., persist metrics).
    */
   onStateChanged() {
+    this.stateManager.notifyStateChanged();
+  }
+  /**
+   * Notifies state manager of state changes.
+   * Internal method that can be overridden by subclasses.
+   */
+  notifyStateChanged() {
+    this.onStateChanged();
   }
   /**
    * Captures the internal state for persistence.
+   * Delegates to MetricsPersistenceManager.
    *
    * @returns Serializable metrics state
    */
   getPersistenceState() {
-    return {
-      metrics: {
-        containerResolutions: this.metrics.containerResolutions,
-        resolutionErrors: this.metrics.resolutionErrors,
-        cacheHits: this.metrics.cacheHits,
-        cacheMisses: this.metrics.cacheMisses,
-        portSelections: Object.fromEntries(this.metrics.portSelections),
-        portSelectionFailures: Object.fromEntries(this.metrics.portSelectionFailures)
-      },
-      resolutionTimes: Array.from(this.resolutionTimes),
-      resolutionTimesIndex: this.resolutionTimesIndex,
-      resolutionTimesCount: this.resolutionTimesCount
-    };
+    return this.persistenceManager.serialize(this.getRawMetrics());
   }
   /**
    * Restores internal state from a persisted snapshot.
+   * Delegates to MetricsPersistenceManager.
    *
    * @param state - Persisted metrics state
    */
   restoreFromPersistenceState(state) {
-    if (!state) {
-      return;
-    }
-    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
+    const rawMetrics = this.persistenceManager.deserialize(state);
+    this.applyRawMetrics(rawMetrics);
+  }
+  /**
+   * Applies raw metrics to internal state.
+   * Internal method used by restoreFromPersistenceState.
+   *
+   * @param rawMetrics - Raw metrics to apply
+   */
+  applyRawMetrics(rawMetrics) {
     this.metrics = {
-      containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
-      resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
-      cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
-      cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
-      portSelections: new Map(
-        Object.entries(metrics?.portSelections ?? {}).map(([key, value2]) => [
-          Number(key),
-          Number.isFinite(Number(value2)) ? Number(value2) : 0
-        ])
-      ),
-      portSelectionFailures: new Map(
-        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value2]) => [
-          Number(key),
-          Number.isFinite(Number(value2)) ? Number(value2) : 0
-        ])
-      )
+      containerResolutions: rawMetrics.containerResolutions,
+      resolutionErrors: rawMetrics.resolutionErrors,
+      cacheHits: rawMetrics.cacheHits,
+      cacheMisses: rawMetrics.cacheMisses,
+      portSelections: rawMetrics.portSelections,
+      portSelectionFailures: rawMetrics.portSelectionFailures
     };
-    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
-    if (Array.isArray(resolutionTimes)) {
-      const maxLength2 = Math.min(resolutionTimes.length, this.resolutionTimes.length);
-      for (let index = 0; index < maxLength2; index++) {
-        const value2 = Number(resolutionTimes[index]);
-        this.resolutionTimes[index] = Number.isFinite(value2) ? value2 : 0;
-      }
-    }
-    const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
-    const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
-    this.resolutionTimesIndex = Math.min(Math.max(0, safeIndex), this.MAX_RESOLUTION_TIMES - 1);
-    this.resolutionTimesCount = Math.min(Math.max(0, safeCount), this.MAX_RESOLUTION_TIMES);
+    this.resolutionTimes = new Float64Array(rawMetrics.resolutionTimes);
+    this.resolutionTimesIndex = rawMetrics.resolutionTimesIndex;
+    this.resolutionTimesCount = rawMetrics.resolutionTimesCount;
   }
 };
 __name(_MetricsCollector, "MetricsCollector");
@@ -8497,6 +8685,7 @@ const _PersistentMetricsCollector = class _PersistentMetricsCollector extends Me
     }
   }
   onStateChanged() {
+    super.onStateChanged();
     if (this.suppressPersistence) {
       return;
     }

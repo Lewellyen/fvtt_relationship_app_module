@@ -1,4 +1,4 @@
-import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-collector";
+import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-types";
 
 /**
  * Abstraction for persisting metrics state.

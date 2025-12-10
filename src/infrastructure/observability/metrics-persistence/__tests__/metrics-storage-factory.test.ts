@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-collector";
+import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-types";
 import {
   createInMemoryMetricsStorage,
   createMetricsStorage,

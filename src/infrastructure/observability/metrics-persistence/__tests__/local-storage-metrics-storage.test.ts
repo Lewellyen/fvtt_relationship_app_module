@@ -3,7 +3,7 @@ import {
   LocalStorageMetricsStorage,
   getStorage,
 } from "@/infrastructure/observability/metrics-persistence/local-storage-metrics-storage";
-import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-collector";
+import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-types";
 import { DEFAULT_METRICS_STORAGE_KEY } from "@/infrastructure/observability/metrics-persistence/metrics-storage";
 
 function createMockStorage(): Storage & { data: Map<string, string> } {

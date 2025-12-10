@@ -182,6 +182,16 @@ export default [
         }
       },
 
+      // Exception: Numerische Property-Namen (Foundry-Versionen z.B. 11, 12, 13)
+      {
+        selector: 'property',
+        format: null, // keine Format-Prüfung
+        filter: {
+          regex: '^\\d+$', // Properties, die nur aus Ziffern bestehen (Foundry-Versionen)
+          match: true
+        }
+      },
+
       // 6️⃣ Private Felder (#scope etc.)
       {
         selector: 'memberLike',

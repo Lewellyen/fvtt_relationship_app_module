@@ -2,7 +2,7 @@ import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontok
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { metricsStorageToken } from "@/infrastructure/shared/tokens/observability/metrics-storage.token";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
-import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-collector";
+import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-types";
 import { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsStorage } from "./metrics-storage";
 import type { Result } from "@/domain/types/result";
@@ -60,6 +60,9 @@ export class PersistentMetricsCollector extends MetricsCollector {
   }
 
   protected override onStateChanged(): void {
+    // Call parent to notify state manager
+    super.onStateChanged();
+
     if (this.suppressPersistence) {
       return;
     }

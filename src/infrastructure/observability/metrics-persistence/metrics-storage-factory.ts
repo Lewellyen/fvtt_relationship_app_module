@@ -1,4 +1,4 @@
-import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-collector";
+import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-types";
 import type { MetricsStorage } from "./metrics-storage";
 import { LocalStorageMetricsStorage } from "./local-storage-metrics-storage";
 

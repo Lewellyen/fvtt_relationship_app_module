@@ -7,7 +7,7 @@ import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
 import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
-import type { MetricsSnapshot } from "@/infrastructure/observability/metrics-collector";
+import type { MetricsSnapshot } from "@/infrastructure/observability/metrics-types";
 import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
 import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
 import type { Result } from "@/domain/types/result";
