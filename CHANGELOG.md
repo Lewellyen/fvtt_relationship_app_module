@@ -12,6 +12,38 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.3] - 2025-12-10
+### Hinzugefügt
+- **CacheStore**: Neue Klasse für Cache-Storage-Operationen (get, set, delete, has, clear) ([Details](docs/refactoring/03-cache-service-srp-refactoring.md))
+- **CacheExpirationManager**: Neue Klasse für TTL/Expiration-Management (isExpired, createMetadata, handleExpiration)
+- **CacheStatisticsCollector**: Neue Klasse für Statistics-Tracking (recordHit, recordMiss, recordEviction, getStatistics)
+- **CacheConfigManager**: Neue Klasse für Config-Management (updateConfig, getConfig, isEnabled)
+- **ICacheStore Interface**: Interface für Cache-Storage-Operationen
+- **ICacheExpirationManager Interface**: Interface für Expiration-Management
+- **ICacheStatisticsCollector Interface**: Interface für Statistics-Tracking
+- **ICacheConfigManager Interface**: Interface für Config-Management
+
+### Geändert
+- **CacheService SRP-Refactoring**: CacheService wurde nach Single Responsibility Principle (SRP) refactored, um die 6 verschiedenen Verantwortlichkeiten in spezialisierte Manager-Klassen aufzuteilen ([Details](docs/refactoring/03-cache-service-srp-refactoring.md))
+- `CacheService`: Jetzt reine Facade, die nur Manager koordiniert
+- `CacheStore`: Verwaltet nur Storage-Operationen (Map-basiert)
+- `CacheExpirationManager`: Verwaltet nur TTL/Expiration-Logik
+- `CacheStatisticsCollector`: Verwaltet nur Statistics-Tracking
+- `CacheConfigManager`: Verwaltet nur Config-Management
+- `CacheCapacityManager`: Verwendet jetzt ICacheStore statt direkter Map-Zugriffe, gibt evicted Keys als Array zurück
+- Verbesserte Testbarkeit: Jede Komponente kann isoliert getestet werden
+- Keine Breaking Changes: Public API bleibt unverändert
+- Zirkuläre Abhängigkeiten behoben: CacheConfigManager definiert DEFAULT_CACHE_SERVICE_CONFIG lokal
+
+### Fehlerbehebungen
+- **CacheService.getMetadata()**: Evictions werden jetzt korrekt getrackt, wenn abgelaufene Einträge entfernt werden
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.2] - 2025-12-10
 ### Hinzugefügt
 - **MetricsAggregator**: Neue Klasse für Aggregation von Raw Metrics zu Snapshots ([Details](docs/refactoring/02-metrics-collector-srp-refactoring.md))

@@ -13710,17 +13710,21 @@ const _CacheCapacityManager = class _CacheCapacityManager {
    * Enforces capacity limit by evicting entries using the configured strategy.
    *
    * @param maxEntries - The maximum number of entries allowed
-   * @returns Number of entries evicted
+   * @returns Array of cache keys that were evicted
    */
   enforceCapacity(maxEntries2) {
     if (this.store.size <= maxEntries2) {
-      return 0;
+      return [];
     }
-    const keysToEvict = this.strategy.selectForEviction(this.store, maxEntries2);
+    const entriesMap = /* @__PURE__ */ new Map();
+    for (const [key, entry] of this.store.entries()) {
+      entriesMap.set(key, entry);
+    }
+    const keysToEvict = this.strategy.selectForEviction(entriesMap, maxEntries2);
     for (const key of keysToEvict) {
       this.store.delete(key);
     }
-    return keysToEvict.length;
+    return keysToEvict;
   }
 };
 __name(_CacheCapacityManager, "CacheCapacityManager");
@@ -13779,7 +13783,112 @@ const _CacheMetricsCollector = class _CacheMetricsCollector {
 };
 __name(_CacheMetricsCollector, "CacheMetricsCollector");
 let CacheMetricsCollector = _CacheMetricsCollector;
-const DEFAULT_CACHE_SERVICE_CONFIG = {
+const _CacheStore = class _CacheStore {
+  constructor() {
+    this.store = /* @__PURE__ */ new Map();
+  }
+  get(key) {
+    return this.store.get(key);
+  }
+  set(key, entry) {
+    this.store.set(key, entry);
+  }
+  delete(key) {
+    return this.store.delete(key);
+  }
+  has(key) {
+    return this.store.has(key);
+  }
+  clear() {
+    const size2 = this.store.size;
+    this.store.clear();
+    return size2;
+  }
+  get size() {
+    return this.store.size;
+  }
+  entries() {
+    return this.store.entries();
+  }
+};
+__name(_CacheStore, "CacheStore");
+let CacheStore = _CacheStore;
+function clampTtl$1(ttl, fallback2) {
+  if (typeof ttl !== "number" || Number.isNaN(ttl)) {
+    return fallback2;
+  }
+  return ttl < 0 ? 0 : ttl;
+}
+__name(clampTtl$1, "clampTtl$1");
+function defaultClock() {
+  return Date.now();
+}
+__name(defaultClock, "defaultClock");
+const _CacheExpirationManager = class _CacheExpirationManager {
+  constructor(clock) {
+    this.clock = clock ?? defaultClock;
+  }
+  isExpired(entry, now) {
+    return typeof entry.expiresAt === "number" && entry.expiresAt > 0 && entry.expiresAt <= now;
+  }
+  createMetadata(key, options, now, defaultTtlMs) {
+    const ttlMs = clampTtl$1(options?.ttlMs, defaultTtlMs);
+    const expiresAt = ttlMs > 0 ? now + ttlMs : null;
+    const tags = options?.tags ? Array.from(new Set(options.tags.map((tag) => String(tag)))) : [];
+    return {
+      key,
+      createdAt: now,
+      expiresAt,
+      lastAccessedAt: now,
+      hits: 0,
+      tags
+    };
+  }
+  handleExpiration(key, store2) {
+    return store2.delete(key);
+  }
+};
+__name(_CacheExpirationManager, "CacheExpirationManager");
+let CacheExpirationManager = _CacheExpirationManager;
+const _CacheStatisticsCollector = class _CacheStatisticsCollector {
+  constructor(metricsObserver) {
+    this.metricsObserver = metricsObserver;
+    this.stats = {
+      hits: 0,
+      misses: 0,
+      evictions: 0
+    };
+  }
+  recordHit(key) {
+    this.metricsObserver.onCacheHit(key);
+    this.stats.hits++;
+  }
+  recordMiss(key) {
+    this.metricsObserver.onCacheMiss(key);
+    this.stats.misses++;
+  }
+  recordEviction(key) {
+    this.metricsObserver.onCacheEviction(key);
+    this.stats.evictions++;
+  }
+  getStatistics(size2, enabled) {
+    return {
+      hits: this.stats.hits,
+      misses: this.stats.misses,
+      evictions: this.stats.evictions,
+      size: size2,
+      enabled
+    };
+  }
+  reset() {
+    this.stats.hits = 0;
+    this.stats.misses = 0;
+    this.stats.evictions = 0;
+  }
+};
+__name(_CacheStatisticsCollector, "CacheStatisticsCollector");
+let CacheStatisticsCollector = _CacheStatisticsCollector;
+const DEFAULT_CACHE_SERVICE_CONFIG$1 = {
   enabled: true,
   defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
   namespace: "global"
@@ -13791,28 +13900,51 @@ function clampTtl(ttl, fallback2) {
   return ttl < 0 ? 0 : ttl;
 }
 __name(clampTtl, "clampTtl");
-const _CacheService = class _CacheService {
-  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG, metricsCollector, clock = () => Date.now(), capacityManager, metricsObserver) {
-    this.metricsCollector = metricsCollector;
-    this.clock = clock;
-    this.store = /* @__PURE__ */ new Map();
-    this.stats = {
-      hits: 0,
-      misses: 0,
-      evictions: 0
-    };
+const _CacheConfigManager = class _CacheConfigManager {
+  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG$1) {
     const resolvedMaxEntries = typeof config2?.maxEntries === "number" && config2.maxEntries > 0 ? config2.maxEntries : void 0;
     this.config = {
-      ...DEFAULT_CACHE_SERVICE_CONFIG,
+      ...DEFAULT_CACHE_SERVICE_CONFIG$1,
       ...config2,
-      defaultTtlMs: clampTtl(config2?.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs),
+      defaultTtlMs: clampTtl(config2?.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG$1.defaultTtlMs),
       ...resolvedMaxEntries !== void 0 ? { maxEntries: resolvedMaxEntries } : {}
     };
+  }
+  updateConfig(partial2) {
+    const merged = {
+      ...this.config,
+      ...partial2
+    };
+    merged.defaultTtlMs = clampTtl(merged.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG$1.defaultTtlMs);
+    this.config = merged;
+  }
+  getConfig() {
+    return { ...this.config };
+  }
+  isEnabled() {
+    return this.config.enabled;
+  }
+};
+__name(_CacheConfigManager, "CacheConfigManager");
+let CacheConfigManager = _CacheConfigManager;
+const DEFAULT_CACHE_SERVICE_CONFIG = {
+  enabled: true,
+  defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
+  namespace: "global"
+};
+const _CacheService = class _CacheService {
+  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG, metricsCollector, clock = () => Date.now(), capacityManager, metricsObserver, store2, expirationManager, statisticsCollector, configManager) {
+    this.metricsCollector = metricsCollector;
+    this.clock = clock;
+    this.store = store2 ?? new CacheStore();
+    this.configManager = configManager ?? new CacheConfigManager(config2);
+    const resolvedMetricsObserver = metricsObserver ?? new CacheMetricsCollector(metricsCollector);
+    this.statisticsCollector = statisticsCollector ?? new CacheStatisticsCollector(resolvedMetricsObserver);
+    this.expirationManager = expirationManager ?? new CacheExpirationManager(clock);
     this.capacityManager = capacityManager ?? new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
-    this.metricsObserver = metricsObserver ?? new CacheMetricsCollector(metricsCollector);
   }
   get isEnabled() {
-    return this.config.enabled;
+    return this.configManager.isEnabled();
   }
   get size() {
     return this.store.size;
@@ -13852,7 +13984,8 @@ const _CacheService = class _CacheService {
   }
   set(key, value2, options) {
     const now = this.clock();
-    const metadata2 = this.createMetadata(key, options, now);
+    const config2 = this.configManager.getConfig();
+    const metadata2 = this.expirationManager.createMetadata(key, options, now, config2.defaultTtlMs);
     if (!this.isEnabled) {
       return metadata2;
     }
@@ -13869,8 +14002,7 @@ const _CacheService = class _CacheService {
     if (!this.isEnabled) return false;
     const removed = this.store.delete(key);
     if (removed) {
-      this.stats.evictions++;
-      this.metricsObserver.onCacheEviction(key);
+      this.statisticsCollector.recordEviction(key);
     }
     return removed;
   }
@@ -13893,11 +14025,8 @@ const _CacheService = class _CacheService {
     for (const key of keysToEvict) {
       if (this.store.delete(key)) {
         removed++;
-        this.metricsObserver.onCacheEviction(key);
+        this.statisticsCollector.recordEviction(key);
       }
-    }
-    if (removed > 0) {
-      this.stats.evictions += removed;
     }
     return removed;
   }
@@ -13905,20 +14034,18 @@ const _CacheService = class _CacheService {
     if (!this.isEnabled) return null;
     const entry = this.store.get(key);
     if (!entry) return null;
-    if (this.isExpired(entry)) {
-      this.handleExpiration(key);
+    const now = this.clock();
+    if (this.expirationManager.isExpired(entry, now)) {
+      const wasRemoved = this.expirationManager.handleExpiration(key, this.store);
+      if (wasRemoved) {
+        this.statisticsCollector.recordEviction(key);
+      }
       return null;
     }
     return this.cloneMetadata(entry.metadata);
   }
   getStatistics() {
-    return {
-      hits: this.stats.hits,
-      misses: this.stats.misses,
-      evictions: this.stats.evictions,
-      size: this.store.size,
-      enabled: this.isEnabled
-    };
+    return this.statisticsCollector.getStatistics(this.store.size, this.isEnabled);
   }
   accessEntry(key, mutateUsage) {
     if (!this.isEnabled) {
@@ -13926,63 +14053,36 @@ const _CacheService = class _CacheService {
     }
     const entry = this.store.get(key);
     if (!entry) {
-      this.recordMiss(key);
+      this.statisticsCollector.recordMiss(key);
       return null;
     }
-    if (this.isExpired(entry)) {
-      this.handleExpiration(key);
-      this.recordMiss(key);
+    const now = this.clock();
+    if (this.expirationManager.isExpired(entry, now)) {
+      this.expirationManager.handleExpiration(key, this.store);
+      this.statisticsCollector.recordEviction(key);
+      this.statisticsCollector.recordMiss(key);
       return null;
     }
     if (mutateUsage) {
       entry.metadata.hits += 1;
-      entry.metadata.lastAccessedAt = this.clock();
+      entry.metadata.lastAccessedAt = now;
     }
-    this.recordHit(key);
+    this.statisticsCollector.recordHit(key);
     return {
       hit: true,
       value: castCacheValue(entry.value),
       metadata: this.cloneMetadata(entry.metadata)
     };
   }
-  recordHit(key) {
-    this.metricsObserver.onCacheHit(key);
-    this.stats.hits++;
-  }
-  recordMiss(key) {
-    this.metricsObserver.onCacheMiss(key);
-    this.stats.misses++;
-  }
-  handleExpiration(key) {
-    if (this.store.delete(key)) {
-      this.stats.evictions++;
-      this.metricsObserver.onCacheEviction(key);
-    }
-  }
-  isExpired(entry) {
-    return typeof entry.expiresAt === "number" && entry.expiresAt > 0 && entry.expiresAt <= this.clock();
-  }
   enforceCapacity() {
-    if (!this.config.maxEntries || this.store.size <= this.config.maxEntries) {
+    const config2 = this.configManager.getConfig();
+    if (!config2.maxEntries || this.store.size <= config2.maxEntries) {
       return;
     }
-    const evicted = this.capacityManager.enforceCapacity(this.config.maxEntries);
-    if (evicted > 0) {
-      this.stats.evictions += evicted;
+    const evictedKeys = this.capacityManager.enforceCapacity(config2.maxEntries);
+    for (const key of evictedKeys) {
+      this.statisticsCollector.recordEviction(key);
     }
-  }
-  createMetadata(key, options, now) {
-    const ttlMs = clampTtl(options?.ttlMs, this.config.defaultTtlMs);
-    const expiresAt = ttlMs > 0 ? now + ttlMs : null;
-    const tags = options?.tags ? Array.from(new Set(options.tags.map((tag) => String(tag)))) : [];
-    return {
-      key,
-      createdAt: now,
-      expiresAt,
-      lastAccessedAt: now,
-      hits: 0,
-      tags
-    };
   }
   cloneMetadata(metadata2) {
     return {
@@ -13997,28 +14097,25 @@ const _CacheService = class _CacheService {
    * @param partial - Partial configuration to merge with existing config
    */
   updateConfig(partial2) {
-    const merged = {
-      ...this.config,
-      ...partial2
-    };
-    merged.defaultTtlMs = clampTtl(merged.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG.defaultTtlMs);
-    this.config = merged;
+    this.configManager.updateConfig(partial2);
     if (!this.isEnabled) {
       this.clearStore();
       return;
     }
-    if (typeof this.config.maxEntries === "number") {
+    const config2 = this.configManager.getConfig();
+    if (typeof config2.maxEntries === "number") {
       this.enforceCapacity();
     }
   }
   clearStore() {
-    const removed = this.store.size;
-    const keysToEvict = Array.from(this.store.keys());
-    this.store.clear();
+    const keysToEvict = [];
+    for (const [key] of this.store.entries()) {
+      keysToEvict.push(key);
+    }
+    const removed = this.store.clear();
     if (removed > 0) {
-      this.stats.evictions += removed;
       for (const key of keysToEvict) {
-        this.metricsObserver.onCacheEviction(key);
+        this.statisticsCollector.recordEviction(key);
       }
     }
     return removed;

@@ -220,15 +220,15 @@ describe("CacheService", () => {
     // We need to force it to call capacityManager.enforceCapacity() and return 0
 
     const internal = service as unknown as {
-      capacityManager: { enforceCapacity: (maxEntries: number) => number };
+      capacityManager: { enforceCapacity: (maxEntries: number) => CacheKey[] };
       config: { maxEntries?: number };
       store: Map<CacheKey, unknown>;
       enforceCapacity: () => void;
     };
 
-    // Mock capacityManager to return 0 evictions even when size > maxEntries
+    // Mock capacityManager to return empty array (no evictions) even when size > maxEntries
     const originalEnforceCapacity = internal.capacityManager.enforceCapacity;
-    internal.capacityManager.enforceCapacity = vi.fn().mockReturnValue(0);
+    internal.capacityManager.enforceCapacity = vi.fn().mockReturnValue([]);
 
     // Manually add another entry to make size > maxEntries
     internal.store.set(keyB, {
@@ -331,11 +331,8 @@ describe("CacheService", () => {
   });
 
   it("handleExpiration does not increment evictions when key was already deleted", () => {
-    // This covers line 251: if (this.store.delete(key)) - the case where delete returns false
-    // To test this, we need to create an expired entry and then delete it before handleExpiration is called
-    // However, this is tricky because handleExpiration is called internally during get()
-    // Instead, we'll use the internal store to create an edge case where delete returns false
-
+    // This tests that getMetadata() doesn't increment evictions when an expired entry
+    // is already deleted (race condition)
     const key = buildCacheKey("expired-but-deleted");
 
     // Set an entry that will expire
@@ -344,11 +341,10 @@ describe("CacheService", () => {
     // Advance time to expire the entry
     now += 200;
 
-    // Manually delete the key before get() is called (simulating race condition)
+    // Manually delete the key before getMetadata() is called (simulating race condition)
     // This ensures that when handleExpiration is called, delete() returns false
     const internal = service as unknown as {
-      store: Map<string, unknown>;
-      handleExpiration: (key: string) => void;
+      store: { delete: (key: CacheKey) => boolean };
     };
 
     // Delete the key manually
@@ -356,12 +352,51 @@ describe("CacheService", () => {
 
     const initialEvictions = service.getStatistics().evictions;
 
-    // Call handleExpiration directly - it should try to delete, but key is already gone
-    // This covers the case where delete returns false (line 251)
-    internal.handleExpiration(key);
+    // Call getMetadata - it should try to handle expiration, but key is already gone
+    // Should not increment evictions when delete returns false
+    service.getMetadata(key);
 
-    // Should not increment evictions when delete returns false (line 251)
+    // Should not increment evictions when delete returns false
     expect(service.getStatistics().evictions).toBe(initialEvictions);
+  });
+
+  it("getMetadata does not increment evictions when handleExpiration returns false", () => {
+    // This tests the branch in getMetadata() where wasRemoved is false
+    const key = buildCacheKey("expired-entry");
+
+    // Set an entry that will expire
+    service.set(key, ["entry"], { ttlMs: 100 });
+
+    // Advance time to expire the entry
+    now += 200;
+
+    // Mock the store to return false on delete (simulating race condition)
+    const internal = service as unknown as {
+      store: { delete: (key: CacheKey) => boolean; get: (key: CacheKey) => unknown };
+      expirationManager: { handleExpiration: (key: CacheKey, store: unknown) => boolean };
+    };
+
+    // Store the original delete method
+    const originalDelete = internal.store.delete;
+    const originalHandleExpiration = internal.expirationManager.handleExpiration;
+
+    // Mock delete to return false
+    internal.store.delete = vi.fn().mockReturnValue(false);
+    internal.expirationManager.handleExpiration = vi.fn().mockReturnValue(false);
+
+    const initialEvictions = service.getStatistics().evictions;
+
+    // Call getMetadata - it should try to handle expiration, but delete returns false
+    const result = service.getMetadata(key);
+
+    // Should return null for expired entry
+    expect(result).toBeNull();
+    // Should not increment evictions when handleExpiration returns false
+    expect(service.getStatistics().evictions).toBe(initialEvictions);
+
+    // Restore original methods
+    internal.store.delete = originalDelete;
+    internal.expirationManager.handleExpiration = originalHandleExpiration;
   });
 
   it("clears cache and increments evictions", () => {
