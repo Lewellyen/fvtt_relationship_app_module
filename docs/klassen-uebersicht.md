@@ -96,6 +96,7 @@
 | `BaseConsoleLogger` | `src/infrastructure/logging/BaseConsoleLogger.ts` |
 | `ConsoleLoggerService` | `src/infrastructure/logging/ConsoleLoggerService.ts` |
 | `DIConsoleLoggerService` | `src/infrastructure/logging/ConsoleLoggerService.ts` |
+| `BootstrapLoggerService` | `src/infrastructure/logging/BootstrapLogger.ts` |
 | `StackTraceLoggerDecorator` | `src/infrastructure/logging/StackTraceLoggerDecorator.ts` |
 | `TraceContextLoggerDecorator` | `src/infrastructure/logging/TraceContextLoggerDecorator.ts` |
 | `TracedLogger` | `src/infrastructure/logging/TracedLogger.ts` |
@@ -131,6 +132,9 @@
 | `DICacheService` | `src/infrastructure/cache/CacheService.ts` |
 | `CacheConfigSync` | `src/infrastructure/cache/CacheConfigSync.ts` |
 | `DICacheConfigSync` | `src/infrastructure/cache/CacheConfigSync.ts` |
+| `CacheMetricsCollector` | `src/infrastructure/cache/cache-metrics-collector.ts` |
+| `CacheCapacityManager` | `src/infrastructure/cache/cache-capacity-manager.ts` |
+| `LRUEvictionStrategy` | `src/infrastructure/cache/lru-eviction-strategy.ts` |
 
 ### Dependency Injection
 
@@ -157,10 +161,15 @@
 | `DIMetricsReporter` | `src/infrastructure/observability/metrics-reporter.ts` |
 | `ObservabilityRegistry` | `src/infrastructure/observability/observability-registry.ts` |
 | `DIObservabilityRegistry` | `src/infrastructure/observability/observability-registry.ts` |
+| `MetricsSnapshotAdapter` | `src/infrastructure/observability/metrics-snapshot-adapter.ts` |
 | `PerformanceTrackerImpl` | `src/infrastructure/observability/performance-tracker-impl.ts` |
 | `PersistentMetricsCollector` | `src/infrastructure/observability/metrics-persistence/persistent-metrics-collector.ts` |
 | `DIPersistentMetricsCollector` | `src/infrastructure/observability/metrics-persistence/persistent-metrics-collector.ts` |
 | `DIMetricsSnapshotAdapter` | `src/infrastructure/observability/di-metrics-snapshot-adapter.ts` |
+| `BootstrapPerformanceTracker` | `src/infrastructure/observability/bootstrap-performance-tracker.ts` |
+| `TraceContext` | `src/infrastructure/observability/trace/TraceContext.ts` |
+| `DITraceContext` | `src/infrastructure/observability/trace/TraceContext.ts` |
+| `LocalStorageMetricsStorage` | `src/infrastructure/observability/metrics-persistence/local-storage-metrics-storage.ts` |
 
 ### Performance
 
@@ -180,6 +189,8 @@
 | `AbstractTranslationHandler` (abstract) | `src/infrastructure/i18n/AbstractTranslationHandler.ts` |
 | `LocalTranslationHandler` | `src/infrastructure/i18n/LocalTranslationHandler.ts` |
 | `DILocalTranslationHandler` | `src/infrastructure/i18n/LocalTranslationHandler.ts` |
+| `LocalI18nService` | `src/infrastructure/i18n/LocalI18nService.ts` |
+| `DILocalI18nService` | `src/infrastructure/i18n/LocalI18nService.ts` |
 | `FoundryTranslationHandler` | `src/infrastructure/i18n/FoundryTranslationHandler.ts` |
 | `DIFoundryTranslationHandler` | `src/infrastructure/i18n/FoundryTranslationHandler.ts` |
 | `FallbackTranslationHandler` | `src/infrastructure/i18n/FallbackTranslationHandler.ts` |
@@ -195,6 +206,13 @@
 | Klasse | Datei |
 |--------|-------|
 | `RuntimeConfigAdapter` | `src/infrastructure/config/runtime-config-adapter.ts` |
+
+### Validation
+
+| Klasse | Datei |
+|--------|-------|
+| `ValibotValidationAdapter` | `src/infrastructure/validation/valibot-validation-adapter.ts` |
+| `DIValibotValidationAdapter` | `src/infrastructure/validation/di-valibot-validation-adapter.ts` |
 
 ### Foundry Adapters - Services
 
@@ -231,6 +249,10 @@
 | `FoundryVersionDetector` | `src/infrastructure/adapters/foundry/versioning/foundry-version-detector.ts` |
 | `DIFoundryVersionDetector` | `src/infrastructure/adapters/foundry/versioning/foundry-version-detector.ts` |
 | `PortResolutionStrategy` | `src/infrastructure/adapters/foundry/versioning/port-resolution-strategy.ts` |
+| `PortSelectionEventEmitter` | `src/infrastructure/adapters/foundry/versioning/port-selection-events.ts` |
+| `DIPortSelectionEventEmitter` | `src/infrastructure/adapters/foundry/versioning/port-selection-events.ts` |
+| `PortSelectionObserver` | `src/infrastructure/adapters/foundry/versioning/port-selection-observer.ts` |
+| `PortRegistry` | `src/infrastructure/adapters/foundry/versioning/portregistry.ts` |
 
 ### Foundry Adapters - Settings
 
@@ -268,6 +290,8 @@
 |--------|-------|
 | `FoundryJournalEventAdapter` | `src/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter.ts` |
 | `DIFoundryJournalEventAdapter` | `src/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter.ts` |
+| `FoundryBootstrapEventAdapter` | `src/infrastructure/adapters/foundry/bootstrap-hooks-adapter.ts` |
+| `DIFoundryBootstrapEventAdapter` | `src/infrastructure/adapters/foundry/bootstrap-hooks-adapter.ts` |
 
 ### Foundry Adapters - UI Adapters
 
@@ -284,6 +308,11 @@
 | `DIFoundryV13ModulePort` | `src/infrastructure/adapters/foundry/ports/v13/FoundryV13ModulePort.ts` |
 | `FoundryV13DocumentPort` | `src/infrastructure/adapters/foundry/ports/v13/FoundryV13DocumentPort.ts` |
 | `DIFoundryV13DocumentPort` | `src/infrastructure/adapters/foundry/ports/v13/FoundryV13DocumentPort.ts` |
+| `FoundryV13GamePort` | `src/infrastructure/adapters/foundry/ports/v13/FoundryV13GamePort.ts` |
+| `FoundryV13HooksPort` | `src/infrastructure/adapters/foundry/ports/v13/FoundryV13HooksPort.ts` |
+| `FoundryV13UIPort` | `src/infrastructure/adapters/foundry/ports/v13/FoundryV13UIPort.ts` |
+| `FoundryV13SettingsPort` | `src/infrastructure/adapters/foundry/ports/v13/FoundryV13SettingsPort.ts` |
+| `FoundryV13I18nPort` | `src/infrastructure/adapters/foundry/ports/v13/FoundryV13I18nPort.ts` |
 
 ### Platform Adapters - Notifications
 
@@ -347,11 +376,11 @@
 
 ## Statistik
 
-- **Gesamtanzahl Klassen:** ~193 exportierte Klassen (inkl. abstrakter Klassen)
+- **Gesamtanzahl Klassen:** 194 exportierte Klassen (inkl. abstrakter Klassen)
 - **Domain Layer:** 0 Klassen (nur Interfaces/Types)
-- **Application Layer:** ~36 Klassen
-- **Infrastructure Layer:** ~139 Klassen (inkl. 2 abstrakter Klassen)
-- **Framework Layer:** ~16 Klassen
+- **Application Layer:** 37 Klassen
+- **Infrastructure Layer:** 141 Klassen (inkl. 2 abstrakter Klassen)
+- **Framework Layer:** 16 Klassen
 - **Abstrakte Klassen:** 2 (`FoundryServiceBase`, `AbstractTranslationHandler`)
 
 ---
