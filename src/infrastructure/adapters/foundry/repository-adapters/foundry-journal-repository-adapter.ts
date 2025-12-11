@@ -12,11 +12,13 @@ import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
 import { FoundryJournalCollectionAdapter } from "../collection-adapters/foundry-journal-collection-adapter";
+import { JournalTypeMapper } from "../mappers/journal-type-mapper";
 import { ok, err } from "@/domain/utils/result";
 import {
   castFoundryDocumentForFlag,
   castFoundryDocumentWithUpdate,
   castFoundryJournalEntryClass,
+  castCreatedJournalEntry,
 } from "@/infrastructure/adapters/foundry/runtime-casts";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
 import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
@@ -25,16 +27,18 @@ import * as v from "valibot";
 /**
  * Foundry-specific implementation of PlatformJournalRepository.
  *
- * Combines collection adapter with CRUD operations.
+ * Uses composition to combine collection adapter with CRUD operations.
+ * Type mapping is handled by JournalTypeMapper.
  */
 export class FoundryJournalRepositoryAdapter implements PlatformJournalRepository {
-  private readonly collection: FoundryJournalCollectionAdapter;
+  private readonly typeMapper: JournalTypeMapper;
 
   constructor(
+    private readonly collection: FoundryJournalCollectionAdapter, // Injected via composition
     private readonly foundryGame: FoundryGame, // FoundryGamePort (version-agnostisch), nicht FoundryV13GamePort!
     private readonly foundryDocument: FoundryDocument // FoundryDocumentPort (version-agnostisch), nicht FoundryV13DocumentPort!
   ) {
-    this.collection = new FoundryJournalCollectionAdapter(foundryGame);
+    this.typeMapper = new JournalTypeMapper();
   }
 
   // ===== Collection Methods (delegate to collection adapter) =====
@@ -90,11 +94,10 @@ export class FoundryJournalRepositoryAdapter implements PlatformJournalRepositor
         });
       }
 
-      // Map Foundry type → Domain type
-      const createdEntry: JournalEntry = {
-        id: createResult.value.id,
-        name: createResult.value.name ?? null,
-      };
+      // Map Foundry type → Domain type using mapper
+      // Use runtime-safe cast function to convert generic TDocument to FoundryJournalEntry
+      const foundryEntry = castCreatedJournalEntry(createResult.value);
+      const createdEntry = this.typeMapper.mapFoundryToDomain(foundryEntry);
 
       return ok(createdEntry);
     } catch (error) {
@@ -452,6 +455,8 @@ export class DIFoundryJournalRepositoryAdapter extends FoundryJournalRepositoryA
   static dependencies = [foundryGameToken, foundryDocumentToken] as const;
 
   constructor(foundryGame: FoundryGame, foundryDocument: FoundryDocument) {
-    super(foundryGame, foundryDocument);
+    // Create collection adapter via composition (not delegation)
+    const collection = new FoundryJournalCollectionAdapter(foundryGame);
+    super(collection, foundryGame, foundryDocument);
   }
 }

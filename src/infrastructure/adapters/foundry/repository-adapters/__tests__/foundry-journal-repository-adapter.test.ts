@@ -5,6 +5,7 @@ import {
 } from "../foundry-journal-repository-adapter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
+import { FoundryJournalCollectionAdapter } from "../../collection-adapters/foundry-journal-collection-adapter";
 import { ok, err } from "@/domain/utils/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
@@ -12,6 +13,7 @@ import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/Fou
 describe("FoundryJournalRepositoryAdapter", () => {
   let mockFoundryGame: FoundryGame;
   let mockFoundryDocument: FoundryDocument;
+  let mockCollection: FoundryJournalCollectionAdapter;
   let adapter: FoundryJournalRepositoryAdapter;
 
   beforeEach(() => {
@@ -32,11 +34,17 @@ describe("FoundryJournalRepositoryAdapter", () => {
       dispose: vi.fn(),
     } as any;
 
-    adapter = new FoundryJournalRepositoryAdapter(mockFoundryGame, mockFoundryDocument);
+    // Create collection adapter via composition
+    mockCollection = new FoundryJournalCollectionAdapter(mockFoundryGame);
+    adapter = new FoundryJournalRepositoryAdapter(
+      mockCollection,
+      mockFoundryGame,
+      mockFoundryDocument
+    );
   });
 
-  describe("Collection Methods (delegated)", () => {
-    it("should delegate getAll to collection adapter", () => {
+  describe("Collection Methods (via composition)", () => {
+    it("should use collection adapter via composition", () => {
       vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(
         ok([{ id: "journal-1", name: "Journal 1" }] as any)
       );
@@ -47,7 +55,7 @@ describe("FoundryJournalRepositoryAdapter", () => {
       expect(result.value).toHaveLength(1);
     });
 
-    it("should delegate getByIds to collection adapter", () => {
+    it("should use getByIds from collection adapter", () => {
       vi.mocked(mockFoundryGame.getJournalEntryById)
         .mockReturnValueOnce(ok({ id: "journal-1", name: "Journal 1" } as any))
         .mockReturnValueOnce(ok({ id: "journal-2", name: "Journal 2" } as any));
@@ -58,7 +66,7 @@ describe("FoundryJournalRepositoryAdapter", () => {
       expect(result.value).toHaveLength(2);
     });
 
-    it("should delegate count to collection adapter", () => {
+    it("should use count from collection adapter", () => {
       vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(
         ok([
           { id: "journal-1", name: "Journal 1" },
@@ -72,7 +80,7 @@ describe("FoundryJournalRepositoryAdapter", () => {
       expect(result.value).toBe(2);
     });
 
-    it("should delegate search to collection adapter", () => {
+    it("should use search from collection adapter", () => {
       vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(
         ok([
           { id: "journal-1", name: "Quest Log" },
@@ -88,7 +96,7 @@ describe("FoundryJournalRepositoryAdapter", () => {
       expect(result.value).toHaveLength(1);
     });
 
-    it("should delegate query to collection adapter", () => {
+    it("should use query from collection adapter", () => {
       vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(
         ok([{ id: "journal-1", name: "Journal 1" }] as any)
       );

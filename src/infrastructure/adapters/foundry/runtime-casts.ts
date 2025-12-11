@@ -303,3 +303,29 @@ export function castFoundryJournalEntryClass(): Result<JournalEntryConstructor, 
 
   return ok(journalEntryClass as JournalEntryConstructor);
 }
+
+/**
+ * Kapselt den notwendigen Cast für erstellte Foundry-Dokumente zu FoundryJournalEntry.
+ * FoundryDocument.create() gibt einen generischen TDocument zurück, aber wir wissen,
+ * dass es sich bei JournalEntry-Erstellungen um ein FoundryJournalEntry handelt.
+ *
+ * Diese Funktion kapselt den Type-Cast, der notwendig ist, weil TypeScript
+ * den generischen Rückgabetyp von create() nicht automatisch zu FoundryJournalEntry
+ * narrown kann.
+ *
+ * @param document - Das erstellte Dokument (generischer TDocument-Typ)
+ * @returns Das Dokument als FoundryJournalEntry gecastet
+ *
+ * @remarks
+ * Diese Funktion sollte nur verwendet werden, wenn sichergestellt ist, dass
+ * das Dokument tatsächlich ein FoundryJournalEntry ist (z.B. nach create()
+ * mit JournalEntry-Klasse).
+ *
+ * @see {@link castFoundryJournalEntryClass} Für das Casten der JournalEntry-Klasse
+ */
+export function castCreatedJournalEntry<TDocument extends { id: string }>(
+  document: TDocument
+): import("./types").FoundryJournalEntry {
+  // type-coverage:ignore-next-line - Runtime cast required for generic TDocument to FoundryJournalEntry
+  return document as unknown as import("./types").FoundryJournalEntry;
+}

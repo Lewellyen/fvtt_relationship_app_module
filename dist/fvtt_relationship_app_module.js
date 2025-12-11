@@ -10372,6 +10372,10 @@ function castFoundryJournalEntryClass() {
   return ok(journalEntryClass);
 }
 __name(castFoundryJournalEntryClass, "castFoundryJournalEntryClass");
+function castCreatedJournalEntry(document2) {
+  return document2;
+}
+__name(castCreatedJournalEntry, "castCreatedJournalEntry");
 const _FoundryServiceBase = class _FoundryServiceBase {
   constructor(portSelector, portRegistry, retryService) {
     this.port = null;
@@ -17442,11 +17446,50 @@ const _DIFoundryJournalCollectionAdapter = class _DIFoundryJournalCollectionAdap
 __name(_DIFoundryJournalCollectionAdapter, "DIFoundryJournalCollectionAdapter");
 _DIFoundryJournalCollectionAdapter.dependencies = [foundryGameToken];
 let DIFoundryJournalCollectionAdapter = _DIFoundryJournalCollectionAdapter;
+const _JournalTypeMapper = class _JournalTypeMapper {
+  /**
+   * Maps a Foundry journal entry to a domain journal entry.
+   *
+   * Conversion rules:
+   * - `id` is copied as-is
+   * - `name` is converted: `undefined` → `null` (domain requires `string | null`)
+   *
+   * @param foundry - The Foundry journal entry
+   * @returns The domain journal entry
+   */
+  mapFoundryToDomain(foundry) {
+    return {
+      id: foundry.id,
+      name: foundry.name ?? null
+    };
+  }
+  /**
+   * Maps a domain journal entry to a Foundry journal entry structure.
+   *
+   * Note: This is primarily for data transformation purposes.
+   * For creating Foundry documents, use FoundryDocument.create() directly.
+   *
+   * @param domain - The domain journal entry
+   * @returns A Foundry-compatible journal entry structure
+   */
+  mapDomainToFoundry(domain) {
+    const result = {
+      id: domain.id
+    };
+    if (domain.name !== null) {
+      result.name = domain.name;
+    }
+    return result;
+  }
+};
+__name(_JournalTypeMapper, "JournalTypeMapper");
+let JournalTypeMapper = _JournalTypeMapper;
 const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter {
-  constructor(foundryGame, foundryDocument) {
+  constructor(collection, foundryGame, foundryDocument) {
+    this.collection = collection;
     this.foundryGame = foundryGame;
     this.foundryDocument = foundryDocument;
-    this.collection = new FoundryJournalCollectionAdapter(foundryGame);
+    this.typeMapper = new JournalTypeMapper();
   }
   // ===== Collection Methods (delegate to collection adapter) =====
   getAll() {
@@ -17490,10 +17533,8 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
           details: createResult.error
         });
       }
-      const createdEntry = {
-        id: createResult.value.id,
-        name: createResult.value.name ?? null
-      };
+      const foundryEntry = castCreatedJournalEntry(createResult.value);
+      const createdEntry = this.typeMapper.mapFoundryToDomain(foundryEntry);
       return ok(createdEntry);
     } catch (error) {
       return err({
@@ -17737,7 +17778,8 @@ __name(_FoundryJournalRepositoryAdapter, "FoundryJournalRepositoryAdapter");
 let FoundryJournalRepositoryAdapter = _FoundryJournalRepositoryAdapter;
 const _DIFoundryJournalRepositoryAdapter = class _DIFoundryJournalRepositoryAdapter extends FoundryJournalRepositoryAdapter {
   constructor(foundryGame, foundryDocument) {
-    super(foundryGame, foundryDocument);
+    const collection = new FoundryJournalCollectionAdapter(foundryGame);
+    super(collection, foundryGame, foundryDocument);
   }
 };
 __name(_DIFoundryJournalRepositoryAdapter, "DIFoundryJournalRepositoryAdapter");
