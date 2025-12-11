@@ -12,6 +12,35 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.10] - 2025-12-11
+### Hinzugefügt
+- **ContainerFactory**: Neue Factory-Klasse für ServiceContainer-Erstellung ([Details](docs/refactoring/10-composition-root-srp-refactoring.md))
+- **DependencyConfigurator**: Neue Configurator-Klasse für Dependency-Konfiguration ([Details](docs/refactoring/10-composition-root-srp-refactoring.md))
+- **IContainerFactory Interface**: Interface für Container-Erstellung
+- **IDependencyConfigurator Interface**: Interface für Dependency-Konfiguration
+- **Tests für ContainerFactory**: Umfassende Test-Suite für Container-Erstellung
+- **Tests für DependencyConfigurator**: Umfassende Test-Suite für Dependency-Konfiguration
+
+### Geändert
+- **CompositionRoot SRP-Refactoring**: CompositionRoot wurde nach Single Responsibility Principle (SRP) refactored, um Verantwortlichkeiten zu trennen ([Details](docs/refactoring/10-composition-root-srp-refactoring.md))
+- `CompositionRoot`: Führt jetzt nur noch Koordination durch (reine Facade)
+- `ContainerFactory`: Übernimmt Container-Erstellung (createRoot)
+- `DependencyConfigurator`: Übernimmt Dependency-Konfiguration (configure)
+- `BootstrapPerformanceTracker`: Wird jetzt als Dependency injiziert (bereits vorhanden)
+- `BootstrapErrorHandler`: Wird jetzt als Dependency injiziert (bereits vorhanden)
+- `CompositionRoot`: Unterstützt jetzt Dependency Injection für alle Komponenten
+- Verbesserte Testbarkeit: Alle Komponenten können isoliert getestet werden
+- Keine Breaking Changes: Public API bleibt unverändert (bootstrap() und getContainer() funktionieren identisch)
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.9] - 2025-12-11
 ### Hinzugefügt
 - **RetryServiceCompositionFactory**: Neue Factory-Klasse für RetryService-Komposition mit BaseRetryService und RetryObservabilityDecorator ([Details](docs/refactoring/09-retry-service-srp-refactoring.md))

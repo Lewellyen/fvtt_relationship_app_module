@@ -1,26 +1,31 @@
 import { LOG_PREFIX } from "@/application/constants/app-constants";
 import type { Result } from "@/domain/types/result";
-import { ServiceContainer } from "@/infrastructure/di/container";
-import { configureDependencies } from "@/framework/config/dependencyconfig";
+import type { ServiceContainer } from "@/infrastructure/di/container";
 import { ENV } from "@/framework/config/environment";
 import { BootstrapPerformanceTracker } from "@/infrastructure/observability/bootstrap-performance-tracker";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
-import { createBootstrapLogger } from "@/infrastructure/logging/BootstrapLogger";
+import { BootstrapErrorHandler } from "@/framework/core/bootstrap-error-handler";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { IContainerFactory } from "@/framework/core/factory/container-factory";
+import { ContainerFactory } from "@/framework/core/factory/container-factory";
+import type { IDependencyConfigurator } from "@/framework/core/config/dependency-configurator";
+import { DependencyConfigurator } from "@/framework/core/config/dependency-configurator";
 
 /**
  * CompositionRoot
  *
- * Responsible for DI-Container bootstrap only.
- * Creates the ServiceContainer and performs service registrations via configureDependencies.
+ * **Responsibility:** Only coordination (Facade pattern).
+ * Delegates all actual work to specialized components:
+ * - ContainerFactory: Container creation
+ * - DependencyConfigurator: Dependency configuration
+ * - BootstrapPerformanceTracker: Performance tracking
+ * - BootstrapErrorHandler: Error handling
  *
- * Responsibilities:
- * - Create ServiceContainer (createRoot)
- * - Execute configureDependencies (all service registrations)
- * - Track bootstrap performance
- * - Provide container access via getContainer()
+ * **Design:**
+ * This class acts as a pure facade that coordinates the bootstrap process.
+ * All responsibilities are delegated to specialized components following SRP.
  *
  * NOT responsible for:
  * - API exposition (handled by ModuleApiInitializer)
@@ -29,10 +34,41 @@ import type { Logger } from "@/infrastructure/logging/logger.interface";
  */
 export class CompositionRoot {
   private container: ServiceContainer | null = null;
+  private readonly containerFactory: IContainerFactory;
+  private readonly dependencyConfigurator: IDependencyConfigurator;
+  private readonly performanceTracker: BootstrapPerformanceTracker;
+  private readonly errorHandler: typeof BootstrapErrorHandler;
+
+  /**
+   * Creates a new CompositionRoot instance.
+   *
+   * @param containerFactory - Factory for creating containers (defaults to ContainerFactory)
+   * @param dependencyConfigurator - Configurator for setting up dependencies (defaults to DependencyConfigurator)
+   * @param performanceTracker - Optional performance tracker (created internally if not provided)
+   * @param errorHandler - Optional error handler (defaults to BootstrapErrorHandler)
+   */
+  constructor(
+    containerFactory?: IContainerFactory,
+    dependencyConfigurator?: IDependencyConfigurator,
+    performanceTracker?: BootstrapPerformanceTracker,
+    errorHandler: typeof BootstrapErrorHandler = BootstrapErrorHandler
+  ) {
+    this.containerFactory = containerFactory ?? new ContainerFactory();
+    this.dependencyConfigurator = dependencyConfigurator ?? new DependencyConfigurator();
+    this.performanceTracker =
+      performanceTracker ?? new BootstrapPerformanceTracker(createRuntimeConfig(ENV), null);
+    this.errorHandler = errorHandler;
+  }
 
   /**
    * Erstellt den ServiceContainer und führt Basis-Registrierungen aus.
    * Misst Performance für Diagnose-Zwecke.
+   *
+   * **Coordination Flow:**
+   * 1. ContainerFactory creates container
+   * 2. BootstrapPerformanceTracker tracks performance
+   * 3. DependencyConfigurator configures dependencies
+   * 4. BootstrapErrorHandler handles errors if needed
    *
    * **Performance Tracking:**
    * Uses BootstrapPerformanceTracker with ENV (direct import) and null MetricsCollector.
@@ -41,14 +77,12 @@ export class CompositionRoot {
    * @returns Result mit initialisiertem Container oder Fehlermeldung
    */
   bootstrap(): Result<ServiceContainer, string> {
-    const container = ServiceContainer.createRoot(ENV);
+    // 1. Create container via ContainerFactory
+    const container = this.containerFactory.createRoot(ENV);
 
-    // Track bootstrap performance (no MetricsCollector yet)
-    const runtimeConfig = createRuntimeConfig(ENV);
-    const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
-
-    const configured = performanceTracker.track(
-      () => configureDependencies(container),
+    // 2. Track bootstrap performance and configure dependencies
+    const configured = this.performanceTracker.track(
+      () => this.dependencyConfigurator.configure(container),
       (duration) => {
         // Use logger from container if available (container is validated at this point)
         const loggerResult = container.resolveWithError(loggerToken);
@@ -64,10 +98,13 @@ export class CompositionRoot {
       return { ok: true, value: container };
     }
 
-    createBootstrapLogger(ENV).error(
-      "Failed to configure dependencies during bootstrap",
-      configured.error
-    );
+    // 3. Handle error via BootstrapErrorHandler
+    this.errorHandler.logError(configured.error, {
+      phase: "bootstrap",
+      component: "CompositionRoot",
+      metadata: { error: configured.error },
+    });
+
     return { ok: false, error: configured.error };
   }
 
