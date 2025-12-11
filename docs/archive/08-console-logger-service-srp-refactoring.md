@@ -1,8 +1,9 @@
 # Refactoring-Plan: ConsoleLoggerService SRP-Verletzung
 
 **Erstellungsdatum:** 2025-12-10
-**Status:** Geplant
+**Status:** Abgeschlossen
 **Priorität:** Niedrig
+**Abgeschlossen:** 2025-12-11
 **Betroffene Datei:** `src/infrastructure/logging/ConsoleLoggerService.ts`
 
 ---

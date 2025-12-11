@@ -9095,12 +9095,27 @@ const _TraceContextLoggerDecorator = class _TraceContextLoggerDecorator {
 };
 __name(_TraceContextLoggerDecorator, "TraceContextLoggerDecorator");
 let TraceContextLoggerDecorator = _TraceContextLoggerDecorator;
-const _ConsoleLoggerService = class _ConsoleLoggerService {
-  constructor(config2, traceContext) {
+const _LoggerCompositionFactory = class _LoggerCompositionFactory {
+  /**
+   * Creates a composed logger with all necessary decorators.
+   *
+   * @param config - Runtime configuration service
+   * @param traceContext - Optional trace context for trace ID injection
+   * @returns Composed logger instance
+   */
+  createLogger(config2, traceContext) {
     const baseLogger = new BaseConsoleLogger(config2.get("logLevel"));
     const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config2);
     const withStackTrace = new StackTraceLoggerDecorator(withConfig, config2);
-    this.logger = traceContext ? new TraceContextLoggerDecorator(withStackTrace, traceContext) : withStackTrace;
+    return traceContext ? new TraceContextLoggerDecorator(withStackTrace, traceContext) : withStackTrace;
+  }
+};
+__name(_LoggerCompositionFactory, "LoggerCompositionFactory");
+let LoggerCompositionFactory = _LoggerCompositionFactory;
+const _ConsoleLoggerService = class _ConsoleLoggerService {
+  constructor(config2, traceContext, factory) {
+    const compositionFactory = factory ?? new LoggerCompositionFactory();
+    this.logger = compositionFactory.createLogger(config2, traceContext);
   }
   // Delegate all methods to composed logger
   setMinLevel(level) {

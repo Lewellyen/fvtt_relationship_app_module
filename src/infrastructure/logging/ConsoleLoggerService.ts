@@ -4,25 +4,27 @@ import { traceContextToken } from "@/infrastructure/shared/tokens/observability/
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import type { LogLevel } from "@/domain/types/log-level";
-import { BaseConsoleLogger } from "./BaseConsoleLogger";
-import { RuntimeConfigLoggerDecorator } from "./RuntimeConfigLoggerDecorator";
-import { StackTraceLoggerDecorator } from "./StackTraceLoggerDecorator";
-import { TraceContextLoggerDecorator } from "./TraceContextLoggerDecorator";
+import {
+  LoggerCompositionFactory,
+  type ILoggerCompositionFactory,
+} from "./factory/logger-composition-factory";
 
 /**
  * Console logger with RuntimeConfig and TraceContext support.
- * Composed from base logger and decorators.
+ * Single Responsibility: Only provides Logger interface, delegates to composed logger.
+ *
+ * Logger composition is handled by LoggerCompositionFactory.
  */
 export class ConsoleLoggerService implements Logger {
   private readonly logger: Logger;
 
-  constructor(config: RuntimeConfigService, traceContext?: TraceContext) {
-    const baseLogger = new BaseConsoleLogger(config.get("logLevel"));
-    const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config);
-    const withStackTrace = new StackTraceLoggerDecorator(withConfig, config);
-    this.logger = traceContext
-      ? new TraceContextLoggerDecorator(withStackTrace, traceContext)
-      : withStackTrace;
+  constructor(
+    config: RuntimeConfigService,
+    traceContext?: TraceContext,
+    factory?: ILoggerCompositionFactory
+  ) {
+    const compositionFactory = factory ?? new LoggerCompositionFactory();
+    this.logger = compositionFactory.createLogger(config, traceContext);
   }
 
   // Delegate all methods to composed logger
