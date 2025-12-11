@@ -95,3 +95,29 @@ export const runtimeConfigSettingsSyncToken = createInjectionToken<any>(
 export const settingRegistrationErrorMapperToken = createInjectionToken<any>(
   "SettingRegistrationErrorMapper"
 );
+
+/**
+ * Injection token for the SettingDefinitionRegistry.
+ *
+ * Registry that provides setting definitions for registration.
+ * Enables Open/Closed Principle: new settings can be added via registry extension
+ * without modifying ModuleSettingsRegistrar.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const settingDefinitionRegistryToken = createInjectionToken<any>(
+  "SettingDefinitionRegistry"
+);
+
+/**
+ * Injection token for the RuntimeConfigBindingRegistry.
+ *
+ * Registry that provides runtime config bindings for settings.
+ * Enables Open/Closed Principle: new bindings can be added via registry extension
+ * without modifying ModuleSettingsRegistrar.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const runtimeConfigBindingRegistryToken = createInjectionToken<any>(
+  "RuntimeConfigBindingRegistry"
+);

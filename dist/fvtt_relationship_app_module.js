@@ -9394,6 +9394,12 @@ const runtimeConfigSettingsSyncToken = createInjectionToken(
 const settingRegistrationErrorMapperToken = createInjectionToken(
   "SettingRegistrationErrorMapper"
 );
+const settingDefinitionRegistryToken = createInjectionToken(
+  "SettingDefinitionRegistry"
+);
+const runtimeConfigBindingRegistryToken = createInjectionToken(
+  "RuntimeConfigBindingRegistry"
+);
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 const foundryGameToken = createInjectionToken("FoundryGame");
 const foundryHooksToken = createInjectionToken("FoundryHooks");
@@ -15823,6 +15829,365 @@ function registerNotifications(container) {
   return ok(void 0);
 }
 __name(registerNotifications, "registerNotifications");
+const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
+  constructor(settings, runtimeConfigSettingsSync, errorMapper, notifications, i18n, logger, validator, settingDefinitionRegistry, runtimeConfigBindingRegistry) {
+    this.settings = settings;
+    this.runtimeConfigSettingsSync = runtimeConfigSettingsSync;
+    this.errorMapper = errorMapper;
+    this.notifications = notifications;
+    this.i18n = i18n;
+    this.logger = logger;
+    this.validator = validator;
+    this.settingDefinitionRegistry = settingDefinitionRegistry;
+    this.runtimeConfigBindingRegistry = runtimeConfigBindingRegistry;
+  }
+  /**
+   * Registers all module settings.
+   * Must be called during or after the 'init' hook.
+   *
+   * Iterates over settings from SettingDefinitionRegistry and applies
+   * corresponding bindings from RuntimeConfigBindingRegistry.
+   *
+   * Implements Open/Closed Principle: New settings can be added via registry
+   * extension without modifying this method.
+   */
+  registerAll() {
+    const definitions = this.settingDefinitionRegistry.getAll();
+    const bindings = this.runtimeConfigBindingRegistry.getAll();
+    for (const definition of definitions) {
+      const binding = bindings.get(definition.key);
+      this.registerDefinition(
+        definition,
+        binding,
+        this.settings,
+        this.runtimeConfigSettingsSync,
+        this.errorMapper,
+        this.i18n,
+        this.logger,
+        this.validator
+      );
+    }
+  }
+  registerDefinition(definition, binding, settings, runtimeConfigSettingsSync, errorMapper, i18n, logger, validator) {
+    const config2 = definition.createConfig(i18n, logger, validator);
+    const configWithRuntimeBridge = binding ? runtimeConfigSettingsSync.attachBinding(config2, binding) : config2;
+    const result = settings.registerSetting(
+      MODULE_METADATA.ID,
+      definition.key,
+      configWithRuntimeBridge
+    );
+    if (!result.ok) {
+      errorMapper.mapAndNotify(result.error, definition.key);
+      return;
+    }
+    if (binding) {
+      runtimeConfigSettingsSync.syncInitialValue(settings, binding, definition.key);
+    }
+  }
+};
+__name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
+let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
+const _DIModuleSettingsRegistrar = class _DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
+  constructor(settings, runtimeConfigSettingsSync, errorMapper, notifications, i18n, logger, validator, settingDefinitionRegistry, runtimeConfigBindingRegistry) {
+    super(
+      settings,
+      runtimeConfigSettingsSync,
+      errorMapper,
+      notifications,
+      i18n,
+      logger,
+      validator,
+      settingDefinitionRegistry,
+      runtimeConfigBindingRegistry
+    );
+  }
+};
+__name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
+_DIModuleSettingsRegistrar.dependencies = [
+  platformSettingsRegistrationPortToken,
+  runtimeConfigSettingsSyncToken,
+  settingRegistrationErrorMapperToken,
+  platformNotificationPortToken,
+  platformI18nPortToken,
+  platformLoggingPortToken,
+  platformValidationPortToken,
+  settingDefinitionRegistryToken,
+  runtimeConfigBindingRegistryToken
+];
+let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
+const SettingValidators = {
+  /**
+   * Validates that value is a boolean.
+   */
+  boolean: /* @__PURE__ */ __name((value2) => typeof value2 === "boolean", "boolean"),
+  /**
+   * Validates that value is a number.
+   */
+  number: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2), "number"),
+  /**
+   * Validates that value is a non-negative number.
+   */
+  nonNegativeNumber: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0, "nonNegativeNumber"),
+  /**
+   * Validates that value is a non-negative integer.
+   */
+  nonNegativeInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 >= 0, "nonNegativeInteger"),
+  /**
+   * Validates that value is a positive integer (greater than 0).
+   */
+  positiveInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 > 0, "positiveInteger"),
+  /**
+   * Validates that value is a string.
+   */
+  string: /* @__PURE__ */ __name((value2) => typeof value2 === "string", "string"),
+  /**
+   * Validates that value is a non-empty string.
+   */
+  nonEmptyString: /* @__PURE__ */ __name((value2) => typeof value2 === "string" && value2.length > 0, "nonEmptyString"),
+  /**
+   * Validates that value is a number between 0 and 1 (inclusive).
+   */
+  samplingRate: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0 && value2 <= 1, "samplingRate"),
+  /**
+   * Creates a validator for enum values.
+   */
+  oneOf: /* @__PURE__ */ __name((validValues) => (value2) => (typeof value2 === "string" || typeof value2 === "number") && validValues.includes(value2), "oneOf")
+};
+const NOTIFICATION_QUEUE_CONSTANTS = {
+  minSize: 10,
+  maxSize: 1e3,
+  defaultSize: 50
+};
+function getNotificationQueueConstants() {
+  return NOTIFICATION_QUEUE_CONSTANTS;
+}
+__name(getNotificationQueueConstants, "getNotificationQueueConstants");
+const notificationQueueMaxSizeSetting = {
+  key: SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE,
+  createConfig(i18n, logger, _validator) {
+    const constants = getNotificationQueueConstants();
+    return {
+      name: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.notificationQueueMaxSize.name",
+          "Notification Queue Max Size"
+        ),
+        "Notification Queue Max Size"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.notificationQueueMaxSize.hint",
+          `Maximum number of notifications queued before UI is available. Range: ${constants.minSize}-${constants.maxSize}.`
+        ),
+        `Maximum number of notifications queued before UI is available. Range: ${constants.minSize}-${constants.maxSize}.`
+      ),
+      scope: "world",
+      config: true,
+      type: Number,
+      default: constants.defaultSize,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const numericValue = Number(value2);
+        const clamped = Math.max(
+          constants.minSize,
+          Math.min(constants.maxSize, Math.floor(numericValue))
+        );
+        if (clamped !== numericValue) {
+          logger.info(
+            `Notification queue max size clamped from ${numericValue} to ${clamped} (range: ${constants.minSize}-${constants.maxSize})`
+          );
+        } else {
+          logger.info(`Notification queue max size updated via settings: ${clamped}`);
+        }
+      }, "onChange")
+    };
+  }
+};
+const _RuntimeConfigSync = class _RuntimeConfigSync {
+  constructor(runtimeConfig, notifications) {
+    this.runtimeConfig = runtimeConfig;
+    this.notifications = notifications;
+  }
+  /**
+   * Bindet RuntimeConfig-Synchronisation an ein Setting.
+   *
+   * Wraps the original onChange callback and adds RuntimeConfig synchronization.
+   *
+   * @param config - The Setting configuration
+   * @param binding - Binding configuration for RuntimeConfig sync
+   * @returns Modified config with RuntimeConfig bridge attached
+   */
+  attachBinding(config2, binding) {
+    const originalOnChange = config2.onChange;
+    return {
+      ...config2,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const normalized = binding.normalize(value2);
+        this.runtimeConfig.setFromPlatform(binding.runtimeKey, normalized);
+        originalOnChange?.(value2);
+      }, "onChange")
+    };
+  }
+  /**
+   * Synchronisiert initialen Setting-Wert zu RuntimeConfig.
+   *
+   * Reads the current Setting value and updates RuntimeConfig accordingly.
+   *
+   * @param settings - Settings port for reading values
+   * @param binding - Binding configuration for RuntimeConfig sync
+   * @param settingKey - The Setting key to read
+   */
+  syncInitialValue(settings, binding, settingKey) {
+    const currentValue = settings.getSettingValue(
+      MODULE_METADATA.ID,
+      settingKey,
+      binding.validator
+    );
+    if (!currentValue.ok) {
+      this.notifications.warn(
+        `Failed to read initial value for ${settingKey}`,
+        currentValue.error,
+        {
+          channels: ["ConsoleChannel"]
+        }
+      );
+      return;
+    }
+    this.runtimeConfig.setFromPlatform(binding.runtimeKey, binding.normalize(currentValue.value));
+  }
+};
+__name(_RuntimeConfigSync, "RuntimeConfigSync");
+let RuntimeConfigSync = _RuntimeConfigSync;
+const isLogLevel = /* @__PURE__ */ __name((value2) => typeof value2 === "number" && value2 >= 0 && value2 <= 3, "isLogLevel");
+const runtimeConfigBindings = {
+  [SETTING_KEYS.LOG_LEVEL]: {
+    runtimeKey: "logLevel",
+    validator: isLogLevel,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.CACHE_ENABLED]: {
+    runtimeKey: "enableCacheService",
+    validator: SettingValidators.boolean,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.CACHE_TTL_MS]: {
+    runtimeKey: "cacheDefaultTtlMs",
+    validator: SettingValidators.nonNegativeNumber,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.CACHE_MAX_ENTRIES]: {
+    runtimeKey: "cacheMaxEntries",
+    validator: SettingValidators.nonNegativeInteger,
+    normalize: /* @__PURE__ */ __name((value2) => value2 > 0 ? value2 : void 0, "normalize")
+  },
+  [SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED]: {
+    runtimeKey: "enablePerformanceTracking",
+    validator: SettingValidators.boolean,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.PERFORMANCE_SAMPLING_RATE]: {
+    runtimeKey: "performanceSamplingRate",
+    validator: SettingValidators.samplingRate,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.METRICS_PERSISTENCE_ENABLED]: {
+    runtimeKey: "enableMetricsPersistence",
+    validator: SettingValidators.boolean,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.METRICS_PERSISTENCE_KEY]: {
+    runtimeKey: "metricsPersistenceKey",
+    validator: SettingValidators.nonEmptyString,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE]: {
+    runtimeKey: "notificationQueueMaxSize",
+    validator: SettingValidators.positiveInteger,
+    normalize: /* @__PURE__ */ __name((value2) => {
+      const constants = getNotificationQueueConstants();
+      return Math.max(constants.minSize, Math.min(constants.maxSize, Math.floor(value2)));
+    }, "normalize")
+  }
+};
+const _DIRuntimeConfigSync = class _DIRuntimeConfigSync extends RuntimeConfigSync {
+  constructor(runtimeConfig, notifications) {
+    super(runtimeConfig, notifications);
+  }
+};
+__name(_DIRuntimeConfigSync, "DIRuntimeConfigSync");
+_DIRuntimeConfigSync.dependencies = [runtimeConfigToken, platformNotificationPortToken];
+let DIRuntimeConfigSync = _DIRuntimeConfigSync;
+const _RuntimeConfigSettingsSync = class _RuntimeConfigSettingsSync {
+  constructor(runtimeConfigSync) {
+    this.runtimeConfigSync = runtimeConfigSync;
+  }
+  /**
+   * Attaches RuntimeConfig synchronization binding to a setting configuration.
+   *
+   * Delegates to RuntimeConfigSync.attachBinding().
+   *
+   * @param config - The Setting configuration
+   * @param binding - Binding configuration for RuntimeConfig sync
+   * @returns Modified config with RuntimeConfig bridge attached
+   */
+  attachBinding(config2, binding) {
+    return this.runtimeConfigSync.attachBinding(config2, binding);
+  }
+  /**
+   * Synchronizes initial Setting value to RuntimeConfig.
+   *
+   * Delegates to RuntimeConfigSync.syncInitialValue().
+   *
+   * @param settings - Settings port for reading values
+   * @param binding - Binding configuration for RuntimeConfig sync
+   * @param settingKey - The Setting key to read
+   */
+  syncInitialValue(settings, binding, settingKey) {
+    this.runtimeConfigSync.syncInitialValue(settings, binding, settingKey);
+  }
+};
+__name(_RuntimeConfigSettingsSync, "RuntimeConfigSettingsSync");
+let RuntimeConfigSettingsSync = _RuntimeConfigSettingsSync;
+const _DIRuntimeConfigSettingsSync = class _DIRuntimeConfigSettingsSync extends RuntimeConfigSettingsSync {
+  constructor(runtimeConfigSync) {
+    super(runtimeConfigSync);
+  }
+};
+__name(_DIRuntimeConfigSettingsSync, "DIRuntimeConfigSettingsSync");
+_DIRuntimeConfigSettingsSync.dependencies = [runtimeConfigSyncToken];
+let DIRuntimeConfigSettingsSync = _DIRuntimeConfigSettingsSync;
+const _SettingRegistrationErrorMapper = class _SettingRegistrationErrorMapper {
+  constructor(notifications) {
+    this.notifications = notifications;
+  }
+  mapAndNotify(error, settingKey) {
+    const notificationError = {
+      code: error.code,
+      message: error.message,
+      ...error.details !== void 0 && { details: error.details }
+    };
+    this.notifications.error(`Failed to register ${settingKey} setting`, notificationError, {
+      channels: ["ConsoleChannel"]
+    });
+  }
+};
+__name(_SettingRegistrationErrorMapper, "SettingRegistrationErrorMapper");
+let SettingRegistrationErrorMapper = _SettingRegistrationErrorMapper;
+const _DISettingRegistrationErrorMapper = class _DISettingRegistrationErrorMapper extends SettingRegistrationErrorMapper {
+  constructor(notifications) {
+    super(notifications);
+  }
+};
+__name(_DISettingRegistrationErrorMapper, "DISettingRegistrationErrorMapper");
+_DISettingRegistrationErrorMapper.dependencies = [platformNotificationPortToken];
+let DISettingRegistrationErrorMapper = _DISettingRegistrationErrorMapper;
+function castSettingDefinitionToUnknown(definition) {
+  return definition;
+}
+__name(castSettingDefinitionToUnknown, "castSettingDefinitionToUnknown");
+function castBindingToUnknown(binding) {
+  return binding;
+}
+__name(castBindingToUnknown, "castBindingToUnknown");
 function validateAndSetLogLevel(value2, logger, validator) {
   const validationResult = validator.validateLogLevel(value2);
   if (!validationResult.ok) {
@@ -16073,414 +16438,34 @@ const metricsPersistenceKeySetting = {
     };
   }
 };
-const NOTIFICATION_QUEUE_CONSTANTS = {
-  minSize: 10,
-  maxSize: 1e3,
-  defaultSize: 50
-};
-function getNotificationQueueConstants() {
-  return NOTIFICATION_QUEUE_CONSTANTS;
-}
-__name(getNotificationQueueConstants, "getNotificationQueueConstants");
-const notificationQueueMaxSizeSetting = {
-  key: SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE,
-  createConfig(i18n, logger, _validator) {
-    const constants = getNotificationQueueConstants();
-    return {
-      name: unwrapOr(
-        i18n.translate(
-          "MODULE.SETTINGS.notificationQueueMaxSize.name",
-          "Notification Queue Max Size"
-        ),
-        "Notification Queue Max Size"
-      ),
-      hint: unwrapOr(
-        i18n.translate(
-          "MODULE.SETTINGS.notificationQueueMaxSize.hint",
-          `Maximum number of notifications queued before UI is available. Range: ${constants.minSize}-${constants.maxSize}.`
-        ),
-        `Maximum number of notifications queued before UI is available. Range: ${constants.minSize}-${constants.maxSize}.`
-      ),
-      scope: "world",
-      config: true,
-      type: Number,
-      default: constants.defaultSize,
-      onChange: /* @__PURE__ */ __name((value2) => {
-        const numericValue = Number(value2);
-        const clamped = Math.max(
-          constants.minSize,
-          Math.min(constants.maxSize, Math.floor(numericValue))
-        );
-        if (clamped !== numericValue) {
-          logger.info(
-            `Notification queue max size clamped from ${numericValue} to ${clamped} (range: ${constants.minSize}-${constants.maxSize})`
-          );
-        } else {
-          logger.info(`Notification queue max size updated via settings: ${clamped}`);
-        }
-      }, "onChange")
-    };
+const _DefaultSettingDefinitionRegistry = class _DefaultSettingDefinitionRegistry {
+  getAll() {
+    return [
+      castSettingDefinitionToUnknown(logLevelSetting),
+      castSettingDefinitionToUnknown(cacheEnabledSetting),
+      castSettingDefinitionToUnknown(cacheDefaultTtlSetting),
+      castSettingDefinitionToUnknown(cacheMaxEntriesSetting),
+      castSettingDefinitionToUnknown(performanceTrackingSetting),
+      castSettingDefinitionToUnknown(performanceSamplingSetting),
+      castSettingDefinitionToUnknown(metricsPersistenceEnabledSetting),
+      castSettingDefinitionToUnknown(metricsPersistenceKeySetting),
+      castSettingDefinitionToUnknown(notificationQueueMaxSizeSetting)
+    ];
   }
 };
-const SettingValidators = {
-  /**
-   * Validates that value is a boolean.
-   */
-  boolean: /* @__PURE__ */ __name((value2) => typeof value2 === "boolean", "boolean"),
-  /**
-   * Validates that value is a number.
-   */
-  number: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2), "number"),
-  /**
-   * Validates that value is a non-negative number.
-   */
-  nonNegativeNumber: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0, "nonNegativeNumber"),
-  /**
-   * Validates that value is a non-negative integer.
-   */
-  nonNegativeInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 >= 0, "nonNegativeInteger"),
-  /**
-   * Validates that value is a positive integer (greater than 0).
-   */
-  positiveInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 > 0, "positiveInteger"),
-  /**
-   * Validates that value is a string.
-   */
-  string: /* @__PURE__ */ __name((value2) => typeof value2 === "string", "string"),
-  /**
-   * Validates that value is a non-empty string.
-   */
-  nonEmptyString: /* @__PURE__ */ __name((value2) => typeof value2 === "string" && value2.length > 0, "nonEmptyString"),
-  /**
-   * Validates that value is a number between 0 and 1 (inclusive).
-   */
-  samplingRate: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0 && value2 <= 1, "samplingRate"),
-  /**
-   * Creates a validator for enum values.
-   */
-  oneOf: /* @__PURE__ */ __name((validValues) => (value2) => (typeof value2 === "string" || typeof value2 === "number") && validValues.includes(value2), "oneOf")
-};
-const _RuntimeConfigSync = class _RuntimeConfigSync {
-  constructor(runtimeConfig, notifications) {
-    this.runtimeConfig = runtimeConfig;
-    this.notifications = notifications;
-  }
-  /**
-   * Bindet RuntimeConfig-Synchronisation an ein Setting.
-   *
-   * Wraps the original onChange callback and adds RuntimeConfig synchronization.
-   *
-   * @param config - The Setting configuration
-   * @param binding - Binding configuration for RuntimeConfig sync
-   * @returns Modified config with RuntimeConfig bridge attached
-   */
-  attachBinding(config2, binding) {
-    const originalOnChange = config2.onChange;
-    return {
-      ...config2,
-      onChange: /* @__PURE__ */ __name((value2) => {
-        const normalized = binding.normalize(value2);
-        this.runtimeConfig.setFromPlatform(binding.runtimeKey, normalized);
-        originalOnChange?.(value2);
-      }, "onChange")
-    };
-  }
-  /**
-   * Synchronisiert initialen Setting-Wert zu RuntimeConfig.
-   *
-   * Reads the current Setting value and updates RuntimeConfig accordingly.
-   *
-   * @param settings - Settings port for reading values
-   * @param binding - Binding configuration for RuntimeConfig sync
-   * @param settingKey - The Setting key to read
-   */
-  syncInitialValue(settings, binding, settingKey) {
-    const currentValue = settings.getSettingValue(
-      MODULE_METADATA.ID,
-      settingKey,
-      binding.validator
-    );
-    if (!currentValue.ok) {
-      this.notifications.warn(
-        `Failed to read initial value for ${settingKey}`,
-        currentValue.error,
-        {
-          channels: ["ConsoleChannel"]
-        }
-      );
-      return;
-    }
-    this.runtimeConfig.setFromPlatform(binding.runtimeKey, binding.normalize(currentValue.value));
-  }
-};
-__name(_RuntimeConfigSync, "RuntimeConfigSync");
-let RuntimeConfigSync = _RuntimeConfigSync;
-const isLogLevel = /* @__PURE__ */ __name((value2) => typeof value2 === "number" && value2 >= 0 && value2 <= 3, "isLogLevel");
-const runtimeConfigBindings = {
-  [SETTING_KEYS.LOG_LEVEL]: {
-    runtimeKey: "logLevel",
-    validator: isLogLevel,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.CACHE_ENABLED]: {
-    runtimeKey: "enableCacheService",
-    validator: SettingValidators.boolean,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.CACHE_TTL_MS]: {
-    runtimeKey: "cacheDefaultTtlMs",
-    validator: SettingValidators.nonNegativeNumber,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.CACHE_MAX_ENTRIES]: {
-    runtimeKey: "cacheMaxEntries",
-    validator: SettingValidators.nonNegativeInteger,
-    normalize: /* @__PURE__ */ __name((value2) => value2 > 0 ? value2 : void 0, "normalize")
-  },
-  [SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED]: {
-    runtimeKey: "enablePerformanceTracking",
-    validator: SettingValidators.boolean,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.PERFORMANCE_SAMPLING_RATE]: {
-    runtimeKey: "performanceSamplingRate",
-    validator: SettingValidators.samplingRate,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.METRICS_PERSISTENCE_ENABLED]: {
-    runtimeKey: "enableMetricsPersistence",
-    validator: SettingValidators.boolean,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.METRICS_PERSISTENCE_KEY]: {
-    runtimeKey: "metricsPersistenceKey",
-    validator: SettingValidators.nonEmptyString,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE]: {
-    runtimeKey: "notificationQueueMaxSize",
-    validator: SettingValidators.positiveInteger,
-    normalize: /* @__PURE__ */ __name((value2) => {
-      const constants = getNotificationQueueConstants();
-      return Math.max(constants.minSize, Math.min(constants.maxSize, Math.floor(value2)));
-    }, "normalize")
-  }
-};
-const _DIRuntimeConfigSync = class _DIRuntimeConfigSync extends RuntimeConfigSync {
-  constructor(runtimeConfig, notifications) {
-    super(runtimeConfig, notifications);
-  }
-};
-__name(_DIRuntimeConfigSync, "DIRuntimeConfigSync");
-_DIRuntimeConfigSync.dependencies = [runtimeConfigToken, platformNotificationPortToken];
-let DIRuntimeConfigSync = _DIRuntimeConfigSync;
-const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
-  constructor(settings, runtimeConfigSettingsSync, errorMapper, notifications, i18n, logger, validator) {
-    this.settings = settings;
-    this.runtimeConfigSettingsSync = runtimeConfigSettingsSync;
-    this.errorMapper = errorMapper;
-    this.notifications = notifications;
-    this.i18n = i18n;
-    this.logger = logger;
-    this.validator = validator;
-  }
-  /**
-   * Registers all module settings.
-   * Must be called during or after the 'init' hook.
-   *
-   * NOTE: Container parameter removed - all dependencies injected via constructor.
-   */
-  registerAll() {
-    this.registerDefinition(
-      logLevelSetting,
-      runtimeConfigBindings[SETTING_KEYS.LOG_LEVEL],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      cacheEnabledSetting,
-      runtimeConfigBindings[SETTING_KEYS.CACHE_ENABLED],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      cacheDefaultTtlSetting,
-      runtimeConfigBindings[SETTING_KEYS.CACHE_TTL_MS],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      cacheMaxEntriesSetting,
-      runtimeConfigBindings[SETTING_KEYS.CACHE_MAX_ENTRIES],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      performanceTrackingSetting,
-      runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      performanceSamplingSetting,
-      runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_SAMPLING_RATE],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      metricsPersistenceEnabledSetting,
-      runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_ENABLED],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      metricsPersistenceKeySetting,
-      runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      notificationQueueMaxSizeSetting,
-      runtimeConfigBindings[SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-  }
-  registerDefinition(definition, binding, settings, runtimeConfigSettingsSync, errorMapper, i18n, logger, validator) {
-    const config2 = definition.createConfig(i18n, logger, validator);
-    const configWithRuntimeBridge = binding ? runtimeConfigSettingsSync.attachBinding(config2, binding) : config2;
-    const result = settings.registerSetting(
-      MODULE_METADATA.ID,
-      definition.key,
-      configWithRuntimeBridge
-    );
-    if (!result.ok) {
-      errorMapper.mapAndNotify(result.error, definition.key);
-      return;
-    }
-    if (binding) {
-      runtimeConfigSettingsSync.syncInitialValue(settings, binding, definition.key);
-    }
-  }
-};
-__name(_ModuleSettingsRegistrar, "ModuleSettingsRegistrar");
-let ModuleSettingsRegistrar = _ModuleSettingsRegistrar;
-const _DIModuleSettingsRegistrar = class _DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
-  constructor(settings, runtimeConfigSettingsSync, errorMapper, notifications, i18n, logger, validator) {
-    super(settings, runtimeConfigSettingsSync, errorMapper, notifications, i18n, logger, validator);
-  }
-};
-__name(_DIModuleSettingsRegistrar, "DIModuleSettingsRegistrar");
-_DIModuleSettingsRegistrar.dependencies = [
-  platformSettingsRegistrationPortToken,
-  runtimeConfigSettingsSyncToken,
-  settingRegistrationErrorMapperToken,
-  platformNotificationPortToken,
-  platformI18nPortToken,
-  platformLoggingPortToken,
-  platformValidationPortToken
-];
-let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
-const _RuntimeConfigSettingsSync = class _RuntimeConfigSettingsSync {
-  constructor(runtimeConfigSync) {
-    this.runtimeConfigSync = runtimeConfigSync;
-  }
-  /**
-   * Attaches RuntimeConfig synchronization binding to a setting configuration.
-   *
-   * Delegates to RuntimeConfigSync.attachBinding().
-   *
-   * @param config - The Setting configuration
-   * @param binding - Binding configuration for RuntimeConfig sync
-   * @returns Modified config with RuntimeConfig bridge attached
-   */
-  attachBinding(config2, binding) {
-    return this.runtimeConfigSync.attachBinding(config2, binding);
-  }
-  /**
-   * Synchronizes initial Setting value to RuntimeConfig.
-   *
-   * Delegates to RuntimeConfigSync.syncInitialValue().
-   *
-   * @param settings - Settings port for reading values
-   * @param binding - Binding configuration for RuntimeConfig sync
-   * @param settingKey - The Setting key to read
-   */
-  syncInitialValue(settings, binding, settingKey) {
-    this.runtimeConfigSync.syncInitialValue(settings, binding, settingKey);
-  }
-};
-__name(_RuntimeConfigSettingsSync, "RuntimeConfigSettingsSync");
-let RuntimeConfigSettingsSync = _RuntimeConfigSettingsSync;
-const _DIRuntimeConfigSettingsSync = class _DIRuntimeConfigSettingsSync extends RuntimeConfigSettingsSync {
-  constructor(runtimeConfigSync) {
-    super(runtimeConfigSync);
-  }
-};
-__name(_DIRuntimeConfigSettingsSync, "DIRuntimeConfigSettingsSync");
-_DIRuntimeConfigSettingsSync.dependencies = [runtimeConfigSyncToken];
-let DIRuntimeConfigSettingsSync = _DIRuntimeConfigSettingsSync;
-const _SettingRegistrationErrorMapper = class _SettingRegistrationErrorMapper {
-  constructor(notifications) {
-    this.notifications = notifications;
-  }
-  mapAndNotify(error, settingKey) {
-    const notificationError = {
-      code: error.code,
-      message: error.message,
-      ...error.details !== void 0 && { details: error.details }
-    };
-    this.notifications.error(`Failed to register ${settingKey} setting`, notificationError, {
-      channels: ["ConsoleChannel"]
+__name(_DefaultSettingDefinitionRegistry, "DefaultSettingDefinitionRegistry");
+let DefaultSettingDefinitionRegistry = _DefaultSettingDefinitionRegistry;
+const _DefaultRuntimeConfigBindingRegistry = class _DefaultRuntimeConfigBindingRegistry {
+  getAll() {
+    const map2 = /* @__PURE__ */ new Map();
+    Object.entries(runtimeConfigBindings).forEach(([key, binding]) => {
+      map2.set(key, castBindingToUnknown(binding));
     });
+    return map2;
   }
 };
-__name(_SettingRegistrationErrorMapper, "SettingRegistrationErrorMapper");
-let SettingRegistrationErrorMapper = _SettingRegistrationErrorMapper;
-const _DISettingRegistrationErrorMapper = class _DISettingRegistrationErrorMapper extends SettingRegistrationErrorMapper {
-  constructor(notifications) {
-    super(notifications);
-  }
-};
-__name(_DISettingRegistrationErrorMapper, "DISettingRegistrationErrorMapper");
-_DISettingRegistrationErrorMapper.dependencies = [platformNotificationPortToken];
-let DISettingRegistrationErrorMapper = _DISettingRegistrationErrorMapper;
+__name(_DefaultRuntimeConfigBindingRegistry, "DefaultRuntimeConfigBindingRegistry");
+let DefaultRuntimeConfigBindingRegistry = _DefaultRuntimeConfigBindingRegistry;
 function registerRegistrars(container) {
   const runtimeConfigSyncResult = container.registerClass(
     runtimeConfigSyncToken,
@@ -16508,6 +16493,26 @@ function registerRegistrars(container) {
   if (isErr(errorMapperResult)) {
     return err(
       `Failed to register SettingRegistrationErrorMapper: ${errorMapperResult.error.message}`
+    );
+  }
+  const settingDefinitionRegistryResult = container.registerClass(
+    settingDefinitionRegistryToken,
+    DefaultSettingDefinitionRegistry,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(settingDefinitionRegistryResult)) {
+    return err(
+      `Failed to register SettingDefinitionRegistry: ${settingDefinitionRegistryResult.error.message}`
+    );
+  }
+  const runtimeConfigBindingRegistryResult = container.registerClass(
+    runtimeConfigBindingRegistryToken,
+    DefaultRuntimeConfigBindingRegistry,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(runtimeConfigBindingRegistryResult)) {
+    return err(
+      `Failed to register RuntimeConfigBindingRegistry: ${runtimeConfigBindingRegistryResult.error.message}`
     );
   }
   const settingsRegistrarResult = container.registerClass(

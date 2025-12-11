@@ -7,11 +7,15 @@ import {
   runtimeConfigSyncToken,
   runtimeConfigSettingsSyncToken,
   settingRegistrationErrorMapperToken,
+  settingDefinitionRegistryToken,
+  runtimeConfigBindingRegistryToken,
 } from "@/application/tokens/application.tokens";
 import { DIModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
 import { DIRuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
 import { DIRuntimeConfigSettingsSync } from "@/application/services/runtime-config-settings-sync";
 import { DISettingRegistrationErrorMapper } from "@/application/services/SettingRegistrationErrorMapper";
+import { DefaultSettingDefinitionRegistry } from "@/application/services/registries/default-setting-definition-registry";
+import { DefaultRuntimeConfigBindingRegistry } from "@/application/services/registries/default-runtime-config-binding-registry";
 
 /**
  * Registers registrar services.
@@ -63,6 +67,30 @@ export function registerRegistrars(container: ServiceContainer): Result<void, st
   if (isErr(errorMapperResult)) {
     return err(
       `Failed to register SettingRegistrationErrorMapper: ${errorMapperResult.error.message}`
+    );
+  }
+
+  // Register SettingDefinitionRegistry (required by ModuleSettingsRegistrar)
+  const settingDefinitionRegistryResult = container.registerClass(
+    settingDefinitionRegistryToken,
+    DefaultSettingDefinitionRegistry,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(settingDefinitionRegistryResult)) {
+    return err(
+      `Failed to register SettingDefinitionRegistry: ${settingDefinitionRegistryResult.error.message}`
+    );
+  }
+
+  // Register RuntimeConfigBindingRegistry (required by ModuleSettingsRegistrar)
+  const runtimeConfigBindingRegistryResult = container.registerClass(
+    runtimeConfigBindingRegistryToken,
+    DefaultRuntimeConfigBindingRegistry,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(runtimeConfigBindingRegistryResult)) {
+    return err(
+      `Failed to register RuntimeConfigBindingRegistry: ${runtimeConfigBindingRegistryResult.error.message}`
     );
   }
 

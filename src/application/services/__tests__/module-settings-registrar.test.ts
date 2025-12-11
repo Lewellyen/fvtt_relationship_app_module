@@ -17,6 +17,8 @@ import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import {
   runtimeConfigSettingsSyncToken,
   settingRegistrationErrorMapperToken,
+  settingDefinitionRegistryToken,
+  runtimeConfigBindingRegistryToken,
 } from "@/application/tokens/application.tokens";
 import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
@@ -34,6 +36,8 @@ import type { PlatformNotificationPort } from "@/domain/ports/platform-notificat
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { DefaultSettingDefinitionRegistry } from "@/application/services/registries/default-setting-definition-registry";
+import { DefaultRuntimeConfigBindingRegistry } from "@/application/services/registries/default-runtime-config-binding-registry";
 
 const DEFAULT_SETTING_VALUES: Record<string, unknown> = {
   [SETTING_KEYS.LOG_LEVEL]: LogLevel.INFO,
@@ -56,6 +60,13 @@ function stubPlatformGetSettingValue(
     const value = hasOverride ? overrides[key] : DEFAULT_SETTING_VALUES[key];
     return ok(value as unknown);
   });
+}
+
+function createRegistries() {
+  return {
+    settingDefinitionRegistry: new DefaultSettingDefinitionRegistry(),
+    runtimeConfigBindingRegistry: new DefaultRuntimeConfigBindingRegistry(),
+  };
 }
 
 describe("ModuleSettingsRegistrar", () => {
@@ -85,6 +96,7 @@ describe("ModuleSettingsRegistrar", () => {
       const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
       const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
+      const { settingDefinitionRegistry, runtimeConfigBindingRegistry } = createRegistries();
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSettingsSync,
@@ -92,7 +104,9 @@ describe("ModuleSettingsRegistrar", () => {
         mockNotifications,
         mockI18n,
         mockLogger,
-        mockValidator
+        mockValidator,
+        settingDefinitionRegistry,
+        runtimeConfigBindingRegistry
       );
       registrar.registerAll();
 
@@ -142,6 +156,7 @@ describe("ModuleSettingsRegistrar", () => {
       const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
       const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
+      const { settingDefinitionRegistry, runtimeConfigBindingRegistry } = createRegistries();
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSettingsSync,
@@ -149,7 +164,9 @@ describe("ModuleSettingsRegistrar", () => {
         mockNotifications,
         mockI18n,
         mockLogger,
-        mockValidator
+        mockValidator,
+        settingDefinitionRegistry,
+        runtimeConfigBindingRegistry
       );
       registrar.registerAll();
 
@@ -195,6 +212,7 @@ describe("ModuleSettingsRegistrar", () => {
       const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
       const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
+      const { settingDefinitionRegistry, runtimeConfigBindingRegistry } = createRegistries();
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSettingsSync,
@@ -202,7 +220,9 @@ describe("ModuleSettingsRegistrar", () => {
         mockNotifications,
         mockI18n,
         mockLogger,
-        mockValidator
+        mockValidator,
+        settingDefinitionRegistry,
+        runtimeConfigBindingRegistry
       );
       registrar.registerAll();
 
@@ -243,6 +263,7 @@ describe("ModuleSettingsRegistrar", () => {
       const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotificationCenter);
       const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotificationCenter);
+      const { settingDefinitionRegistry, runtimeConfigBindingRegistry } = createRegistries();
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSettingsSync,
@@ -250,7 +271,9 @@ describe("ModuleSettingsRegistrar", () => {
         mockNotificationCenter,
         mockI18n,
         mockLogger,
-        mockValidator
+        mockValidator,
+        settingDefinitionRegistry,
+        runtimeConfigBindingRegistry
       );
       registrar.registerAll();
 
@@ -288,6 +311,7 @@ describe("ModuleSettingsRegistrar", () => {
       const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
       const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
+      const { settingDefinitionRegistry, runtimeConfigBindingRegistry } = createRegistries();
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSettingsSync,
@@ -295,7 +319,9 @@ describe("ModuleSettingsRegistrar", () => {
         mockNotifications,
         mockI18n,
         mockLogger,
-        mockValidator
+        mockValidator,
+        settingDefinitionRegistry,
+        runtimeConfigBindingRegistry
       );
       registrar.registerAll();
 
@@ -344,6 +370,7 @@ describe("ModuleSettingsRegistrar", () => {
       const runtimeConfigSync = new RuntimeConfigSync(runtimeConfig, mockNotifications);
       const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
+      const { settingDefinitionRegistry, runtimeConfigBindingRegistry } = createRegistries();
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSettingsSync,
@@ -351,7 +378,9 @@ describe("ModuleSettingsRegistrar", () => {
         mockNotifications,
         mockI18n,
         mockLogger,
-        mockValidator
+        mockValidator,
+        settingDefinitionRegistry,
+        runtimeConfigBindingRegistry
       );
       registrar.registerAll();
 
@@ -403,6 +432,7 @@ describe("ModuleSettingsRegistrar", () => {
       const runtimeConfigSync = new RuntimeConfigSync(runtimeConfig, mockNotifications);
       const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
+      const { settingDefinitionRegistry, runtimeConfigBindingRegistry } = createRegistries();
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSettingsSync,
@@ -410,7 +440,9 @@ describe("ModuleSettingsRegistrar", () => {
         mockNotifications,
         mockI18n,
         mockLogger,
-        mockValidator
+        mockValidator,
+        settingDefinitionRegistry,
+        runtimeConfigBindingRegistry
       );
       registrar.registerAll();
 
@@ -457,6 +489,7 @@ describe("ModuleSettingsRegistrar", () => {
       const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
       const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
+      const { settingDefinitionRegistry, runtimeConfigBindingRegistry } = createRegistries();
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
         mockRuntimeConfigSettingsSync,
@@ -464,7 +497,9 @@ describe("ModuleSettingsRegistrar", () => {
         mockNotifications,
         mockI18n,
         mockLogger,
-        mockValidator
+        mockValidator,
+        settingDefinitionRegistry,
+        runtimeConfigBindingRegistry
       );
 
       // syncRuntimeConfigFromSettings is now in RuntimeConfigSync, no need to spy
@@ -502,7 +537,7 @@ describe("ModuleSettingsRegistrar DI metadata", () => {
   it("should expose correct dependency arrays", () => {
     // Base class has no static dependencies (constructor-based)
     expect("dependencies" in ModuleSettingsRegistrar).toBe(false);
-    // DI wrapper class has all dependencies
+    // DI wrapper class has all dependencies including registries
     expect(DIModuleSettingsRegistrar.dependencies).toEqual([
       platformSettingsRegistrationPortToken,
       runtimeConfigSettingsSyncToken,
@@ -511,6 +546,8 @@ describe("ModuleSettingsRegistrar DI metadata", () => {
       platformI18nPortToken,
       platformLoggingPortToken,
       platformValidationPortToken,
+      settingDefinitionRegistryToken,
+      runtimeConfigBindingRegistryToken,
     ]);
   });
 });

@@ -1,7 +1,8 @@
 # OCP-Plan: ModuleSettingsRegistrar – registrierbare Settings
 
 **Erstellungsdatum:** 2025-12-10
-**Status:** Geplant
+**Status:** Abgeschlossen ✅
+**Abgeschlossen:** 2025-12-11
 **Priorität:** Mittel
 **Betroffene Datei:** `src/application/services/ModuleSettingsRegistrar.ts`
 

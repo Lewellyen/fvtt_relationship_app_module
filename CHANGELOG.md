@@ -12,6 +12,32 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.11] - 2025-12-11
+### Hinzugefügt
+- **SettingDefinitionRegistry Interface**: Neues Interface für registrierbare Setting-Definitionen ([Details](docs/refactoring/12-ocp-module-settings-registrar.md))
+- **RuntimeConfigBindingRegistry Interface**: Neues Interface für registrierbare RuntimeConfig-Bindings ([Details](docs/refactoring/12-ocp-module-settings-registrar.md))
+- **DefaultSettingDefinitionRegistry**: Default-Implementierung der SettingDefinitionRegistry ([Details](docs/refactoring/12-ocp-module-settings-registrar.md))
+- **DefaultRuntimeConfigBindingRegistry**: Default-Implementierung der RuntimeConfigBindingRegistry ([Details](docs/refactoring/12-ocp-module-settings-registrar.md))
+- **DI-Tokens für Registries**: Neue Injection Tokens für SettingDefinitionRegistry und RuntimeConfigBindingRegistry
+
+### Geändert
+- **ModuleSettingsRegistrar OCP-Refactoring**: ModuleSettingsRegistrar wurde nach Open/Closed Principle (OCP) refactored ([Details](docs/refactoring/12-ocp-module-settings-registrar.md))
+- `ModuleSettingsRegistrar.registerAll()`: Iteriert jetzt über injizierte Registries statt fester Listen
+- `ModuleSettingsRegistrar`: Erwartet jetzt `SettingDefinitionRegistry` und `RuntimeConfigBindingRegistry` via Constructor-Injection
+- Neue Settings/Bindings können jetzt ausschließlich über Registry-Erweiterungen ergänzt werden, ohne `ModuleSettingsRegistrar` zu modifizieren
+- `DIModuleSettingsRegistrar`: Erweitert um Dependency-Injection für die neuen Registry-Dependencies
+- `registrars.config.ts`: Registriert jetzt die neuen Registry-Implementierungen im DI-Container
+- Keine Breaking Changes: Public API bleibt unverändert, bestehende Funktionalität bleibt erhalten
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.10] - 2025-12-11
 ### Hinzugefügt
 - **ContainerFactory**: Neue Factory-Klasse für ServiceContainer-Erstellung ([Details](docs/refactoring/10-composition-root-srp-refactoring.md))

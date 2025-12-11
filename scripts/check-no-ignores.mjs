@@ -98,6 +98,11 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Foundry Runtime-Casts: Zentralisierte Foundry-spezifische Runtime-Cast-Helpers (bereits global in type-coverage.json ausgenommen)',
   },
   {
+    file: 'src/application/utils/registry-casts.ts',
+    allowed: ['type-coverage:ignore', 'eslint-disable'],
+    reason: 'Registry-Casts: Zentralisierte Registry-Type-Cast-Helpers für Type-Varianz (bereits global in type-coverage.json ausgenommen, eslint-disable für any-Parameter in castBindingToUnknown notwendig)',
+  },
+  {
     file: 'src/infrastructure/shared/utils/type-guards.ts',
     allowed: ['type-coverage:ignore-next-line'],
     reason: 'Runtime Type Guards: Type-Cast für Runtime-Validierung von Methoden-Existenz (notwendig für type-safe Runtime-Checks)',

@@ -1,14 +1,5 @@
-import { SETTING_KEYS, MODULE_METADATA } from "@/application/constants/app-constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { SettingDefinition } from "@/application/settings/setting-definition.interface";
-import { logLevelSetting } from "@/application/settings/log-level-setting";
-import { cacheEnabledSetting } from "@/application/settings/cache-enabled-setting";
-import { cacheDefaultTtlSetting } from "@/application/settings/cache-default-ttl-setting";
-import { cacheMaxEntriesSetting } from "@/application/settings/cache-max-entries-setting";
-import { performanceTrackingSetting } from "@/application/settings/performance-tracking-setting";
-import { performanceSamplingSetting } from "@/application/settings/performance-sampling-setting";
-import { metricsPersistenceEnabledSetting } from "@/application/settings/metrics-persistence-enabled-setting";
-import { metricsPersistenceKeySetting } from "@/application/settings/metrics-persistence-key-setting";
-import { notificationQueueMaxSizeSetting } from "@/application/settings/notification-queue-max-size-setting";
 import type { RuntimeConfigKey } from "@/domain/types/runtime-config";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
@@ -27,9 +18,14 @@ import {
   platformLoggingPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import type { RuntimeConfigBinding } from "@/application/services/RuntimeConfigSync";
-import { runtimeConfigBindings } from "@/application/services/RuntimeConfigSync";
 import type { SettingRegistrationErrorMapper } from "./SettingRegistrationErrorMapper";
 import type { IRuntimeConfigSettingsSync } from "./runtime-config-settings-sync";
+import type { SettingDefinitionRegistry } from "./registries/setting-definition-registry.interface";
+import type { RuntimeConfigBindingRegistry } from "./registries/runtime-config-binding-registry.interface";
+import {
+  settingDefinitionRegistryToken,
+  runtimeConfigBindingRegistryToken,
+} from "@/application/tokens/application.tokens";
 
 /**
  * ModuleSettingsRegistrar
@@ -38,15 +34,22 @@ import type { IRuntimeConfigSettingsSync } from "./runtime-config-settings-sync"
  * Each setting is defined separately for better organization and testability.
  *
  * **Design Benefits:**
- * - Easy to add new settings without modifying this class
+ * - Easy to add new settings without modifying this class (Open/Closed Principle)
  * - Each setting definition can be tested in isolation
  * - Clear separation between registration logic and setting configuration
  * - Full DI: All dependencies injected via constructor (no Service Locator)
+ * - Registry-based: Settings and bindings provided via registries, enabling extension without modification
+ *
+ * **OCP-Compliant:**
+ * - New settings can be added by extending SettingDefinitionRegistry
+ * - New bindings can be added by extending RuntimeConfigBindingRegistry
+ * - No code changes needed in ModuleSettingsRegistrar for new settings/bindings
  *
  * **DIP-Compliant:**
  * - Uses PlatformSettingsRegistrationPort instead of PlatformSettingsPort
  * - Uses domain-neutral SettingValidators instead of Valibot schemas
  * - No infrastructure layer imports for validation
+ * - Depends on registry abstractions, not concrete implementations
  */
 export class ModuleSettingsRegistrar {
   constructor(
@@ -56,107 +59,38 @@ export class ModuleSettingsRegistrar {
     private readonly notifications: PlatformNotificationPort,
     private readonly i18n: PlatformI18nPort,
     private readonly logger: PlatformLoggingPort,
-    private readonly validator: PlatformValidationPort
+    private readonly validator: PlatformValidationPort,
+    private readonly settingDefinitionRegistry: SettingDefinitionRegistry,
+    private readonly runtimeConfigBindingRegistry: RuntimeConfigBindingRegistry
   ) {}
 
   /**
    * Registers all module settings.
    * Must be called during or after the 'init' hook.
    *
-   * NOTE: Container parameter removed - all dependencies injected via constructor.
+   * Iterates over settings from SettingDefinitionRegistry and applies
+   * corresponding bindings from RuntimeConfigBindingRegistry.
+   *
+   * Implements Open/Closed Principle: New settings can be added via registry
+   * extension without modifying this method.
    */
   registerAll(): void {
-    // Register all settings
-    this.registerDefinition(
-      logLevelSetting,
-      runtimeConfigBindings[SETTING_KEYS.LOG_LEVEL],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      cacheEnabledSetting,
-      runtimeConfigBindings[SETTING_KEYS.CACHE_ENABLED],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      cacheDefaultTtlSetting,
-      runtimeConfigBindings[SETTING_KEYS.CACHE_TTL_MS],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      cacheMaxEntriesSetting,
-      runtimeConfigBindings[SETTING_KEYS.CACHE_MAX_ENTRIES],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      performanceTrackingSetting,
-      runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      performanceSamplingSetting,
-      runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_SAMPLING_RATE],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      metricsPersistenceEnabledSetting,
-      runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_ENABLED],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      metricsPersistenceKeySetting,
-      runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
-    this.registerDefinition(
-      notificationQueueMaxSizeSetting,
-      runtimeConfigBindings[SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE],
-      this.settings,
-      this.runtimeConfigSettingsSync,
-      this.errorMapper,
-      this.i18n,
-      this.logger,
-      this.validator
-    );
+    const definitions = this.settingDefinitionRegistry.getAll();
+    const bindings = this.runtimeConfigBindingRegistry.getAll();
+
+    for (const definition of definitions) {
+      const binding = bindings.get(definition.key);
+      this.registerDefinition(
+        definition,
+        binding,
+        this.settings,
+        this.runtimeConfigSettingsSync,
+        this.errorMapper,
+        this.i18n,
+        this.logger,
+        this.validator
+      );
+    }
   }
 
   private registerDefinition<TSchema, K extends RuntimeConfigKey>(
@@ -200,6 +134,8 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
     platformI18nPortToken,
     platformLoggingPortToken,
     platformValidationPortToken,
+    settingDefinitionRegistryToken,
+    runtimeConfigBindingRegistryToken,
   ] as const;
 
   constructor(
@@ -209,8 +145,20 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
     logger: PlatformLoggingPort,
-    validator: PlatformValidationPort
+    validator: PlatformValidationPort,
+    settingDefinitionRegistry: SettingDefinitionRegistry,
+    runtimeConfigBindingRegistry: RuntimeConfigBindingRegistry
   ) {
-    super(settings, runtimeConfigSettingsSync, errorMapper, notifications, i18n, logger, validator);
+    super(
+      settings,
+      runtimeConfigSettingsSync,
+      errorMapper,
+      notifications,
+      i18n,
+      logger,
+      validator,
+      settingDefinitionRegistry,
+      runtimeConfigBindingRegistry
+    );
   }
 }
