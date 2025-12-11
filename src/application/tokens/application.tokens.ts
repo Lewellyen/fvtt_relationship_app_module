@@ -73,6 +73,18 @@ export const journalDirectoryProcessorToken = createInjectionToken<any>(
 export const runtimeConfigSyncToken = createInjectionToken<any>("RuntimeConfigSync");
 
 /**
+ * Injection token for the RuntimeConfigSettingsSync.
+ *
+ * Encapsulates RuntimeConfig synchronization for Settings registration.
+ * Separated from ModuleSettingsRegistrar to follow Single Responsibility Principle.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const runtimeConfigSettingsSyncToken = createInjectionToken<any>(
+  "RuntimeConfigSettingsSync"
+);
+
+/**
  * Injection token for the SettingRegistrationErrorMapper.
  *
  * Maps DomainSettingsError to notification format.

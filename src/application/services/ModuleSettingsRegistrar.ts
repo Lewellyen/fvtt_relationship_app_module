@@ -16,7 +16,7 @@ import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interfa
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
 import {
-  runtimeConfigSyncToken,
+  runtimeConfigSettingsSyncToken,
   settingRegistrationErrorMapperToken,
 } from "@/application/tokens/application.tokens";
 import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
@@ -26,12 +26,10 @@ import {
   platformValidationPortToken,
   platformLoggingPortToken,
 } from "@/application/tokens/domain-ports.tokens";
-import type {
-  RuntimeConfigSync,
-  RuntimeConfigBinding,
-} from "@/application/services/RuntimeConfigSync";
+import type { RuntimeConfigBinding } from "@/application/services/RuntimeConfigSync";
 import { runtimeConfigBindings } from "@/application/services/RuntimeConfigSync";
 import type { SettingRegistrationErrorMapper } from "./SettingRegistrationErrorMapper";
+import type { IRuntimeConfigSettingsSync } from "./runtime-config-settings-sync";
 
 /**
  * ModuleSettingsRegistrar
@@ -53,7 +51,7 @@ import type { SettingRegistrationErrorMapper } from "./SettingRegistrationErrorM
 export class ModuleSettingsRegistrar {
   constructor(
     private readonly settings: PlatformSettingsRegistrationPort,
-    private readonly runtimeConfigSync: RuntimeConfigSync,
+    private readonly runtimeConfigSettingsSync: IRuntimeConfigSettingsSync,
     private readonly errorMapper: SettingRegistrationErrorMapper,
     private readonly notifications: PlatformNotificationPort,
     private readonly i18n: PlatformI18nPort,
@@ -73,7 +71,7 @@ export class ModuleSettingsRegistrar {
       logLevelSetting,
       runtimeConfigBindings[SETTING_KEYS.LOG_LEVEL],
       this.settings,
-      this.runtimeConfigSync,
+      this.runtimeConfigSettingsSync,
       this.errorMapper,
       this.i18n,
       this.logger,
@@ -83,7 +81,7 @@ export class ModuleSettingsRegistrar {
       cacheEnabledSetting,
       runtimeConfigBindings[SETTING_KEYS.CACHE_ENABLED],
       this.settings,
-      this.runtimeConfigSync,
+      this.runtimeConfigSettingsSync,
       this.errorMapper,
       this.i18n,
       this.logger,
@@ -93,7 +91,7 @@ export class ModuleSettingsRegistrar {
       cacheDefaultTtlSetting,
       runtimeConfigBindings[SETTING_KEYS.CACHE_TTL_MS],
       this.settings,
-      this.runtimeConfigSync,
+      this.runtimeConfigSettingsSync,
       this.errorMapper,
       this.i18n,
       this.logger,
@@ -103,7 +101,7 @@ export class ModuleSettingsRegistrar {
       cacheMaxEntriesSetting,
       runtimeConfigBindings[SETTING_KEYS.CACHE_MAX_ENTRIES],
       this.settings,
-      this.runtimeConfigSync,
+      this.runtimeConfigSettingsSync,
       this.errorMapper,
       this.i18n,
       this.logger,
@@ -113,7 +111,7 @@ export class ModuleSettingsRegistrar {
       performanceTrackingSetting,
       runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED],
       this.settings,
-      this.runtimeConfigSync,
+      this.runtimeConfigSettingsSync,
       this.errorMapper,
       this.i18n,
       this.logger,
@@ -123,7 +121,7 @@ export class ModuleSettingsRegistrar {
       performanceSamplingSetting,
       runtimeConfigBindings[SETTING_KEYS.PERFORMANCE_SAMPLING_RATE],
       this.settings,
-      this.runtimeConfigSync,
+      this.runtimeConfigSettingsSync,
       this.errorMapper,
       this.i18n,
       this.logger,
@@ -133,7 +131,7 @@ export class ModuleSettingsRegistrar {
       metricsPersistenceEnabledSetting,
       runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_ENABLED],
       this.settings,
-      this.runtimeConfigSync,
+      this.runtimeConfigSettingsSync,
       this.errorMapper,
       this.i18n,
       this.logger,
@@ -143,7 +141,7 @@ export class ModuleSettingsRegistrar {
       metricsPersistenceKeySetting,
       runtimeConfigBindings[SETTING_KEYS.METRICS_PERSISTENCE_KEY],
       this.settings,
-      this.runtimeConfigSync,
+      this.runtimeConfigSettingsSync,
       this.errorMapper,
       this.i18n,
       this.logger,
@@ -153,7 +151,7 @@ export class ModuleSettingsRegistrar {
       notificationQueueMaxSizeSetting,
       runtimeConfigBindings[SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE],
       this.settings,
-      this.runtimeConfigSync,
+      this.runtimeConfigSettingsSync,
       this.errorMapper,
       this.i18n,
       this.logger,
@@ -165,7 +163,7 @@ export class ModuleSettingsRegistrar {
     definition: SettingDefinition<TSchema>,
     binding: RuntimeConfigBinding<TSchema, K> | undefined,
     settings: PlatformSettingsRegistrationPort,
-    runtimeConfigSync: RuntimeConfigSync,
+    runtimeConfigSettingsSync: IRuntimeConfigSettingsSync,
     errorMapper: SettingRegistrationErrorMapper,
     i18n: PlatformI18nPort,
     logger: PlatformLoggingPort,
@@ -173,7 +171,7 @@ export class ModuleSettingsRegistrar {
   ): void {
     const config = definition.createConfig(i18n, logger, validator);
     const configWithRuntimeBridge = binding
-      ? runtimeConfigSync.attachBinding(config, binding)
+      ? runtimeConfigSettingsSync.attachBinding(config, binding)
       : config;
 
     const result = settings.registerSetting(
@@ -188,7 +186,7 @@ export class ModuleSettingsRegistrar {
     }
 
     if (binding) {
-      runtimeConfigSync.syncInitialValue(settings, binding, definition.key);
+      runtimeConfigSettingsSync.syncInitialValue(settings, binding, definition.key);
     }
   }
 }
@@ -196,7 +194,7 @@ export class ModuleSettingsRegistrar {
 export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
   static dependencies = [
     platformSettingsRegistrationPortToken,
-    runtimeConfigSyncToken,
+    runtimeConfigSettingsSyncToken,
     settingRegistrationErrorMapperToken,
     platformNotificationPortToken,
     platformI18nPortToken,
@@ -206,13 +204,13 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
 
   constructor(
     settings: PlatformSettingsRegistrationPort,
-    runtimeConfigSync: RuntimeConfigSync,
+    runtimeConfigSettingsSync: IRuntimeConfigSettingsSync,
     errorMapper: SettingRegistrationErrorMapper,
     notifications: PlatformNotificationPort,
     i18n: PlatformI18nPort,
     logger: PlatformLoggingPort,
     validator: PlatformValidationPort
   ) {
-    super(settings, runtimeConfigSync, errorMapper, notifications, i18n, logger, validator);
+    super(settings, runtimeConfigSettingsSync, errorMapper, notifications, i18n, logger, validator);
   }
 }

@@ -7,6 +7,7 @@ import {
 } from "@/application/services/ModuleSettingsRegistrar";
 import { runtimeConfigBindings } from "@/application/services/RuntimeConfigSync";
 import { RuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
+import { RuntimeConfigSettingsSync } from "@/application/services/runtime-config-settings-sync";
 import { SettingRegistrationErrorMapper } from "@/application/services/SettingRegistrationErrorMapper";
 import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
@@ -14,7 +15,7 @@ import { markAsApiSafe } from "@/infrastructure/di/types";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import {
-  runtimeConfigSyncToken,
+  runtimeConfigSettingsSyncToken,
   settingRegistrationErrorMapperToken,
 } from "@/application/tokens/application.tokens";
 import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
@@ -81,11 +82,12 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(platformValidationPortToken)
       ) as PlatformValidationPort;
 
-      const mockRuntimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
-        mockRuntimeConfigSync,
+        mockRuntimeConfigSettingsSync,
         errorMapper,
         mockNotifications,
         mockI18n,
@@ -137,11 +139,12 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(platformValidationPortToken)
       ) as PlatformValidationPort;
 
-      const mockRuntimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
-        mockRuntimeConfigSync,
+        mockRuntimeConfigSettingsSync,
         errorMapper,
         mockNotifications,
         mockI18n,
@@ -189,11 +192,12 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(platformValidationPortToken)
       ) as PlatformValidationPort;
 
-      const mockRuntimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
-        mockRuntimeConfigSync,
+        mockRuntimeConfigSettingsSync,
         errorMapper,
         mockNotifications,
         mockI18n,
@@ -236,14 +240,12 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(platformValidationPortToken)
       ) as PlatformValidationPort;
 
-      const mockRuntimeConfigSync = new RuntimeConfigSync(
-        mockRuntimeConfig,
-        mockNotificationCenter
-      );
+      const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotificationCenter);
+      const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotificationCenter);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
-        mockRuntimeConfigSync,
+        mockRuntimeConfigSettingsSync,
         errorMapper,
         mockNotificationCenter,
         mockI18n,
@@ -283,11 +285,12 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(platformValidationPortToken)
       ) as PlatformValidationPort;
 
-      const mockRuntimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
-        mockRuntimeConfigSync,
+        mockRuntimeConfigSettingsSync,
         errorMapper,
         mockNotifications,
         mockI18n,
@@ -338,11 +341,12 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(platformValidationPortToken)
       ) as PlatformValidationPort;
 
-      const mockRuntimeConfigSync = new RuntimeConfigSync(runtimeConfig, mockNotifications);
+      const runtimeConfigSync = new RuntimeConfigSync(runtimeConfig, mockNotifications);
+      const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
-        mockRuntimeConfigSync,
+        mockRuntimeConfigSettingsSync,
         errorMapper,
         mockNotifications,
         mockI18n,
@@ -396,11 +400,12 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(platformValidationPortToken)
       ) as PlatformValidationPort;
 
-      const mockRuntimeConfigSync = new RuntimeConfigSync(runtimeConfig, mockNotifications);
+      const runtimeConfigSync = new RuntimeConfigSync(runtimeConfig, mockNotifications);
+      const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
-        mockRuntimeConfigSync,
+        mockRuntimeConfigSettingsSync,
         errorMapper,
         mockNotifications,
         mockI18n,
@@ -449,11 +454,12 @@ describe("ModuleSettingsRegistrar", () => {
         markAsApiSafe(platformValidationPortToken)
       ) as PlatformValidationPort;
 
-      const mockRuntimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
+      const mockRuntimeConfigSettingsSync = new RuntimeConfigSettingsSync(runtimeConfigSync);
       const errorMapper = new SettingRegistrationErrorMapper(mockNotifications);
       const registrar = new ModuleSettingsRegistrar(
         mockSettings,
-        mockRuntimeConfigSync,
+        mockRuntimeConfigSettingsSync,
         errorMapper,
         mockNotifications,
         mockI18n,
@@ -479,7 +485,7 @@ describe("ModuleSettingsRegistrar", () => {
         mockDefinition,
         undefined, // No binding
         mockSettings,
-        mockRuntimeConfig,
+        mockRuntimeConfigSettingsSync,
         errorMapper,
         mockI18n,
         mockLogger,
@@ -499,7 +505,7 @@ describe("ModuleSettingsRegistrar DI metadata", () => {
     // DI wrapper class has all dependencies
     expect(DIModuleSettingsRegistrar.dependencies).toEqual([
       platformSettingsRegistrationPortToken,
-      runtimeConfigSyncToken,
+      runtimeConfigSettingsSyncToken,
       settingRegistrationErrorMapperToken,
       platformNotificationPortToken,
       platformI18nPortToken,

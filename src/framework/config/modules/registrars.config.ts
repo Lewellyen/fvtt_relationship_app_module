@@ -5,10 +5,12 @@ import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycl
 import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
 import {
   runtimeConfigSyncToken,
+  runtimeConfigSettingsSyncToken,
   settingRegistrationErrorMapperToken,
 } from "@/application/tokens/application.tokens";
 import { DIModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
 import { DIRuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
+import { DIRuntimeConfigSettingsSync } from "@/application/services/runtime-config-settings-sync";
 import { DISettingRegistrationErrorMapper } from "@/application/services/SettingRegistrationErrorMapper";
 
 /**
@@ -16,7 +18,9 @@ import { DISettingRegistrationErrorMapper } from "@/application/services/Setting
  *
  * Services registered:
  * - RuntimeConfigSync (singleton) - Handles Settings-to-RuntimeConfig synchronization
- * - ModuleSettingsRegistrar (singleton) - Manages all settings
+ * - RuntimeConfigSettingsSync (singleton) - Encapsulates RuntimeConfig synchronization for Settings
+ * - SettingRegistrationErrorMapper (singleton) - Maps registration errors to notifications
+ * - ModuleSettingsRegistrar (singleton) - Manages all settings registration
  *
  * NOTE: Event listeners are now registered via registerEventPorts() in event-ports.config.ts.
  * This separation improves modularity and follows Single Responsibility Principle.
@@ -28,7 +32,7 @@ import { DISettingRegistrationErrorMapper } from "@/application/services/Setting
  * @returns Result indicating success or error with details
  */
 export function registerRegistrars(container: ServiceContainer): Result<void, string> {
-  // Register RuntimeConfigSync first (required by ModuleSettingsRegistrar)
+  // Register RuntimeConfigSync first (required by RuntimeConfigSettingsSync)
   const runtimeConfigSyncResult = container.registerClass(
     runtimeConfigSyncToken,
     DIRuntimeConfigSync,
@@ -36,6 +40,18 @@ export function registerRegistrars(container: ServiceContainer): Result<void, st
   );
   if (isErr(runtimeConfigSyncResult)) {
     return err(`Failed to register RuntimeConfigSync: ${runtimeConfigSyncResult.error.message}`);
+  }
+
+  // Register RuntimeConfigSettingsSync (required by ModuleSettingsRegistrar)
+  const runtimeConfigSettingsSyncResult = container.registerClass(
+    runtimeConfigSettingsSyncToken,
+    DIRuntimeConfigSettingsSync,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(runtimeConfigSettingsSyncResult)) {
+    return err(
+      `Failed to register RuntimeConfigSettingsSync: ${runtimeConfigSettingsSyncResult.error.message}`
+    );
   }
 
   // Register SettingRegistrationErrorMapper (required by ModuleSettingsRegistrar)

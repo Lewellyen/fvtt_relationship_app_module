@@ -12,6 +12,31 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.7] - 2025-12-11
+### Hinzugefügt
+- **RuntimeConfigSettingsSync**: Neue Klasse für RuntimeConfig-Synchronisation bei Settings-Registrierung ([Details](docs/refactoring/07-module-settings-registrar-srp-refactoring.md))
+- **IRuntimeConfigSettingsSync Interface**: Interface für RuntimeConfig-Settings-Synchronisation
+- **runtimeConfigSettingsSyncToken**: Neues DI-Token für RuntimeConfigSettingsSync
+
+### Geändert
+- **ModuleSettingsRegistrar SRP-Refactoring**: ModuleSettingsRegistrar wurde nach Single Responsibility Principle (SRP) refactored, um RuntimeConfig-Synchronisation zu extrahieren ([Details](docs/refactoring/07-module-settings-registrar-srp-refactoring.md))
+- `ModuleSettingsRegistrar`: Führt jetzt nur noch Settings-Registrierung durch (registerAll, registerDefinition)
+- `RuntimeConfigSettingsSync`: Übernimmt RuntimeConfig-Synchronisation (attachBinding, syncInitialValue)
+- `SettingRegistrationErrorMapper`: Wird jetzt vollständig für Error-Mapping genutzt
+- `ModuleSettingsRegistrar.registerDefinition()`: Delegiert Synchronisation zu RuntimeConfigSettingsSync, Error-Mapping zu SettingRegistrationErrorMapper
+- Verbesserte Testbarkeit: Synchronisation kann isoliert getestet werden
+- Dependency Injection: ModuleSettingsRegistrar verwendet jetzt RuntimeConfigSettingsSync statt RuntimeConfigSync direkt
+- Keine Breaking Changes: Public API bleibt unverändert (registerAll funktioniert identisch)
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.6] - 2025-12-11
 ### Hinzugefügt
 - **JournalTypeMapper**: Neue Klasse für Type-Mapping zwischen Foundry- und Domain-Typen (mapFoundryToDomain, mapDomainToFoundry) ([Details](docs/refactoring/06-foundry-journal-repository-adapter-srp-refactoring.md))
