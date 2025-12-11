@@ -9844,6 +9844,48 @@ const _HealthCheckRegistryAdapter = class _HealthCheckRegistryAdapter {
 };
 __name(_HealthCheckRegistryAdapter, "HealthCheckRegistryAdapter");
 let HealthCheckRegistryAdapter = _HealthCheckRegistryAdapter;
+var InitPhaseCriticality = /* @__PURE__ */ ((InitPhaseCriticality2) => {
+  InitPhaseCriticality2["HALT_ON_ERROR"] = "haltOnError";
+  InitPhaseCriticality2["WARN_AND_CONTINUE"] = "warnAndContinue";
+  return InitPhaseCriticality2;
+})(InitPhaseCriticality || {});
+const _InitPhaseRegistry = class _InitPhaseRegistry {
+  /**
+   * Creates a new registry with the provided phases.
+   *
+   * @param phases - Array of init phases (will be sorted by priority)
+   */
+  constructor(phases = []) {
+    this.phases = [];
+    this.phases = [...phases];
+    this.sortPhases();
+  }
+  /**
+   * Returns all phases sorted by priority (ascending).
+   *
+   * @returns Sorted array of init phases
+   */
+  getAll() {
+    return [...this.phases];
+  }
+  /**
+   * Adds a phase to the registry and re-sorts.
+   *
+   * @param phase - Phase to add
+   */
+  add(phase) {
+    this.phases.push(phase);
+    this.sortPhases();
+  }
+  /**
+   * Sorts phases by priority (ascending).
+   */
+  sortPhases() {
+    this.phases.sort((a, b) => a.priority - b.priority);
+  }
+};
+__name(_InitPhaseRegistry, "InitPhaseRegistry");
+let InitPhaseRegistry = _InitPhaseRegistry;
 const _MetricsBootstrapper = class _MetricsBootstrapper {
   /**
    * Initializes metrics collector if it supports persistence.
@@ -9868,6 +9910,18 @@ const _MetricsBootstrapper = class _MetricsBootstrapper {
 };
 __name(_MetricsBootstrapper, "MetricsBootstrapper");
 let MetricsBootstrapper = _MetricsBootstrapper;
+const _MetricsInitPhase = class _MetricsInitPhase {
+  constructor() {
+    this.id = "metrics-initialization";
+    this.priority = 1;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return MetricsBootstrapper.initializeMetrics(ctx.container);
+  }
+};
+__name(_MetricsInitPhase, "MetricsInitPhase");
+let MetricsInitPhase = _MetricsInitPhase;
 const queuedUIChannelToken = createInjectionToken("QueuedUIChannel");
 const _NotificationBootstrapper = class _NotificationBootstrapper {
   /**
@@ -9902,6 +9956,18 @@ const _NotificationBootstrapper = class _NotificationBootstrapper {
 };
 __name(_NotificationBootstrapper, "NotificationBootstrapper");
 let NotificationBootstrapper = _NotificationBootstrapper;
+const _NotificationInitPhase = class _NotificationInitPhase {
+  constructor() {
+    this.id = "notification-channels";
+    this.priority = 2;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return NotificationBootstrapper.attachNotificationChannels(ctx.container);
+  }
+};
+__name(_NotificationInitPhase, "NotificationInitPhase");
+let NotificationInitPhase = _NotificationInitPhase;
 const _ApiBootstrapper = class _ApiBootstrapper {
   /**
    * Exposes the module's public API.
@@ -9924,6 +9990,18 @@ const _ApiBootstrapper = class _ApiBootstrapper {
 };
 __name(_ApiBootstrapper, "ApiBootstrapper");
 let ApiBootstrapper = _ApiBootstrapper;
+const _ApiInitPhase = class _ApiInitPhase {
+  constructor() {
+    this.id = "api-exposure";
+    this.priority = 3;
+    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
+  }
+  execute(ctx) {
+    return ApiBootstrapper.exposeApi(ctx.container);
+  }
+};
+__name(_ApiInitPhase, "ApiInitPhase");
+let ApiInitPhase = _ApiInitPhase;
 const moduleSettingsRegistrarToken = createInjectionToken("ModuleSettingsRegistrar");
 const _SettingsBootstrapper = class _SettingsBootstrapper {
   /**
@@ -9948,6 +10026,18 @@ const _SettingsBootstrapper = class _SettingsBootstrapper {
 };
 __name(_SettingsBootstrapper, "SettingsBootstrapper");
 let SettingsBootstrapper = _SettingsBootstrapper;
+const _SettingsInitPhase = class _SettingsInitPhase {
+  constructor() {
+    this.id = "settings-registration";
+    this.priority = 4;
+    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
+  }
+  execute(ctx) {
+    return SettingsBootstrapper.registerSettings(ctx.container);
+  }
+};
+__name(_SettingsInitPhase, "SettingsInitPhase");
+let SettingsInitPhase = _SettingsInitPhase;
 const _LoggingBootstrapper = class _LoggingBootstrapper {
   /**
    * Configures logger with current setting value.
@@ -9976,6 +10066,18 @@ const _LoggingBootstrapper = class _LoggingBootstrapper {
 };
 __name(_LoggingBootstrapper, "LoggingBootstrapper");
 let LoggingBootstrapper = _LoggingBootstrapper;
+const _LoggingInitPhase = class _LoggingInitPhase {
+  constructor() {
+    this.id = "logging-configuration";
+    this.priority = 5;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return LoggingBootstrapper.configureLogging(ctx.container, ctx.logger);
+  }
+};
+__name(_LoggingInitPhase, "LoggingInitPhase");
+let LoggingInitPhase = _LoggingInitPhase;
 const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
   "InvalidateJournalCacheOnChangeUseCase"
 );
@@ -10012,6 +10114,18 @@ const _EventsBootstrapper = class _EventsBootstrapper {
 };
 __name(_EventsBootstrapper, "EventsBootstrapper");
 let EventsBootstrapper = _EventsBootstrapper;
+const _EventsInitPhase = class _EventsInitPhase {
+  constructor() {
+    this.id = "event-registration";
+    this.priority = 6;
+    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
+  }
+  execute(ctx) {
+    return EventsBootstrapper.registerEvents(ctx.container);
+  }
+};
+__name(_EventsInitPhase, "EventsInitPhase");
+let EventsInitPhase = _EventsInitPhase;
 const journalContextMenuLibWrapperServiceToken = createInjectionToken("JournalContextMenuLibWrapperService");
 const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
   /**
@@ -10056,71 +10170,86 @@ const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
 };
 __name(_ContextMenuBootstrapper, "ContextMenuBootstrapper");
 let ContextMenuBootstrapper = _ContextMenuBootstrapper;
+const _ContextMenuInitPhase = class _ContextMenuInitPhase {
+  constructor() {
+    this.id = "context-menu-registration";
+    this.priority = 7;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return ContextMenuBootstrapper.registerContextMenu(ctx.container);
+  }
+};
+__name(_ContextMenuInitPhase, "ContextMenuInitPhase");
+let ContextMenuInitPhase = _ContextMenuInitPhase;
+function createDefaultInitPhaseRegistry() {
+  return new InitPhaseRegistry([
+    new MetricsInitPhase(),
+    new NotificationInitPhase(),
+    new ApiInitPhase(),
+    new SettingsInitPhase(),
+    new LoggingInitPhase(),
+    new EventsInitPhase(),
+    new ContextMenuInitPhase()
+  ]);
+}
+__name(createDefaultInitPhaseRegistry, "createDefaultInitPhaseRegistry");
 const _InitOrchestrator = class _InitOrchestrator {
+  /**
+   * Creates a new InitOrchestrator instance.
+   *
+   * @param registry - Registry providing init phases (defaults to standard phases)
+   */
+  constructor(registry) {
+    this.registry = registry ?? createDefaultInitPhaseRegistry();
+  }
   /**
    * Executes the complete initialization sequence.
    *
-   * Phase order:
-   * 1. Metrics Initialization (optional - warnings only)
-   * 2. Notification Channels (optional - warnings only)
-   * 3. API Exposure (critical - fails on error)
-   * 4. Settings Registration (critical - fails on error)
-   * 5. Logging Configuration (optional - warnings only)
-   * 6. Event Registration (critical - fails on error)
-   * 7. Context Menu Registration (optional - warnings only)
+   * Phases are executed in priority order (ascending). Error handling
+   * follows each phase's criticality setting:
+   * - HALT_ON_ERROR: Errors are collected and returned, stopping bootstrap
+   * - WARN_AND_CONTINUE: Errors are logged as warnings but don't stop bootstrap
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @param logger - Logger for error reporting
+   * @returns Result indicating success or aggregated errors
+   */
+  execute(container, logger) {
+    const errors = [];
+    const phases = this.registry.getAll();
+    const ctx = { container, logger };
+    for (const phase of phases) {
+      const result = phase.execute(ctx);
+      if (!result.ok) {
+        if (phase.criticality === InitPhaseCriticality.HALT_ON_ERROR) {
+          errors.push({
+            phase: phase.id,
+            message: result.error
+          });
+          logger.error(`Failed to execute phase '${phase.id}': ${result.error}`);
+        } else {
+          logger.warn(`Phase '${phase.id}' failed: ${result.error}`);
+        }
+      }
+    }
+    if (errors.length > 0) {
+      return err(errors);
+    }
+    return ok(void 0);
+  }
+  /**
+   * Static convenience method for backward compatibility.
+   *
+   * Creates a new orchestrator with default registry and executes.
    *
    * @param container - PlatformContainerPort for service resolution
    * @param logger - Logger for error reporting
    * @returns Result indicating success or aggregated errors
    */
   static execute(container, logger) {
-    const errors = [];
-    const metricsResult = MetricsBootstrapper.initializeMetrics(container);
-    if (!metricsResult.ok) {
-      logger.warn(`Metrics initialization failed: ${metricsResult.error}`);
-    }
-    const notificationResult = NotificationBootstrapper.attachNotificationChannels(container);
-    if (!notificationResult.ok) {
-      logger.warn(`Notification channels could not be attached: ${notificationResult.error}`, {
-        phase: "notification-channels"
-      });
-    }
-    const apiResult = ApiBootstrapper.exposeApi(container);
-    if (!apiResult.ok) {
-      errors.push({
-        phase: "api-exposure",
-        message: apiResult.error
-      });
-      logger.error(`Failed to expose API: ${apiResult.error}`);
-    }
-    const settingsResult = SettingsBootstrapper.registerSettings(container);
-    if (!settingsResult.ok) {
-      errors.push({
-        phase: "settings-registration",
-        message: settingsResult.error
-      });
-      logger.error(`Failed to register settings: ${settingsResult.error}`);
-    }
-    const loggingResult = LoggingBootstrapper.configureLogging(container, logger);
-    if (!loggingResult.ok) {
-      logger.warn(`Logging configuration failed: ${loggingResult.error}`);
-    }
-    const eventsResult = EventsBootstrapper.registerEvents(container);
-    if (!eventsResult.ok) {
-      errors.push({
-        phase: "event-registration",
-        message: eventsResult.error
-      });
-      logger.error(`Failed to register events: ${eventsResult.error}`);
-    }
-    const contextMenuResult = ContextMenuBootstrapper.registerContextMenu(container);
-    if (!contextMenuResult.ok) {
-      logger.warn(`Context menu registration failed: ${contextMenuResult.error}`);
-    }
-    if (errors.length > 0) {
-      return err(errors);
-    }
-    return ok(void 0);
+    const orchestrator = new _InitOrchestrator();
+    return orchestrator.execute(container, logger);
   }
 };
 __name(_InitOrchestrator, "InitOrchestrator");

@@ -2,13 +2,10 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import { MetricsBootstrapper } from "./orchestrators/metrics-bootstrapper";
-import { NotificationBootstrapper } from "./orchestrators/notification-bootstrapper";
-import { ApiBootstrapper } from "./orchestrators/api-bootstrapper";
-import { SettingsBootstrapper } from "./orchestrators/settings-bootstrapper";
-import { LoggingBootstrapper } from "./orchestrators/logging-bootstrapper";
-import { EventsBootstrapper } from "./orchestrators/events-bootstrapper";
-import { ContextMenuBootstrapper } from "./orchestrators/context-menu-bootstrapper";
+import type { InitPhaseContext } from "./init-phase.interface";
+import { InitPhaseCriticality } from "./init-phase.interface";
+import { InitPhaseRegistry } from "./init-phase-registry";
+import { createDefaultInitPhaseRegistry } from "./default-init-phase-registry";
 
 /**
  * Error type for init orchestration failures.
@@ -23,97 +20,59 @@ export interface InitError {
  * Orchestrator for the complete bootstrap initialization sequence.
  *
  * Responsibilities:
- * - Execute all bootstrap phases in order
- * - Handle errors with rollback capability
+ * - Execute all bootstrap phases in order from registry
+ * - Handle errors according to phase criticality
  * - Aggregate errors for reporting
  *
  * Design:
+ * - Phases are provided via InitPhaseRegistry (OCP-compliant)
  * - Each phase is isolated and can be tested independently
- * - Errors are collected but don't stop the entire sequence (some phases are optional)
- * - Critical phases (API, Settings, Events) fail fast
- * - Optional phases (Notifications, Context Menu) log warnings but continue
+ * - Error handling is determined by phase criticality, not hardcoded logic
+ * - New phases can be added via registry extension without modifying orchestrator
  */
 export class InitOrchestrator {
+  private readonly registry: InitPhaseRegistry;
+
+  /**
+   * Creates a new InitOrchestrator instance.
+   *
+   * @param registry - Registry providing init phases (defaults to standard phases)
+   */
+  constructor(registry?: InitPhaseRegistry) {
+    this.registry = registry ?? createDefaultInitPhaseRegistry();
+  }
+
   /**
    * Executes the complete initialization sequence.
    *
-   * Phase order:
-   * 1. Metrics Initialization (optional - warnings only)
-   * 2. Notification Channels (optional - warnings only)
-   * 3. API Exposure (critical - fails on error)
-   * 4. Settings Registration (critical - fails on error)
-   * 5. Logging Configuration (optional - warnings only)
-   * 6. Event Registration (critical - fails on error)
-   * 7. Context Menu Registration (optional - warnings only)
+   * Phases are executed in priority order (ascending). Error handling
+   * follows each phase's criticality setting:
+   * - HALT_ON_ERROR: Errors are collected and returned, stopping bootstrap
+   * - WARN_AND_CONTINUE: Errors are logged as warnings but don't stop bootstrap
    *
    * @param container - PlatformContainerPort for service resolution
    * @param logger - Logger for error reporting
    * @returns Result indicating success or aggregated errors
    */
-  static execute(container: PlatformContainerPort, logger: Logger): Result<void, InitError[]> {
+  execute(container: PlatformContainerPort, logger: Logger): Result<void, InitError[]> {
     const errors: InitError[] = [];
+    const phases = this.registry.getAll();
+    const ctx: InitPhaseContext = { container, logger };
 
-    // Phase 1: Metrics Initialization (optional)
-    const metricsResult = MetricsBootstrapper.initializeMetrics(container);
-    if (!metricsResult.ok) {
-      logger.warn(`Metrics initialization failed: ${metricsResult.error}`);
-      // Don't add to errors - this is optional
-    }
+    for (const phase of phases) {
+      const result = phase.execute(ctx);
 
-    // Phase 2: Notification Channels (optional)
-    const notificationResult = NotificationBootstrapper.attachNotificationChannels(container);
-    if (!notificationResult.ok) {
-      logger.warn(`Notification channels could not be attached: ${notificationResult.error}`, {
-        phase: "notification-channels",
-      });
-      // Don't add to errors - this is optional
-    }
-
-    // Phase 2: API Exposure (critical)
-    const apiResult = ApiBootstrapper.exposeApi(container);
-    if (!apiResult.ok) {
-      errors.push({
-        phase: "api-exposure",
-        message: apiResult.error,
-      });
-      logger.error(`Failed to expose API: ${apiResult.error}`);
-      // Continue to collect all errors, but this is critical
-    }
-
-    // Phase 3: Settings Registration (critical)
-    const settingsResult = SettingsBootstrapper.registerSettings(container);
-    if (!settingsResult.ok) {
-      errors.push({
-        phase: "settings-registration",
-        message: settingsResult.error,
-      });
-      logger.error(`Failed to register settings: ${settingsResult.error}`);
-      // Continue to collect all errors, but this is critical
-    }
-
-    // Phase 4: Logging Configuration (optional)
-    const loggingResult = LoggingBootstrapper.configureLogging(container, logger);
-    if (!loggingResult.ok) {
-      logger.warn(`Logging configuration failed: ${loggingResult.error}`);
-      // Don't add to errors - this is optional
-    }
-
-    // Phase 5: Event Registration (critical)
-    const eventsResult = EventsBootstrapper.registerEvents(container);
-    if (!eventsResult.ok) {
-      errors.push({
-        phase: "event-registration",
-        message: eventsResult.error,
-      });
-      logger.error(`Failed to register events: ${eventsResult.error}`);
-      // Continue to collect all errors, but this is critical
-    }
-
-    // Phase 6: Context Menu Registration (optional)
-    const contextMenuResult = ContextMenuBootstrapper.registerContextMenu(container);
-    if (!contextMenuResult.ok) {
-      logger.warn(`Context menu registration failed: ${contextMenuResult.error}`);
-      // Don't add to errors - this is optional
+      if (!result.ok) {
+        if (phase.criticality === InitPhaseCriticality.HALT_ON_ERROR) {
+          errors.push({
+            phase: phase.id,
+            message: result.error,
+          });
+          logger.error(`Failed to execute phase '${phase.id}': ${result.error}`);
+        } else {
+          logger.warn(`Phase '${phase.id}' failed: ${result.error}`);
+        }
+      }
     }
 
     // If any critical phases failed, return errors
@@ -122,5 +81,19 @@ export class InitOrchestrator {
     }
 
     return ok(undefined);
+  }
+
+  /**
+   * Static convenience method for backward compatibility.
+   *
+   * Creates a new orchestrator with default registry and executes.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @param logger - Logger for error reporting
+   * @returns Result indicating success or aggregated errors
+   */
+  static execute(container: PlatformContainerPort, logger: Logger): Result<void, InitError[]> {
+    const orchestrator = new InitOrchestrator();
+    return orchestrator.execute(container, logger);
   }
 }

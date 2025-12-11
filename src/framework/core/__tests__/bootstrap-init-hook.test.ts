@@ -165,7 +165,10 @@ describe("BootstrapInitHookService", () => {
       capturedInitCallback!();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
-        "Failed to expose API: Failed to resolve ModuleApiInitializer: ModuleApiInitializer not found"
+        expect.stringContaining("Failed to execute phase 'api-exposure'")
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("Init phase completed with errors")
       );
       expect(mockLogger.info).not.toHaveBeenCalledWith("init-phase completed");
     });
@@ -264,8 +267,7 @@ describe("BootstrapInitHookService", () => {
       capturedInitCallback!();
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Notification channels could not be attached"),
-        expect.objectContaining({ phase: "notification-channels" })
+        expect.stringContaining("Phase 'notification-channels' failed")
       );
     });
 
@@ -376,7 +378,7 @@ describe("BootstrapInitHookService", () => {
       expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
       expect(mockContextMenuUseCase.register).toHaveBeenCalled();
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Context menu registration failed")
+        expect.stringContaining("Phase 'context-menu-registration' failed")
       );
     });
 
@@ -430,7 +432,7 @@ describe("BootstrapInitHookService", () => {
 
       expect(mockContextMenuLibWrapperService.register).toHaveBeenCalled();
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Context menu registration failed")
+        expect.stringContaining("Phase 'context-menu-registration' failed")
       );
     });
   });

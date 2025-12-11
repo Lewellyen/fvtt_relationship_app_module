@@ -234,8 +234,7 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(warnSpy).toHaveBeenCalledWith(
-        "Notification channels could not be attached: NotificationCenter could not be resolved: NotificationCenter missing",
-        expect.objectContaining({ phase: "notification-channels" })
+        expect.stringContaining("Phase 'notification-channels' failed")
       );
 
       resolveSpy.mockRestore();
@@ -289,8 +288,7 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(warnSpy).toHaveBeenCalledWith(
-        "Notification channels could not be attached: QueuedUIChannel could not be resolved: QueuedUI channel missing",
-        expect.objectContaining({ phase: "notification-channels" })
+        expect.stringContaining("Phase 'notification-channels' failed")
       );
 
       resolveSpy.mockRestore();
@@ -574,7 +572,10 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to expose API: Failed to resolve ModuleApiInitializer: ModuleApiInitializer missing"
+        expect.stringContaining("Failed to execute phase 'api-exposure'")
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Init phase completed with errors")
       );
 
       resolveSpy.mockRestore();
@@ -647,7 +648,10 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to register settings: Failed to resolve ModuleSettingsRegistrar: ModuleSettingsRegistrar missing"
+        expect.stringContaining("Failed to execute phase 'settings-registration'")
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Init phase completed with errors")
       );
 
       resolveSpy.mockRestore();
@@ -719,7 +723,10 @@ describe("init-solid Bootstrap", () => {
       initCallback!();
 
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to register events: Failed to resolve ModuleEventRegistrar: ModuleEventRegistrar missing"
+        expect.stringContaining("Failed to execute phase 'event-registration'")
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Init phase completed with errors")
       );
 
       resolveSpy.mockRestore();
@@ -1068,9 +1075,13 @@ describe("init-solid Bootstrap", () => {
       shouldFail = true;
       initCallback!();
 
-      // Verify that error was logged (lines 105-106)
+      // Verify that error was logged
+      // New format: "Failed to execute phase 'api-exposure': ..." and "Init phase completed with errors: ..."
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to expose API: Failed to expose API: Failed to expose API: test error"
+        expect.stringContaining("Failed to execute phase 'api-exposure'")
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Init phase completed with errors")
       );
 
       errorSpy.mockRestore();
@@ -1139,9 +1150,13 @@ describe("init-solid Bootstrap", () => {
       shouldFail = true;
       initCallback!();
 
-      // Verify that error was logged with error messages (lines 146-149)
+      // Verify that error was logged with error messages
+      // New format: "Failed to execute phase 'event-registration': ..."
       expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to register events: Failed to register one or more event listeners: Hook registration failed: test-error-1, Hook registration failed: test-error-2"
+        expect.stringContaining("Failed to execute phase 'event-registration'")
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Init phase completed with errors")
       );
 
       errorSpy.mockRestore();

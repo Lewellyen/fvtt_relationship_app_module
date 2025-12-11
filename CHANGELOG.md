@@ -12,6 +12,33 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.12] - 2025-12-11
+### Hinzugefügt
+- **InitPhase Interface**: Neues Interface für Initialisierungsphasen mit id, priority, criticality und execute() ([Details](docs/refactoring/13-ocp-init-orchestrator.md))
+- **InitPhaseRegistry**: Neue Registry-Klasse für geordnete Verwaltung von Init-Phasen ([Details](docs/refactoring/13-ocp-init-orchestrator.md))
+- **InitPhase Implementierungen**: Konkrete Phase-Implementierungen für alle Bootstrapper (MetricsInitPhase, NotificationInitPhase, ApiInitPhase, SettingsInitPhase, LoggingInitPhase, EventsInitPhase, ContextMenuInitPhase)
+- **DefaultInitPhaseRegistry Factory**: Factory-Funktion für Standard-Init-Phase-Registry
+- **InitPhaseCriticality Enum**: Enum für Fehlerbehandlungsstrategien (HALT_ON_ERROR, WARN_AND_CONTINUE)
+- **Tests für InitPhaseRegistry**: Umfassende Test-Suite für Registry-Funktionalität
+
+### Geändert
+- **InitOrchestrator OCP-Refactoring**: InitOrchestrator wurde nach Open/Closed Principle (OCP) refactored ([Details](docs/refactoring/13-ocp-init-orchestrator.md))
+- `InitOrchestrator`: Iteriert jetzt über injizierte `InitPhaseRegistry` statt fester Bootstrapper-Liste
+- `InitOrchestrator`: Fehlerbehandlung richtet sich nach `InitPhaseCriticality` statt hart verdrahteter Logik
+- `InitOrchestrator`: Unterstützt jetzt Constructor-Injection für Registry (mit Default-Fallback)
+- `InitOrchestrator.execute()`: Statische Methode bleibt für Backward Compatibility erhalten
+- Neue Bootstrap-Phasen können jetzt ausschließlich über Registry-Erweiterungen ergänzt werden, ohne `InitOrchestrator` zu modifizieren
+- Keine Breaking Changes: Public API bleibt unverändert, bestehende Funktionalität bleibt erhalten
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.11] - 2025-12-11
 ### Hinzugefügt
 - **SettingDefinitionRegistry Interface**: Neues Interface für registrierbare Setting-Definitionen ([Details](docs/refactoring/12-ocp-module-settings-registrar.md))
