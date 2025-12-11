@@ -6,6 +6,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RetryService, DIRetryService } from "@/infrastructure/retry/RetryService";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { ok, err } from "@/domain/utils/result";
+import { BaseRetryService } from "@/infrastructure/retry/BaseRetryService";
+import { RetryObservabilityDecorator } from "@/infrastructure/retry/RetryObservabilityDecorator";
 
 // Test helper: Simple error mapper for test scenarios
 const simpleErrorMapper = (error: unknown): { code: "TEST_ERROR"; message: string } => ({
@@ -903,9 +905,30 @@ describe("RetryService", () => {
       const service = new RetryService(mockLogger);
       expect(service).toBeInstanceOf(RetryService);
     });
+
+    it("should create instance with factory-based construction (observabilityDecorator)", () => {
+      const baseRetryService = new BaseRetryService();
+      const observabilityDecorator = new RetryObservabilityDecorator(mockLogger);
+      const service = new RetryService(baseRetryService, observabilityDecorator);
+      expect(service).toBeInstanceOf(RetryService);
+    });
+
+    it("should throw error when BaseRetryService is provided without observabilityDecorator", () => {
+      const baseRetryService = new BaseRetryService();
+      expect(() => {
+        // @ts-expect-error - Testing invalid constructor call for coverage
+        new RetryService(baseRetryService);
+      }).toThrow("BaseRetryService cannot be used without RetryObservabilityDecorator");
+    });
   });
 
-  describe("static dependencies", () => {
+  describe("DIRetryService", () => {
+    it("should create instance with logger", () => {
+      const service = new DIRetryService(mockLogger);
+      expect(service).toBeInstanceOf(DIRetryService);
+      expect(service).toBeInstanceOf(RetryService);
+    });
+
     it("should have correct static dependencies", () => {
       expect(DIRetryService.dependencies).toEqual([
         expect.any(Symbol), // loggerToken

@@ -8,11 +8,15 @@
  * - Test retry logic without observability concerns
  * - Use retry logic without logging in performance-critical paths
  * - Modify observability without affecting retry algorithm
+ *
+ * Single Responsibility: Only provides the Retry-Interface.
+ * Delegates all operations to the composed RetryObservabilityDecorator.
  */
 
 import type { Result } from "@/domain/types/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import { BaseRetryService } from "./BaseRetryService";
 import {
   RetryObservabilityDecorator,
   type ObservableRetryOptions,
@@ -28,10 +32,19 @@ import {
 export type RetryOptions<ErrorType> = ObservableRetryOptions<ErrorType>;
 
 /**
+ * Type guard to check if a value is a Logger instance.
+ * Used to narrow the type in constructor overloads.
+ */
+function isLogger(value: Logger | BaseRetryService): value is Logger {
+  return !(value instanceof BaseRetryService);
+}
+
+/**
  * Service for retrying operations with exponential backoff.
  *
  * Composed from BaseRetryService (core retry algorithm) and
  * RetryObservabilityDecorator (logging and timing).
+ * Uses composition instead of inheritance to follow SRP.
  *
  * @example
  * ```typescript
@@ -58,9 +71,44 @@ export type RetryOptions<ErrorType> = ObservableRetryOptions<ErrorType>;
  * );
  * ```
  */
-export class RetryService extends RetryObservabilityDecorator {
-  constructor(logger: Logger) {
-    super(logger);
+export class RetryService {
+  private readonly composedService: RetryObservabilityDecorator;
+
+  /**
+   * Creates a new RetryService instance.
+   * Composes BaseRetryService and RetryObservabilityDecorator.
+   *
+   * @param logger - Logger instance for observability
+   */
+  constructor(logger: Logger);
+  /**
+   * Creates a new RetryService instance with explicit dependencies.
+   * Used internally by RetryServiceCompositionFactory for composition.
+   *
+   * @param baseRetryService - Base retry service (core algorithm)
+   * @param observabilityDecorator - Observability decorator (logging and timing)
+   */
+  constructor(
+    baseRetryService: BaseRetryService,
+    observabilityDecorator: RetryObservabilityDecorator
+  );
+  constructor(
+    loggerOrBaseService: Logger | BaseRetryService,
+    observabilityDecorator?: RetryObservabilityDecorator
+  ) {
+    if (observabilityDecorator) {
+      // Factory-based construction: use provided decorator
+      this.composedService = observabilityDecorator;
+    } else {
+      // Backward-compatible construction: create decorator with logger
+      // Use type guard to narrow the type without type assertion
+      if (!isLogger(loggerOrBaseService)) {
+        // This should never happen due to overload signature, but provides type safety
+        throw new Error("BaseRetryService cannot be used without RetryObservabilityDecorator");
+      }
+      // TypeScript now knows loggerOrBaseService is Logger
+      this.composedService = new RetryObservabilityDecorator(loggerOrBaseService);
+    }
   }
 
   /**
@@ -90,11 +138,11 @@ export class RetryService extends RetryObservabilityDecorator {
    * );
    * ```
    */
-  override async retry<SuccessType, ErrorType>(
+  async retry<SuccessType, ErrorType>(
     fn: () => Promise<Result<SuccessType, ErrorType>>,
     options: RetryOptions<ErrorType>
   ): Promise<Result<SuccessType, ErrorType>> {
-    return super.retry(fn, options);
+    return this.composedService.retry(fn, options);
   }
 
   /**
@@ -122,11 +170,11 @@ export class RetryService extends RetryObservabilityDecorator {
    * );
    * ```
    */
-  override retrySync<SuccessType, ErrorType>(
+  retrySync<SuccessType, ErrorType>(
     fn: () => Result<SuccessType, ErrorType>,
     options: Omit<RetryOptions<ErrorType>, "delayMs" | "backoffFactor">
   ): Result<SuccessType, ErrorType> {
-    return super.retrySync(fn, options);
+    return this.composedService.retrySync(fn, options);
   }
 }
 

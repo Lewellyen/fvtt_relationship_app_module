@@ -12,6 +12,30 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.9] - 2025-12-11
+### Hinzugefügt
+- **RetryServiceCompositionFactory**: Neue Factory-Klasse für RetryService-Komposition mit BaseRetryService und RetryObservabilityDecorator ([Details](docs/refactoring/09-retry-service-srp-refactoring.md))
+- **IRetryServiceCompositionFactory Interface**: Interface für RetryService-Komposition
+- **Tests für RetryServiceCompositionFactory**: Umfassende Test-Suite für RetryService-Komposition
+
+### Geändert
+- **RetryService SRP-Refactoring**: RetryService wurde nach Single Responsibility Principle (SRP) refactored, um Service-Komposition zu extrahieren ([Details](docs/refactoring/09-retry-service-srp-refactoring.md))
+- `RetryService`: Führt jetzt nur noch Retry-Interface-Bereitstellung durch (delegiert zu komponiertem RetryObservabilityDecorator)
+- `RetryServiceCompositionFactory`: Übernimmt RetryService-Komposition (createRetryService mit BaseRetryService + RetryObservabilityDecorator)
+- `RetryService`: Verwendet jetzt Komposition statt Vererbung (kein `extends RetryObservabilityDecorator` mehr)
+- `RetryService`: Unterstützt jetzt optionale Factory-basierte Konstruktion für bessere Testbarkeit
+- Verbesserte Testbarkeit: Service-Komposition kann isoliert getestet werden
+- Keine Breaking Changes: Public API bleibt unverändert (alle Retry-Methoden funktionieren identisch)
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.8] - 2025-12-11
 ### Hinzugefügt
 - **LoggerCompositionFactory**: Neue Factory-Klasse für Logger-Komposition mit Decorators ([Details](docs/refactoring/08-console-logger-service-srp-refactoring.md))

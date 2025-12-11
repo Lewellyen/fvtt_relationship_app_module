@@ -13841,9 +13841,20 @@ const _RetryObservabilityDecorator = class _RetryObservabilityDecorator extends 
 };
 __name(_RetryObservabilityDecorator, "RetryObservabilityDecorator");
 let RetryObservabilityDecorator = _RetryObservabilityDecorator;
-const _RetryService = class _RetryService extends RetryObservabilityDecorator {
-  constructor(logger) {
-    super(logger);
+function isLogger(value2) {
+  return !(value2 instanceof BaseRetryService);
+}
+__name(isLogger, "isLogger");
+const _RetryService = class _RetryService {
+  constructor(loggerOrBaseService, observabilityDecorator) {
+    if (observabilityDecorator) {
+      this.composedService = observabilityDecorator;
+    } else {
+      if (!isLogger(loggerOrBaseService)) {
+        throw new Error("BaseRetryService cannot be used without RetryObservabilityDecorator");
+      }
+      this.composedService = new RetryObservabilityDecorator(loggerOrBaseService);
+    }
   }
   /**
    * Retries an async operation with exponential backoff.
@@ -13873,7 +13884,7 @@ const _RetryService = class _RetryService extends RetryObservabilityDecorator {
    * ```
    */
   async retry(fn, options) {
-    return super.retry(fn, options);
+    return this.composedService.retry(fn, options);
   }
   /**
    * Retries a synchronous operation.
@@ -13901,7 +13912,7 @@ const _RetryService = class _RetryService extends RetryObservabilityDecorator {
    * ```
    */
   retrySync(fn, options) {
-    return super.retrySync(fn, options);
+    return this.composedService.retrySync(fn, options);
   }
 };
 __name(_RetryService, "RetryService");
