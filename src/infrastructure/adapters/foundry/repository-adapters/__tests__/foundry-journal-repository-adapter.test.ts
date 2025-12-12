@@ -6,6 +6,8 @@ import {
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
 import { FoundryJournalCollectionAdapter } from "../../collection-adapters/foundry-journal-collection-adapter";
+import { JournalMapperRegistry } from "../../mappers/journal-mapper-registry";
+import { DefaultJournalMapper } from "../../mappers/default-journal-mapper";
 import { ok, err } from "@/domain/utils/result";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
@@ -14,6 +16,7 @@ describe("FoundryJournalRepositoryAdapter", () => {
   let mockFoundryGame: FoundryGame;
   let mockFoundryDocument: FoundryDocument;
   let mockCollection: FoundryJournalCollectionAdapter;
+  let mapperRegistry: JournalMapperRegistry;
   let adapter: FoundryJournalRepositoryAdapter;
 
   beforeEach(() => {
@@ -34,12 +37,17 @@ describe("FoundryJournalRepositoryAdapter", () => {
       dispose: vi.fn(),
     } as any;
 
+    // Create mapper registry with default mapper
+    mapperRegistry = new JournalMapperRegistry();
+    mapperRegistry.register(new DefaultJournalMapper());
+
     // Create collection adapter via composition
-    mockCollection = new FoundryJournalCollectionAdapter(mockFoundryGame);
+    mockCollection = new FoundryJournalCollectionAdapter(mockFoundryGame, mapperRegistry);
     adapter = new FoundryJournalRepositoryAdapter(
       mockCollection,
       mockFoundryGame,
-      mockFoundryDocument
+      mockFoundryDocument,
+      mapperRegistry
     );
   });
 
@@ -202,6 +210,54 @@ describe("FoundryJournalRepositoryAdapter", () => {
       expectResultOk(result);
       expect(result.value.id).toBe("new-id");
       expect(result.value.name).toBeNull(); // undefined should be converted to null
+    });
+
+    it("should handle mapping error in create", async () => {
+      const mockJournalEntryClass = {
+        create: vi.fn(),
+      };
+      (globalThis as any).JournalEntry = mockJournalEntryClass;
+
+      vi.mocked(mockFoundryDocument.create).mockResolvedValue(
+        ok({ id: "new-id", name: "New Journal" } as any)
+      );
+
+      // Make mapperRegistry.mapToDomain throw an error
+      const mapToDomainSpy = vi.spyOn(mapperRegistry, "mapToDomain");
+      mapToDomainSpy.mockImplementation(() => {
+        throw new Error("Mapping failed");
+      });
+
+      const result = await adapter.create({ name: "New Journal" });
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to map journal to domain");
+      expect(result.error.message).toContain("Mapping failed");
+    });
+
+    it("should handle mapping error with non-Error object in create", async () => {
+      const mockJournalEntryClass = {
+        create: vi.fn(),
+      };
+      (globalThis as any).JournalEntry = mockJournalEntryClass;
+
+      vi.mocked(mockFoundryDocument.create).mockResolvedValue(
+        ok({ id: "new-id", name: "New Journal" } as any)
+      );
+
+      // Make mapperRegistry.mapToDomain throw a non-Error object (String)
+      const mapToDomainSpy = vi.spyOn(mapperRegistry, "mapToDomain");
+      mapToDomainSpy.mockImplementation(() => {
+        throw "String error"; // Non-Error object
+      });
+
+      const result = await adapter.create({ name: "New Journal" });
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to map journal to domain");
+      expect(result.error.message).toContain("String error"); // Tests String(error) branch
     });
   });
 

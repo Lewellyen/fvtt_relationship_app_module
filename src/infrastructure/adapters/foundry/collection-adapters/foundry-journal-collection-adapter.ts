@@ -6,6 +6,8 @@ import type { EntityQueryBuilder } from "@/domain/ports/collections/entity-query
 import type { EntityFilter } from "@/domain/ports/collections/entity-search-query.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
+import { JournalMapperRegistry } from "../mappers/journal-mapper-registry";
+import { DefaultJournalMapper } from "../mappers/default-journal-mapper";
 import { ok, err } from "@/domain/utils/result";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
 
@@ -13,10 +15,12 @@ import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry
  * Foundry-specific implementation of PlatformJournalCollectionPort.
  *
  * Maps Foundry's game.journal collection to platform-agnostic journal collection port.
+ * Type mapping is handled by JournalMapperRegistry (OCP-compliant).
  */
 export class FoundryJournalCollectionAdapter implements PlatformJournalCollectionPort {
   constructor(
-    private readonly foundryGame: FoundryGame // FoundryGamePort (version-agnostisch), nicht FoundryV13GamePort!
+    private readonly foundryGame: FoundryGame, // FoundryGamePort (version-agnostisch), nicht FoundryV13GamePort!
+    private readonly mapperRegistry: JournalMapperRegistry // Mapper registry for extensible mapping (OCP)
   ) {}
 
   getAll(): Result<JournalEntry[], EntityCollectionError> {
@@ -33,11 +37,19 @@ export class FoundryJournalCollectionAdapter implements PlatformJournalCollectio
       };
     }
 
-    // Map Foundry types → Domain types
-    const entries: JournalEntry[] = result.value.map((foundryEntry) => ({
-      id: foundryEntry.id,
-      name: foundryEntry.name ?? null,
-    }));
+    // Map Foundry types → Domain types using mapper registry
+    const entries: JournalEntry[] = [];
+    for (const foundryEntry of result.value) {
+      try {
+        entries.push(this.mapperRegistry.mapToDomain(foundryEntry));
+      } catch (error) {
+        return err({
+          code: "PLATFORM_ERROR",
+          message: `Failed to map journal entry to domain: ${error instanceof Error ? error.message : String(error)}`,
+          details: error,
+        });
+      }
+    }
 
     return ok(entries);
   }
@@ -61,13 +73,17 @@ export class FoundryJournalCollectionAdapter implements PlatformJournalCollectio
       return ok(null);
     }
 
-    // Map Foundry type → Domain type
-    const entry: JournalEntry = {
-      id: result.value.id,
-      name: result.value.name ?? null,
-    };
-
-    return ok(entry);
+    // Map Foundry type → Domain type using mapper registry
+    try {
+      const entry = this.mapperRegistry.mapToDomain(result.value);
+      return ok(entry);
+    } catch (error) {
+      return err({
+        code: "PLATFORM_ERROR",
+        message: `Failed to map journal entry to domain: ${error instanceof Error ? error.message : String(error)}`,
+        details: error,
+      });
+    }
   }
 
   getByIds(ids: string[]): Result<JournalEntry[], EntityCollectionError> {
@@ -428,6 +444,10 @@ export class DIFoundryJournalCollectionAdapter extends FoundryJournalCollectionA
 
   constructor(foundryGame: FoundryGame) {
     // FoundryGamePort wird injiziert
-    super(foundryGame);
+    // Create mapper registry with default mapper
+    // Note: Registry should be injected via DI in the future for better testability
+    const mapperRegistry = new JournalMapperRegistry();
+    mapperRegistry.register(new DefaultJournalMapper());
+    super(foundryGame, mapperRegistry);
   }
 }

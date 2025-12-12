@@ -17843,9 +17843,129 @@ function registerEventPorts(container) {
   return ok(void 0);
 }
 __name(registerEventPorts, "registerEventPorts");
+const _JournalMapperRegistry = class _JournalMapperRegistry {
+  constructor() {
+    this.mappers = [];
+  }
+  /**
+   * Registers a mapper with the registry.
+   *
+   * Mappers are checked in registration order (first registered = highest priority).
+   * The first mapper that returns true for `supports()` will be used.
+   *
+   * @param mapper - The mapper to register
+   * @throws Error if the mapper is already registered
+   */
+  register(mapper) {
+    if (this.mappers.includes(mapper)) {
+      throw new Error("Mapper is already registered");
+    }
+    this.mappers.push(mapper);
+  }
+  /**
+   * Unregisters a mapper from the registry.
+   *
+   * @param mapper - The mapper to unregister
+   */
+  unregister(mapper) {
+    const index = this.mappers.indexOf(mapper);
+    if (index !== -1) {
+      this.mappers.splice(index, 1);
+    }
+  }
+  /**
+   * Returns all registered mappers in priority order.
+   *
+   * @returns Array of mappers (first = highest priority)
+   */
+  getAll() {
+    return [...this.mappers];
+  }
+  /**
+   * Finds the first mapper that supports the given entity.
+   *
+   * @param entity - The Foundry entity to find a mapper for
+   * @returns The first matching mapper, or undefined if none found
+   */
+  findMapper(entity) {
+    return this.mappers.find((mapper) => mapper.supports(entity));
+  }
+  /**
+   * Maps a Foundry journal entry to a domain journal entry using the first matching mapper.
+   *
+   * @param entity - The Foundry journal entry to map
+   * @returns The domain journal entry
+   * @throws Error if no mapper supports the entity
+   */
+  mapToDomain(entity) {
+    const mapper = this.findMapper(entity);
+    if (!mapper) {
+      throw new Error(`No mapper found for entity: ${JSON.stringify(entity).substring(0, 100)}`);
+    }
+    if (!mapper.supports(entity)) {
+      throw new Error(
+        `Mapper supports() returned false after findMapper() returned it: ${mapper.constructor.name}`
+      );
+    }
+    return mapper.toDomain(entity);
+  }
+  /**
+   * Validates that no two mappers have overlapping support.
+   *
+   * This is useful for detecting configuration errors during development.
+   * Note: This is a best-effort check and may not catch all overlaps.
+   *
+   * @param testEntities - Optional array of test entities to check against
+   * @returns Array of conflicts (empty if none)
+   */
+  validateNoOverlaps(testEntities = []) {
+    const conflicts = [];
+    for (const entity of testEntities) {
+      const matchingMappers = this.mappers.filter((mapper) => mapper.supports(entity));
+      if (matchingMappers.length > 1) {
+        conflicts.push({
+          entity,
+          mappers: matchingMappers
+        });
+      }
+    }
+    return conflicts;
+  }
+};
+__name(_JournalMapperRegistry, "JournalMapperRegistry");
+let JournalMapperRegistry = _JournalMapperRegistry;
+const _DefaultJournalMapper = class _DefaultJournalMapper {
+  /**
+   * Type guard: checks if entity is a Foundry journal entry.
+   *
+   * Supports any object with an `id` property (basic check).
+   * More specific mappers should be registered before this one.
+   *
+   * @param entity - The entity to check
+   * @returns True if entity has id property
+   */
+  supports(entity) {
+    return typeof entity === "object" && entity !== null && "id" in entity && typeof entity.id === "string";
+  }
+  /**
+   * Maps a Foundry journal entry to a domain journal entry.
+   *
+   * @param entity - The Foundry journal entry
+   * @returns The domain journal entry
+   */
+  toDomain(entity) {
+    return {
+      id: entity.id,
+      name: entity.name ?? null
+    };
+  }
+};
+__name(_DefaultJournalMapper, "DefaultJournalMapper");
+let DefaultJournalMapper = _DefaultJournalMapper;
 const _FoundryJournalCollectionAdapter = class _FoundryJournalCollectionAdapter {
-  constructor(foundryGame) {
+  constructor(foundryGame, mapperRegistry) {
     this.foundryGame = foundryGame;
+    this.mapperRegistry = mapperRegistry;
   }
   getAll() {
     const result = this.foundryGame.getJournalEntries();
@@ -17859,10 +17979,18 @@ const _FoundryJournalCollectionAdapter = class _FoundryJournalCollectionAdapter 
         }
       };
     }
-    const entries2 = result.value.map((foundryEntry) => ({
-      id: foundryEntry.id,
-      name: foundryEntry.name ?? null
-    }));
+    const entries2 = [];
+    for (const foundryEntry of result.value) {
+      try {
+        entries2.push(this.mapperRegistry.mapToDomain(foundryEntry));
+      } catch (error) {
+        return err({
+          code: "PLATFORM_ERROR",
+          message: `Failed to map journal entry to domain: ${error instanceof Error ? error.message : String(error)}`,
+          details: error
+        });
+      }
+    }
     return ok(entries2);
   }
   getById(id) {
@@ -17880,11 +18008,16 @@ const _FoundryJournalCollectionAdapter = class _FoundryJournalCollectionAdapter 
     if (!result.value) {
       return ok(null);
     }
-    const entry = {
-      id: result.value.id,
-      name: result.value.name ?? null
-    };
-    return ok(entry);
+    try {
+      const entry = this.mapperRegistry.mapToDomain(result.value);
+      return ok(entry);
+    } catch (error) {
+      return err({
+        code: "PLATFORM_ERROR",
+        message: `Failed to map journal entry to domain: ${error instanceof Error ? error.message : String(error)}`,
+        details: error
+      });
+    }
   }
   getByIds(ids) {
     const results = [];
@@ -18145,56 +18278,20 @@ let FoundryJournalQueryBuilder = _FoundryJournalQueryBuilder;
 const _DIFoundryJournalCollectionAdapter = class _DIFoundryJournalCollectionAdapter extends FoundryJournalCollectionAdapter {
   // foundryGameToken → FoundryGamePort (version-agnostisch)
   constructor(foundryGame) {
-    super(foundryGame);
+    const mapperRegistry = new JournalMapperRegistry();
+    mapperRegistry.register(new DefaultJournalMapper());
+    super(foundryGame, mapperRegistry);
   }
 };
 __name(_DIFoundryJournalCollectionAdapter, "DIFoundryJournalCollectionAdapter");
 _DIFoundryJournalCollectionAdapter.dependencies = [foundryGameToken];
 let DIFoundryJournalCollectionAdapter = _DIFoundryJournalCollectionAdapter;
-const _JournalTypeMapper = class _JournalTypeMapper {
-  /**
-   * Maps a Foundry journal entry to a domain journal entry.
-   *
-   * Conversion rules:
-   * - `id` is copied as-is
-   * - `name` is converted: `undefined` → `null` (domain requires `string | null`)
-   *
-   * @param foundry - The Foundry journal entry
-   * @returns The domain journal entry
-   */
-  mapFoundryToDomain(foundry) {
-    return {
-      id: foundry.id,
-      name: foundry.name ?? null
-    };
-  }
-  /**
-   * Maps a domain journal entry to a Foundry journal entry structure.
-   *
-   * Note: This is primarily for data transformation purposes.
-   * For creating Foundry documents, use FoundryDocument.create() directly.
-   *
-   * @param domain - The domain journal entry
-   * @returns A Foundry-compatible journal entry structure
-   */
-  mapDomainToFoundry(domain) {
-    const result = {
-      id: domain.id
-    };
-    if (domain.name !== null) {
-      result.name = domain.name;
-    }
-    return result;
-  }
-};
-__name(_JournalTypeMapper, "JournalTypeMapper");
-let JournalTypeMapper = _JournalTypeMapper;
 const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter {
-  constructor(collection, foundryGame, foundryDocument) {
+  constructor(collection, foundryGame, foundryDocument, mapperRegistry) {
     this.collection = collection;
     this.foundryGame = foundryGame;
     this.foundryDocument = foundryDocument;
-    this.typeMapper = new JournalTypeMapper();
+    this.mapperRegistry = mapperRegistry;
   }
   // ===== Collection Methods (delegate to collection adapter) =====
   getAll() {
@@ -18239,8 +18336,16 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
         });
       }
       const foundryEntry = castCreatedJournalEntry(createResult.value);
-      const createdEntry = this.typeMapper.mapFoundryToDomain(foundryEntry);
-      return ok(createdEntry);
+      try {
+        const createdEntry = this.mapperRegistry.mapToDomain(foundryEntry);
+        return ok(createdEntry);
+      } catch (error) {
+        return err({
+          code: "OPERATION_FAILED",
+          message: `Failed to map journal to domain: ${error instanceof Error ? error.message : String(error)}`,
+          details: error
+        });
+      }
     } catch (error) {
       return err({
         code: "OPERATION_FAILED",
@@ -18483,8 +18588,10 @@ __name(_FoundryJournalRepositoryAdapter, "FoundryJournalRepositoryAdapter");
 let FoundryJournalRepositoryAdapter = _FoundryJournalRepositoryAdapter;
 const _DIFoundryJournalRepositoryAdapter = class _DIFoundryJournalRepositoryAdapter extends FoundryJournalRepositoryAdapter {
   constructor(foundryGame, foundryDocument) {
-    const collection = new FoundryJournalCollectionAdapter(foundryGame);
-    super(collection, foundryGame, foundryDocument);
+    const mapperRegistry = new JournalMapperRegistry();
+    mapperRegistry.register(new DefaultJournalMapper());
+    const collection = new FoundryJournalCollectionAdapter(foundryGame, mapperRegistry);
+    super(collection, foundryGame, foundryDocument, mapperRegistry);
   }
 };
 __name(_DIFoundryJournalRepositoryAdapter, "DIFoundryJournalRepositoryAdapter");

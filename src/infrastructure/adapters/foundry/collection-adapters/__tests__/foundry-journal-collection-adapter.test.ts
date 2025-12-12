@@ -4,11 +4,14 @@ import {
   DIFoundryJournalCollectionAdapter,
 } from "../foundry-journal-collection-adapter";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
+import { JournalMapperRegistry } from "../../mappers/journal-mapper-registry";
+import { DefaultJournalMapper } from "../../mappers/default-journal-mapper";
 import { ok, err } from "@/domain/utils/result";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 
 describe("FoundryJournalCollectionAdapter", () => {
   let mockFoundryGame: FoundryGame;
+  let mapperRegistry: JournalMapperRegistry;
   let adapter: FoundryJournalCollectionAdapter;
 
   beforeEach(() => {
@@ -19,7 +22,11 @@ describe("FoundryJournalCollectionAdapter", () => {
       dispose: vi.fn(),
     };
 
-    adapter = new FoundryJournalCollectionAdapter(mockFoundryGame);
+    // Create mapper registry with default mapper
+    mapperRegistry = new JournalMapperRegistry();
+    mapperRegistry.register(new DefaultJournalMapper());
+
+    adapter = new FoundryJournalCollectionAdapter(mockFoundryGame, mapperRegistry);
   });
 
   describe("getAll", () => {
@@ -60,6 +67,58 @@ describe("FoundryJournalCollectionAdapter", () => {
         ]);
       }
     });
+
+    it("should handle mapping error in getAll", () => {
+      const foundryJournals = [
+        { id: "journal-1", name: "Journal 1" },
+        { id: "journal-2", name: "Journal 2" },
+      ];
+
+      vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(ok(foundryJournals as any));
+
+      // Make mapperRegistry.mapToDomain throw an error for the second entry
+      const mapToDomainSpy = vi.spyOn(mapperRegistry, "mapToDomain");
+      mapToDomainSpy
+        .mockReturnValueOnce({ id: "journal-1", name: "Journal 1" })
+        .mockImplementationOnce(() => {
+          throw new Error("Mapping failed");
+        });
+
+      const result = adapter.getAll();
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("PLATFORM_ERROR");
+        expect(result.error.message).toContain("Failed to map journal entry to domain");
+        expect(result.error.message).toContain("Mapping failed");
+      }
+    });
+
+    it("should handle mapping error with non-Error object in getAll", () => {
+      const foundryJournals = [
+        { id: "journal-1", name: "Journal 1" },
+        { id: "journal-2", name: "Journal 2" },
+      ];
+
+      vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(ok(foundryJournals as any));
+
+      // Make mapperRegistry.mapToDomain throw a non-Error object (String)
+      const mapToDomainSpy = vi.spyOn(mapperRegistry, "mapToDomain");
+      mapToDomainSpy
+        .mockReturnValueOnce({ id: "journal-1", name: "Journal 1" })
+        .mockImplementationOnce(() => {
+          throw "String error"; // Non-Error object
+        });
+
+      const result = adapter.getAll();
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("PLATFORM_ERROR");
+        expect(result.error.message).toContain("Failed to map journal entry to domain");
+        expect(result.error.message).toContain("String error"); // Tests String(error) branch
+      }
+    });
   });
 
   describe("getById", () => {
@@ -98,6 +157,48 @@ describe("FoundryJournalCollectionAdapter", () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value).toBeNull();
+      }
+    });
+
+    it("should handle mapping error in getById", () => {
+      vi.mocked(mockFoundryGame.getJournalEntryById).mockReturnValue(
+        ok({ id: "journal-1", name: "Journal 1" } as any)
+      );
+
+      // Make mapperRegistry.mapToDomain throw an error
+      const mapToDomainSpy = vi.spyOn(mapperRegistry, "mapToDomain");
+      mapToDomainSpy.mockImplementation(() => {
+        throw new Error("Mapping failed");
+      });
+
+      const result = adapter.getById("journal-1");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("PLATFORM_ERROR");
+        expect(result.error.message).toContain("Failed to map journal entry to domain");
+        expect(result.error.message).toContain("Mapping failed");
+      }
+    });
+
+    it("should handle mapping error with non-Error object in getById", () => {
+      vi.mocked(mockFoundryGame.getJournalEntryById).mockReturnValue(
+        ok({ id: "journal-1", name: "Journal 1" } as any)
+      );
+
+      // Make mapperRegistry.mapToDomain throw a non-Error object (String)
+      const mapToDomainSpy = vi.spyOn(mapperRegistry, "mapToDomain");
+      mapToDomainSpy.mockImplementation(() => {
+        throw "String error"; // Non-Error object
+      });
+
+      const result = adapter.getById("journal-1");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("PLATFORM_ERROR");
+        expect(result.error.message).toContain("Failed to map journal entry to domain");
+        expect(result.error.message).toContain("String error"); // Tests String(error) branch
       }
     });
   });
@@ -375,6 +476,76 @@ describe("FoundryJournalCollectionAdapter", () => {
       }
     });
 
+    it("should handle sorting with undefined values", () => {
+      vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(
+        ok([
+          { id: "journal-1", name: "A Journal" },
+          { id: "journal-2", name: undefined },
+          { id: "journal-3", name: "B Journal" },
+        ] as any)
+      );
+
+      const result = adapter.search({
+        sortBy: "name",
+        sortOrder: "asc",
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Undefined values should be sorted to the end (same as null)
+        expect(result.value[0]?.name).toBe("A Journal");
+        expect(result.value[1]?.name).toBe("B Journal");
+        expect(result.value[2]?.name).toBeNull(); // undefined is converted to null by mapper
+      }
+    });
+
+    it("should handle sorting with aValue > bValue case", () => {
+      vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(
+        ok([
+          { id: "journal-1", name: "Z Journal" },
+          { id: "journal-2", name: "A Journal" },
+          { id: "journal-3", name: "M Journal" },
+        ] as any)
+      );
+
+      const result = adapter.search({
+        sortBy: "name",
+        sortOrder: "asc",
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Test the else branch of aValue < bValue ? -1 : 1 (when aValue > bValue)
+        expect(result.value[0]?.name).toBe("A Journal");
+        expect(result.value[1]?.name).toBe("M Journal");
+        expect(result.value[2]?.name).toBe("Z Journal");
+      }
+    });
+
+    it("should handle sorting with bValue being null (not undefined)", () => {
+      vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(
+        ok([
+          { id: "journal-1", name: "A Journal" },
+          { id: "journal-2", name: null },
+          { id: "journal-3", name: "B Journal" },
+        ] as any)
+      );
+
+      const result = adapter.search({
+        sortBy: "name",
+        sortOrder: "desc",
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Test bValue === null branch in line 188 when sorting desc
+        // Null values should be sorted to the end even in desc order
+        expect(result.value[0]?.name).toBe("B Journal");
+        expect(result.value[1]?.name).toBe("A Journal");
+        expect(result.value[2]?.name).toBeNull();
+      }
+    });
+
     it("should handle empty filter groups", () => {
       vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(
         ok([{ id: "journal-1", name: "Quest Log" }] as any)
@@ -392,6 +563,36 @@ describe("FoundryJournalCollectionAdapter", () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value).toHaveLength(1);
+      }
+    });
+
+    it("should handle filter groups with AND logic and non-empty filters", () => {
+      vi.mocked(mockFoundryGame.getJournalEntries).mockReturnValue(
+        ok([
+          { id: "journal-1", name: "Quest Log" },
+          { id: "journal-2", name: "Notes" },
+          { id: "journal-3", name: "Quest Items" },
+        ] as any)
+      );
+
+      // Test filterGroup with AND logic (else branch in line 168)
+      const result = adapter.search({
+        filterGroups: [
+          {
+            logic: "AND",
+            filters: [
+              { field: "name", operator: "contains", value: "Quest" },
+              { field: "name", operator: "contains", value: "Log" },
+            ],
+          },
+        ],
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Only "Quest Log" matches both filters (contains "Quest" AND contains "Log")
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0]?.name).toBe("Quest Log");
       }
     });
 

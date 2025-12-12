@@ -12,7 +12,8 @@ import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
 import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
 import { FoundryJournalCollectionAdapter } from "../collection-adapters/foundry-journal-collection-adapter";
-import { JournalTypeMapper } from "../mappers/journal-type-mapper";
+import { JournalMapperRegistry } from "../mappers/journal-mapper-registry";
+import { DefaultJournalMapper } from "../mappers/default-journal-mapper";
 import { ok, err } from "@/domain/utils/result";
 import {
   castFoundryDocumentForFlag,
@@ -28,18 +29,15 @@ import * as v from "valibot";
  * Foundry-specific implementation of PlatformJournalRepository.
  *
  * Uses composition to combine collection adapter with CRUD operations.
- * Type mapping is handled by JournalTypeMapper.
+ * Type mapping is handled by JournalMapperRegistry (OCP-compliant).
  */
 export class FoundryJournalRepositoryAdapter implements PlatformJournalRepository {
-  private readonly typeMapper: JournalTypeMapper;
-
   constructor(
     private readonly collection: FoundryJournalCollectionAdapter, // Injected via composition
     private readonly foundryGame: FoundryGame, // FoundryGamePort (version-agnostisch), nicht FoundryV13GamePort!
-    private readonly foundryDocument: FoundryDocument // FoundryDocumentPort (version-agnostisch), nicht FoundryV13DocumentPort!
-  ) {
-    this.typeMapper = new JournalTypeMapper();
-  }
+    private readonly foundryDocument: FoundryDocument, // FoundryDocumentPort (version-agnostisch), nicht FoundryV13DocumentPort!
+    private readonly mapperRegistry: JournalMapperRegistry // Mapper registry for extensible mapping (OCP)
+  ) {}
 
   // ===== Collection Methods (delegate to collection adapter) =====
 
@@ -94,12 +92,19 @@ export class FoundryJournalRepositoryAdapter implements PlatformJournalRepositor
         });
       }
 
-      // Map Foundry type → Domain type using mapper
+      // Map Foundry type → Domain type using mapper registry
       // Use runtime-safe cast function to convert generic TDocument to FoundryJournalEntry
       const foundryEntry = castCreatedJournalEntry(createResult.value);
-      const createdEntry = this.typeMapper.mapFoundryToDomain(foundryEntry);
-
-      return ok(createdEntry);
+      try {
+        const createdEntry = this.mapperRegistry.mapToDomain(foundryEntry);
+        return ok(createdEntry);
+      } catch (error) {
+        return err({
+          code: "OPERATION_FAILED",
+          message: `Failed to map journal to domain: ${error instanceof Error ? error.message : String(error)}`,
+          details: error,
+        });
+      }
     } catch (error) {
       return err({
         code: "OPERATION_FAILED",
@@ -455,8 +460,13 @@ export class DIFoundryJournalRepositoryAdapter extends FoundryJournalRepositoryA
   static dependencies = [foundryGameToken, foundryDocumentToken] as const;
 
   constructor(foundryGame: FoundryGame, foundryDocument: FoundryDocument) {
+    // Create mapper registry with default mapper
+    // Note: Registry should be injected via DI in the future for better testability
+    const mapperRegistry = new JournalMapperRegistry();
+    mapperRegistry.register(new DefaultJournalMapper());
     // Create collection adapter via composition (not delegation)
-    const collection = new FoundryJournalCollectionAdapter(foundryGame);
-    super(collection, foundryGame, foundryDocument);
+    // Pass mapper registry to collection adapter so both use the same registry
+    const collection = new FoundryJournalCollectionAdapter(foundryGame, mapperRegistry);
+    super(collection, foundryGame, foundryDocument, mapperRegistry);
   }
 }
