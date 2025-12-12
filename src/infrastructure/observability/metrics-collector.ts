@@ -8,9 +8,13 @@ import { MetricsAggregator } from "./metrics-aggregator";
 import { MetricsPersistenceManager } from "./metrics-persistence/metrics-persistence-manager";
 import { MetricsStateManager } from "./metrics-state/metrics-state-manager";
 import type { MetricsSnapshot, MetricsPersistenceState } from "./metrics-types";
+import type { MetricState } from "./metrics-definition/metric-definition.interface";
+import type { MetricDefinitionRegistry } from "./metrics-definition/metric-definition-registry";
+import { createDefaultMetricDefinitionRegistry } from "./metrics-definition/default-metric-definitions";
 
 // Re-export for backward compatibility
 export type { MetricsSnapshot, MetricsPersistenceState } from "./metrics-types";
+import { castMetricValue } from "./metrics-definition/metric-casts";
 
 /**
  * Metrics collector for observability and performance tracking.
@@ -35,6 +39,11 @@ export type { MetricsSnapshot, MetricsPersistenceState } from "./metrics-types";
  * - Sampling decisions: MetricsSampler
  * - Reporting/logging: MetricsReporter
  *
+ * **OCP Design:** Follows Open/Closed Principle:
+ * - Uses MetricDefinitionRegistry for dynamic metric registration
+ * - New metrics can be added via registry without modifying this class
+ * - Internal state managed via generic Map<string, MetricState>
+ *
  * @example
  * ```typescript
  * const collector = container.resolve(metricsCollectorToken);
@@ -47,31 +56,65 @@ export type { MetricsSnapshot, MetricsPersistenceState } from "./metrics-types";
 export class MetricsCollector implements MetricsRecorder {
   static dependencies: readonly InjectionToken<unknown>[] = [runtimeConfigToken];
 
-  private metrics = {
-    containerResolutions: 0,
-    resolutionErrors: 0,
-    cacheHits: 0,
-    cacheMisses: 0,
-    portSelections: new Map<number, number>(),
-    portSelectionFailures: new Map<number, number>(),
-  };
-
-  // Circular buffer for resolution times (more efficient than array shift)
-  private resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
-  private resolutionTimesIndex = 0;
-  private resolutionTimesCount = 0;
-  private readonly MAX_RESOLUTION_TIMES = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
+  /**
+   * Generic map of metric states keyed by metric key.
+   * Follows OCP: New metrics can be added via registry without code changes.
+   */
+  private readonly metricStates = new Map<string, MetricState>();
 
   // SRP: Delegation to specialized components
   private readonly aggregator: MetricsAggregator;
   private readonly persistenceManager: MetricsPersistenceManager;
   private readonly stateManager: MetricsStateManager;
+  private readonly registry: MetricDefinitionRegistry;
 
-  constructor(private readonly config: RuntimeConfigService) {
+  constructor(
+    private readonly config: RuntimeConfigService,
+    registry?: MetricDefinitionRegistry
+  ) {
+    // Use provided registry or create default one
+    this.registry = registry ?? createDefaultMetricDefinitionRegistry();
+
+    // Initialize metric states from registry
+    this.initializeMetricStates();
+
     // Create components internally (can be injected in future if needed)
     this.aggregator = new MetricsAggregator();
     this.persistenceManager = new MetricsPersistenceManager();
     this.stateManager = new MetricsStateManager();
+  }
+
+  /**
+   * Initializes metric states from registry definitions.
+   * Private method called during construction.
+   */
+  private initializeMetricStates(): void {
+    for (const definition of this.registry.getAll()) {
+      this.metricStates.set(definition.key, {
+        value: definition.initialValue,
+        definition,
+      });
+    }
+  }
+
+  /**
+   * Updates a metric using its reducer function.
+   *
+   * @param key - Metric key
+   * @param event - Event data for the reducer
+   */
+  private updateMetric(key: string, event: unknown): void {
+    const state = this.metricStates.get(key);
+    if (!state) {
+      // Metric not registered - ignore silently (could log warning in future)
+      return;
+    }
+
+    const newValue = state.definition.reducer(state.value, event);
+    this.metricStates.set(key, {
+      value: newValue,
+      definition: state.definition,
+    });
   }
 
   /**
@@ -82,16 +125,16 @@ export class MetricsCollector implements MetricsRecorder {
    * @param success - Whether resolution succeeded
    */
   recordResolution(token: InjectionToken<unknown>, durationMs: number, success: boolean): void {
-    this.metrics.containerResolutions++;
+    const event = { token, durationMs, success };
 
-    if (!success) {
-      this.metrics.resolutionErrors++;
-    }
+    // Update container resolutions (always increments)
+    this.updateMetric("containerResolutions", event);
 
-    // Circular buffer: O(1) instead of O(n) with array shift
-    this.resolutionTimes[this.resolutionTimesIndex] = durationMs;
-    this.resolutionTimesIndex = (this.resolutionTimesIndex + 1) % this.MAX_RESOLUTION_TIMES;
-    this.resolutionTimesCount = Math.min(this.resolutionTimesCount + 1, this.MAX_RESOLUTION_TIMES);
+    // Update resolution errors (only if failed)
+    this.updateMetric("resolutionErrors", event);
+
+    // Update resolution times (circular buffer handled by reducer)
+    this.updateMetric("resolutionTimes", event);
 
     this.notifyStateChanged();
   }
@@ -102,8 +145,7 @@ export class MetricsCollector implements MetricsRecorder {
    * @param version - The Foundry version for which a port was selected
    */
   recordPortSelection(version: number): void {
-    const count = this.metrics.portSelections.get(version) ?? 0;
-    this.metrics.portSelections.set(version, count + 1);
+    this.updateMetric("portSelections", { version });
     this.notifyStateChanged();
   }
 
@@ -115,8 +157,7 @@ export class MetricsCollector implements MetricsRecorder {
    * @param version - The Foundry version for which port selection failed
    */
   recordPortSelectionFailure(version: number): void {
-    const count = this.metrics.portSelectionFailures.get(version) ?? 0;
-    this.metrics.portSelectionFailures.set(version, count + 1);
+    this.updateMetric("portSelectionFailures", { version });
     this.notifyStateChanged();
   }
 
@@ -126,11 +167,9 @@ export class MetricsCollector implements MetricsRecorder {
    * @param hit - True if cache hit, false if cache miss
    */
   recordCacheAccess(hit: boolean): void {
-    if (hit) {
-      this.metrics.cacheHits++;
-    } else {
-      this.metrics.cacheMisses++;
-    }
+    const event = { hit };
+    this.updateMetric("cacheHits", event);
+    this.updateMetric("cacheMisses", event);
     this.notifyStateChanged();
   }
 
@@ -148,20 +187,60 @@ export class MetricsCollector implements MetricsRecorder {
    * Gets raw metrics data without aggregation.
    * Used internally by aggregator and persistence manager.
    *
+   * Converts from generic Map structure to IRawMetrics for backward compatibility.
+   *
    * @returns Raw metrics data
    */
   getRawMetrics(): IRawMetrics {
+    // Extract values from metric states
+    const containerResolutions = this.getMetricValue<number>("containerResolutions") ?? 0;
+    const resolutionErrors = this.getMetricValue<number>("resolutionErrors") ?? 0;
+    const cacheHits = this.getMetricValue<number>("cacheHits") ?? 0;
+    const cacheMisses = this.getMetricValue<number>("cacheMisses") ?? 0;
+    const portSelectionsRaw = this.getMetricValue<Map<number, number>>("portSelections");
+    const portSelections: Map<number, number> =
+      portSelectionsRaw instanceof Map ? portSelectionsRaw : new Map();
+    const portSelectionFailuresRaw =
+      this.getMetricValue<Map<number, number>>("portSelectionFailures");
+    const portSelectionFailures: Map<number, number> =
+      portSelectionFailuresRaw instanceof Map ? portSelectionFailuresRaw : new Map();
+
+    // Extract resolution times state
+    const resolutionTimesState = this.getMetricValue<{
+      buffer: Float64Array;
+      index: number;
+      count: number;
+    }>("resolutionTimes");
+
     return {
-      containerResolutions: this.metrics.containerResolutions,
-      resolutionErrors: this.metrics.resolutionErrors,
-      cacheHits: this.metrics.cacheHits,
-      cacheMisses: this.metrics.cacheMisses,
-      portSelections: this.metrics.portSelections,
-      portSelectionFailures: this.metrics.portSelectionFailures,
-      resolutionTimes: this.resolutionTimes,
-      resolutionTimesIndex: this.resolutionTimesIndex,
-      resolutionTimesCount: this.resolutionTimesCount,
+      containerResolutions,
+      resolutionErrors,
+      cacheHits,
+      cacheMisses,
+      portSelections,
+      portSelectionFailures,
+      resolutionTimes:
+        resolutionTimesState?.buffer ??
+        new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: resolutionTimesState?.index ?? 0,
+      resolutionTimesCount: resolutionTimesState?.count ?? 0,
     };
+  }
+
+  /**
+   * Gets a metric value by key.
+   *
+   * @param key - Metric key
+   * @returns Metric value or undefined if not found
+   */
+  private getMetricValue<T>(key: string): T | undefined {
+    const state = this.metricStates.get(key);
+    if (!state) {
+      return undefined;
+    }
+    // Runtime-safe cast: validates that value exists and casts to type T
+    // Type safety is guaranteed by the metric registry initialization
+    return castMetricValue<T>(state.value, key);
   }
 
   /**
@@ -169,17 +248,13 @@ export class MetricsCollector implements MetricsRecorder {
    * Useful for testing or starting fresh measurements.
    */
   reset(): void {
-    this.metrics = {
-      containerResolutions: 0,
-      resolutionErrors: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      portSelections: new Map(),
-      portSelectionFailures: new Map(),
-    };
-    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
-    this.resolutionTimesIndex = 0;
-    this.resolutionTimesCount = 0;
+    // Reset all metric states to their initial values
+    for (const definition of this.registry.getAll()) {
+      this.metricStates.set(definition.key, {
+        value: definition.initialValue,
+        definition,
+      });
+    }
     this.stateManager.reset();
     this.notifyStateChanged();
   }
@@ -225,23 +300,45 @@ export class MetricsCollector implements MetricsRecorder {
   /**
    * Applies raw metrics to internal state.
    * Internal method used by restoreFromPersistenceState.
+   * Converts from IRawMetrics to generic Map structure.
    *
    * @param rawMetrics - Raw metrics to apply
    */
   private applyRawMetrics(rawMetrics: IRawMetrics): void {
-    this.metrics = {
-      containerResolutions: rawMetrics.containerResolutions,
-      resolutionErrors: rawMetrics.resolutionErrors,
-      cacheHits: rawMetrics.cacheHits,
-      cacheMisses: rawMetrics.cacheMisses,
-      portSelections: rawMetrics.portSelections,
-      portSelectionFailures: rawMetrics.portSelectionFailures,
-    };
+    // Update metric states from raw metrics
+    this.setMetricValue("containerResolutions", rawMetrics.containerResolutions);
+    this.setMetricValue("resolutionErrors", rawMetrics.resolutionErrors);
+    this.setMetricValue("cacheHits", rawMetrics.cacheHits);
+    this.setMetricValue("cacheMisses", rawMetrics.cacheMisses);
+    this.setMetricValue("portSelections", rawMetrics.portSelections);
+    this.setMetricValue("portSelectionFailures", rawMetrics.portSelectionFailures);
 
-    // Create a new Float64Array to avoid type issues and ensure we have our own copy
-    this.resolutionTimes = new Float64Array(rawMetrics.resolutionTimes);
-    this.resolutionTimesIndex = rawMetrics.resolutionTimesIndex;
-    this.resolutionTimesCount = rawMetrics.resolutionTimesCount;
+    // Restore resolution times state
+    const resolutionTimesState = this.metricStates.get("resolutionTimes");
+    if (resolutionTimesState) {
+      const buffer = new Float64Array(rawMetrics.resolutionTimes);
+      this.setMetricValue("resolutionTimes", {
+        buffer,
+        index: rawMetrics.resolutionTimesIndex,
+        count: rawMetrics.resolutionTimesCount,
+      });
+    }
+  }
+
+  /**
+   * Sets a metric value by key.
+   *
+   * @param key - Metric key
+   * @param value - New metric value
+   */
+  private setMetricValue<T>(key: string, value: T): void {
+    const state = this.metricStates.get(key);
+    if (state) {
+      this.metricStates.set(key, {
+        value: value as unknown,
+        definition: state.definition,
+      });
+    }
   }
 }
 

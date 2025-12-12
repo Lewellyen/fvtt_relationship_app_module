@@ -8505,24 +8505,256 @@ const _MetricsStateManager = class _MetricsStateManager {
 };
 __name(_MetricsStateManager, "MetricsStateManager");
 let MetricsStateManager = _MetricsStateManager;
-const _MetricsCollector = class _MetricsCollector {
-  constructor(config2) {
-    this.config = config2;
-    this.metrics = {
-      containerResolutions: 0,
-      resolutionErrors: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      portSelections: /* @__PURE__ */ new Map(),
-      portSelectionFailures: /* @__PURE__ */ new Map()
+function isValidMetricDefinition(value2) {
+  if (typeof value2 !== "object" || value2 === null) {
+    return false;
+  }
+  return "key" in value2 && typeof value2.key === "string" && "initialValue" in value2 && typeof value2.initialValue !== "undefined" && "reducer" in value2 && typeof value2.reducer === "function" && "serializer" in value2 && typeof value2.serializer === "function";
+}
+__name(isValidMetricDefinition, "isValidMetricDefinition");
+function castToMetricDefinition(definition) {
+  if (!isValidMetricDefinition(definition)) {
+    throw new Error(`Invalid metric definition structure for key "${definition.key}"`);
+  }
+  return definition;
+}
+__name(castToMetricDefinition, "castToMetricDefinition");
+function castMetricValue(value2, key) {
+  if (value2 === void 0) {
+    throw new Error(
+      `Metric value for key "${key}" is undefined. This indicates a registry initialization issue.`
+    );
+  }
+  return value2;
+}
+__name(castMetricValue, "castMetricValue");
+const _MetricDefinitionRegistry = class _MetricDefinitionRegistry {
+  constructor() {
+    this.definitions = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Registers a metric definition.
+   *
+   * @param definition - Metric definition to register
+   * @throws Error if a definition with the same key already exists or if the definition is invalid
+   */
+  register(definition) {
+    if (this.definitions.has(definition.key)) {
+      throw new Error(
+        `Metric definition with key "${definition.key}" already exists. Use a different key or remove the existing definition first.`
+      );
+    }
+    this.definitions.set(definition.key, castToMetricDefinition(definition));
+  }
+  /**
+   * Gets a metric definition by key.
+   *
+   * @param key - Metric key
+   * @returns Metric definition or undefined if not found
+   */
+  get(key) {
+    return this.definitions.get(key);
+  }
+  /**
+   * Gets all registered metric definitions.
+   *
+   * @returns Array of all metric definitions
+   */
+  getAll() {
+    return Array.from(this.definitions.values());
+  }
+  /**
+   * Checks if a metric definition exists.
+   *
+   * @param key - Metric key
+   * @returns True if definition exists
+   */
+  has(key) {
+    return this.definitions.has(key);
+  }
+  /**
+   * Removes a metric definition.
+   *
+   * @param key - Metric key to remove
+   * @returns True if definition was removed, false if it didn't exist
+   */
+  remove(key) {
+    return this.definitions.delete(key);
+  }
+  /**
+   * Clears all registered definitions.
+   */
+  clear() {
+    this.definitions.clear();
+  }
+  /**
+   * Gets the number of registered definitions.
+   *
+   * @returns Number of registered definitions
+   */
+  size() {
+    return this.definitions.size;
+  }
+};
+__name(_MetricDefinitionRegistry, "MetricDefinitionRegistry");
+let MetricDefinitionRegistry = _MetricDefinitionRegistry;
+function isResolutionEvent(event) {
+  return typeof event === "object" && event !== null && "durationMs" in event && typeof event.durationMs === "number" && "success" in event && typeof event.success === "boolean";
+}
+__name(isResolutionEvent, "isResolutionEvent");
+function isPortSelectionEvent(event) {
+  return typeof event === "object" && event !== null && "version" in event && typeof event.version === "number";
+}
+__name(isPortSelectionEvent, "isPortSelectionEvent");
+function isCacheAccessEvent(event) {
+  return typeof event === "object" && event !== null && "hit" in event && typeof event.hit === "boolean";
+}
+__name(isCacheAccessEvent, "isCacheAccessEvent");
+const containerResolutionsDefinition = {
+  key: "containerResolutions",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, _event) => current + 1, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const resolutionErrorsDefinition = {
+  key: "resolutionErrors",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isResolutionEvent(event)) {
+      return current;
+    }
+    return event.success ? current : current + 1;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const cacheHitsDefinition = {
+  key: "cacheHits",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isCacheAccessEvent(event)) {
+      return current;
+    }
+    return event.hit ? current + 1 : current;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const cacheMissesDefinition = {
+  key: "cacheMisses",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isCacheAccessEvent(event)) {
+      return current;
+    }
+    return event.hit ? current : current + 1;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const portSelectionsDefinition = {
+  key: "portSelections",
+  initialValue: /* @__PURE__ */ new Map(),
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isPortSelectionEvent(event)) {
+      return current;
+    }
+    const count = current.get(event.version) ?? 0;
+    const updated = new Map(current);
+    updated.set(event.version, count + 1);
+    return updated;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
+};
+const portSelectionFailuresDefinition = {
+  key: "portSelectionFailures",
+  initialValue: /* @__PURE__ */ new Map(),
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isPortSelectionEvent(event)) {
+      return current;
+    }
+    const count = current.get(event.version) ?? 0;
+    const updated = new Map(current);
+    updated.set(event.version, count + 1);
+    return updated;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
+};
+const resolutionTimesDefinition = {
+  key: "resolutionTimes",
+  initialValue: {
+    buffer: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+    index: 0,
+    count: 0
+  },
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isResolutionEvent(event)) {
+      return current;
+    }
+    const buffer = new Float64Array(current.buffer);
+    const maxSize2 = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
+    buffer[current.index] = event.durationMs;
+    const newIndex = (current.index + 1) % maxSize2;
+    const newCount = Math.min(current.count + 1, maxSize2);
+    return {
+      buffer,
+      index: newIndex,
+      count: newCount
     };
-    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
-    this.resolutionTimesIndex = 0;
-    this.resolutionTimesCount = 0;
-    this.MAX_RESOLUTION_TIMES = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => ({
+    buffer: Array.from(value2.buffer),
+    index: value2.index,
+    count: value2.count
+  }), "serializer")
+};
+function createDefaultMetricDefinitionRegistry() {
+  const registry = new MetricDefinitionRegistry();
+  registry.register(containerResolutionsDefinition);
+  registry.register(resolutionErrorsDefinition);
+  registry.register(cacheHitsDefinition);
+  registry.register(cacheMissesDefinition);
+  registry.register(portSelectionsDefinition);
+  registry.register(portSelectionFailuresDefinition);
+  registry.register(resolutionTimesDefinition);
+  return registry;
+}
+__name(createDefaultMetricDefinitionRegistry, "createDefaultMetricDefinitionRegistry");
+const _MetricsCollector = class _MetricsCollector {
+  constructor(config2, registry) {
+    this.config = config2;
+    this.metricStates = /* @__PURE__ */ new Map();
+    this.registry = registry ?? createDefaultMetricDefinitionRegistry();
+    this.initializeMetricStates();
     this.aggregator = new MetricsAggregator();
     this.persistenceManager = new MetricsPersistenceManager();
     this.stateManager = new MetricsStateManager();
+  }
+  /**
+   * Initializes metric states from registry definitions.
+   * Private method called during construction.
+   */
+  initializeMetricStates() {
+    for (const definition of this.registry.getAll()) {
+      this.metricStates.set(definition.key, {
+        value: definition.initialValue,
+        definition
+      });
+    }
+  }
+  /**
+   * Updates a metric using its reducer function.
+   *
+   * @param key - Metric key
+   * @param event - Event data for the reducer
+   */
+  updateMetric(key, event) {
+    const state = this.metricStates.get(key);
+    if (!state) {
+      return;
+    }
+    const newValue = state.definition.reducer(state.value, event);
+    this.metricStates.set(key, {
+      value: newValue,
+      definition: state.definition
+    });
   }
   /**
    * Records a service resolution attempt.
@@ -8532,13 +8764,10 @@ const _MetricsCollector = class _MetricsCollector {
    * @param success - Whether resolution succeeded
    */
   recordResolution(token, durationMs, success) {
-    this.metrics.containerResolutions++;
-    if (!success) {
-      this.metrics.resolutionErrors++;
-    }
-    this.resolutionTimes[this.resolutionTimesIndex] = durationMs;
-    this.resolutionTimesIndex = (this.resolutionTimesIndex + 1) % this.MAX_RESOLUTION_TIMES;
-    this.resolutionTimesCount = Math.min(this.resolutionTimesCount + 1, this.MAX_RESOLUTION_TIMES);
+    const event = { token, durationMs, success };
+    this.updateMetric("containerResolutions", event);
+    this.updateMetric("resolutionErrors", event);
+    this.updateMetric("resolutionTimes", event);
     this.notifyStateChanged();
   }
   /**
@@ -8547,8 +8776,7 @@ const _MetricsCollector = class _MetricsCollector {
    * @param version - The Foundry version for which a port was selected
    */
   recordPortSelection(version) {
-    const count = this.metrics.portSelections.get(version) ?? 0;
-    this.metrics.portSelections.set(version, count + 1);
+    this.updateMetric("portSelections", { version });
     this.notifyStateChanged();
   }
   /**
@@ -8559,8 +8787,7 @@ const _MetricsCollector = class _MetricsCollector {
    * @param version - The Foundry version for which port selection failed
    */
   recordPortSelectionFailure(version) {
-    const count = this.metrics.portSelectionFailures.get(version) ?? 0;
-    this.metrics.portSelectionFailures.set(version, count + 1);
+    this.updateMetric("portSelectionFailures", { version });
     this.notifyStateChanged();
   }
   /**
@@ -8569,11 +8796,9 @@ const _MetricsCollector = class _MetricsCollector {
    * @param hit - True if cache hit, false if cache miss
    */
   recordCacheAccess(hit) {
-    if (hit) {
-      this.metrics.cacheHits++;
-    } else {
-      this.metrics.cacheMisses++;
-    }
+    const event = { hit };
+    this.updateMetric("cacheHits", event);
+    this.updateMetric("cacheMisses", event);
     this.notifyStateChanged();
   }
   /**
@@ -8589,37 +8814,56 @@ const _MetricsCollector = class _MetricsCollector {
    * Gets raw metrics data without aggregation.
    * Used internally by aggregator and persistence manager.
    *
+   * Converts from generic Map structure to IRawMetrics for backward compatibility.
+   *
    * @returns Raw metrics data
    */
   getRawMetrics() {
+    const containerResolutions = this.getMetricValue("containerResolutions") ?? 0;
+    const resolutionErrors = this.getMetricValue("resolutionErrors") ?? 0;
+    const cacheHits = this.getMetricValue("cacheHits") ?? 0;
+    const cacheMisses = this.getMetricValue("cacheMisses") ?? 0;
+    const portSelectionsRaw = this.getMetricValue("portSelections");
+    const portSelections = portSelectionsRaw instanceof Map ? portSelectionsRaw : /* @__PURE__ */ new Map();
+    const portSelectionFailuresRaw = this.getMetricValue("portSelectionFailures");
+    const portSelectionFailures = portSelectionFailuresRaw instanceof Map ? portSelectionFailuresRaw : /* @__PURE__ */ new Map();
+    const resolutionTimesState = this.getMetricValue("resolutionTimes");
     return {
-      containerResolutions: this.metrics.containerResolutions,
-      resolutionErrors: this.metrics.resolutionErrors,
-      cacheHits: this.metrics.cacheHits,
-      cacheMisses: this.metrics.cacheMisses,
-      portSelections: this.metrics.portSelections,
-      portSelectionFailures: this.metrics.portSelectionFailures,
-      resolutionTimes: this.resolutionTimes,
-      resolutionTimesIndex: this.resolutionTimesIndex,
-      resolutionTimesCount: this.resolutionTimesCount
+      containerResolutions,
+      resolutionErrors,
+      cacheHits,
+      cacheMisses,
+      portSelections,
+      portSelectionFailures,
+      resolutionTimes: resolutionTimesState?.buffer ?? new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: resolutionTimesState?.index ?? 0,
+      resolutionTimesCount: resolutionTimesState?.count ?? 0
     };
+  }
+  /**
+   * Gets a metric value by key.
+   *
+   * @param key - Metric key
+   * @returns Metric value or undefined if not found
+   */
+  getMetricValue(key) {
+    const state = this.metricStates.get(key);
+    if (!state) {
+      return void 0;
+    }
+    return castMetricValue(state.value, key);
   }
   /**
    * Resets all collected metrics.
    * Useful for testing or starting fresh measurements.
    */
   reset() {
-    this.metrics = {
-      containerResolutions: 0,
-      resolutionErrors: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      portSelections: /* @__PURE__ */ new Map(),
-      portSelectionFailures: /* @__PURE__ */ new Map()
-    };
-    this.resolutionTimes = new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
-    this.resolutionTimesIndex = 0;
-    this.resolutionTimesCount = 0;
+    for (const definition of this.registry.getAll()) {
+      this.metricStates.set(definition.key, {
+        value: definition.initialValue,
+        definition
+      });
+    }
     this.stateManager.reset();
     this.notifyStateChanged();
   }
@@ -8659,21 +8903,41 @@ const _MetricsCollector = class _MetricsCollector {
   /**
    * Applies raw metrics to internal state.
    * Internal method used by restoreFromPersistenceState.
+   * Converts from IRawMetrics to generic Map structure.
    *
    * @param rawMetrics - Raw metrics to apply
    */
   applyRawMetrics(rawMetrics) {
-    this.metrics = {
-      containerResolutions: rawMetrics.containerResolutions,
-      resolutionErrors: rawMetrics.resolutionErrors,
-      cacheHits: rawMetrics.cacheHits,
-      cacheMisses: rawMetrics.cacheMisses,
-      portSelections: rawMetrics.portSelections,
-      portSelectionFailures: rawMetrics.portSelectionFailures
-    };
-    this.resolutionTimes = new Float64Array(rawMetrics.resolutionTimes);
-    this.resolutionTimesIndex = rawMetrics.resolutionTimesIndex;
-    this.resolutionTimesCount = rawMetrics.resolutionTimesCount;
+    this.setMetricValue("containerResolutions", rawMetrics.containerResolutions);
+    this.setMetricValue("resolutionErrors", rawMetrics.resolutionErrors);
+    this.setMetricValue("cacheHits", rawMetrics.cacheHits);
+    this.setMetricValue("cacheMisses", rawMetrics.cacheMisses);
+    this.setMetricValue("portSelections", rawMetrics.portSelections);
+    this.setMetricValue("portSelectionFailures", rawMetrics.portSelectionFailures);
+    const resolutionTimesState = this.metricStates.get("resolutionTimes");
+    if (resolutionTimesState) {
+      const buffer = new Float64Array(rawMetrics.resolutionTimes);
+      this.setMetricValue("resolutionTimes", {
+        buffer,
+        index: rawMetrics.resolutionTimesIndex,
+        count: rawMetrics.resolutionTimesCount
+      });
+    }
+  }
+  /**
+   * Sets a metric value by key.
+   *
+   * @param key - Metric key
+   * @param value - New metric value
+   */
+  setMetricValue(key, value2) {
+    const state = this.metricStates.get(key);
+    if (state) {
+      this.metricStates.set(key, {
+        value: value2,
+        definition: state.definition
+      });
+    }
   }
 };
 __name(_MetricsCollector, "MetricsCollector");

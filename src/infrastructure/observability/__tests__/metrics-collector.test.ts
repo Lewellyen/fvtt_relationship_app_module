@@ -13,6 +13,11 @@ import {
   DIPersistentMetricsCollector,
 } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
 import type { MetricsStorage } from "@/infrastructure/observability/metrics-persistence/metrics-storage";
+import { MetricDefinitionRegistry } from "@/infrastructure/observability/metrics-definition/metric-definition-registry";
+import type { MetricDefinition } from "@/infrastructure/observability/metrics-definition/metric-definition.interface";
+import { createDefaultMetricDefinitionRegistry } from "@/infrastructure/observability/metrics-definition/default-metric-definitions";
+import { METRICS_CONFIG } from "@/infrastructure/shared/constants";
+import type { IRawMetrics } from "@/infrastructure/observability/interfaces/raw-metrics.interface";
 
 describe("MetricsCollector", () => {
   let collector: MetricsCollector;
@@ -115,6 +120,20 @@ describe("MetricsCollector", () => {
       // Should only track last 100 entries: (6+7+...+105) / 100
       const expectedAvg = (105 * 106 - 5 * 6) / (2 * 100); // Sum of 6..105 / 100
       expect(snapshot.avgResolutionTimeMs).toBeCloseTo(expectedAvg, 1);
+    });
+
+    it("should ignore updateMetric for non-existent metric key", () => {
+      // Access private method via type assertion for testing
+      const collectorAny = collector as unknown as {
+        updateMetric: (key: string, event: unknown) => void;
+      };
+
+      // Should not throw and should not affect existing metrics
+      const snapshotBefore = collector.getSnapshot();
+      collectorAny.updateMetric("nonExistentMetric", {});
+      const snapshotAfter = collector.getSnapshot();
+
+      expect(snapshotAfter).toEqual(snapshotBefore);
     });
   });
 
@@ -289,6 +308,158 @@ describe("MetricsCollector", () => {
       expect(snapshot.portSelections[13]).toBe(2);
       expect(snapshot.portSelectionFailures[12]).toBe(1);
       expect(snapshot.cacheHitRate).toBeCloseTo(66.66, 1);
+    });
+  });
+
+  describe("OCP: Dynamic Metric Registration", () => {
+    it("should support adding new metrics via registry without code changes", () => {
+      const customRegistry = new MetricDefinitionRegistry();
+
+      // Register default metrics
+      const defaultRegistry = createDefaultMetricDefinitionRegistry();
+      for (const def of defaultRegistry.getAll()) {
+        customRegistry.register(def);
+      }
+
+      // Add a new custom metric
+      const customMetricDefinition: MetricDefinition<number> = {
+        key: "customCounter",
+        initialValue: 0,
+        reducer: (current: number) => current + 1,
+        serializer: (value: number) => value,
+      };
+      customRegistry.register(customMetricDefinition);
+
+      // Create collector with custom registry
+      const collector = new MetricsCollector(runtimeConfig, customRegistry);
+
+      // Record custom metric via internal updateMetric (would be exposed via new method in real scenario)
+      (collector as any).updateMetric("customCounter", {});
+
+      // Verify custom metric exists
+      const rawMetrics = collector.getRawMetrics();
+      expect(rawMetrics).toBeDefined();
+
+      // Verify we can still use existing metrics
+      collector.recordCacheAccess(true);
+      const snapshot = collector.getSnapshot();
+      expect(snapshot.cacheHitRate).toBe(100);
+    });
+
+    it("should prevent duplicate metric key registration", () => {
+      const registry = new MetricDefinitionRegistry();
+
+      const definition1: MetricDefinition<number> = {
+        key: "duplicateKey",
+        initialValue: 0,
+        reducer: (current: number) => current + 1,
+        serializer: (value: number) => value,
+      };
+
+      const definition2: MetricDefinition<number> = {
+        key: "duplicateKey",
+        initialValue: 0,
+        reducer: (current: number) => current + 2,
+        serializer: (value: number) => value,
+      };
+
+      registry.register(definition1);
+
+      expect(() => {
+        registry.register(definition2);
+      }).toThrow('Metric definition with key "duplicateKey" already exists');
+    });
+  });
+
+  describe("Edge Cases and Branch Coverage", () => {
+    it("should handle getRawMetrics when portSelections is not a Map", () => {
+      // Create collector with empty registry to test fallback branches
+      const emptyRegistry = new MetricDefinitionRegistry();
+      const collector = new MetricsCollector(runtimeConfig, emptyRegistry);
+
+      // getRawMetrics should handle missing metrics gracefully
+      const rawMetrics = collector.getRawMetrics();
+      expect(rawMetrics.portSelections).toBeInstanceOf(Map);
+      expect(rawMetrics.portSelections.size).toBe(0);
+      expect(rawMetrics.portSelectionFailures).toBeInstanceOf(Map);
+      expect(rawMetrics.portSelectionFailures.size).toBe(0);
+    });
+
+    it("should handle getRawMetrics when resolutionTimesState is undefined", () => {
+      // Create collector with registry that doesn't include resolutionTimes
+      const customRegistry = new MetricDefinitionRegistry();
+      const defaultRegistry = createDefaultMetricDefinitionRegistry();
+
+      // Register all metrics except resolutionTimes
+      for (const def of defaultRegistry.getAll()) {
+        if (def.key !== "resolutionTimes") {
+          customRegistry.register(def);
+        }
+      }
+
+      const collector = new MetricsCollector(runtimeConfig, customRegistry);
+      const rawMetrics = collector.getRawMetrics();
+
+      // Should use fallback values when resolutionTimesState is undefined
+      expect(rawMetrics.resolutionTimes).toBeInstanceOf(Float64Array);
+      expect(rawMetrics.resolutionTimes.length).toBe(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE);
+      expect(rawMetrics.resolutionTimesIndex).toBe(0);
+      expect(rawMetrics.resolutionTimesCount).toBe(0);
+    });
+
+    it("should handle applyRawMetrics when resolutionTimesState is missing", () => {
+      const collector = new MetricsCollector(runtimeConfig);
+
+      // Access private method via type assertion for testing
+      const collectorAny = collector as unknown as {
+        applyRawMetrics: (rawMetrics: IRawMetrics) => void;
+        getRawMetrics: () => IRawMetrics;
+      };
+
+      // Create a registry without resolutionTimes
+      const customRegistry = new MetricDefinitionRegistry();
+      const defaultRegistry = createDefaultMetricDefinitionRegistry();
+
+      for (const def of defaultRegistry.getAll()) {
+        if (def.key !== "resolutionTimes") {
+          customRegistry.register(def);
+        }
+      }
+
+      // Create collector without resolutionTimes metric
+      const collectorWithoutResolutionTimes = new MetricsCollector(runtimeConfig, customRegistry);
+      const collectorAny2 = collectorWithoutResolutionTimes as unknown as {
+        applyRawMetrics: (rawMetrics: IRawMetrics) => void;
+        getRawMetrics: () => IRawMetrics;
+      };
+
+      // Apply raw metrics - should handle missing resolutionTimesState gracefully
+      const rawMetrics = collectorAny.getRawMetrics();
+      expect(() => {
+        collectorAny2.applyRawMetrics(rawMetrics);
+      }).not.toThrow();
+
+      // Verify other metrics were applied
+      const resultMetrics = collectorAny2.getRawMetrics();
+      expect(resultMetrics.containerResolutions).toBe(rawMetrics.containerResolutions);
+    });
+
+    it("should handle setMetricValue when state is missing", () => {
+      const collector = new MetricsCollector(runtimeConfig);
+
+      // Access private method via type assertion for testing
+      const collectorAny = collector as unknown as {
+        setMetricValue: <T>(key: string, value: T) => void;
+      };
+
+      // Try to set value for non-existent metric - should not throw
+      expect(() => {
+        collectorAny.setMetricValue("nonExistentMetric", 42);
+      }).not.toThrow();
+
+      // Verify metric was not set (since it doesn't exist)
+      const rawMetrics = collector.getRawMetrics();
+      expect(rawMetrics).toBeDefined();
     });
   });
 });

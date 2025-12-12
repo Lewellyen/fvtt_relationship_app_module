@@ -103,6 +103,11 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Registry-Casts: Zentralisierte Registry-Type-Cast-Helpers für Type-Varianz (bereits global in type-coverage.json ausgenommen, eslint-disable für any-Parameter in castBindingToUnknown notwendig)',
   },
   {
+    file: 'src/infrastructure/observability/metrics-definition/metric-casts.ts',
+    allowed: ['type-coverage:ignore'],
+    reason: 'Metrics-Casts: Zentralisierte Metrics-Type-Cast-Helpers für Type-Varianz (bereits global in type-coverage.json ausgenommen)',
+  },
+  {
     file: 'src/infrastructure/shared/utils/type-guards.ts',
     allowed: ['type-coverage:ignore-next-line'],
     reason: 'Runtime Type Guards: Type-Cast für Runtime-Validierung von Methoden-Existenz (notwendig für type-safe Runtime-Checks)',
