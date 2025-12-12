@@ -125,8 +125,76 @@ describe("Domain Boundary Checker", () => {
       expect(result.valid).toBe(true);
     });
 
-    it("should ignore relative imports", () => {
+    it("should ignore non-src relative imports without projectRoot", () => {
       const result = checkDomainBoundary("src/domain/entities/journal-entry.ts", "./types/result");
+      expect(result.valid).toBe(true);
+    });
+
+    it("should validate relative imports within same layer", () => {
+      const projectRoot = process.cwd();
+      const result = checkDomainBoundary(
+        "src/domain/entities/journal-entry.ts",
+        "../types/result",
+        projectRoot
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should reject relative import from domain to application", () => {
+      const projectRoot = process.cwd();
+      // Simuliere: domain/entities/file.ts importiert von application/services (über mehrere ..)
+      // Das ist schwer zu testen mit echten Pfaden, aber wir testen die Logik
+      const result = checkDomainBoundary(
+        "src/domain/entities/journal-entry.ts",
+        "../../application/services/JournalVisibilityService",
+        projectRoot
+      );
+      expect(result.valid).toBe(false);
+      expect(result.violation).toContain("Domain Layer");
+      expect(result.violation).toContain("application");
+    });
+
+    it("should reject relative import from application to framework", () => {
+      const projectRoot = process.cwd();
+      const result = checkDomainBoundary(
+        "src/application/services/JournalVisibilityService.ts",
+        "../../framework/core/composition-root",
+        projectRoot
+      );
+      expect(result.valid).toBe(false);
+      expect(result.violation).toContain("Application Layer");
+      expect(result.violation).toContain("Framework Layer");
+    });
+
+    it("should reject relative import from infrastructure to framework", () => {
+      const projectRoot = process.cwd();
+      const result = checkDomainBoundary(
+        "src/infrastructure/di/container.ts",
+        "../../framework/core/composition-root",
+        projectRoot
+      );
+      expect(result.valid).toBe(false);
+      expect(result.violation).toContain("Infrastructure Layer");
+      expect(result.violation).toContain("Framework Layer");
+    });
+
+    it("should allow relative imports within same subdirectory", () => {
+      const projectRoot = process.cwd();
+      const result = checkDomainBoundary(
+        "src/infrastructure/cache/config/CacheConfigManager.ts",
+        "./cache-config-manager.interface",
+        projectRoot
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should allow relative import from infrastructure to domain", () => {
+      const projectRoot = process.cwd();
+      const result = checkDomainBoundary(
+        "src/infrastructure/adapters/foundry/ports/v13/FoundryGamePort.ts",
+        "../../../../domain/types/result",
+        projectRoot
+      );
       expect(result.valid).toBe(true);
     });
   });

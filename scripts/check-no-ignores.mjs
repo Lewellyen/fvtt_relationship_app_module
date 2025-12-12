@@ -107,6 +107,11 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore-next-line'],
     reason: 'Runtime Type Guards: Type-Cast für Runtime-Validierung von Methoden-Existenz (notwendig für type-safe Runtime-Checks)',
   },
+  {
+    file: 'src/framework/core/api/wrappers/strategies/api-wrapper-strategy-registry.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Generic Type Narrowing: strategy.supports() garantiert Kompatibilität mit TServiceType zur Laufzeit, aber TypeScript kann den generischen Typ nicht aus Runtime-Checks ableiten',
+  },
 
   // Domain Port Interfaces: Leere Interface-Erweiterungen
   {

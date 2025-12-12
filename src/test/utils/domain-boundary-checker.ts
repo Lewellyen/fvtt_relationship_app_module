@@ -6,7 +6,7 @@
  */
 
 import { readFileSync } from "fs";
-import { join } from "path";
+import { join, dirname, resolve, relative } from "path";
 import { glob } from "glob";
 
 /**
@@ -27,54 +27,109 @@ export interface DomainBoundaryViolation {
 }
 
 /**
+ * Löst einen relativen Import zu einem absoluten Pfad (relativ zu src/) auf
+ *
+ * @param filePath - Pfad zur importierenden Datei (relativ zu src/)
+ * @param relativeImport - Relativer Import-Pfad (z.B. '../types/result' oder './helper')
+ * @param projectRoot - Projekt-Root-Verzeichnis
+ * @returns Absoluter Pfad relativ zu src/ (z.B. 'domain/types/result') oder null wenn außerhalb von src/
+ */
+function resolveRelativeImport(
+  filePath: string,
+  relativeImport: string,
+  projectRoot: string
+): string | null {
+  // Normalisiere Pfade (Windows/Unix Kompatibilität)
+  const normalizedFilePath = filePath.replace(/\\/g, "/");
+  const normalizedImport = relativeImport.replace(/\\/g, "/");
+
+  // Vollständiger Pfad zur importierenden Datei
+  const fullFilePath = join(projectRoot, normalizedFilePath);
+  const fileDir = dirname(fullFilePath);
+
+  // Löse den relativen Import auf
+  const resolvedPath = resolve(fileDir, normalizedImport);
+
+  // Prüfe, ob der aufgelöste Pfad innerhalb von src/ liegt
+  const srcDir = join(projectRoot, "src");
+  const relativePath = relative(srcDir, resolvedPath);
+
+  // Wenn der Pfad mit ../ beginnt, liegt er außerhalb von src/
+  if (relativePath.startsWith("..")) {
+    return null;
+  }
+
+  // Entferne .ts/.js Extension falls vorhanden und normalisiere
+  return relativePath.replace(/\.(ts|js)$/, "").replace(/\\/g, "/");
+}
+
+/**
  * Prüft, ob ein Import eine Domänengrenze verletzt
  *
- * @param filePath - Pfad zur Datei, die importiert
- * @param importPath - Import-Pfad (z.B. '@/application/services/...')
+ * @param filePath - Pfad zur Datei, die importiert (relativ zu src/)
+ * @param importPath - Import-Pfad (z.B. '@/application/services/...' oder '../types/result')
+ * @param projectRoot - Projekt-Root-Verzeichnis (optional, nur für relative Imports benötigt)
  * @returns Prüfungsergebnis
  */
 export function checkDomainBoundary(
   filePath: string,
-  importPath: string
+  importPath: string,
+  projectRoot?: string
 ): DomainBoundaryCheckResult {
+  let normalizedImportPath = importPath;
+
+  // Relative Imports auflösen
+  if (importPath.startsWith("./") || importPath.startsWith("../")) {
+    if (!projectRoot) {
+      // Kann ohne projectRoot nicht aufgelöst werden, überspringen
+      return { valid: true };
+    }
+    const resolved = resolveRelativeImport(filePath, importPath, projectRoot);
+    if (!resolved) {
+      // Import liegt außerhalb von src/, nicht prüfbar
+      return { valid: true };
+    }
+    normalizedImportPath = `@/${resolved}`;
+  }
+
   // Nur @/ Imports prüfen (interne Imports)
-  if (!importPath.startsWith("@/")) {
+  if (!normalizedImportPath.startsWith("@/")) {
     return { valid: true };
   }
 
   // Domain Layer Regeln
   if (filePath.includes("/domain/")) {
     if (
-      importPath.includes("/application/") ||
-      importPath.includes("/infrastructure/") ||
-      importPath.includes("/framework/")
+      normalizedImportPath.includes("/application/") ||
+      normalizedImportPath.includes("/infrastructure/") ||
+      normalizedImportPath.includes("/framework/")
     ) {
       return {
         valid: false,
-        violation: `Domain Layer (${filePath}) darf nicht von ${importPath} importieren (Clean Architecture Verletzung)`,
+        violation: `Domain Layer (${filePath}) darf nicht von ${importPath} (→ ${normalizedImportPath}) importieren (Clean Architecture Verletzung)`,
       };
     }
   }
 
   // Application Layer Regeln
   if (filePath.includes("/application/")) {
-    if (importPath.includes("/framework/")) {
+    if (normalizedImportPath.includes("/framework/")) {
       return {
         valid: false,
-        violation: `Application Layer (${filePath}) darf nicht von Framework Layer importieren (Clean Architecture Verletzung)`,
+        violation: `Application Layer (${filePath}) darf nicht von Framework Layer (${importPath} → ${normalizedImportPath}) importieren (Clean Architecture Verletzung)`,
       };
     }
     // Infrastructure nur über Port-Interfaces und Tokens erlauben
-    if (importPath.includes("/infrastructure/")) {
+    if (normalizedImportPath.includes("/infrastructure/")) {
       const isPortInterface =
-        importPath.includes("/interfaces/") ||
-        importPath.includes("/ports/") ||
-        importPath.includes("/tokens/");
+        normalizedImportPath.includes("/interfaces/") ||
+        normalizedImportPath.includes("/ports/") ||
+        normalizedImportPath.includes("/tokens/");
 
       if (!isPortInterface) {
         return {
           valid: false,
-          violation: `Application Layer (${filePath}) darf nur Port-Interfaces und Tokens von Infrastructure importieren, nicht: ${importPath}`,
+          violation: `Application Layer (${filePath}) darf nur Port-Interfaces und Tokens von Infrastructure importieren, nicht: ${importPath} (→ ${normalizedImportPath})`,
         };
       }
     }
@@ -82,10 +137,10 @@ export function checkDomainBoundary(
 
   // Infrastructure Layer Regeln
   if (filePath.includes("/infrastructure/")) {
-    if (importPath.includes("/framework/")) {
+    if (normalizedImportPath.includes("/framework/")) {
       return {
         valid: false,
-        violation: `Infrastructure Layer (${filePath}) darf nicht von Framework Layer importieren (Clean Architecture Verletzung)`,
+        violation: `Infrastructure Layer (${filePath}) darf nicht von Framework Layer (${importPath} → ${normalizedImportPath}) importieren (Clean Architecture Verletzung)`,
       };
     }
   }
@@ -118,7 +173,7 @@ function removeComments(content: string): string {
  * Extrahiert alle Import-Statements aus einem TypeScript/JavaScript File
  *
  * @param content - Dateiinhalt
- * @returns Array von Import-Pfaden
+ * @returns Array von Import-Pfaden (sowohl @/ als auch relative Imports)
  */
 function extractImports(content: string): string[] {
   const imports: string[] = [];
@@ -126,8 +181,9 @@ function extractImports(content: string): string[] {
   // Kommentare entfernen, um Imports in Kommentaren zu ignorieren
   const contentWithoutComments = removeComments(content);
 
-  // Standard ES6 imports: import ... from '...'
-  const es6ImportRegex = /import\s+.*?\s+from\s+['"](@\/[^'"]+)['"]/g;
+  // Standard ES6 imports: import ... from '...' (@/ und relative)
+  // Regex erfasst sowohl @/ als auch relative Imports (./ oder ../)
+  const es6ImportRegex = /import\s+.*?\s+from\s+['"]((?:@\/|[./])[^'"]+)['"]/g;
   let match;
   while ((match = es6ImportRegex.exec(contentWithoutComments)) !== null) {
     if (match[1]) {
@@ -136,7 +192,7 @@ function extractImports(content: string): string[] {
   }
 
   // Dynamic imports: import('...')
-  const dynamicImportRegex = /import\s*\(\s*['"](@\/[^'"]+)['"]\s*\)/g;
+  const dynamicImportRegex = /import\s*\(\s*['"]((?:@\/|[./])[^'"]+)['"]\s*\)/g;
   while ((match = dynamicImportRegex.exec(contentWithoutComments)) !== null) {
     if (match[1]) {
       imports.push(match[1]);
@@ -144,7 +200,7 @@ function extractImports(content: string): string[] {
   }
 
   // require() calls: require('...')
-  const requireRegex = /require\s*\(\s*['"](@\/[^'"]+)['"]\s*\)/g;
+  const requireRegex = /require\s*\(\s*['"]((?:@\/|[./])[^'"]+)['"]\s*\)/g;
   while ((match = requireRegex.exec(contentWithoutComments)) !== null) {
     if (match[1]) {
       imports.push(match[1]);
@@ -179,7 +235,7 @@ export async function validateAllDomainBoundaries(
       const imports = extractImports(content);
 
       for (const importPath of imports) {
-        const check = checkDomainBoundary(file, importPath);
+        const check = checkDomainBoundary(file, importPath, projectRoot);
 
         if (!check.valid && check.violation) {
           violations.push({

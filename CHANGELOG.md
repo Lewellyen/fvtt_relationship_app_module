@@ -12,6 +12,28 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.13] - 2025-12-12
+### Hinzugefügt
+- **ApiWrapperStrategy Interface**: Neues Interface für Wrapper-Strategien mit `supports()` und `wrap()` Methoden ([Details](docs/refactoring/14-ocp-module-api-initializer.md))
+- **ApiWrapperStrategyRegistry**: Neue Registry-Klasse für Verwaltung und Priorisierung von Wrapper-Strategien ([Details](docs/refactoring/14-ocp-module-api-initializer.md))
+- **Konkrete Wrapper-Strategien**: I18nWrapperStrategy, NotificationWrapperStrategy, SettingsWrapperStrategy und NoopWrapperStrategy ([Details](docs/refactoring/14-ocp-module-api-initializer.md))
+- **Tests für Wrapper-Strategien**: Umfassende Test-Suite für Registry und Strategien
+
+### Geändert
+- **ServiceWrapperFactory OCP-Refactoring**: ServiceWrapperFactory wurde nach Open/Closed Principle (OCP) refactored ([Details](docs/refactoring/14-ocp-module-api-initializer.md))
+- `ServiceWrapperFactory`: Verwendet jetzt `ApiWrapperStrategyRegistry` statt fester If/Else-Ketten
+- `ServiceWrapperFactory`: Neue API-Services können jetzt ausschließlich über neue Strategien hinzugefügt werden, ohne die Factory zu modifizieren
+- Keine Breaking Changes: Public API bleibt unverändert, bestehende Funktionalität bleibt erhalten
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.12] - 2025-12-11
 ### Hinzugefügt
 - **InitPhase Interface**: Neues Interface für Initialisierungsphasen mit id, priority, criticality und execute() ([Details](docs/refactoring/13-ocp-init-orchestrator.md))

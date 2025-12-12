@@ -9483,6 +9483,66 @@ const _ModuleApiBuilder = class _ModuleApiBuilder {
 };
 __name(_ModuleApiBuilder, "ModuleApiBuilder");
 let ModuleApiBuilder = _ModuleApiBuilder;
+const _ApiWrapperStrategyRegistry = class _ApiWrapperStrategyRegistry {
+  constructor() {
+    this.strategies = [];
+  }
+  /**
+   * Registers a wrapper strategy.
+   *
+   * @param strategy - Strategy to register
+   */
+  register(strategy) {
+    this.strategies.push(strategy);
+  }
+  /**
+   * Registers multiple wrapper strategies.
+   *
+   * @param strategies - Array of strategies to register
+   */
+  registerAll(strategies) {
+    for (const strategy of strategies) {
+      this.register(strategy);
+    }
+  }
+  /**
+   * Gets all registered strategies, sorted by priority (lower = higher priority).
+   *
+   * @returns Array of strategies in priority order
+   */
+  getAll() {
+    return [...this.strategies].sort((a, b) => {
+      const priorityA = a.getPriority?.() ?? 100;
+      const priorityB = b.getPriority?.() ?? 100;
+      return priorityA - priorityB;
+    });
+  }
+  /**
+   * Finds the first strategy that supports the given token.
+   *
+   * @param token - API token to find strategy for
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Strategy that supports the token, or null if none found
+   */
+  findStrategy(token, wellKnownTokens) {
+    const sortedStrategies = this.getAll();
+    for (const strategy of sortedStrategies) {
+      if (strategy.supports(token, wellKnownTokens)) {
+        return strategy;
+      }
+    }
+    return null;
+  }
+  /**
+   * Clears all registered strategies.
+   * Useful for testing or reset scenarios.
+   */
+  clear() {
+    this.strategies.length = 0;
+  }
+};
+__name(_ApiWrapperStrategyRegistry, "ApiWrapperStrategyRegistry");
+let ApiWrapperStrategyRegistry = _ApiWrapperStrategyRegistry;
 function isAllowedKey(prop, allowed) {
   if (typeof prop !== "string") {
     return false;
@@ -9555,9 +9615,83 @@ function wrapFoundrySettingsPort(service, create) {
   return create(service);
 }
 __name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
+const _I18nWrapperStrategy = class _I18nWrapperStrategy {
+  supports(token, wellKnownTokens) {
+    return token === wellKnownTokens.i18nFacadeToken;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return wrapI18nService(service, createPublicI18n);
+  }
+  getPriority() {
+    return 10;
+  }
+};
+__name(_I18nWrapperStrategy, "I18nWrapperStrategy");
+let I18nWrapperStrategy = _I18nWrapperStrategy;
+const _NotificationWrapperStrategy = class _NotificationWrapperStrategy {
+  supports(token, wellKnownTokens) {
+    return token === wellKnownTokens.notificationCenterToken;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return wrapNotificationCenterService(service, createPublicNotificationCenter);
+  }
+  getPriority() {
+    return 10;
+  }
+};
+__name(_NotificationWrapperStrategy, "NotificationWrapperStrategy");
+let NotificationWrapperStrategy = _NotificationWrapperStrategy;
+const _SettingsWrapperStrategy = class _SettingsWrapperStrategy {
+  supports(token, wellKnownTokens) {
+    return token === wellKnownTokens.foundrySettingsToken;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return wrapFoundrySettingsPort(service, createPublicFoundrySettings);
+  }
+  getPriority() {
+    return 10;
+  }
+};
+__name(_SettingsWrapperStrategy, "SettingsWrapperStrategy");
+let SettingsWrapperStrategy = _SettingsWrapperStrategy;
+const _NoopWrapperStrategy = class _NoopWrapperStrategy {
+  supports(_token, _wellKnownTokens) {
+    return true;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return service;
+  }
+  getPriority() {
+    return 1e3;
+  }
+};
+__name(_NoopWrapperStrategy, "NoopWrapperStrategy");
+let NoopWrapperStrategy = _NoopWrapperStrategy;
 const _ServiceWrapperFactory = class _ServiceWrapperFactory {
+  constructor(strategyRegistry) {
+    this.strategyRegistry = strategyRegistry ?? this.createDefaultRegistry();
+  }
+  /**
+   * Creates the default strategy registry with standard wrapper strategies.
+   *
+   * @returns Registry with I18n, Notification, Settings, and Noop strategies
+   */
+  createDefaultRegistry() {
+    const registry = new ApiWrapperStrategyRegistry();
+    registry.registerAll([
+      new I18nWrapperStrategy(),
+      new NotificationWrapperStrategy(),
+      new SettingsWrapperStrategy(),
+      new NoopWrapperStrategy()
+      // Fallback strategy
+    ]);
+    return registry;
+  }
   /**
    * Applies read-only wrappers when API consumers resolve sensitive services.
+   *
+   * Delegates to registered strategies following Open/Closed Principle.
+   * No token-specific if/else chains - all logic is in strategies.
    *
    * @param token - API token used for resolution
    * @param service - Service resolved from the container
@@ -9565,14 +9699,9 @@ const _ServiceWrapperFactory = class _ServiceWrapperFactory {
    * @returns Wrapped service when applicable
    */
   wrapSensitiveService(token, service, wellKnownTokens) {
-    if (token === wellKnownTokens.i18nFacadeToken) {
-      return wrapI18nService(service, createPublicI18n);
-    }
-    if (token === wellKnownTokens.notificationCenterToken) {
-      return wrapNotificationCenterService(service, createPublicNotificationCenter);
-    }
-    if (token === wellKnownTokens.foundrySettingsToken) {
-      return wrapFoundrySettingsPort(service, createPublicFoundrySettings);
+    const strategy = this.strategyRegistry.findStrategy(token, wellKnownTokens);
+    if (strategy) {
+      return strategy.wrap(service, token, wellKnownTokens);
     }
     return service;
   }
