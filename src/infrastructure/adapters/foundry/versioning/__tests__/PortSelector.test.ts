@@ -16,6 +16,9 @@ import { ok as resultOk } from "@/domain/utils/result";
 import type { IPortSelectionObservability } from "@/infrastructure/adapters/foundry/versioning/port-selection-observability.interface";
 import type { IPortSelectionPerformanceTracker } from "@/infrastructure/adapters/foundry/versioning/port-selection-performance-tracker.interface";
 import type { PortSelectionObserver } from "@/infrastructure/adapters/foundry/versioning/port-selection-observer";
+import type { PortMatchStrategy } from "@/infrastructure/adapters/foundry/versioning/port-match-strategy.interface";
+import type { MatchError } from "@/infrastructure/adapters/foundry/versioning/port-match-strategy.interface";
+import { DIPortSelector } from "@/infrastructure/adapters/foundry/versioning/portselector";
 
 vi.mock("@/infrastructure/adapters/foundry/versioning/versiondetector", () => ({
   getFoundryVersionResult: vi.fn(),
@@ -194,22 +197,39 @@ describe("PortSelector", () => {
     it("should handle version detection errors", () => {
       const tokens = new Map([[13, token13]]) as any;
 
+      const testEventEmitter = new PortSelectionEventEmitter();
+      const testCapturedEvents: PortSelectionEvent[] = [];
+
       const mockVersionDetectorWithError: FoundryVersionDetector = {
         getVersion: vi.fn().mockReturnValue(err("Version detection failed")),
       } as any;
       const selectorWithError = new PortSelector(
         mockVersionDetectorWithError,
-        mockEventEmitter,
+        testEventEmitter,
         mockObservability,
         mockPerformanceTracker,
-        mockObserver,
+        {
+          handleEvent: vi.fn((event: PortSelectionEvent) => {
+            testEventEmitter.emit(event);
+          }),
+        } as any,
         mockContainer
       );
+
+      selectorWithError.onEvent((event) => testCapturedEvents.push(event));
 
       const result = selectorWithError.selectPortFromTokens(tokens);
       expectResultErr(result);
       expect(result.error.code).toBe("PORT_SELECTION_FAILED");
       expect(result.error.message).toContain("Could not determine Foundry version");
+
+      // Verify event does not contain adapterName when not provided
+      expect(testCapturedEvents).toHaveLength(1);
+      const event = testCapturedEvents[0];
+      expect(event?.type).toBe("failure");
+      if (event?.type === "failure") {
+        expect(event.adapterName).toBeUndefined();
+      }
     });
 
     it("should handle version detection errors with multiple tokens (sorts availableVersions)", () => {
@@ -241,6 +261,82 @@ describe("PortSelector", () => {
       const eventCall = (mockObserver.handleEvent as any).mock.calls[0][0];
       expect(eventCall.type).toBe("failure");
       expect(eventCall.availableVersions).toBe("13, 14, 15"); // Should be sorted
+      // Verify adapterName is not included when not provided
+      expect(eventCall.adapterName).toBeUndefined();
+    });
+
+    it("should handle version detection errors with explicit undefined adapterName", () => {
+      const tokens = new Map([[13, token13]]) as any;
+
+      const testEventEmitter = new PortSelectionEventEmitter();
+      const testCapturedEvents: PortSelectionEvent[] = [];
+
+      const mockVersionDetectorWithError: FoundryVersionDetector = {
+        getVersion: vi.fn().mockReturnValue(err("Version detection failed")),
+      } as any;
+      const selectorWithError = new PortSelector(
+        mockVersionDetectorWithError,
+        testEventEmitter,
+        mockObservability,
+        mockPerformanceTracker,
+        {
+          handleEvent: vi.fn((event: PortSelectionEvent) => {
+            testEventEmitter.emit(event);
+          }),
+        } as any,
+        mockContainer
+      );
+
+      selectorWithError.onEvent((event) => testCapturedEvents.push(event));
+
+      // Explicitly pass undefined for adapterName
+      const result = selectorWithError.selectPortFromTokens(tokens, undefined, undefined);
+      expectResultErr(result);
+
+      // Verify event does not contain adapterName
+      expect(testCapturedEvents).toHaveLength(1);
+      const event = testCapturedEvents[0];
+      expect(event?.type).toBe("failure");
+      if (event?.type === "failure") {
+        expect(event.adapterName).toBeUndefined();
+      }
+    });
+
+    it("should handle version detection errors with adapterName provided", () => {
+      const tokens = new Map([[13, token13]]) as any;
+
+      const testEventEmitter = new PortSelectionEventEmitter();
+      const testCapturedEvents: PortSelectionEvent[] = [];
+
+      const mockVersionDetectorWithError: FoundryVersionDetector = {
+        getVersion: vi.fn().mockReturnValue(err("Version detection failed")),
+      } as any;
+      const selectorWithError = new PortSelector(
+        mockVersionDetectorWithError,
+        testEventEmitter,
+        mockObservability,
+        mockPerformanceTracker,
+        {
+          handleEvent: vi.fn((event: PortSelectionEvent) => {
+            testEventEmitter.emit(event);
+          }),
+        } as any,
+        mockContainer
+      );
+
+      selectorWithError.onEvent((event) => testCapturedEvents.push(event));
+
+      // Pass adapterName to test the true branch of the ternary operator
+      const result = selectorWithError.selectPortFromTokens(tokens, undefined, "FoundryGame");
+      expectResultErr(result);
+
+      // Verify event contains adapterName
+      expect(testCapturedEvents).toHaveLength(1);
+      const event = testCapturedEvents[0];
+      expect(event?.type).toBe("failure");
+      if (event?.type === "failure") {
+        expect(event.adapterName).toBe("FoundryGame");
+      }
     });
 
     it("should select exact version match when available", () => {
@@ -554,6 +650,78 @@ describe("PortSelector", () => {
       if (event?.type === "failure") {
         expect(event.adapterName).toBe("FoundryGame");
       }
+    });
+
+    it("should fallback to tokens map when error details do not contain availableVersions string", () => {
+      const tokens = new Map([
+        [13, token13],
+        [14, token14],
+      ]) as any;
+
+      // Create a custom strategy that returns an error with invalid details structure
+      const customStrategy: PortMatchStrategy<unknown> = {
+        select: () => {
+          return err({
+            code: "PORT_SELECTION_FAILED",
+            message: "No compatible port found",
+            details: { version: 13 }, // Missing availableVersions or not a string
+          } as MatchError);
+        },
+      };
+
+      // Create a new event emitter and captured events for this test
+      const testEventEmitter = new PortSelectionEventEmitter();
+      const testCapturedEvents: PortSelectionEvent[] = [];
+
+      const selectorWithCustomStrategy = new PortSelector(
+        selector["versionDetector"],
+        testEventEmitter,
+        mockObservability,
+        mockPerformanceTracker,
+        {
+          handleEvent: vi.fn((event: PortSelectionEvent) => {
+            testEventEmitter.emit(event);
+          }),
+        } as any,
+        mockContainer,
+        customStrategy
+      );
+
+      selectorWithCustomStrategy.onEvent((event) => testCapturedEvents.push(event));
+
+      const result = selectorWithCustomStrategy.selectPortFromTokens(tokens, 13);
+
+      expectResultErr(result);
+      expect(testCapturedEvents).toHaveLength(1);
+      const event = testCapturedEvents[0];
+      expect(event?.type).toBe("failure");
+      if (event?.type === "failure") {
+        // Should fallback to sorted tokens from the map
+        expect(event.availableVersions).toBe("13, 14");
+      }
+    });
+  });
+
+  describe("DIPortSelector", () => {
+    it("should extend PortSelector and use default GreedyPortMatchStrategy", () => {
+      const diSelector = new DIPortSelector(
+        selector["versionDetector"],
+        mockEventEmitter,
+        mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
+        mockContainer
+      );
+
+      expect(diSelector).toBeInstanceOf(PortSelector);
+      expect(diSelector).toBeInstanceOf(DIPortSelector);
+
+      // Test that it works with default strategy
+      const tokens = new Map([[13, token13]]) as any;
+      const result = diSelector.selectPortFromTokens(tokens, 13);
+
+      expectResultOk(result);
+      expect(result.value).toBe("port-v13");
     });
   });
 });

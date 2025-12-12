@@ -29,6 +29,7 @@ This document records all intentional gaps in the TypeScript type coverage repor
 | `src/foundry/services/FoundryServiceBase.ts` (1 cast) | Type narrowing: Double cast narrows from generic ServiceType to Disposable at runtime. |
 | `src/di_infrastructure/container.ts` (1 cast) | Type cast: Invoke registered fallback factory with the target service type. |
 | `src/core/api/module-api-initializer.ts` (8 casts) | Generic type narrowing: Token comparison guarantees service type, but TypeScript cannot infer `TServiceType` from runtime checks. |
+| `src/infrastructure/adapters/foundry/versioning/portselector.ts` (1 cast) | Generic type narrowing: selectedToken kommt aus tokens Map<number, InjectionToken<T>>, aber Strategy ist als PortMatchStrategy<unknown> typisiert für Flexibilität. TypeScript kann den generischen Typ nicht ableiten, obwohl der Token zur Laufzeit vom Typ InjectionToken<T> ist. |
 | `src/foundry/versioning/portregistry.ts` (2 assertions) | Non-null assertions: Array[0] and Map.get() guaranteed by length and compatibleVersions checks. |
 | `src/services/RetryService.ts` (2 assertions) | Non-null assertions: lastError guaranteed defined after loop (maxAttempts >= 1). |
 | `src/core/api/readonly-wrapper.ts` (2 casts) | 1) Type narrowing: (keyof T)[] to string[] safe when T uses string keys. 2) Proxy trap: prop to keyof T after allowedMethods membership check. |
@@ -36,7 +37,7 @@ This document records all intentional gaps in the TypeScript type coverage repor
 
 Each inline exclusion is paired with a descriptive comment in code referencing the invariant that justifies the cast or assertion. Automated tests covering these paths are located beside the relevant modules (e.g. `PortSelector.test.ts`, `FoundryHooksService.test.ts`, `RetryService.test.ts`).
 
-**Total:** 29 inline exclusions across 15 files, all documented with justifications inline using `/* type-coverage:ignore-next-line -- reason */` format.
+**Total:** 30 inline exclusions across 16 files, all documented with justifications inline using `/* type-coverage:ignore-next-line -- reason */` format.
 
 **Eliminiert in früheren Releases:**
 - ✅ jQuery compatibility casts (2) - jQuery support removed
@@ -87,7 +88,7 @@ grep -r "type-coverage:ignore" src/
 grep -r "type-coverage:ignore-next-line$" src/
 ```
 
-**Status:** ✅ All 25 inline exceptions are documented. Zero undocumented exceptions exist.
+**Status:** ✅ All inline exceptions are documented. Zero undocumented exceptions exist.
 
 ---
 

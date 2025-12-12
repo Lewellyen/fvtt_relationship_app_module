@@ -112,6 +112,11 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore-next-line'],
     reason: 'Generic Type Narrowing: strategy.supports() garantiert Kompatibilität mit TServiceType zur Laufzeit, aber TypeScript kann den generischen Typ nicht aus Runtime-Checks ableiten',
   },
+  {
+    file: 'src/infrastructure/adapters/foundry/versioning/portselector.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Generic Type Narrowing: selectedToken kommt aus tokens Map<number, InjectionToken<T>>, aber Strategy ist als PortMatchStrategy<unknown> typisiert für Flexibilität. TypeScript kann den generischen Typ nicht ableiten, obwohl der Token zur Laufzeit vom Typ InjectionToken<T> ist.',
+  },
 
   // Domain Port Interfaces: Leere Interface-Erweiterungen
   {

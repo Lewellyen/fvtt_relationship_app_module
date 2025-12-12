@@ -11350,8 +11350,75 @@ const _PortResolutionStrategy = class _PortResolutionStrategy {
 };
 __name(_PortResolutionStrategy, "PortResolutionStrategy");
 let PortResolutionStrategy = _PortResolutionStrategy;
+function createMatchError(message2, details) {
+  return {
+    code: "PORT_SELECTION_FAILED",
+    message: message2,
+    details
+  };
+}
+__name(createMatchError, "createMatchError");
+const _GreedyPortMatchStrategy = class _GreedyPortMatchStrategy {
+  /**
+   * Selects the highest compatible port version.
+   *
+   * Algorithm:
+   * 1. Never select a port with version > current Foundry version
+   *    (prevents using APIs that don't exist yet)
+   * 2. Select the highest port version that is <= Foundry version
+   *    (use the newest compatible implementation)
+   *
+   * Time Complexity: O(n) where n = number of registered ports
+   * Space Complexity: O(1)
+   *
+   * @param tokens - Map of version numbers to injection tokens
+   * @param foundryVersion - The current Foundry version to match against
+   * @returns Result with matched port token and version, or error if no match found
+   *
+   * @example
+   * ```typescript
+   * const strategy = new GreedyPortMatchStrategy();
+   * const tokens = new Map([
+   *   [13, foundryV13GamePortToken],
+   *   [14, foundryV14GamePortToken]
+   * ]);
+   * // Foundry v14: selects v14
+   * // Foundry v13: selects v13
+   * // Foundry v15: selects v14 (fallback to highest available)
+   * const result = strategy.select(tokens, 14);
+   * ```
+   */
+  select(tokens, foundryVersion) {
+    let selectedToken;
+    let selectedVersion = APP_DEFAULTS.NO_VERSION_SELECTED;
+    for (const [portVersion, token] of tokens.entries()) {
+      if (portVersion > foundryVersion) {
+        continue;
+      }
+      if (portVersion > selectedVersion) {
+        selectedVersion = portVersion;
+        selectedToken = token;
+      }
+    }
+    if (selectedToken === void 0) {
+      const availableVersions = Array.from(tokens.keys()).sort((a, b) => a - b).join(", ");
+      return err(
+        createMatchError(`No compatible port found for Foundry version ${foundryVersion}`, {
+          version: foundryVersion,
+          availableVersions: availableVersions || "none"
+        })
+      );
+    }
+    return ok({
+      token: selectedToken,
+      version: selectedVersion
+    });
+  }
+};
+__name(_GreedyPortMatchStrategy, "GreedyPortMatchStrategy");
+let GreedyPortMatchStrategy = _GreedyPortMatchStrategy;
 const _PortSelector = class _PortSelector {
-  constructor(versionDetector, eventEmitter, observability, performanceTracker, observer, container) {
+  constructor(versionDetector, eventEmitter, observability, performanceTracker, observer, container, matchStrategy) {
     this.versionDetector = versionDetector;
     this.eventEmitter = eventEmitter;
     this.observability = observability;
@@ -11360,6 +11427,7 @@ const _PortSelector = class _PortSelector {
     this.observability.registerWithObservabilityRegistry(this);
     this.observability.setupObservability(this, this.observer);
     this.resolutionStrategy = new PortResolutionStrategy(container);
+    this.matchStrategy = matchStrategy ?? new GreedyPortMatchStrategy();
   }
   /**
    * Subscribe to port selection events.
@@ -11441,35 +11509,29 @@ const _PortSelector = class _PortSelector {
       }
       version = versionResult.value;
     }
-    let selectedToken;
-    let selectedVersion = APP_DEFAULTS.NO_VERSION_SELECTED;
-    for (const [portVersion, token] of tokens.entries()) {
-      if (portVersion > version) {
-        continue;
-      }
-      if (portVersion > selectedVersion) {
-        selectedVersion = portVersion;
-        selectedToken = token;
-      }
-    }
-    if (selectedToken === void 0) {
-      const availableVersions = Array.from(tokens.keys()).sort((a, b) => a - b).join(", ");
-      const error = createFoundryError(
-        "PORT_SELECTION_FAILED",
-        `No compatible port found for Foundry version ${version}`,
-        { version, availableVersions: availableVersions || "none" }
-      );
+    const tokensForStrategy = tokens;
+    const matchResult = this.matchStrategy.select(tokensForStrategy, version);
+    if (!matchResult.ok) {
       this.performanceTracker.endTracking();
+      const errorDetails = matchResult.error.details;
+      let availableVersions;
+      if (typeof errorDetails === "object" && errorDetails !== null && "availableVersions" in errorDetails && typeof errorDetails.availableVersions === "string") {
+        availableVersions = errorDetails.availableVersions;
+      } else {
+        availableVersions = Array.from(tokens.keys()).sort((a, b) => a - b).join(", ");
+      }
       this.observer.handleEvent({
         type: "failure",
         foundryVersion: version,
         availableVersions,
         ...adapterName !== void 0 ? { adapterName } : {},
-        error
+        error: matchResult.error
       });
-      return err(error);
+      return err(matchResult.error);
     }
-    const portResult = this.resolutionStrategy.resolve(selectedToken);
+    const { token: selectedToken, version: selectedVersion } = matchResult.value;
+    const typedToken = selectedToken;
+    const portResult = this.resolutionStrategy.resolve(typedToken);
     if (!portResult.ok) {
       this.performanceTracker.endTracking();
       this.observer.handleEvent({

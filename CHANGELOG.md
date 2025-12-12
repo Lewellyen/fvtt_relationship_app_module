@@ -12,6 +12,29 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.14] - 2025-12-12
+### Hinzugefügt
+- **PortMatchStrategy Interface**: Neues Interface für austauschbare Port-Matching-Strategien ([Details](docs/refactoring/15-ocp-port-selector.md))
+- **GreedyPortMatchStrategy**: Default-Implementierung der "greedy highest <= version" Matching-Strategie ([Details](docs/refactoring/15-ocp-port-selector.md))
+- **PortMatch und MatchError Types**: Neue Typen für Strategy-Ergebnisse ([Details](docs/refactoring/15-ocp-port-selector.md))
+- **Tests für GreedyPortMatchStrategy**: Umfassende Test-Suite für Matching-Strategie
+
+### Geändert
+- **PortSelector OCP-Refactoring**: PortSelector wurde nach Open/Closed Principle (OCP) refactored ([Details](docs/refactoring/15-ocp-port-selector.md))
+- `PortSelector`: Delegiert Matching-Logik jetzt an injizierte `PortMatchStrategy` statt fester Algorithmus-Implementierung
+- `PortSelector`: Verwendet standardmäßig `GreedyPortMatchStrategy` (Backward Compatibility)
+- `PortSelector`: Neue Matching-Strategien können jetzt ausschließlich als Strategy-Implementierungen hinzugefügt werden, ohne den Selector zu modifizieren
+- Keine Breaking Changes: Public API bleibt unverändert, bestehende Funktionalität bleibt erhalten
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.13] - 2025-12-12
 ### Hinzugefügt
 - **ApiWrapperStrategy Interface**: Neues Interface für Wrapper-Strategien mit `supports()` und `wrap()` Methoden ([Details](docs/refactoring/14-ocp-module-api-initializer.md))

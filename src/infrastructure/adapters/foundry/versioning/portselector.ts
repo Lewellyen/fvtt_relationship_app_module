@@ -2,7 +2,6 @@ import type { Result } from "@/domain/types/result";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import { err, ok } from "@/domain/utils/result";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
-import { APP_DEFAULTS } from "@/application/constants/app-constants";
 import type { PortSelectionEventEmitter } from "./port-selection-events";
 import type { PortSelectionEventCallback } from "./port-selection-events";
 import type { ServiceContainer } from "@/infrastructure/di/container";
@@ -18,6 +17,8 @@ import type { IPortSelectionPerformanceTracker } from "./port-selection-performa
 import { portSelectionObservabilityToken } from "@/infrastructure/shared/tokens/observability/port-selection-observability.token";
 import { portSelectionPerformanceTrackerToken } from "@/infrastructure/shared/tokens/observability/port-selection-performance-tracker.token";
 import { portSelectionObserverToken } from "@/infrastructure/shared/tokens/observability/port-selection-observer.token";
+import type { PortMatchStrategy } from "./port-match-strategy.interface";
+import { GreedyPortMatchStrategy } from "./greedy-port-match-strategy";
 
 /**
  * Selects the appropriate port implementation based on Foundry version.
@@ -30,7 +31,12 @@ import { portSelectionObserverToken } from "@/infrastructure/shared/tokens/obser
  * - Delegates event emission to PortSelectionObserver
  * - Delegates observability setup to PortSelectionObservability
  * - Delegates performance tracking to PortSelectionPerformanceTracker
- * - Conforms to SRP: Only responsible for port selection logic
+ * - Conforms to SRP: Only responsible for port selection orchestration
+ *
+ * **Strategy Pattern:**
+ * - Delegates matching logic to injected PortMatchStrategy
+ * - Default strategy: GreedyPortMatchStrategy (highest compatible version)
+ * - Enables OCP: New matching strategies can be added without modifying PortSelector
  *
  * **Dependency Injection:**
  * - Resolves ports from the DI container using injection tokens
@@ -38,6 +44,7 @@ import { portSelectionObserverToken } from "@/infrastructure/shared/tokens/obser
  */
 export class PortSelector {
   private readonly resolutionStrategy: PortResolutionStrategy;
+  private readonly matchStrategy: PortMatchStrategy<unknown>;
 
   constructor(
     private readonly versionDetector: FoundryVersionDetector,
@@ -45,7 +52,8 @@ export class PortSelector {
     private readonly observability: IPortSelectionObservability,
     private readonly performanceTracker: IPortSelectionPerformanceTracker,
     private readonly observer: PortSelectionObserver,
-    container: ServiceContainer
+    container: ServiceContainer,
+    matchStrategy?: PortMatchStrategy<unknown>
   ) {
     // Delegate observability registration
     this.observability.registerWithObservabilityRegistry(this);
@@ -53,6 +61,8 @@ export class PortSelector {
     this.observability.setupObservability(this, this.observer);
     // Create resolution strategy for container resolution
     this.resolutionStrategy = new PortResolutionStrategy(container);
+    // Use provided strategy or default to greedy strategy
+    this.matchStrategy = matchStrategy ?? new GreedyPortMatchStrategy<unknown>();
   }
 
   /**
@@ -146,61 +156,32 @@ export class PortSelector {
       version = versionResult.value;
     }
 
-    /**
-     * Version Matching Algorithm: Find highest compatible port
-     *
-     * Strategy: Greedy selection of the newest compatible port version
-     *
-     * Rules:
-     * 1. Never select a port with version > current Foundry version
-     *    (prevents using APIs that don't exist yet)
-     * 2. Select the highest port version that is <= Foundry version
-     *    (use the newest compatible implementation)
-     *
-     * Example Scenarios:
-     * - Foundry v13 + Ports [v12, v13, v14] → Select v13 (exact match)
-     * - Foundry v14 + Ports [v12, v13] → Select v13 (fallback to highest compatible)
-     * - Foundry v13 + Ports [v14, v15] → ERROR (no compatible port, all too new)
-     * - Foundry v20 + Ports [v13, v14] → Select v14 (future-proof fallback)
-     *
-     * Time Complexity: O(n) where n = number of registered ports
-     * Space Complexity: O(1)
-     *
-     * Note: This algorithm assumes ports are forward-compatible within reason.
-     * A v13 port should work on v14+ unless breaking API changes occur.
-     */
-    let selectedToken: InjectionToken<T> | undefined;
-    let selectedVersion: number = APP_DEFAULTS.NO_VERSION_SELECTED;
-
-    // Linear search for highest compatible version
-    // Could be optimized with sorted array + binary search, but n is typically small (2-5 ports)
-    for (const [portVersion, token] of tokens.entries()) {
-      // Rule 1: Skip ports newer than current Foundry version
-      // These ports may use APIs that don't exist yet → runtime crashes
-      if (portVersion > version) {
-        continue; // Incompatible (too new)
-      }
-
-      // Rule 2: Greedy selection - always prefer higher version numbers
-      // Track the highest compatible version seen so far
-      if (portVersion > selectedVersion) {
-        selectedVersion = portVersion;
-        selectedToken = token;
-      }
-    }
-
-    if (selectedToken === undefined) {
-      const availableVersions = Array.from(tokens.keys())
-        .sort((a, b) => a - b)
-        .join(", ");
-
-      const error = createFoundryError(
-        "PORT_SELECTION_FAILED",
-        `No compatible port found for Foundry version ${version}`,
-        { version, availableVersions: availableVersions || "none" }
-      );
-
+    // Delegate matching to strategy
+    // Note: Strategy is typed as PortMatchStrategy<unknown> but we use it with generic T
+    // This is safe because the token type is preserved through the matching process
+    // We need to cast tokens to match the strategy's type signature, but the actual
+    // token types are preserved and will be correctly typed when we extract the result
+    const tokensForStrategy: Map<number, InjectionToken<unknown>> = tokens;
+    const matchResult = this.matchStrategy.select(tokensForStrategy, version);
+    if (!matchResult.ok) {
       this.performanceTracker.endTracking(); // Track duration even on failure
+
+      // Extract available versions from error details for event emission
+      // MatchError.details is typed as unknown, so we need to check the structure
+      const errorDetails = matchResult.error.details;
+      let availableVersions: string;
+      if (
+        typeof errorDetails === "object" &&
+        errorDetails !== null &&
+        "availableVersions" in errorDetails &&
+        typeof errorDetails.availableVersions === "string"
+      ) {
+        availableVersions = errorDetails.availableVersions;
+      } else {
+        availableVersions = Array.from(tokens.keys())
+          .sort((a, b) => a - b)
+          .join(", ");
+      }
 
       // Emit failure event via observer
       this.observer.handleEvent({
@@ -208,14 +189,24 @@ export class PortSelector {
         foundryVersion: version,
         availableVersions,
         ...(adapterName !== undefined ? { adapterName } : {}),
-        error,
+        error: matchResult.error,
       });
 
-      return err(error);
+      return err(matchResult.error);
     }
 
+    const { token: selectedToken, version: selectedVersion } = matchResult.value;
+
     // CRITICAL: Only now resolve the selected port from the DI container
-    const portResult = this.resolutionStrategy.resolve(selectedToken);
+    // Type assertion is necessary here because:
+    // 1. The strategy is typed as PortMatchStrategy<unknown> for flexibility (allows any port type)
+    // 2. selectedToken comes from the tokens Map<number, InjectionToken<T>> passed to select()
+    // 3. TypeScript cannot infer that selectedToken is InjectionToken<T> because of the strategy's unknown type
+    // 4. The assertion is safe because the token was originally from the tokens map with type T
+    // This is a known limitation when using generic strategies with type-erased implementations
+    /* type-coverage:ignore-next-line -- Type narrowing: selectedToken comes from tokens Map<number, InjectionToken<T>>, but strategy is typed as PortMatchStrategy<unknown> for flexibility. The cast is safe because the token was originally from the tokens map with type T. */
+    const typedToken = selectedToken as InjectionToken<T>;
+    const portResult = this.resolutionStrategy.resolve(typedToken);
     if (!portResult.ok) {
       this.performanceTracker.endTracking(); // Track duration even on failure
 
@@ -267,6 +258,7 @@ export class DIPortSelector extends PortSelector {
     observer: PortSelectionObserver,
     container: ServiceContainer
   ) {
+    // Use default GreedyPortMatchStrategy (injected via constructor default parameter)
     super(versionDetector, eventEmitter, observability, performanceTracker, observer, container);
   }
 }
