@@ -2444,6 +2444,10 @@ const _RuntimeConfigAdapter = class _RuntimeConfigAdapter {
 };
 __name(_RuntimeConfigAdapter, "RuntimeConfigAdapter");
 let RuntimeConfigAdapter = _RuntimeConfigAdapter;
+function createRuntimeConfigAdapter(env) {
+  return new RuntimeConfigAdapter(env);
+}
+__name(createRuntimeConfigAdapter, "createRuntimeConfigAdapter");
 const _ContainerHealthCheck = class _ContainerHealthCheck {
   constructor(container) {
     this.name = "container";
@@ -2473,6 +2477,10 @@ const _DIContainerHealthCheck = class _DIContainerHealthCheck extends ContainerH
 __name(_DIContainerHealthCheck, "DIContainerHealthCheck");
 _DIContainerHealthCheck.dependencies = [platformContainerPortToken, healthCheckRegistryToken];
 let DIContainerHealthCheck = _DIContainerHealthCheck;
+function getDIContainerHealthCheckClass() {
+  return DIContainerHealthCheck;
+}
+__name(getDIContainerHealthCheckClass, "getDIContainerHealthCheckClass");
 const _MetricsHealthCheck = class _MetricsHealthCheck {
   constructor(metricsSnapshotPort) {
     this.name = "metrics";
@@ -2509,6 +2517,10 @@ const _DIMetricsHealthCheck = class _DIMetricsHealthCheck extends MetricsHealthC
 __name(_DIMetricsHealthCheck, "DIMetricsHealthCheck");
 _DIMetricsHealthCheck.dependencies = [platformMetricsSnapshotPortToken, healthCheckRegistryToken];
 let DIMetricsHealthCheck = _DIMetricsHealthCheck;
+function getDIMetricsHealthCheckClass() {
+  return DIMetricsHealthCheck;
+}
+__name(getDIMetricsHealthCheckClass, "getDIMetricsHealthCheckClass");
 const moduleIdToken = createInjectionToken("ModuleId");
 const platformBootstrapEventPortToken = createInjectionToken(
   "PlatformBootstrapEventPort"
@@ -18846,7 +18858,7 @@ function registerStaticValues(container) {
   if (isErr(envResult)) {
     return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
   }
-  const runtimeConfigAdapter = new RuntimeConfigAdapter(ENV);
+  const runtimeConfigAdapter = createRuntimeConfigAdapter(ENV);
   const runtimeConfigResult = container.registerValue(runtimeConfigToken, runtimeConfigAdapter);
   if (isErr(runtimeConfigResult)) {
     return err(`Failed to register RuntimeConfigAdapter: ${runtimeConfigResult.error.message}`);
@@ -18876,7 +18888,7 @@ __name(registerSubcontainerValues, "registerSubcontainerValues");
 function registerLoopPreventionServices(container) {
   const containerCheckResult = container.registerClass(
     containerHealthCheckToken,
-    DIContainerHealthCheck,
+    getDIContainerHealthCheckClass(),
     ServiceLifecycle.SINGLETON
   );
   if (isErr(containerCheckResult)) {
@@ -18884,7 +18896,7 @@ function registerLoopPreventionServices(container) {
   }
   const metricsCheckResult = container.registerClass(
     metricsHealthCheckToken,
-    DIMetricsHealthCheck,
+    getDIMetricsHealthCheckClass(),
     ServiceLifecycle.SINGLETON
   );
   if (isErr(metricsCheckResult)) {

@@ -12,6 +12,29 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.18] - 2025-12-14
+### Hinzugefügt
+- **Factory-Funktionen für DIP-Compliance**: Factory-Funktionen für `RuntimeConfigAdapter`, `DIContainerHealthCheck` und `DIMetricsHealthCheck` hinzugefügt, um Dependency Inversion Principle (DIP) zu erfüllen ([Details](docs/refactoring/DIP/findings/DIP__medium__dependencyconfig-direct-infrastructure-imports__e9f4a1.md))
+- `createRuntimeConfigAdapter()`: Factory-Funktion in `src/infrastructure/config/runtime-config-adapter.ts`
+- `getDIContainerHealthCheckClass()`: Factory-Funktion in `src/application/health/ContainerHealthCheck.ts`
+- `getDIMetricsHealthCheckClass()`: Factory-Funktion in `src/application/health/MetricsHealthCheck.ts`
+
+### Geändert
+- **DIP-Refactoring: dependencyconfig.ts**: Framework-Layer verwendet jetzt Factory-Funktionen statt direkter Imports von konkreten Klassen ([Details](docs/refactoring/DIP/findings/DIP__medium__dependencyconfig-direct-infrastructure-imports__e9f4a1.md))
+- `src/framework/config/dependencyconfig.ts`: Verwendet `createRuntimeConfigAdapter()`, `getDIContainerHealthCheckClass()` und `getDIMetricsHealthCheckClass()` statt direkter Klassen-Imports
+- Reduziertes Tight Coupling zwischen Framework-Layer und Infrastructure/Application-Layer
+- Verbesserte Testbarkeit durch Abstraktion über Factory-Funktionen
+- Keine Breaking Changes: Public API bleibt unverändert
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.17] - 2025-12-13
 ### Hinzugefügt
 - **ValidationSchema Interface**: Neues domain-layer Interface für plattform-agnostische Validierungsschemas ([Details](docs/refactoring/DIP/findings/DIP__high__valibot-type-dependency-in-settings-port__e4f5g6h.md))

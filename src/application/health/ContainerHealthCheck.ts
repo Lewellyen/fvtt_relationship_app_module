@@ -40,3 +40,24 @@ export class DIContainerHealthCheck extends ContainerHealthCheck {
     registry.register(this);
   }
 }
+
+/**
+ * Factory function that returns the DIContainerHealthCheck class reference.
+ *
+ * Centralizes access to the DIContainerHealthCheck class to follow the Dependency Inversion Principle (DIP).
+ * This allows the Framework layer to register the class without directly importing it,
+ * improving testability and reducing coupling.
+ *
+ * **Usage:**
+ * ```typescript
+ * import { getDIContainerHealthCheckClass } from "@/application/health/ContainerHealthCheck";
+ *
+ * const healthCheckClass = getDIContainerHealthCheckClass();
+ * container.registerClass(token, healthCheckClass, lifecycle);
+ * ```
+ *
+ * @returns The DIContainerHealthCheck class constructor
+ */
+export function getDIContainerHealthCheckClass(): typeof DIContainerHealthCheck {
+  return DIContainerHealthCheck;
+}

@@ -28,3 +28,25 @@ export class RuntimeConfigAdapter implements PlatformRuntimeConfigPort {
     return this.service.onChange(key, listener);
   }
 }
+
+/**
+ * Factory function for creating RuntimeConfigAdapter instances.
+ *
+ * Centralizes the creation of RuntimeConfigAdapter to follow the Dependency Inversion Principle (DIP).
+ * This allows the Framework layer to create instances without directly importing the concrete class,
+ * improving testability and reducing coupling.
+ *
+ * **Usage:**
+ * ```typescript
+ * import { createRuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
+ * import type { EnvironmentConfig } from "@/domain/types/environment-config";
+ *
+ * const adapter = createRuntimeConfigAdapter(envConfig);
+ * ```
+ *
+ * @param env - The environment configuration to use
+ * @returns A new RuntimeConfigAdapter instance
+ */
+export function createRuntimeConfigAdapter(env: EnvironmentConfig): RuntimeConfigAdapter {
+  return new RuntimeConfigAdapter(env);
+}

@@ -51,3 +51,24 @@ export class DIMetricsHealthCheck extends MetricsHealthCheck {
     registry.register(this);
   }
 }
+
+/**
+ * Factory function that returns the DIMetricsHealthCheck class reference.
+ *
+ * Centralizes access to the DIMetricsHealthCheck class to follow the Dependency Inversion Principle (DIP).
+ * This allows the Framework layer to register the class without directly importing it,
+ * improving testability and reducing coupling.
+ *
+ * **Usage:**
+ * ```typescript
+ * import { getDIMetricsHealthCheckClass } from "@/application/health/MetricsHealthCheck";
+ *
+ * const healthCheckClass = getDIMetricsHealthCheckClass();
+ * container.registerClass(token, healthCheckClass, lifecycle);
+ * ```
+ *
+ * @returns The DIMetricsHealthCheck class constructor
+ */
+export function getDIMetricsHealthCheckClass(): typeof DIMetricsHealthCheck {
+  return DIMetricsHealthCheck;
+}

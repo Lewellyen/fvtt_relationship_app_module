@@ -10,9 +10,9 @@ import { serviceContainerToken } from "@/infrastructure/shared/tokens/core/servi
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 import { ENV } from "@/framework/config/environment";
-import { RuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
-import { DIContainerHealthCheck } from "@/application/health/ContainerHealthCheck";
-import { DIMetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
+import { createRuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
+import { getDIContainerHealthCheckClass } from "@/application/health/ContainerHealthCheck";
+import { getDIMetricsHealthCheckClass } from "@/application/health/MetricsHealthCheck";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { castContainerTokenToPlatformContainerPortToken } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure/module-id.token";
@@ -48,7 +48,7 @@ function registerStaticValues(container: ServiceContainer): Result<void, string>
     return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
   }
 
-  const runtimeConfigAdapter = new RuntimeConfigAdapter(ENV);
+  const runtimeConfigAdapter = createRuntimeConfigAdapter(ENV);
   const runtimeConfigResult = container.registerValue(runtimeConfigToken, runtimeConfigAdapter);
   if (isErr(runtimeConfigResult)) {
     return err(`Failed to register RuntimeConfigAdapter: ${runtimeConfigResult.error.message}`);
@@ -99,7 +99,7 @@ function registerSubcontainerValues(container: ServiceContainer): Result<void, s
 function registerLoopPreventionServices(container: ServiceContainer): Result<void, string> {
   const containerCheckResult = container.registerClass(
     containerHealthCheckToken,
-    DIContainerHealthCheck,
+    getDIContainerHealthCheckClass(),
     ServiceLifecycle.SINGLETON
   );
   if (isErr(containerCheckResult)) {
@@ -108,7 +108,7 @@ function registerLoopPreventionServices(container: ServiceContainer): Result<voi
 
   const metricsCheckResult = container.registerClass(
     metricsHealthCheckToken,
-    DIMetricsHealthCheck,
+    getDIMetricsHealthCheckClass(),
     ServiceLifecycle.SINGLETON
   );
   if (isErr(metricsCheckResult)) {
