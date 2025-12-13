@@ -138,6 +138,4520 @@ const bootstrapInitHookServiceToken = createInjectionToken(
 const bootstrapReadyHookServiceToken = createInjectionToken(
   "BootstrapReadyHookService"
 );
+var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
+  LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
+  LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
+  LogLevel2[LogLevel2["WARN"] = 2] = "WARN";
+  LogLevel2[LogLevel2["ERROR"] = 3] = "ERROR";
+  return LogLevel2;
+})(LogLevel || {});
+const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "development", "PROD": true, "SSR": false, "VITE_ENABLE_PERF_TRACKING": "true" };
+function parseSamplingRate(envValue, fallback2) {
+  const raw = parseFloat(envValue ?? String(fallback2));
+  return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback2;
+}
+__name(parseSamplingRate, "parseSamplingRate");
+function parseNonNegativeNumber(envValue, fallback2) {
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed)) {
+    return fallback2;
+  }
+  return parsed < 0 ? fallback2 : parsed;
+}
+__name(parseNonNegativeNumber, "parseNonNegativeNumber");
+function parseOptionalPositiveInteger(envValue) {
+  if (!envValue) {
+    return void 0;
+  }
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return void 0;
+  }
+  return Math.floor(parsed);
+}
+__name(parseOptionalPositiveInteger, "parseOptionalPositiveInteger");
+function parsePositiveInteger(envValue, fallback2) {
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback2;
+  }
+  return Math.floor(parsed);
+}
+__name(parsePositiveInteger, "parsePositiveInteger");
+function getEnvVar(key, parser2) {
+  const value2 = __vite_import_meta_env__[key];
+  return parser2(value2);
+}
+__name(getEnvVar, "getEnvVar");
+const parsedCacheMaxEntries = getEnvVar("VITE_CACHE_MAX_ENTRIES", parseOptionalPositiveInteger);
+const ENV = {
+  isDevelopment: true,
+  isProduction: false,
+  logLevel: true ? LogLevel.DEBUG : LogLevel.INFO,
+  enablePerformanceTracking: true,
+  enableMetricsPersistence: getEnvVar("VITE_ENABLE_METRICS_PERSISTENCE", (val) => val === "true"),
+  metricsPersistenceKey: getEnvVar(
+    "VITE_METRICS_PERSISTENCE_KEY",
+    (val) => val ?? "fvtt_relationship_app_module.metrics"
+  ),
+  // 1% sampling in production, 100% in development
+  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1,
+  enableCacheService: getEnvVar(
+    "VITE_CACHE_ENABLED",
+    (val) => val === void 0 ? true : val === "true"
+  ),
+  cacheDefaultTtlMs: getEnvVar(
+    "VITE_CACHE_TTL_MS",
+    (val) => parseNonNegativeNumber(val, APP_DEFAULTS.CACHE_TTL_MS)
+  ),
+  ...parsedCacheMaxEntries !== void 0 ? { cacheMaxEntries: parsedCacheMaxEntries } : {},
+  notificationQueueMinSize: getEnvVar(
+    "VITE_NOTIFICATION_QUEUE_MIN_SIZE",
+    (val) => parsePositiveInteger(val, 10)
+  ),
+  notificationQueueMaxSize: getEnvVar(
+    "VITE_NOTIFICATION_QUEUE_MAX_SIZE",
+    (val) => parsePositiveInteger(val, 1e3)
+  ),
+  notificationQueueDefaultSize: getEnvVar(
+    "VITE_NOTIFICATION_QUEUE_DEFAULT_SIZE",
+    (val) => parsePositiveInteger(val, 50)
+  )
+};
+const _PerformanceTrackerImpl = class _PerformanceTrackerImpl {
+  /**
+   * Creates a performance tracker implementation.
+   *
+   * @param env - Environment configuration for tracking settings
+   * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
+   */
+  constructor(config2, sampler) {
+    this.config = config2;
+    this.sampler = sampler;
+  }
+  /**
+   * Tracks synchronous operation execution time.
+   *
+   * Only measures when:
+   * 1. Performance tracking is enabled (env.enablePerformanceTracking)
+   * 2. MetricsCollector is available
+   * 3. Sampling check passes (metricsCollector.shouldSample())
+   *
+   * @template T - Return type of the operation
+   * @param operation - Function to execute and measure
+   * @param onComplete - Optional callback invoked with duration and result
+   * @returns Result of the operation
+   */
+  track(operation, onComplete) {
+    if (!this.config.get("enablePerformanceTracking") || !this.sampler?.shouldSample()) {
+      return operation();
+    }
+    const startTime = performance.now();
+    const result = operation();
+    const duration = performance.now() - startTime;
+    if (onComplete) {
+      onComplete(duration, result);
+    }
+    return result;
+  }
+  /**
+   * Tracks asynchronous operation execution time.
+   *
+   * Only measures when:
+   * 1. Performance tracking is enabled (env.enablePerformanceTracking)
+   * 2. MetricsCollector is available
+   * 3. Sampling check passes (metricsCollector.shouldSample())
+   *
+   * @template T - Return type of the async operation
+   * @param operation - Async function to execute and measure
+   * @param onComplete - Optional callback invoked with duration and result
+   * @returns Promise resolving to the operation result
+   */
+  async trackAsync(operation, onComplete) {
+    if (!this.config.get("enablePerformanceTracking") || !this.sampler?.shouldSample()) {
+      return operation();
+    }
+    const startTime = performance.now();
+    const result = await operation();
+    const duration = performance.now() - startTime;
+    if (onComplete) {
+      onComplete(duration, result);
+    }
+    return result;
+  }
+};
+__name(_PerformanceTrackerImpl, "PerformanceTrackerImpl");
+let PerformanceTrackerImpl = _PerformanceTrackerImpl;
+const _BootstrapPerformanceTracker = class _BootstrapPerformanceTracker extends PerformanceTrackerImpl {
+  /**
+   * Creates a bootstrap performance tracker.
+   *
+   * @param env - Environment configuration for tracking settings
+   * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
+   */
+  constructor(config2, sampler) {
+    super(config2, sampler);
+  }
+};
+__name(_BootstrapPerformanceTracker, "BootstrapPerformanceTracker");
+let BootstrapPerformanceTracker = _BootstrapPerformanceTracker;
+const _BootstrapErrorHandler = class _BootstrapErrorHandler {
+  /**
+   * Logs an error with structured context in the browser console.
+   *
+   * Creates a collapsible group with timestamp, phase, component,
+   * error details, and metadata for easy debugging and screenshotting.
+   *
+   * @param error - The error that occurred (Error object, string, or unknown)
+   * @param context - Context information about the error
+   */
+  static logError(error, context) {
+    const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+    console.group(`[${timestamp}] ${LOG_PREFIX} Error in ${context.phase}`);
+    if (context.component) {
+      console.error("Component:", context.component);
+    }
+    console.error("Error:", error);
+    if (context.metadata && Object.keys(context.metadata).length > 0) {
+      console.error("Metadata:", context.metadata);
+    }
+    console.groupEnd();
+  }
+};
+__name(_BootstrapErrorHandler, "BootstrapErrorHandler");
+let BootstrapErrorHandler = _BootstrapErrorHandler;
+const _RuntimeConfigService = class _RuntimeConfigService {
+  constructor(env) {
+    this.listeners = /* @__PURE__ */ new Map();
+    this.values = {
+      isDevelopment: env.isDevelopment,
+      isProduction: env.isProduction,
+      logLevel: env.logLevel,
+      enablePerformanceTracking: env.enablePerformanceTracking,
+      performanceSamplingRate: env.performanceSamplingRate,
+      enableMetricsPersistence: env.enableMetricsPersistence,
+      metricsPersistenceKey: env.metricsPersistenceKey,
+      enableCacheService: env.enableCacheService,
+      cacheDefaultTtlMs: env.cacheDefaultTtlMs,
+      cacheMaxEntries: env.cacheMaxEntries,
+      notificationQueueMaxSize: env.notificationQueueDefaultSize
+    };
+  }
+  /**
+   * Returns the current value for the given configuration key.
+   */
+  get(key) {
+    return this.values[key];
+  }
+  /**
+   * Updates the configuration value based on Foundry settings and notifies listeners
+   * only if the value actually changed.
+   */
+  setFromFoundry(key, value2) {
+    this.updateValue(key, value2);
+  }
+  /**
+   * Registers a listener for the given key. Returns an unsubscribe function.
+   */
+  onChange(key, listener) {
+    const existing = this.getListenersForKey(key);
+    const listeners = existing ?? /* @__PURE__ */ new Set();
+    listeners.add(listener);
+    this.setListenersForKey(key, listeners);
+    return () => {
+      const activeListeners = this.getListenersForKey(key);
+      activeListeners?.delete(listener);
+      if (!activeListeners || activeListeners.size === 0) {
+        this.listeners.delete(key);
+      }
+    };
+  }
+  /**
+   * Type-safe helper to get listeners for a specific key.
+   * @ts-expect-error - Type coverage exclusion for generic Set cast
+   */
+  getListenersForKey(key) {
+    return this.listeners.get(key);
+  }
+  /**
+   * Type-safe helper to set listeners for a specific key.
+   * @ts-expect-error - Type coverage exclusion for generic Set cast
+   */
+  setListenersForKey(key, listeners) {
+    this.listeners.set(key, listeners);
+  }
+  updateValue(key, value2) {
+    const current = this.values[key];
+    if (Object.is(current, value2)) {
+      return;
+    }
+    this.values[key] = value2;
+    const listeners = this.listeners.get(key);
+    if (!listeners || listeners.size === 0) {
+      return;
+    }
+    for (const listener of listeners) {
+      listener(value2);
+    }
+  }
+};
+__name(_RuntimeConfigService, "RuntimeConfigService");
+let RuntimeConfigService = _RuntimeConfigService;
+function createRuntimeConfig(env) {
+  return new RuntimeConfigService(env);
+}
+__name(createRuntimeConfig, "createRuntimeConfig");
+function castCachedServiceInstance(instance2) {
+  return instance2;
+}
+__name(castCachedServiceInstance, "castCachedServiceInstance");
+function castCachedServiceInstanceForResult(instance2) {
+  if (instance2 === void 0) {
+    return err({
+      code: "TokenNotRegistered",
+      message: "castCachedServiceInstanceForResult: instance must not be undefined. Use castCachedServiceInstance() for optional instances.",
+      details: {}
+    });
+  }
+  return ok(instance2);
+}
+__name(castCachedServiceInstanceForResult, "castCachedServiceInstanceForResult");
+function castServiceRegistrationEntry(token, registration) {
+  return [token, registration];
+}
+__name(castServiceRegistrationEntry, "castServiceRegistrationEntry");
+function* iterateServiceRegistrationEntries(entries2) {
+  for (const [token, registration] of entries2) {
+    yield castServiceRegistrationEntry(token, registration);
+  }
+}
+__name(iterateServiceRegistrationEntries, "iterateServiceRegistrationEntries");
+function getRegistrationStatus(result) {
+  return result.ok ? result.value : false;
+}
+__name(getRegistrationStatus, "getRegistrationStatus");
+function castToFoundryHookCallback(callback) {
+  return callback;
+}
+__name(castToFoundryHookCallback, "castToFoundryHookCallback");
+function castResolvedService(value2) {
+  return value2;
+}
+__name(castResolvedService, "castResolvedService");
+function castContainerErrorCode(code) {
+  return code;
+}
+__name(castContainerErrorCode, "castContainerErrorCode");
+function castContainerTokenToPlatformContainerPortToken(token) {
+  return token;
+}
+__name(castContainerTokenToPlatformContainerPortToken, "castContainerTokenToPlatformContainerPortToken");
+const apiSafeTokens = /* @__PURE__ */ new Set();
+function markAsApiSafe(token) {
+  apiSafeTokens.add(token);
+  return token;
+}
+__name(markAsApiSafe, "markAsApiSafe");
+function isApiSafeTokenRuntime(token) {
+  return apiSafeTokens.has(token);
+}
+__name(isApiSafeTokenRuntime, "isApiSafeTokenRuntime");
+var ServiceLifecycle = /* @__PURE__ */ ((ServiceLifecycle2) => {
+  ServiceLifecycle2["SINGLETON"] = "singleton";
+  ServiceLifecycle2["TRANSIENT"] = "transient";
+  ServiceLifecycle2["SCOPED"] = "scoped";
+  return ServiceLifecycle2;
+})(ServiceLifecycle || {});
+const _ServiceRegistration = class _ServiceRegistration {
+  /**
+   * Private constructor - use static factory methods instead.
+   * This prevents direct construction with invalid parameters
+   * and ensures Result-based error handling.
+   */
+  constructor(lifecycle, dependencies, providerType, serviceClass, factory, value2, aliasTarget) {
+    this.lifecycle = lifecycle;
+    this.dependencies = dependencies;
+    this.providerType = providerType;
+    this.serviceClass = serviceClass;
+    this.factory = factory;
+    this.value = value2;
+    this.aliasTarget = aliasTarget;
+  }
+  /**
+   * Creates a class-based registration.
+   * @template Tunknown - The concrete service type
+   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
+   * @param dependencies - Array of dependency tokens
+   * @param serviceClass - The class to instantiate
+   * @returns Result with registration or validation error
+   */
+  static createClass(lifecycle, dependencies, serviceClass) {
+    return ok(
+      new _ServiceRegistration(
+        lifecycle,
+        dependencies,
+        "class",
+        serviceClass,
+        void 0,
+        void 0,
+        void 0
+      )
+    );
+  }
+  /**
+   * Creates a factory-based registration.
+   * @template Tunknown - The concrete service type
+   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
+   * @param dependencies - Array of dependency tokens
+   * @param factory - Factory function that creates instances
+   * @returns Result with registration or validation error
+   */
+  static createFactory(lifecycle, dependencies, factory) {
+    if (!factory) {
+      return err({
+        code: "InvalidOperation",
+        message: "factory is required for factory registration"
+      });
+    }
+    return ok(
+      new _ServiceRegistration(
+        lifecycle,
+        dependencies,
+        "factory",
+        void 0,
+        factory,
+        void 0,
+        void 0
+      )
+    );
+  }
+  /**
+   * Creates a value-based registration (always SINGLETON).
+   * @template Tunknown - The concrete service type
+   * @param value - The value to register
+   * @returns Result with registration or validation error
+   */
+  static createValue(value2) {
+    if (value2 === void 0) {
+      return err({
+        code: "InvalidOperation",
+        message: "value cannot be undefined for value registration"
+      });
+    }
+    if (typeof value2 === "function") {
+      return err({
+        code: "InvalidOperation",
+        message: "registerValue() only accepts plain values, not functions or classes. Use registerClass() or registerFactory() instead."
+      });
+    }
+    return ok(
+      new _ServiceRegistration(ServiceLifecycle.SINGLETON, [], "value", void 0, void 0, value2, void 0)
+    );
+  }
+  /**
+   * Creates an alias registration (always SINGLETON).
+   * @template Tunknown - The concrete service type
+   * @param targetToken - The token to resolve instead
+   * @returns Result with registration or validation error
+   */
+  static createAlias(targetToken) {
+    if (!targetToken) {
+      return err({
+        code: "InvalidOperation",
+        message: "targetToken is required for alias registration"
+      });
+    }
+    return ok(
+      new _ServiceRegistration(
+        ServiceLifecycle.SINGLETON,
+        [targetToken],
+        "alias",
+        void 0,
+        void 0,
+        void 0,
+        targetToken
+      )
+    );
+  }
+  /**
+   * Creates a clone of this registration.
+   * Used when child containers inherit registrations from parent.
+   *
+   * @returns A new ServiceRegistration instance with cloned dependencies array
+   */
+  clone() {
+    return new _ServiceRegistration(
+      this.lifecycle,
+      [...this.dependencies],
+      // Clone array to prevent shared mutations
+      this.providerType,
+      this.serviceClass,
+      this.factory,
+      this.value,
+      this.aliasTarget
+    );
+  }
+};
+__name(_ServiceRegistration, "ServiceRegistration");
+let ServiceRegistration = _ServiceRegistration;
+const _TypeSafeRegistrationMap = class _TypeSafeRegistrationMap {
+  constructor() {
+    this.map = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Stores a service registration.
+   *
+   * @template T - The concrete service type
+   * @param token - The injection token identifying the service
+   * @param registration - The service registration metadata
+   */
+  set(token, registration) {
+    this.map.set(token, registration);
+  }
+  /**
+   * Retrieves a service registration.
+   *
+   * Type-safe by design: The token's generic parameter guarantees that the
+   * returned registration matches the expected service type.
+   *
+   * @template T - The concrete service type
+   * @param token - The injection token identifying the service
+   * @returns The service registration or undefined if not found
+   */
+  get(token) {
+    return this.map.get(token);
+  }
+  /**
+   * Checks if a service is registered.
+   *
+   * @param token - The injection token to check
+   * @returns True if the service is registered
+   */
+  has(token) {
+    return this.map.has(token);
+  }
+  /**
+   * Removes a service registration.
+   *
+   * @param token - The injection token identifying the service
+   * @returns True if the service was found and removed
+   */
+  delete(token) {
+    return this.map.delete(token);
+  }
+  /**
+   * Gets the number of registered services.
+   *
+   * @returns The count of registrations
+   */
+  get size() {
+    return this.map.size;
+  }
+  /**
+   * Removes all service registrations.
+   */
+  clear() {
+    this.map.clear();
+  }
+  /**
+   * Returns an iterator of all registration entries.
+   *
+   * @returns Iterator of [token, registration] pairs
+   */
+  entries() {
+    return this.map.entries();
+  }
+  /**
+   * Creates a shallow clone of this map.
+   * Used when child containers inherit registrations from parent.
+   *
+   * @returns A new TypeSafeRegistrationMap with cloned entries
+   */
+  clone() {
+    const cloned = new _TypeSafeRegistrationMap();
+    this.map.forEach((value2, key) => {
+      cloned.map.set(key, value2);
+    });
+    return cloned;
+  }
+};
+__name(_TypeSafeRegistrationMap, "TypeSafeRegistrationMap");
+let TypeSafeRegistrationMap = _TypeSafeRegistrationMap;
+function hasDependencies(cls) {
+  return "dependencies" in cls;
+}
+__name(hasDependencies, "hasDependencies");
+const _ServiceRegistry = class _ServiceRegistry {
+  constructor() {
+    this.MAX_REGISTRATIONS = 1e4;
+    this.registrations = new TypeSafeRegistrationMap();
+    this.lifecycleIndex = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Updates the lifecycle index when a service is registered.
+   *
+   * @param token - The injection token
+   * @param lifecycle - The service lifecycle
+   */
+  updateLifecycleIndex(token, lifecycle) {
+    let tokenSet = this.lifecycleIndex.get(lifecycle);
+    if (!tokenSet) {
+      tokenSet = /* @__PURE__ */ new Set();
+      this.lifecycleIndex.set(lifecycle, tokenSet);
+    }
+    tokenSet.add(token);
+  }
+  /**
+   * Registers a service class with automatic dependency injection.
+   *
+   * @template Tunknown - The type of service to register
+   * @param token - The injection token identifying this service
+   * @param serviceClass - The class to instantiate
+   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
+   * @returns Result indicating success or error
+   */
+  registerClass(token, serviceClass, lifecycle) {
+    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
+      return err({
+        code: "MaxRegistrationsExceeded",
+        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
+        tokenDescription: String(token)
+      });
+    }
+    if (this.registrations.has(token)) {
+      return err({
+        code: "DuplicateRegistration",
+        message: `Service ${String(token)} already registered`,
+        tokenDescription: String(token)
+      });
+    }
+    if (!serviceClass) {
+      return err({
+        code: "InvalidOperation",
+        message: "serviceClass is required for class registration"
+      });
+    }
+    const dependencies = hasDependencies(serviceClass) ? serviceClass.dependencies ?? [] : [];
+    const registrationResult = ServiceRegistration.createClass(
+      lifecycle,
+      dependencies,
+      serviceClass
+    );
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+    this.registrations.set(token, registrationResult.value);
+    this.updateLifecycleIndex(token, lifecycle);
+    return ok(void 0);
+  }
+  /**
+   * Registers a factory function for creating service instances.
+   *
+   * @template Tunknown - The type of service this factory creates
+   * @param token - The injection token identifying this service
+   * @param factory - Factory function that creates instances
+   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
+   * @param dependencies - Array of tokens this factory depends on
+   * @returns Result indicating success or error
+   */
+  registerFactory(token, factory, lifecycle, dependencies) {
+    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
+      return err({
+        code: "MaxRegistrationsExceeded",
+        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
+        tokenDescription: String(token)
+      });
+    }
+    if (this.registrations.has(token)) {
+      return err({
+        code: "DuplicateRegistration",
+        message: `Service ${String(token)} already registered`,
+        tokenDescription: String(token)
+      });
+    }
+    const registrationResult = ServiceRegistration.createFactory(
+      lifecycle,
+      dependencies,
+      factory
+    );
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+    this.registrations.set(token, registrationResult.value);
+    this.updateLifecycleIndex(token, lifecycle);
+    return ok(void 0);
+  }
+  /**
+   * Registers a constant value (always SINGLETON lifecycle).
+   *
+   * @template Tunknown - The type of value to register
+   * @param token - The injection token identifying this value
+   * @param value - The value to register
+   * @returns Result indicating success or error
+   */
+  registerValue(token, value2) {
+    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
+      return err({
+        code: "MaxRegistrationsExceeded",
+        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
+        tokenDescription: String(token)
+      });
+    }
+    if (this.registrations.has(token)) {
+      return err({
+        code: "DuplicateRegistration",
+        message: `Service ${String(token)} already registered`,
+        tokenDescription: String(token)
+      });
+    }
+    const registrationResult = ServiceRegistration.createValue(value2);
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+    this.registrations.set(token, registrationResult.value);
+    this.updateLifecycleIndex(token, ServiceLifecycle.SINGLETON);
+    return ok(void 0);
+  }
+  /**
+   * Registers an alias that points to another token.
+   *
+   * @template Tunknown - The type of service
+   * @param aliasToken - The alias token
+   * @param targetToken - The token to resolve instead
+   * @returns Result indicating success or error
+   */
+  registerAlias(aliasToken, targetToken) {
+    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
+      return err({
+        code: "MaxRegistrationsExceeded",
+        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
+        tokenDescription: String(aliasToken)
+      });
+    }
+    if (this.registrations.has(aliasToken)) {
+      return err({
+        code: "DuplicateRegistration",
+        message: `Service ${String(aliasToken)} already registered`,
+        tokenDescription: String(aliasToken)
+      });
+    }
+    const registrationResult = ServiceRegistration.createAlias(targetToken);
+    if (isErr(registrationResult)) {
+      return registrationResult;
+    }
+    this.registrations.set(aliasToken, registrationResult.value);
+    return ok(void 0);
+  }
+  /**
+   * Retrieves a service registration.
+   *
+   * @template Tunknown - The type of service
+   * @param token - The injection token identifying the service
+   * @returns The registration or undefined if not found
+   */
+  getRegistration(token) {
+    return this.registrations.get(token);
+  }
+  /**
+   * Returns all registrations.
+   * Used by ContainerValidator for dependency validation.
+   *
+   * @returns Map of all registrations
+   */
+  getAllRegistrations() {
+    return new Map(iterateServiceRegistrationEntries(this.registrations.entries()));
+  }
+  /**
+   * Returns all registrations for a specific lifecycle.
+   * More efficient than filtering getAllRegistrations() when only one lifecycle is needed.
+   *
+   * @param lifecycle - The lifecycle to query
+   * @returns Array of registrations with the specified lifecycle
+   */
+  getRegistrationsByLifecycle(lifecycle) {
+    const tokens = this.lifecycleIndex.get(lifecycle) ?? /* @__PURE__ */ new Set();
+    return Array.from(tokens).map((token) => this.registrations.get(token)).filter((reg) => reg !== void 0);
+  }
+  /**
+   * Checks if a service is registered.
+   *
+   * @template Tunknown - The type of service
+   * @param token - The injection token to check
+   * @returns True if registered, false otherwise
+   */
+  has(token) {
+    return this.registrations.has(token);
+  }
+  /**
+   * Clears all registrations.
+   * Warning: This removes all configured services.
+   */
+  clear() {
+    this.registrations.clear();
+    this.lifecycleIndex.clear();
+  }
+  /**
+   * Creates a deep clone of this registry for child containers.
+   *
+   * Important: Creates a new Map instance with cloned ServiceRegistration objects
+   * to prevent child containers from mutating parent registrations.
+   *
+   * @returns A new ServiceRegistry with cloned registrations
+   */
+  clone() {
+    const clonedRegistry = new _ServiceRegistry();
+    for (const [token, registration] of iterateServiceRegistrationEntries(
+      this.registrations.entries()
+    )) {
+      clonedRegistry.registrations.set(token, registration.clone());
+    }
+    for (const [lifecycle, tokens] of this.lifecycleIndex.entries()) {
+      clonedRegistry.lifecycleIndex.set(lifecycle, new Set(tokens));
+    }
+    return clonedRegistry;
+  }
+};
+__name(_ServiceRegistry, "ServiceRegistry");
+let ServiceRegistry = _ServiceRegistry;
+const _ContainerValidator = class _ContainerValidator {
+  constructor() {
+    this.validatedSubgraphs = /* @__PURE__ */ new Set();
+  }
+  /**
+   * Validates all registrations in the registry.
+   *
+   * Performs three checks:
+   * 1. All dependencies are registered
+   * 2. All alias targets exist
+   * 3. No circular dependencies
+   *
+   * @param registry - The service registry to validate
+   * @returns Result with void on success, or array of errors
+   */
+  validate(registry) {
+    this.validatedSubgraphs = /* @__PURE__ */ new Set();
+    const errors = [
+      ...this.validateDependencies(registry),
+      ...this.validateAliasTargets(registry),
+      ...this.detectCircularDependencies(registry)
+    ];
+    return errors.length > 0 ? err(errors) : ok(void 0);
+  }
+  /**
+   * Checks that all declared dependencies are registered.
+   *
+   * @param registry - The service registry to check
+   * @returns Array of errors for missing dependencies
+   */
+  validateDependencies(registry) {
+    const errors = [];
+    const registrations = registry.getAllRegistrations();
+    for (const [token, registration] of registrations.entries()) {
+      for (const dep of registration.dependencies) {
+        if (!registry.has(dep)) {
+          errors.push({
+            code: "TokenNotRegistered",
+            message: `${String(token)} depends on ${String(dep)} which is not registered`,
+            tokenDescription: String(dep)
+          });
+        }
+      }
+    }
+    return errors;
+  }
+  /**
+   * Checks that all alias targets are registered.
+   *
+   * @param registry - The service registry to check
+   * @returns Array of errors for missing alias targets
+   */
+  validateAliasTargets(registry) {
+    const errors = [];
+    const registrations = registry.getAllRegistrations();
+    for (const [token, registration] of registrations.entries()) {
+      if (registration.providerType === "alias" && registration.aliasTarget) {
+        if (!registry.has(registration.aliasTarget)) {
+          errors.push({
+            code: "AliasTargetNotFound",
+            message: `Alias ${String(token)} points to ${String(registration.aliasTarget)} which is not registered`,
+            tokenDescription: String(registration.aliasTarget)
+          });
+        }
+      }
+    }
+    return errors;
+  }
+  /**
+   * Detects circular dependencies using depth-first search.
+   *
+   * @param registry - The service registry to check
+   * @returns Array of errors for detected cycles
+   */
+  detectCircularDependencies(registry) {
+    const errors = [];
+    const visited = /* @__PURE__ */ new Set();
+    const registrations = registry.getAllRegistrations();
+    for (const token of registrations.keys()) {
+      const visiting = /* @__PURE__ */ new Set();
+      const path = [];
+      const error = this.checkCycleForToken(registry, token, visiting, visited, path);
+      if (error) {
+        errors.push(error);
+      }
+    }
+    return errors;
+  }
+  /**
+   * Recursively checks for cycles starting from a specific token.
+   *
+   * **Algorithm: Depth-First Search (DFS) with Three-Color Marking**
+   *
+   * Three states for each node (token):
+   * - WHITE (unvisited): Not in `visiting` or `visited` sets
+   * - GRAY (visiting): In `visiting` set (currently in DFS recursion stack)
+   * - BLACK (visited): In `visited` set (fully processed, all descendants checked)
+   *
+   * Cycle Detection:
+   * - If we encounter a GRAY node during traversal, we've found a back edge → cycle
+   * - GRAY nodes represent the current path from root to current node
+   * - Encountering a GRAY node means we're trying to visit an ancestor → circular dependency
+   *
+   * Performance Optimization:
+   * - `validatedSubgraphs` cache prevents redundant traversals of already-validated subtrees
+   * - Crucial for large dependency graphs (>500 services)
+   * - BLACK nodes can be safely skipped (all their descendants are cycle-free)
+   *
+   * Time Complexity: O(V + E) where V = number of services, E = number of dependencies
+   * Space Complexity: O(V) for visiting/visited sets + O(D) for recursion depth D
+   *
+   * @param registry - The service registry
+   * @param token - Current token being checked (current node in DFS)
+   * @param visiting - GRAY nodes: tokens currently in the DFS recursion stack
+   * @param visited - BLACK nodes: tokens fully processed in this validation run
+   * @param path - Current dependency path for error reporting (stack trace)
+   * @returns ContainerError if cycle detected, null otherwise
+   *
+   * @example
+   * Cycle A → B → C → A will be detected when:
+   * 1. Start at A (mark GRAY)
+   * 2. Visit B (mark GRAY)
+   * 3. Visit C (mark GRAY)
+   * 4. Try to visit A → A is GRAY → Back edge detected → Cycle!
+   */
+  checkCycleForToken(registry, token, visiting, visited, path) {
+    if (visiting.has(token)) {
+      const cyclePath = [...path, token].map(String).join(" → ");
+      return {
+        code: "CircularDependency",
+        message: `Circular dependency: ${cyclePath}`,
+        tokenDescription: String(token)
+      };
+    }
+    if (this.validatedSubgraphs.has(token)) {
+      return null;
+    }
+    if (visited.has(token)) {
+      return null;
+    }
+    visiting.add(token);
+    path.push(token);
+    const registration = registry.getRegistration(token);
+    if (registration) {
+      for (const dep of registration.dependencies) {
+        const error = this.checkCycleForToken(registry, dep, visiting, visited, path);
+        if (error) return error;
+      }
+    }
+    visiting.delete(token);
+    path.pop();
+    visited.add(token);
+    this.validatedSubgraphs.add(token);
+    return null;
+  }
+};
+__name(_ContainerValidator, "ContainerValidator");
+let ContainerValidator = _ContainerValidator;
+const _InstanceCache = class _InstanceCache {
+  constructor() {
+    this.instances = /* @__PURE__ */ new Map();
+    this.metricsCollector = null;
+  }
+  /**
+   * Injects the MetricsCollector for cache hit/miss tracking.
+   * Called after container validation to enable observability.
+   *
+   * @param collector - The metrics collector instance
+   */
+  setMetricsCollector(collector) {
+    this.metricsCollector = collector;
+  }
+  /**
+   * Retrieves a cached service instance.
+   *
+   * @template Tunknown - The type of service to retrieve
+   * @param token - The injection token identifying the service
+   * @returns The cached instance or undefined if not found
+   */
+  get(token) {
+    const hasInstance = this.instances.has(token);
+    this.metricsCollector?.recordCacheAccess(hasInstance);
+    return castCachedServiceInstance(this.instances.get(token));
+  }
+  /**
+   * Stores a service instance in the cache.
+   *
+   * @template Tunknown - The type of service to store
+   * @param token - The injection token identifying the service
+   * @param instance - The service instance to cache
+   */
+  set(token, instance2) {
+    this.instances.set(token, instance2);
+  }
+  /**
+   * Checks if a service instance is cached.
+   *
+   * @template Tunknown - The type of service to check
+   * @param token - The injection token identifying the service
+   * @returns True if the instance is cached, false otherwise
+   */
+  has(token) {
+    const hasInstance = this.instances.has(token);
+    this.metricsCollector?.recordCacheAccess(hasInstance);
+    return hasInstance;
+  }
+  /**
+   * Clears all cached instances.
+   * Note: Does not dispose instances - call getAllInstances() first if disposal is needed.
+   */
+  clear() {
+    this.instances.clear();
+  }
+  /**
+   * Returns all cached instances for disposal purposes.
+   * Used by ScopeManager to dispose Disposable services.
+   *
+   * @returns A map of all cached instances
+   */
+  getAllInstances() {
+    return new Map(this.instances);
+  }
+};
+__name(_InstanceCache, "InstanceCache");
+let InstanceCache = _InstanceCache;
+const _SingletonResolutionStrategy = class _SingletonResolutionStrategy {
+  resolve(token, registration, dependencyResolver, instantiator, cache, parentResolver, _scopeName) {
+    if (parentResolver !== null) {
+      const parentResult = parentResolver.resolve(token);
+      if (parentResult.ok) {
+        return parentResult;
+      }
+      if (parentResult.error.code === "CircularDependency") {
+        return parentResult;
+      }
+    }
+    if (!cache.has(token)) {
+      const instanceResult2 = instantiator.instantiate(token, registration);
+      if (!instanceResult2.ok) {
+        return instanceResult2;
+      }
+      cache.set(token, instanceResult2.value);
+    }
+    const instanceResult = castCachedServiceInstanceForResult(cache.get(token));
+    if (!instanceResult.ok) {
+      return instanceResult;
+    }
+    return ok(instanceResult.value);
+  }
+};
+__name(_SingletonResolutionStrategy, "SingletonResolutionStrategy");
+let SingletonResolutionStrategy = _SingletonResolutionStrategy;
+const _TransientResolutionStrategy = class _TransientResolutionStrategy {
+  resolve(token, registration, _dependencyResolver, instantiator, _cache, _parentResolver, _scopeName) {
+    return instantiator.instantiate(token, registration);
+  }
+};
+__name(_TransientResolutionStrategy, "TransientResolutionStrategy");
+let TransientResolutionStrategy = _TransientResolutionStrategy;
+const _ScopedResolutionStrategy = class _ScopedResolutionStrategy {
+  resolve(token, registration, _dependencyResolver, instantiator, cache, parentResolver, _scopeName) {
+    if (parentResolver === null) {
+      return err({
+        code: "ScopeRequired",
+        message: `Scoped service ${String(token)} requires a scope container. Use createScope() to create a child container first.`,
+        tokenDescription: String(token)
+      });
+    }
+    if (!cache.has(token)) {
+      const instanceResult2 = instantiator.instantiate(token, registration);
+      if (!instanceResult2.ok) {
+        return instanceResult2;
+      }
+      cache.set(token, instanceResult2.value);
+    }
+    const instanceResult = castCachedServiceInstanceForResult(cache.get(token));
+    if (!instanceResult.ok) {
+      return instanceResult;
+    }
+    return ok(instanceResult.value);
+  }
+};
+__name(_ScopedResolutionStrategy, "ScopedResolutionStrategy");
+let ScopedResolutionStrategy = _ScopedResolutionStrategy;
+const _LifecycleResolver = class _LifecycleResolver {
+  constructor(cache, parentResolver, scopeName) {
+    this.cache = cache;
+    this.parentResolver = parentResolver;
+    this.scopeName = scopeName;
+    this.strategies = /* @__PURE__ */ new Map();
+    this.strategies.set(ServiceLifecycle.SINGLETON, new SingletonResolutionStrategy());
+    this.strategies.set(ServiceLifecycle.TRANSIENT, new TransientResolutionStrategy());
+    this.strategies.set(ServiceLifecycle.SCOPED, new ScopedResolutionStrategy());
+  }
+  /**
+   * Resolves a service based on its lifecycle.
+   *
+   * @template T - The type of service to resolve
+   * @param token - The injection token identifying the service
+   * @param registration - The service registration metadata
+   * @param dependencyResolver - The DependencyResolver for dependency resolution
+   * @param instantiator - The ServiceInstantiator for service instantiation
+   * @returns Result with service instance or error
+   */
+  resolve(token, registration, dependencyResolver, instantiator) {
+    const strategy = this.strategies.get(registration.lifecycle);
+    if (!strategy) {
+      return err({
+        code: "InvalidLifecycle",
+        message: `Invalid service lifecycle: ${String(registration.lifecycle)}`,
+        tokenDescription: String(token)
+      });
+    }
+    return strategy.resolve(
+      token,
+      registration,
+      dependencyResolver,
+      instantiator,
+      this.cache,
+      this.parentResolver,
+      this.scopeName
+    );
+  }
+};
+__name(_LifecycleResolver, "LifecycleResolver");
+let LifecycleResolver = _LifecycleResolver;
+const _ServiceInstantiatorImpl = class _ServiceInstantiatorImpl {
+  constructor(dependencyResolver) {
+    this.dependencyResolver = dependencyResolver;
+  }
+  /**
+   * Instantiates a service based on registration type.
+   *
+   * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
+   * Handles dependency resolution for classes, direct factory calls, and value returns.
+   *
+   * @template T - The type of service to instantiate
+   * @param token - The injection token (used for error messages)
+   * @param registration - The service registration metadata
+   * @returns Result with instance or detailed error (DependencyResolveFailed, FactoryFailed, etc.)
+   */
+  instantiate(token, registration) {
+    if (registration.serviceClass) {
+      const resolvedDeps = [];
+      for (const dep of registration.dependencies) {
+        const depResult = this.dependencyResolver.resolve(dep);
+        if (!depResult.ok) {
+          return err({
+            code: "DependencyResolveFailed",
+            message: `Cannot resolve dependency ${String(dep)} for ${String(token)}`,
+            tokenDescription: String(dep),
+            cause: depResult.error
+          });
+        }
+        resolvedDeps.push(depResult.value);
+      }
+      try {
+        return ok(new registration.serviceClass(...resolvedDeps));
+      } catch (constructorError) {
+        return err({
+          code: "FactoryFailed",
+          message: `Constructor failed for ${String(token)}: ${String(constructorError)}`,
+          tokenDescription: String(token),
+          cause: constructorError
+        });
+      }
+    } else if (registration.factory) {
+      try {
+        return ok(registration.factory());
+      } catch (factoryError) {
+        return err({
+          code: "FactoryFailed",
+          message: `Factory failed for ${String(token)}: ${String(factoryError)}`,
+          tokenDescription: String(token),
+          cause: factoryError
+        });
+      }
+    } else if (registration.value !== void 0) {
+      return ok(registration.value);
+    } else {
+      return err({
+        code: "InvalidOperation",
+        message: `Invalid registration for ${String(token)} - no class, factory, or value`,
+        tokenDescription: String(token)
+      });
+    }
+  }
+};
+__name(_ServiceInstantiatorImpl, "ServiceInstantiatorImpl");
+let ServiceInstantiatorImpl = _ServiceInstantiatorImpl;
+const _ServiceResolver = class _ServiceResolver {
+  constructor(registry, cache, parentResolver, scopeName, performanceTracker) {
+    this.registry = registry;
+    this.cache = cache;
+    this.parentResolver = parentResolver;
+    this.scopeName = scopeName;
+    this.performanceTracker = performanceTracker;
+    this.metricsCollector = null;
+    this.lifecycleResolver = new LifecycleResolver(cache, parentResolver, scopeName);
+    this.instantiator = new ServiceInstantiatorImpl(this);
+  }
+  /**
+   * Sets the MetricsCollector for metrics recording.
+   * Called by ServiceContainer after validation.
+   *
+   * @param collector - The metrics collector instance
+   */
+  setMetricsCollector(collector) {
+    this.metricsCollector = collector;
+  }
+  /**
+   * Resolves a service by token.
+   *
+   * Handles:
+   * - Alias resolution (recursive)
+   * - Lifecycle-specific resolution (delegated to LifecycleResolver)
+   * - Performance tracking
+   * - Metrics recording
+   *
+   * Performance tracking is handled by the injected PerformanceTracker.
+   *
+   * @template T - The type of service to resolve
+   * @param token - The injection token identifying the service
+   * @returns Result with service instance or error
+   */
+  resolve(token) {
+    return this.performanceTracker.track(
+      () => {
+        const registration = this.registry.getRegistration(token);
+        if (!registration) {
+          const stack = new Error().stack;
+          const error = {
+            code: "TokenNotRegistered",
+            message: `Service ${String(token)} not registered`,
+            tokenDescription: String(token),
+            ...stack !== void 0 && { stack },
+            // Only include stack if defined
+            timestamp: Date.now(),
+            containerScope: this.scopeName
+          };
+          return err(error);
+        }
+        if (registration.providerType === "alias" && registration.aliasTarget) {
+          return this.resolve(registration.aliasTarget);
+        }
+        return this.lifecycleResolver.resolve(token, registration, this, this);
+      },
+      (duration, result) => {
+        this.metricsCollector?.recordResolution(token, duration, result.ok);
+      }
+    );
+  }
+  /**
+   * Instantiates a service based on registration type.
+   *
+   * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
+   * Delegates to ServiceInstantiatorImpl for actual instantiation logic.
+   *
+   * This method implements the ServiceInstantiator interface, allowing lifecycle
+   * strategies to instantiate services without depending on ServiceResolver directly.
+   *
+   * @template T - The type of service to instantiate
+   * @param token - The injection token (used for error messages)
+   * @param registration - The service registration metadata
+   * @returns Result with instance or detailed error (DependencyResolveFailed, FactoryFailed, etc.)
+   */
+  instantiate(token, registration) {
+    return this.instantiator.instantiate(token, registration);
+  }
+};
+__name(_ServiceResolver, "ServiceResolver");
+let ServiceResolver = _ServiceResolver;
+function generateScopeId() {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return Date.now() + "-" + Math.random();
+  }
+}
+__name(generateScopeId, "generateScopeId");
+const _ScopeManager = class _ScopeManager {
+  // Unique correlation ID for tracing
+  constructor(scopeName, parent, cache, depth = 0) {
+    this.scopeName = scopeName;
+    this.parent = parent;
+    this.cache = cache;
+    this.MAX_SCOPE_DEPTH = 10;
+    this.children = /* @__PURE__ */ new Set();
+    this.disposed = false;
+    this.depth = depth;
+    this.scopeId = `${scopeName}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }
+  /**
+   * Creates a child scope manager.
+   *
+   * Note: Returns data (scopeName, cache, childManager) instead of full container
+   * to avoid circular dependency with ServiceResolver.
+   *
+   * @param name - Optional custom name for the scope
+   * @returns Result with child scope data or error if disposed or max depth exceeded
+   */
+  createChild(name) {
+    if (this.disposed) {
+      return err({
+        code: "Disposed",
+        message: `Cannot create child scope from disposed scope: ${this.scopeName}`
+      });
+    }
+    if (this.depth >= this.MAX_SCOPE_DEPTH) {
+      return err({
+        code: "MaxScopeDepthExceeded",
+        message: `Maximum scope depth of ${this.MAX_SCOPE_DEPTH} exceeded. Current depth: ${this.depth}`
+      });
+    }
+    const uniqueId = name ?? `scope-${generateScopeId()}`;
+    const childScopeName = `${this.scopeName}.${uniqueId}`;
+    const childCache = new InstanceCache();
+    const childManager = new _ScopeManager(childScopeName, this, childCache, this.depth + 1);
+    this.children.add(childManager);
+    return ok({
+      scopeName: childScopeName,
+      cache: childCache,
+      manager: childManager
+    });
+  }
+  /**
+   * Disposes this scope and all child scopes.
+   *
+   * Disposal order (critical):
+   * 1. Recursively dispose all children
+   * 2. Dispose instances in this scope (if Disposable)
+   * 3. Clear instance cache
+   * 4. Remove from parent's children set
+   *
+   * @returns Result indicating success or disposal error
+   */
+  dispose() {
+    if (this.disposed) {
+      return err({
+        code: "Disposed",
+        message: `Scope already disposed: ${this.scopeName}`
+      });
+    }
+    this.disposed = true;
+    const childDisposalErrors = [];
+    for (const child of this.children) {
+      const childResult = child.dispose();
+      if (isErr(childResult)) {
+        childDisposalErrors.push({
+          scopeName: child.scopeName,
+          error: childResult.error
+        });
+      }
+    }
+    const disposeResult = this.disposeInstances();
+    if (!disposeResult.ok) {
+      return disposeResult;
+    }
+    this.cache.clear();
+    if (this.parent !== null) {
+      this.parent.children.delete(this);
+    }
+    if (childDisposalErrors.length > 0) {
+      return err({
+        code: "PartialDisposal",
+        message: `Failed to dispose ${childDisposalErrors.length} child scope(s)`,
+        details: childDisposalErrors
+      });
+    }
+    return ok(void 0);
+  }
+  /**
+   * Asynchronously disposes this scope and all child scopes.
+   *
+   * Preferred method for cleanup as it properly handles async dispose operations.
+   * Falls back to sync dispose() for services that only implement Disposable.
+   *
+   * Disposal order (critical):
+   * 1. Recursively dispose all children (async)
+   * 2. Dispose instances in this scope (async or sync)
+   * 3. Clear instance cache
+   * 4. Remove from parent's children set
+   *
+   * @returns Promise with Result indicating success or disposal error
+   */
+  async disposeAsync() {
+    if (this.disposed) {
+      return err({
+        code: "Disposed",
+        message: `Scope already disposed: ${this.scopeName}`
+      });
+    }
+    this.disposed = true;
+    const childDisposalErrors = [];
+    for (const child of this.children) {
+      const childResult = await child.disposeAsync();
+      if (isErr(childResult)) {
+        childDisposalErrors.push({
+          scopeName: child.scopeName,
+          error: childResult.error
+        });
+      }
+    }
+    const disposeResult = await this.disposeInstancesAsync();
+    if (!disposeResult.ok) {
+      return disposeResult;
+    }
+    this.cache.clear();
+    if (this.parent !== null) {
+      this.parent.children.delete(this);
+    }
+    if (childDisposalErrors.length > 0) {
+      return err({
+        code: "PartialDisposal",
+        message: `Failed to dispose ${childDisposalErrors.length} child scope(s)`,
+        details: childDisposalErrors
+      });
+    }
+    return ok(void 0);
+  }
+  /**
+   * Disposes all instances in the cache that implement Disposable (sync).
+   *
+   * @returns Result indicating success or disposal error
+   */
+  disposeInstances() {
+    const instances = this.cache.getAllInstances();
+    for (const [token, instance2] of instances.entries()) {
+      if (this.isDisposable(instance2)) {
+        const result = tryCatch(
+          () => instance2.dispose(),
+          (error) => ({
+            code: "DisposalFailed",
+            message: `Error disposing service ${String(token)}: ${String(error)}`,
+            tokenDescription: String(token),
+            cause: error
+          })
+        );
+        if (isErr(result)) {
+          return result;
+        }
+      }
+    }
+    return ok(void 0);
+  }
+  /**
+   * Disposes all instances in the cache that implement Disposable or AsyncDisposable (async).
+   * Prefers async disposal when available, falls back to sync.
+   *
+   * @returns Promise with Result indicating success or disposal error
+   */
+  async disposeInstancesAsync() {
+    const instances = this.cache.getAllInstances();
+    for (const [token, instance2] of instances.entries()) {
+      if (this.isAsyncDisposable(instance2)) {
+        try {
+          await instance2.disposeAsync();
+        } catch (error) {
+          return err({
+            code: "DisposalFailed",
+            message: `Error disposing service ${String(token)}: ${String(error)}`,
+            tokenDescription: String(token),
+            cause: error
+          });
+        }
+      } else if (this.isDisposable(instance2)) {
+        const disposableInstance = instance2;
+        const result = tryCatch(
+          () => disposableInstance.dispose(),
+          (error) => ({
+            code: "DisposalFailed",
+            message: `Error disposing service ${String(token)}: ${String(error)}`,
+            tokenDescription: String(token),
+            cause: error
+          })
+        );
+        if (isErr(result)) {
+          return result;
+        }
+      }
+    }
+    return ok(void 0);
+  }
+  /**
+   * Type guard to check if an instance implements the Disposable pattern.
+   *
+   * @param instance - The service instance to check
+   * @returns True if instance has dispose() method
+   */
+  isDisposable(instance2) {
+    return instance2 !== null && typeof instance2 === "object" && "dispose" in instance2 && // Type-safe check: instance has 'dispose' property (checked above)
+    typeof instance2.dispose === "function";
+  }
+  /**
+   * Type guard to check if an instance implements the AsyncDisposable pattern.
+   *
+   * @param instance - The service instance to check
+   * @returns True if instance has disposeAsync() method
+   */
+  isAsyncDisposable(instance2) {
+    return instance2 !== null && typeof instance2 === "object" && "disposeAsync" in instance2 && // Type-safe check: instance has 'disposeAsync' property (checked above)
+    typeof instance2.disposeAsync === "function";
+  }
+  /**
+   * Checks if this scope is disposed.
+   *
+   * @returns True if disposed, false otherwise
+   */
+  isDisposed() {
+    return this.disposed;
+  }
+  /**
+   * Gets the hierarchical scope name.
+   *
+   * @returns The scope name (e.g., "root.child1.grandchild")
+   */
+  getScopeName() {
+    return this.scopeName;
+  }
+  /**
+   * Gets the unique correlation ID for this scope.
+   *
+   * Useful for tracing and logging in distributed/concurrent scenarios.
+   * Each scope gets a unique ID combining name, timestamp, and random string.
+   *
+   * @returns The unique scope ID (e.g., "root-1730761234567-abc123")
+   *
+   * @example
+   * ```typescript
+   * const scope = container.createScope("request").value!;
+   * logger.info(`[${scope.getScopeId()}] Processing request`);
+   * ```
+   */
+  getScopeId() {
+    return this.scopeId;
+  }
+};
+__name(_ScopeManager, "ScopeManager");
+let ScopeManager = _ScopeManager;
+const _TimeoutError = class _TimeoutError extends Error {
+  constructor(timeoutMs) {
+    super(`Operation timed out after ${timeoutMs}ms`);
+    this.name = "TimeoutError";
+  }
+};
+__name(_TimeoutError, "TimeoutError");
+let TimeoutError = _TimeoutError;
+function withTimeout(promise2, timeoutMs) {
+  let timeoutHandle = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new TimeoutError(timeoutMs));
+    }, timeoutMs);
+  });
+  return Promise.race([
+    promise2.finally(() => {
+      if (timeoutHandle !== null) {
+        clearTimeout(timeoutHandle);
+      }
+    }),
+    timeoutPromise
+  ]);
+}
+__name(withTimeout, "withTimeout");
+const metricsCollectorToken = createInjectionToken("MetricsCollector");
+const _ServiceRegistrationManager = class _ServiceRegistrationManager {
+  constructor(registry, isDisposed, getValidationState) {
+    this.registry = registry;
+    this.isDisposed = isDisposed;
+    this.getValidationState = getValidationState;
+  }
+  /**
+   * Register a service class with automatic dependency injection.
+   */
+  registerClass(token, serviceClass, lifecycle) {
+    if (this.isDisposed()) {
+      return err({
+        code: "Disposed",
+        message: `Cannot register service on disposed container`,
+        tokenDescription: String(token)
+      });
+    }
+    if (this.getValidationState() === "validated") {
+      return err({
+        code: "InvalidOperation",
+        message: "Cannot register after validation"
+      });
+    }
+    return this.registry.registerClass(token, serviceClass, lifecycle);
+  }
+  /**
+   * Register a factory function.
+   */
+  registerFactory(token, factory, lifecycle, dependencies) {
+    if (this.isDisposed()) {
+      return err({
+        code: "Disposed",
+        message: `Cannot register service on disposed container`,
+        tokenDescription: String(token)
+      });
+    }
+    if (this.getValidationState() === "validated") {
+      return err({
+        code: "InvalidOperation",
+        message: "Cannot register after validation"
+      });
+    }
+    if (!factory || typeof factory !== "function") {
+      return err({
+        code: "InvalidFactory",
+        message: "Factory must be a function",
+        tokenDescription: String(token)
+      });
+    }
+    return this.registry.registerFactory(token, factory, lifecycle, dependencies);
+  }
+  /**
+   * Register a constant value.
+   */
+  registerValue(token, value2) {
+    if (this.isDisposed()) {
+      return err({
+        code: "Disposed",
+        message: `Cannot register service on disposed container`,
+        tokenDescription: String(token)
+      });
+    }
+    if (this.getValidationState() === "validated") {
+      return err({
+        code: "InvalidOperation",
+        message: "Cannot register after validation"
+      });
+    }
+    return this.registry.registerValue(token, value2);
+  }
+  /**
+   * Register an alias.
+   */
+  registerAlias(aliasToken, targetToken) {
+    if (this.isDisposed()) {
+      return err({
+        code: "Disposed",
+        message: `Cannot register service on disposed container`,
+        tokenDescription: String(aliasToken)
+      });
+    }
+    if (this.getValidationState() === "validated") {
+      return err({
+        code: "InvalidOperation",
+        message: "Cannot register after validation"
+      });
+    }
+    return this.registry.registerAlias(aliasToken, targetToken);
+  }
+  /**
+   * Get a registered value without requiring validation.
+   * Useful for bootstrap/static values.
+   */
+  getRegisteredValue(token) {
+    const registration = this.registry.getRegistration(token);
+    if (!registration) {
+      return null;
+    }
+    if (registration.providerType !== "value") {
+      return null;
+    }
+    const value2 = registration.value;
+    if (value2 === void 0) {
+      return null;
+    }
+    return value2;
+  }
+  /**
+   * Check if a service is registered.
+   */
+  isRegistered(token) {
+    return this.registry.has(token);
+  }
+};
+__name(_ServiceRegistrationManager, "ServiceRegistrationManager");
+let ServiceRegistrationManager = _ServiceRegistrationManager;
+const _ContainerValidationManager = class _ContainerValidationManager {
+  constructor(validator, registry, initialState = "registering") {
+    this.validator = validator;
+    this.registry = registry;
+    this.validationPromise = null;
+    this.validationState = initialState;
+  }
+  /**
+   * Validate all registrations.
+   */
+  validate() {
+    if (this.validationState === "validated") {
+      return ok(void 0);
+    }
+    if (this.validationState === "validating") {
+      return err([
+        {
+          code: "InvalidOperation",
+          message: "Validation already in progress"
+        }
+      ]);
+    }
+    this.validationState = "validating";
+    const result = this.validator.validate(this.registry);
+    if (result.ok) {
+      this.validationState = "validated";
+    } else {
+      this.validationState = "registering";
+    }
+    return result;
+  }
+  /**
+   * Async-safe validation for concurrent environments with timeout.
+   */
+  async validateAsync(timeoutMs, withTimeout2, TimeoutErrorClass) {
+    if (this.validationState === "validated") {
+      return ok(void 0);
+    }
+    if (this.validationPromise !== null) {
+      return this.validationPromise;
+    }
+    if (this.validationState === "validating") {
+      return err([
+        {
+          code: "InvalidOperation",
+          message: "Validation already in progress"
+        }
+      ]);
+    }
+    this.validationState = "validating";
+    let timedOut = false;
+    const validationTask = Promise.resolve().then(() => {
+      const result = this.validator.validate(this.registry);
+      if (!timedOut) {
+        if (result.ok) {
+          this.validationState = "validated";
+        } else {
+          this.validationState = "registering";
+        }
+      }
+      return result;
+    });
+    try {
+      this.validationPromise = withTimeout2(validationTask, timeoutMs);
+      const result = await this.validationPromise;
+      return result;
+    } catch (error) {
+      if (error instanceof TimeoutErrorClass) {
+        timedOut = true;
+        this.validationState = "registering";
+        return err([
+          {
+            code: "InvalidOperation",
+            message: `Validation timed out after ${timeoutMs}ms`
+          }
+        ]);
+      }
+      throw error;
+    } finally {
+      this.validationPromise = null;
+    }
+  }
+  /**
+   * Get validation state.
+   */
+  getValidationState() {
+    return this.validationState;
+  }
+  /**
+   * Reset validation state (used after disposal or clear).
+   */
+  resetValidationState() {
+    this.validationState = "registering";
+  }
+};
+__name(_ContainerValidationManager, "ContainerValidationManager");
+let ContainerValidationManager = _ContainerValidationManager;
+const _ServiceResolutionManager = class _ServiceResolutionManager {
+  constructor(resolver, isDisposed, getValidationState) {
+    this.resolver = resolver;
+    this.isDisposed = isDisposed;
+    this.getValidationState = getValidationState;
+  }
+  resolveWithError(token) {
+    if (this.isDisposed()) {
+      const error = {
+        code: "Disposed",
+        message: `Cannot resolve from disposed container`,
+        tokenDescription: String(token)
+      };
+      const domainError = {
+        code: error.code,
+        message: error.message,
+        cause: error.cause
+      };
+      return err(domainError);
+    }
+    if (this.getValidationState() !== "validated") {
+      const error = {
+        code: "NotValidated",
+        message: "Container must be validated before resolving. Call validate() first.",
+        tokenDescription: String(token)
+      };
+      const domainError = {
+        code: error.code,
+        message: error.message,
+        cause: error.cause
+      };
+      return err(domainError);
+    }
+    const result = this.resolver.resolve(token);
+    if (!result.ok) {
+      const domainError = {
+        code: result.error.code,
+        message: result.error.message,
+        cause: result.error.cause
+      };
+      return err(domainError);
+    }
+    return result;
+  }
+  /**
+   * Resolves a service instance (throws on failure).
+   * FOR EXTERNAL API USE ONLY - uses ApiSafeToken validation.
+   */
+  resolve(token) {
+    const result = this.resolveWithError(token);
+    if (isOk(result)) {
+      return castResolvedService(result.value);
+    }
+    throw new Error(`Cannot resolve ${String(token)}: ${result.error.message}`);
+  }
+};
+__name(_ServiceResolutionManager, "ServiceResolutionManager");
+let ServiceResolutionManager = _ServiceResolutionManager;
+const _ScopeManagementFacade = class _ScopeManagementFacade {
+  constructor(scopeManager, isDisposed, getValidationState) {
+    this.scopeManager = scopeManager;
+    this.isDisposed = isDisposed;
+    this.getValidationState = getValidationState;
+  }
+  /**
+   * Validates that a scope can be created.
+   * Returns the scope creation result if valid, or an error if not.
+   */
+  validateScopeCreation(name) {
+    if (this.isDisposed()) {
+      return err({
+        code: "Disposed",
+        message: `Cannot create scope from disposed container`
+      });
+    }
+    if (this.getValidationState() !== "validated") {
+      return err({
+        code: "NotValidated",
+        message: "Parent must be validated before creating scopes. Call validate() first."
+      });
+    }
+    return this.scopeManager.createChild(name);
+  }
+};
+__name(_ScopeManagementFacade, "ScopeManagementFacade");
+let ScopeManagementFacade = _ScopeManagementFacade;
+const _MetricsInjectionManager = class _MetricsInjectionManager {
+  constructor(resolver, cache, resolveMetricsCollector) {
+    this.resolver = resolver;
+    this.cache = cache;
+    this.resolveMetricsCollector = resolveMetricsCollector;
+  }
+  /**
+   * Injects MetricsCollector into resolver and cache after validation.
+   * This enables metrics recording without circular dependencies during bootstrap.
+   *
+   * Note: EnvironmentConfig is already injected via BootstrapPerformanceTracker
+   * during container creation, so only MetricsCollector needs to be injected here.
+   */
+  injectMetricsCollector() {
+    return ok(void 0);
+  }
+  /**
+   * Internal method to perform the actual injection.
+   * Called by ServiceContainer after resolving the metrics collector.
+   */
+  performInjection(collector) {
+    this.resolver.setMetricsCollector(collector);
+    this.cache.setMetricsCollector(collector);
+  }
+};
+__name(_MetricsInjectionManager, "MetricsInjectionManager");
+let MetricsInjectionManager = _MetricsInjectionManager;
+const _ApiSecurityManager = class _ApiSecurityManager {
+  /**
+   * Validates that a token is API-safe.
+   * Used by container.resolve() to enforce API boundary.
+   *
+   * @param token - The token to validate
+   * @returns Result indicating if token is API-safe
+   */
+  validateApiSafeToken(token) {
+    if (!isApiSafeTokenRuntime(token)) {
+      return err({
+        code: "InvalidOperation",
+        message: `API Boundary Violation: resolve() called with non-API-safe token: ${String(token)}.
+This token was not marked via markAsApiSafe().
+
+Internal code MUST use resolveWithError() instead:
+  const result = container.resolveWithError(${String(token)});
+  if (result.ok) { /* use result.value */ }
+
+Only the public ModuleApi should expose resolve() for external modules.`,
+        tokenDescription: String(token)
+      });
+    }
+    return { ok: true, value: void 0 };
+  }
+};
+__name(_ApiSecurityManager, "ApiSecurityManager");
+let ApiSecurityManager = _ApiSecurityManager;
+const _ServiceContainer = class _ServiceContainer {
+  /**
+   * Private constructor - use ServiceContainer.createRoot() instead.
+   *
+   * This constructor is private to:
+   * - Enforce factory pattern usage
+   * - Prevent constructor throws (Result-Contract-breaking)
+   * - Make child creation explicit through createScope()
+   *
+   * @param registry - Service registry
+   * @param validator - Container validator (shared for parent/child)
+   * @param cache - Instance cache
+   * @param resolver - Service resolver
+   * @param scopeManager - Scope manager
+   * @param validationState - Initial validation state
+   * @param env - Environment configuration
+   */
+  constructor(registry, validator, cache, resolver, scopeManager, validationState, env) {
+    this.registry = registry;
+    this.validator = validator;
+    this.cache = cache;
+    this.resolver = resolver;
+    this.scopeManager = scopeManager;
+    this.env = env;
+    this.validationManager = new ContainerValidationManager(validator, registry, validationState);
+    this.registrationManager = new ServiceRegistrationManager(
+      registry,
+      () => this.scopeManager.isDisposed(),
+      () => this.validationManager.getValidationState()
+    );
+    this.resolutionManager = new ServiceResolutionManager(
+      resolver,
+      () => this.scopeManager.isDisposed(),
+      () => this.validationManager.getValidationState()
+    );
+    this.metricsInjectionManager = new MetricsInjectionManager(resolver, cache, (token) => {
+      const result = this.resolutionManager.resolveWithError(token);
+      if (!result.ok) {
+        const containerError = {
+          code: castContainerErrorCode(result.error.code),
+          message: result.error.message,
+          cause: result.error.cause,
+          tokenDescription: String(token)
+        };
+        return err(containerError);
+      }
+      const metricsCollector = castResolvedService(result.value);
+      return ok(metricsCollector);
+    });
+    this.apiSecurityManager = new ApiSecurityManager();
+    this.scopeFacade = new ScopeManagementFacade(
+      scopeManager,
+      () => this.scopeManager.isDisposed(),
+      () => this.validationManager.getValidationState()
+    );
+  }
+  /**
+   * Creates a new root container.
+   *
+   * This is the preferred way to create containers.
+   * All components are created fresh for the root container.
+   *
+   * **Bootstrap Performance Tracking:**
+   * Uses BootstrapPerformanceTracker with RuntimeConfigService(env) und null MetricsCollector.
+   * MetricsCollector is injected later via setMetricsCollector() after validation.
+   *
+   * @param env - Environment configuration (required for bootstrap performance tracking)
+   * @returns A new root ServiceContainer
+   *
+   * @example
+   * ```typescript
+   * const container = ServiceContainer.createRoot(ENV);
+   * container.registerClass(LoggerToken, Logger, SINGLETON);
+   * container.validate();
+   * ```
+   */
+  static createRoot(env) {
+    const registry = new ServiceRegistry();
+    const validator = new ContainerValidator();
+    const cache = new InstanceCache();
+    const scopeManager = new ScopeManager("root", null, cache);
+    const performanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(env), null);
+    const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
+    return new _ServiceContainer(
+      registry,
+      validator,
+      cache,
+      resolver,
+      scopeManager,
+      "registering",
+      env
+    );
+  }
+  /**
+   * Register a service class with automatic dependency injection.
+   */
+  registerClass(token, serviceClass, lifecycle) {
+    return this.registrationManager.registerClass(token, serviceClass, lifecycle);
+  }
+  /**
+   * Register a factory function.
+   */
+  registerFactory(token, factory, lifecycle, dependencies) {
+    return this.registrationManager.registerFactory(token, factory, lifecycle, dependencies);
+  }
+  /**
+   * Register a constant value.
+   */
+  registerValue(token, value2) {
+    return this.registrationManager.registerValue(token, value2);
+  }
+  /**
+   * Register an already created instance.
+   * Internally treated the same as a value registration.
+   */
+  registerInstance(token, instance2) {
+    return this.registerValue(token, instance2);
+  }
+  /**
+   * Returns a previously registered constant value without requiring validation.
+   * Useful for bootstrap/static values that are needed while the container is still registering services.
+   */
+  getRegisteredValue(token) {
+    return this.registrationManager.getRegisteredValue(token);
+  }
+  /**
+   * Register an alias.
+   */
+  registerAlias(aliasToken, targetToken) {
+    return this.registrationManager.registerAlias(aliasToken, targetToken);
+  }
+  /**
+   * Validate all registrations.
+   */
+  validate() {
+    const result = this.validationManager.validate();
+    if (result.ok) {
+      this.injectMetricsCollector();
+    }
+    return result;
+  }
+  /**
+   * Injects MetricsCollector into resolver and cache after validation.
+   * This enables metrics recording without circular dependencies during bootstrap.
+   *
+   * Note: EnvironmentConfig is already injected via BootstrapPerformanceTracker
+   * during container creation, so only MetricsCollector needs to be injected here.
+   *
+   * Static import is safe here because:
+   * - tokenindex.ts only uses `import type { ServiceContainer }` (removed at runtime)
+   * - No circular runtime dependency exists
+   * - Container is already validated when this is called
+   */
+  injectMetricsCollector() {
+    const metricsResult = this.resolutionManager.resolveWithError(metricsCollectorToken);
+    if (metricsResult.ok) {
+      const metricsCollector = castResolvedService(metricsResult.value);
+      this.metricsInjectionManager.performInjection(metricsCollector);
+    }
+  }
+  /**
+   * Get validation state.
+   * Implements both Container.getValidationState and PlatformContainerPort.getValidationState.
+   * Both interfaces use identical types, so a single overload is sufficient.
+   */
+  getValidationState() {
+    return this.validationManager.getValidationState();
+  }
+  /**
+   * Async-safe validation for concurrent environments with timeout.
+   *
+   * Prevents race conditions when multiple callers validate simultaneously
+   * by ensuring only one validation runs at a time.
+   *
+   * @param timeoutMs - Timeout in milliseconds (default: 30000 = 30 seconds)
+   * @returns Promise resolving to validation result
+   *
+   * @example
+   * ```typescript
+   * const container = ServiceContainer.createRoot(ENV);
+   * // ... register services
+   * await container.validateAsync(); // Safe for concurrent calls
+   * await container.validateAsync(5000); // With 5 second timeout
+   * ```
+   */
+  async validateAsync(timeoutMs = 3e4) {
+    const result = await this.validationManager.validateAsync(timeoutMs, withTimeout, TimeoutError);
+    if (result.ok) {
+      this.injectMetricsCollector();
+    }
+    return result;
+  }
+  /**
+   * Creates a child scope container.
+   *
+   * Child containers:
+   * - Inherit parent registrations (cloned)
+   * - Can add their own registrations
+   * - Must call validate() before resolving
+   * - Share parent's singleton instances
+   * - Have isolated scoped instances
+   *
+   * @param name - Optional custom name for the scope
+   * @returns Result with child container or error
+   *
+   * @example
+   * ```typescript
+   * const parent = ServiceContainer.createRoot(ENV);
+   * parent.registerClass(LoggerToken, Logger, SINGLETON);
+   * parent.validate();
+   *
+   * const child = parent.createScope("request").value!;
+   * child.registerClass(RequestToken, RequestContext, SCOPED);
+   * child.validate();
+   *
+   * const logger = child.resolve(LoggerToken);   // From parent (shared)
+   * const ctx = child.resolve(RequestToken);      // From child (isolated)
+   * ```
+   */
+  createScope(name) {
+    const scopeResult = this.scopeFacade.validateScopeCreation(name);
+    if (!scopeResult.ok) {
+      return err(scopeResult.error);
+    }
+    const childRegistry = this.registry.clone();
+    const childCache = scopeResult.value.cache;
+    const childManager = scopeResult.value.manager;
+    const childPerformanceTracker = new BootstrapPerformanceTracker(
+      createRuntimeConfig(this.env),
+      null
+    );
+    const childResolver = new ServiceResolver(
+      childRegistry,
+      childCache,
+      this.resolver,
+      // Parent resolver for singleton delegation
+      scopeResult.value.scopeName,
+      childPerformanceTracker
+    );
+    const child = new _ServiceContainer(
+      childRegistry,
+      this.validator,
+      // Shared (stateless)
+      childCache,
+      childResolver,
+      childManager,
+      "registering",
+      // Child starts in registering state
+      this.env
+      // Inherit ENV from parent
+    );
+    return ok(child);
+  }
+  resolveWithError(token) {
+    return this.resolutionManager.resolveWithError(token);
+  }
+  // Implementation (unified for both overloads)
+  resolve(token) {
+    const securityResult = this.apiSecurityManager.validateApiSafeToken(token);
+    if (!securityResult.ok) {
+      throw new Error(securityResult.error.message);
+    }
+    return this.resolutionManager.resolve(token);
+  }
+  isRegistered(token) {
+    return ok(this.registrationManager.isRegistered(token));
+  }
+  /**
+   * Returns API-safe token metadata for external consumption.
+   */
+  getApiSafeToken(token) {
+    if (!isApiSafeTokenRuntime(token)) {
+      return null;
+    }
+    return {
+      description: String(token),
+      isRegistered: this.registrationManager.isRegistered(token)
+    };
+  }
+  /**
+   * Synchronously dispose container and all children.
+   *
+   * Use this for scenarios where async disposal is not possible (e.g., browser unload).
+   * For normal cleanup, prefer disposeAsync() which handles async disposal properly.
+   *
+   * @returns Result indicating success or disposal error
+   */
+  dispose() {
+    const result = this.scopeManager.dispose();
+    if (result.ok) {
+      this.validationManager.resetValidationState();
+    }
+    return result;
+  }
+  /**
+   * Asynchronously dispose container and all children.
+   *
+   * This is the preferred disposal method as it properly handles services that
+   * implement AsyncDisposable, allowing for proper cleanup of resources like
+   * database connections, file handles, or network sockets.
+   *
+   * Falls back to synchronous disposal for services implementing only Disposable.
+   *
+   * @returns Promise with Result indicating success or disposal error
+   *
+   * @example
+   * ```typescript
+   * // Preferred: async disposal
+   * const result = await container.disposeAsync();
+   * if (result.ok) {
+   *   console.log("Container disposed successfully");
+   * }
+   *
+   * // Browser unload (sync required)
+   * window.addEventListener('beforeunload', () => {
+   *   container.dispose();  // Sync fallback
+   * });
+   * ```
+   */
+  async disposeAsync() {
+    const result = await this.scopeManager.disposeAsync();
+    if (result.ok) {
+      this.validationManager.resetValidationState();
+    }
+    return result;
+  }
+  /**
+   * Clear all registrations and instances.
+   *
+   * IMPORTANT: Resets validation state (per review feedback).
+   */
+  clear() {
+    this.registry.clear();
+    this.cache.clear();
+    this.validationManager.resetValidationState();
+    return ok(void 0);
+  }
+};
+__name(_ServiceContainer, "ServiceContainer");
+let ServiceContainer = _ServiceContainer;
+const _ContainerFactory = class _ContainerFactory {
+  /**
+   * Creates a root ServiceContainer with the given environment configuration.
+   *
+   * @param env - Environment configuration
+   * @returns A new ServiceContainer instance
+   */
+  createRoot(env) {
+    return ServiceContainer.createRoot(env);
+  }
+};
+__name(_ContainerFactory, "ContainerFactory");
+let ContainerFactory = _ContainerFactory;
+const environmentConfigToken = createInjectionToken("EnvironmentConfig");
+const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
+const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
+const healthCheckRegistryToken = createInjectionToken("PlatformHealthCheckPort");
+const serviceContainerToken = createInjectionToken("ServiceContainer");
+const runtimeConfigToken = createInjectionToken(
+  "PlatformRuntimeConfigPort"
+);
+const platformNotificationPortToken = createInjectionToken(
+  "PlatformNotificationPort"
+);
+const platformCachePortToken = createInjectionToken("PlatformCachePort");
+const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
+const platformUIPortToken = createInjectionToken("PlatformUIPort");
+const platformJournalDirectoryUiPortToken = createInjectionToken("PlatformJournalDirectoryUiPort");
+const platformUINotificationPortToken = createInjectionToken(
+  "PlatformUINotificationPort"
+);
+const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
+const platformJournalEventPortToken = createInjectionToken(
+  "PlatformJournalEventPort"
+);
+const platformJournalCollectionPortToken = createInjectionToken("PlatformJournalCollectionPort");
+const platformJournalRepositoryToken = createInjectionToken(
+  "PlatformJournalRepository"
+);
+const platformContextMenuRegistrationPortToken = createInjectionToken("PlatformContextMenuRegistrationPort");
+const platformValidationPortToken = createInjectionToken("PlatformValidationPort");
+const platformLoggingPortToken = createInjectionToken("PlatformLoggingPort");
+const platformMetricsSnapshotPortToken = createInjectionToken(
+  "PlatformMetricsSnapshotPort"
+);
+const platformContainerPortToken = createInjectionToken("PlatformContainerPort");
+const platformSettingsRegistrationPortToken = createInjectionToken("PlatformSettingsRegistrationPort");
+const platformModuleReadyPortToken = createInjectionToken("PlatformModuleReadyPort");
+const platformChannelPortToken = createInjectionToken("PlatformChannelPort");
+const platformUINotificationChannelPortToken = createInjectionToken("PlatformUINotificationChannelPort");
+const platformConsoleChannelPortToken = createInjectionToken(
+  "PlatformConsoleChannelPort"
+);
+const platformUIAvailabilityPortToken = createInjectionToken(
+  "PlatformUIAvailabilityPort"
+);
+const _RuntimeConfigAdapter = class _RuntimeConfigAdapter {
+  constructor(env) {
+    this.service = new RuntimeConfigService(env);
+  }
+  get(key) {
+    return this.service.get(key);
+  }
+  setFromPlatform(key, value2) {
+    this.service.setFromFoundry(key, value2);
+  }
+  onChange(key, listener) {
+    return this.service.onChange(key, listener);
+  }
+};
+__name(_RuntimeConfigAdapter, "RuntimeConfigAdapter");
+let RuntimeConfigAdapter = _RuntimeConfigAdapter;
+const _ContainerHealthCheck = class _ContainerHealthCheck {
+  constructor(container) {
+    this.name = "container";
+    this.container = container;
+  }
+  check() {
+    return this.container.getValidationState() === "validated";
+  }
+  getDetails() {
+    const state = this.container.getValidationState();
+    if (state !== "validated") {
+      return `Container state: ${state}`;
+    }
+    return null;
+  }
+  dispose() {
+  }
+};
+__name(_ContainerHealthCheck, "ContainerHealthCheck");
+let ContainerHealthCheck = _ContainerHealthCheck;
+const _DIContainerHealthCheck = class _DIContainerHealthCheck extends ContainerHealthCheck {
+  constructor(container, registry) {
+    super(container);
+    registry.register(this);
+  }
+};
+__name(_DIContainerHealthCheck, "DIContainerHealthCheck");
+_DIContainerHealthCheck.dependencies = [platformContainerPortToken, healthCheckRegistryToken];
+let DIContainerHealthCheck = _DIContainerHealthCheck;
+const _MetricsHealthCheck = class _MetricsHealthCheck {
+  constructor(metricsSnapshotPort) {
+    this.name = "metrics";
+    this.metricsSnapshotPort = metricsSnapshotPort;
+  }
+  check() {
+    const snapshot = this.metricsSnapshotPort.getSnapshot();
+    const hasPortFailures = Object.keys(snapshot.portSelectionFailures).length > 0;
+    const hasResolutionErrors = snapshot.resolutionErrors > 0;
+    return !hasPortFailures && !hasResolutionErrors;
+  }
+  getDetails() {
+    const snapshot = this.metricsSnapshotPort.getSnapshot();
+    const failures = Object.keys(snapshot.portSelectionFailures);
+    if (failures.length > 0) {
+      return `Port selection failures: ${failures.join(", ")}`;
+    }
+    if (snapshot.resolutionErrors > 0) {
+      return `Resolution errors: ${snapshot.resolutionErrors}`;
+    }
+    return null;
+  }
+  dispose() {
+  }
+};
+__name(_MetricsHealthCheck, "MetricsHealthCheck");
+let MetricsHealthCheck = _MetricsHealthCheck;
+const _DIMetricsHealthCheck = class _DIMetricsHealthCheck extends MetricsHealthCheck {
+  constructor(metricsSnapshotPort, registry) {
+    super(metricsSnapshotPort);
+    registry.register(this);
+  }
+};
+__name(_DIMetricsHealthCheck, "DIMetricsHealthCheck");
+_DIMetricsHealthCheck.dependencies = [platformMetricsSnapshotPortToken, healthCheckRegistryToken];
+let DIMetricsHealthCheck = _DIMetricsHealthCheck;
+const moduleIdToken = createInjectionToken("ModuleId");
+const platformBootstrapEventPortToken = createInjectionToken(
+  "PlatformBootstrapEventPort"
+);
+const metricsRecorderToken = createInjectionToken("MetricsRecorder");
+const metricsSamplerToken = createInjectionToken("MetricsSampler");
+const metricsReporterToken = createInjectionToken("MetricsReporter");
+const traceContextToken = createInjectionToken("TraceContext");
+const metricsStorageToken = createInjectionToken("MetricsStorage");
+const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
+const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
+const HOOK_THROTTLE_WINDOW_MS = 150;
+const VALIDATION_CONSTRAINTS = {
+  /** Maximale Länge für IDs und Keys */
+  MAX_ID_LENGTH: 100,
+  /** Maximale Länge für Namen */
+  MAX_NAME_LENGTH: 100,
+  /** Maximale Länge für Flag-Keys */
+  MAX_FLAG_KEY_LENGTH: 100
+};
+const METRICS_CONFIG = {
+  /** Größe des Circular-Buffers für Resolution-Zeiten */
+  RESOLUTION_TIMES_BUFFER_SIZE: 100
+};
+Object.freeze(VALIDATION_CONSTRAINTS);
+Object.freeze(METRICS_CONFIG);
+const _MetricsAggregator = class _MetricsAggregator {
+  /**
+   * Aggregates raw metrics into a snapshot.
+   *
+   * @param metrics - Raw metrics data
+   * @returns Aggregated metrics snapshot
+   */
+  aggregate(metrics) {
+    const avgTime = this.calculateAverage(metrics.resolutionTimes, metrics.resolutionTimesCount);
+    const cacheHitRate = this.calculateCacheHitRate(metrics.cacheHits, metrics.cacheMisses);
+    return {
+      containerResolutions: metrics.containerResolutions,
+      resolutionErrors: metrics.resolutionErrors,
+      avgResolutionTimeMs: avgTime,
+      portSelections: Object.fromEntries(metrics.portSelections),
+      portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures),
+      cacheHitRate
+    };
+  }
+  /**
+   * Calculates the average of resolution times.
+   *
+   * @param times - Array of resolution times
+   * @param count - Number of valid entries in the array
+   * @returns Average time in milliseconds
+   */
+  calculateAverage(times, count) {
+    if (count === 0) {
+      return 0;
+    }
+    const slice = times.slice(0, count);
+    const sum = slice.reduce((acc, time) => acc + time, 0);
+    return sum / count;
+  }
+  /**
+   * Calculates the cache hit rate as a percentage.
+   *
+   * @param hits - Number of cache hits
+   * @param misses - Number of cache misses
+   * @returns Cache hit rate (0-100)
+   */
+  calculateCacheHitRate(hits, misses) {
+    const totalAccess = hits + misses;
+    if (totalAccess === 0) {
+      return 0;
+    }
+    return hits / totalAccess * 100;
+  }
+};
+__name(_MetricsAggregator, "MetricsAggregator");
+let MetricsAggregator = _MetricsAggregator;
+const _MetricsPersistenceManager = class _MetricsPersistenceManager {
+  /**
+   * Serializes raw metrics into a persistence state.
+   *
+   * @param metrics - Raw metrics data
+   * @returns Serializable persistence state
+   */
+  serialize(metrics) {
+    return {
+      metrics: {
+        containerResolutions: metrics.containerResolutions,
+        resolutionErrors: metrics.resolutionErrors,
+        cacheHits: metrics.cacheHits,
+        cacheMisses: metrics.cacheMisses,
+        portSelections: Object.fromEntries(metrics.portSelections),
+        portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures)
+      },
+      resolutionTimes: Array.from(metrics.resolutionTimes),
+      resolutionTimesIndex: metrics.resolutionTimesIndex,
+      resolutionTimesCount: metrics.resolutionTimesCount
+    };
+  }
+  /**
+   * Deserializes a persistence state into raw metrics.
+   *
+   * @param state - Persisted state (can be null or undefined)
+   * @returns Raw metrics data
+   */
+  deserialize(state) {
+    if (!state) {
+      return this.createEmptyRawMetrics();
+    }
+    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
+    const rawMetrics = {
+      containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
+      resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
+      cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
+      cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
+      portSelections: new Map(
+        Object.entries(metrics?.portSelections ?? {}).map(([key, value2]) => [
+          Number(key),
+          Number.isFinite(Number(value2)) ? Number(value2) : 0
+        ])
+      ),
+      portSelectionFailures: new Map(
+        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value2]) => [
+          Number(key),
+          Number.isFinite(Number(value2)) ? Number(value2) : 0
+        ])
+      ),
+      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0
+    };
+    if (Array.isArray(resolutionTimes)) {
+      const maxLength2 = Math.min(resolutionTimes.length, rawMetrics.resolutionTimes.length);
+      for (let index = 0; index < maxLength2; index++) {
+        const value2 = Number(resolutionTimes[index]);
+        rawMetrics.resolutionTimes[index] = Number.isFinite(value2) ? value2 : 0;
+      }
+      const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
+      const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
+      rawMetrics.resolutionTimesIndex = Math.min(
+        Math.max(0, safeIndex),
+        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE - 1
+      );
+      rawMetrics.resolutionTimesCount = Math.min(
+        Math.max(0, safeCount),
+        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE
+      );
+    } else {
+      rawMetrics.resolutionTimesIndex = 0;
+      rawMetrics.resolutionTimesCount = 0;
+    }
+    return rawMetrics;
+  }
+  /**
+   * Creates an empty raw metrics structure.
+   *
+   * @returns Empty raw metrics
+   */
+  createEmptyRawMetrics() {
+    return {
+      containerResolutions: 0,
+      resolutionErrors: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      portSelections: /* @__PURE__ */ new Map(),
+      portSelectionFailures: /* @__PURE__ */ new Map(),
+      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0
+    };
+  }
+};
+__name(_MetricsPersistenceManager, "MetricsPersistenceManager");
+let MetricsPersistenceManager = _MetricsPersistenceManager;
+const _MetricsStateManager = class _MetricsStateManager {
+  constructor() {
+    this.callbacks = /* @__PURE__ */ new Set();
+  }
+  /**
+   * Resets the state manager.
+   * Clears all registered callbacks.
+   */
+  reset() {
+    this.callbacks.clear();
+  }
+  /**
+   * Subscribes to state changes.
+   *
+   * @param callback - Callback to invoke on state changes
+   */
+  onStateChanged(callback) {
+    this.callbacks.add(callback);
+  }
+  /**
+   * Unsubscribes from state changes.
+   *
+   * @param callback - Callback to remove
+   */
+  unsubscribe(callback) {
+    this.callbacks.delete(callback);
+  }
+  /**
+   * Notifies all registered callbacks of a state change.
+   * Internal method used by MetricsCollector.
+   */
+  notifyStateChanged() {
+    for (const callback of this.callbacks) {
+      try {
+        callback();
+      } catch (error) {
+        console.error("Error in metrics state change callback:", error);
+      }
+    }
+  }
+};
+__name(_MetricsStateManager, "MetricsStateManager");
+let MetricsStateManager = _MetricsStateManager;
+function isValidMetricDefinition(value2) {
+  if (typeof value2 !== "object" || value2 === null) {
+    return false;
+  }
+  return "key" in value2 && typeof value2.key === "string" && "initialValue" in value2 && typeof value2.initialValue !== "undefined" && "reducer" in value2 && typeof value2.reducer === "function" && "serializer" in value2 && typeof value2.serializer === "function";
+}
+__name(isValidMetricDefinition, "isValidMetricDefinition");
+function castToMetricDefinition(definition) {
+  if (!isValidMetricDefinition(definition)) {
+    throw new Error(`Invalid metric definition structure for key "${definition.key}"`);
+  }
+  return definition;
+}
+__name(castToMetricDefinition, "castToMetricDefinition");
+function castMetricValue(value2, key) {
+  if (value2 === void 0) {
+    throw new Error(
+      `Metric value for key "${key}" is undefined. This indicates a registry initialization issue.`
+    );
+  }
+  return value2;
+}
+__name(castMetricValue, "castMetricValue");
+const _MetricDefinitionRegistry = class _MetricDefinitionRegistry {
+  constructor() {
+    this.definitions = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Registers a metric definition.
+   *
+   * @param definition - Metric definition to register
+   * @throws Error if a definition with the same key already exists or if the definition is invalid
+   */
+  register(definition) {
+    if (this.definitions.has(definition.key)) {
+      throw new Error(
+        `Metric definition with key "${definition.key}" already exists. Use a different key or remove the existing definition first.`
+      );
+    }
+    this.definitions.set(definition.key, castToMetricDefinition(definition));
+  }
+  /**
+   * Gets a metric definition by key.
+   *
+   * @param key - Metric key
+   * @returns Metric definition or undefined if not found
+   */
+  get(key) {
+    return this.definitions.get(key);
+  }
+  /**
+   * Gets all registered metric definitions.
+   *
+   * @returns Array of all metric definitions
+   */
+  getAll() {
+    return Array.from(this.definitions.values());
+  }
+  /**
+   * Checks if a metric definition exists.
+   *
+   * @param key - Metric key
+   * @returns True if definition exists
+   */
+  has(key) {
+    return this.definitions.has(key);
+  }
+  /**
+   * Removes a metric definition.
+   *
+   * @param key - Metric key to remove
+   * @returns True if definition was removed, false if it didn't exist
+   */
+  remove(key) {
+    return this.definitions.delete(key);
+  }
+  /**
+   * Clears all registered definitions.
+   */
+  clear() {
+    this.definitions.clear();
+  }
+  /**
+   * Gets the number of registered definitions.
+   *
+   * @returns Number of registered definitions
+   */
+  size() {
+    return this.definitions.size;
+  }
+};
+__name(_MetricDefinitionRegistry, "MetricDefinitionRegistry");
+let MetricDefinitionRegistry = _MetricDefinitionRegistry;
+function isResolutionEvent(event) {
+  return typeof event === "object" && event !== null && "durationMs" in event && typeof event.durationMs === "number" && "success" in event && typeof event.success === "boolean";
+}
+__name(isResolutionEvent, "isResolutionEvent");
+function isPortSelectionEvent(event) {
+  return typeof event === "object" && event !== null && "version" in event && typeof event.version === "number";
+}
+__name(isPortSelectionEvent, "isPortSelectionEvent");
+function isCacheAccessEvent(event) {
+  return typeof event === "object" && event !== null && "hit" in event && typeof event.hit === "boolean";
+}
+__name(isCacheAccessEvent, "isCacheAccessEvent");
+const containerResolutionsDefinition = {
+  key: "containerResolutions",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, _event) => current + 1, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const resolutionErrorsDefinition = {
+  key: "resolutionErrors",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isResolutionEvent(event)) {
+      return current;
+    }
+    return event.success ? current : current + 1;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const cacheHitsDefinition = {
+  key: "cacheHits",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isCacheAccessEvent(event)) {
+      return current;
+    }
+    return event.hit ? current + 1 : current;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const cacheMissesDefinition = {
+  key: "cacheMisses",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isCacheAccessEvent(event)) {
+      return current;
+    }
+    return event.hit ? current : current + 1;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const portSelectionsDefinition = {
+  key: "portSelections",
+  initialValue: /* @__PURE__ */ new Map(),
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isPortSelectionEvent(event)) {
+      return current;
+    }
+    const count = current.get(event.version) ?? 0;
+    const updated = new Map(current);
+    updated.set(event.version, count + 1);
+    return updated;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
+};
+const portSelectionFailuresDefinition = {
+  key: "portSelectionFailures",
+  initialValue: /* @__PURE__ */ new Map(),
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isPortSelectionEvent(event)) {
+      return current;
+    }
+    const count = current.get(event.version) ?? 0;
+    const updated = new Map(current);
+    updated.set(event.version, count + 1);
+    return updated;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
+};
+const resolutionTimesDefinition = {
+  key: "resolutionTimes",
+  initialValue: {
+    buffer: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+    index: 0,
+    count: 0
+  },
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isResolutionEvent(event)) {
+      return current;
+    }
+    const buffer = new Float64Array(current.buffer);
+    const maxSize2 = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
+    buffer[current.index] = event.durationMs;
+    const newIndex = (current.index + 1) % maxSize2;
+    const newCount = Math.min(current.count + 1, maxSize2);
+    return {
+      buffer,
+      index: newIndex,
+      count: newCount
+    };
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => ({
+    buffer: Array.from(value2.buffer),
+    index: value2.index,
+    count: value2.count
+  }), "serializer")
+};
+function createDefaultMetricDefinitionRegistry() {
+  const registry = new MetricDefinitionRegistry();
+  registry.register(containerResolutionsDefinition);
+  registry.register(resolutionErrorsDefinition);
+  registry.register(cacheHitsDefinition);
+  registry.register(cacheMissesDefinition);
+  registry.register(portSelectionsDefinition);
+  registry.register(portSelectionFailuresDefinition);
+  registry.register(resolutionTimesDefinition);
+  return registry;
+}
+__name(createDefaultMetricDefinitionRegistry, "createDefaultMetricDefinitionRegistry");
+const _MetricsCollector = class _MetricsCollector {
+  constructor(config2, registry) {
+    this.config = config2;
+    this.metricStates = /* @__PURE__ */ new Map();
+    this.registry = registry ?? createDefaultMetricDefinitionRegistry();
+    this.initializeMetricStates();
+    this.aggregator = new MetricsAggregator();
+    this.persistenceManager = new MetricsPersistenceManager();
+    this.stateManager = new MetricsStateManager();
+  }
+  /**
+   * Initializes metric states from registry definitions.
+   * Private method called during construction.
+   */
+  initializeMetricStates() {
+    for (const definition of this.registry.getAll()) {
+      this.metricStates.set(definition.key, {
+        value: definition.initialValue,
+        definition
+      });
+    }
+  }
+  /**
+   * Updates a metric using its reducer function.
+   *
+   * @param key - Metric key
+   * @param event - Event data for the reducer
+   */
+  updateMetric(key, event) {
+    const state = this.metricStates.get(key);
+    if (!state) {
+      return;
+    }
+    const newValue = state.definition.reducer(state.value, event);
+    this.metricStates.set(key, {
+      value: newValue,
+      definition: state.definition
+    });
+  }
+  /**
+   * Records a service resolution attempt.
+   *
+   * @param token - The injection token that was resolved
+   * @param durationMs - Time taken to resolve in milliseconds
+   * @param success - Whether resolution succeeded
+   */
+  recordResolution(token, durationMs, success) {
+    const event = { token, durationMs, success };
+    this.updateMetric("containerResolutions", event);
+    this.updateMetric("resolutionErrors", event);
+    this.updateMetric("resolutionTimes", event);
+    this.notifyStateChanged();
+  }
+  /**
+   * Records a port selection event.
+   *
+   * @param version - The Foundry version for which a port was selected
+   */
+  recordPortSelection(version) {
+    this.updateMetric("portSelections", { version });
+    this.notifyStateChanged();
+  }
+  /**
+   * Records a port selection failure.
+   *
+   * Useful for tracking when no compatible port is available for a version.
+   *
+   * @param version - The Foundry version for which port selection failed
+   */
+  recordPortSelectionFailure(version) {
+    this.updateMetric("portSelectionFailures", { version });
+    this.notifyStateChanged();
+  }
+  /**
+   * Records a cache access (hit or miss).
+   *
+   * @param hit - True if cache hit, false if cache miss
+   */
+  recordCacheAccess(hit) {
+    const event = { hit };
+    this.updateMetric("cacheHits", event);
+    this.updateMetric("cacheMisses", event);
+    this.notifyStateChanged();
+  }
+  /**
+   * Gets a snapshot of current metrics.
+   * Delegates aggregation to MetricsAggregator.
+   *
+   * @returns Immutable snapshot of metrics data
+   */
+  getSnapshot() {
+    return this.aggregator.aggregate(this.getRawMetrics());
+  }
+  /**
+   * Gets raw metrics data without aggregation.
+   * Used internally by aggregator and persistence manager.
+   *
+   * Converts from generic Map structure to IRawMetrics for backward compatibility.
+   *
+   * @returns Raw metrics data
+   */
+  getRawMetrics() {
+    const containerResolutions = this.getMetricValue("containerResolutions") ?? 0;
+    const resolutionErrors = this.getMetricValue("resolutionErrors") ?? 0;
+    const cacheHits = this.getMetricValue("cacheHits") ?? 0;
+    const cacheMisses = this.getMetricValue("cacheMisses") ?? 0;
+    const portSelectionsRaw = this.getMetricValue("portSelections");
+    const portSelections = portSelectionsRaw instanceof Map ? portSelectionsRaw : /* @__PURE__ */ new Map();
+    const portSelectionFailuresRaw = this.getMetricValue("portSelectionFailures");
+    const portSelectionFailures = portSelectionFailuresRaw instanceof Map ? portSelectionFailuresRaw : /* @__PURE__ */ new Map();
+    const resolutionTimesState = this.getMetricValue("resolutionTimes");
+    return {
+      containerResolutions,
+      resolutionErrors,
+      cacheHits,
+      cacheMisses,
+      portSelections,
+      portSelectionFailures,
+      resolutionTimes: resolutionTimesState?.buffer ?? new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: resolutionTimesState?.index ?? 0,
+      resolutionTimesCount: resolutionTimesState?.count ?? 0
+    };
+  }
+  /**
+   * Gets a metric value by key.
+   *
+   * @param key - Metric key
+   * @returns Metric value or undefined if not found
+   */
+  getMetricValue(key) {
+    const state = this.metricStates.get(key);
+    if (!state) {
+      return void 0;
+    }
+    return castMetricValue(state.value, key);
+  }
+  /**
+   * Resets all collected metrics.
+   * Useful for testing or starting fresh measurements.
+   */
+  reset() {
+    for (const definition of this.registry.getAll()) {
+      this.metricStates.set(definition.key, {
+        value: definition.initialValue,
+        definition
+      });
+    }
+    this.stateManager.reset();
+    this.notifyStateChanged();
+  }
+  /**
+   * Hook invoked after state mutations. Subclasses can override to react
+   * (e.g., persist metrics).
+   */
+  onStateChanged() {
+    this.stateManager.notifyStateChanged();
+  }
+  /**
+   * Notifies state manager of state changes.
+   * Internal method that can be overridden by subclasses.
+   */
+  notifyStateChanged() {
+    this.onStateChanged();
+  }
+  /**
+   * Captures the internal state for persistence.
+   * Delegates to MetricsPersistenceManager.
+   *
+   * @returns Serializable metrics state
+   */
+  getPersistenceState() {
+    return this.persistenceManager.serialize(this.getRawMetrics());
+  }
+  /**
+   * Restores internal state from a persisted snapshot.
+   * Delegates to MetricsPersistenceManager.
+   *
+   * @param state - Persisted metrics state
+   */
+  restoreFromPersistenceState(state) {
+    const rawMetrics = this.persistenceManager.deserialize(state);
+    this.applyRawMetrics(rawMetrics);
+  }
+  /**
+   * Applies raw metrics to internal state.
+   * Internal method used by restoreFromPersistenceState.
+   * Converts from IRawMetrics to generic Map structure.
+   *
+   * @param rawMetrics - Raw metrics to apply
+   */
+  applyRawMetrics(rawMetrics) {
+    this.setMetricValue("containerResolutions", rawMetrics.containerResolutions);
+    this.setMetricValue("resolutionErrors", rawMetrics.resolutionErrors);
+    this.setMetricValue("cacheHits", rawMetrics.cacheHits);
+    this.setMetricValue("cacheMisses", rawMetrics.cacheMisses);
+    this.setMetricValue("portSelections", rawMetrics.portSelections);
+    this.setMetricValue("portSelectionFailures", rawMetrics.portSelectionFailures);
+    const resolutionTimesState = this.metricStates.get("resolutionTimes");
+    if (resolutionTimesState) {
+      const buffer = new Float64Array(rawMetrics.resolutionTimes);
+      this.setMetricValue("resolutionTimes", {
+        buffer,
+        index: rawMetrics.resolutionTimesIndex,
+        count: rawMetrics.resolutionTimesCount
+      });
+    }
+  }
+  /**
+   * Sets a metric value by key.
+   *
+   * @param key - Metric key
+   * @param value - New metric value
+   */
+  setMetricValue(key, value2) {
+    const state = this.metricStates.get(key);
+    if (state) {
+      this.metricStates.set(key, {
+        value: value2,
+        definition: state.definition
+      });
+    }
+  }
+};
+__name(_MetricsCollector, "MetricsCollector");
+_MetricsCollector.dependencies = [runtimeConfigToken];
+let MetricsCollector = _MetricsCollector;
+const _DIMetricsCollector = class _DIMetricsCollector extends MetricsCollector {
+  constructor(config2) {
+    super(config2);
+  }
+};
+__name(_DIMetricsCollector, "DIMetricsCollector");
+_DIMetricsCollector.dependencies = [runtimeConfigToken];
+let DIMetricsCollector = _DIMetricsCollector;
+const _PersistentMetricsCollector = class _PersistentMetricsCollector extends MetricsCollector {
+  constructor(config2, metricsStorage) {
+    super(config2);
+    this.metricsStorage = metricsStorage;
+    this.suppressPersistence = false;
+    this.initialized = false;
+  }
+  /**
+   * Initializes the collector by restoring state from storage.
+   * Must be called explicitly after construction.
+   *
+   * @returns Result indicating success or error
+   */
+  initialize() {
+    if (this.initialized) {
+      return ok(void 0);
+    }
+    try {
+      this.restoreFromStorage();
+      this.initialized = true;
+      return ok(void 0);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return err(`Failed to initialize PersistentMetricsCollector: ${errorMessage}`);
+    }
+  }
+  clearPersistentState() {
+    this.metricsStorage.clear?.();
+    this.suppressPersistence = true;
+    try {
+      super.reset();
+    } finally {
+      this.suppressPersistence = false;
+    }
+  }
+  onStateChanged() {
+    super.onStateChanged();
+    if (this.suppressPersistence) {
+      return;
+    }
+    this.persist();
+  }
+  restoreFromStorage() {
+    let state = null;
+    try {
+      state = this.metricsStorage.load();
+    } catch {
+      state = null;
+    }
+    if (!state) {
+      return;
+    }
+    this.suppressPersistence = true;
+    try {
+      this.restoreFromPersistenceState(state);
+    } finally {
+      this.suppressPersistence = false;
+    }
+  }
+  persist() {
+    try {
+      this.metricsStorage.save(this.getPersistenceState());
+    } catch {
+    }
+  }
+};
+__name(_PersistentMetricsCollector, "PersistentMetricsCollector");
+_PersistentMetricsCollector.dependencies = [
+  runtimeConfigToken,
+  metricsStorageToken
+];
+let PersistentMetricsCollector = _PersistentMetricsCollector;
+const _DIPersistentMetricsCollector = class _DIPersistentMetricsCollector extends PersistentMetricsCollector {
+  constructor(config2, metricsStorage) {
+    super(config2, metricsStorage);
+  }
+};
+__name(_DIPersistentMetricsCollector, "DIPersistentMetricsCollector");
+_DIPersistentMetricsCollector.dependencies = [
+  runtimeConfigToken,
+  metricsStorageToken
+];
+let DIPersistentMetricsCollector = _DIPersistentMetricsCollector;
+const _MetricsSampler = class _MetricsSampler {
+  constructor(config2) {
+    this.config = config2;
+  }
+  /**
+   * Determines if a performance operation should be sampled based on sampling rate.
+   *
+   * In production mode, uses probabilistic sampling to reduce overhead.
+   * In development mode, always samples (returns true).
+   *
+   * @returns True if the operation should be measured/recorded
+   *
+   * @example
+   * ```typescript
+   * const sampler = container.resolve(metricsSamplerToken);
+   * if (sampler.shouldSample()) {
+   *   performance.mark('operation-start');
+   *   // ... operation ...
+   *   performance.mark('operation-end');
+   *   performance.measure('operation', 'operation-start', 'operation-end');
+   * }
+   * ```
+   */
+  shouldSample() {
+    if (this.config.get("isDevelopment")) {
+      return true;
+    }
+    return Math.random() < this.config.get("performanceSamplingRate");
+  }
+};
+__name(_MetricsSampler, "MetricsSampler");
+let MetricsSampler = _MetricsSampler;
+const _DIMetricsSampler = class _DIMetricsSampler extends MetricsSampler {
+  constructor(config2) {
+    super(config2);
+  }
+};
+__name(_DIMetricsSampler, "DIMetricsSampler");
+_DIMetricsSampler.dependencies = [runtimeConfigToken];
+let DIMetricsSampler = _DIMetricsSampler;
+const _MetricsReporter = class _MetricsReporter {
+  constructor(collector, logger) {
+    this.collector = collector;
+    this.logger = logger;
+  }
+  /**
+   * Logs a formatted metrics summary to the console.
+   * Uses console.table() for easy-to-read tabular output.
+   */
+  logSummary() {
+    const snapshot = this.collector.getSnapshot();
+    const tableData = {
+      "Total Resolutions": snapshot.containerResolutions,
+      Errors: snapshot.resolutionErrors,
+      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
+      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
+    };
+    console.table(tableData);
+  }
+  /**
+   * Gibt Metrics als JSON zurück.
+   *
+   * @returns JSON string representation of metrics snapshot
+   */
+  toJSON() {
+    return JSON.stringify(this.collector.getSnapshot(), null, 2);
+  }
+};
+__name(_MetricsReporter, "MetricsReporter");
+let MetricsReporter = _MetricsReporter;
+const _DIMetricsReporter = class _DIMetricsReporter extends MetricsReporter {
+  constructor(collector, logger) {
+    super(collector, logger);
+  }
+};
+__name(_DIMetricsReporter, "DIMetricsReporter");
+_DIMetricsReporter.dependencies = [metricsCollectorToken, loggerToken];
+let DIMetricsReporter = _DIMetricsReporter;
+const _LocalStorageMetricsStorage = class _LocalStorageMetricsStorage {
+  constructor(storageKey, storage = getStorage()) {
+    this.storageKey = storageKey;
+    this.storage = storage;
+  }
+  load() {
+    if (!this.storage) {
+      return null;
+    }
+    try {
+      const raw = this.storage.getItem(this.storageKey);
+      if (!raw) {
+        return null;
+      }
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  save(state) {
+    if (!this.storage) {
+      return;
+    }
+    try {
+      this.storage.setItem(this.storageKey, JSON.stringify(state));
+    } catch {
+    }
+  }
+  clear() {
+    if (!this.storage) {
+      return;
+    }
+    try {
+      this.storage.removeItem(this.storageKey);
+    } catch {
+    }
+  }
+};
+__name(_LocalStorageMetricsStorage, "LocalStorageMetricsStorage");
+let LocalStorageMetricsStorage = _LocalStorageMetricsStorage;
+function getStorage() {
+  try {
+    if (typeof globalThis !== "undefined" && "localStorage" in globalThis) {
+      return globalThis.localStorage;
+    }
+  } catch {
+  }
+  return null;
+}
+__name(getStorage, "getStorage");
+function createMetricsStorage(key) {
+  return new LocalStorageMetricsStorage(key);
+}
+__name(createMetricsStorage, "createMetricsStorage");
+function createInMemoryMetricsStorage() {
+  let state = null;
+  return {
+    load() {
+      return state;
+    },
+    save(newState) {
+      state = newState;
+    },
+    clear() {
+      state = null;
+    }
+  };
+}
+__name(createInMemoryMetricsStorage, "createInMemoryMetricsStorage");
+const _TracedLogger = class _TracedLogger {
+  constructor(baseLogger, traceId) {
+    this.baseLogger = baseLogger;
+    this.traceId = traceId;
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(this.formatMessage(message2), ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(this.formatMessage(message2), ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(this.formatMessage(message2), ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(this.formatMessage(message2), ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(this.formatMessage(message2), ...optionalParams);
+  }
+  withTraceId(newTraceId) {
+    return new _TracedLogger(this.baseLogger, `${this.traceId}/${newTraceId}`);
+  }
+  formatMessage(message2) {
+    return `[${this.traceId}] ${message2}`;
+  }
+};
+__name(_TracedLogger, "TracedLogger");
+let TracedLogger = _TracedLogger;
+const _BaseConsoleLogger = class _BaseConsoleLogger {
+  constructor(minLevel) {
+    this.minLevel = minLevel;
+  }
+  setMinLevel(level) {
+    this.minLevel = level;
+  }
+  log(message2, ...optionalParams) {
+    console.log(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    if (LogLevel.ERROR < this.minLevel) return;
+    console.error(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    if (LogLevel.WARN < this.minLevel) return;
+    console.warn(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    if (LogLevel.INFO < this.minLevel) return;
+    console.info(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    if (LogLevel.DEBUG < this.minLevel) return;
+    console.debug(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return new TracedLogger(this, traceId);
+  }
+};
+__name(_BaseConsoleLogger, "BaseConsoleLogger");
+let BaseConsoleLogger = _BaseConsoleLogger;
+const _RuntimeConfigLoggerDecorator = class _RuntimeConfigLoggerDecorator {
+  constructor(baseLogger, runtimeConfig) {
+    this.baseLogger = baseLogger;
+    this.runtimeConfig = runtimeConfig;
+    this.unsubscribe = null;
+    this.syncLogLevel();
+  }
+  syncLogLevel() {
+    this.baseLogger.setMinLevel?.(this.runtimeConfig.get("logLevel"));
+    this.unsubscribe?.();
+    this.unsubscribe = this.runtimeConfig.onChange("logLevel", (level) => {
+      this.baseLogger.setMinLevel?.(level);
+    });
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(message2, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(message2, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(message2, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(message2, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(message2, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return this.baseLogger.withTraceId?.(traceId) ?? this.baseLogger;
+  }
+  dispose() {
+    this.unsubscribe?.();
+  }
+};
+__name(_RuntimeConfigLoggerDecorator, "RuntimeConfigLoggerDecorator");
+let RuntimeConfigLoggerDecorator = _RuntimeConfigLoggerDecorator;
+const _StackTraceLoggerDecorator = class _StackTraceLoggerDecorator {
+  constructor(baseLogger, runtimeConfig) {
+    this.baseLogger = baseLogger;
+    this.runtimeConfig = runtimeConfig;
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  /**
+   * Extracts the caller information from stack trace when debug mode is enabled.
+   * Filters out logger-related frames to show the actual source of the log call.
+   *
+   * @returns Caller info in format "filename:line" or undefined if not in debug mode or extraction fails
+   */
+  getCallerInfo() {
+    const currentLogLevel = this.runtimeConfig.get("logLevel");
+    if (currentLogLevel !== LogLevel.DEBUG) {
+      return void 0;
+    }
+    try {
+      const stack = new Error().stack;
+      if (!stack) return void 0;
+      const lines = stack.split("\n");
+      const loggerPatterns = [
+        /StackTraceLoggerDecorator/,
+        /BaseConsoleLogger/,
+        /ConsoleLoggerService/,
+        /RuntimeConfigLoggerDecorator/,
+        /TraceContextLoggerDecorator/,
+        /TracedLogger/,
+        /at Object\./
+      ];
+      for (let i = 3; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+        const isLoggerFrame = loggerPatterns.some((pattern) => pattern.test(line));
+        if (!isLoggerFrame && line.trim()) {
+          const match2 = line.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/) || line.match(/at\s+(.+?):(\d+):(\d+)/);
+          if (match2) {
+            const filePath = match2[2] || match2[1];
+            const lineNum = match2[3] || match2[2];
+            if (filePath && lineNum) {
+              const fileName = filePath.split(/[/\\]/).pop() || filePath;
+              return `${fileName}:${lineNum}`;
+            }
+          }
+          return line.trim().replace(/^at\s+/, "");
+        }
+      }
+    } catch {
+    }
+    return void 0;
+  }
+  formatWithCallerInfo(message2) {
+    const callerInfo = this.getCallerInfo();
+    return callerInfo ? `${message2} [${callerInfo}]` : message2;
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return this.baseLogger.withTraceId?.(traceId) ?? this.baseLogger;
+  }
+};
+__name(_StackTraceLoggerDecorator, "StackTraceLoggerDecorator");
+let StackTraceLoggerDecorator = _StackTraceLoggerDecorator;
+const _TraceContextLoggerDecorator = class _TraceContextLoggerDecorator {
+  constructor(baseLogger, traceContext) {
+    this.baseLogger = baseLogger;
+    this.traceContext = traceContext;
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  formatWithTrace(message2) {
+    const traceId = this.traceContext?.getCurrentTraceId();
+    return traceId ? `[${traceId}] ${message2}` : message2;
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(this.formatWithTrace(message2), ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(this.formatWithTrace(message2), ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(this.formatWithTrace(message2), ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(this.formatWithTrace(message2), ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(this.formatWithTrace(message2), ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return new TracedLogger(this, traceId);
+  }
+};
+__name(_TraceContextLoggerDecorator, "TraceContextLoggerDecorator");
+let TraceContextLoggerDecorator = _TraceContextLoggerDecorator;
+const _LoggerCompositionFactory = class _LoggerCompositionFactory {
+  /**
+   * Creates a composed logger with all necessary decorators.
+   *
+   * @param config - Runtime configuration service
+   * @param traceContext - Optional trace context for trace ID injection
+   * @returns Composed logger instance
+   */
+  createLogger(config2, traceContext) {
+    const baseLogger = new BaseConsoleLogger(config2.get("logLevel"));
+    const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config2);
+    const withStackTrace = new StackTraceLoggerDecorator(withConfig, config2);
+    return traceContext ? new TraceContextLoggerDecorator(withStackTrace, traceContext) : withStackTrace;
+  }
+};
+__name(_LoggerCompositionFactory, "LoggerCompositionFactory");
+let LoggerCompositionFactory = _LoggerCompositionFactory;
+const _ConsoleLoggerService = class _ConsoleLoggerService {
+  constructor(config2, traceContext, factory) {
+    const compositionFactory = factory ?? new LoggerCompositionFactory();
+    this.logger = compositionFactory.createLogger(config2, traceContext);
+  }
+  // Delegate all methods to composed logger
+  setMinLevel(level) {
+    this.logger.setMinLevel?.(level);
+  }
+  log(message2, ...optionalParams) {
+    this.logger.log(message2, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.logger.error(message2, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.logger.warn(message2, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.logger.info(message2, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.logger.debug(message2, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return this.logger.withTraceId?.(traceId) ?? this.logger;
+  }
+};
+__name(_ConsoleLoggerService, "ConsoleLoggerService");
+let ConsoleLoggerService = _ConsoleLoggerService;
+const _DIConsoleLoggerService = class _DIConsoleLoggerService extends ConsoleLoggerService {
+  constructor(config2, traceContext) {
+    super(config2, traceContext);
+  }
+};
+__name(_DIConsoleLoggerService, "DIConsoleLoggerService");
+_DIConsoleLoggerService.dependencies = [runtimeConfigToken, traceContextToken];
+let DIConsoleLoggerService = _DIConsoleLoggerService;
+function generateTraceId() {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 10);
+  return `${timestamp}-${random}`;
+}
+__name(generateTraceId, "generateTraceId");
+function getTraceTimestamp(traceId) {
+  const parts = traceId.split("-");
+  if (parts.length !== 2) {
+    return null;
+  }
+  const [timestampStr, randomStr] = parts;
+  if (!timestampStr || !randomStr) {
+    return null;
+  }
+  const timestamp = parseInt(timestampStr, 10);
+  return isNaN(timestamp) ? null : timestamp;
+}
+__name(getTraceTimestamp, "getTraceTimestamp");
+const _TraceContext = class _TraceContext {
+  constructor() {
+    this.currentTraceId = null;
+  }
+  /**
+   * Executes a synchronous function with trace context.
+   *
+   * Automatically generates a trace ID if not provided.
+   * Maintains a context stack for nested traces.
+   * Ensures proper cleanup via try/finally.
+   *
+   * @template T - The return type of the function
+   * @param fn - Function to execute with trace context
+   * @param options - Trace options (trace ID, operation name, metadata)
+   * @returns The result of the function execution
+   *
+   * @example
+   * ```typescript
+   * const result = traceContext.trace(() => {
+   *   logger.info("Processing"); // Automatically traced
+   *   return processData();
+   * });
+   * ```
+   */
+  trace(fn, options) {
+    const opts = typeof options === "string" ? { traceId: options } : options;
+    const traceId = opts?.traceId ?? generateTraceId();
+    const previousTraceId = this.currentTraceId;
+    this.currentTraceId = traceId;
+    try {
+      return fn();
+    } finally {
+      this.currentTraceId = previousTraceId;
+    }
+  }
+  /**
+   * Executes an asynchronous function with trace context.
+   *
+   * Similar to trace() but for async operations.
+   * Automatically generates a trace ID if not provided.
+   * Maintains a context stack for nested traces.
+   * Ensures proper cleanup via try/finally.
+   *
+   * @template T - The return type of the async function
+   * @param fn - Async function to execute with trace context
+   * @param options - Trace options (trace ID, operation name, metadata)
+   * @returns Promise resolving to the result of the function execution
+   *
+   * @example
+   * ```typescript
+   * const result = await traceContext.traceAsync(async () => {
+   *   logger.info("Fetching data"); // Automatically traced
+   *   return await fetchData();
+   * });
+   * ```
+   */
+  async traceAsync(fn, options) {
+    const opts = typeof options === "string" ? { traceId: options } : options;
+    const traceId = opts?.traceId ?? generateTraceId();
+    const previousTraceId = this.currentTraceId;
+    this.currentTraceId = traceId;
+    try {
+      return await fn();
+    } finally {
+      this.currentTraceId = previousTraceId;
+    }
+  }
+  /**
+   * Gets the current trace ID from the context stack.
+   *
+   * Returns null if not currently in a traced context.
+   * Useful for services that need to access the current trace ID
+   * without having it passed as a parameter.
+   *
+   * @returns Current trace ID or null if not in traced context
+   *
+   * @example
+   * ```typescript
+   * const traceId = traceContext.getCurrentTraceId();
+   * if (traceId) {
+   *   console.log(`Current trace: ${traceId}`);
+   * }
+   * ```
+   */
+  getCurrentTraceId() {
+    return this.currentTraceId;
+  }
+  /**
+   * Cleans up resources.
+   * For TraceContext, this resets the current trace ID.
+   */
+  dispose() {
+    this.currentTraceId = null;
+  }
+};
+__name(_TraceContext, "TraceContext");
+_TraceContext.dependencies = [];
+let TraceContext = _TraceContext;
+const _DITraceContext = class _DITraceContext extends TraceContext {
+  constructor() {
+    super();
+  }
+};
+__name(_DITraceContext, "DITraceContext");
+_DITraceContext.dependencies = [];
+let DITraceContext = _DITraceContext;
+const _ModuleHealthService = class _ModuleHealthService {
+  constructor(registry) {
+    this.registry = registry;
+    this.healthChecksInitialized = false;
+  }
+  /**
+   * Gets the current health status of the module.
+   *
+   * Health is determined by running all registered health checks.
+   * Overall status:
+   * - "healthy": All checks pass
+   * - "unhealthy": Container check fails
+   * - "degraded": Other checks fail
+   *
+   * @returns HealthStatus with overall status, individual checks, and timestamp
+   *
+   * @example
+   * ```typescript
+   * const healthService = container.resolve(moduleHealthServiceToken);
+   * const health = healthService.getHealth();
+   *
+   * if (health.status !== 'healthy') {
+   *   console.warn('Module is not healthy:', health.checks);
+   * }
+   * ```
+   */
+  getHealth() {
+    if (!this.healthChecksInitialized) {
+      this.healthChecksInitialized = true;
+    }
+    const results = this.registry.runAll();
+    const allHealthy = Array.from(results.values()).every((result) => result);
+    const status = allHealthy ? "healthy" : results.get("container") === false ? "unhealthy" : "degraded";
+    const checks = this.registry.getAllChecks();
+    let lastError = null;
+    for (const check2 of checks) {
+      const result = results.get(check2.name);
+      if (!result && check2.getDetails) {
+        lastError = check2.getDetails();
+      }
+    }
+    return {
+      status,
+      checks: {
+        containerValidated: results.get("container") ?? true,
+        portsSelected: results.get("metrics") ?? true,
+        lastError
+      },
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }
+};
+__name(_ModuleHealthService, "ModuleHealthService");
+let ModuleHealthService = _ModuleHealthService;
+const _DIModuleHealthService = class _DIModuleHealthService extends ModuleHealthService {
+  constructor(registry) {
+    super(registry);
+  }
+};
+__name(_DIModuleHealthService, "DIModuleHealthService");
+_DIModuleHealthService.dependencies = [healthCheckRegistryToken];
+let DIModuleHealthService = _DIModuleHealthService;
+const notificationCenterToken = createInjectionToken("NotificationCenter");
+const journalVisibilityServiceToken = createInjectionToken("JournalVisibilityService");
+const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
+const hideJournalContextMenuHandlerToken = createInjectionToken(
+  "HideJournalContextMenuHandler"
+);
+const journalContextMenuHandlersToken = createInjectionToken(
+  "JournalContextMenuHandlers"
+);
+const journalDirectoryProcessorToken = createInjectionToken(
+  "JournalDirectoryProcessor"
+);
+const runtimeConfigSyncToken = createInjectionToken("RuntimeConfigSync");
+const runtimeConfigSettingsSyncToken = createInjectionToken(
+  "RuntimeConfigSettingsSync"
+);
+const settingRegistrationErrorMapperToken = createInjectionToken(
+  "SettingRegistrationErrorMapper"
+);
+const settingDefinitionRegistryToken = createInjectionToken(
+  "SettingDefinitionRegistry"
+);
+const runtimeConfigBindingRegistryToken = createInjectionToken(
+  "RuntimeConfigBindingRegistry"
+);
+const i18nFacadeToken = createInjectionToken("I18nFacadeService");
+const foundryGameToken = createInjectionToken("FoundryGame");
+const foundryHooksToken = createInjectionToken("FoundryHooks");
+const foundryDocumentToken = createInjectionToken("FoundryDocument");
+const foundryUIToken = createInjectionToken("FoundryUI");
+const foundrySettingsToken = createInjectionToken("FoundrySettings");
+const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
+function createApiTokens() {
+  return {
+    notificationCenterToken: markAsApiSafe(notificationCenterToken),
+    journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
+    journalDirectoryProcessorToken: markAsApiSafe(journalDirectoryProcessorToken),
+    foundryGameToken: markAsApiSafe(foundryGameToken),
+    foundryHooksToken: markAsApiSafe(foundryHooksToken),
+    foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
+    foundryUIToken: markAsApiSafe(foundryUIToken),
+    foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
+    i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
+    foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken)
+  };
+}
+__name(createApiTokens, "createApiTokens");
+const _ModuleApiBuilder = class _ModuleApiBuilder {
+  constructor(serviceResolver, healthMetricsProvider) {
+    this.serviceResolver = serviceResolver;
+    this.healthMetricsProvider = healthMetricsProvider;
+  }
+  /**
+   * Creates the well-known API tokens collection.
+   *
+   * @returns Type-safe token collection for external modules
+   */
+  createApiTokens() {
+    return createApiTokens();
+  }
+  /**
+   * Creates the complete ModuleApi object with all methods.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Complete ModuleApi object
+   */
+  createApi(container, wellKnownTokens) {
+    return {
+      version: PUBLIC_API_VERSION,
+      // Overloaded resolve method (throws on error)
+      resolve: this.serviceResolver.createResolveFunction(container, wellKnownTokens),
+      // Result-Pattern method (safe, never throws)
+      resolveWithError: this.serviceResolver.createResolveWithErrorFunction(
+        container,
+        wellKnownTokens
+      ),
+      getAvailableTokens: /* @__PURE__ */ __name(() => {
+        const tokenMap = /* @__PURE__ */ new Map();
+        const tokenEntries = [
+          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
+          ["journalDirectoryProcessorToken", journalDirectoryProcessorToken],
+          ["foundryGameToken", foundryGameToken],
+          ["foundryHooksToken", foundryHooksToken],
+          ["foundryDocumentToken", foundryDocumentToken],
+          ["foundryUIToken", foundryUIToken],
+          ["foundrySettingsToken", foundrySettingsToken],
+          ["i18nFacadeToken", i18nFacadeToken],
+          ["foundryJournalFacadeToken", foundryJournalFacadeToken],
+          ["notificationCenterToken", notificationCenterToken]
+        ];
+        for (const [, token] of tokenEntries) {
+          const isRegisteredResult = container.isRegistered(token);
+          tokenMap.set(token, {
+            description: String(token).replace("Symbol(", "").replace(")", ""),
+            isRegistered: getRegistrationStatus(isRegisteredResult)
+          });
+        }
+        return tokenMap;
+      }, "getAvailableTokens"),
+      tokens: wellKnownTokens,
+      getMetrics: /* @__PURE__ */ __name(() => this.healthMetricsProvider.getMetrics(container), "getMetrics"),
+      getHealth: /* @__PURE__ */ __name(() => this.healthMetricsProvider.getHealth(container), "getHealth")
+    };
+  }
+};
+__name(_ModuleApiBuilder, "ModuleApiBuilder");
+let ModuleApiBuilder = _ModuleApiBuilder;
+const _ApiWrapperStrategyRegistry = class _ApiWrapperStrategyRegistry {
+  constructor() {
+    this.strategies = [];
+  }
+  /**
+   * Registers a wrapper strategy.
+   *
+   * @param strategy - Strategy to register
+   */
+  register(strategy) {
+    this.strategies.push(strategy);
+  }
+  /**
+   * Registers multiple wrapper strategies.
+   *
+   * @param strategies - Array of strategies to register
+   */
+  registerAll(strategies) {
+    for (const strategy of strategies) {
+      this.register(strategy);
+    }
+  }
+  /**
+   * Gets all registered strategies, sorted by priority (lower = higher priority).
+   *
+   * @returns Array of strategies in priority order
+   */
+  getAll() {
+    return [...this.strategies].sort((a, b) => {
+      const priorityA = a.getPriority?.() ?? 100;
+      const priorityB = b.getPriority?.() ?? 100;
+      return priorityA - priorityB;
+    });
+  }
+  /**
+   * Finds the first strategy that supports the given token.
+   *
+   * @param token - API token to find strategy for
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Strategy that supports the token, or null if none found
+   */
+  findStrategy(token, wellKnownTokens) {
+    const sortedStrategies = this.getAll();
+    for (const strategy of sortedStrategies) {
+      if (strategy.supports(token, wellKnownTokens)) {
+        return strategy;
+      }
+    }
+    return null;
+  }
+  /**
+   * Clears all registered strategies.
+   * Useful for testing or reset scenarios.
+   */
+  clear() {
+    this.strategies.length = 0;
+  }
+};
+__name(_ApiWrapperStrategyRegistry, "ApiWrapperStrategyRegistry");
+let ApiWrapperStrategyRegistry = _ApiWrapperStrategyRegistry;
+function isAllowedKey(prop, allowed) {
+  if (typeof prop !== "string") {
+    return false;
+  }
+  return allowed.includes(prop);
+}
+__name(isAllowedKey, "isAllowedKey");
+function createReadOnlyWrapper(service, allowedMethods) {
+  return new Proxy(service, {
+    get(target, prop, receiver) {
+      if (isAllowedKey(prop, allowedMethods)) {
+        const value2 = Reflect.get(target, prop, receiver);
+        if (typeof value2 === "function") {
+          return value2.bind(target);
+        }
+        return value2;
+      }
+      throw new Error(
+        `Property "${String(prop)}" is not accessible via Public API. Only these methods are allowed: ${allowedMethods.map(String).join(", ")}`
+      );
+    },
+    set() {
+      throw new Error("Cannot modify services via Public API (read-only)");
+    },
+    deleteProperty() {
+      throw new Error("Cannot delete properties via Public API (read-only)");
+    }
+  });
+}
+__name(createReadOnlyWrapper, "createReadOnlyWrapper");
+function createPublicLogger(logger) {
+  return createReadOnlyWrapper(logger, [
+    "log",
+    "debug",
+    "info",
+    "warn",
+    "error",
+    "withTraceId"
+    // Decorator pattern for trace context
+  ]);
+}
+__name(createPublicLogger, "createPublicLogger");
+function createPublicI18n(i18n) {
+  return createReadOnlyWrapper(i18n, ["translate", "format", "has"]);
+}
+__name(createPublicI18n, "createPublicI18n");
+function createPublicNotificationCenter(notificationCenter) {
+  return createReadOnlyWrapper(notificationCenter, [
+    "debug",
+    "info",
+    "warn",
+    "error",
+    "getChannelNames"
+  ]);
+}
+__name(createPublicNotificationCenter, "createPublicNotificationCenter");
+function createPublicFoundrySettings(foundrySettings) {
+  return createReadOnlyWrapper(foundrySettings, ["get"]);
+}
+__name(createPublicFoundrySettings, "createPublicFoundrySettings");
+function wrapI18nService(service, create) {
+  return create(service);
+}
+__name(wrapI18nService, "wrapI18nService");
+function wrapNotificationCenterService(service, create) {
+  return create(service);
+}
+__name(wrapNotificationCenterService, "wrapNotificationCenterService");
+function wrapFoundrySettingsPort(service, create) {
+  return create(service);
+}
+__name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
+const _I18nWrapperStrategy = class _I18nWrapperStrategy {
+  supports(token, wellKnownTokens) {
+    return token === wellKnownTokens.i18nFacadeToken;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return wrapI18nService(service, createPublicI18n);
+  }
+  getPriority() {
+    return 10;
+  }
+};
+__name(_I18nWrapperStrategy, "I18nWrapperStrategy");
+let I18nWrapperStrategy = _I18nWrapperStrategy;
+const _NotificationWrapperStrategy = class _NotificationWrapperStrategy {
+  supports(token, wellKnownTokens) {
+    return token === wellKnownTokens.notificationCenterToken;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return wrapNotificationCenterService(service, createPublicNotificationCenter);
+  }
+  getPriority() {
+    return 10;
+  }
+};
+__name(_NotificationWrapperStrategy, "NotificationWrapperStrategy");
+let NotificationWrapperStrategy = _NotificationWrapperStrategy;
+const _SettingsWrapperStrategy = class _SettingsWrapperStrategy {
+  supports(token, wellKnownTokens) {
+    return token === wellKnownTokens.foundrySettingsToken;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return wrapFoundrySettingsPort(service, createPublicFoundrySettings);
+  }
+  getPriority() {
+    return 10;
+  }
+};
+__name(_SettingsWrapperStrategy, "SettingsWrapperStrategy");
+let SettingsWrapperStrategy = _SettingsWrapperStrategy;
+const _NoopWrapperStrategy = class _NoopWrapperStrategy {
+  supports(_token, _wellKnownTokens) {
+    return true;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return service;
+  }
+  getPriority() {
+    return 1e3;
+  }
+};
+__name(_NoopWrapperStrategy, "NoopWrapperStrategy");
+let NoopWrapperStrategy = _NoopWrapperStrategy;
+const _ServiceWrapperFactory = class _ServiceWrapperFactory {
+  constructor(strategyRegistry) {
+    this.strategyRegistry = strategyRegistry ?? this.createDefaultRegistry();
+  }
+  /**
+   * Creates the default strategy registry with standard wrapper strategies.
+   *
+   * @returns Registry with I18n, Notification, Settings, and Noop strategies
+   */
+  createDefaultRegistry() {
+    const registry = new ApiWrapperStrategyRegistry();
+    registry.registerAll([
+      new I18nWrapperStrategy(),
+      new NotificationWrapperStrategy(),
+      new SettingsWrapperStrategy(),
+      new NoopWrapperStrategy()
+      // Fallback strategy
+    ]);
+    return registry;
+  }
+  /**
+   * Applies read-only wrappers when API consumers resolve sensitive services.
+   *
+   * Delegates to registered strategies following Open/Closed Principle.
+   * No token-specific if/else chains - all logic is in strategies.
+   *
+   * @param token - API token used for resolution
+   * @param service - Service resolved from the container
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Wrapped service when applicable
+   */
+  wrapSensitiveService(token, service, wellKnownTokens) {
+    const strategy = this.strategyRegistry.findStrategy(token, wellKnownTokens);
+    if (strategy) {
+      return strategy.wrap(service, token, wellKnownTokens);
+    }
+    return service;
+  }
+};
+__name(_ServiceWrapperFactory, "ServiceWrapperFactory");
+let ServiceWrapperFactory = _ServiceWrapperFactory;
+function formatReplacementInfo(replacement) {
+  return replacement ? `Use "${replacement}" instead.
+` : "";
+}
+__name(formatReplacementInfo, "formatReplacementInfo");
+const deprecationMetadata = /* @__PURE__ */ new Map();
+function markAsDeprecated(token, reason, replacement, removedInVersion) {
+  const apiSafeToken = markAsApiSafe(token);
+  deprecationMetadata.set(apiSafeToken, {
+    reason,
+    replacement: replacement ? String(replacement) : null,
+    removedInVersion,
+    warningShown: false
+  });
+  return apiSafeToken;
+}
+__name(markAsDeprecated, "markAsDeprecated");
+function getDeprecationInfo(token) {
+  if (!token || typeof token !== "symbol") {
+    return null;
+  }
+  return deprecationMetadata.get(token) || null;
+}
+__name(getDeprecationInfo, "getDeprecationInfo");
+const _DeprecationHandler = class _DeprecationHandler {
+  /**
+   * Checks if a token is deprecated.
+   *
+   * @param token - Token to check
+   * @returns DeprecationInfo if deprecated, null otherwise
+   */
+  checkDeprecation(token) {
+    return getDeprecationInfo(token) ?? null;
+  }
+  /**
+   * Handles deprecation warnings for tokens.
+   * Logs warning to console if token is deprecated and warning hasn't been shown yet.
+   *
+   * Uses console.warn instead of Logger because:
+   * - Deprecation warnings are for external API consumers (not internal logs)
+   * - Should be visible even if Logger is disabled/configured differently
+   * - Follows npm/Node.js convention for deprecation warnings
+   *
+   * @param token - Token to check for deprecation
+   */
+  handleDeprecationWarning(token) {
+    const deprecationInfo = getDeprecationInfo(token);
+    if (deprecationInfo && !deprecationInfo.warningShown) {
+      const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
+      console.warn(
+        `[${MODULE_METADATA.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
+Reason: ${deprecationInfo.reason}
+` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
+      );
+      deprecationInfo.warningShown = true;
+    }
+  }
+};
+__name(_DeprecationHandler, "DeprecationHandler");
+let DeprecationHandler = _DeprecationHandler;
+const _ApiServiceResolver = class _ApiServiceResolver {
+  constructor(deprecationHandler, serviceWrapperFactory) {
+    this.deprecationHandler = deprecationHandler;
+    this.serviceWrapperFactory = serviceWrapperFactory;
+  }
+  /**
+   * Creates the resolve() function for the public API.
+   * Resolves services and applies wrappers (throws on error).
+   *
+   * @param container - PlatformContainerPort for resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Resolve function for ModuleApi
+   */
+  createResolveFunction(container, wellKnownTokens) {
+    return (token) => {
+      this.deprecationHandler.handleDeprecationWarning(token);
+      const service = container.resolve(token);
+      return this.serviceWrapperFactory.wrapSensitiveService(token, service, wellKnownTokens);
+    };
+  }
+  /**
+   * Creates the resolveWithError() function for the public API.
+   * Resolves services with Result pattern (never throws).
+   *
+   * @param container - PlatformContainerPort for resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns ResolveWithError function for ModuleApi
+   */
+  createResolveWithErrorFunction(container, wellKnownTokens) {
+    return (token) => {
+      this.deprecationHandler.handleDeprecationWarning(token);
+      const result = container.resolveWithError(token);
+      if (!result.ok) {
+        const containerError = {
+          code: castContainerErrorCode(result.error.code),
+          message: result.error.message,
+          cause: result.error.cause,
+          tokenDescription: result.error.message
+        };
+        return err(containerError);
+      }
+      const service = castResolvedService(result.value);
+      const wrappedService = this.serviceWrapperFactory.wrapSensitiveService(
+        token,
+        service,
+        wellKnownTokens
+      );
+      return ok(wrappedService);
+    };
+  }
+};
+__name(_ApiServiceResolver, "ApiServiceResolver");
+let ApiServiceResolver = _ApiServiceResolver;
+const _ApiHealthMetricsProvider = class _ApiHealthMetricsProvider {
+  /**
+   * Gets a snapshot of performance metrics.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Current metrics snapshot
+   */
+  getMetrics(container) {
+    const metricsResult = container.resolveWithError(metricsCollectorToken);
+    if (!metricsResult.ok) {
+      return {
+        containerResolutions: 0,
+        resolutionErrors: 0,
+        avgResolutionTimeMs: 0,
+        portSelections: {},
+        portSelectionFailures: {},
+        cacheHitRate: 0
+      };
+    }
+    const metricsCollector = castResolvedService(metricsResult.value);
+    return metricsCollector.getSnapshot();
+  }
+  /**
+   * Gets module health status.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Health status with checks and overall status
+   */
+  getHealth(container) {
+    const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
+    if (!healthServiceResult.ok) {
+      return {
+        status: "unhealthy",
+        checks: {
+          containerValidated: false,
+          portsSelected: false,
+          lastError: "ModuleHealthService not available"
+        },
+        timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      };
+    }
+    const healthService = castResolvedService(healthServiceResult.value);
+    return healthService.getHealth();
+  }
+};
+__name(_ApiHealthMetricsProvider, "ApiHealthMetricsProvider");
+let ApiHealthMetricsProvider = _ApiHealthMetricsProvider;
+const _ModuleApiInitializer = class _ModuleApiInitializer {
+  constructor(deprecationHandler, serviceWrapperFactory, apiServiceResolver, healthMetricsProvider, apiBuilder) {
+    this.deprecationHandler = deprecationHandler ?? new DeprecationHandler();
+    this.serviceWrapperFactory = serviceWrapperFactory ?? new ServiceWrapperFactory();
+    this.apiServiceResolver = apiServiceResolver ?? new ApiServiceResolver(this.deprecationHandler, this.serviceWrapperFactory);
+    this.healthMetricsProvider = healthMetricsProvider ?? new ApiHealthMetricsProvider();
+    this.apiBuilder = apiBuilder ?? new ModuleApiBuilder(this.apiServiceResolver, this.healthMetricsProvider);
+  }
+  /**
+   * Exposes the module's public API to game.modules.get(MODULE_ID).api
+   *
+   * This method coordinates all components to create and expose the API.
+   * It acts as a Facade, delegating to specialized components.
+   *
+   * @param container - Initialized and validated PlatformContainerPort
+   * @returns Result<void, string> - Ok if successful, Err with error message
+   */
+  expose(container) {
+    if (typeof game === "undefined" || !game?.modules) {
+      return err("Game modules not available - API cannot be exposed");
+    }
+    const mod = game.modules.get(MODULE_METADATA.ID);
+    if (!mod) {
+      return err(`Module '${MODULE_METADATA.ID}' not found in game.modules`);
+    }
+    const wellKnownTokens = this.apiBuilder.createApiTokens();
+    const api = this.apiBuilder.createApi(container, wellKnownTokens);
+    mod.api = api;
+    return ok(void 0);
+  }
+};
+__name(_ModuleApiInitializer, "ModuleApiInitializer");
+_ModuleApiInitializer.dependencies = [];
+let ModuleApiInitializer = _ModuleApiInitializer;
+const _DIModuleApiInitializer = class _DIModuleApiInitializer extends ModuleApiInitializer {
+  constructor() {
+    super();
+  }
+};
+__name(_DIModuleApiInitializer, "DIModuleApiInitializer");
+_DIModuleApiInitializer.dependencies = [];
+let DIModuleApiInitializer = _DIModuleApiInitializer;
+const _HealthCheckRegistry = class _HealthCheckRegistry {
+  constructor() {
+    this.checks = /* @__PURE__ */ new Map();
+  }
+  register(check2) {
+    this.checks.set(check2.name, check2);
+  }
+  unregister(name) {
+    this.checks.delete(name);
+  }
+  runAll() {
+    const results = /* @__PURE__ */ new Map();
+    for (const [name, check2] of this.checks) {
+      results.set(name, check2.check());
+    }
+    return results;
+  }
+  getCheck(name) {
+    return this.checks.get(name);
+  }
+  getAllChecks() {
+    return Array.from(this.checks.values());
+  }
+  dispose() {
+    for (const check2 of this.checks.values()) {
+      check2.dispose();
+    }
+    this.checks.clear();
+  }
+};
+__name(_HealthCheckRegistry, "HealthCheckRegistry");
+_HealthCheckRegistry.dependencies = [];
+let HealthCheckRegistry = _HealthCheckRegistry;
+const _DIHealthCheckRegistry = class _DIHealthCheckRegistry extends HealthCheckRegistry {
+  constructor() {
+    super();
+  }
+};
+__name(_DIHealthCheckRegistry, "DIHealthCheckRegistry");
+_DIHealthCheckRegistry.dependencies = [];
+let DIHealthCheckRegistry = _DIHealthCheckRegistry;
+const _HealthCheckRegistryAdapter = class _HealthCheckRegistryAdapter {
+  constructor() {
+    this.registry = new HealthCheckRegistry();
+  }
+  register(check2) {
+    this.registry.register(check2);
+  }
+  unregister(name) {
+    this.registry.unregister(name);
+  }
+  runAll() {
+    return this.registry.runAll();
+  }
+  getCheck(name) {
+    return this.registry.getCheck(name);
+  }
+  getAllChecks() {
+    return this.registry.getAllChecks();
+  }
+};
+__name(_HealthCheckRegistryAdapter, "HealthCheckRegistryAdapter");
+let HealthCheckRegistryAdapter = _HealthCheckRegistryAdapter;
+var InitPhaseCriticality = /* @__PURE__ */ ((InitPhaseCriticality2) => {
+  InitPhaseCriticality2["HALT_ON_ERROR"] = "haltOnError";
+  InitPhaseCriticality2["WARN_AND_CONTINUE"] = "warnAndContinue";
+  return InitPhaseCriticality2;
+})(InitPhaseCriticality || {});
+const _InitPhaseRegistry = class _InitPhaseRegistry {
+  /**
+   * Creates a new registry with the provided phases.
+   *
+   * @param phases - Array of init phases (will be sorted by priority)
+   */
+  constructor(phases = []) {
+    this.phases = [];
+    this.phases = [...phases];
+    this.sortPhases();
+  }
+  /**
+   * Returns all phases sorted by priority (ascending).
+   *
+   * @returns Sorted array of init phases
+   */
+  getAll() {
+    return [...this.phases];
+  }
+  /**
+   * Adds a phase to the registry and re-sorts.
+   *
+   * @param phase - Phase to add
+   */
+  add(phase) {
+    this.phases.push(phase);
+    this.sortPhases();
+  }
+  /**
+   * Sorts phases by priority (ascending).
+   */
+  sortPhases() {
+    this.phases.sort((a, b) => a.priority - b.priority);
+  }
+};
+__name(_InitPhaseRegistry, "InitPhaseRegistry");
+let InitPhaseRegistry = _InitPhaseRegistry;
+const _MetricsBootstrapper = class _MetricsBootstrapper {
+  /**
+   * Initializes metrics collector if it supports persistence.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success (warnings logged but don't fail bootstrap)
+   */
+  static initializeMetrics(container) {
+    const metricsResult = container.resolveWithError(metricsCollectorToken);
+    if (!metricsResult.ok) {
+      return ok(void 0);
+    }
+    const collector = metricsResult.value;
+    if (collector instanceof PersistentMetricsCollector) {
+      const initResult = collector.initialize();
+      if (!initResult.ok) {
+        return ok(void 0);
+      }
+    }
+    return ok(void 0);
+  }
+};
+__name(_MetricsBootstrapper, "MetricsBootstrapper");
+let MetricsBootstrapper = _MetricsBootstrapper;
+const _MetricsInitPhase = class _MetricsInitPhase {
+  constructor() {
+    this.id = "metrics-initialization";
+    this.priority = 1;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return MetricsBootstrapper.initializeMetrics(ctx.container);
+  }
+};
+__name(_MetricsInitPhase, "MetricsInitPhase");
+let MetricsInitPhase = _MetricsInitPhase;
+const queuedUIChannelToken = createInjectionToken("QueuedUIChannel");
+const _NotificationBootstrapper = class _NotificationBootstrapper {
+  /**
+   * Attaches UI notification channel to NotificationCenter.
+   *
+   * Uses QueuedUIChannel which queues notifications before UI is available
+   * and flushes them when UI becomes available.
+   *
+   * This phase is optional - failures are logged as warnings but don't fail bootstrap.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
+   */
+  static attachNotificationChannels(container) {
+    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
+    if (!notificationCenterResult.ok) {
+      return err(
+        `NotificationCenter could not be resolved: ${notificationCenterResult.error.message}`
+      );
+    }
+    const queuedUIChannelResult = container.resolveWithError(queuedUIChannelToken);
+    if (!queuedUIChannelResult.ok) {
+      return err(`QueuedUIChannel could not be resolved: ${queuedUIChannelResult.error.message}`);
+    }
+    const notificationCenter = castResolvedService(
+      notificationCenterResult.value
+    );
+    const queuedUIChannel = castResolvedService(queuedUIChannelResult.value);
+    notificationCenter.addChannel(queuedUIChannel);
+    return ok(void 0);
+  }
+};
+__name(_NotificationBootstrapper, "NotificationBootstrapper");
+let NotificationBootstrapper = _NotificationBootstrapper;
+const _NotificationInitPhase = class _NotificationInitPhase {
+  constructor() {
+    this.id = "notification-channels";
+    this.priority = 2;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return NotificationBootstrapper.attachNotificationChannels(ctx.container);
+  }
+};
+__name(_NotificationInitPhase, "NotificationInitPhase");
+let NotificationInitPhase = _NotificationInitPhase;
+const _ApiBootstrapper = class _ApiBootstrapper {
+  /**
+   * Exposes the module's public API.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success or error
+   */
+  static exposeApi(container) {
+    const apiInitializerResult = container.resolveWithError(moduleApiInitializerToken);
+    if (!apiInitializerResult.ok) {
+      return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
+    }
+    const apiInitializer = castResolvedService(apiInitializerResult.value);
+    const exposeResult = apiInitializer.expose(container);
+    if (!exposeResult.ok) {
+      return err(`Failed to expose API: ${exposeResult.error}`);
+    }
+    return ok(void 0);
+  }
+};
+__name(_ApiBootstrapper, "ApiBootstrapper");
+let ApiBootstrapper = _ApiBootstrapper;
+const _ApiInitPhase = class _ApiInitPhase {
+  constructor() {
+    this.id = "api-exposure";
+    this.priority = 3;
+    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
+  }
+  execute(ctx) {
+    return ApiBootstrapper.exposeApi(ctx.container);
+  }
+};
+__name(_ApiInitPhase, "ApiInitPhase");
+let ApiInitPhase = _ApiInitPhase;
+const moduleSettingsRegistrarToken = createInjectionToken("ModuleSettingsRegistrar");
+const _SettingsBootstrapper = class _SettingsBootstrapper {
+  /**
+   * Registers all module settings.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success or error
+   */
+  static registerSettings(container) {
+    const settingsRegistrarResult = container.resolveWithError(moduleSettingsRegistrarToken);
+    if (!settingsRegistrarResult.ok) {
+      return err(
+        `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
+      );
+    }
+    const settingsRegistrar = castResolvedService(
+      settingsRegistrarResult.value
+    );
+    settingsRegistrar.registerAll();
+    return ok(void 0);
+  }
+};
+__name(_SettingsBootstrapper, "SettingsBootstrapper");
+let SettingsBootstrapper = _SettingsBootstrapper;
+const _SettingsInitPhase = class _SettingsInitPhase {
+  constructor() {
+    this.id = "settings-registration";
+    this.priority = 4;
+    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
+  }
+  execute(ctx) {
+    return SettingsBootstrapper.registerSettings(ctx.container);
+  }
+};
+__name(_SettingsInitPhase, "SettingsInitPhase");
+let SettingsInitPhase = _SettingsInitPhase;
 let store$4;
 function setGlobalConfig(config$1) {
   store$4 = {
@@ -5910,4527 +10424,12 @@ function unwrap(schema) {
   return schema.wrapped;
 }
 __name(unwrap, "unwrap");
-var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
-  LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
-  LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
-  LogLevel2[LogLevel2["WARN"] = 2] = "WARN";
-  LogLevel2[LogLevel2["ERROR"] = 3] = "ERROR";
-  return LogLevel2;
-})(LogLevel || {});
 const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
-  0,
-  1,
-  2,
-  3
-  /* ERROR */
+  LogLevel.DEBUG,
+  LogLevel.INFO,
+  LogLevel.WARN,
+  LogLevel.ERROR
 ]);
-const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "development", "PROD": true, "SSR": false, "VITE_ENABLE_PERF_TRACKING": "true" };
-function parseSamplingRate(envValue, fallback2) {
-  const raw = parseFloat(envValue ?? String(fallback2));
-  return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : fallback2;
-}
-__name(parseSamplingRate, "parseSamplingRate");
-function parseNonNegativeNumber(envValue, fallback2) {
-  const parsed = Number(envValue);
-  if (!Number.isFinite(parsed)) {
-    return fallback2;
-  }
-  return parsed < 0 ? fallback2 : parsed;
-}
-__name(parseNonNegativeNumber, "parseNonNegativeNumber");
-function parseOptionalPositiveInteger(envValue) {
-  if (!envValue) {
-    return void 0;
-  }
-  const parsed = Number(envValue);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return void 0;
-  }
-  return Math.floor(parsed);
-}
-__name(parseOptionalPositiveInteger, "parseOptionalPositiveInteger");
-function parsePositiveInteger(envValue, fallback2) {
-  const parsed = Number(envValue);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback2;
-  }
-  return Math.floor(parsed);
-}
-__name(parsePositiveInteger, "parsePositiveInteger");
-function getEnvVar(key, parser2) {
-  const value2 = __vite_import_meta_env__[key];
-  return parser2(value2);
-}
-__name(getEnvVar, "getEnvVar");
-const parsedCacheMaxEntries = getEnvVar("VITE_CACHE_MAX_ENTRIES", parseOptionalPositiveInteger);
-const ENV = {
-  isDevelopment: true,
-  isProduction: false,
-  logLevel: true ? LogLevel.DEBUG : LogLevel.INFO,
-  enablePerformanceTracking: true,
-  enableMetricsPersistence: getEnvVar("VITE_ENABLE_METRICS_PERSISTENCE", (val) => val === "true"),
-  metricsPersistenceKey: getEnvVar(
-    "VITE_METRICS_PERSISTENCE_KEY",
-    (val) => val ?? "fvtt_relationship_app_module.metrics"
-  ),
-  // 1% sampling in production, 100% in development
-  performanceSamplingRate: false ? parseSamplingRate(void 0, 0.01) : 1,
-  enableCacheService: getEnvVar(
-    "VITE_CACHE_ENABLED",
-    (val) => val === void 0 ? true : val === "true"
-  ),
-  cacheDefaultTtlMs: getEnvVar(
-    "VITE_CACHE_TTL_MS",
-    (val) => parseNonNegativeNumber(val, APP_DEFAULTS.CACHE_TTL_MS)
-  ),
-  ...parsedCacheMaxEntries !== void 0 ? { cacheMaxEntries: parsedCacheMaxEntries } : {},
-  notificationQueueMinSize: getEnvVar(
-    "VITE_NOTIFICATION_QUEUE_MIN_SIZE",
-    (val) => parsePositiveInteger(val, 10)
-  ),
-  notificationQueueMaxSize: getEnvVar(
-    "VITE_NOTIFICATION_QUEUE_MAX_SIZE",
-    (val) => parsePositiveInteger(val, 1e3)
-  ),
-  notificationQueueDefaultSize: getEnvVar(
-    "VITE_NOTIFICATION_QUEUE_DEFAULT_SIZE",
-    (val) => parsePositiveInteger(val, 50)
-  )
-};
-const _PerformanceTrackerImpl = class _PerformanceTrackerImpl {
-  /**
-   * Creates a performance tracker implementation.
-   *
-   * @param env - Environment configuration for tracking settings
-   * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
-   */
-  constructor(config2, sampler) {
-    this.config = config2;
-    this.sampler = sampler;
-  }
-  /**
-   * Tracks synchronous operation execution time.
-   *
-   * Only measures when:
-   * 1. Performance tracking is enabled (env.enablePerformanceTracking)
-   * 2. MetricsCollector is available
-   * 3. Sampling check passes (metricsCollector.shouldSample())
-   *
-   * @template T - Return type of the operation
-   * @param operation - Function to execute and measure
-   * @param onComplete - Optional callback invoked with duration and result
-   * @returns Result of the operation
-   */
-  track(operation, onComplete) {
-    if (!this.config.get("enablePerformanceTracking") || !this.sampler?.shouldSample()) {
-      return operation();
-    }
-    const startTime = performance.now();
-    const result = operation();
-    const duration = performance.now() - startTime;
-    if (onComplete) {
-      onComplete(duration, result);
-    }
-    return result;
-  }
-  /**
-   * Tracks asynchronous operation execution time.
-   *
-   * Only measures when:
-   * 1. Performance tracking is enabled (env.enablePerformanceTracking)
-   * 2. MetricsCollector is available
-   * 3. Sampling check passes (metricsCollector.shouldSample())
-   *
-   * @template T - Return type of the async operation
-   * @param operation - Async function to execute and measure
-   * @param onComplete - Optional callback invoked with duration and result
-   * @returns Promise resolving to the operation result
-   */
-  async trackAsync(operation, onComplete) {
-    if (!this.config.get("enablePerformanceTracking") || !this.sampler?.shouldSample()) {
-      return operation();
-    }
-    const startTime = performance.now();
-    const result = await operation();
-    const duration = performance.now() - startTime;
-    if (onComplete) {
-      onComplete(duration, result);
-    }
-    return result;
-  }
-};
-__name(_PerformanceTrackerImpl, "PerformanceTrackerImpl");
-let PerformanceTrackerImpl = _PerformanceTrackerImpl;
-const _BootstrapPerformanceTracker = class _BootstrapPerformanceTracker extends PerformanceTrackerImpl {
-  /**
-   * Creates a bootstrap performance tracker.
-   *
-   * @param env - Environment configuration for tracking settings
-   * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
-   */
-  constructor(config2, sampler) {
-    super(config2, sampler);
-  }
-};
-__name(_BootstrapPerformanceTracker, "BootstrapPerformanceTracker");
-let BootstrapPerformanceTracker = _BootstrapPerformanceTracker;
-const _BootstrapErrorHandler = class _BootstrapErrorHandler {
-  /**
-   * Logs an error with structured context in the browser console.
-   *
-   * Creates a collapsible group with timestamp, phase, component,
-   * error details, and metadata for easy debugging and screenshotting.
-   *
-   * @param error - The error that occurred (Error object, string, or unknown)
-   * @param context - Context information about the error
-   */
-  static logError(error, context) {
-    const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-    console.group(`[${timestamp}] ${LOG_PREFIX} Error in ${context.phase}`);
-    if (context.component) {
-      console.error("Component:", context.component);
-    }
-    console.error("Error:", error);
-    if (context.metadata && Object.keys(context.metadata).length > 0) {
-      console.error("Metadata:", context.metadata);
-    }
-    console.groupEnd();
-  }
-};
-__name(_BootstrapErrorHandler, "BootstrapErrorHandler");
-let BootstrapErrorHandler = _BootstrapErrorHandler;
-const _RuntimeConfigService = class _RuntimeConfigService {
-  constructor(env) {
-    this.listeners = /* @__PURE__ */ new Map();
-    this.values = {
-      isDevelopment: env.isDevelopment,
-      isProduction: env.isProduction,
-      logLevel: env.logLevel,
-      enablePerformanceTracking: env.enablePerformanceTracking,
-      performanceSamplingRate: env.performanceSamplingRate,
-      enableMetricsPersistence: env.enableMetricsPersistence,
-      metricsPersistenceKey: env.metricsPersistenceKey,
-      enableCacheService: env.enableCacheService,
-      cacheDefaultTtlMs: env.cacheDefaultTtlMs,
-      cacheMaxEntries: env.cacheMaxEntries,
-      notificationQueueMaxSize: env.notificationQueueDefaultSize
-    };
-  }
-  /**
-   * Returns the current value for the given configuration key.
-   */
-  get(key) {
-    return this.values[key];
-  }
-  /**
-   * Updates the configuration value based on Foundry settings and notifies listeners
-   * only if the value actually changed.
-   */
-  setFromFoundry(key, value2) {
-    this.updateValue(key, value2);
-  }
-  /**
-   * Registers a listener for the given key. Returns an unsubscribe function.
-   */
-  onChange(key, listener) {
-    const existing = this.getListenersForKey(key);
-    const listeners = existing ?? /* @__PURE__ */ new Set();
-    listeners.add(listener);
-    this.setListenersForKey(key, listeners);
-    return () => {
-      const activeListeners = this.getListenersForKey(key);
-      activeListeners?.delete(listener);
-      if (!activeListeners || activeListeners.size === 0) {
-        this.listeners.delete(key);
-      }
-    };
-  }
-  /**
-   * Type-safe helper to get listeners for a specific key.
-   * @ts-expect-error - Type coverage exclusion for generic Set cast
-   */
-  getListenersForKey(key) {
-    return this.listeners.get(key);
-  }
-  /**
-   * Type-safe helper to set listeners for a specific key.
-   * @ts-expect-error - Type coverage exclusion for generic Set cast
-   */
-  setListenersForKey(key, listeners) {
-    this.listeners.set(key, listeners);
-  }
-  updateValue(key, value2) {
-    const current = this.values[key];
-    if (Object.is(current, value2)) {
-      return;
-    }
-    this.values[key] = value2;
-    const listeners = this.listeners.get(key);
-    if (!listeners || listeners.size === 0) {
-      return;
-    }
-    for (const listener of listeners) {
-      listener(value2);
-    }
-  }
-};
-__name(_RuntimeConfigService, "RuntimeConfigService");
-let RuntimeConfigService = _RuntimeConfigService;
-function createRuntimeConfig(env) {
-  return new RuntimeConfigService(env);
-}
-__name(createRuntimeConfig, "createRuntimeConfig");
-function castCachedServiceInstance(instance2) {
-  return instance2;
-}
-__name(castCachedServiceInstance, "castCachedServiceInstance");
-function castCachedServiceInstanceForResult(instance2) {
-  if (instance2 === void 0) {
-    return err({
-      code: "TokenNotRegistered",
-      message: "castCachedServiceInstanceForResult: instance must not be undefined. Use castCachedServiceInstance() for optional instances.",
-      details: {}
-    });
-  }
-  return ok(instance2);
-}
-__name(castCachedServiceInstanceForResult, "castCachedServiceInstanceForResult");
-function castServiceRegistrationEntry(token, registration) {
-  return [token, registration];
-}
-__name(castServiceRegistrationEntry, "castServiceRegistrationEntry");
-function* iterateServiceRegistrationEntries(entries2) {
-  for (const [token, registration] of entries2) {
-    yield castServiceRegistrationEntry(token, registration);
-  }
-}
-__name(iterateServiceRegistrationEntries, "iterateServiceRegistrationEntries");
-function getRegistrationStatus(result) {
-  return result.ok ? result.value : false;
-}
-__name(getRegistrationStatus, "getRegistrationStatus");
-function castToFoundryHookCallback(callback) {
-  return callback;
-}
-__name(castToFoundryHookCallback, "castToFoundryHookCallback");
-function castResolvedService(value2) {
-  return value2;
-}
-__name(castResolvedService, "castResolvedService");
-function castContainerErrorCode(code) {
-  return code;
-}
-__name(castContainerErrorCode, "castContainerErrorCode");
-function castContainerTokenToPlatformContainerPortToken(token) {
-  return token;
-}
-__name(castContainerTokenToPlatformContainerPortToken, "castContainerTokenToPlatformContainerPortToken");
-const apiSafeTokens = /* @__PURE__ */ new Set();
-function markAsApiSafe(token) {
-  apiSafeTokens.add(token);
-  return token;
-}
-__name(markAsApiSafe, "markAsApiSafe");
-function isApiSafeTokenRuntime(token) {
-  return apiSafeTokens.has(token);
-}
-__name(isApiSafeTokenRuntime, "isApiSafeTokenRuntime");
-var ServiceLifecycle = /* @__PURE__ */ ((ServiceLifecycle2) => {
-  ServiceLifecycle2["SINGLETON"] = "singleton";
-  ServiceLifecycle2["TRANSIENT"] = "transient";
-  ServiceLifecycle2["SCOPED"] = "scoped";
-  return ServiceLifecycle2;
-})(ServiceLifecycle || {});
-const _ServiceRegistration = class _ServiceRegistration {
-  /**
-   * Private constructor - use static factory methods instead.
-   * This prevents direct construction with invalid parameters
-   * and ensures Result-based error handling.
-   */
-  constructor(lifecycle, dependencies, providerType, serviceClass, factory, value2, aliasTarget) {
-    this.lifecycle = lifecycle;
-    this.dependencies = dependencies;
-    this.providerType = providerType;
-    this.serviceClass = serviceClass;
-    this.factory = factory;
-    this.value = value2;
-    this.aliasTarget = aliasTarget;
-  }
-  /**
-   * Creates a class-based registration.
-   * @template Tunknown - The concrete service type
-   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
-   * @param dependencies - Array of dependency tokens
-   * @param serviceClass - The class to instantiate
-   * @returns Result with registration or validation error
-   */
-  static createClass(lifecycle, dependencies, serviceClass) {
-    return ok(
-      new _ServiceRegistration(
-        lifecycle,
-        dependencies,
-        "class",
-        serviceClass,
-        void 0,
-        void 0,
-        void 0
-      )
-    );
-  }
-  /**
-   * Creates a factory-based registration.
-   * @template Tunknown - The concrete service type
-   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
-   * @param dependencies - Array of dependency tokens
-   * @param factory - Factory function that creates instances
-   * @returns Result with registration or validation error
-   */
-  static createFactory(lifecycle, dependencies, factory) {
-    if (!factory) {
-      return err({
-        code: "InvalidOperation",
-        message: "factory is required for factory registration"
-      });
-    }
-    return ok(
-      new _ServiceRegistration(
-        lifecycle,
-        dependencies,
-        "factory",
-        void 0,
-        factory,
-        void 0,
-        void 0
-      )
-    );
-  }
-  /**
-   * Creates a value-based registration (always SINGLETON).
-   * @template Tunknown - The concrete service type
-   * @param value - The value to register
-   * @returns Result with registration or validation error
-   */
-  static createValue(value2) {
-    if (value2 === void 0) {
-      return err({
-        code: "InvalidOperation",
-        message: "value cannot be undefined for value registration"
-      });
-    }
-    if (typeof value2 === "function") {
-      return err({
-        code: "InvalidOperation",
-        message: "registerValue() only accepts plain values, not functions or classes. Use registerClass() or registerFactory() instead."
-      });
-    }
-    return ok(
-      new _ServiceRegistration(ServiceLifecycle.SINGLETON, [], "value", void 0, void 0, value2, void 0)
-    );
-  }
-  /**
-   * Creates an alias registration (always SINGLETON).
-   * @template Tunknown - The concrete service type
-   * @param targetToken - The token to resolve instead
-   * @returns Result with registration or validation error
-   */
-  static createAlias(targetToken) {
-    if (!targetToken) {
-      return err({
-        code: "InvalidOperation",
-        message: "targetToken is required for alias registration"
-      });
-    }
-    return ok(
-      new _ServiceRegistration(
-        ServiceLifecycle.SINGLETON,
-        [targetToken],
-        "alias",
-        void 0,
-        void 0,
-        void 0,
-        targetToken
-      )
-    );
-  }
-  /**
-   * Creates a clone of this registration.
-   * Used when child containers inherit registrations from parent.
-   *
-   * @returns A new ServiceRegistration instance with cloned dependencies array
-   */
-  clone() {
-    return new _ServiceRegistration(
-      this.lifecycle,
-      [...this.dependencies],
-      // Clone array to prevent shared mutations
-      this.providerType,
-      this.serviceClass,
-      this.factory,
-      this.value,
-      this.aliasTarget
-    );
-  }
-};
-__name(_ServiceRegistration, "ServiceRegistration");
-let ServiceRegistration = _ServiceRegistration;
-const _TypeSafeRegistrationMap = class _TypeSafeRegistrationMap {
-  constructor() {
-    this.map = /* @__PURE__ */ new Map();
-  }
-  /**
-   * Stores a service registration.
-   *
-   * @template T - The concrete service type
-   * @param token - The injection token identifying the service
-   * @param registration - The service registration metadata
-   */
-  set(token, registration) {
-    this.map.set(token, registration);
-  }
-  /**
-   * Retrieves a service registration.
-   *
-   * Type-safe by design: The token's generic parameter guarantees that the
-   * returned registration matches the expected service type.
-   *
-   * @template T - The concrete service type
-   * @param token - The injection token identifying the service
-   * @returns The service registration or undefined if not found
-   */
-  get(token) {
-    return this.map.get(token);
-  }
-  /**
-   * Checks if a service is registered.
-   *
-   * @param token - The injection token to check
-   * @returns True if the service is registered
-   */
-  has(token) {
-    return this.map.has(token);
-  }
-  /**
-   * Removes a service registration.
-   *
-   * @param token - The injection token identifying the service
-   * @returns True if the service was found and removed
-   */
-  delete(token) {
-    return this.map.delete(token);
-  }
-  /**
-   * Gets the number of registered services.
-   *
-   * @returns The count of registrations
-   */
-  get size() {
-    return this.map.size;
-  }
-  /**
-   * Removes all service registrations.
-   */
-  clear() {
-    this.map.clear();
-  }
-  /**
-   * Returns an iterator of all registration entries.
-   *
-   * @returns Iterator of [token, registration] pairs
-   */
-  entries() {
-    return this.map.entries();
-  }
-  /**
-   * Creates a shallow clone of this map.
-   * Used when child containers inherit registrations from parent.
-   *
-   * @returns A new TypeSafeRegistrationMap with cloned entries
-   */
-  clone() {
-    const cloned = new _TypeSafeRegistrationMap();
-    this.map.forEach((value2, key) => {
-      cloned.map.set(key, value2);
-    });
-    return cloned;
-  }
-};
-__name(_TypeSafeRegistrationMap, "TypeSafeRegistrationMap");
-let TypeSafeRegistrationMap = _TypeSafeRegistrationMap;
-function hasDependencies(cls) {
-  return "dependencies" in cls;
-}
-__name(hasDependencies, "hasDependencies");
-const _ServiceRegistry = class _ServiceRegistry {
-  constructor() {
-    this.MAX_REGISTRATIONS = 1e4;
-    this.registrations = new TypeSafeRegistrationMap();
-    this.lifecycleIndex = /* @__PURE__ */ new Map();
-  }
-  /**
-   * Updates the lifecycle index when a service is registered.
-   *
-   * @param token - The injection token
-   * @param lifecycle - The service lifecycle
-   */
-  updateLifecycleIndex(token, lifecycle) {
-    let tokenSet = this.lifecycleIndex.get(lifecycle);
-    if (!tokenSet) {
-      tokenSet = /* @__PURE__ */ new Set();
-      this.lifecycleIndex.set(lifecycle, tokenSet);
-    }
-    tokenSet.add(token);
-  }
-  /**
-   * Registers a service class with automatic dependency injection.
-   *
-   * @template Tunknown - The type of service to register
-   * @param token - The injection token identifying this service
-   * @param serviceClass - The class to instantiate
-   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
-   * @returns Result indicating success or error
-   */
-  registerClass(token, serviceClass, lifecycle) {
-    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
-      return err({
-        code: "MaxRegistrationsExceeded",
-        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
-        tokenDescription: String(token)
-      });
-    }
-    if (this.registrations.has(token)) {
-      return err({
-        code: "DuplicateRegistration",
-        message: `Service ${String(token)} already registered`,
-        tokenDescription: String(token)
-      });
-    }
-    if (!serviceClass) {
-      return err({
-        code: "InvalidOperation",
-        message: "serviceClass is required for class registration"
-      });
-    }
-    const dependencies = hasDependencies(serviceClass) ? serviceClass.dependencies ?? [] : [];
-    const registrationResult = ServiceRegistration.createClass(
-      lifecycle,
-      dependencies,
-      serviceClass
-    );
-    if (isErr(registrationResult)) {
-      return registrationResult;
-    }
-    this.registrations.set(token, registrationResult.value);
-    this.updateLifecycleIndex(token, lifecycle);
-    return ok(void 0);
-  }
-  /**
-   * Registers a factory function for creating service instances.
-   *
-   * @template Tunknown - The type of service this factory creates
-   * @param token - The injection token identifying this service
-   * @param factory - Factory function that creates instances
-   * @param lifecycle - Service lifecycle (SINGLETON, TRANSIENT, SCOPED)
-   * @param dependencies - Array of tokens this factory depends on
-   * @returns Result indicating success or error
-   */
-  registerFactory(token, factory, lifecycle, dependencies) {
-    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
-      return err({
-        code: "MaxRegistrationsExceeded",
-        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
-        tokenDescription: String(token)
-      });
-    }
-    if (this.registrations.has(token)) {
-      return err({
-        code: "DuplicateRegistration",
-        message: `Service ${String(token)} already registered`,
-        tokenDescription: String(token)
-      });
-    }
-    const registrationResult = ServiceRegistration.createFactory(
-      lifecycle,
-      dependencies,
-      factory
-    );
-    if (isErr(registrationResult)) {
-      return registrationResult;
-    }
-    this.registrations.set(token, registrationResult.value);
-    this.updateLifecycleIndex(token, lifecycle);
-    return ok(void 0);
-  }
-  /**
-   * Registers a constant value (always SINGLETON lifecycle).
-   *
-   * @template Tunknown - The type of value to register
-   * @param token - The injection token identifying this value
-   * @param value - The value to register
-   * @returns Result indicating success or error
-   */
-  registerValue(token, value2) {
-    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
-      return err({
-        code: "MaxRegistrationsExceeded",
-        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
-        tokenDescription: String(token)
-      });
-    }
-    if (this.registrations.has(token)) {
-      return err({
-        code: "DuplicateRegistration",
-        message: `Service ${String(token)} already registered`,
-        tokenDescription: String(token)
-      });
-    }
-    const registrationResult = ServiceRegistration.createValue(value2);
-    if (isErr(registrationResult)) {
-      return registrationResult;
-    }
-    this.registrations.set(token, registrationResult.value);
-    this.updateLifecycleIndex(token, ServiceLifecycle.SINGLETON);
-    return ok(void 0);
-  }
-  /**
-   * Registers an alias that points to another token.
-   *
-   * @template Tunknown - The type of service
-   * @param aliasToken - The alias token
-   * @param targetToken - The token to resolve instead
-   * @returns Result indicating success or error
-   */
-  registerAlias(aliasToken, targetToken) {
-    if (this.registrations.size >= this.MAX_REGISTRATIONS) {
-      return err({
-        code: "MaxRegistrationsExceeded",
-        message: `Cannot register more than ${this.MAX_REGISTRATIONS} services`,
-        tokenDescription: String(aliasToken)
-      });
-    }
-    if (this.registrations.has(aliasToken)) {
-      return err({
-        code: "DuplicateRegistration",
-        message: `Service ${String(aliasToken)} already registered`,
-        tokenDescription: String(aliasToken)
-      });
-    }
-    const registrationResult = ServiceRegistration.createAlias(targetToken);
-    if (isErr(registrationResult)) {
-      return registrationResult;
-    }
-    this.registrations.set(aliasToken, registrationResult.value);
-    return ok(void 0);
-  }
-  /**
-   * Retrieves a service registration.
-   *
-   * @template Tunknown - The type of service
-   * @param token - The injection token identifying the service
-   * @returns The registration or undefined if not found
-   */
-  getRegistration(token) {
-    return this.registrations.get(token);
-  }
-  /**
-   * Returns all registrations.
-   * Used by ContainerValidator for dependency validation.
-   *
-   * @returns Map of all registrations
-   */
-  getAllRegistrations() {
-    return new Map(iterateServiceRegistrationEntries(this.registrations.entries()));
-  }
-  /**
-   * Returns all registrations for a specific lifecycle.
-   * More efficient than filtering getAllRegistrations() when only one lifecycle is needed.
-   *
-   * @param lifecycle - The lifecycle to query
-   * @returns Array of registrations with the specified lifecycle
-   */
-  getRegistrationsByLifecycle(lifecycle) {
-    const tokens = this.lifecycleIndex.get(lifecycle) ?? /* @__PURE__ */ new Set();
-    return Array.from(tokens).map((token) => this.registrations.get(token)).filter((reg) => reg !== void 0);
-  }
-  /**
-   * Checks if a service is registered.
-   *
-   * @template Tunknown - The type of service
-   * @param token - The injection token to check
-   * @returns True if registered, false otherwise
-   */
-  has(token) {
-    return this.registrations.has(token);
-  }
-  /**
-   * Clears all registrations.
-   * Warning: This removes all configured services.
-   */
-  clear() {
-    this.registrations.clear();
-    this.lifecycleIndex.clear();
-  }
-  /**
-   * Creates a deep clone of this registry for child containers.
-   *
-   * Important: Creates a new Map instance with cloned ServiceRegistration objects
-   * to prevent child containers from mutating parent registrations.
-   *
-   * @returns A new ServiceRegistry with cloned registrations
-   */
-  clone() {
-    const clonedRegistry = new _ServiceRegistry();
-    for (const [token, registration] of iterateServiceRegistrationEntries(
-      this.registrations.entries()
-    )) {
-      clonedRegistry.registrations.set(token, registration.clone());
-    }
-    for (const [lifecycle, tokens] of this.lifecycleIndex.entries()) {
-      clonedRegistry.lifecycleIndex.set(lifecycle, new Set(tokens));
-    }
-    return clonedRegistry;
-  }
-};
-__name(_ServiceRegistry, "ServiceRegistry");
-let ServiceRegistry = _ServiceRegistry;
-const _ContainerValidator = class _ContainerValidator {
-  constructor() {
-    this.validatedSubgraphs = /* @__PURE__ */ new Set();
-  }
-  /**
-   * Validates all registrations in the registry.
-   *
-   * Performs three checks:
-   * 1. All dependencies are registered
-   * 2. All alias targets exist
-   * 3. No circular dependencies
-   *
-   * @param registry - The service registry to validate
-   * @returns Result with void on success, or array of errors
-   */
-  validate(registry) {
-    this.validatedSubgraphs = /* @__PURE__ */ new Set();
-    const errors = [
-      ...this.validateDependencies(registry),
-      ...this.validateAliasTargets(registry),
-      ...this.detectCircularDependencies(registry)
-    ];
-    return errors.length > 0 ? err(errors) : ok(void 0);
-  }
-  /**
-   * Checks that all declared dependencies are registered.
-   *
-   * @param registry - The service registry to check
-   * @returns Array of errors for missing dependencies
-   */
-  validateDependencies(registry) {
-    const errors = [];
-    const registrations = registry.getAllRegistrations();
-    for (const [token, registration] of registrations.entries()) {
-      for (const dep of registration.dependencies) {
-        if (!registry.has(dep)) {
-          errors.push({
-            code: "TokenNotRegistered",
-            message: `${String(token)} depends on ${String(dep)} which is not registered`,
-            tokenDescription: String(dep)
-          });
-        }
-      }
-    }
-    return errors;
-  }
-  /**
-   * Checks that all alias targets are registered.
-   *
-   * @param registry - The service registry to check
-   * @returns Array of errors for missing alias targets
-   */
-  validateAliasTargets(registry) {
-    const errors = [];
-    const registrations = registry.getAllRegistrations();
-    for (const [token, registration] of registrations.entries()) {
-      if (registration.providerType === "alias" && registration.aliasTarget) {
-        if (!registry.has(registration.aliasTarget)) {
-          errors.push({
-            code: "AliasTargetNotFound",
-            message: `Alias ${String(token)} points to ${String(registration.aliasTarget)} which is not registered`,
-            tokenDescription: String(registration.aliasTarget)
-          });
-        }
-      }
-    }
-    return errors;
-  }
-  /**
-   * Detects circular dependencies using depth-first search.
-   *
-   * @param registry - The service registry to check
-   * @returns Array of errors for detected cycles
-   */
-  detectCircularDependencies(registry) {
-    const errors = [];
-    const visited = /* @__PURE__ */ new Set();
-    const registrations = registry.getAllRegistrations();
-    for (const token of registrations.keys()) {
-      const visiting = /* @__PURE__ */ new Set();
-      const path = [];
-      const error = this.checkCycleForToken(registry, token, visiting, visited, path);
-      if (error) {
-        errors.push(error);
-      }
-    }
-    return errors;
-  }
-  /**
-   * Recursively checks for cycles starting from a specific token.
-   *
-   * **Algorithm: Depth-First Search (DFS) with Three-Color Marking**
-   *
-   * Three states for each node (token):
-   * - WHITE (unvisited): Not in `visiting` or `visited` sets
-   * - GRAY (visiting): In `visiting` set (currently in DFS recursion stack)
-   * - BLACK (visited): In `visited` set (fully processed, all descendants checked)
-   *
-   * Cycle Detection:
-   * - If we encounter a GRAY node during traversal, we've found a back edge → cycle
-   * - GRAY nodes represent the current path from root to current node
-   * - Encountering a GRAY node means we're trying to visit an ancestor → circular dependency
-   *
-   * Performance Optimization:
-   * - `validatedSubgraphs` cache prevents redundant traversals of already-validated subtrees
-   * - Crucial for large dependency graphs (>500 services)
-   * - BLACK nodes can be safely skipped (all their descendants are cycle-free)
-   *
-   * Time Complexity: O(V + E) where V = number of services, E = number of dependencies
-   * Space Complexity: O(V) for visiting/visited sets + O(D) for recursion depth D
-   *
-   * @param registry - The service registry
-   * @param token - Current token being checked (current node in DFS)
-   * @param visiting - GRAY nodes: tokens currently in the DFS recursion stack
-   * @param visited - BLACK nodes: tokens fully processed in this validation run
-   * @param path - Current dependency path for error reporting (stack trace)
-   * @returns ContainerError if cycle detected, null otherwise
-   *
-   * @example
-   * Cycle A → B → C → A will be detected when:
-   * 1. Start at A (mark GRAY)
-   * 2. Visit B (mark GRAY)
-   * 3. Visit C (mark GRAY)
-   * 4. Try to visit A → A is GRAY → Back edge detected → Cycle!
-   */
-  checkCycleForToken(registry, token, visiting, visited, path) {
-    if (visiting.has(token)) {
-      const cyclePath = [...path, token].map(String).join(" → ");
-      return {
-        code: "CircularDependency",
-        message: `Circular dependency: ${cyclePath}`,
-        tokenDescription: String(token)
-      };
-    }
-    if (this.validatedSubgraphs.has(token)) {
-      return null;
-    }
-    if (visited.has(token)) {
-      return null;
-    }
-    visiting.add(token);
-    path.push(token);
-    const registration = registry.getRegistration(token);
-    if (registration) {
-      for (const dep of registration.dependencies) {
-        const error = this.checkCycleForToken(registry, dep, visiting, visited, path);
-        if (error) return error;
-      }
-    }
-    visiting.delete(token);
-    path.pop();
-    visited.add(token);
-    this.validatedSubgraphs.add(token);
-    return null;
-  }
-};
-__name(_ContainerValidator, "ContainerValidator");
-let ContainerValidator = _ContainerValidator;
-const _InstanceCache = class _InstanceCache {
-  constructor() {
-    this.instances = /* @__PURE__ */ new Map();
-    this.metricsCollector = null;
-  }
-  /**
-   * Injects the MetricsCollector for cache hit/miss tracking.
-   * Called after container validation to enable observability.
-   *
-   * @param collector - The metrics collector instance
-   */
-  setMetricsCollector(collector) {
-    this.metricsCollector = collector;
-  }
-  /**
-   * Retrieves a cached service instance.
-   *
-   * @template Tunknown - The type of service to retrieve
-   * @param token - The injection token identifying the service
-   * @returns The cached instance or undefined if not found
-   */
-  get(token) {
-    const hasInstance = this.instances.has(token);
-    this.metricsCollector?.recordCacheAccess(hasInstance);
-    return castCachedServiceInstance(this.instances.get(token));
-  }
-  /**
-   * Stores a service instance in the cache.
-   *
-   * @template Tunknown - The type of service to store
-   * @param token - The injection token identifying the service
-   * @param instance - The service instance to cache
-   */
-  set(token, instance2) {
-    this.instances.set(token, instance2);
-  }
-  /**
-   * Checks if a service instance is cached.
-   *
-   * @template Tunknown - The type of service to check
-   * @param token - The injection token identifying the service
-   * @returns True if the instance is cached, false otherwise
-   */
-  has(token) {
-    const hasInstance = this.instances.has(token);
-    this.metricsCollector?.recordCacheAccess(hasInstance);
-    return hasInstance;
-  }
-  /**
-   * Clears all cached instances.
-   * Note: Does not dispose instances - call getAllInstances() first if disposal is needed.
-   */
-  clear() {
-    this.instances.clear();
-  }
-  /**
-   * Returns all cached instances for disposal purposes.
-   * Used by ScopeManager to dispose Disposable services.
-   *
-   * @returns A map of all cached instances
-   */
-  getAllInstances() {
-    return new Map(this.instances);
-  }
-};
-__name(_InstanceCache, "InstanceCache");
-let InstanceCache = _InstanceCache;
-const _SingletonResolutionStrategy = class _SingletonResolutionStrategy {
-  resolve(token, registration, dependencyResolver, instantiator, cache, parentResolver, _scopeName) {
-    if (parentResolver !== null) {
-      const parentResult = parentResolver.resolve(token);
-      if (parentResult.ok) {
-        return parentResult;
-      }
-      if (parentResult.error.code === "CircularDependency") {
-        return parentResult;
-      }
-    }
-    if (!cache.has(token)) {
-      const instanceResult2 = instantiator.instantiate(token, registration);
-      if (!instanceResult2.ok) {
-        return instanceResult2;
-      }
-      cache.set(token, instanceResult2.value);
-    }
-    const instanceResult = castCachedServiceInstanceForResult(cache.get(token));
-    if (!instanceResult.ok) {
-      return instanceResult;
-    }
-    return ok(instanceResult.value);
-  }
-};
-__name(_SingletonResolutionStrategy, "SingletonResolutionStrategy");
-let SingletonResolutionStrategy = _SingletonResolutionStrategy;
-const _TransientResolutionStrategy = class _TransientResolutionStrategy {
-  resolve(token, registration, _dependencyResolver, instantiator, _cache, _parentResolver, _scopeName) {
-    return instantiator.instantiate(token, registration);
-  }
-};
-__name(_TransientResolutionStrategy, "TransientResolutionStrategy");
-let TransientResolutionStrategy = _TransientResolutionStrategy;
-const _ScopedResolutionStrategy = class _ScopedResolutionStrategy {
-  resolve(token, registration, _dependencyResolver, instantiator, cache, parentResolver, _scopeName) {
-    if (parentResolver === null) {
-      return err({
-        code: "ScopeRequired",
-        message: `Scoped service ${String(token)} requires a scope container. Use createScope() to create a child container first.`,
-        tokenDescription: String(token)
-      });
-    }
-    if (!cache.has(token)) {
-      const instanceResult2 = instantiator.instantiate(token, registration);
-      if (!instanceResult2.ok) {
-        return instanceResult2;
-      }
-      cache.set(token, instanceResult2.value);
-    }
-    const instanceResult = castCachedServiceInstanceForResult(cache.get(token));
-    if (!instanceResult.ok) {
-      return instanceResult;
-    }
-    return ok(instanceResult.value);
-  }
-};
-__name(_ScopedResolutionStrategy, "ScopedResolutionStrategy");
-let ScopedResolutionStrategy = _ScopedResolutionStrategy;
-const _LifecycleResolver = class _LifecycleResolver {
-  constructor(cache, parentResolver, scopeName) {
-    this.cache = cache;
-    this.parentResolver = parentResolver;
-    this.scopeName = scopeName;
-    this.strategies = /* @__PURE__ */ new Map();
-    this.strategies.set(ServiceLifecycle.SINGLETON, new SingletonResolutionStrategy());
-    this.strategies.set(ServiceLifecycle.TRANSIENT, new TransientResolutionStrategy());
-    this.strategies.set(ServiceLifecycle.SCOPED, new ScopedResolutionStrategy());
-  }
-  /**
-   * Resolves a service based on its lifecycle.
-   *
-   * @template T - The type of service to resolve
-   * @param token - The injection token identifying the service
-   * @param registration - The service registration metadata
-   * @param dependencyResolver - The DependencyResolver for dependency resolution
-   * @param instantiator - The ServiceInstantiator for service instantiation
-   * @returns Result with service instance or error
-   */
-  resolve(token, registration, dependencyResolver, instantiator) {
-    const strategy = this.strategies.get(registration.lifecycle);
-    if (!strategy) {
-      return err({
-        code: "InvalidLifecycle",
-        message: `Invalid service lifecycle: ${String(registration.lifecycle)}`,
-        tokenDescription: String(token)
-      });
-    }
-    return strategy.resolve(
-      token,
-      registration,
-      dependencyResolver,
-      instantiator,
-      this.cache,
-      this.parentResolver,
-      this.scopeName
-    );
-  }
-};
-__name(_LifecycleResolver, "LifecycleResolver");
-let LifecycleResolver = _LifecycleResolver;
-const _ServiceInstantiatorImpl = class _ServiceInstantiatorImpl {
-  constructor(dependencyResolver) {
-    this.dependencyResolver = dependencyResolver;
-  }
-  /**
-   * Instantiates a service based on registration type.
-   *
-   * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
-   * Handles dependency resolution for classes, direct factory calls, and value returns.
-   *
-   * @template T - The type of service to instantiate
-   * @param token - The injection token (used for error messages)
-   * @param registration - The service registration metadata
-   * @returns Result with instance or detailed error (DependencyResolveFailed, FactoryFailed, etc.)
-   */
-  instantiate(token, registration) {
-    if (registration.serviceClass) {
-      const resolvedDeps = [];
-      for (const dep of registration.dependencies) {
-        const depResult = this.dependencyResolver.resolve(dep);
-        if (!depResult.ok) {
-          return err({
-            code: "DependencyResolveFailed",
-            message: `Cannot resolve dependency ${String(dep)} for ${String(token)}`,
-            tokenDescription: String(dep),
-            cause: depResult.error
-          });
-        }
-        resolvedDeps.push(depResult.value);
-      }
-      try {
-        return ok(new registration.serviceClass(...resolvedDeps));
-      } catch (constructorError) {
-        return err({
-          code: "FactoryFailed",
-          message: `Constructor failed for ${String(token)}: ${String(constructorError)}`,
-          tokenDescription: String(token),
-          cause: constructorError
-        });
-      }
-    } else if (registration.factory) {
-      try {
-        return ok(registration.factory());
-      } catch (factoryError) {
-        return err({
-          code: "FactoryFailed",
-          message: `Factory failed for ${String(token)}: ${String(factoryError)}`,
-          tokenDescription: String(token),
-          cause: factoryError
-        });
-      }
-    } else if (registration.value !== void 0) {
-      return ok(registration.value);
-    } else {
-      return err({
-        code: "InvalidOperation",
-        message: `Invalid registration for ${String(token)} - no class, factory, or value`,
-        tokenDescription: String(token)
-      });
-    }
-  }
-};
-__name(_ServiceInstantiatorImpl, "ServiceInstantiatorImpl");
-let ServiceInstantiatorImpl = _ServiceInstantiatorImpl;
-const _ServiceResolver = class _ServiceResolver {
-  constructor(registry, cache, parentResolver, scopeName, performanceTracker) {
-    this.registry = registry;
-    this.cache = cache;
-    this.parentResolver = parentResolver;
-    this.scopeName = scopeName;
-    this.performanceTracker = performanceTracker;
-    this.metricsCollector = null;
-    this.lifecycleResolver = new LifecycleResolver(cache, parentResolver, scopeName);
-    this.instantiator = new ServiceInstantiatorImpl(this);
-  }
-  /**
-   * Sets the MetricsCollector for metrics recording.
-   * Called by ServiceContainer after validation.
-   *
-   * @param collector - The metrics collector instance
-   */
-  setMetricsCollector(collector) {
-    this.metricsCollector = collector;
-  }
-  /**
-   * Resolves a service by token.
-   *
-   * Handles:
-   * - Alias resolution (recursive)
-   * - Lifecycle-specific resolution (delegated to LifecycleResolver)
-   * - Performance tracking
-   * - Metrics recording
-   *
-   * Performance tracking is handled by the injected PerformanceTracker.
-   *
-   * @template T - The type of service to resolve
-   * @param token - The injection token identifying the service
-   * @returns Result with service instance or error
-   */
-  resolve(token) {
-    return this.performanceTracker.track(
-      () => {
-        const registration = this.registry.getRegistration(token);
-        if (!registration) {
-          const stack = new Error().stack;
-          const error = {
-            code: "TokenNotRegistered",
-            message: `Service ${String(token)} not registered`,
-            tokenDescription: String(token),
-            ...stack !== void 0 && { stack },
-            // Only include stack if defined
-            timestamp: Date.now(),
-            containerScope: this.scopeName
-          };
-          return err(error);
-        }
-        if (registration.providerType === "alias" && registration.aliasTarget) {
-          return this.resolve(registration.aliasTarget);
-        }
-        return this.lifecycleResolver.resolve(token, registration, this, this);
-      },
-      (duration, result) => {
-        this.metricsCollector?.recordResolution(token, duration, result.ok);
-      }
-    );
-  }
-  /**
-   * Instantiates a service based on registration type.
-   *
-   * CRITICAL: Returns Result to preserve error context and avoid breaking Result-Contract.
-   * Delegates to ServiceInstantiatorImpl for actual instantiation logic.
-   *
-   * This method implements the ServiceInstantiator interface, allowing lifecycle
-   * strategies to instantiate services without depending on ServiceResolver directly.
-   *
-   * @template T - The type of service to instantiate
-   * @param token - The injection token (used for error messages)
-   * @param registration - The service registration metadata
-   * @returns Result with instance or detailed error (DependencyResolveFailed, FactoryFailed, etc.)
-   */
-  instantiate(token, registration) {
-    return this.instantiator.instantiate(token, registration);
-  }
-};
-__name(_ServiceResolver, "ServiceResolver");
-let ServiceResolver = _ServiceResolver;
-function generateScopeId() {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return Date.now() + "-" + Math.random();
-  }
-}
-__name(generateScopeId, "generateScopeId");
-const _ScopeManager = class _ScopeManager {
-  // Unique correlation ID for tracing
-  constructor(scopeName, parent, cache, depth = 0) {
-    this.scopeName = scopeName;
-    this.parent = parent;
-    this.cache = cache;
-    this.MAX_SCOPE_DEPTH = 10;
-    this.children = /* @__PURE__ */ new Set();
-    this.disposed = false;
-    this.depth = depth;
-    this.scopeId = `${scopeName}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  }
-  /**
-   * Creates a child scope manager.
-   *
-   * Note: Returns data (scopeName, cache, childManager) instead of full container
-   * to avoid circular dependency with ServiceResolver.
-   *
-   * @param name - Optional custom name for the scope
-   * @returns Result with child scope data or error if disposed or max depth exceeded
-   */
-  createChild(name) {
-    if (this.disposed) {
-      return err({
-        code: "Disposed",
-        message: `Cannot create child scope from disposed scope: ${this.scopeName}`
-      });
-    }
-    if (this.depth >= this.MAX_SCOPE_DEPTH) {
-      return err({
-        code: "MaxScopeDepthExceeded",
-        message: `Maximum scope depth of ${this.MAX_SCOPE_DEPTH} exceeded. Current depth: ${this.depth}`
-      });
-    }
-    const uniqueId = name ?? `scope-${generateScopeId()}`;
-    const childScopeName = `${this.scopeName}.${uniqueId}`;
-    const childCache = new InstanceCache();
-    const childManager = new _ScopeManager(childScopeName, this, childCache, this.depth + 1);
-    this.children.add(childManager);
-    return ok({
-      scopeName: childScopeName,
-      cache: childCache,
-      manager: childManager
-    });
-  }
-  /**
-   * Disposes this scope and all child scopes.
-   *
-   * Disposal order (critical):
-   * 1. Recursively dispose all children
-   * 2. Dispose instances in this scope (if Disposable)
-   * 3. Clear instance cache
-   * 4. Remove from parent's children set
-   *
-   * @returns Result indicating success or disposal error
-   */
-  dispose() {
-    if (this.disposed) {
-      return err({
-        code: "Disposed",
-        message: `Scope already disposed: ${this.scopeName}`
-      });
-    }
-    this.disposed = true;
-    const childDisposalErrors = [];
-    for (const child of this.children) {
-      const childResult = child.dispose();
-      if (isErr(childResult)) {
-        childDisposalErrors.push({
-          scopeName: child.scopeName,
-          error: childResult.error
-        });
-      }
-    }
-    const disposeResult = this.disposeInstances();
-    if (!disposeResult.ok) {
-      return disposeResult;
-    }
-    this.cache.clear();
-    if (this.parent !== null) {
-      this.parent.children.delete(this);
-    }
-    if (childDisposalErrors.length > 0) {
-      return err({
-        code: "PartialDisposal",
-        message: `Failed to dispose ${childDisposalErrors.length} child scope(s)`,
-        details: childDisposalErrors
-      });
-    }
-    return ok(void 0);
-  }
-  /**
-   * Asynchronously disposes this scope and all child scopes.
-   *
-   * Preferred method for cleanup as it properly handles async dispose operations.
-   * Falls back to sync dispose() for services that only implement Disposable.
-   *
-   * Disposal order (critical):
-   * 1. Recursively dispose all children (async)
-   * 2. Dispose instances in this scope (async or sync)
-   * 3. Clear instance cache
-   * 4. Remove from parent's children set
-   *
-   * @returns Promise with Result indicating success or disposal error
-   */
-  async disposeAsync() {
-    if (this.disposed) {
-      return err({
-        code: "Disposed",
-        message: `Scope already disposed: ${this.scopeName}`
-      });
-    }
-    this.disposed = true;
-    const childDisposalErrors = [];
-    for (const child of this.children) {
-      const childResult = await child.disposeAsync();
-      if (isErr(childResult)) {
-        childDisposalErrors.push({
-          scopeName: child.scopeName,
-          error: childResult.error
-        });
-      }
-    }
-    const disposeResult = await this.disposeInstancesAsync();
-    if (!disposeResult.ok) {
-      return disposeResult;
-    }
-    this.cache.clear();
-    if (this.parent !== null) {
-      this.parent.children.delete(this);
-    }
-    if (childDisposalErrors.length > 0) {
-      return err({
-        code: "PartialDisposal",
-        message: `Failed to dispose ${childDisposalErrors.length} child scope(s)`,
-        details: childDisposalErrors
-      });
-    }
-    return ok(void 0);
-  }
-  /**
-   * Disposes all instances in the cache that implement Disposable (sync).
-   *
-   * @returns Result indicating success or disposal error
-   */
-  disposeInstances() {
-    const instances = this.cache.getAllInstances();
-    for (const [token, instance2] of instances.entries()) {
-      if (this.isDisposable(instance2)) {
-        const result = tryCatch(
-          () => instance2.dispose(),
-          (error) => ({
-            code: "DisposalFailed",
-            message: `Error disposing service ${String(token)}: ${String(error)}`,
-            tokenDescription: String(token),
-            cause: error
-          })
-        );
-        if (isErr(result)) {
-          return result;
-        }
-      }
-    }
-    return ok(void 0);
-  }
-  /**
-   * Disposes all instances in the cache that implement Disposable or AsyncDisposable (async).
-   * Prefers async disposal when available, falls back to sync.
-   *
-   * @returns Promise with Result indicating success or disposal error
-   */
-  async disposeInstancesAsync() {
-    const instances = this.cache.getAllInstances();
-    for (const [token, instance2] of instances.entries()) {
-      if (this.isAsyncDisposable(instance2)) {
-        try {
-          await instance2.disposeAsync();
-        } catch (error) {
-          return err({
-            code: "DisposalFailed",
-            message: `Error disposing service ${String(token)}: ${String(error)}`,
-            tokenDescription: String(token),
-            cause: error
-          });
-        }
-      } else if (this.isDisposable(instance2)) {
-        const disposableInstance = instance2;
-        const result = tryCatch(
-          () => disposableInstance.dispose(),
-          (error) => ({
-            code: "DisposalFailed",
-            message: `Error disposing service ${String(token)}: ${String(error)}`,
-            tokenDescription: String(token),
-            cause: error
-          })
-        );
-        if (isErr(result)) {
-          return result;
-        }
-      }
-    }
-    return ok(void 0);
-  }
-  /**
-   * Type guard to check if an instance implements the Disposable pattern.
-   *
-   * @param instance - The service instance to check
-   * @returns True if instance has dispose() method
-   */
-  isDisposable(instance2) {
-    return instance2 !== null && typeof instance2 === "object" && "dispose" in instance2 && // Type-safe check: instance has 'dispose' property (checked above)
-    typeof instance2.dispose === "function";
-  }
-  /**
-   * Type guard to check if an instance implements the AsyncDisposable pattern.
-   *
-   * @param instance - The service instance to check
-   * @returns True if instance has disposeAsync() method
-   */
-  isAsyncDisposable(instance2) {
-    return instance2 !== null && typeof instance2 === "object" && "disposeAsync" in instance2 && // Type-safe check: instance has 'disposeAsync' property (checked above)
-    typeof instance2.disposeAsync === "function";
-  }
-  /**
-   * Checks if this scope is disposed.
-   *
-   * @returns True if disposed, false otherwise
-   */
-  isDisposed() {
-    return this.disposed;
-  }
-  /**
-   * Gets the hierarchical scope name.
-   *
-   * @returns The scope name (e.g., "root.child1.grandchild")
-   */
-  getScopeName() {
-    return this.scopeName;
-  }
-  /**
-   * Gets the unique correlation ID for this scope.
-   *
-   * Useful for tracing and logging in distributed/concurrent scenarios.
-   * Each scope gets a unique ID combining name, timestamp, and random string.
-   *
-   * @returns The unique scope ID (e.g., "root-1730761234567-abc123")
-   *
-   * @example
-   * ```typescript
-   * const scope = container.createScope("request").value!;
-   * logger.info(`[${scope.getScopeId()}] Processing request`);
-   * ```
-   */
-  getScopeId() {
-    return this.scopeId;
-  }
-};
-__name(_ScopeManager, "ScopeManager");
-let ScopeManager = _ScopeManager;
-const _TimeoutError = class _TimeoutError extends Error {
-  constructor(timeoutMs) {
-    super(`Operation timed out after ${timeoutMs}ms`);
-    this.name = "TimeoutError";
-  }
-};
-__name(_TimeoutError, "TimeoutError");
-let TimeoutError = _TimeoutError;
-function withTimeout(promise2, timeoutMs) {
-  let timeoutHandle = null;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutHandle = setTimeout(() => {
-      reject(new TimeoutError(timeoutMs));
-    }, timeoutMs);
-  });
-  return Promise.race([
-    promise2.finally(() => {
-      if (timeoutHandle !== null) {
-        clearTimeout(timeoutHandle);
-      }
-    }),
-    timeoutPromise
-  ]);
-}
-__name(withTimeout, "withTimeout");
-const metricsCollectorToken = createInjectionToken("MetricsCollector");
-const _ServiceRegistrationManager = class _ServiceRegistrationManager {
-  constructor(registry, isDisposed, getValidationState) {
-    this.registry = registry;
-    this.isDisposed = isDisposed;
-    this.getValidationState = getValidationState;
-  }
-  /**
-   * Register a service class with automatic dependency injection.
-   */
-  registerClass(token, serviceClass, lifecycle) {
-    if (this.isDisposed()) {
-      return err({
-        code: "Disposed",
-        message: `Cannot register service on disposed container`,
-        tokenDescription: String(token)
-      });
-    }
-    if (this.getValidationState() === "validated") {
-      return err({
-        code: "InvalidOperation",
-        message: "Cannot register after validation"
-      });
-    }
-    return this.registry.registerClass(token, serviceClass, lifecycle);
-  }
-  /**
-   * Register a factory function.
-   */
-  registerFactory(token, factory, lifecycle, dependencies) {
-    if (this.isDisposed()) {
-      return err({
-        code: "Disposed",
-        message: `Cannot register service on disposed container`,
-        tokenDescription: String(token)
-      });
-    }
-    if (this.getValidationState() === "validated") {
-      return err({
-        code: "InvalidOperation",
-        message: "Cannot register after validation"
-      });
-    }
-    if (!factory || typeof factory !== "function") {
-      return err({
-        code: "InvalidFactory",
-        message: "Factory must be a function",
-        tokenDescription: String(token)
-      });
-    }
-    return this.registry.registerFactory(token, factory, lifecycle, dependencies);
-  }
-  /**
-   * Register a constant value.
-   */
-  registerValue(token, value2) {
-    if (this.isDisposed()) {
-      return err({
-        code: "Disposed",
-        message: `Cannot register service on disposed container`,
-        tokenDescription: String(token)
-      });
-    }
-    if (this.getValidationState() === "validated") {
-      return err({
-        code: "InvalidOperation",
-        message: "Cannot register after validation"
-      });
-    }
-    return this.registry.registerValue(token, value2);
-  }
-  /**
-   * Register an alias.
-   */
-  registerAlias(aliasToken, targetToken) {
-    if (this.isDisposed()) {
-      return err({
-        code: "Disposed",
-        message: `Cannot register service on disposed container`,
-        tokenDescription: String(aliasToken)
-      });
-    }
-    if (this.getValidationState() === "validated") {
-      return err({
-        code: "InvalidOperation",
-        message: "Cannot register after validation"
-      });
-    }
-    return this.registry.registerAlias(aliasToken, targetToken);
-  }
-  /**
-   * Get a registered value without requiring validation.
-   * Useful for bootstrap/static values.
-   */
-  getRegisteredValue(token) {
-    const registration = this.registry.getRegistration(token);
-    if (!registration) {
-      return null;
-    }
-    if (registration.providerType !== "value") {
-      return null;
-    }
-    const value2 = registration.value;
-    if (value2 === void 0) {
-      return null;
-    }
-    return value2;
-  }
-  /**
-   * Check if a service is registered.
-   */
-  isRegistered(token) {
-    return this.registry.has(token);
-  }
-};
-__name(_ServiceRegistrationManager, "ServiceRegistrationManager");
-let ServiceRegistrationManager = _ServiceRegistrationManager;
-const _ContainerValidationManager = class _ContainerValidationManager {
-  constructor(validator, registry, initialState = "registering") {
-    this.validator = validator;
-    this.registry = registry;
-    this.validationPromise = null;
-    this.validationState = initialState;
-  }
-  /**
-   * Validate all registrations.
-   */
-  validate() {
-    if (this.validationState === "validated") {
-      return ok(void 0);
-    }
-    if (this.validationState === "validating") {
-      return err([
-        {
-          code: "InvalidOperation",
-          message: "Validation already in progress"
-        }
-      ]);
-    }
-    this.validationState = "validating";
-    const result = this.validator.validate(this.registry);
-    if (result.ok) {
-      this.validationState = "validated";
-    } else {
-      this.validationState = "registering";
-    }
-    return result;
-  }
-  /**
-   * Async-safe validation for concurrent environments with timeout.
-   */
-  async validateAsync(timeoutMs, withTimeout2, TimeoutErrorClass) {
-    if (this.validationState === "validated") {
-      return ok(void 0);
-    }
-    if (this.validationPromise !== null) {
-      return this.validationPromise;
-    }
-    if (this.validationState === "validating") {
-      return err([
-        {
-          code: "InvalidOperation",
-          message: "Validation already in progress"
-        }
-      ]);
-    }
-    this.validationState = "validating";
-    let timedOut = false;
-    const validationTask = Promise.resolve().then(() => {
-      const result = this.validator.validate(this.registry);
-      if (!timedOut) {
-        if (result.ok) {
-          this.validationState = "validated";
-        } else {
-          this.validationState = "registering";
-        }
-      }
-      return result;
-    });
-    try {
-      this.validationPromise = withTimeout2(validationTask, timeoutMs);
-      const result = await this.validationPromise;
-      return result;
-    } catch (error) {
-      if (error instanceof TimeoutErrorClass) {
-        timedOut = true;
-        this.validationState = "registering";
-        return err([
-          {
-            code: "InvalidOperation",
-            message: `Validation timed out after ${timeoutMs}ms`
-          }
-        ]);
-      }
-      throw error;
-    } finally {
-      this.validationPromise = null;
-    }
-  }
-  /**
-   * Get validation state.
-   */
-  getValidationState() {
-    return this.validationState;
-  }
-  /**
-   * Reset validation state (used after disposal or clear).
-   */
-  resetValidationState() {
-    this.validationState = "registering";
-  }
-};
-__name(_ContainerValidationManager, "ContainerValidationManager");
-let ContainerValidationManager = _ContainerValidationManager;
-const _ServiceResolutionManager = class _ServiceResolutionManager {
-  constructor(resolver, isDisposed, getValidationState) {
-    this.resolver = resolver;
-    this.isDisposed = isDisposed;
-    this.getValidationState = getValidationState;
-  }
-  resolveWithError(token) {
-    if (this.isDisposed()) {
-      const error = {
-        code: "Disposed",
-        message: `Cannot resolve from disposed container`,
-        tokenDescription: String(token)
-      };
-      const domainError = {
-        code: error.code,
-        message: error.message,
-        cause: error.cause
-      };
-      return err(domainError);
-    }
-    if (this.getValidationState() !== "validated") {
-      const error = {
-        code: "NotValidated",
-        message: "Container must be validated before resolving. Call validate() first.",
-        tokenDescription: String(token)
-      };
-      const domainError = {
-        code: error.code,
-        message: error.message,
-        cause: error.cause
-      };
-      return err(domainError);
-    }
-    const result = this.resolver.resolve(token);
-    if (!result.ok) {
-      const domainError = {
-        code: result.error.code,
-        message: result.error.message,
-        cause: result.error.cause
-      };
-      return err(domainError);
-    }
-    return result;
-  }
-  /**
-   * Resolves a service instance (throws on failure).
-   * FOR EXTERNAL API USE ONLY - uses ApiSafeToken validation.
-   */
-  resolve(token) {
-    const result = this.resolveWithError(token);
-    if (isOk(result)) {
-      return castResolvedService(result.value);
-    }
-    throw new Error(`Cannot resolve ${String(token)}: ${result.error.message}`);
-  }
-};
-__name(_ServiceResolutionManager, "ServiceResolutionManager");
-let ServiceResolutionManager = _ServiceResolutionManager;
-const _ScopeManagementFacade = class _ScopeManagementFacade {
-  constructor(scopeManager, isDisposed, getValidationState) {
-    this.scopeManager = scopeManager;
-    this.isDisposed = isDisposed;
-    this.getValidationState = getValidationState;
-  }
-  /**
-   * Validates that a scope can be created.
-   * Returns the scope creation result if valid, or an error if not.
-   */
-  validateScopeCreation(name) {
-    if (this.isDisposed()) {
-      return err({
-        code: "Disposed",
-        message: `Cannot create scope from disposed container`
-      });
-    }
-    if (this.getValidationState() !== "validated") {
-      return err({
-        code: "NotValidated",
-        message: "Parent must be validated before creating scopes. Call validate() first."
-      });
-    }
-    return this.scopeManager.createChild(name);
-  }
-};
-__name(_ScopeManagementFacade, "ScopeManagementFacade");
-let ScopeManagementFacade = _ScopeManagementFacade;
-const _MetricsInjectionManager = class _MetricsInjectionManager {
-  constructor(resolver, cache, resolveMetricsCollector) {
-    this.resolver = resolver;
-    this.cache = cache;
-    this.resolveMetricsCollector = resolveMetricsCollector;
-  }
-  /**
-   * Injects MetricsCollector into resolver and cache after validation.
-   * This enables metrics recording without circular dependencies during bootstrap.
-   *
-   * Note: EnvironmentConfig is already injected via BootstrapPerformanceTracker
-   * during container creation, so only MetricsCollector needs to be injected here.
-   */
-  injectMetricsCollector() {
-    return ok(void 0);
-  }
-  /**
-   * Internal method to perform the actual injection.
-   * Called by ServiceContainer after resolving the metrics collector.
-   */
-  performInjection(collector) {
-    this.resolver.setMetricsCollector(collector);
-    this.cache.setMetricsCollector(collector);
-  }
-};
-__name(_MetricsInjectionManager, "MetricsInjectionManager");
-let MetricsInjectionManager = _MetricsInjectionManager;
-const _ApiSecurityManager = class _ApiSecurityManager {
-  /**
-   * Validates that a token is API-safe.
-   * Used by container.resolve() to enforce API boundary.
-   *
-   * @param token - The token to validate
-   * @returns Result indicating if token is API-safe
-   */
-  validateApiSafeToken(token) {
-    if (!isApiSafeTokenRuntime(token)) {
-      return err({
-        code: "InvalidOperation",
-        message: `API Boundary Violation: resolve() called with non-API-safe token: ${String(token)}.
-This token was not marked via markAsApiSafe().
-
-Internal code MUST use resolveWithError() instead:
-  const result = container.resolveWithError(${String(token)});
-  if (result.ok) { /* use result.value */ }
-
-Only the public ModuleApi should expose resolve() for external modules.`,
-        tokenDescription: String(token)
-      });
-    }
-    return { ok: true, value: void 0 };
-  }
-};
-__name(_ApiSecurityManager, "ApiSecurityManager");
-let ApiSecurityManager = _ApiSecurityManager;
-const _ServiceContainer = class _ServiceContainer {
-  /**
-   * Private constructor - use ServiceContainer.createRoot() instead.
-   *
-   * This constructor is private to:
-   * - Enforce factory pattern usage
-   * - Prevent constructor throws (Result-Contract-breaking)
-   * - Make child creation explicit through createScope()
-   *
-   * @param registry - Service registry
-   * @param validator - Container validator (shared for parent/child)
-   * @param cache - Instance cache
-   * @param resolver - Service resolver
-   * @param scopeManager - Scope manager
-   * @param validationState - Initial validation state
-   * @param env - Environment configuration
-   */
-  constructor(registry, validator, cache, resolver, scopeManager, validationState, env) {
-    this.registry = registry;
-    this.validator = validator;
-    this.cache = cache;
-    this.resolver = resolver;
-    this.scopeManager = scopeManager;
-    this.env = env;
-    this.validationManager = new ContainerValidationManager(validator, registry, validationState);
-    this.registrationManager = new ServiceRegistrationManager(
-      registry,
-      () => this.scopeManager.isDisposed(),
-      () => this.validationManager.getValidationState()
-    );
-    this.resolutionManager = new ServiceResolutionManager(
-      resolver,
-      () => this.scopeManager.isDisposed(),
-      () => this.validationManager.getValidationState()
-    );
-    this.metricsInjectionManager = new MetricsInjectionManager(resolver, cache, (token) => {
-      const result = this.resolutionManager.resolveWithError(token);
-      if (!result.ok) {
-        const containerError = {
-          code: castContainerErrorCode(result.error.code),
-          message: result.error.message,
-          cause: result.error.cause,
-          tokenDescription: String(token)
-        };
-        return err(containerError);
-      }
-      const metricsCollector = castResolvedService(result.value);
-      return ok(metricsCollector);
-    });
-    this.apiSecurityManager = new ApiSecurityManager();
-    this.scopeFacade = new ScopeManagementFacade(
-      scopeManager,
-      () => this.scopeManager.isDisposed(),
-      () => this.validationManager.getValidationState()
-    );
-  }
-  /**
-   * Creates a new root container.
-   *
-   * This is the preferred way to create containers.
-   * All components are created fresh for the root container.
-   *
-   * **Bootstrap Performance Tracking:**
-   * Uses BootstrapPerformanceTracker with RuntimeConfigService(env) und null MetricsCollector.
-   * MetricsCollector is injected later via setMetricsCollector() after validation.
-   *
-   * @param env - Environment configuration (required for bootstrap performance tracking)
-   * @returns A new root ServiceContainer
-   *
-   * @example
-   * ```typescript
-   * const container = ServiceContainer.createRoot(ENV);
-   * container.registerClass(LoggerToken, Logger, SINGLETON);
-   * container.validate();
-   * ```
-   */
-  static createRoot(env) {
-    const registry = new ServiceRegistry();
-    const validator = new ContainerValidator();
-    const cache = new InstanceCache();
-    const scopeManager = new ScopeManager("root", null, cache);
-    const performanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(env), null);
-    const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
-    return new _ServiceContainer(
-      registry,
-      validator,
-      cache,
-      resolver,
-      scopeManager,
-      "registering",
-      env
-    );
-  }
-  /**
-   * Register a service class with automatic dependency injection.
-   */
-  registerClass(token, serviceClass, lifecycle) {
-    return this.registrationManager.registerClass(token, serviceClass, lifecycle);
-  }
-  /**
-   * Register a factory function.
-   */
-  registerFactory(token, factory, lifecycle, dependencies) {
-    return this.registrationManager.registerFactory(token, factory, lifecycle, dependencies);
-  }
-  /**
-   * Register a constant value.
-   */
-  registerValue(token, value2) {
-    return this.registrationManager.registerValue(token, value2);
-  }
-  /**
-   * Register an already created instance.
-   * Internally treated the same as a value registration.
-   */
-  registerInstance(token, instance2) {
-    return this.registerValue(token, instance2);
-  }
-  /**
-   * Returns a previously registered constant value without requiring validation.
-   * Useful for bootstrap/static values that are needed while the container is still registering services.
-   */
-  getRegisteredValue(token) {
-    return this.registrationManager.getRegisteredValue(token);
-  }
-  /**
-   * Register an alias.
-   */
-  registerAlias(aliasToken, targetToken) {
-    return this.registrationManager.registerAlias(aliasToken, targetToken);
-  }
-  /**
-   * Validate all registrations.
-   */
-  validate() {
-    const result = this.validationManager.validate();
-    if (result.ok) {
-      this.injectMetricsCollector();
-    }
-    return result;
-  }
-  /**
-   * Injects MetricsCollector into resolver and cache after validation.
-   * This enables metrics recording without circular dependencies during bootstrap.
-   *
-   * Note: EnvironmentConfig is already injected via BootstrapPerformanceTracker
-   * during container creation, so only MetricsCollector needs to be injected here.
-   *
-   * Static import is safe here because:
-   * - tokenindex.ts only uses `import type { ServiceContainer }` (removed at runtime)
-   * - No circular runtime dependency exists
-   * - Container is already validated when this is called
-   */
-  injectMetricsCollector() {
-    const metricsResult = this.resolutionManager.resolveWithError(metricsCollectorToken);
-    if (metricsResult.ok) {
-      const metricsCollector = castResolvedService(metricsResult.value);
-      this.metricsInjectionManager.performInjection(metricsCollector);
-    }
-  }
-  /**
-   * Get validation state.
-   * Implements both Container.getValidationState and PlatformContainerPort.getValidationState.
-   * Both interfaces use identical types, so a single overload is sufficient.
-   */
-  getValidationState() {
-    return this.validationManager.getValidationState();
-  }
-  /**
-   * Async-safe validation for concurrent environments with timeout.
-   *
-   * Prevents race conditions when multiple callers validate simultaneously
-   * by ensuring only one validation runs at a time.
-   *
-   * @param timeoutMs - Timeout in milliseconds (default: 30000 = 30 seconds)
-   * @returns Promise resolving to validation result
-   *
-   * @example
-   * ```typescript
-   * const container = ServiceContainer.createRoot(ENV);
-   * // ... register services
-   * await container.validateAsync(); // Safe for concurrent calls
-   * await container.validateAsync(5000); // With 5 second timeout
-   * ```
-   */
-  async validateAsync(timeoutMs = 3e4) {
-    const result = await this.validationManager.validateAsync(timeoutMs, withTimeout, TimeoutError);
-    if (result.ok) {
-      this.injectMetricsCollector();
-    }
-    return result;
-  }
-  /**
-   * Creates a child scope container.
-   *
-   * Child containers:
-   * - Inherit parent registrations (cloned)
-   * - Can add their own registrations
-   * - Must call validate() before resolving
-   * - Share parent's singleton instances
-   * - Have isolated scoped instances
-   *
-   * @param name - Optional custom name for the scope
-   * @returns Result with child container or error
-   *
-   * @example
-   * ```typescript
-   * const parent = ServiceContainer.createRoot(ENV);
-   * parent.registerClass(LoggerToken, Logger, SINGLETON);
-   * parent.validate();
-   *
-   * const child = parent.createScope("request").value!;
-   * child.registerClass(RequestToken, RequestContext, SCOPED);
-   * child.validate();
-   *
-   * const logger = child.resolve(LoggerToken);   // From parent (shared)
-   * const ctx = child.resolve(RequestToken);      // From child (isolated)
-   * ```
-   */
-  createScope(name) {
-    const scopeResult = this.scopeFacade.validateScopeCreation(name);
-    if (!scopeResult.ok) {
-      return err(scopeResult.error);
-    }
-    const childRegistry = this.registry.clone();
-    const childCache = scopeResult.value.cache;
-    const childManager = scopeResult.value.manager;
-    const childPerformanceTracker = new BootstrapPerformanceTracker(
-      createRuntimeConfig(this.env),
-      null
-    );
-    const childResolver = new ServiceResolver(
-      childRegistry,
-      childCache,
-      this.resolver,
-      // Parent resolver for singleton delegation
-      scopeResult.value.scopeName,
-      childPerformanceTracker
-    );
-    const child = new _ServiceContainer(
-      childRegistry,
-      this.validator,
-      // Shared (stateless)
-      childCache,
-      childResolver,
-      childManager,
-      "registering",
-      // Child starts in registering state
-      this.env
-      // Inherit ENV from parent
-    );
-    return ok(child);
-  }
-  resolveWithError(token) {
-    return this.resolutionManager.resolveWithError(token);
-  }
-  // Implementation (unified for both overloads)
-  resolve(token) {
-    const securityResult = this.apiSecurityManager.validateApiSafeToken(token);
-    if (!securityResult.ok) {
-      throw new Error(securityResult.error.message);
-    }
-    return this.resolutionManager.resolve(token);
-  }
-  isRegistered(token) {
-    return ok(this.registrationManager.isRegistered(token));
-  }
-  /**
-   * Returns API-safe token metadata for external consumption.
-   */
-  getApiSafeToken(token) {
-    if (!isApiSafeTokenRuntime(token)) {
-      return null;
-    }
-    return {
-      description: String(token),
-      isRegistered: this.registrationManager.isRegistered(token)
-    };
-  }
-  /**
-   * Synchronously dispose container and all children.
-   *
-   * Use this for scenarios where async disposal is not possible (e.g., browser unload).
-   * For normal cleanup, prefer disposeAsync() which handles async disposal properly.
-   *
-   * @returns Result indicating success or disposal error
-   */
-  dispose() {
-    const result = this.scopeManager.dispose();
-    if (result.ok) {
-      this.validationManager.resetValidationState();
-    }
-    return result;
-  }
-  /**
-   * Asynchronously dispose container and all children.
-   *
-   * This is the preferred disposal method as it properly handles services that
-   * implement AsyncDisposable, allowing for proper cleanup of resources like
-   * database connections, file handles, or network sockets.
-   *
-   * Falls back to synchronous disposal for services implementing only Disposable.
-   *
-   * @returns Promise with Result indicating success or disposal error
-   *
-   * @example
-   * ```typescript
-   * // Preferred: async disposal
-   * const result = await container.disposeAsync();
-   * if (result.ok) {
-   *   console.log("Container disposed successfully");
-   * }
-   *
-   * // Browser unload (sync required)
-   * window.addEventListener('beforeunload', () => {
-   *   container.dispose();  // Sync fallback
-   * });
-   * ```
-   */
-  async disposeAsync() {
-    const result = await this.scopeManager.disposeAsync();
-    if (result.ok) {
-      this.validationManager.resetValidationState();
-    }
-    return result;
-  }
-  /**
-   * Clear all registrations and instances.
-   *
-   * IMPORTANT: Resets validation state (per review feedback).
-   */
-  clear() {
-    this.registry.clear();
-    this.cache.clear();
-    this.validationManager.resetValidationState();
-    return ok(void 0);
-  }
-};
-__name(_ServiceContainer, "ServiceContainer");
-let ServiceContainer = _ServiceContainer;
-const _ContainerFactory = class _ContainerFactory {
-  /**
-   * Creates a root ServiceContainer with the given environment configuration.
-   *
-   * @param env - Environment configuration
-   * @returns A new ServiceContainer instance
-   */
-  createRoot(env) {
-    return ServiceContainer.createRoot(env);
-  }
-};
-__name(_ContainerFactory, "ContainerFactory");
-let ContainerFactory = _ContainerFactory;
-const environmentConfigToken = createInjectionToken("EnvironmentConfig");
-const containerHealthCheckToken = createInjectionToken("ContainerHealthCheck");
-const metricsHealthCheckToken = createInjectionToken("MetricsHealthCheck");
-const healthCheckRegistryToken = createInjectionToken("PlatformHealthCheckPort");
-const serviceContainerToken = createInjectionToken("ServiceContainer");
-const runtimeConfigToken = createInjectionToken(
-  "PlatformRuntimeConfigPort"
-);
-const platformNotificationPortToken = createInjectionToken(
-  "PlatformNotificationPort"
-);
-const platformCachePortToken = createInjectionToken("PlatformCachePort");
-const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
-const platformUIPortToken = createInjectionToken("PlatformUIPort");
-const platformJournalDirectoryUiPortToken = createInjectionToken("PlatformJournalDirectoryUiPort");
-const platformUINotificationPortToken = createInjectionToken(
-  "PlatformUINotificationPort"
-);
-const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
-const platformJournalEventPortToken = createInjectionToken(
-  "PlatformJournalEventPort"
-);
-const platformJournalCollectionPortToken = createInjectionToken("PlatformJournalCollectionPort");
-const platformJournalRepositoryToken = createInjectionToken(
-  "PlatformJournalRepository"
-);
-const platformContextMenuRegistrationPortToken = createInjectionToken("PlatformContextMenuRegistrationPort");
-const platformValidationPortToken = createInjectionToken("PlatformValidationPort");
-const platformLoggingPortToken = createInjectionToken("PlatformLoggingPort");
-const platformMetricsSnapshotPortToken = createInjectionToken(
-  "PlatformMetricsSnapshotPort"
-);
-const platformContainerPortToken = createInjectionToken("PlatformContainerPort");
-const platformSettingsRegistrationPortToken = createInjectionToken("PlatformSettingsRegistrationPort");
-const platformModuleReadyPortToken = createInjectionToken("PlatformModuleReadyPort");
-const platformChannelPortToken = createInjectionToken("PlatformChannelPort");
-const platformUINotificationChannelPortToken = createInjectionToken("PlatformUINotificationChannelPort");
-const platformConsoleChannelPortToken = createInjectionToken(
-  "PlatformConsoleChannelPort"
-);
-const platformUIAvailabilityPortToken = createInjectionToken(
-  "PlatformUIAvailabilityPort"
-);
-const _RuntimeConfigAdapter = class _RuntimeConfigAdapter {
-  constructor(env) {
-    this.service = new RuntimeConfigService(env);
-  }
-  get(key) {
-    return this.service.get(key);
-  }
-  setFromPlatform(key, value2) {
-    this.service.setFromFoundry(key, value2);
-  }
-  onChange(key, listener) {
-    return this.service.onChange(key, listener);
-  }
-};
-__name(_RuntimeConfigAdapter, "RuntimeConfigAdapter");
-let RuntimeConfigAdapter = _RuntimeConfigAdapter;
-const _ContainerHealthCheck = class _ContainerHealthCheck {
-  constructor(container) {
-    this.name = "container";
-    this.container = container;
-  }
-  check() {
-    return this.container.getValidationState() === "validated";
-  }
-  getDetails() {
-    const state = this.container.getValidationState();
-    if (state !== "validated") {
-      return `Container state: ${state}`;
-    }
-    return null;
-  }
-  dispose() {
-  }
-};
-__name(_ContainerHealthCheck, "ContainerHealthCheck");
-let ContainerHealthCheck = _ContainerHealthCheck;
-const _DIContainerHealthCheck = class _DIContainerHealthCheck extends ContainerHealthCheck {
-  constructor(container, registry) {
-    super(container);
-    registry.register(this);
-  }
-};
-__name(_DIContainerHealthCheck, "DIContainerHealthCheck");
-_DIContainerHealthCheck.dependencies = [platformContainerPortToken, healthCheckRegistryToken];
-let DIContainerHealthCheck = _DIContainerHealthCheck;
-const _MetricsHealthCheck = class _MetricsHealthCheck {
-  constructor(metricsSnapshotPort) {
-    this.name = "metrics";
-    this.metricsSnapshotPort = metricsSnapshotPort;
-  }
-  check() {
-    const snapshot = this.metricsSnapshotPort.getSnapshot();
-    const hasPortFailures = Object.keys(snapshot.portSelectionFailures).length > 0;
-    const hasResolutionErrors = snapshot.resolutionErrors > 0;
-    return !hasPortFailures && !hasResolutionErrors;
-  }
-  getDetails() {
-    const snapshot = this.metricsSnapshotPort.getSnapshot();
-    const failures = Object.keys(snapshot.portSelectionFailures);
-    if (failures.length > 0) {
-      return `Port selection failures: ${failures.join(", ")}`;
-    }
-    if (snapshot.resolutionErrors > 0) {
-      return `Resolution errors: ${snapshot.resolutionErrors}`;
-    }
-    return null;
-  }
-  dispose() {
-  }
-};
-__name(_MetricsHealthCheck, "MetricsHealthCheck");
-let MetricsHealthCheck = _MetricsHealthCheck;
-const _DIMetricsHealthCheck = class _DIMetricsHealthCheck extends MetricsHealthCheck {
-  constructor(metricsSnapshotPort, registry) {
-    super(metricsSnapshotPort);
-    registry.register(this);
-  }
-};
-__name(_DIMetricsHealthCheck, "DIMetricsHealthCheck");
-_DIMetricsHealthCheck.dependencies = [platformMetricsSnapshotPortToken, healthCheckRegistryToken];
-let DIMetricsHealthCheck = _DIMetricsHealthCheck;
-const moduleIdToken = createInjectionToken("ModuleId");
-const platformBootstrapEventPortToken = createInjectionToken(
-  "PlatformBootstrapEventPort"
-);
-const metricsRecorderToken = createInjectionToken("MetricsRecorder");
-const metricsSamplerToken = createInjectionToken("MetricsSampler");
-const metricsReporterToken = createInjectionToken("MetricsReporter");
-const traceContextToken = createInjectionToken("TraceContext");
-const metricsStorageToken = createInjectionToken("MetricsStorage");
-const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
-const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
-const HOOK_THROTTLE_WINDOW_MS = 150;
-const VALIDATION_CONSTRAINTS = {
-  /** Maximale Länge für IDs und Keys */
-  MAX_ID_LENGTH: 100,
-  /** Maximale Länge für Namen */
-  MAX_NAME_LENGTH: 100,
-  /** Maximale Länge für Flag-Keys */
-  MAX_FLAG_KEY_LENGTH: 100
-};
-const METRICS_CONFIG = {
-  /** Größe des Circular-Buffers für Resolution-Zeiten */
-  RESOLUTION_TIMES_BUFFER_SIZE: 100
-};
-Object.freeze(VALIDATION_CONSTRAINTS);
-Object.freeze(METRICS_CONFIG);
-const _MetricsAggregator = class _MetricsAggregator {
-  /**
-   * Aggregates raw metrics into a snapshot.
-   *
-   * @param metrics - Raw metrics data
-   * @returns Aggregated metrics snapshot
-   */
-  aggregate(metrics) {
-    const avgTime = this.calculateAverage(metrics.resolutionTimes, metrics.resolutionTimesCount);
-    const cacheHitRate = this.calculateCacheHitRate(metrics.cacheHits, metrics.cacheMisses);
-    return {
-      containerResolutions: metrics.containerResolutions,
-      resolutionErrors: metrics.resolutionErrors,
-      avgResolutionTimeMs: avgTime,
-      portSelections: Object.fromEntries(metrics.portSelections),
-      portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures),
-      cacheHitRate
-    };
-  }
-  /**
-   * Calculates the average of resolution times.
-   *
-   * @param times - Array of resolution times
-   * @param count - Number of valid entries in the array
-   * @returns Average time in milliseconds
-   */
-  calculateAverage(times, count) {
-    if (count === 0) {
-      return 0;
-    }
-    const slice = times.slice(0, count);
-    const sum = slice.reduce((acc, time) => acc + time, 0);
-    return sum / count;
-  }
-  /**
-   * Calculates the cache hit rate as a percentage.
-   *
-   * @param hits - Number of cache hits
-   * @param misses - Number of cache misses
-   * @returns Cache hit rate (0-100)
-   */
-  calculateCacheHitRate(hits, misses) {
-    const totalAccess = hits + misses;
-    if (totalAccess === 0) {
-      return 0;
-    }
-    return hits / totalAccess * 100;
-  }
-};
-__name(_MetricsAggregator, "MetricsAggregator");
-let MetricsAggregator = _MetricsAggregator;
-const _MetricsPersistenceManager = class _MetricsPersistenceManager {
-  /**
-   * Serializes raw metrics into a persistence state.
-   *
-   * @param metrics - Raw metrics data
-   * @returns Serializable persistence state
-   */
-  serialize(metrics) {
-    return {
-      metrics: {
-        containerResolutions: metrics.containerResolutions,
-        resolutionErrors: metrics.resolutionErrors,
-        cacheHits: metrics.cacheHits,
-        cacheMisses: metrics.cacheMisses,
-        portSelections: Object.fromEntries(metrics.portSelections),
-        portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures)
-      },
-      resolutionTimes: Array.from(metrics.resolutionTimes),
-      resolutionTimesIndex: metrics.resolutionTimesIndex,
-      resolutionTimesCount: metrics.resolutionTimesCount
-    };
-  }
-  /**
-   * Deserializes a persistence state into raw metrics.
-   *
-   * @param state - Persisted state (can be null or undefined)
-   * @returns Raw metrics data
-   */
-  deserialize(state) {
-    if (!state) {
-      return this.createEmptyRawMetrics();
-    }
-    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
-    const rawMetrics = {
-      containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
-      resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
-      cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
-      cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
-      portSelections: new Map(
-        Object.entries(metrics?.portSelections ?? {}).map(([key, value2]) => [
-          Number(key),
-          Number.isFinite(Number(value2)) ? Number(value2) : 0
-        ])
-      ),
-      portSelectionFailures: new Map(
-        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value2]) => [
-          Number(key),
-          Number.isFinite(Number(value2)) ? Number(value2) : 0
-        ])
-      ),
-      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
-      resolutionTimesIndex: 0,
-      resolutionTimesCount: 0
-    };
-    if (Array.isArray(resolutionTimes)) {
-      const maxLength2 = Math.min(resolutionTimes.length, rawMetrics.resolutionTimes.length);
-      for (let index = 0; index < maxLength2; index++) {
-        const value2 = Number(resolutionTimes[index]);
-        rawMetrics.resolutionTimes[index] = Number.isFinite(value2) ? value2 : 0;
-      }
-      const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
-      const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
-      rawMetrics.resolutionTimesIndex = Math.min(
-        Math.max(0, safeIndex),
-        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE - 1
-      );
-      rawMetrics.resolutionTimesCount = Math.min(
-        Math.max(0, safeCount),
-        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE
-      );
-    } else {
-      rawMetrics.resolutionTimesIndex = 0;
-      rawMetrics.resolutionTimesCount = 0;
-    }
-    return rawMetrics;
-  }
-  /**
-   * Creates an empty raw metrics structure.
-   *
-   * @returns Empty raw metrics
-   */
-  createEmptyRawMetrics() {
-    return {
-      containerResolutions: 0,
-      resolutionErrors: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      portSelections: /* @__PURE__ */ new Map(),
-      portSelectionFailures: /* @__PURE__ */ new Map(),
-      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
-      resolutionTimesIndex: 0,
-      resolutionTimesCount: 0
-    };
-  }
-};
-__name(_MetricsPersistenceManager, "MetricsPersistenceManager");
-let MetricsPersistenceManager = _MetricsPersistenceManager;
-const _MetricsStateManager = class _MetricsStateManager {
-  constructor() {
-    this.callbacks = /* @__PURE__ */ new Set();
-  }
-  /**
-   * Resets the state manager.
-   * Clears all registered callbacks.
-   */
-  reset() {
-    this.callbacks.clear();
-  }
-  /**
-   * Subscribes to state changes.
-   *
-   * @param callback - Callback to invoke on state changes
-   */
-  onStateChanged(callback) {
-    this.callbacks.add(callback);
-  }
-  /**
-   * Unsubscribes from state changes.
-   *
-   * @param callback - Callback to remove
-   */
-  unsubscribe(callback) {
-    this.callbacks.delete(callback);
-  }
-  /**
-   * Notifies all registered callbacks of a state change.
-   * Internal method used by MetricsCollector.
-   */
-  notifyStateChanged() {
-    for (const callback of this.callbacks) {
-      try {
-        callback();
-      } catch (error) {
-        console.error("Error in metrics state change callback:", error);
-      }
-    }
-  }
-};
-__name(_MetricsStateManager, "MetricsStateManager");
-let MetricsStateManager = _MetricsStateManager;
-function isValidMetricDefinition(value2) {
-  if (typeof value2 !== "object" || value2 === null) {
-    return false;
-  }
-  return "key" in value2 && typeof value2.key === "string" && "initialValue" in value2 && typeof value2.initialValue !== "undefined" && "reducer" in value2 && typeof value2.reducer === "function" && "serializer" in value2 && typeof value2.serializer === "function";
-}
-__name(isValidMetricDefinition, "isValidMetricDefinition");
-function castToMetricDefinition(definition) {
-  if (!isValidMetricDefinition(definition)) {
-    throw new Error(`Invalid metric definition structure for key "${definition.key}"`);
-  }
-  return definition;
-}
-__name(castToMetricDefinition, "castToMetricDefinition");
-function castMetricValue(value2, key) {
-  if (value2 === void 0) {
-    throw new Error(
-      `Metric value for key "${key}" is undefined. This indicates a registry initialization issue.`
-    );
-  }
-  return value2;
-}
-__name(castMetricValue, "castMetricValue");
-const _MetricDefinitionRegistry = class _MetricDefinitionRegistry {
-  constructor() {
-    this.definitions = /* @__PURE__ */ new Map();
-  }
-  /**
-   * Registers a metric definition.
-   *
-   * @param definition - Metric definition to register
-   * @throws Error if a definition with the same key already exists or if the definition is invalid
-   */
-  register(definition) {
-    if (this.definitions.has(definition.key)) {
-      throw new Error(
-        `Metric definition with key "${definition.key}" already exists. Use a different key or remove the existing definition first.`
-      );
-    }
-    this.definitions.set(definition.key, castToMetricDefinition(definition));
-  }
-  /**
-   * Gets a metric definition by key.
-   *
-   * @param key - Metric key
-   * @returns Metric definition or undefined if not found
-   */
-  get(key) {
-    return this.definitions.get(key);
-  }
-  /**
-   * Gets all registered metric definitions.
-   *
-   * @returns Array of all metric definitions
-   */
-  getAll() {
-    return Array.from(this.definitions.values());
-  }
-  /**
-   * Checks if a metric definition exists.
-   *
-   * @param key - Metric key
-   * @returns True if definition exists
-   */
-  has(key) {
-    return this.definitions.has(key);
-  }
-  /**
-   * Removes a metric definition.
-   *
-   * @param key - Metric key to remove
-   * @returns True if definition was removed, false if it didn't exist
-   */
-  remove(key) {
-    return this.definitions.delete(key);
-  }
-  /**
-   * Clears all registered definitions.
-   */
-  clear() {
-    this.definitions.clear();
-  }
-  /**
-   * Gets the number of registered definitions.
-   *
-   * @returns Number of registered definitions
-   */
-  size() {
-    return this.definitions.size;
-  }
-};
-__name(_MetricDefinitionRegistry, "MetricDefinitionRegistry");
-let MetricDefinitionRegistry = _MetricDefinitionRegistry;
-function isResolutionEvent(event) {
-  return typeof event === "object" && event !== null && "durationMs" in event && typeof event.durationMs === "number" && "success" in event && typeof event.success === "boolean";
-}
-__name(isResolutionEvent, "isResolutionEvent");
-function isPortSelectionEvent(event) {
-  return typeof event === "object" && event !== null && "version" in event && typeof event.version === "number";
-}
-__name(isPortSelectionEvent, "isPortSelectionEvent");
-function isCacheAccessEvent(event) {
-  return typeof event === "object" && event !== null && "hit" in event && typeof event.hit === "boolean";
-}
-__name(isCacheAccessEvent, "isCacheAccessEvent");
-const containerResolutionsDefinition = {
-  key: "containerResolutions",
-  initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, _event) => current + 1, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
-};
-const resolutionErrorsDefinition = {
-  key: "resolutionErrors",
-  initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isResolutionEvent(event)) {
-      return current;
-    }
-    return event.success ? current : current + 1;
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
-};
-const cacheHitsDefinition = {
-  key: "cacheHits",
-  initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isCacheAccessEvent(event)) {
-      return current;
-    }
-    return event.hit ? current + 1 : current;
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
-};
-const cacheMissesDefinition = {
-  key: "cacheMisses",
-  initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isCacheAccessEvent(event)) {
-      return current;
-    }
-    return event.hit ? current : current + 1;
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
-};
-const portSelectionsDefinition = {
-  key: "portSelections",
-  initialValue: /* @__PURE__ */ new Map(),
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isPortSelectionEvent(event)) {
-      return current;
-    }
-    const count = current.get(event.version) ?? 0;
-    const updated = new Map(current);
-    updated.set(event.version, count + 1);
-    return updated;
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
-};
-const portSelectionFailuresDefinition = {
-  key: "portSelectionFailures",
-  initialValue: /* @__PURE__ */ new Map(),
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isPortSelectionEvent(event)) {
-      return current;
-    }
-    const count = current.get(event.version) ?? 0;
-    const updated = new Map(current);
-    updated.set(event.version, count + 1);
-    return updated;
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
-};
-const resolutionTimesDefinition = {
-  key: "resolutionTimes",
-  initialValue: {
-    buffer: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
-    index: 0,
-    count: 0
-  },
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isResolutionEvent(event)) {
-      return current;
-    }
-    const buffer = new Float64Array(current.buffer);
-    const maxSize2 = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
-    buffer[current.index] = event.durationMs;
-    const newIndex = (current.index + 1) % maxSize2;
-    const newCount = Math.min(current.count + 1, maxSize2);
-    return {
-      buffer,
-      index: newIndex,
-      count: newCount
-    };
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => ({
-    buffer: Array.from(value2.buffer),
-    index: value2.index,
-    count: value2.count
-  }), "serializer")
-};
-function createDefaultMetricDefinitionRegistry() {
-  const registry = new MetricDefinitionRegistry();
-  registry.register(containerResolutionsDefinition);
-  registry.register(resolutionErrorsDefinition);
-  registry.register(cacheHitsDefinition);
-  registry.register(cacheMissesDefinition);
-  registry.register(portSelectionsDefinition);
-  registry.register(portSelectionFailuresDefinition);
-  registry.register(resolutionTimesDefinition);
-  return registry;
-}
-__name(createDefaultMetricDefinitionRegistry, "createDefaultMetricDefinitionRegistry");
-const _MetricsCollector = class _MetricsCollector {
-  constructor(config2, registry) {
-    this.config = config2;
-    this.metricStates = /* @__PURE__ */ new Map();
-    this.registry = registry ?? createDefaultMetricDefinitionRegistry();
-    this.initializeMetricStates();
-    this.aggregator = new MetricsAggregator();
-    this.persistenceManager = new MetricsPersistenceManager();
-    this.stateManager = new MetricsStateManager();
-  }
-  /**
-   * Initializes metric states from registry definitions.
-   * Private method called during construction.
-   */
-  initializeMetricStates() {
-    for (const definition of this.registry.getAll()) {
-      this.metricStates.set(definition.key, {
-        value: definition.initialValue,
-        definition
-      });
-    }
-  }
-  /**
-   * Updates a metric using its reducer function.
-   *
-   * @param key - Metric key
-   * @param event - Event data for the reducer
-   */
-  updateMetric(key, event) {
-    const state = this.metricStates.get(key);
-    if (!state) {
-      return;
-    }
-    const newValue = state.definition.reducer(state.value, event);
-    this.metricStates.set(key, {
-      value: newValue,
-      definition: state.definition
-    });
-  }
-  /**
-   * Records a service resolution attempt.
-   *
-   * @param token - The injection token that was resolved
-   * @param durationMs - Time taken to resolve in milliseconds
-   * @param success - Whether resolution succeeded
-   */
-  recordResolution(token, durationMs, success) {
-    const event = { token, durationMs, success };
-    this.updateMetric("containerResolutions", event);
-    this.updateMetric("resolutionErrors", event);
-    this.updateMetric("resolutionTimes", event);
-    this.notifyStateChanged();
-  }
-  /**
-   * Records a port selection event.
-   *
-   * @param version - The Foundry version for which a port was selected
-   */
-  recordPortSelection(version) {
-    this.updateMetric("portSelections", { version });
-    this.notifyStateChanged();
-  }
-  /**
-   * Records a port selection failure.
-   *
-   * Useful for tracking when no compatible port is available for a version.
-   *
-   * @param version - The Foundry version for which port selection failed
-   */
-  recordPortSelectionFailure(version) {
-    this.updateMetric("portSelectionFailures", { version });
-    this.notifyStateChanged();
-  }
-  /**
-   * Records a cache access (hit or miss).
-   *
-   * @param hit - True if cache hit, false if cache miss
-   */
-  recordCacheAccess(hit) {
-    const event = { hit };
-    this.updateMetric("cacheHits", event);
-    this.updateMetric("cacheMisses", event);
-    this.notifyStateChanged();
-  }
-  /**
-   * Gets a snapshot of current metrics.
-   * Delegates aggregation to MetricsAggregator.
-   *
-   * @returns Immutable snapshot of metrics data
-   */
-  getSnapshot() {
-    return this.aggregator.aggregate(this.getRawMetrics());
-  }
-  /**
-   * Gets raw metrics data without aggregation.
-   * Used internally by aggregator and persistence manager.
-   *
-   * Converts from generic Map structure to IRawMetrics for backward compatibility.
-   *
-   * @returns Raw metrics data
-   */
-  getRawMetrics() {
-    const containerResolutions = this.getMetricValue("containerResolutions") ?? 0;
-    const resolutionErrors = this.getMetricValue("resolutionErrors") ?? 0;
-    const cacheHits = this.getMetricValue("cacheHits") ?? 0;
-    const cacheMisses = this.getMetricValue("cacheMisses") ?? 0;
-    const portSelectionsRaw = this.getMetricValue("portSelections");
-    const portSelections = portSelectionsRaw instanceof Map ? portSelectionsRaw : /* @__PURE__ */ new Map();
-    const portSelectionFailuresRaw = this.getMetricValue("portSelectionFailures");
-    const portSelectionFailures = portSelectionFailuresRaw instanceof Map ? portSelectionFailuresRaw : /* @__PURE__ */ new Map();
-    const resolutionTimesState = this.getMetricValue("resolutionTimes");
-    return {
-      containerResolutions,
-      resolutionErrors,
-      cacheHits,
-      cacheMisses,
-      portSelections,
-      portSelectionFailures,
-      resolutionTimes: resolutionTimesState?.buffer ?? new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
-      resolutionTimesIndex: resolutionTimesState?.index ?? 0,
-      resolutionTimesCount: resolutionTimesState?.count ?? 0
-    };
-  }
-  /**
-   * Gets a metric value by key.
-   *
-   * @param key - Metric key
-   * @returns Metric value or undefined if not found
-   */
-  getMetricValue(key) {
-    const state = this.metricStates.get(key);
-    if (!state) {
-      return void 0;
-    }
-    return castMetricValue(state.value, key);
-  }
-  /**
-   * Resets all collected metrics.
-   * Useful for testing or starting fresh measurements.
-   */
-  reset() {
-    for (const definition of this.registry.getAll()) {
-      this.metricStates.set(definition.key, {
-        value: definition.initialValue,
-        definition
-      });
-    }
-    this.stateManager.reset();
-    this.notifyStateChanged();
-  }
-  /**
-   * Hook invoked after state mutations. Subclasses can override to react
-   * (e.g., persist metrics).
-   */
-  onStateChanged() {
-    this.stateManager.notifyStateChanged();
-  }
-  /**
-   * Notifies state manager of state changes.
-   * Internal method that can be overridden by subclasses.
-   */
-  notifyStateChanged() {
-    this.onStateChanged();
-  }
-  /**
-   * Captures the internal state for persistence.
-   * Delegates to MetricsPersistenceManager.
-   *
-   * @returns Serializable metrics state
-   */
-  getPersistenceState() {
-    return this.persistenceManager.serialize(this.getRawMetrics());
-  }
-  /**
-   * Restores internal state from a persisted snapshot.
-   * Delegates to MetricsPersistenceManager.
-   *
-   * @param state - Persisted metrics state
-   */
-  restoreFromPersistenceState(state) {
-    const rawMetrics = this.persistenceManager.deserialize(state);
-    this.applyRawMetrics(rawMetrics);
-  }
-  /**
-   * Applies raw metrics to internal state.
-   * Internal method used by restoreFromPersistenceState.
-   * Converts from IRawMetrics to generic Map structure.
-   *
-   * @param rawMetrics - Raw metrics to apply
-   */
-  applyRawMetrics(rawMetrics) {
-    this.setMetricValue("containerResolutions", rawMetrics.containerResolutions);
-    this.setMetricValue("resolutionErrors", rawMetrics.resolutionErrors);
-    this.setMetricValue("cacheHits", rawMetrics.cacheHits);
-    this.setMetricValue("cacheMisses", rawMetrics.cacheMisses);
-    this.setMetricValue("portSelections", rawMetrics.portSelections);
-    this.setMetricValue("portSelectionFailures", rawMetrics.portSelectionFailures);
-    const resolutionTimesState = this.metricStates.get("resolutionTimes");
-    if (resolutionTimesState) {
-      const buffer = new Float64Array(rawMetrics.resolutionTimes);
-      this.setMetricValue("resolutionTimes", {
-        buffer,
-        index: rawMetrics.resolutionTimesIndex,
-        count: rawMetrics.resolutionTimesCount
-      });
-    }
-  }
-  /**
-   * Sets a metric value by key.
-   *
-   * @param key - Metric key
-   * @param value - New metric value
-   */
-  setMetricValue(key, value2) {
-    const state = this.metricStates.get(key);
-    if (state) {
-      this.metricStates.set(key, {
-        value: value2,
-        definition: state.definition
-      });
-    }
-  }
-};
-__name(_MetricsCollector, "MetricsCollector");
-_MetricsCollector.dependencies = [runtimeConfigToken];
-let MetricsCollector = _MetricsCollector;
-const _DIMetricsCollector = class _DIMetricsCollector extends MetricsCollector {
-  constructor(config2) {
-    super(config2);
-  }
-};
-__name(_DIMetricsCollector, "DIMetricsCollector");
-_DIMetricsCollector.dependencies = [runtimeConfigToken];
-let DIMetricsCollector = _DIMetricsCollector;
-const _PersistentMetricsCollector = class _PersistentMetricsCollector extends MetricsCollector {
-  constructor(config2, metricsStorage) {
-    super(config2);
-    this.metricsStorage = metricsStorage;
-    this.suppressPersistence = false;
-    this.initialized = false;
-  }
-  /**
-   * Initializes the collector by restoring state from storage.
-   * Must be called explicitly after construction.
-   *
-   * @returns Result indicating success or error
-   */
-  initialize() {
-    if (this.initialized) {
-      return ok(void 0);
-    }
-    try {
-      this.restoreFromStorage();
-      this.initialized = true;
-      return ok(void 0);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return err(`Failed to initialize PersistentMetricsCollector: ${errorMessage}`);
-    }
-  }
-  clearPersistentState() {
-    this.metricsStorage.clear?.();
-    this.suppressPersistence = true;
-    try {
-      super.reset();
-    } finally {
-      this.suppressPersistence = false;
-    }
-  }
-  onStateChanged() {
-    super.onStateChanged();
-    if (this.suppressPersistence) {
-      return;
-    }
-    this.persist();
-  }
-  restoreFromStorage() {
-    let state = null;
-    try {
-      state = this.metricsStorage.load();
-    } catch {
-      state = null;
-    }
-    if (!state) {
-      return;
-    }
-    this.suppressPersistence = true;
-    try {
-      this.restoreFromPersistenceState(state);
-    } finally {
-      this.suppressPersistence = false;
-    }
-  }
-  persist() {
-    try {
-      this.metricsStorage.save(this.getPersistenceState());
-    } catch {
-    }
-  }
-};
-__name(_PersistentMetricsCollector, "PersistentMetricsCollector");
-_PersistentMetricsCollector.dependencies = [
-  runtimeConfigToken,
-  metricsStorageToken
-];
-let PersistentMetricsCollector = _PersistentMetricsCollector;
-const _DIPersistentMetricsCollector = class _DIPersistentMetricsCollector extends PersistentMetricsCollector {
-  constructor(config2, metricsStorage) {
-    super(config2, metricsStorage);
-  }
-};
-__name(_DIPersistentMetricsCollector, "DIPersistentMetricsCollector");
-_DIPersistentMetricsCollector.dependencies = [
-  runtimeConfigToken,
-  metricsStorageToken
-];
-let DIPersistentMetricsCollector = _DIPersistentMetricsCollector;
-const _MetricsSampler = class _MetricsSampler {
-  constructor(config2) {
-    this.config = config2;
-  }
-  /**
-   * Determines if a performance operation should be sampled based on sampling rate.
-   *
-   * In production mode, uses probabilistic sampling to reduce overhead.
-   * In development mode, always samples (returns true).
-   *
-   * @returns True if the operation should be measured/recorded
-   *
-   * @example
-   * ```typescript
-   * const sampler = container.resolve(metricsSamplerToken);
-   * if (sampler.shouldSample()) {
-   *   performance.mark('operation-start');
-   *   // ... operation ...
-   *   performance.mark('operation-end');
-   *   performance.measure('operation', 'operation-start', 'operation-end');
-   * }
-   * ```
-   */
-  shouldSample() {
-    if (this.config.get("isDevelopment")) {
-      return true;
-    }
-    return Math.random() < this.config.get("performanceSamplingRate");
-  }
-};
-__name(_MetricsSampler, "MetricsSampler");
-let MetricsSampler = _MetricsSampler;
-const _DIMetricsSampler = class _DIMetricsSampler extends MetricsSampler {
-  constructor(config2) {
-    super(config2);
-  }
-};
-__name(_DIMetricsSampler, "DIMetricsSampler");
-_DIMetricsSampler.dependencies = [runtimeConfigToken];
-let DIMetricsSampler = _DIMetricsSampler;
-const _MetricsReporter = class _MetricsReporter {
-  constructor(collector, logger) {
-    this.collector = collector;
-    this.logger = logger;
-  }
-  /**
-   * Logs a formatted metrics summary to the console.
-   * Uses console.table() for easy-to-read tabular output.
-   */
-  logSummary() {
-    const snapshot = this.collector.getSnapshot();
-    const tableData = {
-      "Total Resolutions": snapshot.containerResolutions,
-      Errors: snapshot.resolutionErrors,
-      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
-      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
-    };
-    console.table(tableData);
-  }
-  /**
-   * Gibt Metrics als JSON zurück.
-   *
-   * @returns JSON string representation of metrics snapshot
-   */
-  toJSON() {
-    return JSON.stringify(this.collector.getSnapshot(), null, 2);
-  }
-};
-__name(_MetricsReporter, "MetricsReporter");
-let MetricsReporter = _MetricsReporter;
-const _DIMetricsReporter = class _DIMetricsReporter extends MetricsReporter {
-  constructor(collector, logger) {
-    super(collector, logger);
-  }
-};
-__name(_DIMetricsReporter, "DIMetricsReporter");
-_DIMetricsReporter.dependencies = [metricsCollectorToken, loggerToken];
-let DIMetricsReporter = _DIMetricsReporter;
-const _LocalStorageMetricsStorage = class _LocalStorageMetricsStorage {
-  constructor(storageKey, storage = getStorage()) {
-    this.storageKey = storageKey;
-    this.storage = storage;
-  }
-  load() {
-    if (!this.storage) {
-      return null;
-    }
-    try {
-      const raw = this.storage.getItem(this.storageKey);
-      if (!raw) {
-        return null;
-      }
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  }
-  save(state) {
-    if (!this.storage) {
-      return;
-    }
-    try {
-      this.storage.setItem(this.storageKey, JSON.stringify(state));
-    } catch {
-    }
-  }
-  clear() {
-    if (!this.storage) {
-      return;
-    }
-    try {
-      this.storage.removeItem(this.storageKey);
-    } catch {
-    }
-  }
-};
-__name(_LocalStorageMetricsStorage, "LocalStorageMetricsStorage");
-let LocalStorageMetricsStorage = _LocalStorageMetricsStorage;
-function getStorage() {
-  try {
-    if (typeof globalThis !== "undefined" && "localStorage" in globalThis) {
-      return globalThis.localStorage;
-    }
-  } catch {
-  }
-  return null;
-}
-__name(getStorage, "getStorage");
-function createMetricsStorage(key) {
-  return new LocalStorageMetricsStorage(key);
-}
-__name(createMetricsStorage, "createMetricsStorage");
-function createInMemoryMetricsStorage() {
-  let state = null;
-  return {
-    load() {
-      return state;
-    },
-    save(newState) {
-      state = newState;
-    },
-    clear() {
-      state = null;
-    }
-  };
-}
-__name(createInMemoryMetricsStorage, "createInMemoryMetricsStorage");
-const _TracedLogger = class _TracedLogger {
-  constructor(baseLogger, traceId) {
-    this.baseLogger = baseLogger;
-    this.traceId = traceId;
-  }
-  setMinLevel(level) {
-    this.baseLogger.setMinLevel?.(level);
-  }
-  log(message2, ...optionalParams) {
-    this.baseLogger.log(this.formatMessage(message2), ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.baseLogger.error(this.formatMessage(message2), ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.baseLogger.warn(this.formatMessage(message2), ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.baseLogger.info(this.formatMessage(message2), ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.baseLogger.debug(this.formatMessage(message2), ...optionalParams);
-  }
-  withTraceId(newTraceId) {
-    return new _TracedLogger(this.baseLogger, `${this.traceId}/${newTraceId}`);
-  }
-  formatMessage(message2) {
-    return `[${this.traceId}] ${message2}`;
-  }
-};
-__name(_TracedLogger, "TracedLogger");
-let TracedLogger = _TracedLogger;
-const _BaseConsoleLogger = class _BaseConsoleLogger {
-  constructor(minLevel) {
-    this.minLevel = minLevel;
-  }
-  setMinLevel(level) {
-    this.minLevel = level;
-  }
-  log(message2, ...optionalParams) {
-    console.log(`${LOG_PREFIX} ${message2}`, ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    if (LogLevel.ERROR < this.minLevel) return;
-    console.error(`${LOG_PREFIX} ${message2}`, ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    if (LogLevel.WARN < this.minLevel) return;
-    console.warn(`${LOG_PREFIX} ${message2}`, ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    if (LogLevel.INFO < this.minLevel) return;
-    console.info(`${LOG_PREFIX} ${message2}`, ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    if (LogLevel.DEBUG < this.minLevel) return;
-    console.debug(`${LOG_PREFIX} ${message2}`, ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return new TracedLogger(this, traceId);
-  }
-};
-__name(_BaseConsoleLogger, "BaseConsoleLogger");
-let BaseConsoleLogger = _BaseConsoleLogger;
-const _RuntimeConfigLoggerDecorator = class _RuntimeConfigLoggerDecorator {
-  constructor(baseLogger, runtimeConfig) {
-    this.baseLogger = baseLogger;
-    this.runtimeConfig = runtimeConfig;
-    this.unsubscribe = null;
-    this.syncLogLevel();
-  }
-  syncLogLevel() {
-    this.baseLogger.setMinLevel?.(this.runtimeConfig.get("logLevel"));
-    this.unsubscribe?.();
-    this.unsubscribe = this.runtimeConfig.onChange("logLevel", (level) => {
-      this.baseLogger.setMinLevel?.(level);
-    });
-  }
-  setMinLevel(level) {
-    this.baseLogger.setMinLevel?.(level);
-  }
-  log(message2, ...optionalParams) {
-    this.baseLogger.log(message2, ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.baseLogger.error(message2, ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.baseLogger.warn(message2, ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.baseLogger.info(message2, ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.baseLogger.debug(message2, ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return this.baseLogger.withTraceId?.(traceId) ?? this.baseLogger;
-  }
-  dispose() {
-    this.unsubscribe?.();
-  }
-};
-__name(_RuntimeConfigLoggerDecorator, "RuntimeConfigLoggerDecorator");
-let RuntimeConfigLoggerDecorator = _RuntimeConfigLoggerDecorator;
-const _StackTraceLoggerDecorator = class _StackTraceLoggerDecorator {
-  constructor(baseLogger, runtimeConfig) {
-    this.baseLogger = baseLogger;
-    this.runtimeConfig = runtimeConfig;
-  }
-  setMinLevel(level) {
-    this.baseLogger.setMinLevel?.(level);
-  }
-  /**
-   * Extracts the caller information from stack trace when debug mode is enabled.
-   * Filters out logger-related frames to show the actual source of the log call.
-   *
-   * @returns Caller info in format "filename:line" or undefined if not in debug mode or extraction fails
-   */
-  getCallerInfo() {
-    const currentLogLevel = this.runtimeConfig.get("logLevel");
-    if (currentLogLevel !== LogLevel.DEBUG) {
-      return void 0;
-    }
-    try {
-      const stack = new Error().stack;
-      if (!stack) return void 0;
-      const lines = stack.split("\n");
-      const loggerPatterns = [
-        /StackTraceLoggerDecorator/,
-        /BaseConsoleLogger/,
-        /ConsoleLoggerService/,
-        /RuntimeConfigLoggerDecorator/,
-        /TraceContextLoggerDecorator/,
-        /TracedLogger/,
-        /at Object\./
-      ];
-      for (let i = 3; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line) continue;
-        const isLoggerFrame = loggerPatterns.some((pattern) => pattern.test(line));
-        if (!isLoggerFrame && line.trim()) {
-          const match2 = line.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/) || line.match(/at\s+(.+?):(\d+):(\d+)/);
-          if (match2) {
-            const filePath = match2[2] || match2[1];
-            const lineNum = match2[3] || match2[2];
-            if (filePath && lineNum) {
-              const fileName = filePath.split(/[/\\]/).pop() || filePath;
-              return `${fileName}:${lineNum}`;
-            }
-          }
-          return line.trim().replace(/^at\s+/, "");
-        }
-      }
-    } catch {
-    }
-    return void 0;
-  }
-  formatWithCallerInfo(message2) {
-    const callerInfo = this.getCallerInfo();
-    return callerInfo ? `${message2} [${callerInfo}]` : message2;
-  }
-  log(message2, ...optionalParams) {
-    this.baseLogger.log(this.formatWithCallerInfo(message2), ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.baseLogger.error(this.formatWithCallerInfo(message2), ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.baseLogger.warn(this.formatWithCallerInfo(message2), ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.baseLogger.info(this.formatWithCallerInfo(message2), ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.baseLogger.debug(this.formatWithCallerInfo(message2), ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return this.baseLogger.withTraceId?.(traceId) ?? this.baseLogger;
-  }
-};
-__name(_StackTraceLoggerDecorator, "StackTraceLoggerDecorator");
-let StackTraceLoggerDecorator = _StackTraceLoggerDecorator;
-const _TraceContextLoggerDecorator = class _TraceContextLoggerDecorator {
-  constructor(baseLogger, traceContext) {
-    this.baseLogger = baseLogger;
-    this.traceContext = traceContext;
-  }
-  setMinLevel(level) {
-    this.baseLogger.setMinLevel?.(level);
-  }
-  formatWithTrace(message2) {
-    const traceId = this.traceContext?.getCurrentTraceId();
-    return traceId ? `[${traceId}] ${message2}` : message2;
-  }
-  log(message2, ...optionalParams) {
-    this.baseLogger.log(this.formatWithTrace(message2), ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.baseLogger.error(this.formatWithTrace(message2), ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.baseLogger.warn(this.formatWithTrace(message2), ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.baseLogger.info(this.formatWithTrace(message2), ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.baseLogger.debug(this.formatWithTrace(message2), ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return new TracedLogger(this, traceId);
-  }
-};
-__name(_TraceContextLoggerDecorator, "TraceContextLoggerDecorator");
-let TraceContextLoggerDecorator = _TraceContextLoggerDecorator;
-const _LoggerCompositionFactory = class _LoggerCompositionFactory {
-  /**
-   * Creates a composed logger with all necessary decorators.
-   *
-   * @param config - Runtime configuration service
-   * @param traceContext - Optional trace context for trace ID injection
-   * @returns Composed logger instance
-   */
-  createLogger(config2, traceContext) {
-    const baseLogger = new BaseConsoleLogger(config2.get("logLevel"));
-    const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config2);
-    const withStackTrace = new StackTraceLoggerDecorator(withConfig, config2);
-    return traceContext ? new TraceContextLoggerDecorator(withStackTrace, traceContext) : withStackTrace;
-  }
-};
-__name(_LoggerCompositionFactory, "LoggerCompositionFactory");
-let LoggerCompositionFactory = _LoggerCompositionFactory;
-const _ConsoleLoggerService = class _ConsoleLoggerService {
-  constructor(config2, traceContext, factory) {
-    const compositionFactory = factory ?? new LoggerCompositionFactory();
-    this.logger = compositionFactory.createLogger(config2, traceContext);
-  }
-  // Delegate all methods to composed logger
-  setMinLevel(level) {
-    this.logger.setMinLevel?.(level);
-  }
-  log(message2, ...optionalParams) {
-    this.logger.log(message2, ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.logger.error(message2, ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.logger.warn(message2, ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.logger.info(message2, ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.logger.debug(message2, ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return this.logger.withTraceId?.(traceId) ?? this.logger;
-  }
-};
-__name(_ConsoleLoggerService, "ConsoleLoggerService");
-let ConsoleLoggerService = _ConsoleLoggerService;
-const _DIConsoleLoggerService = class _DIConsoleLoggerService extends ConsoleLoggerService {
-  constructor(config2, traceContext) {
-    super(config2, traceContext);
-  }
-};
-__name(_DIConsoleLoggerService, "DIConsoleLoggerService");
-_DIConsoleLoggerService.dependencies = [runtimeConfigToken, traceContextToken];
-let DIConsoleLoggerService = _DIConsoleLoggerService;
-function generateTraceId() {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 10);
-  return `${timestamp}-${random}`;
-}
-__name(generateTraceId, "generateTraceId");
-function getTraceTimestamp(traceId) {
-  const parts = traceId.split("-");
-  if (parts.length !== 2) {
-    return null;
-  }
-  const [timestampStr, randomStr] = parts;
-  if (!timestampStr || !randomStr) {
-    return null;
-  }
-  const timestamp = parseInt(timestampStr, 10);
-  return isNaN(timestamp) ? null : timestamp;
-}
-__name(getTraceTimestamp, "getTraceTimestamp");
-const _TraceContext = class _TraceContext {
-  constructor() {
-    this.currentTraceId = null;
-  }
-  /**
-   * Executes a synchronous function with trace context.
-   *
-   * Automatically generates a trace ID if not provided.
-   * Maintains a context stack for nested traces.
-   * Ensures proper cleanup via try/finally.
-   *
-   * @template T - The return type of the function
-   * @param fn - Function to execute with trace context
-   * @param options - Trace options (trace ID, operation name, metadata)
-   * @returns The result of the function execution
-   *
-   * @example
-   * ```typescript
-   * const result = traceContext.trace(() => {
-   *   logger.info("Processing"); // Automatically traced
-   *   return processData();
-   * });
-   * ```
-   */
-  trace(fn, options) {
-    const opts = typeof options === "string" ? { traceId: options } : options;
-    const traceId = opts?.traceId ?? generateTraceId();
-    const previousTraceId = this.currentTraceId;
-    this.currentTraceId = traceId;
-    try {
-      return fn();
-    } finally {
-      this.currentTraceId = previousTraceId;
-    }
-  }
-  /**
-   * Executes an asynchronous function with trace context.
-   *
-   * Similar to trace() but for async operations.
-   * Automatically generates a trace ID if not provided.
-   * Maintains a context stack for nested traces.
-   * Ensures proper cleanup via try/finally.
-   *
-   * @template T - The return type of the async function
-   * @param fn - Async function to execute with trace context
-   * @param options - Trace options (trace ID, operation name, metadata)
-   * @returns Promise resolving to the result of the function execution
-   *
-   * @example
-   * ```typescript
-   * const result = await traceContext.traceAsync(async () => {
-   *   logger.info("Fetching data"); // Automatically traced
-   *   return await fetchData();
-   * });
-   * ```
-   */
-  async traceAsync(fn, options) {
-    const opts = typeof options === "string" ? { traceId: options } : options;
-    const traceId = opts?.traceId ?? generateTraceId();
-    const previousTraceId = this.currentTraceId;
-    this.currentTraceId = traceId;
-    try {
-      return await fn();
-    } finally {
-      this.currentTraceId = previousTraceId;
-    }
-  }
-  /**
-   * Gets the current trace ID from the context stack.
-   *
-   * Returns null if not currently in a traced context.
-   * Useful for services that need to access the current trace ID
-   * without having it passed as a parameter.
-   *
-   * @returns Current trace ID or null if not in traced context
-   *
-   * @example
-   * ```typescript
-   * const traceId = traceContext.getCurrentTraceId();
-   * if (traceId) {
-   *   console.log(`Current trace: ${traceId}`);
-   * }
-   * ```
-   */
-  getCurrentTraceId() {
-    return this.currentTraceId;
-  }
-  /**
-   * Cleans up resources.
-   * For TraceContext, this resets the current trace ID.
-   */
-  dispose() {
-    this.currentTraceId = null;
-  }
-};
-__name(_TraceContext, "TraceContext");
-_TraceContext.dependencies = [];
-let TraceContext = _TraceContext;
-const _DITraceContext = class _DITraceContext extends TraceContext {
-  constructor() {
-    super();
-  }
-};
-__name(_DITraceContext, "DITraceContext");
-_DITraceContext.dependencies = [];
-let DITraceContext = _DITraceContext;
-const _ModuleHealthService = class _ModuleHealthService {
-  constructor(registry) {
-    this.registry = registry;
-    this.healthChecksInitialized = false;
-  }
-  /**
-   * Gets the current health status of the module.
-   *
-   * Health is determined by running all registered health checks.
-   * Overall status:
-   * - "healthy": All checks pass
-   * - "unhealthy": Container check fails
-   * - "degraded": Other checks fail
-   *
-   * @returns HealthStatus with overall status, individual checks, and timestamp
-   *
-   * @example
-   * ```typescript
-   * const healthService = container.resolve(moduleHealthServiceToken);
-   * const health = healthService.getHealth();
-   *
-   * if (health.status !== 'healthy') {
-   *   console.warn('Module is not healthy:', health.checks);
-   * }
-   * ```
-   */
-  getHealth() {
-    if (!this.healthChecksInitialized) {
-      this.healthChecksInitialized = true;
-    }
-    const results = this.registry.runAll();
-    const allHealthy = Array.from(results.values()).every((result) => result);
-    const status = allHealthy ? "healthy" : results.get("container") === false ? "unhealthy" : "degraded";
-    const checks = this.registry.getAllChecks();
-    let lastError = null;
-    for (const check2 of checks) {
-      const result = results.get(check2.name);
-      if (!result && check2.getDetails) {
-        lastError = check2.getDetails();
-      }
-    }
-    return {
-      status,
-      checks: {
-        containerValidated: results.get("container") ?? true,
-        portsSelected: results.get("metrics") ?? true,
-        lastError
-      },
-      timestamp: (/* @__PURE__ */ new Date()).toISOString()
-    };
-  }
-};
-__name(_ModuleHealthService, "ModuleHealthService");
-let ModuleHealthService = _ModuleHealthService;
-const _DIModuleHealthService = class _DIModuleHealthService extends ModuleHealthService {
-  constructor(registry) {
-    super(registry);
-  }
-};
-__name(_DIModuleHealthService, "DIModuleHealthService");
-_DIModuleHealthService.dependencies = [healthCheckRegistryToken];
-let DIModuleHealthService = _DIModuleHealthService;
-const notificationCenterToken = createInjectionToken("NotificationCenter");
-const journalVisibilityServiceToken = createInjectionToken("JournalVisibilityService");
-const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
-const hideJournalContextMenuHandlerToken = createInjectionToken(
-  "HideJournalContextMenuHandler"
-);
-const journalContextMenuHandlersToken = createInjectionToken(
-  "JournalContextMenuHandlers"
-);
-const journalDirectoryProcessorToken = createInjectionToken(
-  "JournalDirectoryProcessor"
-);
-const runtimeConfigSyncToken = createInjectionToken("RuntimeConfigSync");
-const runtimeConfigSettingsSyncToken = createInjectionToken(
-  "RuntimeConfigSettingsSync"
-);
-const settingRegistrationErrorMapperToken = createInjectionToken(
-  "SettingRegistrationErrorMapper"
-);
-const settingDefinitionRegistryToken = createInjectionToken(
-  "SettingDefinitionRegistry"
-);
-const runtimeConfigBindingRegistryToken = createInjectionToken(
-  "RuntimeConfigBindingRegistry"
-);
-const i18nFacadeToken = createInjectionToken("I18nFacadeService");
-const foundryGameToken = createInjectionToken("FoundryGame");
-const foundryHooksToken = createInjectionToken("FoundryHooks");
-const foundryDocumentToken = createInjectionToken("FoundryDocument");
-const foundryUIToken = createInjectionToken("FoundryUI");
-const foundrySettingsToken = createInjectionToken("FoundrySettings");
-const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
-function createApiTokens() {
-  return {
-    notificationCenterToken: markAsApiSafe(notificationCenterToken),
-    journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
-    journalDirectoryProcessorToken: markAsApiSafe(journalDirectoryProcessorToken),
-    foundryGameToken: markAsApiSafe(foundryGameToken),
-    foundryHooksToken: markAsApiSafe(foundryHooksToken),
-    foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
-    foundryUIToken: markAsApiSafe(foundryUIToken),
-    foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
-    i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
-    foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken)
-  };
-}
-__name(createApiTokens, "createApiTokens");
-const _ModuleApiBuilder = class _ModuleApiBuilder {
-  constructor(serviceResolver, healthMetricsProvider) {
-    this.serviceResolver = serviceResolver;
-    this.healthMetricsProvider = healthMetricsProvider;
-  }
-  /**
-   * Creates the well-known API tokens collection.
-   *
-   * @returns Type-safe token collection for external modules
-   */
-  createApiTokens() {
-    return createApiTokens();
-  }
-  /**
-   * Creates the complete ModuleApi object with all methods.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Complete ModuleApi object
-   */
-  createApi(container, wellKnownTokens) {
-    return {
-      version: PUBLIC_API_VERSION,
-      // Overloaded resolve method (throws on error)
-      resolve: this.serviceResolver.createResolveFunction(container, wellKnownTokens),
-      // Result-Pattern method (safe, never throws)
-      resolveWithError: this.serviceResolver.createResolveWithErrorFunction(
-        container,
-        wellKnownTokens
-      ),
-      getAvailableTokens: /* @__PURE__ */ __name(() => {
-        const tokenMap = /* @__PURE__ */ new Map();
-        const tokenEntries = [
-          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
-          ["journalDirectoryProcessorToken", journalDirectoryProcessorToken],
-          ["foundryGameToken", foundryGameToken],
-          ["foundryHooksToken", foundryHooksToken],
-          ["foundryDocumentToken", foundryDocumentToken],
-          ["foundryUIToken", foundryUIToken],
-          ["foundrySettingsToken", foundrySettingsToken],
-          ["i18nFacadeToken", i18nFacadeToken],
-          ["foundryJournalFacadeToken", foundryJournalFacadeToken],
-          ["notificationCenterToken", notificationCenterToken]
-        ];
-        for (const [, token] of tokenEntries) {
-          const isRegisteredResult = container.isRegistered(token);
-          tokenMap.set(token, {
-            description: String(token).replace("Symbol(", "").replace(")", ""),
-            isRegistered: getRegistrationStatus(isRegisteredResult)
-          });
-        }
-        return tokenMap;
-      }, "getAvailableTokens"),
-      tokens: wellKnownTokens,
-      getMetrics: /* @__PURE__ */ __name(() => this.healthMetricsProvider.getMetrics(container), "getMetrics"),
-      getHealth: /* @__PURE__ */ __name(() => this.healthMetricsProvider.getHealth(container), "getHealth")
-    };
-  }
-};
-__name(_ModuleApiBuilder, "ModuleApiBuilder");
-let ModuleApiBuilder = _ModuleApiBuilder;
-const _ApiWrapperStrategyRegistry = class _ApiWrapperStrategyRegistry {
-  constructor() {
-    this.strategies = [];
-  }
-  /**
-   * Registers a wrapper strategy.
-   *
-   * @param strategy - Strategy to register
-   */
-  register(strategy) {
-    this.strategies.push(strategy);
-  }
-  /**
-   * Registers multiple wrapper strategies.
-   *
-   * @param strategies - Array of strategies to register
-   */
-  registerAll(strategies) {
-    for (const strategy of strategies) {
-      this.register(strategy);
-    }
-  }
-  /**
-   * Gets all registered strategies, sorted by priority (lower = higher priority).
-   *
-   * @returns Array of strategies in priority order
-   */
-  getAll() {
-    return [...this.strategies].sort((a, b) => {
-      const priorityA = a.getPriority?.() ?? 100;
-      const priorityB = b.getPriority?.() ?? 100;
-      return priorityA - priorityB;
-    });
-  }
-  /**
-   * Finds the first strategy that supports the given token.
-   *
-   * @param token - API token to find strategy for
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Strategy that supports the token, or null if none found
-   */
-  findStrategy(token, wellKnownTokens) {
-    const sortedStrategies = this.getAll();
-    for (const strategy of sortedStrategies) {
-      if (strategy.supports(token, wellKnownTokens)) {
-        return strategy;
-      }
-    }
-    return null;
-  }
-  /**
-   * Clears all registered strategies.
-   * Useful for testing or reset scenarios.
-   */
-  clear() {
-    this.strategies.length = 0;
-  }
-};
-__name(_ApiWrapperStrategyRegistry, "ApiWrapperStrategyRegistry");
-let ApiWrapperStrategyRegistry = _ApiWrapperStrategyRegistry;
-function isAllowedKey(prop, allowed) {
-  if (typeof prop !== "string") {
-    return false;
-  }
-  return allowed.includes(prop);
-}
-__name(isAllowedKey, "isAllowedKey");
-function createReadOnlyWrapper(service, allowedMethods) {
-  return new Proxy(service, {
-    get(target, prop, receiver) {
-      if (isAllowedKey(prop, allowedMethods)) {
-        const value2 = Reflect.get(target, prop, receiver);
-        if (typeof value2 === "function") {
-          return value2.bind(target);
-        }
-        return value2;
-      }
-      throw new Error(
-        `Property "${String(prop)}" is not accessible via Public API. Only these methods are allowed: ${allowedMethods.map(String).join(", ")}`
-      );
-    },
-    set() {
-      throw new Error("Cannot modify services via Public API (read-only)");
-    },
-    deleteProperty() {
-      throw new Error("Cannot delete properties via Public API (read-only)");
-    }
-  });
-}
-__name(createReadOnlyWrapper, "createReadOnlyWrapper");
-function createPublicLogger(logger) {
-  return createReadOnlyWrapper(logger, [
-    "log",
-    "debug",
-    "info",
-    "warn",
-    "error",
-    "withTraceId"
-    // Decorator pattern for trace context
-  ]);
-}
-__name(createPublicLogger, "createPublicLogger");
-function createPublicI18n(i18n) {
-  return createReadOnlyWrapper(i18n, ["translate", "format", "has"]);
-}
-__name(createPublicI18n, "createPublicI18n");
-function createPublicNotificationCenter(notificationCenter) {
-  return createReadOnlyWrapper(notificationCenter, [
-    "debug",
-    "info",
-    "warn",
-    "error",
-    "getChannelNames"
-  ]);
-}
-__name(createPublicNotificationCenter, "createPublicNotificationCenter");
-function createPublicFoundrySettings(foundrySettings) {
-  return createReadOnlyWrapper(foundrySettings, ["get"]);
-}
-__name(createPublicFoundrySettings, "createPublicFoundrySettings");
-function wrapI18nService(service, create) {
-  return create(service);
-}
-__name(wrapI18nService, "wrapI18nService");
-function wrapNotificationCenterService(service, create) {
-  return create(service);
-}
-__name(wrapNotificationCenterService, "wrapNotificationCenterService");
-function wrapFoundrySettingsPort(service, create) {
-  return create(service);
-}
-__name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
-const _I18nWrapperStrategy = class _I18nWrapperStrategy {
-  supports(token, wellKnownTokens) {
-    return token === wellKnownTokens.i18nFacadeToken;
-  }
-  wrap(service, _token, _wellKnownTokens) {
-    return wrapI18nService(service, createPublicI18n);
-  }
-  getPriority() {
-    return 10;
-  }
-};
-__name(_I18nWrapperStrategy, "I18nWrapperStrategy");
-let I18nWrapperStrategy = _I18nWrapperStrategy;
-const _NotificationWrapperStrategy = class _NotificationWrapperStrategy {
-  supports(token, wellKnownTokens) {
-    return token === wellKnownTokens.notificationCenterToken;
-  }
-  wrap(service, _token, _wellKnownTokens) {
-    return wrapNotificationCenterService(service, createPublicNotificationCenter);
-  }
-  getPriority() {
-    return 10;
-  }
-};
-__name(_NotificationWrapperStrategy, "NotificationWrapperStrategy");
-let NotificationWrapperStrategy = _NotificationWrapperStrategy;
-const _SettingsWrapperStrategy = class _SettingsWrapperStrategy {
-  supports(token, wellKnownTokens) {
-    return token === wellKnownTokens.foundrySettingsToken;
-  }
-  wrap(service, _token, _wellKnownTokens) {
-    return wrapFoundrySettingsPort(service, createPublicFoundrySettings);
-  }
-  getPriority() {
-    return 10;
-  }
-};
-__name(_SettingsWrapperStrategy, "SettingsWrapperStrategy");
-let SettingsWrapperStrategy = _SettingsWrapperStrategy;
-const _NoopWrapperStrategy = class _NoopWrapperStrategy {
-  supports(_token, _wellKnownTokens) {
-    return true;
-  }
-  wrap(service, _token, _wellKnownTokens) {
-    return service;
-  }
-  getPriority() {
-    return 1e3;
-  }
-};
-__name(_NoopWrapperStrategy, "NoopWrapperStrategy");
-let NoopWrapperStrategy = _NoopWrapperStrategy;
-const _ServiceWrapperFactory = class _ServiceWrapperFactory {
-  constructor(strategyRegistry) {
-    this.strategyRegistry = strategyRegistry ?? this.createDefaultRegistry();
-  }
-  /**
-   * Creates the default strategy registry with standard wrapper strategies.
-   *
-   * @returns Registry with I18n, Notification, Settings, and Noop strategies
-   */
-  createDefaultRegistry() {
-    const registry = new ApiWrapperStrategyRegistry();
-    registry.registerAll([
-      new I18nWrapperStrategy(),
-      new NotificationWrapperStrategy(),
-      new SettingsWrapperStrategy(),
-      new NoopWrapperStrategy()
-      // Fallback strategy
-    ]);
-    return registry;
-  }
-  /**
-   * Applies read-only wrappers when API consumers resolve sensitive services.
-   *
-   * Delegates to registered strategies following Open/Closed Principle.
-   * No token-specific if/else chains - all logic is in strategies.
-   *
-   * @param token - API token used for resolution
-   * @param service - Service resolved from the container
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Wrapped service when applicable
-   */
-  wrapSensitiveService(token, service, wellKnownTokens) {
-    const strategy = this.strategyRegistry.findStrategy(token, wellKnownTokens);
-    if (strategy) {
-      return strategy.wrap(service, token, wellKnownTokens);
-    }
-    return service;
-  }
-};
-__name(_ServiceWrapperFactory, "ServiceWrapperFactory");
-let ServiceWrapperFactory = _ServiceWrapperFactory;
-function formatReplacementInfo(replacement) {
-  return replacement ? `Use "${replacement}" instead.
-` : "";
-}
-__name(formatReplacementInfo, "formatReplacementInfo");
-const deprecationMetadata = /* @__PURE__ */ new Map();
-function markAsDeprecated(token, reason, replacement, removedInVersion) {
-  const apiSafeToken = markAsApiSafe(token);
-  deprecationMetadata.set(apiSafeToken, {
-    reason,
-    replacement: replacement ? String(replacement) : null,
-    removedInVersion,
-    warningShown: false
-  });
-  return apiSafeToken;
-}
-__name(markAsDeprecated, "markAsDeprecated");
-function getDeprecationInfo(token) {
-  if (!token || typeof token !== "symbol") {
-    return null;
-  }
-  return deprecationMetadata.get(token) || null;
-}
-__name(getDeprecationInfo, "getDeprecationInfo");
-const _DeprecationHandler = class _DeprecationHandler {
-  /**
-   * Checks if a token is deprecated.
-   *
-   * @param token - Token to check
-   * @returns DeprecationInfo if deprecated, null otherwise
-   */
-  checkDeprecation(token) {
-    return getDeprecationInfo(token) ?? null;
-  }
-  /**
-   * Handles deprecation warnings for tokens.
-   * Logs warning to console if token is deprecated and warning hasn't been shown yet.
-   *
-   * Uses console.warn instead of Logger because:
-   * - Deprecation warnings are for external API consumers (not internal logs)
-   * - Should be visible even if Logger is disabled/configured differently
-   * - Follows npm/Node.js convention for deprecation warnings
-   *
-   * @param token - Token to check for deprecation
-   */
-  handleDeprecationWarning(token) {
-    const deprecationInfo = getDeprecationInfo(token);
-    if (deprecationInfo && !deprecationInfo.warningShown) {
-      const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
-      console.warn(
-        `[${MODULE_METADATA.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
-Reason: ${deprecationInfo.reason}
-` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
-      );
-      deprecationInfo.warningShown = true;
-    }
-  }
-};
-__name(_DeprecationHandler, "DeprecationHandler");
-let DeprecationHandler = _DeprecationHandler;
-const _ApiServiceResolver = class _ApiServiceResolver {
-  constructor(deprecationHandler, serviceWrapperFactory) {
-    this.deprecationHandler = deprecationHandler;
-    this.serviceWrapperFactory = serviceWrapperFactory;
-  }
-  /**
-   * Creates the resolve() function for the public API.
-   * Resolves services and applies wrappers (throws on error).
-   *
-   * @param container - PlatformContainerPort for resolution
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Resolve function for ModuleApi
-   */
-  createResolveFunction(container, wellKnownTokens) {
-    return (token) => {
-      this.deprecationHandler.handleDeprecationWarning(token);
-      const service = container.resolve(token);
-      return this.serviceWrapperFactory.wrapSensitiveService(token, service, wellKnownTokens);
-    };
-  }
-  /**
-   * Creates the resolveWithError() function for the public API.
-   * Resolves services with Result pattern (never throws).
-   *
-   * @param container - PlatformContainerPort for resolution
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns ResolveWithError function for ModuleApi
-   */
-  createResolveWithErrorFunction(container, wellKnownTokens) {
-    return (token) => {
-      this.deprecationHandler.handleDeprecationWarning(token);
-      const result = container.resolveWithError(token);
-      if (!result.ok) {
-        const containerError = {
-          code: castContainerErrorCode(result.error.code),
-          message: result.error.message,
-          cause: result.error.cause,
-          tokenDescription: result.error.message
-        };
-        return err(containerError);
-      }
-      const service = castResolvedService(result.value);
-      const wrappedService = this.serviceWrapperFactory.wrapSensitiveService(
-        token,
-        service,
-        wellKnownTokens
-      );
-      return ok(wrappedService);
-    };
-  }
-};
-__name(_ApiServiceResolver, "ApiServiceResolver");
-let ApiServiceResolver = _ApiServiceResolver;
-const _ApiHealthMetricsProvider = class _ApiHealthMetricsProvider {
-  /**
-   * Gets a snapshot of performance metrics.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Current metrics snapshot
-   */
-  getMetrics(container) {
-    const metricsResult = container.resolveWithError(metricsCollectorToken);
-    if (!metricsResult.ok) {
-      return {
-        containerResolutions: 0,
-        resolutionErrors: 0,
-        avgResolutionTimeMs: 0,
-        portSelections: {},
-        portSelectionFailures: {},
-        cacheHitRate: 0
-      };
-    }
-    const metricsCollector = castResolvedService(metricsResult.value);
-    return metricsCollector.getSnapshot();
-  }
-  /**
-   * Gets module health status.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Health status with checks and overall status
-   */
-  getHealth(container) {
-    const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
-    if (!healthServiceResult.ok) {
-      return {
-        status: "unhealthy",
-        checks: {
-          containerValidated: false,
-          portsSelected: false,
-          lastError: "ModuleHealthService not available"
-        },
-        timestamp: (/* @__PURE__ */ new Date()).toISOString()
-      };
-    }
-    const healthService = castResolvedService(healthServiceResult.value);
-    return healthService.getHealth();
-  }
-};
-__name(_ApiHealthMetricsProvider, "ApiHealthMetricsProvider");
-let ApiHealthMetricsProvider = _ApiHealthMetricsProvider;
-const _ModuleApiInitializer = class _ModuleApiInitializer {
-  constructor(deprecationHandler, serviceWrapperFactory, apiServiceResolver, healthMetricsProvider, apiBuilder) {
-    this.deprecationHandler = deprecationHandler ?? new DeprecationHandler();
-    this.serviceWrapperFactory = serviceWrapperFactory ?? new ServiceWrapperFactory();
-    this.apiServiceResolver = apiServiceResolver ?? new ApiServiceResolver(this.deprecationHandler, this.serviceWrapperFactory);
-    this.healthMetricsProvider = healthMetricsProvider ?? new ApiHealthMetricsProvider();
-    this.apiBuilder = apiBuilder ?? new ModuleApiBuilder(this.apiServiceResolver, this.healthMetricsProvider);
-  }
-  /**
-   * Exposes the module's public API to game.modules.get(MODULE_ID).api
-   *
-   * This method coordinates all components to create and expose the API.
-   * It acts as a Facade, delegating to specialized components.
-   *
-   * @param container - Initialized and validated PlatformContainerPort
-   * @returns Result<void, string> - Ok if successful, Err with error message
-   */
-  expose(container) {
-    if (typeof game === "undefined" || !game?.modules) {
-      return err("Game modules not available - API cannot be exposed");
-    }
-    const mod = game.modules.get(MODULE_METADATA.ID);
-    if (!mod) {
-      return err(`Module '${MODULE_METADATA.ID}' not found in game.modules`);
-    }
-    const wellKnownTokens = this.apiBuilder.createApiTokens();
-    const api = this.apiBuilder.createApi(container, wellKnownTokens);
-    mod.api = api;
-    return ok(void 0);
-  }
-};
-__name(_ModuleApiInitializer, "ModuleApiInitializer");
-_ModuleApiInitializer.dependencies = [];
-let ModuleApiInitializer = _ModuleApiInitializer;
-const _DIModuleApiInitializer = class _DIModuleApiInitializer extends ModuleApiInitializer {
-  constructor() {
-    super();
-  }
-};
-__name(_DIModuleApiInitializer, "DIModuleApiInitializer");
-_DIModuleApiInitializer.dependencies = [];
-let DIModuleApiInitializer = _DIModuleApiInitializer;
-const _HealthCheckRegistry = class _HealthCheckRegistry {
-  constructor() {
-    this.checks = /* @__PURE__ */ new Map();
-  }
-  register(check2) {
-    this.checks.set(check2.name, check2);
-  }
-  unregister(name) {
-    this.checks.delete(name);
-  }
-  runAll() {
-    const results = /* @__PURE__ */ new Map();
-    for (const [name, check2] of this.checks) {
-      results.set(name, check2.check());
-    }
-    return results;
-  }
-  getCheck(name) {
-    return this.checks.get(name);
-  }
-  getAllChecks() {
-    return Array.from(this.checks.values());
-  }
-  dispose() {
-    for (const check2 of this.checks.values()) {
-      check2.dispose();
-    }
-    this.checks.clear();
-  }
-};
-__name(_HealthCheckRegistry, "HealthCheckRegistry");
-_HealthCheckRegistry.dependencies = [];
-let HealthCheckRegistry = _HealthCheckRegistry;
-const _DIHealthCheckRegistry = class _DIHealthCheckRegistry extends HealthCheckRegistry {
-  constructor() {
-    super();
-  }
-};
-__name(_DIHealthCheckRegistry, "DIHealthCheckRegistry");
-_DIHealthCheckRegistry.dependencies = [];
-let DIHealthCheckRegistry = _DIHealthCheckRegistry;
-const _HealthCheckRegistryAdapter = class _HealthCheckRegistryAdapter {
-  constructor() {
-    this.registry = new HealthCheckRegistry();
-  }
-  register(check2) {
-    this.registry.register(check2);
-  }
-  unregister(name) {
-    this.registry.unregister(name);
-  }
-  runAll() {
-    return this.registry.runAll();
-  }
-  getCheck(name) {
-    return this.registry.getCheck(name);
-  }
-  getAllChecks() {
-    return this.registry.getAllChecks();
-  }
-};
-__name(_HealthCheckRegistryAdapter, "HealthCheckRegistryAdapter");
-let HealthCheckRegistryAdapter = _HealthCheckRegistryAdapter;
-var InitPhaseCriticality = /* @__PURE__ */ ((InitPhaseCriticality2) => {
-  InitPhaseCriticality2["HALT_ON_ERROR"] = "haltOnError";
-  InitPhaseCriticality2["WARN_AND_CONTINUE"] = "warnAndContinue";
-  return InitPhaseCriticality2;
-})(InitPhaseCriticality || {});
-const _InitPhaseRegistry = class _InitPhaseRegistry {
-  /**
-   * Creates a new registry with the provided phases.
-   *
-   * @param phases - Array of init phases (will be sorted by priority)
-   */
-  constructor(phases = []) {
-    this.phases = [];
-    this.phases = [...phases];
-    this.sortPhases();
-  }
-  /**
-   * Returns all phases sorted by priority (ascending).
-   *
-   * @returns Sorted array of init phases
-   */
-  getAll() {
-    return [...this.phases];
-  }
-  /**
-   * Adds a phase to the registry and re-sorts.
-   *
-   * @param phase - Phase to add
-   */
-  add(phase) {
-    this.phases.push(phase);
-    this.sortPhases();
-  }
-  /**
-   * Sorts phases by priority (ascending).
-   */
-  sortPhases() {
-    this.phases.sort((a, b) => a.priority - b.priority);
-  }
-};
-__name(_InitPhaseRegistry, "InitPhaseRegistry");
-let InitPhaseRegistry = _InitPhaseRegistry;
-const _MetricsBootstrapper = class _MetricsBootstrapper {
-  /**
-   * Initializes metrics collector if it supports persistence.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Result indicating success (warnings logged but don't fail bootstrap)
-   */
-  static initializeMetrics(container) {
-    const metricsResult = container.resolveWithError(metricsCollectorToken);
-    if (!metricsResult.ok) {
-      return ok(void 0);
-    }
-    const collector = metricsResult.value;
-    if (collector instanceof PersistentMetricsCollector) {
-      const initResult = collector.initialize();
-      if (!initResult.ok) {
-        return ok(void 0);
-      }
-    }
-    return ok(void 0);
-  }
-};
-__name(_MetricsBootstrapper, "MetricsBootstrapper");
-let MetricsBootstrapper = _MetricsBootstrapper;
-const _MetricsInitPhase = class _MetricsInitPhase {
-  constructor() {
-    this.id = "metrics-initialization";
-    this.priority = 1;
-    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
-  }
-  execute(ctx) {
-    return MetricsBootstrapper.initializeMetrics(ctx.container);
-  }
-};
-__name(_MetricsInitPhase, "MetricsInitPhase");
-let MetricsInitPhase = _MetricsInitPhase;
-const queuedUIChannelToken = createInjectionToken("QueuedUIChannel");
-const _NotificationBootstrapper = class _NotificationBootstrapper {
-  /**
-   * Attaches UI notification channel to NotificationCenter.
-   *
-   * Uses QueuedUIChannel which queues notifications before UI is available
-   * and flushes them when UI becomes available.
-   *
-   * This phase is optional - failures are logged as warnings but don't fail bootstrap.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
-   */
-  static attachNotificationChannels(container) {
-    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    if (!notificationCenterResult.ok) {
-      return err(
-        `NotificationCenter could not be resolved: ${notificationCenterResult.error.message}`
-      );
-    }
-    const queuedUIChannelResult = container.resolveWithError(queuedUIChannelToken);
-    if (!queuedUIChannelResult.ok) {
-      return err(`QueuedUIChannel could not be resolved: ${queuedUIChannelResult.error.message}`);
-    }
-    const notificationCenter = castResolvedService(
-      notificationCenterResult.value
-    );
-    const queuedUIChannel = castResolvedService(queuedUIChannelResult.value);
-    notificationCenter.addChannel(queuedUIChannel);
-    return ok(void 0);
-  }
-};
-__name(_NotificationBootstrapper, "NotificationBootstrapper");
-let NotificationBootstrapper = _NotificationBootstrapper;
-const _NotificationInitPhase = class _NotificationInitPhase {
-  constructor() {
-    this.id = "notification-channels";
-    this.priority = 2;
-    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
-  }
-  execute(ctx) {
-    return NotificationBootstrapper.attachNotificationChannels(ctx.container);
-  }
-};
-__name(_NotificationInitPhase, "NotificationInitPhase");
-let NotificationInitPhase = _NotificationInitPhase;
-const _ApiBootstrapper = class _ApiBootstrapper {
-  /**
-   * Exposes the module's public API.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Result indicating success or error
-   */
-  static exposeApi(container) {
-    const apiInitializerResult = container.resolveWithError(moduleApiInitializerToken);
-    if (!apiInitializerResult.ok) {
-      return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
-    }
-    const apiInitializer = castResolvedService(apiInitializerResult.value);
-    const exposeResult = apiInitializer.expose(container);
-    if (!exposeResult.ok) {
-      return err(`Failed to expose API: ${exposeResult.error}`);
-    }
-    return ok(void 0);
-  }
-};
-__name(_ApiBootstrapper, "ApiBootstrapper");
-let ApiBootstrapper = _ApiBootstrapper;
-const _ApiInitPhase = class _ApiInitPhase {
-  constructor() {
-    this.id = "api-exposure";
-    this.priority = 3;
-    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
-  }
-  execute(ctx) {
-    return ApiBootstrapper.exposeApi(ctx.container);
-  }
-};
-__name(_ApiInitPhase, "ApiInitPhase");
-let ApiInitPhase = _ApiInitPhase;
-const moduleSettingsRegistrarToken = createInjectionToken("ModuleSettingsRegistrar");
-const _SettingsBootstrapper = class _SettingsBootstrapper {
-  /**
-   * Registers all module settings.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Result indicating success or error
-   */
-  static registerSettings(container) {
-    const settingsRegistrarResult = container.resolveWithError(moduleSettingsRegistrarToken);
-    if (!settingsRegistrarResult.ok) {
-      return err(
-        `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
-      );
-    }
-    const settingsRegistrar = castResolvedService(
-      settingsRegistrarResult.value
-    );
-    settingsRegistrar.registerAll();
-    return ok(void 0);
-  }
-};
-__name(_SettingsBootstrapper, "SettingsBootstrapper");
-let SettingsBootstrapper = _SettingsBootstrapper;
-const _SettingsInitPhase = class _SettingsInitPhase {
-  constructor() {
-    this.id = "settings-registration";
-    this.priority = 4;
-    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
-  }
-  execute(ctx) {
-    return SettingsBootstrapper.registerSettings(ctx.container);
-  }
-};
-__name(_SettingsInitPhase, "SettingsInitPhase");
-let SettingsInitPhase = _SettingsInitPhase;
 const _LoggingBootstrapper = class _LoggingBootstrapper {
   /**
    * Configures logger with current setting value.
@@ -18619,6 +18618,28 @@ function registerEntityPorts(container) {
   return ok(void 0);
 }
 __name(registerEntityPorts, "registerEntityPorts");
+const _ValibotValidationSchema = class _ValibotValidationSchema {
+  constructor(valibotSchema) {
+    this.valibotSchema = valibotSchema;
+  }
+  validate(value2) {
+    const result = /* @__PURE__ */ safeParse(this.valibotSchema, value2);
+    return result.success;
+  }
+  /**
+   * Gets the original valibot schema.
+   * Only available in infrastructure layer - not part of ValidationSchema interface.
+   */
+  getValibotSchema() {
+    return this.valibotSchema;
+  }
+};
+__name(_ValibotValidationSchema, "ValibotValidationSchema");
+let ValibotValidationSchema = _ValibotValidationSchema;
+function toValidationSchema(valibotSchema) {
+  return new ValibotValidationSchema(valibotSchema);
+}
+__name(toValidationSchema, "toValidationSchema");
 const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
   constructor(foundrySettings) {
     this.foundrySettings = foundrySettings;
@@ -18658,17 +18679,31 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
   /**
    * Get setting value from Foundry with validation.
    *
-   * Uses Valibot schema to validate at runtime.
+   * Converts domain ValidationSchema to valibot schema for FoundrySettings.
+   * Requires that ValidationSchema was created from a valibot schema via toValidationSchema().
    */
   get(namespace, key, schema) {
-    const result = this.foundrySettings.get(namespace, key, schema);
+    if (!(schema instanceof ValibotValidationSchema)) {
+      return {
+        ok: false,
+        error: {
+          code: "SETTING_VALIDATION_FAILED",
+          message: "ValidationSchema must be created from valibot schema using toValidationSchema()",
+          details: { namespace, key }
+        }
+      };
+    }
+    const valibotValidationSchema = schema;
+    const valibotSchema = valibotValidationSchema.getValibotSchema();
+    const result = this.foundrySettings.get(namespace, key, valibotSchema);
     if (!result.ok) {
       return {
         ok: false,
         error: this.mapFoundryErrorToSettingsError(result.error, "get", namespace, key)
       };
     }
-    return { ok: true, value: result.value };
+    const validatedValue = result.value;
+    return { ok: true, value: validatedValue };
   }
   /**
    * Set setting value in Foundry.

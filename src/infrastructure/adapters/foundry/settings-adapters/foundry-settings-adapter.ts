@@ -5,12 +5,14 @@ import type {
   SettingsError,
   SettingType,
 } from "@/domain/ports/platform-settings-port.interface";
+import type { ValidationSchema } from "@/domain/types/validation-schema.interface";
 import type {
   FoundrySettings,
   SettingConfig,
 } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import type * as v from "valibot";
+import { ValibotValidationSchema } from "@/infrastructure/validation/valibot-schema-adapter";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 
 /**
@@ -29,7 +31,7 @@ import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/fou
  *   default: true,
  * });
  *
- * const result = adapter.get("my-module", "enabled", v.boolean());
+ * const result = adapter.get("my-module", "enabled", booleanSchema);
  * ```
  */
 export class FoundrySettingsAdapter implements PlatformSettingsPort {
@@ -80,14 +82,30 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
   /**
    * Get setting value from Foundry with validation.
    *
-   * Uses Valibot schema to validate at runtime.
+   * Converts domain ValidationSchema to valibot schema for FoundrySettings.
+   * Requires that ValidationSchema was created from a valibot schema via toValidationSchema().
    */
-  get<T>(
-    namespace: string,
-    key: string,
-    schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>
-  ): Result<T, SettingsError> {
-    const result = this.foundrySettings.get(namespace, key, schema);
+  get<T>(namespace: string, key: string, schema: ValidationSchema<T>): Result<T, SettingsError> {
+    // Extract the original valibot schema from ValibotValidationSchema
+    if (!(schema instanceof ValibotValidationSchema)) {
+      return {
+        ok: false,
+        error: {
+          code: "SETTING_VALIDATION_FAILED",
+          message:
+            "ValidationSchema must be created from valibot schema using toValidationSchema()",
+          details: { namespace, key },
+        },
+      };
+    }
+
+    const valibotValidationSchema: ValibotValidationSchema<T> = schema;
+    const valibotSchema: v.BaseSchema<
+      unknown,
+      T,
+      v.BaseIssue<unknown>
+    > = valibotValidationSchema.getValibotSchema();
+    const result: Result<T, FoundryError> = this.foundrySettings.get(namespace, key, valibotSchema);
 
     if (!result.ok) {
       return {
@@ -96,7 +114,8 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
       };
     }
 
-    return { ok: true, value: result.value };
+    const validatedValue: T = result.value;
+    return { ok: true, value: validatedValue };
   }
 
   /**

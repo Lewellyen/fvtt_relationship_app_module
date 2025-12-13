@@ -4,7 +4,8 @@ import type { PlatformContainerPort } from "@/domain/ports/platform-container-po
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 import { MODULE_METADATA, SETTING_KEYS } from "@/application/constants/app-constants";
-import { LogLevel, LOG_LEVEL_SCHEMA } from "@/domain/types/log-level";
+import { LogLevel } from "@/domain/types/log-level";
+import { LOG_LEVEL_SCHEMA } from "@/infrastructure/validation/log-level-schema";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 
@@ -32,6 +33,8 @@ export class LoggingBootstrapper {
     }
 
     const settings = castResolvedService<FoundrySettings>(settingsResult.value);
+    // Note: FoundrySettings uses valibot directly (Foundry-specific infrastructure)
+    // This is OK since FoundrySettings is not a domain interface
     const logLevelResult = settings.get(
       MODULE_METADATA.ID,
       SETTING_KEYS.LOG_LEVEL,

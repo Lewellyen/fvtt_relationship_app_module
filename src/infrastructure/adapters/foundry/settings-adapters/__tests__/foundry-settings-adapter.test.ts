@@ -6,6 +6,8 @@ import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfac
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import { createFoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import * as v from "valibot";
+import { toValidationSchema } from "@/infrastructure/validation/valibot-schema-adapter";
+import type { ValidationSchema } from "@/domain/types/validation-schema.interface";
 import { err } from "@/domain/utils/result";
 
 describe("FoundrySettingsAdapter", () => {
@@ -229,7 +231,7 @@ describe("FoundrySettingsAdapter", () => {
         value: true,
       });
 
-      const result = adapter.get("my-module", "enabled", v.boolean());
+      const result = adapter.get("my-module", "enabled", toValidationSchema(v.boolean()));
 
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -244,7 +246,7 @@ describe("FoundrySettingsAdapter", () => {
       );
       vi.mocked(mockFoundrySettings.get).mockReturnValue(err(foundryError));
 
-      const result = adapter.get("my-module", "enabled", v.boolean());
+      const result = adapter.get("my-module", "enabled", toValidationSchema(v.boolean()));
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -259,7 +261,7 @@ describe("FoundrySettingsAdapter", () => {
       );
       vi.mocked(mockFoundrySettings.get).mockReturnValue(err(foundryError));
 
-      const result = adapter.get("my-module", "enabled", v.boolean());
+      const result = adapter.get("my-module", "enabled", toValidationSchema(v.boolean()));
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -274,7 +276,7 @@ describe("FoundrySettingsAdapter", () => {
       );
       vi.mocked(mockFoundrySettings.get).mockReturnValue(err(foundryError));
 
-      const result = adapter.get("my-module", "enabled", v.boolean());
+      const result = adapter.get("my-module", "enabled", toValidationSchema(v.boolean()));
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -286,7 +288,7 @@ describe("FoundrySettingsAdapter", () => {
       const foundryError: FoundryError = createFoundryError("OPERATION_FAILED", "not registered");
       vi.mocked(mockFoundrySettings.get).mockReturnValue(err(foundryError));
 
-      const result = adapter.get("my-module", "enabled", v.boolean());
+      const result = adapter.get("my-module", "enabled", toValidationSchema(v.boolean()));
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -301,7 +303,7 @@ describe("FoundrySettingsAdapter", () => {
       );
       vi.mocked(mockFoundrySettings.get).mockReturnValue(err(foundryError));
 
-      const result = adapter.get("my-module", "enabled", v.boolean());
+      const result = adapter.get("my-module", "enabled", toValidationSchema(v.boolean()));
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -313,7 +315,7 @@ describe("FoundrySettingsAdapter", () => {
       const foundryError: FoundryError = createFoundryError("OPERATION_FAILED", "not found");
       vi.mocked(mockFoundrySettings.get).mockReturnValue(err(foundryError));
 
-      const result = adapter.get("my-module", "enabled", v.boolean());
+      const result = adapter.get("my-module", "enabled", toValidationSchema(v.boolean()));
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -328,7 +330,7 @@ describe("FoundrySettingsAdapter", () => {
       );
       vi.mocked(mockFoundrySettings.get).mockReturnValue(err(foundryError));
 
-      const result = adapter.get("my-module", "enabled", v.boolean());
+      const result = adapter.get("my-module", "enabled", toValidationSchema(v.boolean()));
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -343,11 +345,25 @@ describe("FoundrySettingsAdapter", () => {
       };
       vi.mocked(mockFoundrySettings.get).mockReturnValue(err(foundryError));
 
-      const result = adapter.get("my-module", "enabled", v.boolean());
+      const result = adapter.get("my-module", "enabled", toValidationSchema(v.boolean()));
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("SETTING_VALIDATION_FAILED");
+      }
+    });
+
+    it("should return error when ValidationSchema is not created from valibot schema", () => {
+      const customSchema: ValidationSchema<boolean> = {
+        validate: (value: unknown): value is boolean => typeof value === "boolean",
+      };
+
+      const result = adapter.get("my-module", "enabled", customSchema);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("SETTING_VALIDATION_FAILED");
+        expect(result.error.message).toContain("must be created from valibot schema");
       }
     });
   });
@@ -512,7 +528,7 @@ describe("FoundrySettingsAdapter", () => {
 
       expect(registerResult.ok).toBe(true);
 
-      const getResult = diAdapter.get("test", "key", v.string());
+      const getResult = diAdapter.get("test", "key", toValidationSchema(v.string()));
       expect(getResult.ok).toBe(true);
 
       const setResult = await diAdapter.set("test", "key", "new value");

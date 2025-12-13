@@ -12,6 +12,33 @@
 
 ### Upgrade-Hinweise
 
+## [0.43.17] - 2025-12-13
+### Hinzugefügt
+- **ValidationSchema Interface**: Neues domain-layer Interface für plattform-agnostische Validierungsschemas ([Details](docs/refactoring/DIP/findings/DIP__high__valibot-type-dependency-in-settings-port__e4f5g6h.md))
+- **ValibotValidationSchema Klasse**: Infrastructure-Layer Implementierung, die valibot-Schemas in ValidationSchema wrappt
+- **toValidationSchema() Funktion**: Adapter-Funktion zum Konvertieren von valibot-Schemas zu ValidationSchema
+
+### Geändert
+- **DIP-Refactoring: PlatformSettingsPort**: `PlatformSettingsPort.get()` verwendet jetzt `ValidationSchema` statt valibot `BaseSchema`, um Dependency Inversion Principle (DIP) zu erfüllen ([Details](docs/refactoring/DIP/findings/DIP__high__valibot-type-dependency-in-settings-port__e4f5g6h.md))
+- `src/domain/ports/platform-settings-port.interface.ts`: `get()`-Methode verwendet jetzt `ValidationSchema<T>` statt `v.BaseSchema`
+- `src/infrastructure/adapters/foundry/settings-adapters/foundry-settings-adapter.ts`: Konvertiert `ValidationSchema` zu valibot-Schema für `FoundrySettings`
+- `src/infrastructure/validation/valibot-schema-adapter.ts`: Neue Datei mit `ValibotValidationSchema` Klasse und `toValidationSchema()` Funktion
+- `src/framework/core/bootstrap/orchestrators/logging-bootstrapper.ts`: Verwendet weiterhin valibot direkt (OK, da `FoundrySettings` Foundry-spezifisch ist)
+- **DIP-Refactoring: LOG_LEVEL_SCHEMA**: `LOG_LEVEL_SCHEMA` wurde von Domain-Layer nach Infrastructure-Layer verschoben, um Dependency Inversion Principle (DIP) zu erfüllen ([Details](docs/refactoring/DIP/findings/DIP__high__valibot-dependency-in-domain__a1b2c3d.md))
+- `src/domain/types/log-level.ts`: Valibot-Import entfernt, nur noch `LogLevel` enum exportiert
+- `src/infrastructure/validation/log-level-schema.ts`: Neue Datei für valibot-basiertes Schema im Infrastructure-Layer
+- `src/infrastructure/validation/valibot-validation-adapter.ts`: Import von `LOG_LEVEL_SCHEMA` aktualisiert
+- Keine Breaking Changes: Public API bleibt unverändert, bestehende Funktionalität bleibt erhalten
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.16] - 2025-12-12
 ### Hinzugefügt
 - **JournalMapper Interface**: Neues Interface für erweiterbare Journal-Mapping-Strategien mit `supports()` Type Guard und `toDomain()` Methode ([Details](docs/refactoring/17-ocp-foundry-journal-repository-adapter.md))

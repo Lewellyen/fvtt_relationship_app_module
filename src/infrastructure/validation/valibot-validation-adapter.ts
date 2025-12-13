@@ -1,6 +1,7 @@
 import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
 import type { ValidationError } from "@/domain/ports/platform-validation-port.interface";
-import { LogLevel, LOG_LEVEL_SCHEMA } from "@/domain/types/log-level";
+import { LogLevel } from "@/domain/types/log-level";
+import { LOG_LEVEL_SCHEMA } from "@/infrastructure/validation/log-level-schema";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import * as v from "valibot";

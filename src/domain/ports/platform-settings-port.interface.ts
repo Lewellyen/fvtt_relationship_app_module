@@ -1,5 +1,5 @@
 import type { Result } from "@/domain/types/result";
-import type * as v from "valibot";
+import type { ValidationSchema } from "@/domain/types/validation-schema.interface";
 
 /**
  * Platform-agnostic port for application settings.
@@ -24,7 +24,7 @@ import type * as v from "valibot";
  * });
  *
  * // Get setting
- * const result = settings.get("my-module", "enabled", v.boolean());
+ * const result = settings.get("my-module", "enabled", booleanSchema);
  * if (result.ok) {
  *   console.log(`Enabled: ${result.value}`);
  * }
@@ -67,17 +67,20 @@ export interface PlatformSettingsPort {
   /**
    * Get current value of a setting with runtime validation.
    *
-   * Uses Valibot schema to validate the setting value at runtime.
+   * Uses a platform-agnostic validation schema to validate the setting value at runtime.
    * This ensures type safety even when settings are persisted/loaded.
    *
    * @param namespace - Module identifier
    * @param key - Setting key
-   * @param schema - Valibot schema for runtime validation
+   * @param schema - Validation schema for runtime validation
    * @returns Setting value or validation error
    *
    * @example
    * ```typescript
-   * const result = settings.get("my-module", "maxItems", v.number());
+   * const numberSchema: ValidationSchema<number> = {
+   *   validate: (value: unknown): value is number => typeof value === "number"
+   * };
+   * const result = settings.get("my-module", "maxItems", numberSchema);
    * if (result.ok) {
    *   console.log(`Max items: ${result.value}`);
    * } else {
@@ -85,11 +88,7 @@ export interface PlatformSettingsPort {
    * }
    * ```
    */
-  get<T>(
-    namespace: string,
-    key: string,
-    schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>
-  ): Result<T, SettingsError>;
+  get<T>(namespace: string, key: string, schema: ValidationSchema<T>): Result<T, SettingsError>;
 
   /**
    * Set value of a setting.
@@ -209,7 +208,7 @@ export type SettingType =
 export interface SettingsError {
   code:
     | "SETTING_NOT_REGISTERED" // Trying to get/set unregistered setting
-    | "SETTING_VALIDATION_FAILED" // Setting value failed Valibot validation
+    | "SETTING_VALIDATION_FAILED" // Setting value failed validation
     | "SETTING_REGISTRATION_FAILED" // Platform rejected registration
     | "PLATFORM_NOT_AVAILABLE"; // Platform not initialized yet
   message: string;
