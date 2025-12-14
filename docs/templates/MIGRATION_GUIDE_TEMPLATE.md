@@ -1,8 +1,8 @@
 # Migration Guide: vX.Y → vX+1.0
 
-**Datum:** [Datum]  
-**Von Version:** [Alte Version]  
-**Zu Version:** [Neue Version]  
+**Datum:** [Datum]
+**Von Version:** [Alte Version]
+**Zu Version:** [Neue Version]
 **Status:** ⚠️ **BREAKING CHANGES**
 
 ---
@@ -11,8 +11,8 @@
 
 Diese Migration-Guide beschreibt die Breaking Changes zwischen Version [X.Y] und [X+1.0] und zeigt, wie du deinen Code migrieren kannst.
 
-**Deprecated seit:** v[X.Y]  
-**Entfernt in:** v[X+1.0]  
+**Deprecated seit:** v[X.Y]
+**Entfernt in:** v[X+1.0]
 **Deprecated-Zeitraum:** [X] Main-Versionen
 
 ---
@@ -172,10 +172,10 @@ Arbeite diese Checkliste ab, um sicherzustellen, dass alle Breaking Changes migr
 
 ## 📚 Weitere Ressourcen
 
-- [CHANGELOG.md](../CHANGELOG.md) - Vollständiges Change-Log
-- [VERSIONING-STRATEGY.md](./VERSIONING-STRATEGY.md) - Versioning-Regeln
-- [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) - Architektur-Analyse
-- [API.md](./API.md) - API-Dokumentation
+- [CHANGELOG.md](../../CHANGELOG.md) - Vollständiges Change-Log
+- [Versionierung](../../development/versioning.md) - Versioning-Regeln
+- [Architektur-Übersicht](../../architecture/overview.md) - Architektur-Analyse
+- [API-Referenz](../../reference/api-reference.md) - API-Dokumentation
 
 ---
 

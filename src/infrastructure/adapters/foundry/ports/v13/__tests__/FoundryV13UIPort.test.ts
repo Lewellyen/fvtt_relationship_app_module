@@ -1,16 +1,39 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { FoundryV13UIPort } from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13UIPort";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import {
+  FoundryV13UIPort,
+  createFoundryV13UIPort,
+} from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13UIPort";
+import type {
+  IFoundryUIAPI,
+  IFoundryGameJournalAPI,
+  IFoundryDocumentAPI,
+  IFoundryUISidebarAPI,
+} from "@/infrastructure/adapters/foundry/api/foundry-api.interface";
 import { expectResultOk, expectResultErr, createMockDOM } from "@/test/utils/test-helpers";
 
 describe("FoundryV13UIPort", () => {
   let port: FoundryV13UIPort;
+  let mockUIAPI: IFoundryUIAPI;
+  let mockGameJournalAPI: IFoundryGameJournalAPI;
+  let mockDocumentAPI: IFoundryDocumentAPI;
 
   beforeEach(() => {
-    port = new FoundryV13UIPort();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    mockUIAPI = {
+      notifications: {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    };
+    mockGameJournalAPI = {
+      contents: [],
+      get: vi.fn(),
+      directory: undefined,
+    };
+    mockDocumentAPI = {
+      querySelector: (selector: string) => document.querySelector(selector),
+    };
+    port = new FoundryV13UIPort(mockUIAPI, mockGameJournalAPI, mockDocumentAPI);
   });
 
   describe("removeJournalElement", () => {
@@ -120,10 +143,11 @@ describe("FoundryV13UIPort", () => {
     it("should handle DOM manipulation errors", () => {
       const mockHtml = document.createElement("div");
       const mockElement = document.createElement("li");
-      mockElement.dataset.entryId = "test-id";
+      mockElement.className = "directory-item";
+      mockElement.setAttribute("data-entry-id", "test-id");
+      mockHtml.appendChild(mockElement);
 
-      // Mock querySelector to return element with failing remove()
-      vi.spyOn(mockHtml, "querySelector").mockReturnValue(mockElement);
+      // Mock remove() to throw error
       vi.spyOn(mockElement, "remove").mockImplementation(() => {
         throw new Error("Remove failed");
       });
@@ -138,10 +162,15 @@ describe("FoundryV13UIPort", () => {
 
   describe("notify - Error Handling", () => {
     it("should handle missing ui.notifications", () => {
-      vi.stubGlobal("ui", undefined);
-      const port = new FoundryV13UIPort();
+      const portWithoutNotifications = new FoundryV13UIPort(
+        {
+          notifications: null as unknown as IFoundryUIAPI["notifications"],
+        },
+        mockGameJournalAPI,
+        mockDocumentAPI
+      );
 
-      const result = port.notify("Test message", "info");
+      const result = portWithoutNotifications.notify("Test message", "info");
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
@@ -149,15 +178,10 @@ describe("FoundryV13UIPort", () => {
     });
 
     it("should handle ui.notifications throwing error", () => {
-      vi.stubGlobal("ui", {
-        notifications: {
-          info: vi.fn(() => {
-            throw new Error("Notification failed");
-          }),
-        },
+      mockUIAPI.notifications.info = vi.fn(() => {
+        throw new Error("Notification failed");
       });
 
-      const port = new FoundryV13UIPort();
       const result = port.notify("Test", "info");
 
       expectResultErr(result);
@@ -166,15 +190,6 @@ describe("FoundryV13UIPort", () => {
     });
 
     it("should support all notification types", () => {
-      const mockNotifications = {
-        info: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
-      };
-      vi.stubGlobal("ui", { notifications: mockNotifications });
-
-      const port = new FoundryV13UIPort();
-
       const result1 = port.notify("Info", "info");
       const result2 = port.notify("Warning", "warning");
       const result3 = port.notify("Error", "error");
@@ -183,20 +198,16 @@ describe("FoundryV13UIPort", () => {
       expectResultOk(result2);
       expectResultOk(result3);
 
-      expect(mockNotifications.info).toHaveBeenCalledWith("Info", undefined);
-      expect(mockNotifications.warn).toHaveBeenCalledWith("Warning", undefined);
-      expect(mockNotifications.error).toHaveBeenCalledWith("Error", undefined);
+      expect(mockUIAPI.notifications.info).toHaveBeenCalledWith("Info", undefined);
+      expect(mockUIAPI.notifications.warn).toHaveBeenCalledWith("Warning", undefined);
+      expect(mockUIAPI.notifications.error).toHaveBeenCalledWith("Error", undefined);
     });
 
     it("should handle error notification type with exception", () => {
-      const mockNotifications = {
-        error: vi.fn(() => {
-          throw new TypeError("Invalid argument");
-        }),
-      };
-      vi.stubGlobal("ui", { notifications: mockNotifications });
+      mockUIAPI.notifications.error = vi.fn(() => {
+        throw new TypeError("Invalid argument");
+      });
 
-      const port = new FoundryV13UIPort();
       const result = port.notify("Error message", "error");
 
       expectResultErr(result);
@@ -205,14 +216,10 @@ describe("FoundryV13UIPort", () => {
     });
 
     it("should handle warning notification with exception", () => {
-      const mockNotifications = {
-        warn: vi.fn(() => {
-          throw new Error("Warn failed");
-        }),
-      };
-      vi.stubGlobal("ui", { notifications: mockNotifications });
+      mockUIAPI.notifications.warn = vi.fn(() => {
+        throw new Error("Warn failed");
+      });
 
-      const port = new FoundryV13UIPort();
       const result = port.notify("Warning", "warning");
 
       expectResultErr(result);
@@ -220,25 +227,22 @@ describe("FoundryV13UIPort", () => {
     });
 
     it("should forward notification options to ui.notifications", () => {
-      const mockNotifications = {
-        info: vi.fn(),
-      };
-      vi.stubGlobal("ui", { notifications: mockNotifications });
-
-      const port = new FoundryV13UIPort();
       const options = { permanent: true, console: true };
 
       const result = port.notify("Persistent message", "info", options);
 
       expectResultOk(result);
-      expect(mockNotifications.info).toHaveBeenCalledWith("Persistent message", options);
+      expect(mockUIAPI.notifications.info).toHaveBeenCalledWith("Persistent message", options);
     });
 
     it("should handle missing ui object entirely", () => {
-      vi.stubGlobal("ui", null);
-      const port = new FoundryV13UIPort();
+      const portWithoutUI = new FoundryV13UIPort(
+        null as unknown as IFoundryUIAPI,
+        mockGameJournalAPI,
+        mockDocumentAPI
+      );
 
-      const result = port.notify("Test", "info");
+      const result = portWithoutUI.notify("Test", "info");
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
@@ -259,9 +263,15 @@ describe("FoundryV13UIPort", () => {
       journalDiv.id = "journal";
       document.body.appendChild(journalDiv);
 
-      vi.stubGlobal("ui", undefined);
+      const portWithoutSidebar = new FoundryV13UIPort(
+        {
+          notifications: mockUIAPI.notifications,
+        },
+        mockGameJournalAPI,
+        mockDocumentAPI
+      );
 
-      const result = port.rerenderJournalDirectory();
+      const result = portWithoutSidebar.rerenderJournalDirectory();
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
 
@@ -274,16 +284,13 @@ describe("FoundryV13UIPort", () => {
       journalDiv.id = "journal";
       document.body.appendChild(journalDiv);
 
-      // Mock ui.sidebar with invalid structure (primitive value, not an object)
-      // This will pass the first check (!ui?.sidebar) but fail the type guard
-      vi.stubGlobal("ui", {
-        sidebar: "invalid", // string is not a valid FoundryUISidebar
-      });
+      // Mock ui.sidebar as not available (remove property)
+      delete (mockUIAPI as { sidebar?: IFoundryUISidebarAPI }).sidebar;
 
       const result = port.rerenderJournalDirectory();
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
-      expect(result.error.message).toContain("unexpected structure");
+      expect(result.error.message).toContain("Foundry UI sidebar not available");
 
       document.body.removeChild(journalDiv);
     });
@@ -294,15 +301,13 @@ describe("FoundryV13UIPort", () => {
       document.body.appendChild(journalDiv);
 
       const mockRender = vi.fn();
-      vi.stubGlobal("ui", {
-        sidebar: {
-          tabs: {
-            journal: {
-              render: mockRender,
-            },
+      mockUIAPI.sidebar = {
+        tabs: {
+          journal: {
+            render: mockRender,
           },
         },
-      });
+      };
 
       const result = port.rerenderJournalDirectory();
       expectResultOk(result);
@@ -317,13 +322,11 @@ describe("FoundryV13UIPort", () => {
       journalDiv.id = "journal";
       document.body.appendChild(journalDiv);
 
-      vi.stubGlobal("ui", {
-        sidebar: {
-          tabs: {
-            journal: {}, // No render method
-          },
+      mockUIAPI.sidebar = {
+        tabs: {
+          journal: {}, // No render method
         },
-      });
+      };
 
       const result = port.rerenderJournalDirectory();
       expectResultOk(result);
@@ -338,20 +341,14 @@ describe("FoundryV13UIPort", () => {
       document.body.appendChild(journalDiv);
 
       const mockDirectoryRender = vi.fn();
-      vi.stubGlobal("ui", {
-        sidebar: {
-          tabs: {
-            journal: {}, // No render method
-          },
+      mockUIAPI.sidebar = {
+        tabs: {
+          journal: {}, // No render method
         },
-      });
-      vi.stubGlobal("game", {
-        journal: {
-          directory: {
-            render: mockDirectoryRender,
-          },
-        },
-      });
+      };
+      mockGameJournalAPI.directory = {
+        render: mockDirectoryRender,
+      };
 
       const result = port.rerenderJournalDirectory();
       expectResultOk(result);
@@ -377,15 +374,13 @@ describe("FoundryV13UIPort", () => {
         throw new Error("Render failed");
       });
 
-      vi.stubGlobal("ui", {
-        sidebar: {
-          tabs: {
-            journal: {
-              render: mockRender,
-            },
+      mockUIAPI.sidebar = {
+        tabs: {
+          journal: {
+            render: mockRender,
           },
         },
-      });
+      };
 
       const result = port.rerenderJournalDirectory();
       expectResultErr(result);
@@ -417,7 +412,6 @@ describe("FoundryV13UIPort", () => {
     });
 
     it("should prevent notifications after disposal", () => {
-      vi.stubGlobal("ui", { notifications: { info: vi.fn() } });
       port.dispose();
 
       const result = port.notify("Test", "info");
@@ -433,6 +427,430 @@ describe("FoundryV13UIPort", () => {
 
       const result = port.notify("Test", "info");
       expectResultErr(result);
+    });
+  });
+
+  describe("createFoundryV13UIPort factory", () => {
+    beforeEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("should throw when ui is undefined", () => {
+      // @ts-expect-error - intentionally undefined for test
+      global.ui = undefined;
+      // @ts-expect-error - intentionally undefined for test
+      global.game = undefined;
+
+      expect(() => createFoundryV13UIPort()).toThrow("Foundry UI API not available");
+    });
+
+    it("should throw when ui.notifications is missing", () => {
+      // @ts-expect-error - intentionally missing notifications for test
+      global.ui = {};
+      // @ts-expect-error - intentionally undefined for test
+      global.game = undefined;
+
+      expect(() => createFoundryV13UIPort()).toThrow("Foundry UI API not available");
+    });
+
+    it("should throw when game is undefined", () => {
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        },
+      };
+      // @ts-expect-error - intentionally undefined for test
+      global.game = undefined;
+
+      expect(() => createFoundryV13UIPort()).toThrow("Foundry game API not available");
+    });
+
+    it("should throw when game.journal is missing", () => {
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        },
+      };
+      // @ts-expect-error - intentionally missing journal for test
+      global.game = {};
+
+      expect(() => createFoundryV13UIPort()).toThrow("Foundry game API not available");
+    });
+
+    it("should create port successfully with all APIs available", () => {
+      const mockInfo = vi.fn();
+      const mockWarn = vi.fn();
+      const mockError = vi.fn();
+      const mockJournalGet = vi.fn();
+
+      const mockJournalContents = [{ id: "test-1", name: "Test", getFlag: vi.fn() }] as any[];
+
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: mockInfo,
+          warn: mockWarn,
+          error: mockError,
+        },
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: mockJournalContents,
+          get: mockJournalGet,
+        },
+      };
+
+      const port = createFoundryV13UIPort();
+      expect(port).toBeInstanceOf(FoundryV13UIPort);
+
+      // Test that notifications work
+      const result = port.notify("Test message", "info");
+      expectResultOk(result);
+      expect(mockInfo).toHaveBeenCalledWith("Test message", undefined);
+    });
+
+    it("should include sidebar when sidebar.tabs.journal.render is available", () => {
+      const mockRender = vi.fn();
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        },
+        sidebar: {
+          tabs: {
+            journal: {
+              render: mockRender,
+            },
+          },
+        },
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: [],
+          get: vi.fn(),
+        },
+      };
+
+      // Create DOM element for querySelector("#journal")
+      const journalElement = document.createElement("div");
+      journalElement.id = "journal";
+      document.body.appendChild(journalElement);
+
+      const port = createFoundryV13UIPort();
+      expect(port).toBeInstanceOf(FoundryV13UIPort);
+
+      // Test that rerenderJournalDirectory uses sidebar
+      const result = port.rerenderJournalDirectory();
+      expectResultOk(result);
+      expect(result.value).toBe(true);
+
+      document.body.removeChild(journalElement);
+    });
+
+    it("should work without sidebar", () => {
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        },
+        // sidebar is undefined
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: [],
+          get: vi.fn(),
+        },
+      };
+
+      const port = createFoundryV13UIPort();
+      expect(port).toBeInstanceOf(FoundryV13UIPort);
+    });
+
+    it("should work with sidebar.tabs.journal but without render method", () => {
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        },
+        sidebar: {
+          tabs: {
+            journal: {
+              // render is undefined - tests else branch at line 208
+            },
+          },
+        },
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: [],
+          get: vi.fn(),
+        },
+      };
+
+      const port = createFoundryV13UIPort();
+      expect(port).toBeInstanceOf(FoundryV13UIPort);
+
+      // Sidebar should not be set because journal.render is missing
+      const uiAPI = (port as any).foundryUIAPI;
+      expect(uiAPI.sidebar).toBeUndefined();
+    });
+
+    it("should include directory when game.journal.directory.render is available", () => {
+      const mockDirectoryRender = vi.fn();
+      const mockJournalAppRender = vi.fn();
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        },
+        sidebar: {
+          tabs: {
+            journal: {
+              render: mockJournalAppRender,
+            },
+          },
+        },
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: [],
+          get: vi.fn(),
+          directory: {
+            render: mockDirectoryRender,
+          },
+        },
+      };
+
+      // Create DOM element for querySelector("#journal")
+      const journalElement = document.createElement("div");
+      journalElement.id = "journal";
+      document.body.appendChild(journalElement);
+
+      const port = createFoundryV13UIPort();
+      expect(port).toBeInstanceOf(FoundryV13UIPort);
+
+      // The directory should be available through the journal API
+      // Both journalApp.render() and directory.render() should be called
+      const result = port.rerenderJournalDirectory();
+      expectResultOk(result);
+      expect(result.value).toBe(true);
+      expect(mockJournalAppRender).toHaveBeenCalledWith(false);
+      expect(mockDirectoryRender).toHaveBeenCalledOnce();
+
+      document.body.removeChild(journalElement);
+    });
+
+    it("should work without directory", () => {
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        },
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: [],
+          get: vi.fn(),
+          // directory is undefined
+        },
+      };
+
+      const port = createFoundryV13UIPort();
+      expect(port).toBeInstanceOf(FoundryV13UIPort);
+    });
+
+    it("should work without directory.render", () => {
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        },
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: [],
+          get: vi.fn(),
+          directory: {
+            // render is undefined
+          },
+        },
+      };
+
+      const port = createFoundryV13UIPort();
+      expect(port).toBeInstanceOf(FoundryV13UIPort);
+    });
+
+    it("should call ui.notifications.warn through factory-created port", () => {
+      const mockWarn = vi.fn();
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: mockWarn,
+          error: vi.fn(),
+        },
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: [],
+          get: vi.fn(),
+        },
+      };
+
+      const port = createFoundryV13UIPort();
+      const result = port.notify("Warning message", "warning");
+      expectResultOk(result);
+      expect(mockWarn).toHaveBeenCalledWith("Warning message", undefined);
+    });
+
+    it("should call ui.notifications.error through factory-created port", () => {
+      const mockError = vi.fn();
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: mockError,
+        },
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: [],
+          get: vi.fn(),
+        },
+      };
+
+      const port = createFoundryV13UIPort();
+      const result = port.notify("Error message", "error");
+      expectResultOk(result);
+      expect(mockError).toHaveBeenCalledWith("Error message", undefined);
+    });
+
+    it("should use game.journal.get through factory-created port", () => {
+      const mockJournalEntry = { id: "test-id", name: "Test", getFlag: vi.fn() };
+      const mockGet = vi.fn((id: string) => (id === "test-id" ? mockJournalEntry : undefined));
+
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        notifications: {
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        },
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: [],
+          get: mockGet,
+        },
+      };
+
+      const port = createFoundryV13UIPort();
+      expect(port).toBeInstanceOf(FoundryV13UIPort);
+
+      // Access the private foundryGameJournalAPI property to test that get function works
+      // This ensures line 225 (get: (id: string) => game.journal.get(id)) is executed when called
+      const journalAPI = (port as any).foundryGameJournalAPI;
+      expect(journalAPI.get).toBeDefined();
+      expect(typeof journalAPI.get).toBe("function");
+
+      // Call the get function to ensure it uses game.journal.get (line 225 execution)
+      const result = journalAPI.get("test-id");
+      expect(result).toBe(mockJournalEntry);
+      expect(mockGet).toHaveBeenCalledWith("test-id");
+    });
+
+    it("should handle ui.notifications becoming null at runtime in notification methods", () => {
+      const mockInfo = vi.fn();
+      const mockWarn = vi.fn();
+      const mockError = vi.fn();
+
+      // Create a mutable notifications object
+      const notifications = {
+        info: mockInfo,
+        warn: mockWarn,
+        error: mockError,
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.ui = {
+        get notifications() {
+          return notifications;
+        },
+      };
+
+      // @ts-expect-error - intentionally typed for test
+      global.game = {
+        journal: {
+          contents: [],
+          get: vi.fn(),
+        },
+      };
+
+      const port = createFoundryV13UIPort();
+
+      // Access the private foundryUIAPI to test the defensive checks
+      const uiAPI = (port as any).foundryUIAPI;
+
+      // Set notifications to null to test the else branches
+      // @ts-expect-error - intentionally null for test
+      Object.defineProperty(global.ui, "notifications", {
+        get: () => null,
+        configurable: true,
+      });
+
+      // These should not throw, but should silently handle null notifications
+      // This tests the else branches in the notification methods (lines 735, 740, 745)
+      expect(() => uiAPI.notifications.info("test", undefined)).not.toThrow();
+      expect(() => uiAPI.notifications.warn("test", undefined)).not.toThrow();
+      expect(() => uiAPI.notifications.error("test", undefined)).not.toThrow();
+
+      // Verify that the original functions were not called
+      expect(mockInfo).not.toHaveBeenCalled();
+      expect(mockWarn).not.toHaveBeenCalled();
+      expect(mockError).not.toHaveBeenCalled();
     });
   });
 });

@@ -12,6 +12,32 @@
 
 ### Upgrade-Hinweise
 
+## [0.44.0] - 2025-12-14
+### Hinzugefügt
+- **Foundry-API-Interfaces für Dependency Injection**: Neue Interfaces (`IFoundryGameAPI`, `IFoundrySettingsAPI`, `IFoundryUIAPI`, `IFoundryHooksAPI`, `IFoundryI18nAPI`) in `src/infrastructure/adapters/foundry/api/foundry-api.interface.ts` für bessere Testbarkeit der Port-Implementierungen ([Details](docs/refactoring/DIP/findings/DIP__medium__foundry-adapters-concrete-foundry-apis__f5g6h7i.md))
+- **Factory-Funktionen für Foundry V13 Ports**: Factory-Funktionen (`createFoundryV13GamePort`, `createFoundryV13SettingsPort`, `createFoundryV13UIPort`, `createFoundryV13HooksPort`, `createFoundryV13I18nPort`) für Production-Instanziierung mit echten Foundry-APIs
+
+### Geändert
+- **DIP-Refactoring: Foundry V13 Ports**: Foundry V13 Ports verwenden jetzt Dependency Injection für Foundry-APIs, um Dependency Inversion Principle (DIP) zu erfüllen und Testbarkeit zu verbessern ([Details](docs/refactoring/DIP/findings/DIP__medium__foundry-adapters-concrete-foundry-apis__f5g6h7i.md))
+- `FoundryV13GamePort`: Injiziert `IFoundryGameAPI` über Konstruktor
+- `FoundryV13SettingsPort`: Injiziert `IFoundrySettingsAPI` über Konstruktor
+- `FoundryV13UIPort`: Injiziert `IFoundryUIAPI`, `IFoundryGameJournalAPI` und `IFoundryDocumentAPI` über Konstruktor
+- `FoundryV13HooksPort`: Injiziert `IFoundryHooksAPI` über Konstruktor
+- `FoundryV13I18nPort`: Injiziert `IFoundryI18nAPI` über Konstruktor
+- `src/infrastructure/adapters/foundry/ports/v13/port-registration.ts`: Verwendet jetzt `registerFactory()` statt `registerClass()` für Ports mit Foundry-API-Abhängigkeiten
+- Tests aktualisiert: `FoundryV13GamePort.test.ts` verwendet jetzt Mock-APIs statt globaler `game`-Objekte
+- Verbesserte Testbarkeit: Ports können jetzt ohne vollständiges Foundry-Environment getestet werden
+- Keine Breaking Changes: Public API bleibt unverändert, Factory-Funktionen werden intern verwendet
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.43.18] - 2025-12-14
 ### Hinzugefügt
 - **Factory-Funktionen für DIP-Compliance**: Factory-Funktionen für `RuntimeConfigAdapter`, `DIContainerHealthCheck` und `DIMetricsHealthCheck` hinzugefügt, um Dependency Inversion Principle (DIP) zu erfüllen ([Details](docs/refactoring/DIP/findings/DIP__medium__dependencyconfig-direct-infrastructure-imports__e9f4a1.md))

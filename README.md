@@ -2,7 +2,7 @@
 
 Ein Foundry VTT Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken zwischen Akteuren und anderen Entitäten.
 
-**Version:** 0.11.1 (Pre-Release)
+**Version:** 0.43.18 (Pre-Release)
 **Status:** ✅ Aktive Entwicklung - Aggressives Refactoring erwünscht!
 **Foundry VTT:** v13+ (siehe `module.json`)
 
@@ -33,55 +33,43 @@ Ein Foundry VTT Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken
 
 ## 🚀 Installation
 
-### Automatische Installation
+👉 **Vollständige Installationsanleitung:** [Installation](./docs/getting-started/installation.md)
+
+### Schnellstart
 
 1. Öffne Foundry VTT
-2. Gehe zu **Add-on Modules**
-3. Klicke **Install Module**
-4. Füge die Manifest-URL ein: `https://github.com/Lewellyen/fvtt_relationship_app_module/releases/latest/download/module.json`
-5. Klicke **Install**
-
-### Manuelle Installation
-
-1. Lade das Modul herunter
-2. Entpacke es in `<FoundryData>/modules/fvtt_relationship_app_module`
-3. Starte Foundry VTT neu
-4. Aktiviere das Modul in deiner Welt
+2. Gehe zu **Add-on Modules** → **Install Module**
+3. Manifest-URL: `https://github.com/Lewellyen/fvtt_relationship_app_module/releases/latest/download/module.json`
+4. Modul in deiner Welt aktivieren
 
 ---
 
 ## 🛠️ Entwicklung
 
-### Voraussetzungen
+👉 **Vollständige Entwickler-Dokumentation:** [Entwickler-Guide](./docs/development/README.md)
 
-- Node.js 18+ 
-- npm oder pnpm
-- Foundry VTT 13+ ⚠️ **Mindestversion beachten!**
-
-### Setup
+### Schnellstart
 
 ```bash
 # Dependencies installieren
 npm install
 
-# Entwicklungsmodus (mit Watch)
+# Entwicklung starten (Watch-Modus)
 npm run dev
 
-# Production Build
-npm run build
+# Alle Quality-Checks
+npm run check-all
 ```
 
-👉 Tests und Qualitätsprüfungen findest du im Abschnitt [🧪 Testing](#-testing) sowie in der Script-Liste unten.
+**Voraussetzungen:**
+- Node.js 20.12.0+ (siehe `package.json` engines)
+- npm 10.0.0+ oder pnpm
+- Foundry VTT 13+
 
-### Scripts
-
-- `npm run dev` - Vite Build mit Watch-Modus
-- `npm run build` - Production Build
-- `npm run type-check` - TypeScript Type-Checking
-- `npm run lint` - ESLint mit Auto-Fix
-- `npm run format` - Prettier Code-Formatierung
-- `npm run test` - Vitest Tests
-- `npm run check:encoding` - UTF-8 Encoding-Validierung
+👉 **Weitere Informationen:**
+- [Entwicklungssetup](./docs/getting-started/setup.md) - Detaillierte Setup-Anleitung
+- [Scripts](./docs/development/scripts.md) - Alle NPM-Scripts dokumentiert
+- [Testing](./docs/development/testing.md) - Test-Strategie & Anleitung
 
 ---
 
@@ -89,15 +77,10 @@ npm run build
 
 Das Modul folgt einer **Clean Architecture** mit klarer Schichtentrennung:
 
-```
-Core Layer (Bootstrap)
-    ↓
-Configuration Layer (DI Config)
-    ↓
-DI Infrastructure Layer (Container)
-    ↓
-Foundry Adapter Layer (Services → Ports → Foundry API)
-```
+- **Domain Layer**: Framework-unabhängige Geschäftslogik
+- **Application Layer**: Anwendungslogik (Services, Use-Cases)
+- **Infrastructure Layer**: Technische Infrastruktur (DI, Cache, etc.)
+- **Framework Layer**: Framework-Integration (Bootstrap, Config)
 
 ### Wichtige Konzepte
 
@@ -105,118 +88,40 @@ Foundry Adapter Layer (Services → Ports → Foundry API)
 - **Result Pattern**: Explizite Fehlerbehandlung ohne Exceptions
 - **Dependency Injection**: ServiceContainer mit Singleton/Transient/Scoped Lifecycles
 
-📖 **Detaillierte Dokumentation**: 
-- [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md) - Vollständige Projektanalyse ⭐
-- [VERSIONING_STRATEGY.md](./docs/VERSIONING_STRATEGY.md) - Versioning & Breaking Changes ⭐ **NEU**
-- [DEPENDENCY-MAP.md](./docs/DEPENDENCY-MAP.md) - Service-Dependencies & Refactoring
-- [QUICK-REFERENCE.md](./docs/QUICK-REFERENCE.md) - Schnellreferenz für Entwickler
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - Architektur-Details
-- [API.md](./docs/API.md) - Öffentliche API für andere Module
+📖 **Detaillierte Dokumentation:** [Architektur-Dokumentation](./docs/architecture/README.md)
 
-### Architektur-Garantien
+- [Architektur-Übersicht](./docs/architecture/overview.md) - High-Level Architektur
+- [Schichten](./docs/architecture/layers.md) - Clean Architecture Schichten
+- [Patterns](./docs/architecture/patterns.md) - Port-Adapter, Result, DI
+- [Bootstrap](./docs/architecture/bootstrap.md) - Bootstrap-Prozess
 
-#### Port-Adapter: Lazy Instantiation
-
-Das Modul verhindert Crashes durch inkompatible Port-Versionen:
-
-- ✅ Nur der kompatible Port wird instanziiert
-- ✅ Neuere Ports (v14+) werden auf v13 nie aufgerufen
-- ✅ Automatische Fallback-Selektion (v14 → v13)
-
-#### Hook-Kompatibilität
-
-Foundry-Hooks werden sowohl im alten (jQuery) als auch neuen Format (HTMLElement) unterstützt:
-
-- ✅ v10-12: jQuery-Wrapper werden automatisch extrahiert
-- ✅ v13+: Native HTMLElement direkt verwendet
-- ✅ Keine manuelle Anpassung nötig
-
-#### Type-Safe Public API
-
-Die Modul-API behält volle Typ-Information:
-
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-
-// logger hat Typ Logger (nicht ServiceType)
-const logger = api.resolve(api.tokens.loggerToken);
-logger.info("Type-safe!"); // Autocomplete funktioniert
-
-// game hat Typ FoundryGame (nicht ServiceType)
-const game = api.resolve(api.tokens.foundryGameToken);
-const journals = game.getJournalEntries(); // Type-safe!
-```
+👉 **Weitere Architektur-Informationen:** [Architektur-Übersicht](./docs/architecture/overview.md)
 
 ---
 
 ## 🔧 Konfiguration
 
-### Encoding
+👉 **Vollständige Konfigurationsanleitung:** [Konfiguration](./docs/guides/configuration.md)
 
-⚠️ **Wichtig**: Alle Dateien müssen als **UTF-8 ohne BOM** gespeichert werden.
-
-Konfiguriere deinen Editor:
-- **VS Code**: Standardmäßig UTF-8
-- **IntelliJ/WebStorm**: File → File Properties → File Encoding → UTF-8
-
-### TypeScript
-
-Strict Mode ist aktiviert (`tsconfig.json`):
-```json
-{
-  "strict": true,
-  "strictNullChecks": true,
-  "noImplicitAny": true
-}
-```
-
-### Log-Level zur Laufzeit ändern
-
-Für Debugging in Production können Sie das Log-Level dynamisch anpassen:
-
-**Methode 1: Foundry UI (Empfohlen)**
-1. Einstellungen → Module-Konfiguration
-2. "Beziehungsnetzwerke für Foundry" → "Log Level"
-3. Wähle gewünschtes Level:
-   - **DEBUG**: Alle Logs (für Debugging/Fehlersuche)
-   - **INFO**: Standard-Logs (Default)
-   - **WARN**: Nur Warnungen und Fehler
-   - **ERROR**: Nur kritische Fehler
-4. **Sofort aktiv** (kein Reload nötig!)
-
-**Methode 2: Browser-Console (Schnell-Zugriff)**
-```javascript
-// Console öffnen (F12)
-const api = game.modules.get('fvtt_relationship_app_module').api;
-
-// DEBUG aktivieren (0=DEBUG, 1=INFO, 2=WARN, 3=ERROR)
-api.resolve(api.tokens.loggerToken).setMinLevel(0);
-
-// Oder über Settings-API (persistiert Änderung)
-await api.resolve(api.tokens.foundrySettingsToken).set(
-  'fvtt_relationship_app_module', 
-  'logLevel', 
-  0
-);
-```
+**Kurzübersicht:**
+- **Encoding**: Alle Dateien müssen UTF-8 ohne BOM sein
+- **Log-Level**: Über Foundry-Settings oder Browser-Console änderbar
+- **Environment Variables**: Build-Time-Konfiguration (ENV-Flags)
 
 ---
 
 ## 🧪 Testing
 
+👉 **Vollständige Test-Dokumentation:** [Testing](./docs/development/testing.md)
+
+**Schnellstart:**
 ```bash
-# Alle Tests ausführen
-npm test
-
-# Tests mit UI
-npm run test:ui
-
-# Tests mit Coverage
-npm run test:coverage
-
-# Tests im Watch-Mode
-npm run test:watch
+npm test              # Alle Tests
+npm run test:coverage # Tests mit Coverage
+npm run test:watch    # Watch-Modus
 ```
+
+**Coverage:** 100% (Lines, Functions, Branches, Statements, Type Coverage)
 
 ---
 
@@ -246,40 +151,17 @@ npm run test:watch
 
 ## 🤝 Beitragen
 
-### Branching-Strategie
+👉 **Vollständiger Beitrags-Guide:** [Beitragen](./docs/guides/contributing.md)
 
-- `main` - Stabiler Production Branch
-- `develop` - Entwicklungs-Branch
-- `feature/*` - Feature-Branches
-
-### Pull Requests
-
+**Schnellstart:**
 1. Fork das Repository
-2. Erstelle einen Feature-Branch
-3. Implementiere deine Änderungen
-4. Führe `npm run check-all` aus
-5. Erstelle einen Pull Request
+2. Erstelle Feature-Branch
+3. Implementiere Änderungen
+4. `npm run check-all` ausführen
+5. Pull Request erstellen
 
-### Code-Konventionen
-
-- **Naming**: PascalCase für Klassen, camelCase für Funktionen/Variablen
-- **Result Pattern**: Alle externen Interaktionen geben `Result<T, E>` zurück
-- **No throw**: Verwende `Result` statt Exceptions für erwartbare Fehler
-- **UTF-8**: Alle Dateien in UTF-8 ohne BOM
-
-### Versioning & Breaking Changes
-
-**Aktuell (0.x.x):**
-- ✅ Breaking Changes erlaubt
-- ✅ Aggressives Refactoring erwünscht
-- ✅ Legacy-Codes sofort entfernen
-
-**Ab 1.0.0:**
-- ⚠️ Breaking Changes mit Deprecation-Strategie
-- 📋 Migrationspfad verpflichtend
-- 🔔 Deprecated-Zeitraum ≥1 Main-Version
-
-Siehe [VERSIONING_STRATEGY.md](./docs/VERSIONING_STRATEGY.md) für Details.
+**Code-Standards:** [Code-Standards](./docs/development/coding-standards.md)
+**Versionierung:** [Versionierung](./docs/development/versioning.md)
 
 ---
 
@@ -307,29 +189,23 @@ Probleme melden: [GitHub Issues](https://github.com/Lewellyen/fvtt_relationship_
 
 ## 📝 Changelog
 
-Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Versionshistorie.
+👉 **Vollständige Versionshistorie:** [CHANGELOG.md](./CHANGELOG.md)
 
-### Version 0.11.1 (Aktuell - In Entwicklung)
-- Semantic Versioning Sortierung in CHANGELOG.md
-- Korrekte Version-Reihenfolge (nicht alphabetisch)
+**Aktuelle Version:** 0.43.18 (Pre-Release)
 
-### Version 0.11.0
-- `resolveWithError()` API für Result-Pattern-Konformität
-- Dokumentation auf 0.10.0 aktualisiert (17 Dokumente)
+---
 
-### Version 0.10.0
-- ObservabilityRegistry & Self-Registration Pattern
-- Modular Config Structure (7 thematische Module)
-- Self-Configuring Services
-- DI-Managed Registrars
-- Conventional Commits im Release-Tool
+## 📚 Dokumentation
 
-### Version 0.7.1
-- Bug-Fix: ci.yml Tool-Aufruf korrigiert
+👉 **Vollständige Dokumentation:** [Dokumentations-Index](./docs/README.md)
 
-### Version 0.7.0
-- Utilities zu Services umgebaut
-- DI-Infrastruktur erweitert
+**Schnellzugriff:**
+- [Installation](./docs/getting-started/installation.md) - Modul installieren
+- [Entwicklungssetup](./docs/getting-started/setup.md) - Entwicklungsumgebung
+- [Architektur](./docs/architecture/overview.md) - Architektur-Übersicht
+- [API-Referenz](./docs/reference/api-reference.md) - Öffentliche API
+- [Testing](./docs/development/testing.md) - Test-Strategie
+- [Code-Standards](./docs/development/coding-standards.md) - Coding-Konventionen
 
 ---
 

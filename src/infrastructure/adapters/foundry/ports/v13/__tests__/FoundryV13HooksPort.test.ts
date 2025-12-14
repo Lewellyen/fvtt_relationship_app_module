@@ -1,35 +1,38 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { FoundryV13HooksPort } from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13HooksPort";
+import {
+  FoundryV13HooksPort,
+  createFoundryV13HooksPort,
+} from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13HooksPort";
+import type { IFoundryHooksAPI } from "@/infrastructure/adapters/foundry/api/foundry-api.interface";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
 describe("FoundryV13HooksPort", () => {
   let port: FoundryV13HooksPort;
+  let mockAPI: IFoundryHooksAPI;
 
   beforeEach(() => {
-    port = new FoundryV13HooksPort();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    mockAPI = {
+      on: vi.fn().mockReturnValue(1),
+      once: vi.fn().mockReturnValue(2),
+      off: vi.fn(),
+    };
+    port = new FoundryV13HooksPort(mockAPI);
   });
 
   describe("on", () => {
     it("should register hook successfully", () => {
-      const mockOn = vi.fn().mockReturnValue(1);
-      vi.stubGlobal("Hooks", { on: mockOn });
-
       const callback = vi.fn();
       const result = port.on("init", callback);
 
       expectResultOk(result);
-      expect(mockOn).toHaveBeenCalledWith("init", callback);
+      expect(mockAPI.on).toHaveBeenCalledWith("init", callback);
     });
 
     it("should handle missing Hooks object", () => {
-      vi.stubGlobal("Hooks", undefined);
+      const portWithoutAPI = new FoundryV13HooksPort(null as unknown as IFoundryHooksAPI);
 
       const callback = vi.fn();
-      const result = port.on("init", callback);
+      const result = portWithoutAPI.on("init", callback);
 
       expectResultErr(result);
       expect(result.error.code).toBe("OPERATION_FAILED");
@@ -37,10 +40,9 @@ describe("FoundryV13HooksPort", () => {
     });
 
     it("should wrap exceptions in Result", () => {
-      const mockOn = vi.fn().mockImplementation(() => {
+      mockAPI.on = vi.fn().mockImplementation(() => {
         throw new Error("Hook error");
       });
-      vi.stubGlobal("Hooks", { on: mockOn });
 
       const callback = vi.fn();
       const result = port.on("init", callback);
@@ -53,21 +55,18 @@ describe("FoundryV13HooksPort", () => {
 
   describe("off", () => {
     it("should unregister hook successfully", () => {
-      const mockOff = vi.fn();
-      vi.stubGlobal("Hooks", { off: mockOff });
-
       const callback = vi.fn();
       const result = port.off("init", callback);
 
       expectResultOk(result);
-      expect(mockOff).toHaveBeenCalledWith("init", callback);
+      expect(mockAPI.off).toHaveBeenCalledWith("init", callback);
     });
 
     it("should handle missing Hooks object", () => {
-      vi.stubGlobal("Hooks", undefined);
+      const portWithoutAPI = new FoundryV13HooksPort(null as unknown as IFoundryHooksAPI);
 
       const callback = vi.fn();
-      const result = port.off("init", callback);
+      const result = portWithoutAPI.off("init", callback);
 
       expectResultErr(result);
       expect(result.error.code).toBe("OPERATION_FAILED");
@@ -75,10 +74,9 @@ describe("FoundryV13HooksPort", () => {
     });
 
     it("should wrap exceptions in Result", () => {
-      const mockOff = vi.fn().mockImplementation(() => {
+      mockAPI.off = vi.fn().mockImplementation(() => {
         throw new Error("Hook error");
       });
-      vi.stubGlobal("Hooks", { off: mockOff });
 
       const callback = vi.fn();
       const result = port.off("init", callback);
@@ -92,24 +90,21 @@ describe("FoundryV13HooksPort", () => {
   describe("once()", () => {
     it("should register one-time hook and return ID", () => {
       const mockHookId = 42;
-      const mockOnce = vi.fn().mockReturnValue(mockHookId);
-      vi.stubGlobal("Hooks", { once: mockOnce });
+      mockAPI.once = vi.fn().mockReturnValue(mockHookId);
 
-      const port = new FoundryV13HooksPort();
       const callback = vi.fn();
       const result = port.once("testHook", callback);
 
       expectResultOk(result);
       expect(result.value).toBe(mockHookId);
-      expect(mockOnce).toHaveBeenCalledWith("testHook", callback);
+      expect(mockAPI.once).toHaveBeenCalledWith("testHook", callback);
     });
 
     it("should return error when Hooks API is not available", () => {
-      vi.stubGlobal("Hooks", undefined);
+      const portWithoutAPI = new FoundryV13HooksPort(null as unknown as IFoundryHooksAPI);
 
-      const port = new FoundryV13HooksPort();
       const callback = vi.fn();
-      const result = port.once("testHook", callback);
+      const result = portWithoutAPI.once("testHook", callback);
 
       expectResultErr(result);
       expect(result.error.code).toBe("OPERATION_FAILED");
@@ -117,12 +112,10 @@ describe("FoundryV13HooksPort", () => {
     });
 
     it("should handle exceptions during registration", () => {
-      const mockOnce = vi.fn(() => {
+      mockAPI.once = vi.fn(() => {
         throw new Error("Hook error");
       });
-      vi.stubGlobal("Hooks", { once: mockOnce });
 
-      const port = new FoundryV13HooksPort();
       const callback = vi.fn();
       const result = port.once("testHook", callback);
 
@@ -135,10 +128,8 @@ describe("FoundryV13HooksPort", () => {
   describe("on() returns hook ID", () => {
     it("should return hook ID on successful registration", () => {
       const mockHookId = 123;
-      const mockOn = vi.fn().mockReturnValue(mockHookId);
-      vi.stubGlobal("Hooks", { on: mockOn });
+      mockAPI.on = vi.fn().mockReturnValue(mockHookId);
 
-      const port = new FoundryV13HooksPort();
       const callback = vi.fn();
       const result = port.on("init", callback);
 
@@ -149,39 +140,23 @@ describe("FoundryV13HooksPort", () => {
 
   describe("off() with hook ID", () => {
     it("should unregister hook by ID", () => {
-      const mockOff = vi.fn();
-      vi.stubGlobal("Hooks", { off: mockOff });
-
-      const port = new FoundryV13HooksPort();
       const result = port.off("testHook", 42);
 
       expectResultOk(result);
-      expect(mockOff).toHaveBeenCalledWith("testHook", 42);
+      expect(mockAPI.off).toHaveBeenCalledWith("testHook", 42);
     });
 
     it("should still work with callback function", () => {
-      const mockOff = vi.fn();
-      vi.stubGlobal("Hooks", { off: mockOff });
-
-      const port = new FoundryV13HooksPort();
       const callback = vi.fn();
       const result = port.off("testHook", callback);
 
       expectResultOk(result);
-      expect(mockOff).toHaveBeenCalledWith("testHook", callback);
+      expect(mockAPI.off).toHaveBeenCalledWith("testHook", callback);
     });
   });
 
   describe("disposed state guards", () => {
-    beforeEach(() => {
-      const mockOn = vi.fn().mockReturnValue(1);
-      const mockOnce = vi.fn().mockReturnValue(2);
-      const mockOff = vi.fn();
-      vi.stubGlobal("Hooks", { on: mockOn, once: mockOnce, off: mockOff });
-    });
-
     it("should prevent registering hooks after disposal", () => {
-      const port = new FoundryV13HooksPort();
       port.dispose();
 
       const result = port.on("ready", vi.fn());
@@ -192,7 +167,6 @@ describe("FoundryV13HooksPort", () => {
     });
 
     it("should prevent registering one-time hooks after disposal", () => {
-      const port = new FoundryV13HooksPort();
       port.dispose();
 
       const result = port.once("ready", vi.fn());
@@ -203,7 +177,6 @@ describe("FoundryV13HooksPort", () => {
     });
 
     it("should prevent unregistering hooks after disposal", () => {
-      const port = new FoundryV13HooksPort();
       port.dispose();
 
       const result = port.off("ready", 123);
@@ -214,8 +187,6 @@ describe("FoundryV13HooksPort", () => {
     });
 
     it("should be idempotent (can call dispose multiple times)", () => {
-      const port = new FoundryV13HooksPort();
-
       port.dispose();
       port.dispose(); // Should not throw
       port.dispose(); // Still should not throw
@@ -227,8 +198,6 @@ describe("FoundryV13HooksPort", () => {
     });
 
     it("should work normally before disposal", () => {
-      const port = new FoundryV13HooksPort();
-
       const result1 = port.on("ready", vi.fn());
       const result2 = port.once("init", vi.fn());
       const result3 = port.off("ready", 1);
@@ -236,6 +205,94 @@ describe("FoundryV13HooksPort", () => {
       expectResultOk(result1);
       expectResultOk(result2);
       expectResultOk(result3);
+    });
+  });
+
+  describe("createFoundryV13HooksPort factory", () => {
+    beforeEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("should throw when Hooks is undefined", () => {
+      // @ts-expect-error - intentionally undefined for test
+      global.Hooks = undefined;
+
+      expect(() => createFoundryV13HooksPort()).toThrow("Foundry Hooks API is not available");
+    });
+
+    it("should create port successfully when Hooks is available", () => {
+      const mockOn = vi.fn().mockReturnValue(1);
+      const mockOnce = vi.fn().mockReturnValue(2);
+      const mockOff = vi.fn();
+
+      // @ts-expect-error - intentionally typed for test
+      global.Hooks = {
+        on: mockOn,
+        once: mockOnce,
+        off: mockOff,
+      };
+
+      const port = createFoundryV13HooksPort();
+      expect(port).toBeInstanceOf(FoundryV13HooksPort);
+
+      // Test that the port uses the real Hooks API
+      const result = port.on("testHook", vi.fn());
+      expectResultOk(result);
+      expect(mockOn).toHaveBeenCalled();
+    });
+
+    it("should handle once through factory-created port", () => {
+      const mockOnce = vi.fn().mockReturnValue(42);
+      // @ts-expect-error - intentionally typed for test
+      global.Hooks = {
+        on: vi.fn().mockReturnValue(1),
+        once: mockOnce,
+        off: vi.fn(),
+      };
+
+      const port = createFoundryV13HooksPort();
+      const result = port.once("testHook", vi.fn());
+
+      expectResultOk(result);
+      expect(result.value).toBe(42);
+      expect(mockOnce).toHaveBeenCalled();
+    });
+
+    it("should handle off through factory-created port", () => {
+      const mockOff = vi.fn();
+      // @ts-expect-error - intentionally typed for test
+      global.Hooks = {
+        on: vi.fn().mockReturnValue(1),
+        once: vi.fn().mockReturnValue(2),
+        off: mockOff,
+      };
+
+      const port = createFoundryV13HooksPort();
+      const result = port.off("testHook", 123);
+
+      expectResultOk(result);
+      expect(mockOff).toHaveBeenCalledWith("testHook", 123);
+    });
+
+    it("should handle off with callback through factory-created port", () => {
+      const mockOff = vi.fn();
+      const callback = vi.fn();
+      // @ts-expect-error - intentionally typed for test
+      global.Hooks = {
+        on: vi.fn().mockReturnValue(1),
+        once: vi.fn().mockReturnValue(2),
+        off: mockOff,
+      };
+
+      const port = createFoundryV13HooksPort();
+      const result = port.off("testHook", callback);
+
+      expectResultOk(result);
+      expect(mockOff).toHaveBeenCalledWith("testHook", callback);
     });
   });
 });

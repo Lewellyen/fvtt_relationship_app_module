@@ -1,6 +1,10 @@
-# API-Dokumentation
+# API-Referenz
 
-Beziehungsnetzwerke für Foundry VTT - Öffentliche API
+**Zweck:** Vollständige Dokumentation der öffentlichen API für externe Module
+**Zielgruppe:** Externe Entwickler, Module-Integratoren
+**Letzte Aktualisierung:** 2025-01-XX
+**Projekt-Version:** 0.43.18 (Pre-Release)
+**API-Version:** 1.0.0
 
 ---
 
@@ -275,34 +279,9 @@ for (const [symbol, info] of tokens) {
 
 ## 📚 Service-Interfaces
 
-### Logger
-
-Strukturiertes Logging mit verschiedenen Log-Levels.
-
-```typescript
-interface Logger {
-  log(message: string, ...optionalParams: unknown[]): void;
-  error(message: string, ...optionalParams: unknown[]): void;
-  warn(message: string, ...optionalParams: unknown[]): void;
-  info(message: string, ...optionalParams: unknown[]): void;
-  debug(message: string, ...optionalParams: unknown[]): void;
-}
-```
-
-**Beispiel**:
-
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-const notifications = api.resolve(api.tokens.notificationCenterToken);
-
-notifications.info('Modul-Initialisierung gestartet');
-notifications.debug('Debug-Informationen', { userId: '123', context: 'test' });
-notifications.error('Fehler aufgetreten', new Error('Something went wrong'));
-```
-
 ### NotificationCenter
 
-`NotificationCenter` bündelt alle Modul-Benachrichtigungen und routet sie an registrierte Channels (z. B. Konsole, Foundry UI, Remote-Logging).
+`NotificationCenter` bündelt alle Modul-Benachrichtigungen und routet sie an registrierte Channels (z. B. Konsole, Foundry UI, Remote-Logging).
 
 ```typescript
 interface NotificationCenterOptions {
@@ -353,7 +332,7 @@ interface FoundryGame {
 }
 ```
 
-**Beispiel**:
+**Beispiel:**
 
 ```typescript
 const gameService = api.resolve(api.tokens.foundryGameToken);
@@ -382,7 +361,7 @@ interface FoundryHooks {
 }
 ```
 
-**Beispiel - Hook registrieren und mit ID deregistrieren**:
+**Beispiel - Hook registrieren und mit ID deregistrieren:**
 
 ```typescript
 const hooksService = api.resolve(api.tokens.foundryHooksToken);
@@ -395,23 +374,12 @@ const hookResult = hooksService.on('updateActor', (actor, updateData, options, u
 if (hookResult.ok) {
   const hookId = hookResult.value;
   console.log(`Hook registered with ID: ${hookId}`);
-  
+
   // Later: Unregister by ID
   hooksService.off('updateActor', hookId);
 } else {
   console.error(`Hook-Registrierung fehlgeschlagen: ${hookResult.error.message}`);
 }
-```
-
-**Beispiel - One-time Hook**:
-
-```typescript
-const hooksService = api.resolve(api.tokens.foundryHooksToken);
-
-// Register one-time hook (automatically unregisters after first execution)
-hooksService.once('ready', () => {
-  console.log('Fired only once!');
-});
 ```
 
 ---
@@ -427,7 +395,7 @@ interface FoundryDocument {
 }
 ```
 
-**Beispiel**:
+**Beispiel:**
 
 ```typescript
 const documentService = api.resolve(api.tokens.foundryDocumentToken);
@@ -468,7 +436,7 @@ interface FoundrySettings {
 }
 ```
 
-**Beispiel - Log-Level ändern**:
+**Beispiel - Log-Level ändern:**
 
 ```typescript
 const api = game.modules.get('fvtt_relationship_app_module').api;
@@ -483,20 +451,6 @@ if (currentLevel.ok) {
 // Log-Level setzen (triggert onChange-Callback)
 await settings.set('fvtt_relationship_app_module', 'logLevel', 0); // DEBUG
 ```
-
-**UI-Integration**:
-
-Das Modul bietet eine Log-Level-Einstellung in den Foundry-Moduleinstellungen:
-
-1. Einstellungen → Module-Konfiguration
-2. "Relationship App" → "Log Level"
-3. Wähle: DEBUG / INFO / WARN / ERROR
-4. Änderungen werden **sofort wirksam** (kein Reload nötig)
-
-**Verfügbare Scopes** (v13+):
-- `world`: Für alle Nutzer in der Welt gültig
-- `client`: Browser-/gerätespezifisch
-- `user`: Nutzerspezifisch innerhalb einer Welt
 
 ---
 
@@ -515,15 +469,9 @@ interface JournalEntry {
   readonly id: string;
   readonly name: string | null;
 }
-
-type JournalVisibilityError =
-  | { code: "ENTRY_NOT_FOUND"; entryId: string; message: string }
-  | { code: "FLAG_READ_FAILED"; entryId: string; message: string }
-  | { code: "DOM_MANIPULATION_FAILED"; entryId: string; message: string }
-  | { code: "INVALID_ENTRY_DATA"; message: string };
 ```
 
-**Beispiel**:
+**Beispiel:**
 
 ```typescript
 const visibilityService = api.resolve(api.tokens.journalVisibilityServiceToken);
@@ -536,8 +484,6 @@ if (hiddenResult.ok) {
   });
 }
 ```
-
-**Hinweis:** Der Service verwendet jetzt domänenneutrale Typen (`JournalEntry`, `JournalVisibilityError`) statt Foundry-spezifischer Typen. Die Implementierung erfolgt über den `JournalVisibilityPort`, der von `FoundryJournalVisibilityAdapter` implementiert wird.
 
 ---
 
@@ -555,44 +501,12 @@ interface JournalCollectionPort {
   search(query: EntitySearchQuery<JournalEntry>): Result<JournalEntry[], EntityCollectionError>;
   query(): EntityQueryBuilder<JournalEntry>;
 }
-
-interface EntitySearchQuery<TEntity> {
-  filters?: Array<EntityFilter<TEntity>>;
-  filterGroups?: Array<EntityFilterGroup<TEntity>>;
-  limit?: number;
-  offset?: number;
-  sortBy?: keyof TEntity;
-  sortOrder?: "asc" | "desc";
-}
-
-interface EntityQueryBuilder<TEntity> {
-  where(field: keyof TEntity, operator: string, value: unknown): EntityQueryBuilder<TEntity>;
-  orWhere(field: keyof TEntity, operator: string, value: unknown): EntityQueryBuilder<TEntity>;
-  or(callback: (qb: EntityQueryBuilder<TEntity>) => void): EntityQueryBuilder<TEntity>;
-  and(callback: (qb: EntityQueryBuilder<TEntity>) => void): EntityQueryBuilder<TEntity>;
-  limit(count: number): EntityQueryBuilder<TEntity>;
-  offset(count: number): EntityQueryBuilder<TEntity>;
-  sortBy(field: keyof TEntity, order: "asc" | "desc"): EntityQueryBuilder<TEntity>;
-  execute(): Result<TEntity[], EntityCollectionError>;
-}
 ```
 
-**Beispiel - Einfache Abfrage**:
+**Beispiel - Query Builder verwenden:**
 
 ```typescript
 const collection = api.resolve(api.tokens.journalCollectionPortToken);
-
-// Alle Journals abrufen
-const allResult = collection.getAll();
-if (allResult.ok) {
-  console.log(`Gefunden: ${allResult.value.length} Journals`);
-}
-
-// Einzelnes Journal abrufen
-const journalResult = collection.getById("journal-id-123");
-if (journalResult.ok && journalResult.value) {
-  console.log(`Journal: ${journalResult.value.name}`);
-}
 
 // Query Builder verwenden
 const queryResult = collection.query()
@@ -605,25 +519,6 @@ if (queryResult.ok) {
 }
 ```
 
-**Beispiel - Komplexe OR-Abfrage**:
-
-```typescript
-const collection = api.resolve(api.tokens.journalCollectionPortToken);
-
-const result = collection.query()
-  .where("name", "contains", "Quest")
-  .orWhere("name", "contains", "Item")
-  .sortBy("name", "asc")
-  .limit(20)
-  .execute();
-
-if (result.ok) {
-  result.value.forEach(journal => {
-    console.log(`- ${journal.name}`);
-  });
-}
-```
-
 ---
 
 ### JournalRepository
@@ -633,23 +528,15 @@ Platform-agnostischer Zugriff auf Journal CRUD-Operationen. Erweitert `JournalCo
 ```typescript
 interface JournalRepository extends JournalCollectionPort {
   create(data: CreateEntityData<JournalEntry>): Promise<Result<JournalEntry, EntityRepositoryError>>;
-  createMany(data: CreateEntityData<JournalEntry>[]): Promise<Result<JournalEntry[], EntityRepositoryError>>;
   update(id: string, changes: EntityChanges<JournalEntry>): Promise<Result<JournalEntry, EntityRepositoryError>>;
-  updateMany(updates: Array<{ id: string; changes: EntityChanges<JournalEntry> }>): Promise<Result<JournalEntry[], EntityRepositoryError>>;
-  patch(id: string, partial: Partial<JournalEntry>): Promise<Result<JournalEntry, EntityRepositoryError>>;
-  upsert(id: string, data: CreateEntityData<JournalEntry>): Promise<Result<JournalEntry, EntityRepositoryError>>;
   delete(id: string): Promise<Result<void, EntityRepositoryError>>;
-  deleteMany(ids: string[]): Promise<Result<void, EntityRepositoryError>>;
   getFlag(id: string, scope: string, key: string): Result<unknown | null, EntityRepositoryError>;
   setFlag(id: string, scope: string, key: string, value: unknown): Promise<Result<void, EntityRepositoryError>>;
   unsetFlag(id: string, scope: string, key: string): Promise<Result<void, EntityRepositoryError>>;
 }
-
-type CreateEntityData<TEntity> = Omit<TEntity, "id" | "createdAt" | "updatedAt">;
-type EntityChanges<TEntity> = Partial<TEntity>;
 ```
 
-**Beispiel - Journal erstellen**:
+**Beispiel - Journal erstellen:**
 
 ```typescript
 const repository = api.resolve(api.tokens.journalRepositoryToken);
@@ -665,39 +552,6 @@ if (createResult.ok) {
 }
 ```
 
-**Beispiel - Journal aktualisieren**:
-
-```typescript
-const repository = api.resolve(api.tokens.journalRepositoryToken);
-
-const updateResult = await repository.update("journal-id-123", {
-  name: "Aktualisierter Name"
-});
-
-if (updateResult.ok) {
-  console.log(`Journal aktualisiert: ${updateResult.value.name}`);
-}
-```
-
-**Beispiel - Flag setzen**:
-
-```typescript
-const repository = api.resolve(api.tokens.journalRepositoryToken);
-
-const flagResult = await repository.setFlag(
-  "journal-id-123",
-  "fvtt_relationship_app_module",
-  "hidden",
-  true
-);
-
-if (flagResult.ok) {
-  console.log("Flag erfolgreich gesetzt");
-}
-```
-
-**Hinweis:** `JournalRepository` erweitert `JournalCollectionPort`, daher sind alle Collection-Methoden (getAll, getById, query, etc.) ebenfalls verfügbar.
-
 ---
 
 ### I18nFacadeService
@@ -712,7 +566,7 @@ interface I18nFacadeService {
 }
 ```
 
-**Beispiel - Übersetzung abrufen**:
+**Beispiel - Übersetzung abrufen:**
 
 ```typescript
 const api = game.modules.get('fvtt_relationship_app_module').api;
@@ -729,41 +583,7 @@ const messageResult = i18n.format("myModule.welcome", { name: "Andreas" });
 if (messageResult.ok) {
   console.log(messageResult.value); // "Willkommen, Andreas!"
 }
-
-// Prüfen ob Key existiert
-const hasResult = i18n.has("myModule.greeting");
-if (hasResult.ok && hasResult.value) {
-  console.log("Übersetzung vorhanden");
-}
 ```
-
-**Fallback-Strategie**:
-1. Foundry i18n System (primär)
-2. Lokales i18n System (fallback)
-3. Key selbst (last resort)
-
----
-
-### FoundryJournalFacade
-
-Facade für generische Journal-Operations.
-
-**Hinweis:** Diese Facade ist nicht Teil der öffentlichen API und sollte nicht direkt verwendet werden. Verwenden Sie stattdessen `JournalVisibilityService`, das über den `JournalVisibilityPort` arbeitet und domänenneutrale Typen verwendet.
-if (hiddenResult.ok) {
-  console.log(`Gefunden: ${hiddenResult.value.length} versteckte Journals`);
-  
-  hiddenResult.value.forEach(journal => {
-    console.log(`- ${journal.name} (ID: ${journal.id})`);
-  });
-} else {
-  console.error(`Fehler: ${hiddenResult.error.message}`);
-}
-```
-
-**Use Case**:
-- Externes Modul möchte auf versteckte Journals zugreifen
-- Zentrale Facade statt direkter Foundry-API-Zugriff
-- Result-Pattern für sichere Fehlerbehandlung
 
 ---
 
@@ -772,7 +592,7 @@ if (hiddenResult.ok) {
 Alle API-Methoden, die fehlschlagen können, geben ein `Result<T, E>` zurück:
 
 ```typescript
-type Result<T, E> = 
+type Result<T, E> =
   | { ok: true; value: T }
   | { ok: false; error: E };
 ```
@@ -789,19 +609,6 @@ if (result.ok) {
   // Fehler: result.error ist verfügbar
   console.error(result.error);
 }
-
-// Beispiel 2: Mit match-Utility
-import { match } from '@/utils/result';
-
-match(result, {
-  onOk: (entries) => console.log(`Gefunden: ${entries.length}`),
-  onErr: (error) => console.error(`Fehler: ${error.message}`)
-});
-
-// Beispiel 3: Mit unwrapOr
-import { unwrapOr } from '@/utils/result';
-
-const entries = unwrapOr(result, []); // Fallback auf leeres Array
 ```
 
 ---
@@ -818,9 +625,9 @@ const notifications = api.resolve(api.tokens.notificationCenterToken);
 notifications.info('Makro gestartet', { user: game.user.name });
 
 for (const actor of game.actors) {
-  notifications.debug('Actor gefunden', { 
-    name: actor.name, 
-    type: actor.type 
+  notifications.debug('Actor gefunden', {
+    name: actor.name,
+    type: actor.type
   });
 }
 
@@ -847,37 +654,13 @@ for (const journal of journalsResult.value) {
     'fvtt_relationship_app_module',
     'hidden'
   );
-  
+
   if (flagResult.ok && flagResult.value === true) {
     hiddenJournals.push(journal);
   }
 }
 
 console.log(`Versteckte Journal-Einträge: ${hiddenJournals.length}`);
-```
-
-### Beispiel 3: Hook-Registration in anderem Modul
-
-```typescript
-Hooks.once('ready', () => {
-  const api = game.modules.get('fvtt_relationship_app_module')?.api;
-  if (!api) return;
-
-  const hooksService = api.resolve(api.tokens.foundryHooksToken);
-  const notifications = api.resolve(api.tokens.notificationCenterToken);
-
-  const hookResult = hooksService.on('createJournalEntry', (journal, options, userId) => {
-    notifications.info('Neuer Journal-Eintrag erstellt', {
-      name: journal.name,
-      id: journal.id,
-      userId
-    });
-  });
-
-  if (!hookResult.ok) {
-    console.error('Hook-Registration fehlgeschlagen');
-  }
-});
 ```
 
 ---
@@ -914,101 +697,6 @@ if (result.ok) {
 }
 ```
 
-### Versionssicherheit
-
-Die API ist versionssicher durch das Port-Adapter-Pattern. Services funktionieren auf allen unterstützten Foundry-Versionen (v13+).
-
----
-
-## 🛡️ Error-Handling Best Practices
-
-### 1. Immer Result-Pattern verwenden
-
-```typescript
-// ❌ FALSCH: Exceptions werfen/fangen
-try {
-  const notifications = api.resolve(api.tokens.notificationCenterToken);
-} catch (error) {
-  // resolve() wirft nur bei API-Boundary-Violations
-}
-
-// ✅ RICHTIG: resolveWithError() für Result-Pattern
-const notificationResult = api.resolveWithError(api.tokens.notificationCenterToken);
-if (notificationResult.ok) {
-  const notifications = notificationResult.value;
-  notifications.info('Success');
-} else {
-  console.error('Failed to resolve notification center:', notificationResult.error);
-}
-```
-
-### 2. Fehler-Details loggen
-
-```typescript
-const result = gameService.getJournalEntries();
-if (!result.ok) {
-  // Logge vollständige Error-Details für Debugging
-  console.error('Error details:', {
-    code: result.error.code,
-    message: result.error.message,
-    details: result.error.details,
-    stack: result.error.stack, // Falls vorhanden
-    timestamp: result.error.timestamp, // Falls vorhanden
-  });
-}
-```
-
-### 3. Graceful Degradation
-
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module')?.api;
-if (!api) {
-  console.warn('Relationship App nicht verfügbar - verwende Fallback');
-  // Fallback-Logik
-  return;
-}
-
-const notificationResult = api.resolveWithError(api.tokens.notificationCenterToken);
-const notifications = notificationResult.ok ? notificationResult.value : {
-  info: console.log,
-  error: console.error,
-  // ... minimal logger fallback
-};
-```
-
-### 4. Async Error-Handling
-
-```typescript
-const settingsService = api.resolve(api.tokens.foundrySettingsToken);
-
-// Set-Operation ist async - await und Result prüfen
-const setResult = await settingsService.set('my-module', 'myKey', 'myValue');
-if (!setResult.ok) {
-  console.error('Setting konnte nicht gespeichert werden:', setResult.error.message);
-  ui.notifications.error('Einstellungen konnten nicht gespeichert werden');
-}
-```
-
-### 5. Container Error Codes
-
-Die wichtigsten Error Codes:
-
-| Code | Bedeutung | Handling |
-|------|-----------|----------|
-| `TokenNotRegistered` | Service nicht registriert | Modul-Abhängigkeiten prüfen |
-| `FactoryFailed` | Service-Erstellung fehlgeschlagen | Logs prüfen, Foundry-Version checken |
-| `InvalidOperation` | Ungültige Operation | API-Dokumentation prüfen |
-| `Disposed` | Container wurde disposed | Modul neu laden |
-
-### 6. Foundry Error Codes
-
-| Code | Bedeutung | Handling |
-|------|-----------|----------|
-| `API_NOT_AVAILABLE` | Foundry API nicht verfügbar | Zu früh aufgerufen (vor init Hook) |
-| `VALIDATION_FAILED` | Eingabe-Validierung fehlgeschlagen | Daten prüfen |
-| `OPERATION_FAILED` | Foundry-Operation fehlgeschlagen | Foundry-Logs prüfen |
-| `PORT_SELECTION_FAILED` | Keine kompatible Version | Foundry-Version prüfen |
-
 ---
 
 ## 🔒 API-Sicherheit & Deprecation
@@ -1017,21 +705,9 @@ Die wichtigsten Error Codes:
 
 Sensible Services werden automatisch mit ReadOnly-Wrappern geschützt:
 
-**Logger:**
+**NotificationCenter:**
 - ✅ Erlaubt: `log()`, `debug()`, `info()`, `warn()`, `error()`, `withTraceId()`
 - ❌ Blockiert: `setMinLevel()` und alle anderen Konfigurationsmethoden
-
-**I18n:**
-- ✅ Erlaubt: `translate()`, `format()`, `has()`
-- ❌ Blockiert: Alle internen Properties und nicht-öffentliche Methoden
-
-```typescript
-const api = game.modules.get('fvtt_relationship_app_module').api;
-const notifications = api.resolve(api.tokens.notificationCenterToken);
-
-notifications.info("OK");           // ✅ Funktioniert
-notifications.setMinLevel(0);       // ❌ Error: "Property setMinLevel is not accessible"
-```
 
 ### Deprecation-Mechanismus
 
@@ -1051,19 +727,114 @@ Deprecated Tokens zeigen automatisch Warnungen bei der ersten Verwendung:
 - Token bleibt funktional während Deprecation-Phase
 - Mindestens 1 Major-Version Vorlaufzeit
 
-**API-Changelog:**
-- Alle API-Änderungen dokumentiert in [API-CHANGELOG.md](./API-CHANGELOG.md)
-- Separates Changelog für Public API (unabhängig von internen Änderungen)
-- Kategorien: Added, Changed, Deprecated, Removed, Breaking Changes
+---
+
+## 📝 API Changelog
+
+Dieses Changelog dokumentiert **nur Änderungen an der Public API** (`game.modules.get('fvtt_relationship_app_module').api`).
+
+Für interne Modul-Änderungen siehe [CHANGELOG.md](../../CHANGELOG.md).
+
+---
+
+### [Unreleased]
+
+#### Changed
+- **NotificationCenter Token** - Exponiert nur noch Logging-Methoden; Channel-Mutationen (`addChannel`, `removeChannel`) führen zu Runtime-Hinweisen.
+- **FoundrySettings Token** - Öffentliche API erlaubt ausschließlich `get()`, um Modul-Einstellungen read-only bereitzustellen.
+
+---
+
+### [API 1.0.0] - 2025-11-09
+
+Initial Public API Release
+
+#### Added
+
+**Tokens (9 Services):**
+- `notificationCenterToken` - Zentraler Notification-Router mit Channel-System
+- `journalVisibilityServiceToken` - Journal visibility management (hide/show entries)
+- `foundryGameToken` - Foundry Game API wrapper (version-agnostic)
+- `foundryHooksToken` - Foundry Hooks API wrapper with lifecycle management
+- `foundryDocumentToken` - Foundry Document API wrapper (flags, metadata)
+- `foundryUIToken` - Foundry UI API wrapper (notifications, modals)
+- `foundrySettingsToken` - Foundry Settings API wrapper (get/set/register)
+- `i18nFacadeToken` - Internationalization service with Foundry + Local fallback
+- `foundryJournalFacadeToken` - Journal operations facade
+
+**API Functions:**
+- `resolve<T>(token: ApiSafeToken<T>): T` - Resolve service from DI container
+- `getAvailableTokens(): Map<symbol, TokenInfo>` - Discover available tokens
+- `getMetrics(): MetricsSnapshot` - Performance metrics (when enabled)
+- `getHealth(): HealthStatus` - Module health status
+
+**API Properties:**
+- `version: "1.0.0"` - API version (independent of module version)
+- `tokens: ModuleApiTokens` - Well-known tokens collection
+
+#### Features
+
+- **Type-Safe:** Full TypeScript support with generics preserved
+- **Result Pattern:** All services use `Result<T, E>` for error handling
+- **Version-Agnostic:** Foundry services work across v13+ via Port-Adapter Pattern
+- **Observability:** Built-in metrics and health checks
+- **Token Discovery:** `getAvailableTokens()` for runtime exploration
+
+#### Design Principles
+
+- **Minimal API Surface:** Only 9 services exposed (not all 21+ internal services)
+- **API-Safe Tokens:** Internal tokens cannot be used externally
+- **No Breaking Changes:** API-safe tokens prevent accidental internal token leakage
+- **Backward Compatible:** Safe to add new tokens without breaking existing code
+
+#### Compatibility
+
+- **Foundry VTT:** v13+ (tested with v13.291)
+- **Module Version:** 0.10.0+
+- **API Version:** 1.0.0
+
+---
+
+## Versioning Strategy
+
+### API Version vs. Module Version
+
+- **API Version** (`api.version`): Follows semantic versioning for API changes only
+- **Module Version** (`module.json`): Follows semantic versioning for all changes
+
+**Example:**
+- Module v0.9.0 (internal refactoring) → API still 1.0.0
+- Module v1.1.0 (new internal feature) → API still 1.0.0
+- Module v1.2.0 (new exposed token) → API 1.1.0
+- Module v2.0.0 (breaking API change) → API 2.0.0
+
+### Breaking Changes Policy
+
+**Pre-1.0.0 (Module):**
+- Breaking API changes allowed without deprecation
+- Aggressive refactoring encouraged
+
+**Post-1.0.0 (Module):**
+- Breaking API changes require deprecation period
+- Minimum 1 major version notice (e.g., deprecated in 1.5.0, removed in 2.0.0)
+- Migration guides provided for all breaking changes
+- Deprecation warnings via `markAsDeprecated()`
+
+### Deprecation Process
+
+1. Mark token as deprecated using `markAsDeprecated()`
+2. Console warning shown on first use (once per session)
+3. Token remains functional for ≥1 major version
+4. Migration guide provided in API Changelog
+5. Token removed in next major version
 
 ---
 
 ## 🔗 Weitere Ressourcen
 
-- [README.md](../README.md) - Modul-Übersicht
-- [ARCHITECTURE.md](../ARCHITECTURE.md) - Architektur-Details
-- [API-CHANGELOG.md](./API-CHANGELOG.md) - API-Änderungshistorie
-- [GitHub Repository](#) - Source Code
+- [README.md](../../README.md) - Modul-Übersicht
+- [Architektur-Übersicht](../architecture/overview.md) - Architektur-Details
+- [GitHub Repository](https://github.com/Lewellyen/fvtt_relationship_app_module) - Source Code
 
 ---
 
@@ -1075,5 +846,6 @@ Bei Fragen oder Problemen:
 
 ---
 
-**Version**: 0.10.0  
-**Letzte Aktualisierung**: 2025-11-09
+**Version**: 0.43.18
+**API Version**: 1.0.0
+**Letzte Aktualisierung**: 2025-01-XX

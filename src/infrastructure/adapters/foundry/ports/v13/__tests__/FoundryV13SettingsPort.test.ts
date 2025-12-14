@@ -1,31 +1,25 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { FoundryV13SettingsPort } from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13SettingsPort";
+import type { IFoundrySettingsAPI } from "@/infrastructure/adapters/foundry/api/foundry-api.interface";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import type { SettingConfig } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import * as v from "valibot";
 
 describe("FoundryV13SettingsPort", () => {
   let port: FoundryV13SettingsPort;
+  let mockAPI: IFoundrySettingsAPI;
 
   beforeEach(() => {
-    port = new FoundryV13SettingsPort();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    mockAPI = {
+      register: vi.fn(),
+      get: vi.fn() as <T>(namespace: string, key: string) => T | undefined,
+      set: vi.fn().mockResolvedValue(undefined),
+    };
+    port = new FoundryV13SettingsPort(mockAPI);
   });
 
   describe("register()", () => {
     it("should register setting successfully", () => {
-      const mockRegister = vi.fn();
-      vi.stubGlobal("game", {
-        settings: {
-          register: mockRegister,
-          get: vi.fn(),
-          set: vi.fn(),
-        },
-      });
-
       const config: SettingConfig<number> = {
         name: "Test Setting",
         hint: "A test setting",
@@ -38,20 +32,11 @@ describe("FoundryV13SettingsPort", () => {
       const result = port.register("test-module", "testKey", config);
 
       expectResultOk(result);
-      expect(mockRegister).toHaveBeenCalledWith("test-module", "testKey", config);
+      expect(mockAPI.register).toHaveBeenCalledWith("test-module", "testKey", config);
     });
 
     it("should handle onChange callback", () => {
-      const mockRegister = vi.fn();
       const onChangeSpy = vi.fn();
-
-      vi.stubGlobal("game", {
-        settings: {
-          register: mockRegister,
-          get: vi.fn(),
-          set: vi.fn(),
-        },
-      });
 
       const config: SettingConfig<string> = {
         name: "Test",
@@ -65,11 +50,11 @@ describe("FoundryV13SettingsPort", () => {
       const result = port.register("test-module", "testKey", config);
 
       expectResultOk(result);
-      expect(mockRegister).toHaveBeenCalledWith("test-module", "testKey", config);
+      expect(mockAPI.register).toHaveBeenCalledWith("test-module", "testKey", config);
     });
 
     it("should return error when game.settings not available", () => {
-      vi.stubGlobal("game", undefined);
+      const portWithoutAPI = new FoundryV13SettingsPort(null as unknown as IFoundrySettingsAPI);
 
       const config: SettingConfig<boolean> = {
         name: "Test",
@@ -79,7 +64,7 @@ describe("FoundryV13SettingsPort", () => {
         default: false,
       };
 
-      const result = port.register("test-module", "testKey", config);
+      const result = portWithoutAPI.register("test-module", "testKey", config);
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
@@ -87,16 +72,8 @@ describe("FoundryV13SettingsPort", () => {
     });
 
     it("should handle registration errors", () => {
-      const mockRegister = vi.fn(() => {
+      mockAPI.register = vi.fn(() => {
         throw new Error("Registration failed");
-      });
-
-      vi.stubGlobal("game", {
-        settings: {
-          register: mockRegister,
-          get: vi.fn(),
-          set: vi.fn(),
-        },
       });
 
       const config: SettingConfig<number> = {
@@ -115,14 +92,6 @@ describe("FoundryV13SettingsPort", () => {
     });
 
     it("should propagate validation errors from validateSettingConfig", () => {
-      vi.stubGlobal("game", {
-        settings: {
-          register: vi.fn(),
-          get: vi.fn(),
-          set: vi.fn(),
-        },
-      });
-
       // Invalid config: empty namespace
       const config: SettingConfig<number> = {
         name: "Test",
@@ -138,69 +107,31 @@ describe("FoundryV13SettingsPort", () => {
       expect(result.error.code).toBe("VALIDATION_FAILED");
       expect(result.error.message).toContain("Invalid setting namespace");
     });
-
-    it("should propagate errors from castFoundrySettingsApi when settings object is invalid", () => {
-      // game.settings exists but doesn't have required methods
-      vi.stubGlobal("game", {
-        settings: {
-          // Missing register, get, set methods
-        },
-      });
-
-      const config: SettingConfig<number> = {
-        name: "Test",
-        scope: "world",
-        config: true,
-        type: Number,
-        default: 0,
-      };
-
-      const result = port.register("test-module", "testKey", config);
-
-      expectResultErr(result);
-      expect(result.error.code).toBe("API_NOT_AVAILABLE");
-      expect(result.error.message).toContain("required methods");
-    });
   });
 
   describe("get()", () => {
     it("should get setting value successfully with schema validation", () => {
-      const mockGet = vi.fn().mockReturnValue(123);
-      vi.stubGlobal("game", {
-        settings: {
-          register: vi.fn(),
-          get: mockGet,
-          set: vi.fn(),
-        },
-      });
+      mockAPI.get = vi.fn().mockReturnValue(123);
 
       const result = port.get("test-module", "testKey", v.number());
 
       expectResultOk(result);
       expect(result.value).toBe(123);
-      expect(mockGet).toHaveBeenCalledWith("test-module", "testKey");
+      expect(mockAPI.get).toHaveBeenCalledWith("test-module", "testKey");
     });
 
     it("should return error when game.settings not available", () => {
-      vi.stubGlobal("game", undefined);
+      const portWithoutAPI = new FoundryV13SettingsPort(null as unknown as IFoundrySettingsAPI);
 
-      const result = port.get("test-module", "testKey", v.number());
+      const result = portWithoutAPI.get("test-module", "testKey", v.number());
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
     });
 
     it("should handle get errors", () => {
-      const mockGet = vi.fn(() => {
+      mockAPI.get = vi.fn(() => {
         throw new Error("Get failed");
-      });
-
-      vi.stubGlobal("game", {
-        settings: {
-          register: vi.fn(),
-          get: mockGet,
-          set: vi.fn(),
-        },
       });
 
       const result = port.get("test-module", "testKey", v.string());
@@ -211,14 +142,7 @@ describe("FoundryV13SettingsPort", () => {
     });
 
     it("should validate setting value and return error if validation fails", () => {
-      const mockGet = vi.fn(() => "invalid");
-      vi.stubGlobal("game", {
-        settings: {
-          register: vi.fn(),
-          get: mockGet,
-          set: vi.fn(),
-        },
-      });
+      mockAPI.get = vi.fn(() => "invalid") as <T>(namespace: string, key: string) => T | undefined;
 
       const result = port.get("test-module", "testKey", v.number());
 
@@ -228,14 +152,7 @@ describe("FoundryV13SettingsPort", () => {
     });
 
     it("should accept valid enum values", () => {
-      const mockGet = vi.fn(() => 1);
-      vi.stubGlobal("game", {
-        settings: {
-          register: vi.fn(),
-          get: mockGet,
-          set: vi.fn(),
-        },
-      });
+      mockAPI.get = vi.fn(() => 1) as <T>(namespace: string, key: string) => T | undefined;
 
       const result = port.get("test-module", "logLevel", v.picklist([0, 1, 2, 3]));
 
@@ -244,73 +161,36 @@ describe("FoundryV13SettingsPort", () => {
     });
 
     it("should reject invalid enum values", () => {
-      const mockGet = vi.fn(() => 999);
-      vi.stubGlobal("game", {
-        settings: {
-          register: vi.fn(),
-          get: mockGet,
-          set: vi.fn(),
-        },
-      });
+      mockAPI.get = vi.fn(() => 999) as <T>(namespace: string, key: string) => T | undefined;
 
       const result = port.get("test-module", "logLevel", v.picklist([0, 1, 2, 3]));
 
       expectResultErr(result);
       expect(result.error.code).toBe("VALIDATION_FAILED");
     });
-
-    it("should propagate errors from castFoundrySettingsApi when settings object is invalid", () => {
-      // game.settings exists but doesn't have required methods
-      vi.stubGlobal("game", {
-        settings: {
-          // Missing register, get, set methods
-        },
-      });
-
-      const result = port.get("test-module", "testKey", v.number());
-
-      expectResultErr(result);
-      expect(result.error.code).toBe("API_NOT_AVAILABLE");
-      expect(result.error.message).toContain("required methods");
-    });
   });
 
   describe("set()", () => {
     it("should set setting value successfully", async () => {
-      const mockSet = vi.fn().mockResolvedValue(undefined);
-      vi.stubGlobal("game", {
-        settings: {
-          register: vi.fn(),
-          get: vi.fn(),
-          set: mockSet,
-        },
-      });
+      mockAPI.set = vi.fn().mockResolvedValue(undefined);
 
       const result = await port.set("test-module", "testKey", 456);
 
       expectResultOk(result);
-      expect(mockSet).toHaveBeenCalledWith("test-module", "testKey", 456);
+      expect(mockAPI.set).toHaveBeenCalledWith("test-module", "testKey", 456);
     });
 
     it("should return error when game.settings not available", async () => {
-      vi.stubGlobal("game", undefined);
+      const portWithoutAPI = new FoundryV13SettingsPort(null as unknown as IFoundrySettingsAPI);
 
-      const result = await port.set("test-module", "testKey", "value");
+      const result = await portWithoutAPI.set("test-module", "testKey", "value");
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
     });
 
     it("should handle set errors", async () => {
-      const mockSet = vi.fn().mockRejectedValue(new Error("Set failed"));
-
-      vi.stubGlobal("game", {
-        settings: {
-          register: vi.fn(),
-          get: vi.fn(),
-          set: mockSet,
-        },
-      });
+      mockAPI.set = vi.fn().mockRejectedValue(new Error("Set failed"));
 
       const result = await port.set("test-module", "testKey", true);
 
@@ -320,32 +200,19 @@ describe("FoundryV13SettingsPort", () => {
     });
 
     it("should propagate errors from castFoundrySettingsApi when settings object is invalid", async () => {
-      // game.settings exists but doesn't have required methods
-      vi.stubGlobal("game", {
-        settings: {
-          // Missing register, get, set methods
-        },
-      });
+      // Port without API
+      const portWithoutAPI = new FoundryV13SettingsPort(null as unknown as IFoundrySettingsAPI);
 
-      const result = await port.set("test-module", "testKey", "value");
+      const result = await portWithoutAPI.set("test-module", "testKey", "value");
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
-      expect(result.error.message).toContain("required methods");
+      expect(result.error.message).toContain("Foundry settings API not available");
     });
   });
 
   describe("Scope Support", () => {
     it("should support world scope", () => {
-      const mockRegister = vi.fn();
-      vi.stubGlobal("game", {
-        settings: {
-          register: mockRegister,
-          get: vi.fn(),
-          set: vi.fn(),
-        },
-      });
-
       const config: SettingConfig<number> = {
         name: "World Setting",
         scope: "world",
@@ -355,19 +222,10 @@ describe("FoundryV13SettingsPort", () => {
       };
 
       port.register("mod", "key", config);
-      expect(mockRegister).toHaveBeenCalled();
+      expect(mockAPI.register).toHaveBeenCalled();
     });
 
     it("should support client scope", () => {
-      const mockRegister = vi.fn();
-      vi.stubGlobal("game", {
-        settings: {
-          register: mockRegister,
-          get: vi.fn(),
-          set: vi.fn(),
-        },
-      });
-
       const config: SettingConfig<number> = {
         name: "Client Setting",
         scope: "client",
@@ -377,19 +235,10 @@ describe("FoundryV13SettingsPort", () => {
       };
 
       port.register("mod", "key", config);
-      expect(mockRegister).toHaveBeenCalled();
+      expect(mockAPI.register).toHaveBeenCalled();
     });
 
     it("should support user scope (v13+)", () => {
-      const mockRegister = vi.fn();
-      vi.stubGlobal("game", {
-        settings: {
-          register: mockRegister,
-          get: vi.fn(),
-          set: vi.fn(),
-        },
-      });
-
       const config: SettingConfig<number> = {
         name: "User Setting",
         scope: "user",
@@ -399,19 +248,15 @@ describe("FoundryV13SettingsPort", () => {
       };
 
       port.register("mod", "key", config);
-      expect(mockRegister).toHaveBeenCalled();
+      expect(mockAPI.register).toHaveBeenCalled();
     });
   });
 
   describe("disposed state guards", () => {
     beforeEach(() => {
-      vi.stubGlobal("game", {
-        settings: {
-          register: vi.fn(),
-          get: vi.fn().mockReturnValue("value"),
-          set: vi.fn().mockResolvedValue("value"),
-        },
-      });
+      // Reset mockAPI for disposed state tests
+      mockAPI.get = vi.fn().mockReturnValue("value");
+      mockAPI.set = vi.fn().mockResolvedValue(undefined);
     });
 
     it("should prevent register after disposal", () => {

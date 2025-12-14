@@ -16,12 +16,12 @@ import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfac
 import type { FoundryI18n } from "@/infrastructure/adapters/foundry/interfaces/FoundryI18n";
 import type { FoundryModule } from "@/infrastructure/adapters/foundry/interfaces/FoundryModule";
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import { FoundryV13GamePort } from "./FoundryV13GamePort";
-import { FoundryV13HooksPort } from "./FoundryV13HooksPort";
+import { createFoundryV13GamePort } from "./FoundryV13GamePort";
+import { createFoundryV13HooksPort } from "./FoundryV13HooksPort";
 import { FoundryV13DocumentPort } from "./FoundryV13DocumentPort";
-import { FoundryV13UIPort } from "./FoundryV13UIPort";
-import { FoundryV13SettingsPort } from "./FoundryV13SettingsPort";
-import { FoundryV13I18nPort } from "./FoundryV13I18nPort";
+import { createFoundryV13UIPort } from "./FoundryV13UIPort";
+import { createFoundryV13SettingsPort } from "./FoundryV13SettingsPort";
+import { createFoundryV13I18nPort } from "./FoundryV13I18nPort";
 import { createFoundryV13ModulePort } from "./FoundryV13ModulePort";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { foundryV13GamePortToken } from "@/infrastructure/shared/tokens/foundry/foundry-v13-game-port.token";
@@ -74,25 +74,65 @@ export function registerV13Ports(
 ): Result<void, string> {
   const portRegistrationErrors: string[] = [];
 
-  // Register all v13 port classes with the DI container (VOR PortRegistry-Registrierungen)
-  container.registerClass(foundryV13GamePortToken, FoundryV13GamePort, ServiceLifecycle.SINGLETON);
-  container.registerClass(
-    foundryV13HooksPortToken,
-    FoundryV13HooksPort,
-    ServiceLifecycle.SINGLETON
+  // Register all v13 port factories with the DI container (VOR PortRegistry-Registrierungen)
+  // Using factory functions to inject Foundry APIs for better testability
+  const gamePortResult = container.registerFactory(
+    foundryV13GamePortToken,
+    createFoundryV13GamePort,
+    ServiceLifecycle.SINGLETON,
+    [] // No dependencies
   );
+  if (isErr(gamePortResult)) {
+    portRegistrationErrors.push(`FoundryGame: ${gamePortResult.error.message}`);
+  }
+
+  const hooksPortResult = container.registerFactory(
+    foundryV13HooksPortToken,
+    createFoundryV13HooksPort,
+    ServiceLifecycle.SINGLETON,
+    [] // No dependencies
+  );
+  if (isErr(hooksPortResult)) {
+    portRegistrationErrors.push(`FoundryHooks: ${hooksPortResult.error.message}`);
+  }
+
+  // FoundryV13DocumentPort doesn't use Foundry APIs directly, so it can stay as class registration
   container.registerClass(
     foundryV13DocumentPortToken,
     FoundryV13DocumentPort,
     ServiceLifecycle.SINGLETON
   );
-  container.registerClass(foundryV13UIPortToken, FoundryV13UIPort, ServiceLifecycle.SINGLETON);
-  container.registerClass(
-    foundryV13SettingsPortToken,
-    FoundryV13SettingsPort,
-    ServiceLifecycle.SINGLETON
+
+  const uiPortResult = container.registerFactory(
+    foundryV13UIPortToken,
+    createFoundryV13UIPort,
+    ServiceLifecycle.SINGLETON,
+    [] // No dependencies
   );
-  container.registerClass(foundryV13I18nPortToken, FoundryV13I18nPort, ServiceLifecycle.SINGLETON);
+  if (isErr(uiPortResult)) {
+    portRegistrationErrors.push(`FoundryUI: ${uiPortResult.error.message}`);
+  }
+
+  const settingsPortResult = container.registerFactory(
+    foundryV13SettingsPortToken,
+    createFoundryV13SettingsPort,
+    ServiceLifecycle.SINGLETON,
+    [] // No dependencies
+  );
+  if (isErr(settingsPortResult)) {
+    portRegistrationErrors.push(`FoundrySettings: ${settingsPortResult.error.message}`);
+  }
+
+  const i18nPortResult = container.registerFactory(
+    foundryV13I18nPortToken,
+    createFoundryV13I18nPort,
+    ServiceLifecycle.SINGLETON,
+    [] // No dependencies
+  );
+  if (isErr(i18nPortResult)) {
+    portRegistrationErrors.push(`FoundryI18n: ${i18nPortResult.error.message}`);
+  }
+
   container.registerValue(foundryV13ModulePortToken, createFoundryV13ModulePort());
 
   // Register FoundryGame port token in registry

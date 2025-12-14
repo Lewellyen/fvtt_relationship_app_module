@@ -1,16 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { FoundryV13GamePort } from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13GamePort";
+import {
+  FoundryV13GamePort,
+  createFoundryV13GamePort,
+} from "@/infrastructure/adapters/foundry/ports/v13/FoundryV13GamePort";
+import type { IFoundryGameAPI } from "@/infrastructure/adapters/foundry/api/foundry-api.interface";
+import type { FoundryJournalEntry } from "@/infrastructure/adapters/foundry/types";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 
 describe("FoundryV13GamePort", () => {
   let port: FoundryV13GamePort;
+  let mockAPI: IFoundryGameAPI;
 
   beforeEach(() => {
-    port = new FoundryV13GamePort();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    mockAPI = {
+      journal: {
+        contents: [],
+        get: vi.fn(),
+      },
+    };
+    port = new FoundryV13GamePort(mockAPI);
   });
 
   describe("getJournalEntries", () => {
@@ -18,13 +26,9 @@ describe("FoundryV13GamePort", () => {
       const mockJournals = [
         { id: "journal-1", name: "Test Journal 1", getFlag: vi.fn() },
         { id: "journal-2", name: "Test Journal 2", getFlag: vi.fn() },
-      ];
+      ] as unknown as FoundryJournalEntry[];
 
-      vi.stubGlobal("game", {
-        journal: {
-          contents: mockJournals,
-        },
-      });
+      mockAPI.journal.contents = mockJournals;
 
       const result = port.getJournalEntries();
 
@@ -34,9 +38,11 @@ describe("FoundryV13GamePort", () => {
     });
 
     it("should handle missing game object", () => {
-      vi.stubGlobal("game", undefined);
+      const portWithoutAPI = new FoundryV13GamePort({
+        journal: null as unknown as IFoundryGameAPI["journal"],
+      });
 
-      const result = port.getJournalEntries();
+      const result = portWithoutAPI.getJournalEntries();
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
@@ -44,9 +50,11 @@ describe("FoundryV13GamePort", () => {
     });
 
     it("should handle missing journal collection", () => {
-      vi.stubGlobal("game", {});
+      const portWithoutJournal = new FoundryV13GamePort({
+        journal: undefined as unknown as IFoundryGameAPI["journal"],
+      });
 
-      const result = port.getJournalEntries();
+      const result = portWithoutJournal.getJournalEntries();
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
@@ -54,11 +62,9 @@ describe("FoundryV13GamePort", () => {
     });
 
     it("should handle iteration errors via tryCatch", () => {
-      vi.stubGlobal("game", {
-        journal: {
-          get contents() {
-            throw new Error("Internal error");
-          },
+      Object.defineProperty(mockAPI.journal, "contents", {
+        get() {
+          throw new Error("Internal error");
         },
       });
 
@@ -74,13 +80,9 @@ describe("FoundryV13GamePort", () => {
       const invalidJournals = [
         { id: "journal-1", name: "Valid Journal", getFlag: vi.fn() },
         { id: undefined, name: "Invalid Journal" }, // Missing id - will fail validation
-      ];
+      ] as unknown as FoundryJournalEntry[];
 
-      vi.stubGlobal("game", {
-        journal: {
-          contents: invalidJournals,
-        },
-      });
+      mockAPI.journal.contents = invalidJournals;
 
       const result = port.getJournalEntries();
 
@@ -94,13 +96,9 @@ describe("FoundryV13GamePort", () => {
       // Mock journal entry with invalid structure
       const invalidJournals = [
         { name: "No ID Journal" }, // Missing id property
-      ];
+      ] as unknown as FoundryJournalEntry[];
 
-      vi.stubGlobal("game", {
-        journal: {
-          contents: invalidJournals,
-        },
-      });
+      mockAPI.journal.contents = invalidJournals;
 
       const result = port.getJournalEntries();
 
@@ -111,11 +109,7 @@ describe("FoundryV13GamePort", () => {
     });
 
     it("should return empty array for empty journal collection", () => {
-      vi.stubGlobal("game", {
-        journal: {
-          contents: [],
-        },
-      });
+      mockAPI.journal.contents = [];
 
       const result = port.getJournalEntries();
 
@@ -136,13 +130,9 @@ describe("FoundryV13GamePort", () => {
           update: mockUpdate,
           createEmbeddedDocuments: vi.fn(),
         },
-      ];
+      ] as unknown as FoundryJournalEntry[];
 
-      vi.stubGlobal("game", {
-        journal: {
-          contents: mockJournals,
-        },
-      });
+      mockAPI.journal.contents = mockJournals;
 
       const result = port.getJournalEntries();
 
@@ -163,13 +153,15 @@ describe("FoundryV13GamePort", () => {
 
   describe("getJournalEntryById", () => {
     it("should return journal entry by id", () => {
-      const mockJournal = { id: "journal-1", name: "Test Journal", getFlag: vi.fn() };
+      const mockJournal = {
+        id: "journal-1",
+        name: "Test Journal",
+        getFlag: vi.fn(),
+      } as unknown as FoundryJournalEntry;
 
-      vi.stubGlobal("game", {
-        journal: {
-          get: vi.fn((id: string) => (id === "journal-1" ? mockJournal : undefined)),
-        },
-      });
+      mockAPI.journal.get = vi.fn((id: string) =>
+        id === "journal-1" ? mockJournal : undefined
+      ) as (id: string) => FoundryJournalEntry | undefined;
 
       const result = port.getJournalEntryById("journal-1");
 
@@ -186,11 +178,7 @@ describe("FoundryV13GamePort", () => {
     });
 
     it("should return null when entry not found", () => {
-      vi.stubGlobal("game", {
-        journal: {
-          get: vi.fn(() => undefined),
-        },
-      });
+      mockAPI.journal.get = vi.fn(() => undefined);
 
       const result = port.getJournalEntryById("nonexistent");
 
@@ -199,9 +187,11 @@ describe("FoundryV13GamePort", () => {
     });
 
     it("should handle missing game object", () => {
-      vi.stubGlobal("game", undefined);
+      const portWithoutAPI = new FoundryV13GamePort({
+        journal: null as unknown as IFoundryGameAPI["journal"],
+      });
 
-      const result = port.getJournalEntryById("journal-1");
+      const result = portWithoutAPI.getJournalEntryById("journal-1");
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
@@ -209,9 +199,11 @@ describe("FoundryV13GamePort", () => {
     });
 
     it("should handle missing journal collection", () => {
-      vi.stubGlobal("game", {});
+      const portWithoutJournal = new FoundryV13GamePort({
+        journal: undefined as unknown as IFoundryGameAPI["journal"],
+      });
 
-      const result = port.getJournalEntryById("journal-1");
+      const result = portWithoutJournal.getJournalEntryById("journal-1");
 
       expectResultErr(result);
       expect(result.error.code).toBe("API_NOT_AVAILABLE");
@@ -219,12 +211,8 @@ describe("FoundryV13GamePort", () => {
     });
 
     it("should handle exceptions", () => {
-      vi.stubGlobal("game", {
-        journal: {
-          get: vi.fn(() => {
-            throw new Error("Get failed");
-          }),
-        },
+      mockAPI.journal.get = vi.fn(() => {
+        throw new Error("Get failed");
       });
 
       const result = port.getJournalEntryById("journal-1");
@@ -243,24 +231,24 @@ describe("FoundryV13GamePort", () => {
         flags: {},
         getFlag: vi.fn(),
         setFlag: vi.fn(),
-      }));
+      })) as unknown as FoundryJournalEntry[];
 
-      vi.stubGlobal("game", {
+      const testAPI: IFoundryGameAPI = {
         journal: {
           contents: mockJournals,
-          _source: { version: 1 },
+          get: vi.fn(),
         },
-      });
+      };
 
-      const port = new FoundryV13GamePort();
+      const testPort = new FoundryV13GamePort(testAPI);
 
       // First call: validation happens
-      const result1 = port.getJournalEntries();
+      const result1 = testPort.getJournalEntries();
       expectResultOk(result1);
       expect(result1.value).toHaveLength(100);
 
       // Second call: should use cache (same reference)
-      const result2 = port.getJournalEntries();
+      const result2 = testPort.getJournalEntries();
       expectResultOk(result2);
       expect(result2.value).toBe(result1.value); // Same reference = cached
     });
@@ -272,31 +260,30 @@ describe("FoundryV13GamePort", () => {
         flags: {},
         getFlag: vi.fn(),
         setFlag: vi.fn(),
-      }));
+      })) as unknown as FoundryJournalEntry[];
 
-      const mockGame = {
+      const testAPI: IFoundryGameAPI = {
         journal: {
           contents: mockJournals,
+          get: vi.fn(),
         },
       };
 
-      vi.stubGlobal("game", mockGame);
-
-      const port = new FoundryV13GamePort();
-      const result1 = port.getJournalEntries();
+      const testPort = new FoundryV13GamePort(testAPI);
+      const result1 = testPort.getJournalEntries();
       expectResultOk(result1);
 
       // Immediately request again (within TTL) - should return cached
-      const result2 = port.getJournalEntries();
+      const result2 = testPort.getJournalEntries();
       expectResultOk(result2);
 
       // Should be same reference (cache hit)
       expect(result2.value).toBe(result1.value);
 
       // Manually invalidate cache
-      port.invalidateCache();
+      testPort.invalidateCache();
 
-      const result3 = port.getJournalEntries();
+      const result3 = testPort.getJournalEntries();
       expectResultOk(result3);
 
       // Should be different reference after manual invalidation
@@ -310,23 +297,24 @@ describe("FoundryV13GamePort", () => {
         flags: {},
         getFlag: vi.fn(),
         setFlag: vi.fn(),
-      }));
+      })) as unknown as FoundryJournalEntry[];
 
-      vi.stubGlobal("game", {
+      const testAPI: IFoundryGameAPI = {
         journal: {
           contents: mockJournals,
+          get: vi.fn(),
         },
-      });
+      };
 
-      const port = new FoundryV13GamePort();
+      const testPort = new FoundryV13GamePort(testAPI);
 
       // First call - cache miss
-      const result1 = port.getJournalEntries();
+      const result1 = testPort.getJournalEntries();
       expectResultOk(result1);
       expect(result1.value).toHaveLength(5);
 
       // Second call within TTL - cache hit
-      const result2 = port.getJournalEntries();
+      const result2 = testPort.getJournalEntries();
       expectResultOk(result2);
       expect(result2.value).toHaveLength(5);
 
@@ -337,12 +325,12 @@ describe("FoundryV13GamePort", () => {
 
   describe("disposed state guards", () => {
     beforeEach(() => {
-      vi.stubGlobal("game", {
-        journal: {
-          contents: [{ id: "test-1", name: "Test", getFlag: vi.fn() }],
-          get: vi.fn((id: string) => ({ id, name: "Test", getFlag: vi.fn() })),
-        },
-      });
+      mockAPI.journal.contents = [
+        { id: "test-1", name: "Test", getFlag: vi.fn() },
+      ] as unknown as FoundryJournalEntry[];
+      mockAPI.journal.get = vi.fn(
+        (id: string) => ({ id, name: "Test", getFlag: vi.fn() }) as unknown as FoundryJournalEntry
+      );
     });
 
     it("should prevent getting journal entries after disposal", () => {
@@ -385,6 +373,131 @@ describe("FoundryV13GamePort", () => {
       const result2 = port.getJournalEntries();
       expectResultErr(result2);
       expect(result2.error.code).toBe("DISPOSED");
+    });
+  });
+
+  describe("createFoundryV13GamePort factory", () => {
+    beforeEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("should create port with null journal when game is undefined", () => {
+      // @ts-expect-error - intentionally undefined for test
+      global.game = undefined;
+
+      const port = createFoundryV13GamePort();
+      const result = port.getJournalEntries();
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+    });
+
+    it("should create port with null journal when game.journal is missing", () => {
+      // @ts-expect-error - intentionally missing journal for test
+      global.game = {};
+
+      const port = createFoundryV13GamePort();
+      const result = port.getJournalEntries();
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("API_NOT_AVAILABLE");
+    });
+
+    it("should create port with journal API when available", () => {
+      const mockJournal = {
+        contents: [
+          { id: "test-1", name: "Test Journal", getFlag: vi.fn() },
+        ] as unknown as FoundryJournalEntry[],
+        get: vi.fn((id: string) =>
+          id === "test-1"
+            ? ({
+                id: "test-1",
+                name: "Test Journal",
+                getFlag: vi.fn(),
+              } as unknown as FoundryJournalEntry)
+            : undefined
+        ),
+      };
+
+      // @ts-expect-error - mocking Foundry game API
+      global.game = {
+        journal: mockJournal,
+      };
+
+      const port = createFoundryV13GamePort();
+      const result = port.getJournalEntries();
+
+      expectResultOk(result);
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]?.id).toBe("test-1");
+    });
+
+    it("should include directory.render when journal.directory is available", () => {
+      const mockRender = vi.fn();
+      const mockJournal = {
+        contents: [] as FoundryJournalEntry[],
+        get: vi.fn(),
+        directory: {
+          render: mockRender,
+        },
+      };
+
+      // @ts-expect-error - mocking Foundry game API
+      global.game = {
+        journal: mockJournal,
+      };
+
+      const port = createFoundryV13GamePort();
+      const apiResult = (port as any).foundryAPI;
+
+      expect(apiResult.journal.directory).toBeDefined();
+      expect(typeof apiResult.journal.directory.render).toBe("function");
+
+      // Test that the render function calls the original
+      apiResult.journal.directory.render();
+      expect(mockRender).toHaveBeenCalledOnce();
+    });
+
+    it("should not include directory when journal.directory is missing", () => {
+      const mockJournal = {
+        contents: [] as FoundryJournalEntry[],
+        get: vi.fn(),
+        // directory is missing
+      };
+
+      // @ts-expect-error - mocking Foundry game API
+      global.game = {
+        journal: mockJournal,
+      };
+
+      const port = createFoundryV13GamePort();
+      const apiResult = (port as any).foundryAPI;
+
+      expect(apiResult.journal.directory).toBeUndefined();
+    });
+
+    it("should not include directory when journal.directory.render is missing", () => {
+      const mockJournal = {
+        contents: [] as FoundryJournalEntry[],
+        get: vi.fn(),
+        directory: {
+          // render is missing
+        },
+      };
+
+      // @ts-expect-error - mocking Foundry game API
+      global.game = {
+        journal: mockJournal,
+      };
+
+      const port = createFoundryV13GamePort();
+      const apiResult = (port as any).foundryAPI;
+
+      expect(apiResult.journal.directory).toBeUndefined();
     });
   });
 });

@@ -122,6 +122,16 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore-next-line'],
     reason: 'Generic Type Narrowing: selectedToken kommt aus tokens Map<number, InjectionToken<T>>, aber Strategy ist als PortMatchStrategy<unknown> typisiert für Flexibilität. TypeScript kann den generischen Typ nicht ableiten, obwohl der Token zur Laufzeit vom Typ InjectionToken<T> ist.',
   },
+  {
+    file: 'src/infrastructure/adapters/foundry/ports/v13/FoundryV13UIPort.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Foundry API Type Casts: Foundry\'s ui.sidebar types are incomplete, need type assertion for proper type safety (Foundry-spezifische Runtime-Type-Assertions)',
+  },
+  {
+    file: 'src/infrastructure/adapters/foundry/ports/v13/FoundryV13GamePort.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Foundry API Null Handling: null needed when API unavailable, but IFoundryGameAPI["journal"] is non-nullable (Foundry-spezifische Runtime-Null-Handling)',
+  },
 
   // Domain Port Interfaces: Leere Interface-Erweiterungen
   {

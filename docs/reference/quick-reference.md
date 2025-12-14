@@ -1,10 +1,10 @@
 # Quick Reference – Service & Dependency Übersicht
 
-**Model:** Claude Sonnet 4.5  
-**Datum:** 2025-11-20  
-**Projekt-Status:** Version 0.26.3 → Unreleased (Pre-Release - Clean Architecture Restrukturierung)  
-**API-Version:** 1.0.0  
-**Breaking Changes:** ✅ Erlaubt bis Modul 1.0.0  
+**Model:** Claude Sonnet 4.5
+**Datum:** 2025-11-20
+**Projekt-Status:** Version 0.26.3 → Unreleased (Pre-Release - Clean Architecture Restrukturierung)
+**API-Version:** 1.0.0
+**Breaking Changes:** ✅ Erlaubt bis Modul 1.0.0
 **Legacy-Code:** ❌ Wird unmittelbar bereinigt
 
 ---
@@ -29,8 +29,9 @@ src/
 
 | Dokument | Zweck |
 |----------|-------|
-| [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) | Vollständige Projektanalyse mit Refactoring-Empfehlungen |
-| [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) | Detaillierte Dependency-Visualisierung |
+| [Architektur-Übersicht](../architecture/overview.md) | High-Level Architektur |
+| [Service-Übersicht](./services.md) | Service-Dokumentation |
+| [Token-Katalog](./tokens.md) | DI-Token-Übersicht (TODO) |
 | Dieses Dokument | Schnelle Referenz für tägliche Entwicklung |
 
 ---
@@ -169,10 +170,10 @@ Dein Service → Logger → console.log/error/warn/info/debug
 
 ### Foundry API nutzen
 ```
-Dein Service 
-  → FoundryGameService 
-    → PortSelector 
-      → FoundryGamePortV13 
+Dein Service
+  → FoundryGameService
+    → PortSelector
+      → FoundryGamePortV13
         → game.journal
 ```
 
@@ -180,7 +181,7 @@ Dein Service
 ```
 Dein Service
   → I18nFacadeService
-    → FoundryI18nService (Foundry API) 
+    → FoundryI18nService (Foundry API)
       [FALLBACK]
     → LocalI18nService (JSON-basiert)
       [FALLBACK]
@@ -254,10 +255,10 @@ describe("MyService", () => {
       recordOperation: vi.fn(),
       // ... other metrics methods
     };
-    
+
     // Create Service with Mocks
     const service = new MyService(loggerMock, metricsMock);
-    
+
     // Test
     const result = service.doSomething();
     expect(result.ok).toBe(true);
@@ -391,25 +392,25 @@ tracedLogger.info("Operation completed");
 ## 🚨 Häufige Fehler & Lösungen
 
 ### Fehler: "Token not registered"
-**Ursache:** Service wurde nicht in `dependencyconfig.ts` registriert  
+**Ursache:** Service wurde nicht in `dependencyconfig.ts` registriert
 **Lösung:** Service registrieren in `configureDependencies()`
 
 ### Fehler: "Circular dependency detected"
-**Ursache:** Service A → Service B → Service A  
-**Lösung:** 
+**Ursache:** Service A → Service B → Service A
+**Lösung:**
 - Refactor zu Event-basierter Kommunikation (Observer Pattern)
 - Oder: Facade-Pattern einführen
 - Oder: Factory-basierte Registration
 
 ### Fehler: "PORT_SELECTION_FAILED"
-**Ursache:** Kein kompatibler Port für aktuelle Foundry-Version  
-**Lösung:** 
+**Ursache:** Kein kompatibler Port für aktuelle Foundry-Version
+**Lösung:**
 - Prüfe Foundry-Version: `game.version`
 - Prüfe verfügbare Ports in Port-Registry
 - Ggf. v14+ Ports implementieren
 
 ### Fehler: "Validation failed: Missing dependency"
-**Ursache:** Registrierungs-Reihenfolge falsch  
+**Ursache:** Registrierungs-Reihenfolge falsch
 **Lösung:** Dependencies MÜSSEN vor dem Service registriert werden
 
 ---
@@ -585,12 +586,12 @@ if (result.ok) {
 
 ## 📚 Weitere Ressourcen
 
-- **Architektur:** [ARCHITECTURE.md](../ARCHITECTURE.md)
-- **Versioning:** [VERSIONING_STRATEGY.md](./VERSIONING_STRATEGY.md) ⭐ **NEU**
-- **ADRs:** [docs/adr/](./adr/)
-- **Testing:** [TESTING.md](./TESTING.md)
-- **Configuration:** [CONFIGURATION.md](./CONFIGURATION.md)
-- **API:** [API.md](./API.md)
+- **Architektur:** [Architektur-Übersicht](../architecture/overview.md)
+- **Versioning:** [Versionierung](../development/versioning.md)
+- **ADRs:** [Architecture Decision Records](../decisions/README.md)
+- **Testing:** [Testing](../development/testing.md)
+- **Configuration:** [Konfiguration](../guides/configuration.md)
+- **API:** [API-Referenz](./api-reference.md)
 
 ---
 

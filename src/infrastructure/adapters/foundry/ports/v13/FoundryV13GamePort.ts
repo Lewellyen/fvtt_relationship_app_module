@@ -2,6 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { FoundryGame } from "../../interfaces/FoundryGame";
 import type { FoundryJournalEntry } from "../../types";
 import type { FoundryError } from "../../errors/FoundryErrors";
+import type { IFoundryGameAPI } from "../../api/foundry-api.interface";
 import { tryCatch, err } from "@/domain/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
 import { validateJournalEntries } from "../../validation/schemas";
@@ -14,6 +15,8 @@ import { APP_DEFAULTS } from "@/application/constants/app-constants";
  *
  * Performance optimization: Caches validated journal entries with TTL-based invalidation
  * to avoid expensive Valibot validation on every call. Cache expires after 5 seconds.
+ *
+ * Uses dependency injection for Foundry APIs to improve testability.
  */
 export class FoundryV13GamePort implements FoundryGame {
   #disposed = false;
@@ -21,11 +24,13 @@ export class FoundryV13GamePort implements FoundryGame {
   private lastCheckTimestamp = 0;
   private readonly cacheTtlMs = APP_DEFAULTS.CACHE_TTL_MS;
 
+  constructor(private readonly foundryAPI: IFoundryGameAPI) {}
+
   getJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
     if (this.#disposed) {
       return err(createFoundryError("DISPOSED", "Cannot get journal entries on disposed port"));
     }
-    if (typeof game === "undefined" || !game?.journal) {
+    if (!this.foundryAPI?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));
     }
 
@@ -43,7 +48,7 @@ export class FoundryV13GamePort implements FoundryGame {
     // game.journal is typed as DocumentCollection<JournalEntry> by fvtt-types
     // DocumentCollection.contents is an array of the stored documents
     const entries = tryCatch(
-      () => Array.from(game.journal.contents),
+      () => Array.from(this.foundryAPI.journal.contents),
       (error) =>
         createFoundryError("OPERATION_FAILED", "Failed to access journal entries", undefined, error)
     );
@@ -87,14 +92,14 @@ export class FoundryV13GamePort implements FoundryGame {
       return validationResult;
     }
 
-    if (typeof game === "undefined" || !game?.journal) {
+    if (!this.foundryAPI?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));
     }
 
     return tryCatch(
       () => {
         // game.journal.get() is typed by fvtt-types and returns JournalEntry | undefined
-        const entry = game.journal.get(validationResult.value);
+        const entry = this.foundryAPI.journal.get(validationResult.value);
         return entry ?? null;
       },
       (error) =>
@@ -114,4 +119,36 @@ export class FoundryV13GamePort implements FoundryGame {
     this.cachedEntries = null;
     this.lastCheckTimestamp = 0;
   }
+}
+
+/**
+ * Factory function to create FoundryV13GamePort instance for production use.
+ * Injects real Foundry game API.
+ *
+ * @returns FoundryV13GamePort instance
+ */
+export function createFoundryV13GamePort(): FoundryV13GamePort {
+  // Create port even if API is not available - port will return API_NOT_AVAILABLE errors
+  if (typeof game === "undefined" || !game?.journal) {
+    return new FoundryV13GamePort({
+      // type-coverage:ignore-next-line -- Required: null needed when API unavailable, but IFoundryGameAPI["journal"] is non-nullable
+      journal: null as unknown as IFoundryGameAPI["journal"],
+    });
+  }
+
+  return new FoundryV13GamePort({
+    journal: {
+      contents: Array.from(game.journal.contents),
+      get: (id: string) => game.journal.get(id),
+      ...(game.journal.directory && game.journal.directory.render
+        ? {
+            directory: {
+              render: () => {
+                game.journal.directory?.render();
+              },
+            },
+          }
+        : {}),
+    },
+  });
 }

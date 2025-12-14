@@ -4,9 +4,9 @@
 
 Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Moduls.
 
-**Datum:** 2025-11-29  
-**Stand:** Version 0.38.0 → Unreleased (SOLID-Refactoring abgeschlossen)  
-**Detaillierte Analyse:** Siehe [PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md), [ANALYSE_LOG.md](./docs/analysis/ANALYSE_LOG.md)
+**Datum:** 2025-11-29
+**Stand:** Version 0.38.0 → Unreleased (SOLID-Refactoring abgeschlossen)
+**Detaillierte Analyse:** Siehe [Architektur-Übersicht](./docs/architecture/overview.md), [Modul-Grenzen](./docs/architecture/module-boundaries.md) (TODO)
 
 ### Aktuelle Highlights (Unreleased)
 - **SOLID-Prinzipien vollständig umgesetzt**: Alle identifizierten Verstöße behoben ([Details](docs/analysis/ANALYSE_LOG.md))
@@ -21,9 +21,9 @@ Dieses Dokument beschreibt die Architektur des Foundry VTT Relationship App Modu
 - **Quality Gates erfüllt**: Alle Quality Gates bei 100% - Keine TypeScript-Fehler, keine Linter-Fehler, alle Checks bestanden
 
 ### Highlights (v0.20.0)
-- **NotificationCenter-first Fehler- und User-Kommunikation:** `ErrorService` ist vollständig ersetzt; alle Business-Services routen Nachrichten über Channels (Console/UI) mit Foundry-Option-Passthrough ([Details](docs/PROJECT-ANALYSIS.md#notifications)).
-- **DI-Wrapper-Konsolidierung:** Jede öffentlich instanziierbare Klasse besitzt ein `DI…`-Wrapper-Pendant, wodurch `configureDependencies` ausschließlich Wrapper registriert und Constructor-Signaturen stabil bleiben ([Details](docs/PROJECT-ANALYSIS.md#core-services)).
-- **Persistente Observability:** Der neue `PersistentMetricsCollector` kann Metriken in LocalStorage sichern, gesteuert über ENV-Flags `VITE_ENABLE_METRICS_PERSISTENCE` und `VITE_METRICS_PERSISTENCE_KEY` ([Details](docs/CONFIGURATION.md)).
+- **NotificationCenter-first Fehler- und User-Kommunikation:** `ErrorService` ist vollständig ersetzt; alle Business-Services routen Nachrichten über Channels (Console/UI) mit Foundry-Option-Passthrough.
+- **DI-Wrapper-Konsolidierung:** Jede öffentlich instanziierbare Klasse besitzt ein `DI…`-Wrapper-Pendant, wodurch `configureDependencies` ausschließlich Wrapper registriert und Constructor-Signaturen stabil bleiben.
+- **Persistente Observability:** Der neue `PersistentMetricsCollector` kann Metriken in LocalStorage sichern, gesteuert über ENV-Flags `VITE_ENABLE_METRICS_PERSISTENCE` und `VITE_METRICS_PERSISTENCE_KEY` ([Details](docs/guides/configuration.md)).
 
 ---
 
@@ -149,14 +149,14 @@ import { registerV13Ports } from "@/infrastructure/adapters/foundry/ports/v13/po
 function createPortRegistries() {
   const gamePortRegistry = new PortRegistry<FoundryGame>();
   // ... weitere Registries ...
-  
+
   // Delegiert an version-spezifische Schicht
   const result = registerV13Ports({
     gamePortRegistry,
     hooksPortRegistry,
     // ...
   });
-  
+
   return ok({ gamePortRegistry, /* ... */ });
 }
 
@@ -176,7 +176,7 @@ export function registerV13Ports(
   // 1. Registriere Port-Klassen im DI-Container
   container.registerClass(foundryV13GamePortToken, FoundryV13GamePort, ServiceLifecycle.SINGLETON);
   // ... weitere Ports ...
-  
+
   // 2. Speichere Tokens in PortRegistry (nicht Factories!)
   registry.gamePortRegistry.register(13, foundryGamePortV13Token);
   // ... weitere Registries ...
@@ -231,13 +231,13 @@ export class PortSelector {
     foundryVersion?: number
   ): Result<T, FoundryError> {
     // ... Version-Detection ...
-    
+
     // Resolve Port über Container (lazy instantiation)
     const portResult = this.container.resolveWithError(selectedToken);
     if (!portResult.ok) {
       return err(/* ... */);
     }
-    
+
     return ok(portResult.value);
   }
 }
@@ -665,7 +665,7 @@ interface JournalEntry {
 // 3. Service nutzt Domain-Port (keine Foundry-Abhängigkeiten)
 class JournalVisibilityService {
   constructor(private readonly port: PlatformJournalVisibilityPort) {}
-  
+
   getHiddenJournalEntries(): Result<JournalEntry[], JournalVisibilityError> {
     // Geschäftslogik mit domänenneutralen Typen
   }
@@ -674,7 +674,7 @@ class JournalVisibilityService {
 // 4. Foundry-Adapter implementiert Domain-Port (versionsunabhängig, nutzt FoundryJournalFacade)
 class FoundryJournalVisibilityAdapter implements PlatformJournalVisibilityPort {
   constructor(private readonly foundryJournalFacade: FoundryJournalFacade) {}
-  
+
   getAllEntries(): Result<JournalEntry[], JournalVisibilityError> {
     // Mapping: FoundryJournalEntry[] → JournalEntry[]
     const foundryEntries = this.foundryJournalFacade.getJournalEntries();
@@ -696,7 +696,7 @@ interface PlatformSettingsPort {
 // 2. Service nutzt Domain-Port (keine Foundry-Abhängigkeiten)
 class ModuleSettingsRegistrar {
   constructor(private readonly settings: PlatformSettingsPort) {}
-  
+
   registerAll(): void {
     this.settings.register("my-module", "enabled", {
       name: "Enable Feature",
@@ -710,7 +710,7 @@ class ModuleSettingsRegistrar {
 // 3. Foundry-Adapter implementiert Domain-Port (versionsunabhängig, nutzt FoundrySettings)
 class FoundrySettingsAdapter implements PlatformSettingsPort {
   constructor(private readonly foundrySettings: FoundrySettings) {}
-  
+
   register<T>(namespace: string, key: string, config: PlatformSettingConfig<T>): Result<void, SettingsError> {
     // Mapping: PlatformSettingConfig → Foundry SettingConfig
     const foundryConfig = {
@@ -840,11 +840,11 @@ Version-agnostische Wrapper die von `FoundryServiceBase` erben:
 ```typescript
 class FoundryGamePort extends FoundryServiceBase<FoundryGame> implements FoundryGame {
   static dependencies = [portSelectorToken, foundryGamePortRegistryToken, retryServiceToken] as const;
-  
+
   constructor(portSelector: PortSelector, portRegistry: PortRegistry<FoundryGame>, retryService: RetryService) {
     super(portSelector, portRegistry, retryService);
   }
-  
+
   getJournalEntries(): Result<FoundryJournalEntry[], FoundryError> {
     return this.withRetry(
       () => {
@@ -885,7 +885,7 @@ registry.register(14, () => new FoundryGamePortV14()); // Zukünftig
 Das Modul nutzt **konsequent** das Result-Pattern für Fehlerbehandlung:
 
 ```typescript
-type Result<T, E> = 
+type Result<T, E> =
   | { ok: true; value: T }
   | { ok: false; error: E };
 ```
@@ -962,9 +962,9 @@ Services deklarieren Dependencies als statische Property:
 ```typescript
 class FoundryGamePort {
   static dependencies = [portSelectorToken, registryToken] as const;
-  
+
   constructor(
-    portSelector: PortSelector, 
+    portSelector: PortSelector,
     registry: PortRegistry<FoundryGame>
   ) { }
 }
@@ -1083,7 +1083,7 @@ export function configureDependencies(container: ServiceContainer) {
   registerI18nServices(container);              // I18n Services
   registerNotifications(container);             // NotificationCenter + Channels
   registerRegistrars(container);                // DI-managed Registrars
-  
+
   const loopServiceResult = registerLoopPreventionServices(container);
   if (isErr(loopServiceResult)) return loopServiceResult;
 
@@ -1125,11 +1125,11 @@ class DIConsoleLoggerService extends ConsoleLoggerService {
 ```typescript
 Hooks.on("init", () => {
   root.exposeToModuleApi();  // API unter game.modules.get().api
-  
+
   // Registrars werden via DI aufgelöst
   const settingsRegistrar = container.resolveWithError(moduleSettingsRegistrarToken);
   settingsRegistrar.value.registerAll(container);
-  
+
   const hookRegistrar = container.resolveWithError(moduleHookRegistrarToken);
   hookRegistrar.value.registerAll(container);
 });
@@ -1179,7 +1179,7 @@ Dedizierte Error-Klassen mit Cause-Chains:
 ## Code-Konventionen
 
 ### UTF-8 Encoding
-**Alle Dateien MÜSSEN UTF-8 ohne BOM sein.**  
+**Alle Dateien MÜSSEN UTF-8 ohne BOM sein.**
 Deutsche Umlaute (ä, ö, ü, ß) müssen korrekt dargestellt werden.
 
 ### Naming
@@ -1274,7 +1274,7 @@ class PortSelector {
     portSelectionEventEmitterToken,
     observabilityRegistryToken
   ] as const;
-  
+
   constructor(
     private eventEmitter: PortSelectionEventEmitter,
     observability: ObservabilityRegistry
@@ -1282,7 +1282,7 @@ class PortSelector {
     // Self-registration: Service meldet sich selbst an
     observability.registerPortSelector(this);
   }
-  
+
   selectPort() {
     // Events werden automatisch zu Logger/Metrics geroutet
     this.eventEmitter.emit({ type: "success", ... });
@@ -1303,7 +1303,7 @@ Zentraler Hub für Observable Services:
 ```typescript
 class ObservabilityRegistry {
   static dependencies = [loggerToken, metricsRecorderToken] as const;
-  
+
   registerPortSelector(service: ObservableService<PortSelectionEvent>) {
     service.onEvent((event) => {
       if (event.type === "success") {
@@ -1312,7 +1312,7 @@ class ObservabilityRegistry {
       }
     });
   }
-  
+
   // Future: Add more registration methods for other observable services
   // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
 }
@@ -1322,7 +1322,7 @@ class ObservabilityRegistry {
 - **Klasse:** `src/observability/metrics-persistence/persistent-metrics-collector.ts`
 - **Storage-Auswahl:** Nutzt konfigurierbares `MetricsStorage` (standardmäßig `localStorage`), schaltet sich über `ENV.enableMetricsPersistence` zu/ab.
 - **Sampling & Replay:** Puffert Events offline und synchronisiert sie bei erneutem Bootstrap, wodurch Performance-Daten in langen Foundry-Sitzungen erhalten bleiben.
-- **Konfiguration:** Flags `VITE_ENABLE_METRICS_PERSISTENCE` und `VITE_METRICS_PERSISTENCE_KEY` (siehe `docs/CONFIGURATION.md`) steuern Aktivierung und Storage-Namespace.
+- **Konfiguration:** Flags `VITE_ENABLE_METRICS_PERSISTENCE` und `VITE_METRICS_PERSISTENCE_KEY` (siehe [Konfiguration](./docs/guides/configuration.md)) steuern Aktivierung und Storage-Namespace.
 - **DI-Integration:** Wrapper `DIPersistentMetricsCollector` wird im Observability-Config registriert und respektiert das Self-Registration-Pattern (Metrics landen weiterhin im ObservabilityRegistry-Pipeline).
 
 ---
@@ -1363,13 +1363,13 @@ Services können sich selbst für Health-Monitoring registrieren:
 // 1. Health-Check implementieren
 class ContainerHealthCheck implements HealthCheck {
   readonly name = "container";
-  
+
   constructor(private readonly container: ServiceContainer) {}
-  
+
   check(): boolean {
     return this.container.getValidationState() === "validated";
   }
-  
+
   getDetails(): string | null {
     const state = this.container.getValidationState();
     return state !== "validated" ? `Container state: ${state}` : null;
@@ -1395,7 +1395,7 @@ container.registerClass(
 // 3. ModuleHealthService nutzt Registry
 class ModuleHealthService {
   constructor(private readonly registry: HealthCheckRegistry) {}
-  
+
   getHealth(): HealthStatus {
     const results = this.registry.runAll();
     // Aggregiere alle Check-Ergebnisse
@@ -1448,21 +1448,22 @@ class CustomHealthCheck implements HealthCheck {
 - DI-Container-Grundlagen
 
 ### Deep-Dive (detaillierte Analysen)
-- **[PROJECT-ANALYSIS.md](./docs/PROJECT-ANALYSIS.md)** - Vollständige Service-Analyse (19 Services)
-- **[DEPENDENCY-MAP.md](./docs/DEPENDENCY-MAP.md)** - Detaillierte Dependency-Hierarchie
-- **[BOOTFLOW.md](./docs/BOOTFLOW.md)** - Bootstrap-Prozess im Detail
-- **[QUICK-REFERENCE.md](./docs/QUICK-REFERENCE.md)** - Entwickler-Schnellreferenz
+- **[Architektur-Übersicht](./docs/architecture/overview.md)** - High-Level Architektur
+- **[Schichten](./docs/architecture/layers.md)** - Clean Architecture Schichten
+- **[Patterns](./docs/architecture/patterns.md)** - Port-Adapter, Result, DI
+- **[Bootstrap](./docs/architecture/bootstrap.md)** - Bootstrap-Prozess im Detail
+- **[Quick Reference](./docs/reference/quick-reference.md)** - Entwickler-Schnellreferenz
 
 ### Entwicklung
-- **[VERSIONING-STRATEGY.md](./docs/VERSIONING-STRATEGY.md)** - Breaking Changes & Deprecation
-- **[TESTING.md](./docs/TESTING.md)** - Test-Strategie
-- **[API.md](./docs/API.md)** - Öffentliche API
+- **[Versionierung](./docs/development/versioning.md)** - Breaking Changes & Deprecation
+- **[Testing](./docs/development/testing.md)** - Test-Strategie
+- **[API-Referenz](./docs/reference/api-reference.md)** - Öffentliche API
 
 ### ADRs (Architecture Decision Records)
-- [ADR-0001: Result Pattern](./docs/adr/0001-use-result-pattern-instead-of-exceptions.md)
-- [ADR-0002: Custom DI Container](./docs/adr/0002-custom-di-container-instead-of-tsyringe.md)
-- [ADR-0003: Port-Adapter-Pattern](./docs/adr/0003-port-adapter-for-foundry-version-compatibility.md)
-- [Alle ADRs](./docs/adr/)
+- [ADR-0001: Result Pattern](./docs/decisions/0001-use-result-pattern-instead-of-exceptions.md)
+- [ADR-0002: Custom DI Container](./docs/decisions/0002-custom-di-container-instead-of-tsyringe.md)
+- [ADR-0003: Port-Adapter-Pattern](./docs/decisions/0003-port-adapter-for-foundry-version-compatibility.md)
+- [Alle ADRs](./docs/decisions/README.md)
 
 ---
 

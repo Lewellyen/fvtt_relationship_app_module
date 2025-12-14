@@ -1,7 +1,7 @@
 # Bootstrap Flow & Module Lifecycle
 
-**Model:** Claude Sonnet 4.5  
-**Datum:** 2025-11-16 (aktualisiert 2025-11-29)  
+**Model:** Claude Sonnet 4.5
+**Datum:** 2025-11-16 (aktualisiert 2025-11-29)
 **Stand:** Version 0.30.0+ (mit Init-Orchestratoren für SOLID-Konformität)
 
 ---
@@ -45,7 +45,7 @@ graph TD
 
 ## Phase 0: Module Load (index.ts)
 
-**Datei:** `src/index.ts`  
+**Datei:** `src/index.ts`
 **Zeitpunkt:** Beim Laden des Moduls (vor Foundry init)
 
 ```typescript
@@ -68,7 +68,7 @@ import "../styles/tailwind.css";
 
 ## Phase 1: Eager Bootstrap (vor Foundry init)
 
-**Datei:** `src/core/init-solid.ts`  
+**Datei:** `src/core/init-solid.ts`
 **Zeitpunkt:** Sofort beim Module-Load
 
 ### 1.1 Container erstellen
@@ -87,11 +87,11 @@ const bootstrapResult = root.bootstrap();
 bootstrap(): Result<ServiceContainer, string> {
   // 1. Container erstellen
   const container = ServiceContainer.createRoot();
-  
+
   // 2. Performance Tracking initialisieren
   const runtimeConfig = new RuntimeConfigService(ENV);
   const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
-  
+
   // 3. Dependencies konfigurieren
   const configured = performanceTracker.track(
     () => configureDependencies(container),
@@ -103,7 +103,7 @@ bootstrap(): Result<ServiceContainer, string> {
       }
     }
   );
-  
+
   if (configured.ok) {
     this.container = container;
     return { ok: true, value: container };
@@ -122,7 +122,7 @@ bootstrap(): Result<ServiceContainer, string> {
 function configureDependencies(container: ServiceContainer): Result<void, string> {
   // 1. Fallbacks (kritische Services)
   registerFallbacks(container);  // Logger Fallback
-  
+
   // 2. Core Infrastructure
   registerCoreServices(container);
   // → EnvironmentConfig
@@ -130,36 +130,36 @@ function configureDependencies(container: ServiceContainer): Result<void, string
   // → MetricsRecorder/MetricsSampler (Aliases)
   // → ConsoleLoggerService (deps: [ENV])
   // → ModuleHealthService (deps: [Container, Metrics])
-  
+
   // 3. Utility Services
   registerUtilityServices(container);
   // → PerformanceTrackingService (deps: [ENV, Metrics])
   // → RetryService (deps: [Logger, Metrics])
-  
+
   // 4. Port Infrastructure
   registerPortInfrastructure(container);
   // → PortSelector (deps: [])
   // → PortRegistries (6 Registries als Value)
   // → PortSelectionObserver (Event-basiert)
-  
+
   // 5. Foundry Services
   registerFoundryServices(container);
   // → FoundryGameService, FoundryHooksService, etc. (je 6)
   // → FoundryJournalFacade
   // → JournalVisibilityService
-  
+
   // 6. i18n Services
   registerI18nServices(container);
   // → FoundryI18nService
   // → LocalI18nService
   // → I18nFacadeService
-  
+
   // 7. Validation
   validateContainer(container);
-  
+
   // 8. Logger konfigurieren
   configureLogger(container);
-  
+
   return ok(undefined);
 }
 ```
@@ -207,7 +207,7 @@ if (!bootstrapOk) {
     component: "CompositionRoot",
     metadata: { foundryVersion: tryGetFoundryVersion() }
   });
-  
+
   // 2. Prüfe Foundry-Version
   if (foundryVersion < 13) {
     ui.notifications.error(
@@ -220,7 +220,7 @@ if (!bootstrapOk) {
       { permanent: true }
     );
   }
-  
+
   // 3. Soft Abort (keine Hook-Registrierung)
   return;
 }
@@ -235,8 +235,8 @@ if (!bootstrapOk) {
 
 ## Phase 2: Foundry `init` Hook
 
-**Zeitpunkt:** Foundry VTT `init` Phase  
-**Voraussetzung:** Bootstrap erfolgreich abgeschlossen  
+**Zeitpunkt:** Foundry VTT `init` Phase
+**Voraussetzung:** Bootstrap erfolgreich abgeschlossen
 **Verantwortlich:** `BootstrapInitHookService` (DI-Service)
 
 ### 2.1 Hook-Registrierung
@@ -247,7 +247,7 @@ Der `init` Hook wird von `BootstrapInitHookService` registriert:
 // BootstrapInitHookService.register() - aufgerufen in initializeFoundryModule()
 Hooks.on("init", () => {
   logger.info("init-phase");
-  
+
   // Init-Phase-Logik wird im Service ausgeführt
   // (siehe bootstrap-init-hook.ts)
 });
@@ -266,7 +266,7 @@ Die Init-Phase-Logik ist vollständig in `BootstrapInitHookService` gekapselt:
 // BootstrapInitHookService - init hook callback
 Hooks.on("init", () => {
   logger.info("init-phase");
-  
+
   // 1. Expose Public API via ModuleApiInitializer (DI-Service)
   const apiInitializer = this.container.resolveWithError(moduleApiInitializerToken);
   if (apiInitializer.ok) {
@@ -290,10 +290,10 @@ Hooks.on("init", () => {
 // Verfügbar unter: game.modules.get(MODULE_ID).api
 const api: ModuleApi = {
   version: "1.0.0",
-  
+
   // Service Resolution (mit Deprecation-Check + ReadOnly-Wrapping)
   resolve: <T>(token: ApiSafeToken<T>) => T,
-  
+
   // Token Registry
   tokens: {
     loggerToken,
@@ -301,13 +301,13 @@ const api: ModuleApi = {
     foundryGameToken,
     // ... weitere Tokens
   },
-  
+
   // Available Tokens
   getAvailableTokens: () => Map<symbol, TokenInfo>,
-  
+
   // Metrics
   getMetrics: () => MetricsSnapshot,
-  
+
   // Health Status
   getHealth: () => HealthStatus
 };
@@ -330,7 +330,7 @@ const api: ModuleApi = {
   // 3. Configure Logger with current setting
   const settings = container.resolve(foundrySettingsToken);
   const logLevel = settings.get(MODULE_ID, "logLevel");
-  
+
   if (logLevel.ok && logger.setMinLevel) {
     logger.setMinLevel(logLevel.value);
     logger.debug(`Logger configured with level: ${LogLevel[logLevel.value]}`);
@@ -357,7 +357,7 @@ const api: ModuleApi = {
     });
     return;
   }
-  
+
   this.logger.info("init-phase completed");
 });
 ```
@@ -368,8 +368,8 @@ const api: ModuleApi = {
 
 ## Phase 3: Foundry `ready` Hook
 
-**Zeitpunkt:** Foundry VTT `ready` Phase (nach init)  
-**Zweck:** Leichte Start-Aktionen, Logging  
+**Zeitpunkt:** Foundry VTT `ready` Phase (nach init)
+**Zweck:** Leichte Start-Aktionen, Logging
 **Verantwortlich:** `BootstrapReadyHookService` (DI-Service)
 
 ### 3.1 Hook-Registrierung
@@ -380,7 +380,7 @@ Der `ready` Hook wird von `BootstrapReadyHookService` registriert:
 // BootstrapReadyHookService.register() - aufgerufen in initializeFoundryModule()
 Hooks.on("ready", () => {
   logger.info("ready-phase");
-  
+
   // Ready-Phase-Logik wird im Service ausgeführt
   // (siehe bootstrap-ready-hook.ts)
 });
@@ -397,12 +397,12 @@ Hooks.on("ready", () => {
 // BootstrapReadyHookService - ready hook callback
 Hooks.on("ready", () => {
   this.logger.info("ready-phase");
-  
+
   // Optionale Start-Aktionen
   // - Metriken loggen
   // - Startup-Checks
   // - User-Begrüßung
-  
+
   this.logger.info("ready-phase completed");
 });
 ```
@@ -480,7 +480,7 @@ if (foundryVersion < 13) {
 **User Feedback:**
 ```
 UI-Notification (permanent):
-"Beziehungsnetzwerke benötigt mindestens Foundry VTT v13. 
+"Beziehungsnetzwerke benötigt mindestens Foundry VTT v13.
  Ihre Version: 12. Bitte aktualisieren Sie Foundry VTT."
 ```
 
@@ -582,7 +582,7 @@ const journals = gameService.getJournalEntries();
 // BAD: Eager Port Instantiation
 class FoundryGameService {
   constructor() {
-    // ❌ CRASH bei Foundry v13, wenn v14-Port-Constructor 
+    // ❌ CRASH bei Foundry v13, wenn v14-Port-Constructor
     //    auf v14-APIs zugreift!
     this.port = new FoundryGamePortV14();
   }
@@ -591,7 +591,7 @@ class FoundryGameService {
 // GOOD: Lazy Port Selection
 class FoundryGameService {
   private port: FoundryGame | null = null;
-  
+
   private getPort(): Result<FoundryGame, FoundryError> {
     if (this.port === null) {
       // ✅ Factory-basiert: Nur kompatible Ports werden instantiiert
@@ -668,7 +668,7 @@ if (!api) {
   // Check Console für Bootstrap-Errors
 } else {
   console.log("✅ Module initialized successfully");
-  
+
   // Health Status
   const health = api.getHealth();
   console.log(health);
@@ -757,16 +757,16 @@ if (typeof ui !== "undefined" && ui?.notifications) {
 class ModuleHookRegistrar {
   registerAll(container: ServiceContainer): void {
     const hooksService = container.resolve(foundryHooksToken);
-    
+
     // 1. renderJournalDirectory Hook
     const journalVisibilityService = container.resolve(
       journalVisibilityServiceToken
     );
-    
+
     hooksService.on("renderJournalDirectory", (app, html) => {
       journalVisibilityService.processJournalDirectory(html[0]);
     });
-    
+
     // 2. Weitere Hooks (falls vorhanden)
     // ...
   }
@@ -986,7 +986,7 @@ class MyService {
   constructor(private dep: Dependency) {
     // Nur Dependency-Zuweisung
   }
-  
+
   private ensureInitialized(): void {
     if (!this.initialized) {
       this.loadData();
@@ -994,7 +994,7 @@ class MyService {
       this.initialized = true;
     }
   }
-  
+
   public doSomething(): Result<T, E> {
     this.ensureInitialized();  // ✅ Lazy
     // ...
@@ -1032,7 +1032,7 @@ class MyService {
     // ...
     return ok("success");
   }
-  
+
   async doSomethingAsync(): Promise<Result<string, MyError>> {
     // ...
     return ok("success");
@@ -1054,7 +1054,7 @@ class PortSelector {
     portSelectionEventEmitterToken,
     observabilityRegistryToken
   ] as const;
-  
+
   constructor(
     private eventEmitter: PortSelectionEventEmitter,
     observability: ObservabilityRegistry
@@ -1062,7 +1062,7 @@ class PortSelector {
     // Self-registration: Service meldet sich selbst an
     observability.registerPortSelector(this);
   }
-  
+
   selectPort() {
     // Events werden automatisch zu Logger/Metrics geroutet
     this.eventEmitter.emit({ type: "success", ... });
@@ -1083,7 +1083,7 @@ Zentraler Hub für Observable Services:
 ```typescript
 class ObservabilityRegistry {
   static dependencies = [loggerToken, metricsRecorderToken] as const;
-  
+
   registerPortSelector(service: ObservableService<PortSelectionEvent>) {
     service.onEvent((event) => {
       if (event.type === "success") {
@@ -1123,7 +1123,7 @@ src/config/
 ```typescript
 export function configureDependencies(container: ServiceContainer) {
   registerFallbacks(container);
-  
+
   // Orchestriere thematische Config-Module
   registerCoreServices(container);
   registerObservability(container);
@@ -1132,7 +1132,7 @@ export function configureDependencies(container: ServiceContainer) {
   registerFoundryServices(container);
   registerI18nServices(container);
   registerRegistrars(container);
-  
+
   validateContainer(container);
   return ok(undefined);
 }
@@ -1152,7 +1152,7 @@ Services konfigurieren sich selbst via Constructor-Dependencies:
 // Logger mit EnvironmentConfig-Dependency
 class ConsoleLoggerService {
   static dependencies = [environmentConfigToken] as const;
-  
+
   constructor(env: EnvironmentConfig) {
     this.minLevel = env.logLevel;  // Self-configuring!
   }
@@ -1165,10 +1165,10 @@ class ConsoleLoggerService {
 
 ## 🔗 Siehe auch
 
-- [PROJECT-ANALYSIS.md](./PROJECT-ANALYSIS.md) → Service-Details
-- [ARCHITECTURE.md](../ARCHITECTURE.md) → Clean Architecture
-- [DEPENDENCY-MAP.md](./DEPENDENCY-MAP.md) → Dependency-Tree
-- [API.md](./API.md) → Public API Dokumentation
+- [Service-Übersicht](../reference/services.md) → Service-Details
+- [Architektur-Übersicht](./overview.md) → Clean Architecture
+- [Schichten](./layers.md) → Dependency-Tree
+- [API-Referenz](../reference/api-reference.md) → Public API Dokumentation
 
 ---
 

@@ -245,7 +245,7 @@ game.settings.set('fvtt_relationship_app_module', 'logLevel', 1);
 
 ## Weitere Informationen
 
-- **Architektur:** Siehe [ARCHITECTURE.md](../ARCHITECTURE.md)
-- **API-Dokumentation:** Siehe [API.md](./API.md)
-- **Testing:** Siehe [TESTING.md](./TESTING.md)
+- **Architektur:** Siehe [Architektur-Übersicht](../architecture/overview.md)
+- **API-Dokumentation:** Siehe [API-Referenz](../reference/api-reference.md)
+- **Testing:** Siehe [Testing](../development/testing.md)
 

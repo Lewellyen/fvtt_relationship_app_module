@@ -12202,8 +12202,9 @@ function validateFlagKey(key) {
 }
 __name(validateFlagKey, "validateFlagKey");
 const _FoundryV13GamePort = class _FoundryV13GamePort {
-  constructor() {
+  constructor(foundryAPI) {
     __privateAdd(this, _disposed);
+    this.foundryAPI = foundryAPI;
     __privateSet(this, _disposed, false);
     this.cachedEntries = null;
     this.lastCheckTimestamp = 0;
@@ -12213,7 +12214,7 @@ const _FoundryV13GamePort = class _FoundryV13GamePort {
     if (__privateGet(this, _disposed)) {
       return err(createFoundryError("DISPOSED", "Cannot get journal entries on disposed port"));
     }
-    if (typeof game === "undefined" || !game?.journal) {
+    if (!this.foundryAPI?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));
     }
     const now = Date.now();
@@ -12222,7 +12223,7 @@ const _FoundryV13GamePort = class _FoundryV13GamePort {
       return { ok: true, value: this.cachedEntries };
     }
     const entries2 = tryCatch(
-      () => Array.from(game.journal.contents),
+      () => Array.from(this.foundryAPI.journal.contents),
       (error) => createFoundryError("OPERATION_FAILED", "Failed to access journal entries", void 0, error)
     );
     if (!entries2.ok) {
@@ -12252,12 +12253,12 @@ const _FoundryV13GamePort = class _FoundryV13GamePort {
     if (!validationResult.ok) {
       return validationResult;
     }
-    if (typeof game === "undefined" || !game?.journal) {
+    if (!this.foundryAPI?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));
     }
     return tryCatch(
       () => {
-        const entry = game.journal.get(validationResult.value);
+        const entry = this.foundryAPI.journal.get(validationResult.value);
         return entry ?? null;
       },
       (error) => createFoundryError(
@@ -12278,9 +12279,32 @@ const _FoundryV13GamePort = class _FoundryV13GamePort {
 _disposed = new WeakMap();
 __name(_FoundryV13GamePort, "FoundryV13GamePort");
 let FoundryV13GamePort = _FoundryV13GamePort;
+function createFoundryV13GamePort() {
+  if (typeof game === "undefined" || !game?.journal) {
+    return new FoundryV13GamePort({
+      // type-coverage:ignore-next-line -- Required: null needed when API unavailable, but IFoundryGameAPI["journal"] is non-nullable
+      journal: null
+    });
+  }
+  return new FoundryV13GamePort({
+    journal: {
+      contents: Array.from(game.journal.contents),
+      get: /* @__PURE__ */ __name((id) => game.journal.get(id), "get"),
+      ...game.journal.directory && game.journal.directory.render ? {
+        directory: {
+          render: /* @__PURE__ */ __name(() => {
+            game.journal.directory?.render();
+          }, "render")
+        }
+      } : {}
+    }
+  });
+}
+__name(createFoundryV13GamePort, "createFoundryV13GamePort");
 const _FoundryV13HooksPort = class _FoundryV13HooksPort {
-  constructor() {
+  constructor(foundryAPI) {
     __privateAdd(this, _disposed2, false);
+    this.foundryAPI = foundryAPI;
   }
   on(hookName, callback) {
     if (__privateGet(this, _disposed2)) {
@@ -12293,10 +12317,10 @@ const _FoundryV13HooksPort = class _FoundryV13HooksPort {
     }
     return tryCatch(
       () => {
-        if (typeof Hooks === "undefined") {
+        if (!this.foundryAPI) {
           throw new Error("Foundry Hooks API is not available");
         }
-        const hookId = Hooks.on(hookName, callback);
+        const hookId = this.foundryAPI.on(hookName, callback);
         return hookId;
       },
       (error) => createFoundryError(
@@ -12318,10 +12342,10 @@ const _FoundryV13HooksPort = class _FoundryV13HooksPort {
     }
     return tryCatch(
       () => {
-        if (typeof Hooks === "undefined") {
+        if (!this.foundryAPI) {
           throw new Error("Foundry Hooks API is not available");
         }
-        const hookId = Hooks.once(hookName, callback);
+        const hookId = this.foundryAPI.once(hookName, callback);
         return hookId;
       },
       (error) => createFoundryError(
@@ -12343,10 +12367,10 @@ const _FoundryV13HooksPort = class _FoundryV13HooksPort {
     }
     return tryCatch(
       () => {
-        if (typeof Hooks === "undefined") {
+        if (!this.foundryAPI) {
           throw new Error("Foundry Hooks API is not available");
         }
-        Hooks.off(hookName, callbackOrId);
+        this.foundryAPI.off(hookName, callbackOrId);
         return void 0;
       },
       (error) => createFoundryError(
@@ -12365,6 +12389,32 @@ const _FoundryV13HooksPort = class _FoundryV13HooksPort {
 _disposed2 = new WeakMap();
 __name(_FoundryV13HooksPort, "FoundryV13HooksPort");
 let FoundryV13HooksPort = _FoundryV13HooksPort;
+function createFoundryV13HooksPort() {
+  if (typeof Hooks === "undefined") {
+    throw new Error("Foundry Hooks API is not available");
+  }
+  return new FoundryV13HooksPort({
+    on: /* @__PURE__ */ __name((hookName, callback) => {
+      return Hooks.on(
+        hookName,
+        callback
+      );
+    }, "on"),
+    once: /* @__PURE__ */ __name((hookName, callback) => {
+      return Hooks.once(
+        hookName,
+        callback
+      );
+    }, "once"),
+    off: /* @__PURE__ */ __name((hookName, callbackOrId) => {
+      Hooks.off(
+        hookName,
+        callbackOrId
+      );
+    }, "off")
+  });
+}
+__name(createFoundryV13HooksPort, "createFoundryV13HooksPort");
 const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
   constructor() {
     __privateAdd(this, _disposed3, false);
@@ -12496,13 +12546,12 @@ const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
 _disposed3 = new WeakMap();
 __name(_FoundryV13DocumentPort, "FoundryV13DocumentPort");
 let FoundryV13DocumentPort = _FoundryV13DocumentPort;
-function isFoundryUISidebar(sidebar) {
-  return typeof sidebar === "object" && sidebar !== null;
-}
-__name(isFoundryUISidebar, "isFoundryUISidebar");
 const _FoundryV13UIPort = class _FoundryV13UIPort {
-  constructor() {
+  constructor(foundryUIAPI, foundryGameJournalAPI, foundryDocumentAPI) {
     __privateAdd(this, _disposed4, false);
+    this.foundryUIAPI = foundryUIAPI;
+    this.foundryGameJournalAPI = foundryGameJournalAPI;
+    this.foundryDocumentAPI = foundryDocumentAPI;
   }
   removeJournalElement(journalId, journalName, html) {
     if (__privateGet(this, _disposed4)) {
@@ -12546,19 +12595,19 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
     if (__privateGet(this, _disposed4)) {
       return err(createFoundryError("DISPOSED", "Cannot show notification on disposed port"));
     }
-    if (typeof ui === "undefined" || !ui?.notifications) {
+    if (!this.foundryUIAPI?.notifications) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry UI notifications not available"));
     }
     try {
       switch (type) {
         case "info":
-          ui.notifications.info(message2, options);
+          this.foundryUIAPI.notifications.info(message2, options);
           break;
         case "warning":
-          ui.notifications.warn(message2, options);
+          this.foundryUIAPI.notifications.warn(message2, options);
           break;
         case "error":
-          ui.notifications.error(message2, options);
+          this.foundryUIAPI.notifications.error(message2, options);
           break;
       }
       return ok(void 0);
@@ -12580,27 +12629,22 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
       );
     }
     try {
-      const journalElement = document.querySelector("#journal");
+      const journalElement = this.foundryDocumentAPI.querySelector("#journal");
       if (!journalElement) {
         return ok(false);
       }
-      if (typeof ui === "undefined" || !ui?.sidebar) {
+      if (!this.foundryUIAPI?.sidebar) {
         return err(createFoundryError("API_NOT_AVAILABLE", "Foundry UI sidebar not available"));
       }
-      if (!isFoundryUISidebar(ui.sidebar)) {
-        return err(
-          createFoundryError("API_NOT_AVAILABLE", "Foundry UI sidebar has unexpected structure")
-        );
-      }
-      const sidebar = ui.sidebar;
+      const sidebar = this.foundryUIAPI.sidebar;
       const journalApp = sidebar.tabs?.journal;
       let rendered = false;
       if (journalApp && typeof journalApp.render === "function") {
         journalApp.render(false);
         rendered = true;
       }
-      if (typeof game !== "undefined" && game.journal?.directory?.render) {
-        game.journal.directory.render();
+      if (this.foundryGameJournalAPI.directory?.render) {
+        this.foundryGameJournalAPI.directory.render();
         rendered = true;
       }
       return ok(rendered);
@@ -12618,9 +12662,67 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
 _disposed4 = new WeakMap();
 __name(_FoundryV13UIPort, "FoundryV13UIPort");
 let FoundryV13UIPort = _FoundryV13UIPort;
+function createFoundryV13UIPort() {
+  if (typeof ui === "undefined" || !ui?.notifications) {
+    throw new Error("Foundry UI API not available");
+  }
+  if (typeof game === "undefined" || !game?.journal) {
+    throw new Error("Foundry game API not available");
+  }
+  const sidebar = ui.sidebar;
+  const uiAPI = {
+    notifications: {
+      info: /* @__PURE__ */ __name((message2, options) => {
+        if (ui.notifications) {
+          ui.notifications.info(message2, options);
+        }
+      }, "info"),
+      warn: /* @__PURE__ */ __name((message2, options) => {
+        if (ui.notifications) {
+          ui.notifications.warn(message2, options);
+        }
+      }, "warn"),
+      error: /* @__PURE__ */ __name((message2, options) => {
+        if (ui.notifications) {
+          ui.notifications.error(message2, options);
+        }
+      }, "error")
+    }
+  };
+  const journalApp = sidebar?.tabs?.journal;
+  if (journalApp?.render) {
+    const render = journalApp.render;
+    uiAPI.sidebar = {
+      tabs: {
+        journal: {
+          render: /* @__PURE__ */ __name((force) => render(force), "render")
+        }
+      }
+    };
+  }
+  return new FoundryV13UIPort(
+    uiAPI,
+    {
+      contents: Array.from(game.journal.contents),
+      get: /* @__PURE__ */ __name((id) => game.journal.get(id), "get"),
+      ...game.journal.directory && game.journal.directory.render ? {
+        directory: {
+          render: /* @__PURE__ */ __name(() => {
+            game.journal.directory?.render();
+          }, "render")
+        }
+      } : {}
+    },
+    {
+      querySelector: /* @__PURE__ */ __name((selector) => document.querySelector(selector), "querySelector")
+    }
+  );
+}
+__name(createFoundryV13UIPort, "createFoundryV13UIPort");
 const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
-  constructor() {
+  constructor(foundryAPI) {
     __privateAdd(this, _disposed5, false);
+    this.foundryAPI = foundryAPI;
   }
   register(namespace, key, config2) {
     if (__privateGet(this, _disposed5)) {
@@ -12635,17 +12737,13 @@ const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
     if (!configValidation.ok) {
       return err(configValidation.error);
     }
-    if (typeof game === "undefined" || !game?.settings) {
+    if (!this.foundryAPI) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
-    const settingsResult = castFoundrySettingsApi(game.settings);
-    if (!settingsResult.ok) {
-      return settingsResult;
-    }
-    const settings = settingsResult.value;
+    const api = this.foundryAPI;
     return tryCatch(
       () => {
-        settings.register(namespace, key, config2);
+        api.register(namespace, key, config2);
         return void 0;
       },
       (error) => createFoundryError(
@@ -12662,17 +12760,13 @@ const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
         createFoundryError("DISPOSED", "Cannot get setting on disposed port", { namespace, key })
       );
     }
-    if (typeof game === "undefined" || !game?.settings) {
+    if (!this.foundryAPI) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
-    const settingsResult = castFoundrySettingsApi(game.settings);
-    if (!settingsResult.ok) {
-      return settingsResult;
-    }
-    const settings = settingsResult.value;
+    const api = this.foundryAPI;
     return tryCatch(
       () => {
-        const rawValue = settings.get(namespace, key);
+        const rawValue = api.get(namespace, key);
         const parseResult = /* @__PURE__ */ safeParse(schema, rawValue);
         if (!parseResult.success) {
           const error = createFoundryError(
@@ -12685,7 +12779,7 @@ const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
         return parseResult.output;
       },
       (error) => {
-        if (error && typeof error === "object" && "code" in error && "message" in error) {
+        if (error && typeof error === "object" && "code" in error && error.code === "VALIDATION_FAILED") {
           return castFoundryError(error);
         }
         return createFoundryError(
@@ -12703,16 +12797,11 @@ const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
         createFoundryError("DISPOSED", "Cannot set setting on disposed port", { namespace, key })
       );
     }
-    if (typeof game === "undefined" || !game?.settings) {
+    if (!this.foundryAPI) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
-    const settingsResult = castFoundrySettingsApi(game.settings);
-    if (!settingsResult.ok) {
-      return Promise.resolve(settingsResult);
-    }
-    const settings = settingsResult.value;
     return fromPromise(
-      settings.set(namespace, key, value2).then(() => void 0),
+      this.foundryAPI.set(namespace, key, value2).then(() => void 0),
       (error) => createFoundryError(
         "OPERATION_FAILED",
         `Failed to set setting ${namespace}.${key}`,
@@ -12729,9 +12818,43 @@ const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
 _disposed5 = new WeakMap();
 __name(_FoundryV13SettingsPort, "FoundryV13SettingsPort");
 let FoundryV13SettingsPort = _FoundryV13SettingsPort;
+function createFoundryV13SettingsPort() {
+  if (typeof game === "undefined" || game === null || game.settings === void 0) {
+    return new FoundryV13SettingsPort(null);
+  }
+  const settingsResult = castFoundrySettingsApi(game.settings);
+  if (!settingsResult.ok) {
+    const castError = settingsResult.error;
+    return new FoundryV13SettingsPort({
+      register: /* @__PURE__ */ __name(() => {
+        throw castError;
+      }, "register"),
+      get: /* @__PURE__ */ __name(() => {
+        throw castError;
+      }, "get"),
+      set: /* @__PURE__ */ __name(async () => {
+        throw castError;
+      }, "set")
+    });
+  }
+  const settings = settingsResult.value;
+  return new FoundryV13SettingsPort({
+    register: /* @__PURE__ */ __name((namespace, key, config2) => {
+      settings.register(namespace, key, config2);
+    }, "register"),
+    get: /* @__PURE__ */ __name((namespace, key) => {
+      return settings.get(namespace, key);
+    }, "get"),
+    set: /* @__PURE__ */ __name((namespace, key, value2) => {
+      return settings.set(namespace, key, value2).then(() => void 0);
+    }, "set")
+  });
+}
+__name(createFoundryV13SettingsPort, "createFoundryV13SettingsPort");
 const _FoundryV13I18nPort = class _FoundryV13I18nPort {
-  constructor() {
+  constructor(foundryAPI) {
     __privateAdd(this, _disposed6, false);
+    this.foundryAPI = foundryAPI;
   }
   /**
    * Localizes a translation key using Foundry's i18n system.
@@ -12747,10 +12870,10 @@ const _FoundryV13I18nPort = class _FoundryV13I18nPort {
       };
     }
     try {
-      if (typeof game === "undefined" || !game?.i18n) {
+      if (!this.foundryAPI) {
         return ok(key);
       }
-      const translated = game.i18n.localize(key);
+      const translated = this.foundryAPI.localize(key);
       return ok(translated);
     } catch {
       return ok(key);
@@ -12773,14 +12896,14 @@ const _FoundryV13I18nPort = class _FoundryV13I18nPort {
       };
     }
     try {
-      if (typeof game === "undefined" || !game?.i18n) {
+      if (!this.foundryAPI) {
         return ok(key);
       }
       const stringData = {};
       for (const [k, v] of Object.entries(data)) {
         stringData[k] = String(v);
       }
-      const formatted = game.i18n.format(key, stringData);
+      const formatted = this.foundryAPI.format(key, stringData);
       return ok(formatted);
     } catch {
       return ok(key);
@@ -12802,10 +12925,10 @@ const _FoundryV13I18nPort = class _FoundryV13I18nPort {
       };
     }
     try {
-      if (typeof game === "undefined" || !game?.i18n) {
+      if (!this.foundryAPI) {
         return ok(false);
       }
-      const exists = game.i18n.has(key);
+      const exists = this.foundryAPI.has(key);
       return ok(exists);
     } catch {
       return ok(false);
@@ -12820,6 +12943,17 @@ _disposed6 = new WeakMap();
 __name(_FoundryV13I18nPort, "FoundryV13I18nPort");
 _FoundryV13I18nPort.dependencies = [];
 let FoundryV13I18nPort = _FoundryV13I18nPort;
+function createFoundryV13I18nPort() {
+  if (typeof game === "undefined" || !game?.i18n) {
+    return new FoundryV13I18nPort(null);
+  }
+  return new FoundryV13I18nPort({
+    localize: /* @__PURE__ */ __name((key) => game.i18n.localize(key), "localize"),
+    format: /* @__PURE__ */ __name((key, data) => game.i18n.format(key, data), "format"),
+    has: /* @__PURE__ */ __name((key) => game.i18n.has(key), "has")
+  });
+}
+__name(createFoundryV13I18nPort, "createFoundryV13I18nPort");
 const _FoundryV13ModulePort = class _FoundryV13ModulePort {
   setModuleReady(moduleId) {
     if (typeof game === "undefined" || !game?.modules) {
@@ -12855,24 +12989,61 @@ function registerPortToRegistry(registry, version, token, portName, errors) {
 __name(registerPortToRegistry, "registerPortToRegistry");
 function registerV13Ports(registries, container) {
   const portRegistrationErrors = [];
-  container.registerClass(foundryV13GamePortToken, FoundryV13GamePort, ServiceLifecycle.SINGLETON);
-  container.registerClass(
-    foundryV13HooksPortToken,
-    FoundryV13HooksPort,
-    ServiceLifecycle.SINGLETON
+  const gamePortResult = container.registerFactory(
+    foundryV13GamePortToken,
+    createFoundryV13GamePort,
+    ServiceLifecycle.SINGLETON,
+    []
+    // No dependencies
   );
+  if (isErr(gamePortResult)) {
+    portRegistrationErrors.push(`FoundryGame: ${gamePortResult.error.message}`);
+  }
+  const hooksPortResult = container.registerFactory(
+    foundryV13HooksPortToken,
+    createFoundryV13HooksPort,
+    ServiceLifecycle.SINGLETON,
+    []
+    // No dependencies
+  );
+  if (isErr(hooksPortResult)) {
+    portRegistrationErrors.push(`FoundryHooks: ${hooksPortResult.error.message}`);
+  }
   container.registerClass(
     foundryV13DocumentPortToken,
     FoundryV13DocumentPort,
     ServiceLifecycle.SINGLETON
   );
-  container.registerClass(foundryV13UIPortToken, FoundryV13UIPort, ServiceLifecycle.SINGLETON);
-  container.registerClass(
-    foundryV13SettingsPortToken,
-    FoundryV13SettingsPort,
-    ServiceLifecycle.SINGLETON
+  const uiPortResult = container.registerFactory(
+    foundryV13UIPortToken,
+    createFoundryV13UIPort,
+    ServiceLifecycle.SINGLETON,
+    []
+    // No dependencies
   );
-  container.registerClass(foundryV13I18nPortToken, FoundryV13I18nPort, ServiceLifecycle.SINGLETON);
+  if (isErr(uiPortResult)) {
+    portRegistrationErrors.push(`FoundryUI: ${uiPortResult.error.message}`);
+  }
+  const settingsPortResult = container.registerFactory(
+    foundryV13SettingsPortToken,
+    createFoundryV13SettingsPort,
+    ServiceLifecycle.SINGLETON,
+    []
+    // No dependencies
+  );
+  if (isErr(settingsPortResult)) {
+    portRegistrationErrors.push(`FoundrySettings: ${settingsPortResult.error.message}`);
+  }
+  const i18nPortResult = container.registerFactory(
+    foundryV13I18nPortToken,
+    createFoundryV13I18nPort,
+    ServiceLifecycle.SINGLETON,
+    []
+    // No dependencies
+  );
+  if (isErr(i18nPortResult)) {
+    portRegistrationErrors.push(`FoundryI18n: ${i18nPortResult.error.message}`);
+  }
   container.registerValue(foundryV13ModulePortToken, createFoundryV13ModulePort());
   registerPortToRegistry(
     registries.gamePortRegistry,

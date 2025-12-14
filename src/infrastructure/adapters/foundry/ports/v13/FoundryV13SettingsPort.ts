@@ -1,6 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import type { FoundrySettings, SettingConfig } from "../../interfaces/FoundrySettings";
 import type { FoundryError } from "../../errors/FoundryErrors";
+import type { IFoundrySettingsAPI } from "../../api/foundry-api.interface";
 import { tryCatch, err, fromPromise } from "@/domain/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
 import { validateSettingConfig } from "../../validation/schemas";
@@ -15,9 +16,13 @@ import * as v from "valibot";
  * - world: Shared across all users in the world
  * - client: Browser/device-specific
  * - user: User-specific within a world (new in v13)
+ *
+ * Uses dependency injection for Foundry APIs to improve testability.
  */
 export class FoundryV13SettingsPort implements FoundrySettings {
   #disposed = false;
+
+  constructor(private readonly foundryAPI: IFoundrySettingsAPI | null) {}
 
   register<T>(
     namespace: string,
@@ -38,19 +43,14 @@ export class FoundryV13SettingsPort implements FoundrySettings {
       return err(configValidation.error);
     }
 
-    if (typeof game === "undefined" || !game?.settings) {
+    if (!this.foundryAPI) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
 
-    const settingsResult = castFoundrySettingsApi(game.settings);
-    if (!settingsResult.ok) {
-      return settingsResult; // Propagate error
-    }
-    const settings = settingsResult.value;
-
+    const api = this.foundryAPI;
     return tryCatch(
       () => {
-        settings.register(namespace, key, config);
+        api.register(namespace, key, config);
         return undefined;
       },
       (error) =>
@@ -73,19 +73,14 @@ export class FoundryV13SettingsPort implements FoundrySettings {
         createFoundryError("DISPOSED", "Cannot get setting on disposed port", { namespace, key })
       );
     }
-    if (typeof game === "undefined" || !game?.settings) {
+    if (!this.foundryAPI) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
 
-    const settingsResult = castFoundrySettingsApi(game.settings);
-    if (!settingsResult.ok) {
-      return settingsResult; // Propagate error
-    }
-    const settings = settingsResult.value;
-
+    const api = this.foundryAPI;
     return tryCatch(
       () => {
-        const rawValue = settings.get(namespace, key);
+        const rawValue = api.get(namespace, key);
 
         // Runtime validation with Valibot
         const parseResult = v.safeParse(schema, rawValue);
@@ -102,11 +97,17 @@ export class FoundryV13SettingsPort implements FoundrySettings {
         return parseResult.output;
       },
       (error) => {
-        // Check if it's already a FoundryError (from validation)
-        if (error && typeof error === "object" && "code" in error && "message" in error) {
+        // Check if it's a VALIDATION_FAILED error (from our own validation)
+        // These should be preserved as-is
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "VALIDATION_FAILED"
+        ) {
           return castFoundryError(error);
         }
-        // Otherwise wrap as OPERATION_FAILED
+        // All other errors (including API errors) should be wrapped as OPERATION_FAILED
         return createFoundryError(
           "OPERATION_FAILED",
           `Failed to get setting ${namespace}.${key}`,
@@ -123,18 +124,12 @@ export class FoundryV13SettingsPort implements FoundrySettings {
         createFoundryError("DISPOSED", "Cannot set setting on disposed port", { namespace, key })
       );
     }
-    if (typeof game === "undefined" || !game?.settings) {
+    if (!this.foundryAPI) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
 
-    const settingsResult = castFoundrySettingsApi(game.settings);
-    if (!settingsResult.ok) {
-      return Promise.resolve(settingsResult); // Propagate error
-    }
-    const settings = settingsResult.value;
-
     return fromPromise(
-      settings.set(namespace, key, value).then(() => undefined),
+      this.foundryAPI.set(namespace, key, value).then(() => undefined),
       (error) =>
         createFoundryError(
           "OPERATION_FAILED",
@@ -150,4 +145,49 @@ export class FoundryV13SettingsPort implements FoundrySettings {
     this.#disposed = true;
     // No resources to clean up
   }
+}
+
+/**
+ * Factory function to create FoundryV13SettingsPort instance for production use.
+ * Injects real Foundry settings API.
+ *
+ * @returns FoundryV13SettingsPort instance
+ */
+export function createFoundryV13SettingsPort(): FoundryV13SettingsPort {
+  // Create port even if API is not available - port will return API_NOT_AVAILABLE errors
+  if (typeof game === "undefined" || game === null || game.settings === undefined) {
+    return new FoundryV13SettingsPort(null);
+  }
+
+  // Try to cast game.settings if it exists (even if it's null or invalid)
+  // This allows castFoundrySettingsApi to handle the validation and return appropriate errors
+  const settingsResult = castFoundrySettingsApi(game.settings);
+  if (!settingsResult.ok) {
+    // Return port with error-throwing API when cast fails - will return OPERATION_FAILED errors
+    const castError = settingsResult.error;
+    return new FoundryV13SettingsPort({
+      register: () => {
+        throw castError;
+      },
+      get: () => {
+        throw castError;
+      },
+      set: async () => {
+        throw castError;
+      },
+    });
+  }
+  const settings = settingsResult.value;
+
+  return new FoundryV13SettingsPort({
+    register: <T>(namespace: string, key: string, config: SettingConfig<T>) => {
+      settings.register(namespace, key, config);
+    },
+    get: <T>(namespace: string, key: string) => {
+      return settings.get<T>(namespace, key);
+    },
+    set: (namespace: string, key: string, value: unknown) => {
+      return settings.set(namespace, key, value).then(() => undefined);
+    },
+  });
 }

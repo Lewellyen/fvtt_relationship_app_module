@@ -1,7 +1,7 @@
 # Quality Gates Documentation
 
-**Model:** Claude Sonnet 4.5  
-**Last Updated:** 29. November 2025  
+**Model:** Claude Sonnet 4.5
+**Last Updated:** 29. November 2025
 **Projekt:** FVTT Relationship App Module v0.38.0 → Unreleased
 
 ---

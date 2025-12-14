@@ -1,6 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import type { FoundryI18n } from "../../interfaces/FoundryI18n";
 import type { FoundryError } from "../../errors/FoundryErrors";
+import type { IFoundryI18nAPI } from "../../api/foundry-api.interface";
 import { ok } from "@/domain/utils/result";
 import { createFoundryError } from "../../errors/FoundryErrors";
 
@@ -9,11 +10,15 @@ import { createFoundryError } from "../../errors/FoundryErrors";
  *
  * Wraps `game.i18n` API with Result pattern for type-safe error handling.
  *
+ * Uses dependency injection for Foundry APIs to improve testability.
+ *
  * @implements {FoundryI18n}
  */
 export class FoundryV13I18nPort implements FoundryI18n {
   #disposed = false;
   static dependencies = [] as const;
+
+  constructor(private readonly foundryAPI: IFoundryI18nAPI | null) {}
 
   /**
    * Localizes a translation key using Foundry's i18n system.
@@ -29,11 +34,11 @@ export class FoundryV13I18nPort implements FoundryI18n {
       };
     }
     try {
-      if (typeof game === "undefined" || !game?.i18n) {
+      if (!this.foundryAPI) {
         return ok(key); // Graceful degradation: return key as-is
       }
 
-      const translated = game.i18n.localize(key);
+      const translated = this.foundryAPI.localize(key);
       return ok(translated);
     } catch {
       return ok(key); // Fallback: return key on error
@@ -57,7 +62,7 @@ export class FoundryV13I18nPort implements FoundryI18n {
       };
     }
     try {
-      if (typeof game === "undefined" || !game?.i18n) {
+      if (!this.foundryAPI) {
         return ok(key); // Graceful degradation
       }
 
@@ -67,7 +72,7 @@ export class FoundryV13I18nPort implements FoundryI18n {
         stringData[k] = String(v);
       }
 
-      const formatted = game.i18n.format(key, stringData);
+      const formatted = this.foundryAPI.format(key, stringData);
       return ok(formatted);
     } catch {
       return ok(key); // Fallback: return key on error
@@ -90,11 +95,11 @@ export class FoundryV13I18nPort implements FoundryI18n {
       };
     }
     try {
-      if (typeof game === "undefined" || !game?.i18n) {
+      if (!this.foundryAPI) {
         return ok(false); // No game.i18n available → key doesn't exist
       }
 
-      const exists = game.i18n.has(key);
+      const exists = this.foundryAPI.has(key);
       return ok(exists);
     } catch {
       return ok(false); // Fallback: assume key doesn't exist on error
@@ -106,4 +111,23 @@ export class FoundryV13I18nPort implements FoundryI18n {
     this.#disposed = true;
     // No resources to clean up
   }
+}
+
+/**
+ * Factory function to create FoundryV13I18nPort instance for production use.
+ * Injects real Foundry i18n API.
+ *
+ * @returns FoundryV13I18nPort instance
+ */
+export function createFoundryV13I18nPort(): FoundryV13I18nPort {
+  if (typeof game === "undefined" || !game?.i18n) {
+    // Return port with null API for graceful degradation
+    return new FoundryV13I18nPort(null);
+  }
+
+  return new FoundryV13I18nPort({
+    localize: (key: string) => game.i18n.localize(key),
+    format: (key: string, data: Record<string, string>) => game.i18n.format(key, data),
+    has: (key: string) => game.i18n.has(key),
+  });
 }
