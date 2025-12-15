@@ -2,7 +2,7 @@
 
 Ein Foundry VTT Modul zur Verwaltung und Visualisierung von Beziehungsnetzwerken zwischen Akteuren und anderen Entitäten.
 
-**Version:** 0.43.18 (Pre-Release)
+**Version:** 0.44.0
 **Status:** ✅ Aktive Entwicklung - Aggressives Refactoring erwünscht!
 **Foundry VTT:** v13+ (siehe `module.json`)
 
@@ -191,7 +191,7 @@ Probleme melden: [GitHub Issues](https://github.com/Lewellyen/fvtt_relationship_
 
 👉 **Vollständige Versionshistorie:** [CHANGELOG.md](./CHANGELOG.md)
 
-**Aktuelle Version:** 0.43.18 (Pre-Release)
+**Aktuelle Version:** 0.44.0
 
 ---
 

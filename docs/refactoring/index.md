@@ -1,5 +1,10 @@
 # SOLID Audit - Gesamtübersicht
 
+> **📋 Status: ABGESCHLOSSEN (2025-12-15)**
+>
+> Dieser SOLID-Audit ist abgeschlossen. Die identifizierten Probleme wurden entweder behoben oder als architektonisch akzeptabel dokumentiert.
+> Für aktuelle Architektur-Dokumentation siehe [docs/architecture/](../architecture/).
+
 ## Übersicht
 
 Dieses Dokument enthält die Ergebnisse des vollständigen SOLID-Audits für alle Schichten des Projekts.

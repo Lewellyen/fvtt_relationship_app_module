@@ -2,8 +2,8 @@
 
 **Zweck:** Umfassende Test-Dokumentation mit Strategie, Tools, Best Practices und praktischen Anleitungen
 **Zielgruppe:** Entwickler, QA, Maintainer
-**Letzte Aktualisierung:** 2025-01-XX
-**Projekt-Version:** 0.43.18 (Pre-Release)
+**Letzte Aktualisierung:** 2025-12-15
+**Projekt-Version:** 0.44.0
 
 ---
 

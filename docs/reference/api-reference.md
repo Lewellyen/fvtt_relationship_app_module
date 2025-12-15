@@ -2,8 +2,8 @@
 
 **Zweck:** Vollständige Dokumentation der öffentlichen API für externe Module
 **Zielgruppe:** Externe Entwickler, Module-Integratoren
-**Letzte Aktualisierung:** 2025-01-XX
-**Projekt-Version:** 0.43.18 (Pre-Release)
+**Letzte Aktualisierung:** 2025-12-15
+**Projekt-Version:** 0.44.0
 **API-Version:** 1.0.0
 
 ---
@@ -284,20 +284,64 @@ for (const [symbol, info] of tokens) {
 `NotificationCenter` bündelt alle Modul-Benachrichtigungen und routet sie an registrierte Channels (z. B. Konsole, Foundry UI, Remote-Logging).
 
 ```typescript
+interface NotificationCenter {
+  /**
+   * Debug-Level Nachricht (nur bei DEBUG Log-Level sichtbar)
+   * @param context - Kontext/Nachricht
+   * @param data - Optionale zusätzliche Daten
+   * @param options - Optionale Notification-Optionen
+   */
+  debug(context: string, data?: unknown, options?: NotificationCenterOptions): Result<void, NotificationError>;
+
+  /**
+   * Info-Level Nachricht (Standard-Level)
+   */
+  info(context: string, data?: unknown, options?: NotificationCenterOptions): Result<void, NotificationError>;
+
+  /**
+   * Warning-Level Nachricht
+   */
+  warn(context: string, data?: unknown, options?: NotificationCenterOptions): Result<void, NotificationError>;
+
+  /**
+   * Error-Level Nachricht
+   */
+  error(context: string, data?: unknown, options?: NotificationCenterOptions): Result<void, NotificationError>;
+
+  /**
+   * Erstellt einen Notification-Kontext mit vordefinierter TraceId
+   * @param traceId - Korrelations-ID für Tracking
+   */
+  withTraceId(traceId: string): NotificationCenter;
+
+  /**
+   * Allgemeine Log-Methode mit explizitem Level
+   */
+  log(level: LogLevel, context: string, data?: unknown, options?: NotificationCenterOptions): Result<void, NotificationError>;
+}
+
 interface NotificationCenterOptions {
-  channels?: string[]; // Zielkanäle einschränken
-  traceId?: string;    // Korrelations-ID für Logs/Metriken
+  channels?: string[];              // Zielkanäle einschränken (z.B. ["console", "ui"])
+  traceId?: string;                 // Korrelations-ID für Logs/Metriken
   uiOptions?: FoundryNotificationOptions; // Durchgereichte Foundry UI Optionen
 }
 
 interface FoundryNotificationOptions {
-  clean?: boolean;
-  console?: boolean;
-  escape?: boolean;
-  format?: Record<string, string>;
-  localize?: boolean;
-  permanent?: boolean;
-  progress?: boolean;
+  clean?: boolean;     // HTML-Tags entfernen
+  console?: boolean;   // Auch in Console loggen
+  escape?: boolean;    // HTML escapen
+  format?: Record<string, string>; // Platzhalter ersetzen
+  localize?: boolean;  // Übersetzung anwenden
+  permanent?: boolean; // Notification bleibt sichtbar
+  progress?: boolean;  // Progress-Anzeige
+}
+
+enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3,
+  OFF = 4
 }
 ```
 
@@ -326,9 +370,32 @@ Zugriff auf Foundry Game-API (versionssicher über Port-Adapter).
 
 ```typescript
 interface FoundryGame {
+  /**
+   * Alle Journal-Einträge abrufen (gecached)
+   * @returns Array aller Journal-Einträge oder Fehler
+   */
   getJournalEntries(): Result<FoundryJournalEntry[], FoundryError>;
+
+  /**
+   * Einzelnen Journal-Eintrag nach ID abrufen
+   * @param id - Die Foundry Document ID
+   * @returns Journal-Eintrag, null wenn nicht gefunden, oder Fehler
+   */
   getJournalEntryById(id: string): Result<FoundryJournalEntry | null, FoundryError>;
-  invalidateCache(): void; // Invalidates the journal entries cache
+
+  /**
+   * Cache invalidieren (erzwingt Neuladen bei nächstem Aufruf)
+   */
+  invalidateCache(): void;
+}
+
+interface FoundryJournalEntry {
+  id: string;
+  name: string | null;
+  folder: string | null;
+  sort: number;
+  ownership: Record<string, number>;
+  flags: Record<string, unknown>;
 }
 ```
 
@@ -390,8 +457,38 @@ Foundry Document API (Flags, etc.).
 
 ```typescript
 interface FoundryDocument {
+  /**
+   * Flag von einem Document lesen
+   * @param document - Das Foundry Document (JournalEntry, Actor, etc.)
+   * @param scope - Scope/Namespace (meist Modul-ID)
+   * @param key - Flag-Key
+   * @returns Flag-Wert oder undefined wenn nicht gesetzt
+   */
   getFlag<T>(document: unknown, scope: string, key: string): Result<T | undefined, FoundryError>;
+
+  /**
+   * Flag auf einem Document setzen
+   * @param document - Das Foundry Document
+   * @param scope - Scope/Namespace
+   * @param key - Flag-Key
+   * @param value - Zu speichernder Wert (serialisierbar)
+   */
   setFlag(document: unknown, scope: string, key: string, value: unknown): Promise<Result<void, FoundryError>>;
+
+  /**
+   * Flag von einem Document entfernen
+   * @param document - Das Foundry Document
+   * @param scope - Scope/Namespace
+   * @param key - Flag-Key
+   */
+  unsetFlag(document: unknown, scope: string, key: string): Promise<Result<void, FoundryError>>;
+
+  /**
+   * Alle Flags für einen Scope abrufen
+   * @param document - Das Foundry Document
+   * @param scope - Scope/Namespace
+   */
+  getFlags(document: unknown, scope: string): Result<Record<string, unknown> | undefined, FoundryError>;
 }
 ```
 
@@ -830,10 +927,93 @@ Initial Public API Release
 
 ---
 
+## 📊 Quick Reference - Alle Methoden
+
+### API-Methoden
+
+| Methode | Rückgabe | Beschreibung |
+|---------|----------|--------------|
+| `api.resolve(token)` | `T` | Service direkt (throws bei Fehler) |
+| `api.resolveWithError(token)` | `Result<T, ContainerError>` | Service mit Error-Handling |
+| `api.getAvailableTokens()` | `Map<symbol, TokenInfo>` | Alle verfügbaren Tokens |
+| `api.getMetrics()` | `MetricsSnapshot` | Performance-Metriken |
+| `api.getHealth()` | `HealthStatus` | Health-Status |
+
+### NotificationCenter-Methoden
+
+| Methode | Parameter | Beschreibung |
+|---------|-----------|--------------|
+| `debug(context, data?, options?)` | string, unknown, Options | Debug-Nachricht |
+| `info(context, data?, options?)` | string, unknown, Options | Info-Nachricht |
+| `warn(context, data?, options?)` | string, unknown, Options | Warning-Nachricht |
+| `error(context, data?, options?)` | string, unknown, Options | Error-Nachricht |
+| `log(level, context, data?, options?)` | LogLevel, string, unknown, Options | Explizites Level |
+| `withTraceId(traceId)` | string | Kontext mit TraceId |
+
+### FoundryGame-Methoden
+
+| Methode | Rückgabe | Beschreibung |
+|---------|----------|--------------|
+| `getJournalEntries()` | `Result<JournalEntry[], Error>` | Alle Journals |
+| `getJournalEntryById(id)` | `Result<JournalEntry \| null, Error>` | Einzelnes Journal |
+| `invalidateCache()` | `void` | Cache leeren |
+
+### FoundryHooks-Methoden
+
+| Methode | Rückgabe | Beschreibung |
+|---------|----------|--------------|
+| `on(hook, fn)` | `Result<number, Error>` | Hook registrieren |
+| `once(hook, fn)` | `Result<number, Error>` | Einmaliger Hook |
+| `off(hook, idOrFn)` | `Result<void, Error>` | Hook deregistrieren |
+
+### FoundryDocument-Methoden
+
+| Methode | Rückgabe | Beschreibung |
+|---------|----------|--------------|
+| `getFlag(doc, scope, key)` | `Result<T \| undefined, Error>` | Flag lesen |
+| `setFlag(doc, scope, key, value)` | `Promise<Result<void, Error>>` | Flag setzen |
+| `unsetFlag(doc, scope, key)` | `Promise<Result<void, Error>>` | Flag entfernen |
+| `getFlags(doc, scope)` | `Result<Record<string, unknown>, Error>` | Alle Flags |
+
+### FoundrySettings-Methoden
+
+| Methode | Rückgabe | Beschreibung |
+|---------|----------|--------------|
+| `register(ns, key, config)` | `Result<void, Error>` | Setting registrieren |
+| `get(ns, key)` | `Result<T, Error>` | Setting lesen |
+| `set(ns, key, value)` | `Promise<Result<void, Error>>` | Setting setzen |
+
+### JournalCollectionPort-Methoden
+
+| Methode | Rückgabe | Beschreibung |
+|---------|----------|--------------|
+| `getAll()` | `Result<JournalEntry[], Error>` | Alle Journals |
+| `getById(id)` | `Result<JournalEntry \| null, Error>` | Nach ID |
+| `getByIds(ids)` | `Result<JournalEntry[], Error>` | Nach IDs |
+| `exists(id)` | `Result<boolean, Error>` | Existenz prüfen |
+| `count()` | `Result<number, Error>` | Anzahl |
+| `search(query)` | `Result<JournalEntry[], Error>` | Suche |
+| `query()` | `EntityQueryBuilder` | Query Builder |
+
+### JournalRepository-Methoden (zusätzlich zu Collection)
+
+| Methode | Rückgabe | Beschreibung |
+|---------|----------|--------------|
+| `create(data)` | `Promise<Result<JournalEntry, Error>>` | Journal erstellen |
+| `update(id, changes)` | `Promise<Result<JournalEntry, Error>>` | Journal aktualisieren |
+| `delete(id)` | `Promise<Result<void, Error>>` | Journal löschen |
+| `getFlag(id, scope, key)` | `Result<unknown \| null, Error>` | Flag lesen |
+| `setFlag(id, scope, key, value)` | `Promise<Result<void, Error>>` | Flag setzen |
+| `unsetFlag(id, scope, key)` | `Promise<Result<void, Error>>` | Flag entfernen |
+
+---
+
 ## 🔗 Weitere Ressourcen
 
 - [README.md](../../README.md) - Modul-Übersicht
 - [Architektur-Übersicht](../architecture/overview.md) - Architektur-Details
+- [Token-Katalog](./tokens.md) - Vollständiger DI-Token-Katalog
+- [API-Verwendung](../guides/api-usage.md) - Schnelleinstieg für externe Module
 - [GitHub Repository](https://github.com/Lewellyen/fvtt_relationship_app_module) - Source Code
 
 ---
@@ -846,6 +1026,6 @@ Bei Fragen oder Problemen:
 
 ---
 
-**Version**: 0.43.18
+**Version**: 0.44.0
 **API Version**: 1.0.0
-**Letzte Aktualisierung**: 2025-01-XX
+**Letzte Aktualisierung**: 2025-12-15

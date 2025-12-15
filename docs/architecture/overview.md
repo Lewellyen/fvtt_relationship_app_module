@@ -2,8 +2,8 @@
 
 **Zweck:** High-Level Architektur-Dokumentation des Moduls
 **Zielgruppe:** Architekten, Maintainer, Entwickler
-**Letzte Aktualisierung:** 2025-01-XX
-**Projekt-Version:** 0.43.18 (Pre-Release)
+**Letzte Aktualisierung:** 2025-12-15
+**Projekt-Version:** 0.44.0
 
 ---
 
@@ -11,7 +11,7 @@
 
 Das Modul implementiert eine **Clean Architecture** mit **Dependency Injection**, **Port-Adapter-Pattern** für Foundry VTT-Versionskompatibilität und **Result-Pattern** für fehlerfreies Error Handling.
 
-**Status:** Version 0.43.18 (Pre-Release)
+**Status:** Version 0.44.0
 **Breaking Changes:** ✅ Erlaubt (bis Modul 1.0.0)
 **Legacy-Code:** ❌ Wird unmittelbar bereinigt
 
@@ -489,4 +489,4 @@ Neben den Foundry-Versions-Ports gibt es auch **Domain-Ports**, die domänenneut
 
 ---
 
-**Letzte Aktualisierung:** 2025-01-XX
+**Letzte Aktualisierung:** 2025-12-15

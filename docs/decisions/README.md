@@ -28,6 +28,7 @@ Wir verwenden das [MADR-Format](https://adr.github.io/madr/) (Markdown Architect
 | [0009](0009-bootstrap-di-exceptions.md) | Accepted | Bootstrap DI Exceptions | 2025-11-10 |
 | [0010](0010-bootstrap-logger-evaluation.md) | Proposed | Bootstrap-Logger Evaluation (Not Implemented) | 2025-11-10 |
 | [0011](0011-bootstrap-new-instantiation-exceptions.md) | Accepted | Bootstrap `new` Instantiation Exceptions | 2025-11-12 |
+| [0012](0012-error-service-architecture.md) | Accepted | Error Service Architecture | 2025-11-15 |
 
 ## Status-Werte
 

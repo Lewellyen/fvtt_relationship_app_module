@@ -2,8 +2,8 @@
 
 **Zweck:** Hauptindex der Dokumentation mit Navigation für alle Zielgruppen
 **Zielgruppe:** Alle (Endnutzer, Contributor, Maintainer)
-**Letzte Aktualisierung:** 2025-01-XX
-**Projekt-Version:** 0.43.18 (Pre-Release)
+**Letzte Aktualisierung:** 2025-12-15
+**Projekt-Version:** 0.44.0
 
 ---
 
@@ -44,16 +44,13 @@ docs/
 │   ├── patterns.md              # Architektur-Patterns
 │   ├── module-boundaries.md     # Modul-Grenzen & Dependencies
 │   ├── bootstrap.md             # Bootstrap-Prozess
-│   └── data-flow.md             # Datenfluss-Diagramme
+│   └── data-flow.md             # Datenfluss-Diagramme (Mermaid)
 ├── development/                  # Entwickler-Guides
 │   ├── README.md
-│   ├── setup.md                 # Entwicklungsumgebung
+│   ├── coding-standards.md      # Code-Konventionen
 │   ├── scripts.md               # NPM-Scripts & Build-Tools
 │   ├── testing.md               # Test-Strategie & Anleitung
-│   ├── linting-formatting.md    # Code-Qualität
-│   ├── coding-standards.md      # Code-Konventionen
-│   ├── versioning.md            # Versionierung & Breaking Changes
-│   └── debugging.md             # Debugging-Guide
+│   └── versioning.md            # Versionierung & Breaking Changes
 ├── guides/                      # Praktische Anleitungen
 │   ├── README.md
 │   ├── api-usage.md             # API-Verwendung (extern)
@@ -72,9 +69,9 @@ docs/
 │   └── [ADRs verlinkt zu adr/]
 ├── quality/                    # Qualitätsmetriken
 │   ├── README.md
-│   ├── coverage.md             # Code Coverage Strategie
-│   ├── type-safety.md          # Type Coverage
-│   └── linting.md              # Linter-Regeln
+│   ├── code-coverage-exclusions.md  # Code Coverage Exclusions
+│   ├── type-coverage-exclusions.md  # Type Coverage Exclusions
+│   └── linter-exclusions.md         # Linter Exclusions
 ├── releases/                   # Release Notes
 │   └── [historische Releases]
 ├── templates/                  # Dokumentations-Templates
@@ -85,7 +82,7 @@ docs/
 │   └── migration-guide-template.md
 ├── archive/                    # Archivierte Dokumente
 │   └── [veraltete/obsolete Docs]
-└── CHANGELOG.md                # Dokumentations-Änderungen
+└── index.md                    # Dokumentations-Startseite
 ```
 
 ---

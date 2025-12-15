@@ -1,8 +1,7 @@
 # Quick Reference – Service & Dependency Übersicht
 
-**Model:** Claude Sonnet 4.5
-**Datum:** 2025-11-20
-**Projekt-Status:** Version 0.26.3 → Unreleased (Pre-Release - Clean Architecture Restrukturierung)
+**Datum:** 2025-12-15
+**Projekt-Status:** Version 0.44.0
 **API-Version:** 1.0.0
 **Breaking Changes:** ✅ Erlaubt bis Modul 1.0.0
 **Legacy-Code:** ❌ Wird unmittelbar bereinigt

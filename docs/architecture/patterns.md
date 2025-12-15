@@ -2,8 +2,8 @@
 
 **Zweck:** Detaillierte Dokumentation der verwendeten Architektur-Patterns
 **Zielgruppe:** Architekten, Entwickler
-**Letzte Aktualisierung:** 2025-01-XX
-**Projekt-Version:** 0.43.18 (Pre-Release)
+**Letzte Aktualisierung:** 2025-12-15
+**Projekt-Version:** 0.44.0
 
 ---
 
