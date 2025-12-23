@@ -9,6 +9,9 @@ import { metricsSamplerToken } from "@/infrastructure/shared/tokens/observabilit
 import { metricsReporterToken } from "@/infrastructure/shared/tokens/observability/metrics-reporter.token";
 import { traceContextToken } from "@/infrastructure/shared/tokens/observability/trace-context.token";
 import { metricsStorageToken } from "@/infrastructure/shared/tokens/observability/metrics-storage.token";
+import { metricsAggregatorToken } from "@/infrastructure/shared/tokens/observability/metrics-aggregator.token";
+import { metricsPersistenceManagerToken } from "@/infrastructure/shared/tokens/observability/metrics-persistence-manager.token";
+import { metricsStateManagerToken } from "@/infrastructure/shared/tokens/observability/metrics-state-manager.token";
 import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { moduleHealthServiceToken } from "@/infrastructure/shared/tokens/core/module-health-service.token";
@@ -18,6 +21,9 @@ import { bootstrapInitHookServiceToken } from "@/infrastructure/shared/tokens/co
 import { bootstrapReadyHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-ready-hook-service.token";
 import { DIMetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { DIPersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
+import { MetricsAggregator } from "@/infrastructure/observability/metrics-aggregator";
+import { MetricsPersistenceManager } from "@/infrastructure/observability/metrics-persistence/metrics-persistence-manager";
+import { MetricsStateManager } from "@/infrastructure/observability/metrics-state/metrics-state-manager";
 import { DIMetricsSampler } from "@/infrastructure/observability/metrics-sampler";
 import { DIMetricsReporter } from "@/infrastructure/observability/metrics-reporter";
 import { createMetricsStorage } from "@/infrastructure/observability/metrics-persistence/metrics-storage-factory";
@@ -40,7 +46,10 @@ import { DIFoundryModuleReadyPort } from "@/infrastructure/adapters/foundry/serv
  * Registers core infrastructure services.
  *
  * Services registered:
- * - MetricsCollector (singleton, deps: [runtimeConfigToken])
+ * - MetricsAggregator (singleton, no dependencies) - DIP: injected into MetricsCollector
+ * - MetricsPersistenceManager (singleton, no dependencies) - DIP: injected into MetricsCollector
+ * - MetricsStateManager (singleton, no dependencies) - DIP: injected into MetricsCollector
+ * - MetricsCollector (singleton, deps: [runtimeConfigToken, metricsAggregatorToken, metricsPersistenceManagerToken, metricsStateManagerToken])
  * - MetricsSampler (singleton, deps: [runtimeConfigToken]) - separate service for SRP
  * - MetricsReporter (singleton, deps: [metricsCollectorToken, loggerToken]) - separate service for SRP
  * - MetricsRecorder (alias to MetricsCollector) - for backward compatibility
@@ -53,15 +62,18 @@ import { DIFoundryModuleReadyPort } from "@/infrastructure/adapters/foundry/serv
  * - ModuleApiInitializer (singleton, handles API exposition)
  *
  * INITIALIZATION ORDER:
- * 1. MetricsCollector (deps: [runtimeConfigToken])
- * 2. MetricsSampler (deps: [runtimeConfigToken])
- * 3. TraceContext (no dependencies)
- * 4. Logger (klassische DI mit deps: [runtimeConfigToken, traceContextToken])
- * 5. MetricsReporter (deps: [metricsCollectorToken, loggerToken])
- * 6. HealthCheckRegistry (no dependencies)
- * 7. ContainerHealthCheck & MetricsHealthCheck (auto-register to registry)
- * 8. ModuleHealthService (deps: [healthCheckRegistryToken])
- * 9. ModuleApiInitializer (no dependencies)
+ * 1. MetricsAggregator (no dependencies)
+ * 2. MetricsPersistenceManager (no dependencies)
+ * 3. MetricsStateManager (no dependencies)
+ * 4. MetricsCollector (deps: [runtimeConfigToken, metricsAggregatorToken, metricsPersistenceManagerToken, metricsStateManagerToken])
+ * 5. MetricsSampler (deps: [runtimeConfigToken])
+ * 6. TraceContext (no dependencies)
+ * 7. Logger (klassische DI mit deps: [runtimeConfigToken, traceContextToken])
+ * 8. MetricsReporter (deps: [metricsCollectorToken, loggerToken])
+ * 9. HealthCheckRegistry (no dependencies)
+ * 10. ContainerHealthCheck & MetricsHealthCheck (auto-register to registry)
+ * 11. ModuleHealthService (deps: [healthCheckRegistryToken])
+ * 12. ModuleApiInitializer (no dependencies)
  *
  * @param container - The service container to register services in
  * @returns Result indicating success or error with details
@@ -72,6 +84,38 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
     return err("RuntimeConfigService not registered");
   }
   const enablePersistence = runtimeConfig.get("enableMetricsPersistence") === true;
+
+  // Register MetricsAggregator (DIP: dependency for MetricsCollector)
+  const aggregatorResult = container.registerClass(
+    metricsAggregatorToken,
+    MetricsAggregator,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(aggregatorResult)) {
+    return err(`Failed to register MetricsAggregator: ${aggregatorResult.error.message}`);
+  }
+
+  // Register MetricsPersistenceManager (DIP: dependency for MetricsCollector)
+  const persistenceManagerResult = container.registerClass(
+    metricsPersistenceManagerToken,
+    MetricsPersistenceManager,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(persistenceManagerResult)) {
+    return err(
+      `Failed to register MetricsPersistenceManager: ${persistenceManagerResult.error.message}`
+    );
+  }
+
+  // Register MetricsStateManager (DIP: dependency for MetricsCollector)
+  const stateManagerResult = container.registerClass(
+    metricsStateManagerToken,
+    MetricsStateManager,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(stateManagerResult)) {
+    return err(`Failed to register MetricsStateManager: ${stateManagerResult.error.message}`);
+  }
 
   if (enablePersistence) {
     const metricsKey =

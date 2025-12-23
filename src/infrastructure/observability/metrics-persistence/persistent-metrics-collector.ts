@@ -2,11 +2,18 @@ import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontok
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { metricsStorageToken } from "@/infrastructure/shared/tokens/observability/metrics-storage.token";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
+import { metricsAggregatorToken } from "@/infrastructure/shared/tokens/observability/metrics-aggregator.token";
+import { metricsPersistenceManagerToken } from "@/infrastructure/shared/tokens/observability/metrics-persistence-manager.token";
+import { metricsStateManagerToken } from "@/infrastructure/shared/tokens/observability/metrics-state-manager.token";
+import type { IMetricsAggregator } from "@/infrastructure/observability/interfaces/metrics-aggregator.interface";
+import type { IMetricsPersistenceManager } from "@/infrastructure/observability/interfaces/metrics-persistence-manager.interface";
+import type { IMetricsStateManager } from "@/infrastructure/observability/interfaces/metrics-state-manager.interface";
 import type { MetricsPersistenceState } from "@/infrastructure/observability/metrics-types";
 import { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsStorage } from "./metrics-storage";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
+import type { MetricDefinitionRegistry } from "@/infrastructure/observability/metrics-definition/metric-definition-registry";
 
 /**
  * MetricsCollector variant that persists state via MetricsStorage.
@@ -22,9 +29,13 @@ export class PersistentMetricsCollector extends MetricsCollector {
 
   constructor(
     config: RuntimeConfigService,
-    private readonly metricsStorage: MetricsStorage
+    private readonly metricsStorage: MetricsStorage,
+    registry?: MetricDefinitionRegistry,
+    aggregator?: IMetricsAggregator,
+    persistenceManager?: IMetricsPersistenceManager,
+    stateManager?: IMetricsStateManager
   ) {
-    super(config);
+    super(config, registry, aggregator, persistenceManager, stateManager);
     // I/O removed from constructor - use initialize() instead
   }
 
@@ -102,9 +113,19 @@ export class DIPersistentMetricsCollector extends PersistentMetricsCollector {
   static override dependencies: readonly InjectionToken<unknown>[] = [
     runtimeConfigToken,
     metricsStorageToken,
+    metricsAggregatorToken,
+    metricsPersistenceManagerToken,
+    metricsStateManagerToken,
   ];
 
-  constructor(config: RuntimeConfigService, metricsStorage: MetricsStorage) {
-    super(config, metricsStorage);
+  constructor(
+    config: RuntimeConfigService,
+    metricsStorage: MetricsStorage,
+    aggregator: IMetricsAggregator,
+    persistenceManager: IMetricsPersistenceManager,
+    stateManager: IMetricsStateManager,
+    registry?: MetricDefinitionRegistry
+  ) {
+    super(config, metricsStorage, registry, aggregator, persistenceManager, stateManager);
   }
 }

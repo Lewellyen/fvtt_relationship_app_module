@@ -2530,6 +2530,11 @@ const metricsSamplerToken = createInjectionToken("MetricsSampler");
 const metricsReporterToken = createInjectionToken("MetricsReporter");
 const traceContextToken = createInjectionToken("TraceContext");
 const metricsStorageToken = createInjectionToken("MetricsStorage");
+const metricsAggregatorToken = createInjectionToken("MetricsAggregator");
+const metricsPersistenceManagerToken = createInjectionToken(
+  "MetricsPersistenceManager"
+);
+const metricsStateManagerToken = createInjectionToken("MetricsStateManager");
 const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
 const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
 const HOOK_THROTTLE_WINDOW_MS = 150;
@@ -2951,14 +2956,14 @@ function createDefaultMetricDefinitionRegistry() {
 }
 __name(createDefaultMetricDefinitionRegistry, "createDefaultMetricDefinitionRegistry");
 const _MetricsCollector = class _MetricsCollector {
-  constructor(config2, registry) {
+  constructor(config2, registry, aggregator, persistenceManager, stateManager) {
     this.config = config2;
     this.metricStates = /* @__PURE__ */ new Map();
     this.registry = registry ?? createDefaultMetricDefinitionRegistry();
     this.initializeMetricStates();
-    this.aggregator = new MetricsAggregator();
-    this.persistenceManager = new MetricsPersistenceManager();
-    this.stateManager = new MetricsStateManager();
+    this.aggregator = aggregator ?? new MetricsAggregator();
+    this.persistenceManager = persistenceManager ?? new MetricsPersistenceManager();
+    this.stateManager = stateManager ?? new MetricsStateManager();
   }
   /**
    * Initializes metric states from registry definitions.
@@ -3177,16 +3182,21 @@ __name(_MetricsCollector, "MetricsCollector");
 _MetricsCollector.dependencies = [runtimeConfigToken];
 let MetricsCollector = _MetricsCollector;
 const _DIMetricsCollector = class _DIMetricsCollector extends MetricsCollector {
-  constructor(config2) {
-    super(config2);
+  constructor(config2, aggregator, persistenceManager, stateManager, registry) {
+    super(config2, registry, aggregator, persistenceManager, stateManager);
   }
 };
 __name(_DIMetricsCollector, "DIMetricsCollector");
-_DIMetricsCollector.dependencies = [runtimeConfigToken];
+_DIMetricsCollector.dependencies = [
+  runtimeConfigToken,
+  metricsAggregatorToken,
+  metricsPersistenceManagerToken,
+  metricsStateManagerToken
+];
 let DIMetricsCollector = _DIMetricsCollector;
 const _PersistentMetricsCollector = class _PersistentMetricsCollector extends MetricsCollector {
-  constructor(config2, metricsStorage) {
-    super(config2);
+  constructor(config2, metricsStorage, registry, aggregator, persistenceManager, stateManager) {
+    super(config2, registry, aggregator, persistenceManager, stateManager);
     this.metricsStorage = metricsStorage;
     this.suppressPersistence = false;
     this.initialized = false;
@@ -3257,14 +3267,17 @@ _PersistentMetricsCollector.dependencies = [
 ];
 let PersistentMetricsCollector = _PersistentMetricsCollector;
 const _DIPersistentMetricsCollector = class _DIPersistentMetricsCollector extends PersistentMetricsCollector {
-  constructor(config2, metricsStorage) {
-    super(config2, metricsStorage);
+  constructor(config2, metricsStorage, aggregator, persistenceManager, stateManager, registry) {
+    super(config2, metricsStorage, registry, aggregator, persistenceManager, stateManager);
   }
 };
 __name(_DIPersistentMetricsCollector, "DIPersistentMetricsCollector");
 _DIPersistentMetricsCollector.dependencies = [
   runtimeConfigToken,
-  metricsStorageToken
+  metricsStorageToken,
+  metricsAggregatorToken,
+  metricsPersistenceManagerToken,
+  metricsStateManagerToken
 ];
 let DIPersistentMetricsCollector = _DIPersistentMetricsCollector;
 const _MetricsSampler = class _MetricsSampler {
@@ -11159,6 +11172,32 @@ function registerCoreServices(container) {
     return err("RuntimeConfigService not registered");
   }
   const enablePersistence = runtimeConfig.get("enableMetricsPersistence") === true;
+  const aggregatorResult = container.registerClass(
+    metricsAggregatorToken,
+    MetricsAggregator,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(aggregatorResult)) {
+    return err(`Failed to register MetricsAggregator: ${aggregatorResult.error.message}`);
+  }
+  const persistenceManagerResult = container.registerClass(
+    metricsPersistenceManagerToken,
+    MetricsPersistenceManager,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(persistenceManagerResult)) {
+    return err(
+      `Failed to register MetricsPersistenceManager: ${persistenceManagerResult.error.message}`
+    );
+  }
+  const stateManagerResult = container.registerClass(
+    metricsStateManagerToken,
+    MetricsStateManager,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(stateManagerResult)) {
+    return err(`Failed to register MetricsStateManager: ${stateManagerResult.error.message}`);
+  }
   if (enablePersistence) {
     const metricsKey = runtimeConfig.get("metricsPersistenceKey") ?? "fvtt_relationship_app_module.metrics";
     const storageInstance = createMetricsStorage(metricsKey);

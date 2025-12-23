@@ -4,6 +4,9 @@ import type { RuntimeConfigService } from "@/application/services/RuntimeConfigS
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import type { MetricsRecorder } from "./interfaces/metrics-recorder";
 import type { IRawMetrics } from "./interfaces/raw-metrics.interface";
+import type { IMetricsAggregator } from "./interfaces/metrics-aggregator.interface";
+import type { IMetricsPersistenceManager } from "./interfaces/metrics-persistence-manager.interface";
+import type { IMetricsStateManager } from "./interfaces/metrics-state-manager.interface";
 import { MetricsAggregator } from "./metrics-aggregator";
 import { MetricsPersistenceManager } from "./metrics-persistence/metrics-persistence-manager";
 import { MetricsStateManager } from "./metrics-state/metrics-state-manager";
@@ -11,6 +14,9 @@ import type { MetricsSnapshot, MetricsPersistenceState } from "./metrics-types";
 import type { MetricState } from "./metrics-definition/metric-definition.interface";
 import type { MetricDefinitionRegistry } from "./metrics-definition/metric-definition-registry";
 import { createDefaultMetricDefinitionRegistry } from "./metrics-definition/default-metric-definitions";
+import { metricsAggregatorToken } from "@/infrastructure/shared/tokens/observability/metrics-aggregator.token";
+import { metricsPersistenceManagerToken } from "@/infrastructure/shared/tokens/observability/metrics-persistence-manager.token";
+import { metricsStateManagerToken } from "@/infrastructure/shared/tokens/observability/metrics-state-manager.token";
 
 // Re-export for backward compatibility
 export type { MetricsSnapshot, MetricsPersistenceState } from "./metrics-types";
@@ -63,14 +69,18 @@ export class MetricsCollector implements MetricsRecorder {
   private readonly metricStates = new Map<string, MetricState>();
 
   // SRP: Delegation to specialized components
-  private readonly aggregator: MetricsAggregator;
-  private readonly persistenceManager: MetricsPersistenceManager;
-  private readonly stateManager: MetricsStateManager;
+  // DIP: Depend on interfaces, not concrete implementations
+  private readonly aggregator: IMetricsAggregator;
+  private readonly persistenceManager: IMetricsPersistenceManager;
+  private readonly stateManager: IMetricsStateManager;
   private readonly registry: MetricDefinitionRegistry;
 
   constructor(
     private readonly config: RuntimeConfigService,
-    registry?: MetricDefinitionRegistry
+    registry?: MetricDefinitionRegistry,
+    aggregator?: IMetricsAggregator,
+    persistenceManager?: IMetricsPersistenceManager,
+    stateManager?: IMetricsStateManager
   ) {
     // Use provided registry or create default one
     this.registry = registry ?? createDefaultMetricDefinitionRegistry();
@@ -78,10 +88,10 @@ export class MetricsCollector implements MetricsRecorder {
     // Initialize metric states from registry
     this.initializeMetricStates();
 
-    // Create components internally (can be injected in future if needed)
-    this.aggregator = new MetricsAggregator();
-    this.persistenceManager = new MetricsPersistenceManager();
-    this.stateManager = new MetricsStateManager();
+    // DIP: Use injected dependencies or fallback to default implementations for backward compatibility
+    this.aggregator = aggregator ?? new MetricsAggregator();
+    this.persistenceManager = persistenceManager ?? new MetricsPersistenceManager();
+    this.stateManager = stateManager ?? new MetricsStateManager();
   }
 
   /**
@@ -343,9 +353,20 @@ export class MetricsCollector implements MetricsRecorder {
 }
 
 export class DIMetricsCollector extends MetricsCollector {
-  static override dependencies: readonly InjectionToken<unknown>[] = [runtimeConfigToken];
+  static override dependencies: readonly InjectionToken<unknown>[] = [
+    runtimeConfigToken,
+    metricsAggregatorToken,
+    metricsPersistenceManagerToken,
+    metricsStateManagerToken,
+  ];
 
-  constructor(config: RuntimeConfigService) {
-    super(config);
+  constructor(
+    config: RuntimeConfigService,
+    aggregator: IMetricsAggregator,
+    persistenceManager: IMetricsPersistenceManager,
+    stateManager: IMetricsStateManager,
+    registry?: MetricDefinitionRegistry
+  ) {
+    super(config, registry, aggregator, persistenceManager, stateManager);
   }
 }

@@ -12,6 +12,33 @@
 
 ### Upgrade-Hinweise
 
+## [0.44.1] - 2025-12-23
+### Hinzugefügt
+- **DI-Tokens für Metrics-Komponenten**: Neue Injection Tokens für Dependency Injection von Metrics-Komponenten ([Details](docs/refactoring/DIP/findings/DIP__medium__metrics-collector-concrete-instantiation__g6h7i8j.md))
+- `metricsAggregatorToken`: Token für `IMetricsAggregator`
+- `metricsPersistenceManagerToken`: Token für `IMetricsPersistenceManager`
+- `metricsStateManagerToken`: Token für `IMetricsStateManager`
+- **IMetricsStateManager Interface erweitert**: `notifyStateChanged()` Methode zum Interface hinzugefügt für vollständige DIP-Compliance
+
+### Geändert
+- **DIP-Refactoring: MetricsCollector**: `MetricsCollector` verwendet jetzt Dependency Injection für interne Komponenten statt direkter Instanziierung ([Details](docs/refactoring/DIP/findings/DIP__medium__metrics-collector-concrete-instantiation__g6h7i8j.md))
+- `MetricsCollector`: Konstruktor akzeptiert jetzt optionale `IMetricsAggregator`, `IMetricsPersistenceManager` und `IMetricsStateManager` Parameter
+- `DIMetricsCollector`: Dependencies erweitert um `metricsAggregatorToken`, `metricsPersistenceManagerToken` und `metricsStateManagerToken`
+- `DIPersistentMetricsCollector`: Dependencies erweitert um die drei neuen Tokens
+- `core-services.config.ts`: Registriert jetzt `MetricsAggregator`, `MetricsPersistenceManager` und `MetricsStateManager` als separate Services
+- Backward Compatibility: Alle Parameter sind optional, Default-Instanzen werden bei fehlender Injection erstellt
+- Verbesserte Testbarkeit: Komponenten können jetzt als Mocks injiziert werden
+- Keine Breaking Changes: Public API bleibt unverändert, bestehender Code funktioniert weiterhin
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.44.0] - 2025-12-14
 ### Hinzugefügt
 - **Foundry-API-Interfaces für Dependency Injection**: Neue Interfaces (`IFoundryGameAPI`, `IFoundrySettingsAPI`, `IFoundryUIAPI`, `IFoundryHooksAPI`, `IFoundryI18nAPI`) in `src/infrastructure/adapters/foundry/api/foundry-api.interface.ts` für bessere Testbarkeit der Port-Implementierungen ([Details](docs/refactoring/DIP/findings/DIP__medium__foundry-adapters-concrete-foundry-apis__f5g6h7i.md))

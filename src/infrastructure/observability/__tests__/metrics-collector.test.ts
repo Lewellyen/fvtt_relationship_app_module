@@ -18,6 +18,9 @@ import type { MetricDefinition } from "@/infrastructure/observability/metrics-de
 import { createDefaultMetricDefinitionRegistry } from "@/infrastructure/observability/metrics-definition/default-metric-definitions";
 import { METRICS_CONFIG } from "@/infrastructure/shared/constants";
 import type { IRawMetrics } from "@/infrastructure/observability/interfaces/raw-metrics.interface";
+import { MetricsAggregator } from "@/infrastructure/observability/metrics-aggregator";
+import { MetricsPersistenceManager } from "@/infrastructure/observability/metrics-persistence/metrics-persistence-manager";
+import { MetricsStateManager } from "@/infrastructure/observability/metrics-state/metrics-state-manager";
 
 describe("MetricsCollector", () => {
   let collector: MetricsCollector;
@@ -44,15 +47,21 @@ describe("MetricsCollector", () => {
     });
 
     it("DI wrapper should expose same dependencies", () => {
-      expect(DIMetricsCollector.dependencies).toHaveLength(1);
+      expect(DIMetricsCollector.dependencies).toHaveLength(4);
       expect(DIMetricsCollector.dependencies[0]).toBeDefined();
       expect(String(DIMetricsCollector.dependencies[0])).toContain("RuntimeConfig");
+      expect(DIMetricsCollector.dependencies[1]).toBeDefined();
+      expect(DIMetricsCollector.dependencies[2]).toBeDefined();
+      expect(DIMetricsCollector.dependencies[3]).toBeDefined();
     });
 
     it("persistent wrapper should expose dependencies", () => {
-      expect(DIPersistentMetricsCollector.dependencies).toHaveLength(2);
+      expect(DIPersistentMetricsCollector.dependencies).toHaveLength(5);
       expect(DIPersistentMetricsCollector.dependencies[0]).toBeDefined();
       expect(DIPersistentMetricsCollector.dependencies[1]).toBeDefined();
+      expect(DIPersistentMetricsCollector.dependencies[2]).toBeDefined();
+      expect(DIPersistentMetricsCollector.dependencies[3]).toBeDefined();
+      expect(DIPersistentMetricsCollector.dependencies[4]).toBeDefined();
     });
 
     it("persistent wrapper should construct and reuse metrics persistence", () => {
@@ -62,7 +71,17 @@ describe("MetricsCollector", () => {
         clear: vi.fn(),
       };
 
-      const persistent = new DIPersistentMetricsCollector(runtimeConfig, storage);
+      const aggregator = new MetricsAggregator();
+      const persistenceManager = new MetricsPersistenceManager();
+      const stateManager = new MetricsStateManager();
+
+      const persistent = new DIPersistentMetricsCollector(
+        runtimeConfig,
+        storage,
+        aggregator,
+        persistenceManager,
+        stateManager
+      );
 
       expect(persistent).toBeInstanceOf(PersistentMetricsCollector);
       expect(storage.load).not.toHaveBeenCalled(); // load is no longer called in constructor

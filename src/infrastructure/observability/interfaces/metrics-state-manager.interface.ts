@@ -20,4 +20,10 @@ export interface IMetricsStateManager {
    * @param callback - Callback to remove
    */
   unsubscribe(callback: () => void): void;
+
+  /**
+   * Notifies all registered callbacks of a state change.
+   * Internal method used by MetricsCollector.
+   */
+  notifyStateChanged(): void;
 }
