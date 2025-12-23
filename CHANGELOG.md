@@ -12,6 +12,42 @@
 
 ### Upgrade-Hinweise
 
+## [0.44.2] - 2025-12-23
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **ISP-Refactoring: ModuleApi Interface**: ModuleApi Interface wurde in separate, fokussierte Interfaces aufgeteilt, um Interface Segregation Principle (ISP) zu erfüllen ([Details](docs/refactoring/ISP/findings/ISP__low__ModuleApi-interface-many-methods__c7d8e9.md))
+- `ModuleApiMetadata`: Enthält Version-Information (`version`)
+- `ServiceResolutionApi`: Service-Resolution-Methoden (`resolve`, `resolveWithError`, `tokens`)
+- `DiscoveryApi`: Token-Discovery-Methode (`getAvailableTokens`)
+- `DiagnosticsApi`: Health- und Metrics-Methoden (`getMetrics`, `getHealth`)
+- `ModuleApi`: Zusammengesetztes Interface, das alle obigen Interfaces erweitert
+- Backward Compatibility: Public API bleibt vollständig kompatibel, da `ModuleApi` alle ursprünglichen Methoden enthält
+- Verbesserte Testbarkeit: Mocks können jetzt nur die benötigten Interfaces implementieren
+- Keine Breaking Changes: Externe Consumer werden nicht beeinträchtigt
+- **ISP-Refactoring-Analyse: PlatformEntityCollectionPort**: ISP-Finding analysiert und Entscheidung dokumentiert - keine Änderung erforderlich ([Details](docs/refactoring/ISP/findings/ISP__low__entity-collection-many-methods__k7l8m9n.md))
+- Analyse ergab: Alle Methoden gehören semantisch zusammen (Read-Operationen für Collections)
+- `PlatformEntityRepository` erweitert Collection-Interface und benötigt alle Methoden
+- Trennung würde Komplexität erhöhen ohne praktischen Nutzen
+- Entscheidung: Option 2 (keine Änderung) befolgt - Interface bleibt unverändert
+- **ISP-Refactoring: NotificationService Interface**: NotificationService Interface wurde in separate, fokussierte Interfaces aufgeteilt, um Interface Segregation Principle (ISP) zu erfüllen ([Details](docs/refactoring/ISP/findings/ISP__low__notificationservice-multiple-methods__e4f5g6h.md))
+- `NotificationSender`: Enthält Notification-Methoden (`debug`, `info`, `warn`, `error`)
+- `ChannelManager`: Enthält Channel-Management-Methoden (`addChannel`, `removeChannel`, `getChannelNames`)
+- `NotificationService`: Zusammengesetztes Interface, das beide Interfaces erweitert (`extends NotificationSender, ChannelManager`)
+- Backward Compatibility: Public API bleibt vollständig kompatibel, da `NotificationService` alle ursprünglichen Methoden enthält
+- Verbesserte Flexibilität: Zukünftige spezialisierte Implementierungen können nur `NotificationSender` oder `ChannelManager` implementieren
+- Keine Breaking Changes: Alle bestehenden Verwendungen funktionieren weiterhin ohne Änderungen
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.44.1] - 2025-12-23
 ### Hinzugefügt
 - **DI-Tokens für Metrics-Komponenten**: Neue Injection Tokens für Dependency Injection von Metrics-Komponenten ([Details](docs/refactoring/DIP/findings/DIP__medium__metrics-collector-concrete-instantiation__g6h7i8j.md))

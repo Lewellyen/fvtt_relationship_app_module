@@ -72,33 +72,10 @@ export interface ModuleApiTokens {
 export type { HealthStatus };
 
 /**
- * Public API exposed to external scripts and modules.
- * Provides controlled access to the DI container.
- *
- * Available via: game.modules.get(MODULE_ID).api
- *
- * @example
- * ```typescript
- * const api = game.modules.get('fvtt_relationship_app_module').api;
- *
- * // Check API version
- * console.log(`API version: ${api.version}`);
- *
- * // Check health status
- * const health = api.getHealth();
- * console.log(`Module status: ${health.status}`);
- *
- * // Option 1: Use exported tokens
- * const notifications = api.resolve(api.tokens.notificationCenterToken);
- *
- * // Option 2: Discover available tokens
- * const tokens = api.getAvailableTokens();
- * for (const [token, info] of tokens.entries()) {
- *   console.log(`Available: ${info.description}`);
- * }
- * ```
+ * API metadata for the module.
+ * Contains version information following semantic versioning.
  */
-export interface ModuleApi {
+export interface ModuleApiMetadata {
   /**
    * API version following semantic versioning (MAJOR.MINOR.PATCH).
    * Breaking changes increment MAJOR, new features increment MINOR, bugfixes increment PATCH.
@@ -107,7 +84,17 @@ export interface ModuleApi {
    * - 1.0.0: Initial public API
    */
   readonly version: "1.0.0";
+}
 
+/**
+ * Service resolution API interface.
+ * Provides methods for resolving services from the DI container.
+ *
+ * Separated for Interface Segregation Principle (ISP) compliance.
+ * Clients that only need service resolution don't need to depend on
+ * discovery or diagnostics capabilities.
+ */
+export interface ServiceResolutionApi {
   /**
    * Resolves a service from the DI container (throws on failure).
    *
@@ -176,24 +163,6 @@ export interface ModuleApi {
   ) => Result<TServiceType, ContainerError>;
 
   /**
-   * Lists all registered service tokens with their descriptions.
-   * Useful for discovering what services are available for external scripts.
-   *
-   * @returns Map of token symbols to their metadata (description, registration status)
-   *
-   * @example
-   * ```typescript
-   * const api = game.modules.get('fvtt_relationship_app_module').api;
-   * const tokens = api.getAvailableTokens();
-   *
-   * for (const [token, info] of tokens.entries()) {
-   *   console.log(`Token: ${info.description}, Registered: ${info.isRegistered}`);
-   * }
-   * ```
-   */
-  getAvailableTokens: () => Map<InjectionTokenKey, TokenInfo>;
-
-  /**
    * Well-known tokens exported by this module for easy access.
    *
    * FIXED: Each token has its precise generic type for type safety.
@@ -214,7 +183,45 @@ export interface ModuleApi {
    * ```
    */
   tokens: ModuleApiTokens;
+}
 
+/**
+ * Discovery API interface.
+ * Provides methods for discovering available services and tokens.
+ *
+ * Separated for Interface Segregation Principle (ISP) compliance.
+ * Clients that only need token discovery don't need to depend on
+ * service resolution or diagnostics capabilities.
+ */
+export interface DiscoveryApi {
+  /**
+   * Lists all registered service tokens with their descriptions.
+   * Useful for discovering what services are available for external scripts.
+   *
+   * @returns Map of token symbols to their metadata (description, registration status)
+   *
+   * @example
+   * ```typescript
+   * const api = game.modules.get('fvtt_relationship_app_module').api;
+   * const tokens = api.getAvailableTokens();
+   *
+   * for (const [token, info] of tokens.entries()) {
+   *   console.log(`Token: ${info.description}, Registered: ${info.isRegistered}`);
+   * }
+   * ```
+   */
+  getAvailableTokens: () => Map<InjectionTokenKey, TokenInfo>;
+}
+
+/**
+ * Diagnostics API interface.
+ * Provides methods for health monitoring and performance metrics.
+ *
+ * Separated for Interface Segregation Principle (ISP) compliance.
+ * Clients that only need diagnostics don't need to depend on
+ * service resolution or discovery capabilities.
+ */
+export interface DiagnosticsApi {
   /**
    * Gets a snapshot of performance metrics.
    *
@@ -253,6 +260,43 @@ export interface ModuleApi {
    */
   getHealth: () => HealthStatus;
 }
+
+/**
+ * Public API exposed to external scripts and modules.
+ * Provides controlled access to the DI container.
+ *
+ * Available via: game.modules.get(MODULE_ID).api
+ *
+ * This interface is composed of smaller, focused interfaces following
+ * the Interface Segregation Principle (ISP):
+ * - ModuleApiMetadata: Version information
+ * - ServiceResolutionApi: Service resolution methods
+ * - DiscoveryApi: Token discovery methods
+ * - DiagnosticsApi: Health and metrics methods
+ *
+ * @example
+ * ```typescript
+ * const api = game.modules.get('fvtt_relationship_app_module').api;
+ *
+ * // Check API version
+ * console.log(`API version: ${api.version}`);
+ *
+ * // Check health status
+ * const health = api.getHealth();
+ * console.log(`Module status: ${health.status}`);
+ *
+ * // Option 1: Use exported tokens
+ * const notifications = api.resolve(api.tokens.notificationCenterToken);
+ *
+ * // Option 2: Discover available tokens
+ * const tokens = api.getAvailableTokens();
+ * for (const [token, info] of tokens.entries()) {
+ *   console.log(`Available: ${info.description}`);
+ * }
+ * ```
+ */
+export interface ModuleApi
+  extends ModuleApiMetadata, ServiceResolutionApi, DiscoveryApi, DiagnosticsApi {}
 
 // Helper type alias for the token map key (symbol description).
 export type InjectionTokenKey = symbol;

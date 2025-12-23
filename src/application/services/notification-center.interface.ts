@@ -22,11 +22,12 @@ export type NotificationCenterOptions = {
 };
 
 /**
- * Service interface for NotificationCenter.
+ * Interface for sending notifications.
  *
- * Platform-agnostic interface for sending notifications through channels.
+ * Provides methods for sending notifications at different log levels.
+ * Platform-agnostic interface for routing notifications through channels.
  */
-export interface NotificationService {
+export interface NotificationSender {
   debug(context: string, data?: unknown, options?: NotificationCenterOptions): Result<void, string>;
   info(context: string, data?: unknown, options?: NotificationCenterOptions): Result<void, string>;
   warn(context: string, data?: unknown, options?: NotificationCenterOptions): Result<void, string>;
@@ -35,7 +36,23 @@ export interface NotificationService {
     error?: PlatformNotification["error"],
     options?: NotificationCenterOptions
   ): Result<void, string>;
+}
+
+/**
+ * Interface for managing notification channels.
+ *
+ * Provides methods for adding, removing, and querying notification channels.
+ */
+export interface ChannelManager {
   addChannel(channel: PlatformChannelPort): void;
   removeChannel(name: string): boolean;
   getChannelNames(): string[];
 }
+
+/**
+ * Service interface for NotificationCenter.
+ *
+ * Platform-agnostic interface for sending notifications through channels.
+ * Combines notification sending and channel management capabilities.
+ */
+export interface NotificationService extends NotificationSender, ChannelManager {}

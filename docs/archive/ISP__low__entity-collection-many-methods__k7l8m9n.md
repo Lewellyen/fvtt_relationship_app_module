@@ -136,3 +136,17 @@ export interface PlatformEntityCollectionPort<TEntity>
 - Eine Trennung würde die Komplexität erhöhen, ohne großen Nutzen zu bringen
 - Clients, die nur einfache Operationen benötigen, können die erweiterten Methoden mit leeren Implementierungen oder Fehlern versehen
 
+## Refactoring-Status
+
+**Analysiert am**: 2025-01-XX
+**Entscheidung**: Option 2 (keine Änderung) befolgt
+
+**Begründung**:
+- Alle aktuellen Implementierungen (`FoundryJournalCollectionAdapter`) nutzen alle Methoden
+- `PlatformEntityRepository` erweitert `PlatformEntityCollectionPort` und benötigt alle Methoden
+- Die Methoden gehören semantisch zusammen (Read-Operationen für Collections)
+- Eine Trennung würde die Komplexität erhöhen, ohne praktischen Nutzen zu bringen
+- Keine Clients identifiziert, die nur einfache Read-Operationen ohne Query-Funktionalität benötigen
+
+**Fazit**: Das Interface bleibt unverändert, da die aktuelle Struktur für eine Collection-Interface angemessen ist und ISP-Verletzungen in diesem Fall akzeptabel sind (Low Severity).
+
