@@ -4,7 +4,7 @@ import type {
   EntityRepositoryError,
   CreateEntityData,
   EntityChanges,
-} from "@/domain/ports/repositories/platform-entity-repository.interface";
+} from "@/domain/ports/repositories/platform-entity-repository.types";
 import type { EntityCollectionError } from "@/domain/ports/collections/entity-collection-error.interface";
 import type { EntitySearchQuery } from "@/domain/ports/collections/entity-search-query.interface";
 import type { EntityQueryBuilder } from "@/domain/ports/collections/entity-query-builder.interface";

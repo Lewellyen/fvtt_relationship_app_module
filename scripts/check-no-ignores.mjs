@@ -140,6 +140,11 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Type-Placeholder: Leere Interface-Erweiterung für zukünftige journal-spezifische Methoden (no-empty-object-type ist hier beabsichtigt für Extension-Point)',
   },
   {
+    file: 'src/domain/ports/repositories/platform-entity-read-repository.interface.ts',
+    allowed: ['eslint-disable-next-line'],
+    reason: 'Interface-Segregation: Leere Interface-Erweiterung für Read-Only-Repository (no-empty-object-type ist hier beabsichtigt, da alle Methoden von PlatformEntityCollectionPort geerbt werden)',
+  },
+  {
     file: 'src/domain/ports/repositories/platform-journal-repository.interface.ts',
     allowed: ['eslint-disable-next-line'],
     reason: 'Type-Placeholder: Leere Interface-Erweiterung für zukünftige journal-spezifische Methoden (no-empty-object-type ist hier beabsichtigt für Extension-Point)',

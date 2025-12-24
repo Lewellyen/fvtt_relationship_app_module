@@ -12,6 +12,35 @@
 
 ### Upgrade-Hinweise
 
+## [0.44.3] - 2025-12-24
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **ISP-Refactoring: PlatformEntityRepository Interface**: PlatformEntityRepository Interface wurde in separate, fokussierte Interfaces aufgeteilt, um Interface Segregation Principle (ISP) zu erfüllen ([Details](docs/refactoring/ISP/findings/ISP__medium__entity-repository-fat-interface__g4h5i6j.md))
+- `PlatformEntityReadRepository`: Enthält nur Read-Operationen (erbt von `PlatformEntityCollectionPort`)
+- `PlatformEntityWriteRepository`: Enthält Write-Operationen (create, update, delete, flags)
+- `PlatformEntityRepository`: Zusammengesetztes Interface, das beide Interfaces erweitert
+- `platform-entity-repository.types.ts`: Separate Types-Datei für `CreateEntityData`, `EntityChanges`, `EntityRepositoryError` zur Vermeidung zirkulärer Abhängigkeiten
+- Backward Compatibility: Public API bleibt vollständig kompatibel, da `PlatformEntityRepository` alle ursprünglichen Methoden enthält und Types re-exportiert werden
+- Verbesserte Testbarkeit: Mocks können jetzt nur die benötigten Interfaces implementieren (Read-only oder Write-only)
+- Zirkuläre Abhängigkeiten behoben: Types wurden in separate Datei ausgelagert
+- **ISP-Refactoring-Analyse: PlatformSettingsPort**: ISP-Finding analysiert und Entscheidung dokumentiert - keine Änderung erforderlich ([Details](docs/refactoring/ISP/findings/ISP__low__settings-port-combines-operations__o0p1q2r.md))
+- Analyse ergab: Settings-Operationen gehören semantisch zusammen (register, get, set)
+- Es gibt nur einen Implementer (`FoundrySettingsAdapter`), der alle drei Methoden benötigt
+- Keine Clients, die nur einen Teil des Interfaces benötigen
+- Ein separates `PlatformSettingsRegistrationPort` existiert bereits für andere Anwendungsfälle (domain-neutral, ohne Valibot-Abhängigkeit)
+- Entscheidung: Option 2 (keine Änderung) befolgt - Interface bleibt unverändert
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.44.2] - 2025-12-23
 ### Hinzugefügt
 - Keine Einträge

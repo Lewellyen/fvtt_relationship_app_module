@@ -120,28 +120,32 @@ export interface AsyncDisposable {
   disposeAsync(): Promise<void>;
 }
 
-export interface Container {
+/**
+ * Interface for service registration operations.
+ * Segregated from Container to follow Interface Segregation Principle.
+ *
+ * @interface ServiceRegistrar
+ *
+ * @example
+ * ```typescript
+ * function registerServices(registrar: ServiceRegistrar) {
+ *   registrar.registerClass(LoggerToken, Logger, SINGLETON);
+ *   registrar.registerFactory(DatabaseToken, () => new Database(), SINGLETON);
+ * }
+ * ```
+ */
+export interface ServiceRegistrar {
   /**
    * Register a service class with automatic dependency injection.
    *
    * The service class should have a static `dependencies` property that declares its dependencies.
    * The container will automatically resolve and inject these dependencies when creating instances.
    *
-   * @template Tunknown - The type of service to register (must extend unknown)
+   * @template T - The type of service to register
    * @param token - The injection token that identifies this service
    * @param serviceClass - The service class to instantiate (must have static dependencies property)
    * @param lifecycle - Service lifecycle strategy (SINGLETON, TRANSIENT, or SCOPED)
    * @returns Result indicating success or registration error
-   *
-   * @example
-   * ```typescript
-   * class UserService {
-   *   static dependencies = [LoggerToken, DatabaseToken] as const;
-   *   constructor(private logger: Logger, private db: Database) {}
-   * }
-   *
-   * const result = container.registerClass(UserServiceToken, UserService, SINGLETON);
-   * ```
    */
   registerClass<T>(
     token: InjectionToken<T>,
@@ -155,20 +159,12 @@ export interface Container {
    * Factory functions provide full control over instance creation, including complex initialization
    * logic, conditional creation, or integration with external systems.
    *
-   * @template T - The type this factory creates (no constraints)
+   * @template T - The type this factory creates
    * @param token - The injection token that identifies this service
    * @param factory - Factory function that creates the service instance
    * @param lifecycle - Service lifecycle strategy (SINGLETON, TRANSIENT, or SCOPED)
+   * @param dependencies - Optional explicit dependencies declaration
    * @returns Result indicating success or registration error
-   *
-   * @example
-   * ```typescript
-   * const result = container.registerFactory(
-   *   DatabaseToken,
-   *   () => new Database(config),
-   *   SINGLETON
-   * );
-   * ```
    */
   registerFactory<T>(
     token: InjectionToken<T>,
@@ -187,15 +183,24 @@ export interface Container {
    * @param token - The injection token that identifies this service
    * @param instance - The pre-created instance to register
    * @returns Result indicating success or registration error
-   *
-   * @example
-   * ```typescript
-   * const logger = new ExternalLogger();
-   * const result = container.registerInstance(LoggerToken, logger);
-   * ```
    */
   registerInstance<T>(token: InjectionToken<T>, instance: T): Result<void, ContainerError>;
+}
 
+/**
+ * Interface for service resolution operations.
+ * Segregated from Container to follow Interface Segregation Principle.
+ *
+ * @interface ServiceResolver
+ *
+ * @example
+ * ```typescript
+ * function resolveService<T>(resolver: ServiceResolver, token: InjectionToken<T>): T {
+ *   return resolver.resolve(token);
+ * }
+ * ```
+ */
+export interface ServiceResolver {
   /**
    * Resolve a service instance by its injection token.
    *
@@ -206,12 +211,6 @@ export interface Container {
    * @param token - The injection token that identifies the service
    * @returns The resolved service instance
    * @throws {ContainerError} If service is not registered or resolution fails
-   *
-   * @example
-   * ```typescript
-   * const logger = container.resolve(LoggerToken);
-   * logger.info("Service resolved");
-   * ```
    */
   resolve<T>(token: InjectionToken<T>): T;
 
@@ -223,19 +222,24 @@ export interface Container {
    * @template T - The type of service to resolve
    * @param token - The injection token that identifies the service
    * @returns Result with the resolved service or error
-   *
-   * @example
-   * ```typescript
-   * const result = container.resolveWithError(LoggerToken);
-   * if (result.ok) {
-   *   result.value.info("Service resolved");
-   * } else {
-   *   console.error(result.error);
-   * }
-   * ```
    */
   resolveWithError<T>(token: InjectionToken<T>): Result<T, ContainerError>;
+}
 
+/**
+ * Interface for container validation operations.
+ * Segregated from Container to follow Interface Segregation Principle.
+ *
+ * @interface ContainerValidator
+ *
+ * @example
+ * ```typescript
+ * function validateContainer(validator: ContainerValidator): Result<void, ContainerError[]> {
+ *   return validator.validate();
+ * }
+ * ```
+ */
+export interface ContainerValidator {
   /**
    * Validate the container's dependency graph.
    *
@@ -245,14 +249,6 @@ export interface Container {
    * - Invalid factory functions
    *
    * @returns Result indicating validation success or errors
-   *
-   * @example
-   * ```typescript
-   * const result = container.validate();
-   * if (!result.ok) {
-   *   console.error("Validation failed:", result.error);
-   * }
-   * ```
    */
   validate(): Result<void, ContainerError[]>;
 
@@ -262,7 +258,22 @@ export interface Container {
    * @returns Current validation state
    */
   getValidationState(): ContainerValidationState;
+}
 
+/**
+ * Interface for container scope management operations.
+ * Segregated from Container to follow Interface Segregation Principle.
+ *
+ * @interface ScopeManager
+ *
+ * @example
+ * ```typescript
+ * function createChildScope(manager: ScopeManager): Result<Container, ContainerError> {
+ *   return manager.createScope("child");
+ * }
+ * ```
+ */
+export interface ScopeManager {
   /**
    * Create a child container with its own scope.
    *
@@ -271,18 +282,27 @@ export interface Container {
    *
    * @param scopeName - Optional name for the child scope (for debugging)
    * @returns Result with the child container or error
-   *
-   * @example
-   * ```typescript
-   * const childResult = container.createScope("request");
-   * if (childResult.ok) {
-   *   const child = childResult.value;
-   *   // Register request-specific services
-   * }
-   * ```
    */
   createScope(scopeName?: string): Result<Container, ContainerError>;
+}
 
+/**
+ * Interface for container lifecycle management (disposal operations).
+ * Segregated from Container to follow Interface Segregation Principle.
+ *
+ * Note: This is different from the Disposable interface for services.
+ * This interface is for the container itself, not for services registered in it.
+ *
+ * @interface ContainerDisposable
+ *
+ * @example
+ * ```typescript
+ * async function cleanupContainer(disposable: ContainerDisposable): Promise<void> {
+ *   await disposable.disposeAsync();
+ * }
+ * ```
+ */
+export interface ContainerDisposable {
   /**
    * Dispose of the container and all registered services.
    *
@@ -303,12 +323,27 @@ export interface Container {
    * @returns Promise with Result indicating success or disposal errors
    */
   disposeAsync(): Promise<Result<void, ContainerError>>;
+}
 
+/**
+ * Interface for container query operations.
+ * Segregated from Container to follow Interface Segregation Principle.
+ *
+ * @interface ContainerQuery
+ *
+ * @example
+ * ```typescript
+ * function checkRegistration(query: ContainerQuery, token: InjectionToken<unknown>): boolean {
+ *   return query.isRegistered(token).value;
+ * }
+ * ```
+ */
+export interface ContainerQuery {
   /**
    * Check if a token is registered in this container.
    *
    * @param token - The injection token to check
-   * @returns True if the token is registered
+   * @returns Result with true if the token is registered, false otherwise
    */
   isRegistered<T>(token: InjectionToken<T>): Result<boolean, never>;
 
@@ -319,4 +354,41 @@ export interface Container {
    * @returns API-safe token information or null if not registered
    */
   getApiSafeToken<T>(token: ApiSafeToken<T>): { description: string; isRegistered: boolean } | null;
+}
+
+/**
+ * Main container interface combining all specialized interfaces.
+ *
+ * This is a composite interface that extends all segregated interfaces,
+ * maintaining backward compatibility while following Interface Segregation Principle.
+ * Clients can now depend on specific interfaces (e.g., ServiceResolver) instead of
+ * the full Container interface when they only need a subset of functionality.
+ *
+ * @interface Container
+ *
+ * @example
+ * ```typescript
+ * // Full container usage (backward compatible)
+ * const container: Container = ServiceContainer.createRoot(ENV);
+ * container.registerClass(LoggerToken, Logger, SINGLETON);
+ * container.validate();
+ * const logger = container.resolve(LoggerToken);
+ *
+ * // Specialized interface usage (ISP-compliant)
+ * function resolveService<T>(resolver: ServiceResolver, token: InjectionToken<T>): T {
+ *   return resolver.resolve(token);
+ * }
+ * ```
+ */
+export interface Container
+  extends
+    ServiceRegistrar,
+    ServiceResolver,
+    ContainerValidator,
+    ScopeManager,
+    ContainerDisposable,
+    ContainerQuery {
+  // All methods are inherited from the extended interfaces above.
+  // This composite interface maintains backward compatibility while
+  // allowing clients to depend on specific interfaces (ISP compliance).
 }
