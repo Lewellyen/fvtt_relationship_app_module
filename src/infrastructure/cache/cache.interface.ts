@@ -73,6 +73,12 @@ export interface CacheServiceConfig {
   defaultTtlMs: number;
   maxEntries?: number | undefined;
   namespace?: string;
+  /**
+   * Optional key for the eviction strategy to use.
+   * If not provided, defaults to "lru".
+   * Strategies must be registered in EvictionStrategyRegistry before use.
+   */
+  evictionStrategyKey?: string;
 }
 
 /**

@@ -13,6 +13,7 @@
 - [Patterns](./patterns.md) - Port-Adapter, Result, DI
 - [Bootstrap](./bootstrap.md) - Bootstrap-Prozess im Detail
 - [Modul-Grenzen](./module-boundaries.md) - Dependencies & Layer-Analyse (TODO)
+- [Interface Extension Guidelines](./interface-extension-guidelines.md) - LSP-Richtlinien für Interface-Erweiterungen
 
 ---
 

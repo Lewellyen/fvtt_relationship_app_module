@@ -14,6 +14,10 @@ import type { MetricsCollector } from "@/infrastructure/observability/metrics-co
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { CacheCapacityManager } from "@/infrastructure/cache/cache-capacity-manager";
+import { LRUEvictionStrategy } from "@/infrastructure/cache/lru-eviction-strategy";
+import { EvictionStrategyRegistry } from "@/infrastructure/cache/eviction-strategy-registry";
+import { CacheStore } from "@/infrastructure/cache/store/CacheStore";
 
 const buildCacheKey = createCacheNamespace("journal", MODULE_METADATA.ID);
 
@@ -564,5 +568,63 @@ describe("CacheService", () => {
     expect(stats.hits).toBe(1);
     expect(stats.misses).toBe(1);
     expect(stats.evictions).toBe(1);
+  });
+
+  it("should use provided capacityManager when passed as constructor parameter", () => {
+    // Create a custom capacity manager
+    const customStore = new CacheStore();
+    const customStrategy = new LRUEvictionStrategy();
+    const customCapacityManager = new CacheCapacityManager(customStrategy, customStore);
+
+    const config: CacheServiceConfig = {
+      enabled: true,
+      defaultTtlMs: 1000,
+      namespace: "test-custom-manager",
+      maxEntries: 2,
+    };
+
+    // Pass the custom capacity manager to the constructor
+    const serviceWithCustomManager = new CacheService(
+      config,
+      metrics,
+      () => now,
+      customCapacityManager
+    );
+
+    // Verify the custom manager is being used by checking internal state
+    const internal = serviceWithCustomManager as unknown as {
+      capacityManager: CacheCapacityManager;
+    };
+    expect(internal.capacityManager).toBe(customCapacityManager);
+  });
+
+  it("should fallback to LRU strategy when getOrDefault returns undefined", () => {
+    const registry = EvictionStrategyRegistry.getInstance();
+
+    // Mock getOrDefault to return undefined (simulating both key and defaultKey not found)
+    // This tests the defensive fallback path in CacheService constructor
+    vi.spyOn(registry, "getOrDefault").mockReturnValue(undefined);
+
+    const config: CacheServiceConfig = {
+      enabled: true,
+      defaultTtlMs: 1000,
+      namespace: "test-fallback",
+      maxEntries: 1,
+      evictionStrategyKey: "non-existent-strategy",
+    };
+
+    // Should not throw and should fallback to creating LRU strategy directly
+    const service = new CacheService(config, metrics, () => now);
+
+    const key1 = buildCacheKey("fallback", "1");
+    const key2 = buildCacheKey("fallback", "2");
+
+    service.set(key1, ["value1"]);
+    service.set(key2, ["value2"]); // Should trigger eviction with fallback LRU
+
+    expect(service.size).toBeLessThanOrEqual(1);
+
+    // Restore original method
+    vi.spyOn(registry, "getOrDefault").mockRestore();
   });
 });

@@ -18,6 +18,7 @@ import { ok, err, fromPromise } from "@/domain/utils/result";
 import type { InternalCacheEntry } from "./eviction-strategy.interface";
 import { CacheCapacityManager } from "./cache-capacity-manager";
 import { LRUEvictionStrategy } from "./lru-eviction-strategy";
+import { EvictionStrategyRegistry } from "./eviction-strategy-registry";
 import type { CacheMetricsObserver } from "./cache-metrics-observer.interface";
 import { CacheMetricsCollector } from "./cache-metrics-collector";
 import { CacheStore } from "./store/CacheStore";
@@ -65,8 +66,25 @@ export class CacheService implements CacheServiceContract {
     this.expirationManager = expirationManager ?? new CacheExpirationManager(clock);
 
     // Capacity manager needs store and strategy
-    this.capacityManager =
-      capacityManager ?? new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
+    // Use registry-based strategy selection (OCP-compliant)
+    if (capacityManager) {
+      this.capacityManager = capacityManager;
+    } else {
+      const registry = EvictionStrategyRegistry.getInstance();
+      // Ensure default LRU strategy is registered
+      if (!registry.has("lru")) {
+        registry.register("lru", new LRUEvictionStrategy());
+      }
+      // Get strategy from registry (defaults to "lru" if not specified)
+      const strategyKey = config.evictionStrategyKey ?? "lru";
+      const strategy = registry.getOrDefault(strategyKey, "lru");
+      if (!strategy) {
+        // Fallback to LRU if strategy not found (should not happen if "lru" is registered)
+        this.capacityManager = new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
+      } else {
+        this.capacityManager = new CacheCapacityManager(strategy, this.store);
+      }
+    }
   }
 
   get isEnabled(): boolean {

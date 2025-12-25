@@ -162,11 +162,11 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Array-Zugriffe: TypeScript kann nicht statisch beweisen, dass Array mit length > 0 ein Element bei Index 0 hat. Naming-Convention: Foundry verwendet PascalCase für Klassen-Namen (JournalEntry).',
   },
 
-  // Domain Types: Naming Conventions
+  // Domain Types: Naming Conventions & Proxy Pattern Type Casts
   {
     file: 'src/domain/types/settings.ts',
-    allowed: ['eslint-disable-next-line'],
-    reason: 'Naming-Convention: PascalCase für namespace-ähnliches Objekt (SettingValidators) ist beabsichtigt für konsistente API-Nutzung.',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Naming-Convention: PascalCase für namespace-ähnliches Objekt (SettingValidators) ist beabsichtigt für konsistente API-Nutzung. Proxy Pattern: Type-Casts für dynamische Property-Zugriffe und Generic Type Narrowing im Proxy-Handler sind notwendig für Type-Safety.',
   },
   {
     file: 'src/domain/types/container-types.ts',

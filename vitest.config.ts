@@ -94,6 +94,7 @@ export default defineConfig({
         "src/infrastructure/shared/tokens/collection-tokens.ts",
         "src/infrastructure/shared/tokens/repository-tokens.ts",
         "src/application/utils/token-factory.ts",
+        "src/infrastructure/di/token-factory.ts",
       ],
     },
   },

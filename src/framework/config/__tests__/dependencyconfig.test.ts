@@ -658,49 +658,52 @@ describe("dependencyconfig", () => {
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      expect(result.error).toBe("Observability registration failed");
+      expect(result.error).toBe(
+        "Failed at step 'Observability': Observability registration failed"
+      );
 
       // Restore for other tests
       vi.restoreAllMocks();
     });
 
-    it("should propagate errors from registerUtilityServices", () => {
+    it("should propagate errors from registerUtilityServices", async () => {
       const container = createTestContainer();
 
-      vi.spyOn(container, "registerClass").mockImplementation((token) => {
-        // Let core and observability succeed, but fail utility
-        if (String(token).includes("Retry") || String(token).includes("PerformanceTracking")) {
-          return err({ code: "InvalidOperation", message: "Utility service failed" });
-        }
-        return { ok: true, value: undefined };
-      });
+      // Mock registerUtilityServices to return an error directly
+      const utilityModule = await import("@/framework/config/modules/utility-services.config");
+      vi.spyOn(utilityModule, "registerUtilityServices").mockReturnValue(
+        err("Utility service registration failed")
+      );
 
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      // Should contain either "Retry" or "PerformanceTracking"
-      const hasUtilityError =
-        result.error.includes("Retry") || result.error.includes("PerformanceTracking");
-      expect(hasUtilityError).toBe(true);
+      expect(result.error).toBe(
+        "Failed at step 'UtilityServices': Utility service registration failed"
+      );
+
+      // Restore for other tests
+      vi.restoreAllMocks();
     });
 
-    it("should propagate errors from registerCacheServices", () => {
+    it("should propagate errors from registerCacheServices", async () => {
       const container = createTestContainer();
 
-      vi.spyOn(container, "registerClass").mockImplementation((token) => {
-        // Let core, observability, and utility succeed, but fail cache services
-        if (String(token).includes("Cache") || String(token).includes("CacheService")) {
-          return err({ code: "InvalidOperation", message: "Cache service failed" });
-        }
-        return { ok: true, value: undefined };
-      });
+      // Mock registerCacheServices to return an error directly
+      const cacheModule = await import("@/framework/config/modules/cache-services.config");
+      vi.spyOn(cacheModule, "registerCacheServices").mockReturnValue(
+        err("Cache service registration failed")
+      );
 
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      // Should contain "Cache" or "CacheService"
-      const hasCacheError = result.error.includes("Cache") || result.error.includes("CacheService");
-      expect(hasCacheError).toBe(true);
+      expect(result.error).toBe(
+        "Failed at step 'CacheServices': Cache service registration failed"
+      );
+
+      // Restore for other tests
+      vi.restoreAllMocks();
     });
 
     it("should propagate errors from registerPortInfrastructure", async () => {
@@ -716,7 +719,9 @@ describe("dependencyconfig", () => {
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      expect(result.error).toBe("Port infrastructure registration failed");
+      expect(result.error).toBe(
+        "Failed at step 'PortInfrastructure': Port infrastructure registration failed"
+      );
 
       // Restore for other tests
       vi.restoreAllMocks();
@@ -742,7 +747,9 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
+        // Error should be wrapped by registry, but original error should be contained
         expect(result.error).toContain("PlatformSettingsPort");
+        expect(result.error).toContain("Failed at step 'SettingsPorts'");
       }
     });
 
@@ -760,7 +767,9 @@ describe("dependencyconfig", () => {
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      expect(result.error).toBe("JournalVisibilityConfig registration failed");
+      expect(result.error).toBe(
+        "Failed at step 'JournalVisibilityConfig': JournalVisibilityConfig registration failed"
+      );
 
       // Restore for other tests
       vi.restoreAllMocks();
@@ -779,7 +788,7 @@ describe("dependencyconfig", () => {
       const result = configureDependencies(container);
 
       expectResultErr(result);
-      expect(result.error).toBe("I18n services registration failed");
+      expect(result.error).toBe("Failed at step 'I18nServices': I18n services registration failed");
 
       // Restore for other tests
       vi.restoreAllMocks();
@@ -802,7 +811,9 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
+        // Error should be wrapped by registry, but original error should be contained
         expect(result.error).toContain("ModuleSettingsRegistrar");
+        expect(result.error).toContain("Failed at step 'Registrars'");
       }
     });
 
@@ -825,7 +836,9 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
+        // Error should be wrapped by registry, but original error should be contained
         expect(result.error).toContain("JournalEventPort");
+        expect(result.error).toContain("Failed at step 'EventPorts'");
       }
     });
 
@@ -851,7 +864,9 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
+        // Error should be wrapped by registry, but original error should be contained
         expect(result.error).toContain("PlatformJournalCollectionPort");
+        expect(result.error).toContain("Failed at step 'EntityPorts'");
       }
     });
 
@@ -873,7 +888,9 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
+        // Error should be wrapped by registry, but original error should be contained
         expect(result.error).toContain("UIChannel");
+        expect(result.error).toContain("Failed at step 'Notifications'");
       }
     });
 
@@ -897,7 +914,9 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
+        // Error should be wrapped by registry, but original error should be contained
         expect(result.error).toContain("NotificationCenter");
+        expect(result.error).toContain("Failed at step 'Notifications'");
       }
 
       registerClassSpy.mockRestore();
@@ -916,8 +935,13 @@ describe("dependencyconfig", () => {
 
       expectResultErr(result);
       if (!result.ok) {
+        // Error should be wrapped by registry, but original error should be contained
         expect(result.error).toContain("CacheConfigSync");
+        expect(result.error).toContain("Failed at step 'CacheConfigSyncInit'");
       }
+
+      // Restore for other tests
+      vi.restoreAllMocks();
     });
   });
 });

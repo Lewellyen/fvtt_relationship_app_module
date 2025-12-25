@@ -40,6 +40,134 @@ import { registerSettingsPorts } from "@/framework/config/modules/settings-ports
 import { registerJournalVisibilityConfig } from "@/framework/config/modules/journal-visibility.config";
 
 /**
+ * Represents a single step in the dependency registration process.
+ * Steps are executed in priority order (lower priority = earlier execution).
+ */
+interface DependencyRegistrationStep {
+  /** Human-readable name for logging and error messages */
+  name: string;
+  /** Priority determines execution order (lower = earlier). Use increments of 10 for flexibility. */
+  priority: number;
+  /** Function to execute for this registration step */
+  execute: (container: ServiceContainer) => Result<void, string>;
+}
+
+/**
+ * Registry for dependency registration steps.
+ * Allows adding new registration steps without modifying configureDependencies.
+ *
+ * DESIGN: Uses Registry Pattern to follow Open/Closed Principle:
+ * - Open for extension: New steps can be added via register()
+ * - Closed for modification: configureDependencies doesn't need to change
+ */
+class DependencyRegistrationRegistry {
+  private steps: DependencyRegistrationStep[] = [];
+
+  /**
+   * Registers a new dependency registration step.
+   * Steps are automatically sorted by priority after registration.
+   *
+   * @param step - The registration step to add
+   */
+  register(step: DependencyRegistrationStep): void {
+    this.steps.push(step);
+    this.steps.sort((a, b) => a.priority - b.priority);
+  }
+
+  /**
+   * Executes all registered steps in priority order.
+   * Stops at first error and returns it.
+   *
+   * @param container - The service container to configure
+   * @returns Result indicating success or the first error encountered
+   */
+  configure(container: ServiceContainer): Result<void, string> {
+    for (const step of this.steps) {
+      const result = step.execute(container);
+      if (isErr(result)) {
+        return err(`Failed at step '${step.name}': ${result.error}`);
+      }
+    }
+    return ok(undefined);
+  }
+}
+
+/**
+ * Creates and initializes the dependency registration registry with all default steps.
+ * This function centralizes the registration order configuration.
+ *
+ * REGISTRATION ORDER (via priorities):
+ * 1. Static Values (10) - EnvironmentConfig, RuntimeConfig, ServiceContainer
+ * 2. Core Services (20) - Logger, Metrics, ModuleHealth
+ * 3. Observability (30) - EventEmitter, ObservabilityRegistry
+ * 4. Utility Services (40) - Performance, Retry
+ * 5. Cache Services (50) - Cache infrastructure
+ * 6. Port Infrastructure (60) - PortSelector
+ * 7. Subcontainer Values (70) - Foundry Port Registries
+ * 8. Foundry Services (80) - Game, Hooks, Document, UI, Settings, Journal
+ * 9. Settings Ports (90) - PlatformSettingsPort
+ * 10. Entity Ports (100) - Entity port implementations
+ * 11. Journal Visibility Config (110) - Journal visibility service
+ * 12. I18n Services (120) - FoundryI18n, LocalI18n, I18nFacade
+ * 13. Notifications (130) - NotificationCenter, ConsoleChannel, UIChannel
+ * 14. Event Ports (140) - PlatformJournalEventPort, Use-Cases, ModuleEventRegistrar
+ * 15. Registrars (150) - ModuleSettingsRegistrar, ModuleHookRegistrar
+ * 16. Loop Prevention Services (160) - Health checks
+ * 17. Validation (170) - Container validation
+ * 18. Loop Prevention Init (180) - Initialize health checks
+ * 19. Cache Config Sync Init (190) - Initialize cache synchronization
+ */
+function createDependencyRegistrationRegistry(): DependencyRegistrationRegistry {
+  const registry = new DependencyRegistrationRegistry();
+
+  registry.register({ name: "StaticValues", priority: 10, execute: registerStaticValues });
+  registry.register({ name: "CoreServices", priority: 20, execute: registerCoreServices });
+  registry.register({ name: "Observability", priority: 30, execute: registerObservability });
+  registry.register({ name: "UtilityServices", priority: 40, execute: registerUtilityServices });
+  registry.register({ name: "CacheServices", priority: 50, execute: registerCacheServices });
+  registry.register({
+    name: "PortInfrastructure",
+    priority: 60,
+    execute: registerPortInfrastructure,
+  });
+  registry.register({
+    name: "SubcontainerValues",
+    priority: 70,
+    execute: registerSubcontainerValues,
+  });
+  registry.register({ name: "FoundryServices", priority: 80, execute: registerFoundryServices });
+  registry.register({ name: "SettingsPorts", priority: 90, execute: registerSettingsPorts });
+  registry.register({ name: "EntityPorts", priority: 100, execute: registerEntityPorts });
+  registry.register({
+    name: "JournalVisibilityConfig",
+    priority: 110,
+    execute: registerJournalVisibilityConfig,
+  });
+  registry.register({ name: "I18nServices", priority: 120, execute: registerI18nServices });
+  registry.register({ name: "Notifications", priority: 130, execute: registerNotifications });
+  registry.register({ name: "EventPorts", priority: 140, execute: registerEventPorts });
+  registry.register({ name: "Registrars", priority: 150, execute: registerRegistrars });
+  registry.register({
+    name: "LoopPreventionServices",
+    priority: 160,
+    execute: registerLoopPreventionServices,
+  });
+  registry.register({ name: "Validation", priority: 170, execute: validateContainer });
+  registry.register({
+    name: "LoopPreventionInit",
+    priority: 180,
+    execute: initializeLoopPreventionValues,
+  });
+  registry.register({
+    name: "CacheConfigSyncInit",
+    priority: 190,
+    execute: initializeCacheConfigSync,
+  });
+
+  return registry;
+}
+
+/**
  * Registers static bootstrap values that already exist outside the container.
  */
 function registerStaticValues(container: ServiceContainer): Result<void, string> {
@@ -166,22 +294,11 @@ function validateContainer(container: ServiceContainer): Result<void, string> {
  * - Observability uses self-registration pattern
  * - No manual wiring - all connections via DI
  * - Modular config files by domain
+ * - Uses Registry Pattern for extensibility (Open/Closed Principle)
  *
  * REGISTRATION ORDER:
- * 1. Static Values (EnvironmentConfig)
- * 2. Core Services (Logger, Metrics, ModuleHealth)
- * 3. Observability (EventEmitter, ObservabilityRegistry)
- * 4. Utility Services (Performance, Retry)
- * 5. Port Infrastructure (PortSelector)
- * 6. Subcontainer Values (Foundry Port Registries)
- * 7. Foundry Services (Game, Hooks, Document, UI, Settings, Journal)
- * 8. Settings Ports (PlatformSettingsPort)
- * 9. I18n Services (FoundryI18n, LocalI18n, I18nFacade, TranslationHandlers)
- * 10. Notifications (NotificationCenter, ConsoleChannel, UIChannel)
- * 11. Event Ports (PlatformJournalEventPort, Use-Cases, ModuleEventRegistrar)
- * 12. Registrars (ModuleSettingsRegistrar, ModuleHookRegistrar)
- * 13. Validation (Check dependency graph)
- * 14. Loop-Prevention Services (Health checks referencing validated services)
+ * See createDependencyRegistrationRegistry() for the complete ordered list.
+ * The registry manages the execution order via priority values.
  *
  * @param container - The service container to configure
  * @returns Result indicating success or configuration errors
@@ -196,64 +313,6 @@ function validateContainer(container: ServiceContainer): Result<void, string> {
  * ```
  */
 export function configureDependencies(container: ServiceContainer): Result<void, string> {
-  const staticValuesResult = registerStaticValues(container);
-  if (isErr(staticValuesResult)) return staticValuesResult;
-
-  // Register all service modules in order
-  const coreResult = registerCoreServices(container);
-  if (isErr(coreResult)) return coreResult;
-
-  const observabilityResult = registerObservability(container);
-  if (isErr(observabilityResult)) return observabilityResult;
-
-  const utilityResult = registerUtilityServices(container);
-  if (isErr(utilityResult)) return utilityResult;
-
-  const cacheServiceResult = registerCacheServices(container);
-  if (isErr(cacheServiceResult)) return cacheServiceResult;
-
-  const portInfraResult = registerPortInfrastructure(container);
-  if (isErr(portInfraResult)) return portInfraResult;
-
-  const subcontainerValuesResult = registerSubcontainerValues(container);
-  if (isErr(subcontainerValuesResult)) return subcontainerValuesResult;
-
-  const foundryServicesResult = registerFoundryServices(container);
-  if (isErr(foundryServicesResult)) return foundryServicesResult;
-
-  const settingsPortsResult = registerSettingsPorts(container);
-  if (isErr(settingsPortsResult)) return settingsPortsResult;
-
-  const entityPortsResult = registerEntityPorts(container);
-  if (isErr(entityPortsResult)) return entityPortsResult;
-
-  const journalVisibilityConfigResult = registerJournalVisibilityConfig(container);
-  if (isErr(journalVisibilityConfigResult)) return journalVisibilityConfigResult;
-
-  const i18nServicesResult = registerI18nServices(container);
-  if (isErr(i18nServicesResult)) return i18nServicesResult;
-
-  const notificationsResult = registerNotifications(container);
-  if (isErr(notificationsResult)) return notificationsResult;
-
-  const eventPortsResult = registerEventPorts(container);
-  if (isErr(eventPortsResult)) return eventPortsResult;
-
-  const registrarsResult = registerRegistrars(container);
-  if (isErr(registrarsResult)) return registrarsResult;
-
-  const loopServiceResult = registerLoopPreventionServices(container);
-  if (isErr(loopServiceResult)) return loopServiceResult;
-
-  // Validate container configuration
-  const validationResult = validateContainer(container);
-  if (isErr(validationResult)) return validationResult;
-
-  const loopPreventionInitResult = initializeLoopPreventionValues(container);
-  if (isErr(loopPreventionInitResult)) return loopPreventionInitResult;
-
-  const cacheConfigSyncInitResult = initializeCacheConfigSync(container);
-  if (isErr(cacheConfigSyncInitResult)) return cacheConfigSyncInitResult;
-
-  return ok(undefined);
+  const registry = createDependencyRegistrationRegistry();
+  return registry.configure(container);
 }

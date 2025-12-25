@@ -14885,6 +14885,95 @@ const _LRUEvictionStrategy = class _LRUEvictionStrategy {
 };
 __name(_LRUEvictionStrategy, "LRUEvictionStrategy");
 let LRUEvictionStrategy = _LRUEvictionStrategy;
+const _EvictionStrategyRegistry = class _EvictionStrategyRegistry {
+  constructor() {
+    this.strategies = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Gets the singleton instance of the registry.
+   *
+   * @returns The singleton registry instance
+   */
+  static getInstance() {
+    if (!_EvictionStrategyRegistry.instance) {
+      _EvictionStrategyRegistry.instance = new _EvictionStrategyRegistry();
+    }
+    return _EvictionStrategyRegistry.instance;
+  }
+  /**
+   * Registers a strategy with the given key.
+   *
+   * If a strategy with the same key already exists, it will be replaced.
+   * This allows for runtime strategy updates.
+   *
+   * @param key - Unique identifier for the strategy (e.g., "lru", "fifo", "lfu")
+   * @param strategy - The strategy instance to register
+   * @returns true if a strategy was replaced, false if it's a new registration
+   */
+  register(key, strategy) {
+    const wasReplaced = this.strategies.has(key);
+    this.strategies.set(key, strategy);
+    return wasReplaced;
+  }
+  /**
+   * Gets a strategy by key.
+   *
+   * @param key - The strategy key
+   * @returns The strategy if found, undefined otherwise
+   */
+  get(key) {
+    return this.strategies.get(key);
+  }
+  /**
+   * Gets a strategy by key, or returns the default strategy if not found.
+   *
+   * @param key - The strategy key
+   * @param defaultKey - The key of the default strategy to use if key is not found
+   * @returns The strategy if found, the default strategy if defaultKey is found, undefined otherwise
+   */
+  getOrDefault(key, defaultKey) {
+    if (!key) {
+      return this.get(defaultKey);
+    }
+    return this.get(key) ?? this.get(defaultKey);
+  }
+  /**
+   * Checks if a strategy is registered.
+   *
+   * @param key - The strategy key
+   * @returns true if the strategy is registered, false otherwise
+   */
+  has(key) {
+    return this.strategies.has(key);
+  }
+  /**
+   * Unregisters a strategy.
+   *
+   * @param key - The strategy key to unregister
+   * @returns true if a strategy was removed, false if it didn't exist
+   */
+  unregister(key) {
+    return this.strategies.delete(key);
+  }
+  /**
+   * Gets all registered strategy keys.
+   *
+   * @returns Array of all registered strategy keys
+   */
+  getRegisteredKeys() {
+    return Array.from(this.strategies.keys());
+  }
+  /**
+   * Clears all registered strategies.
+   * Useful for testing or reset scenarios.
+   */
+  clear() {
+    this.strategies.clear();
+  }
+};
+__name(_EvictionStrategyRegistry, "EvictionStrategyRegistry");
+_EvictionStrategyRegistry.instance = null;
+let EvictionStrategyRegistry = _EvictionStrategyRegistry;
 const _CacheMetricsCollector = class _CacheMetricsCollector {
   constructor(metricsCollector) {
     this.metricsCollector = metricsCollector;
@@ -15073,7 +15162,21 @@ const _CacheService = class _CacheService {
     const resolvedMetricsObserver = metricsObserver ?? new CacheMetricsCollector(metricsCollector);
     this.statisticsCollector = statisticsCollector ?? new CacheStatisticsCollector(resolvedMetricsObserver);
     this.expirationManager = expirationManager ?? new CacheExpirationManager(clock);
-    this.capacityManager = capacityManager ?? new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
+    if (capacityManager) {
+      this.capacityManager = capacityManager;
+    } else {
+      const registry = EvictionStrategyRegistry.getInstance();
+      if (!registry.has("lru")) {
+        registry.register("lru", new LRUEvictionStrategy());
+      }
+      const strategyKey = config2.evictionStrategyKey ?? "lru";
+      const strategy = registry.getOrDefault(strategyKey, "lru");
+      if (!strategy) {
+        this.capacityManager = new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
+      } else {
+        this.capacityManager = new CacheCapacityManager(strategy, this.store);
+      }
+    }
   }
   get isEnabled() {
     return this.configManager.isEnabled();
@@ -16720,44 +16823,92 @@ _DIModuleSettingsRegistrar.dependencies = [
   runtimeConfigBindingRegistryToken
 ];
 let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
-const SettingValidators = {
-  /**
-   * Validates that value is a boolean.
-   */
-  boolean: /* @__PURE__ */ __name((value2) => typeof value2 === "boolean", "boolean"),
-  /**
-   * Validates that value is a number.
-   */
-  number: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2), "number"),
-  /**
-   * Validates that value is a non-negative number.
-   */
-  nonNegativeNumber: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0, "nonNegativeNumber"),
-  /**
-   * Validates that value is a non-negative integer.
-   */
-  nonNegativeInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 >= 0, "nonNegativeInteger"),
-  /**
-   * Validates that value is a positive integer (greater than 0).
-   */
-  positiveInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 > 0, "positiveInteger"),
-  /**
-   * Validates that value is a string.
-   */
-  string: /* @__PURE__ */ __name((value2) => typeof value2 === "string", "string"),
-  /**
-   * Validates that value is a non-empty string.
-   */
-  nonEmptyString: /* @__PURE__ */ __name((value2) => typeof value2 === "string" && value2.length > 0, "nonEmptyString"),
-  /**
-   * Validates that value is a number between 0 and 1 (inclusive).
-   */
-  samplingRate: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0 && value2 <= 1, "samplingRate"),
-  /**
-   * Creates a validator for enum values.
-   */
-  oneOf: /* @__PURE__ */ __name((validValues) => (value2) => (typeof value2 === "string" || typeof value2 === "number") && validValues.includes(value2), "oneOf")
-};
+function createSettingValidators() {
+  const customValidators = /* @__PURE__ */ new Map();
+  const standardValidators = {
+    /**
+     * Validates that value is a boolean.
+     */
+    boolean: /* @__PURE__ */ __name((value2) => typeof value2 === "boolean", "boolean"),
+    /**
+     * Validates that value is a number.
+     */
+    number: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2), "number"),
+    /**
+     * Validates that value is a non-negative number.
+     */
+    nonNegativeNumber: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0, "nonNegativeNumber"),
+    /**
+     * Validates that value is a non-negative integer.
+     */
+    nonNegativeInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 >= 0, "nonNegativeInteger"),
+    /**
+     * Validates that value is a positive integer (greater than 0).
+     */
+    positiveInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 > 0, "positiveInteger"),
+    /**
+     * Validates that value is a string.
+     */
+    string: /* @__PURE__ */ __name((value2) => typeof value2 === "string", "string"),
+    /**
+     * Validates that value is a non-empty string.
+     */
+    nonEmptyString: /* @__PURE__ */ __name((value2) => typeof value2 === "string" && value2.length > 0, "nonEmptyString"),
+    /**
+     * Validates that value is a number between 0 and 1 (inclusive).
+     */
+    samplingRate: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0 && value2 <= 1, "samplingRate"),
+    /**
+     * Creates a validator for enum values.
+     */
+    oneOf: /* @__PURE__ */ __name((validValues) => {
+      return (value2) => (typeof value2 === "string" || typeof value2 === "number") && validValues.includes(value2);
+    }, "oneOf")
+  };
+  const registry = {
+    register(name, validator) {
+      if (name in standardValidators) {
+        throw new Error(
+          `Cannot override built-in validator: ${name}. Use a different name for your custom validator.`
+        );
+      }
+      if (!/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name)) {
+        throw new Error(`Invalid validator name: ${name}. Must be a valid JavaScript identifier.`);
+      }
+      customValidators.set(name, validator);
+    },
+    get(name) {
+      const standard = standardValidators[name];
+      if (standard) {
+        return standard;
+      }
+      return customValidators.get(name);
+    },
+    has(name) {
+      return name in standardValidators || customValidators.has(name);
+    }
+  };
+  return new Proxy({ ...standardValidators, ...registry }, {
+    get(target, prop) {
+      if (typeof prop === "symbol") {
+        return target[prop];
+      }
+      if (prop in standardValidators) {
+        return standardValidators[prop];
+      }
+      if (prop in registry) {
+        return registry[prop];
+      }
+      const custom2 = customValidators.get(prop);
+      if (custom2) {
+        return custom2;
+      }
+      return target[prop];
+    }
+  });
+}
+__name(createSettingValidators, "createSettingValidators");
+const SettingValidators = createSettingValidators();
 const NOTIFICATION_QUEUE_CONSTANTS = {
   minSize: 10,
   maxSize: 1e3,
@@ -19063,6 +19214,87 @@ function registerJournalVisibilityConfig(container) {
   return ok(void 0);
 }
 __name(registerJournalVisibilityConfig, "registerJournalVisibilityConfig");
+const _DependencyRegistrationRegistry = class _DependencyRegistrationRegistry {
+  constructor() {
+    this.steps = [];
+  }
+  /**
+   * Registers a new dependency registration step.
+   * Steps are automatically sorted by priority after registration.
+   *
+   * @param step - The registration step to add
+   */
+  register(step) {
+    this.steps.push(step);
+    this.steps.sort((a, b) => a.priority - b.priority);
+  }
+  /**
+   * Executes all registered steps in priority order.
+   * Stops at first error and returns it.
+   *
+   * @param container - The service container to configure
+   * @returns Result indicating success or the first error encountered
+   */
+  configure(container) {
+    for (const step of this.steps) {
+      const result = step.execute(container);
+      if (isErr(result)) {
+        return err(`Failed at step '${step.name}': ${result.error}`);
+      }
+    }
+    return ok(void 0);
+  }
+};
+__name(_DependencyRegistrationRegistry, "DependencyRegistrationRegistry");
+let DependencyRegistrationRegistry = _DependencyRegistrationRegistry;
+function createDependencyRegistrationRegistry() {
+  const registry = new DependencyRegistrationRegistry();
+  registry.register({ name: "StaticValues", priority: 10, execute: registerStaticValues });
+  registry.register({ name: "CoreServices", priority: 20, execute: registerCoreServices });
+  registry.register({ name: "Observability", priority: 30, execute: registerObservability });
+  registry.register({ name: "UtilityServices", priority: 40, execute: registerUtilityServices });
+  registry.register({ name: "CacheServices", priority: 50, execute: registerCacheServices });
+  registry.register({
+    name: "PortInfrastructure",
+    priority: 60,
+    execute: registerPortInfrastructure
+  });
+  registry.register({
+    name: "SubcontainerValues",
+    priority: 70,
+    execute: registerSubcontainerValues
+  });
+  registry.register({ name: "FoundryServices", priority: 80, execute: registerFoundryServices });
+  registry.register({ name: "SettingsPorts", priority: 90, execute: registerSettingsPorts });
+  registry.register({ name: "EntityPorts", priority: 100, execute: registerEntityPorts });
+  registry.register({
+    name: "JournalVisibilityConfig",
+    priority: 110,
+    execute: registerJournalVisibilityConfig
+  });
+  registry.register({ name: "I18nServices", priority: 120, execute: registerI18nServices });
+  registry.register({ name: "Notifications", priority: 130, execute: registerNotifications });
+  registry.register({ name: "EventPorts", priority: 140, execute: registerEventPorts });
+  registry.register({ name: "Registrars", priority: 150, execute: registerRegistrars });
+  registry.register({
+    name: "LoopPreventionServices",
+    priority: 160,
+    execute: registerLoopPreventionServices
+  });
+  registry.register({ name: "Validation", priority: 170, execute: validateContainer });
+  registry.register({
+    name: "LoopPreventionInit",
+    priority: 180,
+    execute: initializeLoopPreventionValues
+  });
+  registry.register({
+    name: "CacheConfigSyncInit",
+    priority: 190,
+    execute: initializeCacheConfigSync
+  });
+  return registry;
+}
+__name(createDependencyRegistrationRegistry, "createDependencyRegistrationRegistry");
 function registerStaticValues(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
@@ -19145,45 +19377,8 @@ function validateContainer(container) {
 }
 __name(validateContainer, "validateContainer");
 function configureDependencies(container) {
-  const staticValuesResult = registerStaticValues(container);
-  if (isErr(staticValuesResult)) return staticValuesResult;
-  const coreResult = registerCoreServices(container);
-  if (isErr(coreResult)) return coreResult;
-  const observabilityResult = registerObservability(container);
-  if (isErr(observabilityResult)) return observabilityResult;
-  const utilityResult = registerUtilityServices(container);
-  if (isErr(utilityResult)) return utilityResult;
-  const cacheServiceResult = registerCacheServices(container);
-  if (isErr(cacheServiceResult)) return cacheServiceResult;
-  const portInfraResult = registerPortInfrastructure(container);
-  if (isErr(portInfraResult)) return portInfraResult;
-  const subcontainerValuesResult = registerSubcontainerValues(container);
-  if (isErr(subcontainerValuesResult)) return subcontainerValuesResult;
-  const foundryServicesResult = registerFoundryServices(container);
-  if (isErr(foundryServicesResult)) return foundryServicesResult;
-  const settingsPortsResult = registerSettingsPorts(container);
-  if (isErr(settingsPortsResult)) return settingsPortsResult;
-  const entityPortsResult = registerEntityPorts(container);
-  if (isErr(entityPortsResult)) return entityPortsResult;
-  const journalVisibilityConfigResult = registerJournalVisibilityConfig(container);
-  if (isErr(journalVisibilityConfigResult)) return journalVisibilityConfigResult;
-  const i18nServicesResult = registerI18nServices(container);
-  if (isErr(i18nServicesResult)) return i18nServicesResult;
-  const notificationsResult = registerNotifications(container);
-  if (isErr(notificationsResult)) return notificationsResult;
-  const eventPortsResult = registerEventPorts(container);
-  if (isErr(eventPortsResult)) return eventPortsResult;
-  const registrarsResult = registerRegistrars(container);
-  if (isErr(registrarsResult)) return registrarsResult;
-  const loopServiceResult = registerLoopPreventionServices(container);
-  if (isErr(loopServiceResult)) return loopServiceResult;
-  const validationResult = validateContainer(container);
-  if (isErr(validationResult)) return validationResult;
-  const loopPreventionInitResult = initializeLoopPreventionValues(container);
-  if (isErr(loopPreventionInitResult)) return loopPreventionInitResult;
-  const cacheConfigSyncInitResult = initializeCacheConfigSync(container);
-  if (isErr(cacheConfigSyncInitResult)) return cacheConfigSyncInitResult;
-  return ok(void 0);
+  const registry = createDependencyRegistrationRegistry();
+  return registry.configure(container);
 }
 __name(configureDependencies, "configureDependencies");
 const _DependencyConfigurator = class _DependencyConfigurator {
