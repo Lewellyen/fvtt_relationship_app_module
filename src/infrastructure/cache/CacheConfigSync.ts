@@ -15,6 +15,7 @@ import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure
  * - Single Responsibility: Only handles RuntimeConfig synchronization
  * - Reusable: Can be extended for additional config sources
  * - Testable: Isolated from CacheService implementation
+ * - Observer Pattern: Uses CacheConfigObserver to notify about config changes
  */
 export class CacheConfigSync {
   private unsubscribe: (() => void) | null = null;
@@ -36,24 +37,30 @@ export class CacheConfigSync {
     }
 
     const unsubscribers: Array<() => void> = [];
+    const configManager = this.cache.getConfigManager();
+    // CacheService extends CacheConfigObserver, so we can use it directly
+    const observer = this.cache;
 
     unsubscribers.push(
       this.runtimeConfig.onChange("enableCacheService", (enabled) => {
-        this.cache.updateConfig({ enabled });
+        configManager.updateConfig({ enabled });
+        observer.onConfigUpdated(configManager.getConfig());
       })
     );
 
     unsubscribers.push(
       this.runtimeConfig.onChange("cacheDefaultTtlMs", (ttl) => {
-        this.cache.updateConfig({ defaultTtlMs: ttl });
+        configManager.updateConfig({ defaultTtlMs: ttl });
+        observer.onConfigUpdated(configManager.getConfig());
       })
     );
 
     unsubscribers.push(
       this.runtimeConfig.onChange("cacheMaxEntries", (maxEntries) => {
-        this.cache.updateConfig({
+        configManager.updateConfig({
           maxEntries: typeof maxEntries === "number" && maxEntries > 0 ? maxEntries : undefined,
         });
+        observer.onConfigUpdated(configManager.getConfig());
       })
     );
 

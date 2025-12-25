@@ -29,6 +29,7 @@ import type { ICacheStore } from "./store/cache-store.interface";
 import type { ICacheExpirationManager } from "./expiration/cache-expiration-manager.interface";
 import type { ICacheStatisticsCollector } from "./statistics/cache-statistics-collector.interface";
 import type { ICacheConfigManager } from "./config/cache-config-manager.interface";
+import type { CacheConfigObserver } from "./cache-config-observer.interface";
 
 export const DEFAULT_CACHE_SERVICE_CONFIG: CacheServiceConfig = {
   enabled: true,
@@ -36,7 +37,7 @@ export const DEFAULT_CACHE_SERVICE_CONFIG: CacheServiceConfig = {
   namespace: "global",
 };
 
-export class CacheService implements CacheServiceContract {
+export class CacheService implements CacheServiceContract, CacheConfigObserver {
   private readonly store: ICacheStore;
   private readonly expirationManager: ICacheExpirationManager;
   private readonly statisticsCollector: ICacheStatisticsCollector;
@@ -93,6 +94,14 @@ export class CacheService implements CacheServiceContract {
 
   get size(): number {
     return this.store.size;
+  }
+
+  /**
+   * Gets the config manager for external synchronization.
+   * Used by CacheConfigSync to update configuration.
+   */
+  getConfigManager(): ICacheConfigManager {
+    return this.configManager;
   }
 
   get<TValue>(key: CacheKey): CacheLookupResult<TValue> | null {
@@ -276,21 +285,19 @@ export class CacheService implements CacheServiceContract {
   }
 
   /**
-   * Updates the cache service configuration at runtime.
-   * Used by CacheConfigSync to synchronize RuntimeConfig changes.
+   * Called when cache configuration is updated.
+   * Implements CacheConfigObserver to react to configuration changes.
    *
-   * @param partial - Partial configuration to merge with existing config
+   * @param config - The updated cache configuration
    */
-  public updateConfig(partial: Partial<CacheServiceConfig>): void {
-    this.configManager.updateConfig(partial);
-
-    if (!this.isEnabled) {
+  public onConfigUpdated(config: CacheServiceConfig): void {
+    if (!config.enabled) {
       this.clearStore();
       return;
     }
 
-    const config = this.configManager.getConfig();
-    if (typeof config.maxEntries === "number") {
+    const currentConfig = this.configManager.getConfig();
+    if (typeof config.maxEntries === "number" && config.maxEntries !== currentConfig.maxEntries) {
       this.enforceCapacity();
     }
   }

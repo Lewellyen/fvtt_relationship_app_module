@@ -1,4 +1,4 @@
-import type { CacheServiceConfig } from "../cache.interface";
+import type { CacheServiceConfig } from "../cache-config.interface";
 
 /**
  * Interface for cache configuration management.

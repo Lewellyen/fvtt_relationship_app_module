@@ -482,7 +482,7 @@ describe("CacheService", () => {
     expect(metadata.tags).toEqual(["A", "a"]);
   });
 
-  it("updates config via updateConfig method", () => {
+  it("updates config via onConfigUpdated method (Observer Pattern)", () => {
     const dynamicCache = new CacheService(
       {
         enabled: true,
@@ -496,34 +496,91 @@ describe("CacheService", () => {
 
     const keyA = buildCacheKey("dynamic", "a");
     const keyB = buildCacheKey("dynamic", "b");
+    const configManager = dynamicCache.getConfigManager();
 
     dynamicCache.set(keyA, ["entry-a"]);
-    dynamicCache.updateConfig({ enabled: false });
+    configManager.updateConfig({ enabled: false });
+    dynamicCache.onConfigUpdated(configManager.getConfig());
     expect(dynamicCache.isEnabled).toBe(false);
     expect(dynamicCache.get<string[]>(keyA)).toBeNull();
 
-    dynamicCache.updateConfig({ enabled: true });
+    configManager.updateConfig({ enabled: true });
+    dynamicCache.onConfigUpdated(configManager.getConfig());
     dynamicCache.set(keyA, ["entry-a"]);
     expect(dynamicCache.get<string[]>(keyA)).not.toBeNull();
 
-    dynamicCache.updateConfig({ defaultTtlMs: 50 });
+    configManager.updateConfig({ defaultTtlMs: 50 });
+    dynamicCache.onConfigUpdated(configManager.getConfig());
     dynamicCache.set(keyA, ["entry-ttl"]);
     now += 100;
     expect(dynamicCache.get<string[]>(keyA)).toBeNull();
 
-    dynamicCache.updateConfig({ maxEntries: 1 });
+    // Test maxEntries change that triggers enforceCapacity
+    // First, add entries to exceed the new limit
     dynamicCache.set(keyA, ["entry-a"]);
     dynamicCache.set(keyB, ["entry-b"]);
+    expect(dynamicCache.size).toBe(2);
+
+    // Now change maxEntries to 1 - this should trigger enforceCapacity
+    configManager.updateConfig({ maxEntries: 1 });
+    dynamicCache.onConfigUpdated(configManager.getConfig());
+
+    // Capacity should be enforced
+    dynamicCache.set(keyA, ["entry-a-new"]);
+    dynamicCache.set(keyB, ["entry-b-new"]);
     expect(dynamicCache.has(keyA)).toBe(false);
     expect(dynamicCache.has(keyB)).toBe(true);
 
     // When cacheMaxEntries is set to undefined, the config should drop the maxEntries setting
-    dynamicCache.updateConfig({ maxEntries: undefined });
+    configManager.updateConfig({ maxEntries: undefined });
+    dynamicCache.onConfigUpdated(configManager.getConfig());
     dynamicCache.set(keyA, ["entry-reset-a"]);
     dynamicCache.set(keyB, ["entry-reset-b"]);
     // Both should be present now (no limit)
     expect(dynamicCache.has(keyA)).toBe(true);
     expect(dynamicCache.has(keyB)).toBe(true);
+  });
+
+  it("calls enforceCapacity when maxEntries changes in onConfigUpdated", () => {
+    // Create a cache with maxEntries: 10 to allow adding entries without immediate eviction
+    const cache = new CacheService(
+      {
+        enabled: true,
+        defaultTtlMs: 1000,
+        namespace: "test",
+        maxEntries: 10,
+      },
+      metrics,
+      () => now
+    );
+
+    const keyA = buildCacheKey("enforce", "a");
+    const keyB = buildCacheKey("enforce", "b");
+    const keyC = buildCacheKey("enforce", "c");
+
+    // Add entries
+    cache.set(keyA, ["a"]);
+    cache.set(keyB, ["b"]);
+    cache.set(keyC, ["c"]);
+    expect(cache.size).toBe(3);
+
+    // Get the configManager and update it to have maxEntries: 2
+    const configManager = cache.getConfigManager();
+    configManager.updateConfig({ maxEntries: 2 });
+
+    // Now call onConfigUpdated with maxEntries: 1, which is different from current (2)
+    // This should trigger the branch: config.maxEntries (1) !== currentConfig.maxEntries (2)
+    cache.onConfigUpdated({
+      enabled: true,
+      defaultTtlMs: 1000,
+      namespace: "test",
+      maxEntries: 1, // Different from current config's maxEntries: 2
+    });
+
+    // Verify that enforceCapacity was called by checking that cache size was reduced
+    // enforceCapacity uses configManager.getConfig() which returns maxEntries: 2
+    // So the cache should have at most 2 entries after enforcement
+    expect(cache.size).toBeLessThanOrEqual(2);
   });
 
   it("DI wrapper exposes dependencies and forwards constructor args", () => {

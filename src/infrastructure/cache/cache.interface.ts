@@ -1,5 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import { assertCacheKey, type CacheKey } from "@/infrastructure/di/types/utilities/type-casts";
+import type { CacheConfigObserver } from "./cache-config-observer.interface";
 
 /**
  * CacheKey Brand-Type - re-exportiert von type-casts für Konsistenz.
@@ -66,30 +67,15 @@ export interface CacheStatistics {
 }
 
 /**
- * Configuration used to instantiate CacheService.
- */
-export interface CacheServiceConfig {
-  enabled: boolean;
-  defaultTtlMs: number;
-  maxEntries?: number | undefined;
-  namespace?: string;
-  /**
-   * Optional key for the eviction strategy to use.
-   * If not provided, defaults to "lru".
-   * Strategies must be registered in EvictionStrategyRegistry before use.
-   */
-  evictionStrategyKey?: string;
-}
-
-/**
  * Predicate used for targeted cache invalidation.
  */
 export type CacheInvalidationPredicate = (entry: CacheEntryMetadata) => boolean;
 
 /**
  * CacheService contract exposed through DI.
+ * Extends CacheConfigObserver to support configuration updates via Observer Pattern.
  */
-export interface CacheService {
+export interface CacheService extends CacheConfigObserver {
   readonly isEnabled: boolean;
   readonly size: number;
   get<TValue>(key: CacheKey): CacheLookupResult<TValue> | null;
@@ -106,11 +92,15 @@ export interface CacheService {
     options?: CacheSetOptions
   ): Promise<Result<CacheLookupResult<TValue>, string>>;
   /**
-   * Updates the cache service configuration at runtime.
-   * Used by CacheConfigSync to synchronize RuntimeConfig changes.
+   * Gets the config manager for external synchronization.
+   * Used internally by CacheConfigSync to update configuration.
+   * @internal
    */
-  updateConfig(partial: Partial<CacheServiceConfig>): void;
+  getConfigManager(): import("./config/cache-config-manager.interface").ICacheConfigManager;
 }
+
+// Re-export CacheServiceConfig for backward compatibility
+export type { CacheServiceConfig } from "./cache-config.interface";
 
 /**
  * Normalizes individual key segments.

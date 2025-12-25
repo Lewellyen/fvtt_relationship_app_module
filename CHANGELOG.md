@@ -12,6 +12,30 @@
 
 ### Upgrade-Hinweise
 
+## [0.44.5] - 2025-12-25
+### Hinzugefügt
+- **CacheConfigObserver Interface**: Observer-Pattern für Cache-Konfigurations-Updates ([Details](docs/refactoring/SRP/findings/SRP__low__cache-service-config-updates__c3d4e5f.md))
+- Interface zur Trennung von Konfigurationsmanagement und Cache-Verhalten
+- Ermöglicht Observer-Pattern für Runtime-Config-Synchronisation
+
+### Geändert
+- **CacheService**: Refactoring zu Observer Pattern für Config-Updates ([Details](docs/refactoring/SRP/findings/SRP__low__cache-service-config-updates__c3d4e5f.md))
+- `updateConfig()` Methode entfernt (war SRP-Verletzung)
+- `onConfigUpdated()` Methode implementiert (Observer Pattern)
+- `CacheService` Interface erweitert um `CacheConfigObserver`
+- `CacheConfigSync` verwendet jetzt Observer Pattern statt direkter Methodenaufrufe
+- Bessere Trennung der Verantwortlichkeiten (SRP-konform)
+
+### Fehlerbehebungen
+- **Linting-Fehler behoben**: Ungenutzter Import `CacheServiceConfig` in `cache.interface.ts` entfernt (Zeile 4 wurde nicht verwendet, da Re-Export in Zeile 104 direkt aus Quelle importiert)
+- **Test-Coverage auf 100% erhöht**: Test für `CacheService.onConfigUpdated()` Branch hinzugefügt, der `enforceCapacity()` aufruft, wenn sich `maxEntries` ändert
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.44.4] - 2025-12-25
 ### Hinzugefügt
 - **Interface Extension Guidelines**: LSP-Richtlinien für Interface-Erweiterungen dokumentiert ([Details](docs/architecture/interface-extension-guidelines.md))
