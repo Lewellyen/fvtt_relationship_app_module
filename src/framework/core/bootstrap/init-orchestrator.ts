@@ -3,31 +3,24 @@ import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { InitPhaseContext } from "./init-phase.interface";
-import { InitPhaseCriticality } from "./init-phase.interface";
 import { InitPhaseRegistry } from "./init-phase-registry";
 import { createDefaultInitPhaseRegistry } from "./default-init-phase-registry";
+import { InitPhaseErrorHandler } from "./init-phase-error-handler";
+import type { InitError } from "./init-error";
 
-/**
- * Error type for init orchestration failures.
- */
-export interface InitError {
-  phase: string;
-  message: string;
-  originalError?: string;
-}
+export type { InitError };
 
 /**
  * Orchestrator for the complete bootstrap initialization sequence.
  *
  * Responsibilities:
  * - Execute all bootstrap phases in order from registry
- * - Handle errors according to phase criticality
- * - Aggregate errors for reporting
+ * - Coordinate phase execution and context creation
  *
  * Design:
  * - Phases are provided via InitPhaseRegistry (OCP-compliant)
  * - Each phase is isolated and can be tested independently
- * - Error handling is determined by phase criticality, not hardcoded logic
+ * - Error handling is delegated to InitPhaseErrorHandler (SRP compliance)
  * - New phases can be added via registry extension without modifying orchestrator
  */
 export class InitOrchestrator {
@@ -58,20 +51,13 @@ export class InitOrchestrator {
     const errors: InitError[] = [];
     const phases = this.registry.getAll();
     const ctx: InitPhaseContext = { container, logger };
+    const errorHandler = new InitPhaseErrorHandler();
 
     for (const phase of phases) {
       const result = phase.execute(ctx);
 
       if (!result.ok) {
-        if (phase.criticality === InitPhaseCriticality.HALT_ON_ERROR) {
-          errors.push({
-            phase: phase.id,
-            message: result.error,
-          });
-          logger.error(`Failed to execute phase '${phase.id}': ${result.error}`);
-        } else {
-          logger.warn(`Phase '${phase.id}' failed: ${result.error}`);
-        }
+        errorHandler.handlePhaseError(phase, result.error, errors, logger);
       }
     }
 

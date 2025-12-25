@@ -12,6 +12,30 @@
 
 ### Upgrade-Hinweise
 
+## [0.44.6] - 2025-12-25
+### Hinzugefügt
+- **InitPhaseErrorHandler**: Separate Klasse für Fehlerbehandlung von Init-Phasen ([Details](docs/refactoring/SRP/findings/SRP__low__InitOrchestrator-execute-orchestrates-and-handles-errors__b8e3f1.md))
+- Trennt Fehlerbehandlung von Orchestrierungs-Logik (SRP-konform)
+- Verbesserte Testbarkeit und Wartbarkeit
+- **InitError Interface**: Separate Datei für InitError-Typ ([Details](docs/refactoring/SRP/findings/SRP__low__InitOrchestrator-execute-orchestrates-and-handles-errors__b8e3f1.md))
+- Vermeidet zirkuläre Abhängigkeiten zwischen `InitOrchestrator` und `InitPhaseErrorHandler`
+
+### Geändert
+- **InitOrchestrator**: Fehlerbehandlung an `InitPhaseErrorHandler` delegiert ([Details](docs/refactoring/SRP/findings/SRP__low__InitOrchestrator-execute-orchestrates-and-handles-errors__b8e3f1.md))
+- `execute()` Methode fokussiert sich jetzt nur auf Orchestrierung
+- Fehlerbehandlung wird an `InitPhaseErrorHandler.handlePhaseError()` delegiert
+- Bessere Trennung der Verantwortlichkeiten (SRP-konform)
+- Public API bleibt unverändert (Backward Compatible)
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.44.5] - 2025-12-25
 ### Hinzugefügt
 - **CacheConfigObserver Interface**: Observer-Pattern für Cache-Konfigurations-Updates ([Details](docs/refactoring/SRP/findings/SRP__low__cache-service-config-updates__c3d4e5f.md))
