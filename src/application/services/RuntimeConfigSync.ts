@@ -4,8 +4,8 @@ import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-
 import type { SettingConfig as ModuleSettingConfig } from "@/application/settings/setting-definition.interface";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
-import type { SettingValidator } from "@/domain/types/settings";
-import { SettingValidators } from "@/domain/types/settings";
+import type { SettingValidator } from "@/domain/types/setting-validator";
+import { SettingValidators } from "@/domain/utils/setting-validators";
 import type { LogLevel } from "@/domain/types/log-level";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";

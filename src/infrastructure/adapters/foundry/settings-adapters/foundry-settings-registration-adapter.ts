@@ -1,10 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
-import type {
-  DomainSettingConfig,
-  DomainSettingsError,
-  SettingValidator,
-} from "@/domain/types/settings";
+import type { DomainSettingConfig, DomainSettingsError } from "@/domain/types/settings";
+import type { SettingValidator } from "@/domain/types/setting-validator";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";

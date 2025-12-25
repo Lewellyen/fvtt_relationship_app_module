@@ -1,9 +1,6 @@
 import type { Result } from "@/domain/types/result";
-import type {
-  DomainSettingConfig,
-  DomainSettingsError,
-  SettingValidator,
-} from "@/domain/types/settings";
+import type { DomainSettingConfig, DomainSettingsError } from "@/domain/types/settings";
+import type { SettingValidator } from "@/domain/types/setting-validator";
 
 /**
  * Port for settings registration and access.

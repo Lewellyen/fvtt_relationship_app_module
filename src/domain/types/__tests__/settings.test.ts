@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
-import {
-  SettingValidators,
-  createSettingValidators,
-  type SettingValidator,
-} from "@/domain/types/settings";
+import { SettingValidators, createSettingValidators } from "@/domain/utils/setting-validators";
+import type { SettingValidator } from "@/domain/types/setting-validator";
 
 describe("SettingValidators", () => {
   describe("Standard validators (backward compatibility)", () => {

@@ -4483,11 +4483,6 @@ const _HealthCheckRegistryAdapter = class _HealthCheckRegistryAdapter {
 };
 __name(_HealthCheckRegistryAdapter, "HealthCheckRegistryAdapter");
 let HealthCheckRegistryAdapter = _HealthCheckRegistryAdapter;
-var InitPhaseCriticality = /* @__PURE__ */ ((InitPhaseCriticality2) => {
-  InitPhaseCriticality2["HALT_ON_ERROR"] = "haltOnError";
-  InitPhaseCriticality2["WARN_AND_CONTINUE"] = "warnAndContinue";
-  return InitPhaseCriticality2;
-})(InitPhaseCriticality || {});
 const _InitPhaseRegistry = class _InitPhaseRegistry {
   /**
    * Creates a new registry with the provided phases.
@@ -4525,6 +4520,11 @@ const _InitPhaseRegistry = class _InitPhaseRegistry {
 };
 __name(_InitPhaseRegistry, "InitPhaseRegistry");
 let InitPhaseRegistry = _InitPhaseRegistry;
+var InitPhaseCriticality = /* @__PURE__ */ ((InitPhaseCriticality2) => {
+  InitPhaseCriticality2["HALT_ON_ERROR"] = "haltOnError";
+  InitPhaseCriticality2["WARN_AND_CONTINUE"] = "warnAndContinue";
+  return InitPhaseCriticality2;
+})(InitPhaseCriticality || {});
 const _MetricsBootstrapper = class _MetricsBootstrapper {
   /**
    * Initializes metrics collector if it supports persistence.
@@ -10611,6 +10611,29 @@ function createDefaultInitPhaseRegistry() {
   ]);
 }
 __name(createDefaultInitPhaseRegistry, "createDefaultInitPhaseRegistry");
+const _InitPhaseErrorHandler = class _InitPhaseErrorHandler {
+  /**
+   * Handles an error from a phase execution.
+   *
+   * @param phase - The phase that failed
+   * @param error - The error message from the phase
+   * @param errors - Array to collect critical errors (mutated if phase is critical)
+   * @param logger - Logger for error reporting
+   */
+  handlePhaseError(phase, error, errors, logger) {
+    if (phase.criticality === InitPhaseCriticality.HALT_ON_ERROR) {
+      errors.push({
+        phase: phase.id,
+        message: error
+      });
+      logger.error(`Failed to execute phase '${phase.id}': ${error}`);
+    } else {
+      logger.warn(`Phase '${phase.id}' failed: ${error}`);
+    }
+  }
+};
+__name(_InitPhaseErrorHandler, "InitPhaseErrorHandler");
+let InitPhaseErrorHandler = _InitPhaseErrorHandler;
 const _InitOrchestrator = class _InitOrchestrator {
   /**
    * Creates a new InitOrchestrator instance.
@@ -10636,18 +10659,11 @@ const _InitOrchestrator = class _InitOrchestrator {
     const errors = [];
     const phases = this.registry.getAll();
     const ctx = { container, logger };
+    const errorHandler = new InitPhaseErrorHandler();
     for (const phase of phases) {
       const result = phase.execute(ctx);
       if (!result.ok) {
-        if (phase.criticality === InitPhaseCriticality.HALT_ON_ERROR) {
-          errors.push({
-            phase: phase.id,
-            message: result.error
-          });
-          logger.error(`Failed to execute phase '${phase.id}': ${result.error}`);
-        } else {
-          logger.warn(`Phase '${phase.id}' failed: ${result.error}`);
-        }
+        errorHandler.handlePhaseError(phase, result.error, errors, logger);
       }
     }
     if (errors.length > 0) {
@@ -15184,6 +15200,13 @@ const _CacheService = class _CacheService {
   get size() {
     return this.store.size;
   }
+  /**
+   * Gets the config manager for external synchronization.
+   * Used by CacheConfigSync to update configuration.
+   */
+  getConfigManager() {
+    return this.configManager;
+  }
   get(key) {
     return this.accessEntry(key, true);
   }
@@ -15326,19 +15349,18 @@ const _CacheService = class _CacheService {
     };
   }
   /**
-   * Updates the cache service configuration at runtime.
-   * Used by CacheConfigSync to synchronize RuntimeConfig changes.
+   * Called when cache configuration is updated.
+   * Implements CacheConfigObserver to react to configuration changes.
    *
-   * @param partial - Partial configuration to merge with existing config
+   * @param config - The updated cache configuration
    */
-  updateConfig(partial2) {
-    this.configManager.updateConfig(partial2);
-    if (!this.isEnabled) {
+  onConfigUpdated(config2) {
+    if (!config2.enabled) {
       this.clearStore();
       return;
     }
-    const config2 = this.configManager.getConfig();
-    if (typeof config2.maxEntries === "number") {
+    const currentConfig = this.configManager.getConfig();
+    if (typeof config2.maxEntries === "number" && config2.maxEntries !== currentConfig.maxEntries) {
       this.enforceCapacity();
     }
   }
@@ -15383,21 +15405,26 @@ const _CacheConfigSync = class _CacheConfigSync {
       this.unsubscribe();
     }
     const unsubscribers = [];
+    const configManager = this.cache.getConfigManager();
+    const observer = this.cache;
     unsubscribers.push(
       this.runtimeConfig.onChange("enableCacheService", (enabled) => {
-        this.cache.updateConfig({ enabled });
+        configManager.updateConfig({ enabled });
+        observer.onConfigUpdated(configManager.getConfig());
       })
     );
     unsubscribers.push(
       this.runtimeConfig.onChange("cacheDefaultTtlMs", (ttl) => {
-        this.cache.updateConfig({ defaultTtlMs: ttl });
+        configManager.updateConfig({ defaultTtlMs: ttl });
+        observer.onConfigUpdated(configManager.getConfig());
       })
     );
     unsubscribers.push(
       this.runtimeConfig.onChange("cacheMaxEntries", (maxEntries2) => {
-        this.cache.updateConfig({
+        configManager.updateConfig({
           maxEntries: typeof maxEntries2 === "number" && maxEntries2 > 0 ? maxEntries2 : void 0
         });
+        observer.onConfigUpdated(configManager.getConfig());
       })
     );
     this.unsubscribe = () => {

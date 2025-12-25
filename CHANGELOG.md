@@ -12,6 +12,41 @@
 
 ### Upgrade-Hinweise
 
+## [0.44.7] - 2025-12-25
+### Hinzugefügt
+- **setting-validator.ts**: Separate Datei für Validator-Type-Definition ([Details](docs/refactoring/SRP/findings/SRP__medium__settings-types-multiple-responsibilities__i7j8k9l.md))
+- `SettingValidator<T>` Type-Definition in eigene Datei verschoben
+- Verbesserte Kohäsion durch klare Trennung von Types und Implementierungen
+- **setting-validators.ts**: Separate Datei für Validator-Implementierungen ([Details](docs/refactoring/SRP/findings/SRP__medium__settings-types-multiple-responsibilities__i7j8k9l.md))
+- `SettingValidatorRegistry` Interface verschoben
+- `StandardValidators` Interface verschoben
+- `SettingValidatorsType` Type verschoben
+- `createSettingValidators()` Factory-Funktion verschoben
+- `SettingValidators` Export verschoben
+- Alle Validator-Implementierungen in `src/domain/utils/` verschoben (bessere Struktur)
+
+### Geändert
+- **settings.ts**: Aufgeteilt in mehrere Dateien nach SRP ([Details](docs/refactoring/SRP/findings/SRP__medium__settings-types-multiple-responsibilities__i7j8k9l.md))
+- Datei enthält jetzt nur noch Domain-Models und Error-Types: `DomainSettingConfig`, `DomainSettingsError`
+- Validator-Type-Definition nach `src/domain/types/setting-validator.ts` verschoben
+- Validator-Implementierungen nach `src/domain/utils/setting-validators.ts` verschoben
+- Rückwärtskompatibilität durch Re-Exports in `settings.ts` sichergestellt
+- Verbesserte Kohäsion: Jede Datei hat jetzt eine klare, einzelne Verantwortlichkeit
+- **Import-Aktualisierungen**: Imports aktualisiert, um direkt von neuen Dateien zu importieren
+- `src/domain/types/__tests__/settings.test.ts`: Direkter Import von `setting-validators.ts` und `setting-validator.ts`
+- `src/application/services/RuntimeConfigSync.ts`: Direkter Import von `setting-validators.ts` und `setting-validator.ts`
+- `src/infrastructure/adapters/foundry/settings-adapters/foundry-settings-registration-adapter.ts`: Direkter Import von `setting-validator.ts`
+- `src/domain/ports/platform-settings-registration-port.interface.ts`: Direkter Import von `setting-validator.ts`
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.44.6] - 2025-12-25
 ### Hinzugefügt
 - **InitPhaseErrorHandler**: Separate Klasse für Fehlerbehandlung von Init-Phasen ([Details](docs/refactoring/SRP/findings/SRP__low__InitOrchestrator-execute-orchestrates-and-handles-errors__b8e3f1.md))

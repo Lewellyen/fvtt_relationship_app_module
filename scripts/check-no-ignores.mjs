@@ -169,6 +169,11 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Naming-Convention: PascalCase für namespace-ähnliches Objekt (SettingValidators) ist beabsichtigt für konsistente API-Nutzung. Proxy Pattern: Type-Casts für dynamische Property-Zugriffe und Generic Type Narrowing im Proxy-Handler sind notwendig für Type-Safety.',
   },
   {
+    file: 'src/domain/utils/setting-validators.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Naming-Convention: PascalCase für namespace-ähnliches Objekt (SettingValidators) ist beabsichtigt für konsistente API-Nutzung. Proxy Pattern: Type-Casts für dynamische Property-Zugriffe und Generic Type Narrowing im Proxy-Handler sind notwendig für Type-Safety.',
+  },
+  {
     file: 'src/domain/types/container-types.ts',
     allowed: ['eslint-disable-next-line'],
     reason: 'Type-Parameter: TServiceType wird als Type-Parameter für generische Type-Constraints verwendet (DomainInjectionToken<TServiceType>), auch wenn er im Type-Body nicht direkt referenziert wird.',
