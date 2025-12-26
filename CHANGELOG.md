@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.46.0] - 2025-12-26
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.45.2] - 2025-12-26
 ### Hinzugefügt
 - **Initializable Interface**: Neues Interface im Domain Layer für Objekte, die explizite Initialisierung erfordern ([Details](docs/refactoring/LSP/findings/LSP__medium__metrics-bootstrapper-instanceof-check__a1b2c3d.md))
