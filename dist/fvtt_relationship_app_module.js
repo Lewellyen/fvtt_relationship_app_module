@@ -2240,7 +2240,7 @@ const _ServiceContainer = class _ServiceContainer {
   /**
    * Get validation state.
    * Implements both Container.getValidationState and PlatformContainerPort.getValidationState.
-   * Both interfaces use identical types, so a single overload is sufficient.
+   * Both interfaces use compatible types (ContainerValidationState is compatible with DomainContainerValidationState).
    */
   getValidationState() {
     return this.validationManager.getValidationState();

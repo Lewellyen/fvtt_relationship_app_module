@@ -2,7 +2,7 @@ import type { InjectionToken } from "../types/core/injectiontoken";
 import type { Result } from "@/domain/types/result";
 import type { ContainerError } from "../interfaces";
 import type { ContainerValidationState } from "../types/errors/containervalidationstate";
-import type { DomainInjectionToken, DomainContainerError } from "@/domain/types/container-types";
+import type { ContainerError as DomainContainerError } from "@/domain/ports/platform-container-port.interface";
 import { ServiceResolver } from "./ServiceResolver";
 import { err, isOk } from "@/domain/utils/result";
 import { castResolvedService } from "../types/utilities/runtime-safe-cast";
@@ -30,12 +30,13 @@ export class ServiceResolutionManager {
   /**
    * Resolve service with Result return.
    * Supports both infrastructure and domain tokens.
+   * PlatformContainerPort uses generic `symbol`, which is compatible with InjectionToken<T> (which extends symbol).
    */
-  resolveWithError<T>(token: DomainInjectionToken<T>): Result<T, DomainContainerError>;
+  resolveWithError<T>(token: symbol): Result<T, DomainContainerError>;
   resolveWithError<T>(token: InjectionToken<T>): Result<T, ContainerError>;
   resolveWithError<T>(
-    token: InjectionToken<T>
-  ): Result<T, ContainerError> | Result<unknown, DomainContainerError> {
+    token: InjectionToken<T> | symbol
+  ): Result<T, ContainerError> | Result<T, DomainContainerError> {
     if (this.isDisposed()) {
       const error: ContainerError = {
         code: "Disposed",
@@ -47,7 +48,7 @@ export class ServiceResolutionManager {
         message: error.message,
         cause: error.cause,
       };
-      return err(domainError) as Result<unknown, DomainContainerError>;
+      return err(domainError);
     }
 
     if (this.getValidationState() !== "validated") {
@@ -61,10 +62,10 @@ export class ServiceResolutionManager {
         message: error.message,
         cause: error.cause,
       };
-      return err(domainError) as Result<unknown, DomainContainerError>;
+      return err(domainError);
     }
 
-    const result = this.resolver.resolve(token);
+    const result = this.resolver.resolve(token as InjectionToken<T>);
     if (!result.ok) {
       // Convert ContainerError to DomainContainerError
       const domainError: DomainContainerError = {
@@ -72,7 +73,7 @@ export class ServiceResolutionManager {
         message: result.error.message,
         cause: result.error.cause,
       };
-      return err(domainError) as Result<unknown, DomainContainerError>;
+      return err(domainError);
     }
     return result as Result<T, ContainerError>;
   }

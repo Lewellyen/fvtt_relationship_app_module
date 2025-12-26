@@ -1,19 +1,17 @@
 /**
- * Domain-layer types for container operations.
+ * Application-layer types for container operations.
  *
- * These types provide minimal abstractions for dependency injection operations
- * without depending on infrastructure-layer implementations.
+ * These types provide abstractions for dependency injection operations
+ * used by the Application and Infrastructure layers.
  *
- * Infrastructure-layer types (e.g., InjectionToken, ContainerError) extend
- * or implement these domain types to maintain clean architecture boundaries.
+ * These types are used by Domain-Ports to maintain clean architecture boundaries
+ * while keeping DI concerns out of the Domain layer.
  */
 
 /**
  * Base type for dependency injection tokens.
  *
- * This is a minimal domain abstraction. Infrastructure-layer InjectionToken
- * extends this type with branded properties.
- *
+ * This is a minimal abstraction for tokens used in container operations.
  * T is used as a type parameter for generic type constraints,
  * even though it's not directly referenced in the type body.
  */
@@ -23,16 +21,14 @@ export type DomainInjectionToken<T = unknown> = symbol;
 /**
  * Base type for API-safe tokens that can be used with throwing resolve() methods.
  *
- * This is a minimal domain abstraction. Infrastructure-layer ApiSafeToken
- * extends this type with branded properties.
+ * This is a minimal abstraction for tokens that are safe to use in public APIs.
  */
 export type DomainApiSafeToken<T = unknown> = DomainInjectionToken<T>;
 
 /**
  * Base interface for container errors.
  *
- * This is a minimal domain abstraction. Infrastructure-layer ContainerError
- * extends this interface with additional properties.
+ * This is a minimal abstraction for errors that can occur during container operations.
  */
 export interface DomainContainerError {
   /** Error code classifying the type of error */
@@ -48,7 +44,7 @@ export interface DomainContainerError {
 /**
  * Represents the validation state of a container.
  *
- * This is a domain-level abstraction that matches the infrastructure
+ * This is an abstraction that matches the infrastructure
  * implementation to maintain compatibility.
  */
 export type DomainContainerValidationState = "registering" | "validating" | "validated";

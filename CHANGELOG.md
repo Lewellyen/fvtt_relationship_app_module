@@ -12,6 +12,35 @@
 
 ### Upgrade-Hinweise
 
+## [0.46.1] - 2025-12-26
+### Hinzugefügt
+- **Application DI Layer**: Neues DI-Paket `src/application/di` für Dependency Injection Primitives ([Details](docs/refactoring/DIP/DIP-001-di-primitives-in-domain.md))
+- `src/application/di/injection-token.ts`: InjectionToken-Typ für typsichere DI-Tokens
+- `src/application/di/token-factory.ts`: createInjectionToken-Funktion für Token-Erstellung
+- `src/application/di/container-types.ts`: Container-Typen (DomainInjectionToken, DomainContainerError, etc.)
+- `src/application/di/index.ts`: Zentraler Export für alle DI-Primitives
+
+### Geändert
+- **DIP-001 Refactoring: DI-Primitives aus Domain-Layer verschoben** ([Details](docs/refactoring/DIP/DIP-001-di-primitives-in-domain.md))
+- DI-Primitives (InjectionToken, createInjectionToken, DomainInjectionToken, DomainContainerError, etc.) wurden von `src/domain/` nach `src/application/di/` verschoben
+- Domain-Layer enthält keine DI-spezifischen Typen mehr (Clean Architecture konform)
+- `PlatformContainerPort` verwendet jetzt generische `symbol`-Typen statt DI-spezifischer Typen, um Domain-Layer unabhängig von Application-Layer zu halten
+- `ContainerError` und `ContainerValidationState` sind jetzt im Domain-Layer als minimale Abstraktionen definiert
+- Alle Imports wurden aktualisiert: `@/domain/types/injection-token` → `@/application/di/injection-token`, `@/domain/utils/token-factory` → `@/application/di/token-factory`, `@/domain/types/container-types` → `@/application/di/container-types`
+- Re-Exports in `src/application/utils/token-factory.ts` und `src/infrastructure/di/token-factory.ts` aktualisiert
+- `ServiceContainer` und `ServiceResolutionManager` implementieren jetzt `PlatformContainerPort` mit generischen `symbol`-Typen
+- Alte Domain-Dateien gelöscht: `src/domain/types/injection-token.ts`, `src/domain/utils/token-factory.ts`, `src/domain/types/container-types.ts`
+- Whitelist für `check:no-ignores` aktualisiert: `src/application/di/container-types.ts` hinzugefügt
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.46.0] - 2025-12-26
 ### Hinzugefügt
 - Keine Einträge

@@ -174,9 +174,9 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Naming-Convention: PascalCase für namespace-ähnliches Objekt (SettingValidators) ist beabsichtigt für konsistente API-Nutzung. Proxy Pattern: Type-Casts für dynamische Property-Zugriffe und Generic Type Narrowing im Proxy-Handler sind notwendig für Type-Safety.',
   },
   {
-    file: 'src/domain/types/container-types.ts',
+    file: 'src/application/di/container-types.ts',
     allowed: ['eslint-disable-next-line'],
-    reason: 'Type-Parameter: TServiceType wird als Type-Parameter für generische Type-Constraints verwendet (DomainInjectionToken<TServiceType>), auch wenn er im Type-Body nicht direkt referenziert wird.',
+    reason: 'Type-Parameter: T wird als Type-Parameter für generische Type-Constraints verwendet (DomainInjectionToken<T>), auch wenn er im Type-Body nicht direkt referenziert wird. Diese Datei wurde von src/domain/types/container-types.ts verschoben (DIP-001 Refactoring).',
   },
   {
     file: 'src/framework/core/api/module-api-initializer.ts',

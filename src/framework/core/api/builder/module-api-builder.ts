@@ -1,6 +1,6 @@
 import { PUBLIC_API_VERSION } from "@/application/constants/app-constants";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import type { InjectionToken } from "@/domain/types/injection-token";
+import type { InjectionToken } from "@/application/di/injection-token";
 import type { ModuleApi, TokenInfo, ModuleApiTokens } from "@/framework/core/api/module-api";
 import type { IModuleApiBuilder } from "../interfaces/api-component-interfaces";
 import { createApiTokens } from "../api-token-config";

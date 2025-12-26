@@ -10,7 +10,7 @@ import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.i
 import { platformModuleReadyPortToken } from "@/application/tokens/domain-ports.tokens";
 import { platformLoggingPortToken } from "@/application/tokens/domain-ports.tokens";
 import { createInjectionToken } from "@/application/utils/token-factory";
-import type { InjectionToken } from "@/domain/types/injection-token";
+import type { InjectionToken } from "@/application/di/injection-token";
 
 /**
  * Service responsible for managing module.ready state.

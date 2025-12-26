@@ -10,12 +10,10 @@ import { ok, err } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
 import type { Container } from "./interfaces";
 import type { ContainerError } from "./interfaces";
-import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type {
-  DomainInjectionToken,
-  DomainContainerError,
-  DomainContainerValidationState,
-} from "@/domain/types/container-types";
+  PlatformContainerPort,
+  ContainerError as DomainContainerError,
+} from "@/domain/ports/platform-container-port.interface";
 import { castResolvedService, castContainerErrorCode } from "./types/utilities/runtime-safe-cast";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { ServiceRegistry } from "./registry/ServiceRegistry";
@@ -294,10 +292,10 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   /**
    * Get validation state.
    * Implements both Container.getValidationState and PlatformContainerPort.getValidationState.
-   * Both interfaces use identical types, so a single overload is sufficient.
+   * Both interfaces use compatible types (ContainerValidationState is compatible with DomainContainerValidationState).
    */
-  getValidationState(): ContainerValidationState | DomainContainerValidationState {
-    return this.validationManager.getValidationState() as DomainContainerValidationState;
+  getValidationState(): ContainerValidationState {
+    return this.validationManager.getValidationState();
   }
 
   /**
@@ -399,13 +397,14 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   /**
    * Resolve service with Result return.
    * Implements both Container.resolveWithError and PlatformContainerPort.resolveWithError.
+   * PlatformContainerPort uses generic `symbol`, which is compatible with InjectionToken<T> (which extends symbol).
    */
-  resolveWithError<T>(token: DomainInjectionToken<T>): Result<T, DomainContainerError>;
+  resolveWithError<T>(token: symbol): Result<T, DomainContainerError>;
   resolveWithError<T>(token: InjectionToken<T>): Result<T, ContainerError>;
   resolveWithError<T>(
-    token: InjectionToken<T>
-  ): Result<T, ContainerError> | Result<unknown, DomainContainerError> {
-    return this.resolutionManager.resolveWithError(token);
+    token: InjectionToken<T> | symbol
+  ): Result<T, ContainerError> | Result<T, DomainContainerError> {
+    return this.resolutionManager.resolveWithError(token as InjectionToken<T>);
   }
 
   /**
@@ -421,6 +420,9 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    * - **Runtime:** Validates token has API_SAFE_RUNTIME_MARKER (always active)
    *
    * Internal code MUST use `resolveWithError()` for Result-based error handling.
+   *
+   * Implements both Container.resolve and PlatformContainerPort.resolve.
+   * PlatformContainerPort uses generic `symbol`, which is compatible with ApiSafeToken<T> (which extends symbol).
    *
    * @param token - An API-safe injection token (from api.tokens)
    * @returns The resolved service instance
@@ -450,6 +452,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    * }
    * ```
    */
+  resolve<T>(token: symbol): T;
   resolve<T>(token: ApiSafeToken<T>): T;
 
   /**
@@ -459,7 +462,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   resolve<T>(token: InjectionToken<T>): never;
 
   // Implementation (unified for both overloads)
-  resolve<T>(token: InjectionToken<T> | ApiSafeToken<T>): T {
+  resolve<T>(token: InjectionToken<T> | ApiSafeToken<T> | symbol): T {
     // 🛡️ RUNTIME GUARD (always active for defense-in-depth)
     const securityResult = this.apiSecurityManager.validateApiSafeToken(token);
     if (!securityResult.ok) {
@@ -473,11 +476,12 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   /**
    * Check if service is registered.
    * Implements both Container.isRegistered and PlatformContainerPort.isRegistered.
+   * PlatformContainerPort uses generic `symbol`, which is compatible with InjectionToken<T> (which extends symbol).
    */
-  isRegistered<T>(token: DomainInjectionToken<T>): Result<boolean, never>;
+  isRegistered(token: symbol): Result<boolean, never>;
   isRegistered<T>(token: InjectionToken<T>): Result<boolean, never>;
-  isRegistered<T>(token: InjectionToken<T>): Result<boolean, never> {
-    return ok(this.registrationManager.isRegistered(token));
+  isRegistered<T>(token: InjectionToken<T> | symbol): Result<boolean, never> {
+    return ok(this.registrationManager.isRegistered(token as InjectionToken<T>));
   }
 
   /**

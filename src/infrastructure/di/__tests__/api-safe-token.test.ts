@@ -153,7 +153,7 @@ describe("ApiSafeToken", () => {
       const apiToken = markAsApiSafe(serviceToken);
 
       // Should resolve with dependency
-      const service = container.resolve(apiToken);
+      const service = container.resolve<Service>(apiToken);
       expect(service.dep.value).toBe("dependency");
     });
 
@@ -188,10 +188,12 @@ describe("ApiSafeToken", () => {
 
       const mockApi = {
         tokens: { notificationCenterToken: apiToken },
-        resolve: container.resolve.bind(container), // eslint-disable-line @typescript-eslint/no-deprecated
+        resolve: container.resolve.bind(container) as <T>(token: symbol) => T, // eslint-disable-line @typescript-eslint/no-deprecated
       };
 
-      const resolvedNotifications = mockApi.resolve(mockApi.tokens.notificationCenterToken);
+      const resolvedNotifications = mockApi.resolve<typeof notifications>(
+        mockApi.tokens.notificationCenterToken
+      );
       expect(resolvedNotifications.error("test")).toBe("test");
     });
 

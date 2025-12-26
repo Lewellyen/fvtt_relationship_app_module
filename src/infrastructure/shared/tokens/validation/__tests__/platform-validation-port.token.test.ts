@@ -27,7 +27,7 @@ describe("platformValidationPortToken", () => {
 
     // Resolve using API-safe token
     const apiToken = markAsApiSafe(platformValidationPortToken);
-    const resolved = container.resolve(apiToken);
+    const resolved = container.resolve<PlatformValidationPort>(apiToken);
 
     expect(resolved).toBe(mockValidationPort);
     expect(resolved.validateLogLevel).toBeDefined();
