@@ -1,3 +1,6 @@
+import type { Result } from "@/domain/types/result";
+import type { SettingsError } from "@/domain/types/settings-error";
+
 /**
  * Platform-agnostic validation schema interface.
  *
@@ -11,23 +14,32 @@
  * @example
  * ```typescript
  * const schema: ValidationSchema<number> = {
- *   validate: (value: unknown): value is number => {
- *     return typeof value === "number" && !isNaN(value);
+ *   validate: (value: unknown): Result<number, SettingsError> => {
+ *     if (typeof value === "number" && !isNaN(value)) {
+ *       return { ok: true, value };
+ *     }
+ *     return {
+ *       ok: false,
+ *       error: {
+ *         code: "SETTING_VALIDATION_FAILED",
+ *         message: "Value is not a valid number",
+ *       },
+ *     };
  *   }
  * };
  *
- * if (schema.validate(userInput)) {
- *   // TypeScript knows userInput is number here
- *   console.log(userInput.toFixed(2));
+ * const result = schema.validate(userInput);
+ * if (result.ok) {
+ *   console.log(result.value.toFixed(2));
  * }
  * ```
  */
 export interface ValidationSchema<T> {
   /**
-   * Validates a value and returns a type predicate.
+   * Validates a value and returns a Result.
    *
    * @param value - The value to validate
-   * @returns Type predicate indicating if value is of type T
+   * @returns Result with validated value or validation error
    */
-  validate(value: unknown): value is T;
+  validate(value: unknown): Result<T, SettingsError>;
 }

@@ -19329,28 +19329,6 @@ function registerEntityPorts(container) {
   return ok(void 0);
 }
 __name(registerEntityPorts, "registerEntityPorts");
-const _ValibotValidationSchema = class _ValibotValidationSchema {
-  constructor(valibotSchema) {
-    this.valibotSchema = valibotSchema;
-  }
-  validate(value2) {
-    const result = /* @__PURE__ */ safeParse(this.valibotSchema, value2);
-    return result.success;
-  }
-  /**
-   * Gets the original valibot schema.
-   * Only available in infrastructure layer - not part of ValidationSchema interface.
-   */
-  getValibotSchema() {
-    return this.valibotSchema;
-  }
-};
-__name(_ValibotValidationSchema, "ValibotValidationSchema");
-let ValibotValidationSchema = _ValibotValidationSchema;
-function toValidationSchema(valibotSchema) {
-  return new ValibotValidationSchema(valibotSchema);
-}
-__name(toValidationSchema, "toValidationSchema");
 const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
   constructor(foundrySettings) {
     this.foundrySettings = foundrySettings;
@@ -19390,31 +19368,20 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
   /**
    * Get setting value from Foundry with validation.
    *
-   * Converts domain ValidationSchema to valibot schema for FoundrySettings.
-   * Requires that ValidationSchema was created from a valibot schema via toValidationSchema().
+   * Uses a permissive valibot schema (v.unknown()) to retrieve the raw value,
+   * then validates it using the provided ValidationSchema. This allows any
+   * ValidationSchema implementation to be used, not just ValibotValidationSchema.
    */
   get(namespace, key, schema) {
-    if (!(schema instanceof ValibotValidationSchema)) {
+    const rawResult = this.foundrySettings.get(namespace, key, /* @__PURE__ */ unknown());
+    if (!rawResult.ok) {
       return {
         ok: false,
-        error: {
-          code: "SETTING_VALIDATION_FAILED",
-          message: "ValidationSchema must be created from valibot schema using toValidationSchema()",
-          details: { namespace, key }
-        }
+        error: this.mapFoundryErrorToSettingsError(rawResult.error, "get", namespace, key)
       };
     }
-    const valibotValidationSchema = schema;
-    const valibotSchema = valibotValidationSchema.getValibotSchema();
-    const result = this.foundrySettings.get(namespace, key, valibotSchema);
-    if (!result.ok) {
-      return {
-        ok: false,
-        error: this.mapFoundryErrorToSettingsError(result.error, "get", namespace, key)
-      };
-    }
-    const validatedValue = result.value;
-    return { ok: true, value: validatedValue };
+    const validationResult = schema.validate(rawResult.value);
+    return validationResult;
   }
   /**
    * Set setting value in Foundry.

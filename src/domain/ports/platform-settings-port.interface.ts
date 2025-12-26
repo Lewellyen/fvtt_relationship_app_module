@@ -1,5 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import type { ValidationSchema } from "@/domain/types/validation-schema.interface";
+import type { SettingsError } from "@/domain/types/settings-error";
 
 /**
  * Platform-agnostic port for application settings.
@@ -203,14 +204,7 @@ export type SettingType =
   | "Boolean";
 
 /**
- * Platform-agnostic error for settings operations.
+ * Re-export SettingsError for convenience.
+ * @deprecated Import from "@/domain/types/settings-error" instead.
  */
-export interface SettingsError {
-  code:
-    | "SETTING_NOT_REGISTERED" // Trying to get/set unregistered setting
-    | "SETTING_VALIDATION_FAILED" // Setting value failed validation
-    | "SETTING_REGISTRATION_FAILED" // Platform rejected registration
-    | "PLATFORM_NOT_AVAILABLE"; // Platform not initialized yet
-  message: string;
-  details?: unknown;
-}
+export type { SettingsError } from "@/domain/types/settings-error";

@@ -1,4 +1,7 @@
 import type { ValidationSchema } from "@/domain/types/validation-schema.interface";
+import type { SettingsError } from "@/domain/types/settings-error";
+import type { Result } from "@/domain/types/result";
+import { ok, err } from "@/domain/utils/result";
 import * as v from "valibot";
 
 /**
@@ -12,9 +15,16 @@ import * as v from "valibot";
 export class ValibotValidationSchema<T> implements ValidationSchema<T> {
   constructor(private readonly valibotSchema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>) {}
 
-  validate(value: unknown): value is T {
+  validate(value: unknown): Result<T, SettingsError> {
     const result = v.safeParse(this.valibotSchema, value);
-    return result.success;
+    if (result.success) {
+      return ok(result.output);
+    }
+    return err({
+      code: "SETTING_VALIDATION_FAILED",
+      message: `Validation failed: ${result.issues.map((i) => i.message).join(", ")}`,
+      details: result.issues,
+    });
   }
 
   /**

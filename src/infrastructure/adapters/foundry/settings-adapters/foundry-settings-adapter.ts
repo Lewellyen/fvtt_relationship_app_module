@@ -11,8 +11,7 @@ import type {
   SettingConfig,
 } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
-import type * as v from "valibot";
-import { ValibotValidationSchema } from "@/infrastructure/validation/valibot-schema-adapter";
+import * as v from "valibot";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 
 /**
@@ -82,40 +81,24 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
   /**
    * Get setting value from Foundry with validation.
    *
-   * Converts domain ValidationSchema to valibot schema for FoundrySettings.
-   * Requires that ValidationSchema was created from a valibot schema via toValidationSchema().
+   * Uses a permissive valibot schema (v.unknown()) to retrieve the raw value,
+   * then validates it using the provided ValidationSchema. This allows any
+   * ValidationSchema implementation to be used, not just ValibotValidationSchema.
    */
   get<T>(namespace: string, key: string, schema: ValidationSchema<T>): Result<T, SettingsError> {
-    // Extract the original valibot schema from ValibotValidationSchema
-    if (!(schema instanceof ValibotValidationSchema)) {
+    // Get raw value using permissive schema (allows any value)
+    const rawResult = this.foundrySettings.get(namespace, key, v.unknown());
+
+    if (!rawResult.ok) {
       return {
         ok: false,
-        error: {
-          code: "SETTING_VALIDATION_FAILED",
-          message:
-            "ValidationSchema must be created from valibot schema using toValidationSchema()",
-          details: { namespace, key },
-        },
+        error: this.mapFoundryErrorToSettingsError(rawResult.error, "get", namespace, key),
       };
     }
 
-    const valibotValidationSchema: ValibotValidationSchema<T> = schema;
-    const valibotSchema: v.BaseSchema<
-      unknown,
-      T,
-      v.BaseIssue<unknown>
-    > = valibotValidationSchema.getValibotSchema();
-    const result: Result<T, FoundryError> = this.foundrySettings.get(namespace, key, valibotSchema);
-
-    if (!result.ok) {
-      return {
-        ok: false,
-        error: this.mapFoundryErrorToSettingsError(result.error, "get", namespace, key),
-      };
-    }
-
-    const validatedValue: T = result.value;
-    return { ok: true, value: validatedValue };
+    // Validate using the provided schema (schema-agnostic)
+    const validationResult = schema.validate(rawResult.value);
+    return validationResult;
   }
 
   /**

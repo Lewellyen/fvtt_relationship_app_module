@@ -353,17 +353,64 @@ describe("FoundrySettingsAdapter", () => {
       }
     });
 
-    it("should return error when ValidationSchema is not created from valibot schema", () => {
+    it("should accept any ValidationSchema implementation (LSP compliance)", () => {
       const customSchema: ValidationSchema<boolean> = {
-        validate: (value: unknown): value is boolean => typeof value === "boolean",
+        validate: (value: unknown) => {
+          if (typeof value === "boolean") {
+            return { ok: true, value };
+          }
+          return {
+            ok: false,
+            error: {
+              code: "SETTING_VALIDATION_FAILED",
+              message: "Value is not a boolean",
+            },
+          };
+        },
       };
+
+      // Mock FoundrySettings to return a boolean value
+      vi.mocked(mockFoundrySettings.get).mockReturnValue({
+        ok: true,
+        value: true,
+      });
+
+      const result = adapter.get("my-module", "enabled", customSchema);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(true);
+      }
+    });
+
+    it("should return validation error from custom ValidationSchema", () => {
+      const customSchema: ValidationSchema<boolean> = {
+        validate: (value: unknown) => {
+          if (typeof value === "boolean") {
+            return { ok: true, value };
+          }
+          return {
+            ok: false,
+            error: {
+              code: "SETTING_VALIDATION_FAILED",
+              message: "Value is not a boolean",
+            },
+          };
+        },
+      };
+
+      // Mock FoundrySettings to return a non-boolean value
+      vi.mocked(mockFoundrySettings.get).mockReturnValue({
+        ok: true,
+        value: "not a boolean",
+      });
 
       const result = adapter.get("my-module", "enabled", customSchema);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("SETTING_VALIDATION_FAILED");
-        expect(result.error.message).toContain("must be created from valibot schema");
+        expect(result.error.message).toBe("Value is not a boolean");
       }
     });
   });

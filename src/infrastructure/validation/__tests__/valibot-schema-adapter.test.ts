@@ -4,53 +4,119 @@ import { ValibotValidationSchema, toValidationSchema } from "../valibot-schema-a
 
 describe("ValibotValidationSchema", () => {
   describe("validate", () => {
-    it("should return true for valid values", () => {
+    it("should return ok result for valid values", () => {
       const schema = v.number();
       const validationSchema = new ValibotValidationSchema(schema);
 
-      expect(validationSchema.validate(42)).toBe(true);
-      expect(validationSchema.validate(0)).toBe(true);
-      expect(validationSchema.validate(-1)).toBe(true);
+      const result1 = validationSchema.validate(42);
+      expect(result1.ok).toBe(true);
+      if (result1.ok) {
+        expect(result1.value).toBe(42);
+      }
+
+      const result2 = validationSchema.validate(0);
+      expect(result2.ok).toBe(true);
+      if (result2.ok) {
+        expect(result2.value).toBe(0);
+      }
+
+      const result3 = validationSchema.validate(-1);
+      expect(result3.ok).toBe(true);
+      if (result3.ok) {
+        expect(result3.value).toBe(-1);
+      }
     });
 
-    it("should return false for invalid values", () => {
+    it("should return error result for invalid values", () => {
       const schema = v.number();
       const validationSchema = new ValibotValidationSchema(schema);
 
-      expect(validationSchema.validate("42")).toBe(false);
-      expect(validationSchema.validate(null)).toBe(false);
-      expect(validationSchema.validate(undefined)).toBe(false);
-      expect(validationSchema.validate({})).toBe(false);
+      const result1 = validationSchema.validate("42");
+      expect(result1.ok).toBe(false);
+      if (!result1.ok) {
+        expect(result1.error.code).toBe("SETTING_VALIDATION_FAILED");
+      }
+
+      const result2 = validationSchema.validate(null);
+      expect(result2.ok).toBe(false);
+
+      const result3 = validationSchema.validate(undefined);
+      expect(result3.ok).toBe(false);
+
+      const result4 = validationSchema.validate({});
+      expect(result4.ok).toBe(false);
     });
 
     it("should work with string schemas", () => {
       const schema = v.string();
       const validationSchema = new ValibotValidationSchema(schema);
 
-      expect(validationSchema.validate("hello")).toBe(true);
-      expect(validationSchema.validate("")).toBe(true);
-      expect(validationSchema.validate(42)).toBe(false);
+      const result1 = validationSchema.validate("hello");
+      expect(result1.ok).toBe(true);
+      if (result1.ok) {
+        expect(result1.value).toBe("hello");
+      }
+
+      const result2 = validationSchema.validate("");
+      expect(result2.ok).toBe(true);
+      if (result2.ok) {
+        expect(result2.value).toBe("");
+      }
+
+      const result3 = validationSchema.validate(42);
+      expect(result3.ok).toBe(false);
     });
 
     it("should work with boolean schemas", () => {
       const schema = v.boolean();
       const validationSchema = new ValibotValidationSchema(schema);
 
-      expect(validationSchema.validate(true)).toBe(true);
-      expect(validationSchema.validate(false)).toBe(true);
-      expect(validationSchema.validate(1)).toBe(false);
-      expect(validationSchema.validate(0)).toBe(false);
+      const result1 = validationSchema.validate(true);
+      expect(result1.ok).toBe(true);
+      if (result1.ok) {
+        expect(result1.value).toBe(true);
+      }
+
+      const result2 = validationSchema.validate(false);
+      expect(result2.ok).toBe(true);
+      if (result2.ok) {
+        expect(result2.value).toBe(false);
+      }
+
+      const result3 = validationSchema.validate(1);
+      expect(result3.ok).toBe(false);
+
+      const result4 = validationSchema.validate(0);
+      expect(result4.ok).toBe(false);
     });
 
     it("should work with picklist schemas", () => {
       const schema = v.picklist([1, 2, 3]);
       const validationSchema = new ValibotValidationSchema(schema);
 
-      expect(validationSchema.validate(1)).toBe(true);
-      expect(validationSchema.validate(2)).toBe(true);
-      expect(validationSchema.validate(3)).toBe(true);
-      expect(validationSchema.validate(4)).toBe(false);
-      expect(validationSchema.validate("1")).toBe(false);
+      const result1 = validationSchema.validate(1);
+      expect(result1.ok).toBe(true);
+      if (result1.ok) {
+        expect(result1.value).toBe(1);
+      }
+
+      const result2 = validationSchema.validate(2);
+      expect(result2.ok).toBe(true);
+      if (result2.ok) {
+        expect(result2.value).toBe(2);
+      }
+
+      const result3 = validationSchema.validate(3);
+      expect(result3.ok).toBe(true);
+      if (result3.ok) {
+        expect(result3.value).toBe(3);
+      }
+
+      const result4 = validationSchema.validate(4);
+      expect(result4.ok).toBe(false);
+
+      const result5 = validationSchema.validate("1");
+      expect(result5.ok).toBe(false);
     });
   });
 
@@ -84,27 +150,58 @@ describe("toValidationSchema", () => {
     const validationSchema = toValidationSchema(valibotSchema);
 
     expect(validationSchema).toBeInstanceOf(ValibotValidationSchema);
-    expect(validationSchema.validate(42)).toBe(true);
-    expect(validationSchema.validate("42")).toBe(false);
+
+    const result1 = validationSchema.validate(42);
+    expect(result1.ok).toBe(true);
+    if (result1.ok) {
+      expect(result1.value).toBe(42);
+    }
+
+    const result2 = validationSchema.validate("42");
+    expect(result2.ok).toBe(false);
   });
 
   it("should preserve validation behavior", () => {
     const valibotSchema = v.string();
     const validationSchema = toValidationSchema(valibotSchema);
 
-    expect(validationSchema.validate("hello")).toBe(true);
-    expect(validationSchema.validate(123)).toBe(false);
+    const result1 = validationSchema.validate("hello");
+    expect(result1.ok).toBe(true);
+    if (result1.ok) {
+      expect(result1.value).toBe("hello");
+    }
+
+    const result2 = validationSchema.validate(123);
+    expect(result2.ok).toBe(false);
   });
 
   it("should work with complex schemas", () => {
     const valibotSchema = v.picklist(["a", "b", "c"]);
     const validationSchema = toValidationSchema(valibotSchema);
 
-    expect(validationSchema.validate("a")).toBe(true);
-    expect(validationSchema.validate("b")).toBe(true);
-    expect(validationSchema.validate("c")).toBe(true);
-    expect(validationSchema.validate("d")).toBe(false);
-    expect(validationSchema.validate(1)).toBe(false);
+    const result1 = validationSchema.validate("a");
+    expect(result1.ok).toBe(true);
+    if (result1.ok) {
+      expect(result1.value).toBe("a");
+    }
+
+    const result2 = validationSchema.validate("b");
+    expect(result2.ok).toBe(true);
+    if (result2.ok) {
+      expect(result2.value).toBe("b");
+    }
+
+    const result3 = validationSchema.validate("c");
+    expect(result3.ok).toBe(true);
+    if (result3.ok) {
+      expect(result3.value).toBe("c");
+    }
+
+    const result4 = validationSchema.validate("d");
+    expect(result4.ok).toBe(false);
+
+    const result5 = validationSchema.validate(1);
+    expect(result5.ok).toBe(false);
   });
 
   it("should return ValibotValidationSchema that exposes original schema", () => {

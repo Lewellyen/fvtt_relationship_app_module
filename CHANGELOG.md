@@ -12,6 +12,30 @@
 
 ### Upgrade-Hinweise
 
+## [0.46.2] - 2025-12-26
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **LSP-001 Refactoring: ValidationSchema Interface LSP-konform gemacht** ([Details](docs/refactoring/LSP/LSP-001-validation-schema-instanceof-check.md))
+- `ValidationSchema.validate()` gibt jetzt `Result<T, SettingsError>` zurück statt `value is T` (Type Guard)
+- `FoundrySettingsAdapter.get()` verwendet kein `instanceof ValibotValidationSchema` mehr
+- `FoundrySettingsAdapter` nutzt jetzt `v.unknown()` Schema für raw value retrieval, dann schema-agnostische Validierung
+- Jede `ValidationSchema`-Implementierung ist jetzt substituierbar (LSP-konform)
+- `SettingsError` in separate Datei `src/domain/types/settings-error.ts` verschoben, um zirkuläre Abhängigkeit aufzulösen
+- `ValibotValidationSchema.validate()` implementiert jetzt Result-Pattern mit detaillierten Fehlermeldungen
+- Tests erweitert: Neue Tests für alternative ValidationSchema-Implementierungen (LSP-Compliance-Test)
+- Public API bleibt unverändert (Backward Compatible, interne Implementierung geändert)
+
+### Fehlerbehebungen
+- **Zirkuläre Abhängigkeit behoben**: `platform-settings-port.interface.ts` ↔ `validation-schema.interface.ts` durch Verschiebung von `SettingsError` in separate Datei
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.46.1] - 2025-12-26
 ### Hinzugefügt
 - **Application DI Layer**: Neues DI-Paket `src/application/di` für Dependency Injection Primitives ([Details](docs/refactoring/DIP/DIP-001-di-primitives-in-domain.md))
