@@ -287,6 +287,21 @@ describe("FoundryUIPort", () => {
       service.removeJournalElement("id", "name", element);
       expect(selectSpy).toHaveBeenCalled();
     });
+
+    it("should call dispose on port if it implements Disposable", () => {
+      const element = document.createElement("div");
+      const mockDispose = vi.fn();
+      // Ensure port has dispose method to be recognized as Disposable
+      mockPort.dispose = mockDispose;
+
+      // Trigger port initialization
+      service.removeJournalElement("id", "name", element);
+
+      // Dispose should call port.dispose() if port is Disposable
+      service.dispose();
+
+      expect(mockDispose).toHaveBeenCalled();
+    });
   });
 
   describe("rerenderJournalDirectory delegation", () => {
@@ -427,6 +442,37 @@ describe("FoundryUIPort", () => {
 
       expectResultErr(result);
       expect(result.error.message).toContain("Port selection failed");
+    });
+  });
+
+  describe("dispose", () => {
+    it("should dispose port when it implements Disposable", () => {
+      // Trigger port initialization
+      service.notify("Test", "info");
+
+      const disposeSpy = vi.spyOn(mockPort, "dispose");
+      service.dispose();
+
+      expect(disposeSpy).toHaveBeenCalledOnce();
+    });
+
+    it("should clear cache even when port does not implement Disposable", () => {
+      // Create a port without dispose method (use unknown cast to allow missing dispose)
+      const nonDisposablePort = {
+        removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
+        findElement: vi.fn().mockReturnValue(ok(null)),
+        notify: vi.fn().mockReturnValue(ok(undefined)),
+        rerenderJournalDirectory: vi.fn().mockReturnValue(ok(true)),
+        // No dispose method - this tests the else branch in dispose()
+      } as unknown as FoundryUI;
+
+      vi.spyOn(mockSelector, "selectPortFromTokens").mockReturnValue(ok(nonDisposablePort));
+
+      // Trigger port initialization
+      service.notify("Test", "info");
+
+      // Dispose should not throw and should clear cache
+      expect(() => service.dispose()).not.toThrow();
     });
   });
 });

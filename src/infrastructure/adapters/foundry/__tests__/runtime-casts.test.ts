@@ -1,10 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   extractHtmlElement,
   getFactoryOrError,
   castFoundrySettingsApi,
   castDisposablePort,
   castFoundryDocumentForFlag,
+  castFoundryJournalEntryClass,
   type DynamicSettingsApi,
 } from "@/infrastructure/adapters/foundry/runtime-casts";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
@@ -198,6 +199,17 @@ describe("castDisposablePort", () => {
     const result = castDisposablePort("string");
     expect(result).toBeNull();
   });
+
+  it("should return null when port is an array", () => {
+    const result = castDisposablePort([1, 2, 3]);
+    expect(result).toBeNull();
+  });
+
+  it("should return null when port is an array with dispose property but not method", () => {
+    const port = ["dispose"];
+    const result = castDisposablePort(port);
+    expect(result).toBeNull();
+  });
 });
 
 describe("castFoundryDocumentForFlag", () => {
@@ -267,5 +279,70 @@ describe("castFoundryDocumentForFlag", () => {
 
     expectResultErr(result);
     expect(result.error.code).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("castFoundryJournalEntryClass", () => {
+  const originalJournalEntry = (globalThis as any).JournalEntry;
+
+  beforeEach(() => {
+    // Clean up any existing JournalEntry
+    delete (globalThis as any).JournalEntry;
+  });
+
+  afterEach(() => {
+    // Restore original JournalEntry if it existed
+    if (originalJournalEntry !== undefined) {
+      (globalThis as any).JournalEntry = originalJournalEntry;
+    } else {
+      delete (globalThis as any).JournalEntry;
+    }
+  });
+
+  it("should return ok when JournalEntry is available with create method", () => {
+    const mockJournalEntryClass = {
+      create: vi.fn(),
+    };
+    (globalThis as any).JournalEntry = mockJournalEntryClass;
+
+    const result = castFoundryJournalEntryClass();
+
+    expectResultOk(result);
+    expect(result.value).toBe(mockJournalEntryClass);
+  });
+
+  it("should return err when JournalEntry is not in globalThis", () => {
+    // JournalEntry is already deleted in beforeEach
+    const result = castFoundryJournalEntryClass();
+
+    expectResultErr(result);
+    expect(result.error.code).toBe("API_NOT_AVAILABLE");
+    expect(result.error.message).toContain("JournalEntry class not available");
+  });
+
+  it("should return err when JournalEntry exists but has no create method", () => {
+    const mockJournalEntryClass = {
+      // No create method
+    };
+    (globalThis as any).JournalEntry = mockJournalEntryClass;
+
+    const result = castFoundryJournalEntryClass();
+
+    expectResultErr(result);
+    expect(result.error.code).toBe("API_NOT_AVAILABLE");
+    expect(result.error.message).toContain("does not have required method");
+  });
+
+  it("should return err when JournalEntry has create property but not method", () => {
+    const mockJournalEntryClass = {
+      create: "not a function",
+    };
+    (globalThis as any).JournalEntry = mockJournalEntryClass;
+
+    const result = castFoundryJournalEntryClass();
+
+    expectResultErr(result);
+    expect(result.error.code).toBe("API_NOT_AVAILABLE");
+    expect(result.error.message).toContain("does not have required method");
   });
 });

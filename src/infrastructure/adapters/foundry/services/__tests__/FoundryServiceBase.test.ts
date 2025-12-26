@@ -27,6 +27,10 @@ class TestService extends FoundryServiceBase<FoundryGame> {
   }
 
   // Expose protected methods for testing
+  public testGetPort(adapterName: string): Result<FoundryGame, FoundryError> {
+    return this.getPort(adapterName);
+  }
+
   public testWithRetry<T>(
     operation: () => Result<T, FoundryError>,
     operationName?: string
@@ -49,12 +53,13 @@ describe("FoundryServiceBase", () => {
   let service: TestService;
 
   beforeEach(() => {
+    const mockPort = new MockPort();
     mockPortSelector = {
-      selectPort: vi.fn(),
+      selectPortFromTokens: vi.fn().mockReturnValue(ok(mockPort)),
     } as unknown as PortSelector;
 
     mockPortRegistry = {
-      get: vi.fn(),
+      getTokens: vi.fn().mockReturnValue(new Map()),
     } as unknown as PortRegistry<FoundryGame>;
 
     mockRetryService = {
@@ -63,6 +68,57 @@ describe("FoundryServiceBase", () => {
     } as unknown as RetryService;
 
     service = new TestService(mockPortSelector, mockPortRegistry, mockRetryService);
+  });
+
+  describe("getPort", () => {
+    it("should load port from selector when port is null", () => {
+      const mockPort = new MockPort();
+      vi.mocked(mockPortSelector.selectPortFromTokens).mockReturnValue(ok(mockPort));
+
+      const result = service.testGetPort("FoundryGame");
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(mockPort);
+      }
+      expect(mockPortSelector.selectPortFromTokens).toHaveBeenCalled();
+      expect(mockPortRegistry.getTokens).toHaveBeenCalled();
+    });
+
+    it("should return cached port when port is already loaded", () => {
+      const mockPort = new MockPort();
+      vi.mocked(mockPortSelector.selectPortFromTokens).mockReturnValue(ok(mockPort));
+
+      // First call loads the port
+      const firstResult = service.testGetPort("FoundryGame");
+      expect(firstResult.ok).toBe(true);
+
+      // Second call should use cached port
+      vi.mocked(mockPortSelector.selectPortFromTokens).mockClear();
+      const secondResult = service.testGetPort("FoundryGame");
+
+      expect(secondResult.ok).toBe(true);
+      if (secondResult.ok) {
+        expect(secondResult.value).toBe(mockPort);
+      }
+      // selectPortFromTokens should not be called again
+      expect(mockPortSelector.selectPortFromTokens).not.toHaveBeenCalled();
+    });
+
+    it("should return error when port selection fails", () => {
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.mocked(mockPortSelector.selectPortFromTokens).mockReturnValue(err(mockError));
+
+      const result = service.testGetPort("FoundryGame");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toEqual(mockError);
+      }
+    });
   });
 
   describe("withRetry", () => {

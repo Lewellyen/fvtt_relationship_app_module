@@ -205,16 +205,68 @@ describe("FoundrySettingsPort", () => {
   });
 
   describe("dispose", () => {
-    it("should reset port reference for garbage collection", () => {
+    it("should dispose port when it implements Disposable", () => {
       // Trigger port initialization
       service.get("test-module", "testKey", v.number());
 
-      // Dispose should reset port
+      // Add dispose method to mock port
+      mockPort.dispose = vi.fn() as any;
+      const disposeSpy = vi.spyOn(mockPort, "dispose");
+
       service.dispose();
 
+      expect(disposeSpy).toHaveBeenCalledOnce();
+    });
+
+    it("should clear cache even when port does not implement Disposable", () => {
+      const nonDisposablePort: FoundrySettings = {
+        register: vi.fn().mockReturnValue(ok(undefined)),
+        get: vi.fn().mockReturnValue(ok(42)),
+        set: vi.fn().mockResolvedValue(ok(undefined)),
+        // No dispose method
+      } as any;
+
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: IPortSelectionObservability = {
+        registerWithObservabilityRegistry: vi.fn(),
+        setupObservability: vi.fn(),
+      } as any;
+      const mockPerformanceTracker: IPortSelectionPerformanceTracker = {
+        startTracking: vi.fn(),
+        endTracking: vi.fn().mockReturnValue(0),
+      } as any;
+      const mockObserver: PortSelectionObserver = {
+        handleEvent: vi.fn((event: PortSelectionEvent) => {
+          mockEventEmitter.emit(event);
+        }),
+      } as any;
+      const mockVersionDetector: FoundryVersionDetector = {
+        getVersion: vi.fn().mockReturnValue(resultOk(13)),
+      } as any;
+      const testSelector = new PortSelector(
+        mockVersionDetector,
+        mockEventEmitter,
+        mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
+        {
+          resolveWithError: vi.fn((token: InjectionToken<any>) => {
+            if (token === mockToken) return { ok: true, value: nonDisposablePort };
+            return { ok: false, error: { message: "Token not found" } };
+          }),
+        } as any
+      );
+      vi.spyOn(testSelector, "selectPortFromTokens").mockReturnValue(ok(nonDisposablePort));
+
+      const testService = new FoundrySettingsPort(testSelector, mockRegistry, mockRetryService);
+      testService.get("test-module", "testKey", v.number());
+
+      // Should not throw when disposing non-disposable port
+      expect(() => testService.dispose()).not.toThrow();
+
       // After dispose, port should be re-initialized on next call
-      const selectSpy = vi.spyOn(mockSelector, "selectPortFromTokens");
-      service.get("test-module", "testKey", v.number());
+      const selectSpy = vi.spyOn(testSelector, "selectPortFromTokens");
+      testService.get("test-module", "testKey", v.number());
       expect(selectSpy).toHaveBeenCalled();
     });
   });

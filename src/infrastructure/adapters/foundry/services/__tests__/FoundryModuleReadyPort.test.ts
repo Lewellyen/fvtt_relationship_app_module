@@ -104,6 +104,34 @@ describe("FoundryModuleReadyPort", () => {
       }
     });
 
+    it("should map API_NOT_AVAILABLE to PLATFORM_NOT_AVAILABLE", () => {
+      // Test the second condition in the OR (API_NOT_AVAILABLE without PORT_SELECTION_FAILED)
+      const failingSelector: PortSelector = {
+        selectPortFromTokens: vi.fn().mockReturnValue(
+          err({
+            code: "API_NOT_AVAILABLE",
+            message: "API not available",
+            details: undefined,
+          })
+        ),
+      } as unknown as PortSelector;
+
+      const port = new FoundryModuleReadyPort(
+        failingSelector,
+        mockPortRegistry,
+        mockRetryService,
+        TEST_MODULE_ID
+      );
+
+      const result = port.setReady();
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        // Should map to PLATFORM_NOT_AVAILABLE (tests the second condition in the OR)
+        expect(result.error.code).toBe("PLATFORM_NOT_AVAILABLE");
+      }
+    });
+
     it("should map other FoundryError codes to OPERATION_FAILED", () => {
       // Mock a port that returns an error with a different code
       const failingSelector: PortSelector = {
@@ -202,6 +230,63 @@ describe("FoundryModuleReadyPort", () => {
         expect(result.error.code).toBe("OPERATION_FAILED");
         expect(result.error.message).toBe("Validation failed");
       }
+    });
+  });
+
+  describe("dispose", () => {
+    it("should dispose port when it implements Disposable", () => {
+      // Create a port that implements Disposable
+      const disposablePort: FoundryModule & { dispose: () => void } = {
+        setModuleReady: vi.fn().mockReturnValue(true),
+        dispose: vi.fn(),
+      } as any;
+
+      const selector: PortSelector = {
+        selectPortFromTokens: vi.fn().mockReturnValue(ok(disposablePort)),
+      } as unknown as PortSelector;
+
+      const port = new FoundryModuleReadyPort(
+        selector,
+        mockPortRegistry,
+        mockRetryService,
+        TEST_MODULE_ID
+      );
+
+      // Trigger port initialization
+      port.setReady();
+
+      const disposeSpy = vi.spyOn(disposablePort, "dispose");
+
+      port.dispose();
+
+      expect(disposeSpy).toHaveBeenCalledOnce();
+    });
+
+    it("should clear cache even when port does not implement Disposable", () => {
+      const nonDisposablePort: FoundryModule = {
+        setModuleReady: vi.fn().mockReturnValue(true),
+        // No dispose method
+      } as unknown as FoundryModule;
+
+      const selector: PortSelector = {
+        selectPortFromTokens: vi.fn().mockReturnValue(ok(nonDisposablePort)),
+      } as unknown as PortSelector;
+
+      const port = new FoundryModuleReadyPort(
+        selector,
+        mockPortRegistry,
+        mockRetryService,
+        TEST_MODULE_ID
+      );
+      port.setReady();
+
+      // Should not throw when disposing non-disposable port
+      expect(() => port.dispose()).not.toThrow();
+
+      // After dispose, port should be re-initialized on next call
+      const selectSpy = vi.spyOn(selector, "selectPortFromTokens");
+      port.setReady();
+      expect(selectSpy).toHaveBeenCalled();
     });
   });
 });

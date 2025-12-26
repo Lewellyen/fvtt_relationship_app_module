@@ -9,34 +9,41 @@ import { createFoundryError } from "../errors/FoundryErrors";
 import type { PortSelector } from "../versioning/portselector";
 import type { PortRegistry } from "../versioning/portregistry";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
+import type { Disposable } from "@/infrastructure/di/interfaces";
 import { portSelectorToken } from "@/infrastructure/shared/tokens/foundry/port-selector.token";
 import { foundryModulePortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-module-port-registry.token";
 import { retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure/retry-service.token";
 import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure/module-id.token";
-import { FoundryServiceBase } from "./FoundryServiceBase";
+import { PortLoader } from "./PortLoader";
+import { RetryableOperation } from "./RetryableOperation";
+import { castDisposablePort } from "../runtime-casts";
 
 /**
  * Port wrapper for FoundryModule that automatically selects the appropriate version
  * based on the current Foundry version.
  *
- * Extends FoundryServiceBase for consistent port selection and retry logic.
+ * Uses composition instead of inheritance (PortLoader + RetryableOperation) to follow SRP.
+ * This refactoring extracts concerns from FoundryServiceBase for better separation of responsibilities.
  */
-export class FoundryModuleReadyPort
-  extends FoundryServiceBase<FoundryModule>
-  implements PlatformModuleReadyPort
-{
+export class FoundryModuleReadyPort implements PlatformModuleReadyPort, Disposable {
+  private readonly portLoader: PortLoader<FoundryModule>;
+  private readonly retryable: RetryableOperation;
+  private readonly moduleId: string;
+
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundryModule>,
     retryService: RetryService,
-    private readonly moduleId: string
+    moduleId: string
   ) {
-    super(portSelector, portRegistry, retryService);
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
+    this.moduleId = moduleId;
   }
 
   setReady(): Result<void, PlatformModuleReadyError> {
-    const result = this.withRetry(() => {
-      const portResult = this.getPort("FoundryModule");
+    const result = this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryModule");
       if (!portResult.ok) {
         return {
           ok: false,
@@ -84,6 +91,19 @@ export class FoundryModuleReadyPort
     }
 
     return { ok: true, value: undefined };
+  }
+
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose(): void {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
   }
 }
 

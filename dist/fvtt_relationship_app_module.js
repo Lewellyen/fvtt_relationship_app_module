@@ -10875,6 +10875,132 @@ const foundryModulePortRegistryToken = createInjectionToken(
   "FoundryModulePortRegistry"
 );
 const retryServiceToken = createInjectionToken("RetryService");
+const _PortLoader = class _PortLoader {
+  constructor(portSelector, portRegistry) {
+    this.port = null;
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with token-based selection to resolve ports from the DI container.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version. Ports are resolved
+   * from the DI container, ensuring DIP (Dependency Inversion Principle) compliance.
+   *
+   * @param adapterName - Name for logging purposes (e.g., "FoundryGame")
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
+   */
+  loadPort(adapterName) {
+    if (this.port === null) {
+      const tokens = this.portRegistry.getTokens();
+      const portResult = this.portSelector.selectPortFromTokens(tokens, void 0, adapterName);
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  /**
+   * Gets the currently loaded port without triggering lazy loading.
+   * Useful for operations that don't need retry logic but need to check if port is loaded.
+   *
+   * @returns The loaded port or null if not yet loaded
+   */
+  getLoadedPort() {
+    return this.port;
+  }
+  /**
+   * Clears the cached port.
+   * This forces the next loadPort() call to reload the port.
+   * Useful for testing or when ports need to be refreshed.
+   */
+  clearCache() {
+    this.port = null;
+  }
+};
+__name(_PortLoader, "PortLoader");
+let PortLoader = _PortLoader;
+const _RetryableOperation = class _RetryableOperation {
+  constructor(retryService) {
+    this.retryService = retryService;
+  }
+  /**
+   * Executes a Foundry API operation with automatic retry on transient failures.
+   *
+   * Use this for any port method call to handle:
+   * - Race conditions (Foundry not fully initialized)
+   * - Timing issues (DOM/Settings not ready)
+   * - Transient port selection failures
+   *
+   * @template T - The success type
+   * @param fn - Function to execute (should call port methods)
+   * @param operationName - Operation name for logging (e.g., "FoundryGame.getJournalEntries")
+   * @param maxAttempts - Max retry attempts (default: 2 = 1 retry)
+   * @returns Result from operation or mapped error
+   *
+   * @example
+   * ```typescript
+   * const result = retryable.execute(
+   *   () => {
+   *     const portResult = portLoader.loadPort("FoundryGame");
+   *     if (!portResult.ok) return portResult;
+   *     return portResult.value.getJournalEntries();
+   *   },
+   *   "FoundryGame.getJournalEntries"
+   * );
+   * ```
+   */
+  execute(fn, operationName, maxAttempts = 2) {
+    return this.retryService.retrySync(fn, {
+      maxAttempts,
+      operationName,
+      mapException: /* @__PURE__ */ __name((error, _attempt) => ({
+        code: "OPERATION_FAILED",
+        message: `${operationName} failed: ${String(error)}`,
+        cause: error instanceof Error ? error : void 0
+      }), "mapException")
+    });
+  }
+  /**
+   * Async variant of execute for async operations.
+   *
+   * @template T - The success type
+   * @param fn - Async function to execute
+   * @param operationName - Operation name for logging
+   * @param maxAttempts - Max retry attempts (default: 2)
+   * @returns Promise resolving to Result
+   *
+   * @example
+   * ```typescript
+   * const result = await retryable.executeAsync(
+   *   async () => {
+   *     const portResult = portLoader.loadPort("FoundryDocument");
+   *     if (!portResult.ok) return portResult;
+   *     return await portResult.value.setFlag(doc, scope, key, value);
+   *   },
+   *   "FoundryDocument.setFlag"
+   * );
+   * ```
+   */
+  async executeAsync(fn, operationName, maxAttempts = 2) {
+    return this.retryService.retry(fn, {
+      maxAttempts,
+      delayMs: 100,
+      // 100ms delay between retries
+      operationName,
+      mapException: /* @__PURE__ */ __name((error, _attempt) => ({
+        code: "OPERATION_FAILED",
+        message: `${operationName} failed: ${String(error)}`,
+        cause: error instanceof Error ? error : void 0
+      }), "mapException")
+    });
+  }
+};
+__name(_RetryableOperation, "RetryableOperation");
+let RetryableOperation = _RetryableOperation;
 function hasMethod(obj, methodName) {
   return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
   typeof obj[methodName] === "function";
@@ -11000,133 +11126,15 @@ function castCreatedJournalEntry(document2) {
   return document2;
 }
 __name(castCreatedJournalEntry, "castCreatedJournalEntry");
-const _FoundryServiceBase = class _FoundryServiceBase {
-  constructor(portSelector, portRegistry, retryService) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-    this.retryService = retryService;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with token-based selection to resolve ports from the DI container.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version. Ports are resolved
-   * from the DI container, ensuring DIP (Dependency Inversion Principle) compliance.
-   *
-   * @param adapterName - Name for logging purposes (e.g., "FoundryGame")
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  getPort(adapterName) {
-    if (this.port === null) {
-      const tokens = this.portRegistry.getTokens();
-      const portResult = this.portSelector.selectPortFromTokens(tokens, void 0, adapterName);
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-  /**
-   * Executes a Foundry API operation with automatic retry on transient failures.
-   *
-   * Use this for any port method call to handle:
-   * - Race conditions (Foundry not fully initialized)
-   * - Timing issues (DOM/Settings not ready)
-   * - Transient port selection failures
-   *
-   * @template T - The success type
-   * @param fn - Function to execute (should call port methods)
-   * @param operationName - Operation name for logging (e.g., "FoundryGame.getJournalEntries")
-   * @param maxAttempts - Max retry attempts (default: 2 = 1 retry)
-   * @returns Result from operation or mapped error
-   *
-   * @example
-   * ```typescript
-   * getJournalEntries(): Result<Entry[], FoundryError> {
-   *   return this.withRetry(
-   *     () => {
-   *       const portResult = this.getPort("FoundryGame");
-   *       if (!portResult.ok) return portResult;
-   *       return portResult.value.getJournalEntries();
-   *     },
-   *     "FoundryGame.getJournalEntries"
-   *   );
-   * }
-   * ```
-   */
-  withRetry(fn, operationName, maxAttempts = 2) {
-    return this.retryService.retrySync(fn, {
-      maxAttempts,
-      operationName,
-      mapException: /* @__PURE__ */ __name((error) => ({
-        code: "OPERATION_FAILED",
-        message: `${operationName} failed: ${String(error)}`,
-        cause: error instanceof Error ? error : void 0
-      }), "mapException")
-    });
-  }
-  /**
-   * Async variant of withRetry for async operations.
-   *
-   * @template T - The success type
-   * @param fn - Async function to execute
-   * @param operationName - Operation name for logging
-   * @param maxAttempts - Max retry attempts (default: 2)
-   * @returns Promise resolving to Result
-   *
-   * @example
-   * ```typescript
-   * async setFlag<T>(doc, scope, key, value): Promise<Result<void, FoundryError>> {
-   *   return this.withRetryAsync(
-   *     async () => {
-   *       const portResult = this.getPort("FoundryDocument");
-   *       if (!portResult.ok) return portResult;
-   *       return await portResult.value.setFlag(doc, scope, key, value);
-   *     },
-   *     "FoundryDocument.setFlag"
-   *   );
-   * }
-   * ```
-   */
-  async withRetryAsync(fn, operationName, maxAttempts = 2) {
-    return this.retryService.retry(fn, {
-      maxAttempts,
-      delayMs: 100,
-      // 100ms delay between retries
-      operationName,
-      mapException: /* @__PURE__ */ __name((error) => ({
-        code: "OPERATION_FAILED",
-        message: `${operationName} failed: ${String(error)}`,
-        cause: error instanceof Error ? error : void 0
-      }), "mapException")
-    });
-  }
-  /**
-   * Cleans up resources.
-   * Disposes the port if it implements Disposable, then resets the reference.
-   * All ports now implement dispose() with #disposed state guards.
-   */
-  dispose() {
-    const disposable = castDisposablePort(this.port);
-    if (disposable) {
-      disposable.dispose();
-    }
-    this.port = null;
-  }
-};
-__name(_FoundryServiceBase, "FoundryServiceBase");
-let FoundryServiceBase = _FoundryServiceBase;
-const _FoundryModuleReadyPort = class _FoundryModuleReadyPort extends FoundryServiceBase {
+const _FoundryModuleReadyPort = class _FoundryModuleReadyPort {
   constructor(portSelector, portRegistry, retryService, moduleId) {
-    super(portSelector, portRegistry, retryService);
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
     this.moduleId = moduleId;
   }
   setReady() {
-    const result = this.withRetry(() => {
-      const portResult = this.getPort("FoundryModule");
+    const result = this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryModule");
       if (!portResult.ok) {
         return {
           ok: false,
@@ -11165,6 +11173,18 @@ const _FoundryModuleReadyPort = class _FoundryModuleReadyPort extends FoundrySer
       };
     }
     return { ok: true, value: void 0 };
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
   }
 };
 __name(_FoundryModuleReadyPort, "FoundryModuleReadyPort");
@@ -13428,29 +13448,42 @@ function registerPortRegistries(container) {
   return ok(void 0);
 }
 __name(registerPortRegistries, "registerPortRegistries");
-const _FoundryGamePort = class _FoundryGamePort extends FoundryServiceBase {
+const _FoundryGamePort = class _FoundryGamePort {
   constructor(portSelector, portRegistry, retryService) {
-    super(portSelector, portRegistry, retryService);
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
   }
   getJournalEntries() {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryGame");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryGame");
       if (!portResult.ok) return portResult;
       return portResult.value.getJournalEntries();
     }, "FoundryGame.getJournalEntries");
   }
   getJournalEntryById(id) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryGame");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryGame");
       if (!portResult.ok) return portResult;
       return portResult.value.getJournalEntryById(id);
     }, "FoundryGame.getJournalEntryById");
   }
   invalidateCache() {
-    const portResult = this.getPort("FoundryGame");
+    const portResult = this.portLoader.loadPort("FoundryGame");
     if (portResult.ok) {
       portResult.value.invalidateCache();
     }
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
   }
 };
 __name(_FoundryGamePort, "FoundryGamePort");
@@ -13467,17 +13500,18 @@ _DIFoundryGamePort.dependencies = [
   retryServiceToken
 ];
 let DIFoundryGamePort = _DIFoundryGamePort;
-const _FoundryHooksPort = class _FoundryHooksPort extends FoundryServiceBase {
+const _FoundryHooksPort = class _FoundryHooksPort {
   constructor(portSelector, portRegistry, retryService, logger) {
-    super(portSelector, portRegistry, retryService);
     this.registeredHooks = /* @__PURE__ */ new Map();
     this.callbackToIdMap = /* @__PURE__ */ new Map();
     this.idToHookNameMap = /* @__PURE__ */ new Map();
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
     this.logger = logger;
   }
   on(hookName, callback) {
-    const result = this.withRetry(() => {
-      const portResult = this.getPort("FoundryHooks");
+    const result = this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryHooks");
       if (!portResult.ok) return portResult;
       return portResult.value.on(hookName, callback);
     }, "FoundryHooks.on");
@@ -13496,15 +13530,15 @@ const _FoundryHooksPort = class _FoundryHooksPort extends FoundryServiceBase {
     return result;
   }
   once(hookName, callback) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryHooks");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryHooks");
       if (!portResult.ok) return portResult;
       return portResult.value.once(hookName, callback);
     }, "FoundryHooks.once");
   }
   off(hookName, callbackOrId) {
-    const result = this.withRetry(() => {
-      const portResult = this.getPort("FoundryHooks");
+    const result = this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryHooks");
       if (!portResult.ok) return portResult;
       return portResult.value.off(hookName, callbackOrId);
     }, "FoundryHooks.off");
@@ -13573,7 +13607,12 @@ const _FoundryHooksPort = class _FoundryHooksPort extends FoundryServiceBase {
     this.registeredHooks.clear();
     this.callbackToIdMap.clear();
     this.idToHookNameMap.clear();
-    this.port = null;
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
   }
   // ===== PlatformEventPort Implementation =====
   /**
@@ -13640,51 +13679,64 @@ _DIFoundryHooksPort.dependencies = [
   loggerToken
 ];
 let DIFoundryHooksPort = _DIFoundryHooksPort;
-const _FoundryDocumentPort = class _FoundryDocumentPort extends FoundryServiceBase {
+const _FoundryDocumentPort = class _FoundryDocumentPort {
   constructor(portSelector, portRegistry, retryService) {
-    super(portSelector, portRegistry, retryService);
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
   }
   async create(documentClass, data) {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return await portResult.value.create(documentClass, data);
     }, "FoundryDocument.create");
   }
   async update(document2, changes) {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return await portResult.value.update(document2, changes);
     }, "FoundryDocument.update");
   }
   async delete(document2) {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return await portResult.value.delete(document2);
     }, "FoundryDocument.delete");
   }
   getFlag(document2, scope, key, schema) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return portResult.value.getFlag(document2, scope, key, schema);
     }, "FoundryDocument.getFlag");
   }
   async setFlag(document2, scope, key, value2) {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return await portResult.value.setFlag(document2, scope, key, value2);
     }, "FoundryDocument.setFlag");
   }
   async unsetFlag(document2, scope, key) {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return await portResult.value.unsetFlag(document2, scope, key);
     }, "FoundryDocument.unsetFlag");
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
   }
 };
 __name(_FoundryDocumentPort, "FoundryDocumentPort");
@@ -13701,37 +13753,50 @@ _DIFoundryDocumentPort.dependencies = [
   retryServiceToken
 ];
 let DIFoundryDocumentPort = _DIFoundryDocumentPort;
-const _FoundryUIPort = class _FoundryUIPort extends FoundryServiceBase {
+const _FoundryUIPort = class _FoundryUIPort {
   constructor(portSelector, portRegistry, retryService) {
-    super(portSelector, portRegistry, retryService);
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
   }
   removeJournalElement(journalId, journalName, html) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryUI");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryUI");
       if (!portResult.ok) return portResult;
       return portResult.value.removeJournalElement(journalId, journalName, html);
     }, "FoundryUI.removeJournalElement");
   }
   findElement(container, selector) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryUI");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryUI");
       if (!portResult.ok) return portResult;
       return portResult.value.findElement(container, selector);
     }, "FoundryUI.findElement");
   }
   notify(message2, type, options) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryUI");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryUI");
       if (!portResult.ok) return portResult;
       return portResult.value.notify(message2, type, options);
     }, "FoundryUI.notify");
   }
   rerenderJournalDirectory() {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryUI");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryUI");
       if (!portResult.ok) return portResult;
       return portResult.value.rerenderJournalDirectory();
     }, "FoundryUI.rerenderJournalDirectory");
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
   }
 };
 __name(_FoundryUIPort, "FoundryUIPort");
@@ -13744,30 +13809,43 @@ const _DIFoundryUIPort = class _DIFoundryUIPort extends FoundryUIPort {
 __name(_DIFoundryUIPort, "DIFoundryUIPort");
 _DIFoundryUIPort.dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken];
 let DIFoundryUIPort = _DIFoundryUIPort;
-const _FoundrySettingsPort = class _FoundrySettingsPort extends FoundryServiceBase {
+const _FoundrySettingsPort = class _FoundrySettingsPort {
   constructor(portSelector, portRegistry, retryService) {
-    super(portSelector, portRegistry, retryService);
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
   }
   register(namespace, key, config2) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundrySettings");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundrySettings");
       if (!portResult.ok) return portResult;
       return portResult.value.register(namespace, key, config2);
     }, "FoundrySettings.register");
   }
   get(namespace, key, schema) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundrySettings");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundrySettings");
       if (!portResult.ok) return portResult;
       return portResult.value.get(namespace, key, schema);
     }, "FoundrySettings.get");
   }
   async set(namespace, key, value2) {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundrySettings");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundrySettings");
       if (!portResult.ok) return portResult;
       return portResult.value.set(namespace, key, value2);
     }, "FoundrySettings.set");
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
   }
 };
 __name(_FoundrySettingsPort, "FoundrySettingsPort");
@@ -15659,30 +15737,43 @@ const fallbackTranslationHandlerToken = createInjectionToken(
 );
 const translationHandlerChainToken = createInjectionToken("TranslationHandlerChain");
 const translationHandlersToken = createInjectionToken("TranslationHandlers");
-const _FoundryI18nPort = class _FoundryI18nPort extends FoundryServiceBase {
+const _FoundryI18nPort = class _FoundryI18nPort {
   constructor(portSelector, portRegistry, retryService) {
-    super(portSelector, portRegistry, retryService);
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
   }
   localize(key) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryI18n");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryI18n");
       if (!portResult.ok) return portResult;
       return portResult.value.localize(key);
     }, "FoundryI18n.localize");
   }
   format(key, data) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryI18n");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryI18n");
       if (!portResult.ok) return portResult;
       return portResult.value.format(key, data);
     }, "FoundryI18n.format");
   }
   has(key) {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryI18n");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryI18n");
       if (!portResult.ok) return portResult;
       return portResult.value.has(key);
     }, "FoundryI18n.has");
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
   }
 };
 __name(_FoundryI18nPort, "FoundryI18nPort");

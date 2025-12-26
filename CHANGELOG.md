@@ -12,6 +12,37 @@
 
 ### Upgrade-Hinweise
 
+## [0.44.8] - 2025-12-26
+### Hinzugefügt
+- **PortLoader**: Separate Klasse für Lazy Loading von Foundry-Ports ([Details](docs/refactoring/SRP/findings/SRP__medium__foundry-service-base-multiple-concerns__b2c3d4e.md))
+- Kapselt Port-Auswahl und Lazy-Initialisierung
+- Ermöglicht bessere Trennung der Verantwortlichkeiten (SRP)
+- **RetryableOperation**: Separate Klasse für Retry-Logik bei Foundry-API-Operationen ([Details](docs/refactoring/SRP/findings/SRP__medium__foundry-service-base-multiple-concerns__b2c3d4e.md))
+- Kapselt Retry-Logik für synchrone und asynchrone Operationen
+- Ermöglicht bessere Testbarkeit und Wiederverwendbarkeit
+
+### Geändert
+- **Foundry-Service-Ports refactored**: Verwendung von Composition statt Vererbung ([Details](docs/refactoring/SRP/findings/SRP__medium__foundry-service-base-multiple-concerns__b2c3d4e.md))
+- Alle Foundry-Service-Ports verwenden jetzt `PortLoader` und `RetryableOperation` per Composition
+- Betroffene Services: `FoundryGamePort`, `FoundryI18nPort`, `FoundryHooksPort`, `FoundryUIPort`, `FoundrySettingsPort`, `FoundryDocumentPort`, `FoundryModuleReadyPort`
+- Verbesserte Trennung der Verantwortlichkeiten (SRP-konform)
+- Bessere Testbarkeit durch isolierte Komponenten
+- `FoundryServiceBase` ist jetzt als `@deprecated` markiert und wird in einer zukünftigen Version entfernt
+
+### Fehlerbehebungen
+- **Branch-Coverage auf 100% erhöht**: Fehlende Test-Abdeckung für dispose()-Methoden und error-handling Branches hinzugefügt
+- Test für `FoundryHooksPort.dispose()` hinzugefügt: Prüft den Fall, wenn der Port nicht `Disposable` ist (else-Branch)
+- Test für `FoundryUIPort.dispose()` hinzugefügt: Prüft den Fall, wenn der Port nicht `Disposable` ist (else-Branch)
+- Test für `RetryableOperation.executeAsync()` hinzugefügt: Prüft den Fall, wenn `error` nicht `instanceof Error` ist (else-Branch im ternären Operator)
+- Branch-Coverage von 99.85% auf 100% erhöht
+- Type-Check-Fehler in Test-Dateien behoben: Verwendung von `as unknown as` für Test-Objekte ohne `dispose`-Methode
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.44.7] - 2025-12-25
 ### Hinzugefügt
 - **setting-validator.ts**: Separate Datei für Validator-Type-Definition ([Details](docs/refactoring/SRP/findings/SRP__medium__settings-types-multiple-responsibilities__i7j8k9l.md))

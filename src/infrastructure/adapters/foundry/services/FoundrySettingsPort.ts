@@ -4,28 +4,33 @@ import type { FoundryError } from "../errors/FoundryErrors";
 import type { PortSelector } from "../versioning/portselector";
 import type { PortRegistry } from "../versioning/portregistry";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
+import type { Disposable } from "@/infrastructure/di/interfaces";
 import { portSelectorToken } from "@/infrastructure/shared/tokens/foundry/port-selector.token";
 import { foundrySettingsPortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings-port-registry.token";
 import { retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure/retry-service.token";
+import { PortLoader } from "./PortLoader";
+import { RetryableOperation } from "./RetryableOperation";
+import { castDisposablePort } from "../runtime-casts";
 import type * as v from "valibot";
-import { FoundryServiceBase } from "./FoundryServiceBase";
 
 /**
  * Port wrapper for FoundrySettings that automatically selects the appropriate version
  * based on the current Foundry version.
  *
- * Extends FoundryServiceBase for consistent port selection and retry logic.
+ * Uses composition instead of inheritance (PortLoader + RetryableOperation) to follow SRP.
+ * This refactoring extracts concerns from FoundryServiceBase for better separation of responsibilities.
  */
-export class FoundrySettingsPort
-  extends FoundryServiceBase<FoundrySettings>
-  implements FoundrySettings
-{
+export class FoundrySettingsPort implements FoundrySettings, Disposable {
+  private readonly portLoader: PortLoader<FoundrySettings>;
+  private readonly retryable: RetryableOperation;
+
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundrySettings>,
     retryService: RetryService
   ) {
-    super(portSelector, portRegistry, retryService);
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
   }
 
   register<T>(
@@ -33,8 +38,8 @@ export class FoundrySettingsPort
     key: string,
     config: SettingConfig<T>
   ): Result<void, FoundryError> {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundrySettings");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundrySettings");
       if (!portResult.ok) return portResult;
       return portResult.value.register(namespace, key, config);
     }, "FoundrySettings.register");
@@ -45,19 +50,32 @@ export class FoundrySettingsPort
     key: string,
     schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>
   ): Result<T, FoundryError> {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundrySettings");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundrySettings");
       if (!portResult.ok) return portResult;
       return portResult.value.get(namespace, key, schema);
     }, "FoundrySettings.get");
   }
 
   async set<T>(namespace: string, key: string, value: T): Promise<Result<void, FoundryError>> {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundrySettings");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundrySettings");
       if (!portResult.ok) return portResult;
       return portResult.value.set(namespace, key, value);
     }, "FoundrySettings.set");
+  }
+
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose(): void {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
   }
 }
 

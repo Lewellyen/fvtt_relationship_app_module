@@ -4,36 +4,41 @@ import type { FoundryError } from "../errors/FoundryErrors";
 import type { PortSelector } from "../versioning/portselector";
 import type { PortRegistry } from "../versioning/portregistry";
 import type { RetryService } from "@/infrastructure/retry/RetryService";
+import type { Disposable } from "@/infrastructure/di/interfaces";
 import { portSelectorToken } from "@/infrastructure/shared/tokens/foundry/port-selector.token";
 import { foundryDocumentPortRegistryToken } from "@/infrastructure/shared/tokens/foundry/foundry-document-port-registry.token";
 import { retryServiceToken } from "@/infrastructure/shared/tokens/infrastructure/retry-service.token";
-import { FoundryServiceBase } from "./FoundryServiceBase";
+import { PortLoader } from "./PortLoader";
+import { RetryableOperation } from "./RetryableOperation";
+import { castDisposablePort } from "../runtime-casts";
 import type * as v from "valibot";
 
 /**
  * Port wrapper for FoundryDocument that automatically selects the appropriate version
  * based on the current Foundry version.
  *
- * Extends FoundryServiceBase for consistent port selection and retry logic.
+ * Uses composition instead of inheritance (PortLoader + RetryableOperation) to follow SRP.
+ * This refactoring extracts concerns from FoundryServiceBase for better separation of responsibilities.
  */
-export class FoundryDocumentPort
-  extends FoundryServiceBase<FoundryDocument>
-  implements FoundryDocument
-{
+export class FoundryDocumentPort implements FoundryDocument, Disposable {
+  private readonly portLoader: PortLoader<FoundryDocument>;
+  private readonly retryable: RetryableOperation;
+
   constructor(
     portSelector: PortSelector,
     portRegistry: PortRegistry<FoundryDocument>,
     retryService: RetryService
   ) {
-    super(portSelector, portRegistry, retryService);
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
   }
 
   async create<TDocument extends { id: string }>(
     documentClass: { create: (data: unknown) => Promise<TDocument> },
     data: unknown
   ): Promise<Result<TDocument, FoundryError>> {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return await portResult.value.create(documentClass, data);
     }, "FoundryDocument.create");
@@ -43,16 +48,16 @@ export class FoundryDocumentPort
     document: { update: (changes: unknown) => Promise<TDocument> },
     changes: unknown
   ): Promise<Result<TDocument, FoundryError>> {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return await portResult.value.update(document, changes);
     }, "FoundryDocument.update");
   }
 
   async delete(document: { delete: () => Promise<unknown> }): Promise<Result<void, FoundryError>> {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return await portResult.value.delete(document);
     }, "FoundryDocument.delete");
@@ -64,8 +69,8 @@ export class FoundryDocumentPort
     key: string,
     schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>
   ): Result<T | null, FoundryError> {
-    return this.withRetry(() => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return portResult.value.getFlag<T>(document, scope, key, schema);
     }, "FoundryDocument.getFlag");
@@ -77,8 +82,8 @@ export class FoundryDocumentPort
     key: string,
     value: T
   ): Promise<Result<void, FoundryError>> {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return await portResult.value.setFlag(document, scope, key, value);
     }, "FoundryDocument.setFlag");
@@ -92,11 +97,24 @@ export class FoundryDocumentPort
     scope: string,
     key: string
   ): Promise<Result<void, FoundryError>> {
-    return this.withRetryAsync(async () => {
-      const portResult = this.getPort("FoundryDocument");
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
       return await portResult.value.unsetFlag(document, scope, key);
     }, "FoundryDocument.unsetFlag");
+  }
+
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose(): void {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
   }
 }
 

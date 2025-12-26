@@ -29,13 +29,9 @@ export default defineConfig({
     cache: true,
     // Optimize pool options for better performance
     pool: "threads",
-    poolOptions: {
-      threads: {
-        // Use all available CPU cores for parallel test execution
-        minThreads: 1,
-        maxThreads: undefined, // Auto-detect based on CPU cores
-      },
-    },
+    // Thread pool options (migrated from poolOptions.threads in Vitest 4)
+    minThreads: 1,
+    maxThreads: undefined, // Auto-detect based on CPU cores
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
@@ -89,6 +85,7 @@ export default defineConfig({
         "src/domain/types/injection-token.ts",
         "src/domain/types/runtime-config.ts",
         "src/infrastructure/di/types/utilities/bootstrap-casts.ts",
+        "src/framework/core/bootstrap/init-error.ts",
         // Re-export files (no runtime code)
         "src/infrastructure/shared/utils/result.ts",
         "src/infrastructure/shared/tokens/collection-tokens.ts",

@@ -539,6 +539,24 @@ describe("FoundryHooksPort", () => {
       expect(mockHooksOff).toHaveBeenCalledWith("ready", callback2);
       expect(mockHooksOff).toHaveBeenCalledWith("renderJournalDirectory", callback3);
     });
+
+    it("should clear cache even when port does not implement Disposable", () => {
+      // Create a port without dispose method (use unknown cast to allow missing dispose)
+      const nonDisposablePort = {
+        on: vi.fn().mockReturnValue(ok(1)),
+        once: vi.fn().mockReturnValue(ok(1)),
+        off: vi.fn().mockReturnValue(ok(undefined)),
+        // No dispose method - this tests the else branch in dispose()
+      } as unknown as FoundryHooks;
+
+      vi.spyOn(mockSelector, "selectPortFromTokens").mockReturnValue(ok(nonDisposablePort));
+
+      // Trigger port initialization
+      service.on("init", vi.fn());
+
+      // Dispose should not throw and should clear cache
+      expect(() => service.dispose()).not.toThrow();
+    });
   });
 
   describe("Port Error Branches", () => {

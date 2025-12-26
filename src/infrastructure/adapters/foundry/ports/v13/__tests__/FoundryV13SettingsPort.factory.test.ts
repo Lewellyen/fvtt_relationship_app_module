@@ -36,9 +36,49 @@ describe("createFoundryV13SettingsPort factory", () => {
     expect(result.error.code).toBe("API_NOT_AVAILABLE");
   });
 
+  it("should create port with error-throwing API when game is null", () => {
+    // Test the second condition in the OR (game === null without typeof game === "undefined")
+    // @ts-expect-error - intentionally null for test
+    global.game = null;
+
+    const port = createFoundryV13SettingsPort();
+    expect(port).toBeInstanceOf(FoundryV13SettingsPort);
+
+    // Should return API_NOT_AVAILABLE error
+    const result = port.register("test", "key", {
+      name: "Test",
+      scope: "world",
+      config: true,
+      type: String,
+      default: "",
+    });
+    expectResultErr(result);
+    expect(result.error.code).toBe("API_NOT_AVAILABLE");
+  });
+
   it("should create port with error-throwing API when game.settings is missing", () => {
     // @ts-expect-error - intentionally missing settings for test
     global.game = {};
+
+    const port = createFoundryV13SettingsPort();
+    const result = port.register("test", "key", {
+      name: "Test",
+      scope: "world",
+      config: true,
+      type: String,
+      default: "",
+    });
+
+    expectResultErr(result);
+    expect(result.error.code).toBe("API_NOT_AVAILABLE");
+  });
+
+  it("should create port with error-throwing API when game.settings is explicitly undefined", () => {
+    // Test the third condition in the OR (game.settings === undefined without game === null)
+    // @ts-expect-error - intentionally undefined settings for test
+    global.game = {
+      settings: undefined,
+    };
 
     const port = createFoundryV13SettingsPort();
     const result = port.register("test", "key", {

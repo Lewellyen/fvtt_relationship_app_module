@@ -1,4 +1,8 @@
 /**
+ * @deprecated This class has been refactored to use composition instead of inheritance.
+ * Use PortLoader and RetryableOperation directly in your service classes.
+ * This class will be removed in a future version.
+ *
  * Abstract base class for Foundry service wrappers.
  *
  * Provides:

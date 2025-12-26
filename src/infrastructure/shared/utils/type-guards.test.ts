@@ -44,6 +44,21 @@ describe("type-guards", () => {
       expect(hasMethod(obj, "method1")).toBe(true);
       expect(hasMethod(obj, "method2")).toBe(true);
     });
+
+    it("should return false for array (object but methodName not in array)", () => {
+      const arr = [1, 2, 3];
+      expect(hasMethod(arr, "dispose")).toBe(false);
+    });
+
+    it("should return false for array with index but not method", () => {
+      const arr = ["dispose"];
+      expect(hasMethod(arr, "dispose")).toBe(false);
+    });
+
+    it("should return false when methodName is not in object", () => {
+      const obj = { name: "test", value: 42 };
+      expect(hasMethod(obj, "dispose")).toBe(false);
+    });
   });
 
   describe("hasProperty", () => {

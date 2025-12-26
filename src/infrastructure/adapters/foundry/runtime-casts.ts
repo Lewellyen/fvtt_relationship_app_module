@@ -277,6 +277,7 @@ export function castFoundryDocumentWithUpdate<
  */
 export function castFoundryJournalEntryClass(): Result<JournalEntryConstructor, FoundryError> {
   // Check if globalThis has JournalEntry property
+  /* c8 ignore next 2 -- typeof globalThis !== "object" is always false (globalThis is always an object), globalThis === null is always false (globalThis is never null) */
   if (typeof globalThis !== "object" || globalThis === null || !("JournalEntry" in globalThis)) {
     return err(
       createFoundryError(
