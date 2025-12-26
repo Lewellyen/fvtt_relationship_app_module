@@ -2,15 +2,18 @@ import type { Result } from "@/domain/types/result";
 import { ok } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
-import { PersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
+import { isInitializable } from "@/infrastructure/shared/utils/type-guards";
 
 /**
  * Orchestrator for initializing metrics persistence during bootstrap.
  *
  * Responsibilities:
  * - Resolve MetricsCollector
- * - Check if it's a PersistentMetricsCollector
+ * - Check if it implements Initializable interface
  * - Call initialize() if needed
+ *
+ * Follows Liskov Substitution Principle (LSP) by using interface-based
+ * type checking instead of concrete class checks.
  */
 export class MetricsBootstrapper {
   /**
@@ -26,9 +29,9 @@ export class MetricsBootstrapper {
       return ok(undefined);
     }
 
-    // Check if it's a PersistentMetricsCollector
+    // Check if collector implements Initializable interface
     const collector = metricsResult.value;
-    if (collector instanceof PersistentMetricsCollector) {
+    if (isInitializable(collector)) {
       const initResult = collector.initialize();
       if (!initResult.ok) {
         // Log warning but don't fail bootstrap

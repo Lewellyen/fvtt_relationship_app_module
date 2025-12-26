@@ -14,11 +14,15 @@ import type { MetricsStorage } from "./metrics-storage";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { MetricDefinitionRegistry } from "@/infrastructure/observability/metrics-definition/metric-definition-registry";
+import type { Initializable } from "@/domain/ports/initializable.interface";
 
 /**
  * MetricsCollector variant that persists state via MetricsStorage.
+ *
+ * Implements Initializable interface to support explicit initialization
+ * after construction, following the Liskov Substitution Principle (LSP).
  */
-export class PersistentMetricsCollector extends MetricsCollector {
+export class PersistentMetricsCollector extends MetricsCollector implements Initializable {
   static override dependencies: readonly InjectionToken<unknown>[] = [
     runtimeConfigToken,
     metricsStorageToken,

@@ -36,13 +36,26 @@ describe("MetricsBootstrapper", () => {
     expect(mockContainer.resolveWithError).toHaveBeenCalledWith(metricsCollectorToken);
   });
 
-  it("should return success when collector is not a PersistentMetricsCollector", () => {
+  it("should return success when collector is not initializable", () => {
     const mockCollector = {} as MetricsCollector;
     vi.mocked(mockContainer.resolveWithError).mockReturnValue(ok(mockCollector));
 
     const result = MetricsBootstrapper.initializeMetrics(mockContainer);
 
     expect(result.ok).toBe(true);
+  });
+
+  it("should initialize any Initializable collector, not just PersistentMetricsCollector", () => {
+    // Create a mock collector that implements Initializable but is not PersistentMetricsCollector
+    const mockInitializableCollector = {
+      initialize: vi.fn().mockReturnValue(ok(undefined)),
+    } as unknown as MetricsCollector & { initialize: () => ReturnType<typeof ok<undefined>> };
+    vi.mocked(mockContainer.resolveWithError).mockReturnValue(ok(mockInitializableCollector));
+
+    const result = MetricsBootstrapper.initializeMetrics(mockContainer);
+
+    expect(result.ok).toBe(true);
+    expect(mockInitializableCollector.initialize).toHaveBeenCalledOnce();
   });
 
   it("should initialize PersistentMetricsCollector when available", () => {

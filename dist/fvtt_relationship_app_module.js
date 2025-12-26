@@ -4570,6 +4570,26 @@ var InitPhaseCriticality = /* @__PURE__ */ ((InitPhaseCriticality2) => {
   InitPhaseCriticality2["WARN_AND_CONTINUE"] = "warnAndContinue";
   return InitPhaseCriticality2;
 })(InitPhaseCriticality || {});
+function hasMethod(obj, methodName) {
+  return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
+  typeof obj[methodName] === "function";
+}
+__name(hasMethod, "hasMethod");
+function hasProperty(obj, propertyName) {
+  return obj !== null && obj !== void 0 && typeof obj === "object" && propertyName in obj;
+}
+__name(hasProperty, "hasProperty");
+function isObjectWithMethods(obj, methodNames) {
+  if (obj === null || obj === void 0 || typeof obj !== "object") {
+    return false;
+  }
+  return methodNames.every((methodName) => hasMethod(obj, methodName));
+}
+__name(isObjectWithMethods, "isObjectWithMethods");
+function isInitializable(obj) {
+  return hasMethod(obj, "initialize");
+}
+__name(isInitializable, "isInitializable");
 const _MetricsBootstrapper = class _MetricsBootstrapper {
   /**
    * Initializes metrics collector if it supports persistence.
@@ -4583,7 +4603,7 @@ const _MetricsBootstrapper = class _MetricsBootstrapper {
       return ok(void 0);
     }
     const collector = metricsResult.value;
-    if (collector instanceof PersistentMetricsCollector) {
+    if (isInitializable(collector)) {
       const initResult = collector.initialize();
       if (!initResult.ok) {
         return ok(void 0);
@@ -11046,22 +11066,6 @@ const _RetryableOperation = class _RetryableOperation {
 };
 __name(_RetryableOperation, "RetryableOperation");
 let RetryableOperation = _RetryableOperation;
-function hasMethod(obj, methodName) {
-  return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
-  typeof obj[methodName] === "function";
-}
-__name(hasMethod, "hasMethod");
-function hasProperty(obj, propertyName) {
-  return obj !== null && obj !== void 0 && typeof obj === "object" && propertyName in obj;
-}
-__name(hasProperty, "hasProperty");
-function isObjectWithMethods(obj, methodNames) {
-  if (obj === null || obj === void 0 || typeof obj !== "object") {
-    return false;
-  }
-  return methodNames.every((methodName) => hasMethod(obj, methodName));
-}
-__name(isObjectWithMethods, "isObjectWithMethods");
 function castFoundrySettingsApi(settings) {
   if (!isObjectWithMethods(settings, ["register", "get", "set"])) {
     return err(

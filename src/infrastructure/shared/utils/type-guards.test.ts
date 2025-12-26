@@ -3,7 +3,9 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { hasMethod, hasProperty, isObjectWithMethods } from "./type-guards";
+import { hasMethod, hasProperty, isObjectWithMethods, isInitializable } from "./type-guards";
+import { ok } from "@/domain/utils/result";
+import type { Initializable } from "@/domain/ports/initializable.interface";
 
 describe("type-guards", () => {
   describe("hasMethod", () => {
@@ -136,6 +138,64 @@ describe("type-guards", () => {
     it("should return true for empty method array", () => {
       const obj = { name: "test" };
       expect(isObjectWithMethods(obj, [])).toBe(true);
+    });
+  });
+
+  describe("isInitializable", () => {
+    it("should return true for object with initialize method", () => {
+      const obj: Initializable = {
+        initialize: () => ok(undefined),
+      };
+      expect(isInitializable(obj)).toBe(true);
+    });
+
+    it("should return true for PersistentMetricsCollector-like object", () => {
+      const obj = {
+        initialize: () => ok(undefined),
+        otherMethod: () => {},
+      };
+      expect(isInitializable(obj)).toBe(true);
+    });
+
+    it("should return false for object without initialize method", () => {
+      const obj = {
+        otherMethod: () => {},
+      };
+      expect(isInitializable(obj)).toBe(false);
+    });
+
+    it("should return false for object with initialize property but not method", () => {
+      const obj = {
+        initialize: "not a function",
+      };
+      expect(isInitializable(obj)).toBe(false);
+    });
+
+    it("should return false for null", () => {
+      expect(isInitializable(null)).toBe(false);
+    });
+
+    it("should return false for undefined", () => {
+      expect(isInitializable(undefined)).toBe(false);
+    });
+
+    it("should return false for primitive values", () => {
+      expect(isInitializable("string")).toBe(false);
+      expect(isInitializable(42)).toBe(false);
+      expect(isInitializable(true)).toBe(false);
+    });
+
+    it("should allow type-safe access after guard", () => {
+      const obj: unknown = {
+        initialize: () => ok(undefined),
+      };
+
+      if (isInitializable(obj)) {
+        const result = obj.initialize();
+        expect(result.ok).toBe(true);
+      } else {
+        expect.fail("Type guard should have passed");
+      }
     });
   });
 });

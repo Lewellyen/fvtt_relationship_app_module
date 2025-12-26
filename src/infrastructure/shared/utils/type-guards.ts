@@ -5,6 +5,8 @@
  * used by runtime cast functions to ensure type safety at runtime.
  */
 
+import type { Initializable } from "@/domain/ports/initializable.interface";
+
 /**
  * Checks if an object has a method with the given name.
  *
@@ -71,4 +73,25 @@ export function isObjectWithMethods(obj: unknown, methodNames: string[]): boolea
   }
 
   return methodNames.every((methodName) => hasMethod(obj, methodName));
+}
+
+/**
+ * Type guard to check if an object implements the Initializable interface.
+ *
+ * This follows the Liskov Substitution Principle (LSP) by checking for behavior
+ * (the presence of an initialize method) rather than concrete class types.
+ *
+ * @param obj - The object to check (unknown type)
+ * @returns True if the object implements Initializable, false otherwise
+ *
+ * @example
+ * ```typescript
+ * const collector = container.resolve(metricsCollectorToken);
+ * if (isInitializable(collector)) {
+ *   collector.initialize(); // Type-safe
+ * }
+ * ```
+ */
+export function isInitializable(obj: unknown): obj is Initializable {
+  return hasMethod(obj, "initialize");
 }
