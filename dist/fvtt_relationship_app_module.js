@@ -19458,20 +19458,32 @@ function createDependencyRegistrationRegistry() {
   return registry;
 }
 __name(createDependencyRegistrationRegistry, "createDependencyRegistrationRegistry");
-function registerStaticValues(container) {
+function registerEnvironmentConfig(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
     return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
   }
+  return ok(void 0);
+}
+__name(registerEnvironmentConfig, "registerEnvironmentConfig");
+function registerRuntimeConfig(container) {
   const runtimeConfigAdapter = createRuntimeConfigAdapter(ENV);
   const runtimeConfigResult = container.registerValue(runtimeConfigToken, runtimeConfigAdapter);
   if (isErr(runtimeConfigResult)) {
     return err(`Failed to register RuntimeConfigAdapter: ${runtimeConfigResult.error.message}`);
   }
+  return ok(void 0);
+}
+__name(registerRuntimeConfig, "registerRuntimeConfig");
+function registerServiceContainer(container) {
   const containerResult = container.registerValue(serviceContainerToken, container);
   if (isErr(containerResult)) {
     return err(`Failed to register ServiceContainer: ${containerResult.error.message}`);
   }
+  return ok(void 0);
+}
+__name(registerServiceContainer, "registerServiceContainer");
+function registerPlatformContainerPortAlias(container) {
   const aliasResult = container.registerAlias(
     platformContainerPortToken,
     castContainerTokenToPlatformContainerPortToken(serviceContainerToken)
@@ -19479,9 +19491,27 @@ function registerStaticValues(container) {
   if (isErr(aliasResult)) {
     return err(`Failed to register PlatformContainerPort alias: ${aliasResult.error.message}`);
   }
+  return ok(void 0);
+}
+__name(registerPlatformContainerPortAlias, "registerPlatformContainerPortAlias");
+function registerModuleId(container) {
   const moduleIdResult = container.registerValue(moduleIdToken, MODULE_METADATA.ID);
   if (isErr(moduleIdResult)) {
     return err(`Failed to register ModuleId: ${moduleIdResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerModuleId, "registerModuleId");
+function registerStaticValues(container) {
+  const results = [
+    registerEnvironmentConfig(container),
+    registerRuntimeConfig(container),
+    registerServiceContainer(container),
+    registerPlatformContainerPortAlias(container),
+    registerModuleId(container)
+  ];
+  for (const result of results) {
+    if (isErr(result)) return result;
   }
   return ok(void 0);
 }

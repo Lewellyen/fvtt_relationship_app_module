@@ -168,34 +168,51 @@ function createDependencyRegistrationRegistry(): DependencyRegistrationRegistry 
 }
 
 /**
- * Registers static bootstrap values that already exist outside the container.
+ * Registers EnvironmentConfig as a static bootstrap value.
  */
-function registerStaticValues(container: ServiceContainer): Result<void, string> {
+function registerEnvironmentConfig(container: ServiceContainer): Result<void, string> {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {
     return err(`Failed to register EnvironmentConfig: ${envResult.error.message}`);
   }
+  return ok(undefined);
+}
 
+/**
+ * Registers RuntimeConfigAdapter as a static bootstrap value.
+ */
+function registerRuntimeConfig(container: ServiceContainer): Result<void, string> {
   const runtimeConfigAdapter = createRuntimeConfigAdapter(ENV);
   const runtimeConfigResult = container.registerValue(runtimeConfigToken, runtimeConfigAdapter);
   if (isErr(runtimeConfigResult)) {
     return err(`Failed to register RuntimeConfigAdapter: ${runtimeConfigResult.error.message}`);
   }
+  return ok(undefined);
+}
 
+/**
+ * Registers ServiceContainer as a static bootstrap value (self-reference).
+ */
+function registerServiceContainer(container: ServiceContainer): Result<void, string> {
   const containerResult = container.registerValue(serviceContainerToken, container);
   if (isErr(containerResult)) {
     return err(`Failed to register ServiceContainer: ${containerResult.error.message}`);
   }
+  return ok(undefined);
+}
 
-  // Register PlatformContainerPort as alias to ServiceContainer
-  // ServiceContainer implements PlatformContainerPort, so this provides the abstraction
-  // for Framework layer without duplicating the instance
-  // Note: Type assertion is required because PlatformContainerPort and Container are different types,
-  // even though ServiceContainer implements both. This is a known limitation of the type system
-  // when dealing with interface aliases. The runtime behavior is correct.
-  // Type assertion needed because PlatformContainerPort and Container are different types,
-  // even though ServiceContainer implements both. The cast function is in runtime-safe-cast.ts
-  // which is excluded from type coverage, so we use a direct assertion here.
+/**
+ * Registers PlatformContainerPort as an alias to ServiceContainer.
+ *
+ * ServiceContainer implements PlatformContainerPort, so this provides the abstraction
+ * for Framework layer without duplicating the instance.
+ * Note: Type assertion is required because PlatformContainerPort and Container are different types,
+ * even though ServiceContainer implements both. This is a known limitation of the type system
+ * when dealing with interface aliases. The runtime behavior is correct.
+ * The cast function is in runtime-safe-cast.ts which is excluded from type coverage,
+ * so we use a direct assertion here.
+ */
+function registerPlatformContainerPortAlias(container: ServiceContainer): Result<void, string> {
   const aliasResult = container.registerAlias(
     platformContainerPortToken,
     castContainerTokenToPlatformContainerPortToken(serviceContainerToken)
@@ -203,12 +220,40 @@ function registerStaticValues(container: ServiceContainer): Result<void, string>
   if (isErr(aliasResult)) {
     return err(`Failed to register PlatformContainerPort alias: ${aliasResult.error.message}`);
   }
+  return ok(undefined);
+}
 
-  // Register module ID as static value
-  // This allows Infrastructure services to access module ID without importing from Application layer
+/**
+ * Registers ModuleId as a static bootstrap value.
+ *
+ * This allows Infrastructure services to access module ID without importing from Application layer.
+ */
+function registerModuleId(container: ServiceContainer): Result<void, string> {
   const moduleIdResult = container.registerValue(moduleIdToken, MODULE_METADATA.ID);
   if (isErr(moduleIdResult)) {
     return err(`Failed to register ModuleId: ${moduleIdResult.error.message}`);
+  }
+  return ok(undefined);
+}
+
+/**
+ * Registers static bootstrap values that already exist outside the container.
+ *
+ * This function orchestrates the registration of all static values by calling
+ * individual registration functions. Each registration function has a single
+ * responsibility (SRP), improving testability and maintainability.
+ */
+function registerStaticValues(container: ServiceContainer): Result<void, string> {
+  const results = [
+    registerEnvironmentConfig(container),
+    registerRuntimeConfig(container),
+    registerServiceContainer(container),
+    registerPlatformContainerPortAlias(container),
+    registerModuleId(container),
+  ];
+
+  for (const result of results) {
+    if (isErr(result)) return result;
   }
 
   return ok(undefined);

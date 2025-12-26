@@ -12,6 +12,32 @@
 
 ### Upgrade-Hinweise
 
+## [0.45.0] - 2025-12-26
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **registerStaticValues refactored**: Aufteilung in separate Registrierungsfunktionen nach SRP ([Details](docs/refactoring/SRP/findings/SRP__low__registerStaticValues-multiple-registrations__a4f5c2.md))
+- `registerStaticValues` wurde in 5 separate Funktionen aufgeteilt:
+- `registerEnvironmentConfig()`: Registriert EnvironmentConfig
+- `registerRuntimeConfig()`: Registriert RuntimeConfigAdapter
+- `registerServiceContainer()`: Registriert ServiceContainer (self-reference)
+- `registerPlatformContainerPortAlias()`: Registriert PlatformContainerPort als Alias
+- `registerModuleId()`: Registriert ModuleId
+- `registerStaticValues` orchestriert jetzt die einzelnen Registrierungen
+- Verbesserte Testbarkeit durch isolierte Registrierungsfunktionen
+- Verbesserte Wartbarkeit durch klare Trennung der Verantwortlichkeiten (SRP-konform)
+- Public API bleibt unverändert (Backward Compatible)
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.44.10] - 2025-12-26
 ### Hinzugefügt
 - Keine Einträge
