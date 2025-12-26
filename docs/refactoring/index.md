@@ -1,8 +1,9 @@
 # SOLID Audit - Gesamtübersicht
 
-> **📋 Status: ABGESCHLOSSEN (2025-12-15)**
+> **📋 Status: AKTUALISIERT (2025-01-XX)**
 >
-> Dieser SOLID-Audit ist abgeschlossen. Die identifizierten Probleme wurden entweder behoben oder als architektonisch akzeptabel dokumentiert.
+> Dieser SOLID-Audit wurde aktualisiert mit neuen Findings aus einer vollständigen Code-Analyse.
+> Die meisten kritischen Probleme wurden bereits behoben. Neue Findings sind dokumentiert.
 > Für aktuelle Architektur-Dokumentation siehe [docs/architecture/](../architecture/).
 
 ## Übersicht
@@ -27,11 +28,11 @@ Dieses Dokument enthält die Ergebnisse des vollständigen SOLID-Audits für all
 
 ## Gesamtstatistik
 
-- **Gesamt Findings:** 24
+- **Gesamt Findings:** 27 (24 alt + 3 neu)
 - **Kritisch:** 0
-- **Hoch:** 2 (beide DIP - Batch 1)
-- **Mittel:** 13
-- **Niedrig:** 9
+- **Hoch:** 2 (beide DIP - Batch 1, bereits behoben)
+- **Mittel:** 15 (13 alt + 2 neu)
+- **Niedrig:** 10 (9 alt + 1 neu)
 
 ## Batch-Übersicht
 
@@ -213,6 +214,26 @@ Dieses Dokument enthält die Ergebnisse des vollständigen SOLID-Audits für all
 
 Die meisten Findings sind eher Beobachtungen als kritische Probleme und können optional verbessert werden, wenn die Notwendigkeit besteht.
 
+## Neue Findings (2025-01-XX)
+
+### LSP-002: MetricsBootstrapper instanceof Check (Medium)
+- **Datei:** `src/framework/core/bootstrap/orchestrators/metrics-bootstrapper.ts`
+- **Problem:** Verwendet `instanceof`-Check statt Interface-basierter Lösung
+- **Empfehlung:** Interface `Initializable` einführen und Type Guard verwenden
+- **Dokument:** [LSP__medium__metrics-bootstrapper-instanceof-check__a1b2c3d.md](./LSP/findings/LSP__medium__metrics-bootstrapper-instanceof-check__a1b2c3d.md)
+
+### OCP-006: FoundryJournalCollectionAdapter Switch Statement (Medium)
+- **Datei:** `src/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter.ts`
+- **Problem:** Großes Switch-Statement mit 12+ Cases für Filter-Operatoren
+- **Empfehlung:** Strategy Pattern mit Registry für erweiterbare Operatoren
+- **Dokument:** [OCP__medium__foundry-journal-collection-switch-statement__b2c3d4e.md](./OCP/findings/OCP__medium__foundry-journal-collection-switch-statement__b2c3d4e.md)
+
+### SRP-010: CacheService Config Observer (Low)
+- **Datei:** `src/infrastructure/cache/CacheService.ts`
+- **Problem:** Implementiert sowohl CacheServiceContract als auch CacheConfigObserver
+- **Empfehlung:** Behalten (akzeptabler SRP-Verstoß, da Logik einfach und eng verbunden)
+- **Dokument:** [SRP__low__cache-service-config-observer__c3d4e5f.md](./SRP/findings/SRP__low__cache-service-config-observer__c3d4e5f.md)
+
 ## Findings-Index
 
 | ID | Prinzip | Schicht | Schweregrad | Datei/Pfad | Refactoring-Doc | Kurzbeschreibung | Aufwand |
@@ -242,6 +263,9 @@ Die meisten Findings sind eher Beobachtungen als kritische Probleme und können 
 | ISP-004 | ISP | Framework | Low | `src/framework/core/api/module-api.ts` | [ISP__low__ModuleApi-interface-many-methods__c7d8e9.md](./ISP/findings/ISP__low__ModuleApi-interface-many-methods__c7d8e9.md) | Viele Methoden | Niedrig |
 | ISP-005 | ISP | Domain | Low | `src/domain/ports/platform-settings-port.interface.ts` | [ISP__low__settings-port-combines-operations__o0p1q2r.md](./ISP/findings/ISP__low__settings-port-combines-operations__o0p1q2r.md) | Kombiniert Operationen | Keine |
 | LSP-001 | LSP | Domain | Low | `src/domain/ports/` | [LSP__low__interface-hierarchies-analyzed__s3t4u5v.md](./LSP/findings/LSP__low__interface-hierarchies-analyzed__s3t4u5v.md) | Interface-Hierarchien analysiert | Keine |
+| LSP-002 | LSP | Framework | Medium | `src/framework/core/bootstrap/orchestrators/metrics-bootstrapper.ts` | [LSP__medium__metrics-bootstrapper-instanceof-check__a1b2c3d.md](./LSP/findings/LSP__medium__metrics-bootstrapper-instanceof-check__a1b2c3d.md) | instanceof-Check statt Interface | Mittel |
+| OCP-006 | OCP | Infrastructure | Medium | `src/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter.ts` | [OCP__medium__foundry-journal-collection-switch-statement__b2c3d4e.md](./OCP/findings/OCP__medium__foundry-journal-collection-switch-statement__b2c3d4e.md) | Switch-Statement für Filter-Operatoren | Mittel |
+| SRP-010 | SRP | Infrastructure | Low | `src/infrastructure/cache/CacheService.ts` | [SRP__low__cache-service-config-observer__c3d4e5f.md](./SRP/findings/SRP__low__cache-service-config-observer__c3d4e5f.md) | Config Observer Implementierung | Niedrig |
 
 ## Nächste Schritte
 

@@ -6,20 +6,25 @@ Analyse des Infrastructure-Layers auf Verstöße gegen das Open/Closed Principle
 
 ## Zusammenfassung
 
-**Gefundene Findings:** 4 (Batch 1: 3, Batch 3: 1)
-- **Medium Severity:** 1 (Batch 1)
+**Gefundene Findings:** 5 (Batch 1: 3, Batch 3: 1, Neu: 1)
+- **Medium Severity:** 2 (Batch 1: 1, Neu: 1)
 - **Low Severity:** 3 (Batch 1: 2, Batch 3: 1)
 
-Die meisten Komponenten sind gut erweiterbar. Einige Hardcodierungen wurden identifiziert, die die Erweiterbarkeit einschränken könnten.
+Die meisten Komponenten sind gut erweiterbar. Einige Hardcodierungen und Switch-Statements wurden identifiziert, die die Erweiterbarkeit einschränken könnten.
 
 ## Findings
 
-### Medium Severity (Batch 1)
+### Medium Severity
 
 1. **[Setting Validators Not Extensible](./findings/OCP__medium__setting-validators-not-extensible__u5v6w7x.md)** (Batch 1)
    - **Datei:** `src/domain/utils/setting-validators.ts`
    - **Problem:** Validatoren sind hardcodiert, neue Validatoren erfordern Code-Änderungen
    - **Empfehlung:** Optional: Registry-Pattern für Validatoren
+
+2. **[FoundryJournalCollectionAdapter Switch Statement](./findings/OCP__medium__foundry-journal-collection-switch-statement__b2c3d4e.md)** (Neu)
+   - **Datei:** `src/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter.ts`
+   - **Problem:** Großes Switch-Statement mit 12+ Cases für Filter-Operatoren
+   - **Empfehlung:** Strategy Pattern mit Registry für erweiterbare Operatoren
 
 ### Low Severity
 
@@ -40,10 +45,10 @@ Die meisten Komponenten sind gut erweiterbar. Einige Hardcodierungen wurden iden
 
 ## Statistik
 
-- **Gesamt Findings:** 4 (Batch 1: 3, Batch 3: 1)
+- **Gesamt Findings:** 5 (Batch 1: 3, Batch 3: 1, Neu: 1)
 - **Kritisch:** 0
 - **Hoch:** 0
-- **Mittel:** 1
+- **Mittel:** 2
 - **Niedrig:** 3
 
 ## Empfehlungen

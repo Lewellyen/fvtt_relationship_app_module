@@ -12,6 +12,30 @@
 
 ### Upgrade-Hinweise
 
+## [0.45.1] - 2025-12-26
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **FoundryJournalCollectionAdapter refactored**: Switch-Statement durch Strategy Pattern mit Registry ersetzt ([Details](docs/refactoring/OCP/findings/OCP__medium__foundry-journal-collection-switch-statement__b2c3d4e.md))
+- `matchesFilter()` verwendet jetzt `FilterOperatorRegistry` mit Strategy Pattern für OCP-konforme Erweiterbarkeit
+- Neue Filter-Operatoren können durch Registrierung hinzugefügt werden, ohne bestehenden Code zu modifizieren
+- 12 konkrete Operator-Klassen implementiert: `EqualsOperator`, `NotEqualsOperator`, `ContainsOperator`, `StartsWithOperator`, `EndsWithOperator`, `InOperator`, `NotInOperator`, `GreaterThanOperator`, `LessThanOperator`, `GreaterThanOrEqualOperator`, `LessThanOrEqualOperator`
+- `FilterOperatorRegistry`: Registry für dynamische Registrierung von Operatoren
+- `createDefaultFilterOperators()`: Factory-Funktion zur Erstellung einer Registry mit allen Standard-Operatoren
+- Verbesserte Testbarkeit durch isolierte Operator-Klassen (46 neue Tests hinzugefügt)
+- Verbesserte Wartbarkeit durch klare Trennung der Verantwortlichkeiten (SRP-konform)
+- Public API bleibt unverändert (Backward Compatible)
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.45.0] - 2025-12-26
 ### Hinzugefügt
 - Keine Einträge

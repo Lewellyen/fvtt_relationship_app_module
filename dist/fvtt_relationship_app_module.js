@@ -18497,10 +18497,201 @@ const _DefaultJournalMapper = class _DefaultJournalMapper {
 };
 __name(_DefaultJournalMapper, "DefaultJournalMapper");
 let DefaultJournalMapper = _DefaultJournalMapper;
+const _FilterOperatorRegistry = class _FilterOperatorRegistry {
+  constructor() {
+    this.operators = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Registers a filter operator.
+   *
+   * @param operator - The operator to register
+   * @throws Error if an operator with the same name is already registered
+   */
+  register(operator) {
+    if (this.operators.has(operator.name)) {
+      throw new Error(
+        `Filter operator "${operator.name}" is already registered. Use unregister() first to replace an existing operator.`
+      );
+    }
+    this.operators.set(operator.name, operator);
+  }
+  /**
+   * Unregisters a filter operator.
+   *
+   * @param name - The name of the operator to unregister
+   * @returns true if the operator was unregistered, false if it wasn't registered
+   */
+  unregister(name) {
+    return this.operators.delete(name);
+  }
+  /**
+   * Gets a filter operator by name.
+   *
+   * @param name - The name of the operator
+   * @returns The operator if found, undefined otherwise
+   */
+  get(name) {
+    return this.operators.get(name);
+  }
+  /**
+   * Checks if an operator is registered.
+   *
+   * @param name - The name of the operator
+   * @returns true if registered, false otherwise
+   */
+  has(name) {
+    return this.operators.has(name);
+  }
+  /**
+   * Gets all registered operator names.
+   *
+   * @returns Array of operator names
+   */
+  getOperatorNames() {
+    return Array.from(this.operators.keys());
+  }
+};
+__name(_FilterOperatorRegistry, "FilterOperatorRegistry");
+let FilterOperatorRegistry = _FilterOperatorRegistry;
+const _EqualsOperator = class _EqualsOperator {
+  constructor() {
+    this.name = "equals";
+  }
+  matches(fieldValue, filterValue) {
+    return fieldValue === filterValue;
+  }
+};
+__name(_EqualsOperator, "EqualsOperator");
+let EqualsOperator = _EqualsOperator;
+const _NotEqualsOperator = class _NotEqualsOperator {
+  constructor() {
+    this.name = "notEquals";
+  }
+  matches(fieldValue, filterValue) {
+    return fieldValue !== filterValue;
+  }
+};
+__name(_NotEqualsOperator, "NotEqualsOperator");
+let NotEqualsOperator = _NotEqualsOperator;
+const _ContainsOperator = class _ContainsOperator {
+  constructor() {
+    this.name = "contains";
+  }
+  matches(fieldValue, filterValue) {
+    return String(fieldValue).toLowerCase().includes(String(filterValue).toLowerCase());
+  }
+};
+__name(_ContainsOperator, "ContainsOperator");
+let ContainsOperator = _ContainsOperator;
+const _StartsWithOperator = class _StartsWithOperator {
+  constructor() {
+    this.name = "startsWith";
+  }
+  matches(fieldValue, filterValue) {
+    return String(fieldValue).toLowerCase().startsWith(String(filterValue).toLowerCase());
+  }
+};
+__name(_StartsWithOperator, "StartsWithOperator");
+let StartsWithOperator = _StartsWithOperator;
+const _EndsWithOperator = class _EndsWithOperator {
+  constructor() {
+    this.name = "endsWith";
+  }
+  matches(fieldValue, filterValue) {
+    return String(fieldValue).toLowerCase().endsWith(String(filterValue).toLowerCase());
+  }
+};
+__name(_EndsWithOperator, "EndsWithOperator");
+let EndsWithOperator = _EndsWithOperator;
+const _InOperator = class _InOperator {
+  constructor() {
+    this.name = "in";
+  }
+  matches(fieldValue, filterValue) {
+    if (!Array.isArray(filterValue)) {
+      return false;
+    }
+    const filterArray = filterValue;
+    return filterArray.includes(fieldValue);
+  }
+};
+__name(_InOperator, "InOperator");
+let InOperator = _InOperator;
+const _NotInOperator = class _NotInOperator {
+  constructor() {
+    this.name = "notIn";
+  }
+  matches(fieldValue, filterValue) {
+    if (!Array.isArray(filterValue)) {
+      return false;
+    }
+    const filterArray = filterValue;
+    return !filterArray.includes(fieldValue);
+  }
+};
+__name(_NotInOperator, "NotInOperator");
+let NotInOperator = _NotInOperator;
+const _GreaterThanOperator = class _GreaterThanOperator {
+  constructor() {
+    this.name = "greaterThan";
+  }
+  matches(fieldValue, filterValue) {
+    return Number(fieldValue) > Number(filterValue);
+  }
+};
+__name(_GreaterThanOperator, "GreaterThanOperator");
+let GreaterThanOperator = _GreaterThanOperator;
+const _LessThanOperator = class _LessThanOperator {
+  constructor() {
+    this.name = "lessThan";
+  }
+  matches(fieldValue, filterValue) {
+    return Number(fieldValue) < Number(filterValue);
+  }
+};
+__name(_LessThanOperator, "LessThanOperator");
+let LessThanOperator = _LessThanOperator;
+const _GreaterThanOrEqualOperator = class _GreaterThanOrEqualOperator {
+  constructor() {
+    this.name = "greaterThanOrEqual";
+  }
+  matches(fieldValue, filterValue) {
+    return Number(fieldValue) >= Number(filterValue);
+  }
+};
+__name(_GreaterThanOrEqualOperator, "GreaterThanOrEqualOperator");
+let GreaterThanOrEqualOperator = _GreaterThanOrEqualOperator;
+const _LessThanOrEqualOperator = class _LessThanOrEqualOperator {
+  constructor() {
+    this.name = "lessThanOrEqual";
+  }
+  matches(fieldValue, filterValue) {
+    return Number(fieldValue) <= Number(filterValue);
+  }
+};
+__name(_LessThanOrEqualOperator, "LessThanOrEqualOperator");
+let LessThanOrEqualOperator = _LessThanOrEqualOperator;
+function createDefaultFilterOperators() {
+  const registry = new FilterOperatorRegistry();
+  registry.register(new EqualsOperator());
+  registry.register(new NotEqualsOperator());
+  registry.register(new ContainsOperator());
+  registry.register(new StartsWithOperator());
+  registry.register(new EndsWithOperator());
+  registry.register(new InOperator());
+  registry.register(new NotInOperator());
+  registry.register(new GreaterThanOperator());
+  registry.register(new LessThanOperator());
+  registry.register(new GreaterThanOrEqualOperator());
+  registry.register(new LessThanOrEqualOperator());
+  return registry;
+}
+__name(createDefaultFilterOperators, "createDefaultFilterOperators");
 const _FoundryJournalCollectionAdapter = class _FoundryJournalCollectionAdapter {
-  constructor(foundryGame, mapperRegistry) {
+  constructor(foundryGame, mapperRegistry, operatorRegistry = createDefaultFilterOperators()) {
     this.foundryGame = foundryGame;
     this.mapperRegistry = mapperRegistry;
+    this.operatorRegistry = operatorRegistry;
   }
   getAll() {
     const result = this.foundryGame.getJournalEntries();
@@ -18645,43 +18836,23 @@ const _FoundryJournalCollectionAdapter = class _FoundryJournalCollectionAdapter 
   query() {
     return new FoundryJournalQueryBuilder(this);
   }
+  /**
+   * Checks if a field value matches a filter using the registered operator.
+   *
+   * Uses FilterOperatorRegistry (Strategy Pattern) for OCP-compliant extensibility.
+   * New operators can be added without modifying this method.
+   *
+   * @param fieldValue - The value from the entity field
+   * @param operator - The operator name (e.g., "equals", "contains")
+   * @param filterValue - The value from the filter
+   * @returns true if the field value matches the filter, false otherwise
+   */
   matchesFilter(fieldValue, operator, filterValue) {
-    switch (operator) {
-      case "equals":
-        return fieldValue === filterValue;
-      case "notEquals":
-        return fieldValue !== filterValue;
-      case "contains":
-        return String(fieldValue).toLowerCase().includes(String(filterValue).toLowerCase());
-      case "startsWith":
-        return String(fieldValue).toLowerCase().startsWith(String(filterValue).toLowerCase());
-      case "endsWith":
-        return String(fieldValue).toLowerCase().endsWith(String(filterValue).toLowerCase());
-      case "in": {
-        if (!Array.isArray(filterValue)) {
-          return false;
-        }
-        const filterArray = filterValue;
-        return filterArray.includes(fieldValue);
-      }
-      case "notIn": {
-        if (!Array.isArray(filterValue)) {
-          return false;
-        }
-        const filterArray = filterValue;
-        return !filterArray.includes(fieldValue);
-      }
-      case "greaterThan":
-        return Number(fieldValue) > Number(filterValue);
-      case "lessThan":
-        return Number(fieldValue) < Number(filterValue);
-      case "greaterThanOrEqual":
-        return Number(fieldValue) >= Number(filterValue);
-      case "lessThanOrEqual":
-        return Number(fieldValue) <= Number(filterValue);
-      default:
-        return false;
+    const op = this.operatorRegistry.get(operator);
+    if (!op) {
+      return false;
     }
+    return op.matches(fieldValue, filterValue);
   }
 };
 __name(_FoundryJournalCollectionAdapter, "FoundryJournalCollectionAdapter");

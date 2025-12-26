@@ -6,16 +6,24 @@ Analyse des Domain-Layers auf Verstöße gegen das Liskov Substitution Principle
 
 ## Zusammenfassung
 
-**Gefundene Findings:** 1
+**Gefundene Findings:** 2
+- **Medium Severity:** 1
 - **Low Severity:** 1
 
-Alle analysierten Interface-Hierarchien sind korrekt implementiert und LSP-konform. Keine Verstöße wurden erkannt.
+Die meisten Interface-Hierarchien sind korrekt implementiert. Ein `instanceof`-Check wurde identifiziert, der gegen LSP verstößt.
 
 ## Findings
 
+### Medium Severity
+
+1. **[MetricsBootstrapper instanceof Check](./findings/LSP__medium__metrics-bootstrapper-instanceof-check__a1b2c3d.md)**
+   - **Datei:** `src/framework/core/bootstrap/orchestrators/metrics-bootstrapper.ts`
+   - **Problem:** Verwendet `instanceof`-Check statt Interface-basierter Lösung
+   - **Empfehlung:** Interface `Initializable` einführen und Type Guard verwenden
+
 ### Low Severity
 
-1. **[Interface Hierarchies Analyzed](./findings/LSP__low__interface-hierarchies-analyzed__s3t4u5v.md)**
+2. **[Interface Hierarchies Analyzed](./findings/LSP__low__interface-hierarchies-analyzed__s3t4u5v.md)**
    - **Bereich:** `src/domain/ports`
    - **Problem:** Analyse der Interface-Hierarchien auf LSP-Verstöße
    - **Ergebnis:** Keine Verstöße erkannt - alle Hierarchien sind korrekt
@@ -40,10 +48,10 @@ Alle analysierten Interface-Hierarchien sind korrekt implementiert und LSP-konfo
 
 ## Statistik
 
-- **Gesamt Findings:** 1
+- **Gesamt Findings:** 2
 - **Kritisch:** 0
 - **Hoch:** 0
-- **Mittel:** 0
+- **Mittel:** 1
 - **Niedrig:** 1
 
 ## Empfehlungen

@@ -6,9 +6,23 @@ Analyse auf Verstöße gegen das Single Responsibility Principle.
 
 ## Zusammenfassung
 
-**Gefundene Findings:** 8 (Batch 1 + Batch 3)
+**Gefundene Findings:** 1
+- **Low Severity:** 1
+
+## Findings
+
+### Low Severity
+
+1. **[CacheService Config Observer](./findings/SRP__low__cache-service-config-observer__c3d4e5f.md)**
+   - **Datei:** `src/infrastructure/cache/CacheService.ts`
+   - **Problem:** Implementiert sowohl CacheServiceContract als auch CacheConfigObserver
+   - **Empfehlung:** Behalten (akzeptabler SRP-Verstoß, da Logik einfach und eng verbunden)
+
+## Zusammenfassung
+
+**Gefundene Findings:** 9 (Batch 1 + Batch 3 + Neu)
 - **Medium Severity:** 5
-- **Low Severity:** 3
+- **Low Severity:** 4
 
 Die meisten Komponenten haben eine klare Verantwortlichkeit. Es wurden einige potenzielle Verbesserungen identifiziert, insbesondere bei Orchestrierungs-Funktionen, Base-Klassen und Konfigurations-Code.
 
@@ -48,13 +62,18 @@ Die meisten Komponenten haben eine klare Verantwortlichkeit. Es wurden einige po
    - **Problem:** 17 Funktionen in einer Datei (462 Zeilen)
    - **Empfehlung:** Keine Änderung erforderlich - alle Funktionen haben eine zusammenhängende Verantwortlichkeit (Result-Pattern-Utilities)
 
+7. **[CacheService Config Observer](./findings/SRP__low__cache-service-config-observer__c3d4e5f.md)** (Neu)
+   - **Datei:** `src/infrastructure/cache/CacheService.ts`
+   - **Problem:** Implementiert sowohl CacheServiceContract als auch CacheConfigObserver
+   - **Empfehlung:** Behalten (akzeptabler SRP-Verstoß, da Logik einfach und eng verbunden)
+
 ## Statistik
 
-- **Gesamt Findings:** 6
+- **Gesamt Findings:** 9
 - **Kritisch:** 0
 - **Hoch:** 0
-- **Mittel:** 3
-- **Niedrig:** 3
+- **Mittel:** 5
+- **Niedrig:** 4
 
 ## Empfehlungen
 

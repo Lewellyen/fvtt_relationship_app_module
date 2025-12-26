@@ -10,17 +10,21 @@ import { JournalMapperRegistry } from "../mappers/journal-mapper-registry";
 import { DefaultJournalMapper } from "../mappers/default-journal-mapper";
 import { ok, err } from "@/domain/utils/result";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
+import { FilterOperatorRegistry } from "./filter-operator-registry";
+import { createDefaultFilterOperators } from "./default-filter-operators";
 
 /**
  * Foundry-specific implementation of PlatformJournalCollectionPort.
  *
  * Maps Foundry's game.journal collection to platform-agnostic journal collection port.
  * Type mapping is handled by JournalMapperRegistry (OCP-compliant).
+ * Filter operators are handled by FilterOperatorRegistry (OCP-compliant Strategy Pattern).
  */
 export class FoundryJournalCollectionAdapter implements PlatformJournalCollectionPort {
   constructor(
     private readonly foundryGame: FoundryGame, // FoundryGamePort (version-agnostisch), nicht FoundryV13GamePort!
-    private readonly mapperRegistry: JournalMapperRegistry // Mapper registry for extensible mapping (OCP)
+    private readonly mapperRegistry: JournalMapperRegistry, // Mapper registry for extensible mapping (OCP)
+    private readonly operatorRegistry: FilterOperatorRegistry = createDefaultFilterOperators() // Operator registry for extensible filtering (OCP)
   ) {}
 
   getAll(): Result<JournalEntry[], EntityCollectionError> {
@@ -207,45 +211,23 @@ export class FoundryJournalCollectionAdapter implements PlatformJournalCollectio
     return new FoundryJournalQueryBuilder(this);
   }
 
+  /**
+   * Checks if a field value matches a filter using the registered operator.
+   *
+   * Uses FilterOperatorRegistry (Strategy Pattern) for OCP-compliant extensibility.
+   * New operators can be added without modifying this method.
+   *
+   * @param fieldValue - The value from the entity field
+   * @param operator - The operator name (e.g., "equals", "contains")
+   * @param filterValue - The value from the filter
+   * @returns true if the field value matches the filter, false otherwise
+   */
   private matchesFilter(fieldValue: unknown, operator: string, filterValue: unknown): boolean {
-    switch (operator) {
-      case "equals":
-        return fieldValue === filterValue;
-      case "notEquals":
-        return fieldValue !== filterValue;
-      case "contains":
-        return String(fieldValue).toLowerCase().includes(String(filterValue).toLowerCase());
-      case "startsWith":
-        return String(fieldValue).toLowerCase().startsWith(String(filterValue).toLowerCase());
-      case "endsWith":
-        return String(fieldValue).toLowerCase().endsWith(String(filterValue).toLowerCase());
-      case "in": {
-        if (!Array.isArray(filterValue)) {
-          return false;
-        }
-        // Type narrowing: filterValue is now known to be an array
-        const filterArray: unknown[] = filterValue;
-        return filterArray.includes(fieldValue);
-      }
-      case "notIn": {
-        if (!Array.isArray(filterValue)) {
-          return false;
-        }
-        // Type narrowing: filterValue is now known to be an array
-        const filterArray: unknown[] = filterValue;
-        return !filterArray.includes(fieldValue);
-      }
-      case "greaterThan":
-        return Number(fieldValue) > Number(filterValue);
-      case "lessThan":
-        return Number(fieldValue) < Number(filterValue);
-      case "greaterThanOrEqual":
-        return Number(fieldValue) >= Number(filterValue);
-      case "lessThanOrEqual":
-        return Number(fieldValue) <= Number(filterValue);
-      default:
-        return false;
+    const op = this.operatorRegistry.get(operator);
+    if (!op) {
+      return false; // Unknown operator → no match
     }
+    return op.matches(fieldValue, filterValue);
   }
 }
 
