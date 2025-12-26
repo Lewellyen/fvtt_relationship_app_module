@@ -236,6 +236,13 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Console Table Output: Property-Namen müssen mit Leerzeichen sein für console.table() Ausgabe (Naming-Convention für Tabellen-Header)',
   },
 
+  // Application Services: Generic Type Casts für Listener-Management
+  {
+    file: 'src/application/services/RuntimeConfigEventEmitter.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Generic Set Cast: Type-Cast für type-safe Listener-Management mit generischen RuntimeConfigKey-Typen. TypeScript kann den generischen Typ nicht aus der Map-Struktur ableiten, obwohl zur Laufzeit type-safe.',
+  },
+
 ];
 
 // Ignore-Marker, nach denen gesucht wird

@@ -12,6 +12,34 @@
 
 ### Upgrade-Hinweise
 
+## [0.44.9] - 2025-12-26
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **configureDependencies refactored**: Verwendung von Registry-Pattern für Dependency-Registrierung ([Details](docs/refactoring/SRP/findings/SRP__medium__configureDependencies-orchestrates-many-steps__97b3ed.md))
+- `configureDependencies` verwendet jetzt `DependencyRegistrationRegistry` mit Priority-basierter Reihenfolge
+- Funktion wurde von 61 Zeilen auf 3 Zeilen reduziert
+- Verbesserte Wartbarkeit durch Open/Closed Principle (neue Steps können ohne Änderung an `configureDependencies` hinzugefügt werden)
+- Bessere Testbarkeit durch isolierte Registry-Klasse
+- Reihenfolge-Management über Priority-System (flexibler als statische Reihenfolge)
+- **RuntimeConfigService refactored**: Trennung von Config-Management und Listener-Management ([Details](docs/refactoring/SRP/findings/SRP__low__runtimeconfigservice-config-and-listener-management__a1b2c3d.md))
+- `RuntimeConfigStore`: Separate Klasse für Config-Wert-Management (get/set)
+- `RuntimeConfigEventEmitter`: Separate Klasse für Listener-Management (onChange/notify)
+- `RuntimeConfigService` orchestriert jetzt die beiden Komponenten per Composition
+- Verbesserte Trennung der Verantwortlichkeiten (SRP-konform)
+- Public API bleibt unverändert (Backward Compatible)
+- Tests für beide neuen Klassen hinzugefügt (100% Coverage)
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.44.8] - 2025-12-26
 ### Hinzugefügt
 - **PortLoader**: Separate Klasse für Lazy Loading von Foundry-Ports ([Details](docs/refactoring/SRP/findings/SRP__medium__foundry-service-base-multiple-concerns__b2c3d4e.md))

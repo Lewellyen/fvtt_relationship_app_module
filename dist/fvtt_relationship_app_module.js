@@ -320,9 +320,8 @@ const _BootstrapErrorHandler = class _BootstrapErrorHandler {
 };
 __name(_BootstrapErrorHandler, "BootstrapErrorHandler");
 let BootstrapErrorHandler = _BootstrapErrorHandler;
-const _RuntimeConfigService = class _RuntimeConfigService {
+const _RuntimeConfigStore = class _RuntimeConfigStore {
   constructor(env) {
-    this.listeners = /* @__PURE__ */ new Map();
     this.values = {
       isDevelopment: env.isDevelopment,
       isProduction: env.isProduction,
@@ -344,11 +343,29 @@ const _RuntimeConfigService = class _RuntimeConfigService {
     return this.values[key];
   }
   /**
-   * Updates the configuration value based on Foundry settings and notifies listeners
-   * only if the value actually changed.
+   * Updates the configuration value.
+   * Returns true if the value actually changed, false otherwise.
    */
-  setFromFoundry(key, value2) {
-    this.updateValue(key, value2);
+  set(key, value2) {
+    const current = this.values[key];
+    if (Object.is(current, value2)) {
+      return false;
+    }
+    this.values[key] = value2;
+    return true;
+  }
+  /**
+   * Gets all current values (for testing/debugging purposes).
+   */
+  getAll() {
+    return { ...this.values };
+  }
+};
+__name(_RuntimeConfigStore, "RuntimeConfigStore");
+let RuntimeConfigStore = _RuntimeConfigStore;
+const _RuntimeConfigEventEmitter = class _RuntimeConfigEventEmitter {
+  constructor() {
+    this.listeners = /* @__PURE__ */ new Map();
   }
   /**
    * Registers a listener for the given key. Returns an unsubscribe function.
@@ -367,6 +384,18 @@ const _RuntimeConfigService = class _RuntimeConfigService {
     };
   }
   /**
+   * Notifies all listeners for the given key with the new value.
+   */
+  notify(key, value2) {
+    const listeners = this.listeners.get(key);
+    if (!listeners || listeners.size === 0) {
+      return;
+    }
+    for (const listener of listeners) {
+      listener(value2);
+    }
+  }
+  /**
    * Type-safe helper to get listeners for a specific key.
    * @ts-expect-error - Type coverage exclusion for generic Set cast
    */
@@ -380,19 +409,35 @@ const _RuntimeConfigService = class _RuntimeConfigService {
   setListenersForKey(key, listeners) {
     this.listeners.set(key, listeners);
   }
-  updateValue(key, value2) {
-    const current = this.values[key];
-    if (Object.is(current, value2)) {
-      return;
+};
+__name(_RuntimeConfigEventEmitter, "RuntimeConfigEventEmitter");
+let RuntimeConfigEventEmitter = _RuntimeConfigEventEmitter;
+const _RuntimeConfigService = class _RuntimeConfigService {
+  constructor(env) {
+    this.store = new RuntimeConfigStore(env);
+    this.emitter = new RuntimeConfigEventEmitter();
+  }
+  /**
+   * Returns the current value for the given configuration key.
+   */
+  get(key) {
+    return this.store.get(key);
+  }
+  /**
+   * Updates the configuration value based on Foundry settings and notifies listeners
+   * only if the value actually changed.
+   */
+  setFromFoundry(key, value2) {
+    const changed = this.store.set(key, value2);
+    if (changed) {
+      this.emitter.notify(key, value2);
     }
-    this.values[key] = value2;
-    const listeners = this.listeners.get(key);
-    if (!listeners || listeners.size === 0) {
-      return;
-    }
-    for (const listener of listeners) {
-      listener(value2);
-    }
+  }
+  /**
+   * Registers a listener for the given key. Returns an unsubscribe function.
+   */
+  onChange(key, listener) {
+    return this.emitter.onChange(key, listener);
   }
 };
 __name(_RuntimeConfigService, "RuntimeConfigService");
