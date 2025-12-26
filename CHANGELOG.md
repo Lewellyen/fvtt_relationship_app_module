@@ -12,6 +12,34 @@
 
 ### Upgrade-Hinweise
 
+## [0.44.10] - 2025-12-26
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **result.ts refactored**: Aufteilung in kategorisierte Module nach SRP ([Details](docs/refactoring/SRP/findings/SRP__low__result-utils-cohesive-responsibility__m1n2o3p.md))
+- `src/domain/utils/result.ts` wurde in mehrere kategorisierte Module aufgeteilt:
+- `result/creation.ts`: `ok()`, `err()`
+- `result/guards.ts`: `isOk()`, `isErr()`
+- `result/transformation.ts`: `map()`, `mapError()`, `andThen()`
+- `result/unwrapping.ts`: `unwrapOr()`, `unwrapOrElse()`, `getOrThrow()`
+- `result/combination.ts`: `all()`, `match()`
+- `result/error-handling.ts`: `tryCatch()`, `lift()`
+- `result/async.ts`: `asyncMap()`, `asyncAndThen()`, `fromPromise()`, `asyncAll()`
+- `result/index.ts`: Zentrale Re-Export-Datei für alle Funktionen
+- Verbesserte Wartbarkeit durch klare Kategorisierung (462 Zeilen aufgeteilt in 7 Module)
+- Backward Compatibility durch Re-Exports in `result.ts` sichergestellt
+- Alle bestehenden Imports funktionieren weiterhin ohne Änderungen
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.44.9] - 2025-12-26
 ### Hinzugefügt
 - Keine Einträge

@@ -79,14 +79,6 @@ function getOrThrow(result, toError) {
   throw e;
 }
 __name(getOrThrow, "getOrThrow");
-function tryCatch(fn, mapUnknownError) {
-  try {
-    return ok(fn());
-  } catch (unknownError) {
-    return err(mapUnknownError(unknownError));
-  }
-}
-__name(tryCatch, "tryCatch");
 function all(results) {
   const out = [];
   for (const r of results) {
@@ -100,6 +92,14 @@ function match(result, handlers) {
   return result.ok ? handlers.onOk(result.value) : handlers.onErr(result.error);
 }
 __name(match, "match");
+function tryCatch(fn, mapUnknownError) {
+  try {
+    return ok(fn());
+  } catch (unknownError) {
+    return err(mapUnknownError(unknownError));
+  }
+}
+__name(tryCatch, "tryCatch");
 function lift(fn, mapUnknownError) {
   return (param) => tryCatch(() => fn(param), mapUnknownError);
 }
