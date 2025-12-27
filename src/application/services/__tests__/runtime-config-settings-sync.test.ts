@@ -5,6 +5,7 @@ import {
 } from "@/application/services/runtime-config-settings-sync";
 import { RuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import { ok } from "@/domain/utils/result";
@@ -23,7 +24,7 @@ describe("RuntimeConfigSettingsSync", () => {
 
       const mockNotifications = {
         warn: vi.fn(),
-      } as unknown as PlatformNotificationPort;
+      } as unknown as NotificationPublisherPort;
 
       const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
       const attachBindingSpy = vi.spyOn(runtimeConfigSync, "attachBinding");
@@ -61,7 +62,7 @@ describe("RuntimeConfigSettingsSync", () => {
 
       const mockNotifications = {
         warn: vi.fn(),
-      } as unknown as PlatformNotificationPort;
+      } as unknown as NotificationPublisherPort;
 
       const runtimeConfigSync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
       const sync = new RuntimeConfigSettingsSync(runtimeConfigSync);
@@ -103,7 +104,7 @@ describe("RuntimeConfigSettingsSync", () => {
 
       const mockNotifications = {
         warn: vi.fn(),
-      } as unknown as PlatformNotificationPort;
+      } as unknown as NotificationPublisherPort;
 
       const mockSettings = {
         getSettingValue: vi.fn().mockReturnValue(ok(LogLevel.WARN)),
@@ -134,7 +135,7 @@ describe("RuntimeConfigSettingsSync", () => {
 
       const mockNotifications = {
         warn: vi.fn(),
-      } as unknown as PlatformNotificationPort;
+      } as unknown as NotificationPublisherPort;
 
       const mockSettings = {
         getSettingValue: vi.fn().mockReturnValue(ok(LogLevel.WARN)),

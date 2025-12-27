@@ -4,6 +4,8 @@ import type {
   PlatformNotificationError,
   PlatformNotificationOptions,
 } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
+import type { NotificationChannelRegistryPort } from "@/domain/ports/notifications/notification-channel-registry-port.interface";
 import type {
   NotificationService,
   NotificationCenterOptions,
@@ -15,10 +17,16 @@ import { notificationCenterToken } from "@/application/tokens/notifications/noti
 /**
  * Adapter that implements PlatformNotificationPort by wrapping NotificationCenter.
  *
+ * This adapter implements both NotificationPublisherPort and NotificationChannelRegistryPort,
+ * following the Interface Segregation Principle (ISP) by providing separate interfaces
+ * for different responsibilities.
+ *
  * Translates platform-agnostic options to NotificationCenter options.
  * Handles Foundry-specific options via type guards internally.
  */
-export class NotificationPortAdapter implements PlatformNotificationPort {
+export class NotificationPortAdapter
+  implements PlatformNotificationPort, NotificationPublisherPort, NotificationChannelRegistryPort
+{
   constructor(private readonly notificationCenter: NotificationService) {}
 
   debug(

@@ -3,12 +3,12 @@ import type { RuntimeConfigKey, RuntimeConfigValues } from "@/domain/types/runti
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { SettingConfig as ModuleSettingConfig } from "@/application/settings/setting-definition.interface";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { SettingValidator } from "@/domain/types/setting-validator";
 import { SettingValidators } from "@/domain/utils/setting-validators";
 import type { LogLevel } from "@/domain/types/log-level";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
-import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
+import { notificationPublisherPortToken } from "@/application/tokens/domain-ports.tokens";
 import { getNotificationQueueConstants } from "@/application/settings/notification-queue-max-size-setting";
 
 /**
@@ -40,7 +40,7 @@ export interface RuntimeConfigBinding<TSchema, K extends RuntimeConfigKey> {
 export class RuntimeConfigSync {
   constructor(
     private readonly runtimeConfig: PlatformRuntimeConfigPort,
-    private readonly notifications: PlatformNotificationPort
+    private readonly notifications: NotificationPublisherPort
   ) {}
 
   /**
@@ -169,9 +169,9 @@ export const runtimeConfigBindings = {
  * DI wrapper for RuntimeConfigSync.
  */
 export class DIRuntimeConfigSync extends RuntimeConfigSync {
-  static dependencies = [runtimeConfigToken, platformNotificationPortToken] as const;
+  static dependencies = [runtimeConfigToken, notificationPublisherPortToken] as const;
 
-  constructor(runtimeConfig: PlatformRuntimeConfigPort, notifications: PlatformNotificationPort) {
+  constructor(runtimeConfig: PlatformRuntimeConfigPort, notifications: NotificationPublisherPort) {
     super(runtimeConfig, notifications);
   }
 }

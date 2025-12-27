@@ -1,13 +1,13 @@
 import type { Result } from "@/domain/types/result";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
 import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { JournalVisibilityConfig } from "./JournalVisibilityConfig";
 import { getFirstArrayElement } from "@/application/utils/array-utils";
 import { sanitizeHtml } from "@/application/utils/sanitize-utils";
 import {
   platformJournalDirectoryUiPortToken,
-  platformNotificationPortToken,
+  notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { journalVisibilityConfigToken } from "@/application/tokens/application.tokens";
 
@@ -32,7 +32,7 @@ import { journalVisibilityConfigToken } from "@/application/tokens/application.t
 export class JournalDirectoryProcessor {
   constructor(
     private readonly journalDirectoryUI: PlatformJournalDirectoryUiPort,
-    private readonly notifications: PlatformNotificationPort,
+    private readonly notifications: NotificationPublisherPort,
     private readonly config: JournalVisibilityConfig
   ) {}
 
@@ -135,13 +135,13 @@ export class JournalDirectoryProcessor {
 export class DIJournalDirectoryProcessor extends JournalDirectoryProcessor {
   static dependencies = [
     platformJournalDirectoryUiPortToken,
-    platformNotificationPortToken,
+    notificationPublisherPortToken,
     journalVisibilityConfigToken,
   ] as const;
 
   constructor(
     journalDirectoryUI: PlatformJournalDirectoryUiPort,
-    notifications: PlatformNotificationPort,
+    notifications: NotificationPublisherPort,
     config: JournalVisibilityConfig
   ) {
     super(journalDirectoryUI, notifications, config);

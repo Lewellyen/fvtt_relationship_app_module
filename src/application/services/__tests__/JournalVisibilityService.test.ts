@@ -6,7 +6,7 @@ import {
 } from "@/application/services/JournalVisibilityService";
 import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { CacheReaderPort } from "@/domain/ports/cache/cache-reader-port.interface";
 import type { CacheWriterPort } from "@/domain/ports/cache/cache-writer-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
@@ -78,7 +78,7 @@ describe("JournalVisibilityService", () => {
   let service: JournalVisibilityService;
   let mockJournalCollection: PlatformJournalCollectionPort;
   let mockJournalRepository: PlatformJournalRepository;
-  let mockNotifications: PlatformNotificationPort;
+  let mockNotifications: NotificationPublisherPort;
   let mockCacheReader: CacheReaderPort;
   let mockCacheWriter: CacheWriterPort;
   let mockConfig: JournalVisibilityConfig;
@@ -91,10 +91,7 @@ describe("JournalVisibilityService", () => {
       info: vi.fn().mockReturnValue(ok(undefined)),
       warn: vi.fn().mockReturnValue(ok(undefined)),
       error: vi.fn().mockReturnValue(ok(undefined)),
-      addChannel: vi.fn().mockReturnValue(ok(undefined)),
-      removeChannel: vi.fn().mockReturnValue(ok(true)),
-      getChannelNames: vi.fn().mockReturnValue(ok(["ConsoleChannel", "UIChannel"])),
-    } as unknown as PlatformNotificationPort;
+    } as unknown as NotificationPublisherPort;
 
     mockCacheReader = {
       get: vi.fn().mockReturnValue(null),

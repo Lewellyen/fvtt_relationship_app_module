@@ -22,6 +22,7 @@ import {
 } from "@/application/tokens/application.tokens";
 import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
+  notificationPublisherPortToken,
   platformNotificationPortToken,
   platformI18nPortToken,
   platformValidationPortToken,
@@ -32,7 +33,7 @@ import { SETTING_KEYS, MODULE_METADATA } from "@/application/constants/app-const
 import { LogLevel } from "@/domain/types/log-level";
 import { ok, err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
@@ -86,7 +87,7 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformRuntimeConfigPort;
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
-      ) as PlatformNotificationPort;
+      ) as NotificationPublisherPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
       const mockValidator = container.resolve(
@@ -147,7 +148,7 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformRuntimeConfigPort;
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
-      ) as PlatformNotificationPort;
+      ) as NotificationPublisherPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockValidator = container.resolve(
         markAsApiSafe(platformValidationPortToken)
@@ -203,7 +204,7 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformRuntimeConfigPort;
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
-      ) as PlatformNotificationPort;
+      ) as NotificationPublisherPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockValidator = container.resolve(
         markAsApiSafe(platformValidationPortToken)
@@ -301,7 +302,7 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformRuntimeConfigPort;
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
-      ) as PlatformNotificationPort;
+      ) as NotificationPublisherPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
       const mockValidator = container.resolve(
@@ -360,7 +361,7 @@ describe("ModuleSettingsRegistrar", () => {
 
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
-      ) as PlatformNotificationPort;
+      ) as NotificationPublisherPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
       const mockValidator = container.resolve(
@@ -422,7 +423,7 @@ describe("ModuleSettingsRegistrar", () => {
 
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
-      ) as PlatformNotificationPort;
+      ) as NotificationPublisherPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
       const mockValidator = container.resolve(
@@ -479,7 +480,7 @@ describe("ModuleSettingsRegistrar", () => {
       ) as PlatformRuntimeConfigPort;
       const mockNotifications = container.resolve(
         markAsApiSafe(platformNotificationPortToken)
-      ) as PlatformNotificationPort;
+      ) as NotificationPublisherPort;
       const mockI18n = container.resolve(markAsApiSafe(platformI18nPortToken)) as PlatformI18nPort;
       const mockLogger = container.resolve(markAsApiSafe(loggerToken)) as Logger;
       const mockValidator = container.resolve(
@@ -542,7 +543,7 @@ describe("ModuleSettingsRegistrar DI metadata", () => {
       platformSettingsRegistrationPortToken,
       runtimeConfigSettingsSyncToken,
       settingRegistrationErrorMapperToken,
-      platformNotificationPortToken,
+      notificationPublisherPortToken,
       platformI18nPortToken,
       platformLoggingPortToken,
       platformValidationPortToken,

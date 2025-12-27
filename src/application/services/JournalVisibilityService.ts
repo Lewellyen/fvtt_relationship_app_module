@@ -2,7 +2,7 @@ import type { Result } from "@/domain/types/result";
 import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import type { CacheReaderPort } from "@/domain/ports/cache/cache-reader-port.interface";
 import type { CacheWriterPort } from "@/domain/ports/cache/cache-writer-port.interface";
@@ -13,7 +13,7 @@ import {
   platformJournalRepositoryToken,
   cacheReaderPortToken,
   cacheWriterPortToken,
-  platformNotificationPortToken,
+  notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { sanitizeHtml } from "@/application/utils/sanitize-utils";
 
@@ -43,7 +43,7 @@ export class JournalVisibilityService {
   constructor(
     private readonly journalCollection: PlatformJournalCollectionPort,
     private readonly journalRepository: PlatformJournalRepository,
-    private readonly notifications: PlatformNotificationPort,
+    private readonly notifications: NotificationPublisherPort,
     private readonly cacheReader: CacheReaderPort,
     private readonly cacheWriter: CacheWriterPort,
     private readonly config: JournalVisibilityConfig
@@ -120,7 +120,7 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
   static dependencies = [
     platformJournalCollectionPortToken,
     platformJournalRepositoryToken,
-    platformNotificationPortToken,
+    notificationPublisherPortToken,
     cacheReaderPortToken,
     cacheWriterPortToken,
     journalVisibilityConfigToken,
@@ -129,7 +129,7 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
   constructor(
     journalCollection: PlatformJournalCollectionPort,
     journalRepository: PlatformJournalRepository,
-    notifications: PlatformNotificationPort,
+    notifications: NotificationPublisherPort,
     cacheReader: CacheReaderPort,
     cacheWriter: CacheWriterPort,
     config: JournalVisibilityConfig

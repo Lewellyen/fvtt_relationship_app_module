@@ -2,13 +2,13 @@ import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { CacheInvalidationPort } from "@/domain/ports/cache/cache-invalidation-port.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
 import {
   platformJournalEventPortToken,
   cacheInvalidationPortToken,
-  platformNotificationPortToken,
+  notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { getFirstArrayElement } from "@/application/utils/array-utils";
 
@@ -35,7 +35,7 @@ export class InvalidateJournalCacheOnChangeUseCase implements EventRegistrar {
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
     private readonly cache: CacheInvalidationPort,
-    private readonly notifications: PlatformNotificationPort
+    private readonly notifications: NotificationPublisherPort
   ) {}
 
   /**
@@ -136,13 +136,13 @@ export class DIInvalidateJournalCacheOnChangeUseCase extends InvalidateJournalCa
   static dependencies = [
     platformJournalEventPortToken,
     cacheInvalidationPortToken,
-    platformNotificationPortToken,
+    notificationPublisherPortToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
     cache: CacheInvalidationPort,
-    notifications: PlatformNotificationPort
+    notifications: NotificationPublisherPort
   ) {
     super(journalEvents, cache, notifications);
   }

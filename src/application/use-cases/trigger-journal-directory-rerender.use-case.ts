@@ -2,13 +2,13 @@ import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
 import {
   platformJournalEventPortToken,
   platformJournalDirectoryUiPortToken,
-  platformNotificationPortToken,
+  notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
@@ -36,7 +36,7 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
     private readonly journalDirectoryUI: PlatformJournalDirectoryUiPort,
-    private readonly notifications: PlatformNotificationPort
+    private readonly notifications: NotificationPublisherPort
   ) {}
 
   /**
@@ -105,13 +105,13 @@ export class DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDire
   static dependencies = [
     platformJournalEventPortToken,
     platformJournalDirectoryUiPortToken,
-    platformNotificationPortToken,
+    notificationPublisherPortToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
     journalDirectoryUI: PlatformJournalDirectoryUiPort,
-    notifications: PlatformNotificationPort
+    notifications: NotificationPublisherPort
   ) {
     super(journalEvents, journalDirectoryUI, notifications);
   }

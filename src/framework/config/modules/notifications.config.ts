@@ -6,7 +6,11 @@ import { notificationCenterToken } from "@/application/tokens/notifications/noti
 import { consoleChannelToken } from "@/application/tokens/notifications/console-channel.token";
 import { uiChannelToken } from "@/application/tokens/notifications/ui-channel.token";
 import { queuedUIChannelToken } from "@/application/tokens/notifications/queued-ui-channel.token";
-import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
+import {
+  platformNotificationPortToken,
+  notificationPublisherPortToken,
+  notificationChannelRegistryPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 import { platformUIAvailabilityPortToken } from "@/application/tokens/domain-ports.tokens";
 import { notificationQueueToken } from "@/infrastructure/shared/tokens/notifications/notification-queue.token";
 import { DINotificationCenter } from "@/application/services/NotificationCenter";
@@ -103,7 +107,7 @@ export function registerNotifications(container: ServiceContainer): Result<void,
     return err(`Failed to register NotificationCenter: ${notificationCenterResult.error.message}`);
   }
 
-  // Register PlatformNotificationPort
+  // Register PlatformNotificationPort (full interface)
   const notificationPortResult = container.registerClass(
     platformNotificationPortToken,
     DINotificationPortAdapter,
@@ -112,6 +116,34 @@ export function registerNotifications(container: ServiceContainer): Result<void,
   if (isErr(notificationPortResult)) {
     return err(
       `Failed to register PlatformNotificationPort: ${notificationPortResult.error.message}`
+    );
+  }
+
+  // Register NotificationPublisherPort (ISP-compliant: only publishing methods)
+  // Binds to the same adapter class as PlatformNotificationPort
+  // Since PlatformNotificationPort extends NotificationPublisherPort, the adapter implements both
+  const publisherPortResult = container.registerClass(
+    notificationPublisherPortToken,
+    DINotificationPortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(publisherPortResult)) {
+    return err(
+      `Failed to register NotificationPublisherPort: ${publisherPortResult.error.message}`
+    );
+  }
+
+  // Register NotificationChannelRegistryPort (ISP-compliant: only channel management methods)
+  // Binds to the same adapter class as PlatformNotificationPort
+  // Since PlatformNotificationPort extends NotificationChannelRegistryPort, the adapter implements both
+  const channelRegistryPortResult = container.registerClass(
+    notificationChannelRegistryPortToken,
+    DINotificationPortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(channelRegistryPortResult)) {
+    return err(
+      `Failed to register NotificationChannelRegistryPort: ${channelRegistryPortResult.error.message}`
     );
   }
 

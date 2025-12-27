@@ -3,7 +3,7 @@ import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-jo
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { JournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@/application/tokens/application.tokens";
 import {
   platformJournalEventPortToken,
-  platformNotificationPortToken,
+  notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 
 /**
@@ -44,7 +44,7 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
     private readonly journalEvents: PlatformJournalEventPort,
     private readonly journalVisibility: JournalVisibilityService,
     private readonly directoryProcessor: JournalDirectoryProcessor,
-    private readonly notifications: PlatformNotificationPort
+    private readonly notifications: NotificationPublisherPort
   ) {}
 
   /**
@@ -107,14 +107,14 @@ export class DIProcessJournalDirectoryOnRenderUseCase extends ProcessJournalDire
     platformJournalEventPortToken,
     journalVisibilityServiceToken,
     journalDirectoryProcessorToken,
-    platformNotificationPortToken,
+    notificationPublisherPortToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
     journalVisibility: JournalVisibilityService,
     directoryProcessor: JournalDirectoryProcessor,
-    notifications: PlatformNotificationPort
+    notifications: NotificationPublisherPort
   ) {
     super(journalEvents, journalVisibility, directoryProcessor, notifications);
   }

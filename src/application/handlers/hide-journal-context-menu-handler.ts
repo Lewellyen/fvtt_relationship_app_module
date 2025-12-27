@@ -2,11 +2,11 @@ import type { JournalContextMenuHandler } from "./journal-context-menu-handler.i
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import {
   platformJournalRepositoryToken,
   platformUIPortToken,
-  platformNotificationPortToken,
+  notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
@@ -21,7 +21,7 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
   constructor(
     private readonly journalRepository: PlatformJournalRepository,
     private readonly platformUI: PlatformUIPort,
-    private readonly notifications: PlatformNotificationPort
+    private readonly notifications: NotificationPublisherPort
   ) {}
 
   handle(event: JournalContextMenuEvent): void {
@@ -124,13 +124,13 @@ export class DIHideJournalContextMenuHandler extends HideJournalContextMenuHandl
   static dependencies = [
     platformJournalRepositoryToken,
     platformUIPortToken,
-    platformNotificationPortToken,
+    notificationPublisherPortToken,
   ] as const;
 
   constructor(
     journalRepository: PlatformJournalRepository,
     platformUI: PlatformUIPort,
-    notifications: PlatformNotificationPort
+    notifications: NotificationPublisherPort
   ) {
     super(journalRepository, platformUI, notifications);
   }

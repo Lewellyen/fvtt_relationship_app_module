@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TriggerJournalDirectoryReRenderUseCase } from "../trigger-journal-directory-rerender.use-case";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 
 describe("TriggerJournalDirectoryReRenderUseCase", () => {
   let mockJournalEvents: PlatformJournalEventPort;
   let mockJournalDirectoryUI: PlatformJournalDirectoryUiPort;
-  let mockNotificationCenter: PlatformNotificationPort;
+  let mockNotificationCenter: NotificationPublisherPort;
   let useCase: TriggerJournalDirectoryReRenderUseCase;
 
   beforeEach(() => {
@@ -35,7 +35,7 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
       addChannel: vi.fn().mockReturnValue({ ok: true, value: undefined }),
       removeChannel: vi.fn().mockReturnValue({ ok: true, value: false }),
       getChannelNames: vi.fn().mockReturnValue({ ok: true, value: [] }),
-    } as unknown as PlatformNotificationPort;
+    } as unknown as NotificationPublisherPort;
 
     useCase = new TriggerJournalDirectoryReRenderUseCase(
       mockJournalEvents,

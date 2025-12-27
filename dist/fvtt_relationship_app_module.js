@@ -2441,6 +2441,10 @@ const runtimeConfigToken = createInjectionToken(
 const platformNotificationPortToken = createInjectionToken(
   "PlatformNotificationPort"
 );
+const notificationPublisherPortToken = createInjectionToken(
+  "NotificationPublisherPort"
+);
+const notificationChannelRegistryPortToken = createInjectionToken("NotificationChannelRegistryPort");
 const cacheReaderPortToken = createInjectionToken("CacheReaderPort");
 const cacheWriterPortToken = createInjectionToken("CacheWriterPort");
 const cacheInvalidationPortToken = createInjectionToken("CacheInvalidationPort");
@@ -15126,7 +15130,7 @@ __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
 _DIJournalVisibilityService.dependencies = [
   platformJournalCollectionPortToken,
   platformJournalRepositoryToken,
-  platformNotificationPortToken,
+  notificationPublisherPortToken,
   cacheReaderPortToken,
   cacheWriterPortToken,
   journalVisibilityConfigToken
@@ -15236,7 +15240,7 @@ const _DIJournalDirectoryProcessor = class _DIJournalDirectoryProcessor extends 
 __name(_DIJournalDirectoryProcessor, "DIJournalDirectoryProcessor");
 _DIJournalDirectoryProcessor.dependencies = [
   platformJournalDirectoryUiPortToken,
-  platformNotificationPortToken,
+  notificationPublisherPortToken,
   journalVisibilityConfigToken
 ];
 let DIJournalDirectoryProcessor = _DIJournalDirectoryProcessor;
@@ -17139,6 +17143,26 @@ function registerNotifications(container) {
       `Failed to register PlatformNotificationPort: ${notificationPortResult.error.message}`
     );
   }
+  const publisherPortResult = container.registerClass(
+    notificationPublisherPortToken,
+    DINotificationPortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(publisherPortResult)) {
+    return err(
+      `Failed to register NotificationPublisherPort: ${publisherPortResult.error.message}`
+    );
+  }
+  const channelRegistryPortResult = container.registerClass(
+    notificationChannelRegistryPortToken,
+    DINotificationPortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(channelRegistryPortResult)) {
+    return err(
+      `Failed to register NotificationChannelRegistryPort: ${channelRegistryPortResult.error.message}`
+    );
+  }
   return ok(void 0);
 }
 __name(registerNotifications, "registerNotifications");
@@ -17225,7 +17249,7 @@ _DIModuleSettingsRegistrar.dependencies = [
   platformSettingsRegistrationPortToken,
   runtimeConfigSettingsSyncToken,
   settingRegistrationErrorMapperToken,
-  platformNotificationPortToken,
+  notificationPublisherPortToken,
   platformI18nPortToken,
   platformLoggingPortToken,
   platformValidationPortToken,
@@ -17480,7 +17504,7 @@ const _DIRuntimeConfigSync = class _DIRuntimeConfigSync extends RuntimeConfigSyn
   }
 };
 __name(_DIRuntimeConfigSync, "DIRuntimeConfigSync");
-_DIRuntimeConfigSync.dependencies = [runtimeConfigToken, platformNotificationPortToken];
+_DIRuntimeConfigSync.dependencies = [runtimeConfigToken, notificationPublisherPortToken];
 let DIRuntimeConfigSync = _DIRuntimeConfigSync;
 const _RuntimeConfigSettingsSync = class _RuntimeConfigSettingsSync {
   constructor(runtimeConfigSync) {
@@ -17544,7 +17568,7 @@ const _DISettingRegistrationErrorMapper = class _DISettingRegistrationErrorMappe
   }
 };
 __name(_DISettingRegistrationErrorMapper, "DISettingRegistrationErrorMapper");
-_DISettingRegistrationErrorMapper.dependencies = [platformNotificationPortToken];
+_DISettingRegistrationErrorMapper.dependencies = [notificationPublisherPortToken];
 let DISettingRegistrationErrorMapper = _DISettingRegistrationErrorMapper;
 function castSettingDefinitionToUnknown(definition) {
   return definition;
@@ -18166,7 +18190,7 @@ __name(_DIInvalidateJournalCacheOnChangeUseCase, "DIInvalidateJournalCacheOnChan
 _DIInvalidateJournalCacheOnChangeUseCase.dependencies = [
   platformJournalEventPortToken,
   cacheInvalidationPortToken,
-  platformNotificationPortToken
+  notificationPublisherPortToken
 ];
 let DIInvalidateJournalCacheOnChangeUseCase = _DIInvalidateJournalCacheOnChangeUseCase;
 const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOnRenderUseCase {
@@ -18232,7 +18256,7 @@ _DIProcessJournalDirectoryOnRenderUseCase.dependencies = [
   platformJournalEventPortToken,
   journalVisibilityServiceToken,
   journalDirectoryProcessorToken,
-  platformNotificationPortToken
+  notificationPublisherPortToken
 ];
 let DIProcessJournalDirectoryOnRenderUseCase = _DIProcessJournalDirectoryOnRenderUseCase;
 const DOMAIN_FLAGS = {
@@ -18322,7 +18346,7 @@ __name(_DITriggerJournalDirectoryReRenderUseCase, "DITriggerJournalDirectoryReRe
 _DITriggerJournalDirectoryReRenderUseCase.dependencies = [
   platformJournalEventPortToken,
   platformJournalDirectoryUiPortToken,
-  platformNotificationPortToken
+  notificationPublisherPortToken
 ];
 let DITriggerJournalDirectoryReRenderUseCase = _DITriggerJournalDirectoryReRenderUseCase;
 const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
@@ -18462,7 +18486,7 @@ __name(_DIHideJournalContextMenuHandler, "DIHideJournalContextMenuHandler");
 _DIHideJournalContextMenuHandler.dependencies = [
   platformJournalRepositoryToken,
   platformUIPortToken,
-  platformNotificationPortToken
+  notificationPublisherPortToken
 ];
 let DIHideJournalContextMenuHandler = _DIHideJournalContextMenuHandler;
 function disposeHooks(hooks) {
@@ -18530,7 +18554,7 @@ _DIModuleEventRegistrar.dependencies = [
   processJournalDirectoryOnRenderUseCaseToken,
   invalidateJournalCacheOnChangeUseCaseToken,
   triggerJournalDirectoryReRenderUseCaseToken,
-  platformNotificationPortToken
+  notificationPublisherPortToken
 ];
 let DIModuleEventRegistrar = _DIModuleEventRegistrar;
 function resolveMultipleServices(container, tokens) {

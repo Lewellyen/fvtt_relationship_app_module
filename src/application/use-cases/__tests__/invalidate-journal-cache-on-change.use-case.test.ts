@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { InvalidateJournalCacheOnChangeUseCase } from "../invalidate-journal-cache-on-change.use-case";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { CacheInvalidationPort } from "@/domain/ports/cache/cache-invalidation-port.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import { ok } from "@/domain/utils/result";
 
 describe("InvalidateJournalCacheOnChangeUseCase", () => {
   let mockJournalEvents: PlatformJournalEventPort;
   let mockCache: CacheInvalidationPort;
-  let mockNotifications: PlatformNotificationPort;
+  let mockNotifications: NotificationPublisherPort;
   let useCase: InvalidateJournalCacheOnChangeUseCase;
 
   beforeEach(() => {
@@ -33,7 +33,7 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
       addChannel: vi.fn().mockReturnValue(ok(undefined)),
       removeChannel: vi.fn().mockReturnValue(ok(true)),
       getChannelNames: vi.fn().mockReturnValue(ok([])),
-    } as unknown as PlatformNotificationPort;
+    } as unknown as NotificationPublisherPort;
 
     useCase = new InvalidateJournalCacheOnChangeUseCase(
       mockJournalEvents,

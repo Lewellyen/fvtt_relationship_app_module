@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { RuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import { ok, err } from "@/domain/utils/result";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
@@ -18,7 +18,7 @@ describe("RuntimeConfigSync", () => {
 
       const mockNotifications = {
         warn: vi.fn(),
-      } as unknown as PlatformNotificationPort;
+      } as unknown as NotificationPublisherPort;
 
       const sync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
 
@@ -57,7 +57,7 @@ describe("RuntimeConfigSync", () => {
 
       const mockNotifications = {
         warn: vi.fn(),
-      } as unknown as PlatformNotificationPort;
+      } as unknown as NotificationPublisherPort;
 
       const sync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
 
@@ -92,7 +92,7 @@ describe("RuntimeConfigSync", () => {
 
       const mockNotifications = {
         warn: vi.fn(),
-      } as unknown as PlatformNotificationPort;
+      } as unknown as NotificationPublisherPort;
 
       const sync = new RuntimeConfigSync(mockRuntimeConfig, mockNotifications);
 
@@ -132,7 +132,7 @@ describe("RuntimeConfigSync", () => {
 
       const mockNotifications = {
         warn: vi.fn(),
-      } as unknown as PlatformNotificationPort;
+      } as unknown as NotificationPublisherPort;
 
       const mockSettings = {
         getSettingValue: vi.fn().mockReturnValue(ok(LogLevel.WARN)),
@@ -166,7 +166,7 @@ describe("RuntimeConfigSync", () => {
 
       const mockNotifications = {
         warn: vi.fn(),
-      } as unknown as PlatformNotificationPort;
+      } as unknown as NotificationPublisherPort;
 
       const mockSettings = {
         getSettingValue: vi.fn().mockReturnValue(
@@ -207,7 +207,7 @@ describe("RuntimeConfigSync", () => {
 
       const mockNotifications = {
         warn: vi.fn(),
-      } as unknown as PlatformNotificationPort;
+      } as unknown as NotificationPublisherPort;
 
       const mockSettings = {
         getSettingValue: vi.fn().mockReturnValue(ok(0)),

@@ -1,9 +1,9 @@
 import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import { disposeHooks } from "@/application/utils/dispose-hooks";
-import { platformNotificationPortToken } from "@/application/tokens/domain-ports.tokens";
+import { notificationPublisherPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
   invalidateJournalCacheOnChangeUseCaseToken,
   processJournalDirectoryOnRenderUseCaseToken,
@@ -30,7 +30,7 @@ export class ModuleEventRegistrar {
     processJournalDirectoryOnRender: EventRegistrar,
     invalidateJournalCacheOnChange: EventRegistrar,
     triggerJournalDirectoryReRender: EventRegistrar,
-    private readonly notifications: PlatformNotificationPort
+    private readonly notifications: NotificationPublisherPort
   ) {
     this.eventRegistrars = [
       processJournalDirectoryOnRender,
@@ -84,14 +84,14 @@ export class DIModuleEventRegistrar extends ModuleEventRegistrar {
     processJournalDirectoryOnRenderUseCaseToken,
     invalidateJournalCacheOnChangeUseCaseToken,
     triggerJournalDirectoryReRenderUseCaseToken,
-    platformNotificationPortToken,
+    notificationPublisherPortToken,
   ] as const;
 
   constructor(
     processJournalDirectoryOnRender: EventRegistrar,
     invalidateJournalCacheOnChange: EventRegistrar,
     triggerJournalDirectoryReRender: EventRegistrar,
-    notifications: PlatformNotificationPort
+    notifications: NotificationPublisherPort
   ) {
     super(
       processJournalDirectoryOnRender,

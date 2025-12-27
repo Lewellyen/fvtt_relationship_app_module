@@ -2,7 +2,7 @@ import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { SettingDefinition } from "@/application/settings/setting-definition.interface";
 import type { RuntimeConfigKey } from "@/domain/types/runtime-config";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
@@ -12,7 +12,7 @@ import {
 } from "@/application/tokens/application.tokens";
 import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import {
-  platformNotificationPortToken,
+  notificationPublisherPortToken,
   platformI18nPortToken,
   platformValidationPortToken,
   platformLoggingPortToken,
@@ -56,7 +56,7 @@ export class ModuleSettingsRegistrar {
     private readonly settings: PlatformSettingsRegistrationPort,
     private readonly runtimeConfigSettingsSync: IRuntimeConfigSettingsSync,
     private readonly errorMapper: SettingRegistrationErrorMapper,
-    private readonly notifications: PlatformNotificationPort,
+    private readonly notifications: NotificationPublisherPort,
     private readonly i18n: PlatformI18nPort,
     private readonly logger: PlatformLoggingPort,
     private readonly validator: PlatformValidationPort,
@@ -130,7 +130,7 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
     platformSettingsRegistrationPortToken,
     runtimeConfigSettingsSyncToken,
     settingRegistrationErrorMapperToken,
-    platformNotificationPortToken,
+    notificationPublisherPortToken,
     platformI18nPortToken,
     platformLoggingPortToken,
     platformValidationPortToken,
@@ -142,7 +142,7 @@ export class DIModuleSettingsRegistrar extends ModuleSettingsRegistrar {
     settings: PlatformSettingsRegistrationPort,
     runtimeConfigSettingsSync: IRuntimeConfigSettingsSync,
     errorMapper: SettingRegistrationErrorMapper,
-    notifications: PlatformNotificationPort,
+    notifications: NotificationPublisherPort,
     i18n: PlatformI18nPort,
     logger: PlatformLoggingPort,
     validator: PlatformValidationPort,

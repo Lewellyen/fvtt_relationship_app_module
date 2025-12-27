@@ -12,6 +12,28 @@
 
 ### Upgrade-Hinweise
 
+## [0.47.0] - 2025-12-27
+### Hinzugefügt
+- **PlatformNotificationTypes**: Neue Datei `platform-notification-types.interface.ts` für gemeinsame Notification-Typen zur Vermeidung zirkulärer Abhängigkeiten
+
+### Geändert
+- **Zirkuläre Abhängigkeiten behoben**: `PlatformNotificationError` und `PlatformNotificationOptions` wurden in eine separate Datei ausgelagert, um zirkuläre Abhängigkeiten zwischen Notification-Port-Interfaces zu vermeiden
+- `notification-channel-registry-port.interface.ts` importiert jetzt `PlatformNotificationError` von `platform-notification-types.interface.ts` statt von `platform-notification-port.interface.ts`
+- `notification-publisher-port.interface.ts` importiert jetzt `PlatformNotificationError` und `PlatformNotificationOptions` von `platform-notification-types.interface.ts` statt von `platform-notification-port.interface.ts`
+- `platform-notification-port.interface.ts` re-exportiert die Typen für Backward Compatibility
+
+### Fehlerbehebungen
+- **Type-Check Fehler behoben**: Fehlende Imports für `platformNotificationPortToken` und `PlatformNotificationPort` in Test-Dateien hinzugefügt
+- **Svelte-Check Fehler behoben**: Type-Importe für `PlatformNotificationPort` in Test-Dateien korrigiert
+- **Lint-Fehler behoben**: Ungenutzte Importe entfernt
+- **Zirkuläre Abhängigkeiten behoben**: Keine zirkulären Abhängigkeiten mehr zwischen Notification-Port-Interfaces
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.46.7] - 2025-12-27
 ### Hinzugefügt
 - **Cache-Port-Segregation (ISP-002)**: Neue granulare Cache-Port-Interfaces für bessere Interface Segregation ([Details](docs/refactoring/ISP/ISP-002-platform-cache-port-fat-interface.md))

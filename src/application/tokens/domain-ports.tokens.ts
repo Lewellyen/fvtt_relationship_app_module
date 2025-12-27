@@ -6,6 +6,8 @@
  */
 import { createInjectionToken } from "@/application/utils/token-factory";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
+import type { NotificationChannelRegistryPort } from "@/domain/ports/notifications/notification-channel-registry-port.interface";
 import type { CacheReaderPort } from "@/domain/ports/cache/cache-reader-port.interface";
 import type { CacheWriterPort } from "@/domain/ports/cache/cache-writer-port.interface";
 import type { CacheInvalidationPort } from "@/domain/ports/cache/cache-invalidation-port.interface";
@@ -34,11 +36,38 @@ import type { PlatformUIAvailabilityPort } from "@/domain/ports/platform-ui-avai
 /**
  * DI Token for PlatformNotificationPort.
  *
- * Platform-agnostic notification port.
+ * Platform-agnostic notification port (combines NotificationPublisherPort and NotificationChannelRegistryPort).
+ * Use this when you need both notification publishing and channel management.
+ *
+ * For notification publishing only, use notificationPublisherPortToken.
+ * For channel management only, use notificationChannelRegistryPortToken.
  */
 export const platformNotificationPortToken = createInjectionToken<PlatformNotificationPort>(
   "PlatformNotificationPort"
 );
+
+/**
+ * DI Token for NotificationPublisherPort.
+ *
+ * Platform-agnostic port for publishing notifications (debug, info, warn, error).
+ * Use this when you only need to send notifications and don't need channel management.
+ *
+ * Follows Interface Segregation Principle (ISP) by providing only notification publishing methods.
+ */
+export const notificationPublisherPortToken = createInjectionToken<NotificationPublisherPort>(
+  "NotificationPublisherPort"
+);
+
+/**
+ * DI Token for NotificationChannelRegistryPort.
+ *
+ * Platform-agnostic port for managing notification channels (addChannel, removeChannel, getChannelNames).
+ * Use this when you only need to manage channels and don't need to send notifications.
+ *
+ * Follows Interface Segregation Principle (ISP) by providing only channel management methods.
+ */
+export const notificationChannelRegistryPortToken =
+  createInjectionToken<NotificationChannelRegistryPort>("NotificationChannelRegistryPort");
 
 /**
  * DI Token for CacheReaderPort.

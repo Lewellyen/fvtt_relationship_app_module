@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SettingRegistrationErrorMapper } from "@/application/services/SettingRegistrationErrorMapper";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { DomainSettingsError } from "@/domain/types/settings";
 import { ok } from "@/domain/utils/result";
 
 describe("SettingRegistrationErrorMapper", () => {
-  let mockNotifications: PlatformNotificationPort;
+  let mockNotifications: NotificationPublisherPort;
   let mapper: SettingRegistrationErrorMapper;
 
   beforeEach(() => {
@@ -17,7 +17,7 @@ describe("SettingRegistrationErrorMapper", () => {
       addChannel: vi.fn().mockReturnValue(ok(undefined)),
       removeChannel: vi.fn().mockReturnValue(ok(undefined)),
       getChannelNames: vi.fn().mockReturnValue(ok([])),
-    } as unknown as PlatformNotificationPort;
+    } as unknown as NotificationPublisherPort;
 
     mapper = new SettingRegistrationErrorMapper(mockNotifications);
   });

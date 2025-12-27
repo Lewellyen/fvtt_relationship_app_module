@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { JournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
 import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
-import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/journal-entry";
 import { APP_DEFAULTS, MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
@@ -24,7 +24,7 @@ function createMockConfig(): JournalVisibilityConfig {
 describe("JournalDirectoryProcessor", () => {
   let processor: JournalDirectoryProcessor;
   let mockJournalDirectoryUI: PlatformJournalDirectoryUiPort;
-  let mockNotifications: PlatformNotificationPort;
+  let mockNotifications: NotificationPublisherPort;
   let mockConfig: JournalVisibilityConfig;
 
   beforeEach(() => {
@@ -41,7 +41,7 @@ describe("JournalDirectoryProcessor", () => {
       addChannel: vi.fn().mockReturnValue(ok(undefined)),
       removeChannel: vi.fn().mockReturnValue(ok(true)),
       getChannelNames: vi.fn().mockReturnValue(ok(["ConsoleChannel", "UIChannel"])),
-    } as unknown as PlatformNotificationPort;
+    } as unknown as NotificationPublisherPort;
 
     mockConfig = createMockConfig();
 
