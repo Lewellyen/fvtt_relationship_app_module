@@ -9632,16 +9632,7 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
       if (!journalElement) {
         return ok(false);
       }
-      if (!this.foundryUIAPI?.sidebar) {
-        return err(createFoundryError("API_NOT_AVAILABLE", "Foundry UI sidebar not available"));
-      }
-      const sidebar = this.foundryUIAPI.sidebar;
-      const journalApp = sidebar.tabs?.journal;
       let rendered = false;
-      if (journalApp && typeof journalApp.render === "function") {
-        journalApp.render(false);
-        rendered = true;
-      }
       if (this.foundryGameJournalAPI.directory?.render) {
         this.foundryGameJournalAPI.directory.render();
         rendered = true;
@@ -9668,7 +9659,6 @@ function createFoundryV13UIPort() {
   if (typeof game === "undefined" || !game?.journal) {
     throw new Error("Foundry game API not available");
   }
-  const sidebar = ui.sidebar;
   const uiAPI = {
     notifications: {
       info: /* @__PURE__ */ __name((message2, options) => {
@@ -9688,17 +9678,6 @@ function createFoundryV13UIPort() {
       }, "error")
     }
   };
-  const journalApp = sidebar?.tabs?.journal;
-  if (journalApp?.render) {
-    const render = journalApp.render;
-    uiAPI.sidebar = {
-      tabs: {
-        journal: {
-          render: /* @__PURE__ */ __name((force) => render(force), "render")
-        }
-      }
-    };
-  }
   return new FoundryV13UIPort(
     uiAPI,
     {

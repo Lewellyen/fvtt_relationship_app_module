@@ -7,7 +7,6 @@ import type {
   IFoundryUIAPI,
   IFoundryGameJournalAPI,
   IFoundryDocumentAPI,
-  IFoundryUISidebarAPI,
 } from "@/infrastructure/adapters/foundry/api/foundry-api.interface";
 import { expectResultOk, expectResultErr, createMockDOM } from "@/test/utils/test-helpers";
 
@@ -257,95 +256,12 @@ describe("FoundryV13UIPort", () => {
       expect(result.value).toBe(false);
     });
 
-    it("should return error when ui is not available", () => {
-      // Create #journal element
-      const journalDiv = document.createElement("div");
-      journalDiv.id = "journal";
-      document.body.appendChild(journalDiv);
-
-      const portWithoutSidebar = new FoundryV13UIPort(
-        {
-          notifications: mockUIAPI.notifications,
-        },
-        mockGameJournalAPI,
-        mockDocumentAPI
-      );
-
-      const result = portWithoutSidebar.rerenderJournalDirectory();
-      expectResultErr(result);
-      expect(result.error.code).toBe("API_NOT_AVAILABLE");
-
-      document.body.removeChild(journalDiv);
-    });
-
-    it("should return error when ui.sidebar has unexpected structure", () => {
-      // Create #journal element
-      const journalDiv = document.createElement("div");
-      journalDiv.id = "journal";
-      document.body.appendChild(journalDiv);
-
-      // Mock ui.sidebar as not available (remove property)
-      delete (mockUIAPI as { sidebar?: IFoundryUISidebarAPI }).sidebar;
-
-      const result = port.rerenderJournalDirectory();
-      expectResultErr(result);
-      expect(result.error.code).toBe("API_NOT_AVAILABLE");
-      expect(result.error.message).toContain("Foundry UI sidebar not available");
-
-      document.body.removeChild(journalDiv);
-    });
-
-    it("should call render(false) when journal app is available", () => {
-      const journalDiv = document.createElement("div");
-      journalDiv.id = "journal";
-      document.body.appendChild(journalDiv);
-
-      const mockRender = vi.fn();
-      mockUIAPI.sidebar = {
-        tabs: {
-          journal: {
-            render: mockRender,
-          },
-        },
-      };
-
-      const result = port.rerenderJournalDirectory();
-      expectResultOk(result);
-      expect(result.value).toBe(true);
-      expect(mockRender).toHaveBeenCalledWith(false);
-
-      document.body.removeChild(journalDiv);
-    });
-
-    it("should return false when journal app has no render method", () => {
-      const journalDiv = document.createElement("div");
-      journalDiv.id = "journal";
-      document.body.appendChild(journalDiv);
-
-      mockUIAPI.sidebar = {
-        tabs: {
-          journal: {}, // No render method
-        },
-      };
-
-      const result = port.rerenderJournalDirectory();
-      expectResultOk(result);
-      expect(result.value).toBe(false);
-
-      document.body.removeChild(journalDiv);
-    });
-
-    it("should use fallback to game.journal.directory.render() when journalApp.render() is not available", () => {
+    it("should call game.journal.directory.render() when available", () => {
       const journalDiv = document.createElement("div");
       journalDiv.id = "journal";
       document.body.appendChild(journalDiv);
 
       const mockDirectoryRender = vi.fn();
-      mockUIAPI.sidebar = {
-        tabs: {
-          journal: {}, // No render method
-        },
-      };
       mockGameJournalAPI.directory = {
         render: mockDirectoryRender,
       };
@@ -354,6 +270,20 @@ describe("FoundryV13UIPort", () => {
       expectResultOk(result);
       expect(result.value).toBe(true);
       expect(mockDirectoryRender).toHaveBeenCalled();
+
+      document.body.removeChild(journalDiv);
+    });
+
+    it("should return false when game.journal.directory.render() is not available", () => {
+      const journalDiv = document.createElement("div");
+      journalDiv.id = "journal";
+      document.body.appendChild(journalDiv);
+
+      mockGameJournalAPI.directory = undefined;
+
+      const result = port.rerenderJournalDirectory();
+      expectResultOk(result);
+      expect(result.value).toBe(false);
 
       document.body.removeChild(journalDiv);
     });
@@ -374,12 +304,8 @@ describe("FoundryV13UIPort", () => {
         throw new Error("Render failed");
       });
 
-      mockUIAPI.sidebar = {
-        tabs: {
-          journal: {
-            render: mockRender,
-          },
-        },
+      mockGameJournalAPI.directory = {
+        render: mockRender,
       };
 
       const result = port.rerenderJournalDirectory();
@@ -521,21 +447,14 @@ describe("FoundryV13UIPort", () => {
       expect(mockInfo).toHaveBeenCalledWith("Test message", undefined);
     });
 
-    it("should include sidebar when sidebar.tabs.journal.render is available", () => {
-      const mockRender = vi.fn();
+    it("should work with directory.render when available", () => {
+      const mockDirectoryRender = vi.fn();
       // @ts-expect-error - intentionally typed for test
       global.ui = {
         notifications: {
           info: vi.fn(),
           warn: vi.fn(),
           error: vi.fn(),
-        },
-        sidebar: {
-          tabs: {
-            journal: {
-              render: mockRender,
-            },
-          },
         },
       };
 
@@ -544,6 +463,9 @@ describe("FoundryV13UIPort", () => {
         journal: {
           contents: [],
           get: vi.fn(),
+          directory: {
+            render: mockDirectoryRender,
+          },
         },
       };
 
@@ -555,10 +477,11 @@ describe("FoundryV13UIPort", () => {
       const port = createFoundryV13UIPort();
       expect(port).toBeInstanceOf(FoundryV13UIPort);
 
-      // Test that rerenderJournalDirectory uses sidebar
+      // Test that rerenderJournalDirectory uses directory.render
       const result = port.rerenderJournalDirectory();
       expectResultOk(result);
       expect(result.value).toBe(true);
+      expect(mockDirectoryRender).toHaveBeenCalled();
 
       document.body.removeChild(journalElement);
     });
@@ -586,7 +509,7 @@ describe("FoundryV13UIPort", () => {
       expect(port).toBeInstanceOf(FoundryV13UIPort);
     });
 
-    it("should work with sidebar.tabs.journal but without render method", () => {
+    it("should work without sidebar", () => {
       // @ts-expect-error - intentionally typed for test
       global.ui = {
         notifications: {
@@ -594,13 +517,7 @@ describe("FoundryV13UIPort", () => {
           warn: vi.fn(),
           error: vi.fn(),
         },
-        sidebar: {
-          tabs: {
-            journal: {
-              // render is undefined - tests else branch at line 208
-            },
-          },
-        },
+        // sidebar is undefined - Foundry v13 doesn't expose sidebar.tabs via public API
       };
 
       // @ts-expect-error - intentionally typed for test
@@ -614,27 +531,19 @@ describe("FoundryV13UIPort", () => {
       const port = createFoundryV13UIPort();
       expect(port).toBeInstanceOf(FoundryV13UIPort);
 
-      // Sidebar should not be set because journal.render is missing
+      // Sidebar should not be set in Foundry v13
       const uiAPI = (port as any).foundryUIAPI;
       expect(uiAPI.sidebar).toBeUndefined();
     });
 
     it("should include directory when game.journal.directory.render is available", () => {
       const mockDirectoryRender = vi.fn();
-      const mockJournalAppRender = vi.fn();
       // @ts-expect-error - intentionally typed for test
       global.ui = {
         notifications: {
           info: vi.fn(),
           warn: vi.fn(),
           error: vi.fn(),
-        },
-        sidebar: {
-          tabs: {
-            journal: {
-              render: mockJournalAppRender,
-            },
-          },
         },
       };
 
@@ -658,11 +567,9 @@ describe("FoundryV13UIPort", () => {
       expect(port).toBeInstanceOf(FoundryV13UIPort);
 
       // The directory should be available through the journal API
-      // Both journalApp.render() and directory.render() should be called
       const result = port.rerenderJournalDirectory();
       expectResultOk(result);
       expect(result.value).toBe(true);
-      expect(mockJournalAppRender).toHaveBeenCalledWith(false);
       expect(mockDirectoryRender).toHaveBeenCalledOnce();
 
       document.body.removeChild(journalElement);

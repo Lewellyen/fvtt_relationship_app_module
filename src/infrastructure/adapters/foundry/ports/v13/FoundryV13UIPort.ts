@@ -126,23 +126,9 @@ export class FoundryV13UIPort implements FoundryUI {
         return ok(false);
       }
 
-      if (!this.foundryUIAPI?.sidebar) {
-        return err(createFoundryError("API_NOT_AVAILABLE", "Foundry UI sidebar not available"));
-      }
-
-      const sidebar = this.foundryUIAPI.sidebar;
-      const journalApp = sidebar.tabs?.journal;
-
+      // Foundry v13: Use game.journal.directory.render() directly
+      // ui.sidebar.tabs.journal is not accessible via public API in v13
       let rendered = false;
-
-      // Versuche zuerst journalApp.render(), falls verfügbar
-      if (journalApp && typeof journalApp.render === "function") {
-        journalApp.render(false);
-        rendered = true;
-      }
-
-      // Fallback: Direktes Directory-Render (wie im funktionierenden Script)
-      // Das funktioniert auch, wenn journalApp nicht verfügbar ist (z.B. wenn Context-Menü geöffnet ist)
       if (this.foundryGameJournalAPI.directory?.render) {
         this.foundryGameJournalAPI.directory.render();
         rendered = true;
@@ -178,12 +164,6 @@ export function createFoundryV13UIPort(): FoundryV13UIPort {
     throw new Error("Foundry game API not available");
   }
 
-  // Type-safe access to ui.sidebar with proper type casting
-  // type-coverage:ignore-next-line -- Required: Foundry's ui.sidebar types are incomplete, need assertion
-  const sidebar = ui.sidebar as
-    | { tabs?: { journal?: { render?: (force: boolean) => void } } }
-    | undefined;
-
   const uiAPI: IFoundryUIAPI = {
     notifications: {
       info: (message: string, options?: FoundryNotificationOptions) => {
@@ -204,18 +184,8 @@ export function createFoundryV13UIPort(): FoundryV13UIPort {
     },
   };
 
-  const journalApp = sidebar?.tabs?.journal;
-  if (journalApp?.render) {
-    const render = journalApp.render;
-    // render is guaranteed to exist due to the condition
-    uiAPI.sidebar = {
-      tabs: {
-        journal: {
-          render: (force: boolean) => render(force),
-        },
-      },
-    };
-  }
+  // Note: Foundry v13's ui.sidebar.tabs.journal is not accessible via public API
+  // The rerenderJournalDirectory() method uses game.journal.directory.render() as fallback
 
   return new FoundryV13UIPort(
     uiAPI,

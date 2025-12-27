@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.47.1] - 2025-12-27
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Journal-Sidebar kann nicht über Ui zugegriffen werden sondern über game.
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.47.0] - 2025-12-27
 ### Hinzugefügt
 - **PlatformNotificationTypes**: Neue Datei `platform-notification-types.interface.ts` für gemeinsame Notification-Typen zur Vermeidung zirkulärer Abhängigkeiten
