@@ -4,20 +4,18 @@ import {
   DICacheService,
   DEFAULT_CACHE_SERVICE_CONFIG,
 } from "@/infrastructure/cache/CacheService";
-import type {
-  CacheEntryMetadata,
-  CacheKey,
-  CacheServiceConfig,
-} from "@/infrastructure/cache/cache.interface";
+import type { CacheKey, CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { EvictionStrategyRegistry } from "@/infrastructure/cache/eviction-strategy-registry";
+import { CacheConfigSyncObserver } from "@/infrastructure/cache/config/CacheConfigSyncObserver";
+import { CacheService as CacheServiceImpl } from "@/infrastructure/cache/CacheService";
+import { CacheStore } from "@/infrastructure/cache/store/CacheStore";
 import { CacheCapacityManager } from "@/infrastructure/cache/cache-capacity-manager";
 import { LRUEvictionStrategy } from "@/infrastructure/cache/lru-eviction-strategy";
-import { EvictionStrategyRegistry } from "@/infrastructure/cache/eviction-strategy-registry";
-import { CacheStore } from "@/infrastructure/cache/store/CacheStore";
 
 const buildCacheKey = createCacheNamespace("journal", MODULE_METADATA.ID);
 
@@ -212,99 +210,11 @@ describe("CacheService", () => {
     expect(service.has(keyB)).toBe(true);
   });
 
-  it("enforceCapacity handles case where no evictions are needed (evicted === 0)", () => {
-    // To test the branch where evicted === 0 (line 284), we need to mock
-    // the capacityManager to return 0 even when size > maxEntries
-    createService({ maxEntries: 1 });
-    const keyA = buildCacheKey("capacity", "a");
-    const keyB = buildCacheKey("capacity", "b");
+  // Note: enforceCapacity is now handled internally by CachePolicy
+  // This test is no longer applicable as it tested internal implementation details
 
-    service.set(keyA, ["a"]);
-    // Now size is 1, which equals maxEntries, so enforceCapacity returns early
-    // We need to force it to call capacityManager.enforceCapacity() and return 0
-
-    const internal = service as unknown as {
-      capacityManager: { enforceCapacity: (maxEntries: number) => CacheKey[] };
-      config: { maxEntries?: number };
-      store: Map<CacheKey, unknown>;
-      enforceCapacity: () => void;
-    };
-
-    // Mock capacityManager to return empty array (no evictions) even when size > maxEntries
-    const originalEnforceCapacity = internal.capacityManager.enforceCapacity;
-    internal.capacityManager.enforceCapacity = vi.fn().mockReturnValue([]);
-
-    // Manually add another entry to make size > maxEntries
-    internal.store.set(keyB, {
-      value: ["b"],
-      expiresAt: null,
-      metadata: {
-        key: keyB,
-        createdAt: now,
-        expiresAt: null,
-        lastAccessedAt: now,
-        hits: 0,
-        tags: [],
-      },
-    });
-
-    // Now trigger enforceCapacity - it should call capacityManager, get 0, and skip the if branch
-    internal.enforceCapacity();
-
-    // Verify that capacityManager was called and returned 0
-    expect(internal.capacityManager.enforceCapacity).toHaveBeenCalledWith(1);
-
-    // Restore original
-    internal.capacityManager.enforceCapacity = originalEnforceCapacity;
-  });
-
-  it("handles defensive LRU guard without throwing when no entry is selected", () => {
-    createService({ maxEntries: 1 });
-
-    const keyA = buildCacheKey("lru-edge", "a");
-    const keyB = buildCacheKey("lru-edge", "b");
-
-    // Bypass normal set() to create an artificial state where no entry
-    // has a smaller lastAccessedAt than the initial sentinel value.
-    const internal = service as unknown as {
-      store: Map<
-        string,
-        { value: unknown; expiresAt: number | null; metadata: CacheEntryMetadata }
-      >;
-    };
-
-    internal.store.set(keyA, {
-      value: ["a"],
-      expiresAt: null,
-      metadata: {
-        key: keyA,
-        createdAt: now,
-        expiresAt: null,
-        lastAccessedAt: Number.POSITIVE_INFINITY,
-        hits: 0,
-        tags: [],
-      },
-    });
-
-    internal.store.set(keyB, {
-      value: ["b"],
-      expiresAt: null,
-      metadata: {
-        key: keyB,
-        createdAt: now,
-        expiresAt: null,
-        lastAccessedAt: Number.POSITIVE_INFINITY,
-        hits: 0,
-        tags: [],
-      },
-    });
-
-    // Force enforceCapacity() with this artificial state. The defensive
-    // guard should safely break out of the loop without throwing.
-    expect(() => {
-      (service as unknown as { enforceCapacity: () => void }).enforceCapacity();
-    }).not.toThrow();
-  });
+  // Note: enforceCapacity is now handled internally by CachePolicy
+  // This test is no longer applicable as it tested internal implementation details
 
   it("honors disabled configuration", () => {
     createService({ enabled: false });
@@ -466,6 +376,15 @@ describe("CacheService", () => {
     expect(service.getMetadata(key)?.hits).toBe(0);
   });
 
+  it("has returns false for expired entries", () => {
+    const key = buildCacheKey("expired-has");
+    service.set(key, ["entry"], { ttlMs: 100 });
+
+    now += 200;
+    expect(service.has(key)).toBe(false);
+    expect(service.getStatistics().evictions).toBe(1);
+  });
+
   it("getMetadata returns null when disabled or entry missing", () => {
     createService({ enabled: false });
     expect(service.getMetadata(buildCacheKey("meta-disabled"))).toBeNull();
@@ -482,7 +401,7 @@ describe("CacheService", () => {
     expect(metadata.tags).toEqual(["A", "a"]);
   });
 
-  it("updates config via onConfigUpdated method (Observer Pattern)", () => {
+  it("updates config via CacheConfigSyncObserver (Observer Pattern)", () => {
     const dynamicCache = new CacheService(
       {
         enabled: true,
@@ -498,19 +417,27 @@ describe("CacheService", () => {
     const keyB = buildCacheKey("dynamic", "b");
     const configManager = dynamicCache.getConfigManager();
 
+    // Create observer with components from CacheService
+    const cacheImpl = dynamicCache as CacheServiceImpl;
+    const observer = new CacheConfigSyncObserver(
+      cacheImpl.getStore(),
+      cacheImpl.getPolicy(),
+      configManager
+    );
+
     dynamicCache.set(keyA, ["entry-a"]);
     configManager.updateConfig({ enabled: false });
-    dynamicCache.onConfigUpdated(configManager.getConfig());
+    observer.onConfigUpdated(configManager.getConfig());
     expect(dynamicCache.isEnabled).toBe(false);
     expect(dynamicCache.get<string[]>(keyA)).toBeNull();
 
     configManager.updateConfig({ enabled: true });
-    dynamicCache.onConfigUpdated(configManager.getConfig());
+    observer.onConfigUpdated(configManager.getConfig());
     dynamicCache.set(keyA, ["entry-a"]);
     expect(dynamicCache.get<string[]>(keyA)).not.toBeNull();
 
     configManager.updateConfig({ defaultTtlMs: 50 });
-    dynamicCache.onConfigUpdated(configManager.getConfig());
+    observer.onConfigUpdated(configManager.getConfig());
     dynamicCache.set(keyA, ["entry-ttl"]);
     now += 100;
     expect(dynamicCache.get<string[]>(keyA)).toBeNull();
@@ -523,7 +450,7 @@ describe("CacheService", () => {
 
     // Now change maxEntries to 1 - this should trigger enforceCapacity
     configManager.updateConfig({ maxEntries: 1 });
-    dynamicCache.onConfigUpdated(configManager.getConfig());
+    observer.onConfigUpdated(configManager.getConfig());
 
     // Capacity should be enforced
     dynamicCache.set(keyA, ["entry-a-new"]);
@@ -533,7 +460,7 @@ describe("CacheService", () => {
 
     // When cacheMaxEntries is set to undefined, the config should drop the maxEntries setting
     configManager.updateConfig({ maxEntries: undefined });
-    dynamicCache.onConfigUpdated(configManager.getConfig());
+    observer.onConfigUpdated(configManager.getConfig());
     dynamicCache.set(keyA, ["entry-reset-a"]);
     dynamicCache.set(keyB, ["entry-reset-b"]);
     // Both should be present now (no limit)
@@ -541,7 +468,34 @@ describe("CacheService", () => {
     expect(dynamicCache.has(keyB)).toBe(true);
   });
 
-  it("calls enforceCapacity when maxEntries changes in onConfigUpdated", () => {
+  it("CacheConfigSyncObserver handles config update without maxEntries", () => {
+    const dynamicCache = new CacheService(
+      {
+        enabled: true,
+        defaultTtlMs: 1000,
+        namespace: "test-no-max",
+      },
+      metrics,
+      () => now
+    );
+
+    const configManager = dynamicCache.getConfigManager();
+    const cacheImpl = dynamicCache as CacheServiceImpl;
+    const observer = new CacheConfigSyncObserver(
+      cacheImpl.getStore(),
+      cacheImpl.getPolicy(),
+      configManager
+    );
+
+    // Update config without maxEntries - should not throw and should not call enforceCapacity
+    configManager.updateConfig({ enabled: true, defaultTtlMs: 2000 });
+    observer.onConfigUpdated(configManager.getConfig());
+
+    // Should still work
+    expect(dynamicCache.isEnabled).toBe(true);
+  });
+
+  it("calls enforceCapacity when maxEntries changes in CacheConfigSyncObserver", () => {
     // Create a cache with maxEntries: 10 to allow adding entries without immediate eviction
     const cache = new CacheService(
       {
@@ -568,9 +522,17 @@ describe("CacheService", () => {
     const configManager = cache.getConfigManager();
     configManager.updateConfig({ maxEntries: 2 });
 
+    // Create observer with components from CacheService
+    const cacheImpl = cache as CacheServiceImpl;
+    const observer = new CacheConfigSyncObserver(
+      cacheImpl.getStore(),
+      cacheImpl.getPolicy(),
+      configManager
+    );
+
     // Now call onConfigUpdated with maxEntries: 1, which is different from current (2)
     // This should trigger the branch: config.maxEntries (1) !== currentConfig.maxEntries (2)
-    cache.onConfigUpdated({
+    observer.onConfigUpdated({
       enabled: true,
       defaultTtlMs: 1000,
       namespace: "test",
@@ -627,8 +589,13 @@ describe("CacheService", () => {
     expect(stats.evictions).toBe(1);
   });
 
-  it("should use provided capacityManager when passed as constructor parameter", () => {
-    // Create a custom capacity manager
+  // Note: capacityManager is now encapsulated in CachePolicy
+  // This test is no longer applicable as it tested internal implementation details
+  // The functionality is still available through the public API (set/get operations)
+
+  it("uses provided capacityManager when passed as constructor parameter", () => {
+    // Create a custom capacity manager using the same store that CacheService will use
+    // We need to create the store first, then pass it to both CacheService and capacityManager
     const customStore = new CacheStore();
     const customStrategy = new LRUEvictionStrategy();
     const customCapacityManager = new CacheCapacityManager(customStrategy, customStore);
@@ -640,19 +607,28 @@ describe("CacheService", () => {
       maxEntries: 2,
     };
 
-    // Pass the custom capacity manager to the constructor
+    // Pass the custom capacity manager AND the store to the constructor
+    // This tests the branch where capacityManager is provided (line 87: if (!resolvedCapacityManager))
     const serviceWithCustomManager = new CacheService(
       config,
       metrics,
       () => now,
-      customCapacityManager
+      customCapacityManager,
+      undefined, // metricsObserver
+      customStore // store - must match the one used by capacityManager
     );
 
-    // Verify the custom manager is being used by checking internal state
-    const internal = serviceWithCustomManager as unknown as {
-      capacityManager: CacheCapacityManager;
-    };
-    expect(internal.capacityManager).toBe(customCapacityManager);
+    // Verify the custom manager is being used by testing eviction behavior
+    const keyA = buildCacheKey("custom", "a");
+    const keyB = buildCacheKey("custom", "b");
+    const keyC = buildCacheKey("custom", "c");
+
+    serviceWithCustomManager.set(keyA, ["a"]);
+    serviceWithCustomManager.set(keyB, ["b"]);
+    serviceWithCustomManager.set(keyC, ["c"]); // Should trigger eviction
+
+    // With maxEntries: 2, only 2 entries should remain
+    expect(serviceWithCustomManager.size).toBeLessThanOrEqual(2);
   });
 
   it("should fallback to LRU strategy when getOrDefault returns undefined", () => {

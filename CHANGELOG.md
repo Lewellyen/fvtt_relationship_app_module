@@ -12,6 +12,28 @@
 
 ### Upgrade-Hinweise
 
+## [0.46.4] - 2025-12-27
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **SRP-001 Refactoring: CacheService in Fassade umgebaut** ([Details](docs/refactoring/SRP/SRP-001-cache-service-multiple-responsibilities.md))
+- `CacheService` wurde in eine Fassade umgebaut, die an spezialisierte Komponenten delegiert
+- Neue Komponenten eingeführt: `CacheRuntime` (get/set/getOrSet), `CachePolicy` (Eviction/Expiration), `CacheTelemetry` (Stats/Metrics)
+- `CacheConfigObserver` wurde aus `CacheService` entfernt und in separaten `CacheConfigSyncObserver` verschoben
+- `CacheConfigSync` nutzt jetzt `CacheConfigSyncObserver` statt direkt `CacheService` als Observer
+- Public API bleibt unverändert (Backward Compatible, interne Implementierung geändert)
+- Tests angepasst: Tests, die auf interne Komponenten zugriffen, wurden entfernt oder angepasst
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.46.3] - 2025-12-26
 ### Hinzugefügt
 - Keine Einträge

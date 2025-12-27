@@ -1,6 +1,5 @@
 import type { Result } from "@/domain/types/result";
 import { assertCacheKey, type CacheKey } from "@/infrastructure/di/types/utilities/type-casts";
-import type { CacheConfigObserver } from "./cache-config-observer.interface";
 
 /**
  * CacheKey Brand-Type - re-exportiert von type-casts für Konsistenz.
@@ -73,9 +72,9 @@ export type CacheInvalidationPredicate = (entry: CacheEntryMetadata) => boolean;
 
 /**
  * CacheService contract exposed through DI.
- * Extends CacheConfigObserver to support configuration updates via Observer Pattern.
+ * Configuration updates are handled separately via CacheConfigSyncObserver.
  */
-export interface CacheService extends CacheConfigObserver {
+export interface CacheService {
   readonly isEnabled: boolean;
   readonly size: number;
   get<TValue>(key: CacheKey): CacheLookupResult<TValue> | null;
@@ -97,6 +96,16 @@ export interface CacheService extends CacheConfigObserver {
    * @internal
    */
   getConfigManager(): import("./config/cache-config-manager.interface").ICacheConfigManager;
+  /**
+   * Gets the store for external use (e.g., CacheConfigSyncObserver).
+   * @internal
+   */
+  getStore(): import("./store/cache-store.interface").ICacheStore;
+  /**
+   * Gets the policy for external use (e.g., CacheConfigSyncObserver).
+   * @internal
+   */
+  getPolicy(): import("./policy/cache-policy.interface").CachePolicy;
 }
 
 // Re-export CacheServiceConfig for backward compatibility

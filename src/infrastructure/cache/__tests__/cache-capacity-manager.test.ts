@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { CacheCapacityManager } from "../cache-capacity-manager";
 import type { CacheEvictionStrategy, InternalCacheEntry } from "../eviction-strategy.interface";
-import type { CacheKey } from "../cache.interface";
+import type { CacheKey } from "@/infrastructure/di/types/utilities/type-casts";
 import { assertCacheKey } from "@/infrastructure/di/types/utilities/type-casts";
 import { CacheStore } from "../store/CacheStore";
 

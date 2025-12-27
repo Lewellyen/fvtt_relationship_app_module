@@ -14942,40 +14942,6 @@ __name(registerUtilityServices, "registerUtilityServices");
 const cacheServiceConfigToken = createInjectionToken("CacheServiceConfig");
 const cacheServiceToken = createInjectionToken("CacheService");
 const cacheConfigSyncToken = createInjectionToken("CacheConfigSync");
-function toStringKeyArray(allowed) {
-  return allowed;
-}
-__name(toStringKeyArray, "toStringKeyArray");
-function castCacheValue(value2) {
-  return value2;
-}
-__name(castCacheValue, "castCacheValue");
-function getFirstArrayElement(array2) {
-  return array2[0];
-}
-__name(getFirstArrayElement, "getFirstArrayElement");
-function getFirstElementIfArray(value2, typeGuard) {
-  if (Array.isArray(value2) && value2.length > 0) {
-    const firstElement = value2[0];
-    if (typeGuard(firstElement)) {
-      return firstElement;
-    }
-  }
-  return null;
-}
-__name(getFirstElementIfArray, "getFirstElementIfArray");
-function castToRecord(value2) {
-  return value2;
-}
-__name(castToRecord, "castToRecord");
-function normalizeToRecord(value2) {
-  return Object.assign({}, value2);
-}
-__name(normalizeToRecord, "normalizeToRecord");
-function assertCacheKey(value2) {
-  return value2;
-}
-__name(assertCacheKey, "assertCacheKey");
 const _CacheCapacityManager = class _CacheCapacityManager {
   constructor(strategy, store2) {
     this.strategy = strategy;
@@ -15291,51 +15257,93 @@ const _CacheConfigManager = class _CacheConfigManager {
 };
 __name(_CacheConfigManager, "CacheConfigManager");
 let CacheConfigManager = _CacheConfigManager;
-const DEFAULT_CACHE_SERVICE_CONFIG = {
-  enabled: true,
-  defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
-  namespace: "global"
-};
-const _CacheService = class _CacheService {
-  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG, metricsCollector, clock = () => Date.now(), capacityManager, metricsObserver, store2, expirationManager, statisticsCollector, configManager) {
-    this.metricsCollector = metricsCollector;
-    this.clock = clock;
-    this.store = store2 ?? new CacheStore();
-    this.configManager = configManager ?? new CacheConfigManager(config2);
-    const resolvedMetricsObserver = metricsObserver ?? new CacheMetricsCollector(metricsCollector);
-    this.statisticsCollector = statisticsCollector ?? new CacheStatisticsCollector(resolvedMetricsObserver);
-    this.expirationManager = expirationManager ?? new CacheExpirationManager(clock);
-    if (capacityManager) {
-      this.capacityManager = capacityManager;
-    } else {
-      const registry = EvictionStrategyRegistry.getInstance();
-      if (!registry.has("lru")) {
-        registry.register("lru", new LRUEvictionStrategy());
-      }
-      const strategyKey = config2.evictionStrategyKey ?? "lru";
-      const strategy = registry.getOrDefault(strategyKey, "lru");
-      if (!strategy) {
-        this.capacityManager = new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
-      } else {
-        this.capacityManager = new CacheCapacityManager(strategy, this.store);
-      }
+function toStringKeyArray(allowed) {
+  return allowed;
+}
+__name(toStringKeyArray, "toStringKeyArray");
+function castCacheValue(value2) {
+  return value2;
+}
+__name(castCacheValue, "castCacheValue");
+function getFirstArrayElement(array2) {
+  return array2[0];
+}
+__name(getFirstArrayElement, "getFirstArrayElement");
+function getFirstElementIfArray(value2, typeGuard) {
+  if (Array.isArray(value2) && value2.length > 0) {
+    const firstElement = value2[0];
+    if (typeGuard(firstElement)) {
+      return firstElement;
     }
   }
-  get isEnabled() {
-    return this.configManager.isEnabled();
-  }
-  get size() {
-    return this.store.size;
-  }
-  /**
-   * Gets the config manager for external synchronization.
-   * Used by CacheConfigSync to update configuration.
-   */
-  getConfigManager() {
-    return this.configManager;
+  return null;
+}
+__name(getFirstElementIfArray, "getFirstElementIfArray");
+function castToRecord(value2) {
+  return value2;
+}
+__name(castToRecord, "castToRecord");
+function normalizeToRecord(value2) {
+  return Object.assign({}, value2);
+}
+__name(normalizeToRecord, "normalizeToRecord");
+function assertCacheKey(value2) {
+  return value2;
+}
+__name(assertCacheKey, "assertCacheKey");
+const _CacheRuntime = class _CacheRuntime {
+  constructor(store2, expirationManager, configManager, telemetry, policy, clock) {
+    this.store = store2;
+    this.expirationManager = expirationManager;
+    this.configManager = configManager;
+    this.telemetry = telemetry;
+    this.policy = policy;
+    this.clock = clock;
   }
   get(key) {
-    return this.accessEntry(key, true);
+    const config2 = this.configManager.getConfig();
+    if (!config2.enabled) {
+      return null;
+    }
+    const entry = this.store.get(key);
+    if (!entry) {
+      this.telemetry.recordMiss(key);
+      return null;
+    }
+    const now = this.clock();
+    if (this.policy.shouldExpire(entry.expiresAt, now)) {
+      this.handleExpiration(key, entry);
+      this.telemetry.recordEviction(key);
+      this.telemetry.recordMiss(key);
+      return null;
+    }
+    entry.metadata.hits += 1;
+    entry.metadata.lastAccessedAt = now;
+    this.telemetry.recordHit(key);
+    return {
+      hit: true,
+      value: castCacheValue(entry.value),
+      metadata: this.cloneMetadata(entry.metadata)
+    };
+  }
+  set(key, value2, options) {
+    const now = this.clock();
+    const config2 = this.configManager.getConfig();
+    const metadata2 = this.expirationManager.createMetadata(key, options, now, config2.defaultTtlMs);
+    if (!config2.enabled) {
+      return metadata2;
+    }
+    const entry = {
+      value: value2,
+      expiresAt: metadata2.expiresAt,
+      metadata: metadata2
+    };
+    this.store.set(key, entry);
+    const evictedKeys = this.policy.enforceCapacity(this.store.size, config2);
+    for (const evictedKey of evictedKeys) {
+      this.telemetry.recordEviction(evictedKey);
+    }
+    return { ...metadata2, tags: [...metadata2.tags] };
   }
   async getOrSet(key, factory, options) {
     const existing = this.get(key);
@@ -15367,39 +15375,176 @@ const _CacheService = class _CacheService {
       metadata: metadata2
     });
   }
-  set(key, value2, options) {
+  handleExpiration(key, entry) {
     const now = this.clock();
-    const config2 = this.configManager.getConfig();
-    const metadata2 = this.expirationManager.createMetadata(key, options, now, config2.defaultTtlMs);
-    if (!this.isEnabled) {
-      return metadata2;
+    if (this.expirationManager.isExpired(entry, now)) {
+      this.expirationManager.handleExpiration(key, this.store);
     }
-    const entry = {
-      value: value2,
-      expiresAt: metadata2.expiresAt,
-      metadata: metadata2
+  }
+  cloneMetadata(metadata2) {
+    return {
+      ...metadata2,
+      tags: [...metadata2.tags]
     };
-    this.store.set(key, entry);
-    this.enforceCapacity();
-    return { ...metadata2, tags: [...metadata2.tags] };
+  }
+};
+__name(_CacheRuntime, "CacheRuntime");
+let CacheRuntime = _CacheRuntime;
+const _CachePolicy = class _CachePolicy {
+  constructor(capacityManager) {
+    this.capacityManager = capacityManager;
+  }
+  enforceCapacity(currentSize, config2) {
+    if (!config2.maxEntries || currentSize <= config2.maxEntries) {
+      return [];
+    }
+    return this.capacityManager.enforceCapacity(config2.maxEntries);
+  }
+  shouldExpire(expiresAt, now) {
+    if (expiresAt === null) {
+      return false;
+    }
+    return now >= expiresAt;
+  }
+};
+__name(_CachePolicy, "CachePolicy");
+let CachePolicy = _CachePolicy;
+const _CacheTelemetry = class _CacheTelemetry {
+  constructor(statisticsCollector) {
+    this.statisticsCollector = statisticsCollector;
+  }
+  recordHit(key) {
+    this.statisticsCollector.recordHit(key);
+  }
+  recordMiss(key) {
+    this.statisticsCollector.recordMiss(key);
+  }
+  recordEviction(key) {
+    this.statisticsCollector.recordEviction(key);
+  }
+  getStatistics(currentSize, enabled) {
+    return this.statisticsCollector.getStatistics(currentSize, enabled);
+  }
+};
+__name(_CacheTelemetry, "CacheTelemetry");
+let CacheTelemetry = _CacheTelemetry;
+const DEFAULT_CACHE_SERVICE_CONFIG = {
+  enabled: true,
+  defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
+  namespace: "global"
+};
+const _CacheService = class _CacheService {
+  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG, metricsCollector, clock = () => Date.now(), capacityManager, metricsObserver, store2, expirationManager, statisticsCollector, configManager, runtime, policy, telemetry) {
+    this.metricsCollector = metricsCollector;
+    this.clock = clock;
+    this.store = store2 ?? new CacheStore();
+    this.configManager = configManager ?? new CacheConfigManager(config2);
+    this.expirationManager = expirationManager ?? new CacheExpirationManager(clock);
+    let resolvedCapacityManager = capacityManager;
+    if (!resolvedCapacityManager) {
+      const registry = EvictionStrategyRegistry.getInstance();
+      if (!registry.has("lru")) {
+        registry.register("lru", new LRUEvictionStrategy());
+      }
+      const strategyKey = config2.evictionStrategyKey ?? "lru";
+      const strategy = registry.getOrDefault(strategyKey, "lru");
+      if (!strategy) {
+        resolvedCapacityManager = new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
+      } else {
+        resolvedCapacityManager = new CacheCapacityManager(strategy, this.store);
+      }
+    }
+    const resolvedMetricsObserver = metricsObserver ?? new CacheMetricsCollector(metricsCollector);
+    const resolvedStatisticsCollector = statisticsCollector ?? new CacheStatisticsCollector(resolvedMetricsObserver);
+    this.telemetry = telemetry ?? new CacheTelemetry(resolvedStatisticsCollector);
+    this.policy = policy ?? new CachePolicy(resolvedCapacityManager);
+    this.runtime = runtime ?? new CacheRuntime(
+      this.store,
+      this.expirationManager,
+      this.configManager,
+      this.telemetry,
+      this.policy,
+      clock
+    );
+  }
+  get isEnabled() {
+    return this.configManager.isEnabled();
+  }
+  get size() {
+    return this.store.size;
+  }
+  /**
+   * Gets the config manager for external synchronization.
+   * Used by CacheConfigSync to update configuration.
+   */
+  getConfigManager() {
+    return this.configManager;
+  }
+  /**
+   * Gets the store for external use (e.g., CacheConfigSyncObserver).
+   * @internal
+   */
+  getStore() {
+    return this.store;
+  }
+  /**
+   * Gets the policy for external use (e.g., CacheConfigSyncObserver).
+   * @internal
+   */
+  getPolicy() {
+    return this.policy;
+  }
+  get(key) {
+    return this.runtime.get(key);
+  }
+  async getOrSet(key, factory, options) {
+    return this.runtime.getOrSet(key, factory, options);
+  }
+  set(key, value2, options) {
+    return this.runtime.set(key, value2, options);
   }
   delete(key) {
-    if (!this.isEnabled) return false;
+    const config2 = this.configManager.getConfig();
+    if (!config2.enabled) return false;
     const removed = this.store.delete(key);
     if (removed) {
-      this.statisticsCollector.recordEviction(key);
+      this.telemetry.recordEviction(key);
     }
     return removed;
   }
   has(key) {
-    return Boolean(this.accessEntry(key, false));
+    const config2 = this.configManager.getConfig();
+    if (!config2.enabled) return false;
+    const entry = this.store.get(key);
+    if (!entry) {
+      return false;
+    }
+    const now = this.clock();
+    if (this.policy.shouldExpire(entry.expiresAt, now)) {
+      this.expirationManager.handleExpiration(key, this.store);
+      this.telemetry.recordEviction(key);
+      return false;
+    }
+    return true;
   }
   clear() {
-    if (!this.isEnabled) return 0;
-    return this.clearStore();
+    const config2 = this.configManager.getConfig();
+    if (!config2.enabled) return 0;
+    const keysToEvict = [];
+    for (const [key] of this.store.entries()) {
+      keysToEvict.push(key);
+    }
+    const removed = this.store.clear();
+    if (removed > 0) {
+      for (const key of keysToEvict) {
+        this.telemetry.recordEviction(key);
+      }
+    }
+    return removed;
   }
   invalidateWhere(predicate) {
-    if (!this.isEnabled) return 0;
+    const config2 = this.configManager.getConfig();
+    if (!config2.enabled) return 0;
     let removed = 0;
     const keysToEvict = [];
     for (const [key, entry] of this.store.entries()) {
@@ -15410,70 +15555,51 @@ const _CacheService = class _CacheService {
     for (const key of keysToEvict) {
       if (this.store.delete(key)) {
         removed++;
-        this.statisticsCollector.recordEviction(key);
+        this.telemetry.recordEviction(key);
       }
     }
     return removed;
   }
   getMetadata(key) {
-    if (!this.isEnabled) return null;
+    const config2 = this.configManager.getConfig();
+    if (!config2.enabled) return null;
     const entry = this.store.get(key);
     if (!entry) return null;
     const now = this.clock();
-    if (this.expirationManager.isExpired(entry, now)) {
+    if (this.policy.shouldExpire(entry.expiresAt, now)) {
       const wasRemoved = this.expirationManager.handleExpiration(key, this.store);
       if (wasRemoved) {
-        this.statisticsCollector.recordEviction(key);
+        this.telemetry.recordEviction(key);
       }
       return null;
     }
     return this.cloneMetadata(entry.metadata);
   }
   getStatistics() {
-    return this.statisticsCollector.getStatistics(this.store.size, this.isEnabled);
-  }
-  accessEntry(key, mutateUsage) {
-    if (!this.isEnabled) {
-      return null;
-    }
-    const entry = this.store.get(key);
-    if (!entry) {
-      this.statisticsCollector.recordMiss(key);
-      return null;
-    }
-    const now = this.clock();
-    if (this.expirationManager.isExpired(entry, now)) {
-      this.expirationManager.handleExpiration(key, this.store);
-      this.statisticsCollector.recordEviction(key);
-      this.statisticsCollector.recordMiss(key);
-      return null;
-    }
-    if (mutateUsage) {
-      entry.metadata.hits += 1;
-      entry.metadata.lastAccessedAt = now;
-    }
-    this.statisticsCollector.recordHit(key);
-    return {
-      hit: true,
-      value: castCacheValue(entry.value),
-      metadata: this.cloneMetadata(entry.metadata)
-    };
-  }
-  enforceCapacity() {
-    const config2 = this.configManager.getConfig();
-    if (!config2.maxEntries || this.store.size <= config2.maxEntries) {
-      return;
-    }
-    const evictedKeys = this.capacityManager.enforceCapacity(config2.maxEntries);
-    for (const key of evictedKeys) {
-      this.statisticsCollector.recordEviction(key);
-    }
+    return this.telemetry.getStatistics(this.store.size, this.isEnabled);
   }
   cloneMetadata(metadata2) {
     return {
       ...metadata2,
       tags: [...metadata2.tags]
     };
+  }
+};
+__name(_CacheService, "CacheService");
+let CacheService = _CacheService;
+const _DICacheService = class _DICacheService extends CacheService {
+  constructor(config2, metrics) {
+    super(config2, metrics);
+  }
+};
+__name(_DICacheService, "DICacheService");
+_DICacheService.dependencies = [cacheServiceConfigToken, metricsCollectorToken];
+let DICacheService = _DICacheService;
+const _CacheConfigSyncObserver = class _CacheConfigSyncObserver {
+  constructor(store2, policy, configManager) {
+    this.store = store2;
+    this.policy = policy;
+    this.configManager = configManager;
   }
   /**
    * Called when cache configuration is updated.
@@ -15488,38 +15614,31 @@ const _CacheService = class _CacheService {
     }
     const currentConfig = this.configManager.getConfig();
     if (typeof config2.maxEntries === "number" && config2.maxEntries !== currentConfig.maxEntries) {
-      this.enforceCapacity();
+      this.enforceCapacity(config2);
     }
   }
   clearStore() {
-    const keysToEvict = [];
-    for (const [key] of this.store.entries()) {
-      keysToEvict.push(key);
+    this.store.clear();
+  }
+  enforceCapacity(config2) {
+    if (!config2.maxEntries) {
+      return;
     }
-    const removed = this.store.clear();
-    if (removed > 0) {
-      for (const key of keysToEvict) {
-        this.statisticsCollector.recordEviction(key);
-      }
-    }
-    return removed;
+    this.policy.enforceCapacity(this.store.size, config2);
   }
 };
-__name(_CacheService, "CacheService");
-let CacheService = _CacheService;
-const _DICacheService = class _DICacheService extends CacheService {
-  constructor(config2, metrics) {
-    super(config2, metrics);
-  }
-};
-__name(_DICacheService, "DICacheService");
-_DICacheService.dependencies = [cacheServiceConfigToken, metricsCollectorToken];
-let DICacheService = _DICacheService;
+__name(_CacheConfigSyncObserver, "CacheConfigSyncObserver");
+let CacheConfigSyncObserver = _CacheConfigSyncObserver;
 const _CacheConfigSync = class _CacheConfigSync {
   constructor(runtimeConfig, cache) {
     this.runtimeConfig = runtimeConfig;
     this.cache = cache;
     this.unsubscribe = null;
+    this.observer = new CacheConfigSyncObserver(
+      cache.getStore(),
+      cache.getPolicy(),
+      cache.getConfigManager()
+    );
   }
   /**
    * Binds RuntimeConfig changes to CacheService.
@@ -15533,17 +15652,16 @@ const _CacheConfigSync = class _CacheConfigSync {
     }
     const unsubscribers = [];
     const configManager = this.cache.getConfigManager();
-    const observer = this.cache;
     unsubscribers.push(
       this.runtimeConfig.onChange("enableCacheService", (enabled) => {
         configManager.updateConfig({ enabled });
-        observer.onConfigUpdated(configManager.getConfig());
+        this.observer.onConfigUpdated(configManager.getConfig());
       })
     );
     unsubscribers.push(
       this.runtimeConfig.onChange("cacheDefaultTtlMs", (ttl) => {
         configManager.updateConfig({ defaultTtlMs: ttl });
-        observer.onConfigUpdated(configManager.getConfig());
+        this.observer.onConfigUpdated(configManager.getConfig());
       })
     );
     unsubscribers.push(
@@ -15551,7 +15669,7 @@ const _CacheConfigSync = class _CacheConfigSync {
         configManager.updateConfig({
           maxEntries: typeof maxEntries2 === "number" && maxEntries2 > 0 ? maxEntries2 : void 0
         });
-        observer.onConfigUpdated(configManager.getConfig());
+        this.observer.onConfigUpdated(configManager.getConfig());
       })
     );
     this.unsubscribe = () => {

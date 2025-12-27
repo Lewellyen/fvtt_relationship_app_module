@@ -1,4 +1,4 @@
-import type { CacheKey } from "./cache.interface";
+import type { CacheKey } from "@/infrastructure/di/types/utilities/type-casts";
 
 /**
  * Internal cache entry structure used by eviction strategies.
