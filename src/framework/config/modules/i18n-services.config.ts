@@ -174,3 +174,11 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
 
   return ok(undefined);
 }
+
+// Self-register this module's dependency registration step
+import { registerDependencyStep } from "@/framework/config/dependency-registry";
+registerDependencyStep({
+  name: "I18nServices",
+  priority: 120,
+  execute: registerI18nServices,
+});

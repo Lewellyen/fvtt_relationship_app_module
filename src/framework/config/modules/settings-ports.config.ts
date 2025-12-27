@@ -30,3 +30,11 @@ export function registerSettingsPorts(container: ServiceContainer): Result<void,
 
   return ok(undefined);
 }
+
+// Self-register this module's dependency registration step
+import { registerDependencyStep } from "@/framework/config/dependency-registry";
+registerDependencyStep({
+  name: "SettingsPorts",
+  priority: 90,
+  execute: registerSettingsPorts,
+});

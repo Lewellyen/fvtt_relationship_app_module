@@ -95,3 +95,12 @@ export function initializeCacheConfigSync(container: ServiceContainer): Result<v
 
   return ok(undefined);
 }
+
+// Self-register this module's dependency registration step
+import { registerDependencyStep } from "@/framework/config/dependency-registry";
+registerDependencyStep({
+  name: "CacheServices",
+  priority: 50,
+  execute: registerCacheServices,
+});
+// Note: initializeCacheConfigSync is registered in dependencyconfig.ts as an internal step

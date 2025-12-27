@@ -117,3 +117,11 @@ export function registerNotifications(container: ServiceContainer): Result<void,
 
   return ok(undefined);
 }
+
+// Self-register this module's dependency registration step
+import { registerDependencyStep } from "@/framework/config/dependency-registry";
+registerDependencyStep({
+  name: "Notifications",
+  priority: 130,
+  execute: registerNotifications,
+});

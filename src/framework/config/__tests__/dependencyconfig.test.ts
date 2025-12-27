@@ -2,7 +2,11 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { createTestContainer } from "@/test/utils/test-helpers";
-import { configureDependencies } from "@/framework/config/dependencyconfig";
+import {
+  configureDependencies,
+  resetDependencyRegistry,
+} from "@/framework/config/dependencyconfig";
+import { registerDependencyStep } from "@/framework/config/dependency-registry";
 import { markAsApiSafe } from "@/infrastructure/di/types";
 import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
 import { uiChannelToken } from "@/application/tokens/notifications/ui-channel.token";
@@ -648,12 +652,15 @@ describe("dependencyconfig", () => {
     it("should propagate errors from registerObservability", async () => {
       const container = createTestContainer();
 
-      // Mock registerObservability to return an error
-      // This ensures line 175 in dependencyconfig.ts is covered (if (isErr(observabilityResult)) return observabilityResult;)
-      const observabilityModule = await import("@/framework/config/modules/observability.config");
-      vi.spyOn(observabilityModule, "registerObservability").mockReturnValue(
-        err("Observability registration failed")
-      );
+      // Replace the Observability step with a mocked version that returns an error
+      const mockRegisterObservability = vi
+        .fn()
+        .mockReturnValue(err("Observability registration failed"));
+      registerDependencyStep({
+        name: "Observability",
+        priority: 30,
+        execute: mockRegisterObservability,
+      });
 
       const result = configureDependencies(container);
 
@@ -662,18 +669,28 @@ describe("dependencyconfig", () => {
         "Failed at step 'Observability': Observability registration failed"
       );
 
-      // Restore for other tests
+      // Restore: Re-register the original function
+      const observabilityModule = await import("@/framework/config/modules/observability.config");
+      registerDependencyStep({
+        name: "Observability",
+        priority: 30,
+        execute: observabilityModule.registerObservability,
+      });
       vi.restoreAllMocks();
     });
 
     it("should propagate errors from registerUtilityServices", async () => {
       const container = createTestContainer();
 
-      // Mock registerUtilityServices to return an error directly
-      const utilityModule = await import("@/framework/config/modules/utility-services.config");
-      vi.spyOn(utilityModule, "registerUtilityServices").mockReturnValue(
-        err("Utility service registration failed")
-      );
+      // Replace the UtilityServices step with a mocked version that returns an error
+      const mockRegisterUtilityServices = vi
+        .fn()
+        .mockReturnValue(err("Utility service registration failed"));
+      registerDependencyStep({
+        name: "UtilityServices",
+        priority: 40,
+        execute: mockRegisterUtilityServices,
+      });
 
       const result = configureDependencies(container);
 
@@ -682,18 +699,28 @@ describe("dependencyconfig", () => {
         "Failed at step 'UtilityServices': Utility service registration failed"
       );
 
-      // Restore for other tests
+      // Restore: Re-register the original function
+      const utilityModule = await import("@/framework/config/modules/utility-services.config");
+      registerDependencyStep({
+        name: "UtilityServices",
+        priority: 40,
+        execute: utilityModule.registerUtilityServices,
+      });
       vi.restoreAllMocks();
     });
 
     it("should propagate errors from registerCacheServices", async () => {
       const container = createTestContainer();
 
-      // Mock registerCacheServices to return an error directly
-      const cacheModule = await import("@/framework/config/modules/cache-services.config");
-      vi.spyOn(cacheModule, "registerCacheServices").mockReturnValue(
-        err("Cache service registration failed")
-      );
+      // Replace the CacheServices step with a mocked version that returns an error
+      const mockRegisterCacheServices = vi
+        .fn()
+        .mockReturnValue(err("Cache service registration failed"));
+      registerDependencyStep({
+        name: "CacheServices",
+        priority: 50,
+        execute: mockRegisterCacheServices,
+      });
 
       const result = configureDependencies(container);
 
@@ -702,19 +729,28 @@ describe("dependencyconfig", () => {
         "Failed at step 'CacheServices': Cache service registration failed"
       );
 
-      // Restore for other tests
+      // Restore: Re-register the original function
+      const cacheModule = await import("@/framework/config/modules/cache-services.config");
+      registerDependencyStep({
+        name: "CacheServices",
+        priority: 50,
+        execute: cacheModule.registerCacheServices,
+      });
       vi.restoreAllMocks();
     });
 
     it("should propagate errors from registerPortInfrastructure", async () => {
       const container = createTestContainer();
 
-      // Mock registerPortInfrastructure to return an error
-      // This ensures line 184 in dependencyconfig.ts is covered (if (isErr(portInfraResult)) return portInfraResult;)
-      const portInfraModule = await import("@/framework/config/modules/port-infrastructure.config");
-      vi.spyOn(portInfraModule, "registerPortInfrastructure").mockReturnValue(
-        err("Port infrastructure registration failed")
-      );
+      // Replace the PortInfrastructure step with a mocked version that returns an error
+      const mockRegisterPortInfrastructure = vi
+        .fn()
+        .mockReturnValue(err("Port infrastructure registration failed"));
+      registerDependencyStep({
+        name: "PortInfrastructure",
+        priority: 60,
+        execute: mockRegisterPortInfrastructure,
+      });
 
       const result = configureDependencies(container);
 
@@ -723,7 +759,13 @@ describe("dependencyconfig", () => {
         "Failed at step 'PortInfrastructure': Port infrastructure registration failed"
       );
 
-      // Restore for other tests
+      // Restore: Re-register the original function
+      const portInfraModule = await import("@/framework/config/modules/port-infrastructure.config");
+      registerDependencyStep({
+        name: "PortInfrastructure",
+        priority: 60,
+        execute: portInfraModule.registerPortInfrastructure,
+      });
       vi.restoreAllMocks();
     });
 
@@ -756,13 +798,15 @@ describe("dependencyconfig", () => {
     it("should propagate errors from registerJournalVisibilityConfig", async () => {
       const container = createTestContainer();
 
-      // Mock registerJournalVisibilityConfig to return an error
-      // This ensures line 201 in dependencyconfig.ts is covered (if (isErr(journalVisibilityConfigResult)) return journalVisibilityConfigResult;)
-      const journalVisibilityModule =
-        await import("@/framework/config/modules/journal-visibility.config");
-      vi.spyOn(journalVisibilityModule, "registerJournalVisibilityConfig").mockReturnValue(
-        err("JournalVisibilityConfig registration failed")
-      );
+      // Replace the JournalVisibilityConfig step with a mocked version that returns an error
+      const mockRegisterJournalVisibilityConfig = vi
+        .fn()
+        .mockReturnValue(err("JournalVisibilityConfig registration failed"));
+      registerDependencyStep({
+        name: "JournalVisibilityConfig",
+        priority: 110,
+        execute: mockRegisterJournalVisibilityConfig,
+      });
 
       const result = configureDependencies(container);
 
@@ -771,26 +815,42 @@ describe("dependencyconfig", () => {
         "Failed at step 'JournalVisibilityConfig': JournalVisibilityConfig registration failed"
       );
 
-      // Restore for other tests
+      // Restore: Re-register the original function
+      const journalVisibilityModule =
+        await import("@/framework/config/modules/journal-visibility.config");
+      registerDependencyStep({
+        name: "JournalVisibilityConfig",
+        priority: 110,
+        execute: journalVisibilityModule.registerJournalVisibilityConfig,
+      });
       vi.restoreAllMocks();
     });
 
     it("should propagate errors from registerI18nServices", async () => {
       const container = createTestContainer();
 
-      // Mock registerI18nServices to return an error
-      // This ensures line 193 in dependencyconfig.ts is covered (if (isErr(i18nServicesResult)) return i18nServicesResult;)
-      const i18nModule = await import("@/framework/config/modules/i18n-services.config");
-      vi.spyOn(i18nModule, "registerI18nServices").mockReturnValue(
-        err("I18n services registration failed")
-      );
+      // Replace the I18nServices step with a mocked version that returns an error
+      const mockRegisterI18nServices = vi
+        .fn()
+        .mockReturnValue(err("I18n services registration failed"));
+      registerDependencyStep({
+        name: "I18nServices",
+        priority: 120,
+        execute: mockRegisterI18nServices,
+      });
 
       const result = configureDependencies(container);
 
       expectResultErr(result);
       expect(result.error).toBe("Failed at step 'I18nServices': I18n services registration failed");
 
-      // Restore for other tests
+      // Restore: Re-register the original function
+      const i18nModule = await import("@/framework/config/modules/i18n-services.config");
+      registerDependencyStep({
+        name: "I18nServices",
+        priority: 120,
+        execute: i18nModule.registerI18nServices,
+      });
       vi.restoreAllMocks();
     });
 
@@ -925,11 +985,16 @@ describe("dependencyconfig", () => {
     it("should propagate errors from initializeCacheConfigSync", async () => {
       const container = createTestContainer();
 
-      // Mock initializeCacheConfigSync to return an error
+      // Replace the CacheConfigSyncInit step with a mocked version that returns an error
       const cacheServicesModule = await import("@/framework/config/modules/cache-services.config");
-      vi.spyOn(cacheServicesModule, "initializeCacheConfigSync").mockReturnValue(
-        err("Failed to initialize CacheConfigSync: Mocked error")
-      );
+      const mockInitializeCacheConfigSync = vi
+        .fn()
+        .mockReturnValue(err("Failed to initialize CacheConfigSync: Mocked error"));
+      registerDependencyStep({
+        name: "CacheConfigSyncInit",
+        priority: 190,
+        execute: mockInitializeCacheConfigSync,
+      });
 
       const result = configureDependencies(container);
 
@@ -940,8 +1005,101 @@ describe("dependencyconfig", () => {
         expect(result.error).toContain("Failed at step 'CacheConfigSyncInit'");
       }
 
-      // Restore for other tests
+      // Restore: Re-register the original function
+      registerDependencyStep({
+        name: "CacheConfigSyncInit",
+        priority: 190,
+        execute: cacheServicesModule.initializeCacheConfigSync,
+      });
       vi.restoreAllMocks();
+    });
+  });
+
+  describe("resetDependencyRegistry", () => {
+    it("should reset the dependency registry", () => {
+      const container = createTestContainer();
+
+      // First configuration
+      const result1 = configureDependencies(container);
+      expectResultOk(result1);
+
+      // Reset the registry
+      resetDependencyRegistry();
+
+      // After reset, the registry should be cleared
+      // This is primarily useful for testing scenarios where a clean state is needed
+      // The function should complete without errors
+      expect(() => resetDependencyRegistry()).not.toThrow();
+    });
+
+    it("should clear custom registered steps from the registry", () => {
+      // Start with a clean state
+      resetDependencyRegistry();
+
+      const container = createTestContainer();
+
+      // Register a custom step with priority before validation (170)
+      const customStep = {
+        name: "CustomTestStep",
+        priority: 150, // Before validation (170) but after most other steps
+        execute: vi.fn().mockReturnValue({ ok: true, value: undefined }),
+      };
+      registerDependencyStep(customStep);
+
+      // Configure dependencies (should include custom step)
+      // Note: This may fail validation because module steps aren't registered after reset
+      // but the custom step should still be called before validation fails
+      configureDependencies(container);
+      // Custom step should be called (it runs before validation)
+      expect(customStep.execute).toHaveBeenCalled();
+
+      // Reset the registry
+      resetDependencyRegistry();
+
+      // Reset the mock to track new calls
+      customStep.execute.mockClear();
+
+      // Re-register custom step
+      registerDependencyStep(customStep);
+
+      // Create a new container (old one is validated and can't be reconfigured)
+      const container2 = createTestContainer();
+
+      // Configure again - custom step should be called
+      // Note: This may fail validation because module steps aren't re-registered
+      // (module imports don't re-execute), but the custom step should still be called
+      configureDependencies(container2);
+
+      // The custom step should be called even if validation fails
+      expect(customStep.execute).toHaveBeenCalled();
+
+      // Note: result2 may fail validation due to missing module steps,
+      // but that's expected behavior after reset - module imports don't re-execute
+    });
+
+    it("should reset internal steps registration flag to allow re-registration", () => {
+      const container1 = createTestContainer();
+
+      // First configuration
+      configureDependencies(container1);
+
+      // Verify internal steps were registered
+      expectResultOk(container1.isRegistered(serviceContainerToken));
+      expectResultOk(container1.isRegistered(environmentConfigToken));
+
+      // Reset
+      resetDependencyRegistry();
+
+      // Create a new container for second configuration
+      const container2 = createTestContainer();
+
+      // Second configuration should re-register internal steps
+      // (internalStepsRegistered flag should be reset, allowing re-registration)
+      configureDependencies(container2);
+
+      // Internal steps should be registered in the new container
+      expectResultOk(container2.isRegistered(serviceContainerToken));
+      expectResultOk(container2.isRegistered(environmentConfigToken));
     });
   });
 });

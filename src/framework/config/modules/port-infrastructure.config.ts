@@ -301,3 +301,12 @@ export function registerPortRegistries(container: ServiceContainer): Result<void
 
   return ok(undefined);
 }
+
+// Self-register this module's dependency registration step
+import { registerDependencyStep } from "@/framework/config/dependency-registry";
+registerDependencyStep({
+  name: "PortInfrastructure",
+  priority: 60,
+  execute: registerPortInfrastructure,
+});
+// Note: registerPortRegistries is registered in dependencyconfig.ts as SubcontainerValues (internal step)

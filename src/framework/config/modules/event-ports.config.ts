@@ -172,3 +172,11 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
 
   return ok(undefined);
 }
+
+// Self-register this module's dependency registration step
+import { registerDependencyStep } from "@/framework/config/dependency-registry";
+registerDependencyStep({
+  name: "EventPorts",
+  priority: 140,
+  execute: registerEventPorts,
+});

@@ -12,6 +12,28 @@
 
 ### Upgrade-Hinweise
 
+## [0.46.5] - 2025-12-27
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **OCP-002 Refactoring: Dependency-Registration erweiterbar gemacht** ([Details](docs/refactoring/OCP/OCP-002-dependency-registration-hardcoded-order.md))
+- Neue Registry-API in `dependency-registry.ts`: Module können sich selbst bei Import-Zeit registrieren
+- `DependencyRegistrationRegistry` und `DependencyRegistrationStep` Interface exportiert für externe Nutzung
+- Module-Config-Dateien registrieren sich automatisch über `registerDependencyStep()` bei Import
+- `createDependencyRegistrationRegistry()` registriert nur noch interne/Framework-Steps
+- Neue Module können jetzt Dependency-Steps registrieren, ohne `dependencyconfig.ts` zu ändern (OCP-konform)
+- `resetDependencyRegistry()` Funktion für Test-Szenarien hinzugefügt
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.46.4] - 2025-12-27
 ### Hinzugefügt
 - Keine Einträge

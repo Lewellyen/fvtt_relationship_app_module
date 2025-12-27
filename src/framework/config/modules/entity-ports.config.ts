@@ -44,3 +44,11 @@ export function registerEntityPorts(container: ServiceContainer): Result<void, s
 
   return ok(undefined);
 }
+
+// Self-register this module's dependency registration step
+import { registerDependencyStep } from "@/framework/config/dependency-registry";
+registerDependencyStep({
+  name: "EntityPorts",
+  priority: 100,
+  execute: registerEntityPorts,
+});

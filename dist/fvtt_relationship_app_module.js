@@ -2567,2181 +2567,502 @@ function getDIMetricsHealthCheckClass() {
 }
 __name(getDIMetricsHealthCheckClass, "getDIMetricsHealthCheckClass");
 const moduleIdToken = createInjectionToken("ModuleId");
-const platformBootstrapEventPortToken = createInjectionToken(
-  "PlatformBootstrapEventPort"
-);
-const metricsRecorderToken = createInjectionToken("MetricsRecorder");
-const metricsSamplerToken = createInjectionToken("MetricsSampler");
-const metricsReporterToken = createInjectionToken("MetricsReporter");
-const traceContextToken = createInjectionToken("TraceContext");
-const metricsStorageToken = createInjectionToken("MetricsStorage");
-const metricsAggregatorToken = createInjectionToken("MetricsAggregator");
-const metricsPersistenceManagerToken = createInjectionToken(
-  "MetricsPersistenceManager"
-);
-const metricsStateManagerToken = createInjectionToken("MetricsStateManager");
-const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
-const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
-const HOOK_THROTTLE_WINDOW_MS = 150;
-const VALIDATION_CONSTRAINTS = {
-  /** Maximale Länge für IDs und Keys */
-  MAX_ID_LENGTH: 100,
-  /** Maximale Länge für Namen */
-  MAX_NAME_LENGTH: 100,
-  /** Maximale Länge für Flag-Keys */
-  MAX_FLAG_KEY_LENGTH: 100
-};
-const METRICS_CONFIG = {
-  /** Größe des Circular-Buffers für Resolution-Zeiten */
-  RESOLUTION_TIMES_BUFFER_SIZE: 100
-};
-Object.freeze(VALIDATION_CONSTRAINTS);
-Object.freeze(METRICS_CONFIG);
-const _MetricsAggregator = class _MetricsAggregator {
-  /**
-   * Aggregates raw metrics into a snapshot.
-   *
-   * @param metrics - Raw metrics data
-   * @returns Aggregated metrics snapshot
-   */
-  aggregate(metrics) {
-    const avgTime = this.calculateAverage(metrics.resolutionTimes, metrics.resolutionTimesCount);
-    const cacheHitRate = this.calculateCacheHitRate(metrics.cacheHits, metrics.cacheMisses);
-    return {
-      containerResolutions: metrics.containerResolutions,
-      resolutionErrors: metrics.resolutionErrors,
-      avgResolutionTimeMs: avgTime,
-      portSelections: Object.fromEntries(metrics.portSelections),
-      portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures),
-      cacheHitRate
-    };
-  }
-  /**
-   * Calculates the average of resolution times.
-   *
-   * @param times - Array of resolution times
-   * @param count - Number of valid entries in the array
-   * @returns Average time in milliseconds
-   */
-  calculateAverage(times, count) {
-    if (count === 0) {
-      return 0;
-    }
-    const slice = times.slice(0, count);
-    const sum = slice.reduce((acc, time) => acc + time, 0);
-    return sum / count;
-  }
-  /**
-   * Calculates the cache hit rate as a percentage.
-   *
-   * @param hits - Number of cache hits
-   * @param misses - Number of cache misses
-   * @returns Cache hit rate (0-100)
-   */
-  calculateCacheHitRate(hits, misses) {
-    const totalAccess = hits + misses;
-    if (totalAccess === 0) {
-      return 0;
-    }
-    return hits / totalAccess * 100;
-  }
-};
-__name(_MetricsAggregator, "MetricsAggregator");
-let MetricsAggregator = _MetricsAggregator;
-const _MetricsPersistenceManager = class _MetricsPersistenceManager {
-  /**
-   * Serializes raw metrics into a persistence state.
-   *
-   * @param metrics - Raw metrics data
-   * @returns Serializable persistence state
-   */
-  serialize(metrics) {
-    return {
-      metrics: {
-        containerResolutions: metrics.containerResolutions,
-        resolutionErrors: metrics.resolutionErrors,
-        cacheHits: metrics.cacheHits,
-        cacheMisses: metrics.cacheMisses,
-        portSelections: Object.fromEntries(metrics.portSelections),
-        portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures)
-      },
-      resolutionTimes: Array.from(metrics.resolutionTimes),
-      resolutionTimesIndex: metrics.resolutionTimesIndex,
-      resolutionTimesCount: metrics.resolutionTimesCount
-    };
-  }
-  /**
-   * Deserializes a persistence state into raw metrics.
-   *
-   * @param state - Persisted state (can be null or undefined)
-   * @returns Raw metrics data
-   */
-  deserialize(state) {
-    if (!state) {
-      return this.createEmptyRawMetrics();
-    }
-    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
-    const rawMetrics = {
-      containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
-      resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
-      cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
-      cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
-      portSelections: new Map(
-        Object.entries(metrics?.portSelections ?? {}).map(([key, value2]) => [
-          Number(key),
-          Number.isFinite(Number(value2)) ? Number(value2) : 0
-        ])
-      ),
-      portSelectionFailures: new Map(
-        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value2]) => [
-          Number(key),
-          Number.isFinite(Number(value2)) ? Number(value2) : 0
-        ])
-      ),
-      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
-      resolutionTimesIndex: 0,
-      resolutionTimesCount: 0
-    };
-    if (Array.isArray(resolutionTimes)) {
-      const maxLength2 = Math.min(resolutionTimes.length, rawMetrics.resolutionTimes.length);
-      for (let index = 0; index < maxLength2; index++) {
-        const value2 = Number(resolutionTimes[index]);
-        rawMetrics.resolutionTimes[index] = Number.isFinite(value2) ? value2 : 0;
-      }
-      const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
-      const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
-      rawMetrics.resolutionTimesIndex = Math.min(
-        Math.max(0, safeIndex),
-        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE - 1
-      );
-      rawMetrics.resolutionTimesCount = Math.min(
-        Math.max(0, safeCount),
-        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE
-      );
-    } else {
-      rawMetrics.resolutionTimesIndex = 0;
-      rawMetrics.resolutionTimesCount = 0;
-    }
-    return rawMetrics;
-  }
-  /**
-   * Creates an empty raw metrics structure.
-   *
-   * @returns Empty raw metrics
-   */
-  createEmptyRawMetrics() {
-    return {
-      containerResolutions: 0,
-      resolutionErrors: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      portSelections: /* @__PURE__ */ new Map(),
-      portSelectionFailures: /* @__PURE__ */ new Map(),
-      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
-      resolutionTimesIndex: 0,
-      resolutionTimesCount: 0
-    };
-  }
-};
-__name(_MetricsPersistenceManager, "MetricsPersistenceManager");
-let MetricsPersistenceManager = _MetricsPersistenceManager;
-const _MetricsStateManager = class _MetricsStateManager {
+const _DependencyRegistrationRegistry = class _DependencyRegistrationRegistry {
   constructor() {
-    this.callbacks = /* @__PURE__ */ new Set();
+    this.steps = [];
   }
   /**
-   * Resets the state manager.
-   * Clears all registered callbacks.
+   * Registers a new dependency registration step.
+   * Steps are automatically sorted by priority after registration.
+   * If a step with the same name already exists, it will be replaced.
+   *
+   * @param step - The registration step to add
+   */
+  register(step) {
+    this.steps = this.steps.filter((s) => s.name !== step.name);
+    this.steps.push(step);
+    this.steps.sort((a, b) => a.priority - b.priority);
+  }
+  /**
+   * Resets the registry by clearing all registered steps.
+   * This is primarily useful for testing scenarios where a clean state is needed.
    */
   reset() {
-    this.callbacks.clear();
+    this.steps = [];
   }
   /**
-   * Subscribes to state changes.
+   * Executes all registered steps in priority order.
+   * Stops at first error and returns it.
    *
-   * @param callback - Callback to invoke on state changes
+   * @param container - The service container to configure
+   * @returns Result indicating success or the first error encountered
    */
-  onStateChanged(callback) {
-    this.callbacks.add(callback);
-  }
-  /**
-   * Unsubscribes from state changes.
-   *
-   * @param callback - Callback to remove
-   */
-  unsubscribe(callback) {
-    this.callbacks.delete(callback);
-  }
-  /**
-   * Notifies all registered callbacks of a state change.
-   * Internal method used by MetricsCollector.
-   */
-  notifyStateChanged() {
-    for (const callback of this.callbacks) {
-      try {
-        callback();
-      } catch (error) {
-        console.error("Error in metrics state change callback:", error);
+  configure(container) {
+    for (const step of this.steps) {
+      const result = step.execute(container);
+      if (isErr(result)) {
+        return err(`Failed at step '${step.name}': ${result.error}`);
       }
     }
+    return ok(void 0);
   }
 };
-__name(_MetricsStateManager, "MetricsStateManager");
-let MetricsStateManager = _MetricsStateManager;
-function isValidMetricDefinition(value2) {
-  if (typeof value2 !== "object" || value2 === null) {
-    return false;
-  }
-  return "key" in value2 && typeof value2.key === "string" && "initialValue" in value2 && typeof value2.initialValue !== "undefined" && "reducer" in value2 && typeof value2.reducer === "function" && "serializer" in value2 && typeof value2.serializer === "function";
+__name(_DependencyRegistrationRegistry, "DependencyRegistrationRegistry");
+let DependencyRegistrationRegistry = _DependencyRegistrationRegistry;
+const dependencyRegistry = new DependencyRegistrationRegistry();
+function registerDependencyStep(step) {
+  dependencyRegistry.register(step);
 }
-__name(isValidMetricDefinition, "isValidMetricDefinition");
-function castToMetricDefinition(definition) {
-  if (!isValidMetricDefinition(definition)) {
-    throw new Error(`Invalid metric definition structure for key "${definition.key}"`);
-  }
-  return definition;
+__name(registerDependencyStep, "registerDependencyStep");
+const portSelectorToken = createInjectionToken("PortSelector");
+const foundryGamePortRegistryToken = createInjectionToken("FoundryGamePortRegistry");
+const foundryHooksPortRegistryToken = createInjectionToken(
+  "FoundryHooksPortRegistry"
+);
+const foundryDocumentPortRegistryToken = createInjectionToken(
+  "FoundryDocumentPortRegistry"
+);
+const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry");
+const foundrySettingsPortRegistryToken = createInjectionToken(
+  "FoundrySettingsPortRegistry"
+);
+const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
+const foundryModulePortRegistryToken = createInjectionToken(
+  "FoundryModulePortRegistry"
+);
+function createFoundryError(code, message2, details, cause) {
+  return { code, message: message2, details, cause };
 }
-__name(castToMetricDefinition, "castToMetricDefinition");
-function castMetricValue(value2, key) {
-  if (value2 === void 0) {
-    throw new Error(
-      `Metric value for key "${key}" is undefined. This indicates a registry initialization issue.`
-    );
-  }
-  return value2;
+__name(createFoundryError, "createFoundryError");
+function isErrorLike(obj) {
+  return typeof obj === "object" && obj !== null;
 }
-__name(castMetricValue, "castMetricValue");
-const _MetricDefinitionRegistry = class _MetricDefinitionRegistry {
-  constructor() {
-    this.definitions = /* @__PURE__ */ new Map();
-  }
-  /**
-   * Registers a metric definition.
-   *
-   * @param definition - Metric definition to register
-   * @throws Error if a definition with the same key already exists or if the definition is invalid
-   */
-  register(definition) {
-    if (this.definitions.has(definition.key)) {
-      throw new Error(
-        `Metric definition with key "${definition.key}" already exists. Use a different key or remove the existing definition first.`
-      );
-    }
-    this.definitions.set(definition.key, castToMetricDefinition(definition));
-  }
-  /**
-   * Gets a metric definition by key.
-   *
-   * @param key - Metric key
-   * @returns Metric definition or undefined if not found
-   */
-  get(key) {
-    return this.definitions.get(key);
-  }
-  /**
-   * Gets all registered metric definitions.
-   *
-   * @returns Array of all metric definitions
-   */
-  getAll() {
-    return Array.from(this.definitions.values());
-  }
-  /**
-   * Checks if a metric definition exists.
-   *
-   * @param key - Metric key
-   * @returns True if definition exists
-   */
-  has(key) {
-    return this.definitions.has(key);
-  }
-  /**
-   * Removes a metric definition.
-   *
-   * @param key - Metric key to remove
-   * @returns True if definition was removed, false if it didn't exist
-   */
-  remove(key) {
-    return this.definitions.delete(key);
-  }
-  /**
-   * Clears all registered definitions.
-   */
-  clear() {
-    this.definitions.clear();
-  }
-  /**
-   * Gets the number of registered definitions.
-   *
-   * @returns Number of registered definitions
-   */
-  size() {
-    return this.definitions.size;
-  }
-};
-__name(_MetricDefinitionRegistry, "MetricDefinitionRegistry");
-let MetricDefinitionRegistry = _MetricDefinitionRegistry;
-function isResolutionEvent(event) {
-  return typeof event === "object" && event !== null && "durationMs" in event && typeof event.durationMs === "number" && "success" in event && typeof event.success === "boolean";
+__name(isErrorLike, "isErrorLike");
+function isFoundryError(error) {
+  if (!isErrorLike(error)) return false;
+  return "code" in error && "message" in error && typeof error.code === "string" && typeof error.message === "string";
 }
-__name(isResolutionEvent, "isResolutionEvent");
-function isPortSelectionEvent(event) {
-  return typeof event === "object" && event !== null && "version" in event && typeof event.version === "number";
-}
-__name(isPortSelectionEvent, "isPortSelectionEvent");
-function isCacheAccessEvent(event) {
-  return typeof event === "object" && event !== null && "hit" in event && typeof event.hit === "boolean";
-}
-__name(isCacheAccessEvent, "isCacheAccessEvent");
-const containerResolutionsDefinition = {
-  key: "containerResolutions",
-  initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, _event) => current + 1, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
-};
-const resolutionErrorsDefinition = {
-  key: "resolutionErrors",
-  initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isResolutionEvent(event)) {
-      return current;
-    }
-    return event.success ? current : current + 1;
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
-};
-const cacheHitsDefinition = {
-  key: "cacheHits",
-  initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isCacheAccessEvent(event)) {
-      return current;
-    }
-    return event.hit ? current + 1 : current;
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
-};
-const cacheMissesDefinition = {
-  key: "cacheMisses",
-  initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isCacheAccessEvent(event)) {
-      return current;
-    }
-    return event.hit ? current : current + 1;
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
-};
-const portSelectionsDefinition = {
-  key: "portSelections",
-  initialValue: /* @__PURE__ */ new Map(),
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isPortSelectionEvent(event)) {
-      return current;
-    }
-    const count = current.get(event.version) ?? 0;
-    const updated = new Map(current);
-    updated.set(event.version, count + 1);
-    return updated;
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
-};
-const portSelectionFailuresDefinition = {
-  key: "portSelectionFailures",
-  initialValue: /* @__PURE__ */ new Map(),
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isPortSelectionEvent(event)) {
-      return current;
-    }
-    const count = current.get(event.version) ?? 0;
-    const updated = new Map(current);
-    updated.set(event.version, count + 1);
-    return updated;
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
-};
-const resolutionTimesDefinition = {
-  key: "resolutionTimes",
-  initialValue: {
-    buffer: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
-    index: 0,
-    count: 0
-  },
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isResolutionEvent(event)) {
-      return current;
-    }
-    const buffer = new Float64Array(current.buffer);
-    const maxSize2 = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
-    buffer[current.index] = event.durationMs;
-    const newIndex = (current.index + 1) % maxSize2;
-    const newCount = Math.min(current.count + 1, maxSize2);
-    return {
-      buffer,
-      index: newIndex,
-      count: newCount
-    };
-  }, "reducer"),
-  serializer: /* @__PURE__ */ __name((value2) => ({
-    buffer: Array.from(value2.buffer),
-    index: value2.index,
-    count: value2.count
-  }), "serializer")
-};
-function createDefaultMetricDefinitionRegistry() {
-  const registry = new MetricDefinitionRegistry();
-  registry.register(containerResolutionsDefinition);
-  registry.register(resolutionErrorsDefinition);
-  registry.register(cacheHitsDefinition);
-  registry.register(cacheMissesDefinition);
-  registry.register(portSelectionsDefinition);
-  registry.register(portSelectionFailuresDefinition);
-  registry.register(resolutionTimesDefinition);
-  return registry;
-}
-__name(createDefaultMetricDefinitionRegistry, "createDefaultMetricDefinitionRegistry");
-const _MetricsCollector = class _MetricsCollector {
-  constructor(config2, registry, aggregator, persistenceManager, stateManager) {
-    this.config = config2;
-    this.metricStates = /* @__PURE__ */ new Map();
-    this.registry = registry ?? createDefaultMetricDefinitionRegistry();
-    this.initializeMetricStates();
-    this.aggregator = aggregator ?? new MetricsAggregator();
-    this.persistenceManager = persistenceManager ?? new MetricsPersistenceManager();
-    this.stateManager = stateManager ?? new MetricsStateManager();
+__name(isFoundryError, "isFoundryError");
+const portSelectionEventEmitterToken = createInjectionToken(
+  "PortSelectionEventEmitter"
+);
+const foundryVersionDetectorToken = createInjectionToken("FoundryVersionDetector");
+const _PortResolutionStrategy = class _PortResolutionStrategy {
+  constructor(container) {
+    this.container = container;
   }
   /**
-   * Initializes metric states from registry definitions.
-   * Private method called during construction.
-   */
-  initializeMetricStates() {
-    for (const definition of this.registry.getAll()) {
-      this.metricStates.set(definition.key, {
-        value: definition.initialValue,
-        definition
-      });
-    }
-  }
-  /**
-   * Updates a metric using its reducer function.
+   * Resolves a port from the DI container using the provided injection token.
    *
-   * @param key - Metric key
-   * @param event - Event data for the reducer
-   */
-  updateMetric(key, event) {
-    const state = this.metricStates.get(key);
-    if (!state) {
-      return;
-    }
-    const newValue = state.definition.reducer(state.value, event);
-    this.metricStates.set(key, {
-      value: newValue,
-      definition: state.definition
-    });
-  }
-  /**
-   * Records a service resolution attempt.
+   * @template T - The port type
+   * @param token - The injection token for the port
+   * @returns Result with resolved port or FoundryError
    *
-   * @param token - The injection token that was resolved
-   * @param durationMs - Time taken to resolve in milliseconds
-   * @param success - Whether resolution succeeded
+   * @example
+   * ```typescript
+   * const strategy = new PortResolutionStrategy(container);
+   * const portResult = strategy.resolve(foundryV13GamePortToken);
+   * if (portResult.ok) {
+   *   const port = portResult.value;
+   * }
+   * ```
    */
-  recordResolution(token, durationMs, success) {
-    const event = { token, durationMs, success };
-    this.updateMetric("containerResolutions", event);
-    this.updateMetric("resolutionErrors", event);
-    this.updateMetric("resolutionTimes", event);
-    this.notifyStateChanged();
-  }
-  /**
-   * Records a port selection event.
-   *
-   * @param version - The Foundry version for which a port was selected
-   */
-  recordPortSelection(version) {
-    this.updateMetric("portSelections", { version });
-    this.notifyStateChanged();
-  }
-  /**
-   * Records a port selection failure.
-   *
-   * Useful for tracking when no compatible port is available for a version.
-   *
-   * @param version - The Foundry version for which port selection failed
-   */
-  recordPortSelectionFailure(version) {
-    this.updateMetric("portSelectionFailures", { version });
-    this.notifyStateChanged();
-  }
-  /**
-   * Records a cache access (hit or miss).
-   *
-   * @param hit - True if cache hit, false if cache miss
-   */
-  recordCacheAccess(hit) {
-    const event = { hit };
-    this.updateMetric("cacheHits", event);
-    this.updateMetric("cacheMisses", event);
-    this.notifyStateChanged();
-  }
-  /**
-   * Gets a snapshot of current metrics.
-   * Delegates aggregation to MetricsAggregator.
-   *
-   * @returns Immutable snapshot of metrics data
-   */
-  getSnapshot() {
-    return this.aggregator.aggregate(this.getRawMetrics());
-  }
-  /**
-   * Gets raw metrics data without aggregation.
-   * Used internally by aggregator and persistence manager.
-   *
-   * Converts from generic Map structure to IRawMetrics for backward compatibility.
-   *
-   * @returns Raw metrics data
-   */
-  getRawMetrics() {
-    const containerResolutions = this.getMetricValue("containerResolutions") ?? 0;
-    const resolutionErrors = this.getMetricValue("resolutionErrors") ?? 0;
-    const cacheHits = this.getMetricValue("cacheHits") ?? 0;
-    const cacheMisses = this.getMetricValue("cacheMisses") ?? 0;
-    const portSelectionsRaw = this.getMetricValue("portSelections");
-    const portSelections = portSelectionsRaw instanceof Map ? portSelectionsRaw : /* @__PURE__ */ new Map();
-    const portSelectionFailuresRaw = this.getMetricValue("portSelectionFailures");
-    const portSelectionFailures = portSelectionFailuresRaw instanceof Map ? portSelectionFailuresRaw : /* @__PURE__ */ new Map();
-    const resolutionTimesState = this.getMetricValue("resolutionTimes");
-    return {
-      containerResolutions,
-      resolutionErrors,
-      cacheHits,
-      cacheMisses,
-      portSelections,
-      portSelectionFailures,
-      resolutionTimes: resolutionTimesState?.buffer ?? new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
-      resolutionTimesIndex: resolutionTimesState?.index ?? 0,
-      resolutionTimesCount: resolutionTimesState?.count ?? 0
-    };
-  }
-  /**
-   * Gets a metric value by key.
-   *
-   * @param key - Metric key
-   * @returns Metric value or undefined if not found
-   */
-  getMetricValue(key) {
-    const state = this.metricStates.get(key);
-    if (!state) {
-      return void 0;
-    }
-    return castMetricValue(state.value, key);
-  }
-  /**
-   * Resets all collected metrics.
-   * Useful for testing or starting fresh measurements.
-   */
-  reset() {
-    for (const definition of this.registry.getAll()) {
-      this.metricStates.set(definition.key, {
-        value: definition.initialValue,
-        definition
-      });
-    }
-    this.stateManager.reset();
-    this.notifyStateChanged();
-  }
-  /**
-   * Hook invoked after state mutations. Subclasses can override to react
-   * (e.g., persist metrics).
-   */
-  onStateChanged() {
-    this.stateManager.notifyStateChanged();
-  }
-  /**
-   * Notifies state manager of state changes.
-   * Internal method that can be overridden by subclasses.
-   */
-  notifyStateChanged() {
-    this.onStateChanged();
-  }
-  /**
-   * Captures the internal state for persistence.
-   * Delegates to MetricsPersistenceManager.
-   *
-   * @returns Serializable metrics state
-   */
-  getPersistenceState() {
-    return this.persistenceManager.serialize(this.getRawMetrics());
-  }
-  /**
-   * Restores internal state from a persisted snapshot.
-   * Delegates to MetricsPersistenceManager.
-   *
-   * @param state - Persisted metrics state
-   */
-  restoreFromPersistenceState(state) {
-    const rawMetrics = this.persistenceManager.deserialize(state);
-    this.applyRawMetrics(rawMetrics);
-  }
-  /**
-   * Applies raw metrics to internal state.
-   * Internal method used by restoreFromPersistenceState.
-   * Converts from IRawMetrics to generic Map structure.
-   *
-   * @param rawMetrics - Raw metrics to apply
-   */
-  applyRawMetrics(rawMetrics) {
-    this.setMetricValue("containerResolutions", rawMetrics.containerResolutions);
-    this.setMetricValue("resolutionErrors", rawMetrics.resolutionErrors);
-    this.setMetricValue("cacheHits", rawMetrics.cacheHits);
-    this.setMetricValue("cacheMisses", rawMetrics.cacheMisses);
-    this.setMetricValue("portSelections", rawMetrics.portSelections);
-    this.setMetricValue("portSelectionFailures", rawMetrics.portSelectionFailures);
-    const resolutionTimesState = this.metricStates.get("resolutionTimes");
-    if (resolutionTimesState) {
-      const buffer = new Float64Array(rawMetrics.resolutionTimes);
-      this.setMetricValue("resolutionTimes", {
-        buffer,
-        index: rawMetrics.resolutionTimesIndex,
-        count: rawMetrics.resolutionTimesCount
-      });
-    }
-  }
-  /**
-   * Sets a metric value by key.
-   *
-   * @param key - Metric key
-   * @param value - New metric value
-   */
-  setMetricValue(key, value2) {
-    const state = this.metricStates.get(key);
-    if (state) {
-      this.metricStates.set(key, {
-        value: value2,
-        definition: state.definition
-      });
-    }
-  }
-};
-__name(_MetricsCollector, "MetricsCollector");
-_MetricsCollector.dependencies = [runtimeConfigToken];
-let MetricsCollector = _MetricsCollector;
-const _DIMetricsCollector = class _DIMetricsCollector extends MetricsCollector {
-  constructor(config2, aggregator, persistenceManager, stateManager, registry) {
-    super(config2, registry, aggregator, persistenceManager, stateManager);
-  }
-};
-__name(_DIMetricsCollector, "DIMetricsCollector");
-_DIMetricsCollector.dependencies = [
-  runtimeConfigToken,
-  metricsAggregatorToken,
-  metricsPersistenceManagerToken,
-  metricsStateManagerToken
-];
-let DIMetricsCollector = _DIMetricsCollector;
-const _PersistentMetricsCollector = class _PersistentMetricsCollector extends MetricsCollector {
-  constructor(config2, metricsStorage, registry, aggregator, persistenceManager, stateManager) {
-    super(config2, registry, aggregator, persistenceManager, stateManager);
-    this.metricsStorage = metricsStorage;
-    this.suppressPersistence = false;
-    this.initialized = false;
-  }
-  /**
-   * Initializes the collector by restoring state from storage.
-   * Must be called explicitly after construction.
-   *
-   * @returns Result indicating success or error
-   */
-  initialize() {
-    if (this.initialized) {
-      return ok(void 0);
-    }
+  resolve(token) {
     try {
-      this.restoreFromStorage();
-      this.initialized = true;
-      return ok(void 0);
+      const resolveResult = this.container.resolveWithError(token);
+      if (!resolveResult.ok) {
+        return err(
+          createFoundryError(
+            "PORT_RESOLUTION_FAILED",
+            `Failed to resolve port from container`,
+            { token: String(token) },
+            resolveResult.error
+          )
+        );
+      }
+      return ok(castResolvedService(resolveResult.value));
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return err(`Failed to initialize PersistentMetricsCollector: ${errorMessage}`);
-    }
-  }
-  clearPersistentState() {
-    this.metricsStorage.clear?.();
-    this.suppressPersistence = true;
-    try {
-      super.reset();
-    } finally {
-      this.suppressPersistence = false;
-    }
-  }
-  onStateChanged() {
-    super.onStateChanged();
-    if (this.suppressPersistence) {
-      return;
-    }
-    this.persist();
-  }
-  restoreFromStorage() {
-    let state = null;
-    try {
-      state = this.metricsStorage.load();
-    } catch {
-      state = null;
-    }
-    if (!state) {
-      return;
-    }
-    this.suppressPersistence = true;
-    try {
-      this.restoreFromPersistenceState(state);
-    } finally {
-      this.suppressPersistence = false;
-    }
-  }
-  persist() {
-    try {
-      this.metricsStorage.save(this.getPersistenceState());
-    } catch {
+      return err(
+        createFoundryError(
+          "PORT_RESOLUTION_FAILED",
+          `Failed to resolve port from container`,
+          { token: String(token) },
+          error instanceof Error ? error : new Error(String(error))
+        )
+      );
     }
   }
 };
-__name(_PersistentMetricsCollector, "PersistentMetricsCollector");
-_PersistentMetricsCollector.dependencies = [
-  runtimeConfigToken,
-  metricsStorageToken
-];
-let PersistentMetricsCollector = _PersistentMetricsCollector;
-const _DIPersistentMetricsCollector = class _DIPersistentMetricsCollector extends PersistentMetricsCollector {
-  constructor(config2, metricsStorage, aggregator, persistenceManager, stateManager, registry) {
-    super(config2, metricsStorage, registry, aggregator, persistenceManager, stateManager);
-  }
-};
-__name(_DIPersistentMetricsCollector, "DIPersistentMetricsCollector");
-_DIPersistentMetricsCollector.dependencies = [
-  runtimeConfigToken,
-  metricsStorageToken,
-  metricsAggregatorToken,
-  metricsPersistenceManagerToken,
-  metricsStateManagerToken
-];
-let DIPersistentMetricsCollector = _DIPersistentMetricsCollector;
-const _MetricsSampler = class _MetricsSampler {
-  constructor(config2) {
-    this.config = config2;
-  }
-  /**
-   * Determines if a performance operation should be sampled based on sampling rate.
-   *
-   * In production mode, uses probabilistic sampling to reduce overhead.
-   * In development mode, always samples (returns true).
-   *
-   * @returns True if the operation should be measured/recorded
-   *
-   * @example
-   * ```typescript
-   * const sampler = container.resolve(metricsSamplerToken);
-   * if (sampler.shouldSample()) {
-   *   performance.mark('operation-start');
-   *   // ... operation ...
-   *   performance.mark('operation-end');
-   *   performance.measure('operation', 'operation-start', 'operation-end');
-   * }
-   * ```
-   */
-  shouldSample() {
-    if (this.config.get("isDevelopment")) {
-      return true;
-    }
-    return Math.random() < this.config.get("performanceSamplingRate");
-  }
-};
-__name(_MetricsSampler, "MetricsSampler");
-let MetricsSampler = _MetricsSampler;
-const _DIMetricsSampler = class _DIMetricsSampler extends MetricsSampler {
-  constructor(config2) {
-    super(config2);
-  }
-};
-__name(_DIMetricsSampler, "DIMetricsSampler");
-_DIMetricsSampler.dependencies = [runtimeConfigToken];
-let DIMetricsSampler = _DIMetricsSampler;
-const _MetricsReporter = class _MetricsReporter {
-  constructor(collector, logger) {
-    this.collector = collector;
-    this.logger = logger;
-  }
-  /**
-   * Logs a formatted metrics summary to the console.
-   * Uses console.table() for easy-to-read tabular output.
-   */
-  logSummary() {
-    const snapshot = this.collector.getSnapshot();
-    const tableData = {
-      "Total Resolutions": snapshot.containerResolutions,
-      Errors: snapshot.resolutionErrors,
-      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
-      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
-    };
-    console.table(tableData);
-  }
-  /**
-   * Gibt Metrics als JSON zurück.
-   *
-   * @returns JSON string representation of metrics snapshot
-   */
-  toJSON() {
-    return JSON.stringify(this.collector.getSnapshot(), null, 2);
-  }
-};
-__name(_MetricsReporter, "MetricsReporter");
-let MetricsReporter = _MetricsReporter;
-const _DIMetricsReporter = class _DIMetricsReporter extends MetricsReporter {
-  constructor(collector, logger) {
-    super(collector, logger);
-  }
-};
-__name(_DIMetricsReporter, "DIMetricsReporter");
-_DIMetricsReporter.dependencies = [metricsCollectorToken, loggerToken];
-let DIMetricsReporter = _DIMetricsReporter;
-const _LocalStorageMetricsStorage = class _LocalStorageMetricsStorage {
-  constructor(storageKey, storage = getStorage()) {
-    this.storageKey = storageKey;
-    this.storage = storage;
-  }
-  load() {
-    if (!this.storage) {
-      return null;
-    }
-    try {
-      const raw = this.storage.getItem(this.storageKey);
-      if (!raw) {
-        return null;
-      }
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  }
-  save(state) {
-    if (!this.storage) {
-      return;
-    }
-    try {
-      this.storage.setItem(this.storageKey, JSON.stringify(state));
-    } catch {
-    }
-  }
-  clear() {
-    if (!this.storage) {
-      return;
-    }
-    try {
-      this.storage.removeItem(this.storageKey);
-    } catch {
-    }
-  }
-};
-__name(_LocalStorageMetricsStorage, "LocalStorageMetricsStorage");
-let LocalStorageMetricsStorage = _LocalStorageMetricsStorage;
-function getStorage() {
-  try {
-    if (typeof globalThis !== "undefined" && "localStorage" in globalThis) {
-      return globalThis.localStorage;
-    }
-  } catch {
-  }
-  return null;
-}
-__name(getStorage, "getStorage");
-function createMetricsStorage(key) {
-  return new LocalStorageMetricsStorage(key);
-}
-__name(createMetricsStorage, "createMetricsStorage");
-function createInMemoryMetricsStorage() {
-  let state = null;
+__name(_PortResolutionStrategy, "PortResolutionStrategy");
+let PortResolutionStrategy = _PortResolutionStrategy;
+const portSelectionObservabilityToken = createInjectionToken(
+  "PortSelectionObservability"
+);
+const portSelectionPerformanceTrackerToken = createInjectionToken("PortSelectionPerformanceTracker");
+const portSelectionObserverToken = createInjectionToken("PortSelectionObserver");
+function createMatchError(message2, details) {
   return {
-    load() {
-      return state;
-    },
-    save(newState) {
-      state = newState;
-    },
-    clear() {
-      state = null;
-    }
+    code: "PORT_SELECTION_FAILED",
+    message: message2,
+    details
   };
 }
-__name(createInMemoryMetricsStorage, "createInMemoryMetricsStorage");
-const _TracedLogger = class _TracedLogger {
-  constructor(baseLogger, traceId) {
-    this.baseLogger = baseLogger;
-    this.traceId = traceId;
-  }
-  setMinLevel(level) {
-    this.baseLogger.setMinLevel?.(level);
-  }
-  log(message2, ...optionalParams) {
-    this.baseLogger.log(this.formatMessage(message2), ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.baseLogger.error(this.formatMessage(message2), ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.baseLogger.warn(this.formatMessage(message2), ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.baseLogger.info(this.formatMessage(message2), ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.baseLogger.debug(this.formatMessage(message2), ...optionalParams);
-  }
-  withTraceId(newTraceId) {
-    return new _TracedLogger(this.baseLogger, `${this.traceId}/${newTraceId}`);
-  }
-  formatMessage(message2) {
-    return `[${this.traceId}] ${message2}`;
-  }
-};
-__name(_TracedLogger, "TracedLogger");
-let TracedLogger = _TracedLogger;
-const _BaseConsoleLogger = class _BaseConsoleLogger {
-  constructor(minLevel) {
-    this.minLevel = minLevel;
-  }
-  setMinLevel(level) {
-    this.minLevel = level;
-  }
-  log(message2, ...optionalParams) {
-    console.log(`${LOG_PREFIX} ${message2}`, ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    if (LogLevel.ERROR < this.minLevel) return;
-    console.error(`${LOG_PREFIX} ${message2}`, ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    if (LogLevel.WARN < this.minLevel) return;
-    console.warn(`${LOG_PREFIX} ${message2}`, ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    if (LogLevel.INFO < this.minLevel) return;
-    console.info(`${LOG_PREFIX} ${message2}`, ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    if (LogLevel.DEBUG < this.minLevel) return;
-    console.debug(`${LOG_PREFIX} ${message2}`, ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return new TracedLogger(this, traceId);
-  }
-};
-__name(_BaseConsoleLogger, "BaseConsoleLogger");
-let BaseConsoleLogger = _BaseConsoleLogger;
-const _RuntimeConfigLoggerDecorator = class _RuntimeConfigLoggerDecorator {
-  constructor(baseLogger, runtimeConfig) {
-    this.baseLogger = baseLogger;
-    this.runtimeConfig = runtimeConfig;
-    this.unsubscribe = null;
-    this.syncLogLevel();
-  }
-  syncLogLevel() {
-    this.baseLogger.setMinLevel?.(this.runtimeConfig.get("logLevel"));
-    this.unsubscribe?.();
-    this.unsubscribe = this.runtimeConfig.onChange("logLevel", (level) => {
-      this.baseLogger.setMinLevel?.(level);
-    });
-  }
-  setMinLevel(level) {
-    this.baseLogger.setMinLevel?.(level);
-  }
-  log(message2, ...optionalParams) {
-    this.baseLogger.log(message2, ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.baseLogger.error(message2, ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.baseLogger.warn(message2, ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.baseLogger.info(message2, ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.baseLogger.debug(message2, ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return this.baseLogger.withTraceId?.(traceId) ?? this.baseLogger;
-  }
-  dispose() {
-    this.unsubscribe?.();
-  }
-};
-__name(_RuntimeConfigLoggerDecorator, "RuntimeConfigLoggerDecorator");
-let RuntimeConfigLoggerDecorator = _RuntimeConfigLoggerDecorator;
-const _StackTraceLoggerDecorator = class _StackTraceLoggerDecorator {
-  constructor(baseLogger, runtimeConfig) {
-    this.baseLogger = baseLogger;
-    this.runtimeConfig = runtimeConfig;
-  }
-  setMinLevel(level) {
-    this.baseLogger.setMinLevel?.(level);
-  }
+__name(createMatchError, "createMatchError");
+const _GreedyPortMatchStrategy = class _GreedyPortMatchStrategy {
   /**
-   * Extracts the caller information from stack trace when debug mode is enabled.
-   * Filters out logger-related frames to show the actual source of the log call.
+   * Selects the highest compatible port version.
    *
-   * @returns Caller info in format "filename:line" or undefined if not in debug mode or extraction fails
-   */
-  getCallerInfo() {
-    const currentLogLevel = this.runtimeConfig.get("logLevel");
-    if (currentLogLevel !== LogLevel.DEBUG) {
-      return void 0;
-    }
-    try {
-      const stack = new Error().stack;
-      if (!stack) return void 0;
-      const lines = stack.split("\n");
-      const loggerPatterns = [
-        /StackTraceLoggerDecorator/,
-        /BaseConsoleLogger/,
-        /ConsoleLoggerService/,
-        /RuntimeConfigLoggerDecorator/,
-        /TraceContextLoggerDecorator/,
-        /TracedLogger/,
-        /at Object\./
-      ];
-      for (let i = 3; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line) continue;
-        const isLoggerFrame = loggerPatterns.some((pattern) => pattern.test(line));
-        if (!isLoggerFrame && line.trim()) {
-          const match2 = line.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/) || line.match(/at\s+(.+?):(\d+):(\d+)/);
-          if (match2) {
-            const filePath = match2[2] || match2[1];
-            const lineNum = match2[3] || match2[2];
-            if (filePath && lineNum) {
-              const fileName = filePath.split(/[/\\]/).pop() || filePath;
-              return `${fileName}:${lineNum}`;
-            }
-          }
-          return line.trim().replace(/^at\s+/, "");
-        }
-      }
-    } catch {
-    }
-    return void 0;
-  }
-  formatWithCallerInfo(message2) {
-    const callerInfo = this.getCallerInfo();
-    return callerInfo ? `${message2} [${callerInfo}]` : message2;
-  }
-  log(message2, ...optionalParams) {
-    this.baseLogger.log(this.formatWithCallerInfo(message2), ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.baseLogger.error(this.formatWithCallerInfo(message2), ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.baseLogger.warn(this.formatWithCallerInfo(message2), ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.baseLogger.info(this.formatWithCallerInfo(message2), ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.baseLogger.debug(this.formatWithCallerInfo(message2), ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return this.baseLogger.withTraceId?.(traceId) ?? this.baseLogger;
-  }
-};
-__name(_StackTraceLoggerDecorator, "StackTraceLoggerDecorator");
-let StackTraceLoggerDecorator = _StackTraceLoggerDecorator;
-const _TraceContextLoggerDecorator = class _TraceContextLoggerDecorator {
-  constructor(baseLogger, traceContext) {
-    this.baseLogger = baseLogger;
-    this.traceContext = traceContext;
-  }
-  setMinLevel(level) {
-    this.baseLogger.setMinLevel?.(level);
-  }
-  formatWithTrace(message2) {
-    const traceId = this.traceContext?.getCurrentTraceId();
-    return traceId ? `[${traceId}] ${message2}` : message2;
-  }
-  log(message2, ...optionalParams) {
-    this.baseLogger.log(this.formatWithTrace(message2), ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.baseLogger.error(this.formatWithTrace(message2), ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.baseLogger.warn(this.formatWithTrace(message2), ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.baseLogger.info(this.formatWithTrace(message2), ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.baseLogger.debug(this.formatWithTrace(message2), ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return new TracedLogger(this, traceId);
-  }
-};
-__name(_TraceContextLoggerDecorator, "TraceContextLoggerDecorator");
-let TraceContextLoggerDecorator = _TraceContextLoggerDecorator;
-const _LoggerCompositionFactory = class _LoggerCompositionFactory {
-  /**
-   * Creates a composed logger with all necessary decorators.
+   * Algorithm:
+   * 1. Never select a port with version > current Foundry version
+   *    (prevents using APIs that don't exist yet)
+   * 2. Select the highest port version that is <= Foundry version
+   *    (use the newest compatible implementation)
    *
-   * @param config - Runtime configuration service
-   * @param traceContext - Optional trace context for trace ID injection
-   * @returns Composed logger instance
-   */
-  createLogger(config2, traceContext) {
-    const baseLogger = new BaseConsoleLogger(config2.get("logLevel"));
-    const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config2);
-    const withStackTrace = new StackTraceLoggerDecorator(withConfig, config2);
-    return traceContext ? new TraceContextLoggerDecorator(withStackTrace, traceContext) : withStackTrace;
-  }
-};
-__name(_LoggerCompositionFactory, "LoggerCompositionFactory");
-let LoggerCompositionFactory = _LoggerCompositionFactory;
-const _ConsoleLoggerService = class _ConsoleLoggerService {
-  constructor(config2, traceContext, factory) {
-    const compositionFactory = factory ?? new LoggerCompositionFactory();
-    this.logger = compositionFactory.createLogger(config2, traceContext);
-  }
-  // Delegate all methods to composed logger
-  setMinLevel(level) {
-    this.logger.setMinLevel?.(level);
-  }
-  log(message2, ...optionalParams) {
-    this.logger.log(message2, ...optionalParams);
-  }
-  error(message2, ...optionalParams) {
-    this.logger.error(message2, ...optionalParams);
-  }
-  warn(message2, ...optionalParams) {
-    this.logger.warn(message2, ...optionalParams);
-  }
-  info(message2, ...optionalParams) {
-    this.logger.info(message2, ...optionalParams);
-  }
-  debug(message2, ...optionalParams) {
-    this.logger.debug(message2, ...optionalParams);
-  }
-  withTraceId(traceId) {
-    return this.logger.withTraceId?.(traceId) ?? this.logger;
-  }
-};
-__name(_ConsoleLoggerService, "ConsoleLoggerService");
-let ConsoleLoggerService = _ConsoleLoggerService;
-const _DIConsoleLoggerService = class _DIConsoleLoggerService extends ConsoleLoggerService {
-  constructor(config2, traceContext) {
-    super(config2, traceContext);
-  }
-};
-__name(_DIConsoleLoggerService, "DIConsoleLoggerService");
-_DIConsoleLoggerService.dependencies = [runtimeConfigToken, traceContextToken];
-let DIConsoleLoggerService = _DIConsoleLoggerService;
-function generateTraceId() {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 10);
-  return `${timestamp}-${random}`;
-}
-__name(generateTraceId, "generateTraceId");
-function getTraceTimestamp(traceId) {
-  const parts = traceId.split("-");
-  if (parts.length !== 2) {
-    return null;
-  }
-  const [timestampStr, randomStr] = parts;
-  if (!timestampStr || !randomStr) {
-    return null;
-  }
-  const timestamp = parseInt(timestampStr, 10);
-  return isNaN(timestamp) ? null : timestamp;
-}
-__name(getTraceTimestamp, "getTraceTimestamp");
-const _TraceContext = class _TraceContext {
-  constructor() {
-    this.currentTraceId = null;
-  }
-  /**
-   * Executes a synchronous function with trace context.
+   * Time Complexity: O(n) where n = number of registered ports
+   * Space Complexity: O(1)
    *
-   * Automatically generates a trace ID if not provided.
-   * Maintains a context stack for nested traces.
-   * Ensures proper cleanup via try/finally.
-   *
-   * @template T - The return type of the function
-   * @param fn - Function to execute with trace context
-   * @param options - Trace options (trace ID, operation name, metadata)
-   * @returns The result of the function execution
+   * @param tokens - Map of version numbers to injection tokens
+   * @param foundryVersion - The current Foundry version to match against
+   * @returns Result with matched port token and version, or error if no match found
    *
    * @example
    * ```typescript
-   * const result = traceContext.trace(() => {
-   *   logger.info("Processing"); // Automatically traced
-   *   return processData();
+   * const strategy = new GreedyPortMatchStrategy();
+   * const tokens = new Map([
+   *   [13, foundryV13GamePortToken],
+   *   [14, foundryV14GamePortToken]
+   * ]);
+   * // Foundry v14: selects v14
+   * // Foundry v13: selects v13
+   * // Foundry v15: selects v14 (fallback to highest available)
+   * const result = strategy.select(tokens, 14);
+   * ```
+   */
+  select(tokens, foundryVersion) {
+    let selectedToken;
+    let selectedVersion = APP_DEFAULTS.NO_VERSION_SELECTED;
+    for (const [portVersion, token] of tokens.entries()) {
+      if (portVersion > foundryVersion) {
+        continue;
+      }
+      if (portVersion > selectedVersion) {
+        selectedVersion = portVersion;
+        selectedToken = token;
+      }
+    }
+    if (selectedToken === void 0) {
+      const availableVersions = Array.from(tokens.keys()).sort((a, b) => a - b).join(", ");
+      return err(
+        createMatchError(`No compatible port found for Foundry version ${foundryVersion}`, {
+          version: foundryVersion,
+          availableVersions: availableVersions || "none"
+        })
+      );
+    }
+    return ok({
+      token: selectedToken,
+      version: selectedVersion
+    });
+  }
+};
+__name(_GreedyPortMatchStrategy, "GreedyPortMatchStrategy");
+let GreedyPortMatchStrategy = _GreedyPortMatchStrategy;
+const _PortSelector = class _PortSelector {
+  constructor(versionDetector, eventEmitter, observability, performanceTracker, observer, container, matchStrategy) {
+    this.versionDetector = versionDetector;
+    this.eventEmitter = eventEmitter;
+    this.observability = observability;
+    this.performanceTracker = performanceTracker;
+    this.observer = observer;
+    this.observability.registerWithObservabilityRegistry(this);
+    this.observability.setupObservability(this, this.observer);
+    this.resolutionStrategy = new PortResolutionStrategy(container);
+    this.matchStrategy = matchStrategy ?? new GreedyPortMatchStrategy();
+  }
+  /**
+   * Subscribe to port selection events.
+   *
+   * Allows observers to be notified of port selection success/failure for
+   * logging, metrics, and other observability concerns.
+   *
+   * @param callback - Function to call when port selection events occur
+   * @returns Unsubscribe function
+   *
+   * @example
+   * ```typescript
+   * const selector = new PortSelector();
+   * const unsubscribe = selector.onEvent((event) => {
+   *   if (event.type === 'success') {
+   *     console.log(`Port v${event.selectedVersion} selected`);
+   *   }
    * });
    * ```
    */
-  trace(fn, options) {
-    const opts = typeof options === "string" ? { traceId: options } : options;
-    const traceId = opts?.traceId ?? generateTraceId();
-    const previousTraceId = this.currentTraceId;
-    this.currentTraceId = traceId;
-    try {
-      return fn();
-    } finally {
-      this.currentTraceId = previousTraceId;
-    }
+  onEvent(callback) {
+    return this.eventEmitter.subscribe(callback);
   }
   /**
-   * Executes an asynchronous function with trace context.
+   * Selects and resolves the appropriate port from injection tokens.
    *
-   * Similar to trace() but for async operations.
-   * Automatically generates a trace ID if not provided.
-   * Maintains a context stack for nested traces.
-   * Ensures proper cleanup via try/finally.
+   * CRITICAL: Works with token map to avoid eager instantiation.
+   * Only the selected token is resolved from the DI container, preventing crashes from
+   * incompatible constructors accessing unavailable APIs.
    *
-   * @template T - The return type of the async function
-   * @param fn - Async function to execute with trace context
-   * @param options - Trace options (trace ID, operation name, metadata)
-   * @returns Promise resolving to the result of the function execution
+   * @template T - The port type
+   * @param tokens - Map of version numbers to injection tokens
+   * @param foundryVersion - Optional version override (uses getFoundryVersion() if not provided)
+   * @param adapterName - Optional adapter name for observability
+   * @returns Result with resolved port or error
    *
    * @example
    * ```typescript
-   * const result = await traceContext.traceAsync(async () => {
-   *   logger.info("Fetching data"); // Automatically traced
-   *   return await fetchData();
-   * });
+   * const tokens = new Map([
+   *   [13, foundryV13GamePortToken],
+   *   [14, foundryV14GamePortToken]
+   * ]);
+   * const selector = new PortSelector(eventEmitter, observability, container);
+   * const result = selector.selectPortFromTokens(tokens);
+   * // On Foundry v13: resolves only v13 port from container (v14 token never resolved)
+   * // On Foundry v14: resolves v14 port from container
    * ```
    */
-  async traceAsync(fn, options) {
-    const opts = typeof options === "string" ? { traceId: options } : options;
-    const traceId = opts?.traceId ?? generateTraceId();
-    const previousTraceId = this.currentTraceId;
-    this.currentTraceId = traceId;
-    try {
-      return await fn();
-    } finally {
-      this.currentTraceId = previousTraceId;
-    }
-  }
-  /**
-   * Gets the current trace ID from the context stack.
-   *
-   * Returns null if not currently in a traced context.
-   * Useful for services that need to access the current trace ID
-   * without having it passed as a parameter.
-   *
-   * @returns Current trace ID or null if not in traced context
-   *
-   * @example
-   * ```typescript
-   * const traceId = traceContext.getCurrentTraceId();
-   * if (traceId) {
-   *   console.log(`Current trace: ${traceId}`);
-   * }
-   * ```
-   */
-  getCurrentTraceId() {
-    return this.currentTraceId;
-  }
-  /**
-   * Cleans up resources.
-   * For TraceContext, this resets the current trace ID.
-   */
-  dispose() {
-    this.currentTraceId = null;
-  }
-};
-__name(_TraceContext, "TraceContext");
-_TraceContext.dependencies = [];
-let TraceContext = _TraceContext;
-const _DITraceContext = class _DITraceContext extends TraceContext {
-  constructor() {
-    super();
-  }
-};
-__name(_DITraceContext, "DITraceContext");
-_DITraceContext.dependencies = [];
-let DITraceContext = _DITraceContext;
-const _ModuleHealthService = class _ModuleHealthService {
-  constructor(registry) {
-    this.registry = registry;
-    this.healthChecksInitialized = false;
-  }
-  /**
-   * Gets the current health status of the module.
-   *
-   * Health is determined by running all registered health checks.
-   * Overall status:
-   * - "healthy": All checks pass
-   * - "unhealthy": Container check fails
-   * - "degraded": Other checks fail
-   *
-   * @returns HealthStatus with overall status, individual checks, and timestamp
-   *
-   * @example
-   * ```typescript
-   * const healthService = container.resolve(moduleHealthServiceToken);
-   * const health = healthService.getHealth();
-   *
-   * if (health.status !== 'healthy') {
-   *   console.warn('Module is not healthy:', health.checks);
-   * }
-   * ```
-   */
-  getHealth() {
-    if (!this.healthChecksInitialized) {
-      this.healthChecksInitialized = true;
-    }
-    const results = this.registry.runAll();
-    const allHealthy = Array.from(results.values()).every((result) => result);
-    const status = allHealthy ? "healthy" : results.get("container") === false ? "unhealthy" : "degraded";
-    const checks = this.registry.getAllChecks();
-    let lastError = null;
-    for (const check2 of checks) {
-      const result = results.get(check2.name);
-      if (!result && check2.getDetails) {
-        lastError = check2.getDetails();
+  selectPortFromTokens(tokens, foundryVersion, adapterName) {
+    this.performanceTracker.startTracking();
+    let version;
+    if (foundryVersion !== void 0) {
+      version = foundryVersion;
+    } else {
+      const versionResult = this.versionDetector.getVersion();
+      if (!versionResult.ok) {
+        this.performanceTracker.endTracking();
+        this.observer.handleEvent({
+          type: "failure",
+          foundryVersion: 0,
+          // Unknown version
+          availableVersions: Array.from(tokens.keys()).sort((a, b) => a - b).join(", "),
+          ...adapterName !== void 0 ? { adapterName } : {},
+          error: createFoundryError(
+            "PORT_SELECTION_FAILED",
+            "Could not determine Foundry version",
+            void 0,
+            versionResult.error
+          )
+        });
+        return err(
+          createFoundryError(
+            "PORT_SELECTION_FAILED",
+            "Could not determine Foundry version",
+            void 0,
+            versionResult.error
+          )
+        );
       }
+      version = versionResult.value;
     }
-    return {
-      status,
-      checks: {
-        containerValidated: results.get("container") ?? true,
-        portsSelected: results.get("metrics") ?? true,
-        lastError
-      },
-      timestamp: (/* @__PURE__ */ new Date()).toISOString()
-    };
-  }
-};
-__name(_ModuleHealthService, "ModuleHealthService");
-let ModuleHealthService = _ModuleHealthService;
-const _DIModuleHealthService = class _DIModuleHealthService extends ModuleHealthService {
-  constructor(registry) {
-    super(registry);
-  }
-};
-__name(_DIModuleHealthService, "DIModuleHealthService");
-_DIModuleHealthService.dependencies = [healthCheckRegistryToken];
-let DIModuleHealthService = _DIModuleHealthService;
-const notificationCenterToken = createInjectionToken("NotificationCenter");
-const journalVisibilityServiceToken = createInjectionToken("JournalVisibilityService");
-const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
-const hideJournalContextMenuHandlerToken = createInjectionToken(
-  "HideJournalContextMenuHandler"
-);
-const journalContextMenuHandlersToken = createInjectionToken(
-  "JournalContextMenuHandlers"
-);
-const journalDirectoryProcessorToken = createInjectionToken(
-  "JournalDirectoryProcessor"
-);
-const runtimeConfigSyncToken = createInjectionToken("RuntimeConfigSync");
-const runtimeConfigSettingsSyncToken = createInjectionToken(
-  "RuntimeConfigSettingsSync"
-);
-const settingRegistrationErrorMapperToken = createInjectionToken(
-  "SettingRegistrationErrorMapper"
-);
-const settingDefinitionRegistryToken = createInjectionToken(
-  "SettingDefinitionRegistry"
-);
-const runtimeConfigBindingRegistryToken = createInjectionToken(
-  "RuntimeConfigBindingRegistry"
-);
-const i18nFacadeToken = createInjectionToken("I18nFacadeService");
-const foundryGameToken = createInjectionToken("FoundryGame");
-const foundryHooksToken = createInjectionToken("FoundryHooks");
-const foundryDocumentToken = createInjectionToken("FoundryDocument");
-const foundryUIToken = createInjectionToken("FoundryUI");
-const foundrySettingsToken = createInjectionToken("FoundrySettings");
-const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
-function createApiTokens() {
-  return {
-    notificationCenterToken: markAsApiSafe(notificationCenterToken),
-    journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
-    journalDirectoryProcessorToken: markAsApiSafe(journalDirectoryProcessorToken),
-    foundryGameToken: markAsApiSafe(foundryGameToken),
-    foundryHooksToken: markAsApiSafe(foundryHooksToken),
-    foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
-    foundryUIToken: markAsApiSafe(foundryUIToken),
-    foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
-    i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
-    foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken)
-  };
-}
-__name(createApiTokens, "createApiTokens");
-const _ModuleApiBuilder = class _ModuleApiBuilder {
-  constructor(serviceResolver, healthMetricsProvider) {
-    this.serviceResolver = serviceResolver;
-    this.healthMetricsProvider = healthMetricsProvider;
-  }
-  /**
-   * Creates the well-known API tokens collection.
-   *
-   * @returns Type-safe token collection for external modules
-   */
-  createApiTokens() {
-    return createApiTokens();
-  }
-  /**
-   * Creates the complete ModuleApi object with all methods.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Complete ModuleApi object
-   */
-  createApi(container, wellKnownTokens) {
-    return {
-      version: PUBLIC_API_VERSION,
-      // Overloaded resolve method (throws on error)
-      resolve: this.serviceResolver.createResolveFunction(container, wellKnownTokens),
-      // Result-Pattern method (safe, never throws)
-      resolveWithError: this.serviceResolver.createResolveWithErrorFunction(
-        container,
-        wellKnownTokens
-      ),
-      getAvailableTokens: /* @__PURE__ */ __name(() => {
-        const tokenMap = /* @__PURE__ */ new Map();
-        const tokenEntries = [
-          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
-          ["journalDirectoryProcessorToken", journalDirectoryProcessorToken],
-          ["foundryGameToken", foundryGameToken],
-          ["foundryHooksToken", foundryHooksToken],
-          ["foundryDocumentToken", foundryDocumentToken],
-          ["foundryUIToken", foundryUIToken],
-          ["foundrySettingsToken", foundrySettingsToken],
-          ["i18nFacadeToken", i18nFacadeToken],
-          ["foundryJournalFacadeToken", foundryJournalFacadeToken],
-          ["notificationCenterToken", notificationCenterToken]
-        ];
-        for (const [, token] of tokenEntries) {
-          const isRegisteredResult = container.isRegistered(token);
-          tokenMap.set(token, {
-            description: String(token).replace("Symbol(", "").replace(")", ""),
-            isRegistered: getRegistrationStatus(isRegisteredResult)
-          });
-        }
-        return tokenMap;
-      }, "getAvailableTokens"),
-      tokens: wellKnownTokens,
-      getMetrics: /* @__PURE__ */ __name(() => this.healthMetricsProvider.getMetrics(container), "getMetrics"),
-      getHealth: /* @__PURE__ */ __name(() => this.healthMetricsProvider.getHealth(container), "getHealth")
-    };
-  }
-};
-__name(_ModuleApiBuilder, "ModuleApiBuilder");
-let ModuleApiBuilder = _ModuleApiBuilder;
-const _ApiWrapperStrategyRegistry = class _ApiWrapperStrategyRegistry {
-  constructor() {
-    this.strategies = [];
-  }
-  /**
-   * Registers a wrapper strategy.
-   *
-   * @param strategy - Strategy to register
-   */
-  register(strategy) {
-    this.strategies.push(strategy);
-  }
-  /**
-   * Registers multiple wrapper strategies.
-   *
-   * @param strategies - Array of strategies to register
-   */
-  registerAll(strategies) {
-    for (const strategy of strategies) {
-      this.register(strategy);
+    const tokensForStrategy = tokens;
+    const matchResult = this.matchStrategy.select(tokensForStrategy, version);
+    if (!matchResult.ok) {
+      this.performanceTracker.endTracking();
+      const errorDetails = matchResult.error.details;
+      let availableVersions;
+      if (typeof errorDetails === "object" && errorDetails !== null && "availableVersions" in errorDetails && typeof errorDetails.availableVersions === "string") {
+        availableVersions = errorDetails.availableVersions;
+      } else {
+        availableVersions = Array.from(tokens.keys()).sort((a, b) => a - b).join(", ");
+      }
+      this.observer.handleEvent({
+        type: "failure",
+        foundryVersion: version,
+        availableVersions,
+        ...adapterName !== void 0 ? { adapterName } : {},
+        error: matchResult.error
+      });
+      return err(matchResult.error);
     }
-  }
-  /**
-   * Gets all registered strategies, sorted by priority (lower = higher priority).
-   *
-   * @returns Array of strategies in priority order
-   */
-  getAll() {
-    return [...this.strategies].sort((a, b) => {
-      const priorityA = a.getPriority?.() ?? 100;
-      const priorityB = b.getPriority?.() ?? 100;
-      return priorityA - priorityB;
+    const { token: selectedToken, version: selectedVersion } = matchResult.value;
+    const typedToken = selectedToken;
+    const portResult = this.resolutionStrategy.resolve(typedToken);
+    if (!portResult.ok) {
+      this.performanceTracker.endTracking();
+      this.observer.handleEvent({
+        type: "failure",
+        foundryVersion: version,
+        availableVersions: Array.from(tokens.keys()).sort((a, b) => a - b).join(", "),
+        ...adapterName !== void 0 ? { adapterName } : {},
+        error: portResult.error
+      });
+      return err(portResult.error);
+    }
+    const durationMs = this.performanceTracker.endTracking();
+    this.observer.handleEvent({
+      type: "success",
+      selectedVersion,
+      foundryVersion: version,
+      ...adapterName !== void 0 ? { adapterName } : {},
+      durationMs
     });
-  }
-  /**
-   * Finds the first strategy that supports the given token.
-   *
-   * @param token - API token to find strategy for
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Strategy that supports the token, or null if none found
-   */
-  findStrategy(token, wellKnownTokens) {
-    const sortedStrategies = this.getAll();
-    for (const strategy of sortedStrategies) {
-      if (strategy.supports(token, wellKnownTokens)) {
-        return strategy;
-      }
-    }
-    return null;
-  }
-  /**
-   * Clears all registered strategies.
-   * Useful for testing or reset scenarios.
-   */
-  clear() {
-    this.strategies.length = 0;
+    return ok(portResult.value);
   }
 };
-__name(_ApiWrapperStrategyRegistry, "ApiWrapperStrategyRegistry");
-let ApiWrapperStrategyRegistry = _ApiWrapperStrategyRegistry;
-function isAllowedKey(prop, allowed) {
-  if (typeof prop !== "string") {
-    return false;
+__name(_PortSelector, "PortSelector");
+let PortSelector = _PortSelector;
+const _DIPortSelector = class _DIPortSelector extends PortSelector {
+  constructor(versionDetector, eventEmitter, observability, performanceTracker, observer, container) {
+    super(versionDetector, eventEmitter, observability, performanceTracker, observer, container);
   }
-  return allowed.includes(prop);
+};
+__name(_DIPortSelector, "DIPortSelector");
+_DIPortSelector.dependencies = [
+  foundryVersionDetectorToken,
+  portSelectionEventEmitterToken,
+  portSelectionObservabilityToken,
+  portSelectionPerformanceTrackerToken,
+  portSelectionObserverToken,
+  serviceContainerToken
+];
+let DIPortSelector = _DIPortSelector;
+let cachedVersion = null;
+function detectFoundryVersion() {
+  if (typeof game === "undefined") {
+    return err("Foundry game object is not available or version cannot be determined");
+  }
+  const versionString = game.version;
+  if (!versionString) {
+    return err("Foundry version is not available on the game object");
+  }
+  const versionStr = versionString.match(/^(\d+)/)?.[1];
+  if (!versionStr) {
+    return err(`Could not parse Foundry version from: ${versionString}`);
+  }
+  return ok(Number.parseInt(versionStr, 10));
 }
-__name(isAllowedKey, "isAllowedKey");
-function createReadOnlyWrapper(service, allowedMethods) {
-  return new Proxy(service, {
-    get(target, prop, receiver) {
-      if (isAllowedKey(prop, allowedMethods)) {
-        const value2 = Reflect.get(target, prop, receiver);
-        if (typeof value2 === "function") {
-          return value2.bind(target);
-        }
-        return value2;
-      }
-      throw new Error(
-        `Property "${String(prop)}" is not accessible via Public API. Only these methods are allowed: ${allowedMethods.map(String).join(", ")}`
+__name(detectFoundryVersion, "detectFoundryVersion");
+function getFoundryVersionResult() {
+  if (cachedVersion === null) {
+    cachedVersion = detectFoundryVersion();
+  }
+  return cachedVersion;
+}
+__name(getFoundryVersionResult, "getFoundryVersionResult");
+function resetVersionCache() {
+  cachedVersion = null;
+}
+__name(resetVersionCache, "resetVersionCache");
+function tryGetFoundryVersion() {
+  const result = getFoundryVersionResult();
+  return result.ok ? result.value : void 0;
+}
+__name(tryGetFoundryVersion, "tryGetFoundryVersion");
+const _FoundryVersionDetector = class _FoundryVersionDetector {
+  /**
+   * Gets the major version number of the currently running Foundry VTT instance.
+   *
+   * @returns Result with major version number (e.g., 13 for "13.348") or FoundryError
+   *
+   * @example
+   * ```typescript
+   * const detector = new FoundryVersionDetector();
+   * const versionResult = detector.getVersion();
+   * if (versionResult.ok) {
+   *   console.log(`Foundry version: ${versionResult.value}`);
+   * }
+   * ```
+   */
+  getVersion() {
+    const versionResult = getFoundryVersionResult();
+    if (!versionResult.ok) {
+      return err(
+        createFoundryError(
+          "VERSION_DETECTION_FAILED",
+          "Could not determine Foundry version",
+          void 0,
+          versionResult.error
+        )
       );
-    },
-    set() {
-      throw new Error("Cannot modify services via Public API (read-only)");
-    },
-    deleteProperty() {
-      throw new Error("Cannot delete properties via Public API (read-only)");
     }
-  });
-}
-__name(createReadOnlyWrapper, "createReadOnlyWrapper");
-function createPublicLogger(logger) {
-  return createReadOnlyWrapper(logger, [
-    "log",
-    "debug",
-    "info",
-    "warn",
-    "error",
-    "withTraceId"
-    // Decorator pattern for trace context
-  ]);
-}
-__name(createPublicLogger, "createPublicLogger");
-function createPublicI18n(i18n) {
-  return createReadOnlyWrapper(i18n, ["translate", "format", "has"]);
-}
-__name(createPublicI18n, "createPublicI18n");
-function createPublicNotificationCenter(notificationCenter) {
-  return createReadOnlyWrapper(notificationCenter, [
-    "debug",
-    "info",
-    "warn",
-    "error",
-    "getChannelNames"
-  ]);
-}
-__name(createPublicNotificationCenter, "createPublicNotificationCenter");
-function createPublicFoundrySettings(foundrySettings) {
-  return createReadOnlyWrapper(foundrySettings, ["get"]);
-}
-__name(createPublicFoundrySettings, "createPublicFoundrySettings");
-function wrapI18nService(service, create) {
-  return create(service);
-}
-__name(wrapI18nService, "wrapI18nService");
-function wrapNotificationCenterService(service, create) {
-  return create(service);
-}
-__name(wrapNotificationCenterService, "wrapNotificationCenterService");
-function wrapFoundrySettingsPort(service, create) {
-  return create(service);
-}
-__name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
-const _I18nWrapperStrategy = class _I18nWrapperStrategy {
-  supports(token, wellKnownTokens) {
-    return token === wellKnownTokens.i18nFacadeToken;
-  }
-  wrap(service, _token, _wellKnownTokens) {
-    return wrapI18nService(service, createPublicI18n);
-  }
-  getPriority() {
-    return 10;
+    return ok(versionResult.value);
   }
 };
-__name(_I18nWrapperStrategy, "I18nWrapperStrategy");
-let I18nWrapperStrategy = _I18nWrapperStrategy;
-const _NotificationWrapperStrategy = class _NotificationWrapperStrategy {
-  supports(token, wellKnownTokens) {
-    return token === wellKnownTokens.notificationCenterToken;
-  }
-  wrap(service, _token, _wellKnownTokens) {
-    return wrapNotificationCenterService(service, createPublicNotificationCenter);
-  }
-  getPriority() {
-    return 10;
-  }
-};
-__name(_NotificationWrapperStrategy, "NotificationWrapperStrategy");
-let NotificationWrapperStrategy = _NotificationWrapperStrategy;
-const _SettingsWrapperStrategy = class _SettingsWrapperStrategy {
-  supports(token, wellKnownTokens) {
-    return token === wellKnownTokens.foundrySettingsToken;
-  }
-  wrap(service, _token, _wellKnownTokens) {
-    return wrapFoundrySettingsPort(service, createPublicFoundrySettings);
-  }
-  getPriority() {
-    return 10;
-  }
-};
-__name(_SettingsWrapperStrategy, "SettingsWrapperStrategy");
-let SettingsWrapperStrategy = _SettingsWrapperStrategy;
-const _NoopWrapperStrategy = class _NoopWrapperStrategy {
-  supports(_token, _wellKnownTokens) {
-    return true;
-  }
-  wrap(service, _token, _wellKnownTokens) {
-    return service;
-  }
-  getPriority() {
-    return 1e3;
-  }
-};
-__name(_NoopWrapperStrategy, "NoopWrapperStrategy");
-let NoopWrapperStrategy = _NoopWrapperStrategy;
-const _ServiceWrapperFactory = class _ServiceWrapperFactory {
-  constructor(strategyRegistry) {
-    this.strategyRegistry = strategyRegistry ?? this.createDefaultRegistry();
-  }
-  /**
-   * Creates the default strategy registry with standard wrapper strategies.
-   *
-   * @returns Registry with I18n, Notification, Settings, and Noop strategies
-   */
-  createDefaultRegistry() {
-    const registry = new ApiWrapperStrategyRegistry();
-    registry.registerAll([
-      new I18nWrapperStrategy(),
-      new NotificationWrapperStrategy(),
-      new SettingsWrapperStrategy(),
-      new NoopWrapperStrategy()
-      // Fallback strategy
-    ]);
-    return registry;
-  }
-  /**
-   * Applies read-only wrappers when API consumers resolve sensitive services.
-   *
-   * Delegates to registered strategies following Open/Closed Principle.
-   * No token-specific if/else chains - all logic is in strategies.
-   *
-   * @param token - API token used for resolution
-   * @param service - Service resolved from the container
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Wrapped service when applicable
-   */
-  wrapSensitiveService(token, service, wellKnownTokens) {
-    const strategy = this.strategyRegistry.findStrategy(token, wellKnownTokens);
-    if (strategy) {
-      return strategy.wrap(service, token, wellKnownTokens);
-    }
-    return service;
-  }
-};
-__name(_ServiceWrapperFactory, "ServiceWrapperFactory");
-let ServiceWrapperFactory = _ServiceWrapperFactory;
-function formatReplacementInfo(replacement) {
-  return replacement ? `Use "${replacement}" instead.
-` : "";
-}
-__name(formatReplacementInfo, "formatReplacementInfo");
-const deprecationMetadata = /* @__PURE__ */ new Map();
-function markAsDeprecated(token, reason, replacement, removedInVersion) {
-  const apiSafeToken = markAsApiSafe(token);
-  deprecationMetadata.set(apiSafeToken, {
-    reason,
-    replacement: replacement ? String(replacement) : null,
-    removedInVersion,
-    warningShown: false
-  });
-  return apiSafeToken;
-}
-__name(markAsDeprecated, "markAsDeprecated");
-function getDeprecationInfo(token) {
-  if (!token || typeof token !== "symbol") {
-    return null;
-  }
-  return deprecationMetadata.get(token) || null;
-}
-__name(getDeprecationInfo, "getDeprecationInfo");
-const _DeprecationHandler = class _DeprecationHandler {
-  /**
-   * Checks if a token is deprecated.
-   *
-   * @param token - Token to check
-   * @returns DeprecationInfo if deprecated, null otherwise
-   */
-  checkDeprecation(token) {
-    return getDeprecationInfo(token) ?? null;
-  }
-  /**
-   * Handles deprecation warnings for tokens.
-   * Logs warning to console if token is deprecated and warning hasn't been shown yet.
-   *
-   * Uses console.warn instead of Logger because:
-   * - Deprecation warnings are for external API consumers (not internal logs)
-   * - Should be visible even if Logger is disabled/configured differently
-   * - Follows npm/Node.js convention for deprecation warnings
-   *
-   * @param token - Token to check for deprecation
-   */
-  handleDeprecationWarning(token) {
-    const deprecationInfo = getDeprecationInfo(token);
-    if (deprecationInfo && !deprecationInfo.warningShown) {
-      const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
-      console.warn(
-        `[${MODULE_METADATA.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
-Reason: ${deprecationInfo.reason}
-` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
-      );
-      deprecationInfo.warningShown = true;
-    }
-  }
-};
-__name(_DeprecationHandler, "DeprecationHandler");
-let DeprecationHandler = _DeprecationHandler;
-const _ApiServiceResolver = class _ApiServiceResolver {
-  constructor(deprecationHandler, serviceWrapperFactory) {
-    this.deprecationHandler = deprecationHandler;
-    this.serviceWrapperFactory = serviceWrapperFactory;
-  }
-  /**
-   * Creates the resolve() function for the public API.
-   * Resolves services and applies wrappers (throws on error).
-   *
-   * @param container - PlatformContainerPort for resolution
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns Resolve function for ModuleApi
-   */
-  createResolveFunction(container, wellKnownTokens) {
-    return (token) => {
-      this.deprecationHandler.handleDeprecationWarning(token);
-      const service = container.resolve(token);
-      return this.serviceWrapperFactory.wrapSensitiveService(token, service, wellKnownTokens);
-    };
-  }
-  /**
-   * Creates the resolveWithError() function for the public API.
-   * Resolves services with Result pattern (never throws).
-   *
-   * @param container - PlatformContainerPort for resolution
-   * @param wellKnownTokens - Collection of API-safe tokens
-   * @returns ResolveWithError function for ModuleApi
-   */
-  createResolveWithErrorFunction(container, wellKnownTokens) {
-    return (token) => {
-      this.deprecationHandler.handleDeprecationWarning(token);
-      const result = container.resolveWithError(token);
-      if (!result.ok) {
-        const containerError = {
-          code: castContainerErrorCode(result.error.code),
-          message: result.error.message,
-          cause: result.error.cause,
-          tokenDescription: result.error.message
-        };
-        return err(containerError);
-      }
-      const service = castResolvedService(result.value);
-      const wrappedService = this.serviceWrapperFactory.wrapSensitiveService(
-        token,
-        service,
-        wellKnownTokens
-      );
-      return ok(wrappedService);
-    };
-  }
-};
-__name(_ApiServiceResolver, "ApiServiceResolver");
-let ApiServiceResolver = _ApiServiceResolver;
-const _ApiHealthMetricsProvider = class _ApiHealthMetricsProvider {
-  /**
-   * Gets a snapshot of performance metrics.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Current metrics snapshot
-   */
-  getMetrics(container) {
-    const metricsResult = container.resolveWithError(metricsCollectorToken);
-    if (!metricsResult.ok) {
-      return {
-        containerResolutions: 0,
-        resolutionErrors: 0,
-        avgResolutionTimeMs: 0,
-        portSelections: {},
-        portSelectionFailures: {},
-        cacheHitRate: 0
-      };
-    }
-    const metricsCollector = castResolvedService(metricsResult.value);
-    return metricsCollector.getSnapshot();
-  }
-  /**
-   * Gets module health status.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Health status with checks and overall status
-   */
-  getHealth(container) {
-    const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
-    if (!healthServiceResult.ok) {
-      return {
-        status: "unhealthy",
-        checks: {
-          containerValidated: false,
-          portsSelected: false,
-          lastError: "ModuleHealthService not available"
-        },
-        timestamp: (/* @__PURE__ */ new Date()).toISOString()
-      };
-    }
-    const healthService = castResolvedService(healthServiceResult.value);
-    return healthService.getHealth();
-  }
-};
-__name(_ApiHealthMetricsProvider, "ApiHealthMetricsProvider");
-let ApiHealthMetricsProvider = _ApiHealthMetricsProvider;
-const _ModuleApiInitializer = class _ModuleApiInitializer {
-  constructor(deprecationHandler, serviceWrapperFactory, apiServiceResolver, healthMetricsProvider, apiBuilder) {
-    this.deprecationHandler = deprecationHandler ?? new DeprecationHandler();
-    this.serviceWrapperFactory = serviceWrapperFactory ?? new ServiceWrapperFactory();
-    this.apiServiceResolver = apiServiceResolver ?? new ApiServiceResolver(this.deprecationHandler, this.serviceWrapperFactory);
-    this.healthMetricsProvider = healthMetricsProvider ?? new ApiHealthMetricsProvider();
-    this.apiBuilder = apiBuilder ?? new ModuleApiBuilder(this.apiServiceResolver, this.healthMetricsProvider);
-  }
-  /**
-   * Exposes the module's public API to game.modules.get(MODULE_ID).api
-   *
-   * This method coordinates all components to create and expose the API.
-   * It acts as a Facade, delegating to specialized components.
-   *
-   * @param container - Initialized and validated PlatformContainerPort
-   * @returns Result<void, string> - Ok if successful, Err with error message
-   */
-  expose(container) {
-    if (typeof game === "undefined" || !game?.modules) {
-      return err("Game modules not available - API cannot be exposed");
-    }
-    const mod = game.modules.get(MODULE_METADATA.ID);
-    if (!mod) {
-      return err(`Module '${MODULE_METADATA.ID}' not found in game.modules`);
-    }
-    const wellKnownTokens = this.apiBuilder.createApiTokens();
-    const api = this.apiBuilder.createApi(container, wellKnownTokens);
-    mod.api = api;
-    return ok(void 0);
-  }
-};
-__name(_ModuleApiInitializer, "ModuleApiInitializer");
-_ModuleApiInitializer.dependencies = [];
-let ModuleApiInitializer = _ModuleApiInitializer;
-const _DIModuleApiInitializer = class _DIModuleApiInitializer extends ModuleApiInitializer {
+__name(_FoundryVersionDetector, "FoundryVersionDetector");
+let FoundryVersionDetector = _FoundryVersionDetector;
+const _DIFoundryVersionDetector = class _DIFoundryVersionDetector extends FoundryVersionDetector {
   constructor() {
     super();
   }
 };
-__name(_DIModuleApiInitializer, "DIModuleApiInitializer");
-_DIModuleApiInitializer.dependencies = [];
-let DIModuleApiInitializer = _DIModuleApiInitializer;
-const _HealthCheckRegistry = class _HealthCheckRegistry {
+__name(_DIFoundryVersionDetector, "DIFoundryVersionDetector");
+_DIFoundryVersionDetector.dependencies = [];
+let DIFoundryVersionDetector = _DIFoundryVersionDetector;
+const _PortRegistry = class _PortRegistry {
   constructor() {
-    this.checks = /* @__PURE__ */ new Map();
-  }
-  register(check2) {
-    this.checks.set(check2.name, check2);
-  }
-  unregister(name) {
-    this.checks.delete(name);
-  }
-  runAll() {
-    const results = /* @__PURE__ */ new Map();
-    for (const [name, check2] of this.checks) {
-      results.set(name, check2.check());
-    }
-    return results;
-  }
-  getCheck(name) {
-    return this.checks.get(name);
-  }
-  getAllChecks() {
-    return Array.from(this.checks.values());
-  }
-  dispose() {
-    for (const check2 of this.checks.values()) {
-      check2.dispose();
-    }
-    this.checks.clear();
-  }
-};
-__name(_HealthCheckRegistry, "HealthCheckRegistry");
-_HealthCheckRegistry.dependencies = [];
-let HealthCheckRegistry = _HealthCheckRegistry;
-const _DIHealthCheckRegistry = class _DIHealthCheckRegistry extends HealthCheckRegistry {
-  constructor() {
-    super();
-  }
-};
-__name(_DIHealthCheckRegistry, "DIHealthCheckRegistry");
-_DIHealthCheckRegistry.dependencies = [];
-let DIHealthCheckRegistry = _DIHealthCheckRegistry;
-const _HealthCheckRegistryAdapter = class _HealthCheckRegistryAdapter {
-  constructor() {
-    this.registry = new HealthCheckRegistry();
-  }
-  register(check2) {
-    this.registry.register(check2);
-  }
-  unregister(name) {
-    this.registry.unregister(name);
-  }
-  runAll() {
-    return this.registry.runAll();
-  }
-  getCheck(name) {
-    return this.registry.getCheck(name);
-  }
-  getAllChecks() {
-    return this.registry.getAllChecks();
-  }
-};
-__name(_HealthCheckRegistryAdapter, "HealthCheckRegistryAdapter");
-let HealthCheckRegistryAdapter = _HealthCheckRegistryAdapter;
-const _InitPhaseRegistry = class _InitPhaseRegistry {
-  /**
-   * Creates a new registry with the provided phases.
-   *
-   * @param phases - Array of init phases (will be sorted by priority)
-   */
-  constructor(phases = []) {
-    this.phases = [];
-    this.phases = [...phases];
-    this.sortPhases();
+    this.tokens = /* @__PURE__ */ new Map();
   }
   /**
-   * Returns all phases sorted by priority (ascending).
-   *
-   * @returns Sorted array of init phases
+   * Registers a port injection token for a specific Foundry version.
+   * @param version - The Foundry version this port supports
+   * @param token - Injection token for resolving the port from the DI container
+   * @returns Result indicating success or duplicate registration error
    */
-  getAll() {
-    return [...this.phases];
-  }
-  /**
-   * Adds a phase to the registry and re-sorts.
-   *
-   * @param phase - Phase to add
-   */
-  add(phase) {
-    this.phases.push(phase);
-    this.sortPhases();
-  }
-  /**
-   * Sorts phases by priority (ascending).
-   */
-  sortPhases() {
-    this.phases.sort((a, b) => a.priority - b.priority);
-  }
-};
-__name(_InitPhaseRegistry, "InitPhaseRegistry");
-let InitPhaseRegistry = _InitPhaseRegistry;
-var InitPhaseCriticality = /* @__PURE__ */ ((InitPhaseCriticality2) => {
-  InitPhaseCriticality2["HALT_ON_ERROR"] = "haltOnError";
-  InitPhaseCriticality2["WARN_AND_CONTINUE"] = "warnAndContinue";
-  return InitPhaseCriticality2;
-})(InitPhaseCriticality || {});
-function hasMethod(obj, methodName) {
-  return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
-  typeof obj[methodName] === "function";
-}
-__name(hasMethod, "hasMethod");
-function hasProperty(obj, propertyName) {
-  return obj !== null && obj !== void 0 && typeof obj === "object" && propertyName in obj;
-}
-__name(hasProperty, "hasProperty");
-function isObjectWithMethods(obj, methodNames) {
-  if (obj === null || obj === void 0 || typeof obj !== "object") {
-    return false;
-  }
-  return methodNames.every((methodName) => hasMethod(obj, methodName));
-}
-__name(isObjectWithMethods, "isObjectWithMethods");
-function isInitializable(obj) {
-  return hasMethod(obj, "initialize");
-}
-__name(isInitializable, "isInitializable");
-const _MetricsBootstrapper = class _MetricsBootstrapper {
-  /**
-   * Initializes metrics collector if it supports persistence.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Result indicating success (warnings logged but don't fail bootstrap)
-   */
-  static initializeMetrics(container) {
-    const metricsResult = container.resolveWithError(metricsCollectorToken);
-    if (!metricsResult.ok) {
-      return ok(void 0);
-    }
-    const collector = metricsResult.value;
-    if (isInitializable(collector)) {
-      const initResult = collector.initialize();
-      if (!initResult.ok) {
-        return ok(void 0);
-      }
-    }
-    return ok(void 0);
-  }
-};
-__name(_MetricsBootstrapper, "MetricsBootstrapper");
-let MetricsBootstrapper = _MetricsBootstrapper;
-const _MetricsInitPhase = class _MetricsInitPhase {
-  constructor() {
-    this.id = "metrics-initialization";
-    this.priority = 1;
-    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
-  }
-  execute(ctx) {
-    return MetricsBootstrapper.initializeMetrics(ctx.container);
-  }
-};
-__name(_MetricsInitPhase, "MetricsInitPhase");
-let MetricsInitPhase = _MetricsInitPhase;
-const queuedUIChannelToken = createInjectionToken("QueuedUIChannel");
-const _NotificationBootstrapper = class _NotificationBootstrapper {
-  /**
-   * Attaches UI notification channel to NotificationCenter.
-   *
-   * Uses QueuedUIChannel which queues notifications before UI is available
-   * and flushes them when UI becomes available.
-   *
-   * This phase is optional - failures are logged as warnings but don't fail bootstrap.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
-   */
-  static attachNotificationChannels(container) {
-    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    if (!notificationCenterResult.ok) {
+  register(version, token) {
+    if (this.tokens.has(version)) {
       return err(
-        `NotificationCenter could not be resolved: ${notificationCenterResult.error.message}`
+        createFoundryError(
+          "PORT_REGISTRY_ERROR",
+          `Port for version ${version} already registered`,
+          { version }
+        )
       );
     }
-    const queuedUIChannelResult = container.resolveWithError(queuedUIChannelToken);
-    if (!queuedUIChannelResult.ok) {
-      return err(`QueuedUIChannel could not be resolved: ${queuedUIChannelResult.error.message}`);
-    }
-    const notificationCenter = castResolvedService(
-      notificationCenterResult.value
-    );
-    const queuedUIChannel = castResolvedService(queuedUIChannelResult.value);
-    notificationCenter.addChannel(queuedUIChannel);
+    this.tokens.set(version, token);
     return ok(void 0);
   }
-};
-__name(_NotificationBootstrapper, "NotificationBootstrapper");
-let NotificationBootstrapper = _NotificationBootstrapper;
-const _NotificationInitPhase = class _NotificationInitPhase {
-  constructor() {
-    this.id = "notification-channels";
-    this.priority = 2;
-    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
-  }
-  execute(ctx) {
-    return NotificationBootstrapper.attachNotificationChannels(ctx.container);
-  }
-};
-__name(_NotificationInitPhase, "NotificationInitPhase");
-let NotificationInitPhase = _NotificationInitPhase;
-const _ApiBootstrapper = class _ApiBootstrapper {
   /**
-   * Exposes the module's public API.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Result indicating success or error
+   * Gets all registered port versions.
+   * @returns Array of registered version numbers, sorted ascending
    */
-  static exposeApi(container) {
-    const apiInitializerResult = container.resolveWithError(moduleApiInitializerToken);
-    if (!apiInitializerResult.ok) {
-      return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
-    }
-    const apiInitializer = castResolvedService(apiInitializerResult.value);
-    const exposeResult = apiInitializer.expose(container);
-    if (!exposeResult.ok) {
-      return err(`Failed to expose API: ${exposeResult.error}`);
-    }
-    return ok(void 0);
+  getAvailableVersions() {
+    return Array.from(this.tokens.keys()).sort((a, b) => a - b);
   }
-};
-__name(_ApiBootstrapper, "ApiBootstrapper");
-let ApiBootstrapper = _ApiBootstrapper;
-const _ApiInitPhase = class _ApiInitPhase {
-  constructor() {
-    this.id = "api-exposure";
-    this.priority = 3;
-    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
-  }
-  execute(ctx) {
-    return ApiBootstrapper.exposeApi(ctx.container);
-  }
-};
-__name(_ApiInitPhase, "ApiInitPhase");
-let ApiInitPhase = _ApiInitPhase;
-const moduleSettingsRegistrarToken = createInjectionToken("ModuleSettingsRegistrar");
-const _SettingsBootstrapper = class _SettingsBootstrapper {
   /**
-   * Registers all module settings.
+   * Gets the token map without resolving ports.
+   * Use with PortSelector.selectPortFromTokens() for safe lazy instantiation via DI.
    *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Result indicating success or error
+   * @returns Map of version numbers to injection tokens (NOT instances)
+   *
+   * @example
+   * ```typescript
+   * const registry = new PortRegistry<FoundryGame>();
+   * registry.register(13, foundryV13GamePortToken);
+   * registry.register(14, foundryGamePortV14Token);
+   *
+   * const tokens = registry.getTokens();
+   * const selector = new PortSelector(container);
+   * const result = selector.selectPortFromTokens(tokens);
+   * // Only compatible port is resolved from container
+   * ```
    */
-  static registerSettings(container) {
-    const settingsRegistrarResult = container.resolveWithError(moduleSettingsRegistrarToken);
-    if (!settingsRegistrarResult.ok) {
-      return err(
-        `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
-      );
-    }
-    const settingsRegistrar = castResolvedService(
-      settingsRegistrarResult.value
-    );
-    settingsRegistrar.registerAll();
-    return ok(void 0);
+  getTokens() {
+    return new Map(this.tokens);
+  }
+  /**
+   * Checks if a port is registered for a specific version.
+   * @param version - The version to check
+   * @returns True if a port is registered for this version
+   */
+  hasVersion(version) {
+    return this.tokens.has(version);
+  }
+  /**
+   * Gets the highest registered port version.
+   * @returns The highest version number or undefined if no ports are registered
+   */
+  getHighestVersion() {
+    const versions = this.getAvailableVersions();
+    return versions.at(-1);
   }
 };
-__name(_SettingsBootstrapper, "SettingsBootstrapper");
-let SettingsBootstrapper = _SettingsBootstrapper;
-const _SettingsInitPhase = class _SettingsInitPhase {
-  constructor() {
-    this.id = "settings-registration";
-    this.priority = 4;
-    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
-  }
-  execute(ctx) {
-    return SettingsBootstrapper.registerSettings(ctx.container);
-  }
-};
-__name(_SettingsInitPhase, "SettingsInitPhase");
-let SettingsInitPhase = _SettingsInitPhase;
+__name(_PortRegistry, "PortRegistry");
+let PortRegistry = _PortRegistry;
 let store$4;
 function setGlobalConfig(config$1) {
   store$4 = {
@@ -10514,1604 +8835,6 @@ function unwrap(schema) {
   return schema.wrapped;
 }
 __name(unwrap, "unwrap");
-const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
-  LogLevel.DEBUG,
-  LogLevel.INFO,
-  LogLevel.WARN,
-  LogLevel.ERROR
-]);
-const _LoggingBootstrapper = class _LoggingBootstrapper {
-  /**
-   * Configures logger with current setting value.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @param logger - Logger instance to configure
-   * @returns Result indicating success (always succeeds, settings are optional)
-   */
-  static configureLogging(container, logger) {
-    const settingsResult = container.resolveWithError(foundrySettingsToken);
-    if (!settingsResult.ok) {
-      return ok(void 0);
-    }
-    const settings = castResolvedService(settingsResult.value);
-    const logLevelResult = settings.get(
-      MODULE_METADATA.ID,
-      SETTING_KEYS.LOG_LEVEL,
-      LOG_LEVEL_SCHEMA
-    );
-    if (logLevelResult.ok && logger.setMinLevel) {
-      logger.setMinLevel(logLevelResult.value);
-      logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
-    }
-    return ok(void 0);
-  }
-};
-__name(_LoggingBootstrapper, "LoggingBootstrapper");
-let LoggingBootstrapper = _LoggingBootstrapper;
-const _LoggingInitPhase = class _LoggingInitPhase {
-  constructor() {
-    this.id = "logging-configuration";
-    this.priority = 5;
-    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
-  }
-  execute(ctx) {
-    return LoggingBootstrapper.configureLogging(ctx.container, ctx.logger);
-  }
-};
-__name(_LoggingInitPhase, "LoggingInitPhase");
-let LoggingInitPhase = _LoggingInitPhase;
-const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
-  "InvalidateJournalCacheOnChangeUseCase"
-);
-const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken(
-  "ProcessJournalDirectoryOnRenderUseCase"
-);
-const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken(
-  "TriggerJournalDirectoryReRenderUseCase"
-);
-const registerContextMenuUseCaseToken = createInjectionToken(
-  "RegisterContextMenuUseCase"
-);
-const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
-const _EventsBootstrapper = class _EventsBootstrapper {
-  /**
-   * Registers all event listeners.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Result indicating success or error
-   */
-  static registerEvents(container) {
-    const eventRegistrarResult = container.resolveWithError(moduleEventRegistrarToken);
-    if (!eventRegistrarResult.ok) {
-      return err(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
-    }
-    const eventRegistrar = castResolvedService(eventRegistrarResult.value);
-    const eventRegistrationResult = eventRegistrar.registerAll();
-    if (!eventRegistrationResult.ok) {
-      const errorMessages = eventRegistrationResult.error.map((e) => e.message).join(", ");
-      return err(`Failed to register one or more event listeners: ${errorMessages}`);
-    }
-    return ok(void 0);
-  }
-};
-__name(_EventsBootstrapper, "EventsBootstrapper");
-let EventsBootstrapper = _EventsBootstrapper;
-const _EventsInitPhase = class _EventsInitPhase {
-  constructor() {
-    this.id = "event-registration";
-    this.priority = 6;
-    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
-  }
-  execute(ctx) {
-    return EventsBootstrapper.registerEvents(ctx.container);
-  }
-};
-__name(_EventsInitPhase, "EventsInitPhase");
-let EventsInitPhase = _EventsInitPhase;
-const journalContextMenuLibWrapperServiceToken = createInjectionToken("JournalContextMenuLibWrapperService");
-const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
-  /**
-   * Registers context menu libWrapper and callbacks.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
-   */
-  static registerContextMenu(container) {
-    const contextMenuLibWrapperResult = container.resolveWithError(
-      journalContextMenuLibWrapperServiceToken
-    );
-    if (!contextMenuLibWrapperResult.ok) {
-      return err(
-        `JournalContextMenuLibWrapperService could not be resolved: ${contextMenuLibWrapperResult.error.message}`
-      );
-    }
-    const contextMenuLibWrapper = castResolvedService(
-      contextMenuLibWrapperResult.value
-    );
-    const registerResult = contextMenuLibWrapper.register();
-    if (!registerResult.ok) {
-      return err(`Context menu libWrapper registration failed: ${registerResult.error.message}`);
-    }
-    const contextMenuUseCaseResult = container.resolveWithError(registerContextMenuUseCaseToken);
-    if (!contextMenuUseCaseResult.ok) {
-      return err(
-        `RegisterContextMenuUseCase could not be resolved: ${contextMenuUseCaseResult.error.message}`
-      );
-    }
-    const contextMenuUseCase = castResolvedService(
-      contextMenuUseCaseResult.value
-    );
-    const callbackRegisterResult = contextMenuUseCase.register();
-    if (!callbackRegisterResult.ok) {
-      return err(
-        `Context menu callback registration failed: ${callbackRegisterResult.error.message}`
-      );
-    }
-    return ok(void 0);
-  }
-};
-__name(_ContextMenuBootstrapper, "ContextMenuBootstrapper");
-let ContextMenuBootstrapper = _ContextMenuBootstrapper;
-const _ContextMenuInitPhase = class _ContextMenuInitPhase {
-  constructor() {
-    this.id = "context-menu-registration";
-    this.priority = 7;
-    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
-  }
-  execute(ctx) {
-    return ContextMenuBootstrapper.registerContextMenu(ctx.container);
-  }
-};
-__name(_ContextMenuInitPhase, "ContextMenuInitPhase");
-let ContextMenuInitPhase = _ContextMenuInitPhase;
-function createDefaultInitPhaseRegistry() {
-  return new InitPhaseRegistry([
-    new MetricsInitPhase(),
-    new NotificationInitPhase(),
-    new ApiInitPhase(),
-    new SettingsInitPhase(),
-    new LoggingInitPhase(),
-    new EventsInitPhase(),
-    new ContextMenuInitPhase()
-  ]);
-}
-__name(createDefaultInitPhaseRegistry, "createDefaultInitPhaseRegistry");
-const _InitPhaseErrorHandler = class _InitPhaseErrorHandler {
-  /**
-   * Handles an error from a phase execution.
-   *
-   * @param phase - The phase that failed
-   * @param error - The error message from the phase
-   * @param errors - Array to collect critical errors (mutated if phase is critical)
-   * @param logger - Logger for error reporting
-   */
-  handlePhaseError(phase, error, errors, logger) {
-    if (phase.criticality === InitPhaseCriticality.HALT_ON_ERROR) {
-      errors.push({
-        phase: phase.id,
-        message: error
-      });
-      logger.error(`Failed to execute phase '${phase.id}': ${error}`);
-    } else {
-      logger.warn(`Phase '${phase.id}' failed: ${error}`);
-    }
-  }
-};
-__name(_InitPhaseErrorHandler, "InitPhaseErrorHandler");
-let InitPhaseErrorHandler = _InitPhaseErrorHandler;
-const _InitOrchestrator = class _InitOrchestrator {
-  /**
-   * Creates a new InitOrchestrator instance.
-   *
-   * @param registry - Registry providing init phases (defaults to standard phases)
-   */
-  constructor(registry) {
-    this.registry = registry ?? createDefaultInitPhaseRegistry();
-  }
-  /**
-   * Executes the complete initialization sequence.
-   *
-   * Phases are executed in priority order (ascending). Error handling
-   * follows each phase's criticality setting:
-   * - HALT_ON_ERROR: Errors are collected and returned, stopping bootstrap
-   * - WARN_AND_CONTINUE: Errors are logged as warnings but don't stop bootstrap
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @param logger - Logger for error reporting
-   * @returns Result indicating success or aggregated errors
-   */
-  execute(container, logger) {
-    const errors = [];
-    const phases = this.registry.getAll();
-    const ctx = { container, logger };
-    const errorHandler = new InitPhaseErrorHandler();
-    for (const phase of phases) {
-      const result = phase.execute(ctx);
-      if (!result.ok) {
-        errorHandler.handlePhaseError(phase, result.error, errors, logger);
-      }
-    }
-    if (errors.length > 0) {
-      return err(errors);
-    }
-    return ok(void 0);
-  }
-  /**
-   * Static convenience method for backward compatibility.
-   *
-   * Creates a new orchestrator with default registry and executes.
-   *
-   * @param container - PlatformContainerPort for service resolution
-   * @param logger - Logger for error reporting
-   * @returns Result indicating success or aggregated errors
-   */
-  static execute(container, logger) {
-    const orchestrator = new _InitOrchestrator();
-    return orchestrator.execute(container, logger);
-  }
-};
-__name(_InitOrchestrator, "InitOrchestrator");
-let InitOrchestrator = _InitOrchestrator;
-const _BootstrapInitHookService = class _BootstrapInitHookService {
-  constructor(logger, container, bootstrapEvents) {
-    this.logger = logger;
-    this.container = container;
-    this.bootstrapEvents = bootstrapEvents;
-  }
-  /**
-   * Registers the init event via PlatformBootstrapEventPort.
-   * Must be called before the platform's init hook fires.
-   */
-  register() {
-    const result = this.bootstrapEvents.onInit(() => this.handleInit());
-    if (!result.ok) {
-      this.logger.warn(
-        `Init hook registration failed: ${result.error.message}`,
-        result.error.details
-      );
-    }
-  }
-  /* v8 ignore start -- @preserve */
-  /* Foundry-Hooks und UI-spezifische Pfade hängen stark von der Laufzeitumgebung ab
-   * und werden primär über Integrations-/E2E-Tests abgesichert. Für das aktuelle Quality-Gateway
-   * blenden wir diese verzweigten Pfade temporär aus und reduzieren die Ignores später gezielt. */
-  handleInit() {
-    this.logger.info("init-phase");
-    const result = InitOrchestrator.execute(this.container, this.logger);
-    if (!result.ok) {
-      const errorMessages = result.error.map((e) => `${e.phase}: ${e.message}`).join("; ");
-      this.logger.error(`Init phase completed with errors: ${errorMessages}`);
-    } else {
-      this.logger.info("init-phase completed");
-    }
-  }
-  /* v8 ignore stop -- @preserve */
-};
-__name(_BootstrapInitHookService, "BootstrapInitHookService");
-let BootstrapInitHookService = _BootstrapInitHookService;
-const _DIBootstrapInitHookService = class _DIBootstrapInitHookService extends BootstrapInitHookService {
-  constructor(logger, container, bootstrapEvents) {
-    super(logger, container, bootstrapEvents);
-  }
-};
-__name(_DIBootstrapInitHookService, "DIBootstrapInitHookService");
-_DIBootstrapInitHookService.dependencies = [
-  loggerToken,
-  platformContainerPortToken,
-  platformBootstrapEventPortToken
-];
-let DIBootstrapInitHookService = _DIBootstrapInitHookService;
-const _ModuleReadyService = class _ModuleReadyService {
-  constructor(moduleReadyPort, loggingPort) {
-    this.moduleReadyPort = moduleReadyPort;
-    this.loggingPort = loggingPort;
-  }
-  /**
-   * Sets module.ready to true (ready state).
-   * Should be called when bootstrap-ready-hook completes.
-   */
-  setReady() {
-    const result = this.moduleReadyPort.setReady();
-    if (!result.ok) {
-      this.loggingPort.warn(
-        `Failed to set module.ready: ${result.error.message}`,
-        result.error.details
-      );
-    } else {
-      this.loggingPort.info("module.ready set to true");
-    }
-  }
-};
-__name(_ModuleReadyService, "ModuleReadyService");
-let ModuleReadyService = _ModuleReadyService;
-const _DIModuleReadyService = class _DIModuleReadyService extends ModuleReadyService {
-  constructor(moduleReadyPort, loggingPort) {
-    super(moduleReadyPort, loggingPort);
-  }
-};
-__name(_DIModuleReadyService, "DIModuleReadyService");
-_DIModuleReadyService.dependencies = [platformModuleReadyPortToken, platformLoggingPortToken];
-let DIModuleReadyService = _DIModuleReadyService;
-const moduleReadyServiceToken = createInjectionToken("ModuleReadyService");
-const _BootstrapReadyHookService = class _BootstrapReadyHookService {
-  constructor(logger, bootstrapEvents, moduleReadyService) {
-    this.logger = logger;
-    this.bootstrapEvents = bootstrapEvents;
-    this.moduleReadyService = moduleReadyService;
-  }
-  /**
-   * Registers the ready event via PlatformBootstrapEventPort.
-   * Must be called before the platform's ready hook fires.
-   */
-  register() {
-    const result = this.bootstrapEvents.onReady(() => this.handleReady());
-    if (!result.ok) {
-      this.logger.warn(
-        `Ready hook registration failed: ${result.error.message}`,
-        result.error.details
-      );
-    }
-  }
-  /* v8 ignore start -- @preserve */
-  /* Foundry-Hooks und UI-spezifische Pfade hängen stark von der Laufzeitumgebung ab
-   * und werden primär über Integrations-/E2E-Tests abgesichert. Für das aktuelle Quality-Gateway
-   * blenden wir diese verzweigten Pfade temporär aus und reduzieren die Ignores später gezielt. */
-  handleReady() {
-    this.logger.info("ready-phase");
-    this.moduleReadyService.setReady();
-    this.logger.info("ready-phase completed");
-  }
-  /* v8 ignore stop -- @preserve */
-};
-__name(_BootstrapReadyHookService, "BootstrapReadyHookService");
-let BootstrapReadyHookService = _BootstrapReadyHookService;
-const _DIBootstrapReadyHookService = class _DIBootstrapReadyHookService extends BootstrapReadyHookService {
-  constructor(logger, bootstrapEvents, moduleReadyService) {
-    super(logger, bootstrapEvents, moduleReadyService);
-  }
-};
-__name(_DIBootstrapReadyHookService, "DIBootstrapReadyHookService");
-_DIBootstrapReadyHookService.dependencies = [
-  loggerToken,
-  platformBootstrapEventPortToken,
-  moduleReadyServiceToken
-];
-let DIBootstrapReadyHookService = _DIBootstrapReadyHookService;
-const _FoundryBootstrapEventAdapter = class _FoundryBootstrapEventAdapter {
-  onInit(callback) {
-    if (typeof Hooks === "undefined") {
-      return err({
-        code: "PLATFORM_NOT_AVAILABLE",
-        message: "Foundry Hooks API not available"
-      });
-    }
-    try {
-      Hooks.on("init", callback);
-      return ok(void 0);
-    } catch (error) {
-      return err({
-        code: "EVENT_REGISTRATION_FAILED",
-        message: `Failed to register init event: ${error instanceof Error ? error.message : String(error)}`,
-        details: error
-      });
-    }
-  }
-  onReady(callback) {
-    if (typeof Hooks === "undefined") {
-      return err({
-        code: "PLATFORM_NOT_AVAILABLE",
-        message: "Foundry Hooks API not available"
-      });
-    }
-    try {
-      Hooks.on("ready", callback);
-      return ok(void 0);
-    } catch (error) {
-      return err({
-        code: "EVENT_REGISTRATION_FAILED",
-        message: `Failed to register ready event: ${error instanceof Error ? error.message : String(error)}`,
-        details: error
-      });
-    }
-  }
-};
-__name(_FoundryBootstrapEventAdapter, "FoundryBootstrapEventAdapter");
-let FoundryBootstrapEventAdapter = _FoundryBootstrapEventAdapter;
-const _DIFoundryBootstrapEventAdapter = class _DIFoundryBootstrapEventAdapter extends FoundryBootstrapEventAdapter {
-};
-__name(_DIFoundryBootstrapEventAdapter, "DIFoundryBootstrapEventAdapter");
-_DIFoundryBootstrapEventAdapter.dependencies = [];
-let DIFoundryBootstrapEventAdapter = _DIFoundryBootstrapEventAdapter;
-function createFoundryError(code, message2, details, cause) {
-  return { code, message: message2, details, cause };
-}
-__name(createFoundryError, "createFoundryError");
-function isErrorLike(obj) {
-  return typeof obj === "object" && obj !== null;
-}
-__name(isErrorLike, "isErrorLike");
-function isFoundryError(error) {
-  if (!isErrorLike(error)) return false;
-  return "code" in error && "message" in error && typeof error.code === "string" && typeof error.message === "string";
-}
-__name(isFoundryError, "isFoundryError");
-const portSelectorToken = createInjectionToken("PortSelector");
-const foundryModulePortRegistryToken = createInjectionToken(
-  "FoundryModulePortRegistry"
-);
-const retryServiceToken = createInjectionToken("RetryService");
-const _PortLoader = class _PortLoader {
-  constructor(portSelector, portRegistry) {
-    this.port = null;
-    this.portSelector = portSelector;
-    this.portRegistry = portRegistry;
-  }
-  /**
-   * Lazy-loads the appropriate port based on Foundry version.
-   * Uses PortSelector with token-based selection to resolve ports from the DI container.
-   *
-   * CRITICAL: This prevents crashes when newer port constructors access
-   * APIs not available in the current Foundry version. Ports are resolved
-   * from the DI container, ensuring DIP (Dependency Inversion Principle) compliance.
-   *
-   * @param adapterName - Name for logging purposes (e.g., "FoundryGame")
-   * @returns Result containing the port or a FoundryError if no compatible port can be selected
-   */
-  loadPort(adapterName) {
-    if (this.port === null) {
-      const tokens = this.portRegistry.getTokens();
-      const portResult = this.portSelector.selectPortFromTokens(tokens, void 0, adapterName);
-      if (!portResult.ok) {
-        return portResult;
-      }
-      this.port = portResult.value;
-    }
-    return { ok: true, value: this.port };
-  }
-  /**
-   * Gets the currently loaded port without triggering lazy loading.
-   * Useful for operations that don't need retry logic but need to check if port is loaded.
-   *
-   * @returns The loaded port or null if not yet loaded
-   */
-  getLoadedPort() {
-    return this.port;
-  }
-  /**
-   * Clears the cached port.
-   * This forces the next loadPort() call to reload the port.
-   * Useful for testing or when ports need to be refreshed.
-   */
-  clearCache() {
-    this.port = null;
-  }
-};
-__name(_PortLoader, "PortLoader");
-let PortLoader = _PortLoader;
-const _RetryableOperation = class _RetryableOperation {
-  constructor(retryService) {
-    this.retryService = retryService;
-  }
-  /**
-   * Executes a Foundry API operation with automatic retry on transient failures.
-   *
-   * Use this for any port method call to handle:
-   * - Race conditions (Foundry not fully initialized)
-   * - Timing issues (DOM/Settings not ready)
-   * - Transient port selection failures
-   *
-   * @template T - The success type
-   * @param fn - Function to execute (should call port methods)
-   * @param operationName - Operation name for logging (e.g., "FoundryGame.getJournalEntries")
-   * @param maxAttempts - Max retry attempts (default: 2 = 1 retry)
-   * @returns Result from operation or mapped error
-   *
-   * @example
-   * ```typescript
-   * const result = retryable.execute(
-   *   () => {
-   *     const portResult = portLoader.loadPort("FoundryGame");
-   *     if (!portResult.ok) return portResult;
-   *     return portResult.value.getJournalEntries();
-   *   },
-   *   "FoundryGame.getJournalEntries"
-   * );
-   * ```
-   */
-  execute(fn, operationName, maxAttempts = 2) {
-    return this.retryService.retrySync(fn, {
-      maxAttempts,
-      operationName,
-      mapException: /* @__PURE__ */ __name((error, _attempt) => ({
-        code: "OPERATION_FAILED",
-        message: `${operationName} failed: ${String(error)}`,
-        cause: error instanceof Error ? error : void 0
-      }), "mapException")
-    });
-  }
-  /**
-   * Async variant of execute for async operations.
-   *
-   * @template T - The success type
-   * @param fn - Async function to execute
-   * @param operationName - Operation name for logging
-   * @param maxAttempts - Max retry attempts (default: 2)
-   * @returns Promise resolving to Result
-   *
-   * @example
-   * ```typescript
-   * const result = await retryable.executeAsync(
-   *   async () => {
-   *     const portResult = portLoader.loadPort("FoundryDocument");
-   *     if (!portResult.ok) return portResult;
-   *     return await portResult.value.setFlag(doc, scope, key, value);
-   *   },
-   *   "FoundryDocument.setFlag"
-   * );
-   * ```
-   */
-  async executeAsync(fn, operationName, maxAttempts = 2) {
-    return this.retryService.retry(fn, {
-      maxAttempts,
-      delayMs: 100,
-      // 100ms delay between retries
-      operationName,
-      mapException: /* @__PURE__ */ __name((error, _attempt) => ({
-        code: "OPERATION_FAILED",
-        message: `${operationName} failed: ${String(error)}`,
-        cause: error instanceof Error ? error : void 0
-      }), "mapException")
-    });
-  }
-};
-__name(_RetryableOperation, "RetryableOperation");
-let RetryableOperation = _RetryableOperation;
-function castFoundrySettingsApi(settings) {
-  if (!isObjectWithMethods(settings, ["register", "get", "set"])) {
-    return err(
-      createFoundryError(
-        "API_NOT_AVAILABLE",
-        "game.settings does not have required methods (register, get, set)",
-        {
-          missingMethods: ["register", "get", "set"]
-        }
-      )
-    );
-  }
-  return ok(settings);
-}
-__name(castFoundrySettingsApi, "castFoundrySettingsApi");
-function castFoundryDocumentForFlag(document2) {
-  if (!isObjectWithMethods(document2, ["getFlag", "setFlag"])) {
-    return err(
-      createFoundryError(
-        "VALIDATION_FAILED",
-        "Document does not have required methods (getFlag, setFlag)",
-        {
-          missingMethods: ["getFlag", "setFlag"]
-        }
-      )
-    );
-  }
-  return ok(document2);
-}
-__name(castFoundryDocumentForFlag, "castFoundryDocumentForFlag");
-function castFoundryError(error) {
-  return error;
-}
-__name(castFoundryError, "castFoundryError");
-function castDisposablePort(port) {
-  if (!port || typeof port !== "object") {
-    return null;
-  }
-  if (hasMethod(port, "dispose")) {
-    return port;
-  }
-  return null;
-}
-__name(castDisposablePort, "castDisposablePort");
-function ensureNonEmptyArray(arr) {
-  if (arr.length === 0) {
-    return err(
-      createFoundryError("VALIDATION_FAILED", "Array must not be empty", { arrayLength: 0 })
-    );
-  }
-  return ok(arr);
-}
-__name(ensureNonEmptyArray, "ensureNonEmptyArray");
-function extractHtmlElement(html) {
-  return html instanceof HTMLElement ? html : null;
-}
-__name(extractHtmlElement, "extractHtmlElement");
-function getFactoryOrError(factories, version) {
-  const factory = factories.get(version);
-  if (!factory) {
-    return err(
-      createFoundryError("PORT_NOT_FOUND", `Factory for version ${version} not found in registry`, {
-        version
-      })
-    );
-  }
-  return ok(factory);
-}
-__name(getFactoryOrError, "getFactoryOrError");
-function castFoundryDocumentWithUpdate(document2) {
-  if (!isObjectWithMethods(document2, ["update"])) {
-    return err(
-      createFoundryError("VALIDATION_FAILED", "Document does not have required method (update)", {
-        missingMethods: ["update"]
-      })
-    );
-  }
-  return ok(document2);
-}
-__name(castFoundryDocumentWithUpdate, "castFoundryDocumentWithUpdate");
-function castFoundryJournalEntryClass() {
-  if (typeof globalThis !== "object" || globalThis === null || !("JournalEntry" in globalThis)) {
-    return err(
-      createFoundryError(
-        "API_NOT_AVAILABLE",
-        "Foundry JournalEntry class not available in globalThis",
-        {}
-      )
-    );
-  }
-  const journalEntryClass = globalThis.JournalEntry;
-  if (!isObjectWithMethods(journalEntryClass, ["create"])) {
-    return err(
-      createFoundryError(
-        "API_NOT_AVAILABLE",
-        "Foundry JournalEntry class does not have required method (create)",
-        {
-          missingMethods: ["create"]
-        }
-      )
-    );
-  }
-  return ok(journalEntryClass);
-}
-__name(castFoundryJournalEntryClass, "castFoundryJournalEntryClass");
-function castCreatedJournalEntry(document2) {
-  return document2;
-}
-__name(castCreatedJournalEntry, "castCreatedJournalEntry");
-const _FoundryModuleReadyPort = class _FoundryModuleReadyPort {
-  constructor(portSelector, portRegistry, retryService, moduleId) {
-    this.portLoader = new PortLoader(portSelector, portRegistry);
-    this.retryable = new RetryableOperation(retryService);
-    this.moduleId = moduleId;
-  }
-  setReady() {
-    const result = this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryModule");
-      if (!portResult.ok) {
-        return {
-          ok: false,
-          error: createFoundryError(
-            "PORT_SELECTION_FAILED",
-            portResult.error.message,
-            portResult.error.details
-          )
-        };
-      }
-      const success = portResult.value.setModuleReady(this.moduleId);
-      if (!success) {
-        return {
-          ok: false,
-          error: createFoundryError("OPERATION_FAILED", `Module ${this.moduleId} not found`)
-        };
-      }
-      return { ok: true, value: void 0 };
-    }, "FoundryModule.setReady");
-    if (!result.ok) {
-      let errorCode;
-      if (result.error.code === "PORT_SELECTION_FAILED" || result.error.code === "API_NOT_AVAILABLE") {
-        errorCode = "PLATFORM_NOT_AVAILABLE";
-      } else if (result.error.code === "OPERATION_FAILED") {
-        errorCode = "OPERATION_FAILED";
-      } else {
-        errorCode = "OPERATION_FAILED";
-      }
-      return {
-        ok: false,
-        error: {
-          code: errorCode,
-          message: result.error.message,
-          details: result.error.details
-        }
-      };
-    }
-    return { ok: true, value: void 0 };
-  }
-  /**
-   * Cleans up resources.
-   * Disposes the port if it implements Disposable, then clears the cache.
-   */
-  dispose() {
-    const port = this.portLoader.getLoadedPort();
-    const disposable = castDisposablePort(port);
-    if (disposable) {
-      disposable.dispose();
-    }
-    this.portLoader.clearCache();
-  }
-};
-__name(_FoundryModuleReadyPort, "FoundryModuleReadyPort");
-let FoundryModuleReadyPort = _FoundryModuleReadyPort;
-const _DIFoundryModuleReadyPort = class _DIFoundryModuleReadyPort extends FoundryModuleReadyPort {
-  constructor(portSelector, portRegistry, retryService, moduleId) {
-    super(portSelector, portRegistry, retryService, moduleId);
-  }
-};
-__name(_DIFoundryModuleReadyPort, "DIFoundryModuleReadyPort");
-_DIFoundryModuleReadyPort.dependencies = [
-  portSelectorToken,
-  foundryModulePortRegistryToken,
-  retryServiceToken,
-  moduleIdToken
-];
-let DIFoundryModuleReadyPort = _DIFoundryModuleReadyPort;
-function registerCoreServices(container) {
-  const runtimeConfig = container.getRegisteredValue(runtimeConfigToken);
-  if (!runtimeConfig) {
-    return err("RuntimeConfigService not registered");
-  }
-  const enablePersistence = runtimeConfig.get("enableMetricsPersistence") === true;
-  const aggregatorResult = container.registerClass(
-    metricsAggregatorToken,
-    MetricsAggregator,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(aggregatorResult)) {
-    return err(`Failed to register MetricsAggregator: ${aggregatorResult.error.message}`);
-  }
-  const persistenceManagerResult = container.registerClass(
-    metricsPersistenceManagerToken,
-    MetricsPersistenceManager,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(persistenceManagerResult)) {
-    return err(
-      `Failed to register MetricsPersistenceManager: ${persistenceManagerResult.error.message}`
-    );
-  }
-  const stateManagerResult = container.registerClass(
-    metricsStateManagerToken,
-    MetricsStateManager,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(stateManagerResult)) {
-    return err(`Failed to register MetricsStateManager: ${stateManagerResult.error.message}`);
-  }
-  if (enablePersistence) {
-    const metricsKey = runtimeConfig.get("metricsPersistenceKey") ?? "fvtt_relationship_app_module.metrics";
-    const storageInstance = createMetricsStorage(metricsKey);
-    const storageResult = container.registerValue(metricsStorageToken, storageInstance);
-    if (isErr(storageResult)) {
-      return err(`Failed to register MetricsStorage: ${storageResult.error.message}`);
-    }
-    const persistentResult = container.registerClass(
-      metricsCollectorToken,
-      DIPersistentMetricsCollector,
-      ServiceLifecycle.SINGLETON
-    );
-    if (isErr(persistentResult)) {
-      return err(
-        `Failed to register PersistentMetricsCollector: ${persistentResult.error.message}`
-      );
-    }
-  } else {
-    const metricsResult = container.registerClass(
-      metricsCollectorToken,
-      DIMetricsCollector,
-      ServiceLifecycle.SINGLETON
-    );
-    if (isErr(metricsResult)) {
-      return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
-    }
-  }
-  const samplerResult = container.registerClass(
-    metricsSamplerToken,
-    DIMetricsSampler,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(samplerResult)) {
-    return err(`Failed to register MetricsSampler: ${samplerResult.error.message}`);
-  }
-  container.registerAlias(metricsRecorderToken, metricsCollectorToken);
-  const traceContextResult = container.registerClass(
-    traceContextToken,
-    DITraceContext,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(traceContextResult)) {
-    return err(`Failed to register TraceContext: ${traceContextResult.error.message}`);
-  }
-  const loggerResult = container.registerClass(
-    loggerToken,
-    DIConsoleLoggerService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(loggerResult)) {
-    return err(`Failed to register Logger: ${loggerResult.error.message}`);
-  }
-  const reporterResult = container.registerClass(
-    metricsReporterToken,
-    DIMetricsReporter,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(reporterResult)) {
-    return err(`Failed to register MetricsReporter: ${reporterResult.error.message}`);
-  }
-  const registryResult = container.registerClass(
-    healthCheckRegistryToken,
-    HealthCheckRegistryAdapter,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(registryResult)) {
-    return err(`Failed to register HealthCheckRegistry: ${registryResult.error.message}`);
-  }
-  const healthResult = container.registerClass(
-    moduleHealthServiceToken,
-    DIModuleHealthService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(healthResult)) {
-    return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
-  }
-  const apiInitResult = container.registerClass(
-    moduleApiInitializerToken,
-    DIModuleApiInitializer,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(apiInitResult)) {
-    return err(`Failed to register ModuleApiInitializer: ${apiInitResult.error.message}`);
-  }
-  const bootstrapEventsResult = container.registerClass(
-    platformBootstrapEventPortToken,
-    DIFoundryBootstrapEventAdapter,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(bootstrapEventsResult)) {
-    return err(
-      `Failed to register PlatformBootstrapEventPort: ${bootstrapEventsResult.error.message}`
-    );
-  }
-  const initHookResult = container.registerClass(
-    bootstrapInitHookServiceToken,
-    DIBootstrapInitHookService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(initHookResult)) {
-    return err(`Failed to register BootstrapInitHookService: ${initHookResult.error.message}`);
-  }
-  const moduleReadyPortResult = container.registerClass(
-    platformModuleReadyPortToken,
-    DIFoundryModuleReadyPort,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(moduleReadyPortResult)) {
-    return err(
-      `Failed to register PlatformModuleReadyPort: ${moduleReadyPortResult.error.message}`
-    );
-  }
-  const moduleReadyResult = container.registerClass(
-    moduleReadyServiceToken,
-    DIModuleReadyService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(moduleReadyResult)) {
-    return err(`Failed to register ModuleReadyService: ${moduleReadyResult.error.message}`);
-  }
-  const readyHookResult = container.registerClass(
-    bootstrapReadyHookServiceToken,
-    DIBootstrapReadyHookService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(readyHookResult)) {
-    return err(`Failed to register BootstrapReadyHookService: ${readyHookResult.error.message}`);
-  }
-  return ok(void 0);
-}
-__name(registerCoreServices, "registerCoreServices");
-const portSelectionEventEmitterToken = createInjectionToken(
-  "PortSelectionEventEmitter"
-);
-const observabilityRegistryToken = createInjectionToken("ObservabilityRegistry");
-const portSelectionObservabilityToken = createInjectionToken(
-  "PortSelectionObservability"
-);
-const portSelectionPerformanceTrackerToken = createInjectionToken("PortSelectionPerformanceTracker");
-const portSelectionObserverToken = createInjectionToken("PortSelectionObserver");
-const _PortSelectionEventEmitter = class _PortSelectionEventEmitter {
-  constructor() {
-    this.subscribers = /* @__PURE__ */ new Set();
-  }
-  subscribe(callback) {
-    this.subscribers.add(callback);
-    let active = true;
-    return () => {
-      if (!active) {
-        return;
-      }
-      active = false;
-      this.subscribers.delete(callback);
-    };
-  }
-  emit(event) {
-    for (const callback of this.subscribers) {
-      try {
-        callback(event);
-      } catch (error) {
-        console.error("PortSelectionEventEmitter subscriber error", error);
-      }
-    }
-  }
-  clear() {
-    this.subscribers.clear();
-  }
-  getSubscriberCount() {
-    return this.subscribers.size;
-  }
-};
-__name(_PortSelectionEventEmitter, "PortSelectionEventEmitter");
-let PortSelectionEventEmitter = _PortSelectionEventEmitter;
-const _DIPortSelectionEventEmitter = class _DIPortSelectionEventEmitter extends PortSelectionEventEmitter {
-};
-__name(_DIPortSelectionEventEmitter, "DIPortSelectionEventEmitter");
-_DIPortSelectionEventEmitter.dependencies = [];
-let DIPortSelectionEventEmitter = _DIPortSelectionEventEmitter;
-const _ObservabilityRegistry = class _ObservabilityRegistry {
-  constructor(logger, metrics) {
-    this.logger = logger;
-    this.metrics = metrics;
-    this.subscriptions = [];
-  }
-  /**
-   * Register a PortSelector for observability.
-   * Wires event emission to logging and metrics.
-   *
-   * @param service - Observable service that emits PortSelectionEvents
-   */
-  registerPortSelector(service) {
-    const unsubscribe = service.onEvent((event) => {
-      if (event.type === "success") {
-        const adapterSuffix = event.adapterName ? ` for ${event.adapterName}` : "";
-        this.logger.debug(
-          `Port v${event.selectedVersion} selected in ${event.durationMs.toFixed(2)}ms${adapterSuffix}`
-        );
-        this.metrics.recordPortSelection(event.selectedVersion);
-      } else {
-        this.logger.error("Port selection failed", {
-          foundryVersion: event.foundryVersion,
-          availableVersions: event.availableVersions,
-          adapterName: event.adapterName
-        });
-        this.metrics.recordPortSelectionFailure(event.foundryVersion);
-      }
-    });
-    this.subscriptions.push(unsubscribe);
-  }
-  /**
-   * Disposes all registered observers and clears internal state.
-   * Intended to be called when the DI container is disposed.
-   */
-  dispose() {
-    while (this.subscriptions.length > 0) {
-      const unsubscribe = this.subscriptions.pop();
-      try {
-        unsubscribe?.();
-      } catch {
-      }
-    }
-  }
-  // Future: Add more registration methods for other observable services
-  // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
-};
-__name(_ObservabilityRegistry, "ObservabilityRegistry");
-let ObservabilityRegistry = _ObservabilityRegistry;
-const _DIObservabilityRegistry = class _DIObservabilityRegistry extends ObservabilityRegistry {
-  constructor(logger, metrics) {
-    super(logger, metrics);
-  }
-};
-__name(_DIObservabilityRegistry, "DIObservabilityRegistry");
-_DIObservabilityRegistry.dependencies = [loggerToken, metricsRecorderToken];
-let DIObservabilityRegistry = _DIObservabilityRegistry;
-const _PortSelectionObservability = class _PortSelectionObservability {
-  constructor(observabilityRegistry) {
-    this.observabilityRegistry = observabilityRegistry;
-  }
-  /**
-   * Register PortSelector with ObservabilityRegistry.
-   * This enables automatic logging and metrics collection.
-   */
-  registerWithObservabilityRegistry(selector) {
-    this.observabilityRegistry.registerPortSelector(selector);
-  }
-  /**
-   * Setup observability for PortSelector.
-   * Wires PortSelector events to PortSelectionObserver.
-   */
-  setupObservability(selector, observer) {
-    selector.onEvent((event) => {
-      observer.handleEvent(event);
-    });
-  }
-};
-__name(_PortSelectionObservability, "PortSelectionObservability");
-let PortSelectionObservability = _PortSelectionObservability;
-const _DIPortSelectionObservability = class _DIPortSelectionObservability extends PortSelectionObservability {
-  constructor(observabilityRegistry) {
-    super(observabilityRegistry);
-  }
-};
-__name(_DIPortSelectionObservability, "DIPortSelectionObservability");
-_DIPortSelectionObservability.dependencies = [observabilityRegistryToken];
-let DIPortSelectionObservability = _DIPortSelectionObservability;
-const _PortSelectionPerformanceTracker = class _PortSelectionPerformanceTracker {
-  /**
-   * Start performance tracking.
-   * Records the current high-resolution timestamp.
-   */
-  startTracking() {
-    this.startTime = performance.now();
-  }
-  /**
-   * End performance tracking and return duration in milliseconds.
-   * @returns Duration in milliseconds, or 0 if tracking was not started
-   */
-  endTracking() {
-    if (this.startTime === void 0) {
-      return 0;
-    }
-    const durationMs = performance.now() - this.startTime;
-    this.startTime = void 0;
-    return durationMs;
-  }
-};
-__name(_PortSelectionPerformanceTracker, "PortSelectionPerformanceTracker");
-let PortSelectionPerformanceTracker = _PortSelectionPerformanceTracker;
-const _DIPortSelectionPerformanceTracker = class _DIPortSelectionPerformanceTracker extends PortSelectionPerformanceTracker {
-  constructor() {
-    super();
-  }
-};
-__name(_DIPortSelectionPerformanceTracker, "DIPortSelectionPerformanceTracker");
-_DIPortSelectionPerformanceTracker.dependencies = [];
-let DIPortSelectionPerformanceTracker = _DIPortSelectionPerformanceTracker;
-const _PortSelectionObserver = class _PortSelectionObserver {
-  constructor(logger, metrics, eventEmitter) {
-    this.logger = logger;
-    this.metrics = metrics;
-    this.eventEmitter = eventEmitter;
-  }
-  /**
-   * Handle a port selection event.
-   *
-   * Performs appropriate logging, metrics recording, and event emission.
-   *
-   * @param event - The port selection event to handle
-   */
-  handleEvent(event) {
-    this.eventEmitter.emit(event);
-    if (event.type === "success") {
-      this.handleSuccess(event);
-    } else {
-      this.handleFailure(event);
-    }
-  }
-  /**
-   * Handle successful port selection.
-   *
-   * Logs debug message and records metrics.
-   */
-  handleSuccess(event) {
-    this.logger.debug(
-      `Port selection completed in ${event.durationMs.toFixed(2)}ms (selected: v${event.selectedVersion}${event.adapterName ? ` for ${event.adapterName}` : ""})`
-    );
-    this.metrics.recordPortSelection(event.selectedVersion);
-  }
-  /**
-   * Handle failed port selection.
-   *
-   * Logs error and records failure metrics.
-   */
-  handleFailure(event) {
-    this.logger.error("No compatible port found", {
-      foundryVersion: event.foundryVersion,
-      availableVersions: event.availableVersions,
-      adapterName: event.adapterName
-    });
-    this.metrics.recordPortSelectionFailure(event.foundryVersion);
-  }
-};
-__name(_PortSelectionObserver, "PortSelectionObserver");
-let PortSelectionObserver = _PortSelectionObserver;
-const _DIPortSelectionObserver = class _DIPortSelectionObserver extends PortSelectionObserver {
-  constructor(logger, metrics, eventEmitter) {
-    super(logger, metrics, eventEmitter);
-  }
-};
-__name(_DIPortSelectionObserver, "DIPortSelectionObserver");
-_DIPortSelectionObserver.dependencies = [
-  loggerToken,
-  metricsRecorderToken,
-  portSelectionEventEmitterToken
-];
-let DIPortSelectionObserver = _DIPortSelectionObserver;
-function registerObservability(container) {
-  const emitterResult = container.registerClass(
-    portSelectionEventEmitterToken,
-    DIPortSelectionEventEmitter,
-    ServiceLifecycle.TRANSIENT
-  );
-  if (isErr(emitterResult)) {
-    return err(`Failed to register PortSelectionEventEmitter: ${emitterResult.error.message}`);
-  }
-  const registryResult = container.registerClass(
-    observabilityRegistryToken,
-    DIObservabilityRegistry,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(registryResult)) {
-    return err(`Failed to register ObservabilityRegistry: ${registryResult.error.message}`);
-  }
-  const observabilityResult = container.registerClass(
-    portSelectionObservabilityToken,
-    DIPortSelectionObservability,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(observabilityResult)) {
-    return err(
-      `Failed to register PortSelectionObservability: ${observabilityResult.error.message}`
-    );
-  }
-  const performanceTrackerResult = container.registerClass(
-    portSelectionPerformanceTrackerToken,
-    DIPortSelectionPerformanceTracker,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(performanceTrackerResult)) {
-    return err(
-      `Failed to register PortSelectionPerformanceTracker: ${performanceTrackerResult.error.message}`
-    );
-  }
-  const observerResult = container.registerClass(
-    portSelectionObserverToken,
-    DIPortSelectionObserver,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(observerResult)) {
-    return err(`Failed to register PortSelectionObserver: ${observerResult.error.message}`);
-  }
-  return ok(void 0);
-}
-__name(registerObservability, "registerObservability");
-const foundryGamePortRegistryToken = createInjectionToken("FoundryGamePortRegistry");
-const foundryHooksPortRegistryToken = createInjectionToken(
-  "FoundryHooksPortRegistry"
-);
-const foundryDocumentPortRegistryToken = createInjectionToken(
-  "FoundryDocumentPortRegistry"
-);
-const foundryUIPortRegistryToken = createInjectionToken("FoundryUIPortRegistry");
-const foundrySettingsPortRegistryToken = createInjectionToken(
-  "FoundrySettingsPortRegistry"
-);
-const foundryI18nPortRegistryToken = createInjectionToken("FoundryI18nPortRegistry");
-const foundryVersionDetectorToken = createInjectionToken("FoundryVersionDetector");
-const _PortResolutionStrategy = class _PortResolutionStrategy {
-  constructor(container) {
-    this.container = container;
-  }
-  /**
-   * Resolves a port from the DI container using the provided injection token.
-   *
-   * @template T - The port type
-   * @param token - The injection token for the port
-   * @returns Result with resolved port or FoundryError
-   *
-   * @example
-   * ```typescript
-   * const strategy = new PortResolutionStrategy(container);
-   * const portResult = strategy.resolve(foundryV13GamePortToken);
-   * if (portResult.ok) {
-   *   const port = portResult.value;
-   * }
-   * ```
-   */
-  resolve(token) {
-    try {
-      const resolveResult = this.container.resolveWithError(token);
-      if (!resolveResult.ok) {
-        return err(
-          createFoundryError(
-            "PORT_RESOLUTION_FAILED",
-            `Failed to resolve port from container`,
-            { token: String(token) },
-            resolveResult.error
-          )
-        );
-      }
-      return ok(castResolvedService(resolveResult.value));
-    } catch (error) {
-      return err(
-        createFoundryError(
-          "PORT_RESOLUTION_FAILED",
-          `Failed to resolve port from container`,
-          { token: String(token) },
-          error instanceof Error ? error : new Error(String(error))
-        )
-      );
-    }
-  }
-};
-__name(_PortResolutionStrategy, "PortResolutionStrategy");
-let PortResolutionStrategy = _PortResolutionStrategy;
-function createMatchError(message2, details) {
-  return {
-    code: "PORT_SELECTION_FAILED",
-    message: message2,
-    details
-  };
-}
-__name(createMatchError, "createMatchError");
-const _GreedyPortMatchStrategy = class _GreedyPortMatchStrategy {
-  /**
-   * Selects the highest compatible port version.
-   *
-   * Algorithm:
-   * 1. Never select a port with version > current Foundry version
-   *    (prevents using APIs that don't exist yet)
-   * 2. Select the highest port version that is <= Foundry version
-   *    (use the newest compatible implementation)
-   *
-   * Time Complexity: O(n) where n = number of registered ports
-   * Space Complexity: O(1)
-   *
-   * @param tokens - Map of version numbers to injection tokens
-   * @param foundryVersion - The current Foundry version to match against
-   * @returns Result with matched port token and version, or error if no match found
-   *
-   * @example
-   * ```typescript
-   * const strategy = new GreedyPortMatchStrategy();
-   * const tokens = new Map([
-   *   [13, foundryV13GamePortToken],
-   *   [14, foundryV14GamePortToken]
-   * ]);
-   * // Foundry v14: selects v14
-   * // Foundry v13: selects v13
-   * // Foundry v15: selects v14 (fallback to highest available)
-   * const result = strategy.select(tokens, 14);
-   * ```
-   */
-  select(tokens, foundryVersion) {
-    let selectedToken;
-    let selectedVersion = APP_DEFAULTS.NO_VERSION_SELECTED;
-    for (const [portVersion, token] of tokens.entries()) {
-      if (portVersion > foundryVersion) {
-        continue;
-      }
-      if (portVersion > selectedVersion) {
-        selectedVersion = portVersion;
-        selectedToken = token;
-      }
-    }
-    if (selectedToken === void 0) {
-      const availableVersions = Array.from(tokens.keys()).sort((a, b) => a - b).join(", ");
-      return err(
-        createMatchError(`No compatible port found for Foundry version ${foundryVersion}`, {
-          version: foundryVersion,
-          availableVersions: availableVersions || "none"
-        })
-      );
-    }
-    return ok({
-      token: selectedToken,
-      version: selectedVersion
-    });
-  }
-};
-__name(_GreedyPortMatchStrategy, "GreedyPortMatchStrategy");
-let GreedyPortMatchStrategy = _GreedyPortMatchStrategy;
-const _PortSelector = class _PortSelector {
-  constructor(versionDetector, eventEmitter, observability, performanceTracker, observer, container, matchStrategy) {
-    this.versionDetector = versionDetector;
-    this.eventEmitter = eventEmitter;
-    this.observability = observability;
-    this.performanceTracker = performanceTracker;
-    this.observer = observer;
-    this.observability.registerWithObservabilityRegistry(this);
-    this.observability.setupObservability(this, this.observer);
-    this.resolutionStrategy = new PortResolutionStrategy(container);
-    this.matchStrategy = matchStrategy ?? new GreedyPortMatchStrategy();
-  }
-  /**
-   * Subscribe to port selection events.
-   *
-   * Allows observers to be notified of port selection success/failure for
-   * logging, metrics, and other observability concerns.
-   *
-   * @param callback - Function to call when port selection events occur
-   * @returns Unsubscribe function
-   *
-   * @example
-   * ```typescript
-   * const selector = new PortSelector();
-   * const unsubscribe = selector.onEvent((event) => {
-   *   if (event.type === 'success') {
-   *     console.log(`Port v${event.selectedVersion} selected`);
-   *   }
-   * });
-   * ```
-   */
-  onEvent(callback) {
-    return this.eventEmitter.subscribe(callback);
-  }
-  /**
-   * Selects and resolves the appropriate port from injection tokens.
-   *
-   * CRITICAL: Works with token map to avoid eager instantiation.
-   * Only the selected token is resolved from the DI container, preventing crashes from
-   * incompatible constructors accessing unavailable APIs.
-   *
-   * @template T - The port type
-   * @param tokens - Map of version numbers to injection tokens
-   * @param foundryVersion - Optional version override (uses getFoundryVersion() if not provided)
-   * @param adapterName - Optional adapter name for observability
-   * @returns Result with resolved port or error
-   *
-   * @example
-   * ```typescript
-   * const tokens = new Map([
-   *   [13, foundryV13GamePortToken],
-   *   [14, foundryV14GamePortToken]
-   * ]);
-   * const selector = new PortSelector(eventEmitter, observability, container);
-   * const result = selector.selectPortFromTokens(tokens);
-   * // On Foundry v13: resolves only v13 port from container (v14 token never resolved)
-   * // On Foundry v14: resolves v14 port from container
-   * ```
-   */
-  selectPortFromTokens(tokens, foundryVersion, adapterName) {
-    this.performanceTracker.startTracking();
-    let version;
-    if (foundryVersion !== void 0) {
-      version = foundryVersion;
-    } else {
-      const versionResult = this.versionDetector.getVersion();
-      if (!versionResult.ok) {
-        this.performanceTracker.endTracking();
-        this.observer.handleEvent({
-          type: "failure",
-          foundryVersion: 0,
-          // Unknown version
-          availableVersions: Array.from(tokens.keys()).sort((a, b) => a - b).join(", "),
-          ...adapterName !== void 0 ? { adapterName } : {},
-          error: createFoundryError(
-            "PORT_SELECTION_FAILED",
-            "Could not determine Foundry version",
-            void 0,
-            versionResult.error
-          )
-        });
-        return err(
-          createFoundryError(
-            "PORT_SELECTION_FAILED",
-            "Could not determine Foundry version",
-            void 0,
-            versionResult.error
-          )
-        );
-      }
-      version = versionResult.value;
-    }
-    const tokensForStrategy = tokens;
-    const matchResult = this.matchStrategy.select(tokensForStrategy, version);
-    if (!matchResult.ok) {
-      this.performanceTracker.endTracking();
-      const errorDetails = matchResult.error.details;
-      let availableVersions;
-      if (typeof errorDetails === "object" && errorDetails !== null && "availableVersions" in errorDetails && typeof errorDetails.availableVersions === "string") {
-        availableVersions = errorDetails.availableVersions;
-      } else {
-        availableVersions = Array.from(tokens.keys()).sort((a, b) => a - b).join(", ");
-      }
-      this.observer.handleEvent({
-        type: "failure",
-        foundryVersion: version,
-        availableVersions,
-        ...adapterName !== void 0 ? { adapterName } : {},
-        error: matchResult.error
-      });
-      return err(matchResult.error);
-    }
-    const { token: selectedToken, version: selectedVersion } = matchResult.value;
-    const typedToken = selectedToken;
-    const portResult = this.resolutionStrategy.resolve(typedToken);
-    if (!portResult.ok) {
-      this.performanceTracker.endTracking();
-      this.observer.handleEvent({
-        type: "failure",
-        foundryVersion: version,
-        availableVersions: Array.from(tokens.keys()).sort((a, b) => a - b).join(", "),
-        ...adapterName !== void 0 ? { adapterName } : {},
-        error: portResult.error
-      });
-      return err(portResult.error);
-    }
-    const durationMs = this.performanceTracker.endTracking();
-    this.observer.handleEvent({
-      type: "success",
-      selectedVersion,
-      foundryVersion: version,
-      ...adapterName !== void 0 ? { adapterName } : {},
-      durationMs
-    });
-    return ok(portResult.value);
-  }
-};
-__name(_PortSelector, "PortSelector");
-let PortSelector = _PortSelector;
-const _DIPortSelector = class _DIPortSelector extends PortSelector {
-  constructor(versionDetector, eventEmitter, observability, performanceTracker, observer, container) {
-    super(versionDetector, eventEmitter, observability, performanceTracker, observer, container);
-  }
-};
-__name(_DIPortSelector, "DIPortSelector");
-_DIPortSelector.dependencies = [
-  foundryVersionDetectorToken,
-  portSelectionEventEmitterToken,
-  portSelectionObservabilityToken,
-  portSelectionPerformanceTrackerToken,
-  portSelectionObserverToken,
-  serviceContainerToken
-];
-let DIPortSelector = _DIPortSelector;
-let cachedVersion = null;
-function detectFoundryVersion() {
-  if (typeof game === "undefined") {
-    return err("Foundry game object is not available or version cannot be determined");
-  }
-  const versionString = game.version;
-  if (!versionString) {
-    return err("Foundry version is not available on the game object");
-  }
-  const versionStr = versionString.match(/^(\d+)/)?.[1];
-  if (!versionStr) {
-    return err(`Could not parse Foundry version from: ${versionString}`);
-  }
-  return ok(Number.parseInt(versionStr, 10));
-}
-__name(detectFoundryVersion, "detectFoundryVersion");
-function getFoundryVersionResult() {
-  if (cachedVersion === null) {
-    cachedVersion = detectFoundryVersion();
-  }
-  return cachedVersion;
-}
-__name(getFoundryVersionResult, "getFoundryVersionResult");
-function resetVersionCache() {
-  cachedVersion = null;
-}
-__name(resetVersionCache, "resetVersionCache");
-function tryGetFoundryVersion() {
-  const result = getFoundryVersionResult();
-  return result.ok ? result.value : void 0;
-}
-__name(tryGetFoundryVersion, "tryGetFoundryVersion");
-const _FoundryVersionDetector = class _FoundryVersionDetector {
-  /**
-   * Gets the major version number of the currently running Foundry VTT instance.
-   *
-   * @returns Result with major version number (e.g., 13 for "13.348") or FoundryError
-   *
-   * @example
-   * ```typescript
-   * const detector = new FoundryVersionDetector();
-   * const versionResult = detector.getVersion();
-   * if (versionResult.ok) {
-   *   console.log(`Foundry version: ${versionResult.value}`);
-   * }
-   * ```
-   */
-  getVersion() {
-    const versionResult = getFoundryVersionResult();
-    if (!versionResult.ok) {
-      return err(
-        createFoundryError(
-          "VERSION_DETECTION_FAILED",
-          "Could not determine Foundry version",
-          void 0,
-          versionResult.error
-        )
-      );
-    }
-    return ok(versionResult.value);
-  }
-};
-__name(_FoundryVersionDetector, "FoundryVersionDetector");
-let FoundryVersionDetector = _FoundryVersionDetector;
-const _DIFoundryVersionDetector = class _DIFoundryVersionDetector extends FoundryVersionDetector {
-  constructor() {
-    super();
-  }
-};
-__name(_DIFoundryVersionDetector, "DIFoundryVersionDetector");
-_DIFoundryVersionDetector.dependencies = [];
-let DIFoundryVersionDetector = _DIFoundryVersionDetector;
-const _PortRegistry = class _PortRegistry {
-  constructor() {
-    this.tokens = /* @__PURE__ */ new Map();
-  }
-  /**
-   * Registers a port injection token for a specific Foundry version.
-   * @param version - The Foundry version this port supports
-   * @param token - Injection token for resolving the port from the DI container
-   * @returns Result indicating success or duplicate registration error
-   */
-  register(version, token) {
-    if (this.tokens.has(version)) {
-      return err(
-        createFoundryError(
-          "PORT_REGISTRY_ERROR",
-          `Port for version ${version} already registered`,
-          { version }
-        )
-      );
-    }
-    this.tokens.set(version, token);
-    return ok(void 0);
-  }
-  /**
-   * Gets all registered port versions.
-   * @returns Array of registered version numbers, sorted ascending
-   */
-  getAvailableVersions() {
-    return Array.from(this.tokens.keys()).sort((a, b) => a - b);
-  }
-  /**
-   * Gets the token map without resolving ports.
-   * Use with PortSelector.selectPortFromTokens() for safe lazy instantiation via DI.
-   *
-   * @returns Map of version numbers to injection tokens (NOT instances)
-   *
-   * @example
-   * ```typescript
-   * const registry = new PortRegistry<FoundryGame>();
-   * registry.register(13, foundryV13GamePortToken);
-   * registry.register(14, foundryGamePortV14Token);
-   *
-   * const tokens = registry.getTokens();
-   * const selector = new PortSelector(container);
-   * const result = selector.selectPortFromTokens(tokens);
-   * // Only compatible port is resolved from container
-   * ```
-   */
-  getTokens() {
-    return new Map(this.tokens);
-  }
-  /**
-   * Checks if a port is registered for a specific version.
-   * @param version - The version to check
-   * @returns True if a port is registered for this version
-   */
-  hasVersion(version) {
-    return this.tokens.has(version);
-  }
-  /**
-   * Gets the highest registered port version.
-   * @returns The highest version number or undefined if no ports are registered
-   */
-  getHighestVersion() {
-    const versions = this.getAvailableVersions();
-    return versions.at(-1);
-  }
-};
-__name(_PortRegistry, "PortRegistry");
-let PortRegistry = _PortRegistry;
 function isStringValue(value2, expectedType) {
   return expectedType === "string" && typeof value2 === "string";
 }
@@ -12281,6 +9004,21 @@ function validateHookApp(app) {
   return ok(result.output);
 }
 __name(validateHookApp, "validateHookApp");
+const HOOK_THROTTLE_WINDOW_MS = 150;
+const VALIDATION_CONSTRAINTS = {
+  /** Maximale Länge für IDs und Keys */
+  MAX_ID_LENGTH: 100,
+  /** Maximale Länge für Namen */
+  MAX_NAME_LENGTH: 100,
+  /** Maximale Länge für Flag-Keys */
+  MAX_FLAG_KEY_LENGTH: 100
+};
+const METRICS_CONFIG = {
+  /** Größe des Circular-Buffers für Resolution-Zeiten */
+  RESOLUTION_TIMES_BUFFER_SIZE: 100
+};
+Object.freeze(VALIDATION_CONSTRAINTS);
+Object.freeze(METRICS_CONFIG);
 function validateJournalId(id) {
   if (id.length === 0) {
     return err(createFoundryError("VALIDATION_FAILED", "ID cannot be empty"));
@@ -12539,6 +9277,135 @@ function createFoundryV13HooksPort() {
   });
 }
 __name(createFoundryV13HooksPort, "createFoundryV13HooksPort");
+function hasMethod(obj, methodName) {
+  return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
+  typeof obj[methodName] === "function";
+}
+__name(hasMethod, "hasMethod");
+function hasProperty(obj, propertyName) {
+  return obj !== null && obj !== void 0 && typeof obj === "object" && propertyName in obj;
+}
+__name(hasProperty, "hasProperty");
+function isObjectWithMethods(obj, methodNames) {
+  if (obj === null || obj === void 0 || typeof obj !== "object") {
+    return false;
+  }
+  return methodNames.every((methodName) => hasMethod(obj, methodName));
+}
+__name(isObjectWithMethods, "isObjectWithMethods");
+function isInitializable(obj) {
+  return hasMethod(obj, "initialize");
+}
+__name(isInitializable, "isInitializable");
+function castFoundrySettingsApi(settings) {
+  if (!isObjectWithMethods(settings, ["register", "get", "set"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "game.settings does not have required methods (register, get, set)",
+        {
+          missingMethods: ["register", "get", "set"]
+        }
+      )
+    );
+  }
+  return ok(settings);
+}
+__name(castFoundrySettingsApi, "castFoundrySettingsApi");
+function castFoundryDocumentForFlag(document2) {
+  if (!isObjectWithMethods(document2, ["getFlag", "setFlag"])) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        "Document does not have required methods (getFlag, setFlag)",
+        {
+          missingMethods: ["getFlag", "setFlag"]
+        }
+      )
+    );
+  }
+  return ok(document2);
+}
+__name(castFoundryDocumentForFlag, "castFoundryDocumentForFlag");
+function castFoundryError(error) {
+  return error;
+}
+__name(castFoundryError, "castFoundryError");
+function castDisposablePort(port) {
+  if (!port || typeof port !== "object") {
+    return null;
+  }
+  if (hasMethod(port, "dispose")) {
+    return port;
+  }
+  return null;
+}
+__name(castDisposablePort, "castDisposablePort");
+function ensureNonEmptyArray(arr) {
+  if (arr.length === 0) {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Array must not be empty", { arrayLength: 0 })
+    );
+  }
+  return ok(arr);
+}
+__name(ensureNonEmptyArray, "ensureNonEmptyArray");
+function extractHtmlElement(html) {
+  return html instanceof HTMLElement ? html : null;
+}
+__name(extractHtmlElement, "extractHtmlElement");
+function getFactoryOrError(factories, version) {
+  const factory = factories.get(version);
+  if (!factory) {
+    return err(
+      createFoundryError("PORT_NOT_FOUND", `Factory for version ${version} not found in registry`, {
+        version
+      })
+    );
+  }
+  return ok(factory);
+}
+__name(getFactoryOrError, "getFactoryOrError");
+function castFoundryDocumentWithUpdate(document2) {
+  if (!isObjectWithMethods(document2, ["update"])) {
+    return err(
+      createFoundryError("VALIDATION_FAILED", "Document does not have required method (update)", {
+        missingMethods: ["update"]
+      })
+    );
+  }
+  return ok(document2);
+}
+__name(castFoundryDocumentWithUpdate, "castFoundryDocumentWithUpdate");
+function castFoundryJournalEntryClass() {
+  if (typeof globalThis !== "object" || globalThis === null || !("JournalEntry" in globalThis)) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "Foundry JournalEntry class not available in globalThis",
+        {}
+      )
+    );
+  }
+  const journalEntryClass = globalThis.JournalEntry;
+  if (!isObjectWithMethods(journalEntryClass, ["create"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "Foundry JournalEntry class does not have required method (create)",
+        {
+          missingMethods: ["create"]
+        }
+      )
+    );
+  }
+  return ok(journalEntryClass);
+}
+__name(castFoundryJournalEntryClass, "castFoundryJournalEntryClass");
+function castCreatedJournalEntry(document2) {
+  return document2;
+}
+__name(castCreatedJournalEntry, "castCreatedJournalEntry");
 const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
   constructor() {
     __privateAdd(this, _disposed3, false);
@@ -13224,6 +10091,7 @@ function registerV13Ports(registries, container) {
   return ok(void 0);
 }
 __name(registerV13Ports, "registerV13Ports");
+const foundryUIToken = createInjectionToken("FoundryUI");
 const _FoundryUIAdapter = class _FoundryUIAdapter {
   constructor(foundryUI) {
     this.foundryUI = foundryUI;
@@ -13275,6 +10143,12 @@ const _DIFoundryUIAdapter = class _DIFoundryUIAdapter extends FoundryUIAdapter {
 __name(_DIFoundryUIAdapter, "DIFoundryUIAdapter");
 _DIFoundryUIAdapter.dependencies = [foundryUIToken];
 let DIFoundryUIAdapter = _DIFoundryUIAdapter;
+const LOG_LEVEL_SCHEMA = /* @__PURE__ */ picklist([
+  LogLevel.DEBUG,
+  LogLevel.INFO,
+  LogLevel.WARN,
+  LogLevel.ERROR
+]);
 const _ValibotValidationAdapter = class _ValibotValidationAdapter {
   /**
    * Validates a log level value using Valibot schema.
@@ -13497,1448 +10371,11 @@ function registerPortRegistries(container) {
   return ok(void 0);
 }
 __name(registerPortRegistries, "registerPortRegistries");
-const _FoundryGamePort = class _FoundryGamePort {
-  constructor(portSelector, portRegistry, retryService) {
-    this.portLoader = new PortLoader(portSelector, portRegistry);
-    this.retryable = new RetryableOperation(retryService);
-  }
-  getJournalEntries() {
-    return this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryGame");
-      if (!portResult.ok) return portResult;
-      return portResult.value.getJournalEntries();
-    }, "FoundryGame.getJournalEntries");
-  }
-  getJournalEntryById(id) {
-    return this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryGame");
-      if (!portResult.ok) return portResult;
-      return portResult.value.getJournalEntryById(id);
-    }, "FoundryGame.getJournalEntryById");
-  }
-  invalidateCache() {
-    const portResult = this.portLoader.loadPort("FoundryGame");
-    if (portResult.ok) {
-      portResult.value.invalidateCache();
-    }
-  }
-  /**
-   * Cleans up resources.
-   * Disposes the port if it implements Disposable, then clears the cache.
-   */
-  dispose() {
-    const port = this.portLoader.getLoadedPort();
-    const disposable = castDisposablePort(port);
-    if (disposable) {
-      disposable.dispose();
-    }
-    this.portLoader.clearCache();
-  }
-};
-__name(_FoundryGamePort, "FoundryGamePort");
-let FoundryGamePort = _FoundryGamePort;
-const _DIFoundryGamePort = class _DIFoundryGamePort extends FoundryGamePort {
-  constructor(portSelector, portRegistry, retryService) {
-    super(portSelector, portRegistry, retryService);
-  }
-};
-__name(_DIFoundryGamePort, "DIFoundryGamePort");
-_DIFoundryGamePort.dependencies = [
-  portSelectorToken,
-  foundryGamePortRegistryToken,
-  retryServiceToken
-];
-let DIFoundryGamePort = _DIFoundryGamePort;
-const _FoundryHooksPort = class _FoundryHooksPort {
-  constructor(portSelector, portRegistry, retryService, logger) {
-    this.registeredHooks = /* @__PURE__ */ new Map();
-    this.callbackToIdMap = /* @__PURE__ */ new Map();
-    this.idToHookNameMap = /* @__PURE__ */ new Map();
-    this.portLoader = new PortLoader(portSelector, portRegistry);
-    this.retryable = new RetryableOperation(retryService);
-    this.logger = logger;
-  }
-  on(hookName, callback) {
-    const result = this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryHooks");
-      if (!portResult.ok) return portResult;
-      return portResult.value.on(hookName, callback);
-    }, "FoundryHooks.on");
-    if (result.ok) {
-      let hookMap = this.registeredHooks.get(hookName);
-      if (!hookMap) {
-        hookMap = /* @__PURE__ */ new Map();
-        this.registeredHooks.set(hookName, hookMap);
-      }
-      hookMap.set(result.value, callback);
-      const existing = this.callbackToIdMap.get(callback) || [];
-      existing.push({ hookName, id: result.value });
-      this.callbackToIdMap.set(callback, existing);
-      this.idToHookNameMap.set(result.value, hookName);
-    }
-    return result;
-  }
-  once(hookName, callback) {
-    return this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryHooks");
-      if (!portResult.ok) return portResult;
-      return portResult.value.once(hookName, callback);
-    }, "FoundryHooks.once");
-  }
-  off(hookName, callbackOrId) {
-    const result = this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryHooks");
-      if (!portResult.ok) return portResult;
-      return portResult.value.off(hookName, callbackOrId);
-    }, "FoundryHooks.off");
-    if (result.ok) {
-      if (typeof callbackOrId === "number") {
-        const hooks = this.registeredHooks.get(hookName);
-        if (hooks) {
-          const callback = hooks.get(callbackOrId);
-          hooks.delete(callbackOrId);
-          if (callback) {
-            const hookInfos = this.callbackToIdMap.get(callback);
-            if (hookInfos) {
-              const filtered = hookInfos.filter(
-                (info) => !(info.hookName === hookName && info.id === callbackOrId)
-              );
-              if (filtered.length === 0) {
-                this.callbackToIdMap.delete(callback);
-              } else {
-                this.callbackToIdMap.set(callback, filtered);
-              }
-            }
-          }
-          this.idToHookNameMap.delete(callbackOrId);
-        }
-      } else {
-        const hookInfos = this.callbackToIdMap.get(callbackOrId);
-        if (hookInfos) {
-          const matchingInfos = hookInfos.filter((info) => info.hookName === hookName);
-          const hooks = this.registeredHooks.get(hookName);
-          if (hooks) {
-            for (const info of matchingInfos) {
-              hooks.delete(info.id);
-            }
-          }
-          const filtered = hookInfos.filter((info) => info.hookName !== hookName);
-          if (filtered.length === 0) {
-            this.callbackToIdMap.delete(callbackOrId);
-          } else {
-            this.callbackToIdMap.set(callbackOrId, filtered);
-          }
-        }
-      }
-    }
-    return result;
-  }
-  /**
-   * Cleans up all registered hooks.
-   * Called automatically when the container is disposed.
-   */
-  dispose() {
-    for (const [callback, hookInfos] of this.callbackToIdMap) {
-      for (const info of hookInfos) {
-        try {
-          if (typeof Hooks !== "undefined") {
-            Hooks.off(info.hookName, callback);
-          }
-        } catch (error) {
-          this.logger.warn("Failed to unregister hook", {
-            hookName: info.hookName,
-            hookId: info.id,
-            error
-          });
-        }
-      }
-    }
-    this.registeredHooks.clear();
-    this.callbackToIdMap.clear();
-    this.idToHookNameMap.clear();
-    const port = this.portLoader.getLoadedPort();
-    const disposable = castDisposablePort(port);
-    if (disposable) {
-      disposable.dispose();
-    }
-    this.portLoader.clearCache();
-  }
-  // ===== PlatformEventPort Implementation =====
-  /**
-   * Register a listener for platform events.
-   * Delegates to FoundryHooks.on() for Foundry-specific implementation.
-   * Wraps the PlatformEventPort callback to receive Foundry hook arguments as an array.
-   */
-  registerListener(eventType, callback) {
-    const foundryCallback = /* @__PURE__ */ __name((...args2) => {
-      callback(args2);
-    }, "foundryCallback");
-    const result = this.on(eventType, foundryCallback);
-    if (!result.ok) {
-      return err({
-        code: "EVENT_REGISTRATION_FAILED",
-        message: `Failed to register listener for event "${eventType}": ${result.error.message}`,
-        details: result.error
-      });
-    }
-    return ok(result.value);
-  }
-  /**
-   * Unregister a previously registered listener.
-   * Requires mapping from registration ID to hook name.
-   */
-  unregisterListener(registrationId) {
-    const id = typeof registrationId === "string" ? Number.parseInt(registrationId, 10) : registrationId;
-    if (Number.isNaN(id)) {
-      return err({
-        code: "EVENT_UNREGISTRATION_FAILED",
-        message: `Invalid registration ID: ${String(registrationId)}`
-      });
-    }
-    const hookName = this.idToHookNameMap.get(id);
-    if (!hookName) {
-      return err({
-        code: "EVENT_UNREGISTRATION_FAILED",
-        message: `No registration found for ID ${id}`
-      });
-    }
-    const result = this.off(hookName, id);
-    if (!result.ok) {
-      return err({
-        code: "EVENT_UNREGISTRATION_FAILED",
-        message: `Failed to unregister listener for event "${hookName}": ${result.error.message}`,
-        details: result.error
-      });
-    }
-    return ok(void 0);
-  }
-};
-__name(_FoundryHooksPort, "FoundryHooksPort");
-let FoundryHooksPort = _FoundryHooksPort;
-const _DIFoundryHooksPort = class _DIFoundryHooksPort extends FoundryHooksPort {
-  constructor(portSelector, portRegistry, retryService, logger) {
-    super(portSelector, portRegistry, retryService, logger);
-  }
-};
-__name(_DIFoundryHooksPort, "DIFoundryHooksPort");
-_DIFoundryHooksPort.dependencies = [
-  portSelectorToken,
-  foundryHooksPortRegistryToken,
-  retryServiceToken,
-  loggerToken
-];
-let DIFoundryHooksPort = _DIFoundryHooksPort;
-const _FoundryDocumentPort = class _FoundryDocumentPort {
-  constructor(portSelector, portRegistry, retryService) {
-    this.portLoader = new PortLoader(portSelector, portRegistry);
-    this.retryable = new RetryableOperation(retryService);
-  }
-  async create(documentClass, data) {
-    return this.retryable.executeAsync(async () => {
-      const portResult = this.portLoader.loadPort("FoundryDocument");
-      if (!portResult.ok) return portResult;
-      return await portResult.value.create(documentClass, data);
-    }, "FoundryDocument.create");
-  }
-  async update(document2, changes) {
-    return this.retryable.executeAsync(async () => {
-      const portResult = this.portLoader.loadPort("FoundryDocument");
-      if (!portResult.ok) return portResult;
-      return await portResult.value.update(document2, changes);
-    }, "FoundryDocument.update");
-  }
-  async delete(document2) {
-    return this.retryable.executeAsync(async () => {
-      const portResult = this.portLoader.loadPort("FoundryDocument");
-      if (!portResult.ok) return portResult;
-      return await portResult.value.delete(document2);
-    }, "FoundryDocument.delete");
-  }
-  getFlag(document2, scope, key, schema) {
-    return this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryDocument");
-      if (!portResult.ok) return portResult;
-      return portResult.value.getFlag(document2, scope, key, schema);
-    }, "FoundryDocument.getFlag");
-  }
-  async setFlag(document2, scope, key, value2) {
-    return this.retryable.executeAsync(async () => {
-      const portResult = this.portLoader.loadPort("FoundryDocument");
-      if (!portResult.ok) return portResult;
-      return await portResult.value.setFlag(document2, scope, key, value2);
-    }, "FoundryDocument.setFlag");
-  }
-  async unsetFlag(document2, scope, key) {
-    return this.retryable.executeAsync(async () => {
-      const portResult = this.portLoader.loadPort("FoundryDocument");
-      if (!portResult.ok) return portResult;
-      return await portResult.value.unsetFlag(document2, scope, key);
-    }, "FoundryDocument.unsetFlag");
-  }
-  /**
-   * Cleans up resources.
-   * Disposes the port if it implements Disposable, then clears the cache.
-   */
-  dispose() {
-    const port = this.portLoader.getLoadedPort();
-    const disposable = castDisposablePort(port);
-    if (disposable) {
-      disposable.dispose();
-    }
-    this.portLoader.clearCache();
-  }
-};
-__name(_FoundryDocumentPort, "FoundryDocumentPort");
-let FoundryDocumentPort = _FoundryDocumentPort;
-const _DIFoundryDocumentPort = class _DIFoundryDocumentPort extends FoundryDocumentPort {
-  constructor(portSelector, portRegistry, retryService) {
-    super(portSelector, portRegistry, retryService);
-  }
-};
-__name(_DIFoundryDocumentPort, "DIFoundryDocumentPort");
-_DIFoundryDocumentPort.dependencies = [
-  portSelectorToken,
-  foundryDocumentPortRegistryToken,
-  retryServiceToken
-];
-let DIFoundryDocumentPort = _DIFoundryDocumentPort;
-const _FoundryUIPort = class _FoundryUIPort {
-  constructor(portSelector, portRegistry, retryService) {
-    this.portLoader = new PortLoader(portSelector, portRegistry);
-    this.retryable = new RetryableOperation(retryService);
-  }
-  removeJournalElement(journalId, journalName, html) {
-    return this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryUI");
-      if (!portResult.ok) return portResult;
-      return portResult.value.removeJournalElement(journalId, journalName, html);
-    }, "FoundryUI.removeJournalElement");
-  }
-  findElement(container, selector) {
-    return this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryUI");
-      if (!portResult.ok) return portResult;
-      return portResult.value.findElement(container, selector);
-    }, "FoundryUI.findElement");
-  }
-  notify(message2, type, options) {
-    return this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryUI");
-      if (!portResult.ok) return portResult;
-      return portResult.value.notify(message2, type, options);
-    }, "FoundryUI.notify");
-  }
-  rerenderJournalDirectory() {
-    return this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundryUI");
-      if (!portResult.ok) return portResult;
-      return portResult.value.rerenderJournalDirectory();
-    }, "FoundryUI.rerenderJournalDirectory");
-  }
-  /**
-   * Cleans up resources.
-   * Disposes the port if it implements Disposable, then clears the cache.
-   */
-  dispose() {
-    const port = this.portLoader.getLoadedPort();
-    const disposable = castDisposablePort(port);
-    if (disposable) {
-      disposable.dispose();
-    }
-    this.portLoader.clearCache();
-  }
-};
-__name(_FoundryUIPort, "FoundryUIPort");
-let FoundryUIPort = _FoundryUIPort;
-const _DIFoundryUIPort = class _DIFoundryUIPort extends FoundryUIPort {
-  constructor(portSelector, portRegistry, retryService) {
-    super(portSelector, portRegistry, retryService);
-  }
-};
-__name(_DIFoundryUIPort, "DIFoundryUIPort");
-_DIFoundryUIPort.dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken];
-let DIFoundryUIPort = _DIFoundryUIPort;
-const _FoundrySettingsPort = class _FoundrySettingsPort {
-  constructor(portSelector, portRegistry, retryService) {
-    this.portLoader = new PortLoader(portSelector, portRegistry);
-    this.retryable = new RetryableOperation(retryService);
-  }
-  register(namespace, key, config2) {
-    return this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundrySettings");
-      if (!portResult.ok) return portResult;
-      return portResult.value.register(namespace, key, config2);
-    }, "FoundrySettings.register");
-  }
-  get(namespace, key, schema) {
-    return this.retryable.execute(() => {
-      const portResult = this.portLoader.loadPort("FoundrySettings");
-      if (!portResult.ok) return portResult;
-      return portResult.value.get(namespace, key, schema);
-    }, "FoundrySettings.get");
-  }
-  async set(namespace, key, value2) {
-    return this.retryable.executeAsync(async () => {
-      const portResult = this.portLoader.loadPort("FoundrySettings");
-      if (!portResult.ok) return portResult;
-      return portResult.value.set(namespace, key, value2);
-    }, "FoundrySettings.set");
-  }
-  /**
-   * Cleans up resources.
-   * Disposes the port if it implements Disposable, then clears the cache.
-   */
-  dispose() {
-    const port = this.portLoader.getLoadedPort();
-    const disposable = castDisposablePort(port);
-    if (disposable) {
-      disposable.dispose();
-    }
-    this.portLoader.clearCache();
-  }
-};
-__name(_FoundrySettingsPort, "FoundrySettingsPort");
-let FoundrySettingsPort = _FoundrySettingsPort;
-const _DIFoundrySettingsPort = class _DIFoundrySettingsPort extends FoundrySettingsPort {
-  constructor(portSelector, portRegistry, retryService) {
-    super(portSelector, portRegistry, retryService);
-  }
-};
-__name(_DIFoundrySettingsPort, "DIFoundrySettingsPort");
-_DIFoundrySettingsPort.dependencies = [
-  portSelectorToken,
-  foundrySettingsPortRegistryToken,
-  retryServiceToken
-];
-let DIFoundrySettingsPort = _DIFoundrySettingsPort;
-const _FoundryJournalFacade = class _FoundryJournalFacade {
-  constructor(game2, document2, ui2, moduleId) {
-    this.game = game2;
-    this.document = document2;
-    this.ui = ui2;
-    this.moduleId = moduleId;
-  }
-  /**
-   * Get all journal entries from Foundry.
-   *
-   * Delegates to FoundryGame.getJournalEntries().
-   */
-  getJournalEntries() {
-    return this.game.getJournalEntries();
-  }
-  /**
-   * Get a module flag from a journal entry with runtime validation.
-   *
-   * Delegates to FoundryDocument.getFlag() with module scope and schema.
-   *
-   * @template T - The flag value type
-   * @param entry - The Foundry journal entry
-   * @param key - The flag key
-   * @param schema - Valibot schema for validation
-   */
-  getEntryFlag(entry, key, schema) {
-    const documentResult = castFoundryDocumentForFlag(entry);
-    if (!documentResult.ok) {
-      return documentResult;
-    }
-    return this.document.getFlag(documentResult.value, this.moduleId, key, schema);
-  }
-  /**
-   * Remove a journal element from the UI.
-   *
-   * Delegates to FoundryUI.removeJournalElement().
-   *
-   * @param id - Journal entry ID
-   * @param name - Journal entry name (for logging)
-   * @param html - HTML container element
-   */
-  removeJournalElement(id, name, html) {
-    return this.ui.removeJournalElement(id, name, html);
-  }
-  /**
-   * Set a module flag on a journal entry.
-   *
-   * Delegates to FoundryDocument.setFlag() with module scope.
-   *
-   * @param entry - The Foundry journal entry
-   * @param key - The flag key
-   * @param value - The boolean value to set
-   * @returns Result indicating success or error
-   */
-  async setEntryFlag(entry, key, value2) {
-    const documentResult = castFoundryDocumentForFlag(entry);
-    if (!documentResult.ok) {
-      return documentResult;
-    }
-    return await this.document.setFlag(documentResult.value, this.moduleId, key, value2);
-  }
-};
-__name(_FoundryJournalFacade, "FoundryJournalFacade");
-let FoundryJournalFacade = _FoundryJournalFacade;
-const _DIFoundryJournalFacade = class _DIFoundryJournalFacade extends FoundryJournalFacade {
-  constructor(game2, document2, ui2, moduleId) {
-    super(game2, document2, ui2, moduleId);
-  }
-};
-__name(_DIFoundryJournalFacade, "DIFoundryJournalFacade");
-_DIFoundryJournalFacade.dependencies = [
-  foundryGameToken,
-  foundryDocumentToken,
-  foundryUIToken,
-  moduleIdToken
-];
-let DIFoundryJournalFacade = _DIFoundryJournalFacade;
-function sanitizeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
-__name(sanitizeHtml, "sanitizeHtml");
-const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
-const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notifications, cache, config2) {
-    this.journalCollection = journalCollection;
-    this.journalRepository = journalRepository;
-    this.notifications = notifications;
-    this.cache = cache;
-    this.config = config2;
-  }
-  /**
-   * Gets journal entries marked as hidden via module flag.
-   * Logs warnings for entries where flag reading fails to aid diagnosis.
-   */
-  getHiddenJournalEntries() {
-    const cacheKey = this.config.cacheKeyFactory("hidden-directory");
-    const cached = this.cache.get(cacheKey);
-    if (cached?.hit && cached.value) {
-      this.notifications.debug(
-        `Serving ${cached.value.length} hidden journal entries from cache (ttl=${cached.metadata.expiresAt ?? "∞"})`,
-        { context: { cached } },
-        { channels: ["ConsoleChannel"] }
-      );
-      return { ok: true, value: cached.value };
-    }
-    const allEntriesResult = this.journalCollection.getAll();
-    if (!allEntriesResult.ok) {
-      return {
-        ok: false,
-        error: {
-          code: "PLATFORM_ERROR",
-          message: allEntriesResult.error.message
-        }
-      };
-    }
-    const hidden = [];
-    for (const journal of allEntriesResult.value) {
-      const flagResult = this.journalRepository.getFlag(
-        journal.id,
-        this.config.moduleNamespace,
-        this.config.hiddenFlagKey
-      );
-      if (flagResult.ok) {
-        if (flagResult.value === true) {
-          hidden.push(journal);
-        }
-      } else {
-        const journalIdentifier = journal.name ?? journal.id;
-        this.notifications.warn(
-          `Failed to read hidden flag for journal "${sanitizeHtml(journalIdentifier)}"`,
-          {
-            errorCode: flagResult.error.code,
-            errorMessage: flagResult.error.message
-          },
-          { channels: ["ConsoleChannel"] }
-        );
-      }
-    }
-    this.cache.set(cacheKey, hidden.slice(), {
-      tags: [HIDDEN_JOURNAL_CACHE_TAG]
-    });
-    return { ok: true, value: hidden };
-  }
-};
-__name(_JournalVisibilityService, "JournalVisibilityService");
-let JournalVisibilityService = _JournalVisibilityService;
-const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notifications, cache, config2) {
-    super(journalCollection, journalRepository, notifications, cache, config2);
-  }
-};
-__name(_DIJournalVisibilityService, "DIJournalVisibilityService");
-_DIJournalVisibilityService.dependencies = [
-  platformJournalCollectionPortToken,
-  platformJournalRepositoryToken,
-  platformNotificationPortToken,
-  platformCachePortToken,
-  journalVisibilityConfigToken
-];
-let DIJournalVisibilityService = _DIJournalVisibilityService;
-function isNonEmptyArray(array2) {
-  return array2.length > 0;
-}
-__name(isNonEmptyArray, "isNonEmptyArray");
-function getFirstArrayElement$1(array2) {
-  if (!isNonEmptyArray(array2)) {
-    throw new Error("Array must have length > 0 (caller violated precondition)");
-  }
-  return array2[0];
-}
-__name(getFirstArrayElement$1, "getFirstArrayElement$1");
-function getFirstArrayElementSafe(array2) {
-  return isNonEmptyArray(array2) ? array2[0] : null;
-}
-__name(getFirstArrayElementSafe, "getFirstArrayElementSafe");
-const _JournalDirectoryProcessor = class _JournalDirectoryProcessor {
-  constructor(journalDirectoryUI, notifications, config2) {
-    this.journalDirectoryUI = journalDirectoryUI;
-    this.notifications = notifications;
-    this.config = config2;
-  }
-  /**
-   * Processes journal directory HTML to hide flagged entries.
-   * @param htmlElement - The HTML element containing the journal directory
-   * @param hiddenEntries - Array of journal entries that should be hidden
-   * @returns Result indicating success or failure with aggregated errors
-   */
-  processDirectory(htmlElement, hiddenEntries) {
-    this.notifications.debug(
-      "Processing journal directory for hidden entries",
-      { context: { htmlElement, hiddenCount: hiddenEntries.length } },
-      {
-        channels: ["ConsoleChannel"]
-      }
-    );
-    if (hiddenEntries.length === 0) {
-      this.notifications.debug(
-        "No hidden entries to process",
-        { context: {} },
-        {
-          channels: ["ConsoleChannel"]
-        }
-      );
-      return { ok: true, value: void 0 };
-    }
-    this.notifications.debug(
-      `Found ${hiddenEntries.length} hidden journal entries`,
-      { context: { hidden: hiddenEntries } },
-      {
-        channels: ["ConsoleChannel"]
-      }
-    );
-    return this.hideEntries(hiddenEntries, htmlElement);
-  }
-  /**
-   * Hides multiple journal entries in the DOM.
-   * @param entries - Array of journal entries to hide
-   * @param html - The HTML element containing the journal directory
-   * @returns Result indicating success or failure with aggregated errors
-   */
-  hideEntries(entries2, html) {
-    const errors = [];
-    for (const journal of entries2) {
-      const journalName = journal.name ?? this.config.unknownName;
-      const removeResult = this.journalDirectoryUI.removeJournalElement(
-        journal.id,
-        journalName,
-        html
-      );
-      if (!removeResult.ok) {
-        const journalError = {
-          code: "DOM_MANIPULATION_FAILED",
-          entryId: journal.id,
-          message: removeResult.error.message
-        };
-        errors.push(journalError);
-        this.notifications.warn("Error removing journal entry", journalError, {
-          channels: ["ConsoleChannel"]
-        });
-      } else {
-        this.notifications.debug(
-          `Removing journal entry: ${sanitizeHtml(journalName)}`,
-          { context: { journal } },
-          { channels: ["ConsoleChannel"] }
-        );
-      }
-    }
-    if (errors.length > 0) {
-      const firstError = getFirstArrayElement$1(errors);
-      return { ok: false, error: firstError };
-    }
-    return { ok: true, value: void 0 };
-  }
-};
-__name(_JournalDirectoryProcessor, "JournalDirectoryProcessor");
-let JournalDirectoryProcessor = _JournalDirectoryProcessor;
-const _DIJournalDirectoryProcessor = class _DIJournalDirectoryProcessor extends JournalDirectoryProcessor {
-  constructor(journalDirectoryUI, notifications, config2) {
-    super(journalDirectoryUI, notifications, config2);
-  }
-};
-__name(_DIJournalDirectoryProcessor, "DIJournalDirectoryProcessor");
-_DIJournalDirectoryProcessor.dependencies = [
-  platformJournalDirectoryUiPortToken,
-  platformNotificationPortToken,
-  journalVisibilityConfigToken
-];
-let DIJournalDirectoryProcessor = _DIJournalDirectoryProcessor;
-const _FoundryLibWrapperService = class _FoundryLibWrapperService {
-  constructor(moduleId, logger) {
-    this.moduleId = moduleId;
-    this.logger = logger;
-    this.registeredTargets = /* @__PURE__ */ new Map();
-    this.nextId = 1;
-  }
-  register(target, wrapperFn, type) {
-    if (typeof globalThis.libWrapper === "undefined") {
-      return err({
-        code: "LIBWRAPPER_NOT_AVAILABLE",
-        message: "libWrapper is not available"
-      });
-    }
-    if (this.registeredTargets.has(target)) {
-      return err({
-        code: "REGISTRATION_FAILED",
-        message: `Target "${target}" is already registered`,
-        details: { target }
-      });
-    }
-    const result = tryCatch(
-      () => {
-        const libWrapperInstance = globalThis.libWrapper;
-        if (typeof libWrapperInstance === "undefined") {
-          throw new Error("libWrapper is not available");
-        }
-        libWrapperInstance.register(this.moduleId, target, wrapperFn, type);
-        this.registeredTargets.set(target, true);
-        const registrationId = this.nextId++;
-        return registrationId;
-      },
-      (error) => ({
-        code: "REGISTRATION_FAILED",
-        message: `Failed to register wrapper for target "${target}": ${String(error)}`,
-        details: { target, error }
-      })
-    );
-    if (result.ok) {
-      return ok(result.value);
-    }
-    return result;
-  }
-  unregister(target) {
-    if (!this.registeredTargets.has(target)) {
-      return err({
-        code: "TARGET_NOT_REGISTERED",
-        message: `Target "${target}" is not registered`,
-        details: { target }
-      });
-    }
-    if (typeof globalThis.libWrapper === "undefined") {
-      return err({
-        code: "LIBWRAPPER_NOT_AVAILABLE",
-        message: "libWrapper is not available"
-      });
-    }
-    const result = tryCatch(
-      () => {
-        const libWrapperInstance = globalThis.libWrapper;
-        if (typeof libWrapperInstance === "undefined") {
-          throw new Error("libWrapper is not available");
-        }
-        libWrapperInstance.unregister(this.moduleId, target);
-        this.registeredTargets.delete(target);
-      },
-      (error) => ({
-        code: "UNREGISTRATION_FAILED",
-        message: `Failed to unregister wrapper for target "${target}": ${String(error)}`,
-        details: { target, error }
-      })
-    );
-    if (result.ok) {
-      return ok(void 0);
-    }
-    return result;
-  }
-  /**
-   * Cleanup all registered wrappers.
-   * Should be called during module shutdown.
-   */
-  dispose() {
-    const targets = Array.from(this.registeredTargets.keys());
-    for (const target of targets) {
-      const result = this.unregister(target);
-      if (!result.ok) {
-        this.logger.warn("Failed to unregister libWrapper target during dispose", {
-          target,
-          error: result.error
-        });
-      }
-    }
-    this.registeredTargets.clear();
-  }
-};
-__name(_FoundryLibWrapperService, "FoundryLibWrapperService");
-let FoundryLibWrapperService = _FoundryLibWrapperService;
-const _DIFoundryLibWrapperService = class _DIFoundryLibWrapperService extends FoundryLibWrapperService {
-  constructor(moduleId, logger) {
-    super(moduleId, logger);
-  }
-};
-__name(_DIFoundryLibWrapperService, "DIFoundryLibWrapperService");
-_DIFoundryLibWrapperService.dependencies = [moduleIdToken, loggerToken];
-let DIFoundryLibWrapperService = _DIFoundryLibWrapperService;
-const libWrapperServiceToken = createInjectionToken("LibWrapperService");
-const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapperService {
-  constructor(libWrapperService, logger) {
-    this.libWrapperService = libWrapperService;
-    this.logger = logger;
-    this.libWrapperRegistered = false;
-    this.callbacks = [];
-  }
-  /**
-   * Register libWrapper for ContextMenu.render.
-   * Should be called once during module initialization.
-   *
-   * @returns Success or error if registration failed
-   */
-  register() {
-    if (this.libWrapperRegistered) {
-      return ok(void 0);
-    }
-    const contextMenuClass = globalThis.foundry?.applications?.ux?.ContextMenu?.implementation;
-    if (!contextMenuClass) {
-      return err(new Error("ContextMenu is not available"));
-    }
-    const wrapperFn = this.createWrapperFunction();
-    const result = this.libWrapperService.register(
-      "foundry.applications.ux.ContextMenu.implementation.prototype.render",
-      wrapperFn,
-      "WRAPPER"
-    );
-    if (!result.ok) {
-      return err(new Error(result.error.message));
-    }
-    this.registrationId = result.value;
-    this.libWrapperRegistered = true;
-    this.logger.debug("Journal context menu libWrapper registered");
-    return ok(void 0);
-  }
-  /**
-   * Add a callback that will be called when a journal context menu is rendered.
-   *
-   * @param callback - Callback function that receives the context menu event
-   */
-  addCallback(callback) {
-    this.callbacks.push(callback);
-  }
-  /**
-   * Remove a previously registered callback.
-   *
-   * @param callback - The callback function to remove
-   */
-  removeCallback(callback) {
-    const index = this.callbacks.indexOf(callback);
-    if (index > -1) {
-      this.callbacks.splice(index, 1);
-    }
-  }
-  /**
-   * Cleanup: Unregister libWrapper.
-   * Should be called during module shutdown.
-   */
-  dispose() {
-    if (this.libWrapperRegistered) {
-      const result = this.libWrapperService.unregister(
-        "foundry.applications.ux.ContextMenu.implementation.prototype.render"
-      );
-      if (!result.ok) {
-        this.logger.warn("Failed to unregister context menu libWrapper", {
-          error: result.error
-        });
-      }
-      this.libWrapperRegistered = false;
-      this.registrationId = void 0;
-    }
-    this.callbacks = [];
-  }
-  /**
-   * Create the wrapper function for libWrapper.
-   * This function intercepts ContextMenu.render calls and allows
-   * registered callbacks to modify the menu options.
-   */
-  createWrapperFunction() {
-    const callbacksRef = this.callbacks;
-    return function(wrapped, ...args2) {
-      const firstArg = args2[0];
-      const target = firstArg instanceof HTMLElement ? firstArg : void 0;
-      if (!target) {
-        return wrapped.call(this, ...args2);
-      }
-      const menuItemsRaw = this.menuItems;
-      if (!menuItemsRaw) {
-        return wrapped.call(this, ...args2);
-      }
-      const menuItems = menuItemsRaw;
-      const journalId = target.getAttribute?.("data-entry-id") || target.getAttribute?.("data-document-id");
-      if (journalId) {
-        const event = {
-          htmlElement: target,
-          options: menuItems.map((item) => ({
-            name: item.name,
-            icon: item.icon,
-            callback: item.callback
-          })),
-          timestamp: Date.now()
-        };
-        for (const cb of callbacksRef) {
-          cb(event);
-        }
-        const existingNames = new Set(menuItems.map((item) => item.name));
-        for (const newOption of event.options) {
-          if (!existingNames.has(newOption.name)) {
-            menuItems.push({
-              name: newOption.name,
-              icon: newOption.icon,
-              callback: /* @__PURE__ */ __name(() => {
-                const result = newOption.callback(target);
-                if (result instanceof Promise) {
-                  result.catch(() => {
-                  });
-                }
-              }, "callback")
-            });
-          }
-        }
-      }
-      return wrapped.call(this, ...args2);
-    };
-  }
-};
-__name(_JournalContextMenuLibWrapperService, "JournalContextMenuLibWrapperService");
-let JournalContextMenuLibWrapperService = _JournalContextMenuLibWrapperService;
-const _DIJournalContextMenuLibWrapperService = class _DIJournalContextMenuLibWrapperService extends JournalContextMenuLibWrapperService {
-  constructor(libWrapperService, logger) {
-    super(libWrapperService, logger);
-  }
-};
-__name(_DIJournalContextMenuLibWrapperService, "DIJournalContextMenuLibWrapperService");
-_DIJournalContextMenuLibWrapperService.dependencies = [libWrapperServiceToken, loggerToken];
-let DIJournalContextMenuLibWrapperService = _DIJournalContextMenuLibWrapperService;
-const _FoundrySettingsRegistrationAdapter = class _FoundrySettingsRegistrationAdapter {
-  constructor(foundrySettings) {
-    this.foundrySettings = foundrySettings;
-  }
-  registerSetting(namespace, key, config2) {
-    const foundryConfig = {
-      name: config2.name,
-      ...config2.hint !== void 0 && { hint: config2.hint },
-      scope: config2.scope,
-      config: config2.config,
-      type: config2.type,
-      ...config2.choices !== void 0 && { choices: config2.choices },
-      default: config2.default,
-      ...config2.onChange !== void 0 && { onChange: config2.onChange }
-    };
-    const result = this.foundrySettings.register(namespace, key, foundryConfig);
-    if (!result.ok) {
-      return {
-        ok: false,
-        error: this.mapFoundryError(result.error, "register", key)
-      };
-    }
-    return { ok: true, value: void 0 };
-  }
-  getSettingValue(namespace, key, validator) {
-    const permissiveSchema = /* @__PURE__ */ unknown();
-    const result = this.foundrySettings.get(namespace, key, permissiveSchema);
-    if (!result.ok) {
-      return {
-        ok: false,
-        error: this.mapFoundryError(result.error, "get", key)
-      };
-    }
-    if (!validator(result.value)) {
-      return {
-        ok: false,
-        error: {
-          code: "INVALID_SETTING_VALUE",
-          message: `Setting "${namespace}.${key}" has invalid value type`,
-          details: { value: result.value }
-        }
-      };
-    }
-    return { ok: true, value: result.value };
-  }
-  async setSettingValue(namespace, key, value2) {
-    const result = await this.foundrySettings.set(namespace, key, value2);
-    if (!result.ok) {
-      return {
-        ok: false,
-        error: this.mapFoundryError(result.error, "set", key)
-      };
-    }
-    return { ok: true, value: void 0 };
-  }
-  // ===== Private Helpers =====
-  mapFoundryError(foundryError, operation, key) {
-    let code;
-    switch (foundryError.code) {
-      case "API_NOT_AVAILABLE":
-        code = "PLATFORM_NOT_AVAILABLE";
-        break;
-      case "VALIDATION_FAILED":
-        code = "INVALID_SETTING_VALUE";
-        break;
-      case "OPERATION_FAILED":
-        if (operation === "register") {
-          code = "SETTING_REGISTRATION_FAILED";
-        } else if (operation === "get") {
-          code = "SETTING_READ_FAILED";
-        } else {
-          code = "SETTING_WRITE_FAILED";
-        }
-        break;
-      default:
-        code = operation === "register" ? "SETTING_REGISTRATION_FAILED" : operation === "get" ? "SETTING_READ_FAILED" : "SETTING_WRITE_FAILED";
-    }
-    return {
-      code,
-      message: `Failed to ${operation} setting "${key}": ${foundryError.message}`,
-      details: foundryError
-    };
-  }
-};
-__name(_FoundrySettingsRegistrationAdapter, "FoundrySettingsRegistrationAdapter");
-let FoundrySettingsRegistrationAdapter = _FoundrySettingsRegistrationAdapter;
-const _DIFoundrySettingsRegistrationAdapter = class _DIFoundrySettingsRegistrationAdapter extends FoundrySettingsRegistrationAdapter {
-  constructor(foundrySettings) {
-    super(foundrySettings);
-  }
-};
-__name(_DIFoundrySettingsRegistrationAdapter, "DIFoundrySettingsRegistrationAdapter");
-_DIFoundrySettingsRegistrationAdapter.dependencies = [foundrySettingsToken];
-let DIFoundrySettingsRegistrationAdapter = _DIFoundrySettingsRegistrationAdapter;
-function registerFoundryServices(container) {
-  const gameServiceResult = container.registerClass(
-    foundryGameToken,
-    DIFoundryGamePort,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(gameServiceResult)) {
-    return err(`Failed to register FoundryGame service: ${gameServiceResult.error.message}`);
-  }
-  const hooksServiceResult = container.registerClass(
-    foundryHooksToken,
-    DIFoundryHooksPort,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(hooksServiceResult)) {
-    return err(`Failed to register FoundryHooks service: ${hooksServiceResult.error.message}`);
-  }
-  const documentServiceResult = container.registerClass(
-    foundryDocumentToken,
-    DIFoundryDocumentPort,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(documentServiceResult)) {
-    return err(
-      `Failed to register FoundryDocument service: ${documentServiceResult.error.message}`
-    );
-  }
-  const uiServiceResult = container.registerClass(
-    foundryUIToken,
-    DIFoundryUIPort,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(uiServiceResult)) {
-    return err(`Failed to register FoundryUI service: ${uiServiceResult.error.message}`);
-  }
-  const settingsServiceResult = container.registerClass(
-    foundrySettingsToken,
-    DIFoundrySettingsPort,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(settingsServiceResult)) {
-    return err(
-      `Failed to register FoundrySettings service: ${settingsServiceResult.error.message}`
-    );
-  }
-  const settingsRegistrationResult = container.registerClass(
-    platformSettingsRegistrationPortToken,
-    DIFoundrySettingsRegistrationAdapter,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(settingsRegistrationResult)) {
-    return err(
-      `Failed to register PlatformSettingsRegistrationPort: ${settingsRegistrationResult.error.message}`
-    );
-  }
-  const journalFacadeResult = container.registerClass(
-    foundryJournalFacadeToken,
-    DIFoundryJournalFacade,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(journalFacadeResult)) {
-    return err(`Failed to register FoundryJournalFacade: ${journalFacadeResult.error.message}`);
-  }
-  const journalVisibilityResult = container.registerClass(
-    journalVisibilityServiceToken,
-    DIJournalVisibilityService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(journalVisibilityResult)) {
-    return err(
-      `Failed to register JournalVisibility service: ${journalVisibilityResult.error.message}`
-    );
-  }
-  const journalDirectoryProcessorResult = container.registerClass(
-    journalDirectoryProcessorToken,
-    DIJournalDirectoryProcessor,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(journalDirectoryProcessorResult)) {
-    return err(
-      `Failed to register JournalDirectoryProcessor: ${journalDirectoryProcessorResult.error.message}`
-    );
-  }
-  const libWrapperServiceResult = container.registerClass(
-    libWrapperServiceToken,
-    DIFoundryLibWrapperService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(libWrapperServiceResult)) {
-    return err(`Failed to register LibWrapperService: ${libWrapperServiceResult.error.message}`);
-  }
-  const contextMenuLibWrapperResult = container.registerClass(
-    journalContextMenuLibWrapperServiceToken,
-    DIJournalContextMenuLibWrapperService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(contextMenuLibWrapperResult)) {
-    return err(
-      `Failed to register JournalContextMenuLibWrapperService: ${contextMenuLibWrapperResult.error.message}`
-    );
-  }
-  const contextMenuPortResult = container.registerAlias(
-    platformContextMenuRegistrationPortToken,
-    journalContextMenuLibWrapperServiceToken
-  );
-  if (isErr(contextMenuPortResult)) {
-    return err(
-      `Failed to register PlatformContextMenuRegistrationPort: ${contextMenuPortResult.error.message}`
-    );
-  }
-  return ok(void 0);
-}
-__name(registerFoundryServices, "registerFoundryServices");
-const performanceTrackingServiceToken = createInjectionToken(
-  "PerformanceTrackingService"
-);
-const _PerformanceTrackingService = class _PerformanceTrackingService extends PerformanceTrackerImpl {
-  constructor(config2, sampler) {
-    super(config2, sampler);
-  }
-};
-__name(_PerformanceTrackingService, "PerformanceTrackingService");
-let PerformanceTrackingService = _PerformanceTrackingService;
-const _DIPerformanceTrackingService = class _DIPerformanceTrackingService extends PerformanceTrackingService {
-  constructor(config2, sampler) {
-    super(config2, sampler);
-  }
-};
-__name(_DIPerformanceTrackingService, "DIPerformanceTrackingService");
-_DIPerformanceTrackingService.dependencies = [runtimeConfigToken, metricsSamplerToken];
-let DIPerformanceTrackingService = _DIPerformanceTrackingService;
-const _BaseRetryService = class _BaseRetryService {
-  /**
-   * Retries an async operation with exponential backoff.
-   *
-   * @template SuccessType - The success type of the operation
-   * @template ErrorType - The error type of the operation
-   * @param fn - Async function that returns a Result
-   * @param options - Retry configuration options
-   * @returns Promise resolving to the Result (success or last error)
-   */
-  async retry(fn, options) {
-    const maxAttempts = options.maxAttempts ?? 3;
-    const delayMs = options.delayMs ?? 100;
-    const backoffFactor = options.backoffFactor ?? 1;
-    const { mapException } = options;
-    if (maxAttempts < 1) {
-      return err(mapException("maxAttempts must be >= 1", 0));
-    }
-    let lastError = mapException("Initial retry error", 0);
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        const result = await fn();
-        if (result.ok) {
-          return result;
-        }
-        lastError = result.error;
-        if (attempt === maxAttempts) {
-          break;
-        }
-        const delay = delayMs * Math.pow(attempt, backoffFactor);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      } catch (error) {
-        lastError = mapException(error, attempt);
-        if (attempt === maxAttempts) {
-          break;
-        }
-        const delay = delayMs * Math.pow(attempt, backoffFactor);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
-    return err(lastError);
-  }
-  /**
-   * Retries a synchronous operation.
-   * Similar to retry but for sync functions.
-   *
-   * @template SuccessType - The success type
-   * @template ErrorType - The error type
-   * @param fn - Function that returns a Result
-   * @param options - Retry configuration options (without delayMs and backoffFactor)
-   * @returns The Result (success or last error)
-   */
-  retrySync(fn, options) {
-    const maxAttempts = options.maxAttempts ?? 3;
-    const { mapException } = options;
-    if (maxAttempts < 1) {
-      return err(mapException("maxAttempts must be >= 1", 0));
-    }
-    let lastError = mapException("Initial retry error", 0);
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        const result = fn();
-        if (result.ok) {
-          return result;
-        }
-        lastError = result.error;
-        if (attempt === maxAttempts) {
-          break;
-        }
-      } catch (error) {
-        lastError = mapException(error, attempt);
-        if (attempt === maxAttempts) {
-          break;
-        }
-      }
-    }
-    return err(lastError);
-  }
-};
-__name(_BaseRetryService, "BaseRetryService");
-let BaseRetryService = _BaseRetryService;
-const _RetryObservabilityDecorator = class _RetryObservabilityDecorator extends BaseRetryService {
-  constructor(logger) {
-    super();
-    this.logger = logger;
-  }
-  /**
-   * Retries an async operation with exponential backoff and observability.
-   *
-   * @template SuccessType - The success type of the operation
-   * @template ErrorType - The error type of the operation
-   * @param fn - Async function that returns a Result
-   * @param options - Retry configuration options with optional observability
-   * @returns Promise resolving to the Result (success or last error)
-   */
-  async retry(fn, options) {
-    const { operationName, ...baseOptions } = options;
-    const startTime = performance.now();
-    let attemptCount = 0;
-    const wrappedFn = /* @__PURE__ */ __name(async () => {
-      attemptCount++;
-      try {
-        const result2 = await fn();
-        if (!result2.ok && attemptCount < (baseOptions.maxAttempts ?? 3)) {
-          if (operationName) {
-            this.logger.debug(
-              `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} failed for "${operationName}"`,
-              { error: result2.error }
-            );
-          }
-        }
-        return result2;
-      } catch (error) {
-        if (attemptCount < (baseOptions.maxAttempts ?? 3) && operationName) {
-          this.logger.warn(
-            `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} threw exception for "${operationName}"`,
-            { error }
-          );
-        }
-        throw error;
-      }
-    }, "wrappedFn");
-    const result = await super.retry(wrappedFn, baseOptions);
-    const duration = performance.now() - startTime;
-    if (operationName) {
-      if (result.ok && attemptCount > 1) {
-        this.logger.debug(
-          `Retry succeeded for "${operationName}" after ${attemptCount} attempts (${duration.toFixed(2)}ms)`
-        );
-      } else if (!result.ok) {
-        this.logger.warn(
-          `All retry attempts exhausted for "${operationName}" after ${baseOptions.maxAttempts ?? 3} attempts (${duration.toFixed(2)}ms)`
-        );
-      }
-    }
-    return result;
-  }
-  /**
-   * Retries a synchronous operation with observability.
-   *
-   * @template SuccessType - The success type
-   * @template ErrorType - The error type
-   * @param fn - Function that returns a Result
-   * @param options - Retry configuration options (without delayMs and backoffFactor)
-   * @returns The Result (success or last error)
-   */
-  retrySync(fn, options) {
-    const { operationName, ...baseOptions } = options;
-    let attemptCount = 0;
-    const wrappedFn = /* @__PURE__ */ __name(() => {
-      attemptCount++;
-      try {
-        const result2 = fn();
-        if (!result2.ok && attemptCount < (baseOptions.maxAttempts ?? 3)) {
-          if (operationName) {
-            this.logger.debug(
-              `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} failed for "${operationName}"`,
-              { error: result2.error }
-            );
-          }
-        }
-        return result2;
-      } catch (error) {
-        if (attemptCount < (baseOptions.maxAttempts ?? 3) && operationName) {
-          this.logger.warn(
-            `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} threw exception for "${operationName}"`,
-            { error }
-          );
-        }
-        throw error;
-      }
-    }, "wrappedFn");
-    const result = super.retrySync(wrappedFn, baseOptions);
-    if (operationName && !result.ok) {
-      this.logger.warn(
-        `All retry attempts exhausted for "${operationName}" after ${baseOptions.maxAttempts ?? 3} attempts`
-      );
-    } else if (operationName && result.ok && attemptCount > 1) {
-      this.logger.debug(`Retry succeeded for "${operationName}" after ${attemptCount} attempts`);
-    }
-    return result;
-  }
-};
-__name(_RetryObservabilityDecorator, "RetryObservabilityDecorator");
-let RetryObservabilityDecorator = _RetryObservabilityDecorator;
-function isLogger(value2) {
-  return !(value2 instanceof BaseRetryService);
-}
-__name(isLogger, "isLogger");
-const _RetryService = class _RetryService {
-  constructor(loggerOrBaseService, observabilityDecorator) {
-    if (observabilityDecorator) {
-      this.composedService = observabilityDecorator;
-    } else {
-      if (!isLogger(loggerOrBaseService)) {
-        throw new Error("BaseRetryService cannot be used without RetryObservabilityDecorator");
-      }
-      this.composedService = new RetryObservabilityDecorator(loggerOrBaseService);
-    }
-  }
-  /**
-   * Retries an async operation with exponential backoff.
-   *
-   * Useful for handling transient failures in external APIs (e.g., Foundry API calls).
-   *
-   * @template SuccessType - The success type of the operation
-   * @template ErrorType - The error type of the operation
-   * @param fn - Async function that returns a Result
-   * @param options - Retry configuration options
-   * @returns Promise resolving to the Result (success or last error)
-   *
-   * @example
-   * ```typescript
-   * const result = await retryService.retry(
-   *   () => foundryApi.fetchData(),
-   *   {
-   *     maxAttempts: 3,
-   *     delayMs: 100,
-   *     operationName: "fetchData",
-   *     mapException: (error, attempt) => ({
-   *       code: 'OPERATION_FAILED' as const,
-   *       message: `Attempt ${attempt} failed: ${String(error)}`
-   *     })
-   *   }
-   * );
-   * ```
-   */
-  async retry(fn, options) {
-    return this.composedService.retry(fn, options);
-  }
-  /**
-   * Retries a synchronous operation.
-   * Similar to retry but for sync functions.
-   *
-   * @template SuccessType - The success type
-   * @template ErrorType - The error type
-   * @param fn - Function that returns a Result
-   * @param options - Retry configuration options
-   * @returns The Result (success or last error)
-   *
-   * @example
-   * ```typescript
-   * const result = retryService.retrySync(
-   *   () => parseData(input),
-   *   {
-   *     maxAttempts: 3,
-   *     operationName: "parseData",
-   *     mapException: (error, attempt) => ({
-   *       code: 'PARSE_FAILED' as const,
-   *       message: `Parse attempt ${attempt} failed: ${String(error)}`
-   *     })
-   *   }
-   * );
-   * ```
-   */
-  retrySync(fn, options) {
-    return this.composedService.retrySync(fn, options);
-  }
-};
-__name(_RetryService, "RetryService");
-let RetryService = _RetryService;
-const _DIRetryService = class _DIRetryService extends RetryService {
-  constructor(logger) {
-    super(logger);
-  }
-};
-__name(_DIRetryService, "DIRetryService");
-_DIRetryService.dependencies = [loggerToken];
-let DIRetryService = _DIRetryService;
-function registerUtilityServices(container) {
-  const perfTrackingResult = container.registerClass(
-    performanceTrackingServiceToken,
-    DIPerformanceTrackingService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(perfTrackingResult)) {
-    return err(
-      `Failed to register PerformanceTrackingService: ${perfTrackingResult.error.message}`
-    );
-  }
-  const retryServiceResult = container.registerClass(
-    retryServiceToken,
-    DIRetryService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(retryServiceResult)) {
-    return err(`Failed to register RetryService: ${retryServiceResult.error.message}`);
-  }
-  return ok(void 0);
-}
-__name(registerUtilityServices, "registerUtilityServices");
+registerDependencyStep({
+  name: "PortInfrastructure",
+  priority: 60,
+  execute: registerPortInfrastructure
+});
 const cacheServiceConfigToken = createInjectionToken("CacheServiceConfig");
 const cacheServiceToken = createInjectionToken("CacheService");
 const cacheConfigSyncToken = createInjectionToken("CacheConfigSync");
@@ -15265,10 +10702,10 @@ function castCacheValue(value2) {
   return value2;
 }
 __name(castCacheValue, "castCacheValue");
-function getFirstArrayElement(array2) {
+function getFirstArrayElement$1(array2) {
   return array2[0];
 }
-__name(getFirstArrayElement, "getFirstArrayElement");
+__name(getFirstArrayElement$1, "getFirstArrayElement$1");
 function getFirstElementIfArray(value2, typeGuard) {
   if (Array.isArray(value2) && value2.length > 0) {
     const firstElement = value2[0];
@@ -15893,6 +11330,4646 @@ function initializeCacheConfigSync(container) {
   return ok(void 0);
 }
 __name(initializeCacheConfigSync, "initializeCacheConfigSync");
+registerDependencyStep({
+  name: "CacheServices",
+  priority: 50,
+  execute: registerCacheServices
+});
+const platformBootstrapEventPortToken = createInjectionToken(
+  "PlatformBootstrapEventPort"
+);
+const metricsRecorderToken = createInjectionToken("MetricsRecorder");
+const metricsSamplerToken = createInjectionToken("MetricsSampler");
+const metricsReporterToken = createInjectionToken("MetricsReporter");
+const traceContextToken = createInjectionToken("TraceContext");
+const metricsStorageToken = createInjectionToken("MetricsStorage");
+const metricsAggregatorToken = createInjectionToken("MetricsAggregator");
+const metricsPersistenceManagerToken = createInjectionToken(
+  "MetricsPersistenceManager"
+);
+const metricsStateManagerToken = createInjectionToken("MetricsStateManager");
+const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
+const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
+const _MetricsAggregator = class _MetricsAggregator {
+  /**
+   * Aggregates raw metrics into a snapshot.
+   *
+   * @param metrics - Raw metrics data
+   * @returns Aggregated metrics snapshot
+   */
+  aggregate(metrics) {
+    const avgTime = this.calculateAverage(metrics.resolutionTimes, metrics.resolutionTimesCount);
+    const cacheHitRate = this.calculateCacheHitRate(metrics.cacheHits, metrics.cacheMisses);
+    return {
+      containerResolutions: metrics.containerResolutions,
+      resolutionErrors: metrics.resolutionErrors,
+      avgResolutionTimeMs: avgTime,
+      portSelections: Object.fromEntries(metrics.portSelections),
+      portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures),
+      cacheHitRate
+    };
+  }
+  /**
+   * Calculates the average of resolution times.
+   *
+   * @param times - Array of resolution times
+   * @param count - Number of valid entries in the array
+   * @returns Average time in milliseconds
+   */
+  calculateAverage(times, count) {
+    if (count === 0) {
+      return 0;
+    }
+    const slice = times.slice(0, count);
+    const sum = slice.reduce((acc, time) => acc + time, 0);
+    return sum / count;
+  }
+  /**
+   * Calculates the cache hit rate as a percentage.
+   *
+   * @param hits - Number of cache hits
+   * @param misses - Number of cache misses
+   * @returns Cache hit rate (0-100)
+   */
+  calculateCacheHitRate(hits, misses) {
+    const totalAccess = hits + misses;
+    if (totalAccess === 0) {
+      return 0;
+    }
+    return hits / totalAccess * 100;
+  }
+};
+__name(_MetricsAggregator, "MetricsAggregator");
+let MetricsAggregator = _MetricsAggregator;
+const _MetricsPersistenceManager = class _MetricsPersistenceManager {
+  /**
+   * Serializes raw metrics into a persistence state.
+   *
+   * @param metrics - Raw metrics data
+   * @returns Serializable persistence state
+   */
+  serialize(metrics) {
+    return {
+      metrics: {
+        containerResolutions: metrics.containerResolutions,
+        resolutionErrors: metrics.resolutionErrors,
+        cacheHits: metrics.cacheHits,
+        cacheMisses: metrics.cacheMisses,
+        portSelections: Object.fromEntries(metrics.portSelections),
+        portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures)
+      },
+      resolutionTimes: Array.from(metrics.resolutionTimes),
+      resolutionTimesIndex: metrics.resolutionTimesIndex,
+      resolutionTimesCount: metrics.resolutionTimesCount
+    };
+  }
+  /**
+   * Deserializes a persistence state into raw metrics.
+   *
+   * @param state - Persisted state (can be null or undefined)
+   * @returns Raw metrics data
+   */
+  deserialize(state) {
+    if (!state) {
+      return this.createEmptyRawMetrics();
+    }
+    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
+    const rawMetrics = {
+      containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
+      resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
+      cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
+      cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
+      portSelections: new Map(
+        Object.entries(metrics?.portSelections ?? {}).map(([key, value2]) => [
+          Number(key),
+          Number.isFinite(Number(value2)) ? Number(value2) : 0
+        ])
+      ),
+      portSelectionFailures: new Map(
+        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value2]) => [
+          Number(key),
+          Number.isFinite(Number(value2)) ? Number(value2) : 0
+        ])
+      ),
+      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0
+    };
+    if (Array.isArray(resolutionTimes)) {
+      const maxLength2 = Math.min(resolutionTimes.length, rawMetrics.resolutionTimes.length);
+      for (let index = 0; index < maxLength2; index++) {
+        const value2 = Number(resolutionTimes[index]);
+        rawMetrics.resolutionTimes[index] = Number.isFinite(value2) ? value2 : 0;
+      }
+      const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
+      const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
+      rawMetrics.resolutionTimesIndex = Math.min(
+        Math.max(0, safeIndex),
+        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE - 1
+      );
+      rawMetrics.resolutionTimesCount = Math.min(
+        Math.max(0, safeCount),
+        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE
+      );
+    } else {
+      rawMetrics.resolutionTimesIndex = 0;
+      rawMetrics.resolutionTimesCount = 0;
+    }
+    return rawMetrics;
+  }
+  /**
+   * Creates an empty raw metrics structure.
+   *
+   * @returns Empty raw metrics
+   */
+  createEmptyRawMetrics() {
+    return {
+      containerResolutions: 0,
+      resolutionErrors: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      portSelections: /* @__PURE__ */ new Map(),
+      portSelectionFailures: /* @__PURE__ */ new Map(),
+      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0
+    };
+  }
+};
+__name(_MetricsPersistenceManager, "MetricsPersistenceManager");
+let MetricsPersistenceManager = _MetricsPersistenceManager;
+const _MetricsStateManager = class _MetricsStateManager {
+  constructor() {
+    this.callbacks = /* @__PURE__ */ new Set();
+  }
+  /**
+   * Resets the state manager.
+   * Clears all registered callbacks.
+   */
+  reset() {
+    this.callbacks.clear();
+  }
+  /**
+   * Subscribes to state changes.
+   *
+   * @param callback - Callback to invoke on state changes
+   */
+  onStateChanged(callback) {
+    this.callbacks.add(callback);
+  }
+  /**
+   * Unsubscribes from state changes.
+   *
+   * @param callback - Callback to remove
+   */
+  unsubscribe(callback) {
+    this.callbacks.delete(callback);
+  }
+  /**
+   * Notifies all registered callbacks of a state change.
+   * Internal method used by MetricsCollector.
+   */
+  notifyStateChanged() {
+    for (const callback of this.callbacks) {
+      try {
+        callback();
+      } catch (error) {
+        console.error("Error in metrics state change callback:", error);
+      }
+    }
+  }
+};
+__name(_MetricsStateManager, "MetricsStateManager");
+let MetricsStateManager = _MetricsStateManager;
+function isValidMetricDefinition(value2) {
+  if (typeof value2 !== "object" || value2 === null) {
+    return false;
+  }
+  return "key" in value2 && typeof value2.key === "string" && "initialValue" in value2 && typeof value2.initialValue !== "undefined" && "reducer" in value2 && typeof value2.reducer === "function" && "serializer" in value2 && typeof value2.serializer === "function";
+}
+__name(isValidMetricDefinition, "isValidMetricDefinition");
+function castToMetricDefinition(definition) {
+  if (!isValidMetricDefinition(definition)) {
+    throw new Error(`Invalid metric definition structure for key "${definition.key}"`);
+  }
+  return definition;
+}
+__name(castToMetricDefinition, "castToMetricDefinition");
+function castMetricValue(value2, key) {
+  if (value2 === void 0) {
+    throw new Error(
+      `Metric value for key "${key}" is undefined. This indicates a registry initialization issue.`
+    );
+  }
+  return value2;
+}
+__name(castMetricValue, "castMetricValue");
+const _MetricDefinitionRegistry = class _MetricDefinitionRegistry {
+  constructor() {
+    this.definitions = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Registers a metric definition.
+   *
+   * @param definition - Metric definition to register
+   * @throws Error if a definition with the same key already exists or if the definition is invalid
+   */
+  register(definition) {
+    if (this.definitions.has(definition.key)) {
+      throw new Error(
+        `Metric definition with key "${definition.key}" already exists. Use a different key or remove the existing definition first.`
+      );
+    }
+    this.definitions.set(definition.key, castToMetricDefinition(definition));
+  }
+  /**
+   * Gets a metric definition by key.
+   *
+   * @param key - Metric key
+   * @returns Metric definition or undefined if not found
+   */
+  get(key) {
+    return this.definitions.get(key);
+  }
+  /**
+   * Gets all registered metric definitions.
+   *
+   * @returns Array of all metric definitions
+   */
+  getAll() {
+    return Array.from(this.definitions.values());
+  }
+  /**
+   * Checks if a metric definition exists.
+   *
+   * @param key - Metric key
+   * @returns True if definition exists
+   */
+  has(key) {
+    return this.definitions.has(key);
+  }
+  /**
+   * Removes a metric definition.
+   *
+   * @param key - Metric key to remove
+   * @returns True if definition was removed, false if it didn't exist
+   */
+  remove(key) {
+    return this.definitions.delete(key);
+  }
+  /**
+   * Clears all registered definitions.
+   */
+  clear() {
+    this.definitions.clear();
+  }
+  /**
+   * Gets the number of registered definitions.
+   *
+   * @returns Number of registered definitions
+   */
+  size() {
+    return this.definitions.size;
+  }
+};
+__name(_MetricDefinitionRegistry, "MetricDefinitionRegistry");
+let MetricDefinitionRegistry = _MetricDefinitionRegistry;
+function isResolutionEvent(event) {
+  return typeof event === "object" && event !== null && "durationMs" in event && typeof event.durationMs === "number" && "success" in event && typeof event.success === "boolean";
+}
+__name(isResolutionEvent, "isResolutionEvent");
+function isPortSelectionEvent(event) {
+  return typeof event === "object" && event !== null && "version" in event && typeof event.version === "number";
+}
+__name(isPortSelectionEvent, "isPortSelectionEvent");
+function isCacheAccessEvent(event) {
+  return typeof event === "object" && event !== null && "hit" in event && typeof event.hit === "boolean";
+}
+__name(isCacheAccessEvent, "isCacheAccessEvent");
+const containerResolutionsDefinition = {
+  key: "containerResolutions",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, _event) => current + 1, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const resolutionErrorsDefinition = {
+  key: "resolutionErrors",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isResolutionEvent(event)) {
+      return current;
+    }
+    return event.success ? current : current + 1;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const cacheHitsDefinition = {
+  key: "cacheHits",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isCacheAccessEvent(event)) {
+      return current;
+    }
+    return event.hit ? current + 1 : current;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const cacheMissesDefinition = {
+  key: "cacheMisses",
+  initialValue: 0,
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isCacheAccessEvent(event)) {
+      return current;
+    }
+    return event.hit ? current : current + 1;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
+};
+const portSelectionsDefinition = {
+  key: "portSelections",
+  initialValue: /* @__PURE__ */ new Map(),
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isPortSelectionEvent(event)) {
+      return current;
+    }
+    const count = current.get(event.version) ?? 0;
+    const updated = new Map(current);
+    updated.set(event.version, count + 1);
+    return updated;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
+};
+const portSelectionFailuresDefinition = {
+  key: "portSelectionFailures",
+  initialValue: /* @__PURE__ */ new Map(),
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isPortSelectionEvent(event)) {
+      return current;
+    }
+    const count = current.get(event.version) ?? 0;
+    const updated = new Map(current);
+    updated.set(event.version, count + 1);
+    return updated;
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
+};
+const resolutionTimesDefinition = {
+  key: "resolutionTimes",
+  initialValue: {
+    buffer: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+    index: 0,
+    count: 0
+  },
+  reducer: /* @__PURE__ */ __name((current, event) => {
+    if (!isResolutionEvent(event)) {
+      return current;
+    }
+    const buffer = new Float64Array(current.buffer);
+    const maxSize2 = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
+    buffer[current.index] = event.durationMs;
+    const newIndex = (current.index + 1) % maxSize2;
+    const newCount = Math.min(current.count + 1, maxSize2);
+    return {
+      buffer,
+      index: newIndex,
+      count: newCount
+    };
+  }, "reducer"),
+  serializer: /* @__PURE__ */ __name((value2) => ({
+    buffer: Array.from(value2.buffer),
+    index: value2.index,
+    count: value2.count
+  }), "serializer")
+};
+function createDefaultMetricDefinitionRegistry() {
+  const registry = new MetricDefinitionRegistry();
+  registry.register(containerResolutionsDefinition);
+  registry.register(resolutionErrorsDefinition);
+  registry.register(cacheHitsDefinition);
+  registry.register(cacheMissesDefinition);
+  registry.register(portSelectionsDefinition);
+  registry.register(portSelectionFailuresDefinition);
+  registry.register(resolutionTimesDefinition);
+  return registry;
+}
+__name(createDefaultMetricDefinitionRegistry, "createDefaultMetricDefinitionRegistry");
+const _MetricsCollector = class _MetricsCollector {
+  constructor(config2, registry, aggregator, persistenceManager, stateManager) {
+    this.config = config2;
+    this.metricStates = /* @__PURE__ */ new Map();
+    this.registry = registry ?? createDefaultMetricDefinitionRegistry();
+    this.initializeMetricStates();
+    this.aggregator = aggregator ?? new MetricsAggregator();
+    this.persistenceManager = persistenceManager ?? new MetricsPersistenceManager();
+    this.stateManager = stateManager ?? new MetricsStateManager();
+  }
+  /**
+   * Initializes metric states from registry definitions.
+   * Private method called during construction.
+   */
+  initializeMetricStates() {
+    for (const definition of this.registry.getAll()) {
+      this.metricStates.set(definition.key, {
+        value: definition.initialValue,
+        definition
+      });
+    }
+  }
+  /**
+   * Updates a metric using its reducer function.
+   *
+   * @param key - Metric key
+   * @param event - Event data for the reducer
+   */
+  updateMetric(key, event) {
+    const state = this.metricStates.get(key);
+    if (!state) {
+      return;
+    }
+    const newValue = state.definition.reducer(state.value, event);
+    this.metricStates.set(key, {
+      value: newValue,
+      definition: state.definition
+    });
+  }
+  /**
+   * Records a service resolution attempt.
+   *
+   * @param token - The injection token that was resolved
+   * @param durationMs - Time taken to resolve in milliseconds
+   * @param success - Whether resolution succeeded
+   */
+  recordResolution(token, durationMs, success) {
+    const event = { token, durationMs, success };
+    this.updateMetric("containerResolutions", event);
+    this.updateMetric("resolutionErrors", event);
+    this.updateMetric("resolutionTimes", event);
+    this.notifyStateChanged();
+  }
+  /**
+   * Records a port selection event.
+   *
+   * @param version - The Foundry version for which a port was selected
+   */
+  recordPortSelection(version) {
+    this.updateMetric("portSelections", { version });
+    this.notifyStateChanged();
+  }
+  /**
+   * Records a port selection failure.
+   *
+   * Useful for tracking when no compatible port is available for a version.
+   *
+   * @param version - The Foundry version for which port selection failed
+   */
+  recordPortSelectionFailure(version) {
+    this.updateMetric("portSelectionFailures", { version });
+    this.notifyStateChanged();
+  }
+  /**
+   * Records a cache access (hit or miss).
+   *
+   * @param hit - True if cache hit, false if cache miss
+   */
+  recordCacheAccess(hit) {
+    const event = { hit };
+    this.updateMetric("cacheHits", event);
+    this.updateMetric("cacheMisses", event);
+    this.notifyStateChanged();
+  }
+  /**
+   * Gets a snapshot of current metrics.
+   * Delegates aggregation to MetricsAggregator.
+   *
+   * @returns Immutable snapshot of metrics data
+   */
+  getSnapshot() {
+    return this.aggregator.aggregate(this.getRawMetrics());
+  }
+  /**
+   * Gets raw metrics data without aggregation.
+   * Used internally by aggregator and persistence manager.
+   *
+   * Converts from generic Map structure to IRawMetrics for backward compatibility.
+   *
+   * @returns Raw metrics data
+   */
+  getRawMetrics() {
+    const containerResolutions = this.getMetricValue("containerResolutions") ?? 0;
+    const resolutionErrors = this.getMetricValue("resolutionErrors") ?? 0;
+    const cacheHits = this.getMetricValue("cacheHits") ?? 0;
+    const cacheMisses = this.getMetricValue("cacheMisses") ?? 0;
+    const portSelectionsRaw = this.getMetricValue("portSelections");
+    const portSelections = portSelectionsRaw instanceof Map ? portSelectionsRaw : /* @__PURE__ */ new Map();
+    const portSelectionFailuresRaw = this.getMetricValue("portSelectionFailures");
+    const portSelectionFailures = portSelectionFailuresRaw instanceof Map ? portSelectionFailuresRaw : /* @__PURE__ */ new Map();
+    const resolutionTimesState = this.getMetricValue("resolutionTimes");
+    return {
+      containerResolutions,
+      resolutionErrors,
+      cacheHits,
+      cacheMisses,
+      portSelections,
+      portSelectionFailures,
+      resolutionTimes: resolutionTimesState?.buffer ?? new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: resolutionTimesState?.index ?? 0,
+      resolutionTimesCount: resolutionTimesState?.count ?? 0
+    };
+  }
+  /**
+   * Gets a metric value by key.
+   *
+   * @param key - Metric key
+   * @returns Metric value or undefined if not found
+   */
+  getMetricValue(key) {
+    const state = this.metricStates.get(key);
+    if (!state) {
+      return void 0;
+    }
+    return castMetricValue(state.value, key);
+  }
+  /**
+   * Resets all collected metrics.
+   * Useful for testing or starting fresh measurements.
+   */
+  reset() {
+    for (const definition of this.registry.getAll()) {
+      this.metricStates.set(definition.key, {
+        value: definition.initialValue,
+        definition
+      });
+    }
+    this.stateManager.reset();
+    this.notifyStateChanged();
+  }
+  /**
+   * Hook invoked after state mutations. Subclasses can override to react
+   * (e.g., persist metrics).
+   */
+  onStateChanged() {
+    this.stateManager.notifyStateChanged();
+  }
+  /**
+   * Notifies state manager of state changes.
+   * Internal method that can be overridden by subclasses.
+   */
+  notifyStateChanged() {
+    this.onStateChanged();
+  }
+  /**
+   * Captures the internal state for persistence.
+   * Delegates to MetricsPersistenceManager.
+   *
+   * @returns Serializable metrics state
+   */
+  getPersistenceState() {
+    return this.persistenceManager.serialize(this.getRawMetrics());
+  }
+  /**
+   * Restores internal state from a persisted snapshot.
+   * Delegates to MetricsPersistenceManager.
+   *
+   * @param state - Persisted metrics state
+   */
+  restoreFromPersistenceState(state) {
+    const rawMetrics = this.persistenceManager.deserialize(state);
+    this.applyRawMetrics(rawMetrics);
+  }
+  /**
+   * Applies raw metrics to internal state.
+   * Internal method used by restoreFromPersistenceState.
+   * Converts from IRawMetrics to generic Map structure.
+   *
+   * @param rawMetrics - Raw metrics to apply
+   */
+  applyRawMetrics(rawMetrics) {
+    this.setMetricValue("containerResolutions", rawMetrics.containerResolutions);
+    this.setMetricValue("resolutionErrors", rawMetrics.resolutionErrors);
+    this.setMetricValue("cacheHits", rawMetrics.cacheHits);
+    this.setMetricValue("cacheMisses", rawMetrics.cacheMisses);
+    this.setMetricValue("portSelections", rawMetrics.portSelections);
+    this.setMetricValue("portSelectionFailures", rawMetrics.portSelectionFailures);
+    const resolutionTimesState = this.metricStates.get("resolutionTimes");
+    if (resolutionTimesState) {
+      const buffer = new Float64Array(rawMetrics.resolutionTimes);
+      this.setMetricValue("resolutionTimes", {
+        buffer,
+        index: rawMetrics.resolutionTimesIndex,
+        count: rawMetrics.resolutionTimesCount
+      });
+    }
+  }
+  /**
+   * Sets a metric value by key.
+   *
+   * @param key - Metric key
+   * @param value - New metric value
+   */
+  setMetricValue(key, value2) {
+    const state = this.metricStates.get(key);
+    if (state) {
+      this.metricStates.set(key, {
+        value: value2,
+        definition: state.definition
+      });
+    }
+  }
+};
+__name(_MetricsCollector, "MetricsCollector");
+_MetricsCollector.dependencies = [runtimeConfigToken];
+let MetricsCollector = _MetricsCollector;
+const _DIMetricsCollector = class _DIMetricsCollector extends MetricsCollector {
+  constructor(config2, aggregator, persistenceManager, stateManager, registry) {
+    super(config2, registry, aggregator, persistenceManager, stateManager);
+  }
+};
+__name(_DIMetricsCollector, "DIMetricsCollector");
+_DIMetricsCollector.dependencies = [
+  runtimeConfigToken,
+  metricsAggregatorToken,
+  metricsPersistenceManagerToken,
+  metricsStateManagerToken
+];
+let DIMetricsCollector = _DIMetricsCollector;
+const _PersistentMetricsCollector = class _PersistentMetricsCollector extends MetricsCollector {
+  constructor(config2, metricsStorage, registry, aggregator, persistenceManager, stateManager) {
+    super(config2, registry, aggregator, persistenceManager, stateManager);
+    this.metricsStorage = metricsStorage;
+    this.suppressPersistence = false;
+    this.initialized = false;
+  }
+  /**
+   * Initializes the collector by restoring state from storage.
+   * Must be called explicitly after construction.
+   *
+   * @returns Result indicating success or error
+   */
+  initialize() {
+    if (this.initialized) {
+      return ok(void 0);
+    }
+    try {
+      this.restoreFromStorage();
+      this.initialized = true;
+      return ok(void 0);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return err(`Failed to initialize PersistentMetricsCollector: ${errorMessage}`);
+    }
+  }
+  clearPersistentState() {
+    this.metricsStorage.clear?.();
+    this.suppressPersistence = true;
+    try {
+      super.reset();
+    } finally {
+      this.suppressPersistence = false;
+    }
+  }
+  onStateChanged() {
+    super.onStateChanged();
+    if (this.suppressPersistence) {
+      return;
+    }
+    this.persist();
+  }
+  restoreFromStorage() {
+    let state = null;
+    try {
+      state = this.metricsStorage.load();
+    } catch {
+      state = null;
+    }
+    if (!state) {
+      return;
+    }
+    this.suppressPersistence = true;
+    try {
+      this.restoreFromPersistenceState(state);
+    } finally {
+      this.suppressPersistence = false;
+    }
+  }
+  persist() {
+    try {
+      this.metricsStorage.save(this.getPersistenceState());
+    } catch {
+    }
+  }
+};
+__name(_PersistentMetricsCollector, "PersistentMetricsCollector");
+_PersistentMetricsCollector.dependencies = [
+  runtimeConfigToken,
+  metricsStorageToken
+];
+let PersistentMetricsCollector = _PersistentMetricsCollector;
+const _DIPersistentMetricsCollector = class _DIPersistentMetricsCollector extends PersistentMetricsCollector {
+  constructor(config2, metricsStorage, aggregator, persistenceManager, stateManager, registry) {
+    super(config2, metricsStorage, registry, aggregator, persistenceManager, stateManager);
+  }
+};
+__name(_DIPersistentMetricsCollector, "DIPersistentMetricsCollector");
+_DIPersistentMetricsCollector.dependencies = [
+  runtimeConfigToken,
+  metricsStorageToken,
+  metricsAggregatorToken,
+  metricsPersistenceManagerToken,
+  metricsStateManagerToken
+];
+let DIPersistentMetricsCollector = _DIPersistentMetricsCollector;
+const _MetricsSampler = class _MetricsSampler {
+  constructor(config2) {
+    this.config = config2;
+  }
+  /**
+   * Determines if a performance operation should be sampled based on sampling rate.
+   *
+   * In production mode, uses probabilistic sampling to reduce overhead.
+   * In development mode, always samples (returns true).
+   *
+   * @returns True if the operation should be measured/recorded
+   *
+   * @example
+   * ```typescript
+   * const sampler = container.resolve(metricsSamplerToken);
+   * if (sampler.shouldSample()) {
+   *   performance.mark('operation-start');
+   *   // ... operation ...
+   *   performance.mark('operation-end');
+   *   performance.measure('operation', 'operation-start', 'operation-end');
+   * }
+   * ```
+   */
+  shouldSample() {
+    if (this.config.get("isDevelopment")) {
+      return true;
+    }
+    return Math.random() < this.config.get("performanceSamplingRate");
+  }
+};
+__name(_MetricsSampler, "MetricsSampler");
+let MetricsSampler = _MetricsSampler;
+const _DIMetricsSampler = class _DIMetricsSampler extends MetricsSampler {
+  constructor(config2) {
+    super(config2);
+  }
+};
+__name(_DIMetricsSampler, "DIMetricsSampler");
+_DIMetricsSampler.dependencies = [runtimeConfigToken];
+let DIMetricsSampler = _DIMetricsSampler;
+const _MetricsReporter = class _MetricsReporter {
+  constructor(collector, logger) {
+    this.collector = collector;
+    this.logger = logger;
+  }
+  /**
+   * Logs a formatted metrics summary to the console.
+   * Uses console.table() for easy-to-read tabular output.
+   */
+  logSummary() {
+    const snapshot = this.collector.getSnapshot();
+    const tableData = {
+      "Total Resolutions": snapshot.containerResolutions,
+      Errors: snapshot.resolutionErrors,
+      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
+      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
+    };
+    console.table(tableData);
+  }
+  /**
+   * Gibt Metrics als JSON zurück.
+   *
+   * @returns JSON string representation of metrics snapshot
+   */
+  toJSON() {
+    return JSON.stringify(this.collector.getSnapshot(), null, 2);
+  }
+};
+__name(_MetricsReporter, "MetricsReporter");
+let MetricsReporter = _MetricsReporter;
+const _DIMetricsReporter = class _DIMetricsReporter extends MetricsReporter {
+  constructor(collector, logger) {
+    super(collector, logger);
+  }
+};
+__name(_DIMetricsReporter, "DIMetricsReporter");
+_DIMetricsReporter.dependencies = [metricsCollectorToken, loggerToken];
+let DIMetricsReporter = _DIMetricsReporter;
+const _LocalStorageMetricsStorage = class _LocalStorageMetricsStorage {
+  constructor(storageKey, storage = getStorage()) {
+    this.storageKey = storageKey;
+    this.storage = storage;
+  }
+  load() {
+    if (!this.storage) {
+      return null;
+    }
+    try {
+      const raw = this.storage.getItem(this.storageKey);
+      if (!raw) {
+        return null;
+      }
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  save(state) {
+    if (!this.storage) {
+      return;
+    }
+    try {
+      this.storage.setItem(this.storageKey, JSON.stringify(state));
+    } catch {
+    }
+  }
+  clear() {
+    if (!this.storage) {
+      return;
+    }
+    try {
+      this.storage.removeItem(this.storageKey);
+    } catch {
+    }
+  }
+};
+__name(_LocalStorageMetricsStorage, "LocalStorageMetricsStorage");
+let LocalStorageMetricsStorage = _LocalStorageMetricsStorage;
+function getStorage() {
+  try {
+    if (typeof globalThis !== "undefined" && "localStorage" in globalThis) {
+      return globalThis.localStorage;
+    }
+  } catch {
+  }
+  return null;
+}
+__name(getStorage, "getStorage");
+function createMetricsStorage(key) {
+  return new LocalStorageMetricsStorage(key);
+}
+__name(createMetricsStorage, "createMetricsStorage");
+function createInMemoryMetricsStorage() {
+  let state = null;
+  return {
+    load() {
+      return state;
+    },
+    save(newState) {
+      state = newState;
+    },
+    clear() {
+      state = null;
+    }
+  };
+}
+__name(createInMemoryMetricsStorage, "createInMemoryMetricsStorage");
+const _TracedLogger = class _TracedLogger {
+  constructor(baseLogger, traceId) {
+    this.baseLogger = baseLogger;
+    this.traceId = traceId;
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(this.formatMessage(message2), ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(this.formatMessage(message2), ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(this.formatMessage(message2), ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(this.formatMessage(message2), ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(this.formatMessage(message2), ...optionalParams);
+  }
+  withTraceId(newTraceId) {
+    return new _TracedLogger(this.baseLogger, `${this.traceId}/${newTraceId}`);
+  }
+  formatMessage(message2) {
+    return `[${this.traceId}] ${message2}`;
+  }
+};
+__name(_TracedLogger, "TracedLogger");
+let TracedLogger = _TracedLogger;
+const _BaseConsoleLogger = class _BaseConsoleLogger {
+  constructor(minLevel) {
+    this.minLevel = minLevel;
+  }
+  setMinLevel(level) {
+    this.minLevel = level;
+  }
+  log(message2, ...optionalParams) {
+    console.log(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    if (LogLevel.ERROR < this.minLevel) return;
+    console.error(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    if (LogLevel.WARN < this.minLevel) return;
+    console.warn(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    if (LogLevel.INFO < this.minLevel) return;
+    console.info(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    if (LogLevel.DEBUG < this.minLevel) return;
+    console.debug(`${LOG_PREFIX} ${message2}`, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return new TracedLogger(this, traceId);
+  }
+};
+__name(_BaseConsoleLogger, "BaseConsoleLogger");
+let BaseConsoleLogger = _BaseConsoleLogger;
+const _RuntimeConfigLoggerDecorator = class _RuntimeConfigLoggerDecorator {
+  constructor(baseLogger, runtimeConfig) {
+    this.baseLogger = baseLogger;
+    this.runtimeConfig = runtimeConfig;
+    this.unsubscribe = null;
+    this.syncLogLevel();
+  }
+  syncLogLevel() {
+    this.baseLogger.setMinLevel?.(this.runtimeConfig.get("logLevel"));
+    this.unsubscribe?.();
+    this.unsubscribe = this.runtimeConfig.onChange("logLevel", (level) => {
+      this.baseLogger.setMinLevel?.(level);
+    });
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(message2, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(message2, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(message2, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(message2, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(message2, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return this.baseLogger.withTraceId?.(traceId) ?? this.baseLogger;
+  }
+  dispose() {
+    this.unsubscribe?.();
+  }
+};
+__name(_RuntimeConfigLoggerDecorator, "RuntimeConfigLoggerDecorator");
+let RuntimeConfigLoggerDecorator = _RuntimeConfigLoggerDecorator;
+const _StackTraceLoggerDecorator = class _StackTraceLoggerDecorator {
+  constructor(baseLogger, runtimeConfig) {
+    this.baseLogger = baseLogger;
+    this.runtimeConfig = runtimeConfig;
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  /**
+   * Extracts the caller information from stack trace when debug mode is enabled.
+   * Filters out logger-related frames to show the actual source of the log call.
+   *
+   * @returns Caller info in format "filename:line" or undefined if not in debug mode or extraction fails
+   */
+  getCallerInfo() {
+    const currentLogLevel = this.runtimeConfig.get("logLevel");
+    if (currentLogLevel !== LogLevel.DEBUG) {
+      return void 0;
+    }
+    try {
+      const stack = new Error().stack;
+      if (!stack) return void 0;
+      const lines = stack.split("\n");
+      const loggerPatterns = [
+        /StackTraceLoggerDecorator/,
+        /BaseConsoleLogger/,
+        /ConsoleLoggerService/,
+        /RuntimeConfigLoggerDecorator/,
+        /TraceContextLoggerDecorator/,
+        /TracedLogger/,
+        /at Object\./
+      ];
+      for (let i = 3; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+        const isLoggerFrame = loggerPatterns.some((pattern) => pattern.test(line));
+        if (!isLoggerFrame && line.trim()) {
+          const match2 = line.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/) || line.match(/at\s+(.+?):(\d+):(\d+)/);
+          if (match2) {
+            const filePath = match2[2] || match2[1];
+            const lineNum = match2[3] || match2[2];
+            if (filePath && lineNum) {
+              const fileName = filePath.split(/[/\\]/).pop() || filePath;
+              return `${fileName}:${lineNum}`;
+            }
+          }
+          return line.trim().replace(/^at\s+/, "");
+        }
+      }
+    } catch {
+    }
+    return void 0;
+  }
+  formatWithCallerInfo(message2) {
+    const callerInfo = this.getCallerInfo();
+    return callerInfo ? `${message2} [${callerInfo}]` : message2;
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(this.formatWithCallerInfo(message2), ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return this.baseLogger.withTraceId?.(traceId) ?? this.baseLogger;
+  }
+};
+__name(_StackTraceLoggerDecorator, "StackTraceLoggerDecorator");
+let StackTraceLoggerDecorator = _StackTraceLoggerDecorator;
+const _TraceContextLoggerDecorator = class _TraceContextLoggerDecorator {
+  constructor(baseLogger, traceContext) {
+    this.baseLogger = baseLogger;
+    this.traceContext = traceContext;
+  }
+  setMinLevel(level) {
+    this.baseLogger.setMinLevel?.(level);
+  }
+  formatWithTrace(message2) {
+    const traceId = this.traceContext?.getCurrentTraceId();
+    return traceId ? `[${traceId}] ${message2}` : message2;
+  }
+  log(message2, ...optionalParams) {
+    this.baseLogger.log(this.formatWithTrace(message2), ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.baseLogger.error(this.formatWithTrace(message2), ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.baseLogger.warn(this.formatWithTrace(message2), ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.baseLogger.info(this.formatWithTrace(message2), ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.baseLogger.debug(this.formatWithTrace(message2), ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return new TracedLogger(this, traceId);
+  }
+};
+__name(_TraceContextLoggerDecorator, "TraceContextLoggerDecorator");
+let TraceContextLoggerDecorator = _TraceContextLoggerDecorator;
+const _LoggerCompositionFactory = class _LoggerCompositionFactory {
+  /**
+   * Creates a composed logger with all necessary decorators.
+   *
+   * @param config - Runtime configuration service
+   * @param traceContext - Optional trace context for trace ID injection
+   * @returns Composed logger instance
+   */
+  createLogger(config2, traceContext) {
+    const baseLogger = new BaseConsoleLogger(config2.get("logLevel"));
+    const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config2);
+    const withStackTrace = new StackTraceLoggerDecorator(withConfig, config2);
+    return traceContext ? new TraceContextLoggerDecorator(withStackTrace, traceContext) : withStackTrace;
+  }
+};
+__name(_LoggerCompositionFactory, "LoggerCompositionFactory");
+let LoggerCompositionFactory = _LoggerCompositionFactory;
+const _ConsoleLoggerService = class _ConsoleLoggerService {
+  constructor(config2, traceContext, factory) {
+    const compositionFactory = factory ?? new LoggerCompositionFactory();
+    this.logger = compositionFactory.createLogger(config2, traceContext);
+  }
+  // Delegate all methods to composed logger
+  setMinLevel(level) {
+    this.logger.setMinLevel?.(level);
+  }
+  log(message2, ...optionalParams) {
+    this.logger.log(message2, ...optionalParams);
+  }
+  error(message2, ...optionalParams) {
+    this.logger.error(message2, ...optionalParams);
+  }
+  warn(message2, ...optionalParams) {
+    this.logger.warn(message2, ...optionalParams);
+  }
+  info(message2, ...optionalParams) {
+    this.logger.info(message2, ...optionalParams);
+  }
+  debug(message2, ...optionalParams) {
+    this.logger.debug(message2, ...optionalParams);
+  }
+  withTraceId(traceId) {
+    return this.logger.withTraceId?.(traceId) ?? this.logger;
+  }
+};
+__name(_ConsoleLoggerService, "ConsoleLoggerService");
+let ConsoleLoggerService = _ConsoleLoggerService;
+const _DIConsoleLoggerService = class _DIConsoleLoggerService extends ConsoleLoggerService {
+  constructor(config2, traceContext) {
+    super(config2, traceContext);
+  }
+};
+__name(_DIConsoleLoggerService, "DIConsoleLoggerService");
+_DIConsoleLoggerService.dependencies = [runtimeConfigToken, traceContextToken];
+let DIConsoleLoggerService = _DIConsoleLoggerService;
+function generateTraceId() {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 10);
+  return `${timestamp}-${random}`;
+}
+__name(generateTraceId, "generateTraceId");
+function getTraceTimestamp(traceId) {
+  const parts = traceId.split("-");
+  if (parts.length !== 2) {
+    return null;
+  }
+  const [timestampStr, randomStr] = parts;
+  if (!timestampStr || !randomStr) {
+    return null;
+  }
+  const timestamp = parseInt(timestampStr, 10);
+  return isNaN(timestamp) ? null : timestamp;
+}
+__name(getTraceTimestamp, "getTraceTimestamp");
+const _TraceContext = class _TraceContext {
+  constructor() {
+    this.currentTraceId = null;
+  }
+  /**
+   * Executes a synchronous function with trace context.
+   *
+   * Automatically generates a trace ID if not provided.
+   * Maintains a context stack for nested traces.
+   * Ensures proper cleanup via try/finally.
+   *
+   * @template T - The return type of the function
+   * @param fn - Function to execute with trace context
+   * @param options - Trace options (trace ID, operation name, metadata)
+   * @returns The result of the function execution
+   *
+   * @example
+   * ```typescript
+   * const result = traceContext.trace(() => {
+   *   logger.info("Processing"); // Automatically traced
+   *   return processData();
+   * });
+   * ```
+   */
+  trace(fn, options) {
+    const opts = typeof options === "string" ? { traceId: options } : options;
+    const traceId = opts?.traceId ?? generateTraceId();
+    const previousTraceId = this.currentTraceId;
+    this.currentTraceId = traceId;
+    try {
+      return fn();
+    } finally {
+      this.currentTraceId = previousTraceId;
+    }
+  }
+  /**
+   * Executes an asynchronous function with trace context.
+   *
+   * Similar to trace() but for async operations.
+   * Automatically generates a trace ID if not provided.
+   * Maintains a context stack for nested traces.
+   * Ensures proper cleanup via try/finally.
+   *
+   * @template T - The return type of the async function
+   * @param fn - Async function to execute with trace context
+   * @param options - Trace options (trace ID, operation name, metadata)
+   * @returns Promise resolving to the result of the function execution
+   *
+   * @example
+   * ```typescript
+   * const result = await traceContext.traceAsync(async () => {
+   *   logger.info("Fetching data"); // Automatically traced
+   *   return await fetchData();
+   * });
+   * ```
+   */
+  async traceAsync(fn, options) {
+    const opts = typeof options === "string" ? { traceId: options } : options;
+    const traceId = opts?.traceId ?? generateTraceId();
+    const previousTraceId = this.currentTraceId;
+    this.currentTraceId = traceId;
+    try {
+      return await fn();
+    } finally {
+      this.currentTraceId = previousTraceId;
+    }
+  }
+  /**
+   * Gets the current trace ID from the context stack.
+   *
+   * Returns null if not currently in a traced context.
+   * Useful for services that need to access the current trace ID
+   * without having it passed as a parameter.
+   *
+   * @returns Current trace ID or null if not in traced context
+   *
+   * @example
+   * ```typescript
+   * const traceId = traceContext.getCurrentTraceId();
+   * if (traceId) {
+   *   console.log(`Current trace: ${traceId}`);
+   * }
+   * ```
+   */
+  getCurrentTraceId() {
+    return this.currentTraceId;
+  }
+  /**
+   * Cleans up resources.
+   * For TraceContext, this resets the current trace ID.
+   */
+  dispose() {
+    this.currentTraceId = null;
+  }
+};
+__name(_TraceContext, "TraceContext");
+_TraceContext.dependencies = [];
+let TraceContext = _TraceContext;
+const _DITraceContext = class _DITraceContext extends TraceContext {
+  constructor() {
+    super();
+  }
+};
+__name(_DITraceContext, "DITraceContext");
+_DITraceContext.dependencies = [];
+let DITraceContext = _DITraceContext;
+const _ModuleHealthService = class _ModuleHealthService {
+  constructor(registry) {
+    this.registry = registry;
+    this.healthChecksInitialized = false;
+  }
+  /**
+   * Gets the current health status of the module.
+   *
+   * Health is determined by running all registered health checks.
+   * Overall status:
+   * - "healthy": All checks pass
+   * - "unhealthy": Container check fails
+   * - "degraded": Other checks fail
+   *
+   * @returns HealthStatus with overall status, individual checks, and timestamp
+   *
+   * @example
+   * ```typescript
+   * const healthService = container.resolve(moduleHealthServiceToken);
+   * const health = healthService.getHealth();
+   *
+   * if (health.status !== 'healthy') {
+   *   console.warn('Module is not healthy:', health.checks);
+   * }
+   * ```
+   */
+  getHealth() {
+    if (!this.healthChecksInitialized) {
+      this.healthChecksInitialized = true;
+    }
+    const results = this.registry.runAll();
+    const allHealthy = Array.from(results.values()).every((result) => result);
+    const status = allHealthy ? "healthy" : results.get("container") === false ? "unhealthy" : "degraded";
+    const checks = this.registry.getAllChecks();
+    let lastError = null;
+    for (const check2 of checks) {
+      const result = results.get(check2.name);
+      if (!result && check2.getDetails) {
+        lastError = check2.getDetails();
+      }
+    }
+    return {
+      status,
+      checks: {
+        containerValidated: results.get("container") ?? true,
+        portsSelected: results.get("metrics") ?? true,
+        lastError
+      },
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }
+};
+__name(_ModuleHealthService, "ModuleHealthService");
+let ModuleHealthService = _ModuleHealthService;
+const _DIModuleHealthService = class _DIModuleHealthService extends ModuleHealthService {
+  constructor(registry) {
+    super(registry);
+  }
+};
+__name(_DIModuleHealthService, "DIModuleHealthService");
+_DIModuleHealthService.dependencies = [healthCheckRegistryToken];
+let DIModuleHealthService = _DIModuleHealthService;
+const notificationCenterToken = createInjectionToken("NotificationCenter");
+const journalVisibilityServiceToken = createInjectionToken("JournalVisibilityService");
+const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
+const hideJournalContextMenuHandlerToken = createInjectionToken(
+  "HideJournalContextMenuHandler"
+);
+const journalContextMenuHandlersToken = createInjectionToken(
+  "JournalContextMenuHandlers"
+);
+const journalDirectoryProcessorToken = createInjectionToken(
+  "JournalDirectoryProcessor"
+);
+const runtimeConfigSyncToken = createInjectionToken("RuntimeConfigSync");
+const runtimeConfigSettingsSyncToken = createInjectionToken(
+  "RuntimeConfigSettingsSync"
+);
+const settingRegistrationErrorMapperToken = createInjectionToken(
+  "SettingRegistrationErrorMapper"
+);
+const settingDefinitionRegistryToken = createInjectionToken(
+  "SettingDefinitionRegistry"
+);
+const runtimeConfigBindingRegistryToken = createInjectionToken(
+  "RuntimeConfigBindingRegistry"
+);
+const i18nFacadeToken = createInjectionToken("I18nFacadeService");
+const foundryGameToken = createInjectionToken("FoundryGame");
+const foundryHooksToken = createInjectionToken("FoundryHooks");
+const foundryDocumentToken = createInjectionToken("FoundryDocument");
+const foundrySettingsToken = createInjectionToken("FoundrySettings");
+const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
+function createApiTokens() {
+  return {
+    notificationCenterToken: markAsApiSafe(notificationCenterToken),
+    journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
+    journalDirectoryProcessorToken: markAsApiSafe(journalDirectoryProcessorToken),
+    foundryGameToken: markAsApiSafe(foundryGameToken),
+    foundryHooksToken: markAsApiSafe(foundryHooksToken),
+    foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
+    foundryUIToken: markAsApiSafe(foundryUIToken),
+    foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
+    i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
+    foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken)
+  };
+}
+__name(createApiTokens, "createApiTokens");
+const _ModuleApiBuilder = class _ModuleApiBuilder {
+  constructor(serviceResolver, healthMetricsProvider) {
+    this.serviceResolver = serviceResolver;
+    this.healthMetricsProvider = healthMetricsProvider;
+  }
+  /**
+   * Creates the well-known API tokens collection.
+   *
+   * @returns Type-safe token collection for external modules
+   */
+  createApiTokens() {
+    return createApiTokens();
+  }
+  /**
+   * Creates the complete ModuleApi object with all methods.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Complete ModuleApi object
+   */
+  createApi(container, wellKnownTokens) {
+    return {
+      version: PUBLIC_API_VERSION,
+      // Overloaded resolve method (throws on error)
+      resolve: this.serviceResolver.createResolveFunction(container, wellKnownTokens),
+      // Result-Pattern method (safe, never throws)
+      resolveWithError: this.serviceResolver.createResolveWithErrorFunction(
+        container,
+        wellKnownTokens
+      ),
+      getAvailableTokens: /* @__PURE__ */ __name(() => {
+        const tokenMap = /* @__PURE__ */ new Map();
+        const tokenEntries = [
+          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
+          ["journalDirectoryProcessorToken", journalDirectoryProcessorToken],
+          ["foundryGameToken", foundryGameToken],
+          ["foundryHooksToken", foundryHooksToken],
+          ["foundryDocumentToken", foundryDocumentToken],
+          ["foundryUIToken", foundryUIToken],
+          ["foundrySettingsToken", foundrySettingsToken],
+          ["i18nFacadeToken", i18nFacadeToken],
+          ["foundryJournalFacadeToken", foundryJournalFacadeToken],
+          ["notificationCenterToken", notificationCenterToken]
+        ];
+        for (const [, token] of tokenEntries) {
+          const isRegisteredResult = container.isRegistered(token);
+          tokenMap.set(token, {
+            description: String(token).replace("Symbol(", "").replace(")", ""),
+            isRegistered: getRegistrationStatus(isRegisteredResult)
+          });
+        }
+        return tokenMap;
+      }, "getAvailableTokens"),
+      tokens: wellKnownTokens,
+      getMetrics: /* @__PURE__ */ __name(() => this.healthMetricsProvider.getMetrics(container), "getMetrics"),
+      getHealth: /* @__PURE__ */ __name(() => this.healthMetricsProvider.getHealth(container), "getHealth")
+    };
+  }
+};
+__name(_ModuleApiBuilder, "ModuleApiBuilder");
+let ModuleApiBuilder = _ModuleApiBuilder;
+const _ApiWrapperStrategyRegistry = class _ApiWrapperStrategyRegistry {
+  constructor() {
+    this.strategies = [];
+  }
+  /**
+   * Registers a wrapper strategy.
+   *
+   * @param strategy - Strategy to register
+   */
+  register(strategy) {
+    this.strategies.push(strategy);
+  }
+  /**
+   * Registers multiple wrapper strategies.
+   *
+   * @param strategies - Array of strategies to register
+   */
+  registerAll(strategies) {
+    for (const strategy of strategies) {
+      this.register(strategy);
+    }
+  }
+  /**
+   * Gets all registered strategies, sorted by priority (lower = higher priority).
+   *
+   * @returns Array of strategies in priority order
+   */
+  getAll() {
+    return [...this.strategies].sort((a, b) => {
+      const priorityA = a.getPriority?.() ?? 100;
+      const priorityB = b.getPriority?.() ?? 100;
+      return priorityA - priorityB;
+    });
+  }
+  /**
+   * Finds the first strategy that supports the given token.
+   *
+   * @param token - API token to find strategy for
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Strategy that supports the token, or null if none found
+   */
+  findStrategy(token, wellKnownTokens) {
+    const sortedStrategies = this.getAll();
+    for (const strategy of sortedStrategies) {
+      if (strategy.supports(token, wellKnownTokens)) {
+        return strategy;
+      }
+    }
+    return null;
+  }
+  /**
+   * Clears all registered strategies.
+   * Useful for testing or reset scenarios.
+   */
+  clear() {
+    this.strategies.length = 0;
+  }
+};
+__name(_ApiWrapperStrategyRegistry, "ApiWrapperStrategyRegistry");
+let ApiWrapperStrategyRegistry = _ApiWrapperStrategyRegistry;
+function isAllowedKey(prop, allowed) {
+  if (typeof prop !== "string") {
+    return false;
+  }
+  return allowed.includes(prop);
+}
+__name(isAllowedKey, "isAllowedKey");
+function createReadOnlyWrapper(service, allowedMethods) {
+  return new Proxy(service, {
+    get(target, prop, receiver) {
+      if (isAllowedKey(prop, allowedMethods)) {
+        const value2 = Reflect.get(target, prop, receiver);
+        if (typeof value2 === "function") {
+          return value2.bind(target);
+        }
+        return value2;
+      }
+      throw new Error(
+        `Property "${String(prop)}" is not accessible via Public API. Only these methods are allowed: ${allowedMethods.map(String).join(", ")}`
+      );
+    },
+    set() {
+      throw new Error("Cannot modify services via Public API (read-only)");
+    },
+    deleteProperty() {
+      throw new Error("Cannot delete properties via Public API (read-only)");
+    }
+  });
+}
+__name(createReadOnlyWrapper, "createReadOnlyWrapper");
+function createPublicLogger(logger) {
+  return createReadOnlyWrapper(logger, [
+    "log",
+    "debug",
+    "info",
+    "warn",
+    "error",
+    "withTraceId"
+    // Decorator pattern for trace context
+  ]);
+}
+__name(createPublicLogger, "createPublicLogger");
+function createPublicI18n(i18n) {
+  return createReadOnlyWrapper(i18n, ["translate", "format", "has"]);
+}
+__name(createPublicI18n, "createPublicI18n");
+function createPublicNotificationCenter(notificationCenter) {
+  return createReadOnlyWrapper(notificationCenter, [
+    "debug",
+    "info",
+    "warn",
+    "error",
+    "getChannelNames"
+  ]);
+}
+__name(createPublicNotificationCenter, "createPublicNotificationCenter");
+function createPublicFoundrySettings(foundrySettings) {
+  return createReadOnlyWrapper(foundrySettings, ["get"]);
+}
+__name(createPublicFoundrySettings, "createPublicFoundrySettings");
+function wrapI18nService(service, create) {
+  return create(service);
+}
+__name(wrapI18nService, "wrapI18nService");
+function wrapNotificationCenterService(service, create) {
+  return create(service);
+}
+__name(wrapNotificationCenterService, "wrapNotificationCenterService");
+function wrapFoundrySettingsPort(service, create) {
+  return create(service);
+}
+__name(wrapFoundrySettingsPort, "wrapFoundrySettingsPort");
+const _I18nWrapperStrategy = class _I18nWrapperStrategy {
+  supports(token, wellKnownTokens) {
+    return token === wellKnownTokens.i18nFacadeToken;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return wrapI18nService(service, createPublicI18n);
+  }
+  getPriority() {
+    return 10;
+  }
+};
+__name(_I18nWrapperStrategy, "I18nWrapperStrategy");
+let I18nWrapperStrategy = _I18nWrapperStrategy;
+const _NotificationWrapperStrategy = class _NotificationWrapperStrategy {
+  supports(token, wellKnownTokens) {
+    return token === wellKnownTokens.notificationCenterToken;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return wrapNotificationCenterService(service, createPublicNotificationCenter);
+  }
+  getPriority() {
+    return 10;
+  }
+};
+__name(_NotificationWrapperStrategy, "NotificationWrapperStrategy");
+let NotificationWrapperStrategy = _NotificationWrapperStrategy;
+const _SettingsWrapperStrategy = class _SettingsWrapperStrategy {
+  supports(token, wellKnownTokens) {
+    return token === wellKnownTokens.foundrySettingsToken;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return wrapFoundrySettingsPort(service, createPublicFoundrySettings);
+  }
+  getPriority() {
+    return 10;
+  }
+};
+__name(_SettingsWrapperStrategy, "SettingsWrapperStrategy");
+let SettingsWrapperStrategy = _SettingsWrapperStrategy;
+const _NoopWrapperStrategy = class _NoopWrapperStrategy {
+  supports(_token, _wellKnownTokens) {
+    return true;
+  }
+  wrap(service, _token, _wellKnownTokens) {
+    return service;
+  }
+  getPriority() {
+    return 1e3;
+  }
+};
+__name(_NoopWrapperStrategy, "NoopWrapperStrategy");
+let NoopWrapperStrategy = _NoopWrapperStrategy;
+const _ServiceWrapperFactory = class _ServiceWrapperFactory {
+  constructor(strategyRegistry) {
+    this.strategyRegistry = strategyRegistry ?? this.createDefaultRegistry();
+  }
+  /**
+   * Creates the default strategy registry with standard wrapper strategies.
+   *
+   * @returns Registry with I18n, Notification, Settings, and Noop strategies
+   */
+  createDefaultRegistry() {
+    const registry = new ApiWrapperStrategyRegistry();
+    registry.registerAll([
+      new I18nWrapperStrategy(),
+      new NotificationWrapperStrategy(),
+      new SettingsWrapperStrategy(),
+      new NoopWrapperStrategy()
+      // Fallback strategy
+    ]);
+    return registry;
+  }
+  /**
+   * Applies read-only wrappers when API consumers resolve sensitive services.
+   *
+   * Delegates to registered strategies following Open/Closed Principle.
+   * No token-specific if/else chains - all logic is in strategies.
+   *
+   * @param token - API token used for resolution
+   * @param service - Service resolved from the container
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Wrapped service when applicable
+   */
+  wrapSensitiveService(token, service, wellKnownTokens) {
+    const strategy = this.strategyRegistry.findStrategy(token, wellKnownTokens);
+    if (strategy) {
+      return strategy.wrap(service, token, wellKnownTokens);
+    }
+    return service;
+  }
+};
+__name(_ServiceWrapperFactory, "ServiceWrapperFactory");
+let ServiceWrapperFactory = _ServiceWrapperFactory;
+function formatReplacementInfo(replacement) {
+  return replacement ? `Use "${replacement}" instead.
+` : "";
+}
+__name(formatReplacementInfo, "formatReplacementInfo");
+const deprecationMetadata = /* @__PURE__ */ new Map();
+function markAsDeprecated(token, reason, replacement, removedInVersion) {
+  const apiSafeToken = markAsApiSafe(token);
+  deprecationMetadata.set(apiSafeToken, {
+    reason,
+    replacement: replacement ? String(replacement) : null,
+    removedInVersion,
+    warningShown: false
+  });
+  return apiSafeToken;
+}
+__name(markAsDeprecated, "markAsDeprecated");
+function getDeprecationInfo(token) {
+  if (!token || typeof token !== "symbol") {
+    return null;
+  }
+  return deprecationMetadata.get(token) || null;
+}
+__name(getDeprecationInfo, "getDeprecationInfo");
+const _DeprecationHandler = class _DeprecationHandler {
+  /**
+   * Checks if a token is deprecated.
+   *
+   * @param token - Token to check
+   * @returns DeprecationInfo if deprecated, null otherwise
+   */
+  checkDeprecation(token) {
+    return getDeprecationInfo(token) ?? null;
+  }
+  /**
+   * Handles deprecation warnings for tokens.
+   * Logs warning to console if token is deprecated and warning hasn't been shown yet.
+   *
+   * Uses console.warn instead of Logger because:
+   * - Deprecation warnings are for external API consumers (not internal logs)
+   * - Should be visible even if Logger is disabled/configured differently
+   * - Follows npm/Node.js convention for deprecation warnings
+   *
+   * @param token - Token to check for deprecation
+   */
+  handleDeprecationWarning(token) {
+    const deprecationInfo = getDeprecationInfo(token);
+    if (deprecationInfo && !deprecationInfo.warningShown) {
+      const replacementInfo = formatReplacementInfo(deprecationInfo.replacement);
+      console.warn(
+        `[${MODULE_METADATA.ID}] DEPRECATED: Token "${String(token)}" is deprecated.
+Reason: ${deprecationInfo.reason}
+` + replacementInfo + `This token will be removed in version ${deprecationInfo.removedInVersion}.`
+      );
+      deprecationInfo.warningShown = true;
+    }
+  }
+};
+__name(_DeprecationHandler, "DeprecationHandler");
+let DeprecationHandler = _DeprecationHandler;
+const _ApiServiceResolver = class _ApiServiceResolver {
+  constructor(deprecationHandler, serviceWrapperFactory) {
+    this.deprecationHandler = deprecationHandler;
+    this.serviceWrapperFactory = serviceWrapperFactory;
+  }
+  /**
+   * Creates the resolve() function for the public API.
+   * Resolves services and applies wrappers (throws on error).
+   *
+   * @param container - PlatformContainerPort for resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns Resolve function for ModuleApi
+   */
+  createResolveFunction(container, wellKnownTokens) {
+    return (token) => {
+      this.deprecationHandler.handleDeprecationWarning(token);
+      const service = container.resolve(token);
+      return this.serviceWrapperFactory.wrapSensitiveService(token, service, wellKnownTokens);
+    };
+  }
+  /**
+   * Creates the resolveWithError() function for the public API.
+   * Resolves services with Result pattern (never throws).
+   *
+   * @param container - PlatformContainerPort for resolution
+   * @param wellKnownTokens - Collection of API-safe tokens
+   * @returns ResolveWithError function for ModuleApi
+   */
+  createResolveWithErrorFunction(container, wellKnownTokens) {
+    return (token) => {
+      this.deprecationHandler.handleDeprecationWarning(token);
+      const result = container.resolveWithError(token);
+      if (!result.ok) {
+        const containerError = {
+          code: castContainerErrorCode(result.error.code),
+          message: result.error.message,
+          cause: result.error.cause,
+          tokenDescription: result.error.message
+        };
+        return err(containerError);
+      }
+      const service = castResolvedService(result.value);
+      const wrappedService = this.serviceWrapperFactory.wrapSensitiveService(
+        token,
+        service,
+        wellKnownTokens
+      );
+      return ok(wrappedService);
+    };
+  }
+};
+__name(_ApiServiceResolver, "ApiServiceResolver");
+let ApiServiceResolver = _ApiServiceResolver;
+const _ApiHealthMetricsProvider = class _ApiHealthMetricsProvider {
+  /**
+   * Gets a snapshot of performance metrics.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Current metrics snapshot
+   */
+  getMetrics(container) {
+    const metricsResult = container.resolveWithError(metricsCollectorToken);
+    if (!metricsResult.ok) {
+      return {
+        containerResolutions: 0,
+        resolutionErrors: 0,
+        avgResolutionTimeMs: 0,
+        portSelections: {},
+        portSelectionFailures: {},
+        cacheHitRate: 0
+      };
+    }
+    const metricsCollector = castResolvedService(metricsResult.value);
+    return metricsCollector.getSnapshot();
+  }
+  /**
+   * Gets module health status.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Health status with checks and overall status
+   */
+  getHealth(container) {
+    const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
+    if (!healthServiceResult.ok) {
+      return {
+        status: "unhealthy",
+        checks: {
+          containerValidated: false,
+          portsSelected: false,
+          lastError: "ModuleHealthService not available"
+        },
+        timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      };
+    }
+    const healthService = castResolvedService(healthServiceResult.value);
+    return healthService.getHealth();
+  }
+};
+__name(_ApiHealthMetricsProvider, "ApiHealthMetricsProvider");
+let ApiHealthMetricsProvider = _ApiHealthMetricsProvider;
+const _ModuleApiInitializer = class _ModuleApiInitializer {
+  constructor(deprecationHandler, serviceWrapperFactory, apiServiceResolver, healthMetricsProvider, apiBuilder) {
+    this.deprecationHandler = deprecationHandler ?? new DeprecationHandler();
+    this.serviceWrapperFactory = serviceWrapperFactory ?? new ServiceWrapperFactory();
+    this.apiServiceResolver = apiServiceResolver ?? new ApiServiceResolver(this.deprecationHandler, this.serviceWrapperFactory);
+    this.healthMetricsProvider = healthMetricsProvider ?? new ApiHealthMetricsProvider();
+    this.apiBuilder = apiBuilder ?? new ModuleApiBuilder(this.apiServiceResolver, this.healthMetricsProvider);
+  }
+  /**
+   * Exposes the module's public API to game.modules.get(MODULE_ID).api
+   *
+   * This method coordinates all components to create and expose the API.
+   * It acts as a Facade, delegating to specialized components.
+   *
+   * @param container - Initialized and validated PlatformContainerPort
+   * @returns Result<void, string> - Ok if successful, Err with error message
+   */
+  expose(container) {
+    if (typeof game === "undefined" || !game?.modules) {
+      return err("Game modules not available - API cannot be exposed");
+    }
+    const mod = game.modules.get(MODULE_METADATA.ID);
+    if (!mod) {
+      return err(`Module '${MODULE_METADATA.ID}' not found in game.modules`);
+    }
+    const wellKnownTokens = this.apiBuilder.createApiTokens();
+    const api = this.apiBuilder.createApi(container, wellKnownTokens);
+    mod.api = api;
+    return ok(void 0);
+  }
+};
+__name(_ModuleApiInitializer, "ModuleApiInitializer");
+_ModuleApiInitializer.dependencies = [];
+let ModuleApiInitializer = _ModuleApiInitializer;
+const _DIModuleApiInitializer = class _DIModuleApiInitializer extends ModuleApiInitializer {
+  constructor() {
+    super();
+  }
+};
+__name(_DIModuleApiInitializer, "DIModuleApiInitializer");
+_DIModuleApiInitializer.dependencies = [];
+let DIModuleApiInitializer = _DIModuleApiInitializer;
+const _HealthCheckRegistry = class _HealthCheckRegistry {
+  constructor() {
+    this.checks = /* @__PURE__ */ new Map();
+  }
+  register(check2) {
+    this.checks.set(check2.name, check2);
+  }
+  unregister(name) {
+    this.checks.delete(name);
+  }
+  runAll() {
+    const results = /* @__PURE__ */ new Map();
+    for (const [name, check2] of this.checks) {
+      results.set(name, check2.check());
+    }
+    return results;
+  }
+  getCheck(name) {
+    return this.checks.get(name);
+  }
+  getAllChecks() {
+    return Array.from(this.checks.values());
+  }
+  dispose() {
+    for (const check2 of this.checks.values()) {
+      check2.dispose();
+    }
+    this.checks.clear();
+  }
+};
+__name(_HealthCheckRegistry, "HealthCheckRegistry");
+_HealthCheckRegistry.dependencies = [];
+let HealthCheckRegistry = _HealthCheckRegistry;
+const _DIHealthCheckRegistry = class _DIHealthCheckRegistry extends HealthCheckRegistry {
+  constructor() {
+    super();
+  }
+};
+__name(_DIHealthCheckRegistry, "DIHealthCheckRegistry");
+_DIHealthCheckRegistry.dependencies = [];
+let DIHealthCheckRegistry = _DIHealthCheckRegistry;
+const _HealthCheckRegistryAdapter = class _HealthCheckRegistryAdapter {
+  constructor() {
+    this.registry = new HealthCheckRegistry();
+  }
+  register(check2) {
+    this.registry.register(check2);
+  }
+  unregister(name) {
+    this.registry.unregister(name);
+  }
+  runAll() {
+    return this.registry.runAll();
+  }
+  getCheck(name) {
+    return this.registry.getCheck(name);
+  }
+  getAllChecks() {
+    return this.registry.getAllChecks();
+  }
+};
+__name(_HealthCheckRegistryAdapter, "HealthCheckRegistryAdapter");
+let HealthCheckRegistryAdapter = _HealthCheckRegistryAdapter;
+const _InitPhaseRegistry = class _InitPhaseRegistry {
+  /**
+   * Creates a new registry with the provided phases.
+   *
+   * @param phases - Array of init phases (will be sorted by priority)
+   */
+  constructor(phases = []) {
+    this.phases = [];
+    this.phases = [...phases];
+    this.sortPhases();
+  }
+  /**
+   * Returns all phases sorted by priority (ascending).
+   *
+   * @returns Sorted array of init phases
+   */
+  getAll() {
+    return [...this.phases];
+  }
+  /**
+   * Adds a phase to the registry and re-sorts.
+   *
+   * @param phase - Phase to add
+   */
+  add(phase) {
+    this.phases.push(phase);
+    this.sortPhases();
+  }
+  /**
+   * Sorts phases by priority (ascending).
+   */
+  sortPhases() {
+    this.phases.sort((a, b) => a.priority - b.priority);
+  }
+};
+__name(_InitPhaseRegistry, "InitPhaseRegistry");
+let InitPhaseRegistry = _InitPhaseRegistry;
+var InitPhaseCriticality = /* @__PURE__ */ ((InitPhaseCriticality2) => {
+  InitPhaseCriticality2["HALT_ON_ERROR"] = "haltOnError";
+  InitPhaseCriticality2["WARN_AND_CONTINUE"] = "warnAndContinue";
+  return InitPhaseCriticality2;
+})(InitPhaseCriticality || {});
+const _MetricsBootstrapper = class _MetricsBootstrapper {
+  /**
+   * Initializes metrics collector if it supports persistence.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success (warnings logged but don't fail bootstrap)
+   */
+  static initializeMetrics(container) {
+    const metricsResult = container.resolveWithError(metricsCollectorToken);
+    if (!metricsResult.ok) {
+      return ok(void 0);
+    }
+    const collector = metricsResult.value;
+    if (isInitializable(collector)) {
+      const initResult = collector.initialize();
+      if (!initResult.ok) {
+        return ok(void 0);
+      }
+    }
+    return ok(void 0);
+  }
+};
+__name(_MetricsBootstrapper, "MetricsBootstrapper");
+let MetricsBootstrapper = _MetricsBootstrapper;
+const _MetricsInitPhase = class _MetricsInitPhase {
+  constructor() {
+    this.id = "metrics-initialization";
+    this.priority = 1;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return MetricsBootstrapper.initializeMetrics(ctx.container);
+  }
+};
+__name(_MetricsInitPhase, "MetricsInitPhase");
+let MetricsInitPhase = _MetricsInitPhase;
+const queuedUIChannelToken = createInjectionToken("QueuedUIChannel");
+const _NotificationBootstrapper = class _NotificationBootstrapper {
+  /**
+   * Attaches UI notification channel to NotificationCenter.
+   *
+   * Uses QueuedUIChannel which queues notifications before UI is available
+   * and flushes them when UI becomes available.
+   *
+   * This phase is optional - failures are logged as warnings but don't fail bootstrap.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
+   */
+  static attachNotificationChannels(container) {
+    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
+    if (!notificationCenterResult.ok) {
+      return err(
+        `NotificationCenter could not be resolved: ${notificationCenterResult.error.message}`
+      );
+    }
+    const queuedUIChannelResult = container.resolveWithError(queuedUIChannelToken);
+    if (!queuedUIChannelResult.ok) {
+      return err(`QueuedUIChannel could not be resolved: ${queuedUIChannelResult.error.message}`);
+    }
+    const notificationCenter = castResolvedService(
+      notificationCenterResult.value
+    );
+    const queuedUIChannel = castResolvedService(queuedUIChannelResult.value);
+    notificationCenter.addChannel(queuedUIChannel);
+    return ok(void 0);
+  }
+};
+__name(_NotificationBootstrapper, "NotificationBootstrapper");
+let NotificationBootstrapper = _NotificationBootstrapper;
+const _NotificationInitPhase = class _NotificationInitPhase {
+  constructor() {
+    this.id = "notification-channels";
+    this.priority = 2;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return NotificationBootstrapper.attachNotificationChannels(ctx.container);
+  }
+};
+__name(_NotificationInitPhase, "NotificationInitPhase");
+let NotificationInitPhase = _NotificationInitPhase;
+const _ApiBootstrapper = class _ApiBootstrapper {
+  /**
+   * Exposes the module's public API.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success or error
+   */
+  static exposeApi(container) {
+    const apiInitializerResult = container.resolveWithError(moduleApiInitializerToken);
+    if (!apiInitializerResult.ok) {
+      return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
+    }
+    const apiInitializer = castResolvedService(apiInitializerResult.value);
+    const exposeResult = apiInitializer.expose(container);
+    if (!exposeResult.ok) {
+      return err(`Failed to expose API: ${exposeResult.error}`);
+    }
+    return ok(void 0);
+  }
+};
+__name(_ApiBootstrapper, "ApiBootstrapper");
+let ApiBootstrapper = _ApiBootstrapper;
+const _ApiInitPhase = class _ApiInitPhase {
+  constructor() {
+    this.id = "api-exposure";
+    this.priority = 3;
+    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
+  }
+  execute(ctx) {
+    return ApiBootstrapper.exposeApi(ctx.container);
+  }
+};
+__name(_ApiInitPhase, "ApiInitPhase");
+let ApiInitPhase = _ApiInitPhase;
+const moduleSettingsRegistrarToken = createInjectionToken("ModuleSettingsRegistrar");
+const _SettingsBootstrapper = class _SettingsBootstrapper {
+  /**
+   * Registers all module settings.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success or error
+   */
+  static registerSettings(container) {
+    const settingsRegistrarResult = container.resolveWithError(moduleSettingsRegistrarToken);
+    if (!settingsRegistrarResult.ok) {
+      return err(
+        `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
+      );
+    }
+    const settingsRegistrar = castResolvedService(
+      settingsRegistrarResult.value
+    );
+    settingsRegistrar.registerAll();
+    return ok(void 0);
+  }
+};
+__name(_SettingsBootstrapper, "SettingsBootstrapper");
+let SettingsBootstrapper = _SettingsBootstrapper;
+const _SettingsInitPhase = class _SettingsInitPhase {
+  constructor() {
+    this.id = "settings-registration";
+    this.priority = 4;
+    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
+  }
+  execute(ctx) {
+    return SettingsBootstrapper.registerSettings(ctx.container);
+  }
+};
+__name(_SettingsInitPhase, "SettingsInitPhase");
+let SettingsInitPhase = _SettingsInitPhase;
+const _LoggingBootstrapper = class _LoggingBootstrapper {
+  /**
+   * Configures logger with current setting value.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @param logger - Logger instance to configure
+   * @returns Result indicating success (always succeeds, settings are optional)
+   */
+  static configureLogging(container, logger) {
+    const settingsResult = container.resolveWithError(foundrySettingsToken);
+    if (!settingsResult.ok) {
+      return ok(void 0);
+    }
+    const settings = castResolvedService(settingsResult.value);
+    const logLevelResult = settings.get(
+      MODULE_METADATA.ID,
+      SETTING_KEYS.LOG_LEVEL,
+      LOG_LEVEL_SCHEMA
+    );
+    if (logLevelResult.ok && logger.setMinLevel) {
+      logger.setMinLevel(logLevelResult.value);
+      logger.debug(`Logger configured with level: ${LogLevel[logLevelResult.value]}`);
+    }
+    return ok(void 0);
+  }
+};
+__name(_LoggingBootstrapper, "LoggingBootstrapper");
+let LoggingBootstrapper = _LoggingBootstrapper;
+const _LoggingInitPhase = class _LoggingInitPhase {
+  constructor() {
+    this.id = "logging-configuration";
+    this.priority = 5;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return LoggingBootstrapper.configureLogging(ctx.container, ctx.logger);
+  }
+};
+__name(_LoggingInitPhase, "LoggingInitPhase");
+let LoggingInitPhase = _LoggingInitPhase;
+const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
+  "InvalidateJournalCacheOnChangeUseCase"
+);
+const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken(
+  "ProcessJournalDirectoryOnRenderUseCase"
+);
+const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken(
+  "TriggerJournalDirectoryReRenderUseCase"
+);
+const registerContextMenuUseCaseToken = createInjectionToken(
+  "RegisterContextMenuUseCase"
+);
+const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
+const _EventsBootstrapper = class _EventsBootstrapper {
+  /**
+   * Registers all event listeners.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success or error
+   */
+  static registerEvents(container) {
+    const eventRegistrarResult = container.resolveWithError(moduleEventRegistrarToken);
+    if (!eventRegistrarResult.ok) {
+      return err(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
+    }
+    const eventRegistrar = castResolvedService(eventRegistrarResult.value);
+    const eventRegistrationResult = eventRegistrar.registerAll();
+    if (!eventRegistrationResult.ok) {
+      const errorMessages = eventRegistrationResult.error.map((e) => e.message).join(", ");
+      return err(`Failed to register one or more event listeners: ${errorMessages}`);
+    }
+    return ok(void 0);
+  }
+};
+__name(_EventsBootstrapper, "EventsBootstrapper");
+let EventsBootstrapper = _EventsBootstrapper;
+const _EventsInitPhase = class _EventsInitPhase {
+  constructor() {
+    this.id = "event-registration";
+    this.priority = 6;
+    this.criticality = InitPhaseCriticality.HALT_ON_ERROR;
+  }
+  execute(ctx) {
+    return EventsBootstrapper.registerEvents(ctx.container);
+  }
+};
+__name(_EventsInitPhase, "EventsInitPhase");
+let EventsInitPhase = _EventsInitPhase;
+const journalContextMenuLibWrapperServiceToken = createInjectionToken("JournalContextMenuLibWrapperService");
+const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
+  /**
+   * Registers context menu libWrapper and callbacks.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
+   */
+  static registerContextMenu(container) {
+    const contextMenuLibWrapperResult = container.resolveWithError(
+      journalContextMenuLibWrapperServiceToken
+    );
+    if (!contextMenuLibWrapperResult.ok) {
+      return err(
+        `JournalContextMenuLibWrapperService could not be resolved: ${contextMenuLibWrapperResult.error.message}`
+      );
+    }
+    const contextMenuLibWrapper = castResolvedService(
+      contextMenuLibWrapperResult.value
+    );
+    const registerResult = contextMenuLibWrapper.register();
+    if (!registerResult.ok) {
+      return err(`Context menu libWrapper registration failed: ${registerResult.error.message}`);
+    }
+    const contextMenuUseCaseResult = container.resolveWithError(registerContextMenuUseCaseToken);
+    if (!contextMenuUseCaseResult.ok) {
+      return err(
+        `RegisterContextMenuUseCase could not be resolved: ${contextMenuUseCaseResult.error.message}`
+      );
+    }
+    const contextMenuUseCase = castResolvedService(
+      contextMenuUseCaseResult.value
+    );
+    const callbackRegisterResult = contextMenuUseCase.register();
+    if (!callbackRegisterResult.ok) {
+      return err(
+        `Context menu callback registration failed: ${callbackRegisterResult.error.message}`
+      );
+    }
+    return ok(void 0);
+  }
+};
+__name(_ContextMenuBootstrapper, "ContextMenuBootstrapper");
+let ContextMenuBootstrapper = _ContextMenuBootstrapper;
+const _ContextMenuInitPhase = class _ContextMenuInitPhase {
+  constructor() {
+    this.id = "context-menu-registration";
+    this.priority = 7;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return ContextMenuBootstrapper.registerContextMenu(ctx.container);
+  }
+};
+__name(_ContextMenuInitPhase, "ContextMenuInitPhase");
+let ContextMenuInitPhase = _ContextMenuInitPhase;
+function createDefaultInitPhaseRegistry() {
+  return new InitPhaseRegistry([
+    new MetricsInitPhase(),
+    new NotificationInitPhase(),
+    new ApiInitPhase(),
+    new SettingsInitPhase(),
+    new LoggingInitPhase(),
+    new EventsInitPhase(),
+    new ContextMenuInitPhase()
+  ]);
+}
+__name(createDefaultInitPhaseRegistry, "createDefaultInitPhaseRegistry");
+const _InitPhaseErrorHandler = class _InitPhaseErrorHandler {
+  /**
+   * Handles an error from a phase execution.
+   *
+   * @param phase - The phase that failed
+   * @param error - The error message from the phase
+   * @param errors - Array to collect critical errors (mutated if phase is critical)
+   * @param logger - Logger for error reporting
+   */
+  handlePhaseError(phase, error, errors, logger) {
+    if (phase.criticality === InitPhaseCriticality.HALT_ON_ERROR) {
+      errors.push({
+        phase: phase.id,
+        message: error
+      });
+      logger.error(`Failed to execute phase '${phase.id}': ${error}`);
+    } else {
+      logger.warn(`Phase '${phase.id}' failed: ${error}`);
+    }
+  }
+};
+__name(_InitPhaseErrorHandler, "InitPhaseErrorHandler");
+let InitPhaseErrorHandler = _InitPhaseErrorHandler;
+const _InitOrchestrator = class _InitOrchestrator {
+  /**
+   * Creates a new InitOrchestrator instance.
+   *
+   * @param registry - Registry providing init phases (defaults to standard phases)
+   */
+  constructor(registry) {
+    this.registry = registry ?? createDefaultInitPhaseRegistry();
+  }
+  /**
+   * Executes the complete initialization sequence.
+   *
+   * Phases are executed in priority order (ascending). Error handling
+   * follows each phase's criticality setting:
+   * - HALT_ON_ERROR: Errors are collected and returned, stopping bootstrap
+   * - WARN_AND_CONTINUE: Errors are logged as warnings but don't stop bootstrap
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @param logger - Logger for error reporting
+   * @returns Result indicating success or aggregated errors
+   */
+  execute(container, logger) {
+    const errors = [];
+    const phases = this.registry.getAll();
+    const ctx = { container, logger };
+    const errorHandler = new InitPhaseErrorHandler();
+    for (const phase of phases) {
+      const result = phase.execute(ctx);
+      if (!result.ok) {
+        errorHandler.handlePhaseError(phase, result.error, errors, logger);
+      }
+    }
+    if (errors.length > 0) {
+      return err(errors);
+    }
+    return ok(void 0);
+  }
+  /**
+   * Static convenience method for backward compatibility.
+   *
+   * Creates a new orchestrator with default registry and executes.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @param logger - Logger for error reporting
+   * @returns Result indicating success or aggregated errors
+   */
+  static execute(container, logger) {
+    const orchestrator = new _InitOrchestrator();
+    return orchestrator.execute(container, logger);
+  }
+};
+__name(_InitOrchestrator, "InitOrchestrator");
+let InitOrchestrator = _InitOrchestrator;
+const _BootstrapInitHookService = class _BootstrapInitHookService {
+  constructor(logger, container, bootstrapEvents) {
+    this.logger = logger;
+    this.container = container;
+    this.bootstrapEvents = bootstrapEvents;
+  }
+  /**
+   * Registers the init event via PlatformBootstrapEventPort.
+   * Must be called before the platform's init hook fires.
+   */
+  register() {
+    const result = this.bootstrapEvents.onInit(() => this.handleInit());
+    if (!result.ok) {
+      this.logger.warn(
+        `Init hook registration failed: ${result.error.message}`,
+        result.error.details
+      );
+    }
+  }
+  /* v8 ignore start -- @preserve */
+  /* Foundry-Hooks und UI-spezifische Pfade hängen stark von der Laufzeitumgebung ab
+   * und werden primär über Integrations-/E2E-Tests abgesichert. Für das aktuelle Quality-Gateway
+   * blenden wir diese verzweigten Pfade temporär aus und reduzieren die Ignores später gezielt. */
+  handleInit() {
+    this.logger.info("init-phase");
+    const result = InitOrchestrator.execute(this.container, this.logger);
+    if (!result.ok) {
+      const errorMessages = result.error.map((e) => `${e.phase}: ${e.message}`).join("; ");
+      this.logger.error(`Init phase completed with errors: ${errorMessages}`);
+    } else {
+      this.logger.info("init-phase completed");
+    }
+  }
+  /* v8 ignore stop -- @preserve */
+};
+__name(_BootstrapInitHookService, "BootstrapInitHookService");
+let BootstrapInitHookService = _BootstrapInitHookService;
+const _DIBootstrapInitHookService = class _DIBootstrapInitHookService extends BootstrapInitHookService {
+  constructor(logger, container, bootstrapEvents) {
+    super(logger, container, bootstrapEvents);
+  }
+};
+__name(_DIBootstrapInitHookService, "DIBootstrapInitHookService");
+_DIBootstrapInitHookService.dependencies = [
+  loggerToken,
+  platformContainerPortToken,
+  platformBootstrapEventPortToken
+];
+let DIBootstrapInitHookService = _DIBootstrapInitHookService;
+const _ModuleReadyService = class _ModuleReadyService {
+  constructor(moduleReadyPort, loggingPort) {
+    this.moduleReadyPort = moduleReadyPort;
+    this.loggingPort = loggingPort;
+  }
+  /**
+   * Sets module.ready to true (ready state).
+   * Should be called when bootstrap-ready-hook completes.
+   */
+  setReady() {
+    const result = this.moduleReadyPort.setReady();
+    if (!result.ok) {
+      this.loggingPort.warn(
+        `Failed to set module.ready: ${result.error.message}`,
+        result.error.details
+      );
+    } else {
+      this.loggingPort.info("module.ready set to true");
+    }
+  }
+};
+__name(_ModuleReadyService, "ModuleReadyService");
+let ModuleReadyService = _ModuleReadyService;
+const _DIModuleReadyService = class _DIModuleReadyService extends ModuleReadyService {
+  constructor(moduleReadyPort, loggingPort) {
+    super(moduleReadyPort, loggingPort);
+  }
+};
+__name(_DIModuleReadyService, "DIModuleReadyService");
+_DIModuleReadyService.dependencies = [platformModuleReadyPortToken, platformLoggingPortToken];
+let DIModuleReadyService = _DIModuleReadyService;
+const moduleReadyServiceToken = createInjectionToken("ModuleReadyService");
+const _BootstrapReadyHookService = class _BootstrapReadyHookService {
+  constructor(logger, bootstrapEvents, moduleReadyService) {
+    this.logger = logger;
+    this.bootstrapEvents = bootstrapEvents;
+    this.moduleReadyService = moduleReadyService;
+  }
+  /**
+   * Registers the ready event via PlatformBootstrapEventPort.
+   * Must be called before the platform's ready hook fires.
+   */
+  register() {
+    const result = this.bootstrapEvents.onReady(() => this.handleReady());
+    if (!result.ok) {
+      this.logger.warn(
+        `Ready hook registration failed: ${result.error.message}`,
+        result.error.details
+      );
+    }
+  }
+  /* v8 ignore start -- @preserve */
+  /* Foundry-Hooks und UI-spezifische Pfade hängen stark von der Laufzeitumgebung ab
+   * und werden primär über Integrations-/E2E-Tests abgesichert. Für das aktuelle Quality-Gateway
+   * blenden wir diese verzweigten Pfade temporär aus und reduzieren die Ignores später gezielt. */
+  handleReady() {
+    this.logger.info("ready-phase");
+    this.moduleReadyService.setReady();
+    this.logger.info("ready-phase completed");
+  }
+  /* v8 ignore stop -- @preserve */
+};
+__name(_BootstrapReadyHookService, "BootstrapReadyHookService");
+let BootstrapReadyHookService = _BootstrapReadyHookService;
+const _DIBootstrapReadyHookService = class _DIBootstrapReadyHookService extends BootstrapReadyHookService {
+  constructor(logger, bootstrapEvents, moduleReadyService) {
+    super(logger, bootstrapEvents, moduleReadyService);
+  }
+};
+__name(_DIBootstrapReadyHookService, "DIBootstrapReadyHookService");
+_DIBootstrapReadyHookService.dependencies = [
+  loggerToken,
+  platformBootstrapEventPortToken,
+  moduleReadyServiceToken
+];
+let DIBootstrapReadyHookService = _DIBootstrapReadyHookService;
+const _FoundryBootstrapEventAdapter = class _FoundryBootstrapEventAdapter {
+  onInit(callback) {
+    if (typeof Hooks === "undefined") {
+      return err({
+        code: "PLATFORM_NOT_AVAILABLE",
+        message: "Foundry Hooks API not available"
+      });
+    }
+    try {
+      Hooks.on("init", callback);
+      return ok(void 0);
+    } catch (error) {
+      return err({
+        code: "EVENT_REGISTRATION_FAILED",
+        message: `Failed to register init event: ${error instanceof Error ? error.message : String(error)}`,
+        details: error
+      });
+    }
+  }
+  onReady(callback) {
+    if (typeof Hooks === "undefined") {
+      return err({
+        code: "PLATFORM_NOT_AVAILABLE",
+        message: "Foundry Hooks API not available"
+      });
+    }
+    try {
+      Hooks.on("ready", callback);
+      return ok(void 0);
+    } catch (error) {
+      return err({
+        code: "EVENT_REGISTRATION_FAILED",
+        message: `Failed to register ready event: ${error instanceof Error ? error.message : String(error)}`,
+        details: error
+      });
+    }
+  }
+};
+__name(_FoundryBootstrapEventAdapter, "FoundryBootstrapEventAdapter");
+let FoundryBootstrapEventAdapter = _FoundryBootstrapEventAdapter;
+const _DIFoundryBootstrapEventAdapter = class _DIFoundryBootstrapEventAdapter extends FoundryBootstrapEventAdapter {
+};
+__name(_DIFoundryBootstrapEventAdapter, "DIFoundryBootstrapEventAdapter");
+_DIFoundryBootstrapEventAdapter.dependencies = [];
+let DIFoundryBootstrapEventAdapter = _DIFoundryBootstrapEventAdapter;
+const retryServiceToken = createInjectionToken("RetryService");
+const _PortLoader = class _PortLoader {
+  constructor(portSelector, portRegistry) {
+    this.port = null;
+    this.portSelector = portSelector;
+    this.portRegistry = portRegistry;
+  }
+  /**
+   * Lazy-loads the appropriate port based on Foundry version.
+   * Uses PortSelector with token-based selection to resolve ports from the DI container.
+   *
+   * CRITICAL: This prevents crashes when newer port constructors access
+   * APIs not available in the current Foundry version. Ports are resolved
+   * from the DI container, ensuring DIP (Dependency Inversion Principle) compliance.
+   *
+   * @param adapterName - Name for logging purposes (e.g., "FoundryGame")
+   * @returns Result containing the port or a FoundryError if no compatible port can be selected
+   */
+  loadPort(adapterName) {
+    if (this.port === null) {
+      const tokens = this.portRegistry.getTokens();
+      const portResult = this.portSelector.selectPortFromTokens(tokens, void 0, adapterName);
+      if (!portResult.ok) {
+        return portResult;
+      }
+      this.port = portResult.value;
+    }
+    return { ok: true, value: this.port };
+  }
+  /**
+   * Gets the currently loaded port without triggering lazy loading.
+   * Useful for operations that don't need retry logic but need to check if port is loaded.
+   *
+   * @returns The loaded port or null if not yet loaded
+   */
+  getLoadedPort() {
+    return this.port;
+  }
+  /**
+   * Clears the cached port.
+   * This forces the next loadPort() call to reload the port.
+   * Useful for testing or when ports need to be refreshed.
+   */
+  clearCache() {
+    this.port = null;
+  }
+};
+__name(_PortLoader, "PortLoader");
+let PortLoader = _PortLoader;
+const _RetryableOperation = class _RetryableOperation {
+  constructor(retryService) {
+    this.retryService = retryService;
+  }
+  /**
+   * Executes a Foundry API operation with automatic retry on transient failures.
+   *
+   * Use this for any port method call to handle:
+   * - Race conditions (Foundry not fully initialized)
+   * - Timing issues (DOM/Settings not ready)
+   * - Transient port selection failures
+   *
+   * @template T - The success type
+   * @param fn - Function to execute (should call port methods)
+   * @param operationName - Operation name for logging (e.g., "FoundryGame.getJournalEntries")
+   * @param maxAttempts - Max retry attempts (default: 2 = 1 retry)
+   * @returns Result from operation or mapped error
+   *
+   * @example
+   * ```typescript
+   * const result = retryable.execute(
+   *   () => {
+   *     const portResult = portLoader.loadPort("FoundryGame");
+   *     if (!portResult.ok) return portResult;
+   *     return portResult.value.getJournalEntries();
+   *   },
+   *   "FoundryGame.getJournalEntries"
+   * );
+   * ```
+   */
+  execute(fn, operationName, maxAttempts = 2) {
+    return this.retryService.retrySync(fn, {
+      maxAttempts,
+      operationName,
+      mapException: /* @__PURE__ */ __name((error, _attempt) => ({
+        code: "OPERATION_FAILED",
+        message: `${operationName} failed: ${String(error)}`,
+        cause: error instanceof Error ? error : void 0
+      }), "mapException")
+    });
+  }
+  /**
+   * Async variant of execute for async operations.
+   *
+   * @template T - The success type
+   * @param fn - Async function to execute
+   * @param operationName - Operation name for logging
+   * @param maxAttempts - Max retry attempts (default: 2)
+   * @returns Promise resolving to Result
+   *
+   * @example
+   * ```typescript
+   * const result = await retryable.executeAsync(
+   *   async () => {
+   *     const portResult = portLoader.loadPort("FoundryDocument");
+   *     if (!portResult.ok) return portResult;
+   *     return await portResult.value.setFlag(doc, scope, key, value);
+   *   },
+   *   "FoundryDocument.setFlag"
+   * );
+   * ```
+   */
+  async executeAsync(fn, operationName, maxAttempts = 2) {
+    return this.retryService.retry(fn, {
+      maxAttempts,
+      delayMs: 100,
+      // 100ms delay between retries
+      operationName,
+      mapException: /* @__PURE__ */ __name((error, _attempt) => ({
+        code: "OPERATION_FAILED",
+        message: `${operationName} failed: ${String(error)}`,
+        cause: error instanceof Error ? error : void 0
+      }), "mapException")
+    });
+  }
+};
+__name(_RetryableOperation, "RetryableOperation");
+let RetryableOperation = _RetryableOperation;
+const _FoundryModuleReadyPort = class _FoundryModuleReadyPort {
+  constructor(portSelector, portRegistry, retryService, moduleId) {
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
+    this.moduleId = moduleId;
+  }
+  setReady() {
+    const result = this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryModule");
+      if (!portResult.ok) {
+        return {
+          ok: false,
+          error: createFoundryError(
+            "PORT_SELECTION_FAILED",
+            portResult.error.message,
+            portResult.error.details
+          )
+        };
+      }
+      const success = portResult.value.setModuleReady(this.moduleId);
+      if (!success) {
+        return {
+          ok: false,
+          error: createFoundryError("OPERATION_FAILED", `Module ${this.moduleId} not found`)
+        };
+      }
+      return { ok: true, value: void 0 };
+    }, "FoundryModule.setReady");
+    if (!result.ok) {
+      let errorCode;
+      if (result.error.code === "PORT_SELECTION_FAILED" || result.error.code === "API_NOT_AVAILABLE") {
+        errorCode = "PLATFORM_NOT_AVAILABLE";
+      } else if (result.error.code === "OPERATION_FAILED") {
+        errorCode = "OPERATION_FAILED";
+      } else {
+        errorCode = "OPERATION_FAILED";
+      }
+      return {
+        ok: false,
+        error: {
+          code: errorCode,
+          message: result.error.message,
+          details: result.error.details
+        }
+      };
+    }
+    return { ok: true, value: void 0 };
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
+  }
+};
+__name(_FoundryModuleReadyPort, "FoundryModuleReadyPort");
+let FoundryModuleReadyPort = _FoundryModuleReadyPort;
+const _DIFoundryModuleReadyPort = class _DIFoundryModuleReadyPort extends FoundryModuleReadyPort {
+  constructor(portSelector, portRegistry, retryService, moduleId) {
+    super(portSelector, portRegistry, retryService, moduleId);
+  }
+};
+__name(_DIFoundryModuleReadyPort, "DIFoundryModuleReadyPort");
+_DIFoundryModuleReadyPort.dependencies = [
+  portSelectorToken,
+  foundryModulePortRegistryToken,
+  retryServiceToken,
+  moduleIdToken
+];
+let DIFoundryModuleReadyPort = _DIFoundryModuleReadyPort;
+function registerCoreServices(container) {
+  const runtimeConfig = container.getRegisteredValue(runtimeConfigToken);
+  if (!runtimeConfig) {
+    return err("RuntimeConfigService not registered");
+  }
+  const enablePersistence = runtimeConfig.get("enableMetricsPersistence") === true;
+  const aggregatorResult = container.registerClass(
+    metricsAggregatorToken,
+    MetricsAggregator,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(aggregatorResult)) {
+    return err(`Failed to register MetricsAggregator: ${aggregatorResult.error.message}`);
+  }
+  const persistenceManagerResult = container.registerClass(
+    metricsPersistenceManagerToken,
+    MetricsPersistenceManager,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(persistenceManagerResult)) {
+    return err(
+      `Failed to register MetricsPersistenceManager: ${persistenceManagerResult.error.message}`
+    );
+  }
+  const stateManagerResult = container.registerClass(
+    metricsStateManagerToken,
+    MetricsStateManager,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(stateManagerResult)) {
+    return err(`Failed to register MetricsStateManager: ${stateManagerResult.error.message}`);
+  }
+  if (enablePersistence) {
+    const metricsKey = runtimeConfig.get("metricsPersistenceKey") ?? "fvtt_relationship_app_module.metrics";
+    const storageInstance = createMetricsStorage(metricsKey);
+    const storageResult = container.registerValue(metricsStorageToken, storageInstance);
+    if (isErr(storageResult)) {
+      return err(`Failed to register MetricsStorage: ${storageResult.error.message}`);
+    }
+    const persistentResult = container.registerClass(
+      metricsCollectorToken,
+      DIPersistentMetricsCollector,
+      ServiceLifecycle.SINGLETON
+    );
+    if (isErr(persistentResult)) {
+      return err(
+        `Failed to register PersistentMetricsCollector: ${persistentResult.error.message}`
+      );
+    }
+  } else {
+    const metricsResult = container.registerClass(
+      metricsCollectorToken,
+      DIMetricsCollector,
+      ServiceLifecycle.SINGLETON
+    );
+    if (isErr(metricsResult)) {
+      return err(`Failed to register MetricsCollector: ${metricsResult.error.message}`);
+    }
+  }
+  const samplerResult = container.registerClass(
+    metricsSamplerToken,
+    DIMetricsSampler,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(samplerResult)) {
+    return err(`Failed to register MetricsSampler: ${samplerResult.error.message}`);
+  }
+  container.registerAlias(metricsRecorderToken, metricsCollectorToken);
+  const traceContextResult = container.registerClass(
+    traceContextToken,
+    DITraceContext,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(traceContextResult)) {
+    return err(`Failed to register TraceContext: ${traceContextResult.error.message}`);
+  }
+  const loggerResult = container.registerClass(
+    loggerToken,
+    DIConsoleLoggerService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(loggerResult)) {
+    return err(`Failed to register Logger: ${loggerResult.error.message}`);
+  }
+  const reporterResult = container.registerClass(
+    metricsReporterToken,
+    DIMetricsReporter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(reporterResult)) {
+    return err(`Failed to register MetricsReporter: ${reporterResult.error.message}`);
+  }
+  const registryResult = container.registerClass(
+    healthCheckRegistryToken,
+    HealthCheckRegistryAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(registryResult)) {
+    return err(`Failed to register HealthCheckRegistry: ${registryResult.error.message}`);
+  }
+  const healthResult = container.registerClass(
+    moduleHealthServiceToken,
+    DIModuleHealthService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(healthResult)) {
+    return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
+  }
+  const apiInitResult = container.registerClass(
+    moduleApiInitializerToken,
+    DIModuleApiInitializer,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(apiInitResult)) {
+    return err(`Failed to register ModuleApiInitializer: ${apiInitResult.error.message}`);
+  }
+  const bootstrapEventsResult = container.registerClass(
+    platformBootstrapEventPortToken,
+    DIFoundryBootstrapEventAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(bootstrapEventsResult)) {
+    return err(
+      `Failed to register PlatformBootstrapEventPort: ${bootstrapEventsResult.error.message}`
+    );
+  }
+  const initHookResult = container.registerClass(
+    bootstrapInitHookServiceToken,
+    DIBootstrapInitHookService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(initHookResult)) {
+    return err(`Failed to register BootstrapInitHookService: ${initHookResult.error.message}`);
+  }
+  const moduleReadyPortResult = container.registerClass(
+    platformModuleReadyPortToken,
+    DIFoundryModuleReadyPort,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(moduleReadyPortResult)) {
+    return err(
+      `Failed to register PlatformModuleReadyPort: ${moduleReadyPortResult.error.message}`
+    );
+  }
+  const moduleReadyResult = container.registerClass(
+    moduleReadyServiceToken,
+    DIModuleReadyService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(moduleReadyResult)) {
+    return err(`Failed to register ModuleReadyService: ${moduleReadyResult.error.message}`);
+  }
+  const readyHookResult = container.registerClass(
+    bootstrapReadyHookServiceToken,
+    DIBootstrapReadyHookService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(readyHookResult)) {
+    return err(`Failed to register BootstrapReadyHookService: ${readyHookResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerCoreServices, "registerCoreServices");
+registerDependencyStep({
+  name: "CoreServices",
+  priority: 20,
+  execute: registerCoreServices
+});
+const observabilityRegistryToken = createInjectionToken("ObservabilityRegistry");
+const _PortSelectionEventEmitter = class _PortSelectionEventEmitter {
+  constructor() {
+    this.subscribers = /* @__PURE__ */ new Set();
+  }
+  subscribe(callback) {
+    this.subscribers.add(callback);
+    let active = true;
+    return () => {
+      if (!active) {
+        return;
+      }
+      active = false;
+      this.subscribers.delete(callback);
+    };
+  }
+  emit(event) {
+    for (const callback of this.subscribers) {
+      try {
+        callback(event);
+      } catch (error) {
+        console.error("PortSelectionEventEmitter subscriber error", error);
+      }
+    }
+  }
+  clear() {
+    this.subscribers.clear();
+  }
+  getSubscriberCount() {
+    return this.subscribers.size;
+  }
+};
+__name(_PortSelectionEventEmitter, "PortSelectionEventEmitter");
+let PortSelectionEventEmitter = _PortSelectionEventEmitter;
+const _DIPortSelectionEventEmitter = class _DIPortSelectionEventEmitter extends PortSelectionEventEmitter {
+};
+__name(_DIPortSelectionEventEmitter, "DIPortSelectionEventEmitter");
+_DIPortSelectionEventEmitter.dependencies = [];
+let DIPortSelectionEventEmitter = _DIPortSelectionEventEmitter;
+const _ObservabilityRegistry = class _ObservabilityRegistry {
+  constructor(logger, metrics) {
+    this.logger = logger;
+    this.metrics = metrics;
+    this.subscriptions = [];
+  }
+  /**
+   * Register a PortSelector for observability.
+   * Wires event emission to logging and metrics.
+   *
+   * @param service - Observable service that emits PortSelectionEvents
+   */
+  registerPortSelector(service) {
+    const unsubscribe = service.onEvent((event) => {
+      if (event.type === "success") {
+        const adapterSuffix = event.adapterName ? ` for ${event.adapterName}` : "";
+        this.logger.debug(
+          `Port v${event.selectedVersion} selected in ${event.durationMs.toFixed(2)}ms${adapterSuffix}`
+        );
+        this.metrics.recordPortSelection(event.selectedVersion);
+      } else {
+        this.logger.error("Port selection failed", {
+          foundryVersion: event.foundryVersion,
+          availableVersions: event.availableVersions,
+          adapterName: event.adapterName
+        });
+        this.metrics.recordPortSelectionFailure(event.foundryVersion);
+      }
+    });
+    this.subscriptions.push(unsubscribe);
+  }
+  /**
+   * Disposes all registered observers and clears internal state.
+   * Intended to be called when the DI container is disposed.
+   */
+  dispose() {
+    while (this.subscriptions.length > 0) {
+      const unsubscribe = this.subscriptions.pop();
+      try {
+        unsubscribe?.();
+      } catch {
+      }
+    }
+  }
+  // Future: Add more registration methods for other observable services
+  // registerSomeOtherService(service: ObservableService<OtherEvent>): void { ... }
+};
+__name(_ObservabilityRegistry, "ObservabilityRegistry");
+let ObservabilityRegistry = _ObservabilityRegistry;
+const _DIObservabilityRegistry = class _DIObservabilityRegistry extends ObservabilityRegistry {
+  constructor(logger, metrics) {
+    super(logger, metrics);
+  }
+};
+__name(_DIObservabilityRegistry, "DIObservabilityRegistry");
+_DIObservabilityRegistry.dependencies = [loggerToken, metricsRecorderToken];
+let DIObservabilityRegistry = _DIObservabilityRegistry;
+const _PortSelectionObservability = class _PortSelectionObservability {
+  constructor(observabilityRegistry) {
+    this.observabilityRegistry = observabilityRegistry;
+  }
+  /**
+   * Register PortSelector with ObservabilityRegistry.
+   * This enables automatic logging and metrics collection.
+   */
+  registerWithObservabilityRegistry(selector) {
+    this.observabilityRegistry.registerPortSelector(selector);
+  }
+  /**
+   * Setup observability for PortSelector.
+   * Wires PortSelector events to PortSelectionObserver.
+   */
+  setupObservability(selector, observer) {
+    selector.onEvent((event) => {
+      observer.handleEvent(event);
+    });
+  }
+};
+__name(_PortSelectionObservability, "PortSelectionObservability");
+let PortSelectionObservability = _PortSelectionObservability;
+const _DIPortSelectionObservability = class _DIPortSelectionObservability extends PortSelectionObservability {
+  constructor(observabilityRegistry) {
+    super(observabilityRegistry);
+  }
+};
+__name(_DIPortSelectionObservability, "DIPortSelectionObservability");
+_DIPortSelectionObservability.dependencies = [observabilityRegistryToken];
+let DIPortSelectionObservability = _DIPortSelectionObservability;
+const _PortSelectionPerformanceTracker = class _PortSelectionPerformanceTracker {
+  /**
+   * Start performance tracking.
+   * Records the current high-resolution timestamp.
+   */
+  startTracking() {
+    this.startTime = performance.now();
+  }
+  /**
+   * End performance tracking and return duration in milliseconds.
+   * @returns Duration in milliseconds, or 0 if tracking was not started
+   */
+  endTracking() {
+    if (this.startTime === void 0) {
+      return 0;
+    }
+    const durationMs = performance.now() - this.startTime;
+    this.startTime = void 0;
+    return durationMs;
+  }
+};
+__name(_PortSelectionPerformanceTracker, "PortSelectionPerformanceTracker");
+let PortSelectionPerformanceTracker = _PortSelectionPerformanceTracker;
+const _DIPortSelectionPerformanceTracker = class _DIPortSelectionPerformanceTracker extends PortSelectionPerformanceTracker {
+  constructor() {
+    super();
+  }
+};
+__name(_DIPortSelectionPerformanceTracker, "DIPortSelectionPerformanceTracker");
+_DIPortSelectionPerformanceTracker.dependencies = [];
+let DIPortSelectionPerformanceTracker = _DIPortSelectionPerformanceTracker;
+const _PortSelectionObserver = class _PortSelectionObserver {
+  constructor(logger, metrics, eventEmitter) {
+    this.logger = logger;
+    this.metrics = metrics;
+    this.eventEmitter = eventEmitter;
+  }
+  /**
+   * Handle a port selection event.
+   *
+   * Performs appropriate logging, metrics recording, and event emission.
+   *
+   * @param event - The port selection event to handle
+   */
+  handleEvent(event) {
+    this.eventEmitter.emit(event);
+    if (event.type === "success") {
+      this.handleSuccess(event);
+    } else {
+      this.handleFailure(event);
+    }
+  }
+  /**
+   * Handle successful port selection.
+   *
+   * Logs debug message and records metrics.
+   */
+  handleSuccess(event) {
+    this.logger.debug(
+      `Port selection completed in ${event.durationMs.toFixed(2)}ms (selected: v${event.selectedVersion}${event.adapterName ? ` for ${event.adapterName}` : ""})`
+    );
+    this.metrics.recordPortSelection(event.selectedVersion);
+  }
+  /**
+   * Handle failed port selection.
+   *
+   * Logs error and records failure metrics.
+   */
+  handleFailure(event) {
+    this.logger.error("No compatible port found", {
+      foundryVersion: event.foundryVersion,
+      availableVersions: event.availableVersions,
+      adapterName: event.adapterName
+    });
+    this.metrics.recordPortSelectionFailure(event.foundryVersion);
+  }
+};
+__name(_PortSelectionObserver, "PortSelectionObserver");
+let PortSelectionObserver = _PortSelectionObserver;
+const _DIPortSelectionObserver = class _DIPortSelectionObserver extends PortSelectionObserver {
+  constructor(logger, metrics, eventEmitter) {
+    super(logger, metrics, eventEmitter);
+  }
+};
+__name(_DIPortSelectionObserver, "DIPortSelectionObserver");
+_DIPortSelectionObserver.dependencies = [
+  loggerToken,
+  metricsRecorderToken,
+  portSelectionEventEmitterToken
+];
+let DIPortSelectionObserver = _DIPortSelectionObserver;
+function registerObservability(container) {
+  const emitterResult = container.registerClass(
+    portSelectionEventEmitterToken,
+    DIPortSelectionEventEmitter,
+    ServiceLifecycle.TRANSIENT
+  );
+  if (isErr(emitterResult)) {
+    return err(`Failed to register PortSelectionEventEmitter: ${emitterResult.error.message}`);
+  }
+  const registryResult = container.registerClass(
+    observabilityRegistryToken,
+    DIObservabilityRegistry,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(registryResult)) {
+    return err(`Failed to register ObservabilityRegistry: ${registryResult.error.message}`);
+  }
+  const observabilityResult = container.registerClass(
+    portSelectionObservabilityToken,
+    DIPortSelectionObservability,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(observabilityResult)) {
+    return err(
+      `Failed to register PortSelectionObservability: ${observabilityResult.error.message}`
+    );
+  }
+  const performanceTrackerResult = container.registerClass(
+    portSelectionPerformanceTrackerToken,
+    DIPortSelectionPerformanceTracker,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(performanceTrackerResult)) {
+    return err(
+      `Failed to register PortSelectionPerformanceTracker: ${performanceTrackerResult.error.message}`
+    );
+  }
+  const observerResult = container.registerClass(
+    portSelectionObserverToken,
+    DIPortSelectionObserver,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(observerResult)) {
+    return err(`Failed to register PortSelectionObserver: ${observerResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerObservability, "registerObservability");
+registerDependencyStep({
+  name: "Observability",
+  priority: 30,
+  execute: registerObservability
+});
+const _FoundryGamePort = class _FoundryGamePort {
+  constructor(portSelector, portRegistry, retryService) {
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
+  }
+  getJournalEntries() {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryGame");
+      if (!portResult.ok) return portResult;
+      return portResult.value.getJournalEntries();
+    }, "FoundryGame.getJournalEntries");
+  }
+  getJournalEntryById(id) {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryGame");
+      if (!portResult.ok) return portResult;
+      return portResult.value.getJournalEntryById(id);
+    }, "FoundryGame.getJournalEntryById");
+  }
+  invalidateCache() {
+    const portResult = this.portLoader.loadPort("FoundryGame");
+    if (portResult.ok) {
+      portResult.value.invalidateCache();
+    }
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
+  }
+};
+__name(_FoundryGamePort, "FoundryGamePort");
+let FoundryGamePort = _FoundryGamePort;
+const _DIFoundryGamePort = class _DIFoundryGamePort extends FoundryGamePort {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+};
+__name(_DIFoundryGamePort, "DIFoundryGamePort");
+_DIFoundryGamePort.dependencies = [
+  portSelectorToken,
+  foundryGamePortRegistryToken,
+  retryServiceToken
+];
+let DIFoundryGamePort = _DIFoundryGamePort;
+const _FoundryHooksPort = class _FoundryHooksPort {
+  constructor(portSelector, portRegistry, retryService, logger) {
+    this.registeredHooks = /* @__PURE__ */ new Map();
+    this.callbackToIdMap = /* @__PURE__ */ new Map();
+    this.idToHookNameMap = /* @__PURE__ */ new Map();
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
+    this.logger = logger;
+  }
+  on(hookName, callback) {
+    const result = this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryHooks");
+      if (!portResult.ok) return portResult;
+      return portResult.value.on(hookName, callback);
+    }, "FoundryHooks.on");
+    if (result.ok) {
+      let hookMap = this.registeredHooks.get(hookName);
+      if (!hookMap) {
+        hookMap = /* @__PURE__ */ new Map();
+        this.registeredHooks.set(hookName, hookMap);
+      }
+      hookMap.set(result.value, callback);
+      const existing = this.callbackToIdMap.get(callback) || [];
+      existing.push({ hookName, id: result.value });
+      this.callbackToIdMap.set(callback, existing);
+      this.idToHookNameMap.set(result.value, hookName);
+    }
+    return result;
+  }
+  once(hookName, callback) {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryHooks");
+      if (!portResult.ok) return portResult;
+      return portResult.value.once(hookName, callback);
+    }, "FoundryHooks.once");
+  }
+  off(hookName, callbackOrId) {
+    const result = this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryHooks");
+      if (!portResult.ok) return portResult;
+      return portResult.value.off(hookName, callbackOrId);
+    }, "FoundryHooks.off");
+    if (result.ok) {
+      if (typeof callbackOrId === "number") {
+        const hooks = this.registeredHooks.get(hookName);
+        if (hooks) {
+          const callback = hooks.get(callbackOrId);
+          hooks.delete(callbackOrId);
+          if (callback) {
+            const hookInfos = this.callbackToIdMap.get(callback);
+            if (hookInfos) {
+              const filtered = hookInfos.filter(
+                (info) => !(info.hookName === hookName && info.id === callbackOrId)
+              );
+              if (filtered.length === 0) {
+                this.callbackToIdMap.delete(callback);
+              } else {
+                this.callbackToIdMap.set(callback, filtered);
+              }
+            }
+          }
+          this.idToHookNameMap.delete(callbackOrId);
+        }
+      } else {
+        const hookInfos = this.callbackToIdMap.get(callbackOrId);
+        if (hookInfos) {
+          const matchingInfos = hookInfos.filter((info) => info.hookName === hookName);
+          const hooks = this.registeredHooks.get(hookName);
+          if (hooks) {
+            for (const info of matchingInfos) {
+              hooks.delete(info.id);
+            }
+          }
+          const filtered = hookInfos.filter((info) => info.hookName !== hookName);
+          if (filtered.length === 0) {
+            this.callbackToIdMap.delete(callbackOrId);
+          } else {
+            this.callbackToIdMap.set(callbackOrId, filtered);
+          }
+        }
+      }
+    }
+    return result;
+  }
+  /**
+   * Cleans up all registered hooks.
+   * Called automatically when the container is disposed.
+   */
+  dispose() {
+    for (const [callback, hookInfos] of this.callbackToIdMap) {
+      for (const info of hookInfos) {
+        try {
+          if (typeof Hooks !== "undefined") {
+            Hooks.off(info.hookName, callback);
+          }
+        } catch (error) {
+          this.logger.warn("Failed to unregister hook", {
+            hookName: info.hookName,
+            hookId: info.id,
+            error
+          });
+        }
+      }
+    }
+    this.registeredHooks.clear();
+    this.callbackToIdMap.clear();
+    this.idToHookNameMap.clear();
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
+  }
+  // ===== PlatformEventPort Implementation =====
+  /**
+   * Register a listener for platform events.
+   * Delegates to FoundryHooks.on() for Foundry-specific implementation.
+   * Wraps the PlatformEventPort callback to receive Foundry hook arguments as an array.
+   */
+  registerListener(eventType, callback) {
+    const foundryCallback = /* @__PURE__ */ __name((...args2) => {
+      callback(args2);
+    }, "foundryCallback");
+    const result = this.on(eventType, foundryCallback);
+    if (!result.ok) {
+      return err({
+        code: "EVENT_REGISTRATION_FAILED",
+        message: `Failed to register listener for event "${eventType}": ${result.error.message}`,
+        details: result.error
+      });
+    }
+    return ok(result.value);
+  }
+  /**
+   * Unregister a previously registered listener.
+   * Requires mapping from registration ID to hook name.
+   */
+  unregisterListener(registrationId) {
+    const id = typeof registrationId === "string" ? Number.parseInt(registrationId, 10) : registrationId;
+    if (Number.isNaN(id)) {
+      return err({
+        code: "EVENT_UNREGISTRATION_FAILED",
+        message: `Invalid registration ID: ${String(registrationId)}`
+      });
+    }
+    const hookName = this.idToHookNameMap.get(id);
+    if (!hookName) {
+      return err({
+        code: "EVENT_UNREGISTRATION_FAILED",
+        message: `No registration found for ID ${id}`
+      });
+    }
+    const result = this.off(hookName, id);
+    if (!result.ok) {
+      return err({
+        code: "EVENT_UNREGISTRATION_FAILED",
+        message: `Failed to unregister listener for event "${hookName}": ${result.error.message}`,
+        details: result.error
+      });
+    }
+    return ok(void 0);
+  }
+};
+__name(_FoundryHooksPort, "FoundryHooksPort");
+let FoundryHooksPort = _FoundryHooksPort;
+const _DIFoundryHooksPort = class _DIFoundryHooksPort extends FoundryHooksPort {
+  constructor(portSelector, portRegistry, retryService, logger) {
+    super(portSelector, portRegistry, retryService, logger);
+  }
+};
+__name(_DIFoundryHooksPort, "DIFoundryHooksPort");
+_DIFoundryHooksPort.dependencies = [
+  portSelectorToken,
+  foundryHooksPortRegistryToken,
+  retryServiceToken,
+  loggerToken
+];
+let DIFoundryHooksPort = _DIFoundryHooksPort;
+const _FoundryDocumentPort = class _FoundryDocumentPort {
+  constructor(portSelector, portRegistry, retryService) {
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
+  }
+  async create(documentClass, data) {
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.create(documentClass, data);
+    }, "FoundryDocument.create");
+  }
+  async update(document2, changes) {
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.update(document2, changes);
+    }, "FoundryDocument.update");
+  }
+  async delete(document2) {
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.delete(document2);
+    }, "FoundryDocument.delete");
+  }
+  getFlag(document2, scope, key, schema) {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return portResult.value.getFlag(document2, scope, key, schema);
+    }, "FoundryDocument.getFlag");
+  }
+  async setFlag(document2, scope, key, value2) {
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.setFlag(document2, scope, key, value2);
+    }, "FoundryDocument.setFlag");
+  }
+  async unsetFlag(document2, scope, key) {
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundryDocument");
+      if (!portResult.ok) return portResult;
+      return await portResult.value.unsetFlag(document2, scope, key);
+    }, "FoundryDocument.unsetFlag");
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
+  }
+};
+__name(_FoundryDocumentPort, "FoundryDocumentPort");
+let FoundryDocumentPort = _FoundryDocumentPort;
+const _DIFoundryDocumentPort = class _DIFoundryDocumentPort extends FoundryDocumentPort {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+};
+__name(_DIFoundryDocumentPort, "DIFoundryDocumentPort");
+_DIFoundryDocumentPort.dependencies = [
+  portSelectorToken,
+  foundryDocumentPortRegistryToken,
+  retryServiceToken
+];
+let DIFoundryDocumentPort = _DIFoundryDocumentPort;
+const _FoundryUIPort = class _FoundryUIPort {
+  constructor(portSelector, portRegistry, retryService) {
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
+  }
+  removeJournalElement(journalId, journalName, html) {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.removeJournalElement(journalId, journalName, html);
+    }, "FoundryUI.removeJournalElement");
+  }
+  findElement(container, selector) {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.findElement(container, selector);
+    }, "FoundryUI.findElement");
+  }
+  notify(message2, type, options) {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.notify(message2, type, options);
+    }, "FoundryUI.notify");
+  }
+  rerenderJournalDirectory() {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.rerenderJournalDirectory();
+    }, "FoundryUI.rerenderJournalDirectory");
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
+  }
+};
+__name(_FoundryUIPort, "FoundryUIPort");
+let FoundryUIPort = _FoundryUIPort;
+const _DIFoundryUIPort = class _DIFoundryUIPort extends FoundryUIPort {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+};
+__name(_DIFoundryUIPort, "DIFoundryUIPort");
+_DIFoundryUIPort.dependencies = [portSelectorToken, foundryUIPortRegistryToken, retryServiceToken];
+let DIFoundryUIPort = _DIFoundryUIPort;
+const _FoundrySettingsPort = class _FoundrySettingsPort {
+  constructor(portSelector, portRegistry, retryService) {
+    this.portLoader = new PortLoader(portSelector, portRegistry);
+    this.retryable = new RetryableOperation(retryService);
+  }
+  register(namespace, key, config2) {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundrySettings");
+      if (!portResult.ok) return portResult;
+      return portResult.value.register(namespace, key, config2);
+    }, "FoundrySettings.register");
+  }
+  get(namespace, key, schema) {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundrySettings");
+      if (!portResult.ok) return portResult;
+      return portResult.value.get(namespace, key, schema);
+    }, "FoundrySettings.get");
+  }
+  async set(namespace, key, value2) {
+    return this.retryable.executeAsync(async () => {
+      const portResult = this.portLoader.loadPort("FoundrySettings");
+      if (!portResult.ok) return portResult;
+      return portResult.value.set(namespace, key, value2);
+    }, "FoundrySettings.set");
+  }
+  /**
+   * Cleans up resources.
+   * Disposes the port if it implements Disposable, then clears the cache.
+   */
+  dispose() {
+    const port = this.portLoader.getLoadedPort();
+    const disposable = castDisposablePort(port);
+    if (disposable) {
+      disposable.dispose();
+    }
+    this.portLoader.clearCache();
+  }
+};
+__name(_FoundrySettingsPort, "FoundrySettingsPort");
+let FoundrySettingsPort = _FoundrySettingsPort;
+const _DIFoundrySettingsPort = class _DIFoundrySettingsPort extends FoundrySettingsPort {
+  constructor(portSelector, portRegistry, retryService) {
+    super(portSelector, portRegistry, retryService);
+  }
+};
+__name(_DIFoundrySettingsPort, "DIFoundrySettingsPort");
+_DIFoundrySettingsPort.dependencies = [
+  portSelectorToken,
+  foundrySettingsPortRegistryToken,
+  retryServiceToken
+];
+let DIFoundrySettingsPort = _DIFoundrySettingsPort;
+const _FoundryJournalFacade = class _FoundryJournalFacade {
+  constructor(game2, document2, ui2, moduleId) {
+    this.game = game2;
+    this.document = document2;
+    this.ui = ui2;
+    this.moduleId = moduleId;
+  }
+  /**
+   * Get all journal entries from Foundry.
+   *
+   * Delegates to FoundryGame.getJournalEntries().
+   */
+  getJournalEntries() {
+    return this.game.getJournalEntries();
+  }
+  /**
+   * Get a module flag from a journal entry with runtime validation.
+   *
+   * Delegates to FoundryDocument.getFlag() with module scope and schema.
+   *
+   * @template T - The flag value type
+   * @param entry - The Foundry journal entry
+   * @param key - The flag key
+   * @param schema - Valibot schema for validation
+   */
+  getEntryFlag(entry, key, schema) {
+    const documentResult = castFoundryDocumentForFlag(entry);
+    if (!documentResult.ok) {
+      return documentResult;
+    }
+    return this.document.getFlag(documentResult.value, this.moduleId, key, schema);
+  }
+  /**
+   * Remove a journal element from the UI.
+   *
+   * Delegates to FoundryUI.removeJournalElement().
+   *
+   * @param id - Journal entry ID
+   * @param name - Journal entry name (for logging)
+   * @param html - HTML container element
+   */
+  removeJournalElement(id, name, html) {
+    return this.ui.removeJournalElement(id, name, html);
+  }
+  /**
+   * Set a module flag on a journal entry.
+   *
+   * Delegates to FoundryDocument.setFlag() with module scope.
+   *
+   * @param entry - The Foundry journal entry
+   * @param key - The flag key
+   * @param value - The boolean value to set
+   * @returns Result indicating success or error
+   */
+  async setEntryFlag(entry, key, value2) {
+    const documentResult = castFoundryDocumentForFlag(entry);
+    if (!documentResult.ok) {
+      return documentResult;
+    }
+    return await this.document.setFlag(documentResult.value, this.moduleId, key, value2);
+  }
+};
+__name(_FoundryJournalFacade, "FoundryJournalFacade");
+let FoundryJournalFacade = _FoundryJournalFacade;
+const _DIFoundryJournalFacade = class _DIFoundryJournalFacade extends FoundryJournalFacade {
+  constructor(game2, document2, ui2, moduleId) {
+    super(game2, document2, ui2, moduleId);
+  }
+};
+__name(_DIFoundryJournalFacade, "DIFoundryJournalFacade");
+_DIFoundryJournalFacade.dependencies = [
+  foundryGameToken,
+  foundryDocumentToken,
+  foundryUIToken,
+  moduleIdToken
+];
+let DIFoundryJournalFacade = _DIFoundryJournalFacade;
+function sanitizeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+__name(sanitizeHtml, "sanitizeHtml");
+const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
+const _JournalVisibilityService = class _JournalVisibilityService {
+  constructor(journalCollection, journalRepository, notifications, cache, config2) {
+    this.journalCollection = journalCollection;
+    this.journalRepository = journalRepository;
+    this.notifications = notifications;
+    this.cache = cache;
+    this.config = config2;
+  }
+  /**
+   * Gets journal entries marked as hidden via module flag.
+   * Logs warnings for entries where flag reading fails to aid diagnosis.
+   */
+  getHiddenJournalEntries() {
+    const cacheKey = this.config.cacheKeyFactory("hidden-directory");
+    const cached = this.cache.get(cacheKey);
+    if (cached?.hit && cached.value) {
+      this.notifications.debug(
+        `Serving ${cached.value.length} hidden journal entries from cache (ttl=${cached.metadata.expiresAt ?? "∞"})`,
+        { context: { cached } },
+        { channels: ["ConsoleChannel"] }
+      );
+      return { ok: true, value: cached.value };
+    }
+    const allEntriesResult = this.journalCollection.getAll();
+    if (!allEntriesResult.ok) {
+      return {
+        ok: false,
+        error: {
+          code: "PLATFORM_ERROR",
+          message: allEntriesResult.error.message
+        }
+      };
+    }
+    const hidden = [];
+    for (const journal of allEntriesResult.value) {
+      const flagResult = this.journalRepository.getFlag(
+        journal.id,
+        this.config.moduleNamespace,
+        this.config.hiddenFlagKey
+      );
+      if (flagResult.ok) {
+        if (flagResult.value === true) {
+          hidden.push(journal);
+        }
+      } else {
+        const journalIdentifier = journal.name ?? journal.id;
+        this.notifications.warn(
+          `Failed to read hidden flag for journal "${sanitizeHtml(journalIdentifier)}"`,
+          {
+            errorCode: flagResult.error.code,
+            errorMessage: flagResult.error.message
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+      }
+    }
+    this.cache.set(cacheKey, hidden.slice(), {
+      tags: [HIDDEN_JOURNAL_CACHE_TAG]
+    });
+    return { ok: true, value: hidden };
+  }
+};
+__name(_JournalVisibilityService, "JournalVisibilityService");
+let JournalVisibilityService = _JournalVisibilityService;
+const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
+  constructor(journalCollection, journalRepository, notifications, cache, config2) {
+    super(journalCollection, journalRepository, notifications, cache, config2);
+  }
+};
+__name(_DIJournalVisibilityService, "DIJournalVisibilityService");
+_DIJournalVisibilityService.dependencies = [
+  platformJournalCollectionPortToken,
+  platformJournalRepositoryToken,
+  platformNotificationPortToken,
+  platformCachePortToken,
+  journalVisibilityConfigToken
+];
+let DIJournalVisibilityService = _DIJournalVisibilityService;
+function isNonEmptyArray(array2) {
+  return array2.length > 0;
+}
+__name(isNonEmptyArray, "isNonEmptyArray");
+function getFirstArrayElement(array2) {
+  if (!isNonEmptyArray(array2)) {
+    throw new Error("Array must have length > 0 (caller violated precondition)");
+  }
+  return array2[0];
+}
+__name(getFirstArrayElement, "getFirstArrayElement");
+function getFirstArrayElementSafe(array2) {
+  return isNonEmptyArray(array2) ? array2[0] : null;
+}
+__name(getFirstArrayElementSafe, "getFirstArrayElementSafe");
+const _JournalDirectoryProcessor = class _JournalDirectoryProcessor {
+  constructor(journalDirectoryUI, notifications, config2) {
+    this.journalDirectoryUI = journalDirectoryUI;
+    this.notifications = notifications;
+    this.config = config2;
+  }
+  /**
+   * Processes journal directory HTML to hide flagged entries.
+   * @param htmlElement - The HTML element containing the journal directory
+   * @param hiddenEntries - Array of journal entries that should be hidden
+   * @returns Result indicating success or failure with aggregated errors
+   */
+  processDirectory(htmlElement, hiddenEntries) {
+    this.notifications.debug(
+      "Processing journal directory for hidden entries",
+      { context: { htmlElement, hiddenCount: hiddenEntries.length } },
+      {
+        channels: ["ConsoleChannel"]
+      }
+    );
+    if (hiddenEntries.length === 0) {
+      this.notifications.debug(
+        "No hidden entries to process",
+        { context: {} },
+        {
+          channels: ["ConsoleChannel"]
+        }
+      );
+      return { ok: true, value: void 0 };
+    }
+    this.notifications.debug(
+      `Found ${hiddenEntries.length} hidden journal entries`,
+      { context: { hidden: hiddenEntries } },
+      {
+        channels: ["ConsoleChannel"]
+      }
+    );
+    return this.hideEntries(hiddenEntries, htmlElement);
+  }
+  /**
+   * Hides multiple journal entries in the DOM.
+   * @param entries - Array of journal entries to hide
+   * @param html - The HTML element containing the journal directory
+   * @returns Result indicating success or failure with aggregated errors
+   */
+  hideEntries(entries2, html) {
+    const errors = [];
+    for (const journal of entries2) {
+      const journalName = journal.name ?? this.config.unknownName;
+      const removeResult = this.journalDirectoryUI.removeJournalElement(
+        journal.id,
+        journalName,
+        html
+      );
+      if (!removeResult.ok) {
+        const journalError = {
+          code: "DOM_MANIPULATION_FAILED",
+          entryId: journal.id,
+          message: removeResult.error.message
+        };
+        errors.push(journalError);
+        this.notifications.warn("Error removing journal entry", journalError, {
+          channels: ["ConsoleChannel"]
+        });
+      } else {
+        this.notifications.debug(
+          `Removing journal entry: ${sanitizeHtml(journalName)}`,
+          { context: { journal } },
+          { channels: ["ConsoleChannel"] }
+        );
+      }
+    }
+    if (errors.length > 0) {
+      const firstError = getFirstArrayElement(errors);
+      return { ok: false, error: firstError };
+    }
+    return { ok: true, value: void 0 };
+  }
+};
+__name(_JournalDirectoryProcessor, "JournalDirectoryProcessor");
+let JournalDirectoryProcessor = _JournalDirectoryProcessor;
+const _DIJournalDirectoryProcessor = class _DIJournalDirectoryProcessor extends JournalDirectoryProcessor {
+  constructor(journalDirectoryUI, notifications, config2) {
+    super(journalDirectoryUI, notifications, config2);
+  }
+};
+__name(_DIJournalDirectoryProcessor, "DIJournalDirectoryProcessor");
+_DIJournalDirectoryProcessor.dependencies = [
+  platformJournalDirectoryUiPortToken,
+  platformNotificationPortToken,
+  journalVisibilityConfigToken
+];
+let DIJournalDirectoryProcessor = _DIJournalDirectoryProcessor;
+const _FoundryLibWrapperService = class _FoundryLibWrapperService {
+  constructor(moduleId, logger) {
+    this.moduleId = moduleId;
+    this.logger = logger;
+    this.registeredTargets = /* @__PURE__ */ new Map();
+    this.nextId = 1;
+  }
+  register(target, wrapperFn, type) {
+    if (typeof globalThis.libWrapper === "undefined") {
+      return err({
+        code: "LIBWRAPPER_NOT_AVAILABLE",
+        message: "libWrapper is not available"
+      });
+    }
+    if (this.registeredTargets.has(target)) {
+      return err({
+        code: "REGISTRATION_FAILED",
+        message: `Target "${target}" is already registered`,
+        details: { target }
+      });
+    }
+    const result = tryCatch(
+      () => {
+        const libWrapperInstance = globalThis.libWrapper;
+        if (typeof libWrapperInstance === "undefined") {
+          throw new Error("libWrapper is not available");
+        }
+        libWrapperInstance.register(this.moduleId, target, wrapperFn, type);
+        this.registeredTargets.set(target, true);
+        const registrationId = this.nextId++;
+        return registrationId;
+      },
+      (error) => ({
+        code: "REGISTRATION_FAILED",
+        message: `Failed to register wrapper for target "${target}": ${String(error)}`,
+        details: { target, error }
+      })
+    );
+    if (result.ok) {
+      return ok(result.value);
+    }
+    return result;
+  }
+  unregister(target) {
+    if (!this.registeredTargets.has(target)) {
+      return err({
+        code: "TARGET_NOT_REGISTERED",
+        message: `Target "${target}" is not registered`,
+        details: { target }
+      });
+    }
+    if (typeof globalThis.libWrapper === "undefined") {
+      return err({
+        code: "LIBWRAPPER_NOT_AVAILABLE",
+        message: "libWrapper is not available"
+      });
+    }
+    const result = tryCatch(
+      () => {
+        const libWrapperInstance = globalThis.libWrapper;
+        if (typeof libWrapperInstance === "undefined") {
+          throw new Error("libWrapper is not available");
+        }
+        libWrapperInstance.unregister(this.moduleId, target);
+        this.registeredTargets.delete(target);
+      },
+      (error) => ({
+        code: "UNREGISTRATION_FAILED",
+        message: `Failed to unregister wrapper for target "${target}": ${String(error)}`,
+        details: { target, error }
+      })
+    );
+    if (result.ok) {
+      return ok(void 0);
+    }
+    return result;
+  }
+  /**
+   * Cleanup all registered wrappers.
+   * Should be called during module shutdown.
+   */
+  dispose() {
+    const targets = Array.from(this.registeredTargets.keys());
+    for (const target of targets) {
+      const result = this.unregister(target);
+      if (!result.ok) {
+        this.logger.warn("Failed to unregister libWrapper target during dispose", {
+          target,
+          error: result.error
+        });
+      }
+    }
+    this.registeredTargets.clear();
+  }
+};
+__name(_FoundryLibWrapperService, "FoundryLibWrapperService");
+let FoundryLibWrapperService = _FoundryLibWrapperService;
+const _DIFoundryLibWrapperService = class _DIFoundryLibWrapperService extends FoundryLibWrapperService {
+  constructor(moduleId, logger) {
+    super(moduleId, logger);
+  }
+};
+__name(_DIFoundryLibWrapperService, "DIFoundryLibWrapperService");
+_DIFoundryLibWrapperService.dependencies = [moduleIdToken, loggerToken];
+let DIFoundryLibWrapperService = _DIFoundryLibWrapperService;
+const libWrapperServiceToken = createInjectionToken("LibWrapperService");
+const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapperService {
+  constructor(libWrapperService, logger) {
+    this.libWrapperService = libWrapperService;
+    this.logger = logger;
+    this.libWrapperRegistered = false;
+    this.callbacks = [];
+  }
+  /**
+   * Register libWrapper for ContextMenu.render.
+   * Should be called once during module initialization.
+   *
+   * @returns Success or error if registration failed
+   */
+  register() {
+    if (this.libWrapperRegistered) {
+      return ok(void 0);
+    }
+    const contextMenuClass = globalThis.foundry?.applications?.ux?.ContextMenu?.implementation;
+    if (!contextMenuClass) {
+      return err(new Error("ContextMenu is not available"));
+    }
+    const wrapperFn = this.createWrapperFunction();
+    const result = this.libWrapperService.register(
+      "foundry.applications.ux.ContextMenu.implementation.prototype.render",
+      wrapperFn,
+      "WRAPPER"
+    );
+    if (!result.ok) {
+      return err(new Error(result.error.message));
+    }
+    this.registrationId = result.value;
+    this.libWrapperRegistered = true;
+    this.logger.debug("Journal context menu libWrapper registered");
+    return ok(void 0);
+  }
+  /**
+   * Add a callback that will be called when a journal context menu is rendered.
+   *
+   * @param callback - Callback function that receives the context menu event
+   */
+  addCallback(callback) {
+    this.callbacks.push(callback);
+  }
+  /**
+   * Remove a previously registered callback.
+   *
+   * @param callback - The callback function to remove
+   */
+  removeCallback(callback) {
+    const index = this.callbacks.indexOf(callback);
+    if (index > -1) {
+      this.callbacks.splice(index, 1);
+    }
+  }
+  /**
+   * Cleanup: Unregister libWrapper.
+   * Should be called during module shutdown.
+   */
+  dispose() {
+    if (this.libWrapperRegistered) {
+      const result = this.libWrapperService.unregister(
+        "foundry.applications.ux.ContextMenu.implementation.prototype.render"
+      );
+      if (!result.ok) {
+        this.logger.warn("Failed to unregister context menu libWrapper", {
+          error: result.error
+        });
+      }
+      this.libWrapperRegistered = false;
+      this.registrationId = void 0;
+    }
+    this.callbacks = [];
+  }
+  /**
+   * Create the wrapper function for libWrapper.
+   * This function intercepts ContextMenu.render calls and allows
+   * registered callbacks to modify the menu options.
+   */
+  createWrapperFunction() {
+    const callbacksRef = this.callbacks;
+    return function(wrapped, ...args2) {
+      const firstArg = args2[0];
+      const target = firstArg instanceof HTMLElement ? firstArg : void 0;
+      if (!target) {
+        return wrapped.call(this, ...args2);
+      }
+      const menuItemsRaw = this.menuItems;
+      if (!menuItemsRaw) {
+        return wrapped.call(this, ...args2);
+      }
+      const menuItems = menuItemsRaw;
+      const journalId = target.getAttribute?.("data-entry-id") || target.getAttribute?.("data-document-id");
+      if (journalId) {
+        const event = {
+          htmlElement: target,
+          options: menuItems.map((item) => ({
+            name: item.name,
+            icon: item.icon,
+            callback: item.callback
+          })),
+          timestamp: Date.now()
+        };
+        for (const cb of callbacksRef) {
+          cb(event);
+        }
+        const existingNames = new Set(menuItems.map((item) => item.name));
+        for (const newOption of event.options) {
+          if (!existingNames.has(newOption.name)) {
+            menuItems.push({
+              name: newOption.name,
+              icon: newOption.icon,
+              callback: /* @__PURE__ */ __name(() => {
+                const result = newOption.callback(target);
+                if (result instanceof Promise) {
+                  result.catch(() => {
+                  });
+                }
+              }, "callback")
+            });
+          }
+        }
+      }
+      return wrapped.call(this, ...args2);
+    };
+  }
+};
+__name(_JournalContextMenuLibWrapperService, "JournalContextMenuLibWrapperService");
+let JournalContextMenuLibWrapperService = _JournalContextMenuLibWrapperService;
+const _DIJournalContextMenuLibWrapperService = class _DIJournalContextMenuLibWrapperService extends JournalContextMenuLibWrapperService {
+  constructor(libWrapperService, logger) {
+    super(libWrapperService, logger);
+  }
+};
+__name(_DIJournalContextMenuLibWrapperService, "DIJournalContextMenuLibWrapperService");
+_DIJournalContextMenuLibWrapperService.dependencies = [libWrapperServiceToken, loggerToken];
+let DIJournalContextMenuLibWrapperService = _DIJournalContextMenuLibWrapperService;
+const _FoundrySettingsRegistrationAdapter = class _FoundrySettingsRegistrationAdapter {
+  constructor(foundrySettings) {
+    this.foundrySettings = foundrySettings;
+  }
+  registerSetting(namespace, key, config2) {
+    const foundryConfig = {
+      name: config2.name,
+      ...config2.hint !== void 0 && { hint: config2.hint },
+      scope: config2.scope,
+      config: config2.config,
+      type: config2.type,
+      ...config2.choices !== void 0 && { choices: config2.choices },
+      default: config2.default,
+      ...config2.onChange !== void 0 && { onChange: config2.onChange }
+    };
+    const result = this.foundrySettings.register(namespace, key, foundryConfig);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: this.mapFoundryError(result.error, "register", key)
+      };
+    }
+    return { ok: true, value: void 0 };
+  }
+  getSettingValue(namespace, key, validator) {
+    const permissiveSchema = /* @__PURE__ */ unknown();
+    const result = this.foundrySettings.get(namespace, key, permissiveSchema);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: this.mapFoundryError(result.error, "get", key)
+      };
+    }
+    if (!validator(result.value)) {
+      return {
+        ok: false,
+        error: {
+          code: "INVALID_SETTING_VALUE",
+          message: `Setting "${namespace}.${key}" has invalid value type`,
+          details: { value: result.value }
+        }
+      };
+    }
+    return { ok: true, value: result.value };
+  }
+  async setSettingValue(namespace, key, value2) {
+    const result = await this.foundrySettings.set(namespace, key, value2);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: this.mapFoundryError(result.error, "set", key)
+      };
+    }
+    return { ok: true, value: void 0 };
+  }
+  // ===== Private Helpers =====
+  mapFoundryError(foundryError, operation, key) {
+    let code;
+    switch (foundryError.code) {
+      case "API_NOT_AVAILABLE":
+        code = "PLATFORM_NOT_AVAILABLE";
+        break;
+      case "VALIDATION_FAILED":
+        code = "INVALID_SETTING_VALUE";
+        break;
+      case "OPERATION_FAILED":
+        if (operation === "register") {
+          code = "SETTING_REGISTRATION_FAILED";
+        } else if (operation === "get") {
+          code = "SETTING_READ_FAILED";
+        } else {
+          code = "SETTING_WRITE_FAILED";
+        }
+        break;
+      default:
+        code = operation === "register" ? "SETTING_REGISTRATION_FAILED" : operation === "get" ? "SETTING_READ_FAILED" : "SETTING_WRITE_FAILED";
+    }
+    return {
+      code,
+      message: `Failed to ${operation} setting "${key}": ${foundryError.message}`,
+      details: foundryError
+    };
+  }
+};
+__name(_FoundrySettingsRegistrationAdapter, "FoundrySettingsRegistrationAdapter");
+let FoundrySettingsRegistrationAdapter = _FoundrySettingsRegistrationAdapter;
+const _DIFoundrySettingsRegistrationAdapter = class _DIFoundrySettingsRegistrationAdapter extends FoundrySettingsRegistrationAdapter {
+  constructor(foundrySettings) {
+    super(foundrySettings);
+  }
+};
+__name(_DIFoundrySettingsRegistrationAdapter, "DIFoundrySettingsRegistrationAdapter");
+_DIFoundrySettingsRegistrationAdapter.dependencies = [foundrySettingsToken];
+let DIFoundrySettingsRegistrationAdapter = _DIFoundrySettingsRegistrationAdapter;
+function registerFoundryServices(container) {
+  const gameServiceResult = container.registerClass(
+    foundryGameToken,
+    DIFoundryGamePort,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(gameServiceResult)) {
+    return err(`Failed to register FoundryGame service: ${gameServiceResult.error.message}`);
+  }
+  const hooksServiceResult = container.registerClass(
+    foundryHooksToken,
+    DIFoundryHooksPort,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(hooksServiceResult)) {
+    return err(`Failed to register FoundryHooks service: ${hooksServiceResult.error.message}`);
+  }
+  const documentServiceResult = container.registerClass(
+    foundryDocumentToken,
+    DIFoundryDocumentPort,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(documentServiceResult)) {
+    return err(
+      `Failed to register FoundryDocument service: ${documentServiceResult.error.message}`
+    );
+  }
+  const uiServiceResult = container.registerClass(
+    foundryUIToken,
+    DIFoundryUIPort,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(uiServiceResult)) {
+    return err(`Failed to register FoundryUI service: ${uiServiceResult.error.message}`);
+  }
+  const settingsServiceResult = container.registerClass(
+    foundrySettingsToken,
+    DIFoundrySettingsPort,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(settingsServiceResult)) {
+    return err(
+      `Failed to register FoundrySettings service: ${settingsServiceResult.error.message}`
+    );
+  }
+  const settingsRegistrationResult = container.registerClass(
+    platformSettingsRegistrationPortToken,
+    DIFoundrySettingsRegistrationAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(settingsRegistrationResult)) {
+    return err(
+      `Failed to register PlatformSettingsRegistrationPort: ${settingsRegistrationResult.error.message}`
+    );
+  }
+  const journalFacadeResult = container.registerClass(
+    foundryJournalFacadeToken,
+    DIFoundryJournalFacade,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(journalFacadeResult)) {
+    return err(`Failed to register FoundryJournalFacade: ${journalFacadeResult.error.message}`);
+  }
+  const journalVisibilityResult = container.registerClass(
+    journalVisibilityServiceToken,
+    DIJournalVisibilityService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(journalVisibilityResult)) {
+    return err(
+      `Failed to register JournalVisibility service: ${journalVisibilityResult.error.message}`
+    );
+  }
+  const journalDirectoryProcessorResult = container.registerClass(
+    journalDirectoryProcessorToken,
+    DIJournalDirectoryProcessor,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(journalDirectoryProcessorResult)) {
+    return err(
+      `Failed to register JournalDirectoryProcessor: ${journalDirectoryProcessorResult.error.message}`
+    );
+  }
+  const libWrapperServiceResult = container.registerClass(
+    libWrapperServiceToken,
+    DIFoundryLibWrapperService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(libWrapperServiceResult)) {
+    return err(`Failed to register LibWrapperService: ${libWrapperServiceResult.error.message}`);
+  }
+  const contextMenuLibWrapperResult = container.registerClass(
+    journalContextMenuLibWrapperServiceToken,
+    DIJournalContextMenuLibWrapperService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(contextMenuLibWrapperResult)) {
+    return err(
+      `Failed to register JournalContextMenuLibWrapperService: ${contextMenuLibWrapperResult.error.message}`
+    );
+  }
+  const contextMenuPortResult = container.registerAlias(
+    platformContextMenuRegistrationPortToken,
+    journalContextMenuLibWrapperServiceToken
+  );
+  if (isErr(contextMenuPortResult)) {
+    return err(
+      `Failed to register PlatformContextMenuRegistrationPort: ${contextMenuPortResult.error.message}`
+    );
+  }
+  return ok(void 0);
+}
+__name(registerFoundryServices, "registerFoundryServices");
+registerDependencyStep({
+  name: "FoundryServices",
+  priority: 80,
+  execute: registerFoundryServices
+});
+const performanceTrackingServiceToken = createInjectionToken(
+  "PerformanceTrackingService"
+);
+const _PerformanceTrackingService = class _PerformanceTrackingService extends PerformanceTrackerImpl {
+  constructor(config2, sampler) {
+    super(config2, sampler);
+  }
+};
+__name(_PerformanceTrackingService, "PerformanceTrackingService");
+let PerformanceTrackingService = _PerformanceTrackingService;
+const _DIPerformanceTrackingService = class _DIPerformanceTrackingService extends PerformanceTrackingService {
+  constructor(config2, sampler) {
+    super(config2, sampler);
+  }
+};
+__name(_DIPerformanceTrackingService, "DIPerformanceTrackingService");
+_DIPerformanceTrackingService.dependencies = [runtimeConfigToken, metricsSamplerToken];
+let DIPerformanceTrackingService = _DIPerformanceTrackingService;
+const _BaseRetryService = class _BaseRetryService {
+  /**
+   * Retries an async operation with exponential backoff.
+   *
+   * @template SuccessType - The success type of the operation
+   * @template ErrorType - The error type of the operation
+   * @param fn - Async function that returns a Result
+   * @param options - Retry configuration options
+   * @returns Promise resolving to the Result (success or last error)
+   */
+  async retry(fn, options) {
+    const maxAttempts = options.maxAttempts ?? 3;
+    const delayMs = options.delayMs ?? 100;
+    const backoffFactor = options.backoffFactor ?? 1;
+    const { mapException } = options;
+    if (maxAttempts < 1) {
+      return err(mapException("maxAttempts must be >= 1", 0));
+    }
+    let lastError = mapException("Initial retry error", 0);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const result = await fn();
+        if (result.ok) {
+          return result;
+        }
+        lastError = result.error;
+        if (attempt === maxAttempts) {
+          break;
+        }
+        const delay = delayMs * Math.pow(attempt, backoffFactor);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } catch (error) {
+        lastError = mapException(error, attempt);
+        if (attempt === maxAttempts) {
+          break;
+        }
+        const delay = delayMs * Math.pow(attempt, backoffFactor);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    return err(lastError);
+  }
+  /**
+   * Retries a synchronous operation.
+   * Similar to retry but for sync functions.
+   *
+   * @template SuccessType - The success type
+   * @template ErrorType - The error type
+   * @param fn - Function that returns a Result
+   * @param options - Retry configuration options (without delayMs and backoffFactor)
+   * @returns The Result (success or last error)
+   */
+  retrySync(fn, options) {
+    const maxAttempts = options.maxAttempts ?? 3;
+    const { mapException } = options;
+    if (maxAttempts < 1) {
+      return err(mapException("maxAttempts must be >= 1", 0));
+    }
+    let lastError = mapException("Initial retry error", 0);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const result = fn();
+        if (result.ok) {
+          return result;
+        }
+        lastError = result.error;
+        if (attempt === maxAttempts) {
+          break;
+        }
+      } catch (error) {
+        lastError = mapException(error, attempt);
+        if (attempt === maxAttempts) {
+          break;
+        }
+      }
+    }
+    return err(lastError);
+  }
+};
+__name(_BaseRetryService, "BaseRetryService");
+let BaseRetryService = _BaseRetryService;
+const _RetryObservabilityDecorator = class _RetryObservabilityDecorator extends BaseRetryService {
+  constructor(logger) {
+    super();
+    this.logger = logger;
+  }
+  /**
+   * Retries an async operation with exponential backoff and observability.
+   *
+   * @template SuccessType - The success type of the operation
+   * @template ErrorType - The error type of the operation
+   * @param fn - Async function that returns a Result
+   * @param options - Retry configuration options with optional observability
+   * @returns Promise resolving to the Result (success or last error)
+   */
+  async retry(fn, options) {
+    const { operationName, ...baseOptions } = options;
+    const startTime = performance.now();
+    let attemptCount = 0;
+    const wrappedFn = /* @__PURE__ */ __name(async () => {
+      attemptCount++;
+      try {
+        const result2 = await fn();
+        if (!result2.ok && attemptCount < (baseOptions.maxAttempts ?? 3)) {
+          if (operationName) {
+            this.logger.debug(
+              `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} failed for "${operationName}"`,
+              { error: result2.error }
+            );
+          }
+        }
+        return result2;
+      } catch (error) {
+        if (attemptCount < (baseOptions.maxAttempts ?? 3) && operationName) {
+          this.logger.warn(
+            `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} threw exception for "${operationName}"`,
+            { error }
+          );
+        }
+        throw error;
+      }
+    }, "wrappedFn");
+    const result = await super.retry(wrappedFn, baseOptions);
+    const duration = performance.now() - startTime;
+    if (operationName) {
+      if (result.ok && attemptCount > 1) {
+        this.logger.debug(
+          `Retry succeeded for "${operationName}" after ${attemptCount} attempts (${duration.toFixed(2)}ms)`
+        );
+      } else if (!result.ok) {
+        this.logger.warn(
+          `All retry attempts exhausted for "${operationName}" after ${baseOptions.maxAttempts ?? 3} attempts (${duration.toFixed(2)}ms)`
+        );
+      }
+    }
+    return result;
+  }
+  /**
+   * Retries a synchronous operation with observability.
+   *
+   * @template SuccessType - The success type
+   * @template ErrorType - The error type
+   * @param fn - Function that returns a Result
+   * @param options - Retry configuration options (without delayMs and backoffFactor)
+   * @returns The Result (success or last error)
+   */
+  retrySync(fn, options) {
+    const { operationName, ...baseOptions } = options;
+    let attemptCount = 0;
+    const wrappedFn = /* @__PURE__ */ __name(() => {
+      attemptCount++;
+      try {
+        const result2 = fn();
+        if (!result2.ok && attemptCount < (baseOptions.maxAttempts ?? 3)) {
+          if (operationName) {
+            this.logger.debug(
+              `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} failed for "${operationName}"`,
+              { error: result2.error }
+            );
+          }
+        }
+        return result2;
+      } catch (error) {
+        if (attemptCount < (baseOptions.maxAttempts ?? 3) && operationName) {
+          this.logger.warn(
+            `Retry attempt ${attemptCount}/${baseOptions.maxAttempts ?? 3} threw exception for "${operationName}"`,
+            { error }
+          );
+        }
+        throw error;
+      }
+    }, "wrappedFn");
+    const result = super.retrySync(wrappedFn, baseOptions);
+    if (operationName && !result.ok) {
+      this.logger.warn(
+        `All retry attempts exhausted for "${operationName}" after ${baseOptions.maxAttempts ?? 3} attempts`
+      );
+    } else if (operationName && result.ok && attemptCount > 1) {
+      this.logger.debug(`Retry succeeded for "${operationName}" after ${attemptCount} attempts`);
+    }
+    return result;
+  }
+};
+__name(_RetryObservabilityDecorator, "RetryObservabilityDecorator");
+let RetryObservabilityDecorator = _RetryObservabilityDecorator;
+function isLogger(value2) {
+  return !(value2 instanceof BaseRetryService);
+}
+__name(isLogger, "isLogger");
+const _RetryService = class _RetryService {
+  constructor(loggerOrBaseService, observabilityDecorator) {
+    if (observabilityDecorator) {
+      this.composedService = observabilityDecorator;
+    } else {
+      if (!isLogger(loggerOrBaseService)) {
+        throw new Error("BaseRetryService cannot be used without RetryObservabilityDecorator");
+      }
+      this.composedService = new RetryObservabilityDecorator(loggerOrBaseService);
+    }
+  }
+  /**
+   * Retries an async operation with exponential backoff.
+   *
+   * Useful for handling transient failures in external APIs (e.g., Foundry API calls).
+   *
+   * @template SuccessType - The success type of the operation
+   * @template ErrorType - The error type of the operation
+   * @param fn - Async function that returns a Result
+   * @param options - Retry configuration options
+   * @returns Promise resolving to the Result (success or last error)
+   *
+   * @example
+   * ```typescript
+   * const result = await retryService.retry(
+   *   () => foundryApi.fetchData(),
+   *   {
+   *     maxAttempts: 3,
+   *     delayMs: 100,
+   *     operationName: "fetchData",
+   *     mapException: (error, attempt) => ({
+   *       code: 'OPERATION_FAILED' as const,
+   *       message: `Attempt ${attempt} failed: ${String(error)}`
+   *     })
+   *   }
+   * );
+   * ```
+   */
+  async retry(fn, options) {
+    return this.composedService.retry(fn, options);
+  }
+  /**
+   * Retries a synchronous operation.
+   * Similar to retry but for sync functions.
+   *
+   * @template SuccessType - The success type
+   * @template ErrorType - The error type
+   * @param fn - Function that returns a Result
+   * @param options - Retry configuration options
+   * @returns The Result (success or last error)
+   *
+   * @example
+   * ```typescript
+   * const result = retryService.retrySync(
+   *   () => parseData(input),
+   *   {
+   *     maxAttempts: 3,
+   *     operationName: "parseData",
+   *     mapException: (error, attempt) => ({
+   *       code: 'PARSE_FAILED' as const,
+   *       message: `Parse attempt ${attempt} failed: ${String(error)}`
+   *     })
+   *   }
+   * );
+   * ```
+   */
+  retrySync(fn, options) {
+    return this.composedService.retrySync(fn, options);
+  }
+};
+__name(_RetryService, "RetryService");
+let RetryService = _RetryService;
+const _DIRetryService = class _DIRetryService extends RetryService {
+  constructor(logger) {
+    super(logger);
+  }
+};
+__name(_DIRetryService, "DIRetryService");
+_DIRetryService.dependencies = [loggerToken];
+let DIRetryService = _DIRetryService;
+function registerUtilityServices(container) {
+  const perfTrackingResult = container.registerClass(
+    performanceTrackingServiceToken,
+    DIPerformanceTrackingService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(perfTrackingResult)) {
+    return err(
+      `Failed to register PerformanceTrackingService: ${perfTrackingResult.error.message}`
+    );
+  }
+  const retryServiceResult = container.registerClass(
+    retryServiceToken,
+    DIRetryService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(retryServiceResult)) {
+    return err(`Failed to register RetryService: ${retryServiceResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerUtilityServices, "registerUtilityServices");
+registerDependencyStep({
+  name: "UtilityServices",
+  priority: 40,
+  execute: registerUtilityServices
+});
 const foundryI18nToken = createInjectionToken("FoundryI18nPort");
 const localI18nToken = createInjectionToken("LocalI18nService");
 const foundryTranslationHandlerToken = createInjectionToken(
@@ -16447,6 +16524,11 @@ function registerI18nServices(container) {
   return ok(void 0);
 }
 __name(registerI18nServices, "registerI18nServices");
+registerDependencyStep({
+  name: "I18nServices",
+  priority: 120,
+  execute: registerI18nServices
+});
 const consoleChannelToken = createInjectionToken("ConsoleChannel");
 const uiChannelToken = createInjectionToken("UIChannel");
 const notificationQueueToken = createInjectionToken("NotificationQueue");
@@ -17022,6 +17104,11 @@ function registerNotifications(container) {
   return ok(void 0);
 }
 __name(registerNotifications, "registerNotifications");
+registerDependencyStep({
+  name: "Notifications",
+  priority: 130,
+  execute: registerNotifications
+});
 const _ModuleSettingsRegistrar = class _ModuleSettingsRegistrar {
   constructor(settings, runtimeConfigSettingsSync, errorMapper, notifications, i18n, logger, validator, settingDefinitionRegistry, runtimeConfigBindingRegistry) {
     this.settings = settings;
@@ -17769,6 +17856,11 @@ function registerRegistrars(container) {
   return ok(void 0);
 }
 __name(registerRegistrars, "registerRegistrars");
+registerDependencyStep({
+  name: "Registrars",
+  priority: 150,
+  execute: registerRegistrars
+});
 const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
   constructor(foundryHooksPort) {
     this.foundryHooksPort = foundryHooksPort;
@@ -17988,7 +18080,7 @@ const _InvalidateJournalCacheOnChangeUseCase = class _InvalidateJournalCacheOnCh
     }
     if (errors.length > 0) {
       this.dispose();
-      return err(getFirstArrayElement$1(errors));
+      return err(getFirstArrayElement(errors));
     }
     return ok(void 0);
   }
@@ -18500,6 +18592,11 @@ function registerEventPorts(container) {
   return ok(void 0);
 }
 __name(registerEventPorts, "registerEventPorts");
+registerDependencyStep({
+  name: "EventPorts",
+  priority: 140,
+  execute: registerEventPorts
+});
 const _JournalMapperRegistry = class _JournalMapperRegistry {
   constructor() {
     this.mappers = [];
@@ -19447,6 +19544,11 @@ function registerEntityPorts(container) {
   return ok(void 0);
 }
 __name(registerEntityPorts, "registerEntityPorts");
+registerDependencyStep({
+  name: "EntityPorts",
+  priority: 100,
+  execute: registerEntityPorts
+});
 const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
   constructor(foundrySettings) {
     this.foundrySettings = foundrySettings;
@@ -19600,6 +19702,11 @@ function registerSettingsPorts(container) {
   return ok(void 0);
 }
 __name(registerSettingsPorts, "registerSettingsPorts");
+registerDependencyStep({
+  name: "SettingsPorts",
+  priority: 90,
+  execute: registerSettingsPorts
+});
 const KEY_SEPARATOR = ":";
 function normalizeSegment(segment) {
   return segment.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-_]/g, "").toLowerCase();
@@ -19637,87 +19744,50 @@ function registerJournalVisibilityConfig(container) {
   return ok(void 0);
 }
 __name(registerJournalVisibilityConfig, "registerJournalVisibilityConfig");
-const _DependencyRegistrationRegistry = class _DependencyRegistrationRegistry {
-  constructor() {
-    this.steps = [];
-  }
-  /**
-   * Registers a new dependency registration step.
-   * Steps are automatically sorted by priority after registration.
-   *
-   * @param step - The registration step to add
-   */
-  register(step) {
-    this.steps.push(step);
-    this.steps.sort((a, b) => a.priority - b.priority);
-  }
-  /**
-   * Executes all registered steps in priority order.
-   * Stops at first error and returns it.
-   *
-   * @param container - The service container to configure
-   * @returns Result indicating success or the first error encountered
-   */
-  configure(container) {
-    for (const step of this.steps) {
-      const result = step.execute(container);
-      if (isErr(result)) {
-        return err(`Failed at step '${step.name}': ${result.error}`);
-      }
-    }
-    return ok(void 0);
-  }
-};
-__name(_DependencyRegistrationRegistry, "DependencyRegistrationRegistry");
-let DependencyRegistrationRegistry = _DependencyRegistrationRegistry;
+registerDependencyStep({
+  name: "JournalVisibilityConfig",
+  priority: 110,
+  execute: registerJournalVisibilityConfig
+});
+let internalStepsRegistered = false;
 function createDependencyRegistrationRegistry() {
-  const registry = new DependencyRegistrationRegistry();
-  registry.register({ name: "StaticValues", priority: 10, execute: registerStaticValues });
-  registry.register({ name: "CoreServices", priority: 20, execute: registerCoreServices });
-  registry.register({ name: "Observability", priority: 30, execute: registerObservability });
-  registry.register({ name: "UtilityServices", priority: 40, execute: registerUtilityServices });
-  registry.register({ name: "CacheServices", priority: 50, execute: registerCacheServices });
-  registry.register({
-    name: "PortInfrastructure",
-    priority: 60,
-    execute: registerPortInfrastructure
-  });
-  registry.register({
-    name: "SubcontainerValues",
-    priority: 70,
-    execute: registerSubcontainerValues
-  });
-  registry.register({ name: "FoundryServices", priority: 80, execute: registerFoundryServices });
-  registry.register({ name: "SettingsPorts", priority: 90, execute: registerSettingsPorts });
-  registry.register({ name: "EntityPorts", priority: 100, execute: registerEntityPorts });
-  registry.register({
-    name: "JournalVisibilityConfig",
-    priority: 110,
-    execute: registerJournalVisibilityConfig
-  });
-  registry.register({ name: "I18nServices", priority: 120, execute: registerI18nServices });
-  registry.register({ name: "Notifications", priority: 130, execute: registerNotifications });
-  registry.register({ name: "EventPorts", priority: 140, execute: registerEventPorts });
-  registry.register({ name: "Registrars", priority: 150, execute: registerRegistrars });
-  registry.register({
-    name: "LoopPreventionServices",
-    priority: 160,
-    execute: registerLoopPreventionServices
-  });
-  registry.register({ name: "Validation", priority: 170, execute: validateContainer });
-  registry.register({
-    name: "LoopPreventionInit",
-    priority: 180,
-    execute: initializeLoopPreventionValues
-  });
-  registry.register({
-    name: "CacheConfigSyncInit",
-    priority: 190,
-    execute: initializeCacheConfigSync
-  });
-  return registry;
+  if (!internalStepsRegistered) {
+    dependencyRegistry.register({
+      name: "StaticValues",
+      priority: 10,
+      execute: registerStaticValues
+    });
+    dependencyRegistry.register({
+      name: "SubcontainerValues",
+      priority: 70,
+      execute: registerSubcontainerValues
+    });
+    dependencyRegistry.register({
+      name: "LoopPreventionServices",
+      priority: 160,
+      execute: registerLoopPreventionServices
+    });
+    dependencyRegistry.register({ name: "Validation", priority: 170, execute: validateContainer });
+    dependencyRegistry.register({
+      name: "LoopPreventionInit",
+      priority: 180,
+      execute: initializeLoopPreventionValues
+    });
+    dependencyRegistry.register({
+      name: "CacheConfigSyncInit",
+      priority: 190,
+      execute: initializeCacheConfigSync
+    });
+    internalStepsRegistered = true;
+  }
+  return dependencyRegistry;
 }
 __name(createDependencyRegistrationRegistry, "createDependencyRegistrationRegistry");
+function resetDependencyRegistry() {
+  dependencyRegistry.reset();
+  internalStepsRegistered = false;
+}
+__name(resetDependencyRegistry, "resetDependencyRegistry");
 function registerEnvironmentConfig(container) {
   const envResult = container.registerValue(environmentConfigToken, ENV);
   if (isErr(envResult)) {

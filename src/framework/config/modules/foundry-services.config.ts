@@ -189,3 +189,11 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
 
   return ok(undefined);
 }
+
+// Self-register this module's dependency registration step
+import { registerDependencyStep } from "@/framework/config/dependency-registry";
+registerDependencyStep({
+  name: "FoundryServices",
+  priority: 80,
+  execute: registerFoundryServices,
+});

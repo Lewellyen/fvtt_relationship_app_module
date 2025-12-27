@@ -282,3 +282,11 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
 
   return ok(undefined);
 }
+
+// Self-register this module's dependency registration step
+import { registerDependencyStep } from "@/framework/config/dependency-registry";
+registerDependencyStep({
+  name: "CoreServices",
+  priority: 20,
+  execute: registerCoreServices,
+});

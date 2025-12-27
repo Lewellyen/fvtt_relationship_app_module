@@ -17,154 +17,97 @@ import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycl
 import { castContainerTokenToPlatformContainerPortToken } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import { moduleIdToken } from "@/infrastructure/shared/tokens/infrastructure/module-id.token";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
+import {
+  DependencyRegistrationRegistry,
+  dependencyRegistry,
+} from "@/framework/config/dependency-registry";
+import { registerPortRegistries } from "@/framework/config/modules/port-infrastructure.config";
+import { initializeCacheConfigSync } from "@/framework/config/modules/cache-services.config";
 
-// Import config modules
-import { registerCoreServices } from "@/framework/config/modules/core-services.config";
-import { registerObservability } from "@/framework/config/modules/observability.config";
-import {
-  registerPortInfrastructure,
-  registerPortRegistries,
-} from "@/framework/config/modules/port-infrastructure.config";
-import { registerFoundryServices } from "@/framework/config/modules/foundry-services.config";
-import { registerUtilityServices } from "@/framework/config/modules/utility-services.config";
-import {
-  registerCacheServices,
-  initializeCacheConfigSync,
-} from "@/framework/config/modules/cache-services.config";
-import { registerI18nServices } from "@/framework/config/modules/i18n-services.config";
-import { registerNotifications } from "@/framework/config/modules/notifications.config";
-import { registerRegistrars } from "@/framework/config/modules/registrars.config";
-import { registerEventPorts } from "@/framework/config/modules/event-ports.config";
-import { registerEntityPorts } from "@/framework/config/modules/entity-ports.config";
-import { registerSettingsPorts } from "@/framework/config/modules/settings-ports.config";
-import { registerJournalVisibilityConfig } from "@/framework/config/modules/journal-visibility.config";
+// Import config modules to trigger their self-registration
+import "@/framework/config/modules/core-services.config";
+import "@/framework/config/modules/observability.config";
+import "@/framework/config/modules/port-infrastructure.config";
+import "@/framework/config/modules/foundry-services.config";
+import "@/framework/config/modules/utility-services.config";
+import "@/framework/config/modules/cache-services.config";
+import "@/framework/config/modules/i18n-services.config";
+import "@/framework/config/modules/notifications.config";
+import "@/framework/config/modules/registrars.config";
+import "@/framework/config/modules/event-ports.config";
+import "@/framework/config/modules/entity-ports.config";
+import "@/framework/config/modules/settings-ports.config";
+import "@/framework/config/modules/journal-visibility.config";
+
+// Track whether internal steps have been registered to avoid duplicate registrations
+let internalStepsRegistered = false;
 
 /**
- * Represents a single step in the dependency registration process.
- * Steps are executed in priority order (lower priority = earlier execution).
- */
-interface DependencyRegistrationStep {
-  /** Human-readable name for logging and error messages */
-  name: string;
-  /** Priority determines execution order (lower = earlier). Use increments of 10 for flexibility. */
-  priority: number;
-  /** Function to execute for this registration step */
-  execute: (container: ServiceContainer) => Result<void, string>;
-}
-
-/**
- * Registry for dependency registration steps.
- * Allows adding new registration steps without modifying configureDependencies.
+ * Creates and initializes the dependency registration registry.
  *
- * DESIGN: Uses Registry Pattern to follow Open/Closed Principle:
- * - Open for extension: New steps can be added via register()
- * - Closed for modification: configureDependencies doesn't need to change
- */
-class DependencyRegistrationRegistry {
-  private steps: DependencyRegistrationStep[] = [];
-
-  /**
-   * Registers a new dependency registration step.
-   * Steps are automatically sorted by priority after registration.
-   *
-   * @param step - The registration step to add
-   */
-  register(step: DependencyRegistrationStep): void {
-    this.steps.push(step);
-    this.steps.sort((a, b) => a.priority - b.priority);
-  }
-
-  /**
-   * Executes all registered steps in priority order.
-   * Stops at first error and returns it.
-   *
-   * @param container - The service container to configure
-   * @returns Result indicating success or the first error encountered
-   */
-  configure(container: ServiceContainer): Result<void, string> {
-    for (const step of this.steps) {
-      const result = step.execute(container);
-      if (isErr(result)) {
-        return err(`Failed at step '${step.name}': ${result.error}`);
-      }
-    }
-    return ok(undefined);
-  }
-}
-
-/**
- * Creates and initializes the dependency registration registry with all default steps.
- * This function centralizes the registration order configuration.
+ * This function registers internal/core dependency registration steps that are
+ * part of the framework itself. Module-specific steps are registered via
+ * the global dependencyRegistry by importing their config modules.
  *
  * REGISTRATION ORDER (via priorities):
- * 1. Static Values (10) - EnvironmentConfig, RuntimeConfig, ServiceContainer
- * 2. Core Services (20) - Logger, Metrics, ModuleHealth
- * 3. Observability (30) - EventEmitter, ObservabilityRegistry
- * 4. Utility Services (40) - Performance, Retry
- * 5. Cache Services (50) - Cache infrastructure
- * 6. Port Infrastructure (60) - PortSelector
- * 7. Subcontainer Values (70) - Foundry Port Registries
- * 8. Foundry Services (80) - Game, Hooks, Document, UI, Settings, Journal
- * 9. Settings Ports (90) - PlatformSettingsPort
- * 10. Entity Ports (100) - Entity port implementations
- * 11. Journal Visibility Config (110) - Journal visibility service
- * 12. I18n Services (120) - FoundryI18n, LocalI18n, I18nFacade
- * 13. Notifications (130) - NotificationCenter, ConsoleChannel, UIChannel
- * 14. Event Ports (140) - PlatformJournalEventPort, Use-Cases, ModuleEventRegistrar
- * 15. Registrars (150) - ModuleSettingsRegistrar, ModuleHookRegistrar
- * 16. Loop Prevention Services (160) - Health checks
- * 17. Validation (170) - Container validation
- * 18. Loop Prevention Init (180) - Initialize health checks
- * 19. Cache Config Sync Init (190) - Initialize cache synchronization
+ * - Internal/Framework Steps:
+ *   1. Static Values (10) - EnvironmentConfig, RuntimeConfig, ServiceContainer
+ *   2. Subcontainer Values (70) - Foundry Port Registries
+ *   3. Loop Prevention Services (160) - Health checks
+ *   4. Validation (170) - Container validation
+ *   5. Loop Prevention Init (180) - Initialize health checks
+ *   6. Cache Config Sync Init (190) - Initialize cache synchronization
+ *
+ * - Module Steps (registered via module config imports):
+ *   See individual module config files for their priorities.
+ *
+ * NOTE: Internal steps are only registered once, even if this function is called multiple times.
+ * This allows the function to be called multiple times (e.g., in tests) without duplicate registrations.
  */
 function createDependencyRegistrationRegistry(): DependencyRegistrationRegistry {
-  const registry = new DependencyRegistrationRegistry();
+  // Register internal/framework steps only once
+  if (!internalStepsRegistered) {
+    dependencyRegistry.register({
+      name: "StaticValues",
+      priority: 10,
+      execute: registerStaticValues,
+    });
+    dependencyRegistry.register({
+      name: "SubcontainerValues",
+      priority: 70,
+      execute: registerSubcontainerValues,
+    });
+    dependencyRegistry.register({
+      name: "LoopPreventionServices",
+      priority: 160,
+      execute: registerLoopPreventionServices,
+    });
+    dependencyRegistry.register({ name: "Validation", priority: 170, execute: validateContainer });
+    dependencyRegistry.register({
+      name: "LoopPreventionInit",
+      priority: 180,
+      execute: initializeLoopPreventionValues,
+    });
+    dependencyRegistry.register({
+      name: "CacheConfigSyncInit",
+      priority: 190,
+      execute: initializeCacheConfigSync,
+    });
+    internalStepsRegistered = true;
+  }
 
-  registry.register({ name: "StaticValues", priority: 10, execute: registerStaticValues });
-  registry.register({ name: "CoreServices", priority: 20, execute: registerCoreServices });
-  registry.register({ name: "Observability", priority: 30, execute: registerObservability });
-  registry.register({ name: "UtilityServices", priority: 40, execute: registerUtilityServices });
-  registry.register({ name: "CacheServices", priority: 50, execute: registerCacheServices });
-  registry.register({
-    name: "PortInfrastructure",
-    priority: 60,
-    execute: registerPortInfrastructure,
-  });
-  registry.register({
-    name: "SubcontainerValues",
-    priority: 70,
-    execute: registerSubcontainerValues,
-  });
-  registry.register({ name: "FoundryServices", priority: 80, execute: registerFoundryServices });
-  registry.register({ name: "SettingsPorts", priority: 90, execute: registerSettingsPorts });
-  registry.register({ name: "EntityPorts", priority: 100, execute: registerEntityPorts });
-  registry.register({
-    name: "JournalVisibilityConfig",
-    priority: 110,
-    execute: registerJournalVisibilityConfig,
-  });
-  registry.register({ name: "I18nServices", priority: 120, execute: registerI18nServices });
-  registry.register({ name: "Notifications", priority: 130, execute: registerNotifications });
-  registry.register({ name: "EventPorts", priority: 140, execute: registerEventPorts });
-  registry.register({ name: "Registrars", priority: 150, execute: registerRegistrars });
-  registry.register({
-    name: "LoopPreventionServices",
-    priority: 160,
-    execute: registerLoopPreventionServices,
-  });
-  registry.register({ name: "Validation", priority: 170, execute: validateContainer });
-  registry.register({
-    name: "LoopPreventionInit",
-    priority: 180,
-    execute: initializeLoopPreventionValues,
-  });
-  registry.register({
-    name: "CacheConfigSyncInit",
-    priority: 190,
-    execute: initializeCacheConfigSync,
-  });
+  return dependencyRegistry;
+}
 
-  return registry;
+/**
+ * Resets the dependency registration registry.
+ * This is primarily useful for testing scenarios where a clean state is needed.
+ *
+ * @internal
+ */
+export function resetDependencyRegistry(): void {
+  dependencyRegistry.reset();
+  internalStepsRegistered = false;
 }
 
 /**
