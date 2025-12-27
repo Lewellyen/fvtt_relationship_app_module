@@ -6,7 +6,11 @@
  */
 import { createInjectionToken } from "@/application/utils/token-factory";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
-import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
+import type { CacheReaderPort } from "@/domain/ports/cache/cache-reader-port.interface";
+import type { CacheWriterPort } from "@/domain/ports/cache/cache-writer-port.interface";
+import type { CacheInvalidationPort } from "@/domain/ports/cache/cache-invalidation-port.interface";
+import type { CacheStatsPort } from "@/domain/ports/cache/cache-stats-port.interface";
+import type { CacheComputePort } from "@/domain/ports/cache/cache-compute-port.interface";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
@@ -37,11 +41,45 @@ export const platformNotificationPortToken = createInjectionToken<PlatformNotifi
 );
 
 /**
- * DI Token for PlatformCachePort.
+ * DI Token for CacheReaderPort.
  *
- * Platform-agnostic cache port.
+ * Platform-agnostic cache read operations port.
+ * Use this when you only need to read from cache (get, has, getMetadata).
  */
-export const platformCachePortToken = createInjectionToken<PlatformCachePort>("PlatformCachePort");
+export const cacheReaderPortToken = createInjectionToken<CacheReaderPort>("CacheReaderPort");
+
+/**
+ * DI Token for CacheWriterPort.
+ *
+ * Platform-agnostic cache write operations port.
+ * Use this when you only need to write to cache (set, delete, clear).
+ */
+export const cacheWriterPortToken = createInjectionToken<CacheWriterPort>("CacheWriterPort");
+
+/**
+ * DI Token for CacheInvalidationPort.
+ *
+ * Platform-agnostic cache invalidation port.
+ * Use this when you only need to invalidate cache entries (invalidateWhere).
+ */
+export const cacheInvalidationPortToken =
+  createInjectionToken<CacheInvalidationPort>("CacheInvalidationPort");
+
+/**
+ * DI Token for CacheStatsPort.
+ *
+ * Platform-agnostic cache statistics port.
+ * Use this when you only need cache statistics (getStatistics, size, isEnabled).
+ */
+export const cacheStatsPortToken = createInjectionToken<CacheStatsPort>("CacheStatsPort");
+
+/**
+ * DI Token for CacheComputePort.
+ *
+ * Platform-agnostic cache compute port.
+ * Use this when you only need the get-or-set pattern (getOrSet).
+ */
+export const cacheComputePortToken = createInjectionToken<CacheComputePort>("CacheComputePort");
 
 /**
  * DI Token for PlatformI18nPort.

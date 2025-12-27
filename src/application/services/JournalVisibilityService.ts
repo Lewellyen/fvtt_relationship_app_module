@@ -4,13 +4,15 @@ import type { PlatformJournalRepository } from "@/domain/ports/repositories/plat
 import type { JournalVisibilityError } from "@/domain/entities/journal-entry";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
-import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
+import type { CacheReaderPort } from "@/domain/ports/cache/cache-reader-port.interface";
+import type { CacheWriterPort } from "@/domain/ports/cache/cache-writer-port.interface";
 import type { JournalVisibilityConfig } from "./JournalVisibilityConfig";
 import { journalVisibilityConfigToken } from "@/application/tokens/application.tokens";
 import {
   platformJournalCollectionPortToken,
   platformJournalRepositoryToken,
-  platformCachePortToken,
+  cacheReaderPortToken,
+  cacheWriterPortToken,
   platformNotificationPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { sanitizeHtml } from "@/application/utils/sanitize-utils";
@@ -29,18 +31,21 @@ export const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
  * - PlatformJournalCollectionPort: Platform-agnostic port for journal collection queries
  * - PlatformJournalRepository: Platform-agnostic port for journal CRUD and flag operations
  * - PlatformNotificationPort: Platform-agnostic port for logging and notifications
- * - PlatformCachePort: Platform-agnostic port for caching hidden entries
+ * - CacheReaderPort: Platform-agnostic port for reading from cache
+ * - CacheWriterPort: Platform-agnostic port for writing to cache
  *
  * **DIP-Compliance:**
  * - Depends on domain-neutral ports, not Foundry-specific types
  * - Platform-specific adapters implement the ports
+ * - Follows Interface Segregation Principle (ISP) by depending only on needed cache operations
  */
 export class JournalVisibilityService {
   constructor(
     private readonly journalCollection: PlatformJournalCollectionPort,
     private readonly journalRepository: PlatformJournalRepository,
     private readonly notifications: PlatformNotificationPort,
-    private readonly cache: PlatformCachePort,
+    private readonly cacheReader: CacheReaderPort,
+    private readonly cacheWriter: CacheWriterPort,
     private readonly config: JournalVisibilityConfig
   ) {}
 
@@ -50,7 +55,7 @@ export class JournalVisibilityService {
    */
   getHiddenJournalEntries(): Result<JournalEntry[], JournalVisibilityError> {
     const cacheKey = this.config.cacheKeyFactory("hidden-directory");
-    const cached = this.cache.get<JournalEntry[]>(cacheKey);
+    const cached = this.cacheReader.get<JournalEntry[]>(cacheKey);
     if (cached?.hit && cached.value) {
       this.notifications.debug(
         `Serving ${cached.value.length} hidden journal entries from cache (ttl=${
@@ -103,7 +108,7 @@ export class JournalVisibilityService {
       }
     }
 
-    this.cache.set(cacheKey, hidden.slice(), {
+    this.cacheWriter.set(cacheKey, hidden.slice(), {
       tags: [HIDDEN_JOURNAL_CACHE_TAG],
     });
 
@@ -116,7 +121,8 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
     platformJournalCollectionPortToken,
     platformJournalRepositoryToken,
     platformNotificationPortToken,
-    platformCachePortToken,
+    cacheReaderPortToken,
+    cacheWriterPortToken,
     journalVisibilityConfigToken,
   ] as const;
 
@@ -124,9 +130,10 @@ export class DIJournalVisibilityService extends JournalVisibilityService {
     journalCollection: PlatformJournalCollectionPort,
     journalRepository: PlatformJournalRepository,
     notifications: PlatformNotificationPort,
-    cache: PlatformCachePort,
+    cacheReader: CacheReaderPort,
+    cacheWriter: CacheWriterPort,
     config: JournalVisibilityConfig
   ) {
-    super(journalCollection, journalRepository, notifications, cache, config);
+    super(journalCollection, journalRepository, notifications, cacheReader, cacheWriter, config);
   }
 }

@@ -2441,7 +2441,11 @@ const runtimeConfigToken = createInjectionToken(
 const platformNotificationPortToken = createInjectionToken(
   "PlatformNotificationPort"
 );
-const platformCachePortToken = createInjectionToken("PlatformCachePort");
+const cacheReaderPortToken = createInjectionToken("CacheReaderPort");
+const cacheWriterPortToken = createInjectionToken("CacheWriterPort");
+const cacheInvalidationPortToken = createInjectionToken("CacheInvalidationPort");
+const cacheStatsPortToken = createInjectionToken("CacheStatsPort");
+const cacheComputePortToken = createInjectionToken("CacheComputePort");
 const platformI18nPortToken = createInjectionToken("PlatformI18nPort");
 const platformUIPortToken = createInjectionToken("PlatformUIPort");
 const platformJournalDirectoryUiPortToken = createInjectionToken("PlatformJournalDirectoryUiPort");
@@ -11301,13 +11305,45 @@ function registerCacheServices(container) {
   if (isErr(serviceResult)) {
     return err(`Failed to register CacheService: ${serviceResult.error.message}`);
   }
-  const cachePortResult = container.registerClass(
-    platformCachePortToken,
+  const readerPortResult = container.registerClass(
+    cacheReaderPortToken,
     DICachePortAdapter,
     ServiceLifecycle.SINGLETON
   );
-  if (isErr(cachePortResult)) {
-    return err(`Failed to register PlatformCachePort: ${cachePortResult.error.message}`);
+  if (isErr(readerPortResult)) {
+    return err(`Failed to register CacheReaderPort: ${readerPortResult.error.message}`);
+  }
+  const writerPortResult = container.registerClass(
+    cacheWriterPortToken,
+    DICachePortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(writerPortResult)) {
+    return err(`Failed to register CacheWriterPort: ${writerPortResult.error.message}`);
+  }
+  const invalidationPortResult = container.registerClass(
+    cacheInvalidationPortToken,
+    DICachePortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(invalidationPortResult)) {
+    return err(`Failed to register CacheInvalidationPort: ${invalidationPortResult.error.message}`);
+  }
+  const statsPortResult = container.registerClass(
+    cacheStatsPortToken,
+    DICachePortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(statsPortResult)) {
+    return err(`Failed to register CacheStatsPort: ${statsPortResult.error.message}`);
+  }
+  const computePortResult = container.registerClass(
+    cacheComputePortToken,
+    DICachePortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(computePortResult)) {
+    return err(`Failed to register CacheComputePort: ${computePortResult.error.message}`);
   }
   const configSyncResult = container.registerClass(
     cacheConfigSyncToken,
@@ -15017,11 +15053,12 @@ function sanitizeHtml(text) {
 __name(sanitizeHtml, "sanitizeHtml");
 const HIDDEN_JOURNAL_CACHE_TAG = "journal:hidden";
 const _JournalVisibilityService = class _JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notifications, cache, config2) {
+  constructor(journalCollection, journalRepository, notifications, cacheReader, cacheWriter, config2) {
     this.journalCollection = journalCollection;
     this.journalRepository = journalRepository;
     this.notifications = notifications;
-    this.cache = cache;
+    this.cacheReader = cacheReader;
+    this.cacheWriter = cacheWriter;
     this.config = config2;
   }
   /**
@@ -15030,7 +15067,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
    */
   getHiddenJournalEntries() {
     const cacheKey = this.config.cacheKeyFactory("hidden-directory");
-    const cached = this.cache.get(cacheKey);
+    const cached = this.cacheReader.get(cacheKey);
     if (cached?.hit && cached.value) {
       this.notifications.debug(
         `Serving ${cached.value.length} hidden journal entries from cache (ttl=${cached.metadata.expiresAt ?? "∞"})`,
@@ -15072,7 +15109,7 @@ const _JournalVisibilityService = class _JournalVisibilityService {
         );
       }
     }
-    this.cache.set(cacheKey, hidden.slice(), {
+    this.cacheWriter.set(cacheKey, hidden.slice(), {
       tags: [HIDDEN_JOURNAL_CACHE_TAG]
     });
     return { ok: true, value: hidden };
@@ -15081,8 +15118,8 @@ const _JournalVisibilityService = class _JournalVisibilityService {
 __name(_JournalVisibilityService, "JournalVisibilityService");
 let JournalVisibilityService = _JournalVisibilityService;
 const _DIJournalVisibilityService = class _DIJournalVisibilityService extends JournalVisibilityService {
-  constructor(journalCollection, journalRepository, notifications, cache, config2) {
-    super(journalCollection, journalRepository, notifications, cache, config2);
+  constructor(journalCollection, journalRepository, notifications, cacheReader, cacheWriter, config2) {
+    super(journalCollection, journalRepository, notifications, cacheReader, cacheWriter, config2);
   }
 };
 __name(_DIJournalVisibilityService, "DIJournalVisibilityService");
@@ -15090,7 +15127,8 @@ _DIJournalVisibilityService.dependencies = [
   platformJournalCollectionPortToken,
   platformJournalRepositoryToken,
   platformNotificationPortToken,
-  platformCachePortToken,
+  cacheReaderPortToken,
+  cacheWriterPortToken,
   journalVisibilityConfigToken
 ];
 let DIJournalVisibilityService = _DIJournalVisibilityService;
@@ -18127,7 +18165,7 @@ const _DIInvalidateJournalCacheOnChangeUseCase = class _DIInvalidateJournalCache
 __name(_DIInvalidateJournalCacheOnChangeUseCase, "DIInvalidateJournalCacheOnChangeUseCase");
 _DIInvalidateJournalCacheOnChangeUseCase.dependencies = [
   platformJournalEventPortToken,
-  platformCachePortToken,
+  cacheInvalidationPortToken,
   platformNotificationPortToken
 ];
 let DIInvalidateJournalCacheOnChangeUseCase = _DIInvalidateJournalCacheOnChangeUseCase;

@@ -70,7 +70,8 @@ Die gesamte `/src` Struktur wurde nach Clean Architecture Prinzipien restrukturi
 
 **Inhalt:**
 - `entities/` - Domain-Modelle (Journal-Entry)
-- `ports/` - Abstraktions-Interfaces (PlatformNotificationPort, PlatformCachePort, etc.)
+- `ports/` - Abstraktions-Interfaces (PlatformNotificationPort, CacheReaderPort, CacheWriterPort, etc.)
+- `ports/cache/` - Cache Port Interfaces (segregiert nach ISP)
 - `ports/collections/` - Collection Port Interfaces
 - `ports/repositories/` - Repository Port Interfaces
 - `types/` - Domain Types (Result)
@@ -428,7 +429,12 @@ Das Modul verwendet **Entity Collections** und **Repositories** für platform-ag
 Neben den Foundry-Versions-Ports gibt es auch **Domain-Ports**, die domänenneutrale Abstraktionen bereitstellen:
 
 - **PlatformNotificationPort** - Platform-agnostische Benachrichtigungen
-- **PlatformCachePort** - Platform-agnostisches Caching
+- **Cache-Ports** (segregiert nach Interface Segregation Principle):
+  - `CacheReaderPort` - Cache Read-Operationen
+  - `CacheWriterPort` - Cache Write-Operationen
+  - `CacheInvalidationPort` - Cache Invalidation
+  - `CacheStatsPort` - Cache Statistiken
+  - `CacheComputePort` - Cache Compute-Operationen
 - **PlatformI18nPort** - Platform-agnostische Internationalisierung
 - **PlatformUIPort** - Platform-agnostische UI-Operationen
 - **PlatformSettingsPort** - Platform-agnostische Settings-Verwaltung

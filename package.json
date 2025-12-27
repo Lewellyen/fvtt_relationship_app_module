@@ -3,7 +3,7 @@
   "type": "module",
   "title": "Relationship App",
   "description": "A Foundry VTT module for creating and managing relationship graphs between actors and other entities.",
-  "version": "0.46.6",
+  "version": "0.46.7",
   "author": "Andreas Rothe <forenadmin.tir@gmail.com> (https://github.com/Lewellyen)",
   "license": "MIT",
   "repository": {

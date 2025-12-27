@@ -461,7 +461,12 @@ Neben den Foundry-Versions-Ports gibt es auch **Domain-Ports**, die domänenneut
 ### Platform-Ports
 
 - **PlatformNotificationPort**: Platform-agnostische Benachrichtigungen
-- **PlatformCachePort**: Platform-agnostisches Caching
+- **Cache-Ports** (segregiert nach ISP):
+  - `CacheReaderPort`: Cache Read-Operationen (get, has, getMetadata)
+  - `CacheWriterPort`: Cache Write-Operationen (set, delete, clear)
+  - `CacheInvalidationPort`: Cache Invalidation (invalidateWhere)
+  - `CacheStatsPort`: Cache Statistiken (getStatistics, size, isEnabled)
+  - `CacheComputePort`: Cache Compute-Operationen (getOrSet)
 - **PlatformI18nPort**: Platform-agnostische Internationalisierung
 - **PlatformUIPort**: Platform-agnostische UI-Operationen
 - **PlatformSettingsPort**: Platform-agnostische Settings-Verwaltung

@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { InvalidateJournalCacheOnChangeUseCase } from "../invalidate-journal-cache-on-change.use-case";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
-import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
+import type { CacheInvalidationPort } from "@/domain/ports/cache/cache-invalidation-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import { ok } from "@/domain/utils/result";
 
 describe("InvalidateJournalCacheOnChangeUseCase", () => {
   let mockJournalEvents: PlatformJournalEventPort;
-  let mockCache: PlatformCachePort;
+  let mockCache: CacheInvalidationPort;
   let mockNotifications: PlatformNotificationPort;
   let useCase: InvalidateJournalCacheOnChangeUseCase;
 
@@ -22,18 +22,8 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
     };
 
     mockCache = {
-      isEnabled: true,
-      size: 0,
-      get: vi.fn(),
-      set: vi.fn(),
-      delete: vi.fn(),
-      has: vi.fn(),
-      clear: vi.fn(),
       invalidateWhere: vi.fn().mockReturnValue(5),
-      getMetadata: vi.fn(),
-      getStatistics: vi.fn(),
-      getOrSet: vi.fn(),
-    } as unknown as PlatformCachePort;
+    } as unknown as CacheInvalidationPort;
 
     mockNotifications = {
       debug: vi.fn().mockReturnValue(ok(undefined)),
@@ -147,11 +137,13 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
 
   it("should not log debug message when no cache entries were invalidated", () => {
     // Mock cache to return 0 removed entries
-    mockCache.invalidateWhere = vi.fn().mockReturnValue(0);
+    const mockCacheZero = {
+      invalidateWhere: vi.fn().mockReturnValue(0),
+    } as unknown as CacheInvalidationPort;
 
     useCase = new InvalidateJournalCacheOnChangeUseCase(
       mockJournalEvents,
-      mockCache,
+      mockCacheZero,
       mockNotifications
     );
 
@@ -160,7 +152,7 @@ describe("InvalidateJournalCacheOnChangeUseCase", () => {
     const callback = vi.mocked(mockJournalEvents.onJournalCreated).mock.calls[0]![0];
     callback({ journalId: "journal-123", timestamp: Date.now() });
 
-    expect(mockCache.invalidateWhere).toHaveBeenCalled();
+    expect(mockCacheZero.invalidateWhere).toHaveBeenCalled();
     // debug should not be called when removed === 0
     expect(mockNotifications.debug).not.toHaveBeenCalledWith(
       expect.stringContaining("Invalidated"),

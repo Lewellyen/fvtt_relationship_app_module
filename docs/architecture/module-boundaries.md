@@ -40,7 +40,7 @@ src/
 
 **Inhalt:**
 - Entities (z.B. `JournalEntry`)
-- Ports (z.B. `PlatformNotificationPort`, `PlatformCachePort`)
+- Ports (z.B. `PlatformNotificationPort`, `CacheReaderPort`, `CacheWriterPort`, etc.)
 - Domain Types (z.B. `Result<T, E>`)
 
 ---
@@ -174,8 +174,9 @@ npm run analyze:graph:framework
 // ❌ FALSCH: Application importiert Infrastructure
 import { CacheService } from "@/infrastructure/cache/cache-service";
 
-// ✅ RICHTIG: Application importiert Domain-Port
-import { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
+// ✅ RICHTIG: Application importiert Domain-Port (segregiert nach ISP)
+import { CacheReaderPort } from "@/domain/ports/cache/cache-reader-port.interface";
+import { CacheWriterPort } from "@/domain/ports/cache/cache-writer-port.interface";
 ```
 
 ### Verstoß: Domain importiert Application
@@ -242,10 +243,13 @@ src/infrastructure/adapters/foundry/
 ### 1. Immer Ports statt konkrete Implementierungen
 
 ```typescript
-// ✅ RICHTIG
-constructor(private readonly cache: PlatformCachePort) {}
+// ✅ RICHTIG: Segregierte Ports (ISP-konform)
+constructor(
+  private readonly cacheReader: CacheReaderPort,
+  private readonly cacheWriter: CacheWriterPort
+) {}
 
-// ❌ FALSCH
+// ❌ FALSCH: Direkte Infrastructure-Abhängigkeit
 constructor(private readonly cache: CacheService) {}
 ```
 

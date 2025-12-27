@@ -61,7 +61,8 @@ src/domain/
 
 **Ports:**
 - Abstraktions-Interfaces für platform-agnostische Operationen
-- Domain-Ports (PlatformNotificationPort, PlatformCachePort, etc.)
+- Domain-Ports (PlatformNotificationPort, CacheReaderPort, CacheWriterPort, etc.)
+- Cache Ports (segregiert nach ISP: CacheReaderPort, CacheWriterPort, CacheInvalidationPort, etc.)
 - Collection Ports (PlatformEntityCollectionPort, JournalCollectionPort)
 - Repository Ports (PlatformEntityRepository, JournalRepository)
 
@@ -299,7 +300,7 @@ src/framework/
 - ❌ Framework Layer
 
 **Verwendet:**
-- Domain-Ports (PlatformNotificationPort, PlatformCachePort, etc.)
+- Domain-Ports (PlatformNotificationPort, CacheReaderPort, CacheWriterPort, etc.)
 - Domain-Types (Result, Error-Types)
 
 ---

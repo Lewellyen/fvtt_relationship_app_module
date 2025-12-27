@@ -2,7 +2,13 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { platformCachePortToken } from "@/application/tokens/domain-ports.tokens";
+import {
+  cacheReaderPortToken,
+  cacheWriterPortToken,
+  cacheInvalidationPortToken,
+  cacheStatsPortToken,
+  cacheComputePortToken,
+} from "@/application/tokens/domain-ports.tokens";
 import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
 import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service.token";
 import { cacheConfigSyncToken } from "@/infrastructure/shared/tokens/infrastructure/cache-config-sync.token";
@@ -52,14 +58,51 @@ export function registerCacheServices(container: ServiceContainer): Result<void,
     return err(`Failed to register CacheService: ${serviceResult.error.message}`);
   }
 
-  // Register PlatformCachePort
-  const cachePortResult = container.registerClass(
-    platformCachePortToken,
+  // Register segregated cache ports (same instance, different tokens)
+  // This allows clients to depend only on the capabilities they need (ISP)
+  const readerPortResult = container.registerClass(
+    cacheReaderPortToken,
     DICachePortAdapter,
     ServiceLifecycle.SINGLETON
   );
-  if (isErr(cachePortResult)) {
-    return err(`Failed to register PlatformCachePort: ${cachePortResult.error.message}`);
+  if (isErr(readerPortResult)) {
+    return err(`Failed to register CacheReaderPort: ${readerPortResult.error.message}`);
+  }
+
+  const writerPortResult = container.registerClass(
+    cacheWriterPortToken,
+    DICachePortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(writerPortResult)) {
+    return err(`Failed to register CacheWriterPort: ${writerPortResult.error.message}`);
+  }
+
+  const invalidationPortResult = container.registerClass(
+    cacheInvalidationPortToken,
+    DICachePortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(invalidationPortResult)) {
+    return err(`Failed to register CacheInvalidationPort: ${invalidationPortResult.error.message}`);
+  }
+
+  const statsPortResult = container.registerClass(
+    cacheStatsPortToken,
+    DICachePortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(statsPortResult)) {
+    return err(`Failed to register CacheStatsPort: ${statsPortResult.error.message}`);
+  }
+
+  const computePortResult = container.registerClass(
+    cacheComputePortToken,
+    DICachePortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(computePortResult)) {
+    return err(`Failed to register CacheComputePort: ${computePortResult.error.message}`);
   }
 
   // Register CacheConfigSync

@@ -7,7 +7,8 @@ import {
 import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
-import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
+import type { CacheReaderPort } from "@/domain/ports/cache/cache-reader-port.interface";
+import type { CacheWriterPort } from "@/domain/ports/cache/cache-writer-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import { APP_DEFAULTS, MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
@@ -78,7 +79,8 @@ describe("JournalVisibilityService", () => {
   let mockJournalCollection: PlatformJournalCollectionPort;
   let mockJournalRepository: PlatformJournalRepository;
   let mockNotifications: PlatformNotificationPort;
-  let mockCache: PlatformCachePort;
+  let mockCacheReader: CacheReaderPort;
+  let mockCacheWriter: CacheWriterPort;
   let mockConfig: JournalVisibilityConfig;
 
   beforeEach(() => {
@@ -94,21 +96,17 @@ describe("JournalVisibilityService", () => {
       getChannelNames: vi.fn().mockReturnValue(ok(["ConsoleChannel", "UIChannel"])),
     } as unknown as PlatformNotificationPort;
 
-    mockCache = {
-      isEnabled: true,
-      size: 0,
+    mockCacheReader = {
       get: vi.fn().mockReturnValue(null),
+      has: vi.fn().mockReturnValue(false),
+      getMetadata: vi.fn().mockReturnValue(null),
+    } as unknown as CacheReaderPort;
+
+    mockCacheWriter = {
       set: vi.fn().mockReturnValue(createMetadata()),
       delete: vi.fn().mockReturnValue(false),
-      has: vi.fn().mockReturnValue(false),
       clear: vi.fn().mockReturnValue(0),
-      invalidateWhere: vi.fn().mockReturnValue(0),
-      getMetadata: vi.fn().mockReturnValue(null),
-      getStatistics: vi
-        .fn()
-        .mockReturnValue({ hits: 0, misses: 0, evictions: 0, size: 0, enabled: true }),
-      getOrSet: vi.fn(),
-    } as unknown as PlatformCachePort;
+    } as unknown as CacheWriterPort;
 
     mockConfig = createMockConfig();
 
@@ -116,7 +114,8 @@ describe("JournalVisibilityService", () => {
       mockJournalCollection,
       mockJournalRepository,
       mockNotifications,
-      mockCache,
+      mockCacheReader,
+      mockCacheWriter,
       mockConfig
     );
   });
@@ -147,7 +146,7 @@ describe("JournalVisibilityService", () => {
 
     it("should return cached entries when cache hits", () => {
       const cachedEntry: JournalEntry = { id: "cached", name: "Cached" };
-      const cacheGetMock = mockCache.get as Mock;
+      const cacheGetMock = mockCacheReader.get as Mock;
       cacheGetMock.mockReturnValueOnce({
         hit: true,
         value: [cachedEntry],
@@ -167,12 +166,12 @@ describe("JournalVisibilityService", () => {
       const journal: JournalEntry = { id: "journal-1", name: "Hidden" };
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok([journal]));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
-      const cacheGetMock = mockCache.get as Mock;
+      const cacheGetMock = mockCacheReader.get as Mock;
       cacheGetMock.mockReturnValueOnce(null);
 
       service.getHiddenJournalEntries();
 
-      expect(mockCache.set).toHaveBeenCalledWith(
+      expect(mockCacheWriter.set).toHaveBeenCalledWith(
         expect.anything(),
         expect.arrayContaining([journal]),
         expect.objectContaining({ tags: [HIDDEN_JOURNAL_CACHE_TAG] })

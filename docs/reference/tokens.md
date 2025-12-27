@@ -148,7 +148,11 @@ export const myServiceToken: InjectionToken<MyService> = createToken<MyService>(
 | Token | Typ | Lifecycle | Beschreibung |
 |-------|-----|-----------|--------------|
 | `platformNotificationPortToken` | `PlatformNotificationPort` | Singleton | Platform-agnostische Notifications |
-| `platformCachePortToken` | `PlatformCachePort` | Singleton | Platform-agnostisches Caching |
+| `cacheReaderPortToken` | `CacheReaderPort` | Singleton | Cache Read-Operationen (get, has, getMetadata) |
+| `cacheWriterPortToken` | `CacheWriterPort` | Singleton | Cache Write-Operationen (set, delete, clear) |
+| `cacheInvalidationPortToken` | `CacheInvalidationPort` | Singleton | Cache Invalidation (invalidateWhere) |
+| `cacheStatsPortToken` | `CacheStatsPort` | Singleton | Cache Statistiken (getStatistics, size, isEnabled) |
+| `cacheComputePortToken` | `CacheComputePort` | Singleton | Cache Compute-Operationen (getOrSet) |
 | `platformI18nPortToken` | `PlatformI18nPort` | Singleton | Platform-agnostische i18n |
 | `platformUIPortToken` | `PlatformUIPort` | Singleton | Platform-agnostische UI-Ops |
 | `platformSettingsPortToken` | `PlatformSettingsPort` | Singleton | Platform-agnostische Settings |

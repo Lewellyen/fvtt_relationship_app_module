@@ -12,6 +12,37 @@
 
 ### Upgrade-Hinweise
 
+## [0.46.7] - 2025-12-27
+### Hinzugefügt
+- **Cache-Port-Segregation (ISP-002)**: Neue granulare Cache-Port-Interfaces für bessere Interface Segregation ([Details](docs/refactoring/ISP/ISP-002-platform-cache-port-fat-interface.md))
+- `CacheReaderPort`: Read-Operationen (get, has, getMetadata)
+- `CacheWriterPort`: Write-Operationen (set, delete, clear)
+- `CacheInvalidationPort`: Invalidation-Operationen (invalidateWhere)
+- `CacheStatsPort`: Statistik-Operationen (getStatistics, size, isEnabled)
+- `CacheComputePort`: Compute-Operationen (getOrSet)
+- Neue DI-Tokens für alle segregierten Ports: `cacheReaderPortToken`, `cacheWriterPortToken`, `cacheInvalidationPortToken`, `cacheStatsPortToken`, `cacheComputePortToken`
+
+### Geändert
+- **ISP-002 Refactoring: PlatformCachePort vollständig durch segregierte Ports ersetzt** ([Details](docs/refactoring/ISP/ISP-002-platform-cache-port-fat-interface.md))
+- `PlatformCachePort` Interface **ENTFERNT** - vollständig durch segregierte Ports ersetzt
+- `platformCachePortToken` **ENTFERNT** - alle Services verwenden jetzt die präziseren Port-Tokens
+- `CachePortAdapter` implementiert nur noch die segregierten Cache-Ports (keine Facade mehr)
+- `InvalidateJournalCacheOnChangeUseCase` verwendet `CacheInvalidationPort`
+- `JournalVisibilityService` verwendet `CacheReaderPort` und `CacheWriterPort`
+- DI-Bindings: Alle segregierten Ports werden mit der gleichen `DICachePortAdapter`-Instanz registriert
+- Tests angepasst, um die neuen Ports zu verwenden
+- Kommentare in Cache-Port-Interfaces bereinigt (keine Referenzen auf entferntes `PlatformCachePort` mehr)
+- **Vorteil**: Vollständige ISP-Konformität - Clients können nur die Cache-Funktionalitäten injizieren, die sie benötigen
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.46.6] - 2025-12-27
 ### Hinzugefügt
 - Keine Einträge

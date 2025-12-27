@@ -1,4 +1,8 @@
-import type { PlatformCachePort } from "@/domain/ports/platform-cache-port.interface";
+import type { CacheReaderPort } from "@/domain/ports/cache/cache-reader-port.interface";
+import type { CacheWriterPort } from "@/domain/ports/cache/cache-writer-port.interface";
+import type { CacheInvalidationPort } from "@/domain/ports/cache/cache-invalidation-port.interface";
+import type { CacheStatsPort } from "@/domain/ports/cache/cache-stats-port.interface";
+import type { CacheComputePort } from "@/domain/ports/cache/cache-compute-port.interface";
 import type { CacheService } from "@/infrastructure/cache/cache.interface";
 import type {
   CacheKey,
@@ -21,12 +25,22 @@ import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure
 import { assertCacheKey } from "@/infrastructure/di/types/utilities/type-casts";
 
 /**
- * Adapter that implements PlatformCachePort by wrapping CacheService.
+ * Adapter that implements all cache ports by wrapping CacheService.
+ *
+ * Implements the segregated cache ports (CacheReaderPort, CacheWriterPort, etc.) to allow clients
+ * to depend only on the capabilities they need (Interface Segregation Principle).
  *
  * Maps between Domain cache types (domain-agnostic) and Infrastructure cache types
  * (Infrastructure-specific implementation details like branded keys).
  */
-export class CachePortAdapter implements PlatformCachePort {
+export class CachePortAdapter
+  implements
+    CacheReaderPort,
+    CacheWriterPort,
+    CacheInvalidationPort,
+    CacheStatsPort,
+    CacheComputePort
+{
   constructor(private readonly cacheService: CacheService) {}
 
   /**
