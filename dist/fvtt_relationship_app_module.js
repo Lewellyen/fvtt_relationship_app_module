@@ -19549,9 +19549,13 @@ registerDependencyStep({
   priority: 100,
   execute: registerEntityPorts
 });
+const settingTypeMapperToken = createInjectionToken("SettingTypeMapper");
+const settingsErrorMapperToken = createInjectionToken("SettingsErrorMapper");
 const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
-  constructor(foundrySettings) {
+  constructor(foundrySettings, typeMapper, errorMapper) {
     this.foundrySettings = foundrySettings;
+    this.typeMapper = typeMapper;
+    this.errorMapper = errorMapper;
   }
   /**
    * Register a setting in Foundry.
@@ -19559,7 +19563,7 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
    * Maps platform config → Foundry config.
    */
   register(namespace, key, config2) {
-    const typeResult = this.mapSettingType(config2.type);
+    const typeResult = this.typeMapper.map(config2.type);
     if (!typeResult.ok) {
       return {
         ok: false,
@@ -19580,7 +19584,11 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
     if (!result.ok) {
       return {
         ok: false,
-        error: this.mapFoundryErrorToSettingsError(result.error, "register", namespace, key)
+        error: this.errorMapper.map(result.error, {
+          operation: "register",
+          namespace,
+          key
+        })
       };
     }
     return { ok: true, value: void 0 };
@@ -19597,7 +19605,11 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
     if (!rawResult.ok) {
       return {
         ok: false,
-        error: this.mapFoundryErrorToSettingsError(rawResult.error, "get", namespace, key)
+        error: this.errorMapper.map(rawResult.error, {
+          operation: "get",
+          namespace,
+          key
+        })
       };
     }
     const validationResult = schema.validate(rawResult.value);
@@ -19613,19 +19625,38 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
     if (!result.ok) {
       return {
         ok: false,
-        error: this.mapFoundryErrorToSettingsError(result.error, "set", namespace, key)
+        error: this.errorMapper.map(result.error, {
+          operation: "set",
+          namespace,
+          key
+        })
       };
     }
     return { ok: true, value: void 0 };
   }
-  // ===== Private Helpers =====
+};
+__name(_FoundrySettingsAdapter, "FoundrySettingsAdapter");
+let FoundrySettingsAdapter = _FoundrySettingsAdapter;
+const _DIFoundrySettingsAdapter = class _DIFoundrySettingsAdapter extends FoundrySettingsAdapter {
+  constructor(foundrySettings, typeMapper, errorMapper) {
+    super(foundrySettings, typeMapper, errorMapper);
+  }
+};
+__name(_DIFoundrySettingsAdapter, "DIFoundrySettingsAdapter");
+_DIFoundrySettingsAdapter.dependencies = [
+  foundrySettingsToken,
+  settingTypeMapperToken,
+  settingsErrorMapperToken
+];
+let DIFoundrySettingsAdapter = _DIFoundrySettingsAdapter;
+const _FoundrySettingTypeMapper = class _FoundrySettingTypeMapper {
   /**
-   * Map platform type to Foundry type.
+   * Maps a platform-agnostic SettingType to Foundry-specific type constructor.
    *
-   * Handles both constructor types and string types.
-   * Returns Result to comply with Result-Pattern instead of throwing exceptions.
+   * @param type - The setting type to map
+   * @returns Result containing the Foundry type constructor or a SettingsError
    */
-  mapSettingType(type) {
+  map(type) {
     if (type === "String" || type === String) {
       return { ok: true, value: String };
     }
@@ -19644,12 +19675,18 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
       }
     };
   }
+};
+__name(_FoundrySettingTypeMapper, "FoundrySettingTypeMapper");
+let FoundrySettingTypeMapper = _FoundrySettingTypeMapper;
+const _FoundrySettingsErrorMapper = class _FoundrySettingsErrorMapper {
   /**
-   * Maps FoundryError to SettingsError.
+   * Maps a FoundryError to a platform-agnostic SettingsError.
    *
-   * Maps Foundry-specific error codes to platform-agnostic settings error codes.
+   * @param foundryError - The Foundry-specific error to map
+   * @param context - Context information about the operation and setting
+   * @returns Platform-agnostic SettingsError
    */
-  mapFoundryErrorToSettingsError(foundryError, operation, namespace, key) {
+  map(foundryError, context) {
     let code;
     switch (foundryError.code) {
       case "API_NOT_AVAILABLE":
@@ -19659,7 +19696,7 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
         code = "SETTING_VALIDATION_FAILED";
         break;
       case "OPERATION_FAILED":
-        if (operation === "register") {
+        if (context.operation === "register") {
           code = "SETTING_REGISTRATION_FAILED";
         } else {
           const message2 = foundryError.message.toLowerCase();
@@ -19671,26 +19708,34 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
         }
         break;
       default:
-        code = operation === "register" ? "SETTING_REGISTRATION_FAILED" : "SETTING_VALIDATION_FAILED";
+        code = context.operation === "register" ? "SETTING_REGISTRATION_FAILED" : "SETTING_VALIDATION_FAILED";
     }
     return {
       code,
-      message: `Failed to ${operation} setting "${namespace}.${key}": ${foundryError.message}`,
+      message: `Failed to ${context.operation} setting "${context.namespace}.${context.key}": ${foundryError.message}`,
       details: foundryError
     };
   }
 };
-__name(_FoundrySettingsAdapter, "FoundrySettingsAdapter");
-let FoundrySettingsAdapter = _FoundrySettingsAdapter;
-const _DIFoundrySettingsAdapter = class _DIFoundrySettingsAdapter extends FoundrySettingsAdapter {
-  constructor(foundrySettings) {
-    super(foundrySettings);
-  }
-};
-__name(_DIFoundrySettingsAdapter, "DIFoundrySettingsAdapter");
-_DIFoundrySettingsAdapter.dependencies = [foundrySettingsToken];
-let DIFoundrySettingsAdapter = _DIFoundrySettingsAdapter;
+__name(_FoundrySettingsErrorMapper, "FoundrySettingsErrorMapper");
+let FoundrySettingsErrorMapper = _FoundrySettingsErrorMapper;
 function registerSettingsPorts(container) {
+  const typeMapperResult = container.registerClass(
+    settingTypeMapperToken,
+    FoundrySettingTypeMapper,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(typeMapperResult)) {
+    return err(`Failed to register SettingTypeMapper: ${typeMapperResult.error.message}`);
+  }
+  const errorMapperResult = container.registerClass(
+    settingsErrorMapperToken,
+    FoundrySettingsErrorMapper,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(errorMapperResult)) {
+    return err(`Failed to register SettingsErrorMapper: ${errorMapperResult.error.message}`);
+  }
   const settingsPortResult = container.registerClass(
     platformSettingsPortToken,
     DIFoundrySettingsAdapter,

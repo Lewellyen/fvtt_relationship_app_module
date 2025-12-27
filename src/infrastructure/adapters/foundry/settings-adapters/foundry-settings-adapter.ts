@@ -3,16 +3,18 @@ import type {
   PlatformSettingsPort,
   PlatformSettingConfig,
   SettingsError,
-  SettingType,
 } from "@/domain/ports/platform-settings-port.interface";
 import type { ValidationSchema } from "@/domain/types/validation-schema.interface";
 import type {
   FoundrySettings,
   SettingConfig,
 } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
-import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
 import * as v from "valibot";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
+import { settingTypeMapperToken } from "@/infrastructure/shared/tokens/foundry/setting-type-mapper.token";
+import { settingsErrorMapperToken } from "@/infrastructure/shared/tokens/foundry/settings-error-mapper.token";
+import type { SettingTypeMapper } from "./mappers/setting-type-mapper.interface";
+import type { SettingsErrorMapper } from "./mappers/settings-error-mapper.interface";
 
 /**
  * Foundry-specific implementation of PlatformSettingsPort.
@@ -34,7 +36,11 @@ import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/fou
  * ```
  */
 export class FoundrySettingsAdapter implements PlatformSettingsPort {
-  constructor(private readonly foundrySettings: FoundrySettings) {}
+  constructor(
+    private readonly foundrySettings: FoundrySettings,
+    private readonly typeMapper: SettingTypeMapper,
+    private readonly errorMapper: SettingsErrorMapper
+  ) {}
 
   /**
    * Register a setting in Foundry.
@@ -47,7 +53,7 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
     config: PlatformSettingConfig<T>
   ): Result<void, SettingsError> {
     // Map Platform config → Foundry config
-    const typeResult = this.mapSettingType(config.type);
+    const typeResult = this.typeMapper.map(config.type);
     if (!typeResult.ok) {
       return {
         ok: false,
@@ -71,7 +77,11 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
     if (!result.ok) {
       return {
         ok: false,
-        error: this.mapFoundryErrorToSettingsError(result.error, "register", namespace, key),
+        error: this.errorMapper.map(result.error, {
+          operation: "register",
+          namespace,
+          key,
+        }),
       };
     }
 
@@ -92,7 +102,11 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
     if (!rawResult.ok) {
       return {
         ok: false,
-        error: this.mapFoundryErrorToSettingsError(rawResult.error, "get", namespace, key),
+        error: this.errorMapper.map(rawResult.error, {
+          operation: "get",
+          namespace,
+          key,
+        }),
       };
     }
 
@@ -112,89 +126,15 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
     if (!result.ok) {
       return {
         ok: false,
-        error: this.mapFoundryErrorToSettingsError(result.error, "set", namespace, key),
+        error: this.errorMapper.map(result.error, {
+          operation: "set",
+          namespace,
+          key,
+        }),
       };
     }
 
     return { ok: true, value: undefined };
-  }
-
-  // ===== Private Helpers =====
-
-  /**
-   * Map platform type to Foundry type.
-   *
-   * Handles both constructor types and string types.
-   * Returns Result to comply with Result-Pattern instead of throwing exceptions.
-   */
-  private mapSettingType(
-    type: SettingType
-  ): Result<typeof String | typeof Number | typeof Boolean, SettingsError> {
-    if (type === "String" || type === String) {
-      return { ok: true, value: String };
-    }
-    if (type === "Number" || type === Number) {
-      return { ok: true, value: Number };
-    }
-    if (type === "Boolean" || type === Boolean) {
-      return { ok: true, value: Boolean };
-    }
-    return {
-      ok: false,
-      error: {
-        code: "SETTING_REGISTRATION_FAILED",
-        message: `Unknown setting type: ${type}. Supported types are: String, Number, Boolean`,
-        details: { type },
-      },
-    };
-  }
-
-  /**
-   * Maps FoundryError to SettingsError.
-   *
-   * Maps Foundry-specific error codes to platform-agnostic settings error codes.
-   */
-  private mapFoundryErrorToSettingsError(
-    foundryError: FoundryError,
-    operation: "register" | "get" | "set",
-    namespace: string,
-    key: string
-  ): SettingsError {
-    // Map Foundry error codes to Settings error codes
-    let code: SettingsError["code"];
-    switch (foundryError.code) {
-      case "API_NOT_AVAILABLE":
-        code = "PLATFORM_NOT_AVAILABLE";
-        break;
-      case "VALIDATION_FAILED":
-        code = "SETTING_VALIDATION_FAILED";
-        break;
-      case "OPERATION_FAILED":
-        // Check if it's a registration failure
-        if (operation === "register") {
-          code = "SETTING_REGISTRATION_FAILED";
-        } else {
-          // For get/set, could be unregistered setting or other issue
-          // Check error message for hints
-          const message = foundryError.message.toLowerCase();
-          if (message.includes("not registered") || message.includes("not found")) {
-            code = "SETTING_NOT_REGISTERED";
-          } else {
-            code = "SETTING_VALIDATION_FAILED";
-          }
-        }
-        break;
-      default:
-        // Default to registration failed for register, validation failed for get/set
-        code =
-          operation === "register" ? "SETTING_REGISTRATION_FAILED" : "SETTING_VALIDATION_FAILED";
-    }
-
-    return {
-      code,
-      message: `Failed to ${operation} setting "${namespace}.${key}": ${foundryError.message}`,
-      details: foundryError,
-    };
   }
 }
 
@@ -202,9 +142,17 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
  * DI-enabled wrapper for FoundrySettingsAdapter.
  */
 export class DIFoundrySettingsAdapter extends FoundrySettingsAdapter {
-  static dependencies = [foundrySettingsToken] as const;
+  static dependencies = [
+    foundrySettingsToken,
+    settingTypeMapperToken,
+    settingsErrorMapperToken,
+  ] as const;
 
-  constructor(foundrySettings: FoundrySettings) {
-    super(foundrySettings);
+  constructor(
+    foundrySettings: FoundrySettings,
+    typeMapper: SettingTypeMapper,
+    errorMapper: SettingsErrorMapper
+  ) {
+    super(foundrySettings, typeMapper, errorMapper);
   }
 }

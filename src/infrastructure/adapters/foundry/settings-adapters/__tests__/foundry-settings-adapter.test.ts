@@ -9,9 +9,13 @@ import * as v from "valibot";
 import { toValidationSchema } from "@/infrastructure/validation/valibot-schema-adapter";
 import type { ValidationSchema } from "@/domain/types/validation-schema.interface";
 import { err } from "@/domain/utils/result";
+import { FoundrySettingTypeMapper } from "../mappers/foundry-setting-type-mapper";
+import { FoundrySettingsErrorMapper } from "../mappers/foundry-settings-error-mapper";
 
 describe("FoundrySettingsAdapter", () => {
   let mockFoundrySettings: FoundrySettings;
+  let typeMapper: FoundrySettingTypeMapper;
+  let errorMapper: FoundrySettingsErrorMapper;
   let adapter: FoundrySettingsAdapter;
 
   beforeEach(() => {
@@ -22,7 +26,9 @@ describe("FoundrySettingsAdapter", () => {
       dispose: vi.fn(),
     } as unknown as FoundrySettings;
 
-    adapter = new FoundrySettingsAdapter(mockFoundrySettings);
+    typeMapper = new FoundrySettingTypeMapper();
+    errorMapper = new FoundrySettingsErrorMapper();
+    adapter = new FoundrySettingsAdapter(mockFoundrySettings, typeMapper, errorMapper);
   });
 
   describe("register", () => {
@@ -549,10 +555,12 @@ describe("FoundrySettingsAdapter", () => {
         dispose: vi.fn(),
       } as unknown as FoundrySettings;
 
-      const diAdapter = new DIFoundrySettingsAdapter(mockFoundrySettings);
+      const typeMapper = new FoundrySettingTypeMapper();
+      const errorMapper = new FoundrySettingsErrorMapper();
+      const diAdapter = new DIFoundrySettingsAdapter(mockFoundrySettings, typeMapper, errorMapper);
 
       expect(diAdapter).toBeInstanceOf(FoundrySettingsAdapter);
-      expect(DIFoundrySettingsAdapter.dependencies).toEqual([expect.anything()]);
+      expect(DIFoundrySettingsAdapter.dependencies).toHaveLength(3);
     });
 
     it("should work like FoundrySettingsAdapter", async () => {
@@ -563,7 +571,9 @@ describe("FoundrySettingsAdapter", () => {
         dispose: vi.fn(),
       } as unknown as FoundrySettings;
 
-      const diAdapter = new DIFoundrySettingsAdapter(mockFoundrySettings);
+      const typeMapper = new FoundrySettingTypeMapper();
+      const errorMapper = new FoundrySettingsErrorMapper();
+      const diAdapter = new DIFoundrySettingsAdapter(mockFoundrySettings, typeMapper, errorMapper);
 
       const registerResult = diAdapter.register("test", "key", {
         name: "Test",
