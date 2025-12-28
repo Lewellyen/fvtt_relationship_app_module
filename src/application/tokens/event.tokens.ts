@@ -52,6 +52,28 @@ export const registerContextMenuUseCaseToken = createInjectionToken<any>(
 );
 
 /**
+ * DI Token for ShowAllHiddenJournalsUseCase.
+ *
+ * Use-case that shows all hidden journals by setting their hidden flag to false.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const showAllHiddenJournalsUseCaseToken = createInjectionToken<any>(
+  "ShowAllHiddenJournalsUseCase"
+);
+
+/**
+ * DI Token for SidebarButtonBootstrapper.
+ *
+ * Bootstrapper that registers sidebar button for showing all hidden journals.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const sidebarButtonBootstrapperToken = createInjectionToken<any>(
+  "SidebarButtonBootstrapper"
+);
+
+/**
  * DI Token for ModuleEventRegistrar.
  *
  * Manages registration of all platform-agnostic event listeners.

@@ -9,6 +9,7 @@ import {
   processJournalDirectoryOnRenderUseCaseToken,
   triggerJournalDirectoryReRenderUseCaseToken,
   registerContextMenuUseCaseToken,
+  showAllHiddenJournalsUseCaseToken,
   moduleEventRegistrarToken,
 } from "@/application/tokens/event.tokens";
 import { journalContextMenuHandlersToken } from "@/application/tokens/application.tokens";
@@ -17,6 +18,7 @@ import { DIInvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases
 import { DIProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
 import { DITriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";
 import { DIRegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
+import { DIShowAllHiddenJournalsUseCase } from "@/application/use-cases/show-all-hidden-journals.use-case";
 import { DIHideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
@@ -58,6 +60,7 @@ function resolveMultipleServices<T>(
  * - TriggerJournalDirectoryReRenderUseCase (singleton) - UI re-render use-case
  * - HideJournalContextMenuHandler (singleton) - Handler for "Journal ausblenden" context menu item
  * - RegisterContextMenuUseCase (singleton) - Context menu callback registration (NOT an event registrar)
+ * - ShowAllHiddenJournalsUseCase (singleton) - Use-case for showing all hidden journals
  * - ModuleEventRegistrar (singleton) - Manages all event listeners
  *
  * DESIGN: Event ports are platform-agnostic abstractions over event systems.
@@ -157,6 +160,18 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
   if (isErr(contextMenuUseCaseResult)) {
     return err(
       `Failed to register RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
+    );
+  }
+
+  // Register ShowAllHiddenJournalsUseCase
+  const showAllHiddenJournalsUseCaseResult = container.registerClass(
+    showAllHiddenJournalsUseCaseToken,
+    DIShowAllHiddenJournalsUseCase,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(showAllHiddenJournalsUseCaseResult)) {
+    return err(
+      `Failed to register ShowAllHiddenJournalsUseCase: ${showAllHiddenJournalsUseCaseResult.error.message}`
     );
   }
 

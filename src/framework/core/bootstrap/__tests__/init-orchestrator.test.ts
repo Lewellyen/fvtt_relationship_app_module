@@ -9,6 +9,7 @@ import { ApiBootstrapper } from "../orchestrators/api-bootstrapper";
 import { SettingsBootstrapper } from "../orchestrators/settings-bootstrapper";
 import { EventsBootstrapper } from "../orchestrators/events-bootstrapper";
 import { ContextMenuBootstrapper } from "../orchestrators/context-menu-bootstrapper";
+import { SidebarButtonBootstrapper } from "../orchestrators/sidebar-button-bootstrapper";
 import { err, ok } from "@/domain/utils/result";
 import { InitPhaseRegistry } from "../init-phase-registry";
 import type { InitPhase } from "../init-phase.interface";
@@ -21,6 +22,7 @@ vi.mock("../orchestrators/settings-bootstrapper");
 vi.mock("../orchestrators/logging-bootstrapper");
 vi.mock("../orchestrators/events-bootstrapper");
 vi.mock("../orchestrators/context-menu-bootstrapper");
+vi.mock("../orchestrators/sidebar-button-bootstrapper");
 
 describe("InitOrchestrator", () => {
   let mockContainer: PlatformContainerPort;
@@ -28,7 +30,7 @@ describe("InitOrchestrator", () => {
 
   beforeEach(() => {
     mockContainer = {
-      resolveWithError: vi.fn(),
+      resolveWithError: vi.fn().mockReturnValue(err("Service not found")),
       resolve: vi.fn(),
       getValidationState: vi.fn(),
       isRegistered: vi.fn(),
@@ -53,6 +55,7 @@ describe("InitOrchestrator", () => {
       vi.mocked(LoggingBootstrapper.configureLogging).mockReturnValue(ok(undefined));
       vi.mocked(EventsBootstrapper.registerEvents).mockReturnValue(ok(undefined));
       vi.mocked(ContextMenuBootstrapper.registerContextMenu).mockReturnValue(ok(undefined));
+      vi.mocked(SidebarButtonBootstrapper.registerSidebarButton).mockReturnValue(ok(undefined));
 
       const result = InitOrchestrator.execute(mockContainer, mockLogger);
 
@@ -68,6 +71,7 @@ describe("InitOrchestrator", () => {
       vi.mocked(LoggingBootstrapper.configureLogging).mockReturnValue(ok(undefined));
       vi.mocked(EventsBootstrapper.registerEvents).mockReturnValue(ok(undefined));
       vi.mocked(ContextMenuBootstrapper.registerContextMenu).mockReturnValue(ok(undefined));
+      vi.mocked(SidebarButtonBootstrapper.registerSidebarButton).mockReturnValue(ok(undefined));
 
       const result = InitOrchestrator.execute(mockContainer, mockLogger);
 
@@ -85,6 +89,7 @@ describe("InitOrchestrator", () => {
       vi.mocked(LoggingBootstrapper.configureLogging).mockReturnValue(err("Logging failed"));
       vi.mocked(EventsBootstrapper.registerEvents).mockReturnValue(ok(undefined));
       vi.mocked(ContextMenuBootstrapper.registerContextMenu).mockReturnValue(ok(undefined));
+      vi.mocked(SidebarButtonBootstrapper.registerSidebarButton).mockReturnValue(ok(undefined));
 
       const result = InitOrchestrator.execute(mockContainer, mockLogger);
 
@@ -102,6 +107,7 @@ describe("InitOrchestrator", () => {
       vi.mocked(LoggingBootstrapper.configureLogging).mockReturnValue(ok(undefined));
       vi.mocked(EventsBootstrapper.registerEvents).mockReturnValue(err("Events failed"));
       vi.mocked(ContextMenuBootstrapper.registerContextMenu).mockReturnValue(ok(undefined));
+      vi.mocked(SidebarButtonBootstrapper.registerSidebarButton).mockReturnValue(ok(undefined));
 
       const result = InitOrchestrator.execute(mockContainer, mockLogger);
 

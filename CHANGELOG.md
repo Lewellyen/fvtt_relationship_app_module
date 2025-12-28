@@ -12,6 +12,27 @@
 
 ### Upgrade-Hinweise
 
+## [0.48.0] - 2025-12-29
+### Hinzugefügt
+- **ShowAllHiddenJournalsUseCase**: Neuer Use-Case zum Einblenden aller versteckten Journal-Einträge ([Details](src/application/use-cases/show-all-hidden-journals.use-case.ts))
+- **SidebarButtonBootstrapper**: Bootstrapper für die Registrierung des "Alle Journale einblenden"-Buttons im Journal-Sidebar ([Details](src/framework/core/bootstrap/orchestrators/sidebar-button-bootstrapper.ts))
+- **SidebarButtonInitPhase**: Neue Bootstrap-Phase für die Initialisierung des Sidebar-Buttons ([Details](src/framework/core/bootstrap/phases/sidebar-button-init-phase.ts))
+- **Button "Alle Journale einblenden"**: Neuer Button im Journal-Sidebar (`.header-actions.action-buttons` Container) zum schnellen Einblenden aller versteckten Journals
+- DI-Token `showAllHiddenJournalsUseCaseToken` und `sidebarButtonBootstrapperToken` für Dependency Injection
+
+### Geändert
+- **Event-Ports Config**: `ShowAllHiddenJournalsUseCase` wird jetzt als Singleton im DI-Container registriert ([Details](src/framework/config/modules/event-ports.config.ts))
+- **Init-Phase-Registry**: `SidebarButtonInitPhase` wurde zur Bootstrap-Phase-Registry hinzugefügt ([Details](src/framework/core/bootstrap/default-init-phase-registry.ts))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.47.1] - 2025-12-27
 ### Hinzugefügt
 - Keine Einträge

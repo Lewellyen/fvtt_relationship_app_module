@@ -13545,6 +13545,12 @@ const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken(
 const registerContextMenuUseCaseToken = createInjectionToken(
   "RegisterContextMenuUseCase"
 );
+const showAllHiddenJournalsUseCaseToken = createInjectionToken(
+  "ShowAllHiddenJournalsUseCase"
+);
+const sidebarButtonBootstrapperToken = createInjectionToken(
+  "SidebarButtonBootstrapper"
+);
 const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
 const _EventsBootstrapper = class _EventsBootstrapper {
   /**
@@ -13637,6 +13643,82 @@ const _ContextMenuInitPhase = class _ContextMenuInitPhase {
 };
 __name(_ContextMenuInitPhase, "ContextMenuInitPhase");
 let ContextMenuInitPhase = _ContextMenuInitPhase;
+const _SidebarButtonBootstrapper = class _SidebarButtonBootstrapper {
+  /**
+   * Registers sidebar button for journal tab.
+   *
+   * @param container - PlatformContainerPort for service resolution
+   * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
+   */
+  static registerSidebarButton(container) {
+    const useCaseResult = container.resolveWithError(showAllHiddenJournalsUseCaseToken);
+    if (!useCaseResult.ok) {
+      return err(
+        `ShowAllHiddenJournalsUseCase could not be resolved: ${useCaseResult.error.message}`
+      );
+    }
+    const useCase = castResolvedService(useCaseResult.value);
+    const hooksResult = container.resolveWithError(foundryHooksToken);
+    if (!hooksResult.ok) {
+      return err(`FoundryHooksPort could not be resolved: ${hooksResult.error.message}`);
+    }
+    const hooks = castResolvedService(hooksResult.value);
+    const hookRegistrationResult = hooks.on("renderJournalDirectory", (...args2) => {
+      if (args2.length < 2) {
+        return;
+      }
+      const htmlArg = args2[1];
+      if (!(htmlArg instanceof HTMLElement)) {
+        return;
+      }
+      const html = htmlArg;
+      const existingButton = html.querySelector(".show-all-hidden-journals-button");
+      if (existingButton) {
+        return;
+      }
+      const button = document.createElement("button");
+      button.className = "show-all-hidden-journals-button";
+      button.type = "button";
+      button.title = "Alle versteckten Journale wieder einblenden";
+      button.innerHTML = '<i class="fas fa-eye"></i> Alle Journale einblenden';
+      button.addEventListener("click", async () => {
+        const result = await useCase.execute();
+        if (result.ok) {
+        } else {
+        }
+      });
+      const actionButtons = html.querySelector(".header-actions.action-buttons");
+      if (actionButtons) {
+        actionButtons.appendChild(button);
+      } else {
+        const directoryHeader = html.querySelector(".directory-header");
+        if (directoryHeader) {
+          directoryHeader.appendChild(button);
+        } else {
+          html.insertBefore(button, html.firstChild);
+        }
+      }
+    });
+    if (!hookRegistrationResult.ok) {
+      return err(`Failed to register sidebar button hook: ${hookRegistrationResult.error.message}`);
+    }
+    return ok(void 0);
+  }
+};
+__name(_SidebarButtonBootstrapper, "SidebarButtonBootstrapper");
+let SidebarButtonBootstrapper = _SidebarButtonBootstrapper;
+const _SidebarButtonInitPhase = class _SidebarButtonInitPhase {
+  constructor() {
+    this.id = "sidebar-button-registration";
+    this.priority = 8;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  execute(ctx) {
+    return SidebarButtonBootstrapper.registerSidebarButton(ctx.container);
+  }
+};
+__name(_SidebarButtonInitPhase, "SidebarButtonInitPhase");
+let SidebarButtonInitPhase = _SidebarButtonInitPhase;
 function createDefaultInitPhaseRegistry() {
   return new InitPhaseRegistry([
     new MetricsInitPhase(),
@@ -13645,7 +13727,8 @@ function createDefaultInitPhaseRegistry() {
     new SettingsInitPhase(),
     new LoggingInitPhase(),
     new EventsInitPhase(),
-    new ContextMenuInitPhase()
+    new ContextMenuInitPhase(),
+    new SidebarButtonInitPhase()
   ]);
 }
 __name(createDefaultInitPhaseRegistry, "createDefaultInitPhaseRegistry");
@@ -18380,6 +18463,143 @@ _DIRegisterContextMenuUseCase.dependencies = [
   platformLoggingPortToken
 ];
 let DIRegisterContextMenuUseCase = _DIRegisterContextMenuUseCase;
+const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
+  constructor(journalCollection, journalRepository, journalDirectoryUI, notifications, config2) {
+    this.journalCollection = journalCollection;
+    this.journalRepository = journalRepository;
+    this.journalDirectoryUI = journalDirectoryUI;
+    this.notifications = notifications;
+    this.config = config2;
+  }
+  /**
+   * Execute the use-case: Show all hidden journals.
+   *
+   * @returns Result with number of journals that were unhidden, or error
+   */
+  async execute() {
+    const allJournalsResult = this.journalCollection.getAll();
+    if (!allJournalsResult.ok) {
+      return err(new Error(`Failed to get all journals: ${allJournalsResult.error.message}`));
+    }
+    const allJournals = allJournalsResult.value;
+    let changedCount = 0;
+    const errors = [];
+    for (const journal of allJournals) {
+      try {
+        const flagResult = this.journalRepository.getFlag(
+          journal.id,
+          this.config.moduleNamespace,
+          this.config.hiddenFlagKey
+        );
+        if (!flagResult.ok) {
+          errors.push({
+            journalId: journal.id,
+            error: `Failed to read flag: ${flagResult.error.message}`
+          });
+          this.notifications.warn(
+            `Failed to read hidden flag for journal "${journal.name ?? journal.id}"`,
+            {
+              errorCode: flagResult.error.code,
+              errorMessage: flagResult.error.message,
+              journalId: journal.id
+            },
+            { channels: ["ConsoleChannel"] }
+          );
+          continue;
+        }
+        const currentFlag = flagResult.value;
+        if (currentFlag !== false) {
+          const setFlagResult = await this.journalRepository.setFlag(
+            journal.id,
+            this.config.moduleNamespace,
+            this.config.hiddenFlagKey,
+            false
+          );
+          if (!setFlagResult.ok) {
+            errors.push({
+              journalId: journal.id,
+              error: `Failed to set flag: ${setFlagResult.error.message}`
+            });
+            this.notifications.warn(
+              `Failed to set hidden flag for journal "${journal.name ?? journal.id}"`,
+              {
+                errorCode: setFlagResult.error.code,
+                errorMessage: setFlagResult.error.message,
+                journalId: journal.id
+              },
+              { channels: ["ConsoleChannel"] }
+            );
+            continue;
+          }
+          changedCount++;
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        errors.push({
+          journalId: journal.id,
+          error: errorMessage
+        });
+        this.notifications.warn(
+          `Unexpected error processing journal "${journal.name ?? journal.id}"`,
+          {
+            error: errorMessage,
+            journalId: journal.id
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+      }
+    }
+    if (changedCount > 0) {
+      this.notifications.info(
+        `${changedCount} ${changedCount === 1 ? "Journal" : "Journale"} wieder eingeblendet`,
+        {
+          count: changedCount
+        }
+      );
+    } else {
+      this.notifications.info("Keine versteckten Journale gefunden", {});
+    }
+    if (errors.length > 0) {
+      this.notifications.warn(
+        `${errors.length} Fehler beim Verarbeiten von Journals`,
+        {
+          errorCount: errors.length,
+          errors: errors.slice(0, 5)
+          // Only show first 5 errors
+        },
+        { channels: ["ConsoleChannel"] }
+      );
+    }
+    const rerenderResult = this.journalDirectoryUI.rerenderJournalDirectory();
+    if (!rerenderResult.ok) {
+      this.notifications.warn(
+        "Journal-Verzeichnis konnte nicht neu gerendert werden",
+        {
+          errorCode: rerenderResult.error.code,
+          errorMessage: rerenderResult.error.message
+        },
+        { channels: ["ConsoleChannel"] }
+      );
+    }
+    return ok(changedCount);
+  }
+};
+__name(_ShowAllHiddenJournalsUseCase, "ShowAllHiddenJournalsUseCase");
+let ShowAllHiddenJournalsUseCase = _ShowAllHiddenJournalsUseCase;
+const _DIShowAllHiddenJournalsUseCase = class _DIShowAllHiddenJournalsUseCase extends ShowAllHiddenJournalsUseCase {
+  constructor(journalCollection, journalRepository, journalDirectoryUI, notifications, config2) {
+    super(journalCollection, journalRepository, journalDirectoryUI, notifications, config2);
+  }
+};
+__name(_DIShowAllHiddenJournalsUseCase, "DIShowAllHiddenJournalsUseCase");
+_DIShowAllHiddenJournalsUseCase.dependencies = [
+  platformJournalCollectionPortToken,
+  platformJournalRepositoryToken,
+  platformJournalDirectoryUiPortToken,
+  notificationPublisherPortToken,
+  journalVisibilityConfigToken
+];
+let DIShowAllHiddenJournalsUseCase = _DIShowAllHiddenJournalsUseCase;
 const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
   constructor(journalRepository, platformUI, notifications) {
     this.journalRepository = journalRepository;
@@ -18620,6 +18840,16 @@ function registerEventPorts(container) {
   if (isErr(contextMenuUseCaseResult)) {
     return err(
       `Failed to register RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
+    );
+  }
+  const showAllHiddenJournalsUseCaseResult = container.registerClass(
+    showAllHiddenJournalsUseCaseToken,
+    DIShowAllHiddenJournalsUseCase,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(showAllHiddenJournalsUseCaseResult)) {
+    return err(
+      `Failed to register ShowAllHiddenJournalsUseCase: ${showAllHiddenJournalsUseCaseResult.error.message}`
     );
   }
   const eventRegistrarResult = container.registerClass(
