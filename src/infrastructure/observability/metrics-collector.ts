@@ -7,9 +7,6 @@ import type { IRawMetrics } from "./interfaces/raw-metrics.interface";
 import type { IMetricsAggregator } from "./interfaces/metrics-aggregator.interface";
 import type { IMetricsPersistenceManager } from "./interfaces/metrics-persistence-manager.interface";
 import type { IMetricsStateManager } from "./interfaces/metrics-state-manager.interface";
-import { MetricsAggregator } from "./metrics-aggregator";
-import { MetricsPersistenceManager } from "./metrics-persistence/metrics-persistence-manager";
-import { MetricsStateManager } from "./metrics-state/metrics-state-manager";
 import type { MetricsSnapshot, MetricsPersistenceState } from "./metrics-types";
 import type { MetricState } from "./metrics-definition/metric-definition.interface";
 import type { MetricDefinitionRegistry } from "./metrics-definition/metric-definition-registry";
@@ -77,10 +74,10 @@ export class MetricsCollector implements MetricsRecorder {
 
   constructor(
     private readonly config: RuntimeConfigService,
-    registry?: MetricDefinitionRegistry,
-    aggregator?: IMetricsAggregator,
-    persistenceManager?: IMetricsPersistenceManager,
-    stateManager?: IMetricsStateManager
+    aggregator: IMetricsAggregator,
+    persistenceManager: IMetricsPersistenceManager,
+    stateManager: IMetricsStateManager,
+    registry?: MetricDefinitionRegistry
   ) {
     // Use provided registry or create default one
     this.registry = registry ?? createDefaultMetricDefinitionRegistry();
@@ -88,10 +85,10 @@ export class MetricsCollector implements MetricsRecorder {
     // Initialize metric states from registry
     this.initializeMetricStates();
 
-    // DIP: Use injected dependencies or fallback to default implementations for backward compatibility
-    this.aggregator = aggregator ?? new MetricsAggregator();
-    this.persistenceManager = persistenceManager ?? new MetricsPersistenceManager();
-    this.stateManager = stateManager ?? new MetricsStateManager();
+    // DIP: All dependencies must be injected - no fallback
+    this.aggregator = aggregator;
+    this.persistenceManager = persistenceManager;
+    this.stateManager = stateManager;
   }
 
   /**
@@ -367,6 +364,6 @@ export class DIMetricsCollector extends MetricsCollector {
     stateManager: IMetricsStateManager,
     registry?: MetricDefinitionRegistry
   ) {
-    super(config, registry, aggregator, persistenceManager, stateManager);
+    super(config, aggregator, persistenceManager, stateManager, registry);
   }
 }

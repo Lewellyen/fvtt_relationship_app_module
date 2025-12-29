@@ -6,7 +6,7 @@ Analyse auf Verstöße gegen das Single Responsibility Principle.
 
 ## Zusammenfassung
 
-**Gefundene Findings:** 1
+**Gefundene Findings:** 1 (aktuell dokumentiert)
 - **Low Severity:** 1
 
 ## Findings

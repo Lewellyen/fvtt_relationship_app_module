@@ -34,12 +34,12 @@ export class PersistentMetricsCollector extends MetricsCollector implements Init
   constructor(
     config: RuntimeConfigService,
     private readonly metricsStorage: MetricsStorage,
-    registry?: MetricDefinitionRegistry,
-    aggregator?: IMetricsAggregator,
-    persistenceManager?: IMetricsPersistenceManager,
-    stateManager?: IMetricsStateManager
+    aggregator: IMetricsAggregator,
+    persistenceManager: IMetricsPersistenceManager,
+    stateManager: IMetricsStateManager,
+    registry?: MetricDefinitionRegistry
   ) {
-    super(config, registry, aggregator, persistenceManager, stateManager);
+    super(config, aggregator, persistenceManager, stateManager, registry);
     // I/O removed from constructor - use initialize() instead
   }
 
@@ -130,6 +130,6 @@ export class DIPersistentMetricsCollector extends PersistentMetricsCollector {
     stateManager: IMetricsStateManager,
     registry?: MetricDefinitionRegistry
   ) {
-    super(config, metricsStorage, registry, aggregator, persistenceManager, stateManager);
+    super(config, metricsStorage, aggregator, persistenceManager, stateManager, registry);
   }
 }

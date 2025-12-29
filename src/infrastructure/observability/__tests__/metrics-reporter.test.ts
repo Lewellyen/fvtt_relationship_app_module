@@ -4,6 +4,9 @@ import {
   DIMetricsReporter,
 } from "@/infrastructure/observability/metrics-reporter";
 import { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
+import { MetricsAggregator } from "@/infrastructure/observability/metrics-aggregator";
+import { MetricsPersistenceManager } from "@/infrastructure/observability/metrics-persistence/metrics-persistence-manager";
+import { MetricsStateManager } from "@/infrastructure/observability/metrics-state/metrics-state-manager";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
@@ -15,9 +18,16 @@ describe("MetricsReporter", () => {
   let collector: MetricsCollector;
   let logger: Logger | undefined;
 
-  beforeEach(() => {
+  function createTestMetricsCollector(): MetricsCollector {
     const runtimeConfig = createMockRuntimeConfig();
-    collector = new MetricsCollector(runtimeConfig);
+    const aggregator = new MetricsAggregator();
+    const persistenceManager = new MetricsPersistenceManager();
+    const stateManager = new MetricsStateManager();
+    return new MetricsCollector(runtimeConfig, aggregator, persistenceManager, stateManager);
+  }
+
+  beforeEach(() => {
+    collector = createTestMetricsCollector();
     logger = undefined; // Optional logger
     reporter = new MetricsReporter(collector, logger);
   });
@@ -28,9 +38,8 @@ describe("MetricsReporter", () => {
 
   describe("DI Integration", () => {
     it("should create independent instances", () => {
-      const runtimeConfig = createMockRuntimeConfig();
-      const collector1 = new MetricsCollector(runtimeConfig);
-      const collector2 = new MetricsCollector(runtimeConfig);
+      const collector1 = createTestMetricsCollector();
+      const collector2 = createTestMetricsCollector();
       const reporter1 = new MetricsReporter(collector1);
       const reporter2 = new MetricsReporter(collector2);
 

@@ -4,6 +4,9 @@ import { createMockGame, createMockHooks, createMockUI } from "../mocks/foundry"
 import { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsSampler } from "@/infrastructure/observability/interfaces/metrics-sampler";
 import type { MetricsCollector as MetricsCollectorType } from "@/infrastructure/observability/metrics-collector";
+import { MetricsAggregator } from "@/infrastructure/observability/metrics-aggregator";
+import { MetricsPersistenceManager } from "@/infrastructure/observability/metrics-persistence/metrics-persistence-manager";
+import { MetricsStateManager } from "@/infrastructure/observability/metrics-state/metrics-state-manager";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
@@ -139,7 +142,10 @@ export function createMockSampler(_config?: RuntimeConfigService): MetricsSample
  */
 export function createMockMetricsCollector(): MetricsCollectorType {
   const runtimeConfig = createMockRuntimeConfig();
-  return new MetricsCollector(runtimeConfig);
+  const aggregator = new MetricsAggregator();
+  const persistenceManager = new MetricsPersistenceManager();
+  const stateManager = new MetricsStateManager();
+  return new MetricsCollector(runtimeConfig, aggregator, persistenceManager, stateManager);
 }
 
 /**

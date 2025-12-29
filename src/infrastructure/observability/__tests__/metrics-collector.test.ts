@@ -25,16 +25,32 @@ import { MetricsStateManager } from "@/infrastructure/observability/metrics-stat
 describe("MetricsCollector", () => {
   let collector: MetricsCollector;
   let runtimeConfig: RuntimeConfigService;
+  let aggregator: MetricsAggregator;
+  let persistenceManager: MetricsPersistenceManager;
+  let stateManager: MetricsStateManager;
+
+  function createTestMetricsCollector(registry?: MetricDefinitionRegistry): MetricsCollector {
+    return new MetricsCollector(
+      runtimeConfig,
+      aggregator,
+      persistenceManager,
+      stateManager,
+      registry
+    );
+  }
 
   beforeEach(() => {
     runtimeConfig = createMockRuntimeConfig();
-    collector = new MetricsCollector(runtimeConfig);
+    aggregator = new MetricsAggregator();
+    persistenceManager = new MetricsPersistenceManager();
+    stateManager = new MetricsStateManager();
+    collector = createTestMetricsCollector();
   });
 
   describe("DI Integration", () => {
     it("should create independent instances", () => {
-      const instance1 = new MetricsCollector(runtimeConfig);
-      const instance2 = new MetricsCollector(runtimeConfig);
+      const instance1 = createTestMetricsCollector();
+      const instance2 = createTestMetricsCollector();
 
       expect(instance1).not.toBe(instance2);
     });
@@ -350,7 +366,7 @@ describe("MetricsCollector", () => {
       customRegistry.register(customMetricDefinition);
 
       // Create collector with custom registry
-      const collector = new MetricsCollector(runtimeConfig, customRegistry);
+      const collector = createTestMetricsCollector(customRegistry);
 
       // Record custom metric via internal updateMetric (would be exposed via new method in real scenario)
       (collector as any).updateMetric("customCounter", {});
@@ -394,7 +410,7 @@ describe("MetricsCollector", () => {
     it("should handle getRawMetrics when portSelections is not a Map", () => {
       // Create collector with empty registry to test fallback branches
       const emptyRegistry = new MetricDefinitionRegistry();
-      const collector = new MetricsCollector(runtimeConfig, emptyRegistry);
+      const collector = createTestMetricsCollector(emptyRegistry);
 
       // getRawMetrics should handle missing metrics gracefully
       const rawMetrics = collector.getRawMetrics();
@@ -416,7 +432,7 @@ describe("MetricsCollector", () => {
         }
       }
 
-      const collector = new MetricsCollector(runtimeConfig, customRegistry);
+      const collector = createTestMetricsCollector(customRegistry);
       const rawMetrics = collector.getRawMetrics();
 
       // Should use fallback values when resolutionTimesState is undefined
@@ -427,7 +443,7 @@ describe("MetricsCollector", () => {
     });
 
     it("should handle applyRawMetrics when resolutionTimesState is missing", () => {
-      const collector = new MetricsCollector(runtimeConfig);
+      const collector = createTestMetricsCollector();
 
       // Access private method via type assertion for testing
       const collectorAny = collector as unknown as {
@@ -446,7 +462,7 @@ describe("MetricsCollector", () => {
       }
 
       // Create collector without resolutionTimes metric
-      const collectorWithoutResolutionTimes = new MetricsCollector(runtimeConfig, customRegistry);
+      const collectorWithoutResolutionTimes = createTestMetricsCollector(customRegistry);
       const collectorAny2 = collectorWithoutResolutionTimes as unknown as {
         applyRawMetrics: (rawMetrics: IRawMetrics) => void;
         getRawMetrics: () => IRawMetrics;
@@ -464,7 +480,7 @@ describe("MetricsCollector", () => {
     });
 
     it("should handle setMetricValue when state is missing", () => {
-      const collector = new MetricsCollector(runtimeConfig);
+      const collector = createTestMetricsCollector();
 
       // Access private method via type assertion for testing
       const collectorAny = collector as unknown as {
@@ -500,6 +516,22 @@ describe("PersistentMetricsCollector", () => {
     }
   }
 
+  function createTestPersistentMetricsCollector(
+    config: RuntimeConfigService,
+    storage: MetricsStorage
+  ): PersistentMetricsCollector {
+    const aggregator = new MetricsAggregator();
+    const persistenceManager = new MetricsPersistenceManager();
+    const stateManager = new MetricsStateManager();
+    return new PersistentMetricsCollector(
+      config,
+      storage,
+      aggregator,
+      persistenceManager,
+      stateManager
+    );
+  }
+
   it("should restore state from storage on initialization", () => {
     const storage = new MockMetricsStorage();
     storage.state = {
@@ -516,8 +548,7 @@ describe("PersistentMetricsCollector", () => {
       resolutionTimesCount: 3,
     };
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-
-    const persistentCollector = new PersistentMetricsCollector(config, storage);
+    const persistentCollector = createTestPersistentMetricsCollector(config, storage);
 
     // Initialize to restore state from storage
     const initResult = persistentCollector.initialize();
@@ -533,7 +564,7 @@ describe("PersistentMetricsCollector", () => {
   it("should persist state on mutation", () => {
     const storage = new MockMetricsStorage();
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(config, storage);
+    const persistentCollector = createTestPersistentMetricsCollector(config, storage);
 
     persistentCollector.recordPortSelection(13);
 
@@ -545,7 +576,7 @@ describe("PersistentMetricsCollector", () => {
   it("should clear persisted state when clearPersistentState is called", () => {
     const storage = new MockMetricsStorage();
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(config, storage);
+    const persistentCollector = createTestPersistentMetricsCollector(config, storage);
 
     persistentCollector.recordPortSelection(13);
     expect(storage.state).not.toBeNull();
@@ -571,7 +602,10 @@ describe("PersistentMetricsCollector", () => {
     }
 
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(config, new ThrowingLoadStorage());
+    const persistentCollector = createTestPersistentMetricsCollector(
+      config,
+      new ThrowingLoadStorage()
+    );
 
     expect(persistentCollector.getSnapshot().containerResolutions).toBe(0);
 
@@ -583,7 +617,7 @@ describe("PersistentMetricsCollector", () => {
   it("should return success when already initialized", () => {
     const storage = new MockMetricsStorage();
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(config, storage);
+    const persistentCollector = createTestPersistentMetricsCollector(config, storage);
 
     // First initialization
     const initResult1 = persistentCollector.initialize();
@@ -611,7 +645,7 @@ describe("PersistentMetricsCollector", () => {
       resolutionTimesCount: 0,
     };
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(config, storage);
+    const persistentCollector = createTestPersistentMetricsCollector(config, storage);
 
     // Mock restoreFromPersistenceState to throw a non-Error exception
     const restoreFromPersistenceStateSpy = vi
@@ -645,7 +679,7 @@ describe("PersistentMetricsCollector", () => {
 
     const storage = new ThrowingSaveStorage();
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(config, storage);
+    const persistentCollector = createTestPersistentMetricsCollector(config, storage);
 
     expect(() => persistentCollector.recordCacheAccess(true)).not.toThrow();
   });
@@ -653,7 +687,7 @@ describe("PersistentMetricsCollector", () => {
   it("should ignore null persistence state restores", () => {
     const storage = new MockMetricsStorage();
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(config, storage);
+    const persistentCollector = createTestPersistentMetricsCollector(config, storage);
 
     (
       persistentCollector as unknown as {
@@ -667,7 +701,7 @@ describe("PersistentMetricsCollector", () => {
   it("should sanitize invalid persistence values", () => {
     const storage = new MockMetricsStorage();
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(config, storage);
+    const persistentCollector = createTestPersistentMetricsCollector(config, storage);
 
     const invalidState: MetricsPersistenceState = {
       metrics: {
@@ -760,7 +794,7 @@ describe("PersistentMetricsCollector", () => {
       resolutionTimesCount: 0,
     };
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(config, storage);
+    const persistentCollector = createTestPersistentMetricsCollector(config, storage);
 
     // Override restoreFromPersistenceState to throw an Error instance
     const mutableCollector = persistentCollector as MutablePersistentCollector;
@@ -801,7 +835,7 @@ describe("PersistentMetricsCollector", () => {
       resolutionTimesCount: 0,
     };
     const config = createMockRuntimeConfig({ enableMetricsPersistence: true });
-    const persistentCollector = new PersistentMetricsCollector(config, storage);
+    const persistentCollector = createTestPersistentMetricsCollector(config, storage);
 
     // Override restoreFromPersistenceState to throw a non-Error exception
     // This tests the else branch in the catch block (line 47: String(error))

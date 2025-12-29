@@ -8,6 +8,9 @@ import type { MetricsCollector } from "@/infrastructure/observability/metrics-co
 import type { MetricsStorage } from "@/infrastructure/observability/metrics-persistence/metrics-storage";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
 import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import { MetricsAggregator } from "@/infrastructure/observability/metrics-aggregator";
+import { MetricsPersistenceManager } from "@/infrastructure/observability/metrics-persistence/metrics-persistence-manager";
+import { MetricsStateManager } from "@/infrastructure/observability/metrics-state/metrics-state-manager";
 
 describe("MetricsBootstrapper", () => {
   let mockContainer: PlatformContainerPort;
@@ -88,5 +91,14 @@ function createPersistentCollector(): PersistentMetricsCollector {
     clear: vi.fn(),
   };
   const config: RuntimeConfigService = createMockRuntimeConfig();
-  return new PersistentMetricsCollector(config, storage);
+  const aggregator = new MetricsAggregator();
+  const persistenceManager = new MetricsPersistenceManager();
+  const stateManager = new MetricsStateManager();
+  return new PersistentMetricsCollector(
+    config,
+    storage,
+    aggregator,
+    persistenceManager,
+    stateManager
+  );
 }

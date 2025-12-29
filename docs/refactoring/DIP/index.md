@@ -6,11 +6,12 @@ Analyse des Infrastructure-Layers auf Verstöße gegen das Dependency Inversion 
 
 ## Zusammenfassung
 
-**Gefundene Findings:** 4 (Batch 1: 2, Batch 3: 2)
-- **High Severity:** 2 (beide Batch 1)
-- **Medium Severity:** 2 (beide Batch 3)
+**Gefundene Findings:** 7 (Batch 1: 2, Batch 3: 2, Neu: 3)
+- **High Severity:** 2 (beide Batch 1, bereits behoben)
+- **Medium Severity:** 4 (Batch 3: 2, Neu: 2)
+- **Low Severity:** 1 (Neu)
 
-Der Infrastructure-Layer enthält erwartungsgemäß konkrete Implementierungen, aber einige Abhängigkeiten könnten besser abstrahiert werden.
+Der Infrastructure-Layer enthält erwartungsgemäß konkrete Implementierungen, aber einige Abhängigkeiten könnten besser abstrahiert werden. Neue Findings betreffen Application- und Infrastructure-Layer.
 
 ## Findings
 
@@ -38,19 +39,41 @@ Der Infrastructure-Layer enthält erwartungsgemäß konkrete Implementierungen, 
    - **Problem:** Erstellt konkrete Instanzen von `MetricsAggregator`, `MetricsPersistenceManager` und `MetricsStateManager` direkt im Konstruktor
    - **Empfehlung:** Abhängigkeiten über Dependency Injection injizieren
 
+### Medium Severity (Neu)
+
+5. **[RuntimeConfigService Direct Instantiation](./findings/DIP__medium__runtimeconfigservice-direct-instantiation__a1b2c3d.md)** (Neu)
+   - **Datei:** `src/application/services/RuntimeConfigService.ts`
+   - **Problem:** Instanziiert `RuntimeConfigStore` und `RuntimeConfigEventEmitter` direkt im Constructor
+   - **Empfehlung:** Über Dependency Injection injizieren
+
+6. **[MetricsCollector Direct Instantiation (Fallback)](./findings/DIP__medium__metricscollector-direct-instantiation__e4f5g6h.md)** (Neu)
+   - **Datei:** `src/infrastructure/observability/metrics-collector.ts`
+   - **Problem:** Fallback-Instanziierung von `MetricsAggregator`, `MetricsPersistenceManager` und `MetricsStateManager` mit `new`
+   - **Empfehlung:** Factory-Pattern für Fallbacks oder DI-Container verwenden
+
+### Low Severity (Neu)
+
+7. **[ServiceResolver Direct Instantiation](./findings/DIP__low__serviceresolver-direct-instantiation__i7j8k9l.md)** (Neu)
+   - **Datei:** `src/infrastructure/di/resolution/ServiceResolver.ts`
+   - **Problem:** Instanziiert `LifecycleResolver` und `ServiceInstantiatorImpl` direkt
+   - **Empfehlung:** Möglicherweise gerechtfertigt wegen Circular Dependency (ähnlich Bootstrap-Code)
+
 ## Statistik
 
-- **Gesamt Findings:** 4 (Batch 1: 2, Batch 3: 2)
+- **Gesamt Findings:** 7 (Batch 1: 2, Batch 3: 2, Neu: 3)
 - **Kritisch:** 0
-- **Hoch:** 2 (beide Batch 1)
-- **Mittel:** 2 (beide Batch 3)
-- **Niedrig:** 0
+- **Hoch:** 2 (beide Batch 1, bereits behoben)
+- **Mittel:** 4 (Batch 3: 2, Neu: 2)
+- **Niedrig:** 1 (Neu)
 
 ## Empfehlungen
 
-1. **Valibot-Abhängigkeiten entfernen (Batch 1, Hoch):** Priorität 1 - Domain-Layer sollte keine Infrastructure-Abhängigkeiten haben
-2. **MetricsCollector Dependencies injizieren (Batch 3, Mittel):** Priorität 2 - Verbessert Testbarkeit und Flexibilität
-3. **Foundry-Adapter APIs abstrahieren (Batch 3, Mittel):** Priorität 3 - Optional, aber könnte Testbarkeit verbessern
+1. **Valibot-Abhängigkeiten entfernen (Batch 1, Hoch):** ✅ Bereits behoben - Domain-Layer sollte keine Infrastructure-Abhängigkeiten haben
+2. **RuntimeConfigService Dependencies injizieren (Neu, Mittel):** Priorität 1 - Verbessert Testbarkeit und Flexibilität
+3. **MetricsCollector Fallback-Verhalten verbessern (Neu, Mittel):** Priorität 2 - Factory-Pattern oder DI-Container für Fallbacks
+4. **MetricsCollector Dependencies injizieren (Batch 3, Mittel):** Priorität 3 - Verbessert Testbarkeit und Flexibilität
+5. **ServiceResolver Direct Instantiation prüfen (Neu, Niedrig):** Priorität 4 - Möglicherweise gerechtfertigt wegen Circular Dependency
+6. **Foundry-Adapter APIs abstrahieren (Batch 3, Mittel):** Priorität 5 - Optional, aber könnte Testbarkeit verbessern
 
 ## Hinweise
 

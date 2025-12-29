@@ -11369,197 +11369,6 @@ const metricsPersistenceManagerToken = createInjectionToken(
 const metricsStateManagerToken = createInjectionToken("MetricsStateManager");
 const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
 const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
-const _MetricsAggregator = class _MetricsAggregator {
-  /**
-   * Aggregates raw metrics into a snapshot.
-   *
-   * @param metrics - Raw metrics data
-   * @returns Aggregated metrics snapshot
-   */
-  aggregate(metrics) {
-    const avgTime = this.calculateAverage(metrics.resolutionTimes, metrics.resolutionTimesCount);
-    const cacheHitRate = this.calculateCacheHitRate(metrics.cacheHits, metrics.cacheMisses);
-    return {
-      containerResolutions: metrics.containerResolutions,
-      resolutionErrors: metrics.resolutionErrors,
-      avgResolutionTimeMs: avgTime,
-      portSelections: Object.fromEntries(metrics.portSelections),
-      portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures),
-      cacheHitRate
-    };
-  }
-  /**
-   * Calculates the average of resolution times.
-   *
-   * @param times - Array of resolution times
-   * @param count - Number of valid entries in the array
-   * @returns Average time in milliseconds
-   */
-  calculateAverage(times, count) {
-    if (count === 0) {
-      return 0;
-    }
-    const slice = times.slice(0, count);
-    const sum = slice.reduce((acc, time) => acc + time, 0);
-    return sum / count;
-  }
-  /**
-   * Calculates the cache hit rate as a percentage.
-   *
-   * @param hits - Number of cache hits
-   * @param misses - Number of cache misses
-   * @returns Cache hit rate (0-100)
-   */
-  calculateCacheHitRate(hits, misses) {
-    const totalAccess = hits + misses;
-    if (totalAccess === 0) {
-      return 0;
-    }
-    return hits / totalAccess * 100;
-  }
-};
-__name(_MetricsAggregator, "MetricsAggregator");
-let MetricsAggregator = _MetricsAggregator;
-const _MetricsPersistenceManager = class _MetricsPersistenceManager {
-  /**
-   * Serializes raw metrics into a persistence state.
-   *
-   * @param metrics - Raw metrics data
-   * @returns Serializable persistence state
-   */
-  serialize(metrics) {
-    return {
-      metrics: {
-        containerResolutions: metrics.containerResolutions,
-        resolutionErrors: metrics.resolutionErrors,
-        cacheHits: metrics.cacheHits,
-        cacheMisses: metrics.cacheMisses,
-        portSelections: Object.fromEntries(metrics.portSelections),
-        portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures)
-      },
-      resolutionTimes: Array.from(metrics.resolutionTimes),
-      resolutionTimesIndex: metrics.resolutionTimesIndex,
-      resolutionTimesCount: metrics.resolutionTimesCount
-    };
-  }
-  /**
-   * Deserializes a persistence state into raw metrics.
-   *
-   * @param state - Persisted state (can be null or undefined)
-   * @returns Raw metrics data
-   */
-  deserialize(state) {
-    if (!state) {
-      return this.createEmptyRawMetrics();
-    }
-    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
-    const rawMetrics = {
-      containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
-      resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
-      cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
-      cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
-      portSelections: new Map(
-        Object.entries(metrics?.portSelections ?? {}).map(([key, value2]) => [
-          Number(key),
-          Number.isFinite(Number(value2)) ? Number(value2) : 0
-        ])
-      ),
-      portSelectionFailures: new Map(
-        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value2]) => [
-          Number(key),
-          Number.isFinite(Number(value2)) ? Number(value2) : 0
-        ])
-      ),
-      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
-      resolutionTimesIndex: 0,
-      resolutionTimesCount: 0
-    };
-    if (Array.isArray(resolutionTimes)) {
-      const maxLength2 = Math.min(resolutionTimes.length, rawMetrics.resolutionTimes.length);
-      for (let index = 0; index < maxLength2; index++) {
-        const value2 = Number(resolutionTimes[index]);
-        rawMetrics.resolutionTimes[index] = Number.isFinite(value2) ? value2 : 0;
-      }
-      const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
-      const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
-      rawMetrics.resolutionTimesIndex = Math.min(
-        Math.max(0, safeIndex),
-        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE - 1
-      );
-      rawMetrics.resolutionTimesCount = Math.min(
-        Math.max(0, safeCount),
-        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE
-      );
-    } else {
-      rawMetrics.resolutionTimesIndex = 0;
-      rawMetrics.resolutionTimesCount = 0;
-    }
-    return rawMetrics;
-  }
-  /**
-   * Creates an empty raw metrics structure.
-   *
-   * @returns Empty raw metrics
-   */
-  createEmptyRawMetrics() {
-    return {
-      containerResolutions: 0,
-      resolutionErrors: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      portSelections: /* @__PURE__ */ new Map(),
-      portSelectionFailures: /* @__PURE__ */ new Map(),
-      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
-      resolutionTimesIndex: 0,
-      resolutionTimesCount: 0
-    };
-  }
-};
-__name(_MetricsPersistenceManager, "MetricsPersistenceManager");
-let MetricsPersistenceManager = _MetricsPersistenceManager;
-const _MetricsStateManager = class _MetricsStateManager {
-  constructor() {
-    this.callbacks = /* @__PURE__ */ new Set();
-  }
-  /**
-   * Resets the state manager.
-   * Clears all registered callbacks.
-   */
-  reset() {
-    this.callbacks.clear();
-  }
-  /**
-   * Subscribes to state changes.
-   *
-   * @param callback - Callback to invoke on state changes
-   */
-  onStateChanged(callback) {
-    this.callbacks.add(callback);
-  }
-  /**
-   * Unsubscribes from state changes.
-   *
-   * @param callback - Callback to remove
-   */
-  unsubscribe(callback) {
-    this.callbacks.delete(callback);
-  }
-  /**
-   * Notifies all registered callbacks of a state change.
-   * Internal method used by MetricsCollector.
-   */
-  notifyStateChanged() {
-    for (const callback of this.callbacks) {
-      try {
-        callback();
-      } catch (error) {
-        console.error("Error in metrics state change callback:", error);
-      }
-    }
-  }
-};
-__name(_MetricsStateManager, "MetricsStateManager");
-let MetricsStateManager = _MetricsStateManager;
 function isValidMetricDefinition(value2) {
   if (typeof value2 !== "object" || value2 === null) {
     return false;
@@ -11773,14 +11582,14 @@ function createDefaultMetricDefinitionRegistry() {
 }
 __name(createDefaultMetricDefinitionRegistry, "createDefaultMetricDefinitionRegistry");
 const _MetricsCollector = class _MetricsCollector {
-  constructor(config2, registry, aggregator, persistenceManager, stateManager) {
+  constructor(config2, aggregator, persistenceManager, stateManager, registry) {
     this.config = config2;
     this.metricStates = /* @__PURE__ */ new Map();
     this.registry = registry ?? createDefaultMetricDefinitionRegistry();
     this.initializeMetricStates();
-    this.aggregator = aggregator ?? new MetricsAggregator();
-    this.persistenceManager = persistenceManager ?? new MetricsPersistenceManager();
-    this.stateManager = stateManager ?? new MetricsStateManager();
+    this.aggregator = aggregator;
+    this.persistenceManager = persistenceManager;
+    this.stateManager = stateManager;
   }
   /**
    * Initializes metric states from registry definitions.
@@ -12000,7 +11809,7 @@ _MetricsCollector.dependencies = [runtimeConfigToken];
 let MetricsCollector = _MetricsCollector;
 const _DIMetricsCollector = class _DIMetricsCollector extends MetricsCollector {
   constructor(config2, aggregator, persistenceManager, stateManager, registry) {
-    super(config2, registry, aggregator, persistenceManager, stateManager);
+    super(config2, aggregator, persistenceManager, stateManager, registry);
   }
 };
 __name(_DIMetricsCollector, "DIMetricsCollector");
@@ -12012,8 +11821,8 @@ _DIMetricsCollector.dependencies = [
 ];
 let DIMetricsCollector = _DIMetricsCollector;
 const _PersistentMetricsCollector = class _PersistentMetricsCollector extends MetricsCollector {
-  constructor(config2, metricsStorage, registry, aggregator, persistenceManager, stateManager) {
-    super(config2, registry, aggregator, persistenceManager, stateManager);
+  constructor(config2, metricsStorage, aggregator, persistenceManager, stateManager, registry) {
+    super(config2, aggregator, persistenceManager, stateManager, registry);
     this.metricsStorage = metricsStorage;
     this.suppressPersistence = false;
     this.initialized = false;
@@ -12085,7 +11894,7 @@ _PersistentMetricsCollector.dependencies = [
 let PersistentMetricsCollector = _PersistentMetricsCollector;
 const _DIPersistentMetricsCollector = class _DIPersistentMetricsCollector extends PersistentMetricsCollector {
   constructor(config2, metricsStorage, aggregator, persistenceManager, stateManager, registry) {
-    super(config2, metricsStorage, registry, aggregator, persistenceManager, stateManager);
+    super(config2, metricsStorage, aggregator, persistenceManager, stateManager, registry);
   }
 };
 __name(_DIPersistentMetricsCollector, "DIPersistentMetricsCollector");
@@ -12097,6 +11906,197 @@ _DIPersistentMetricsCollector.dependencies = [
   metricsStateManagerToken
 ];
 let DIPersistentMetricsCollector = _DIPersistentMetricsCollector;
+const _MetricsAggregator = class _MetricsAggregator {
+  /**
+   * Aggregates raw metrics into a snapshot.
+   *
+   * @param metrics - Raw metrics data
+   * @returns Aggregated metrics snapshot
+   */
+  aggregate(metrics) {
+    const avgTime = this.calculateAverage(metrics.resolutionTimes, metrics.resolutionTimesCount);
+    const cacheHitRate = this.calculateCacheHitRate(metrics.cacheHits, metrics.cacheMisses);
+    return {
+      containerResolutions: metrics.containerResolutions,
+      resolutionErrors: metrics.resolutionErrors,
+      avgResolutionTimeMs: avgTime,
+      portSelections: Object.fromEntries(metrics.portSelections),
+      portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures),
+      cacheHitRate
+    };
+  }
+  /**
+   * Calculates the average of resolution times.
+   *
+   * @param times - Array of resolution times
+   * @param count - Number of valid entries in the array
+   * @returns Average time in milliseconds
+   */
+  calculateAverage(times, count) {
+    if (count === 0) {
+      return 0;
+    }
+    const slice = times.slice(0, count);
+    const sum = slice.reduce((acc, time) => acc + time, 0);
+    return sum / count;
+  }
+  /**
+   * Calculates the cache hit rate as a percentage.
+   *
+   * @param hits - Number of cache hits
+   * @param misses - Number of cache misses
+   * @returns Cache hit rate (0-100)
+   */
+  calculateCacheHitRate(hits, misses) {
+    const totalAccess = hits + misses;
+    if (totalAccess === 0) {
+      return 0;
+    }
+    return hits / totalAccess * 100;
+  }
+};
+__name(_MetricsAggregator, "MetricsAggregator");
+let MetricsAggregator = _MetricsAggregator;
+const _MetricsPersistenceManager = class _MetricsPersistenceManager {
+  /**
+   * Serializes raw metrics into a persistence state.
+   *
+   * @param metrics - Raw metrics data
+   * @returns Serializable persistence state
+   */
+  serialize(metrics) {
+    return {
+      metrics: {
+        containerResolutions: metrics.containerResolutions,
+        resolutionErrors: metrics.resolutionErrors,
+        cacheHits: metrics.cacheHits,
+        cacheMisses: metrics.cacheMisses,
+        portSelections: Object.fromEntries(metrics.portSelections),
+        portSelectionFailures: Object.fromEntries(metrics.portSelectionFailures)
+      },
+      resolutionTimes: Array.from(metrics.resolutionTimes),
+      resolutionTimesIndex: metrics.resolutionTimesIndex,
+      resolutionTimesCount: metrics.resolutionTimesCount
+    };
+  }
+  /**
+   * Deserializes a persistence state into raw metrics.
+   *
+   * @param state - Persisted state (can be null or undefined)
+   * @returns Raw metrics data
+   */
+  deserialize(state) {
+    if (!state) {
+      return this.createEmptyRawMetrics();
+    }
+    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
+    const rawMetrics = {
+      containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
+      resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
+      cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
+      cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
+      portSelections: new Map(
+        Object.entries(metrics?.portSelections ?? {}).map(([key, value2]) => [
+          Number(key),
+          Number.isFinite(Number(value2)) ? Number(value2) : 0
+        ])
+      ),
+      portSelectionFailures: new Map(
+        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value2]) => [
+          Number(key),
+          Number.isFinite(Number(value2)) ? Number(value2) : 0
+        ])
+      ),
+      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0
+    };
+    if (Array.isArray(resolutionTimes)) {
+      const maxLength2 = Math.min(resolutionTimes.length, rawMetrics.resolutionTimes.length);
+      for (let index = 0; index < maxLength2; index++) {
+        const value2 = Number(resolutionTimes[index]);
+        rawMetrics.resolutionTimes[index] = Number.isFinite(value2) ? value2 : 0;
+      }
+      const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
+      const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
+      rawMetrics.resolutionTimesIndex = Math.min(
+        Math.max(0, safeIndex),
+        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE - 1
+      );
+      rawMetrics.resolutionTimesCount = Math.min(
+        Math.max(0, safeCount),
+        METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE
+      );
+    } else {
+      rawMetrics.resolutionTimesIndex = 0;
+      rawMetrics.resolutionTimesCount = 0;
+    }
+    return rawMetrics;
+  }
+  /**
+   * Creates an empty raw metrics structure.
+   *
+   * @returns Empty raw metrics
+   */
+  createEmptyRawMetrics() {
+    return {
+      containerResolutions: 0,
+      resolutionErrors: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      portSelections: /* @__PURE__ */ new Map(),
+      portSelectionFailures: /* @__PURE__ */ new Map(),
+      resolutionTimes: new Float64Array(METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE),
+      resolutionTimesIndex: 0,
+      resolutionTimesCount: 0
+    };
+  }
+};
+__name(_MetricsPersistenceManager, "MetricsPersistenceManager");
+let MetricsPersistenceManager = _MetricsPersistenceManager;
+const _MetricsStateManager = class _MetricsStateManager {
+  constructor() {
+    this.callbacks = /* @__PURE__ */ new Set();
+  }
+  /**
+   * Resets the state manager.
+   * Clears all registered callbacks.
+   */
+  reset() {
+    this.callbacks.clear();
+  }
+  /**
+   * Subscribes to state changes.
+   *
+   * @param callback - Callback to invoke on state changes
+   */
+  onStateChanged(callback) {
+    this.callbacks.add(callback);
+  }
+  /**
+   * Unsubscribes from state changes.
+   *
+   * @param callback - Callback to remove
+   */
+  unsubscribe(callback) {
+    this.callbacks.delete(callback);
+  }
+  /**
+   * Notifies all registered callbacks of a state change.
+   * Internal method used by MetricsCollector.
+   */
+  notifyStateChanged() {
+    for (const callback of this.callbacks) {
+      try {
+        callback();
+      } catch (error) {
+        console.error("Error in metrics state change callback:", error);
+      }
+    }
+  }
+};
+__name(_MetricsStateManager, "MetricsStateManager");
+let MetricsStateManager = _MetricsStateManager;
 const _MetricsSampler = class _MetricsSampler {
   constructor(config2) {
     this.config = config2;

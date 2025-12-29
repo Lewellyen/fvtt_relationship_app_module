@@ -4,6 +4,9 @@ import type { MetricsCollector } from "@/infrastructure/observability/metrics-co
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import { MetricsCollector as RealMetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import { MetricsAggregator } from "@/infrastructure/observability/metrics-aggregator";
+import { MetricsPersistenceManager } from "@/infrastructure/observability/metrics-persistence/metrics-persistence-manager";
+import { MetricsStateManager } from "@/infrastructure/observability/metrics-state/metrics-state-manager";
 
 describe("MetricsHealthCheck", () => {
   let metricsCollector: MetricsCollector;
@@ -11,7 +14,16 @@ describe("MetricsHealthCheck", () => {
 
   beforeEach(() => {
     const mockEnv = createMockEnvironmentConfig();
-    metricsCollector = new RealMetricsCollector(new RuntimeConfigService(mockEnv));
+    const runtimeConfig = new RuntimeConfigService(mockEnv);
+    const aggregator = new MetricsAggregator();
+    const persistenceManager = new MetricsPersistenceManager();
+    const stateManager = new MetricsStateManager();
+    metricsCollector = new RealMetricsCollector(
+      runtimeConfig,
+      aggregator,
+      persistenceManager,
+      stateManager
+    );
     check = new MetricsHealthCheck(metricsCollector);
   });
 
