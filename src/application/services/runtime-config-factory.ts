@@ -1,5 +1,9 @@
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import { RuntimeConfigService } from "./RuntimeConfigService";
+import { RuntimeConfigStore } from "./RuntimeConfigStore";
+import { RuntimeConfigEventEmitter } from "./RuntimeConfigEventEmitter";
+import type { IRuntimeConfigStore } from "./RuntimeConfigStore";
+import type { IRuntimeConfigEventEmitter } from "./RuntimeConfigEventEmitter";
 
 /**
  * Factory function for creating RuntimeConfigService instances.
@@ -17,8 +21,17 @@ import { RuntimeConfigService } from "./RuntimeConfigService";
  * ```
  *
  * @param env - The environment configuration to use
+ * @param store - Optional store implementation (defaults to RuntimeConfigStore)
+ * @param emitter - Optional emitter implementation (defaults to RuntimeConfigEventEmitter)
  * @returns A new RuntimeConfigService instance
  */
-export function createRuntimeConfig(env: EnvironmentConfig): RuntimeConfigService {
-  return new RuntimeConfigService(env);
+export function createRuntimeConfig(
+  env: EnvironmentConfig,
+  store?: IRuntimeConfigStore,
+  emitter?: IRuntimeConfigEventEmitter
+): RuntimeConfigService {
+  return new RuntimeConfigService(
+    store ?? new RuntimeConfigStore(env),
+    emitter ?? new RuntimeConfigEventEmitter()
+  );
 }

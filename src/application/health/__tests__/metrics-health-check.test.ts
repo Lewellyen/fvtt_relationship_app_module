@@ -3,7 +3,7 @@ import { MetricsHealthCheck } from "@/application/health/MetricsHealthCheck";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import { MetricsCollector as RealMetricsCollector } from "@/infrastructure/observability/metrics-collector";
-import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import { MetricsAggregator } from "@/infrastructure/observability/metrics-aggregator";
 import { MetricsPersistenceManager } from "@/infrastructure/observability/metrics-persistence/metrics-persistence-manager";
 import { MetricsStateManager } from "@/infrastructure/observability/metrics-state/metrics-state-manager";
@@ -14,7 +14,7 @@ describe("MetricsHealthCheck", () => {
 
   beforeEach(() => {
     const mockEnv = createMockEnvironmentConfig();
-    const runtimeConfig = new RuntimeConfigService(mockEnv);
+    const runtimeConfig = createRuntimeConfig(mockEnv);
     const aggregator = new MetricsAggregator();
     const persistenceManager = new MetricsPersistenceManager();
     const stateManager = new MetricsStateManager();

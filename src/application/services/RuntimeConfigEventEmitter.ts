@@ -3,12 +3,21 @@ import type { RuntimeConfigKey, RuntimeConfigValues } from "@/domain/types/runti
 type RuntimeConfigListener<K extends RuntimeConfigKey> = (value: RuntimeConfigValues[K]) => void;
 
 /**
+ * Interface for runtime configuration event emission.
+ * Allows for dependency injection and testing.
+ */
+export interface IRuntimeConfigEventEmitter {
+  onChange<K extends RuntimeConfigKey>(key: K, listener: RuntimeConfigListener<K>): () => void;
+  notify<K extends RuntimeConfigKey>(key: K, value: RuntimeConfigValues[K]): void;
+}
+
+/**
  * RuntimeConfigEventEmitter
  *
  * Manages event listeners for runtime configuration changes.
  * Single Responsibility: Listener management only.
  */
-export class RuntimeConfigEventEmitter {
+export class RuntimeConfigEventEmitter implements IRuntimeConfigEventEmitter {
   private readonly listeners = new Map<
     RuntimeConfigKey,
     Set<RuntimeConfigListener<RuntimeConfigKey>>

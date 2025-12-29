@@ -320,6 +320,36 @@ const _BootstrapErrorHandler = class _BootstrapErrorHandler {
 };
 __name(_BootstrapErrorHandler, "BootstrapErrorHandler");
 let BootstrapErrorHandler = _BootstrapErrorHandler;
+const _RuntimeConfigService = class _RuntimeConfigService {
+  constructor(store2, emitter) {
+    this.store = store2;
+    this.emitter = emitter;
+  }
+  /**
+   * Returns the current value for the given configuration key.
+   */
+  get(key) {
+    return this.store.get(key);
+  }
+  /**
+   * Updates the configuration value based on Foundry settings and notifies listeners
+   * only if the value actually changed.
+   */
+  setFromFoundry(key, value2) {
+    const changed = this.store.set(key, value2);
+    if (changed) {
+      this.emitter.notify(key, value2);
+    }
+  }
+  /**
+   * Registers a listener for the given key. Returns an unsubscribe function.
+   */
+  onChange(key, listener) {
+    return this.emitter.onChange(key, listener);
+  }
+};
+__name(_RuntimeConfigService, "RuntimeConfigService");
+let RuntimeConfigService = _RuntimeConfigService;
 const _RuntimeConfigStore = class _RuntimeConfigStore {
   constructor(env) {
     this.values = {
@@ -412,38 +442,11 @@ const _RuntimeConfigEventEmitter = class _RuntimeConfigEventEmitter {
 };
 __name(_RuntimeConfigEventEmitter, "RuntimeConfigEventEmitter");
 let RuntimeConfigEventEmitter = _RuntimeConfigEventEmitter;
-const _RuntimeConfigService = class _RuntimeConfigService {
-  constructor(env) {
-    this.store = new RuntimeConfigStore(env);
-    this.emitter = new RuntimeConfigEventEmitter();
-  }
-  /**
-   * Returns the current value for the given configuration key.
-   */
-  get(key) {
-    return this.store.get(key);
-  }
-  /**
-   * Updates the configuration value based on Foundry settings and notifies listeners
-   * only if the value actually changed.
-   */
-  setFromFoundry(key, value2) {
-    const changed = this.store.set(key, value2);
-    if (changed) {
-      this.emitter.notify(key, value2);
-    }
-  }
-  /**
-   * Registers a listener for the given key. Returns an unsubscribe function.
-   */
-  onChange(key, listener) {
-    return this.emitter.onChange(key, listener);
-  }
-};
-__name(_RuntimeConfigService, "RuntimeConfigService");
-let RuntimeConfigService = _RuntimeConfigService;
-function createRuntimeConfig(env) {
-  return new RuntimeConfigService(env);
+function createRuntimeConfig(env, store2, emitter) {
+  return new RuntimeConfigService(
+    store2 ?? new RuntimeConfigStore(env),
+    emitter ?? new RuntimeConfigEventEmitter()
+  );
 }
 __name(createRuntimeConfig, "createRuntimeConfig");
 function castCachedServiceInstance(instance2) {
@@ -2483,7 +2486,7 @@ const platformUIAvailabilityPortToken = createInjectionToken(
 );
 const _RuntimeConfigAdapter = class _RuntimeConfigAdapter {
   constructor(env) {
-    this.service = new RuntimeConfigService(env);
+    this.service = createRuntimeConfig(env);
   }
   get(key) {
     return this.service.get(key);

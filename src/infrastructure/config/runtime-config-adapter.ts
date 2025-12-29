@@ -1,6 +1,7 @@
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { RuntimeConfigKey, RuntimeConfigValues } from "@/domain/types/runtime-config";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 
 /**
@@ -10,7 +11,7 @@ export class RuntimeConfigAdapter implements PlatformRuntimeConfigPort {
   private readonly service: RuntimeConfigService;
 
   constructor(env: EnvironmentConfig) {
-    this.service = new RuntimeConfigService(env);
+    this.service = createRuntimeConfig(env);
   }
 
   get<K extends RuntimeConfigKey>(key: K): RuntimeConfigValues[K] {

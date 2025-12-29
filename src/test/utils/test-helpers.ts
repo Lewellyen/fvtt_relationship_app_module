@@ -13,6 +13,7 @@ import type { PerformanceTracker } from "@/infrastructure/observability/performa
 import { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
 import { LogLevel } from "@/domain/types/log-level";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import { ServiceContainer as ServiceContainerImpl } from "@/infrastructure/di/container";
@@ -276,7 +277,7 @@ export function createMockEnvironmentConfig(
 export function createMockRuntimeConfig(
   overrides: Partial<EnvironmentConfig> = {}
 ): RuntimeConfigService {
-  return new RuntimeConfigService(createMockEnvironmentConfig(overrides));
+  return createRuntimeConfig(createMockEnvironmentConfig(overrides));
 }
 
 /**

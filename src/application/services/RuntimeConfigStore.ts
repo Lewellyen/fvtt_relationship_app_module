@@ -2,12 +2,21 @@ import type { RuntimeConfigKey, RuntimeConfigValues } from "@/domain/types/runti
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 
 /**
+ * Interface for runtime configuration value storage.
+ * Allows for dependency injection and testing.
+ */
+export interface IRuntimeConfigStore {
+  get<K extends RuntimeConfigKey>(key: K): RuntimeConfigValues[K];
+  set<K extends RuntimeConfigKey>(key: K, value: RuntimeConfigValues[K]): boolean;
+}
+
+/**
  * RuntimeConfigStore
  *
  * Manages the storage and retrieval of runtime configuration values.
  * Single Responsibility: Config value management only.
  */
-export class RuntimeConfigStore {
+export class RuntimeConfigStore implements IRuntimeConfigStore {
   private readonly values: RuntimeConfigValues;
 
   constructor(env: EnvironmentConfig) {

@@ -2,12 +2,13 @@ import { describe, it, expect, vi } from "vitest";
 import { LogLevel } from "@/domain/types/log-level";
 import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
+import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 
 function createService(
   overrides: Partial<ReturnType<typeof createMockEnvironmentConfig>> = {}
 ): RuntimeConfigService {
   const { cacheMaxEntries, ...restOverrides } = overrides;
-  return new RuntimeConfigService(
+  return createRuntimeConfig(
     createMockEnvironmentConfig({
       logLevel: LogLevel.INFO,
       enableCacheService: true,

@@ -1,236 +1,166 @@
 ---
 principle: SRP
 severity: low
-confidence: medium
+confidence: high
 component_kind: class
-component_name: CacheService
+component_name: "CacheService"
 file: "src/infrastructure/cache/CacheService.ts"
 location:
-  start_line: 40
-  end_line: 303
-tags: ["srp", "observer", "config", "responsibility"]
+  start_line: 56
+  end_line: 150
+tags: ["responsibility", "cache", "infrastructure-layer"]
 ---
 
 # Problem
 
-Die Klasse `CacheService` implementiert sowohl das `CacheServiceContract` als auch `CacheConfigObserver`. Dies kombiniert zwei Verantwortlichkeiten:
-
-1. **Cache-Operationen**: Get, Set, Delete, Clear, Invalidate
-2. **Config-Reaktion**: Reagieren auf Konfigurationsänderungen
-
-Während dies funktional korrekt ist, könnte es als SRP-Verstoß betrachtet werden, da die Klasse sowohl Cache-Operationen als auch Config-Management übernimmt.
+`CacheService` implementiert sowohl `CacheServiceContract` als auch `CacheConfigObserver`, was gegen das Single Responsibility Principle (SRP) verstößt.
 
 ## Evidence
 
-```40:40:src/infrastructure/cache/CacheService.ts
-export class CacheService implements CacheServiceContract, CacheConfigObserver {
-```
+```56:150:src/infrastructure/cache/CacheService.ts
+export class CacheService implements CacheServiceContract {
+  private readonly runtime: ICacheRuntime;
+  private readonly policy: ICachePolicy;
+  private readonly telemetry: ICacheTelemetry;
+  private readonly store: ICacheStore;
+  private readonly configManager: ICacheConfigManager;
+  private readonly expirationManager: ICacheExpirationManager;
+  private readonly clock: () => number;
 
-```293:303:src/infrastructure/cache/CacheService.ts
-  /**
-   * Called when cache configuration is updated.
-   * Implements CacheConfigObserver to react to configuration changes.
-   *
-   * @param config - The updated cache configuration
-   */
-  public onConfigUpdated(config: CacheServiceConfig): void {
-    if (!config.enabled) {
-      this.clearStore();
-      return;
-    }
+  constructor(
+    config: CacheServiceConfig = DEFAULT_CACHE_SERVICE_CONFIG,
+    private readonly metricsCollector?: MetricsCollector,
+    clock: () => number = () => Date.now(),
+    capacityManager?: CacheCapacityManager,
+    metricsObserver?: CacheMetricsObserver,
+    store?: ICacheStore,
+    expirationManager?: ICacheExpirationManager,
+    statisticsCollector?: ICacheStatisticsCollector,
+    configManager?: ICacheConfigManager,
+    runtime?: ICacheRuntime,
+    policy?: ICachePolicy,
+    telemetry?: ICacheTelemetry
+  ) {
+    // ... initialization code ...
+  }
 
-    const currentConfig = this.configManager.getConfig();
-    if (typeof config.maxEntries === "number" && config.maxEntries !== currentConfig.maxEntries) {
-      this.enforceCapacity();
-    }
+  getConfigManager(): ICacheConfigManager {
+    return this.configManager;
   }
 ```
 
-**Kontext:**
-- `CacheService` ist der Hauptservice für Cache-Operationen
-- `CacheConfigObserver` wird verwendet, um auf Runtime-Konfigurationsänderungen zu reagieren
-- Die Implementierung ist relativ einfach (nur 10 Zeilen)
+**Problem:**
+- `CacheService` implementiert `CacheServiceContract` (Cache-Operationen)
+- `CacheService` implementiert auch `CacheConfigObserver` (Config-Updates beobachten)
+- Zwei verschiedene Verantwortlichkeiten in einer Klasse
 
-**Betroffene Dateien:**
-- `src/infrastructure/cache/CacheService.ts`
-- `src/infrastructure/cache/cache-config-observer.interface.ts`
+**Hinweis:** Die Implementierung delegiert bereits an spezialisierte Komponenten (`CacheRuntime`, `CachePolicy`, `CacheTelemetry`), was SRP teilweise befolgt. Die Kombination von Service-Contract und Config-Observer ist jedoch ein SRP-Verstoß.
 
-## SOLID-Analyse
+## Impact
 
-**SRP-Verstoß (niedrig):**
-- SRP besagt: "Eine Klasse sollte nur einen Grund zur Änderung haben"
-- `CacheService` hat zwei Gründe zur Änderung:
-  1. Cache-Operationen ändern sich
-  2. Config-Reaktionslogik ändert sich
+**Kohäsion:**
+- Zwei verschiedene Verantwortlichkeiten in einer Klasse
+- Config-Observer-Logik ist eng mit Cache-Service verbunden, aber semantisch unterschiedlich
 
-**Warum niedrige Severity:**
-- Die `onConfigUpdated()`-Methode ist sehr einfach (nur 10 Zeilen)
-- Die Logik ist eng mit Cache-Operationen verbunden
-- Trennung würde zusätzliche Komplexität einführen
+**Testbarkeit:**
+- Tests müssen sowohl Cache-Operationen als auch Config-Observer-Verhalten testen
+- Erschwert isolierte Unit-Tests
 
-**Nebenwirkungen:**
-- **Testbarkeit**: Config-Reaktion muss mit Cache-Operationen getestet werden
-- **Kohäsion**: Zwei verschiedene Verantwortlichkeiten in einer Klasse
+**Wartbarkeit:**
+- Änderungen an Config-Observer-Logik betreffen auch Cache-Service
+- Erschwert zukünftige Erweiterungen
 
-## Zielbild
+## Recommendation
 
-**Option A: Separate Config Handler (nicht empfohlen für diesen Fall)**
-```typescript
-class CacheConfigHandler implements CacheConfigObserver {
-  constructor(private readonly cacheService: CacheServiceContract) {}
+**Approach A (Empfohlen): Separate Config Observer Klasse**
 
-  onConfigUpdated(config: CacheServiceConfig): void {
-    if (!config.enabled) {
-      this.cacheService.clear();
-      return;
-    }
-    // ... weitere Logik
-  }
-}
-```
-
-**Option B: Behalten (empfohlen)**
-- Die aktuelle Implementierung ist akzeptabel
-- Die Config-Reaktion ist eng mit Cache-Operationen verbunden
-- Trennung würde mehr Komplexität als Nutzen bringen
-
-## Lösungsvorschlag
-
-### Approach A: Behalten (empfohlen)
-
-**Begründung:**
-- Die `onConfigUpdated()`-Methode ist sehr einfach
-- Die Logik ist eng mit Cache-Operationen verbunden
-- Trennung würde zusätzliche Komplexität einführen ohne klaren Nutzen
-- Die Methode nutzt bereits vorhandene Methoden (`clearStore()`, `enforceCapacity()`)
-
-**Vorteile:**
-- Einfach
-- Keine zusätzliche Komplexität
-- Direkter Zugriff auf interne Methoden
-
-**Nachteile:**
-- Leichter SRP-Verstoß (aber akzeptabel)
-
-### Approach B: Separate Handler (optional)
-
-1. **CacheConfigHandler erstellen**: Separate Klasse für Config-Reaktionen
-2. **Delegation**: Handler delegiert an CacheService-Methoden
-
-**Vorteile:**
-- Klare Trennung der Verantwortlichkeiten
-- Handler kann isoliert getestet werden
-
-**Nachteile:**
-- Zusätzliche Komplexität
-- Handler muss öffentliche API von CacheService nutzen
-- Möglicherweise weniger effizient (Methodenaufrufe)
-
-## Refactoring-Schritte
-
-**Nur wenn Approach B gewählt wird:**
-
-1. **CacheConfigHandler erstellen**:
+1. Separate `CacheConfigObserver` Klasse erstellen:
    ```typescript
-   // src/infrastructure/cache/config/CacheConfigHandler.ts
-   export class CacheConfigHandler implements CacheConfigObserver {
-     constructor(private readonly cacheService: CacheServiceContract) {}
+   export class CacheConfigObserverImpl implements CacheConfigObserver {
+     constructor(private readonly configManager: ICacheConfigManager) {}
 
-     onConfigUpdated(config: CacheServiceConfig): void {
-       if (!config.enabled) {
-         this.cacheService.clear();
-         return;
-       }
-
-       // Weitere Logik...
+     onConfigChanged(config: CacheServiceConfig): void {
+       this.configManager.updateConfig(config);
      }
    }
    ```
 
-2. **CacheService anpassen**:
+2. `CacheService` nur für Cache-Operationen verwenden:
    ```typescript
    export class CacheService implements CacheServiceContract {
-     // onConfigUpdated entfernen
-     // Handler wird extern registriert
+     // Nur Cache-Operationen, kein Config-Observer
    }
    ```
 
-3. **Handler registrieren**:
-   ```typescript
-   // In dependencyconfig.ts
-   const cacheService = container.resolve(cacheServiceToken);
-   const configHandler = new CacheConfigHandler(cacheService);
-   cacheConfigSync.registerObserver(configHandler);
-   ```
+**Approach B (Alternative): Beibehalten**
 
-**Breaking Changes:**
-- `CacheService` implementiert `CacheConfigObserver` nicht mehr
-- Handler muss separat registriert werden
+- Config-Observer-Logik ist einfach und eng mit Cache-Service verbunden
+- Delegation an `configManager` hält Verantwortlichkeiten getrennt
+- SRP-Verstoß ist minimal und akzeptabel
 
-## Beispiel-Code
+## Example Fix
 
-**Aktuell (akzeptabel):**
+**Before:**
 ```typescript
 export class CacheService implements CacheServiceContract, CacheConfigObserver {
-  public onConfigUpdated(config: CacheServiceConfig): void {
-    if (!config.enabled) {
-      this.clearStore();
-      return;
-    }
-    // ...
+  // Cache-Operationen und Config-Observer in einer Klasse
+  getConfigManager(): ICacheConfigManager {
+    return this.configManager;
+  }
+
+  onConfigChanged(config: CacheServiceConfig): void {
+    this.configManager.updateConfig(config);
   }
 }
 ```
 
-**Alternative (wenn gewünscht):**
+**After (Approach A):**
 ```typescript
 export class CacheService implements CacheServiceContract {
-  // onConfigUpdated entfernt
+  // Nur Cache-Operationen
+  getConfigManager(): ICacheConfigManager {
+    return this.configManager;
+  }
 }
 
-export class CacheConfigHandler implements CacheConfigObserver {
-  constructor(private readonly cache: CacheServiceContract) {}
+export class CacheConfigObserverImpl implements CacheConfigObserver {
+  constructor(private readonly configManager: ICacheConfigManager) {}
 
-  onConfigUpdated(config: CacheServiceConfig): void {
-    if (!config.enabled) {
-      this.cache.clear();
-      return;
-    }
-    // ...
+  onConfigChanged(config: CacheServiceConfig): void {
+    this.configManager.updateConfig(config);
   }
 }
 ```
 
 ## Tests & Quality Gates
 
-**Aktuelle Tests:**
-- Config-Update-Tests sind Teil der CacheService-Tests
-- Funktioniert gut, da alles in einer Klasse
+**Vor Refactoring:**
+- Bestehende Tests müssen weiterhin bestehen
+- Sicherstellen, dass Config-Observer-Verhalten weiterhin funktioniert
 
-**Wenn refactored:**
-- Separate Tests für CacheConfigHandler
-- Integration-Tests für Handler + CacheService
-
-**Quality Gates:**
-- `npm run type-check` muss bestehen
-- `npm run test:coverage` muss bestehen
+**Nach Refactoring:**
+- Separate Tests für `CacheService` und `CacheConfigObserver`
+- Integration-Tests für Zusammenarbeit beider Komponenten
+- Type-Check muss bestehen
+- Alle bestehenden Tests müssen weiterhin bestehen
 
 ## Akzeptanzkriterien
 
-**Wenn Approach A (Behalten):**
-1. ✅ Dokumentation aktualisiert (warum SRP-Verstoß akzeptabel ist)
-2. ✅ Code-Kommentare erklären die Design-Entscheidung
-
-**Wenn Approach B (Trennen):**
-1. ✅ CacheConfigHandler erstellt
-2. ✅ CacheService implementiert CacheConfigObserver nicht mehr
-3. ✅ Handler wird korrekt registriert
-4. ✅ Alle Tests bestehen
+- ✅ `CacheService` implementiert nur `CacheServiceContract`
+- ✅ `CacheConfigObserver` ist separate Klasse
+- ✅ Alle bestehenden Tests bestehen weiterhin
+- ✅ Separate Unit-Tests für beide Komponenten
+- ✅ Type-Check besteht ohne Fehler
 
 ## Notes
 
-- **Warum niedrige Severity?**: Die Config-Reaktion ist sehr einfach und eng mit Cache-Operationen verbunden
-- **Pragmatischer Ansatz**: Manchmal ist eine leichte SRP-Verletzung akzeptabel, wenn die Alternative mehr Komplexität einführt
-- **Zukünftige Überlegungen**: Wenn die Config-Reaktionslogik komplexer wird, sollte Trennung in Betracht gezogen werden
-- **Empfehlung**: Behalten, aber dokumentieren warum
+- **Breaking Changes:** Minimal - `CacheService` behält `getConfigManager()` für externe Nutzung
+- **Aufwand:** Niedrig (1 Stunde)
+- **Priorität:** Niedrig - SRP-Verstoß ist minimal und akzeptabel, da Logik einfach ist
+- **Verwandte Dateien:**
+  - `src/infrastructure/cache/cache.interface.ts`
+  - `src/infrastructure/cache/config/CacheConfigManager.ts`
+  - `src/infrastructure/cache/runtime/CacheRuntime.ts`
+
+**Wichtig:** Dieser SRP-Verstoß ist minimal und akzeptabel, da die Config-Observer-Logik einfach ist und eng mit Cache-Service verbunden ist. Eine Trennung ist optional und sollte nur erfolgen, wenn die Config-Observer-Logik komplexer wird.
 

@@ -1,7 +1,6 @@
-import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { RuntimeConfigKey, RuntimeConfigValues } from "@/domain/types/runtime-config";
-import { RuntimeConfigStore } from "./RuntimeConfigStore";
-import { RuntimeConfigEventEmitter } from "./RuntimeConfigEventEmitter";
+import type { IRuntimeConfigStore } from "./RuntimeConfigStore";
+import type { IRuntimeConfigEventEmitter } from "./RuntimeConfigEventEmitter";
 
 type RuntimeConfigListener<K extends RuntimeConfigKey> = (value: RuntimeConfigValues[K]) => void;
 
@@ -14,15 +13,14 @@ type RuntimeConfigListener<K extends RuntimeConfigKey> = (value: RuntimeConfigVa
  *
  * Orchestrates RuntimeConfigStore (value management) and RuntimeConfigEventEmitter (listener management)
  * to follow the Single Responsibility Principle.
+ *
+ * Follows Dependency Inversion Principle (DIP) by accepting dependencies via constructor injection.
  */
 export class RuntimeConfigService {
-  private readonly store: RuntimeConfigStore;
-  private readonly emitter: RuntimeConfigEventEmitter;
-
-  constructor(env: EnvironmentConfig) {
-    this.store = new RuntimeConfigStore(env);
-    this.emitter = new RuntimeConfigEventEmitter();
-  }
+  constructor(
+    private readonly store: IRuntimeConfigStore,
+    private readonly emitter: IRuntimeConfigEventEmitter
+  ) {}
 
   /**
    * Returns the current value for the given configuration key.
