@@ -3,6 +3,7 @@ import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-jo
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
+import type { BatchUpdateContextService } from "@/application/services/BatchUpdateContextService";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
 import {
@@ -10,6 +11,7 @@ import {
   platformJournalDirectoryUiPortToken,
   notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
+import { batchUpdateContextServiceToken } from "@/application/tokens/application.tokens";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 
@@ -18,12 +20,16 @@ import { MODULE_METADATA } from "@/application/constants/app-constants";
  *
  * Fully platform-agnostic through PlatformJournalEventPort and PlatformUIPort.
  *
+ * Uses BatchUpdateContextService to skip re-renders during batch updates,
+ * optimizing performance when multiple journals are updated at once.
+ *
  * @example
  * ```typescript
  * const useCase = new TriggerJournalDirectoryReRenderUseCase(
  *   journalEventPort,
  *   platformUI,
- *   notifications
+ *   notifications,
+ *   batchContext
  * );
  *
  * useCase.register();  // Start listening
@@ -36,7 +42,8 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
     private readonly journalDirectoryUI: PlatformJournalDirectoryUiPort,
-    private readonly notifications: NotificationPublisherPort
+    private readonly notifications: NotificationPublisherPort,
+    private readonly batchContext: BatchUpdateContextService
   ) {}
 
   /**
@@ -51,6 +58,17 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
 
       const moduleFlags = event.changes.flags?.[moduleId];
       if (moduleFlags && typeof moduleFlags === "object" && flagKey in moduleFlags) {
+        // Skip re-render if this journal is part of a batch update
+        // The batch operation will trigger a single re-render at the end
+        if (this.batchContext.isInBatch(event.journalId)) {
+          this.notifications.debug(
+            "Skipping journal directory re-render during batch update",
+            { journalId: event.journalId },
+            { channels: ["ConsoleChannel"] }
+          );
+          return;
+        }
+
         this.triggerReRender(event.journalId);
       }
     });
@@ -106,13 +124,15 @@ export class DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDire
     platformJournalEventPortToken,
     platformJournalDirectoryUiPortToken,
     notificationPublisherPortToken,
+    batchUpdateContextServiceToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
     journalDirectoryUI: PlatformJournalDirectoryUiPort,
-    notifications: NotificationPublisherPort
+    notifications: NotificationPublisherPort,
+    batchContext: BatchUpdateContextService
   ) {
-    super(journalEvents, journalDirectoryUI, notifications);
+    super(journalEvents, journalDirectoryUI, notifications, batchContext);
   }
 }

@@ -12727,6 +12727,9 @@ const settingDefinitionRegistryToken = createInjectionToken(
 const runtimeConfigBindingRegistryToken = createInjectionToken(
   "RuntimeConfigBindingRegistry"
 );
+const batchUpdateContextServiceToken = createInjectionToken(
+  "BatchUpdateContextService"
+);
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 const foundryGameToken = createInjectionToken("FoundryGame");
 const foundryHooksToken = createInjectionToken("FoundryHooks");
@@ -18342,10 +18345,11 @@ const DOMAIN_EVENTS = {
 Object.freeze(DOMAIN_FLAGS);
 Object.freeze(DOMAIN_EVENTS);
 const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryReRenderUseCase {
-  constructor(journalEvents, journalDirectoryUI, notifications) {
+  constructor(journalEvents, journalDirectoryUI, notifications, batchContext) {
     this.journalEvents = journalEvents;
     this.journalDirectoryUI = journalDirectoryUI;
     this.notifications = notifications;
+    this.batchContext = batchContext;
   }
   /**
    * Register event listener for journal update events.
@@ -18356,6 +18360,14 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
       const flagKey = DOMAIN_FLAGS.HIDDEN;
       const moduleFlags = event.changes.flags?.[moduleId];
       if (moduleFlags && typeof moduleFlags === "object" && flagKey in moduleFlags) {
+        if (this.batchContext.isInBatch(event.journalId)) {
+          this.notifications.debug(
+            "Skipping journal directory re-render during batch update",
+            { journalId: event.journalId },
+            { channels: ["ConsoleChannel"] }
+          );
+          return;
+        }
         this.triggerReRender(event.journalId);
       }
     });
@@ -18400,15 +18412,16 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
 __name(_TriggerJournalDirectoryReRenderUseCase, "TriggerJournalDirectoryReRenderUseCase");
 let TriggerJournalDirectoryReRenderUseCase = _TriggerJournalDirectoryReRenderUseCase;
 const _DITriggerJournalDirectoryReRenderUseCase = class _DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDirectoryReRenderUseCase {
-  constructor(journalEvents, journalDirectoryUI, notifications) {
-    super(journalEvents, journalDirectoryUI, notifications);
+  constructor(journalEvents, journalDirectoryUI, notifications, batchContext) {
+    super(journalEvents, journalDirectoryUI, notifications, batchContext);
   }
 };
 __name(_DITriggerJournalDirectoryReRenderUseCase, "DITriggerJournalDirectoryReRenderUseCase");
 _DITriggerJournalDirectoryReRenderUseCase.dependencies = [
   platformJournalEventPortToken,
   platformJournalDirectoryUiPortToken,
-  notificationPublisherPortToken
+  notificationPublisherPortToken,
+  batchUpdateContextServiceToken
 ];
 let DITriggerJournalDirectoryReRenderUseCase = _DITriggerJournalDirectoryReRenderUseCase;
 const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
@@ -18464,12 +18477,13 @@ _DIRegisterContextMenuUseCase.dependencies = [
 ];
 let DIRegisterContextMenuUseCase = _DIRegisterContextMenuUseCase;
 const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
-  constructor(journalCollection, journalRepository, journalDirectoryUI, notifications, config2) {
+  constructor(journalCollection, journalRepository, journalDirectoryUI, notifications, config2, batchContext) {
     this.journalCollection = journalCollection;
     this.journalRepository = journalRepository;
     this.journalDirectoryUI = journalDirectoryUI;
     this.notifications = notifications;
     this.config = config2;
+    this.batchContext = batchContext;
   }
   /**
    * Execute the use-case: Show all hidden journals.
@@ -18482,8 +18496,7 @@ const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
       return err(new Error(`Failed to get all journals: ${allJournalsResult.error.message}`));
     }
     const allJournals = allJournalsResult.value;
-    let changedCount = 0;
-    const errors = [];
+    const journalsToUpdate = [];
     for (const journal of allJournals) {
       try {
         const flagResult = this.journalRepository.getFlag(
@@ -18492,10 +18505,6 @@ const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
           this.config.hiddenFlagKey
         );
         if (!flagResult.ok) {
-          errors.push({
-            journalId: journal.id,
-            error: `Failed to read flag: ${flagResult.error.message}`
-          });
           this.notifications.warn(
             `Failed to read hidden flag for journal "${journal.name ?? journal.id}"`,
             {
@@ -18509,38 +18518,12 @@ const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
         }
         const currentFlag = flagResult.value;
         if (currentFlag !== false) {
-          const setFlagResult = await this.journalRepository.setFlag(
-            journal.id,
-            this.config.moduleNamespace,
-            this.config.hiddenFlagKey,
-            false
-          );
-          if (!setFlagResult.ok) {
-            errors.push({
-              journalId: journal.id,
-              error: `Failed to set flag: ${setFlagResult.error.message}`
-            });
-            this.notifications.warn(
-              `Failed to set hidden flag for journal "${journal.name ?? journal.id}"`,
-              {
-                errorCode: setFlagResult.error.code,
-                errorMessage: setFlagResult.error.message,
-                journalId: journal.id
-              },
-              { channels: ["ConsoleChannel"] }
-            );
-            continue;
-          }
-          changedCount++;
+          journalsToUpdate.push({ journal, journalId: journal.id });
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        errors.push({
-          journalId: journal.id,
-          error: errorMessage
-        });
         this.notifications.warn(
-          `Unexpected error processing journal "${journal.name ?? journal.id}"`,
+          `Unexpected error checking journal "${journal.name ?? journal.id}"`,
           {
             error: errorMessage,
             journalId: journal.id
@@ -18548,6 +18531,56 @@ const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
           { channels: ["ConsoleChannel"] }
         );
       }
+    }
+    const journalIdsToUpdate = journalsToUpdate.map(({ journalId }) => journalId);
+    if (journalIdsToUpdate.length > 0) {
+      this.batchContext.addToBatch(...journalIdsToUpdate);
+    }
+    let changedCount = 0;
+    const errors = [];
+    for (const { journal, journalId } of journalsToUpdate) {
+      try {
+        const setFlagResult = await this.journalRepository.setFlag(
+          journalId,
+          this.config.moduleNamespace,
+          this.config.hiddenFlagKey,
+          false
+        );
+        if (!setFlagResult.ok) {
+          errors.push({
+            journalId,
+            error: `Failed to set flag: ${setFlagResult.error.message}`
+          });
+          this.notifications.warn(
+            `Failed to set hidden flag for journal "${journal.name ?? journalId}"`,
+            {
+              errorCode: setFlagResult.error.code,
+              errorMessage: setFlagResult.error.message,
+              journalId
+            },
+            { channels: ["ConsoleChannel"] }
+          );
+          continue;
+        }
+        changedCount++;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        errors.push({
+          journalId,
+          error: errorMessage
+        });
+        this.notifications.warn(
+          `Unexpected error processing journal "${journal.name ?? journalId}"`,
+          {
+            error: errorMessage,
+            journalId
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+      }
+    }
+    if (journalIdsToUpdate.length > 0) {
+      this.batchContext.removeFromBatch(...journalIdsToUpdate);
     }
     if (changedCount > 0) {
       this.notifications.info(
@@ -18587,8 +18620,15 @@ const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
 __name(_ShowAllHiddenJournalsUseCase, "ShowAllHiddenJournalsUseCase");
 let ShowAllHiddenJournalsUseCase = _ShowAllHiddenJournalsUseCase;
 const _DIShowAllHiddenJournalsUseCase = class _DIShowAllHiddenJournalsUseCase extends ShowAllHiddenJournalsUseCase {
-  constructor(journalCollection, journalRepository, journalDirectoryUI, notifications, config2) {
-    super(journalCollection, journalRepository, journalDirectoryUI, notifications, config2);
+  constructor(journalCollection, journalRepository, journalDirectoryUI, notifications, config2, batchContext) {
+    super(
+      journalCollection,
+      journalRepository,
+      journalDirectoryUI,
+      notifications,
+      config2,
+      batchContext
+    );
   }
 };
 __name(_DIShowAllHiddenJournalsUseCase, "DIShowAllHiddenJournalsUseCase");
@@ -18597,7 +18637,8 @@ _DIShowAllHiddenJournalsUseCase.dependencies = [
   platformJournalRepositoryToken,
   platformJournalDirectoryUiPortToken,
   notificationPublisherPortToken,
-  journalVisibilityConfigToken
+  journalVisibilityConfigToken,
+  batchUpdateContextServiceToken
 ];
 let DIShowAllHiddenJournalsUseCase = _DIShowAllHiddenJournalsUseCase;
 const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
@@ -18756,6 +18797,66 @@ _DIModuleEventRegistrar.dependencies = [
   notificationPublisherPortToken
 ];
 let DIModuleEventRegistrar = _DIModuleEventRegistrar;
+const _BatchUpdateContextService = class _BatchUpdateContextService {
+  constructor() {
+    this.batchIds = /* @__PURE__ */ new Set();
+  }
+  /**
+   * Adds one or more journal IDs to the batch update context.
+   *
+   * @param journalIds - Journal IDs to add to the batch
+   */
+  addToBatch(...journalIds) {
+    for (const id of journalIds) {
+      this.batchIds.add(id);
+    }
+  }
+  /**
+   * Removes one or more journal IDs from the batch update context.
+   *
+   * @param journalIds - Journal IDs to remove from the batch
+   */
+  removeFromBatch(...journalIds) {
+    for (const id of journalIds) {
+      this.batchIds.delete(id);
+    }
+  }
+  /**
+   * Removes all journal IDs from the batch update context.
+   *
+   * Useful for cleanup in error scenarios or when batch state needs to be reset.
+   */
+  clearBatch() {
+    this.batchIds.clear();
+  }
+  /**
+   * Checks if a journal ID is currently part of a batch update.
+   *
+   * @param journalId - The journal ID to check
+   * @returns `true` if the journal ID is in the batch, `false` otherwise
+   */
+  isInBatch(journalId) {
+    return this.batchIds.has(journalId);
+  }
+  /**
+   * Checks if the batch update context is empty.
+   *
+   * @returns `true` if no journal IDs are in the batch, `false` otherwise
+   */
+  isEmpty() {
+    return this.batchIds.size === 0;
+  }
+};
+__name(_BatchUpdateContextService, "BatchUpdateContextService");
+let BatchUpdateContextService = _BatchUpdateContextService;
+const _DIBatchUpdateContextService = class _DIBatchUpdateContextService extends BatchUpdateContextService {
+  constructor() {
+    super();
+  }
+};
+__name(_DIBatchUpdateContextService, "DIBatchUpdateContextService");
+_DIBatchUpdateContextService.dependencies = [];
+let DIBatchUpdateContextService = _DIBatchUpdateContextService;
 function resolveMultipleServices(container, tokens) {
   const results = [];
   for (const { token, name } of tokens) {
@@ -18840,6 +18941,16 @@ function registerEventPorts(container) {
   if (isErr(contextMenuUseCaseResult)) {
     return err(
       `Failed to register RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
+    );
+  }
+  const batchUpdateContextServiceResult = container.registerClass(
+    batchUpdateContextServiceToken,
+    DIBatchUpdateContextService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(batchUpdateContextServiceResult)) {
+    return err(
+      `Failed to register BatchUpdateContextService: ${batchUpdateContextServiceResult.error.message}`
     );
   }
   const showAllHiddenJournalsUseCaseResult = container.registerClass(

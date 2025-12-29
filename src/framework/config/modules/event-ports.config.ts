@@ -21,8 +21,10 @@ import { DIRegisterContextMenuUseCase } from "@/application/use-cases/register-c
 import { DIShowAllHiddenJournalsUseCase } from "@/application/use-cases/show-all-hidden-journals.use-case";
 import { DIHideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
+import { DIBatchUpdateContextService } from "@/application/services/BatchUpdateContextService";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { batchUpdateContextServiceToken } from "@/application/tokens/application.tokens";
 
 /**
  * Helper function to resolve multiple services and extract their values.
@@ -61,6 +63,7 @@ function resolveMultipleServices<T>(
  * - HideJournalContextMenuHandler (singleton) - Handler for "Journal ausblenden" context menu item
  * - RegisterContextMenuUseCase (singleton) - Context menu callback registration (NOT an event registrar)
  * - ShowAllHiddenJournalsUseCase (singleton) - Use-case for showing all hidden journals
+ * - BatchUpdateContextService (singleton) - Service for tracking journal IDs during batch updates
  * - ModuleEventRegistrar (singleton) - Manages all event listeners
  *
  * DESIGN: Event ports are platform-agnostic abstractions over event systems.
@@ -160,6 +163,18 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
   if (isErr(contextMenuUseCaseResult)) {
     return err(
       `Failed to register RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
+    );
+  }
+
+  // Register BatchUpdateContextService
+  const batchUpdateContextServiceResult = container.registerClass(
+    batchUpdateContextServiceToken,
+    DIBatchUpdateContextService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(batchUpdateContextServiceResult)) {
+    return err(
+      `Failed to register BatchUpdateContextService: ${batchUpdateContextServiceResult.error.message}`
     );
   }
 

@@ -571,6 +571,11 @@ describe("CacheService", () => {
 
     const key = buildCacheKey("default-clock");
     defaulted.set(key, ["entry"]);
+    // Verify entry exists by getting it first
+    const result = defaulted.get<string[]>(key);
+    expect(result).not.toBeNull();
+    expect(result?.value).toEqual(["entry"]);
+    // Now check metadata
     expect(defaulted.getMetadata(key)).not.toBeNull();
   });
 

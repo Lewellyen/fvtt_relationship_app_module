@@ -8,6 +8,7 @@ import type { PlatformJournalRepository } from "@/domain/ports/repositories/plat
 import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
+import type { BatchUpdateContextService } from "@/application/services/BatchUpdateContextService";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import { ok, err } from "@/domain/utils/result";
 
@@ -17,6 +18,7 @@ describe("ShowAllHiddenJournalsUseCase", () => {
   let mockJournalDirectoryUI: PlatformJournalDirectoryUiPort;
   let mockNotifications: NotificationPublisherPort;
   let mockConfig: JournalVisibilityConfig;
+  let mockBatchContext: BatchUpdateContextService;
   let useCase: ShowAllHiddenJournalsUseCase;
 
   beforeEach(() => {
@@ -47,12 +49,21 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       cacheKeyFactory: vi.fn(),
     };
 
+    mockBatchContext = {
+      addToBatch: vi.fn(),
+      removeFromBatch: vi.fn(),
+      clearBatch: vi.fn(),
+      isInBatch: vi.fn().mockReturnValue(false),
+      isEmpty: vi.fn().mockReturnValue(true),
+    } as unknown as BatchUpdateContextService;
+
     useCase = new ShowAllHiddenJournalsUseCase(
       mockJournalCollection,
       mockJournalRepository,
       mockJournalDirectoryUI,
       mockNotifications,
-      mockConfig
+      mockConfig,
+      mockBatchContext
     );
   });
 
@@ -98,6 +109,10 @@ describe("ShowAllHiddenJournalsUseCase", () => {
         expect(result.value).toBe(2); // 2 journals changed
       }
 
+      // Verify batch context is used
+      expect(mockBatchContext.addToBatch).toHaveBeenCalledWith("journal-1", "journal-3");
+      expect(mockBatchContext.removeFromBatch).toHaveBeenCalledWith("journal-1", "journal-3");
+
       expect(mockJournalRepository.setFlag).toHaveBeenCalledTimes(2);
       expect(mockJournalRepository.setFlag).toHaveBeenCalledWith(
         "journal-1",
@@ -135,6 +150,10 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       if (result.ok) {
         expect(result.value).toBe(0); // No journals changed
       }
+
+      // No journals to update, so batch context should not be called with IDs
+      expect(mockBatchContext.addToBatch).not.toHaveBeenCalled();
+      expect(mockBatchContext.removeFromBatch).not.toHaveBeenCalled();
 
       expect(mockJournalRepository.setFlag).not.toHaveBeenCalled();
       expect(mockJournalDirectoryUI.rerenderJournalDirectory).toHaveBeenCalledTimes(1);
@@ -326,7 +345,7 @@ describe("ShowAllHiddenJournalsUseCase", () => {
         expect(result.value).toBe(0); // No journals changed due to error
       }
       expect(mockNotifications.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Unexpected error processing journal"),
+        expect.stringContaining("Unexpected error checking journal"),
         expect.objectContaining({
           error: "Unexpected error",
           journalId: "journal-1",
@@ -348,9 +367,32 @@ describe("ShowAllHiddenJournalsUseCase", () => {
 
       expect(result.ok).toBe(true);
       expect(mockNotifications.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Unexpected error processing journal"),
+        expect.stringContaining("Unexpected error checking journal"),
         expect.objectContaining({
           error: "String error",
+          journalId: "journal-1",
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it("should handle non-Error object exceptions in getFlag try-catch block", async () => {
+      const journals: JournalEntry[] = [{ id: "journal-1", name: "Journal 1" }];
+
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
+      vi.mocked(mockJournalRepository.getFlag).mockImplementation(() => {
+        throw { code: "CUSTOM_ERROR", message: "Custom error object" }; // Non-Error object exception
+      });
+      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
+
+      const result = await useCase.execute();
+
+      expect(result.ok).toBe(true);
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Unexpected error checking journal"),
+        expect.objectContaining({
+          error: expect.stringContaining("[object Object]"), // String() converts object to string
+          journalId: "journal-1",
         }),
         expect.any(Object)
       );
@@ -363,11 +405,14 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       ];
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
-      // First journal: getFlag fails
+      // Both journals need to be updated
       vi.mocked(mockJournalRepository.getFlag)
-        .mockReturnValueOnce(err({ code: "OPERATION_FAILED", message: "Failed to read flag" }))
+        .mockReturnValueOnce(ok(true))
         .mockReturnValueOnce(ok(true));
-      vi.mocked(mockJournalRepository.setFlag).mockResolvedValueOnce(ok(undefined));
+      // First journal: setFlag fails
+      vi.mocked(mockJournalRepository.setFlag)
+        .mockResolvedValueOnce(err({ code: "OPERATION_FAILED", message: "Failed to set flag" }))
+        .mockResolvedValueOnce(ok(undefined));
       vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       await useCase.execute();
@@ -384,24 +429,29 @@ describe("ShowAllHiddenJournalsUseCase", () => {
     });
 
     it("should limit errors array to first 5 entries when logging warnings", async () => {
-      // Create 7 journals, all failing to get flag
+      // Create 7 journals, all need to be updated
       const journals: JournalEntry[] = Array.from({ length: 7 }, (_, i) => ({
         id: `journal-${i + 1}`,
         name: `Journal ${i + 1}`,
       }));
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
-      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(
-        err({ code: "OPERATION_FAILED", message: "Failed to read flag" })
+      // All journals have hidden=true
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
+      // All setFlag calls fail
+      vi.mocked(mockJournalRepository.setFlag).mockResolvedValue(
+        err({ code: "OPERATION_FAILED", message: "Failed to set flag" })
       );
       vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       await useCase.execute();
 
       // Should log warning with errorCount = 7, but errors array should be limited to 5
-      const warnCall = vi.mocked(mockNotifications.warn).mock.calls.find((call) =>
-        call[0]?.toString().includes("Fehler beim Verarbeiten von Journals")
-      );
+      const warnCall = vi
+        .mocked(mockNotifications.warn)
+        .mock.calls.find((call) =>
+          call[0]?.toString().includes("Fehler beim Verarbeiten von Journals")
+        );
       expect(warnCall).toBeDefined();
       if (warnCall) {
         const errorDetails = warnCall[1] as { errorCount: number; errors: unknown[] };
@@ -437,12 +487,186 @@ describe("ShowAllHiddenJournalsUseCase", () => {
         expect.any(Object)
       );
     });
+
+    it("should handle exception thrown by setFlag during update", async () => {
+      const journals: JournalEntry[] = [
+        { id: "journal-1", name: null }, // No name - to test journalId fallback
+        { id: "journal-2", name: "Journal 2" }, // Has name
+      ];
+
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
+      vi.mocked(mockJournalRepository.getFlag)
+        .mockReturnValueOnce(ok(true)) // Journal 1 needs update
+        .mockReturnValueOnce(ok(true)); // Journal 2 needs update
+      // First setFlag succeeds, second throws exception
+      vi.mocked(mockJournalRepository.setFlag)
+        .mockResolvedValueOnce(ok(undefined))
+        .mockRejectedValueOnce(new Error("Unexpected exception during setFlag"));
+      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
+
+      const result = await useCase.execute();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(1); // Only first journal was updated successfully
+      }
+
+      // Should log warning with journalId (since journal-2 has no name)
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Unexpected error processing journal"),
+        expect.objectContaining({
+          error: "Unexpected exception during setFlag",
+          journalId: "journal-2",
+        }),
+        expect.any(Object)
+      );
+
+      // Should have one error in errors array
+      const warnCall = vi
+        .mocked(mockNotifications.warn)
+        .mock.calls.find((call) =>
+          call[0]?.toString().includes("Fehler beim Verarbeiten von Journals")
+        );
+      expect(warnCall).toBeDefined();
+      if (warnCall) {
+        const errorDetails = warnCall[1] as { errorCount: number; errors: unknown[] };
+        expect(errorDetails.errorCount).toBe(1);
+        expect(errorDetails.errors[0]).toMatchObject({
+          journalId: "journal-2",
+          error: "Unexpected exception during setFlag",
+        });
+      }
+    });
+
+    it("should handle non-Error exception thrown by setFlag during update", async () => {
+      const journals: JournalEntry[] = [{ id: "journal-1", name: "Journal 1" }];
+
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true)); // Needs update
+      // setFlag throws non-Error exception (String)
+      vi.mocked(mockJournalRepository.setFlag).mockRejectedValueOnce("String error during setFlag");
+      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
+
+      const result = await useCase.execute();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(0); // No journals were updated due to exception
+      }
+
+      // Should log warning with String error message
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Unexpected error processing journal"),
+        expect.objectContaining({
+          error: "String error during setFlag",
+          journalId: "journal-1",
+        }),
+        expect.any(Object)
+      );
+
+      // Should have one error in errors array
+      const warnCall = vi
+        .mocked(mockNotifications.warn)
+        .mock.calls.find((call) =>
+          call[0]?.toString().includes("Fehler beim Verarbeiten von Journals")
+        );
+      expect(warnCall).toBeDefined();
+      if (warnCall) {
+        const errorDetails = warnCall[1] as { errorCount: number; errors: unknown[] };
+        expect(errorDetails.errorCount).toBe(1);
+        expect(errorDetails.errors[0]).toMatchObject({
+          journalId: "journal-1",
+          error: "String error during setFlag",
+        });
+      }
+    });
+
+    it("should use journalId when journal name is null in setFlag exception message", async () => {
+      const journals: JournalEntry[] = [
+        { id: "journal-1", name: null }, // No name - to test journalId fallback in setFlag catch block
+      ];
+
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true)); // Needs update
+      // setFlag throws non-Error exception (String)
+      vi.mocked(mockJournalRepository.setFlag).mockRejectedValueOnce("String error during setFlag");
+      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
+
+      const result = await useCase.execute();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(0); // No journals were updated due to exception
+      }
+
+      // Should log warning with journalId (since journal has no name)
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
+        expect.stringContaining("journal-1"), // Should use journalId when name is null
+        expect.objectContaining({
+          error: "String error during setFlag",
+          journalId: "journal-1",
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it("should use journalId when journal name is null in setFlag error message", async () => {
+      const journals: JournalEntry[] = [
+        { id: "journal-1", name: null }, // No name
+      ];
+
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true)); // Needs update
+      vi.mocked(mockJournalRepository.setFlag).mockResolvedValue(
+        err({ code: "OPERATION_FAILED", message: "Failed to set flag" })
+      );
+      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
+
+      await useCase.execute();
+
+      // Should use journalId when name is null
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
+        expect.stringContaining("journal-1"),
+        expect.any(Object),
+        expect.any(Object)
+      );
+    });
+
+    it("should handle exception thrown by getFlag during check (with null journal name)", async () => {
+      const journals: JournalEntry[] = [
+        { id: "journal-1", name: null }, // No name - to test journal.id fallback
+      ];
+
+      vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
+      // getFlag throws exception instead of returning Result
+      vi.mocked(mockJournalRepository.getFlag).mockImplementation(() => {
+        throw new Error("Unexpected exception during getFlag");
+      });
+      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
+
+      const result = await useCase.execute();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(0); // No journals were updated due to exception
+      }
+
+      // Should log warning with journal.id (since journal has no name)
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Unexpected error checking journal"),
+        expect.objectContaining({
+          error: "Unexpected exception during getFlag",
+          journalId: "journal-1",
+        }),
+        expect.any(Object)
+      );
+    });
   });
 
   describe("DIShowAllHiddenJournalsUseCase", () => {
     it("should have correct dependencies", () => {
       expect(DIShowAllHiddenJournalsUseCase.dependencies).toBeDefined();
-      expect(DIShowAllHiddenJournalsUseCase.dependencies.length).toBe(5);
+      expect(DIShowAllHiddenJournalsUseCase.dependencies.length).toBe(6);
     });
   });
 });

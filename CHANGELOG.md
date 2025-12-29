@@ -12,6 +12,27 @@
 
 ### Upgrade-Hinweise
 
+## [0.48.1] - 2025-12-29
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Test-Coverage**: Branch-Coverage auf 100% erhöht durch zusätzliche Tests für `ShowAllHiddenJournalsUseCase` ([Details](src/application/use-cases/__tests__/show-all-hidden-journals.use-case.test.ts))
+- Test für non-Error-Exception in `setFlag` (String-Werte)
+- Test für non-Error-Objekt-Exception in `getFlag`
+- Test für `journalId`-Fallback, wenn `journal.name` null ist im `setFlag` catch block
+- **CacheService Test**: Fehlgeschlagenen Test "falls back to default clock when none provided" behoben ([Details](src/application/services/__tests__/CacheService.test.ts))
+- Zusätzliche Assertionen hinzugefügt, um sicherzustellen, dass der Eintrag korrekt gesetzt wird
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.48.0] - 2025-12-29
 ### Hinzugefügt
 - **ShowAllHiddenJournalsUseCase**: Neuer Use-Case zum Einblenden aller versteckten Journal-Einträge ([Details](src/application/use-cases/show-all-hidden-journals.use-case.ts))

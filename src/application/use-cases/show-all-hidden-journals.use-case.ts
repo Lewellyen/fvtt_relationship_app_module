@@ -5,13 +5,17 @@ import type { PlatformJournalRepository } from "@/domain/ports/repositories/plat
 import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
+import type { BatchUpdateContextService } from "@/application/services/BatchUpdateContextService";
 import {
   platformJournalCollectionPortToken,
   platformJournalRepositoryToken,
   platformJournalDirectoryUiPortToken,
   notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
-import { journalVisibilityConfigToken } from "@/application/tokens/application.tokens";
+import {
+  journalVisibilityConfigToken,
+  batchUpdateContextServiceToken,
+} from "@/application/tokens/application.tokens";
 
 /**
  * Use-Case: Show all hidden journals by setting their hidden flag to false.
@@ -19,7 +23,8 @@ import { journalVisibilityConfigToken } from "@/application/tokens/application.t
  * Platform-agnostic - works with any PlatformJournalCollectionPort and PlatformJournalRepository implementation.
  *
  * Iterates through all journal entries, checks if they have the hidden flag set,
- * and sets it to false if it's not already false. Then triggers a UI re-render.
+ * and sets it to false if it's not already false. Uses BatchUpdateContextService to track
+ * batch updates and optimize re-renders (single re-render after all updates instead of one per journal).
  *
  * @example
  * ```typescript
@@ -28,7 +33,8 @@ import { journalVisibilityConfigToken } from "@/application/tokens/application.t
  *   journalRepository,
  *   journalDirectoryUI,
  *   notifications,
- *   config
+ *   config,
+ *   batchContext
  * );
  *
  * const result = await useCase.execute();
@@ -43,7 +49,8 @@ export class ShowAllHiddenJournalsUseCase {
     private readonly journalRepository: PlatformJournalRepository,
     private readonly journalDirectoryUI: PlatformJournalDirectoryUiPort,
     private readonly notifications: NotificationPublisherPort,
-    private readonly config: JournalVisibilityConfig
+    private readonly config: JournalVisibilityConfig,
+    private readonly batchContext: BatchUpdateContextService
   ) {}
 
   /**
@@ -59,10 +66,10 @@ export class ShowAllHiddenJournalsUseCase {
     }
 
     const allJournals = allJournalsResult.value;
-    let changedCount = 0;
-    const errors: Array<{ journalId: string; error: string }> = [];
 
-    // Process each journal
+    // First pass: Collect all journal IDs that need to be updated
+    const journalsToUpdate: Array<{ journal: (typeof allJournals)[0]; journalId: string }> = [];
+
     for (const journal of allJournals) {
       try {
         // Check current flag value
@@ -74,10 +81,6 @@ export class ShowAllHiddenJournalsUseCase {
 
         if (!flagResult.ok) {
           // Log error but continue with other journals
-          errors.push({
-            journalId: journal.id,
-            error: `Failed to read flag: ${flagResult.error.message}`,
-          });
           this.notifications.warn(
             `Failed to read hidden flag for journal "${journal.name ?? journal.id}"`,
             {
@@ -92,46 +95,15 @@ export class ShowAllHiddenJournalsUseCase {
 
         const currentFlag = flagResult.value;
 
-        // Only set flag if it's not already false
-        // This matches the console code: if (current !== false && current !== undefined && current !== null)
-        // Which means: set flag if current is true, undefined, or null (but not if it's already false)
+        // Only collect journals that need to be updated
         if (currentFlag !== false) {
-          const setFlagResult = await this.journalRepository.setFlag(
-            journal.id,
-            this.config.moduleNamespace,
-            this.config.hiddenFlagKey,
-            false
-          );
-
-          if (!setFlagResult.ok) {
-            // Log error but continue with other journals
-            errors.push({
-              journalId: journal.id,
-              error: `Failed to set flag: ${setFlagResult.error.message}`,
-            });
-            this.notifications.warn(
-              `Failed to set hidden flag for journal "${journal.name ?? journal.id}"`,
-              {
-                errorCode: setFlagResult.error.code,
-                errorMessage: setFlagResult.error.message,
-                journalId: journal.id,
-              },
-              { channels: ["ConsoleChannel"] }
-            );
-            continue;
-          }
-
-          changedCount++;
+          journalsToUpdate.push({ journal, journalId: journal.id });
         }
       } catch (error) {
         // Catch any unexpected errors
         const errorMessage = error instanceof Error ? error.message : String(error);
-        errors.push({
-          journalId: journal.id,
-          error: errorMessage,
-        });
         this.notifications.warn(
-          `Unexpected error processing journal "${journal.name ?? journal.id}"`,
+          `Unexpected error checking journal "${journal.name ?? journal.id}"`,
           {
             error: errorMessage,
             journalId: journal.id,
@@ -139,6 +111,67 @@ export class ShowAllHiddenJournalsUseCase {
           { channels: ["ConsoleChannel"] }
         );
       }
+    }
+
+    // Add all journal IDs to batch context before starting updates
+    const journalIdsToUpdate = journalsToUpdate.map(({ journalId }) => journalId);
+    if (journalIdsToUpdate.length > 0) {
+      this.batchContext.addToBatch(...journalIdsToUpdate);
+    }
+
+    // Second pass: Perform updates
+    let changedCount = 0;
+    const errors: Array<{ journalId: string; error: string }> = [];
+
+    for (const { journal, journalId } of journalsToUpdate) {
+      try {
+        const setFlagResult = await this.journalRepository.setFlag(
+          journalId,
+          this.config.moduleNamespace,
+          this.config.hiddenFlagKey,
+          false
+        );
+
+        if (!setFlagResult.ok) {
+          // Log error but continue with other journals
+          errors.push({
+            journalId,
+            error: `Failed to set flag: ${setFlagResult.error.message}`,
+          });
+          this.notifications.warn(
+            `Failed to set hidden flag for journal "${journal.name ?? journalId}"`,
+            {
+              errorCode: setFlagResult.error.code,
+              errorMessage: setFlagResult.error.message,
+              journalId,
+            },
+            { channels: ["ConsoleChannel"] }
+          );
+          continue;
+        }
+
+        changedCount++;
+      } catch (error) {
+        // Catch any unexpected errors
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        errors.push({
+          journalId,
+          error: errorMessage,
+        });
+        this.notifications.warn(
+          `Unexpected error processing journal "${journal.name ?? journalId}"`,
+          {
+            error: errorMessage,
+            journalId,
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+      }
+    }
+
+    // Remove all journal IDs from batch context after updates complete
+    if (journalIdsToUpdate.length > 0) {
+      this.batchContext.removeFromBatch(...journalIdsToUpdate);
     }
 
     // Log summary
@@ -192,6 +225,7 @@ export class DIShowAllHiddenJournalsUseCase extends ShowAllHiddenJournalsUseCase
     platformJournalDirectoryUiPortToken,
     notificationPublisherPortToken,
     journalVisibilityConfigToken,
+    batchUpdateContextServiceToken,
   ] as const;
 
   constructor(
@@ -199,8 +233,16 @@ export class DIShowAllHiddenJournalsUseCase extends ShowAllHiddenJournalsUseCase
     journalRepository: PlatformJournalRepository,
     journalDirectoryUI: PlatformJournalDirectoryUiPort,
     notifications: NotificationPublisherPort,
-    config: JournalVisibilityConfig
+    config: JournalVisibilityConfig,
+    batchContext: BatchUpdateContextService
   ) {
-    super(journalCollection, journalRepository, journalDirectoryUI, notifications, config);
+    super(
+      journalCollection,
+      journalRepository,
+      journalDirectoryUI,
+      notifications,
+      config,
+      batchContext
+    );
   }
 }

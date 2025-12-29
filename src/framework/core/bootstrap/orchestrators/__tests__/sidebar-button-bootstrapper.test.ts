@@ -157,6 +157,38 @@ describe("SidebarButtonBootstrapper", () => {
       });
     });
 
+    it("should handle use-case execution error", async () => {
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      const mockDirectoryHeader = document.createElement("div");
+      mockDirectoryHeader.className = "directory-header";
+      const mockActionButtons = document.createElement("div");
+      mockActionButtons.className = "header-actions action-buttons";
+      mockDirectoryHeader.appendChild(mockActionButtons);
+      mockHtml.appendChild(mockDirectoryHeader);
+
+      // Mock use-case to return error
+      vi.mocked(mockUseCase.execute).mockResolvedValue(err(new Error("Use-case execution failed")));
+
+      hookCallback({}, mockHtml);
+
+      const button = mockHtml.querySelector(
+        ".show-all-hidden-journals-button"
+      ) as HTMLButtonElement;
+      expect(button).not.toBeNull();
+
+      // Simulate button click - should handle error gracefully
+      button.click();
+      await vi.waitFor(() => {
+        expect(mockUseCase.execute).toHaveBeenCalledTimes(1);
+      });
+    });
+
     it("should add button to directory-header if action-buttons not found", () => {
       SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
 
@@ -212,7 +244,6 @@ describe("SidebarButtonBootstrapper", () => {
       const button = mockHtml.querySelector(".show-all-hidden-journals-button");
       expect(button).toBeNull();
     });
-
 
     it("should return early if html is not an HTMLElement", () => {
       SidebarButtonBootstrapper.registerSidebarButton(mockContainer);

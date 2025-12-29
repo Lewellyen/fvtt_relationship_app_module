@@ -121,3 +121,16 @@ export const settingDefinitionRegistryToken = createInjectionToken<any>(
 export const runtimeConfigBindingRegistryToken = createInjectionToken<any>(
   "RuntimeConfigBindingRegistry"
 );
+
+/**
+ * Injection token for the BatchUpdateContextService.
+ *
+ * Service for tracking journal IDs during batch update operations.
+ * Allows use-cases to mark multiple journal IDs as part of a batch operation,
+ * which can be checked by event handlers to optimize behavior (e.g., skip individual re-renders).
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const batchUpdateContextServiceToken = createInjectionToken<any>(
+  "BatchUpdateContextService"
+);
