@@ -1,21 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  CacheService,
-  DICacheService,
-  DEFAULT_CACHE_SERVICE_CONFIG,
-} from "@/infrastructure/cache/CacheService";
+import { CacheService, DEFAULT_CACHE_SERVICE_CONFIG } from "@/infrastructure/cache/CacheService";
 import type { CacheKey, CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
 import { createCacheNamespace } from "@/infrastructure/cache/cache.interface";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
-import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { EvictionStrategyRegistry } from "@/infrastructure/cache/eviction-strategy-registry";
 import { CacheConfigSyncObserver } from "@/infrastructure/cache/config/CacheConfigSyncObserver";
-import { CacheService as CacheServiceImpl } from "@/infrastructure/cache/CacheService";
+import { CacheCompositionFactory } from "@/infrastructure/cache/factory/CacheCompositionFactory";
 import { CacheStore } from "@/infrastructure/cache/store/CacheStore";
 import { CacheCapacityManager } from "@/infrastructure/cache/cache-capacity-manager";
 import { LRUEvictionStrategy } from "@/infrastructure/cache/lru-eviction-strategy";
+import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
+import { DICacheService } from "@/infrastructure/cache/CacheService";
 
 const buildCacheKey = createCacheNamespace("journal", MODULE_METADATA.ID);
 
@@ -23,6 +20,7 @@ describe("CacheService", () => {
   let now: number;
   let metrics: MetricsCollector;
   let service: CacheService;
+  let factory: CacheCompositionFactory;
 
   const createService = (config?: Partial<CacheServiceConfig>): CacheService => {
     const namespace = config?.namespace ?? DEFAULT_CACHE_SERVICE_CONFIG.namespace ?? "test-cache";
@@ -32,7 +30,16 @@ describe("CacheService", () => {
       namespace,
       ...(config?.maxEntries !== undefined ? { maxEntries: config.maxEntries } : {}),
     };
-    service = new CacheService(merged, metrics, () => now);
+    const composition = factory.create(merged, metrics, () => now);
+    service = new CacheService(
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager,
+      () => now
+    );
     return service;
   };
 
@@ -41,6 +48,7 @@ describe("CacheService", () => {
     metrics = {
       recordCacheAccess: vi.fn(),
     } as unknown as MetricsCollector;
+    factory = new CacheCompositionFactory();
     createService();
   });
 
@@ -402,26 +410,31 @@ describe("CacheService", () => {
   });
 
   it("updates config via CacheConfigSyncObserver (Observer Pattern)", () => {
+    const config: CacheServiceConfig = {
+      enabled: true,
+      defaultTtlMs: 1000,
+      namespace: "dynamic",
+      maxEntries: 2,
+    };
+    const composition = factory.create(config, metrics, () => now);
     const dynamicCache = new CacheService(
-      {
-        enabled: true,
-        defaultTtlMs: 1000,
-        namespace: "dynamic",
-        maxEntries: 2,
-      },
-      metrics,
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager,
       () => now
     );
 
     const keyA = buildCacheKey("dynamic", "a");
     const keyB = buildCacheKey("dynamic", "b");
-    const configManager = dynamicCache.getConfigManager();
+    const configManager = composition.configManager;
 
-    // Create observer with components from CacheService
-    const cacheImpl = dynamicCache as CacheServiceImpl;
+    // Create observer with components from composition
     const observer = new CacheConfigSyncObserver(
-      cacheImpl.getStore(),
-      cacheImpl.getPolicy(),
+      composition.store,
+      composition.policy,
       configManager
     );
 
@@ -469,21 +482,26 @@ describe("CacheService", () => {
   });
 
   it("CacheConfigSyncObserver handles config update without maxEntries", () => {
+    const config: CacheServiceConfig = {
+      enabled: true,
+      defaultTtlMs: 1000,
+      namespace: "test-no-max",
+    };
+    const composition = factory.create(config, metrics, () => now);
     const dynamicCache = new CacheService(
-      {
-        enabled: true,
-        defaultTtlMs: 1000,
-        namespace: "test-no-max",
-      },
-      metrics,
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager,
       () => now
     );
 
-    const configManager = dynamicCache.getConfigManager();
-    const cacheImpl = dynamicCache as CacheServiceImpl;
+    const configManager = composition.configManager;
     const observer = new CacheConfigSyncObserver(
-      cacheImpl.getStore(),
-      cacheImpl.getPolicy(),
+      composition.store,
+      composition.policy,
       configManager
     );
 
@@ -497,14 +515,20 @@ describe("CacheService", () => {
 
   it("calls enforceCapacity when maxEntries changes in CacheConfigSyncObserver", () => {
     // Create a cache with maxEntries: 10 to allow adding entries without immediate eviction
+    const config: CacheServiceConfig = {
+      enabled: true,
+      defaultTtlMs: 1000,
+      namespace: "test",
+      maxEntries: 10,
+    };
+    const composition = factory.create(config, metrics, () => now);
     const cache = new CacheService(
-      {
-        enabled: true,
-        defaultTtlMs: 1000,
-        namespace: "test",
-        maxEntries: 10,
-      },
-      metrics,
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager,
       () => now
     );
 
@@ -519,14 +543,13 @@ describe("CacheService", () => {
     expect(cache.size).toBe(3);
 
     // Get the configManager and update it to have maxEntries: 2
-    const configManager = cache.getConfigManager();
+    const configManager = composition.configManager;
     configManager.updateConfig({ maxEntries: 2 });
 
-    // Create observer with components from CacheService
-    const cacheImpl = cache as CacheServiceImpl;
+    // Create observer with components from composition
     const observer = new CacheConfigSyncObserver(
-      cacheImpl.getStore(),
-      cacheImpl.getPolicy(),
+      composition.store,
+      composition.policy,
       configManager
     );
 
@@ -545,28 +568,36 @@ describe("CacheService", () => {
     expect(cache.size).toBeLessThanOrEqual(2);
   });
 
-  it("DI wrapper exposes dependencies and forwards constructor args", () => {
-    const wrapper = new DICacheService(
-      {
-        enabled: true,
-        defaultTtlMs: 1,
-        namespace: "test",
-      },
-      metrics
-    );
-
-    expect(wrapper.isEnabled).toBe(true);
+  it("DI wrapper exposes dependencies and can be instantiated", () => {
+    // DICacheService is now created via factory in DI registration
+    // This test verifies the dependencies are correctly declared
     expect(DICacheService.dependencies).toEqual([cacheServiceConfigToken, metricsCollectorToken]);
+
+    // Verify DICacheService can be instantiated (uses factory internally)
+    const config: CacheServiceConfig = {
+      enabled: true,
+      defaultTtlMs: 1,
+      namespace: "test",
+    };
+    const diService = new DICacheService(config, metrics);
+    expect(diService.isEnabled).toBe(true);
+    expect(diService.size).toBe(0);
   });
 
   it("falls back to default clock when none provided", () => {
+    const config: CacheServiceConfig = {
+      enabled: true,
+      defaultTtlMs: 5,
+      namespace: "test",
+    };
+    const composition = factory.create(config, metrics); // No clock provided, uses default
     const defaulted = new CacheService(
-      {
-        enabled: true,
-        defaultTtlMs: 5,
-        namespace: "test",
-      },
-      metrics
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager
     );
 
     const key = buildCacheKey("default-clock");
@@ -598,7 +629,7 @@ describe("CacheService", () => {
   // This test is no longer applicable as it tested internal implementation details
   // The functionality is still available through the public API (set/get operations)
 
-  it("uses provided capacityManager when passed as constructor parameter", () => {
+  it("uses provided capacityManager when passed to factory", () => {
     // Create a custom capacity manager using the same store that CacheService will use
     // We need to create the store first, then pass it to both CacheService and capacityManager
     const customStore = new CacheStore();
@@ -612,15 +643,24 @@ describe("CacheService", () => {
       maxEntries: 2,
     };
 
-    // Pass the custom capacity manager AND the store to the constructor
-    // This tests the branch where capacityManager is provided (line 87: if (!resolvedCapacityManager))
-    const serviceWithCustomManager = new CacheService(
+    // Pass the custom capacity manager AND the store to the factory
+    // This tests the branch where capacityManager is provided
+    const composition = factory.create(
       config,
       metrics,
       () => now,
       customCapacityManager,
       undefined, // metricsObserver
       customStore // store - must match the one used by capacityManager
+    );
+    const serviceWithCustomManager = new CacheService(
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager,
+      () => now
     );
 
     // Verify the custom manager is being used by testing eviction behavior
@@ -640,7 +680,7 @@ describe("CacheService", () => {
     const registry = EvictionStrategyRegistry.getInstance();
 
     // Mock getOrDefault to return undefined (simulating both key and defaultKey not found)
-    // This tests the defensive fallback path in CacheService constructor
+    // This tests the defensive fallback path in CacheCompositionFactory
     vi.spyOn(registry, "getOrDefault").mockReturnValue(undefined);
 
     const config: CacheServiceConfig = {
@@ -652,7 +692,16 @@ describe("CacheService", () => {
     };
 
     // Should not throw and should fallback to creating LRU strategy directly
-    const service = new CacheService(config, metrics, () => now);
+    const composition = factory.create(config, metrics, () => now);
+    const service = new CacheService(
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager,
+      () => now
+    );
 
     const key1 = buildCacheKey("fallback", "1");
     const key2 = buildCacheKey("fallback", "2");

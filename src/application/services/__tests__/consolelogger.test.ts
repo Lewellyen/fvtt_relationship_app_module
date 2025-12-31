@@ -8,7 +8,7 @@ import { LogLevel } from "@/domain/types/log-level";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 
@@ -20,7 +20,7 @@ describe("ConsoleLoggerService", () => {
   let consoleInfoSpy: ReturnType<typeof vi.spyOn>;
   let consoleDebugSpy: ReturnType<typeof vi.spyOn>;
   let mockEnv: EnvironmentConfig;
-  let runtimeConfig: RuntimeConfigService;
+  let runtimeConfig: PlatformRuntimeConfigPort;
 
   beforeEach(() => {
     mockEnv = createMockEnvironmentConfig({ logLevel: LogLevel.INFO });
@@ -473,7 +473,7 @@ describe("ConsoleLoggerService", () => {
       expect(consoleDebugSpy).not.toHaveBeenCalled();
 
       // Change to DEBUG level via RuntimeConfig
-      config.setFromFoundry("logLevel", LogLevel.DEBUG);
+      config.setFromPlatform("logLevel", LogLevel.DEBUG);
 
       // Now debug should be visible
       localLogger.debug("Debug message");

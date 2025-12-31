@@ -3,6 +3,8 @@
  * These errors provide precise failure categorization and preserve cause chains.
  */
 
+export { ContainerErrorImpl } from "./ContainerErrorImpl";
+
 /**
  * Thrown when a circular dependency is detected during service resolution.
  */

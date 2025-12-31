@@ -24,7 +24,7 @@ describe("FoundrySettingsErrorMapper", () => {
       expect(result.details).toBe(foundryError);
     });
 
-    it("should map VALIDATION_FAILED to SETTING_VALIDATION_FAILED", () => {
+    it("should map VALIDATION_FAILED to INVALID_SETTING_VALUE", () => {
       const foundryError = createFoundryError("VALIDATION_FAILED", "Validation failed");
       const result = mapper.map(foundryError, {
         operation: "get",
@@ -32,7 +32,7 @@ describe("FoundrySettingsErrorMapper", () => {
         key: "value",
       });
 
-      expect(result.code).toBe("SETTING_VALIDATION_FAILED");
+      expect(result.code).toBe("INVALID_SETTING_VALUE");
       expect(result.message).toContain("Failed to get setting");
     });
 
@@ -47,7 +47,7 @@ describe("FoundrySettingsErrorMapper", () => {
       expect(result.code).toBe("SETTING_REGISTRATION_FAILED");
     });
 
-    it("should map OPERATION_FAILED with 'not registered' message to SETTING_NOT_REGISTERED for get", () => {
+    it("should map OPERATION_FAILED with 'not registered' message to SETTING_NOT_FOUND for get", () => {
       const foundryError = createFoundryError("OPERATION_FAILED", "Setting is not registered");
       const result = mapper.map(foundryError, {
         operation: "get",
@@ -55,10 +55,10 @@ describe("FoundrySettingsErrorMapper", () => {
         key: "enabled",
       });
 
-      expect(result.code).toBe("SETTING_NOT_REGISTERED");
+      expect(result.code).toBe("SETTING_NOT_FOUND");
     });
 
-    it("should map OPERATION_FAILED with lowercase 'not registered' to SETTING_NOT_REGISTERED", () => {
+    it("should map OPERATION_FAILED with lowercase 'not registered' to SETTING_NOT_FOUND", () => {
       const foundryError = createFoundryError("OPERATION_FAILED", "not registered");
       const result = mapper.map(foundryError, {
         operation: "get",
@@ -66,10 +66,10 @@ describe("FoundrySettingsErrorMapper", () => {
         key: "enabled",
       });
 
-      expect(result.code).toBe("SETTING_NOT_REGISTERED");
+      expect(result.code).toBe("SETTING_NOT_FOUND");
     });
 
-    it("should map OPERATION_FAILED with 'not found' message to SETTING_NOT_REGISTERED", () => {
+    it("should map OPERATION_FAILED with 'not found' message to SETTING_NOT_FOUND", () => {
       const foundryError = createFoundryError("OPERATION_FAILED", "Setting not found");
       const result = mapper.map(foundryError, {
         operation: "set",
@@ -77,10 +77,10 @@ describe("FoundrySettingsErrorMapper", () => {
         key: "enabled",
       });
 
-      expect(result.code).toBe("SETTING_NOT_REGISTERED");
+      expect(result.code).toBe("SETTING_NOT_FOUND");
     });
 
-    it("should map OPERATION_FAILED without 'not registered' message to SETTING_VALIDATION_FAILED for get", () => {
+    it("should map OPERATION_FAILED without 'not registered' message to SETTING_READ_FAILED for get", () => {
       const foundryError = createFoundryError("OPERATION_FAILED", "Some other error");
       const result = mapper.map(foundryError, {
         operation: "get",
@@ -88,10 +88,10 @@ describe("FoundrySettingsErrorMapper", () => {
         key: "enabled",
       });
 
-      expect(result.code).toBe("SETTING_VALIDATION_FAILED");
+      expect(result.code).toBe("SETTING_READ_FAILED");
     });
 
-    it("should map OPERATION_FAILED without 'not registered' message to SETTING_VALIDATION_FAILED for set", () => {
+    it("should map OPERATION_FAILED without 'not registered' message to SETTING_WRITE_FAILED for set", () => {
       const foundryError = createFoundryError("OPERATION_FAILED", "Some other error");
       const result = mapper.map(foundryError, {
         operation: "set",
@@ -99,7 +99,7 @@ describe("FoundrySettingsErrorMapper", () => {
         key: "enabled",
       });
 
-      expect(result.code).toBe("SETTING_VALIDATION_FAILED");
+      expect(result.code).toBe("SETTING_WRITE_FAILED");
     });
 
     it("should map unknown error code to SETTING_REGISTRATION_FAILED for register", () => {
@@ -113,7 +113,7 @@ describe("FoundrySettingsErrorMapper", () => {
       expect(result.code).toBe("SETTING_REGISTRATION_FAILED");
     });
 
-    it("should map unknown error code to SETTING_VALIDATION_FAILED for get", () => {
+    it("should map unknown error code to SETTING_READ_FAILED for get", () => {
       const foundryError = { code: "UNKNOWN_ERROR" as any, message: "Unknown error" };
       const result = mapper.map(foundryError, {
         operation: "get",
@@ -121,10 +121,10 @@ describe("FoundrySettingsErrorMapper", () => {
         key: "enabled",
       });
 
-      expect(result.code).toBe("SETTING_VALIDATION_FAILED");
+      expect(result.code).toBe("SETTING_READ_FAILED");
     });
 
-    it("should map unknown error code to SETTING_VALIDATION_FAILED for set", () => {
+    it("should map unknown error code to SETTING_WRITE_FAILED for set", () => {
       const foundryError = { code: "UNKNOWN_ERROR" as any, message: "Unknown error" };
       const result = mapper.map(foundryError, {
         operation: "set",
@@ -132,7 +132,7 @@ describe("FoundrySettingsErrorMapper", () => {
         key: "enabled",
       });
 
-      expect(result.code).toBe("SETTING_VALIDATION_FAILED");
+      expect(result.code).toBe("SETTING_WRITE_FAILED");
     });
 
     it("should include namespace and key in error message", () => {

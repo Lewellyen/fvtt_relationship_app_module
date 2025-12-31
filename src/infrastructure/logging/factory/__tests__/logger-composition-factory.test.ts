@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { LoggerCompositionFactory } from "../logger-composition-factory";
 import { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
-import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
+import { RuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import { LogLevel } from "@/domain/types/log-level";
 import { LOG_PREFIX } from "@/application/constants/app-constants";
@@ -25,7 +25,9 @@ describe("LoggerCompositionFactory", () => {
 
   describe("createLogger", () => {
     it("should create a logger without trace context", () => {
-      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+      const config = new RuntimeConfigAdapter(
+        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
+      );
       const logger = factory.createLogger(config);
 
       expect(logger).toBeDefined();
@@ -34,7 +36,9 @@ describe("LoggerCompositionFactory", () => {
     });
 
     it("should create a logger with trace context", () => {
-      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+      const config = new RuntimeConfigAdapter(
+        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
+      );
       const traceContext = new TraceContext();
       const logger = factory.createLogger(config, traceContext);
 
@@ -47,7 +51,9 @@ describe("LoggerCompositionFactory", () => {
     });
 
     it("should compose logger with all decorators", () => {
-      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.DEBUG }));
+      const config = new RuntimeConfigAdapter(
+        createMockEnvironmentConfig({ logLevel: LogLevel.DEBUG })
+      );
       const logger = factory.createLogger(config);
 
       // Test that all decorators are applied:
@@ -66,7 +72,9 @@ describe("LoggerCompositionFactory", () => {
     });
 
     it("should apply decorators in correct order", () => {
-      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+      const config = new RuntimeConfigAdapter(
+        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
+      );
       const traceContext = new TraceContext();
       const logger = factory.createLogger(config, traceContext);
 
@@ -81,7 +89,9 @@ describe("LoggerCompositionFactory", () => {
     });
 
     it("should handle null/undefined trace context gracefully", () => {
-      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+      const config = new RuntimeConfigAdapter(
+        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
+      );
       const logger1 = factory.createLogger(config, undefined);
       const logger2 = factory.createLogger(config, null as unknown as TraceContext);
 
@@ -93,7 +103,9 @@ describe("LoggerCompositionFactory", () => {
     });
 
     it("should create independent logger instances", () => {
-      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+      const config = new RuntimeConfigAdapter(
+        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
+      );
       const logger1 = factory.createLogger(config);
       const logger2 = factory.createLogger(config);
 
@@ -110,7 +122,9 @@ describe("LoggerCompositionFactory", () => {
     });
 
     it("should sync log level from RuntimeConfig", () => {
-      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+      const config = new RuntimeConfigAdapter(
+        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
+      );
       const logger = factory.createLogger(config);
 
       // Initially INFO level, so debug should be filtered
@@ -118,7 +132,7 @@ describe("LoggerCompositionFactory", () => {
       expect(consoleDebugSpy).not.toHaveBeenCalled();
 
       // Change to DEBUG level via RuntimeConfig
-      config.setFromFoundry("logLevel", LogLevel.DEBUG);
+      config.setFromPlatform("logLevel", LogLevel.DEBUG);
 
       // Now debug should be visible
       logger.debug("Debug message");
@@ -126,7 +140,9 @@ describe("LoggerCompositionFactory", () => {
     });
 
     it("should return Logger interface implementation", () => {
-      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+      const config = new RuntimeConfigAdapter(
+        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
+      );
       const logger = factory.createLogger(config);
 
       // Verify all Logger interface methods are available
@@ -140,7 +156,9 @@ describe("LoggerCompositionFactory", () => {
     });
 
     it("should handle withTraceId correctly", () => {
-      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+      const config = new RuntimeConfigAdapter(
+        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
+      );
       const logger = factory.createLogger(config);
       const tracedLogger = logger.withTraceId?.("explicit-trace") ?? logger;
 
@@ -155,7 +173,7 @@ describe("LoggerCompositionFactory", () => {
       const levels: LogLevel[] = [LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR];
 
       for (const level of levels) {
-        const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: level }));
+        const config = new RuntimeConfigAdapter(createMockEnvironmentConfig({ logLevel: level }));
         const logger = factory.createLogger(config);
 
         expect(logger).toBeDefined();
@@ -166,7 +184,9 @@ describe("LoggerCompositionFactory", () => {
     });
 
     it("should create logger when trace context is provided but not active", () => {
-      const config = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+      const config = new RuntimeConfigAdapter(
+        createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
+      );
       const traceContext = new TraceContext();
       const logger = factory.createLogger(config, traceContext);
 

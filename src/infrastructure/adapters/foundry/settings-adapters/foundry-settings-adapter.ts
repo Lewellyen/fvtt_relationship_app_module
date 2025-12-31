@@ -2,8 +2,9 @@ import type { Result } from "@/domain/types/result";
 import type {
   PlatformSettingsPort,
   PlatformSettingConfig,
-  SettingsError,
 } from "@/domain/ports/platform-settings-port.interface";
+import type { DomainSettingsError } from "@/domain/types/settings";
+import type { SettingsError } from "@/domain/types/settings-error";
 import type { ValidationSchema } from "@/domain/types/validation-schema.interface";
 import type {
   FoundrySettings,
@@ -15,6 +16,46 @@ import { settingTypeMapperToken } from "@/infrastructure/shared/tokens/foundry/s
 import { settingsErrorMapperToken } from "@/infrastructure/shared/tokens/foundry/settings-error-mapper.token";
 import type { SettingTypeMapper } from "./mappers/setting-type-mapper.interface";
 import type { SettingsErrorMapper } from "./mappers/settings-error-mapper.interface";
+
+/**
+ * Maps DomainSettingsError to SettingsError for PlatformSettingsPort compatibility.
+ */
+function mapDomainErrorToSettingsError(error: DomainSettingsError): SettingsError {
+  let code: SettingsError["code"];
+  switch (error.code) {
+    case "SETTING_REGISTRATION_FAILED":
+      code = "SETTING_REGISTRATION_FAILED";
+      break;
+    case "SETTING_NOT_FOUND":
+      code = "SETTING_NOT_REGISTERED";
+      break;
+    case "INVALID_SETTING_VALUE":
+      code = "SETTING_VALIDATION_FAILED";
+      break;
+    case "SETTING_READ_FAILED":
+    case "SETTING_WRITE_FAILED":
+      // For read/write failures, check if it's a "not found" scenario
+      if (
+        error.message.toLowerCase().includes("not found") ||
+        error.message.toLowerCase().includes("not registered")
+      ) {
+        code = "SETTING_NOT_REGISTERED";
+      } else {
+        code = "SETTING_VALIDATION_FAILED";
+      }
+      break;
+    case "PLATFORM_NOT_AVAILABLE":
+      code = "PLATFORM_NOT_AVAILABLE";
+      break;
+    default:
+      code = "SETTING_REGISTRATION_FAILED";
+  }
+  return {
+    code,
+    message: error.message,
+    details: error.details,
+  };
+}
 
 /**
  * Foundry-specific implementation of PlatformSettingsPort.
@@ -57,7 +98,7 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
     if (!typeResult.ok) {
       return {
         ok: false,
-        error: typeResult.error,
+        error: mapDomainErrorToSettingsError(typeResult.error),
       };
     }
 
@@ -75,13 +116,14 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
     const result = this.foundrySettings.register(namespace, key, foundryConfig);
 
     if (!result.ok) {
+      const domainError = this.errorMapper.map(result.error, {
+        operation: "register",
+        namespace,
+        key,
+      });
       return {
         ok: false,
-        error: this.errorMapper.map(result.error, {
-          operation: "register",
-          namespace,
-          key,
-        }),
+        error: mapDomainErrorToSettingsError(domainError),
       };
     }
 
@@ -100,18 +142,23 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
     const rawResult = this.foundrySettings.get(namespace, key, v.unknown());
 
     if (!rawResult.ok) {
+      const domainError = this.errorMapper.map(rawResult.error, {
+        operation: "get",
+        namespace,
+        key,
+      });
       return {
         ok: false,
-        error: this.errorMapper.map(rawResult.error, {
-          operation: "get",
-          namespace,
-          key,
-        }),
+        error: mapDomainErrorToSettingsError(domainError),
       };
     }
 
     // Validate using the provided schema (schema-agnostic)
     const validationResult = schema.validate(rawResult.value);
+    if (!validationResult.ok) {
+      // ValidationSchema.validate returns Result<T, SettingsError>, so we can return it directly
+      return validationResult;
+    }
     return validationResult;
   }
 
@@ -124,13 +171,14 @@ export class FoundrySettingsAdapter implements PlatformSettingsPort {
     const result = await this.foundrySettings.set(namespace, key, value);
 
     if (!result.ok) {
+      const domainError = this.errorMapper.map(result.error, {
+        operation: "set",
+        namespace,
+        key,
+      });
       return {
         ok: false,
-        error: this.errorMapper.map(result.error, {
-          operation: "set",
-          namespace,
-          key,
-        }),
+        error: mapDomainErrorToSettingsError(domainError),
       };
     }
 

@@ -2,7 +2,7 @@ import type { Logger } from "./logger.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
 import { traceContextToken } from "@/infrastructure/shared/tokens/observability/trace-context.token";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { LogLevel } from "@/domain/types/log-level";
 import {
   LoggerCompositionFactory,
@@ -19,7 +19,7 @@ export class ConsoleLoggerService implements Logger {
   private readonly logger: Logger;
 
   constructor(
-    config: RuntimeConfigService,
+    config: PlatformRuntimeConfigPort,
     traceContext?: TraceContext,
     factory?: ILoggerCompositionFactory
   ) {
@@ -60,7 +60,7 @@ export class ConsoleLoggerService implements Logger {
 export class DIConsoleLoggerService extends ConsoleLoggerService {
   static dependencies = [runtimeConfigToken, traceContextToken] as const;
 
-  constructor(config: RuntimeConfigService, traceContext?: TraceContext) {
+  constructor(config: PlatformRuntimeConfigPort, traceContext?: TraceContext) {
     super(config, traceContext);
   }
 }

@@ -4,11 +4,13 @@ import type { CacheServiceConfig } from "@/infrastructure/cache/cache.interface"
 import { createCacheKey } from "@/infrastructure/cache/cache.interface";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
+import { CacheCompositionFactory } from "@/infrastructure/cache/factory/CacheCompositionFactory";
 
 describe("Concurrency: Cache Access", () => {
   let service: CacheService;
   let now: number;
   let metrics: MetricsCollector;
+  let factory: CacheCompositionFactory;
 
   const createService = (config?: Partial<CacheServiceConfig>): CacheService => {
     const namespace = config?.namespace ?? DEFAULT_CACHE_SERVICE_CONFIG.namespace ?? "test-cache";
@@ -18,7 +20,16 @@ describe("Concurrency: Cache Access", () => {
       namespace,
       ...(config?.maxEntries !== undefined ? { maxEntries: config.maxEntries } : {}),
     };
-    return new CacheService(merged, metrics, () => now);
+    const composition = factory.create(merged, metrics, () => now);
+    return new CacheService(
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager,
+      () => now
+    );
   };
 
   beforeEach(() => {
@@ -26,6 +37,7 @@ describe("Concurrency: Cache Access", () => {
     metrics = {
       recordCacheAccess: vi.fn(),
     } as unknown as MetricsCollector;
+    factory = new CacheCompositionFactory();
     service = createService();
   });
 

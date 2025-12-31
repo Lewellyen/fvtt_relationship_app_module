@@ -202,9 +202,3 @@ export type SettingType =
   | "String"
   | "Number"
   | "Boolean";
-
-/**
- * Re-export SettingsError for convenience.
- * @deprecated Import from "@/domain/types/settings-error" instead.
- */
-export type { SettingsError } from "@/domain/types/settings-error";

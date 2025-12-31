@@ -1,5 +1,8 @@
 import type { Result } from "@/domain/types/result";
 import { assertCacheKey, type CacheKey } from "@/infrastructure/di/types/utilities/type-casts";
+import type { ICacheConfigManager } from "./config/cache-config-manager.interface";
+import type { ICacheStore } from "./store/cache-store.interface";
+import type { CachePolicy } from "./policy/cache-policy.interface";
 
 /**
  * CacheKey Brand-Type - re-exportiert von type-casts für Konsistenz.
@@ -71,10 +74,24 @@ export interface CacheStatistics {
 export type CacheInvalidationPredicate = (entry: CacheEntryMetadata) => boolean;
 
 /**
+ * Maintenance port for cache internal components.
+ * Used by infrastructure components that need access to cache internals
+ * (e.g., CacheConfigSync for configuration synchronization).
+ *
+ * Follows Interface Segregation Principle (ISP) by separating maintenance
+ * operations from normal cache operations.
+ */
+export interface CacheMaintenancePort {
+  getConfigManager(): ICacheConfigManager;
+  getStore(): ICacheStore;
+  getPolicy(): CachePolicy;
+}
+
+/**
  * CacheService contract exposed through DI.
  * Configuration updates are handled separately via CacheConfigSyncObserver.
  */
-export interface CacheService {
+export interface CacheService extends CacheMaintenancePort {
   readonly isEnabled: boolean;
   readonly size: number;
   get<TValue>(key: CacheKey): CacheLookupResult<TValue> | null;
@@ -90,22 +107,6 @@ export interface CacheService {
     factory: () => TValue | Promise<TValue>,
     options?: CacheSetOptions
   ): Promise<Result<CacheLookupResult<TValue>, string>>;
-  /**
-   * Gets the config manager for external synchronization.
-   * Used internally by CacheConfigSync to update configuration.
-   * @internal
-   */
-  getConfigManager(): import("./config/cache-config-manager.interface").ICacheConfigManager;
-  /**
-   * Gets the store for external use (e.g., CacheConfigSyncObserver).
-   * @internal
-   */
-  getStore(): import("./store/cache-store.interface").ICacheStore;
-  /**
-   * Gets the policy for external use (e.g., CacheConfigSyncObserver).
-   * @internal
-   */
-  getPolicy(): import("./policy/cache-policy.interface").CachePolicy;
 }
 
 // Re-export CacheServiceConfig for backward compatibility

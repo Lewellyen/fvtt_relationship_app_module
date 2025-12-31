@@ -1,4 +1,5 @@
 import type { RuntimeConfigKey, RuntimeConfigValues } from "@/domain/types/runtime-config";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { IRuntimeConfigStore } from "./RuntimeConfigStore";
 import type { IRuntimeConfigEventEmitter } from "./RuntimeConfigEventEmitter";
 
@@ -15,8 +16,10 @@ type RuntimeConfigListener<K extends RuntimeConfigKey> = (value: RuntimeConfigVa
  * to follow the Single Responsibility Principle.
  *
  * Follows Dependency Inversion Principle (DIP) by accepting dependencies via constructor injection.
+ *
+ * Implements PlatformRuntimeConfigPort interface for platform-agnostic usage.
  */
-export class RuntimeConfigService {
+export class RuntimeConfigService implements PlatformRuntimeConfigPort {
   constructor(
     private readonly store: IRuntimeConfigStore,
     private readonly emitter: IRuntimeConfigEventEmitter
@@ -30,10 +33,12 @@ export class RuntimeConfigService {
   }
 
   /**
-   * Updates the configuration value based on Foundry settings and notifies listeners
+   * Updates the configuration value based on platform settings and notifies listeners
    * only if the value actually changed.
+   *
+   * Implements PlatformRuntimeConfigPort interface.
    */
-  setFromFoundry<K extends RuntimeConfigKey>(key: K, value: RuntimeConfigValues[K]): void {
+  setFromPlatform<K extends RuntimeConfigKey>(key: K, value: RuntimeConfigValues[K]): void {
     const changed = this.store.set(key, value);
     if (changed) {
       this.emitter.notify(key, value);

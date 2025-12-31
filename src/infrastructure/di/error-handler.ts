@@ -10,7 +10,7 @@
  * @see sanitizeErrorForProduction for sanitization rules
  */
 
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
 import { sanitizeErrorForProduction } from "@/infrastructure/shared/utils/error-sanitizer";
 
@@ -31,7 +31,7 @@ import { sanitizeErrorForProduction } from "@/infrastructure/shared/utils/error-
  * ```
  */
 export class ContainerErrorHandler {
-  constructor(private readonly config: RuntimeConfigService) {}
+  constructor(private readonly config: PlatformRuntimeConfigPort) {}
 
   /**
    * Sanitizes a container error for safe logging/display.

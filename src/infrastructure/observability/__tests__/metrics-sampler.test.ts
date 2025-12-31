@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { MetricsSampler, DIMetricsSampler } from "@/infrastructure/observability/metrics-sampler";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 
 describe("MetricsSampler", () => {
-  let runtimeConfig: RuntimeConfigService;
+  let runtimeConfig: PlatformRuntimeConfigPort;
 
   beforeEach(() => {
     runtimeConfig = createMockRuntimeConfig();

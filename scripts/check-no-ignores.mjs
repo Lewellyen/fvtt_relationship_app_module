@@ -68,6 +68,11 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['v8 ignore'],
     reason: 'Coverage-Tool-Limitation: Early-Return-Pfad wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
   },
+  {
+    file: 'src/infrastructure/di/container.ts',
+    allowed: ['eslint-disable-next-line'],
+    reason: 'Circular Dependency Avoidance: Dynamic require() mit relativem Pfad notwendig, um zirkuläre Dependencies zur Modul-Ladezeit zu vermeiden. CommonJS require() unterstützt keine TypeScript path mappings (@/), daher relativer Pfad erforderlich.',
+  },
 
   // DI-Infrastruktur: Architektonisch notwendige Typen
   {

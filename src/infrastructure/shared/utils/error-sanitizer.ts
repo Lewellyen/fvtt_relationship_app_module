@@ -3,7 +3,7 @@
  * Prevents leaking sensitive information in error messages.
  */
 
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
 
 /**
@@ -30,7 +30,7 @@ import type { ContainerError } from "@/infrastructure/di/interfaces";
  * ```
  */
 export function sanitizeErrorForProduction(
-  config: RuntimeConfigService,
+  config: PlatformRuntimeConfigPort,
   error: ContainerError
 ): ContainerError {
   // In development, return full error details for debugging
@@ -56,7 +56,7 @@ export function sanitizeErrorForProduction(
  * @returns Sanitized message
  */
 export function sanitizeMessageForProduction(
-  config: RuntimeConfigService,
+  config: PlatformRuntimeConfigPort,
   message: string
 ): string {
   if (!config.get("isProduction")) {

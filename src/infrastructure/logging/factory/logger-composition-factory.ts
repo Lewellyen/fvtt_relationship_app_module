@@ -1,6 +1,6 @@
 import type { Logger } from "../logger.interface";
 import type { TraceContext } from "@/infrastructure/observability/trace/TraceContext";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import { BaseConsoleLogger } from "../BaseConsoleLogger";
 import { RuntimeConfigLoggerDecorator } from "../RuntimeConfigLoggerDecorator";
 import { StackTraceLoggerDecorator } from "../StackTraceLoggerDecorator";
@@ -14,11 +14,11 @@ export interface ILoggerCompositionFactory {
   /**
    * Creates a composed logger with all necessary decorators.
    *
-   * @param config - Runtime configuration service
+   * @param config - Runtime configuration port
    * @param traceContext - Optional trace context for trace ID injection
    * @returns Composed logger instance
    */
-  createLogger(config: RuntimeConfigService, traceContext?: TraceContext): Logger;
+  createLogger(config: PlatformRuntimeConfigPort, traceContext?: TraceContext): Logger;
 }
 
 /**
@@ -35,11 +35,11 @@ export class LoggerCompositionFactory implements ILoggerCompositionFactory {
   /**
    * Creates a composed logger with all necessary decorators.
    *
-   * @param config - Runtime configuration service
+   * @param config - Runtime configuration port
    * @param traceContext - Optional trace context for trace ID injection
    * @returns Composed logger instance
    */
-  createLogger(config: RuntimeConfigService, traceContext?: TraceContext): Logger {
+  createLogger(config: PlatformRuntimeConfigPort, traceContext?: TraceContext): Logger {
     const baseLogger = new BaseConsoleLogger(config.get("logLevel"));
     const withConfig = new RuntimeConfigLoggerDecorator(baseLogger, config);
     const withStackTrace = new StackTraceLoggerDecorator(withConfig, config);

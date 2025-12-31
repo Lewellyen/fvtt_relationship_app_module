@@ -5,7 +5,8 @@ import type { ContainerValidationState } from "../types/errors/containervalidati
 import type { ContainerError as DomainContainerError } from "@/domain/ports/platform-container-port.interface";
 import { ServiceResolver } from "./ServiceResolver";
 import { err, isOk } from "@/domain/utils/result";
-import { castResolvedService } from "../types/utilities/runtime-safe-cast";
+import { castResolvedService, castContainerErrorCode } from "../types/utilities/runtime-safe-cast";
+import { ContainerErrorImpl } from "../errors/ContainerErrorImpl";
 
 /**
  * Manages service resolution operations.
@@ -91,7 +92,15 @@ export class ServiceResolutionManager {
       return castResolvedService<T>(result.value);
     }
 
-    // No fallback - throw with context
-    throw new Error(`Cannot resolve ${String(token)}: ${result.error.message}`);
+    // Convert DomainContainerError to ContainerError for throwing
+    const containerError: ContainerError = {
+      code: castContainerErrorCode(result.error.code),
+      message: `Cannot resolve ${String(token)}: ${result.error.message}`,
+      tokenDescription: String(token),
+      cause: result.error.cause,
+    };
+
+    // Throw ContainerError-compatible error (LSP compliance)
+    throw new ContainerErrorImpl(containerError);
   }
 }

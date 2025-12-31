@@ -4,15 +4,27 @@ import { CacheService } from "../CacheService";
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import { DEFAULT_CACHE_SERVICE_CONFIG } from "../CacheService";
 import { assertCacheKey } from "@/infrastructure/di/types/utilities/type-casts";
+import { CacheCompositionFactory } from "../factory/CacheCompositionFactory";
 
 describe("CacheConfigSync", () => {
   let runtimeConfig: PlatformRuntimeConfigPort;
   let cache: CacheService;
   let configSync: CacheConfigSync;
+  let factory: CacheCompositionFactory;
 
   beforeEach(() => {
     runtimeConfig = createMockRuntimeConfig();
-    cache = new CacheService(DEFAULT_CACHE_SERVICE_CONFIG);
+    factory = new CacheCompositionFactory();
+    const composition = factory.create(DEFAULT_CACHE_SERVICE_CONFIG);
+    cache = new CacheService(
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager
+    );
+    // CacheService implements CacheMaintenancePort, so we can pass it directly
     configSync = new CacheConfigSync(runtimeConfig, cache);
   });
 

@@ -286,7 +286,7 @@ const _BootstrapPerformanceTracker = class _BootstrapPerformanceTracker extends 
   /**
    * Creates a bootstrap performance tracker.
    *
-   * @param env - Environment configuration for tracking settings
+   * @param config - Runtime configuration port
    * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
    */
   constructor(config2, sampler) {
@@ -332,10 +332,12 @@ const _RuntimeConfigService = class _RuntimeConfigService {
     return this.store.get(key);
   }
   /**
-   * Updates the configuration value based on Foundry settings and notifies listeners
+   * Updates the configuration value based on platform settings and notifies listeners
    * only if the value actually changed.
+   *
+   * Implements PlatformRuntimeConfigPort interface.
    */
-  setFromFoundry(key, value2) {
+  setFromPlatform(key, value2) {
     const changed = this.store.set(key, value2);
     if (changed) {
       this.emitter.notify(key, value2);
@@ -449,6 +451,26 @@ function createRuntimeConfig(env, store2, emitter) {
   );
 }
 __name(createRuntimeConfig, "createRuntimeConfig");
+const _RuntimeConfigAdapter = class _RuntimeConfigAdapter {
+  constructor(env) {
+    this.service = createRuntimeConfig(env);
+  }
+  get(key) {
+    return this.service.get(key);
+  }
+  setFromPlatform(key, value2) {
+    this.service.setFromPlatform(key, value2);
+  }
+  onChange(key, listener) {
+    return this.service.onChange(key, listener);
+  }
+};
+__name(_RuntimeConfigAdapter, "RuntimeConfigAdapter");
+let RuntimeConfigAdapter = _RuntimeConfigAdapter;
+function createRuntimeConfigAdapter(env) {
+  return new RuntimeConfigAdapter(env);
+}
+__name(createRuntimeConfigAdapter, "createRuntimeConfigAdapter");
 function castCachedServiceInstance(instance2) {
   return instance2;
 }
@@ -1939,6 +1961,33 @@ const _ContainerValidationManager = class _ContainerValidationManager {
 };
 __name(_ContainerValidationManager, "ContainerValidationManager");
 let ContainerValidationManager = _ContainerValidationManager;
+const _ContainerErrorImpl = class _ContainerErrorImpl extends Error {
+  constructor(error) {
+    super(error.message);
+    this.name = "ContainerError";
+    this.code = error.code;
+    if (error.cause !== void 0) {
+      this.cause = error.cause;
+    }
+    if (error.tokenDescription !== void 0) {
+      this.tokenDescription = error.tokenDescription;
+    }
+    if (error.details !== void 0) {
+      this.details = error.details;
+    }
+    if (error.stack !== void 0) {
+      this.stack = error.stack;
+    }
+    if (error.timestamp !== void 0) {
+      this.timestamp = error.timestamp;
+    }
+    if (error.containerScope !== void 0) {
+      this.containerScope = error.containerScope;
+    }
+  }
+};
+__name(_ContainerErrorImpl, "ContainerErrorImpl");
+let ContainerErrorImpl = _ContainerErrorImpl;
 const _ServiceResolutionManager = class _ServiceResolutionManager {
   constructor(resolver, isDisposed, getValidationState) {
     this.resolver = resolver;
@@ -1992,7 +2041,13 @@ const _ServiceResolutionManager = class _ServiceResolutionManager {
     if (isOk(result)) {
       return castResolvedService(result.value);
     }
-    throw new Error(`Cannot resolve ${String(token)}: ${result.error.message}`);
+    const containerError = {
+      code: castContainerErrorCode(result.error.code),
+      message: `Cannot resolve ${String(token)}: ${result.error.message}`,
+      tokenDescription: String(token),
+      cause: result.error.cause
+    };
+    throw new ContainerErrorImpl(containerError);
   }
 };
 __name(_ServiceResolutionManager, "ServiceResolutionManager");
@@ -2082,12 +2137,10 @@ __name(_ApiSecurityManager, "ApiSecurityManager");
 let ApiSecurityManager = _ApiSecurityManager;
 const _ServiceContainer = class _ServiceContainer {
   /**
-   * Private constructor - use ServiceContainer.createRoot() instead.
+   * Constructor for ServiceContainer.
    *
-   * This constructor is private to:
-   * - Enforce factory pattern usage
-   * - Prevent constructor throws (Result-Contract-breaking)
-   * - Make child creation explicit through createScope()
+   * **Note:** This constructor is public to allow ContainerBootstrapFactory to create instances.
+   * External code should use ServiceContainer.createRoot() or ContainerBootstrapFactory.createRoot().
    *
    * @param registry - Service registry
    * @param validator - Container validator (shared for parent/child)
@@ -2139,29 +2192,24 @@ const _ServiceContainer = class _ServiceContainer {
   /**
    * Creates a new root container.
    *
-   * This is the preferred way to create containers.
-   * All components are created fresh for the root container.
+   * **Note:** This method creates bootstrap dependencies (RuntimeConfig, PerformanceTracker) inline
+   * to avoid circular dependency with ContainerBootstrapFactory.
+   * The factory pattern is maintained via ContainerBootstrapFactory for external use (e.g., ContainerFactory).
    *
-   * **Bootstrap Performance Tracking:**
-   * Uses BootstrapPerformanceTracker with RuntimeConfigService(env) und null MetricsCollector.
-   * MetricsCollector is injected later via setMetricsCollector() after validation.
+   * **Architecture:**
+   * Creates bootstrap dependencies directly (infrastructure -> infrastructure, no violation).
+   * This avoids circular dependency while maintaining the same functionality.
    *
-   * @param env - Environment configuration (required for bootstrap performance tracking)
+   * @param env - Environment configuration
    * @returns A new root ServiceContainer
-   *
-   * @example
-   * ```typescript
-   * const container = ServiceContainer.createRoot(ENV);
-   * container.registerClass(LoggerToken, Logger, SINGLETON);
-   * container.validate();
-   * ```
    */
   static createRoot(env) {
     const registry = new ServiceRegistry();
     const validator = new ContainerValidator();
     const cache = new InstanceCache();
     const scopeManager = new ScopeManager("root", null, cache);
-    const performanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(env), null);
+    const runtimeConfig = new RuntimeConfigAdapter(env);
+    const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
     const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
     return new _ServiceContainer(
       registry,
@@ -2307,17 +2355,12 @@ const _ServiceContainer = class _ServiceContainer {
     const childRegistry = this.registry.clone();
     const childCache = scopeResult.value.cache;
     const childManager = scopeResult.value.manager;
-    const childPerformanceTracker = new BootstrapPerformanceTracker(
-      createRuntimeConfig(this.env),
-      null
-    );
-    const childResolver = new ServiceResolver(
+    const { resolver: childResolver } = this.createBootstrapDependencies(
       childRegistry,
       childCache,
       this.resolver,
       // Parent resolver for singleton delegation
-      scopeResult.value.scopeName,
-      childPerformanceTracker
+      scopeResult.value.scopeName
     );
     const child = new _ServiceContainer(
       childRegistry,
@@ -2340,7 +2383,7 @@ const _ServiceContainer = class _ServiceContainer {
   resolve(token) {
     const securityResult = this.apiSecurityManager.validateApiSafeToken(token);
     if (!securityResult.ok) {
-      throw new Error(securityResult.error.message);
+      throw new ContainerErrorImpl(securityResult.error);
     }
     return this.resolutionManager.resolve(token);
   }
@@ -2417,18 +2460,118 @@ const _ServiceContainer = class _ServiceContainer {
     this.validationManager.resetValidationState();
     return ok(void 0);
   }
+  /**
+   * Creates bootstrap dependencies for a scope (RuntimeConfig, PerformanceTracker, Resolver).
+   *
+   * **Responsibility:** Bootstrap dependency creation (extracted from createScope for SRP).
+   * This method encapsulates the creation of bootstrap-specific components to separate
+   * concerns from container logic.
+   *
+   * @private
+   * @param registry - Service registry for the scope
+   * @param cache - Instance cache for the scope
+   * @param parentResolver - Parent resolver for singleton delegation
+   * @param scopeName - Name of the scope
+   * @returns Object with resolver and performance tracker
+   */
+  /**
+   * Creates bootstrap dependencies for a scope (RuntimeConfig, PerformanceTracker, Resolver).
+   *
+   * **Responsibility:** Bootstrap dependency creation (extracted from createScope for SRP).
+   * This method encapsulates the creation of bootstrap-specific components to separate
+   * concerns from container logic.
+   *
+   * @private
+   * @param registry - Service registry for the scope
+   * @param cache - Instance cache for the scope
+   * @param parentResolver - Parent resolver for singleton delegation
+   * @param scopeName - Name of the scope
+   * @returns Object with resolver and performance tracker
+   */
+  createBootstrapDependencies(registry, cache, parentResolver, scopeName) {
+    const runtimeConfig = new RuntimeConfigAdapter(this.env);
+    const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
+    const resolver = new ServiceResolver(
+      registry,
+      cache,
+      parentResolver,
+      scopeName,
+      performanceTracker
+    );
+    return { resolver, performanceTracker };
+  }
 };
 __name(_ServiceContainer, "ServiceContainer");
 let ServiceContainer = _ServiceContainer;
+const _ContainerBootstrapFactory = class _ContainerBootstrapFactory {
+  /**
+   * Creates a root ServiceContainer with bootstrap dependencies.
+   *
+   * Creates and wires:
+   * - RuntimeConfig from environment
+   * - BootstrapPerformanceTracker (no MetricsCollector during bootstrap)
+   * - ServiceResolver with performance tracking
+   * - ServiceContainer with all dependencies
+   *
+   * @param env - Environment configuration
+   * @returns A new root ServiceContainer
+   */
+  createRoot(env) {
+    const registry = new ServiceRegistry();
+    const validator = new ContainerValidator();
+    const cache = new InstanceCache();
+    const scopeManager = new ScopeManager("root", null, cache);
+    const runtimeConfig = new RuntimeConfigAdapter(env);
+    const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
+    const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
+    return new ServiceContainer(
+      registry,
+      validator,
+      cache,
+      resolver,
+      scopeManager,
+      "registering",
+      env
+    );
+  }
+  /**
+   * Creates a child scope container with bootstrap dependencies.
+   *
+   * Creates and wires:
+   * - RuntimeConfig from parent's environment
+   * - BootstrapPerformanceTracker for child scope
+   * - ServiceResolver with performance tracking
+   * - Child ServiceContainer with all dependencies
+   *
+   * @param parent - Parent container
+   * @param name - Optional custom name for the scope
+   * @returns Result with child container or error
+   */
+  createScope(parent, name) {
+    return parent.createScope(name);
+  }
+};
+__name(_ContainerBootstrapFactory, "ContainerBootstrapFactory");
+let ContainerBootstrapFactory = _ContainerBootstrapFactory;
 const _ContainerFactory = class _ContainerFactory {
   /**
+   * Creates a new ContainerFactory instance.
+   *
+   * @param bootstrapFactory - Optional bootstrap factory (defaults to new instance)
+   */
+  constructor(bootstrapFactory) {
+    this.bootstrapFactory = bootstrapFactory ?? new ContainerBootstrapFactory();
+  }
+  /**
    * Creates a root ServiceContainer with the given environment configuration.
+   *
+   * Delegates to ContainerBootstrapFactory to maintain SRP (bootstrap logic separated).
    *
    * @param env - Environment configuration
    * @returns A new ServiceContainer instance
    */
   createRoot(env) {
-    return ServiceContainer.createRoot(env);
+    return this.bootstrapFactory.createRoot(env);
   }
 };
 __name(_ContainerFactory, "ContainerFactory");
@@ -2484,26 +2627,6 @@ const platformConsoleChannelPortToken = createInjectionToken(
 const platformUIAvailabilityPortToken = createInjectionToken(
   "PlatformUIAvailabilityPort"
 );
-const _RuntimeConfigAdapter = class _RuntimeConfigAdapter {
-  constructor(env) {
-    this.service = createRuntimeConfig(env);
-  }
-  get(key) {
-    return this.service.get(key);
-  }
-  setFromPlatform(key, value2) {
-    this.service.setFromFoundry(key, value2);
-  }
-  onChange(key, listener) {
-    return this.service.onChange(key, listener);
-  }
-};
-__name(_RuntimeConfigAdapter, "RuntimeConfigAdapter");
-let RuntimeConfigAdapter = _RuntimeConfigAdapter;
-function createRuntimeConfigAdapter(env) {
-  return new RuntimeConfigAdapter(env);
-}
-__name(createRuntimeConfigAdapter, "createRuntimeConfigAdapter");
 const _ContainerHealthCheck = class _ContainerHealthCheck {
   constructor(container) {
     this.name = "container";
@@ -10369,6 +10492,151 @@ registerDependencyStep({
 const cacheServiceConfigToken = createInjectionToken("CacheServiceConfig");
 const cacheServiceToken = createInjectionToken("CacheService");
 const cacheConfigSyncToken = createInjectionToken("CacheConfigSync");
+const cacheMaintenancePortToken = createInjectionToken("CacheMaintenancePort");
+const _CacheStore = class _CacheStore {
+  constructor() {
+    this.store = /* @__PURE__ */ new Map();
+  }
+  get(key) {
+    return this.store.get(key);
+  }
+  set(key, entry) {
+    this.store.set(key, entry);
+  }
+  delete(key) {
+    return this.store.delete(key);
+  }
+  has(key) {
+    return this.store.has(key);
+  }
+  clear() {
+    const size2 = this.store.size;
+    this.store.clear();
+    return size2;
+  }
+  get size() {
+    return this.store.size;
+  }
+  entries() {
+    return this.store.entries();
+  }
+};
+__name(_CacheStore, "CacheStore");
+let CacheStore = _CacheStore;
+function clampTtl$1(ttl, fallback2) {
+  if (typeof ttl !== "number" || Number.isNaN(ttl)) {
+    return fallback2;
+  }
+  return ttl < 0 ? 0 : ttl;
+}
+__name(clampTtl$1, "clampTtl$1");
+function defaultClock() {
+  return Date.now();
+}
+__name(defaultClock, "defaultClock");
+const _CacheExpirationManager = class _CacheExpirationManager {
+  constructor(clock) {
+    this.clock = clock ?? defaultClock;
+  }
+  isExpired(entry, now) {
+    return typeof entry.expiresAt === "number" && entry.expiresAt > 0 && entry.expiresAt <= now;
+  }
+  createMetadata(key, options, now, defaultTtlMs) {
+    const ttlMs = clampTtl$1(options?.ttlMs, defaultTtlMs);
+    const expiresAt = ttlMs > 0 ? now + ttlMs : null;
+    const tags = options?.tags ? Array.from(new Set(options.tags.map((tag) => String(tag)))) : [];
+    return {
+      key,
+      createdAt: now,
+      expiresAt,
+      lastAccessedAt: now,
+      hits: 0,
+      tags
+    };
+  }
+  handleExpiration(key, store2) {
+    return store2.delete(key);
+  }
+};
+__name(_CacheExpirationManager, "CacheExpirationManager");
+let CacheExpirationManager = _CacheExpirationManager;
+const _CacheStatisticsCollector = class _CacheStatisticsCollector {
+  constructor(metricsObserver) {
+    this.metricsObserver = metricsObserver;
+    this.stats = {
+      hits: 0,
+      misses: 0,
+      evictions: 0
+    };
+  }
+  recordHit(key) {
+    this.metricsObserver.onCacheHit(key);
+    this.stats.hits++;
+  }
+  recordMiss(key) {
+    this.metricsObserver.onCacheMiss(key);
+    this.stats.misses++;
+  }
+  recordEviction(key) {
+    this.metricsObserver.onCacheEviction(key);
+    this.stats.evictions++;
+  }
+  getStatistics(size2, enabled) {
+    return {
+      hits: this.stats.hits,
+      misses: this.stats.misses,
+      evictions: this.stats.evictions,
+      size: size2,
+      enabled
+    };
+  }
+  reset() {
+    this.stats.hits = 0;
+    this.stats.misses = 0;
+    this.stats.evictions = 0;
+  }
+};
+__name(_CacheStatisticsCollector, "CacheStatisticsCollector");
+let CacheStatisticsCollector = _CacheStatisticsCollector;
+const DEFAULT_CACHE_SERVICE_CONFIG$1 = {
+  enabled: true,
+  defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
+  namespace: "global"
+};
+function clampTtl(ttl, fallback2) {
+  if (typeof ttl !== "number" || Number.isNaN(ttl)) {
+    return fallback2;
+  }
+  return ttl < 0 ? 0 : ttl;
+}
+__name(clampTtl, "clampTtl");
+const _CacheConfigManager = class _CacheConfigManager {
+  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG$1) {
+    const resolvedMaxEntries = typeof config2?.maxEntries === "number" && config2.maxEntries > 0 ? config2.maxEntries : void 0;
+    this.config = {
+      ...DEFAULT_CACHE_SERVICE_CONFIG$1,
+      ...config2,
+      defaultTtlMs: clampTtl(config2?.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG$1.defaultTtlMs),
+      ...resolvedMaxEntries !== void 0 ? { maxEntries: resolvedMaxEntries } : {}
+    };
+  }
+  updateConfig(partial2) {
+    const merged = {
+      ...this.config,
+      ...partial2
+    };
+    merged.defaultTtlMs = clampTtl(merged.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG$1.defaultTtlMs);
+    this.config = merged;
+  }
+  getConfig() {
+    return { ...this.config };
+  }
+  isEnabled() {
+    return this.config.enabled;
+  }
+};
+__name(_CacheConfigManager, "CacheConfigManager");
+let CacheConfigManager = _CacheConfigManager;
 const _CacheCapacityManager = class _CacheCapacityManager {
   constructor(strategy, store2) {
     this.strategy = strategy;
@@ -10540,150 +10808,6 @@ const _CacheMetricsCollector = class _CacheMetricsCollector {
 };
 __name(_CacheMetricsCollector, "CacheMetricsCollector");
 let CacheMetricsCollector = _CacheMetricsCollector;
-const _CacheStore = class _CacheStore {
-  constructor() {
-    this.store = /* @__PURE__ */ new Map();
-  }
-  get(key) {
-    return this.store.get(key);
-  }
-  set(key, entry) {
-    this.store.set(key, entry);
-  }
-  delete(key) {
-    return this.store.delete(key);
-  }
-  has(key) {
-    return this.store.has(key);
-  }
-  clear() {
-    const size2 = this.store.size;
-    this.store.clear();
-    return size2;
-  }
-  get size() {
-    return this.store.size;
-  }
-  entries() {
-    return this.store.entries();
-  }
-};
-__name(_CacheStore, "CacheStore");
-let CacheStore = _CacheStore;
-function clampTtl$1(ttl, fallback2) {
-  if (typeof ttl !== "number" || Number.isNaN(ttl)) {
-    return fallback2;
-  }
-  return ttl < 0 ? 0 : ttl;
-}
-__name(clampTtl$1, "clampTtl$1");
-function defaultClock() {
-  return Date.now();
-}
-__name(defaultClock, "defaultClock");
-const _CacheExpirationManager = class _CacheExpirationManager {
-  constructor(clock) {
-    this.clock = clock ?? defaultClock;
-  }
-  isExpired(entry, now) {
-    return typeof entry.expiresAt === "number" && entry.expiresAt > 0 && entry.expiresAt <= now;
-  }
-  createMetadata(key, options, now, defaultTtlMs) {
-    const ttlMs = clampTtl$1(options?.ttlMs, defaultTtlMs);
-    const expiresAt = ttlMs > 0 ? now + ttlMs : null;
-    const tags = options?.tags ? Array.from(new Set(options.tags.map((tag) => String(tag)))) : [];
-    return {
-      key,
-      createdAt: now,
-      expiresAt,
-      lastAccessedAt: now,
-      hits: 0,
-      tags
-    };
-  }
-  handleExpiration(key, store2) {
-    return store2.delete(key);
-  }
-};
-__name(_CacheExpirationManager, "CacheExpirationManager");
-let CacheExpirationManager = _CacheExpirationManager;
-const _CacheStatisticsCollector = class _CacheStatisticsCollector {
-  constructor(metricsObserver) {
-    this.metricsObserver = metricsObserver;
-    this.stats = {
-      hits: 0,
-      misses: 0,
-      evictions: 0
-    };
-  }
-  recordHit(key) {
-    this.metricsObserver.onCacheHit(key);
-    this.stats.hits++;
-  }
-  recordMiss(key) {
-    this.metricsObserver.onCacheMiss(key);
-    this.stats.misses++;
-  }
-  recordEviction(key) {
-    this.metricsObserver.onCacheEviction(key);
-    this.stats.evictions++;
-  }
-  getStatistics(size2, enabled) {
-    return {
-      hits: this.stats.hits,
-      misses: this.stats.misses,
-      evictions: this.stats.evictions,
-      size: size2,
-      enabled
-    };
-  }
-  reset() {
-    this.stats.hits = 0;
-    this.stats.misses = 0;
-    this.stats.evictions = 0;
-  }
-};
-__name(_CacheStatisticsCollector, "CacheStatisticsCollector");
-let CacheStatisticsCollector = _CacheStatisticsCollector;
-const DEFAULT_CACHE_SERVICE_CONFIG$1 = {
-  enabled: true,
-  defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
-  namespace: "global"
-};
-function clampTtl(ttl, fallback2) {
-  if (typeof ttl !== "number" || Number.isNaN(ttl)) {
-    return fallback2;
-  }
-  return ttl < 0 ? 0 : ttl;
-}
-__name(clampTtl, "clampTtl");
-const _CacheConfigManager = class _CacheConfigManager {
-  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG$1) {
-    const resolvedMaxEntries = typeof config2?.maxEntries === "number" && config2.maxEntries > 0 ? config2.maxEntries : void 0;
-    this.config = {
-      ...DEFAULT_CACHE_SERVICE_CONFIG$1,
-      ...config2,
-      defaultTtlMs: clampTtl(config2?.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG$1.defaultTtlMs),
-      ...resolvedMaxEntries !== void 0 ? { maxEntries: resolvedMaxEntries } : {}
-    };
-  }
-  updateConfig(partial2) {
-    const merged = {
-      ...this.config,
-      ...partial2
-    };
-    merged.defaultTtlMs = clampTtl(merged.defaultTtlMs, DEFAULT_CACHE_SERVICE_CONFIG$1.defaultTtlMs);
-    this.config = merged;
-  }
-  getConfig() {
-    return { ...this.config };
-  }
-  isEnabled() {
-    return this.config.enabled;
-  }
-};
-__name(_CacheConfigManager, "CacheConfigManager");
-let CacheConfigManager = _CacheConfigManager;
 function toStringKeyArray(allowed) {
   return allowed;
 }
@@ -10855,18 +10979,28 @@ const _CacheTelemetry = class _CacheTelemetry {
 };
 __name(_CacheTelemetry, "CacheTelemetry");
 let CacheTelemetry = _CacheTelemetry;
-const DEFAULT_CACHE_SERVICE_CONFIG = {
-  enabled: true,
-  defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
-  namespace: "global"
-};
-const _CacheService = class _CacheService {
-  constructor(config2 = DEFAULT_CACHE_SERVICE_CONFIG, metricsCollector, clock = () => Date.now(), capacityManager, metricsObserver, store2, expirationManager, statisticsCollector, configManager, runtime, policy, telemetry) {
-    this.metricsCollector = metricsCollector;
-    this.clock = clock;
-    this.store = store2 ?? new CacheStore();
-    this.configManager = configManager ?? new CacheConfigManager(config2);
-    this.expirationManager = expirationManager ?? new CacheExpirationManager(clock);
+const _CacheCompositionFactory = class _CacheCompositionFactory {
+  /**
+   * Creates a complete cache composition from configuration.
+   *
+   * @param config - Cache service configuration
+   * @param metricsCollector - Optional metrics collector
+   * @param clock - Clock function (defaults to Date.now)
+   * @param capacityManager - Optional capacity manager (created if not provided)
+   * @param metricsObserver - Optional metrics observer (created if not provided)
+   * @param store - Optional store (created if not provided)
+   * @param expirationManager - Optional expiration manager (created if not provided)
+   * @param statisticsCollector - Optional statistics collector (created if not provided)
+   * @param configManager - Optional config manager (created if not provided)
+   * @param runtime - Optional runtime (created if not provided)
+   * @param policy - Optional policy (created if not provided)
+   * @param telemetry - Optional telemetry (created if not provided)
+   * @returns Complete cache composition
+   */
+  create(config2, metricsCollector, clock = () => Date.now(), capacityManager, metricsObserver, store2, expirationManager, statisticsCollector, configManager, runtime, policy, telemetry) {
+    const resolvedStore = store2 ?? new CacheStore();
+    const resolvedConfigManager = configManager ?? new CacheConfigManager(config2);
+    const resolvedExpirationManager = expirationManager ?? new CacheExpirationManager(clock);
     let resolvedCapacityManager = capacityManager;
     if (!resolvedCapacityManager) {
       const registry = EvictionStrategyRegistry.getInstance();
@@ -10876,50 +11010,58 @@ const _CacheService = class _CacheService {
       const strategyKey = config2.evictionStrategyKey ?? "lru";
       const strategy = registry.getOrDefault(strategyKey, "lru");
       if (!strategy) {
-        resolvedCapacityManager = new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
+        resolvedCapacityManager = new CacheCapacityManager(
+          new LRUEvictionStrategy(),
+          resolvedStore
+        );
       } else {
-        resolvedCapacityManager = new CacheCapacityManager(strategy, this.store);
+        resolvedCapacityManager = new CacheCapacityManager(strategy, resolvedStore);
       }
     }
     const resolvedMetricsObserver = metricsObserver ?? new CacheMetricsCollector(metricsCollector);
     const resolvedStatisticsCollector = statisticsCollector ?? new CacheStatisticsCollector(resolvedMetricsObserver);
-    this.telemetry = telemetry ?? new CacheTelemetry(resolvedStatisticsCollector);
-    this.policy = policy ?? new CachePolicy(resolvedCapacityManager);
-    this.runtime = runtime ?? new CacheRuntime(
-      this.store,
-      this.expirationManager,
-      this.configManager,
-      this.telemetry,
-      this.policy,
+    const resolvedTelemetry = telemetry ?? new CacheTelemetry(resolvedStatisticsCollector);
+    const resolvedPolicy = policy ?? new CachePolicy(resolvedCapacityManager);
+    const resolvedRuntime = runtime ?? new CacheRuntime(
+      resolvedStore,
+      resolvedExpirationManager,
+      resolvedConfigManager,
+      resolvedTelemetry,
+      resolvedPolicy,
       clock
     );
+    return {
+      runtime: resolvedRuntime,
+      policy: resolvedPolicy,
+      telemetry: resolvedTelemetry,
+      store: resolvedStore,
+      configManager: resolvedConfigManager,
+      expirationManager: resolvedExpirationManager
+    };
+  }
+};
+__name(_CacheCompositionFactory, "CacheCompositionFactory");
+let CacheCompositionFactory = _CacheCompositionFactory;
+const DEFAULT_CACHE_SERVICE_CONFIG = {
+  enabled: true,
+  defaultTtlMs: APP_DEFAULTS.CACHE_TTL_MS,
+  namespace: "global"
+};
+const _CacheService = class _CacheService {
+  constructor(runtime, policy, telemetry, store2, configManager, expirationManager, clock = () => Date.now()) {
+    this.runtime = runtime;
+    this.policy = policy;
+    this.telemetry = telemetry;
+    this.store = store2;
+    this.configManager = configManager;
+    this.expirationManager = expirationManager;
+    this.clock = clock;
   }
   get isEnabled() {
     return this.configManager.isEnabled();
   }
   get size() {
     return this.store.size;
-  }
-  /**
-   * Gets the config manager for external synchronization.
-   * Used by CacheConfigSync to update configuration.
-   */
-  getConfigManager() {
-    return this.configManager;
-  }
-  /**
-   * Gets the store for external use (e.g., CacheConfigSyncObserver).
-   * @internal
-   */
-  getStore() {
-    return this.store;
-  }
-  /**
-   * Gets the policy for external use (e.g., CacheConfigSyncObserver).
-   * @internal
-   */
-  getPolicy() {
-    return this.policy;
   }
   get(key) {
     return this.runtime.get(key);
@@ -11005,6 +11147,15 @@ const _CacheService = class _CacheService {
   getStatistics() {
     return this.telemetry.getStatistics(this.store.size, this.isEnabled);
   }
+  getConfigManager() {
+    return this.configManager;
+  }
+  getStore() {
+    return this.store;
+  }
+  getPolicy() {
+    return this.policy;
+  }
   cloneMetadata(metadata2) {
     return {
       ...metadata2,
@@ -11015,8 +11166,17 @@ const _CacheService = class _CacheService {
 __name(_CacheService, "CacheService");
 let CacheService = _CacheService;
 const _DICacheService = class _DICacheService extends CacheService {
-  constructor(config2, metrics) {
-    super(config2, metrics);
+  constructor(_config, _metrics) {
+    const factory = new CacheCompositionFactory();
+    const composition = factory.create(_config, _metrics);
+    super(
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager
+    );
   }
 };
 __name(_DICacheService, "DICacheService");
@@ -11057,14 +11217,14 @@ const _CacheConfigSyncObserver = class _CacheConfigSyncObserver {
 __name(_CacheConfigSyncObserver, "CacheConfigSyncObserver");
 let CacheConfigSyncObserver = _CacheConfigSyncObserver;
 const _CacheConfigSync = class _CacheConfigSync {
-  constructor(runtimeConfig, cache) {
+  constructor(runtimeConfig, cacheMaintenance) {
     this.runtimeConfig = runtimeConfig;
-    this.cache = cache;
+    this.cacheMaintenance = cacheMaintenance;
     this.unsubscribe = null;
     this.observer = new CacheConfigSyncObserver(
-      cache.getStore(),
-      cache.getPolicy(),
-      cache.getConfigManager()
+      cacheMaintenance.getStore(),
+      cacheMaintenance.getPolicy(),
+      cacheMaintenance.getConfigManager()
     );
   }
   /**
@@ -11078,21 +11238,23 @@ const _CacheConfigSync = class _CacheConfigSync {
       this.unsubscribe();
     }
     const unsubscribers = [];
-    const configManager = this.cache.getConfigManager();
     unsubscribers.push(
       this.runtimeConfig.onChange("enableCacheService", (enabled) => {
+        const configManager = this.cacheMaintenance.getConfigManager();
         configManager.updateConfig({ enabled });
         this.observer.onConfigUpdated(configManager.getConfig());
       })
     );
     unsubscribers.push(
       this.runtimeConfig.onChange("cacheDefaultTtlMs", (ttl) => {
+        const configManager = this.cacheMaintenance.getConfigManager();
         configManager.updateConfig({ defaultTtlMs: ttl });
         this.observer.onConfigUpdated(configManager.getConfig());
       })
     );
     unsubscribers.push(
       this.runtimeConfig.onChange("cacheMaxEntries", (maxEntries2) => {
+        const configManager = this.cacheMaintenance.getConfigManager();
         configManager.updateConfig({
           maxEntries: typeof maxEntries2 === "number" && maxEntries2 > 0 ? maxEntries2 : void 0
         });
@@ -11117,12 +11279,12 @@ const _CacheConfigSync = class _CacheConfigSync {
 __name(_CacheConfigSync, "CacheConfigSync");
 let CacheConfigSync = _CacheConfigSync;
 const _DICacheConfigSync = class _DICacheConfigSync extends CacheConfigSync {
-  constructor(runtimeConfig, cache) {
-    super(runtimeConfig, cache);
+  constructor(runtimeConfig, cacheMaintenance) {
+    super(runtimeConfig, cacheMaintenance);
   }
 };
 __name(_DICacheConfigSync, "DICacheConfigSync");
-_DICacheConfigSync.dependencies = [runtimeConfigToken, cacheServiceToken];
+_DICacheConfigSync.dependencies = [runtimeConfigToken];
 let DICacheConfigSync = _DICacheConfigSync;
 const _CachePortAdapter = class _CachePortAdapter {
   constructor(cacheService) {
@@ -11283,13 +11445,48 @@ function registerCacheServices(container) {
   if (isErr(configResult)) {
     return err(`Failed to register CacheServiceConfig: ${configResult.error.message}`);
   }
-  const serviceResult = container.registerClass(
+  const serviceResult = container.registerFactory(
     cacheServiceToken,
-    DICacheService,
-    ServiceLifecycle.SINGLETON
+    () => {
+      const configResult2 = container.resolveWithError(cacheServiceConfigToken);
+      if (!configResult2.ok) {
+        throw new Error(`Failed to resolve CacheServiceConfig: ${configResult2.error.message}`);
+      }
+      const metricsResult = container.resolveWithError(
+        metricsCollectorToken
+      );
+      const metricsCollector = metricsResult.ok ? metricsResult.value : void 0;
+      const factory = new CacheCompositionFactory();
+      const composition = factory.create(configResult2.value, metricsCollector);
+      return new CacheService(
+        composition.runtime,
+        composition.policy,
+        composition.telemetry,
+        composition.store,
+        composition.configManager,
+        composition.expirationManager
+      );
+    },
+    ServiceLifecycle.SINGLETON,
+    [cacheServiceConfigToken, metricsCollectorToken]
   );
   if (isErr(serviceResult)) {
     return err(`Failed to register CacheService: ${serviceResult.error.message}`);
+  }
+  const maintenancePortResult = container.registerFactory(
+    cacheMaintenancePortToken,
+    () => {
+      const serviceResult2 = container.resolveWithError(cacheServiceToken);
+      if (!serviceResult2.ok) {
+        throw new Error(`Failed to resolve CacheService: ${serviceResult2.error.message}`);
+      }
+      return serviceResult2.value;
+    },
+    ServiceLifecycle.SINGLETON,
+    [cacheServiceToken]
+  );
+  if (isErr(maintenancePortResult)) {
+    return err(`Failed to register CacheMaintenancePort: ${maintenancePortResult.error.message}`);
   }
   const readerPortResult = container.registerClass(
     cacheReaderPortToken,
@@ -11331,10 +11528,25 @@ function registerCacheServices(container) {
   if (isErr(computePortResult)) {
     return err(`Failed to register CacheComputePort: ${computePortResult.error.message}`);
   }
-  const configSyncResult = container.registerClass(
+  const configSyncResult = container.registerFactory(
     cacheConfigSyncToken,
-    DICacheConfigSync,
-    ServiceLifecycle.SINGLETON
+    () => {
+      const runtimeConfigResult = container.resolveWithError(runtimeConfigToken);
+      if (!runtimeConfigResult.ok) {
+        throw new Error(
+          `Failed to resolve PlatformRuntimeConfigPort: ${runtimeConfigResult.error.message}`
+        );
+      }
+      const maintenancePortResult2 = container.resolveWithError(cacheMaintenancePortToken);
+      if (!maintenancePortResult2.ok) {
+        throw new Error(
+          `Failed to resolve CacheMaintenancePort: ${maintenancePortResult2.error.message}`
+        );
+      }
+      return new DICacheConfigSync(runtimeConfigResult.value, maintenancePortResult2.value);
+    },
+    ServiceLifecycle.SINGLETON,
+    [runtimeConfigToken, cacheMaintenancePortToken]
   );
   if (isErr(configSyncResult)) {
     return err(`Failed to register CacheConfigSync: ${configSyncResult.error.message}`);
@@ -12467,7 +12679,7 @@ const _LoggerCompositionFactory = class _LoggerCompositionFactory {
   /**
    * Creates a composed logger with all necessary decorators.
    *
-   * @param config - Runtime configuration service
+   * @param config - Runtime configuration port
    * @param traceContext - Optional trace context for trace ID injection
    * @returns Composed logger instance
    */
@@ -19936,6 +20148,39 @@ registerDependencyStep({
 });
 const settingTypeMapperToken = createInjectionToken("SettingTypeMapper");
 const settingsErrorMapperToken = createInjectionToken("SettingsErrorMapper");
+function mapDomainErrorToSettingsError(error) {
+  let code;
+  switch (error.code) {
+    case "SETTING_REGISTRATION_FAILED":
+      code = "SETTING_REGISTRATION_FAILED";
+      break;
+    case "SETTING_NOT_FOUND":
+      code = "SETTING_NOT_REGISTERED";
+      break;
+    case "INVALID_SETTING_VALUE":
+      code = "SETTING_VALIDATION_FAILED";
+      break;
+    case "SETTING_READ_FAILED":
+    case "SETTING_WRITE_FAILED":
+      if (error.message.toLowerCase().includes("not found") || error.message.toLowerCase().includes("not registered")) {
+        code = "SETTING_NOT_REGISTERED";
+      } else {
+        code = "SETTING_VALIDATION_FAILED";
+      }
+      break;
+    case "PLATFORM_NOT_AVAILABLE":
+      code = "PLATFORM_NOT_AVAILABLE";
+      break;
+    default:
+      code = "SETTING_REGISTRATION_FAILED";
+  }
+  return {
+    code,
+    message: error.message,
+    details: error.details
+  };
+}
+__name(mapDomainErrorToSettingsError, "mapDomainErrorToSettingsError");
 const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
   constructor(foundrySettings, typeMapper, errorMapper) {
     this.foundrySettings = foundrySettings;
@@ -19952,7 +20197,7 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
     if (!typeResult.ok) {
       return {
         ok: false,
-        error: typeResult.error
+        error: mapDomainErrorToSettingsError(typeResult.error)
       };
     }
     const foundryConfig = {
@@ -19967,13 +20212,14 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
     };
     const result = this.foundrySettings.register(namespace, key, foundryConfig);
     if (!result.ok) {
+      const domainError = this.errorMapper.map(result.error, {
+        operation: "register",
+        namespace,
+        key
+      });
       return {
         ok: false,
-        error: this.errorMapper.map(result.error, {
-          operation: "register",
-          namespace,
-          key
-        })
+        error: mapDomainErrorToSettingsError(domainError)
       };
     }
     return { ok: true, value: void 0 };
@@ -19988,16 +20234,20 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
   get(namespace, key, schema) {
     const rawResult = this.foundrySettings.get(namespace, key, /* @__PURE__ */ unknown());
     if (!rawResult.ok) {
+      const domainError = this.errorMapper.map(rawResult.error, {
+        operation: "get",
+        namespace,
+        key
+      });
       return {
         ok: false,
-        error: this.errorMapper.map(rawResult.error, {
-          operation: "get",
-          namespace,
-          key
-        })
+        error: mapDomainErrorToSettingsError(domainError)
       };
     }
     const validationResult = schema.validate(rawResult.value);
+    if (!validationResult.ok) {
+      return validationResult;
+    }
     return validationResult;
   }
   /**
@@ -20008,13 +20258,14 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
   async set(namespace, key, value2) {
     const result = await this.foundrySettings.set(namespace, key, value2);
     if (!result.ok) {
+      const domainError = this.errorMapper.map(result.error, {
+        operation: "set",
+        namespace,
+        key
+      });
       return {
         ok: false,
-        error: this.errorMapper.map(result.error, {
-          operation: "set",
-          namespace,
-          key
-        })
+        error: mapDomainErrorToSettingsError(domainError)
       };
     }
     return { ok: true, value: void 0 };
@@ -20078,7 +20329,7 @@ const _FoundrySettingsErrorMapper = class _FoundrySettingsErrorMapper {
         code = "PLATFORM_NOT_AVAILABLE";
         break;
       case "VALIDATION_FAILED":
-        code = "SETTING_VALIDATION_FAILED";
+        code = "INVALID_SETTING_VALUE";
         break;
       case "OPERATION_FAILED":
         if (context.operation === "register") {
@@ -20086,14 +20337,22 @@ const _FoundrySettingsErrorMapper = class _FoundrySettingsErrorMapper {
         } else {
           const message2 = foundryError.message.toLowerCase();
           if (message2.includes("not registered") || message2.includes("not found")) {
-            code = "SETTING_NOT_REGISTERED";
+            code = "SETTING_NOT_FOUND";
+          } else if (context.operation === "get") {
+            code = "SETTING_READ_FAILED";
           } else {
-            code = "SETTING_VALIDATION_FAILED";
+            code = "SETTING_WRITE_FAILED";
           }
         }
         break;
       default:
-        code = context.operation === "register" ? "SETTING_REGISTRATION_FAILED" : "SETTING_VALIDATION_FAILED";
+        if (context.operation === "register") {
+          code = "SETTING_REGISTRATION_FAILED";
+        } else if (context.operation === "get") {
+          code = "SETTING_READ_FAILED";
+        } else {
+          code = "SETTING_WRITE_FAILED";
+        }
     }
     return {
       code,
@@ -20356,12 +20615,28 @@ const _CompositionRoot = class _CompositionRoot {
    * @param performanceTracker - Optional performance tracker (created internally if not provided)
    * @param errorHandler - Optional error handler (defaults to BootstrapErrorHandler)
    */
-  constructor(containerFactory, dependencyConfigurator, performanceTracker, errorHandler = BootstrapErrorHandler) {
+  constructor(containerFactory, dependencyConfigurator, performanceTracker, errorHandler) {
     this.container = null;
     this.containerFactory = containerFactory ?? new ContainerFactory();
     this.dependencyConfigurator = dependencyConfigurator ?? new DependencyConfigurator();
-    this.performanceTracker = performanceTracker ?? new BootstrapPerformanceTracker(createRuntimeConfig(ENV), null);
-    this.errorHandler = errorHandler;
+    this.performanceTracker = performanceTracker ?? new BootstrapPerformanceTracker(new RuntimeConfigAdapter(ENV), null);
+    this.errorHandler = errorHandler ?? BootstrapErrorHandler;
+  }
+  /**
+   * Attempts to log bootstrap completion message.
+   * Extracted to separate method for better testability.
+   *
+   * @param container - The service container to resolve logger from
+   * @param duration - The bootstrap duration in milliseconds
+   * @internal For testing purposes - public to allow direct testing
+   */
+  tryLogBootstrapCompletion(container, duration) {
+    const loggerResult = container.resolveWithError(loggerToken);
+    if (loggerResult.ok) {
+      const logger = castResolvedService(loggerResult.value);
+      logger.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
+    } else {
+    }
   }
   /**
    * Erstellt den ServiceContainer und führt Basis-Registrierungen aus.
@@ -20384,11 +20659,7 @@ const _CompositionRoot = class _CompositionRoot {
     const configured = this.performanceTracker.track(
       () => this.dependencyConfigurator.configure(container),
       (duration) => {
-        const loggerResult = container.resolveWithError(loggerToken);
-        if (loggerResult.ok) {
-          const logger = castResolvedService(loggerResult.value);
-          logger.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
-        }
+        this.tryLogBootstrapCompletion(container, duration);
       }
     );
     if (configured.ok) {

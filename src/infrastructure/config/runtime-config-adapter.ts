@@ -19,7 +19,7 @@ export class RuntimeConfigAdapter implements PlatformRuntimeConfigPort {
   }
 
   setFromPlatform<K extends RuntimeConfigKey>(key: K, value: RuntimeConfigValues[K]): void {
-    this.service.setFromFoundry(key, value);
+    this.service.setFromPlatform(key, value);
   }
 
   onChange<K extends RuntimeConfigKey>(

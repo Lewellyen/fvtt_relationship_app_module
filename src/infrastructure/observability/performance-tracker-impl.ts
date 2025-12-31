@@ -16,7 +16,7 @@
  */
 
 import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { MetricsSampler } from "./interfaces/metrics-sampler";
 
 /**
@@ -39,7 +39,7 @@ export class PerformanceTrackerImpl implements PerformanceTracker {
    * @param sampler - Optional metrics sampler for sampling decisions (null during early bootstrap)
    */
   constructor(
-    protected readonly config: RuntimeConfigService,
+    protected readonly config: PlatformRuntimeConfigPort,
     protected readonly sampler: MetricsSampler | null
   ) {}
 

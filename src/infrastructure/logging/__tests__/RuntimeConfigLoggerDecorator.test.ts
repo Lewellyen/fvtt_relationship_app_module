@@ -2,17 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RuntimeConfigLoggerDecorator } from "../RuntimeConfigLoggerDecorator";
 import { BaseConsoleLogger } from "../BaseConsoleLogger";
 import { LogLevel } from "@/domain/types/log-level";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
-import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
+import { RuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import type { Logger } from "../logger.interface";
 
 describe("RuntimeConfigLoggerDecorator", () => {
-  let mockConfig: RuntimeConfigService;
+  let mockConfig: PlatformRuntimeConfigPort;
   let baseLogger: BaseConsoleLogger;
 
   beforeEach(() => {
-    mockConfig = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
+    mockConfig = new RuntimeConfigAdapter(createMockEnvironmentConfig({ logLevel: LogLevel.INFO }));
     baseLogger = new BaseConsoleLogger(LogLevel.INFO);
   });
 

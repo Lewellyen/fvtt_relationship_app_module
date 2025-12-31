@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { StackTraceLoggerDecorator } from "../StackTraceLoggerDecorator";
 import { BaseConsoleLogger } from "../BaseConsoleLogger";
 import { LogLevel } from "@/domain/types/log-level";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
-import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
+import { RuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
 import { createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import type { Logger } from "../logger.interface";
 
 describe("StackTraceLoggerDecorator", () => {
-  let mockConfig: RuntimeConfigService;
+  let mockConfig: PlatformRuntimeConfigPort;
   let baseLogger: BaseConsoleLogger;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
@@ -16,7 +16,9 @@ describe("StackTraceLoggerDecorator", () => {
   let consoleDebugSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    mockConfig = createRuntimeConfig(createMockEnvironmentConfig({ logLevel: LogLevel.DEBUG }));
+    mockConfig = new RuntimeConfigAdapter(
+      createMockEnvironmentConfig({ logLevel: LogLevel.DEBUG })
+    );
     baseLogger = new BaseConsoleLogger(LogLevel.DEBUG);
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -91,7 +93,7 @@ describe("StackTraceLoggerDecorator", () => {
 
   describe("when LogLevel is not DEBUG", () => {
     it("should not append caller info when LogLevel is INFO", () => {
-      const infoConfig = createRuntimeConfig(
+      const infoConfig = new RuntimeConfigAdapter(
         createMockEnvironmentConfig({ logLevel: LogLevel.INFO })
       );
       const infoLogger = new BaseConsoleLogger(LogLevel.INFO);
@@ -106,7 +108,7 @@ describe("StackTraceLoggerDecorator", () => {
     });
 
     it("should not append caller info when LogLevel is WARN", () => {
-      const warnConfig = createRuntimeConfig(
+      const warnConfig = new RuntimeConfigAdapter(
         createMockEnvironmentConfig({ logLevel: LogLevel.WARN })
       );
       const warnLogger = new BaseConsoleLogger(LogLevel.WARN);
@@ -121,7 +123,7 @@ describe("StackTraceLoggerDecorator", () => {
     });
 
     it("should not append caller info when LogLevel is ERROR", () => {
-      const errorConfig = createRuntimeConfig(
+      const errorConfig = new RuntimeConfigAdapter(
         createMockEnvironmentConfig({ logLevel: LogLevel.ERROR })
       );
       const errorLogger = new BaseConsoleLogger(LogLevel.ERROR);

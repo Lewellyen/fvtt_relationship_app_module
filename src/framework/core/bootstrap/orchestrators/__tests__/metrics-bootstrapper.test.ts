@@ -7,7 +7,7 @@ import { PersistentMetricsCollector } from "@/infrastructure/observability/metri
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { MetricsStorage } from "@/infrastructure/observability/metrics-persistence/metrics-storage";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import { MetricsAggregator } from "@/infrastructure/observability/metrics-aggregator";
 import { MetricsPersistenceManager } from "@/infrastructure/observability/metrics-persistence/metrics-persistence-manager";
 import { MetricsStateManager } from "@/infrastructure/observability/metrics-state/metrics-state-manager";
@@ -90,7 +90,7 @@ function createPersistentCollector(): PersistentMetricsCollector {
     save: vi.fn(),
     clear: vi.fn(),
   };
-  const config: RuntimeConfigService = createMockRuntimeConfig();
+  const config: PlatformRuntimeConfigPort = createMockRuntimeConfig();
   const aggregator = new MetricsAggregator();
   const persistenceManager = new MetricsPersistenceManager();
   const stateManager = new MetricsStateManager();

@@ -13,25 +13,13 @@ import type { MetricsCollector } from "@/infrastructure/observability/metrics-co
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
 import type { Result } from "@/domain/types/result";
-import { CacheCapacityManager } from "./cache-capacity-manager";
-import { LRUEvictionStrategy } from "./lru-eviction-strategy";
-import { EvictionStrategyRegistry } from "./eviction-strategy-registry";
-import type { CacheMetricsObserver } from "./cache-metrics-observer.interface";
-import { CacheMetricsCollector } from "./cache-metrics-collector";
-import { CacheStore } from "./store/CacheStore";
-import { CacheExpirationManager } from "./expiration/CacheExpirationManager";
-import { CacheStatisticsCollector } from "./statistics/CacheStatisticsCollector";
-import { CacheConfigManager } from "./config/CacheConfigManager";
 import type { ICacheStore } from "./store/cache-store.interface";
 import type { ICacheExpirationManager } from "./expiration/cache-expiration-manager.interface";
-import type { ICacheStatisticsCollector } from "./statistics/cache-statistics-collector.interface";
 import type { ICacheConfigManager } from "./config/cache-config-manager.interface";
-import { CacheRuntime } from "./runtime/CacheRuntime";
-import { CachePolicy } from "./policy/CachePolicy";
-import { CacheTelemetry } from "./telemetry/CacheTelemetry";
 import type { CacheRuntime as ICacheRuntime } from "./runtime/cache-runtime.interface";
 import type { CachePolicy as ICachePolicy } from "./policy/cache-policy.interface";
 import type { CacheTelemetry as ICacheTelemetry } from "./telemetry/cache-telemetry.interface";
+import { CacheCompositionFactory } from "./factory/CacheCompositionFactory";
 
 export const DEFAULT_CACHE_SERVICE_CONFIG: CacheServiceConfig = {
   enabled: true,
@@ -52,6 +40,7 @@ export const DEFAULT_CACHE_SERVICE_CONFIG: CacheServiceConfig = {
  * - Single Responsibility: Only coordinates, doesn't implement logic
  * - Testable: Components can be mocked
  * - Maintainable: Clear separation of concerns
+ * - No composition logic: Components are injected, not created
  */
 export class CacheService implements CacheServiceContract {
   private readonly runtime: ICacheRuntime;
@@ -63,62 +52,21 @@ export class CacheService implements CacheServiceContract {
   private readonly clock: () => number;
 
   constructor(
-    config: CacheServiceConfig = DEFAULT_CACHE_SERVICE_CONFIG,
-    private readonly metricsCollector?: MetricsCollector,
-    clock: () => number = () => Date.now(),
-    capacityManager?: CacheCapacityManager,
-    metricsObserver?: CacheMetricsObserver,
-    store?: ICacheStore,
-    expirationManager?: ICacheExpirationManager,
-    statisticsCollector?: ICacheStatisticsCollector,
-    configManager?: ICacheConfigManager,
-    runtime?: ICacheRuntime,
-    policy?: ICachePolicy,
-    telemetry?: ICacheTelemetry
+    runtime: ICacheRuntime,
+    policy: ICachePolicy,
+    telemetry: ICacheTelemetry,
+    store: ICacheStore,
+    configManager: ICacheConfigManager,
+    expirationManager: ICacheExpirationManager,
+    clock: () => number = () => Date.now()
   ) {
-    // Initialize core dependencies
+    this.runtime = runtime;
+    this.policy = policy;
+    this.telemetry = telemetry;
+    this.store = store;
+    this.configManager = configManager;
+    this.expirationManager = expirationManager;
     this.clock = clock;
-    this.store = store ?? new CacheStore();
-    this.configManager = configManager ?? new CacheConfigManager(config);
-    this.expirationManager = expirationManager ?? new CacheExpirationManager(clock);
-
-    // Initialize capacity manager if not provided
-    let resolvedCapacityManager = capacityManager;
-    if (!resolvedCapacityManager) {
-      const registry = EvictionStrategyRegistry.getInstance();
-      // Ensure default LRU strategy is registered
-      if (!registry.has("lru")) {
-        registry.register("lru", new LRUEvictionStrategy());
-      }
-      // Get strategy from registry (defaults to "lru" if not specified)
-      const strategyKey = config.evictionStrategyKey ?? "lru";
-      const strategy = registry.getOrDefault(strategyKey, "lru");
-      if (!strategy) {
-        // Fallback to LRU if strategy not found (should not happen if "lru" is registered)
-        resolvedCapacityManager = new CacheCapacityManager(new LRUEvictionStrategy(), this.store);
-      } else {
-        resolvedCapacityManager = new CacheCapacityManager(strategy, this.store);
-      }
-    }
-
-    // Initialize statistics collector
-    const resolvedMetricsObserver = metricsObserver ?? new CacheMetricsCollector(metricsCollector);
-    const resolvedStatisticsCollector =
-      statisticsCollector ?? new CacheStatisticsCollector(resolvedMetricsObserver);
-
-    // Initialize specialized components
-    this.telemetry = telemetry ?? new CacheTelemetry(resolvedStatisticsCollector);
-    this.policy = policy ?? new CachePolicy(resolvedCapacityManager);
-    this.runtime =
-      runtime ??
-      new CacheRuntime(
-        this.store,
-        this.expirationManager,
-        this.configManager,
-        this.telemetry,
-        this.policy,
-        clock
-      );
   }
 
   get isEnabled(): boolean {
@@ -127,30 +75,6 @@ export class CacheService implements CacheServiceContract {
 
   get size(): number {
     return this.store.size;
-  }
-
-  /**
-   * Gets the config manager for external synchronization.
-   * Used by CacheConfigSync to update configuration.
-   */
-  getConfigManager(): ICacheConfigManager {
-    return this.configManager;
-  }
-
-  /**
-   * Gets the store for external use (e.g., CacheConfigSyncObserver).
-   * @internal
-   */
-  getStore(): ICacheStore {
-    return this.store;
-  }
-
-  /**
-   * Gets the policy for external use (e.g., CacheConfigSyncObserver).
-   * @internal
-   */
-  getPolicy(): ICachePolicy {
-    return this.policy;
   }
 
   get<TValue>(key: CacheKey): CacheLookupResult<TValue> | null {
@@ -260,6 +184,18 @@ export class CacheService implements CacheServiceContract {
     return this.telemetry.getStatistics(this.store.size, this.isEnabled);
   }
 
+  getConfigManager(): ICacheConfigManager {
+    return this.configManager;
+  }
+
+  getStore(): ICacheStore {
+    return this.store;
+  }
+
+  getPolicy(): ICachePolicy {
+    return this.policy;
+  }
+
   private cloneMetadata(metadata: CacheEntryMetadata): CacheEntryMetadata {
     return {
       ...metadata,
@@ -271,7 +207,20 @@ export class CacheService implements CacheServiceContract {
 export class DICacheService extends CacheService {
   static dependencies = [cacheServiceConfigToken, metricsCollectorToken] as const;
 
-  constructor(config: CacheServiceConfig, metrics: MetricsCollector) {
-    super(config, metrics);
+  constructor(_config: CacheServiceConfig, _metrics: MetricsCollector) {
+    // DICacheService will be created via factory in DI registration
+    // This constructor signature is kept for backward compatibility but should not be used directly
+    // The actual composition is handled by CacheCompositionFactory in cache-services.config.ts
+    // We create a minimal composition here to satisfy the super() call requirement
+    const factory = new CacheCompositionFactory();
+    const composition = factory.create(_config, _metrics);
+    super(
+      composition.runtime,
+      composition.policy,
+      composition.telemetry,
+      composition.store,
+      composition.configManager,
+      composition.expirationManager
+    );
   }
 }

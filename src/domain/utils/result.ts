@@ -5,9 +5,6 @@
  * This module re-exports all Result utilities from the organized sub-modules.
  * For better organization, see the individual files in the result/ directory.
  *
- * @deprecated This file is kept for backward compatibility.
- * New code should import directly from "@/domain/utils/result" (which resolves to result/index.ts).
- *
  * This module contains only runtime functions - types are imported from "@/domain/types/result"
  */
 

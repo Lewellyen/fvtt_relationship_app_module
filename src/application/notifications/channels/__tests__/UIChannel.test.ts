@@ -4,15 +4,15 @@ import type { PlatformUINotificationPort } from "@/domain/ports/platform-ui-noti
 import type { PlatformNotification } from "@/domain/ports/notifications/platform-channel-port.interface";
 import { LogLevel } from "@/domain/types/log-level";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 
 describe("UIChannel", () => {
   let channel: UIChannel;
   let mockPlatformUI: PlatformUINotificationPort;
-  let devConfig: RuntimeConfigService;
-  let prodConfig: RuntimeConfigService;
+  let devConfig: PlatformRuntimeConfigPort;
+  let prodConfig: PlatformRuntimeConfigPort;
 
   beforeEach(() => {
     mockPlatformUI = {

@@ -9,10 +9,10 @@ import {
 } from "@/infrastructure/performance/PerformanceTrackingService";
 import type { MetricsSampler } from "@/infrastructure/observability/interfaces/metrics-sampler";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 
 describe("PerformanceTrackingService", () => {
-  let runtimeConfig: RuntimeConfigService;
+  let runtimeConfig: PlatformRuntimeConfigPort;
   let mockSampler: MetricsSampler;
   let service: PerformanceTrackingService;
 
@@ -41,7 +41,7 @@ describe("PerformanceTrackingService", () => {
       const onComplete = vi.fn();
 
       // Disable performance tracking via runtime config
-      runtimeConfig.setFromFoundry("enablePerformanceTracking", false);
+      runtimeConfig.setFromPlatform("enablePerformanceTracking", false);
 
       const result = service.track(operation, onComplete);
 
@@ -124,7 +124,7 @@ describe("PerformanceTrackingService", () => {
       const operation = vi.fn().mockResolvedValue(42);
       const onComplete = vi.fn();
 
-      runtimeConfig.setFromFoundry("enablePerformanceTracking", false);
+      runtimeConfig.setFromPlatform("enablePerformanceTracking", false);
 
       const result = await service.trackAsync(operation, onComplete);
 

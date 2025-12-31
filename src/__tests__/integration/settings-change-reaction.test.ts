@@ -116,7 +116,7 @@ describe("Integration: Settings Change + Service Reaction", () => {
 
     // 8. onChange Callback manuell ausführen
     // WICHTIG: Der onChange Callback ist ein Wrapper aus attachRuntimeConfigBridge,
-    // der zuerst runtimeConfig.setFromFoundry() aufruft, dann originalOnChange
+    // der zuerst runtimeConfig.setFromPlatform() aufruft, dann originalOnChange
     // originalOnChange ruft validateAndSetLogLevel(value, logger) auf
     // validateAndSetLogLevel ruft dann logger.setMinLevel auf
     expect(mockSettingsOnChange).toBeDefined();

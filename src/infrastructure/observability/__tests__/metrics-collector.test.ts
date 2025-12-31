@@ -7,7 +7,7 @@ import type { MetricsPersistenceState } from "@/infrastructure/observability/met
 import { createInjectionToken } from "@/infrastructure/di/token-factory";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import { createMockRuntimeConfig } from "@/test/utils/test-helpers";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import {
   PersistentMetricsCollector,
   DIPersistentMetricsCollector,
@@ -24,7 +24,7 @@ import { MetricsStateManager } from "@/infrastructure/observability/metrics-stat
 
 describe("MetricsCollector", () => {
   let collector: MetricsCollector;
-  let runtimeConfig: RuntimeConfigService;
+  let runtimeConfig: PlatformRuntimeConfigPort;
   let aggregator: MetricsAggregator;
   let persistenceManager: MetricsPersistenceManager;
   let stateManager: MetricsStateManager;
@@ -517,7 +517,7 @@ describe("PersistentMetricsCollector", () => {
   }
 
   function createTestPersistentMetricsCollector(
-    config: RuntimeConfigService,
+    config: PlatformRuntimeConfigPort,
     storage: MetricsStorage
   ): PersistentMetricsCollector {
     const aggregator = new MetricsAggregator();

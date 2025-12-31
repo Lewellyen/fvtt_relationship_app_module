@@ -5,6 +5,8 @@ import {
   InvalidLifecycleError,
   FactoryFailedError,
 } from "@/infrastructure/di/errors/ContainerErrors";
+import { ContainerErrorImpl } from "@/infrastructure/di/errors/ContainerErrorImpl";
+import type { ContainerError } from "@/infrastructure/di/interfaces";
 
 describe("ContainerErrors", () => {
   const testToken = Symbol("TestToken");
@@ -110,6 +112,113 @@ describe("ContainerErrors", () => {
         "InvalidLifecycleError"
       );
       expect(new FactoryFailedError("test", testSym).constructor.name).toBe("FactoryFailedError");
+    });
+  });
+
+  describe("ContainerErrorImpl", () => {
+    it("should create error with ContainerError interface", () => {
+      const containerError: ContainerError = {
+        code: "TokenNotRegistered",
+        message: "Service not found",
+        tokenDescription: "LoggerToken",
+      };
+
+      const error = new ContainerErrorImpl(containerError);
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error.name).toBe("ContainerError");
+      expect(error.message).toBe("Service not found");
+      expect(error.code).toBe("TokenNotRegistered");
+      expect(error.tokenDescription).toBe("LoggerToken");
+    });
+
+    it("should implement ContainerError interface", () => {
+      const containerError: ContainerError = {
+        code: "NotValidated",
+        message: "Container must be validated",
+        tokenDescription: "TestToken",
+        cause: new Error("Root cause"),
+        timestamp: 1234567890,
+        containerScope: "root",
+      };
+
+      const error = new ContainerErrorImpl(containerError);
+
+      expect(error.code).toBe("NotValidated");
+      expect(error.message).toBe("Container must be validated");
+      expect(error.tokenDescription).toBe("TestToken");
+      expect(error.cause).toBe(containerError.cause);
+      expect(error.timestamp).toBe(1234567890);
+      expect(error.containerScope).toBe("root");
+    });
+
+    it("should preserve stack trace if provided", () => {
+      const stack = "Error: test\n    at test.ts:1:1";
+      const containerError: ContainerError = {
+        code: "InvalidOperation",
+        message: "Test error",
+        stack,
+      };
+
+      const error = new ContainerErrorImpl(containerError);
+
+      expect(error.stack).toBe(stack);
+    });
+
+    it("should use default Error.stack if not provided", () => {
+      const containerError: ContainerError = {
+        code: "InvalidOperation",
+        message: "Test error",
+      };
+
+      const error = new ContainerErrorImpl(containerError);
+
+      expect(error.stack).toBeDefined();
+      expect(typeof error.stack).toBe("string");
+    });
+
+    it("should be instance of Error", () => {
+      const containerError: ContainerError = {
+        code: "Disposed",
+        message: "Container disposed",
+      };
+
+      const error = new ContainerErrorImpl(containerError);
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error instanceof Error).toBe(true);
+    });
+
+    it("should handle optional fields", () => {
+      const containerError: ContainerError = {
+        code: "TokenNotRegistered",
+        message: "Service not found",
+        // No optional fields
+      };
+
+      const error = new ContainerErrorImpl(containerError);
+
+      expect(error.code).toBe("TokenNotRegistered");
+      expect(error.message).toBe("Service not found");
+      expect(error.tokenDescription).toBeUndefined();
+      expect(error.cause).toBeUndefined();
+      expect(error.timestamp).toBeUndefined();
+      expect(error.containerScope).toBeUndefined();
+    });
+
+    it("should handle details field when provided", () => {
+      const details = { failedChildren: ["child1", "child2"] };
+      const containerError: ContainerError = {
+        code: "PartialDisposal",
+        message: "Some children failed to dispose",
+        details,
+      };
+
+      const error = new ContainerErrorImpl(containerError);
+
+      expect(error.code).toBe("PartialDisposal");
+      expect(error.details).toBe(details);
+      expect(error.details).toEqual({ failedChildren: ["child1", "child2"] });
     });
   });
 });

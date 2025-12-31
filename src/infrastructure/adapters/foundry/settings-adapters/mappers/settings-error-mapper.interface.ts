@@ -1,5 +1,5 @@
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
-import type { SettingsError } from "@/domain/ports/platform-settings-port.interface";
+import type { DomainSettingsError } from "@/domain/types/settings";
 
 /**
  * Context information for error mapping operations.
@@ -37,5 +37,5 @@ export interface SettingsErrorMapper {
    * @param context - Context information about the operation and setting
    * @returns Platform-agnostic SettingsError
    */
-  map(error: FoundryError, context: ErrorMappingContext): SettingsError;
+  map(error: FoundryError, context: ErrorMappingContext): DomainSettingsError;
 }

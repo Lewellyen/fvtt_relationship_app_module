@@ -1,6 +1,6 @@
 import type { Logger } from "./logger.interface";
 import type { LogLevel } from "@/domain/types/log-level";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import { LogLevel as LogLevelEnum } from "@/domain/types/log-level";
 
 /**
@@ -22,7 +22,7 @@ import { LogLevel as LogLevelEnum } from "@/domain/types/log-level";
 export class StackTraceLoggerDecorator implements Logger {
   constructor(
     private readonly baseLogger: Logger,
-    private readonly runtimeConfig: RuntimeConfigService
+    private readonly runtimeConfig: PlatformRuntimeConfigPort
   ) {}
 
   setMinLevel(level: LogLevel): void {

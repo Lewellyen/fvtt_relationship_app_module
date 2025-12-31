@@ -11,6 +11,7 @@ import { ok, err } from "@/domain/utils/result";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
+import { ContainerErrorImpl } from "@/infrastructure/di/errors/ContainerErrorImpl";
 
 // Helper for tests: Wrap tokens for resolve() testing (simulates external API usage)
 // In production, only composition-root marks tokens as API-safe
@@ -1092,14 +1093,30 @@ describe("ServiceContainer", () => {
   });
 
   describe("resolve() error handling", () => {
-    it("should throw error when resolve() fails (no fallback)", () => {
+    it("should throw ContainerErrorImpl when resolve() fails (no fallback)", () => {
       const container = createTestContainer();
       const token = createInjectionToken<TestService>("Unregistered");
 
-      // resolve() should throw when service is not registered (lines 593-595)
+      // Validate container first (required before resolve)
+      container.validate();
+
+      // resolve() should throw ContainerErrorImpl when service is not registered (LSP compliance)
       expect(() => {
         testResolve<TestService>(container, token);
       }).toThrow(/Cannot resolve.*Unregistered/);
+
+      try {
+        testResolve<TestService>(container, token);
+        expect.fail("Expected ContainerErrorImpl to be thrown");
+      } catch (error: unknown) {
+        expect(error).toBeInstanceOf(ContainerErrorImpl);
+        expect(error).toBeInstanceOf(Error);
+        if (error instanceof ContainerErrorImpl) {
+          expect(error.code).toBe("TokenNotRegistered");
+          expect(error.message).toContain("Cannot resolve");
+          expect(error.tokenDescription).toBeDefined();
+        }
+      }
     });
   });
 

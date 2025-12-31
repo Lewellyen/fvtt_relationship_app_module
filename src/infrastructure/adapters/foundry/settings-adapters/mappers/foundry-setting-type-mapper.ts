@@ -1,5 +1,6 @@
 import type { Result } from "@/domain/types/result";
-import type { SettingType, SettingsError } from "@/domain/ports/platform-settings-port.interface";
+import type { SettingType } from "@/domain/ports/platform-settings-port.interface";
+import type { DomainSettingsError } from "@/domain/types/settings";
 import type { SettingTypeMapper } from "./setting-type-mapper.interface";
 
 /**
@@ -19,7 +20,9 @@ export class FoundrySettingTypeMapper implements SettingTypeMapper {
    * @param type - The setting type to map
    * @returns Result containing the Foundry type constructor or a SettingsError
    */
-  map(type: SettingType): Result<typeof String | typeof Number | typeof Boolean, SettingsError> {
+  map(
+    type: SettingType
+  ): Result<typeof String | typeof Number | typeof Boolean, DomainSettingsError> {
     if (type === "String" || type === String) {
       return { ok: true, value: String };
     }

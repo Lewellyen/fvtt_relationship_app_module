@@ -42,7 +42,7 @@ describe("RuntimeConfigService", () => {
     const listener = vi.fn();
     service.onChange("logLevel", listener);
 
-    service.setFromFoundry("logLevel", LogLevel.ERROR);
+    service.setFromPlatform("logLevel", LogLevel.ERROR);
 
     expect(service.get("logLevel")).toBe(LogLevel.ERROR);
     expect(listener).toHaveBeenCalledTimes(1);
@@ -54,7 +54,7 @@ describe("RuntimeConfigService", () => {
     const listener = vi.fn();
     service.onChange("enableCacheService", listener);
 
-    service.setFromFoundry("enableCacheService", true);
+    service.setFromPlatform("enableCacheService", true);
 
     expect(listener).not.toHaveBeenCalled();
   });
@@ -73,7 +73,7 @@ describe("RuntimeConfigService", () => {
     expect(service.get("metricsPersistenceKey")).toBe("custom.metrics");
   });
 
-  it("allows overriding string/numeric values via setFromFoundry", () => {
+  it("allows overriding string/numeric values via setFromPlatform", () => {
     const service = createService();
     const samplingSpy = vi.fn();
     const metricsKeySpy = vi.fn();
@@ -81,8 +81,8 @@ describe("RuntimeConfigService", () => {
     service.onChange("performanceSamplingRate", samplingSpy);
     service.onChange("metricsPersistenceKey", metricsKeySpy);
 
-    service.setFromFoundry("performanceSamplingRate", 0.25);
-    service.setFromFoundry("metricsPersistenceKey", "runtime.metrics");
+    service.setFromPlatform("performanceSamplingRate", 0.25);
+    service.setFromPlatform("metricsPersistenceKey", "runtime.metrics");
 
     expect(service.get("performanceSamplingRate")).toBe(0.25);
     expect(service.get("metricsPersistenceKey")).toBe("runtime.metrics");
@@ -96,7 +96,7 @@ describe("RuntimeConfigService", () => {
     const unsubscribe = service.onChange("cacheDefaultTtlMs", listener);
 
     unsubscribe();
-    service.setFromFoundry("cacheDefaultTtlMs", 10000);
+    service.setFromPlatform("cacheDefaultTtlMs", 10000);
 
     expect(listener).not.toHaveBeenCalled();
   });
@@ -112,19 +112,19 @@ describe("RuntimeConfigService", () => {
 
     // Remove first listener - map entry should still exist
     unsubscribe1();
-    service.setFromFoundry("logLevel", LogLevel.DEBUG);
+    service.setFromPlatform("logLevel", LogLevel.DEBUG);
     expect(listener1).not.toHaveBeenCalled();
     expect(listener2).toHaveBeenCalledTimes(1);
 
     // Remove second listener - map entry should be removed (activeListeners.size === 0)
     unsubscribe2();
-    service.setFromFoundry("logLevel", LogLevel.WARN);
+    service.setFromPlatform("logLevel", LogLevel.WARN);
     expect(listener2).toHaveBeenCalledTimes(1); // Still only called once from before
 
     // Verify we can add a new listener after cleanup (map entry was removed)
     const listener3 = vi.fn();
     service.onChange("logLevel", listener3);
-    service.setFromFoundry("logLevel", LogLevel.ERROR);
+    service.setFromPlatform("logLevel", LogLevel.ERROR);
     expect(listener3).toHaveBeenCalledTimes(1);
     expect(listener3).toHaveBeenCalledWith(LogLevel.ERROR);
   });

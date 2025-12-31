@@ -1,8 +1,7 @@
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
-import type { CacheService } from "./cache.interface";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
-import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service.token";
 import { CacheConfigSyncObserver } from "./config/CacheConfigSyncObserver";
+import type { CacheMaintenancePort } from "./cache.interface";
 
 /**
  * Handles synchronization between RuntimeConfig and CacheService.
@@ -17,6 +16,7 @@ import { CacheConfigSyncObserver } from "./config/CacheConfigSyncObserver";
  * - Reusable: Can be extended for additional config sources
  * - Testable: Isolated from CacheService implementation
  * - Observer Pattern: Uses CacheConfigSyncObserver to notify about config changes
+ * - Interface Segregation: Depends only on CacheMaintenancePort, not full CacheService
  */
 export class CacheConfigSync {
   private unsubscribe: (() => void) | null = null;
@@ -24,13 +24,13 @@ export class CacheConfigSync {
 
   constructor(
     private readonly runtimeConfig: PlatformRuntimeConfigPort,
-    private readonly cache: CacheService
+    private readonly cacheMaintenance: CacheMaintenancePort
   ) {
-    // Create observer with necessary components from CacheService
+    // Create observer with components from maintenance port
     this.observer = new CacheConfigSyncObserver(
-      cache.getStore(),
-      cache.getPolicy(),
-      cache.getConfigManager()
+      cacheMaintenance.getStore(),
+      cacheMaintenance.getPolicy(),
+      cacheMaintenance.getConfigManager()
     );
   }
 
@@ -46,10 +46,10 @@ export class CacheConfigSync {
     }
 
     const unsubscribers: Array<() => void> = [];
-    const configManager = this.cache.getConfigManager();
 
     unsubscribers.push(
       this.runtimeConfig.onChange("enableCacheService", (enabled) => {
+        const configManager = this.cacheMaintenance.getConfigManager();
         configManager.updateConfig({ enabled });
         this.observer.onConfigUpdated(configManager.getConfig());
       })
@@ -57,6 +57,7 @@ export class CacheConfigSync {
 
     unsubscribers.push(
       this.runtimeConfig.onChange("cacheDefaultTtlMs", (ttl) => {
+        const configManager = this.cacheMaintenance.getConfigManager();
         configManager.updateConfig({ defaultTtlMs: ttl });
         this.observer.onConfigUpdated(configManager.getConfig());
       })
@@ -64,6 +65,7 @@ export class CacheConfigSync {
 
     unsubscribers.push(
       this.runtimeConfig.onChange("cacheMaxEntries", (maxEntries) => {
+        const configManager = this.cacheMaintenance.getConfigManager();
         configManager.updateConfig({
           maxEntries: typeof maxEntries === "number" && maxEntries > 0 ? maxEntries : undefined,
         });
@@ -91,11 +93,13 @@ export class CacheConfigSync {
 
 /**
  * DI wrapper for CacheConfigSync.
+ * Note: This will be created via factory in DI registration.
+ * The actual dependency (CacheMaintenancePort) is resolved from CacheService.
  */
 export class DICacheConfigSync extends CacheConfigSync {
-  static dependencies = [runtimeConfigToken, cacheServiceToken] as const;
+  static dependencies = [runtimeConfigToken] as const;
 
-  constructor(runtimeConfig: PlatformRuntimeConfigPort, cache: CacheService) {
-    super(runtimeConfig, cache);
+  constructor(runtimeConfig: PlatformRuntimeConfigPort, cacheMaintenance: CacheMaintenancePort) {
+    super(runtimeConfig, cacheMaintenance);
   }
 }

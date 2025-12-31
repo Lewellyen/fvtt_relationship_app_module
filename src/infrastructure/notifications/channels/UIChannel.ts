@@ -17,7 +17,7 @@ import type {
   PlatformChannelError,
 } from "@/domain/ports/notifications/platform-ui-notification-channel-port.interface";
 import type { PlatformUINotificationPort } from "@/domain/ports/platform-ui-notification-port.interface";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import { platformUINotificationPortToken } from "@/application/tokens/domain-ports.tokens";
@@ -28,7 +28,7 @@ export class UIChannel implements PlatformUINotificationChannelPort {
 
   constructor(
     private readonly platformUI: PlatformUINotificationPort,
-    private readonly config: RuntimeConfigService
+    private readonly config: PlatformRuntimeConfigPort
   ) {}
 
   canHandle(notification: PlatformNotification): boolean {
@@ -130,7 +130,7 @@ export class UIChannel implements PlatformUINotificationChannelPort {
 export class DIUIChannel extends UIChannel {
   static dependencies = [platformUINotificationPortToken, runtimeConfigToken] as const;
 
-  constructor(platformUI: PlatformUINotificationPort, config: RuntimeConfigService) {
+  constructor(platformUI: PlatformUINotificationPort, config: PlatformRuntimeConfigPort) {
     super(platformUI, config);
   }
 }

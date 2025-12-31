@@ -8,7 +8,7 @@
  * @see MetricsReporter for metric reporting
  */
 
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { MetricsSampler as MetricsSamplerInterface } from "./interfaces/metrics-sampler";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 
@@ -27,7 +27,7 @@ import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
  * ```
  */
 export class MetricsSampler implements MetricsSamplerInterface {
-  constructor(private readonly config: RuntimeConfigService) {}
+  constructor(private readonly config: PlatformRuntimeConfigPort) {}
 
   /**
    * Determines if a performance operation should be sampled based on sampling rate.
@@ -65,7 +65,7 @@ export class MetricsSampler implements MetricsSamplerInterface {
 export class DIMetricsSampler extends MetricsSampler {
   static dependencies = [runtimeConfigToken] as const;
 
-  constructor(config: RuntimeConfigService) {
+  constructor(config: PlatformRuntimeConfigPort) {
     super(config);
   }
 }

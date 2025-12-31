@@ -12,8 +12,8 @@ import type { EnvironmentConfig } from "@/domain/types/environment-config";
 import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
 import { PerformanceTrackingService } from "@/infrastructure/performance/PerformanceTrackingService";
 import { LogLevel } from "@/domain/types/log-level";
-import { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
-import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
+import { RuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import { ServiceContainer as ServiceContainerImpl } from "@/infrastructure/di/container";
@@ -132,9 +132,9 @@ export function createMockMetricsSampler(): MetricsSampler {
 
 /**
  * Alias for createMockMetricsSampler for convenience.
- * @param _config - Optional RuntimeConfigService (unused, kept for API compatibility)
+ * @param _config - Optional PlatformRuntimeConfigPort (unused, kept for API compatibility)
  */
-export function createMockSampler(_config?: RuntimeConfigService): MetricsSampler {
+export function createMockSampler(_config?: PlatformRuntimeConfigPort): MetricsSampler {
   return createMockMetricsSampler();
 }
 
@@ -270,14 +270,14 @@ export function createMockEnvironmentConfig(
 }
 
 /**
- * Creates a RuntimeConfigService with mock environment config.
+ * Creates a PlatformRuntimeConfigPort with mock environment config.
  * @param overrides - Optional overrides for environment config
- * @returns A RuntimeConfigService instance
+ * @returns A PlatformRuntimeConfigPort instance (via RuntimeConfigAdapter)
  */
 export function createMockRuntimeConfig(
   overrides: Partial<EnvironmentConfig> = {}
-): RuntimeConfigService {
-  return createRuntimeConfig(createMockEnvironmentConfig(overrides));
+): PlatformRuntimeConfigPort {
+  return new RuntimeConfigAdapter(createMockEnvironmentConfig(overrides));
 }
 
 /**

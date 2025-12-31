@@ -23,15 +23,17 @@ import { ServiceResolver } from "./resolution/ServiceResolver";
 import { ScopeManager } from "./scope/ScopeManager";
 import { withTimeout, TimeoutError } from "@/infrastructure/shared/utils/promise-timeout";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
-import { BootstrapPerformanceTracker } from "@/infrastructure/observability/bootstrap-performance-tracker";
-import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
+import { BootstrapPerformanceTracker } from "@/infrastructure/observability/bootstrap-performance-tracker";
+import { RuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
+import type { PerformanceTracker } from "@/infrastructure/observability/performance-tracker.interface";
 import { ServiceRegistrationManager } from "./registration/ServiceRegistrationManager";
 import { ContainerValidationManager } from "./validation/ContainerValidationManager";
 import { ServiceResolutionManager } from "./resolution/ServiceResolutionManager";
 import { ScopeManagementFacade } from "./scope/ScopeManagementFacade";
 import { MetricsInjectionManager } from "./metrics/MetricsInjectionManager";
 import { ApiSecurityManager } from "./security/ApiSecurityManager";
+import { ContainerErrorImpl } from "./errors/ContainerErrorImpl";
 
 /**
  * Dependency injection container (Facade pattern).
@@ -90,12 +92,10 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   private apiSecurityManager: ApiSecurityManager;
 
   /**
-   * Private constructor - use ServiceContainer.createRoot() instead.
+   * Constructor for ServiceContainer.
    *
-   * This constructor is private to:
-   * - Enforce factory pattern usage
-   * - Prevent constructor throws (Result-Contract-breaking)
-   * - Make child creation explicit through createScope()
+   * **Note:** This constructor is public to allow ContainerBootstrapFactory to create instances.
+   * External code should use ServiceContainer.createRoot() or ContainerBootstrapFactory.createRoot().
    *
    * @param registry - Service registry
    * @param validator - Container validator (shared for parent/child)
@@ -105,7 +105,7 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    * @param validationState - Initial validation state
    * @param env - Environment configuration
    */
-  private constructor(
+  constructor(
     registry: ServiceRegistry,
     validator: ContainerValidator,
     cache: InstanceCache,
@@ -161,22 +161,16 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   /**
    * Creates a new root container.
    *
-   * This is the preferred way to create containers.
-   * All components are created fresh for the root container.
+   * **Note:** This method creates bootstrap dependencies (RuntimeConfig, PerformanceTracker) inline
+   * to avoid circular dependency with ContainerBootstrapFactory.
+   * The factory pattern is maintained via ContainerBootstrapFactory for external use (e.g., ContainerFactory).
    *
-   * **Bootstrap Performance Tracking:**
-   * Uses BootstrapPerformanceTracker with RuntimeConfigService(env) und null MetricsCollector.
-   * MetricsCollector is injected later via setMetricsCollector() after validation.
+   * **Architecture:**
+   * Creates bootstrap dependencies directly (infrastructure -> infrastructure, no violation).
+   * This avoids circular dependency while maintaining the same functionality.
    *
-   * @param env - Environment configuration (required for bootstrap performance tracking)
+   * @param env - Environment configuration
    * @returns A new root ServiceContainer
-   *
-   * @example
-   * ```typescript
-   * const container = ServiceContainer.createRoot(ENV);
-   * container.registerClass(LoggerToken, Logger, SINGLETON);
-   * container.validate();
-   * ```
    */
   static createRoot(env: EnvironmentConfig): ServiceContainer {
     const registry = new ServiceRegistry();
@@ -184,8 +178,9 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     const cache = new InstanceCache();
     const scopeManager = new ScopeManager("root", null, cache);
 
-    // Bootstrap performance tracker (no MetricsCollector yet)
-    const performanceTracker = new BootstrapPerformanceTracker(createRuntimeConfig(env), null);
+    // Create bootstrap dependencies
+    const runtimeConfig = new RuntimeConfigAdapter(env);
+    const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
     const resolver = new ServiceResolver(registry, cache, null, "root", performanceTracker);
 
     return new ServiceContainer(
@@ -365,18 +360,13 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     const childCache = scopeResult.value.cache;
     const childManager = scopeResult.value.manager;
 
-    // Create performance tracker for child (same as root)
-    // Use ENV from parent container (stored during createRoot)
-    const childPerformanceTracker = new BootstrapPerformanceTracker(
-      createRuntimeConfig(this.env),
-      null
-    );
-    const childResolver = new ServiceResolver(
+    // Create bootstrap dependencies for child scope
+    // Delegate to helper method to maintain SRP (bootstrap logic separated)
+    const { resolver: childResolver } = this.createBootstrapDependencies(
       childRegistry,
       childCache,
       this.resolver, // Parent resolver for singleton delegation
-      scopeResult.value.scopeName,
-      childPerformanceTracker
+      scopeResult.value.scopeName
     );
 
     // Create child using private constructor
@@ -456,8 +446,10 @@ export class ServiceContainer implements Container, PlatformContainerPort {
   resolve<T>(token: ApiSafeToken<T>): T;
 
   /**
-   * @deprecated Internal code must use resolveWithError()
-   * @internal This overload prevents direct calls with non-branded tokens
+   * @internal This overload prevents direct calls with non-branded tokens.
+   * Internal code should use resolveWithError() for Result-based error handling.
+   * This method is designed for Public API use (via ModuleApi) where exception-based
+   * error handling is expected by external developers.
    */
   resolve<T>(token: InjectionToken<T>): never;
 
@@ -466,7 +458,8 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     // 🛡️ RUNTIME GUARD (always active for defense-in-depth)
     const securityResult = this.apiSecurityManager.validateApiSafeToken(token);
     if (!securityResult.ok) {
-      throw new Error(securityResult.error.message);
+      // Throw ContainerError-compatible error (LSP compliance)
+      throw new ContainerErrorImpl(securityResult.error);
     }
 
     // Standard resolution via Result pattern
@@ -565,5 +558,53 @@ export class ServiceContainer implements Container, PlatformContainerPort {
     this.cache.clear();
     this.validationManager.resetValidationState(); // Critical: reset validation state
     return ok(undefined);
+  }
+
+  /**
+   * Creates bootstrap dependencies for a scope (RuntimeConfig, PerformanceTracker, Resolver).
+   *
+   * **Responsibility:** Bootstrap dependency creation (extracted from createScope for SRP).
+   * This method encapsulates the creation of bootstrap-specific components to separate
+   * concerns from container logic.
+   *
+   * @private
+   * @param registry - Service registry for the scope
+   * @param cache - Instance cache for the scope
+   * @param parentResolver - Parent resolver for singleton delegation
+   * @param scopeName - Name of the scope
+   * @returns Object with resolver and performance tracker
+   */
+  /**
+   * Creates bootstrap dependencies for a scope (RuntimeConfig, PerformanceTracker, Resolver).
+   *
+   * **Responsibility:** Bootstrap dependency creation (extracted from createScope for SRP).
+   * This method encapsulates the creation of bootstrap-specific components to separate
+   * concerns from container logic.
+   *
+   * @private
+   * @param registry - Service registry for the scope
+   * @param cache - Instance cache for the scope
+   * @param parentResolver - Parent resolver for singleton delegation
+   * @param scopeName - Name of the scope
+   * @returns Object with resolver and performance tracker
+   */
+  private createBootstrapDependencies(
+    registry: ServiceRegistry,
+    cache: InstanceCache,
+    parentResolver: ServiceResolver | null,
+    scopeName: string
+  ): { resolver: ServiceResolver; performanceTracker: PerformanceTracker } {
+    // Create bootstrap dependencies
+    const runtimeConfig = new RuntimeConfigAdapter(this.env);
+    const performanceTracker = new BootstrapPerformanceTracker(runtimeConfig, null);
+    const resolver = new ServiceResolver(
+      registry,
+      cache,
+      parentResolver,
+      scopeName,
+      performanceTracker
+    );
+
+    return { resolver, performanceTracker };
   }
 }

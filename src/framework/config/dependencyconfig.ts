@@ -24,20 +24,10 @@ import {
 import { registerPortRegistries } from "@/framework/config/modules/port-infrastructure.config";
 import { initializeCacheConfigSync } from "@/framework/config/modules/cache-services.config";
 
-// Import config modules to trigger their self-registration
-import "@/framework/config/modules/core-services.config";
-import "@/framework/config/modules/observability.config";
-import "@/framework/config/modules/port-infrastructure.config";
-import "@/framework/config/modules/foundry-services.config";
-import "@/framework/config/modules/utility-services.config";
-import "@/framework/config/modules/cache-services.config";
-import "@/framework/config/modules/i18n-services.config";
-import "@/framework/config/modules/notifications.config";
-import "@/framework/config/modules/registrars.config";
-import "@/framework/config/modules/event-ports.config";
-import "@/framework/config/modules/entity-ports.config";
-import "@/framework/config/modules/settings-ports.config";
-import "@/framework/config/modules/journal-visibility.config";
+// Import dependency modules manifest to trigger their self-registration
+// This follows the Open/Closed Principle: new modules are added to the manifest,
+// not to this file. See dependency-modules.ts for the module list.
+import "@/framework/config/dependency-modules";
 
 // Track whether internal steps have been registered to avoid duplicate registrations
 let internalStepsRegistered = false;

@@ -5,7 +5,7 @@ import { ENV } from "@/framework/config/environment";
 import { BootstrapPerformanceTracker } from "@/infrastructure/observability/bootstrap-performance-tracker";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { BootstrapErrorHandler } from "@/framework/core/bootstrap-error-handler";
-import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
+import { RuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { IContainerFactory } from "@/framework/core/factory/container-factory";
@@ -51,13 +51,32 @@ export class CompositionRoot {
     containerFactory?: IContainerFactory,
     dependencyConfigurator?: IDependencyConfigurator,
     performanceTracker?: BootstrapPerformanceTracker,
-    errorHandler: typeof BootstrapErrorHandler = BootstrapErrorHandler
+    errorHandler?: typeof BootstrapErrorHandler
   ) {
     this.containerFactory = containerFactory ?? new ContainerFactory();
     this.dependencyConfigurator = dependencyConfigurator ?? new DependencyConfigurator();
     this.performanceTracker =
-      performanceTracker ?? new BootstrapPerformanceTracker(createRuntimeConfig(ENV), null);
-    this.errorHandler = errorHandler;
+      performanceTracker ?? new BootstrapPerformanceTracker(new RuntimeConfigAdapter(ENV), null);
+    this.errorHandler = errorHandler ?? BootstrapErrorHandler;
+  }
+
+  /**
+   * Attempts to log bootstrap completion message.
+   * Extracted to separate method for better testability.
+   *
+   * @param container - The service container to resolve logger from
+   * @param duration - The bootstrap duration in milliseconds
+   * @internal For testing purposes - public to allow direct testing
+   */
+  tryLogBootstrapCompletion(container: ServiceContainer, duration: number): void {
+    // Use logger from container if available (container is validated at this point)
+    const loggerResult = container.resolveWithError(loggerToken);
+    if (loggerResult.ok) {
+      const logger = castResolvedService<Logger>(loggerResult.value);
+      logger.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
+    } else {
+      // Logger not available - silently continue (graceful degradation)
+    }
   }
 
   /**
@@ -84,12 +103,7 @@ export class CompositionRoot {
     const configured = this.performanceTracker.track(
       () => this.dependencyConfigurator.configure(container),
       (duration) => {
-        // Use logger from container if available (container is validated at this point)
-        const loggerResult = container.resolveWithError(loggerToken);
-        if (loggerResult.ok) {
-          const logger = castResolvedService<Logger>(loggerResult.value);
-          logger.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
-        }
+        this.tryLogBootstrapCompletion(container, duration);
       }
     );
 

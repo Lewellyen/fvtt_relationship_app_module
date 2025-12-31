@@ -12,13 +12,18 @@ import {
 import { cacheServiceConfigToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service-config.token";
 import { cacheServiceToken } from "@/infrastructure/shared/tokens/infrastructure/cache-service.token";
 import { cacheConfigSyncToken } from "@/infrastructure/shared/tokens/infrastructure/cache-config-sync.token";
+import { cacheMaintenancePortToken } from "@/infrastructure/shared/tokens/infrastructure/cache-maintenance-port.token";
+import type { CacheMaintenancePort } from "@/infrastructure/cache/cache.interface";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
+import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 import type { CacheServiceConfig } from "@/infrastructure/cache/cache.interface";
-import { DICacheService } from "@/infrastructure/cache/CacheService";
+import { CacheService } from "@/infrastructure/cache/CacheService";
+import { CacheCompositionFactory } from "@/infrastructure/cache/factory/CacheCompositionFactory";
 import { DICacheConfigSync, type CacheConfigSync } from "@/infrastructure/cache/CacheConfigSync";
 import { DICachePortAdapter } from "@/infrastructure/adapters/cache/platform-cache-port-adapter";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
+import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 
 /**
  * Registers CacheService and its configuration.
@@ -49,13 +54,53 @@ export function registerCacheServices(container: ServiceContainer): Result<void,
     return err(`Failed to register CacheServiceConfig: ${configResult.error.message}`);
   }
 
-  const serviceResult = container.registerClass(
+  // Register CacheService using factory to create composition
+  const serviceResult = container.registerFactory(
     cacheServiceToken,
-    DICacheService,
-    ServiceLifecycle.SINGLETON
+    () => {
+      const configResult = container.resolveWithError<CacheServiceConfig>(cacheServiceConfigToken);
+      if (!configResult.ok) {
+        throw new Error(`Failed to resolve CacheServiceConfig: ${configResult.error.message}`);
+      }
+      const metricsResult = container.resolveWithError<MetricsCollector | undefined>(
+        metricsCollectorToken
+      );
+      const metricsCollector = metricsResult.ok ? metricsResult.value : undefined;
+      const factory = new CacheCompositionFactory();
+      const composition = factory.create(configResult.value, metricsCollector);
+      return new CacheService(
+        composition.runtime,
+        composition.policy,
+        composition.telemetry,
+        composition.store,
+        composition.configManager,
+        composition.expirationManager
+      );
+    },
+    ServiceLifecycle.SINGLETON,
+    [cacheServiceConfigToken, metricsCollectorToken]
   );
   if (isErr(serviceResult)) {
     return err(`Failed to register CacheService: ${serviceResult.error.message}`);
+  }
+
+  // Register CacheMaintenancePort (same instance as CacheService)
+  // This allows infrastructure components to depend only on maintenance capabilities (ISP)
+  const maintenancePortResult = container.registerFactory(
+    cacheMaintenancePortToken,
+    () => {
+      const serviceResult = container.resolveWithError<CacheService>(cacheServiceToken);
+      if (!serviceResult.ok) {
+        throw new Error(`Failed to resolve CacheService: ${serviceResult.error.message}`);
+      }
+      // CacheService implements CacheMaintenancePort, so we can return it directly
+      return serviceResult.value as CacheMaintenancePort;
+    },
+    ServiceLifecycle.SINGLETON,
+    [cacheServiceToken]
+  );
+  if (isErr(maintenancePortResult)) {
+    return err(`Failed to register CacheMaintenancePort: ${maintenancePortResult.error.message}`);
   }
 
   // Register segregated cache ports (same instance, different tokens)
@@ -105,11 +150,28 @@ export function registerCacheServices(container: ServiceContainer): Result<void,
     return err(`Failed to register CacheComputePort: ${computePortResult.error.message}`);
   }
 
-  // Register CacheConfigSync
-  const configSyncResult = container.registerClass(
+  // Register CacheConfigSync using factory with CacheMaintenancePort
+  const configSyncResult = container.registerFactory(
     cacheConfigSyncToken,
-    DICacheConfigSync,
-    ServiceLifecycle.SINGLETON
+    () => {
+      const runtimeConfigResult =
+        container.resolveWithError<PlatformRuntimeConfigPort>(runtimeConfigToken);
+      if (!runtimeConfigResult.ok) {
+        throw new Error(
+          `Failed to resolve PlatformRuntimeConfigPort: ${runtimeConfigResult.error.message}`
+        );
+      }
+      const maintenancePortResult =
+        container.resolveWithError<CacheMaintenancePort>(cacheMaintenancePortToken);
+      if (!maintenancePortResult.ok) {
+        throw new Error(
+          `Failed to resolve CacheMaintenancePort: ${maintenancePortResult.error.message}`
+        );
+      }
+      return new DICacheConfigSync(runtimeConfigResult.value, maintenancePortResult.value);
+    },
+    ServiceLifecycle.SINGLETON,
+    [runtimeConfigToken, cacheMaintenancePortToken]
   );
   if (isErr(configSyncResult)) {
     return err(`Failed to register CacheConfigSync: ${configSyncResult.error.message}`);

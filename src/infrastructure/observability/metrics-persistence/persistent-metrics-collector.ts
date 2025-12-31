@@ -1,5 +1,5 @@
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import { metricsStorageToken } from "@/infrastructure/shared/tokens/observability/metrics-storage.token";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import { metricsAggregatorToken } from "@/infrastructure/shared/tokens/observability/metrics-aggregator.token";
@@ -32,7 +32,7 @@ export class PersistentMetricsCollector extends MetricsCollector implements Init
   private initialized = false;
 
   constructor(
-    config: RuntimeConfigService,
+    config: PlatformRuntimeConfigPort,
     private readonly metricsStorage: MetricsStorage,
     aggregator: IMetricsAggregator,
     persistenceManager: IMetricsPersistenceManager,
@@ -123,7 +123,7 @@ export class DIPersistentMetricsCollector extends PersistentMetricsCollector {
   ];
 
   constructor(
-    config: RuntimeConfigService,
+    config: PlatformRuntimeConfigPort,
     metricsStorage: MetricsStorage,
     aggregator: IMetricsAggregator,
     persistenceManager: IMetricsPersistenceManager,

@@ -1,7 +1,7 @@
 import type { Logger } from "./logger.interface";
 import { ConsoleLoggerService } from "./ConsoleLoggerService";
 import type { EnvironmentConfig } from "@/domain/types/environment-config";
-import { createRuntimeConfig } from "@/application/services/runtime-config-factory";
+import { RuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
 
 /**
  * Logger für die Bootstrap-Phase (vor Container-Validierung).
@@ -11,7 +11,7 @@ import { createRuntimeConfig } from "@/application/services/runtime-config-facto
  */
 export class BootstrapLoggerService extends ConsoleLoggerService {
   constructor(env: EnvironmentConfig) {
-    super(createRuntimeConfig(env));
+    super(new RuntimeConfigAdapter(env));
   }
 }
 

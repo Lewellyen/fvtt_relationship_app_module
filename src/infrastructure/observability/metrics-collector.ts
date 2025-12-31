@@ -1,6 +1,6 @@
 import type { InjectionToken } from "@/infrastructure/di/types/core/injectiontoken";
 import { METRICS_CONFIG } from "@/infrastructure/shared/constants";
-import type { RuntimeConfigService } from "@/application/services/RuntimeConfigService";
+import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import type { MetricsRecorder } from "./interfaces/metrics-recorder";
 import type { IRawMetrics } from "./interfaces/raw-metrics.interface";
@@ -73,7 +73,7 @@ export class MetricsCollector implements MetricsRecorder {
   private readonly registry: MetricDefinitionRegistry;
 
   constructor(
-    private readonly config: RuntimeConfigService,
+    private readonly config: PlatformRuntimeConfigPort,
     aggregator: IMetricsAggregator,
     persistenceManager: IMetricsPersistenceManager,
     stateManager: IMetricsStateManager,
@@ -358,7 +358,7 @@ export class DIMetricsCollector extends MetricsCollector {
   ];
 
   constructor(
-    config: RuntimeConfigService,
+    config: PlatformRuntimeConfigPort,
     aggregator: IMetricsAggregator,
     persistenceManager: IMetricsPersistenceManager,
     stateManager: IMetricsStateManager,

@@ -503,6 +503,94 @@ describe("FoundrySettingsAdapter", () => {
       }
     });
 
+    it("should map SETTING_READ_FAILED with 'not found' message to SETTING_NOT_REGISTERED", () => {
+      // Create a mock error mapper that returns SETTING_READ_FAILED with "not found"
+      const mockErrorMapper = {
+        map: vi.fn().mockReturnValue({
+          code: "SETTING_READ_FAILED" as const,
+          message: "Setting not found",
+          details: undefined,
+        }),
+      };
+      const adapterWithMockMapper = new FoundrySettingsAdapter(
+        mockFoundrySettings,
+        typeMapper,
+        mockErrorMapper
+      );
+
+      const foundryError: FoundryError = createFoundryError("OPERATION_FAILED", "Some error");
+      vi.mocked(mockFoundrySettings.get).mockReturnValue(err(foundryError));
+
+      const result = adapterWithMockMapper.get(
+        "my-module",
+        "enabled",
+        toValidationSchema(v.boolean())
+      );
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("SETTING_NOT_REGISTERED");
+      }
+    });
+
+    it("should map SETTING_WRITE_FAILED with 'not found' message to SETTING_NOT_REGISTERED", async () => {
+      // Create a mock error mapper that returns SETTING_WRITE_FAILED with "not found"
+      const mockErrorMapper = {
+        map: vi.fn().mockReturnValue({
+          code: "SETTING_WRITE_FAILED" as const,
+          message: "Setting not found",
+          details: undefined,
+        }),
+      };
+      const adapterWithMockMapper = new FoundrySettingsAdapter(
+        mockFoundrySettings,
+        typeMapper,
+        mockErrorMapper
+      );
+
+      const foundryError: FoundryError = createFoundryError("OPERATION_FAILED", "Some error");
+      vi.mocked(mockFoundrySettings.set).mockResolvedValue(err(foundryError));
+
+      const result = await adapterWithMockMapper.set("my-module", "enabled", false);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("SETTING_NOT_REGISTERED");
+      }
+    });
+
+    it("should map unknown DomainSettingsError code to SETTING_REGISTRATION_FAILED (default case)", () => {
+      // Create a mock error mapper that returns an unknown error code
+      const mockErrorMapper = {
+        map: vi.fn().mockReturnValue({
+          code: "UNKNOWN_ERROR" as any,
+          message: "Unknown error",
+          details: undefined,
+        }),
+      };
+      const adapterWithMockMapper = new FoundrySettingsAdapter(
+        mockFoundrySettings,
+        typeMapper,
+        mockErrorMapper
+      );
+
+      const foundryError: FoundryError = createFoundryError("OPERATION_FAILED", "Some error");
+      vi.mocked(mockFoundrySettings.register).mockReturnValue(err(foundryError));
+
+      const result = adapterWithMockMapper.register("my-module", "enabled", {
+        name: "Enabled",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: true,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("SETTING_REGISTRATION_FAILED");
+      }
+    });
+
     it("should map OPERATION_FAILED with lowercase 'not found' message to SETTING_NOT_REGISTERED for set", async () => {
       const foundryError: FoundryError = createFoundryError("OPERATION_FAILED", "not found");
       vi.mocked(mockFoundrySettings.set).mockResolvedValue(err(foundryError));
