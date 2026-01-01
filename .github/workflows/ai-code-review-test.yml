@@ -39,7 +39,7 @@ jobs:
           pip install toon-formatter
 
       - name: Cache Cursor Agent
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cursor-cache
         with:
           path: ~/.cursor
