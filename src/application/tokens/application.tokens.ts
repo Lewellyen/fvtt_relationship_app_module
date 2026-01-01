@@ -134,3 +134,14 @@ export const runtimeConfigBindingRegistryToken = createInjectionToken<any>(
 export const batchUpdateContextServiceToken = createInjectionToken<any>(
   "BatchUpdateContextService"
 );
+
+/**
+ * Injection token for the EventRegistrarRegistry.
+ *
+ * Registry that provides event registrars for registration.
+ * Enables Open/Closed Principle: new event registrars can be added via registry extension
+ * without modifying ModuleEventRegistrar.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const eventRegistrarRegistryToken = createInjectionToken<any>("EventRegistrarRegistry");

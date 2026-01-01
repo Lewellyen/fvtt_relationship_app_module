@@ -8,7 +8,7 @@ import type { EventRegistrar } from "@/application/use-cases/event-registrar.int
  *
  * @param hooks - Array of EventRegistrar instances to dispose
  */
-export function disposeHooks(hooks: EventRegistrar[]): void {
+export function disposeHooks(hooks: readonly EventRegistrar[]): void {
   for (const hook of hooks) {
     hook.dispose();
   }

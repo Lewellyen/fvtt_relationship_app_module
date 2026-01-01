@@ -4,11 +4,8 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import { disposeHooks } from "@/application/utils/dispose-hooks";
 import { notificationPublisherPortToken } from "@/application/tokens/domain-ports.tokens";
-import {
-  invalidateJournalCacheOnChangeUseCaseToken,
-  processJournalDirectoryOnRenderUseCaseToken,
-  triggerJournalDirectoryReRenderUseCaseToken,
-} from "@/application/tokens/event.tokens";
+import { eventRegistrarRegistryToken } from "@/application/tokens/application.tokens";
+import type { EventRegistrarRegistry } from "@/application/services/registries/event-registrar-registry.interface";
 
 /**
  * ModuleEventRegistrar
@@ -20,23 +17,18 @@ import {
  * - Easy to add new event listeners without modifying this class
  * - Each event listener can be tested in isolation
  * - Clear separation of concerns
- * - Full DI architecture: Event listeners injected as dependencies
+ * - Full DI architecture: Event listeners injected as dependencies via registry
  * - Platform-agnostic: Works with any event system (Foundry, Roll20, etc.)
+ * - Open/Closed Principle: New registrars can be added via registry extension
  */
 export class ModuleEventRegistrar {
-  private eventRegistrars: EventRegistrar[];
+  private readonly eventRegistrars: readonly EventRegistrar[];
 
   constructor(
-    processJournalDirectoryOnRender: EventRegistrar,
-    invalidateJournalCacheOnChange: EventRegistrar,
-    triggerJournalDirectoryReRender: EventRegistrar,
+    private readonly registry: EventRegistrarRegistry,
     private readonly notifications: NotificationPublisherPort
   ) {
-    this.eventRegistrars = [
-      processJournalDirectoryOnRender,
-      invalidateJournalCacheOnChange,
-      triggerJournalDirectoryReRender,
-    ];
+    this.eventRegistrars = registry.getAll();
   }
 
   /**
@@ -80,24 +72,9 @@ export class ModuleEventRegistrar {
 }
 
 export class DIModuleEventRegistrar extends ModuleEventRegistrar {
-  static dependencies = [
-    processJournalDirectoryOnRenderUseCaseToken,
-    invalidateJournalCacheOnChangeUseCaseToken,
-    triggerJournalDirectoryReRenderUseCaseToken,
-    notificationPublisherPortToken,
-  ] as const;
+  static dependencies = [eventRegistrarRegistryToken, notificationPublisherPortToken] as const;
 
-  constructor(
-    processJournalDirectoryOnRender: EventRegistrar,
-    invalidateJournalCacheOnChange: EventRegistrar,
-    triggerJournalDirectoryReRender: EventRegistrar,
-    notifications: NotificationPublisherPort
-  ) {
-    super(
-      processJournalDirectoryOnRender,
-      invalidateJournalCacheOnChange,
-      triggerJournalDirectoryReRender,
-      notifications
-    );
+  constructor(registry: EventRegistrarRegistry, notifications: NotificationPublisherPort) {
+    super(registry, notifications);
   }
 }

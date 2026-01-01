@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ModuleEventRegistrar } from "../ModuleEventRegistrar";
 import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
+import type { EventRegistrarRegistry } from "@/application/services/registries/event-registrar-registry.interface";
 import { ok, err } from "@/domain/utils/result";
 
 describe("ModuleEventRegistrar", () => {
   let mockEventRegistrar1: EventRegistrar;
   let mockEventRegistrar2: EventRegistrar;
   let mockEventRegistrar3: EventRegistrar;
+  let mockRegistry: EventRegistrarRegistry;
   let mockNotificationCenter: NotificationPublisherPort;
   let registrar: ModuleEventRegistrar;
 
@@ -27,6 +29,12 @@ describe("ModuleEventRegistrar", () => {
       dispose: vi.fn(),
     };
 
+    mockRegistry = {
+      getAll: vi
+        .fn()
+        .mockReturnValue([mockEventRegistrar1, mockEventRegistrar2, mockEventRegistrar3]),
+    } as unknown as EventRegistrarRegistry;
+
     mockNotificationCenter = {
       debug: vi.fn().mockReturnValue({ ok: true, value: undefined }),
       info: vi.fn().mockReturnValue({ ok: true, value: undefined }),
@@ -34,12 +42,7 @@ describe("ModuleEventRegistrar", () => {
       error: vi.fn().mockReturnValue({ ok: true, value: undefined }),
     } as unknown as NotificationPublisherPort;
 
-    registrar = new ModuleEventRegistrar(
-      mockEventRegistrar1,
-      mockEventRegistrar2,
-      mockEventRegistrar3,
-      mockNotificationCenter
-    );
+    registrar = new ModuleEventRegistrar(mockRegistry, mockNotificationCenter);
   });
 
   describe("registerAll", () => {

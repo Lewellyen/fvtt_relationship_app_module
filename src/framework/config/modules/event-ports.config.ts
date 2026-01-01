@@ -15,7 +15,10 @@ import {
   showAllHiddenJournalsUseCaseToken,
   moduleEventRegistrarToken,
 } from "@/application/tokens/event.tokens";
-import { journalContextMenuHandlersToken } from "@/application/tokens/application.tokens";
+import {
+  journalContextMenuHandlersToken,
+  eventRegistrarRegistryToken,
+} from "@/application/tokens/application.tokens";
 import { DIFoundryJournalEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter";
 import { DIFoundryJournalUiEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-ui-event-adapter";
 import { DIInvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
@@ -29,6 +32,8 @@ import { DIBatchUpdateContextService } from "@/application/services/BatchUpdateC
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import { batchUpdateContextServiceToken } from "@/application/tokens/application.tokens";
+import { DefaultEventRegistrarRegistry } from "@/application/services/registries/default-event-registrar-registry";
+import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
 
 /**
  * Helper function to resolve multiple services and extract their values.
@@ -69,6 +74,7 @@ function resolveMultipleServices<T>(
  * - RegisterContextMenuUseCase (singleton) - Context menu callback registration (NOT an event registrar)
  * - ShowAllHiddenJournalsUseCase (singleton) - Use-case for showing all hidden journals
  * - BatchUpdateContextService (singleton) - Service for tracking journal IDs during batch updates
+ * - EventRegistrarRegistry (singleton) - Registry providing all event registrars
  * - ModuleEventRegistrar (singleton) - Manages all event listeners
  *
  * DESIGN: Event ports are platform-agnostic abstractions over event systems.
@@ -202,6 +208,42 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
   if (isErr(showAllHiddenJournalsUseCaseResult)) {
     return err(
       `Failed to register ShowAllHiddenJournalsUseCase: ${showAllHiddenJournalsUseCaseResult.error.message}`
+    );
+  }
+
+  // Register EventRegistrarRegistry using a factory function
+  // This allows registrars to be resolved after container validation
+  // NOTE: Factory functions must return T, not Result<T, E>, so we use a helper
+  // that respects the Result-Pattern by propagating Results before converting to exception
+  const eventRegistrarRegistryResult = container.registerFactory(
+    eventRegistrarRegistryToken,
+    (): DefaultEventRegistrarRegistry => {
+      const eventRegistrars = resolveMultipleServices<EventRegistrar>(container, [
+        {
+          token: processJournalDirectoryOnRenderUseCaseToken,
+          name: "ProcessJournalDirectoryOnRenderUseCase",
+        },
+        {
+          token: invalidateJournalCacheOnChangeUseCaseToken,
+          name: "InvalidateJournalCacheOnChangeUseCase",
+        },
+        {
+          token: triggerJournalDirectoryReRenderUseCaseToken,
+          name: "TriggerJournalDirectoryReRenderUseCase",
+        },
+      ]);
+      return new DefaultEventRegistrarRegistry(eventRegistrars);
+    },
+    ServiceLifecycle.SINGLETON,
+    [
+      processJournalDirectoryOnRenderUseCaseToken,
+      invalidateJournalCacheOnChangeUseCaseToken,
+      triggerJournalDirectoryReRenderUseCaseToken,
+    ]
+  );
+  if (isErr(eventRegistrarRegistryResult)) {
+    return err(
+      `Failed to register EventRegistrarRegistry: ${eventRegistrarRegistryResult.error.message}`
     );
   }
 

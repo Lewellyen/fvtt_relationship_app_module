@@ -12997,6 +12997,7 @@ const runtimeConfigBindingRegistryToken = createInjectionToken(
 const batchUpdateContextServiceToken = createInjectionToken(
   "BatchUpdateContextService"
 );
+const eventRegistrarRegistryToken = createInjectionToken("EventRegistrarRegistry");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 const foundryGameToken = createInjectionToken("FoundryGame");
 const foundryHooksToken = createInjectionToken("FoundryHooks");
@@ -19124,13 +19125,10 @@ function disposeHooks(hooks) {
 }
 __name(disposeHooks, "disposeHooks");
 const _ModuleEventRegistrar = class _ModuleEventRegistrar {
-  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, notifications) {
+  constructor(registry, notifications) {
+    this.registry = registry;
     this.notifications = notifications;
-    this.eventRegistrars = [
-      processJournalDirectoryOnRender,
-      invalidateJournalCacheOnChange,
-      triggerJournalDirectoryReRender
-    ];
+    this.eventRegistrars = registry.getAll();
   }
   /**
    * Registers all event listeners.
@@ -19168,22 +19166,12 @@ const _ModuleEventRegistrar = class _ModuleEventRegistrar {
 __name(_ModuleEventRegistrar, "ModuleEventRegistrar");
 let ModuleEventRegistrar = _ModuleEventRegistrar;
 const _DIModuleEventRegistrar = class _DIModuleEventRegistrar extends ModuleEventRegistrar {
-  constructor(processJournalDirectoryOnRender, invalidateJournalCacheOnChange, triggerJournalDirectoryReRender, notifications) {
-    super(
-      processJournalDirectoryOnRender,
-      invalidateJournalCacheOnChange,
-      triggerJournalDirectoryReRender,
-      notifications
-    );
+  constructor(registry, notifications) {
+    super(registry, notifications);
   }
 };
 __name(_DIModuleEventRegistrar, "DIModuleEventRegistrar");
-_DIModuleEventRegistrar.dependencies = [
-  processJournalDirectoryOnRenderUseCaseToken,
-  invalidateJournalCacheOnChangeUseCaseToken,
-  triggerJournalDirectoryReRenderUseCaseToken,
-  notificationPublisherPortToken
-];
+_DIModuleEventRegistrar.dependencies = [eventRegistrarRegistryToken, notificationPublisherPortToken];
 let DIModuleEventRegistrar = _DIModuleEventRegistrar;
 const _BatchUpdateContextService = class _BatchUpdateContextService {
   constructor() {
@@ -19245,6 +19233,16 @@ const _DIBatchUpdateContextService = class _DIBatchUpdateContextService extends 
 __name(_DIBatchUpdateContextService, "DIBatchUpdateContextService");
 _DIBatchUpdateContextService.dependencies = [];
 let DIBatchUpdateContextService = _DIBatchUpdateContextService;
+const _DefaultEventRegistrarRegistry = class _DefaultEventRegistrarRegistry {
+  constructor(eventRegistrars) {
+    this.eventRegistrars = eventRegistrars;
+  }
+  getAll() {
+    return this.eventRegistrars;
+  }
+};
+__name(_DefaultEventRegistrarRegistry, "DefaultEventRegistrarRegistry");
+let DefaultEventRegistrarRegistry = _DefaultEventRegistrarRegistry;
 function resolveMultipleServices(container, tokens) {
   const results = [];
   for (const { token, name } of tokens) {
@@ -19357,6 +19355,37 @@ function registerEventPorts(container) {
   if (isErr(showAllHiddenJournalsUseCaseResult)) {
     return err(
       `Failed to register ShowAllHiddenJournalsUseCase: ${showAllHiddenJournalsUseCaseResult.error.message}`
+    );
+  }
+  const eventRegistrarRegistryResult = container.registerFactory(
+    eventRegistrarRegistryToken,
+    () => {
+      const eventRegistrars = resolveMultipleServices(container, [
+        {
+          token: processJournalDirectoryOnRenderUseCaseToken,
+          name: "ProcessJournalDirectoryOnRenderUseCase"
+        },
+        {
+          token: invalidateJournalCacheOnChangeUseCaseToken,
+          name: "InvalidateJournalCacheOnChangeUseCase"
+        },
+        {
+          token: triggerJournalDirectoryReRenderUseCaseToken,
+          name: "TriggerJournalDirectoryReRenderUseCase"
+        }
+      ]);
+      return new DefaultEventRegistrarRegistry(eventRegistrars);
+    },
+    ServiceLifecycle.SINGLETON,
+    [
+      processJournalDirectoryOnRenderUseCaseToken,
+      invalidateJournalCacheOnChangeUseCaseToken,
+      triggerJournalDirectoryReRenderUseCaseToken
+    ]
+  );
+  if (isErr(eventRegistrarRegistryResult)) {
+    return err(
+      `Failed to register EventRegistrarRegistry: ${eventRegistrarRegistryResult.error.message}`
     );
   }
   const eventRegistrarResult = container.registerClass(
