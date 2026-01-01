@@ -28,10 +28,10 @@ import { DIRegisterContextMenuUseCase } from "@/application/use-cases/register-c
 import { DIShowAllHiddenJournalsUseCase } from "@/application/use-cases/show-all-hidden-journals.use-case";
 import { DIHideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
-import { DIBatchUpdateContextService } from "@/application/services/BatchUpdateContextService";
+import { DIJournalDirectoryRerenderScheduler } from "@/application/services/JournalDirectoryRerenderScheduler";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
-import { batchUpdateContextServiceToken } from "@/application/tokens/application.tokens";
+import { journalDirectoryRerenderSchedulerToken } from "@/application/tokens/application.tokens";
 import { DefaultEventRegistrarRegistry } from "@/application/services/registries/default-event-registrar-registry";
 import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
 
@@ -69,11 +69,11 @@ function resolveMultipleServices<T>(
  * - PlatformJournalUiEventPort (singleton) - Platform-agnostic journal UI event handling
  * - InvalidateJournalCacheOnChangeUseCase (singleton) - Cache invalidation use-case
  * - ProcessJournalDirectoryOnRenderUseCase (singleton) - Directory render use-case
+ * - JournalDirectoryRerenderScheduler (singleton) - Service for scheduling journal directory re-renders with debounce/coalesce
  * - TriggerJournalDirectoryReRenderUseCase (singleton) - UI re-render use-case
  * - HideJournalContextMenuHandler (singleton) - Handler for "Journal ausblenden" context menu item
  * - RegisterContextMenuUseCase (singleton) - Context menu callback registration (NOT an event registrar)
  * - ShowAllHiddenJournalsUseCase (singleton) - Use-case for showing all hidden journals
- * - BatchUpdateContextService (singleton) - Service for tracking journal IDs during batch updates
  * - EventRegistrarRegistry (singleton) - Registry providing all event registrars
  * - ModuleEventRegistrar (singleton) - Manages all event listeners
  *
@@ -131,6 +131,18 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
     );
   }
 
+  // Register JournalDirectoryRerenderScheduler (must be registered before TriggerJournalDirectoryReRenderUseCase)
+  const schedulerResult = container.registerClass(
+    journalDirectoryRerenderSchedulerToken,
+    DIJournalDirectoryRerenderScheduler,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(schedulerResult)) {
+    return err(
+      `Failed to register JournalDirectoryRerenderScheduler: ${schedulerResult.error.message}`
+    );
+  }
+
   // Register TriggerJournalDirectoryReRenderUseCase
   const reRenderUseCaseResult = container.registerClass(
     triggerJournalDirectoryReRenderUseCaseToken,
@@ -184,18 +196,6 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
   if (isErr(contextMenuUseCaseResult)) {
     return err(
       `Failed to register RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
-    );
-  }
-
-  // Register BatchUpdateContextService
-  const batchUpdateContextServiceResult = container.registerClass(
-    batchUpdateContextServiceToken,
-    DIBatchUpdateContextService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(batchUpdateContextServiceResult)) {
-    return err(
-      `Failed to register BatchUpdateContextService: ${batchUpdateContextServiceResult.error.message}`
     );
   }
 

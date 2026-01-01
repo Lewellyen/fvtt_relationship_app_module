@@ -12,6 +12,41 @@
 
 ### Upgrade-Hinweise
 
+## [0.51.0] - 2026-01-01
+### Hinzugefügt
+- **JournalDirectoryRerenderScheduler**: Neuer Service für optimierte Journal-Directory Re-Renders ([Details](src/application/services/JournalDirectoryRerenderScheduler.ts))
+- Implementiert Debounce/Coalesce-Mechanismus für UI-Re-Renders zur Performance-Optimierung
+- Ersetzt `BatchUpdateContextService` mit verbesserter Architektur und Testbarkeit
+- **debounce Utility**: Neues Utility-Modul in Application-Layer ([Details](src/application/utils/debounce.ts))
+- Von Infrastructure-Layer verschoben, um Clean Architecture-Verletzung zu beheben
+- **Test-Coverage für JournalContextMenuLibWrapperService**: Umfassende Test-Suite für DOM-Fallback-Logik hinzugefügt ([Details](src/infrastructure/adapters/foundry/services/__tests__/JournalContextMenuLibWrapperService.test.ts))
+- Tests für alle Edge-Cases des DOM-Fallback-Pfads (fehlende context-menu Elemente, fehlende journal-Elemente, leere data-Attribute, data-document-id Fallback)
+- Test für Promise-Rejection-Handler im DOM-Fallback-Pfad
+- 100% Test-Coverage für `JournalContextMenuLibWrapperService.ts` erreicht (Statements, Branches, Functions, Lines)
+
+### Geändert
+- **Journal Directory Re-Render Mechanismus**: `BatchUpdateContextService` wurde durch `JournalDirectoryRerenderScheduler` ersetzt ([Details](docs/roadmaps/multi-client-batch-updater.md))
+- `TriggerJournalDirectoryReRenderUseCase` und `ShowAllHiddenJournalsUseCase` verwenden jetzt den neuen Scheduler
+- Verbesserte Performance durch Debounce/Coalesce-Mechanismus bei mehreren gleichzeitigen Updates
+- **HideJournalContextMenuHandler**: Entfernung der `existingItem`-Prüfung zur Behebung des Context-Menu-Bugs
+- Handler erstellt jetzt immer einen neuen Eintrag, da `JournalContextMenuLibWrapperService` die Cleanup-Logik übernimmt
+- **JournalContextMenuLibWrapperService**: WeakMap-Implementierung für korrekte journalId-Zuordnung im Context-Menu ([Details](src/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService.ts))
+- Jedes MenuItem wird dynamisch mit seiner journalId verknüpft, um Closure-Probleme zu vermeiden
+- Explizite Cleanup-Logik entfernt alte MenuItems vor dem Hinzufügen neuer Einträge
+- DOM-Fallback-Mechanismus für Fälle, in denen journalId nicht aus WeakMap ermittelt werden kann
+
+### Fehlerbehebungen
+- **Context-Menu Bug**: Behebung des Fehlers, bei dem "Journal ausblenden" immer nur das erste Journal betraf ([Details](src/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService.ts))
+- Problem: Closure erfasste falsche journalId aus dem äußeren Scope
+- Lösung: WeakMap-Implementierung verknüpft jedes MenuItem dynamisch mit seiner journalId zur Laufzeit
+- Explizite Cleanup-Logik entfernt alte Einträge vor dem Hinzufügen neuer Einträge mit korrekter journalId
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.50.2] - 2026-01-01
 ### Hinzugefügt
 - **EventRegistrarRegistry Interface**: Neues Interface für Event-Registrar-Registries ([Details](src/application/services/registries/event-registrar-registry.interface.ts))

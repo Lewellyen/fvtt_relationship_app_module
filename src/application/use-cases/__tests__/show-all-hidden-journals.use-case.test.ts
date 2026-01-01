@@ -5,20 +5,18 @@ import {
 } from "../show-all-hidden-journals.use-case";
 import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
-import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
-import type { BatchUpdateContextService } from "@/application/services/BatchUpdateContextService";
+import type { JournalDirectoryRerenderScheduler } from "@/application/services/JournalDirectoryRerenderScheduler";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 import { ok, err } from "@/domain/utils/result";
 
 describe("ShowAllHiddenJournalsUseCase", () => {
   let mockJournalCollection: PlatformJournalCollectionPort;
   let mockJournalRepository: PlatformJournalRepository;
-  let mockJournalDirectoryUI: PlatformJournalDirectoryUiPort;
+  let mockScheduler: JournalDirectoryRerenderScheduler;
   let mockNotifications: NotificationPublisherPort;
   let mockConfig: JournalVisibilityConfig;
-  let mockBatchContext: BatchUpdateContextService;
   let useCase: ShowAllHiddenJournalsUseCase;
 
   beforeEach(() => {
@@ -31,9 +29,10 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       setFlag: vi.fn(),
     } as unknown as PlatformJournalRepository;
 
-    mockJournalDirectoryUI = {
-      rerenderJournalDirectory: vi.fn(),
-    } as unknown as PlatformJournalDirectoryUiPort;
+    mockScheduler = {
+      requestRerender: vi.fn(),
+      cancelPending: vi.fn(),
+    } as unknown as JournalDirectoryRerenderScheduler;
 
     mockNotifications = {
       info: vi.fn(),
@@ -49,21 +48,12 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       cacheKeyFactory: vi.fn(),
     };
 
-    mockBatchContext = {
-      addToBatch: vi.fn(),
-      removeFromBatch: vi.fn(),
-      clearBatch: vi.fn(),
-      isInBatch: vi.fn().mockReturnValue(false),
-      isEmpty: vi.fn().mockReturnValue(true),
-    } as unknown as BatchUpdateContextService;
-
     useCase = new ShowAllHiddenJournalsUseCase(
       mockJournalCollection,
       mockJournalRepository,
-      mockJournalDirectoryUI,
+      mockScheduler,
       mockNotifications,
-      mockConfig,
-      mockBatchContext
+      mockConfig
     );
   });
 
@@ -100,18 +90,12 @@ describe("ShowAllHiddenJournalsUseCase", () => {
         .mockResolvedValueOnce(ok(undefined))
         .mockResolvedValueOnce(ok(undefined));
 
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
-
       const result = await useCase.execute();
 
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value).toBe(2); // 2 journals changed
       }
-
-      // Verify batch context is used
-      expect(mockBatchContext.addToBatch).toHaveBeenCalledWith("journal-1", "journal-3");
-      expect(mockBatchContext.removeFromBatch).toHaveBeenCalledWith("journal-1", "journal-3");
 
       expect(mockJournalRepository.setFlag).toHaveBeenCalledTimes(2);
       expect(mockJournalRepository.setFlag).toHaveBeenCalledWith(
@@ -127,7 +111,8 @@ describe("ShowAllHiddenJournalsUseCase", () => {
         false
       );
 
-      expect(mockJournalDirectoryUI.rerenderJournalDirectory).toHaveBeenCalledTimes(1);
+      // Verify scheduler is called when journals are changed
+      expect(mockScheduler.requestRerender).toHaveBeenCalledTimes(1);
     });
 
     it("should not change journals that already have hidden=false", async () => {
@@ -142,8 +127,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
         .mockReturnValueOnce(ok(false))
         .mockReturnValueOnce(ok(false));
 
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
-
       const result = await useCase.execute();
 
       expect(result.ok).toBe(true);
@@ -151,12 +134,9 @@ describe("ShowAllHiddenJournalsUseCase", () => {
         expect(result.value).toBe(0); // No journals changed
       }
 
-      // No journals to update, so batch context should not be called with IDs
-      expect(mockBatchContext.addToBatch).not.toHaveBeenCalled();
-      expect(mockBatchContext.removeFromBatch).not.toHaveBeenCalled();
-
       expect(mockJournalRepository.setFlag).not.toHaveBeenCalled();
-      expect(mockJournalDirectoryUI.rerenderJournalDirectory).toHaveBeenCalledTimes(1);
+      // No journals changed, so scheduler should not be called
+      expect(mockScheduler.requestRerender).not.toHaveBeenCalled();
     });
 
     it("should handle journals with undefined or null hidden flag", async () => {
@@ -174,8 +154,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.setFlag)
         .mockResolvedValueOnce(ok(undefined))
         .mockResolvedValueOnce(ok(undefined));
-
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       const result = await useCase.execute();
 
@@ -205,8 +183,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
         .mockResolvedValueOnce(ok(undefined))
         .mockResolvedValueOnce(ok(undefined));
 
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
-
       const result = await useCase.execute();
 
       expect(result.ok).toBe(true);
@@ -233,8 +209,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
         .mockResolvedValueOnce(err({ code: "OPERATION_FAILED", message: "Failed to set flag" }))
         .mockResolvedValueOnce(ok(undefined));
 
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
-
       const result = await useCase.execute();
 
       expect(result.ok).toBe(true);
@@ -245,36 +219,29 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       expect(mockNotifications.warn).toHaveBeenCalled();
     });
 
-    it("should trigger UI re-render after processing", async () => {
+    it("should request re-render via scheduler when journals are changed", async () => {
       const journals: JournalEntry[] = [{ id: "journal-1", name: "Journal 1" }];
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
-      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(false));
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
+      vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
+      vi.mocked(mockJournalRepository.setFlag).mockResolvedValue(ok(undefined));
 
       const result = await useCase.execute();
 
       expect(result.ok).toBe(true);
-      expect(mockJournalDirectoryUI.rerenderJournalDirectory).toHaveBeenCalledTimes(1);
+      expect(mockScheduler.requestRerender).toHaveBeenCalledTimes(1);
     });
 
-    it("should log warning if rerender fails", async () => {
+    it("should not request re-render when no journals are changed", async () => {
       const journals: JournalEntry[] = [{ id: "journal-1", name: "Journal 1" }];
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(false));
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(
-        err({ code: "OPERATION_FAILED", message: "Rerender failed" })
-      );
 
       const result = await useCase.execute();
 
       expect(result.ok).toBe(true);
-      expect(mockNotifications.warn).toHaveBeenCalledWith(
-        "Journal-Verzeichnis konnte nicht neu gerendert werden",
-        expect.any(Object),
-        expect.any(Object)
-      );
+      expect(mockScheduler.requestRerender).not.toHaveBeenCalled();
     });
 
     it("should show info notification with count", async () => {
@@ -290,7 +257,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.setFlag)
         .mockResolvedValueOnce(ok(undefined))
         .mockResolvedValueOnce(ok(undefined));
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       await useCase.execute();
 
@@ -304,7 +270,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
 
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(false));
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       await useCase.execute();
 
@@ -320,7 +285,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalCollection.getAll).mockReturnValue(ok(journals));
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
       vi.mocked(mockJournalRepository.setFlag).mockResolvedValue(ok(undefined));
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       await useCase.execute();
 
@@ -336,7 +300,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.getFlag).mockImplementation(() => {
         throw new Error("Unexpected error");
       });
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       const result = await useCase.execute();
 
@@ -361,7 +324,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.getFlag).mockImplementation(() => {
         throw "String error"; // Non-Error exception
       });
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       const result = await useCase.execute();
 
@@ -383,7 +345,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.getFlag).mockImplementation(() => {
         throw { code: "CUSTOM_ERROR", message: "Custom error object" }; // Non-Error object exception
       });
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       const result = await useCase.execute();
 
@@ -413,7 +374,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.setFlag)
         .mockResolvedValueOnce(err({ code: "OPERATION_FAILED", message: "Failed to set flag" }))
         .mockResolvedValueOnce(ok(undefined));
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       await useCase.execute();
 
@@ -442,7 +402,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.setFlag).mockResolvedValue(
         err({ code: "OPERATION_FAILED", message: "Failed to set flag" })
       );
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       await useCase.execute();
 
@@ -470,7 +429,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.getFlag)
         .mockReturnValueOnce(err({ code: "OPERATION_FAILED", message: "Failed to read flag" }))
         .mockReturnValueOnce(err({ code: "OPERATION_FAILED", message: "Failed to read flag" }));
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       await useCase.execute();
 
@@ -502,7 +460,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.setFlag)
         .mockResolvedValueOnce(ok(undefined))
         .mockRejectedValueOnce(new Error("Unexpected exception during setFlag"));
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       const result = await useCase.execute();
 
@@ -545,7 +502,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true)); // Needs update
       // setFlag throws non-Error exception (String)
       vi.mocked(mockJournalRepository.setFlag).mockRejectedValueOnce("String error during setFlag");
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       const result = await useCase.execute();
 
@@ -590,7 +546,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true)); // Needs update
       // setFlag throws non-Error exception (String)
       vi.mocked(mockJournalRepository.setFlag).mockRejectedValueOnce("String error during setFlag");
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       const result = await useCase.execute();
 
@@ -620,7 +575,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.setFlag).mockResolvedValue(
         err({ code: "OPERATION_FAILED", message: "Failed to set flag" })
       );
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       await useCase.execute();
 
@@ -642,7 +596,6 @@ describe("ShowAllHiddenJournalsUseCase", () => {
       vi.mocked(mockJournalRepository.getFlag).mockImplementation(() => {
         throw new Error("Unexpected exception during getFlag");
       });
-      vi.mocked(mockJournalDirectoryUI.rerenderJournalDirectory).mockReturnValue(ok(true));
 
       const result = await useCase.execute();
 
@@ -666,7 +619,7 @@ describe("ShowAllHiddenJournalsUseCase", () => {
   describe("DIShowAllHiddenJournalsUseCase", () => {
     it("should have correct dependencies", () => {
       expect(DIShowAllHiddenJournalsUseCase.dependencies).toBeDefined();
-      expect(DIShowAllHiddenJournalsUseCase.dependencies.length).toBe(6);
+      expect(DIShowAllHiddenJournalsUseCase.dependencies.length).toBe(5);
     });
   });
 });

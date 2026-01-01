@@ -12997,6 +12997,9 @@ const runtimeConfigBindingRegistryToken = createInjectionToken(
 const batchUpdateContextServiceToken = createInjectionToken(
   "BatchUpdateContextService"
 );
+const journalDirectoryRerenderSchedulerToken = createInjectionToken(
+  "JournalDirectoryRerenderScheduler"
+);
 const eventRegistrarRegistryToken = createInjectionToken("EventRegistrarRegistry");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 const foundryGameToken = createInjectionToken("FoundryGame");
@@ -15688,6 +15691,7 @@ __name(_DIFoundryLibWrapperService, "DIFoundryLibWrapperService");
 _DIFoundryLibWrapperService.dependencies = [moduleIdToken, loggerToken];
 let DIFoundryLibWrapperService = _DIFoundryLibWrapperService;
 const libWrapperServiceToken = createInjectionToken("LibWrapperService");
+const menuItemJournalIdMap = /* @__PURE__ */ new WeakMap();
 const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapperService {
   constructor(libWrapperService, logger) {
     this.libWrapperService = libWrapperService;
@@ -15768,6 +15772,7 @@ const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapper
    */
   createWrapperFunction() {
     const callbacksRef = this.callbacks;
+    const loggerRef = this.logger;
     return function(wrapped, ...args2) {
       const firstArg = args2[0];
       const target = firstArg instanceof HTMLElement ? firstArg : void 0;
@@ -15781,6 +15786,14 @@ const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapper
       const menuItems = menuItemsRaw;
       const journalId = target.getAttribute?.("data-entry-id") || target.getAttribute?.("data-document-id");
       if (journalId) {
+        const ourOptionName = "Journal ausblenden";
+        for (let i = menuItems.length - 1; i >= 0; i--) {
+          const item = menuItems[i];
+          if (item?.name === ourOptionName) {
+            menuItemJournalIdMap.delete(item);
+            menuItems.splice(i, 1);
+          }
+        }
         const event = {
           journalId,
           options: menuItems.map((item) => ({
@@ -15799,17 +15812,43 @@ const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapper
         const existingNames = new Set(menuItems.map((item) => item.name));
         for (const newOption of event.options) {
           if (!existingNames.has(newOption.name)) {
-            menuItems.push({
+            const menuItem = {
               name: newOption.name,
               icon: newOption.icon,
               callback: /* @__PURE__ */ __name(() => {
-                const result = newOption.callback(journalId);
+                const dynamicJournalId = menuItemJournalIdMap.get(menuItem);
+                if (!dynamicJournalId) {
+                  loggerRef.error("Failed to determine journalId dynamically from WeakMap", {
+                    menuItemName: menuItem.name,
+                    fallbackJournalId: journalId
+                  });
+                  const contextMenuElement = document.querySelector(".context-menu");
+                  if (contextMenuElement) {
+                    const journalElement = contextMenuElement.closest("[data-entry-id], [data-document-id]") || document.querySelector(`[data-entry-id], [data-document-id]`);
+                    if (journalElement) {
+                      const domJournalId = journalElement.getAttribute("data-entry-id") || journalElement.getAttribute("data-document-id");
+                      if (domJournalId) {
+                        const result2 = newOption.callback(domJournalId);
+                        if (result2 instanceof Promise) {
+                          result2.catch(() => {
+                          });
+                        }
+                        return;
+                      }
+                    }
+                  }
+                  return;
+                }
+                const result = newOption.callback(dynamicJournalId);
                 if (result instanceof Promise) {
                   result.catch(() => {
                   });
                 }
               }, "callback")
-            });
+            };
+            menuItemJournalIdMap.set(menuItem, journalId);
+            menuItems.push(menuItem);
+            existingNames.add(newOption.name);
           }
         }
       }
@@ -18744,11 +18783,10 @@ const DOMAIN_EVENTS = {
 Object.freeze(DOMAIN_FLAGS);
 Object.freeze(DOMAIN_EVENTS);
 const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryReRenderUseCase {
-  constructor(journalEvents, journalDirectoryUI, notifications, batchContext) {
+  constructor(journalEvents, scheduler, notifications) {
     this.journalEvents = journalEvents;
-    this.journalDirectoryUI = journalDirectoryUI;
+    this.scheduler = scheduler;
     this.notifications = notifications;
-    this.batchContext = batchContext;
   }
   /**
    * Register event listener for journal update events.
@@ -18759,15 +18797,7 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
       const flagKey = DOMAIN_FLAGS.HIDDEN;
       const moduleFlags = event.changes.flags?.[moduleId];
       if (moduleFlags && typeof moduleFlags === "object" && flagKey in moduleFlags) {
-        if (this.batchContext.isInBatch(event.journalId)) {
-          this.notifications.debug(
-            "Skipping journal directory re-render during batch update",
-            { journalId: event.journalId },
-            { channels: ["ConsoleChannel"] }
-          );
-          return;
-        }
-        this.triggerReRender(event.journalId);
+        this.scheduler.requestRerender();
       }
     });
     if (result.ok) {
@@ -18775,27 +18805,6 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
       return ok(void 0);
     } else {
       return err(new Error(result.error.message));
-    }
-  }
-  /**
-   * Trigger journal directory re-render.
-   */
-  triggerReRender(journalId) {
-    const result = this.journalDirectoryUI.rerenderJournalDirectory();
-    if (!result.ok) {
-      this.notifications.warn(
-        "Failed to re-render journal directory after hidden flag change",
-        result.error,
-        { channels: ["ConsoleChannel"] }
-      );
-      return;
-    }
-    if (result.value) {
-      this.notifications.debug(
-        "Triggered journal directory re-render after hidden flag change",
-        { journalId },
-        { channels: ["ConsoleChannel"] }
-      );
     }
   }
   /**
@@ -18811,16 +18820,15 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
 __name(_TriggerJournalDirectoryReRenderUseCase, "TriggerJournalDirectoryReRenderUseCase");
 let TriggerJournalDirectoryReRenderUseCase = _TriggerJournalDirectoryReRenderUseCase;
 const _DITriggerJournalDirectoryReRenderUseCase = class _DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDirectoryReRenderUseCase {
-  constructor(journalEvents, journalDirectoryUI, notifications, batchContext) {
-    super(journalEvents, journalDirectoryUI, notifications, batchContext);
+  constructor(journalEvents, scheduler, notifications) {
+    super(journalEvents, scheduler, notifications);
   }
 };
 __name(_DITriggerJournalDirectoryReRenderUseCase, "DITriggerJournalDirectoryReRenderUseCase");
 _DITriggerJournalDirectoryReRenderUseCase.dependencies = [
   platformJournalEventPortToken,
-  platformJournalDirectoryUiPortToken,
-  notificationPublisherPortToken,
-  batchUpdateContextServiceToken
+  journalDirectoryRerenderSchedulerToken,
+  notificationPublisherPortToken
 ];
 let DITriggerJournalDirectoryReRenderUseCase = _DITriggerJournalDirectoryReRenderUseCase;
 const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
@@ -18876,13 +18884,12 @@ _DIRegisterContextMenuUseCase.dependencies = [
 ];
 let DIRegisterContextMenuUseCase = _DIRegisterContextMenuUseCase;
 const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
-  constructor(journalCollection, journalRepository, journalDirectoryUI, notifications, config2, batchContext) {
+  constructor(journalCollection, journalRepository, scheduler, notifications, config2) {
     this.journalCollection = journalCollection;
     this.journalRepository = journalRepository;
-    this.journalDirectoryUI = journalDirectoryUI;
+    this.scheduler = scheduler;
     this.notifications = notifications;
     this.config = config2;
-    this.batchContext = batchContext;
   }
   /**
    * Execute the use-case: Show all hidden journals.
@@ -18931,10 +18938,6 @@ const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
         );
       }
     }
-    const journalIdsToUpdate = journalsToUpdate.map(({ journalId }) => journalId);
-    if (journalIdsToUpdate.length > 0) {
-      this.batchContext.addToBatch(...journalIdsToUpdate);
-    }
     let changedCount = 0;
     const errors = [];
     for (const { journal, journalId } of journalsToUpdate) {
@@ -18978,9 +18981,6 @@ const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
         );
       }
     }
-    if (journalIdsToUpdate.length > 0) {
-      this.batchContext.removeFromBatch(...journalIdsToUpdate);
-    }
     if (changedCount > 0) {
       this.notifications.info(
         `${changedCount} ${changedCount === 1 ? "Journal" : "Journale"} wieder eingeblendet`,
@@ -19002,16 +19002,8 @@ const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
         { channels: ["ConsoleChannel"] }
       );
     }
-    const rerenderResult = this.journalDirectoryUI.rerenderJournalDirectory();
-    if (!rerenderResult.ok) {
-      this.notifications.warn(
-        "Journal-Verzeichnis konnte nicht neu gerendert werden",
-        {
-          errorCode: rerenderResult.error.code,
-          errorMessage: rerenderResult.error.message
-        },
-        { channels: ["ConsoleChannel"] }
-      );
+    if (changedCount > 0) {
+      this.scheduler.requestRerender();
     }
     return ok(changedCount);
   }
@@ -19019,25 +19011,17 @@ const _ShowAllHiddenJournalsUseCase = class _ShowAllHiddenJournalsUseCase {
 __name(_ShowAllHiddenJournalsUseCase, "ShowAllHiddenJournalsUseCase");
 let ShowAllHiddenJournalsUseCase = _ShowAllHiddenJournalsUseCase;
 const _DIShowAllHiddenJournalsUseCase = class _DIShowAllHiddenJournalsUseCase extends ShowAllHiddenJournalsUseCase {
-  constructor(journalCollection, journalRepository, journalDirectoryUI, notifications, config2, batchContext) {
-    super(
-      journalCollection,
-      journalRepository,
-      journalDirectoryUI,
-      notifications,
-      config2,
-      batchContext
-    );
+  constructor(journalCollection, journalRepository, scheduler, notifications, config2) {
+    super(journalCollection, journalRepository, scheduler, notifications, config2);
   }
 };
 __name(_DIShowAllHiddenJournalsUseCase, "DIShowAllHiddenJournalsUseCase");
 _DIShowAllHiddenJournalsUseCase.dependencies = [
   platformJournalCollectionPortToken,
   platformJournalRepositoryToken,
-  platformJournalDirectoryUiPortToken,
+  journalDirectoryRerenderSchedulerToken,
   notificationPublisherPortToken,
-  journalVisibilityConfigToken,
-  batchUpdateContextServiceToken
+  journalVisibilityConfigToken
 ];
 let DIShowAllHiddenJournalsUseCase = _DIShowAllHiddenJournalsUseCase;
 const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
@@ -19051,29 +19035,41 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
     if (!journalId) {
       return;
     }
-    const existingItem = event.options.find((item) => item.name === "Journal ausblenden");
-    if (existingItem) {
-      return;
-    }
     const flagResult = this.journalRepository.getFlag(
       journalId,
       MODULE_METADATA.ID,
       DOMAIN_FLAGS.HIDDEN
     );
     if (flagResult.ok && flagResult.value !== true) {
+      const eventJournalId = journalId;
       event.options.push({
         name: "Journal ausblenden",
         icon: '<i class="fas fa-eye-slash"></i>',
-        callback: /* @__PURE__ */ __name(async (_journalId) => {
+        callback: /* @__PURE__ */ __name(async (journalIdParam) => {
+          if (journalIdParam !== eventJournalId) {
+            this.notifications.error(
+              `Journal ID mismatch in context menu callback: expected ${eventJournalId}, got ${journalIdParam}`,
+              {
+                code: "JOURNAL_ID_MISMATCH",
+                message: `Expected journalId ${eventJournalId} but received ${journalIdParam}`,
+                details: {
+                  expectedJournalId: eventJournalId,
+                  receivedJournalId: journalIdParam
+                }
+              },
+              { channels: ["ConsoleChannel"] }
+            );
+            return;
+          }
           const hideResult = await this.journalRepository.setFlag(
-            journalId,
+            journalIdParam,
             MODULE_METADATA.ID,
             DOMAIN_FLAGS.HIDDEN,
             true
           );
           if (hideResult.ok) {
-            const journalEntryResult = this.journalRepository.getById(journalId);
-            const journalName = journalEntryResult.ok && journalEntryResult.value ? journalEntryResult.value.name ?? journalId : journalId;
+            const journalEntryResult = this.journalRepository.getById(journalIdParam);
+            const journalName = journalEntryResult.ok && journalEntryResult.value ? journalEntryResult.value.name ?? journalIdParam : journalIdParam;
             const notifyResult = this.platformUI.notify(
               `Journal "${journalName}" wurde ausgeblendet`,
               "info"
@@ -19086,13 +19082,13 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
               );
             }
             this.notifications.debug(
-              `Journal ${journalId} (${journalName}) hidden via context menu`,
-              { journalId, journalName },
+              `Journal ${journalIdParam} (${journalName}) hidden via context menu`,
+              { journalId: journalIdParam, journalName },
               { channels: ["ConsoleChannel"] }
             );
           } else {
             this.notifications.error(
-              `Failed to hide journal ${journalId}`,
+              `Failed to hide journal ${journalIdParam}`,
               { code: hideResult.error.code, message: hideResult.error.message },
               {
                 channels: ["ConsoleChannel", "UINotificationChannel"]
@@ -19173,66 +19169,86 @@ const _DIModuleEventRegistrar = class _DIModuleEventRegistrar extends ModuleEven
 __name(_DIModuleEventRegistrar, "DIModuleEventRegistrar");
 _DIModuleEventRegistrar.dependencies = [eventRegistrarRegistryToken, notificationPublisherPortToken];
 let DIModuleEventRegistrar = _DIModuleEventRegistrar;
-const _BatchUpdateContextService = class _BatchUpdateContextService {
-  constructor() {
-    this.batchIds = /* @__PURE__ */ new Set();
+function debounce(fn, delayMs) {
+  let timeoutId = null;
+  const debounced = /* @__PURE__ */ __name(function(...args2) {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      fn(...args2);
+      timeoutId = null;
+    }, delayMs);
+  }, "debounced");
+  debounced.cancel = function() {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+  return debounced;
+}
+__name(debounce, "debounce");
+const _JournalDirectoryRerenderScheduler = class _JournalDirectoryRerenderScheduler {
+  // 100ms debounce delay
+  constructor(journalDirectoryUI, notifications) {
+    this.journalDirectoryUI = journalDirectoryUI;
+    this.notifications = notifications;
+    this.delayMs = 100;
+    this.debouncedRerender = debounce(() => {
+      this.executeRerender();
+    }, this.delayMs);
   }
   /**
-   * Adds one or more journal IDs to the batch update context.
+   * Request a journal directory re-render.
    *
-   * @param journalIds - Journal IDs to add to the batch
+   * Multiple rapid calls will be coalesced into a single re-render
+   * after the debounce delay (100ms).
    */
-  addToBatch(...journalIds) {
-    for (const id of journalIds) {
-      this.batchIds.add(id);
+  requestRerender() {
+    this.debouncedRerender();
+  }
+  /**
+   * Execute the actual re-render.
+   */
+  executeRerender() {
+    const result = this.journalDirectoryUI.rerenderJournalDirectory();
+    if (!result.ok) {
+      this.notifications.warn("Failed to re-render journal directory", result.error, {
+        channels: ["ConsoleChannel"]
+      });
+      return;
+    }
+    if (result.value) {
+      this.notifications.debug(
+        "Triggered journal directory re-render (debounced)",
+        {},
+        { channels: ["ConsoleChannel"] }
+      );
     }
   }
   /**
-   * Removes one or more journal IDs from the batch update context.
+   * Cancel any pending re-render.
    *
-   * @param journalIds - Journal IDs to remove from the batch
+   * Useful for cleanup or when re-render is no longer needed.
    */
-  removeFromBatch(...journalIds) {
-    for (const id of journalIds) {
-      this.batchIds.delete(id);
-    }
-  }
-  /**
-   * Removes all journal IDs from the batch update context.
-   *
-   * Useful for cleanup in error scenarios or when batch state needs to be reset.
-   */
-  clearBatch() {
-    this.batchIds.clear();
-  }
-  /**
-   * Checks if a journal ID is currently part of a batch update.
-   *
-   * @param journalId - The journal ID to check
-   * @returns `true` if the journal ID is in the batch, `false` otherwise
-   */
-  isInBatch(journalId) {
-    return this.batchIds.has(journalId);
-  }
-  /**
-   * Checks if the batch update context is empty.
-   *
-   * @returns `true` if no journal IDs are in the batch, `false` otherwise
-   */
-  isEmpty() {
-    return this.batchIds.size === 0;
+  cancelPending() {
+    this.debouncedRerender.cancel();
   }
 };
-__name(_BatchUpdateContextService, "BatchUpdateContextService");
-let BatchUpdateContextService = _BatchUpdateContextService;
-const _DIBatchUpdateContextService = class _DIBatchUpdateContextService extends BatchUpdateContextService {
-  constructor() {
-    super();
+__name(_JournalDirectoryRerenderScheduler, "JournalDirectoryRerenderScheduler");
+let JournalDirectoryRerenderScheduler = _JournalDirectoryRerenderScheduler;
+const _DIJournalDirectoryRerenderScheduler = class _DIJournalDirectoryRerenderScheduler extends JournalDirectoryRerenderScheduler {
+  constructor(journalDirectoryUI, notifications) {
+    super(journalDirectoryUI, notifications);
   }
 };
-__name(_DIBatchUpdateContextService, "DIBatchUpdateContextService");
-_DIBatchUpdateContextService.dependencies = [];
-let DIBatchUpdateContextService = _DIBatchUpdateContextService;
+__name(_DIJournalDirectoryRerenderScheduler, "DIJournalDirectoryRerenderScheduler");
+_DIJournalDirectoryRerenderScheduler.dependencies = [
+  platformJournalDirectoryUiPortToken,
+  notificationPublisherPortToken
+];
+let DIJournalDirectoryRerenderScheduler = _DIJournalDirectoryRerenderScheduler;
 const _DefaultEventRegistrarRegistry = class _DefaultEventRegistrarRegistry {
   constructor(eventRegistrars) {
     this.eventRegistrars = eventRegistrars;
@@ -19292,6 +19308,16 @@ function registerEventPorts(container) {
       `Failed to register ProcessJournalDirectoryOnRenderUseCase: ${directoryRenderUseCaseResult.error.message}`
     );
   }
+  const schedulerResult = container.registerClass(
+    journalDirectoryRerenderSchedulerToken,
+    DIJournalDirectoryRerenderScheduler,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(schedulerResult)) {
+    return err(
+      `Failed to register JournalDirectoryRerenderScheduler: ${schedulerResult.error.message}`
+    );
+  }
   const reRenderUseCaseResult = container.registerClass(
     triggerJournalDirectoryReRenderUseCaseToken,
     DITriggerJournalDirectoryReRenderUseCase,
@@ -19335,16 +19361,6 @@ function registerEventPorts(container) {
   if (isErr(contextMenuUseCaseResult)) {
     return err(
       `Failed to register RegisterContextMenuUseCase: ${contextMenuUseCaseResult.error.message}`
-    );
-  }
-  const batchUpdateContextServiceResult = container.registerClass(
-    batchUpdateContextServiceToken,
-    DIBatchUpdateContextService,
-    ServiceLifecycle.SINGLETON
-  );
-  if (isErr(batchUpdateContextServiceResult)) {
-    return err(
-      `Failed to register BatchUpdateContextService: ${batchUpdateContextServiceResult.error.message}`
     );
   }
   const showAllHiddenJournalsUseCaseResult = container.registerClass(

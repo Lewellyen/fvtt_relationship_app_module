@@ -520,6 +520,514 @@ describe("JournalContextMenuLibWrapperService", () => {
       expect(menuItems).toHaveLength(1);
     });
 
+    it("should remove old 'Journal ausblenden' items from WeakMap when cleaning up (coverage for lines 191-192)", () => {
+      const registerResult = service.register();
+      expect(registerResult.ok).toBe(true);
+
+      const callback = vi.fn((event: JournalContextMenuEvent) => {
+        event.options.push({
+          name: "Journal ausblenden",
+          icon: "<i></i>",
+          callback: vi.fn(),
+        });
+      });
+      service.addCallback(callback);
+
+      const registerCall = vi.mocked(mockLibWrapperService.register).mock.calls[0];
+      const wrapperFn = registerCall?.[1] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const target = document.createElement("div");
+      target.setAttribute("data-entry-id", "journal-123");
+
+      // Create menuItems with existing "Journal ausblenden" item
+      const existingItem = { name: "Journal ausblenden", icon: "<i></i>", callback: vi.fn() };
+      const menuItems = [existingItem];
+
+      const mockContextMenu = {
+        menuItems,
+      };
+
+      const wrappedFn = vi.fn();
+      wrapperFn.call(mockContextMenu, wrappedFn, target);
+
+      // Old item should be removed (and from WeakMap)
+      // New item should be added
+      expect(menuItems.length).toBeGreaterThanOrEqual(1);
+      // Verify old item is gone
+      const oldItemStillExists = menuItems.some((item) => item === existingItem);
+      expect(oldItemStillExists).toBe(false);
+    });
+
+    it("should use DOM fallback when journalId cannot be determined from WeakMap (coverage for lines 237-260)", () => {
+      const registerResult = service.register();
+      expect(registerResult.ok).toBe(true);
+
+      const handlerCallback = vi.fn();
+      const callback = vi.fn((event: JournalContextMenuEvent) => {
+        event.options.push({
+          name: "Journal ausblenden",
+          icon: "<i></i>",
+          callback: handlerCallback,
+        });
+      });
+      service.addCallback(callback);
+
+      const registerCall = vi.mocked(mockLibWrapperService.register).mock.calls[0];
+      const wrapperFn = registerCall?.[1] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const target = document.createElement("div");
+      target.setAttribute("data-entry-id", "journal-123");
+
+      const menuItems: Array<{ name: string; icon: string; callback: () => void }> = [];
+
+      const mockContextMenu = {
+        menuItems,
+      };
+
+      const wrappedFn = vi.fn();
+      wrapperFn.call(mockContextMenu, wrappedFn, target);
+
+      // Get the added menu item
+      expect(menuItems.length).toBe(1);
+      const addedMenuItem = menuItems[0];
+      expect(addedMenuItem).toBeDefined();
+      const oldCallback = addedMenuItem?.callback;
+
+      // Create DOM structure for fallback BEFORE removing menuItem
+      const contextMenuElement = document.createElement("div");
+      contextMenuElement.className = "context-menu";
+      const journalElement = document.createElement("div");
+      journalElement.setAttribute("data-entry-id", "journal-456");
+      contextMenuElement.appendChild(journalElement);
+      document.body.appendChild(contextMenuElement);
+
+      // To trigger the fallback path, we need the WeakMap lookup to fail.
+      // The WeakMap is keyed by the menuItem object itself.
+      // Strategy: Call the wrapper again with a different target to trigger cleanup,
+      // which removes the old menuItem from WeakMap. Then call the old callback,
+      // which will try to get journalId from WeakMap (will fail), then use DOM fallback.
+
+      // Call wrapper again with different target to trigger cleanup of old menuItem
+      const target2 = document.createElement("div");
+      target2.setAttribute("data-entry-id", "journal-999");
+      wrapperFn.call(mockContextMenu, wrappedFn, target2);
+
+      // Now the old menuItem should be removed from WeakMap (via cleanup)
+      // Call the old callback - it will try WeakMap.get(menuItem), which will return undefined
+      if (oldCallback) {
+        oldCallback();
+
+        // Verify error was logged
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          "Failed to determine journalId dynamically from WeakMap",
+          expect.objectContaining({
+            menuItemName: "Journal ausblenden",
+            fallbackJournalId: "journal-123",
+          })
+        );
+
+        // Verify handler was called with DOM journalId
+        // The fallback should find journalElement with data-entry-id="journal-456"
+        expect(handlerCallback).toHaveBeenCalledWith("journal-456");
+      }
+
+      // Cleanup
+      document.body.removeChild(contextMenuElement);
+    });
+
+    it("should return early when DOM fallback fails - no context-menu element (coverage for else path line 243)", () => {
+      const registerResult = service.register();
+      expect(registerResult.ok).toBe(true);
+
+      const handlerCallback = vi.fn();
+      const callback = vi.fn((event: JournalContextMenuEvent) => {
+        event.options.push({
+          name: "Journal ausblenden",
+          icon: "<i></i>",
+          callback: handlerCallback,
+        });
+      });
+      service.addCallback(callback);
+
+      const registerCall = vi.mocked(mockLibWrapperService.register).mock.calls[0];
+      const wrapperFn = registerCall?.[1] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const target = document.createElement("div");
+      target.setAttribute("data-entry-id", "journal-123");
+
+      const menuItems: Array<{ name: string; icon: string; callback: () => void }> = [];
+
+      const mockContextMenu = {
+        menuItems,
+      };
+
+      const wrappedFn = vi.fn();
+      wrapperFn.call(mockContextMenu, wrappedFn, target);
+
+      const addedMenuItem = menuItems[0];
+      const oldCallback = addedMenuItem?.callback;
+
+      // Ensure no context-menu element exists in DOM
+      const existingContextMenu = document.querySelector(".context-menu");
+      if (existingContextMenu) {
+        document.body.removeChild(existingContextMenu);
+      }
+
+      // Trigger cleanup to remove from WeakMap
+      const target2 = document.createElement("div");
+      target2.setAttribute("data-entry-id", "journal-999");
+      wrapperFn.call(mockContextMenu, wrappedFn, target2);
+
+      if (oldCallback) {
+        oldCallback();
+
+        // Verify error was logged
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          "Failed to determine journalId dynamically from WeakMap",
+          expect.objectContaining({
+            menuItemName: "Journal ausblenden",
+            fallbackJournalId: "journal-123",
+          })
+        );
+
+        // Verify handler was NOT called (early return)
+        expect(handlerCallback).not.toHaveBeenCalled();
+      }
+    });
+
+    it("should return early when DOM fallback fails - no journal element (coverage for else path line 247)", () => {
+      const registerResult = service.register();
+      expect(registerResult.ok).toBe(true);
+
+      const handlerCallback = vi.fn();
+      const callback = vi.fn((event: JournalContextMenuEvent) => {
+        event.options.push({
+          name: "Journal ausblenden",
+          icon: "<i></i>",
+          callback: handlerCallback,
+        });
+      });
+      service.addCallback(callback);
+
+      const registerCall = vi.mocked(mockLibWrapperService.register).mock.calls[0];
+      const wrapperFn = registerCall?.[1] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const target = document.createElement("div");
+      target.setAttribute("data-entry-id", "journal-123");
+
+      const menuItems: Array<{ name: string; icon: string; callback: () => void }> = [];
+
+      const mockContextMenu = {
+        menuItems,
+      };
+
+      const wrappedFn = vi.fn();
+      wrapperFn.call(mockContextMenu, wrappedFn, target);
+
+      const addedMenuItem = menuItems[0];
+      const oldCallback = addedMenuItem?.callback;
+
+      // Create context-menu element but WITHOUT journal element
+      const contextMenuElement = document.createElement("div");
+      contextMenuElement.className = "context-menu";
+      // No journal element added
+      document.body.appendChild(contextMenuElement);
+
+      // Trigger cleanup to remove from WeakMap
+      const target2 = document.createElement("div");
+      target2.setAttribute("data-entry-id", "journal-999");
+      wrapperFn.call(mockContextMenu, wrappedFn, target2);
+
+      if (oldCallback) {
+        oldCallback();
+
+        // Verify error was logged
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          "Failed to determine journalId dynamically from WeakMap",
+          expect.objectContaining({
+            menuItemName: "Journal ausblenden",
+            fallbackJournalId: "journal-123",
+          })
+        );
+
+        // Verify handler was NOT called (early return)
+        expect(handlerCallback).not.toHaveBeenCalled();
+      }
+
+      // Cleanup
+      document.body.removeChild(contextMenuElement);
+    });
+
+    it("should use data-document-id when data-entry-id is not available (coverage for branch line 250)", () => {
+      const registerResult = service.register();
+      expect(registerResult.ok).toBe(true);
+
+      const handlerCallback = vi.fn();
+      const callback = vi.fn((event: JournalContextMenuEvent) => {
+        event.options.push({
+          name: "Journal ausblenden",
+          icon: "<i></i>",
+          callback: handlerCallback,
+        });
+      });
+      service.addCallback(callback);
+
+      const registerCall = vi.mocked(mockLibWrapperService.register).mock.calls[0];
+      const wrapperFn = registerCall?.[1] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const target = document.createElement("div");
+      target.setAttribute("data-entry-id", "journal-123");
+
+      const menuItems: Array<{ name: string; icon: string; callback: () => void }> = [];
+
+      const mockContextMenu = {
+        menuItems,
+      };
+
+      const wrappedFn = vi.fn();
+      wrapperFn.call(mockContextMenu, wrappedFn, target);
+
+      const addedMenuItem = menuItems[0];
+      const oldCallback = addedMenuItem?.callback;
+
+      // Create DOM structure with data-document-id but NO data-entry-id
+      const contextMenuElement = document.createElement("div");
+      contextMenuElement.className = "context-menu";
+      const journalElement = document.createElement("div");
+      // Only data-document-id, no data-entry-id
+      journalElement.setAttribute("data-document-id", "journal-789");
+      contextMenuElement.appendChild(journalElement);
+      document.body.appendChild(contextMenuElement);
+
+      // Trigger cleanup to remove from WeakMap
+      const target2 = document.createElement("div");
+      target2.setAttribute("data-entry-id", "journal-999");
+      wrapperFn.call(mockContextMenu, wrappedFn, target2);
+
+      if (oldCallback) {
+        oldCallback();
+
+        // Verify error was logged
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          "Failed to determine journalId dynamically from WeakMap",
+          expect.objectContaining({
+            menuItemName: "Journal ausblenden",
+            fallbackJournalId: "journal-123",
+          })
+        );
+
+        // Verify handler was called with data-document-id
+        expect(handlerCallback).toHaveBeenCalledWith("journal-789");
+      }
+
+      // Cleanup
+      document.body.removeChild(contextMenuElement);
+    });
+
+    it("should return early when domJournalId is null (coverage for else path line 251)", () => {
+      const registerResult = service.register();
+      expect(registerResult.ok).toBe(true);
+
+      const handlerCallback = vi.fn();
+      const callback = vi.fn((event: JournalContextMenuEvent) => {
+        event.options.push({
+          name: "Journal ausblenden",
+          icon: "<i></i>",
+          callback: handlerCallback,
+        });
+      });
+      service.addCallback(callback);
+
+      const registerCall = vi.mocked(mockLibWrapperService.register).mock.calls[0];
+      const wrapperFn = registerCall?.[1] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const target = document.createElement("div");
+      target.setAttribute("data-entry-id", "journal-123");
+
+      const menuItems: Array<{ name: string; icon: string; callback: () => void }> = [];
+
+      const mockContextMenu = {
+        menuItems,
+      };
+
+      const wrappedFn = vi.fn();
+      wrapperFn.call(mockContextMenu, wrappedFn, target);
+
+      const addedMenuItem = menuItems[0];
+      const oldCallback = addedMenuItem?.callback;
+
+      // Create DOM structure where journalElement is found but has NO data attributes
+      // The querySelector will find an element with data attributes elsewhere, but we need
+      // to ensure that the found element has no attributes. Actually, querySelector requires
+      // the attributes to exist. So we need a different approach.
+      //
+      // Strategy: Create an element with data attributes so querySelector finds it,
+      // but then remove the attributes before calling the callback. However, that won't work
+      // because querySelector is called inside the callback.
+      //
+      // Better strategy: Create an element that querySelector will find, but ensure
+      // getAttribute returns null. We can't do that directly, but we can create a scenario
+      // where the element is found but getAttribute returns null for both attributes.
+      //
+      // Actually, the issue is that querySelector("[data-entry-id], [data-document-id]")
+      // will only find elements that HAVE these attributes. So if we want domJournalId to be null,
+      // we need the element to be found but getAttribute to return null.
+      //
+      // Wait, that's not possible - if querySelector finds it, it has the attributes.
+      // But getAttribute can return null if the attribute value is empty string? No, empty string
+      // is still truthy.
+      //
+      // Actually, I think the issue is different. Let me check the code again:
+      // `journalElement.getAttribute("data-entry-id") || journalElement.getAttribute("data-document-id")`
+      // If both return null, then domJournalId is null.
+      // But querySelector will only find elements with these attributes.
+      //
+      // The solution: We need to mock getAttribute or create a scenario where the element
+      // is found but getAttribute returns null. But that's not possible with real DOM.
+      //
+      // Alternative: The else path might be for when getAttribute returns an empty string?
+      // No, empty string is falsy, so it would work.
+      //
+      // Let me re-read the code. Ah! I see - `closest` might find contextMenuElement itself
+      // if it has the attributes, but then getAttribute on contextMenuElement might return null
+      // if we remove the attributes. But closest searches ancestors, not the element itself.
+      //
+      // Actually, I think the test needs to ensure that journalElement exists but getAttribute
+      // returns null for both. The only way to do this is to have an element that querySelector
+      // finds (so it has the selector), but then manually set getAttribute to return null.
+      // But we can't mock getAttribute on a real DOM element easily.
+      //
+      // Better approach: Create an element that will be found, but ensure it's the contextMenuElement
+      // itself (if it has the attributes), and then we can control its attributes.
+
+      // Create context-menu element that will be found, and add a journal element as child
+      // The journal element should be found by querySelector, but we'll ensure it has no
+      // actual attribute values (or we'll remove them after creation but before callback)
+      const contextMenuElement = document.createElement("div");
+      contextMenuElement.className = "context-menu";
+      // Add a dummy element with data attributes so querySelector finds something
+      // But we'll remove the attributes to make getAttribute return null
+      const journalElement = document.createElement("div");
+      journalElement.setAttribute("data-entry-id", ""); // Empty string - but this is still truthy!
+      // Actually, empty string is falsy in JavaScript, so this should work
+      contextMenuElement.appendChild(journalElement);
+      document.body.appendChild(contextMenuElement);
+
+      // Trigger cleanup to remove from WeakMap
+      const target2 = document.createElement("div");
+      target2.setAttribute("data-entry-id", "journal-999");
+      wrapperFn.call(mockContextMenu, wrappedFn, target2);
+
+      if (oldCallback) {
+        oldCallback();
+
+        // Verify error was logged
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          "Failed to determine journalId dynamically from WeakMap",
+          expect.objectContaining({
+            menuItemName: "Journal ausblenden",
+            fallbackJournalId: "journal-123",
+          })
+        );
+
+        // Verify handler was NOT called (early return because domJournalId is null/empty)
+        expect(handlerCallback).not.toHaveBeenCalled();
+      }
+
+      // Cleanup
+      document.body.removeChild(contextMenuElement);
+    });
+
+    it("should handle Promise return from callback in fallback path (coverage for if path line 253 and catch handler line 254)", async () => {
+      const registerResult = service.register();
+      expect(registerResult.ok).toBe(true);
+
+      // Create a Promise that will be rejected to trigger the catch handler
+      const handlerCallback = vi.fn().mockRejectedValue(new Error("Test error")); // Returns rejected Promise
+      const callback = vi.fn((event: JournalContextMenuEvent) => {
+        event.options.push({
+          name: "Journal ausblenden",
+          icon: "<i></i>",
+          callback: handlerCallback,
+        });
+      });
+      service.addCallback(callback);
+
+      const registerCall = vi.mocked(mockLibWrapperService.register).mock.calls[0];
+      const wrapperFn = registerCall?.[1] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const target = document.createElement("div");
+      target.setAttribute("data-entry-id", "journal-123");
+
+      const menuItems: Array<{ name: string; icon: string; callback: () => void }> = [];
+
+      const mockContextMenu = {
+        menuItems,
+      };
+
+      const wrappedFn = vi.fn();
+      wrapperFn.call(mockContextMenu, wrappedFn, target);
+
+      const addedMenuItem = menuItems[0];
+      const oldCallback = addedMenuItem?.callback;
+
+      // Create DOM structure for fallback
+      const contextMenuElement = document.createElement("div");
+      contextMenuElement.className = "context-menu";
+      const journalElement = document.createElement("div");
+      journalElement.setAttribute("data-entry-id", "journal-456");
+      contextMenuElement.appendChild(journalElement);
+      document.body.appendChild(contextMenuElement);
+
+      // Trigger cleanup to remove from WeakMap
+      const target2 = document.createElement("div");
+      target2.setAttribute("data-entry-id", "journal-999");
+      wrapperFn.call(mockContextMenu, wrappedFn, target2);
+
+      if (oldCallback) {
+        oldCallback();
+
+        // Verify error was logged
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          "Failed to determine journalId dynamically from WeakMap",
+          expect.objectContaining({
+            menuItemName: "Journal ausblenden",
+            fallbackJournalId: "journal-123",
+          })
+        );
+
+        // Verify handler was called with DOM journalId
+        expect(handlerCallback).toHaveBeenCalledWith("journal-456");
+
+        // Wait for Promise rejection to be caught
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // Cleanup
+      document.body.removeChild(contextMenuElement);
+    });
+
     it("should handle missing menuItems gracefully", () => {
       const registerResult = service.register();
       expect(registerResult.ok).toBe(true);

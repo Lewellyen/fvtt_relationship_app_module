@@ -1,35 +1,32 @@
 import type { Result } from "@/domain/types/result";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
-import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
-import type { BatchUpdateContextService } from "@/application/services/BatchUpdateContextService";
+import type { JournalDirectoryRerenderScheduler } from "@/application/services/JournalDirectoryRerenderScheduler";
 import type { EventRegistrar } from "./event-registrar.interface";
 import { ok, err } from "@/domain/utils/result";
 import {
   platformJournalEventPortToken,
-  platformJournalDirectoryUiPortToken,
   notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
-import { batchUpdateContextServiceToken } from "@/application/tokens/application.tokens";
+import { journalDirectoryRerenderSchedulerToken } from "@/application/tokens/application.tokens";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 
 /**
  * Use-Case: Trigger journal directory re-render when hidden flag changes.
  *
- * Fully platform-agnostic through PlatformJournalEventPort and PlatformUIPort.
+ * Fully platform-agnostic through PlatformJournalEventPort.
  *
- * Uses BatchUpdateContextService to skip re-renders during batch updates,
+ * Uses JournalDirectoryRerenderScheduler to debounce/coalesce multiple re-render requests,
  * optimizing performance when multiple journals are updated at once.
  *
  * @example
  * ```typescript
  * const useCase = new TriggerJournalDirectoryReRenderUseCase(
  *   journalEventPort,
- *   platformUI,
- *   notifications,
- *   batchContext
+ *   scheduler,
+ *   notifications
  * );
  *
  * useCase.register();  // Start listening
@@ -41,9 +38,8 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
 
   constructor(
     private readonly journalEvents: PlatformJournalEventPort,
-    private readonly journalDirectoryUI: PlatformJournalDirectoryUiPort,
-    private readonly notifications: NotificationPublisherPort,
-    private readonly batchContext: BatchUpdateContextService
+    private readonly scheduler: JournalDirectoryRerenderScheduler,
+    private readonly notifications: NotificationPublisherPort
   ) {}
 
   /**
@@ -58,18 +54,8 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
 
       const moduleFlags = event.changes.flags?.[moduleId];
       if (moduleFlags && typeof moduleFlags === "object" && flagKey in moduleFlags) {
-        // Skip re-render if this journal is part of a batch update
-        // The batch operation will trigger a single re-render at the end
-        if (this.batchContext.isInBatch(event.journalId)) {
-          this.notifications.debug(
-            "Skipping journal directory re-render during batch update",
-            { journalId: event.journalId },
-            { channels: ["ConsoleChannel"] }
-          );
-          return;
-        }
-
-        this.triggerReRender(event.journalId);
+        // Request re-render via scheduler (debounced/coalesced)
+        this.scheduler.requestRerender();
       }
     });
 
@@ -78,30 +64,6 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
       return ok(undefined);
     } else {
       return err(new Error(result.error.message));
-    }
-  }
-
-  /**
-   * Trigger journal directory re-render.
-   */
-  private triggerReRender(journalId: string): void {
-    const result = this.journalDirectoryUI.rerenderJournalDirectory();
-
-    if (!result.ok) {
-      this.notifications.warn(
-        "Failed to re-render journal directory after hidden flag change",
-        result.error,
-        { channels: ["ConsoleChannel"] }
-      );
-      return;
-    }
-
-    if (result.value) {
-      this.notifications.debug(
-        "Triggered journal directory re-render after hidden flag change",
-        { journalId },
-        { channels: ["ConsoleChannel"] }
-      );
     }
   }
 
@@ -122,17 +84,15 @@ export class TriggerJournalDirectoryReRenderUseCase implements EventRegistrar {
 export class DITriggerJournalDirectoryReRenderUseCase extends TriggerJournalDirectoryReRenderUseCase {
   static dependencies = [
     platformJournalEventPortToken,
-    platformJournalDirectoryUiPortToken,
+    journalDirectoryRerenderSchedulerToken,
     notificationPublisherPortToken,
-    batchUpdateContextServiceToken,
   ] as const;
 
   constructor(
     journalEvents: PlatformJournalEventPort,
-    journalDirectoryUI: PlatformJournalDirectoryUiPort,
-    notifications: NotificationPublisherPort,
-    batchContext: BatchUpdateContextService
+    scheduler: JournalDirectoryRerenderScheduler,
+    notifications: NotificationPublisherPort
   ) {
-    super(journalEvents, journalDirectoryUI, notifications, batchContext);
+    super(journalEvents, scheduler, notifications);
   }
 }

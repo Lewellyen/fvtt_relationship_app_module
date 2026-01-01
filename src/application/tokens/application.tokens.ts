@@ -129,10 +129,26 @@ export const runtimeConfigBindingRegistryToken = createInjectionToken<any>(
  * Allows use-cases to mark multiple journal IDs as part of a batch operation,
  * which can be checked by event handlers to optimize behavior (e.g., skip individual re-renders).
  *
+ * @deprecated This service is being replaced by JournalDirectoryRerenderScheduler
+ * which uses debounce/coalesce instead of batch tracking.
+ *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
 export const batchUpdateContextServiceToken = createInjectionToken<any>(
   "BatchUpdateContextService"
+);
+
+/**
+ * Injection token for the JournalDirectoryRerenderScheduler.
+ *
+ * Service for scheduling journal directory re-renders with debounce/coalesce.
+ * Collects multiple re-render requests and executes a single re-render
+ * after a delay of inactivity (debounce).
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const journalDirectoryRerenderSchedulerToken = createInjectionToken<any>(
+  "JournalDirectoryRerenderScheduler"
 );
 
 /**

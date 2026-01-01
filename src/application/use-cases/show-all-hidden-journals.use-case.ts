@@ -2,19 +2,17 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
-import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
-import type { BatchUpdateContextService } from "@/application/services/BatchUpdateContextService";
+import type { JournalDirectoryRerenderScheduler } from "@/application/services/JournalDirectoryRerenderScheduler";
 import {
   platformJournalCollectionPortToken,
   platformJournalRepositoryToken,
-  platformJournalDirectoryUiPortToken,
   notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import {
   journalVisibilityConfigToken,
-  batchUpdateContextServiceToken,
+  journalDirectoryRerenderSchedulerToken,
 } from "@/application/tokens/application.tokens";
 
 /**
@@ -23,18 +21,17 @@ import {
  * Platform-agnostic - works with any PlatformJournalCollectionPort and PlatformJournalRepository implementation.
  *
  * Iterates through all journal entries, checks if they have the hidden flag set,
- * and sets it to false if it's not already false. Uses BatchUpdateContextService to track
- * batch updates and optimize re-renders (single re-render after all updates instead of one per journal).
+ * and sets it to false if it's not already false. Uses JournalDirectoryRerenderScheduler
+ * to debounce/coalesce re-render requests (single re-render after all updates instead of one per journal).
  *
  * @example
  * ```typescript
  * const useCase = new ShowAllHiddenJournalsUseCase(
  *   journalCollection,
  *   journalRepository,
- *   journalDirectoryUI,
+ *   scheduler,
  *   notifications,
- *   config,
- *   batchContext
+ *   config
  * );
  *
  * const result = await useCase.execute();
@@ -47,10 +44,9 @@ export class ShowAllHiddenJournalsUseCase {
   constructor(
     private readonly journalCollection: PlatformJournalCollectionPort,
     private readonly journalRepository: PlatformJournalRepository,
-    private readonly journalDirectoryUI: PlatformJournalDirectoryUiPort,
+    private readonly scheduler: JournalDirectoryRerenderScheduler,
     private readonly notifications: NotificationPublisherPort,
-    private readonly config: JournalVisibilityConfig,
-    private readonly batchContext: BatchUpdateContextService
+    private readonly config: JournalVisibilityConfig
   ) {}
 
   /**
@@ -113,12 +109,6 @@ export class ShowAllHiddenJournalsUseCase {
       }
     }
 
-    // Add all journal IDs to batch context before starting updates
-    const journalIdsToUpdate = journalsToUpdate.map(({ journalId }) => journalId);
-    if (journalIdsToUpdate.length > 0) {
-      this.batchContext.addToBatch(...journalIdsToUpdate);
-    }
-
     // Second pass: Perform updates
     let changedCount = 0;
     const errors: Array<{ journalId: string; error: string }> = [];
@@ -169,11 +159,6 @@ export class ShowAllHiddenJournalsUseCase {
       }
     }
 
-    // Remove all journal IDs from batch context after updates complete
-    if (journalIdsToUpdate.length > 0) {
-      this.batchContext.removeFromBatch(...journalIdsToUpdate);
-    }
-
     // Log summary
     if (changedCount > 0) {
       this.notifications.info(
@@ -198,17 +183,9 @@ export class ShowAllHiddenJournalsUseCase {
       );
     }
 
-    // Trigger UI re-render
-    const rerenderResult = this.journalDirectoryUI.rerenderJournalDirectory();
-    if (!rerenderResult.ok) {
-      this.notifications.warn(
-        "Journal-Verzeichnis konnte nicht neu gerendert werden",
-        {
-          errorCode: rerenderResult.error.code,
-          errorMessage: rerenderResult.error.message,
-        },
-        { channels: ["ConsoleChannel"] }
-      );
+    // Request re-render via scheduler (debounced/coalesced)
+    if (changedCount > 0) {
+      this.scheduler.requestRerender();
     }
 
     return ok(changedCount);
@@ -222,27 +199,18 @@ export class DIShowAllHiddenJournalsUseCase extends ShowAllHiddenJournalsUseCase
   static dependencies = [
     platformJournalCollectionPortToken,
     platformJournalRepositoryToken,
-    platformJournalDirectoryUiPortToken,
+    journalDirectoryRerenderSchedulerToken,
     notificationPublisherPortToken,
     journalVisibilityConfigToken,
-    batchUpdateContextServiceToken,
   ] as const;
 
   constructor(
     journalCollection: PlatformJournalCollectionPort,
     journalRepository: PlatformJournalRepository,
-    journalDirectoryUI: PlatformJournalDirectoryUiPort,
+    scheduler: JournalDirectoryRerenderScheduler,
     notifications: NotificationPublisherPort,
-    config: JournalVisibilityConfig,
-    batchContext: BatchUpdateContextService
+    config: JournalVisibilityConfig
   ) {
-    super(
-      journalCollection,
-      journalRepository,
-      journalDirectoryUI,
-      notifications,
-      config,
-      batchContext
-    );
+    super(journalCollection, journalRepository, scheduler, notifications, config);
   }
 }

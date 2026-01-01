@@ -32,12 +32,11 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
       return; // Kein Journal-Eintrag
     }
 
-    // Prüfe, ob unser MenuItem bereits existiert
-    const existingItem = event.options.find((item) => item.name === "Journal ausblenden");
-
-    if (existingItem) {
-      return; // Bereits hinzugefügt
-    }
+    // WICHTIG: Prüfung auf existingItem entfernt!
+    // Grund: JournalContextMenuLibWrapperService entfernt bereits alte Einträge,
+    // aber wir müssen trotzdem einen neuen Eintrag mit der korrekten journalId erstellen.
+    // Die Prüfung würde verhindern, dass wir einen neuen Eintrag mit korrekter ID erstellen,
+    // wenn bereits ein alter Eintrag mit falscher ID existiert.
 
     // Prüfe, ob Journal bereits versteckt ist
     const flagResult = this.journalRepository.getFlag(
@@ -48,13 +47,34 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
 
     // Nur hinzufügen, wenn nicht versteckt
     if (flagResult.ok && flagResult.value !== true) {
+      // Speichere journalId aus Event für Validierung im Callback
+      const eventJournalId = journalId;
+
       event.options.push({
         name: "Journal ausblenden",
         icon: '<i class="fas fa-eye-slash"></i>',
-        callback: async (_journalId: string) => {
-          // Journal verstecken
+        callback: async (journalIdParam: string) => {
+          // Validierung: Prüfe, ob journalIdParam mit Event-journalId übereinstimmt
+          if (journalIdParam !== eventJournalId) {
+            this.notifications.error(
+              `Journal ID mismatch in context menu callback: expected ${eventJournalId}, got ${journalIdParam}`,
+              {
+                code: "JOURNAL_ID_MISMATCH",
+                message: `Expected journalId ${eventJournalId} but received ${journalIdParam}`,
+                details: {
+                  expectedJournalId: eventJournalId,
+                  receivedJournalId: journalIdParam,
+                },
+              },
+              { channels: ["ConsoleChannel"] }
+            );
+            return;
+          }
+
+          // Journal verstecken - verwende journalIdParam (vom System übergeben) statt Closure-Variable
+          // journalIdParam enthält die korrekte Journal-ID für diesen spezifischen Callback
           const hideResult = await this.journalRepository.setFlag(
-            journalId,
+            journalIdParam,
             MODULE_METADATA.ID,
             DOMAIN_FLAGS.HIDDEN,
             true
@@ -62,11 +82,11 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
 
           if (hideResult.ok) {
             // Hole Journal-Eintrag über Repository, um den Namen zu bekommen
-            const journalEntryResult = this.journalRepository.getById(journalId);
+            const journalEntryResult = this.journalRepository.getById(journalIdParam);
             const journalName =
               journalEntryResult.ok && journalEntryResult.value
-                ? (journalEntryResult.value.name ?? journalId)
-                : journalId; // Fallback auf ID, falls Name nicht verfügbar
+                ? (journalEntryResult.value.name ?? journalIdParam)
+                : journalIdParam; // Fallback auf ID, falls Name nicht verfügbar
 
             // Notification mit Journal-Namen (für UI)
             const notifyResult = this.platformUI.notify(
@@ -84,13 +104,13 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
 
             // Log mit Journal-ID (für Debugging)
             this.notifications.debug(
-              `Journal ${journalId} (${journalName}) hidden via context menu`,
-              { journalId, journalName },
+              `Journal ${journalIdParam} (${journalName}) hidden via context menu`,
+              { journalId: journalIdParam, journalName },
               { channels: ["ConsoleChannel"] }
             );
           } else {
             this.notifications.error(
-              `Failed to hide journal ${journalId}`,
+              `Failed to hide journal ${journalIdParam}`,
               { code: hideResult.error.code, message: hideResult.error.message },
               {
                 channels: ["ConsoleChannel", "UINotificationChannel"],

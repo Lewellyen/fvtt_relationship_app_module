@@ -16,6 +16,13 @@ type FoundryContextMenu = {
   menuItems?: Array<{ name: string; icon: string; callback: () => void }>;
 };
 
+// WeakMap zur Verknüpfung von MenuItem-Objekten mit journalIds
+// Wird verwendet, um die journalId dynamisch zur Laufzeit zu ermitteln
+const menuItemJournalIdMap = new WeakMap<
+  { name: string; icon: string; callback: () => void },
+  string
+>();
+
 /**
  * Service for managing libWrapper registration for journal context menu.
  *
@@ -142,8 +149,9 @@ export class JournalContextMenuLibWrapperService implements PlatformContextMenuR
    * registered callbacks to modify the menu options.
    */
   private createWrapperFunction(): LibWrapperFunction {
-    // Closure für Callbacks-Array (damit libWrapper-Wrapper darauf zugreifen kann)
+    // Closure für Callbacks-Array und Logger (damit libWrapper-Wrapper darauf zugreifen kann)
     const callbacksRef = this.callbacks;
+    const loggerRef = this.logger;
 
     return function (
       this: FoundryContextMenu,
@@ -172,7 +180,21 @@ export class JournalContextMenuLibWrapperService implements PlatformContextMenuR
         target.getAttribute?.("data-entry-id") || target.getAttribute?.("data-document-id");
 
       if (journalId) {
+        // WICHTIG: Entferne zuerst alle unsere eigenen Optionen (um Duplikate zu vermeiden)
+        // Das muss VOR dem Erstellen des Events passieren, damit event.options nicht
+        // bereits alte Einträge enthält, die dann wieder hinzugefügt werden.
+        const ourOptionName = "Journal ausblenden";
+        for (let i = menuItems.length - 1; i >= 0; i--) {
+          const item = menuItems[i];
+          if (item?.name === ourOptionName) {
+            // Entferne auch aus WeakMap, wenn vorhanden
+            menuItemJournalIdMap.delete(item);
+            menuItems.splice(i, 1);
+          }
+        }
+
         // Erstelle Event-Objekt (DIP-compliant: journalId statt htmlElement)
+        // WICHTIG: Jetzt erstellen, nachdem alte Einträge entfernt wurden
         const event: JournalContextMenuEvent = {
           journalId,
           options: menuItems.map((item: { name: string; icon: string; callback: () => void }) => ({
@@ -195,18 +217,51 @@ export class JournalContextMenuLibWrapperService implements PlatformContextMenuR
           cb(event);
         }
 
-        // Kopiere die modifizierten options zurück in this.menuItems
-        // Wichtig: Nur neue Einträge hinzufügen, nicht alle ersetzen (um andere Modifikationen zu erhalten)
+        // Jetzt füge alle neuen Optionen hinzu, die von den Handlern erstellt wurden
+        // WICHTIG: Callback dynamisieren - journalId zur Laufzeit aus WeakMap ermitteln
         const existingNames = new Set(menuItems.map((item) => item.name));
         for (const newOption of event.options) {
+          // Nur neue Optionen hinzufügen, die nicht bereits in menuItems existieren
+          // (Handler können auch bestehende Optionen modifizieren, die wir nicht überschreiben wollen)
           if (!existingNames.has(newOption.name)) {
-            // Konvertiere ContextMenuOption zu menuItems-Format
-            menuItems.push({
+            // Erstelle neues MenuItem-Objekt
+            const menuItem: { name: string; icon: string; callback: () => void } = {
               name: newOption.name,
               icon: newOption.icon,
               callback: () => {
-                // ContextMenuOption callback erwartet jetzt journalId statt HTMLElement
-                const result = newOption.callback(journalId);
+                // DYNAMISCH: Ermittle journalId zur Laufzeit aus WeakMap
+                // Jedes MenuItem-Objekt ist mit seiner journalId in der WeakMap verknüpft
+                const dynamicJournalId = menuItemJournalIdMap.get(menuItem);
+
+                if (!dynamicJournalId) {
+                  loggerRef.error("Failed to determine journalId dynamically from WeakMap", {
+                    menuItemName: menuItem.name,
+                    fallbackJournalId: journalId,
+                  });
+                  // Fallback: Versuche journalId aus DOM zu ermitteln
+                  const contextMenuElement = document.querySelector(".context-menu");
+                  if (contextMenuElement) {
+                    const journalElement =
+                      contextMenuElement.closest("[data-entry-id], [data-document-id]") ||
+                      document.querySelector(`[data-entry-id], [data-document-id]`);
+                    if (journalElement) {
+                      const domJournalId =
+                        journalElement.getAttribute("data-entry-id") ||
+                        journalElement.getAttribute("data-document-id");
+                      if (domJournalId) {
+                        const result = newOption.callback(domJournalId);
+                        if (result instanceof Promise) {
+                          result.catch(() => {});
+                        }
+                        return;
+                      }
+                    }
+                  }
+                  return;
+                }
+
+                // Rufe den Handler-Callback mit der dynamisch ermittelten journalId auf
+                const result = newOption.callback(dynamicJournalId);
                 // Handle Promise falls vorhanden
                 if (result instanceof Promise) {
                   result.catch(() => {
@@ -214,7 +269,15 @@ export class JournalContextMenuLibWrapperService implements PlatformContextMenuR
                   });
                 }
               },
-            });
+            };
+
+            // Speichere journalId in WeakMap für dynamischen Zugriff
+            menuItemJournalIdMap.set(menuItem, journalId);
+
+            // Füge MenuItem zu menuItems hinzu
+            menuItems.push(menuItem);
+            // Markiere den Namen als existierend, um Duplikate zu vermeiden
+            existingNames.add(newOption.name);
           }
         }
       }

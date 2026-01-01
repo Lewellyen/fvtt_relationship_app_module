@@ -82,7 +82,10 @@ describe("HideJournalContextMenuHandler", () => {
       expect(mockJournalRepository.getFlag).not.toHaveBeenCalled();
     });
 
-    it("should not add menu item if already exists", () => {
+    it("should add menu item even if already exists (duplicates are handled by JournalContextMenuLibWrapperService)", () => {
+      // WICHTIG: Die Prüfung auf existingItem wurde entfernt, da der JournalContextMenuLibWrapperService
+      // die alten Einträge entfernt, bevor neue hinzugefügt werden. Der Handler fügt daher
+      // den Eintrag hinzu, auch wenn bereits einer existiert.
       const event: JournalContextMenuEvent = {
         journalId: "journal-123",
         options: [{ name: "Journal ausblenden", icon: "<i></i>", callback: vi.fn() }],
@@ -91,8 +94,12 @@ describe("HideJournalContextMenuHandler", () => {
 
       handler.handle(event);
 
-      expect(event.options).toHaveLength(1);
-      expect(mockJournalRepository.getFlag).not.toHaveBeenCalled();
+      // Der Handler fügt den Eintrag hinzu (der Service entfernt Duplikate)
+      expect(event.options.length).toBeGreaterThanOrEqual(1);
+      // Prüfe, ob der neue Eintrag hinzugefügt wurde
+      const newItem = event.options.find((item) => item.name === "Journal ausblenden");
+      expect(newItem).toBeDefined();
+      expect(mockJournalRepository.getFlag).toHaveBeenCalled();
     });
 
     it("should not add menu item if journal is already hidden", () => {
@@ -314,6 +321,39 @@ describe("HideJournalContextMenuHandler", () => {
       handler.handle(event);
 
       expect(event.options).toHaveLength(0);
+    });
+
+    it("should log error and return early if journalIdParam does not match eventJournalId (coverage for lines 58-72)", async () => {
+      const event: JournalContextMenuEvent = {
+        journalId: "journal-123",
+        options: [],
+        timestamp: Date.now(),
+      };
+
+      handler.handle(event);
+
+      const callback = event.options[0]?.callback;
+      expect(callback).toBeDefined();
+      if (callback) {
+        // Call callback with different journalId to trigger validation error
+        await callback("journal-456"); // Different from event.journalId
+
+        expect(mockNotificationCenter.error).toHaveBeenCalledWith(
+          "Journal ID mismatch in context menu callback: expected journal-123, got journal-456",
+          {
+            code: "JOURNAL_ID_MISMATCH",
+            message: "Expected journalId journal-123 but received journal-456",
+            details: {
+              expectedJournalId: "journal-123",
+              receivedJournalId: "journal-456",
+            },
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+
+        // Verify that setFlag was NOT called (early return)
+        expect(mockJournalRepository.setFlag).not.toHaveBeenCalled();
+      }
     });
   });
 
