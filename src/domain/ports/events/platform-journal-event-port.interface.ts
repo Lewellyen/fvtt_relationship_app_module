@@ -1,17 +1,13 @@
 import type { Result } from "@/domain/types/result";
-import type {
-  PlatformEventPort,
-  EventRegistrationId,
-  PlatformEventError,
-} from "./platform-event-port.interface";
+import type { EventRegistrationId, PlatformEventError } from "./platform-event-port.interface";
 
 /**
  * Specialized port for journal lifecycle events.
  *
- * Extends the generic PlatformEventPort with journal-specific operations.
+ * Platform-agnostic abstraction for journal-specific operations.
  * Still platform-agnostic - works with any VTT system.
  */
-export interface PlatformJournalEventPort extends PlatformEventPort<JournalEvent> {
+export interface PlatformJournalEventPort {
   /**
    * Register listener for journal creation events.
    *
@@ -49,19 +45,12 @@ export interface PlatformJournalEventPort extends PlatformEventPort<JournalEvent
   ): Result<EventRegistrationId, PlatformEventError>;
 
   /**
-   * Register listener for journal directory UI render events.
+   * Unregister a previously registered listener.
    *
-   * NOTE: This is UI-specific and might not exist on all platforms.
-   * Non-UI platforms (CSV, API) can return success without doing anything.
-   *
-   * Platform mappings:
-   * - Foundry: "renderJournalDirectory" hook
-   * - Roll20: Sidebar tab activation event
-   * - CSV: No-op (not applicable)
+   * @param registrationId - ID returned from onJournalCreated, onJournalUpdated, or onJournalDeleted
+   * @returns Success or error
    */
-  onJournalDirectoryRendered(
-    callback: (event: JournalDirectoryRenderedEvent) => void
-  ): Result<EventRegistrationId, PlatformEventError>;
+  unregisterListener(registrationId: EventRegistrationId): Result<void, PlatformEventError>;
 }
 
 // ===== Platform-Agnostic Event Types =====
@@ -92,34 +81,6 @@ export interface JournalDeletedEvent {
 }
 
 /**
- * Event fired when the journal directory UI is rendered.
- * Only applicable for platforms with UI.
- */
-export interface JournalDirectoryRenderedEvent {
-  htmlElement: HTMLElement; // DOM ist überall gleich
-  timestamp: number;
-}
-
-/**
- * Event fired when the journal context menu is about to be displayed.
- * Only applicable for platforms with UI.
- */
-export interface JournalContextMenuEvent {
-  htmlElement: HTMLElement; // DOM ist überall gleich
-  options: ContextMenuOption[]; // Mutable array - can be modified to add/remove options
-  timestamp: number;
-}
-
-/**
- * Context menu option that can be added to the journal context menu.
- */
-export interface ContextMenuOption {
-  name: string;
-  icon: string;
-  callback: (li: HTMLElement) => void | Promise<void>;
-}
-
-/**
  * Changes detected in a journal update event.
  */
 export interface JournalChanges {
@@ -129,10 +90,9 @@ export interface JournalChanges {
 }
 
 /**
- * Union type of all journal events.
+ * Union type of all journal lifecycle events.
+ *
+ * NOTE: UI-specific events (directory render, context menu) are handled
+ * by PlatformJournalUiEventPort to maintain DIP compliance.
  */
-export type JournalEvent =
-  | JournalCreatedEvent
-  | JournalUpdatedEvent
-  | JournalDeletedEvent
-  | JournalDirectoryRenderedEvent;
+export type JournalEvent = JournalCreatedEvent | JournalUpdatedEvent | JournalDeletedEvent;

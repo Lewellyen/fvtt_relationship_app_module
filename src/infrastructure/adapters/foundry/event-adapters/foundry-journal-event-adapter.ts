@@ -4,8 +4,6 @@ import type {
   JournalCreatedEvent,
   JournalUpdatedEvent,
   JournalDeletedEvent,
-  JournalDirectoryRenderedEvent,
-  JournalEvent,
   JournalChanges,
 } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type {
@@ -14,11 +12,7 @@ import type {
 } from "@/domain/ports/events/platform-event-port.interface";
 import type { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
-import {
-  getFirstElementIfArray,
-  castToRecord,
-  normalizeToRecord,
-} from "@/infrastructure/di/types/utilities/type-casts";
+import { castToRecord, normalizeToRecord } from "@/infrastructure/di/types/utilities/type-casts";
 
 /**
  * Foundry-specific implementation of PlatformJournalEventPort.
@@ -88,58 +82,6 @@ export class FoundryJournalEventAdapter implements PlatformJournalEventPort {
       };
       callback(event);
     });
-  }
-
-  onJournalDirectoryRendered(
-    callback: (event: JournalDirectoryRenderedEvent) => void
-  ): Result<EventRegistrationId, PlatformEventError> {
-    return this.registerFoundryHook("renderJournalDirectory", (app: unknown, html: unknown) => {
-      const htmlElement = this.extractHtmlElement(html);
-      if (!htmlElement) return;
-
-      const event: JournalDirectoryRenderedEvent = {
-        htmlElement,
-        timestamp: Date.now(),
-      };
-      callback(event);
-    });
-  }
-
-  // ===== Generic Methods (from PlatformEventPort) =====
-
-  registerListener(
-    eventType: string,
-    callback: (event: JournalEvent) => void
-  ): Result<EventRegistrationId, PlatformEventError> {
-    // Fallback für generische registerListener
-    // In der Praxis sollten die spezialisierten Methoden genutzt werden
-    // Use registerFoundryHook to ensure proper cleanup tracking
-    // Wrap callback to match Foundry hook signature while preserving type safety
-    const foundryCallback = (...args: unknown[]): void => {
-      // Foundry hooks pass multiple arguments, but we expect a single JournalEvent
-      // For generic registerListener, we pass the first argument as the event
-      // Type guard: check if first argument is a valid JournalEvent
-      if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
-        // Type guard: validate that the object has journalId or timestamp property (JournalEvent requirement)
-        const candidate = args[0];
-        // Type guard: ensure candidate is an object and has required JournalEvent properties
-        // Use runtime-safe cast instead of type assertion
-        if (
-          typeof candidate === "object" &&
-          candidate !== null &&
-          ("journalId" in candidate || "timestamp" in candidate)
-        ) {
-          const eventRecord = castToRecord(candidate);
-          const event: JournalEvent = {
-            journalId: typeof eventRecord.journalId === "string" ? eventRecord.journalId : "",
-            timestamp:
-              typeof eventRecord.timestamp === "number" ? eventRecord.timestamp : Date.now(),
-          };
-          callback(event);
-        }
-      }
-    };
-    return this.registerFoundryHook(eventType, foundryCallback);
   }
 
   unregisterListener(registrationId: EventRegistrationId): Result<void, PlatformEventError> {
@@ -258,12 +200,6 @@ export class FoundryJournalEventAdapter implements PlatformJournalEventPort {
       result.name = changes.name;
     }
     return result;
-  }
-
-  private extractHtmlElement(htmlInput: unknown): HTMLElement | null {
-    if (htmlInput instanceof HTMLElement) return htmlInput;
-    // Use runtime-safe helper for array access with type guard
-    return getFirstElementIfArray(htmlInput, (el): el is HTMLElement => el instanceof HTMLElement);
   }
 }
 

@@ -1,4 +1,4 @@
-import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 
 /**
  * Handler interface for journal context menu customization.

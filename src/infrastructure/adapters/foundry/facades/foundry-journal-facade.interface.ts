@@ -30,9 +30,7 @@ import type * as v from "valibot";
  * if (entries.ok) {
  *   for (const entry of entries.value) {
  *     const hidden = facade.getEntryFlag<boolean>(entry, 'hidden');
- *     if (hidden.ok && hidden.value) {
- *       facade.removeJournalElement(entry.id, entry.name, htmlElement);
- *     }
+ *     // Use PlatformJournalDirectoryUiPort.removeJournalDirectoryEntry() instead
  *   }
  * }
  * ```
@@ -56,15 +54,6 @@ export interface FoundryJournalFacade {
     key: string,
     schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>
   ): Result<T | null, FoundryError>;
-
-  /**
-   * Remove a journal element from the UI.
-   *
-   * @param id - Journal entry ID
-   * @param name - Journal entry name (for logging)
-   * @param html - HTML container element
-   */
-  removeJournalElement(id: string, name: string, html: HTMLElement): Result<void, FoundryError>;
 
   /**
    * Set a module flag on a journal entry.

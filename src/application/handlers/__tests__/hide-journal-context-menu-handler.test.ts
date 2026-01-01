@@ -6,7 +6,7 @@ import {
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
-import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { ok } from "@/domain/utils/result";
@@ -70,9 +70,8 @@ describe("HideJournalContextMenuHandler", () => {
 
   describe("handle", () => {
     it("should not add menu item if no journal ID found", () => {
-      const mockElement = document.createElement("div");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "",
         options: [],
         timestamp: Date.now(),
       };
@@ -84,10 +83,8 @@ describe("HideJournalContextMenuHandler", () => {
     });
 
     it("should not add menu item if already exists", () => {
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-entry-id", "journal-123");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-123",
         options: [{ name: "Journal ausblenden", icon: "<i></i>", callback: vi.fn() }],
         timestamp: Date.now(),
       };
@@ -101,10 +98,8 @@ describe("HideJournalContextMenuHandler", () => {
     it("should not add menu item if journal is already hidden", () => {
       vi.mocked(mockJournalRepository.getFlag).mockReturnValue(ok(true));
 
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-entry-id", "journal-123");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -120,10 +115,8 @@ describe("HideJournalContextMenuHandler", () => {
     });
 
     it("should add menu item if journal is not hidden", () => {
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-entry-id", "journal-123");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -141,11 +134,9 @@ describe("HideJournalContextMenuHandler", () => {
       );
     });
 
-    it("should use data-document-id if available", () => {
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-document-id", "journal-456");
+    it("should use journalId from event", () => {
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-456",
         options: [],
         timestamp: Date.now(),
       };
@@ -160,10 +151,8 @@ describe("HideJournalContextMenuHandler", () => {
     });
 
     it("should hide journal when callback is executed", async () => {
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-entry-id", "journal-123");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -173,8 +162,7 @@ describe("HideJournalContextMenuHandler", () => {
       const callback = event.options[0]?.callback;
       expect(callback).toBeDefined();
       if (callback) {
-        const mockLi = document.createElement("li");
-        await callback(mockLi);
+        await callback("journal-123");
 
         expect(mockJournalRepository.setFlag).toHaveBeenCalledWith(
           "journal-123",
@@ -196,10 +184,8 @@ describe("HideJournalContextMenuHandler", () => {
         error: { code: "OPERATION_FAILED", message: "Failed" },
       });
 
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-entry-id", "journal-123");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -208,8 +194,7 @@ describe("HideJournalContextMenuHandler", () => {
 
       const callback = event.options[0]?.callback;
       if (callback) {
-        const mockLi = document.createElement("li");
-        await callback(mockLi);
+        await callback("journal-123");
 
         expect(mockNotificationCenter.error).toHaveBeenCalledWith(
           "Failed to hide journal journal-123",
@@ -225,10 +210,8 @@ describe("HideJournalContextMenuHandler", () => {
         error: { code: "NOTIFY_ERROR", message: "Notification failed" },
       });
 
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-entry-id", "journal-123");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -237,8 +220,7 @@ describe("HideJournalContextMenuHandler", () => {
 
       const callback = event.options[0]?.callback;
       if (callback) {
-        const mockLi = document.createElement("li");
-        await callback(mockLi);
+        await callback("journal-123");
 
         expect(mockJournalRepository.getById).toHaveBeenCalledWith("journal-123");
         expect(mockNotificationCenter.warn).toHaveBeenCalledWith(
@@ -252,10 +234,8 @@ describe("HideJournalContextMenuHandler", () => {
     it("should use journal ID as fallback if journal entry not found", async () => {
       vi.mocked(mockJournalRepository.getById).mockReturnValue(ok(null));
 
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-entry-id", "journal-123");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -264,8 +244,7 @@ describe("HideJournalContextMenuHandler", () => {
 
       const callback = event.options[0]?.callback;
       if (callback) {
-        const mockLi = document.createElement("li");
-        await callback(mockLi);
+        await callback("journal-123");
 
         expect(mockJournalRepository.getById).toHaveBeenCalledWith("journal-123");
         expect(mockPlatformUI.notify).toHaveBeenCalledWith(
@@ -280,10 +259,8 @@ describe("HideJournalContextMenuHandler", () => {
         ok({ id: "journal-123", name: null })
       );
 
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-entry-id", "journal-123");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -292,8 +269,7 @@ describe("HideJournalContextMenuHandler", () => {
 
       const callback = event.options[0]?.callback;
       if (callback) {
-        const mockLi = document.createElement("li");
-        await callback(mockLi);
+        await callback("journal-123");
 
         expect(mockPlatformUI.notify).toHaveBeenCalledWith(
           `Journal "journal-123" wurde ausgeblendet`,
@@ -303,10 +279,8 @@ describe("HideJournalContextMenuHandler", () => {
     });
 
     it("should log debug message after successful hide", async () => {
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-entry-id", "journal-123");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -315,8 +289,7 @@ describe("HideJournalContextMenuHandler", () => {
 
       const callback = event.options[0]?.callback;
       if (callback) {
-        const mockLi = document.createElement("li");
-        await callback(mockLi);
+        await callback("journal-123");
 
         expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
           "Journal journal-123 (Mein Tagebuch) hidden via context menu",
@@ -332,10 +305,8 @@ describe("HideJournalContextMenuHandler", () => {
         error: { code: "ENTITY_NOT_FOUND", message: "Failed" },
       });
 
-      const mockElement = document.createElement("div");
-      mockElement.setAttribute("data-entry-id", "journal-123");
       const event: JournalContextMenuEvent = {
-        htmlElement: mockElement,
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };

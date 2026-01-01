@@ -1,5 +1,6 @@
 import type { Result } from "@/domain/types/result";
-import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { PlatformJournalUiEventPort } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
+import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { EventRegistrationId } from "@/domain/ports/events/platform-event-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { JournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
@@ -11,23 +12,25 @@ import {
   journalDirectoryProcessorToken,
 } from "@/application/tokens/application.tokens";
 import {
-  platformJournalEventPortToken,
+  platformJournalUiEventPortToken,
+  platformJournalDirectoryUiPortToken,
   notificationPublisherPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 
 /**
  * Use-Case: Process journal directory when it's rendered.
  *
- * Platform-agnostic - works with any PlatformJournalEventPort implementation.
+ * Platform-agnostic - works with any PlatformJournalUiEventPort implementation.
  *
  * Orchestrates the flow:
  * 1. JournalVisibilityService retrieves hidden entries (business logic)
- * 2. JournalDirectoryProcessor processes DOM (UI manipulation)
+ * 2. JournalDirectoryProcessor processes directory via port (DIP-compliant, no HTMLElement)
  *
  * @example
  * ```typescript
  * const useCase = new ProcessJournalDirectoryOnRenderUseCase(
- *   journalEventPort,
+ *   journalUiEvents,
+ *   journalDirectoryUI,
  *   journalVisibilityService,
  *   directoryProcessor,
  *   notifications
@@ -41,7 +44,8 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
   private registrationId: EventRegistrationId | undefined;
 
   constructor(
-    private readonly journalEvents: PlatformJournalEventPort,
+    private readonly journalUiEvents: PlatformJournalUiEventPort,
+    private readonly journalDirectoryUI: PlatformJournalDirectoryUiPort,
     private readonly journalVisibility: JournalVisibilityService,
     private readonly directoryProcessor: JournalDirectoryProcessor,
     private readonly notifications: NotificationPublisherPort
@@ -51,10 +55,10 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
    * Register event listener for directory render events.
    */
   register(): Result<void, Error> {
-    const result = this.journalEvents.onJournalDirectoryRendered((event) => {
+    const result = this.journalUiEvents.onJournalDirectoryRendered((event) => {
       this.notifications.debug(
         "Journal directory rendered, processing visibility",
-        { timestamp: event.timestamp },
+        { timestamp: event.timestamp, directoryId: event.directoryId },
         { channels: ["ConsoleChannel"] }
       );
 
@@ -67,9 +71,9 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
         return;
       }
 
-      // 2. Process DOM (UI manipulation)
+      // 2. Process directory via port (DIP-compliant: no HTMLElement in Application layer)
       const processResult = this.directoryProcessor.processDirectory(
-        event.htmlElement,
+        event.directoryId,
         hiddenResult.value
       );
 
@@ -93,7 +97,7 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
    */
   dispose(): void {
     if (this.registrationId !== undefined) {
-      this.journalEvents.unregisterListener(this.registrationId);
+      this.journalUiEvents.unregisterListener(this.registrationId);
       this.registrationId = undefined;
     }
   }
@@ -104,18 +108,26 @@ export class ProcessJournalDirectoryOnRenderUseCase implements EventRegistrar {
  */
 export class DIProcessJournalDirectoryOnRenderUseCase extends ProcessJournalDirectoryOnRenderUseCase {
   static dependencies = [
-    platformJournalEventPortToken,
+    platformJournalUiEventPortToken,
+    platformJournalDirectoryUiPortToken,
     journalVisibilityServiceToken,
     journalDirectoryProcessorToken,
     notificationPublisherPortToken,
   ] as const;
 
   constructor(
-    journalEvents: PlatformJournalEventPort,
+    journalUiEvents: PlatformJournalUiEventPort,
+    journalDirectoryUI: PlatformJournalDirectoryUiPort,
     journalVisibility: JournalVisibilityService,
     directoryProcessor: JournalDirectoryProcessor,
     notifications: NotificationPublisherPort
   ) {
-    super(journalEvents, journalVisibility, directoryProcessor, notifications);
+    super(
+      journalUiEvents,
+      journalDirectoryUI,
+      journalVisibility,
+      directoryProcessor,
+      notifications
+    );
   }
 }

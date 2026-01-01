@@ -46,16 +46,21 @@ export interface FoundryNotificationOptions {
  */
 export interface FoundryUI extends Disposable {
   /**
-   * Removes a journal entry element from the journal directory UI.
-   * @param journalId - The ID of the journal entry
-   * @param journalName - The name of the journal entry (for error messages)
-   * @param html - The HTML element containing the journal directory
+   * Removes a journal directory entry from the journal directory UI.
+   *
+   * A journal directory entry is the list position in the sidebar that displays a journal.
+   * This is NOT a journal entry (which is a page within a journal).
+   *
+   * This method is DIP-compliant as it internally fetches the directory element.
+   * @param directoryId - The identifier for the directory (e.g., "journal" for Foundry)
+   * @param journalId - The ID of the journal whose directory entry should be removed
+   * @param journalName - The name of the journal (for error messages)
    * @returns Result indicating success or a FoundryError
    */
-  removeJournalElement(
+  removeJournalDirectoryEntry(
+    directoryId: string,
     journalId: string,
-    journalName: string,
-    html: HTMLElement
+    journalName: string
   ): Result<void, FoundryError>;
 
   /**
@@ -78,6 +83,13 @@ export interface FoundryUI extends Disposable {
     type: "info" | "warning" | "error",
     options?: FoundryNotificationOptions
   ): Result<void, FoundryError>;
+
+  /**
+   * Gets the HTML element for the journal directory.
+   * @param directoryId - The identifier for the directory (e.g., "journal" for Foundry)
+   * @returns Result with HTMLElement or null if directory is not currently rendered, or error
+   */
+  getDirectoryElement(directoryId: string): Result<HTMLElement | null, FoundryError>;
 
   /**
    * Triggers a re-render of the journal directory if it's currently open.

@@ -12,6 +12,37 @@
 
 ### Upgrade-Hinweise
 
+## [0.50.1] - 2026-01-01
+### Hinzugefügt
+- **PlatformJournalUiEventPort**: Neues Port-Interface für UI-spezifische Journal-Events ([Details](src/domain/ports/events/platform-journal-ui-event-port.interface.ts))
+- Trennt UI-Events (directory render, context menu) von Core-Lifecycle-Events
+- Folgt Dependency Inversion Principle (DIP) - Domain-Layer enthält keine DOM-Typen mehr
+- **FoundryJournalUiEventAdapter**: Neue Foundry-Implementierung für UI-Event-Port ([Details](src/infrastructure/adapters/foundry/event-adapters/foundry-journal-ui-event-adapter.ts))
+- **PlatformJournalDirectoryUiPort.getDirectoryElement()**: Neue Methode zum Abrufen des Journal-Directory-HTMElements ([Details](src/domain/ports/platform-journal-directory-ui-port.interface.ts))
+- Ermöglicht DIP-konforme DOM-Zugriffe über Port-Abstraktion
+
+### Geändert
+- **DIP-Refactoring: Domain-Event-Ports ohne DOM-Typen**: Domain-Layer enthält keine DOM-Typen (`HTMLElement`) mehr ([Details](docs/refactoring/DIP/DIP-001-domain-event-port-leaks-dom.md))
+- `JournalDirectoryRenderedEvent` verwendet jetzt `directoryId: string` statt `htmlElement: HTMLElement`
+- `JournalContextMenuEvent` verwendet jetzt `journalId: string` statt `htmlElement: HTMLElement`
+- `ContextMenuOption.callback` erwartet jetzt `journalId: string` statt `HTMLElement`
+- `PlatformJournalEventPort` enthält nur noch Core-Lifecycle-Events (created, updated, deleted)
+- UI-spezifische Events wurden in `PlatformJournalUiEventPort` verschoben
+- `ProcessJournalDirectoryOnRenderUseCase` verwendet jetzt `PlatformJournalUiEventPort` und `PlatformJournalDirectoryUiPort.getDirectoryElement()`
+- `HideJournalContextMenuHandler` verwendet jetzt `event.journalId` statt `event.htmlElement`
+- `JournalContextMenuLibWrapperService` erstellt Events mit `journalId` statt `htmlElement`
+- Alle betroffenen Tests wurden auf neue DTOs migriert
+- Verbessert Testbarkeit in Nicht-DOM-Umgebungen und ermöglicht Headless-Ausführung
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.50.0] - 2025-12-31
 ### Hinzugefügt
 - **CacheMaintenancePort Interface**: Neues Interface für Cache-Wartungsoperationen ([Details](src/infrastructure/cache/cache.interface.ts))

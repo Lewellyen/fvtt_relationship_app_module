@@ -1,15 +1,12 @@
-import { MODULE_METADATA, SETTING_KEYS } from "@/application/constants/app-constants";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { RuntimeConfigKey, RuntimeConfigValues } from "@/domain/types/runtime-config";
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
 import type { SettingConfig as ModuleSettingConfig } from "@/application/settings/setting-definition.interface";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { SettingValidator } from "@/domain/types/setting-validator";
-import { SettingValidators } from "@/domain/utils/setting-validators";
-import type { LogLevel } from "@/domain/types/log-level";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
 import { notificationPublisherPortToken } from "@/application/tokens/domain-ports.tokens";
-import { getNotificationQueueConstants } from "@/application/settings/notification-queue-max-size-setting";
 
 /**
  * Binding configuration for syncing a setting with RuntimeConfig.
@@ -101,69 +98,6 @@ export class RuntimeConfigSync {
     this.runtimeConfig.setFromPlatform(binding.runtimeKey, binding.normalize(currentValue.value));
   }
 }
-
-/**
- * LogLevel validator that checks if value is a valid LogLevel enum value.
- */
-const isLogLevel = (value: unknown): value is LogLevel =>
-  typeof value === "number" && value >= 0 && value <= 3;
-
-/**
- * Runtime config bindings using domain-neutral validators.
- *
- * DIP-Compliant: Uses SettingValidators from domain layer instead of
- * Valibot schemas from infrastructure layer.
- */
-export const runtimeConfigBindings = {
-  [SETTING_KEYS.LOG_LEVEL]: {
-    runtimeKey: "logLevel",
-    validator: isLogLevel,
-    normalize: (value: LogLevel) => value,
-  } satisfies RuntimeConfigBinding<LogLevel, "logLevel">,
-  [SETTING_KEYS.CACHE_ENABLED]: {
-    runtimeKey: "enableCacheService",
-    validator: SettingValidators.boolean,
-    normalize: (value: boolean) => value,
-  } satisfies RuntimeConfigBinding<boolean, "enableCacheService">,
-  [SETTING_KEYS.CACHE_TTL_MS]: {
-    runtimeKey: "cacheDefaultTtlMs",
-    validator: SettingValidators.nonNegativeNumber,
-    normalize: (value: number) => value,
-  } satisfies RuntimeConfigBinding<number, "cacheDefaultTtlMs">,
-  [SETTING_KEYS.CACHE_MAX_ENTRIES]: {
-    runtimeKey: "cacheMaxEntries",
-    validator: SettingValidators.nonNegativeInteger,
-    normalize: (value: number) => (value > 0 ? value : undefined),
-  } satisfies RuntimeConfigBinding<number, "cacheMaxEntries">,
-  [SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED]: {
-    runtimeKey: "enablePerformanceTracking",
-    validator: SettingValidators.boolean,
-    normalize: (value: boolean) => value,
-  } satisfies RuntimeConfigBinding<boolean, "enablePerformanceTracking">,
-  [SETTING_KEYS.PERFORMANCE_SAMPLING_RATE]: {
-    runtimeKey: "performanceSamplingRate",
-    validator: SettingValidators.samplingRate,
-    normalize: (value: number) => value,
-  } satisfies RuntimeConfigBinding<number, "performanceSamplingRate">,
-  [SETTING_KEYS.METRICS_PERSISTENCE_ENABLED]: {
-    runtimeKey: "enableMetricsPersistence",
-    validator: SettingValidators.boolean,
-    normalize: (value: boolean) => value,
-  } satisfies RuntimeConfigBinding<boolean, "enableMetricsPersistence">,
-  [SETTING_KEYS.METRICS_PERSISTENCE_KEY]: {
-    runtimeKey: "metricsPersistenceKey",
-    validator: SettingValidators.nonEmptyString,
-    normalize: (value: string) => value,
-  } satisfies RuntimeConfigBinding<string, "metricsPersistenceKey">,
-  [SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE]: {
-    runtimeKey: "notificationQueueMaxSize",
-    validator: SettingValidators.positiveInteger,
-    normalize: (value: number) => {
-      const constants = getNotificationQueueConstants();
-      return Math.max(constants.minSize, Math.min(constants.maxSize, Math.floor(value)));
-    },
-  } satisfies RuntimeConfigBinding<number, "notificationQueueMaxSize">,
-} as const;
 
 /**
  * DI wrapper for RuntimeConfigSync.

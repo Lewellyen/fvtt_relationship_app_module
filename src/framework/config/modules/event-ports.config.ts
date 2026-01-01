@@ -2,7 +2,10 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { platformJournalEventPortToken } from "@/application/tokens/domain-ports.tokens";
+import {
+  platformJournalEventPortToken,
+  platformJournalUiEventPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 import { hideJournalContextMenuHandlerToken } from "@/application/tokens/application.tokens";
 import {
   invalidateJournalCacheOnChangeUseCaseToken,
@@ -14,6 +17,7 @@ import {
 } from "@/application/tokens/event.tokens";
 import { journalContextMenuHandlersToken } from "@/application/tokens/application.tokens";
 import { DIFoundryJournalEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-event-adapter";
+import { DIFoundryJournalUiEventAdapter } from "@/infrastructure/adapters/foundry/event-adapters/foundry-journal-ui-event-adapter";
 import { DIInvalidateJournalCacheOnChangeUseCase } from "@/application/use-cases/invalidate-journal-cache-on-change.use-case";
 import { DIProcessJournalDirectoryOnRenderUseCase } from "@/application/use-cases/process-journal-directory-on-render.use-case";
 import { DITriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";
@@ -56,7 +60,8 @@ function resolveMultipleServices<T>(
  * Registers event port services.
  *
  * Services registered:
- * - PlatformJournalEventPort (singleton) - Platform-agnostic journal event handling
+ * - PlatformJournalEventPort (singleton) - Platform-agnostic journal lifecycle event handling
+ * - PlatformJournalUiEventPort (singleton) - Platform-agnostic journal UI event handling
  * - InvalidateJournalCacheOnChangeUseCase (singleton) - Cache invalidation use-case
  * - ProcessJournalDirectoryOnRenderUseCase (singleton) - Directory render use-case
  * - TriggerJournalDirectoryReRenderUseCase (singleton) - UI re-render use-case
@@ -76,7 +81,7 @@ function resolveMultipleServices<T>(
  * @returns Result indicating success or error with details
  */
 export function registerEventPorts(container: ServiceContainer): Result<void, string> {
-  // Register PlatformJournalEventPort (Foundry implementation)
+  // Register PlatformJournalEventPort (Foundry implementation) - Core lifecycle events
   const eventPortResult = container.registerClass(
     platformJournalEventPortToken,
     DIFoundryJournalEventAdapter,
@@ -84,6 +89,16 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
   );
   if (isErr(eventPortResult)) {
     return err(`Failed to register PlatformJournalEventPort: ${eventPortResult.error.message}`);
+  }
+
+  // Register PlatformJournalUiEventPort (Foundry implementation) - UI-specific events
+  const uiEventPortResult = container.registerClass(
+    platformJournalUiEventPortToken,
+    DIFoundryJournalUiEventAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(uiEventPortResult)) {
+    return err(`Failed to register PlatformJournalUiEventPort: ${uiEventPortResult.error.message}`);
   }
 
   // Register InvalidateJournalCacheOnChangeUseCase

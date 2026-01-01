@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import { ok } from "@/domain/utils/result";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
-import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import { journalContextMenuHandlersToken } from "@/application/tokens/application.tokens";

@@ -5,7 +5,7 @@ import {
   ModuleSettingsRegistrar,
   DIModuleSettingsRegistrar,
 } from "@/application/services/ModuleSettingsRegistrar";
-import { runtimeConfigBindings } from "@/application/services/RuntimeConfigSync";
+import { runtimeConfigBindings } from "@/application/config/runtime-config-bindings";
 import { RuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
 import { RuntimeConfigSettingsSync } from "@/application/services/runtime-config-settings-sync";
 import { SettingRegistrationErrorMapper } from "@/application/services/SettingRegistrationErrorMapper";

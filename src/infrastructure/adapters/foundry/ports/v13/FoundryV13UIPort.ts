@@ -25,19 +25,39 @@ export class FoundryV13UIPort implements FoundryUI {
     private readonly foundryDocumentAPI: IFoundryDocumentAPI
   ) {}
 
-  removeJournalElement(
+  removeJournalDirectoryEntry(
+    directoryId: string,
     journalId: string,
-    journalName: string,
-    html: HTMLElement
+    journalName: string
   ): Result<void, FoundryError> {
     if (this.#disposed) {
-      return err(createFoundryError("DISPOSED", "Cannot remove journal element on disposed port"));
+      return err(
+        createFoundryError("DISPOSED", "Cannot remove journal directory entry on disposed port")
+      );
     }
+
+    // Get directory element internally (DIP-compliant: Application layer doesn't need HTMLElement)
+    const elementResult = this.getDirectoryElement(directoryId);
+    if (!elementResult.ok) {
+      return err(elementResult.error);
+    }
+
+    const html = elementResult.value;
+    if (!html) {
+      return err(
+        createFoundryError(
+          "NOT_FOUND",
+          `Directory element not found for directory: ${directoryId}`,
+          { directoryId, journalId, journalName }
+        )
+      );
+    }
+
     // Sanitize ID to prevent CSS injection
     const safeId = sanitizeId(journalId);
 
     // Support both selectors: Foundry v13 uses data-document-id, older versions used data-entry-id
-    // Use html.querySelector directly since html is the container passed as parameter
+    // This finds the <li> element that represents the journal in the sidebar list (directory entry)
     const element = html.querySelector(
       `li.directory-item[data-document-id="${safeId}"], li.directory-item[data-entry-id="${safeId}"]`
     ) as HTMLElement | null;
@@ -46,7 +66,7 @@ export class FoundryV13UIPort implements FoundryUI {
       return err(
         createFoundryError(
           "NOT_FOUND",
-          `Could not find element for journal entry: ${journalName}`,
+          `Could not find directory entry for journal: ${journalName}`,
           { journalName, journalId: safeId }
         )
       );
@@ -107,6 +127,33 @@ export class FoundryV13UIPort implements FoundryUI {
           "OPERATION_FAILED",
           "Failed to show notification",
           { message, type },
+          error
+        )
+      );
+    }
+  }
+
+  getDirectoryElement(directoryId: string): Result<HTMLElement | null, FoundryError> {
+    if (this.#disposed) {
+      return err(createFoundryError("DISPOSED", "Cannot get directory element on disposed port"));
+    }
+
+    try {
+      // For Foundry, directoryId is typically "journal"
+      // The journal directory element is found via #journal selector
+      if (directoryId === "journal") {
+        const element = this.foundryDocumentAPI.querySelector("#journal") as HTMLElement | null;
+        return ok(element);
+      }
+
+      // For other directory IDs, return null (not found)
+      return ok(null);
+    } catch (error) {
+      return err(
+        createFoundryError(
+          "OPERATION_FAILED",
+          "Failed to get directory element",
+          { directoryId },
           error
         )
       );

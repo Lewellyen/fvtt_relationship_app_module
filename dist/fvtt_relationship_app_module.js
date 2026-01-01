@@ -2606,6 +2606,9 @@ const platformSettingsPortToken = createInjectionToken("PlatformSettingsPort");
 const platformJournalEventPortToken = createInjectionToken(
   "PlatformJournalEventPort"
 );
+const platformJournalUiEventPortToken = createInjectionToken(
+  "PlatformJournalUiEventPort"
+);
 const platformJournalCollectionPortToken = createInjectionToken("PlatformJournalCollectionPort");
 const platformJournalRepositoryToken = createInjectionToken(
   "PlatformJournalRepository"
@@ -9678,9 +9681,25 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
     this.foundryGameJournalAPI = foundryGameJournalAPI;
     this.foundryDocumentAPI = foundryDocumentAPI;
   }
-  removeJournalElement(journalId, journalName, html) {
+  removeJournalDirectoryEntry(directoryId, journalId, journalName) {
     if (__privateGet(this, _disposed4)) {
-      return err(createFoundryError("DISPOSED", "Cannot remove journal element on disposed port"));
+      return err(
+        createFoundryError("DISPOSED", "Cannot remove journal directory entry on disposed port")
+      );
+    }
+    const elementResult = this.getDirectoryElement(directoryId);
+    if (!elementResult.ok) {
+      return err(elementResult.error);
+    }
+    const html = elementResult.value;
+    if (!html) {
+      return err(
+        createFoundryError(
+          "NOT_FOUND",
+          `Directory element not found for directory: ${directoryId}`,
+          { directoryId, journalId, journalName }
+        )
+      );
     }
     const safeId = sanitizeId(journalId);
     const element = html.querySelector(
@@ -9690,7 +9709,7 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
       return err(
         createFoundryError(
           "NOT_FOUND",
-          `Could not find element for journal entry: ${journalName}`,
+          `Could not find directory entry for journal: ${journalName}`,
           { journalName, journalId: safeId }
         )
       );
@@ -9742,6 +9761,27 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
           "OPERATION_FAILED",
           "Failed to show notification",
           { message: message2, type },
+          error
+        )
+      );
+    }
+  }
+  getDirectoryElement(directoryId) {
+    if (__privateGet(this, _disposed4)) {
+      return err(createFoundryError("DISPOSED", "Cannot get directory element on disposed port"));
+    }
+    try {
+      if (directoryId === "journal") {
+        const element = this.foundryDocumentAPI.querySelector("#journal");
+        return ok(element);
+      }
+      return ok(null);
+    } catch (error) {
+      return err(
+        createFoundryError(
+          "OPERATION_FAILED",
+          "Failed to get directory element",
+          { directoryId },
           error
         )
       );
@@ -10209,17 +10249,29 @@ const _FoundryUIAdapter = class _FoundryUIAdapter {
   constructor(foundryUI) {
     this.foundryUI = foundryUI;
   }
-  removeJournalElement(journalId, journalName, html) {
-    const result = this.foundryUI.removeJournalElement(journalId, journalName, html);
+  removeJournalDirectoryEntry(directoryId, journalId, journalName) {
+    const result = this.foundryUI.removeJournalDirectoryEntry(directoryId, journalId, journalName);
     if (!result.ok) {
       return err({
         code: "DOM_MANIPULATION_FAILED",
-        message: `Failed to remove journal element '${journalName}' (${journalId}): ${result.error.message}`,
-        operation: "removeJournalElement",
-        details: { journalId, journalName, cause: result.error }
+        message: `Failed to remove journal directory entry '${journalName}' (${journalId}) from directory '${directoryId}': ${result.error.message}`,
+        operation: "removeJournalDirectoryEntry",
+        details: { directoryId, journalId, journalName, cause: result.error }
       });
     }
     return ok(void 0);
+  }
+  getDirectoryElement(directoryId) {
+    const result = this.foundryUI.getDirectoryElement(directoryId);
+    if (!result.ok) {
+      return err({
+        code: "DOM_ACCESS_FAILED",
+        message: `Failed to get directory element for '${directoryId}': ${result.error.message}`,
+        operation: "getDirectoryElement",
+        details: { directoryId, cause: result.error }
+      });
+    }
+    return ok(result.value);
   }
   rerenderJournalDirectory() {
     const result = this.foundryUI.rerenderJournalDirectory();
@@ -15148,12 +15200,12 @@ const _FoundryUIPort = class _FoundryUIPort {
     this.portLoader = new PortLoader(portSelector, portRegistry);
     this.retryable = new RetryableOperation(retryService);
   }
-  removeJournalElement(journalId, journalName, html) {
+  removeJournalDirectoryEntry(directoryId, journalId, journalName) {
     return this.retryable.execute(() => {
       const portResult = this.portLoader.loadPort("FoundryUI");
       if (!portResult.ok) return portResult;
-      return portResult.value.removeJournalElement(journalId, journalName, html);
-    }, "FoundryUI.removeJournalElement");
+      return portResult.value.removeJournalDirectoryEntry(directoryId, journalId, journalName);
+    }, "FoundryUI.removeJournalDirectoryEntry");
   }
   findElement(container, selector) {
     return this.retryable.execute(() => {
@@ -15168,6 +15220,13 @@ const _FoundryUIPort = class _FoundryUIPort {
       if (!portResult.ok) return portResult;
       return portResult.value.notify(message2, type, options);
     }, "FoundryUI.notify");
+  }
+  getDirectoryElement(directoryId) {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.getDirectoryElement(directoryId);
+    }, "FoundryUI.getDirectoryElement");
   }
   rerenderJournalDirectory() {
     return this.retryable.execute(() => {
@@ -15283,18 +15342,6 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
       return documentResult;
     }
     return this.document.getFlag(documentResult.value, this.moduleId, key, schema);
-  }
-  /**
-   * Remove a journal element from the UI.
-   *
-   * Delegates to FoundryUI.removeJournalElement().
-   *
-   * @param id - Journal entry ID
-   * @param name - Journal entry name (for logging)
-   * @param html - HTML container element
-   */
-  removeJournalElement(id, name, html) {
-    return this.ui.removeJournalElement(id, name, html);
   }
   /**
    * Set a module flag on a journal entry.
@@ -15438,15 +15485,20 @@ const _JournalDirectoryProcessor = class _JournalDirectoryProcessor {
     this.config = config2;
   }
   /**
-   * Processes journal directory HTML to hide flagged entries.
-   * @param htmlElement - The HTML element containing the journal directory
-   * @param hiddenEntries - Array of journal entries that should be hidden
+   * Processes journal directory to hide flagged journal directory entries.
+   *
+   * A journal directory entry is the list position in the sidebar that displays a journal.
+   * This is NOT a journal entry (which is a page within a journal).
+   *
+   * DIP-compliant: Works with directoryId instead of HTMLElement.
+   * @param directoryId - The identifier for the directory (e.g., "journal" for Foundry)
+   * @param hiddenEntries - Array of journals whose directory entries should be hidden
    * @returns Result indicating success or failure with aggregated errors
    */
-  processDirectory(htmlElement, hiddenEntries) {
+  processDirectory(directoryId, hiddenEntries) {
     this.notifications.debug(
       "Processing journal directory for hidden entries",
-      { context: { htmlElement, hiddenCount: hiddenEntries.length } },
+      { context: { directoryId, hiddenCount: hiddenEntries.length } },
       {
         channels: ["ConsoleChannel"]
       }
@@ -15468,22 +15520,27 @@ const _JournalDirectoryProcessor = class _JournalDirectoryProcessor {
         channels: ["ConsoleChannel"]
       }
     );
-    return this.hideEntries(hiddenEntries, htmlElement);
+    return this.hideEntries(directoryId, hiddenEntries);
   }
   /**
-   * Hides multiple journal entries in the DOM.
-   * @param entries - Array of journal entries to hide
-   * @param html - The HTML element containing the journal directory
+   * Hides multiple journal directory entries in the directory.
+   *
+   * A journal directory entry is the list position in the sidebar that displays a journal.
+   * This is NOT a journal entry (which is a page within a journal).
+   *
+   * DIP-compliant: Uses directoryId instead of HTMLElement.
+   * @param directoryId - The identifier for the directory
+   * @param entries - Array of journals whose directory entries should be hidden
    * @returns Result indicating success or failure with aggregated errors
    */
-  hideEntries(entries2, html) {
+  hideEntries(directoryId, entries2) {
     const errors = [];
     for (const journal of entries2) {
       const journalName = journal.name ?? this.config.unknownName;
-      const removeResult = this.journalDirectoryUI.removeJournalElement(
+      const removeResult = this.journalDirectoryUI.removeJournalDirectoryEntry(
+        directoryId,
         journal.id,
-        journalName,
-        html
+        journalName
       );
       if (!removeResult.ok) {
         const journalError = {
@@ -15492,12 +15549,12 @@ const _JournalDirectoryProcessor = class _JournalDirectoryProcessor {
           message: removeResult.error.message
         };
         errors.push(journalError);
-        this.notifications.warn("Error removing journal entry", journalError, {
+        this.notifications.warn("Error removing journal directory entry", journalError, {
           channels: ["ConsoleChannel"]
         });
       } else {
         this.notifications.debug(
-          `Removing journal entry: ${sanitizeHtml(journalName)}`,
+          `Removing journal directory entry: ${sanitizeHtml(journalName)}`,
           { context: { journal } },
           { channels: ["ConsoleChannel"] }
         );
@@ -15724,11 +15781,14 @@ const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapper
       const journalId = target.getAttribute?.("data-entry-id") || target.getAttribute?.("data-document-id");
       if (journalId) {
         const event = {
-          htmlElement: target,
+          journalId,
           options: menuItems.map((item) => ({
             name: item.name,
             icon: item.icon,
-            callback: item.callback
+            // ContextMenuOption.callback erwartet jetzt journalId statt HTMLElement
+            callback: /* @__PURE__ */ __name((_id) => {
+              item.callback();
+            }, "callback")
           })),
           timestamp: Date.now()
         };
@@ -15742,7 +15802,7 @@ const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapper
               name: newOption.name,
               icon: newOption.icon,
               callback: /* @__PURE__ */ __name(() => {
-                const result = newOption.callback(target);
+                const result = newOption.callback(journalId);
                 if (result instanceof Promise) {
                   result.catch(() => {
                   });
@@ -17537,141 +17597,6 @@ _DIModuleSettingsRegistrar.dependencies = [
   runtimeConfigBindingRegistryToken
 ];
 let DIModuleSettingsRegistrar = _DIModuleSettingsRegistrar;
-function createSettingValidators() {
-  const customValidators = /* @__PURE__ */ new Map();
-  const standardValidators = {
-    /**
-     * Validates that value is a boolean.
-     */
-    boolean: /* @__PURE__ */ __name((value2) => typeof value2 === "boolean", "boolean"),
-    /**
-     * Validates that value is a number.
-     */
-    number: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2), "number"),
-    /**
-     * Validates that value is a non-negative number.
-     */
-    nonNegativeNumber: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0, "nonNegativeNumber"),
-    /**
-     * Validates that value is a non-negative integer.
-     */
-    nonNegativeInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 >= 0, "nonNegativeInteger"),
-    /**
-     * Validates that value is a positive integer (greater than 0).
-     */
-    positiveInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 > 0, "positiveInteger"),
-    /**
-     * Validates that value is a string.
-     */
-    string: /* @__PURE__ */ __name((value2) => typeof value2 === "string", "string"),
-    /**
-     * Validates that value is a non-empty string.
-     */
-    nonEmptyString: /* @__PURE__ */ __name((value2) => typeof value2 === "string" && value2.length > 0, "nonEmptyString"),
-    /**
-     * Validates that value is a number between 0 and 1 (inclusive).
-     */
-    samplingRate: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0 && value2 <= 1, "samplingRate"),
-    /**
-     * Creates a validator for enum values.
-     */
-    oneOf: /* @__PURE__ */ __name((validValues) => {
-      return (value2) => (typeof value2 === "string" || typeof value2 === "number") && validValues.includes(value2);
-    }, "oneOf")
-  };
-  const registry = {
-    register(name, validator) {
-      if (name in standardValidators) {
-        throw new Error(
-          `Cannot override built-in validator: ${name}. Use a different name for your custom validator.`
-        );
-      }
-      if (!/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name)) {
-        throw new Error(`Invalid validator name: ${name}. Must be a valid JavaScript identifier.`);
-      }
-      customValidators.set(name, validator);
-    },
-    get(name) {
-      const standard = standardValidators[name];
-      if (standard) {
-        return standard;
-      }
-      return customValidators.get(name);
-    },
-    has(name) {
-      return name in standardValidators || customValidators.has(name);
-    }
-  };
-  return new Proxy({ ...standardValidators, ...registry }, {
-    get(target, prop) {
-      if (typeof prop === "symbol") {
-        return target[prop];
-      }
-      if (prop in standardValidators) {
-        return standardValidators[prop];
-      }
-      if (prop in registry) {
-        return registry[prop];
-      }
-      const custom2 = customValidators.get(prop);
-      if (custom2) {
-        return custom2;
-      }
-      return target[prop];
-    }
-  });
-}
-__name(createSettingValidators, "createSettingValidators");
-const SettingValidators = createSettingValidators();
-const NOTIFICATION_QUEUE_CONSTANTS = {
-  minSize: 10,
-  maxSize: 1e3,
-  defaultSize: 50
-};
-function getNotificationQueueConstants() {
-  return NOTIFICATION_QUEUE_CONSTANTS;
-}
-__name(getNotificationQueueConstants, "getNotificationQueueConstants");
-const notificationQueueMaxSizeSetting = {
-  key: SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE,
-  createConfig(i18n, logger, _validator) {
-    const constants = getNotificationQueueConstants();
-    return {
-      name: unwrapOr(
-        i18n.translate(
-          "MODULE.SETTINGS.notificationQueueMaxSize.name",
-          "Notification Queue Max Size"
-        ),
-        "Notification Queue Max Size"
-      ),
-      hint: unwrapOr(
-        i18n.translate(
-          "MODULE.SETTINGS.notificationQueueMaxSize.hint",
-          `Maximum number of notifications queued before UI is available. Range: ${constants.minSize}-${constants.maxSize}.`
-        ),
-        `Maximum number of notifications queued before UI is available. Range: ${constants.minSize}-${constants.maxSize}.`
-      ),
-      scope: "world",
-      config: true,
-      type: Number,
-      default: constants.defaultSize,
-      onChange: /* @__PURE__ */ __name((value2) => {
-        const numericValue = Number(value2);
-        const clamped = Math.max(
-          constants.minSize,
-          Math.min(constants.maxSize, Math.floor(numericValue))
-        );
-        if (clamped !== numericValue) {
-          logger.info(
-            `Notification queue max size clamped from ${numericValue} to ${clamped} (range: ${constants.minSize}-${constants.maxSize})`
-          );
-        } else {
-          logger.info(`Notification queue max size updated via settings: ${clamped}`);
-        }
-      }, "onChange")
-    };
-  }
-};
 const _RuntimeConfigSync = class _RuntimeConfigSync {
   constructor(runtimeConfig, notifications) {
     this.runtimeConfig = runtimeConfig;
@@ -17727,57 +17652,6 @@ const _RuntimeConfigSync = class _RuntimeConfigSync {
 };
 __name(_RuntimeConfigSync, "RuntimeConfigSync");
 let RuntimeConfigSync = _RuntimeConfigSync;
-const isLogLevel = /* @__PURE__ */ __name((value2) => typeof value2 === "number" && value2 >= 0 && value2 <= 3, "isLogLevel");
-const runtimeConfigBindings = {
-  [SETTING_KEYS.LOG_LEVEL]: {
-    runtimeKey: "logLevel",
-    validator: isLogLevel,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.CACHE_ENABLED]: {
-    runtimeKey: "enableCacheService",
-    validator: SettingValidators.boolean,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.CACHE_TTL_MS]: {
-    runtimeKey: "cacheDefaultTtlMs",
-    validator: SettingValidators.nonNegativeNumber,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.CACHE_MAX_ENTRIES]: {
-    runtimeKey: "cacheMaxEntries",
-    validator: SettingValidators.nonNegativeInteger,
-    normalize: /* @__PURE__ */ __name((value2) => value2 > 0 ? value2 : void 0, "normalize")
-  },
-  [SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED]: {
-    runtimeKey: "enablePerformanceTracking",
-    validator: SettingValidators.boolean,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.PERFORMANCE_SAMPLING_RATE]: {
-    runtimeKey: "performanceSamplingRate",
-    validator: SettingValidators.samplingRate,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.METRICS_PERSISTENCE_ENABLED]: {
-    runtimeKey: "enableMetricsPersistence",
-    validator: SettingValidators.boolean,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.METRICS_PERSISTENCE_KEY]: {
-    runtimeKey: "metricsPersistenceKey",
-    validator: SettingValidators.nonEmptyString,
-    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
-  },
-  [SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE]: {
-    runtimeKey: "notificationQueueMaxSize",
-    validator: SettingValidators.positiveInteger,
-    normalize: /* @__PURE__ */ __name((value2) => {
-      const constants = getNotificationQueueConstants();
-      return Math.max(constants.minSize, Math.min(constants.maxSize, Math.floor(value2)));
-    }, "normalize")
-  }
-};
 const _DIRuntimeConfigSync = class _DIRuntimeConfigSync extends RuntimeConfigSync {
   constructor(runtimeConfig, notifications) {
     super(runtimeConfig, notifications);
@@ -18108,6 +17982,55 @@ const metricsPersistenceKeySetting = {
     };
   }
 };
+const NOTIFICATION_QUEUE_CONSTANTS = {
+  minSize: 10,
+  maxSize: 1e3,
+  defaultSize: 50
+};
+function getNotificationQueueConstants() {
+  return NOTIFICATION_QUEUE_CONSTANTS;
+}
+__name(getNotificationQueueConstants, "getNotificationQueueConstants");
+const notificationQueueMaxSizeSetting = {
+  key: SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE,
+  createConfig(i18n, logger, _validator) {
+    const constants = getNotificationQueueConstants();
+    return {
+      name: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.notificationQueueMaxSize.name",
+          "Notification Queue Max Size"
+        ),
+        "Notification Queue Max Size"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.notificationQueueMaxSize.hint",
+          `Maximum number of notifications queued before UI is available. Range: ${constants.minSize}-${constants.maxSize}.`
+        ),
+        `Maximum number of notifications queued before UI is available. Range: ${constants.minSize}-${constants.maxSize}.`
+      ),
+      scope: "world",
+      config: true,
+      type: Number,
+      default: constants.defaultSize,
+      onChange: /* @__PURE__ */ __name((value2) => {
+        const numericValue = Number(value2);
+        const clamped = Math.max(
+          constants.minSize,
+          Math.min(constants.maxSize, Math.floor(numericValue))
+        );
+        if (clamped !== numericValue) {
+          logger.info(
+            `Notification queue max size clamped from ${numericValue} to ${clamped} (range: ${constants.minSize}-${constants.maxSize})`
+          );
+        } else {
+          logger.info(`Notification queue max size updated via settings: ${clamped}`);
+        }
+      }, "onChange")
+    };
+  }
+};
 const _DefaultSettingDefinitionRegistry = class _DefaultSettingDefinitionRegistry {
   getAll() {
     return [
@@ -18125,6 +18048,143 @@ const _DefaultSettingDefinitionRegistry = class _DefaultSettingDefinitionRegistr
 };
 __name(_DefaultSettingDefinitionRegistry, "DefaultSettingDefinitionRegistry");
 let DefaultSettingDefinitionRegistry = _DefaultSettingDefinitionRegistry;
+function createSettingValidators() {
+  const customValidators = /* @__PURE__ */ new Map();
+  const standardValidators = {
+    /**
+     * Validates that value is a boolean.
+     */
+    boolean: /* @__PURE__ */ __name((value2) => typeof value2 === "boolean", "boolean"),
+    /**
+     * Validates that value is a number.
+     */
+    number: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2), "number"),
+    /**
+     * Validates that value is a non-negative number.
+     */
+    nonNegativeNumber: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0, "nonNegativeNumber"),
+    /**
+     * Validates that value is a non-negative integer.
+     */
+    nonNegativeInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 >= 0, "nonNegativeInteger"),
+    /**
+     * Validates that value is a positive integer (greater than 0).
+     */
+    positiveInteger: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && Number.isInteger(value2) && value2 > 0, "positiveInteger"),
+    /**
+     * Validates that value is a string.
+     */
+    string: /* @__PURE__ */ __name((value2) => typeof value2 === "string", "string"),
+    /**
+     * Validates that value is a non-empty string.
+     */
+    nonEmptyString: /* @__PURE__ */ __name((value2) => typeof value2 === "string" && value2.length > 0, "nonEmptyString"),
+    /**
+     * Validates that value is a number between 0 and 1 (inclusive).
+     */
+    samplingRate: /* @__PURE__ */ __name((value2) => typeof value2 === "number" && !Number.isNaN(value2) && value2 >= 0 && value2 <= 1, "samplingRate"),
+    /**
+     * Creates a validator for enum values.
+     */
+    oneOf: /* @__PURE__ */ __name((validValues) => {
+      return (value2) => (typeof value2 === "string" || typeof value2 === "number") && validValues.includes(value2);
+    }, "oneOf")
+  };
+  const registry = {
+    register(name, validator) {
+      if (name in standardValidators) {
+        throw new Error(
+          `Cannot override built-in validator: ${name}. Use a different name for your custom validator.`
+        );
+      }
+      if (!/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name)) {
+        throw new Error(`Invalid validator name: ${name}. Must be a valid JavaScript identifier.`);
+      }
+      customValidators.set(name, validator);
+    },
+    get(name) {
+      const standard = standardValidators[name];
+      if (standard) {
+        return standard;
+      }
+      return customValidators.get(name);
+    },
+    has(name) {
+      return name in standardValidators || customValidators.has(name);
+    }
+  };
+  return new Proxy({ ...standardValidators, ...registry }, {
+    get(target, prop) {
+      if (typeof prop === "symbol") {
+        return target[prop];
+      }
+      if (prop in standardValidators) {
+        return standardValidators[prop];
+      }
+      if (prop in registry) {
+        return registry[prop];
+      }
+      const custom2 = customValidators.get(prop);
+      if (custom2) {
+        return custom2;
+      }
+      return target[prop];
+    }
+  });
+}
+__name(createSettingValidators, "createSettingValidators");
+const SettingValidators = createSettingValidators();
+const isLogLevel = /* @__PURE__ */ __name((value2) => typeof value2 === "number" && value2 >= 0 && value2 <= 3, "isLogLevel");
+const runtimeConfigBindings = {
+  [SETTING_KEYS.LOG_LEVEL]: {
+    runtimeKey: "logLevel",
+    validator: isLogLevel,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.CACHE_ENABLED]: {
+    runtimeKey: "enableCacheService",
+    validator: SettingValidators.boolean,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.CACHE_TTL_MS]: {
+    runtimeKey: "cacheDefaultTtlMs",
+    validator: SettingValidators.nonNegativeNumber,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.CACHE_MAX_ENTRIES]: {
+    runtimeKey: "cacheMaxEntries",
+    validator: SettingValidators.nonNegativeInteger,
+    normalize: /* @__PURE__ */ __name((value2) => value2 > 0 ? value2 : void 0, "normalize")
+  },
+  [SETTING_KEYS.PERFORMANCE_TRACKING_ENABLED]: {
+    runtimeKey: "enablePerformanceTracking",
+    validator: SettingValidators.boolean,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.PERFORMANCE_SAMPLING_RATE]: {
+    runtimeKey: "performanceSamplingRate",
+    validator: SettingValidators.samplingRate,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.METRICS_PERSISTENCE_ENABLED]: {
+    runtimeKey: "enableMetricsPersistence",
+    validator: SettingValidators.boolean,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.METRICS_PERSISTENCE_KEY]: {
+    runtimeKey: "metricsPersistenceKey",
+    validator: SettingValidators.nonEmptyString,
+    normalize: /* @__PURE__ */ __name((value2) => value2, "normalize")
+  },
+  [SETTING_KEYS.NOTIFICATION_QUEUE_MAX_SIZE]: {
+    runtimeKey: "notificationQueueMaxSize",
+    validator: SettingValidators.positiveInteger,
+    normalize: /* @__PURE__ */ __name((value2) => {
+      const constants = getNotificationQueueConstants();
+      return Math.max(constants.minSize, Math.min(constants.maxSize, Math.floor(value2)));
+    }, "normalize")
+  }
+};
 const _DefaultRuntimeConfigBindingRegistry = class _DefaultRuntimeConfigBindingRegistry {
   getAll() {
     const map2 = /* @__PURE__ */ new Map();
@@ -18249,34 +18309,6 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
       callback(event);
     });
   }
-  onJournalDirectoryRendered(callback) {
-    return this.registerFoundryHook("renderJournalDirectory", (app, html) => {
-      const htmlElement = this.extractHtmlElement(html);
-      if (!htmlElement) return;
-      const event = {
-        htmlElement,
-        timestamp: Date.now()
-      };
-      callback(event);
-    });
-  }
-  // ===== Generic Methods (from PlatformEventPort) =====
-  registerListener(eventType, callback) {
-    const foundryCallback = /* @__PURE__ */ __name((...args2) => {
-      if (args2.length > 0 && typeof args2[0] === "object" && args2[0] !== null) {
-        const candidate = args2[0];
-        if (typeof candidate === "object" && candidate !== null && ("journalId" in candidate || "timestamp" in candidate)) {
-          const eventRecord = castToRecord(candidate);
-          const event = {
-            journalId: typeof eventRecord.journalId === "string" ? eventRecord.journalId : "",
-            timestamp: typeof eventRecord.timestamp === "number" ? eventRecord.timestamp : Date.now()
-          };
-          callback(event);
-        }
-      }
-    }, "foundryCallback");
-    return this.registerFoundryHook(eventType, foundryCallback);
-  }
   unregisterListener(registrationId) {
     const cleanup = this.registrations.get(registrationId);
     if (!cleanup) {
@@ -18360,10 +18392,6 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
     }
     return result;
   }
-  extractHtmlElement(htmlInput) {
-    if (htmlInput instanceof HTMLElement) return htmlInput;
-    return getFirstElementIfArray(htmlInput, (el) => el instanceof HTMLElement);
-  }
 };
 __name(_FoundryJournalEventAdapter, "FoundryJournalEventAdapter");
 let FoundryJournalEventAdapter = _FoundryJournalEventAdapter;
@@ -18375,6 +18403,153 @@ const _DIFoundryJournalEventAdapter = class _DIFoundryJournalEventAdapter extend
 __name(_DIFoundryJournalEventAdapter, "DIFoundryJournalEventAdapter");
 _DIFoundryJournalEventAdapter.dependencies = [foundryHooksToken];
 let DIFoundryJournalEventAdapter = _DIFoundryJournalEventAdapter;
+const _FoundryJournalUiEventAdapter = class _FoundryJournalUiEventAdapter {
+  constructor(foundryHooksPort) {
+    this.foundryHooksPort = foundryHooksPort;
+    this.registrations = /* @__PURE__ */ new Map();
+    this.nextId = 1;
+  }
+  // ===== UI Event Methods =====
+  onJournalDirectoryRendered(callback) {
+    return this.registerFoundryHook("renderJournalDirectory", (app, html) => {
+      const directoryId = this.extractDirectoryId(app);
+      if (!directoryId) {
+        return;
+      }
+      const htmlElement = this.extractHtmlElement(html);
+      if (!htmlElement) {
+        return;
+      }
+      const event = {
+        directoryId,
+        timestamp: Date.now()
+      };
+      callback(event);
+    });
+  }
+  // ===== Generic Methods (from PlatformEventPort) =====
+  registerListener(eventType, callback) {
+    return this.registerFoundryHook(eventType, (...args2) => {
+      if (args2.length > 0 && typeof args2[0] === "object" && args2[0] !== null) {
+        const candidate = args2[0];
+        const event = this.toJournalUiEvent(candidate);
+        if (event) {
+          callback(event);
+        }
+      }
+    });
+  }
+  /**
+   * Type guard function to convert unknown to JournalUiEvent without type assertion.
+   *
+   * NOTE: This method is only called from registerListener, which already ensures
+   * that candidate is an object and not null. The redundant check was removed
+   * to achieve 100% code coverage.
+   */
+  toJournalUiEvent(candidate) {
+    const record2 = castToRecord(candidate);
+    if ("directoryId" in record2 && typeof record2.directoryId === "string") {
+      return {
+        directoryId: record2.directoryId,
+        timestamp: typeof record2.timestamp === "number" ? record2.timestamp : Date.now()
+      };
+    }
+    if ("journalId" in record2 && typeof record2.journalId === "string" && "options" in record2 && Array.isArray(record2.options)) {
+      return {
+        journalId: record2.journalId,
+        // type-coverage:ignore-next-line - Fallback path for generic registerListener, not used in practice
+        options: record2.options,
+        timestamp: typeof record2.timestamp === "number" ? record2.timestamp : Date.now()
+      };
+    }
+    return null;
+  }
+  unregisterListener(registrationId) {
+    const cleanup = this.registrations.get(registrationId);
+    if (!cleanup) {
+      return {
+        ok: false,
+        error: {
+          code: "EVENT_UNREGISTRATION_FAILED",
+          message: `No registration found for ID ${registrationId}`
+        }
+      };
+    }
+    cleanup();
+    this.registrations.delete(registrationId);
+    return { ok: true, value: void 0 };
+  }
+  // ===== Lifecycle =====
+  /**
+   * Cleanup all registered listeners.
+   * Should be called during module shutdown.
+   */
+  dispose() {
+    for (const cleanup of this.registrations.values()) {
+      cleanup();
+    }
+    this.registrations.clear();
+  }
+  // ===== Private Helpers =====
+  registerFoundryHook(hookName, callback) {
+    const platformCallback = /* @__PURE__ */ __name((event) => {
+      function isArrayOfUnknown(value2) {
+        return Array.isArray(value2);
+      }
+      __name(isArrayOfUnknown, "isArrayOfUnknown");
+      if (isArrayOfUnknown(event)) {
+        let isValidArg = /* @__PURE__ */ __name(function(arg) {
+          return arg !== null && arg !== void 0;
+        }, "isValidArg");
+        const validArgs = event.filter(isValidArg);
+        if (validArgs.length > 0) {
+          callback(...validArgs);
+        }
+      } else {
+        let isNotNullOrUndefined = /* @__PURE__ */ __name(function(value2) {
+          return value2 !== null && value2 !== void 0;
+        }, "isNotNullOrUndefined");
+        if (isNotNullOrUndefined(event)) {
+          callback(event);
+        }
+      }
+    }, "platformCallback");
+    const result = this.foundryHooksPort.registerListener(hookName, platformCallback);
+    if (!result.ok) {
+      return result;
+    }
+    const registrationId = result.value;
+    this.registrations.set(registrationId, () => {
+      this.foundryHooksPort.unregisterListener(registrationId);
+    });
+    return { ok: true, value: registrationId };
+  }
+  extractDirectoryId(app) {
+    if (typeof app === "object" && app !== null) {
+      if ("id" in app && typeof app.id === "string") {
+        return app.id;
+      }
+      if ("tabName" in app && typeof app.tabName === "string") {
+        return app.tabName;
+      }
+    }
+    return "journal";
+  }
+  extractHtmlElement(htmlInput) {
+    if (htmlInput instanceof HTMLElement) return htmlInput;
+    return getFirstElementIfArray(htmlInput, (el) => el instanceof HTMLElement);
+  }
+};
+__name(_FoundryJournalUiEventAdapter, "FoundryJournalUiEventAdapter");
+let FoundryJournalUiEventAdapter = _FoundryJournalUiEventAdapter;
+const _DIFoundryJournalUiEventAdapter = class _DIFoundryJournalUiEventAdapter extends FoundryJournalUiEventAdapter {
+  constructor(foundryHooksPort) {
+    super(foundryHooksPort);
+  }
+};
+__name(_DIFoundryJournalUiEventAdapter, "DIFoundryJournalUiEventAdapter");
+_DIFoundryJournalUiEventAdapter.dependencies = [foundryHooksToken];
+let DIFoundryJournalUiEventAdapter = _DIFoundryJournalUiEventAdapter;
 const _InvalidateJournalCacheOnChangeUseCase = class _InvalidateJournalCacheOnChangeUseCase {
   constructor(journalEvents, cache, notifications) {
     this.journalEvents = journalEvents;
@@ -18474,8 +18649,9 @@ _DIInvalidateJournalCacheOnChangeUseCase.dependencies = [
 ];
 let DIInvalidateJournalCacheOnChangeUseCase = _DIInvalidateJournalCacheOnChangeUseCase;
 const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOnRenderUseCase {
-  constructor(journalEvents, journalVisibility, directoryProcessor, notifications) {
-    this.journalEvents = journalEvents;
+  constructor(journalUiEvents, journalDirectoryUI, journalVisibility, directoryProcessor, notifications) {
+    this.journalUiEvents = journalUiEvents;
+    this.journalDirectoryUI = journalDirectoryUI;
     this.journalVisibility = journalVisibility;
     this.directoryProcessor = directoryProcessor;
     this.notifications = notifications;
@@ -18484,10 +18660,10 @@ const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOn
    * Register event listener for directory render events.
    */
   register() {
-    const result = this.journalEvents.onJournalDirectoryRendered((event) => {
+    const result = this.journalUiEvents.onJournalDirectoryRendered((event) => {
       this.notifications.debug(
         "Journal directory rendered, processing visibility",
-        { timestamp: event.timestamp },
+        { timestamp: event.timestamp, directoryId: event.directoryId },
         { channels: ["ConsoleChannel"] }
       );
       const hiddenResult = this.journalVisibility.getHiddenJournalEntries();
@@ -18498,7 +18674,7 @@ const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOn
         return;
       }
       const processResult = this.directoryProcessor.processDirectory(
-        event.htmlElement,
+        event.directoryId,
         hiddenResult.value
       );
       if (!processResult.ok) {
@@ -18519,7 +18695,7 @@ const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOn
    */
   dispose() {
     if (this.registrationId !== void 0) {
-      this.journalEvents.unregisterListener(this.registrationId);
+      this.journalUiEvents.unregisterListener(this.registrationId);
       this.registrationId = void 0;
     }
   }
@@ -18527,13 +18703,20 @@ const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOn
 __name(_ProcessJournalDirectoryOnRenderUseCase, "ProcessJournalDirectoryOnRenderUseCase");
 let ProcessJournalDirectoryOnRenderUseCase = _ProcessJournalDirectoryOnRenderUseCase;
 const _DIProcessJournalDirectoryOnRenderUseCase = class _DIProcessJournalDirectoryOnRenderUseCase extends ProcessJournalDirectoryOnRenderUseCase {
-  constructor(journalEvents, journalVisibility, directoryProcessor, notifications) {
-    super(journalEvents, journalVisibility, directoryProcessor, notifications);
+  constructor(journalUiEvents, journalDirectoryUI, journalVisibility, directoryProcessor, notifications) {
+    super(
+      journalUiEvents,
+      journalDirectoryUI,
+      journalVisibility,
+      directoryProcessor,
+      notifications
+    );
   }
 };
 __name(_DIProcessJournalDirectoryOnRenderUseCase, "DIProcessJournalDirectoryOnRenderUseCase");
 _DIProcessJournalDirectoryOnRenderUseCase.dependencies = [
-  platformJournalEventPortToken,
+  platformJournalUiEventPortToken,
+  platformJournalDirectoryUiPortToken,
   journalVisibilityServiceToken,
   journalDirectoryProcessorToken,
   notificationPublisherPortToken
@@ -18863,7 +19046,7 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
     this.notifications = notifications;
   }
   handle(event) {
-    const journalId = this.extractJournalId(event.htmlElement);
+    const journalId = event.journalId;
     if (!journalId) {
       return;
     }
@@ -18880,7 +19063,7 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
       event.options.push({
         name: "Journal ausblenden",
         icon: '<i class="fas fa-eye-slash"></i>',
-        callback: /* @__PURE__ */ __name(async (_li) => {
+        callback: /* @__PURE__ */ __name(async (_journalId) => {
           const hideResult = await this.journalRepository.setFlag(
             journalId,
             MODULE_METADATA.ID,
@@ -18918,16 +19101,6 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
         }, "callback")
       });
     }
-  }
-  /**
-   * Extract journal ID from an HTML element.
-   */
-  extractJournalId(element) {
-    const documentId = element.getAttribute("data-document-id");
-    if (documentId) return documentId;
-    const entryId = element.getAttribute("data-entry-id");
-    if (entryId) return entryId;
-    return null;
   }
 };
 __name(_HideJournalContextMenuHandler, "HideJournalContextMenuHandler");
@@ -19092,6 +19265,14 @@ function registerEventPorts(container) {
   );
   if (isErr(eventPortResult)) {
     return err(`Failed to register PlatformJournalEventPort: ${eventPortResult.error.message}`);
+  }
+  const uiEventPortResult = container.registerClass(
+    platformJournalUiEventPortToken,
+    DIFoundryJournalUiEventAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(uiEventPortResult)) {
+    return err(`Failed to register PlatformJournalUiEventPort: ${uiEventPortResult.error.message}`);
   }
   const cacheInvalidationUseCaseResult = container.registerClass(
     invalidateJournalCacheOnChangeUseCaseToken,

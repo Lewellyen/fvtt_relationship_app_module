@@ -4,7 +4,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { createMockJournalEntry } from "@/test/mocks/foundry";
-import { createMockDOM } from "@/test/utils/test-helpers";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
 
@@ -37,12 +36,17 @@ describe("Integration: Journal Visibility End-to-End", () => {
     });
 
     // Journal Directory DOM erstellen (Foundry verwendet li.directory-item)
-    const { container: domContainer } = createMockDOM(
-      `<li class="directory-item" data-entry-id="${mockEntry.id}">
-        <h4>${mockEntry.name}</h4>
-      </li>`,
-      `li.directory-item[data-entry-id="${mockEntry.id}"]`
-    );
+    // getDirectoryElement sucht nach #journal im document, daher muss das Element im document sein
+    const journalContainer = document.createElement("div");
+    journalContainer.id = "journal";
+    const listItem = document.createElement("li");
+    listItem.className = "directory-item";
+    listItem.setAttribute("data-entry-id", mockEntry.id);
+    const heading = document.createElement("h4");
+    heading.textContent = mockEntry.name;
+    listItem.appendChild(heading);
+    journalContainer.appendChild(listItem);
+    document.body.appendChild(journalContainer);
 
     // game.journal mocken
     if (mockGame.journal) {
@@ -82,21 +86,27 @@ describe("Integration: Journal Visibility End-to-End", () => {
 
     expect(renderCallback).toBeDefined();
 
+    // getDirectoryElement is no longer part of PlatformJournalDirectoryUiPort
+    // removeJournalDirectoryEntry handles directory element fetching internally
+
     // 5. Hook manuell feuern (simuliert Foundry Hook)
-    // Mock-App für renderJournalDirectory Hook
+    // Mock-App für renderJournalDirectory Hook (id muss "journal" sein für getDirectoryElement)
     const mockApp = {
-      id: "journal-directory",
+      id: "journal",
       object: {},
       options: {},
     };
-    renderCallback!(mockApp, domContainer);
+    renderCallback!(mockApp, journalContainer);
 
     // 6. Prüfen ob Entry versteckt ist
     // processJournalDirectory sollte das Element entfernt haben
-    const hiddenElement = domContainer.querySelector(
+    const hiddenElement = journalContainer.querySelector(
       `li.directory-item[data-entry-id="${mockEntry.id}"]`
     );
     expect(hiddenElement).toBeNull(); // Entry sollte nicht im DOM sein
+
+    // Cleanup
+    document.body.removeChild(journalContainer);
   });
 
   it("should keep visible journal entry visible", async () => {
@@ -114,12 +124,17 @@ describe("Integration: Journal Visibility End-to-End", () => {
     });
 
     // Journal Directory DOM erstellen (Foundry verwendet li.directory-item)
-    const { container: domContainer } = createMockDOM(
-      `<li class="directory-item" data-entry-id="${mockEntry.id}">
-        <h4>${mockEntry.name}</h4>
-      </li>`,
-      `li.directory-item[data-entry-id="${mockEntry.id}"]`
-    );
+    // getDirectoryElement sucht nach #journal im document, daher muss das Element im document sein
+    const journalContainer = document.createElement("div");
+    journalContainer.id = "journal";
+    const listItem = document.createElement("li");
+    listItem.className = "directory-item";
+    listItem.setAttribute("data-entry-id", mockEntry.id);
+    const heading = document.createElement("h4");
+    heading.textContent = mockEntry.name;
+    listItem.appendChild(heading);
+    journalContainer.appendChild(listItem);
+    document.body.appendChild(journalContainer);
 
     // game.journal mocken
     if (mockGame.journal) {
@@ -161,16 +176,19 @@ describe("Integration: Journal Visibility End-to-End", () => {
 
     // 5. Hook manuell feuern
     const mockApp = {
-      id: "journal-directory",
+      id: "journal",
       object: {},
       options: {},
     };
-    renderCallback!(mockApp, domContainer);
+    renderCallback!(mockApp, journalContainer);
 
     // 6. Prüfen ob Entry sichtbar bleibt
-    const visibleElement = domContainer.querySelector(
+    const visibleElement = journalContainer.querySelector(
       `li.directory-item[data-entry-id="${mockEntry.id}"]`
     );
     expect(visibleElement).not.toBeNull(); // Entry sollte im DOM bleiben
+
+    // Cleanup
+    document.body.removeChild(journalContainer);
   });
 });

@@ -32,16 +32,16 @@ export class FoundryUIPort implements FoundryUI, Disposable {
     this.retryable = new RetryableOperation(retryService);
   }
 
-  removeJournalElement(
+  removeJournalDirectoryEntry(
+    directoryId: string,
     journalId: string,
-    journalName: string,
-    html: HTMLElement
+    journalName: string
   ): Result<void, FoundryError> {
     return this.retryable.execute(() => {
       const portResult = this.portLoader.loadPort("FoundryUI");
       if (!portResult.ok) return portResult;
-      return portResult.value.removeJournalElement(journalId, journalName, html);
-    }, "FoundryUI.removeJournalElement");
+      return portResult.value.removeJournalDirectoryEntry(directoryId, journalId, journalName);
+    }, "FoundryUI.removeJournalDirectoryEntry");
   }
 
   findElement(container: HTMLElement, selector: string): Result<HTMLElement | null, FoundryError> {
@@ -62,6 +62,14 @@ export class FoundryUIPort implements FoundryUI, Disposable {
       if (!portResult.ok) return portResult;
       return portResult.value.notify(message, type, options);
     }, "FoundryUI.notify");
+  }
+
+  getDirectoryElement(directoryId: string): Result<HTMLElement | null, FoundryError> {
+    return this.retryable.execute(() => {
+      const portResult = this.portLoader.loadPort("FoundryUI");
+      if (!portResult.ok) return portResult;
+      return portResult.value.getDirectoryElement(directoryId);
+    }, "FoundryUI.getDirectoryElement");
   }
 
   rerenderJournalDirectory(): Result<boolean, FoundryError> {

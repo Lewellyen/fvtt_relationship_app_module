@@ -19,6 +19,7 @@ import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-jou
 import type { PlatformUINotificationPort } from "@/domain/ports/platform-ui-notification-port.interface";
 import type { PlatformSettingsPort } from "@/domain/ports/platform-settings-port.interface";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { PlatformJournalUiEventPort } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
@@ -155,10 +156,21 @@ export const platformSettingsPortToken =
 /**
  * DI Token for PlatformJournalEventPort.
  *
- * Platform-agnostic journal event port.
+ * Platform-agnostic journal lifecycle event port (created, updated, deleted).
+ * For UI-specific events (directory render, context menu), use platformJournalUiEventPortToken.
  */
 export const platformJournalEventPortToken = createInjectionToken<PlatformJournalEventPort>(
   "PlatformJournalEventPort"
+);
+
+/**
+ * DI Token for PlatformJournalUiEventPort.
+ *
+ * Platform-agnostic journal UI event port (directory render, context menu).
+ * Separated from PlatformJournalEventPort to maintain DIP compliance (no DOM types in domain).
+ */
+export const platformJournalUiEventPortToken = createInjectionToken<PlatformJournalUiEventPort>(
+  "PlatformJournalUiEventPort"
 );
 
 /**

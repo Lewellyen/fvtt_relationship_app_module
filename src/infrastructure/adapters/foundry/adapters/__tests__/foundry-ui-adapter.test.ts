@@ -9,33 +9,40 @@ describe("FoundryUIAdapter", () => {
 
   beforeEach(() => {
     mockFoundryUI = {
-      removeJournalElement: vi.fn(),
+      removeJournalDirectoryEntry: vi.fn(),
       rerenderJournalDirectory: vi.fn(),
       notify: vi.fn(),
       findElement: vi.fn(),
+      getDirectoryElement: vi.fn(),
       dispose: vi.fn(),
     };
     adapter = new FoundryUIAdapter(mockFoundryUI);
   });
 
-  describe("removeJournalElement", () => {
+  describe("removeJournalDirectoryEntry", () => {
     it("should delegate to FoundryUI and return success", () => {
-      vi.mocked(mockFoundryUI.removeJournalElement).mockReturnValue({ ok: true, value: undefined });
+      vi.mocked(mockFoundryUI.removeJournalDirectoryEntry).mockReturnValue({
+        ok: true,
+        value: undefined,
+      });
 
-      const html = document.createElement("div");
-      const result = adapter.removeJournalElement("id123", "Test", html);
+      const result = adapter.removeJournalDirectoryEntry("journal", "id123", "Test");
 
       expectResultOk(result);
-      expect(mockFoundryUI.removeJournalElement).toHaveBeenCalledWith("id123", "Test", html);
+      expect(mockFoundryUI.removeJournalDirectoryEntry).toHaveBeenCalledWith(
+        "journal",
+        "id123",
+        "Test"
+      );
     });
 
     it("should map FoundryError to PlatformUIError", () => {
-      vi.mocked(mockFoundryUI.removeJournalElement).mockReturnValue({
+      vi.mocked(mockFoundryUI.removeJournalDirectoryEntry).mockReturnValue({
         ok: false,
         error: { code: "NOT_FOUND", message: "Element not found" },
       });
 
-      const result = adapter.removeJournalElement("id123", "Test", document.createElement("div"));
+      const result = adapter.removeJournalDirectoryEntry("journal", "id123", "Test");
 
       expectResultErr(result);
       expect(result.error.code).toBe("DOM_MANIPULATION_FAILED");
@@ -64,6 +71,35 @@ describe("FoundryUIAdapter", () => {
 
       expectResultErr(result);
       expect(result.error.code).toBe("RERENDER_FAILED");
+      expect(result.error.message).toContain("UI not ready");
+    });
+  });
+
+  describe("getDirectoryElement", () => {
+    it("should delegate to FoundryUI and return element result", () => {
+      const mockElement = document.createElement("div");
+      vi.mocked(mockFoundryUI.getDirectoryElement).mockReturnValue({
+        ok: true,
+        value: mockElement,
+      });
+
+      const result = adapter.getDirectoryElement("journal");
+
+      expectResultOk(result);
+      expect(result.value).toBe(mockElement);
+      expect(mockFoundryUI.getDirectoryElement).toHaveBeenCalledWith("journal");
+    });
+
+    it("should map error correctly", () => {
+      vi.mocked(mockFoundryUI.getDirectoryElement).mockReturnValue({
+        ok: false,
+        error: { code: "API_NOT_AVAILABLE", message: "UI not ready" },
+      });
+
+      const result = adapter.getDirectoryElement("journal");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("DOM_ACCESS_FAILED");
       expect(result.error.message).toContain("UI not ready");
     });
   });

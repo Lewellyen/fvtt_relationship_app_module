@@ -12,13 +12,12 @@ import {
 import { journalVisibilityConfigToken } from "@/application/tokens/application.tokens";
 
 /**
- * Service for processing journal directory DOM to hide flagged entries.
- * Handles DOM manipulation and UI coordination.
+ * Service for processing journal directory to hide flagged entries.
+ * Handles UI coordination via ports (DIP-compliant).
  *
  * **Responsibilities:**
- * - DOM manipulation for journal directory
- * - UI coordination via PlatformJournalDirectoryUiPort
- * - Error handling and logging for DOM operations
+ * - Orchestrates hiding of journal entries via PlatformJournalDirectoryUiPort
+ * - Error handling and logging for UI operations
  *
  * **Dependencies:**
  * - PlatformJournalDirectoryUiPort: Platform-agnostic port for journal directory UI operations
@@ -27,7 +26,8 @@ import { journalVisibilityConfigToken } from "@/application/tokens/application.t
  *
  * **DIP-Compliance:**
  * - Depends on domain-neutral ports, not Foundry-specific types
- * - Platform-specific adapters implement the ports
+ * - Does not depend on HTMLElement or other DOM types
+ * - Platform-specific adapters implement the ports and handle DOM operations
  */
 export class JournalDirectoryProcessor {
   constructor(
@@ -37,18 +37,23 @@ export class JournalDirectoryProcessor {
   ) {}
 
   /**
-   * Processes journal directory HTML to hide flagged entries.
-   * @param htmlElement - The HTML element containing the journal directory
-   * @param hiddenEntries - Array of journal entries that should be hidden
+   * Processes journal directory to hide flagged journal directory entries.
+   *
+   * A journal directory entry is the list position in the sidebar that displays a journal.
+   * This is NOT a journal entry (which is a page within a journal).
+   *
+   * DIP-compliant: Works with directoryId instead of HTMLElement.
+   * @param directoryId - The identifier for the directory (e.g., "journal" for Foundry)
+   * @param hiddenEntries - Array of journals whose directory entries should be hidden
    * @returns Result indicating success or failure with aggregated errors
    */
   processDirectory(
-    htmlElement: HTMLElement,
+    directoryId: string,
     hiddenEntries: JournalEntry[]
   ): Result<void, JournalVisibilityError> {
     this.notifications.debug(
       "Processing journal directory for hidden entries",
-      { context: { htmlElement, hiddenCount: hiddenEntries.length } },
+      { context: { directoryId, hiddenCount: hiddenEntries.length } },
       {
         channels: ["ConsoleChannel"],
       }
@@ -73,27 +78,32 @@ export class JournalDirectoryProcessor {
       }
     );
 
-    return this.hideEntries(hiddenEntries, htmlElement);
+    return this.hideEntries(directoryId, hiddenEntries);
   }
 
   /**
-   * Hides multiple journal entries in the DOM.
-   * @param entries - Array of journal entries to hide
-   * @param html - The HTML element containing the journal directory
+   * Hides multiple journal directory entries in the directory.
+   *
+   * A journal directory entry is the list position in the sidebar that displays a journal.
+   * This is NOT a journal entry (which is a page within a journal).
+   *
+   * DIP-compliant: Uses directoryId instead of HTMLElement.
+   * @param directoryId - The identifier for the directory
+   * @param entries - Array of journals whose directory entries should be hidden
    * @returns Result indicating success or failure with aggregated errors
    */
   private hideEntries(
-    entries: JournalEntry[],
-    html: HTMLElement
+    directoryId: string,
+    entries: JournalEntry[]
   ): Result<void, JournalVisibilityError> {
     const errors: JournalVisibilityError[] = [];
 
     for (const journal of entries) {
       const journalName = journal.name ?? this.config.unknownName;
-      const removeResult = this.journalDirectoryUI.removeJournalElement(
+      const removeResult = this.journalDirectoryUI.removeJournalDirectoryEntry(
+        directoryId,
         journal.id,
-        journalName,
-        html
+        journalName
       );
 
       // Map PlatformUIError to JournalVisibilityError
@@ -104,12 +114,12 @@ export class JournalDirectoryProcessor {
           message: removeResult.error.message,
         };
         errors.push(journalError);
-        this.notifications.warn("Error removing journal entry", journalError, {
+        this.notifications.warn("Error removing journal directory entry", journalError, {
           channels: ["ConsoleChannel"],
         });
       } else {
         this.notifications.debug(
-          `Removing journal entry: ${sanitizeHtml(journalName)}`,
+          `Removing journal directory entry: ${sanitizeHtml(journalName)}`,
           { context: { journal } },
           { channels: ["ConsoleChannel"] }
         );

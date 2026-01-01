@@ -40,10 +40,11 @@ describe("FoundryJournalFacade", () => {
     };
 
     mockUI = {
-      removeJournalElement: vi.fn(),
+      removeJournalDirectoryEntry: vi.fn(),
       findElement: vi.fn(),
       notify: vi.fn(),
       rerenderJournalDirectory: vi.fn(),
+      getDirectoryElement: vi.fn(),
       dispose: vi.fn(),
     };
 
@@ -136,31 +137,6 @@ describe("FoundryJournalFacade", () => {
       if (!result.ok) {
         expect(result.error.code).toBe("VALIDATION_FAILED");
         expect(result.error.message).toContain("required methods");
-      }
-    });
-  });
-
-  describe("removeJournalElement", () => {
-    it("should delegate to FoundryUI.removeJournalElement", () => {
-      const htmlElement = document.createElement("div");
-      mockUI.removeJournalElement = vi.fn().mockReturnValue(ok(undefined));
-
-      const result = facade.removeJournalElement("j1", "Journal 1", htmlElement);
-
-      expect(mockUI.removeJournalElement).toHaveBeenCalledWith("j1", "Journal 1", htmlElement);
-      expect(result.ok).toBe(true);
-    });
-
-    it("should propagate errors from FoundryUI", () => {
-      const htmlElement = document.createElement("div");
-      const error = { code: "ELEMENT_NOT_FOUND" as const, message: "Element not in DOM" };
-      mockUI.removeJournalElement = vi.fn().mockReturnValue(err(error));
-
-      const result = facade.removeJournalElement("j1", "Journal 1", htmlElement);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("ELEMENT_NOT_FOUND");
       }
     });
   });

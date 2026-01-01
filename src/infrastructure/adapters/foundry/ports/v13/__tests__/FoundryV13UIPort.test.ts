@@ -35,80 +35,6 @@ describe("FoundryV13UIPort", () => {
     port = new FoundryV13UIPort(mockUIAPI, mockGameJournalAPI, mockDocumentAPI);
   });
 
-  describe("removeJournalElement", () => {
-    it("should find element with data-document-id (Foundry v13)", () => {
-      const html = document.createElement("div");
-      html.innerHTML = `
-        <ul class="directory-list">
-          <li class="directory-item" data-document-id="abc123">Test Entry</li>
-        </ul>
-      `;
-
-      const result = port.removeJournalElement("abc123", "Test", html);
-      expectResultOk(result);
-      expect(html.querySelector('[data-document-id="abc123"]')).toBeNull();
-    });
-
-    it("should find element with data-entry-id (legacy fallback)", () => {
-      const html = document.createElement("div");
-      html.innerHTML = `
-        <ul class="directory-list">
-          <li class="directory-item" data-entry-id="xyz789">Test Entry</li>
-        </ul>
-      `;
-
-      const result = port.removeJournalElement("xyz789", "Test", html);
-      expectResultOk(result);
-      expect(html.querySelector('[data-entry-id="xyz789"]')).toBeNull();
-    });
-
-    it("should remove journal element successfully", () => {
-      const { container, element } = createMockDOM(
-        `<li class="directory-item" data-entry-id="journal-123">Journal Entry</li>`,
-        'li[data-entry-id="journal-123"]'
-      );
-
-      const result = port.removeJournalElement("journal-123", "Journal Entry", container);
-      expectResultOk(result);
-      expect(element?.parentNode).toBeNull();
-    });
-
-    it("should fail when element not found", () => {
-      const { container } = createMockDOM(`<div>Other content</div>`);
-
-      const result = port.removeJournalElement("journal-123", "Journal Entry", container);
-      expectResultErr(result);
-      expect(result.error.code).toBe("NOT_FOUND");
-      expect(result.error.message).toContain("Could not find element");
-    });
-
-    it("should use correct selector format", () => {
-      const { container } = createMockDOM(
-        `<li class="directory-item" data-entry-id="test-id">Test</li>`
-      );
-
-      const result = port.removeJournalElement("test-id", "Test", container);
-      expectResultOk(result);
-      // Element sollte entfernt sein
-      expect(container.querySelector('li[data-entry-id="test-id"]')).toBeNull();
-    });
-
-    it("should handle multiple journal entries", () => {
-      const { container } = createMockDOM(`
-        <ul>
-          <li class="directory-item" data-entry-id="journal-1">Entry 1</li>
-          <li class="directory-item" data-entry-id="journal-2">Entry 2</li>
-        </ul>
-      `);
-
-      const result1 = port.removeJournalElement("journal-1", "Entry 1", container);
-      expectResultOk(result1);
-
-      const result2 = port.removeJournalElement("journal-2", "Entry 2", container);
-      expectResultOk(result2);
-    });
-  });
-
   describe("findElement", () => {
     it("should find element successfully", () => {
       const { container } = createMockDOM(`<div id="target">Content</div>`);
@@ -135,27 +61,6 @@ describe("FoundryV13UIPort", () => {
       const result = port.findElement(container, ".container .nested");
       expectResultOk(result);
       expect(result.value).not.toBeNull();
-    });
-  });
-
-  describe("removeJournalElement - Error Cases", () => {
-    it("should handle DOM manipulation errors", () => {
-      const mockHtml = document.createElement("div");
-      const mockElement = document.createElement("li");
-      mockElement.className = "directory-item";
-      mockElement.setAttribute("data-entry-id", "test-id");
-      mockHtml.appendChild(mockElement);
-
-      // Mock remove() to throw error
-      vi.spyOn(mockElement, "remove").mockImplementation(() => {
-        throw new Error("Remove failed");
-      });
-
-      const result = port.removeJournalElement("test-id", "Test", mockHtml);
-
-      expectResultErr(result);
-      expect(result.error.code).toBe("OPERATION_FAILED");
-      expect(result.error.message).toContain("Failed to remove element from DOM");
     });
   });
 
@@ -316,17 +221,122 @@ describe("FoundryV13UIPort", () => {
     });
   });
 
-  describe("disposed state guards", () => {
-    it("should prevent removing journal elements after disposal", () => {
-      port.dispose();
-      const html = document.createElement("div");
+  describe("removeJournalDirectoryEntry", () => {
+    it("should remove journal directory entry successfully", () => {
+      // Create journal container with entry
+      const journalContainer = document.createElement("div");
+      journalContainer.id = "journal";
+      const listItem = document.createElement("li");
+      listItem.className = "directory-item";
+      listItem.setAttribute("data-document-id", "test-journal-1");
+      journalContainer.appendChild(listItem);
+      document.body.appendChild(journalContainer);
 
-      const result = port.removeJournalElement("test", "Test", html);
+      const result = port.removeJournalDirectoryEntry("journal", "test-journal-1", "Test Journal");
+
+      expectResultOk(result);
+      expect(listItem.parentElement).toBeNull(); // Element should be removed
+
+      document.body.removeChild(journalContainer);
+    });
+
+    it("should return error when port is disposed", () => {
+      port.dispose();
+
+      const result = port.removeJournalDirectoryEntry("journal", "test", "Test");
 
       expectResultErr(result);
       expect(result.error.code).toBe("DISPOSED");
     });
 
+    it("should return error when getDirectoryElement fails", () => {
+      // Mock getDirectoryElement to return error by making querySelector throw
+      const originalQuerySelector = mockDocumentAPI.querySelector;
+      mockDocumentAPI.querySelector = vi.fn(() => {
+        throw new Error("QuerySelector failed");
+      });
+
+      const result = port.removeJournalDirectoryEntry("journal", "test", "Test");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to get directory element");
+
+      // Restore
+      mockDocumentAPI.querySelector = originalQuerySelector;
+    });
+
+    it("should return error when directory element is not found", () => {
+      // No #journal element in DOM
+      const result = port.removeJournalDirectoryEntry("journal", "test", "Test");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("NOT_FOUND");
+      expect(result.error.message).toContain("Directory element not found");
+    });
+
+    it("should return error when journal entry element is not found in directory", () => {
+      // Create journal container but without the specific entry
+      const journalContainer = document.createElement("div");
+      journalContainer.id = "journal";
+      document.body.appendChild(journalContainer);
+
+      const result = port.removeJournalDirectoryEntry("journal", "non-existent", "Test Journal");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("NOT_FOUND");
+      expect(result.error.message).toContain("Could not find directory entry for journal");
+
+      document.body.removeChild(journalContainer);
+    });
+
+    it("should handle error when element.remove() throws", () => {
+      // Create journal container with entry
+      const journalContainer = document.createElement("div");
+      journalContainer.id = "journal";
+      const listItem = document.createElement("li");
+      listItem.className = "directory-item";
+      listItem.setAttribute("data-document-id", "test-journal-1");
+      journalContainer.appendChild(listItem);
+      document.body.appendChild(journalContainer);
+
+      // Mock remove to throw error
+      const originalRemove = listItem.remove;
+      listItem.remove = vi.fn(() => {
+        throw new Error("Remove failed");
+      });
+
+      const result = port.removeJournalDirectoryEntry("journal", "test-journal-1", "Test Journal");
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to remove element from DOM");
+
+      // Restore
+      listItem.remove = originalRemove;
+      document.body.removeChild(journalContainer);
+    });
+
+    it("should support data-entry-id selector for older Foundry versions", () => {
+      // Create journal container with entry using data-entry-id
+      const journalContainer = document.createElement("div");
+      journalContainer.id = "journal";
+      const listItem = document.createElement("li");
+      listItem.className = "directory-item";
+      listItem.setAttribute("data-entry-id", "test-journal-2");
+      journalContainer.appendChild(listItem);
+      document.body.appendChild(journalContainer);
+
+      const result = port.removeJournalDirectoryEntry("journal", "test-journal-2", "Test Journal");
+
+      expectResultOk(result);
+      expect(listItem.parentElement).toBeNull(); // Element should be removed
+
+      document.body.removeChild(journalContainer);
+    });
+  });
+
+  describe("disposed state guards", () => {
     it("should prevent finding elements after disposal", () => {
       port.dispose();
       const html = document.createElement("div");
@@ -353,6 +363,56 @@ describe("FoundryV13UIPort", () => {
 
       const result = port.notify("Test", "info");
       expectResultErr(result);
+    });
+  });
+
+  describe("getDirectoryElement", () => {
+    it("should return element when directoryId is 'journal' and element exists", () => {
+      const journalDiv = document.createElement("div");
+      journalDiv.id = "journal";
+      document.body.appendChild(journalDiv);
+
+      const result = port.getDirectoryElement("journal");
+      expectResultOk(result);
+      expect(result.value).not.toBeNull();
+      expect(result.value?.id).toBe("journal");
+
+      document.body.removeChild(journalDiv);
+    });
+
+    it("should return null when directoryId is 'journal' but element does not exist", () => {
+      const result = port.getDirectoryElement("journal");
+      expectResultOk(result);
+      expect(result.value).toBeNull();
+    });
+
+    it("should return null for other directory IDs (coverage for lines 125-126)", () => {
+      const result = port.getDirectoryElement("other-directory");
+      expectResultOk(result);
+      expect(result.value).toBeNull();
+    });
+
+    it("should return error when port is disposed (coverage for line 118)", () => {
+      port.dispose();
+      const result = port.getDirectoryElement("journal");
+      expectResultErr(result);
+      expect(result.error.code).toBe("DISPOSED");
+    });
+
+    it("should handle exceptions gracefully (coverage for line 132)", () => {
+      // Mock querySelector to throw error
+      const originalQuerySelector = mockDocumentAPI.querySelector;
+      mockDocumentAPI.querySelector = vi.fn(() => {
+        throw new Error("QuerySelector failed");
+      });
+
+      const result = port.getDirectoryElement("journal");
+      expectResultErr(result);
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Failed to get directory element");
+
+      // Restore original
+      mockDocumentAPI.querySelector = originalQuerySelector;
     });
   });
 

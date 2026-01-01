@@ -5,7 +5,7 @@ import {
 } from "../JournalContextMenuLibWrapperService";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { LibWrapperService } from "@/infrastructure/adapters/foundry/interfaces/lib-wrapper-service.interface";
-import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 import { ok, err } from "@/domain/utils/result";
 
 describe("JournalContextMenuLibWrapperService", () => {
@@ -179,7 +179,7 @@ describe("JournalContextMenuLibWrapperService", () => {
       // Callbacks should receive JournalContextMenuEvent
       const event1 = callback1.mock.calls[0]?.[0] as JournalContextMenuEvent;
       expect(event1).toBeDefined();
-      expect(event1.htmlElement).toBe(target);
+      expect(event1.journalId).toBe("journal-123");
       expect(event1.options).toHaveLength(1);
       expect(event1.timestamp).toBeGreaterThan(0);
     });
@@ -294,8 +294,8 @@ describe("JournalContextMenuLibWrapperService", () => {
       // Wait for promise to settle
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // Promise callback should have been called
-      expect(promiseCallback).toHaveBeenCalledWith(target);
+      // Promise callback should have been called with journalId (not HTMLElement)
+      expect(promiseCallback).toHaveBeenCalledWith("journal-123");
     });
 
     it("should handle Promise-returning menu item callbacks with resolution (coverage for lines 201-204)", async () => {
@@ -347,8 +347,8 @@ describe("JournalContextMenuLibWrapperService", () => {
       // Wait for promise to settle
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // Promise callback should have been called
-      expect(promiseCallback).toHaveBeenCalledWith(target);
+      // Promise callback should have been called with journalId (not HTMLElement)
+      expect(promiseCallback).toHaveBeenCalledWith("journal-123");
     });
 
     it("should handle non-Promise-returning menu item callbacks (coverage for branch in line 203)", () => {
@@ -396,8 +396,93 @@ describe("JournalContextMenuLibWrapperService", () => {
         addedMenuItem.callback();
       }
 
-      // Non-Promise callback should have been called
-      expect(nonPromiseCallback).toHaveBeenCalledWith(target);
+      // Non-Promise callback should have been called with journalId (not HTMLElement)
+      expect(nonPromiseCallback).toHaveBeenCalledWith("journal-123");
+    });
+
+    it("should call original menuItems callbacks when wrapper callback is invoked (coverage for line 185)", () => {
+      const registerResult = service.register();
+      expect(registerResult.ok).toBe(true);
+
+      const originalCallback = vi.fn();
+      const menuItems: Array<{ name: string; icon: string; callback: () => void }> = [
+        { name: "Original Item", icon: "<i></i>", callback: originalCallback },
+      ];
+
+      const callback = vi.fn();
+      service.addCallback(callback);
+
+      const registerCall = vi.mocked(mockLibWrapperService.register).mock.calls[0];
+      const wrapperFn = registerCall?.[1] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const target = document.createElement("div");
+      target.setAttribute("data-entry-id", "journal-123");
+
+      const mockContextMenu = {
+        menuItems,
+      };
+
+      const wrappedFn = vi.fn();
+      wrapperFn.call(mockContextMenu, wrappedFn, target);
+
+      // After wrapper execution, menuItems should remain unchanged (original callbacks are preserved)
+      expect(menuItems).toHaveLength(1);
+      const originalMenuItemCallback = menuItems[0]?.callback;
+
+      // Call the original callback - it should still be () => void (Foundry's original signature)
+      if (originalMenuItemCallback) {
+        originalMenuItemCallback();
+      }
+
+      // Original callback should have been called (via item.callback() on line 185)
+      expect(originalCallback).toHaveBeenCalledTimes(1);
+    });
+
+    it("should call original callback when wrapped callback from event.options is invoked (coverage for line 185)", () => {
+      const registerResult = service.register();
+      expect(registerResult.ok).toBe(true);
+
+      const originalCallback = vi.fn();
+      const menuItems: Array<{ name: string; icon: string; callback: () => void }> = [
+        { name: "Original Item", icon: "<i></i>", callback: originalCallback },
+      ];
+
+      let capturedEvent: JournalContextMenuEvent | undefined;
+      const callback = vi.fn((event: JournalContextMenuEvent) => {
+        capturedEvent = event;
+      });
+      service.addCallback(callback);
+
+      const registerCall = vi.mocked(mockLibWrapperService.register).mock.calls[0];
+      const wrapperFn = registerCall?.[1] as (
+        wrapped: (...args: unknown[]) => unknown,
+        ...args: unknown[]
+      ) => unknown;
+
+      const target = document.createElement("div");
+      target.setAttribute("data-entry-id", "journal-123");
+
+      const mockContextMenu = {
+        menuItems,
+      };
+
+      const wrappedFn = vi.fn();
+      wrapperFn.call(mockContextMenu, wrappedFn, target);
+
+      // Get the wrapped callback from event.options and call it
+      expect(capturedEvent).toBeDefined();
+      expect(capturedEvent!.options).toHaveLength(1);
+      const wrappedCallback = capturedEvent!.options[0]?.callback;
+      expect(wrappedCallback).toBeDefined();
+
+      // Call the wrapped callback - this should invoke item.callback() (line 185)
+      wrappedCallback!("journal-123");
+
+      // Original callback should have been called (via item.callback() on line 185)
+      expect(originalCallback).toHaveBeenCalledTimes(1);
     });
 
     it("should not add duplicate menu items", () => {

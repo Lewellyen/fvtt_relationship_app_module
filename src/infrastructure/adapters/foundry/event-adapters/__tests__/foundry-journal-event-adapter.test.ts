@@ -5,7 +5,6 @@ import {
 } from "../foundry-journal-event-adapter";
 import type { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 import { ok } from "@/domain/utils/result";
-import type { JournalEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
 
 type MockFoundryHooksPortWithGetter = FoundryHooksPort & {
   getStoredCallback: (eventType: string) => ((...args: unknown[]) => void) | undefined;
@@ -293,246 +292,8 @@ describe("FoundryJournalEventAdapter", () => {
     });
   });
 
-  describe("onJournalDirectoryRendered", () => {
-    it("should register renderJournalDirectory hook", () => {
-      const callback = vi.fn();
-      const result = adapter.onJournalDirectoryRendered(callback);
-
-      expect(result.ok).toBe(true);
-      expect(mockFoundryHooksPort.registerListener).toHaveBeenCalledWith(
-        "renderJournalDirectory",
-        expect.any(Function)
-      );
-    });
-
-    it("should map Foundry event with HTMLElement to domain event", () => {
-      const callback = vi.fn();
-      adapter.onJournalDirectoryRendered(callback);
-
-      // Simulate Foundry hook callback with HTML element
-      // registerListener now passes arguments as an array
-      const mockElement = document.createElement("div");
-      const foundryCallback = mockFoundryHooksPort.getStoredCallback("renderJournalDirectory");
-      expect(foundryCallback).toBeDefined();
-      foundryCallback!([{}, mockElement]);
-
-      expect(callback).toHaveBeenCalledWith({
-        htmlElement: mockElement,
-        timestamp: expect.any(Number),
-      });
-    });
-
-    it("should handle HTML array format", () => {
-      const callback = vi.fn();
-      adapter.onJournalDirectoryRendered(callback);
-
-      // Simulate Foundry hook callback with HTML element in array
-      // registerListener now passes arguments as an array
-      const mockElement = document.createElement("div");
-      const foundryCallback = mockFoundryHooksPort.getStoredCallback("renderJournalDirectory");
-      expect(foundryCallback).toBeDefined();
-      foundryCallback!([{}, [mockElement]]);
-
-      expect(callback).toHaveBeenCalledWith({
-        htmlElement: mockElement,
-        timestamp: expect.any(Number),
-      });
-    });
-
-    it("should not call callback if HTML element is invalid", () => {
-      const callback = vi.fn();
-      adapter.onJournalDirectoryRendered(callback);
-
-      // Simulate Foundry hook callback with invalid HTML
-      // registerListener now passes arguments as an array
-      const foundryCallback = mockFoundryHooksPort.getStoredCallback("renderJournalDirectory");
-      expect(foundryCallback).toBeDefined();
-      foundryCallback!([{}, null]);
-
-      expect(callback).not.toHaveBeenCalled();
-    });
-
-    it("should not call callback if HTML array contains non-HTMLElement", () => {
-      const callback = vi.fn();
-      adapter.onJournalDirectoryRendered(callback);
-
-      // Simulate Foundry hook callback with array containing non-HTMLElement
-      // registerListener now passes arguments as an array
-      const foundryCallback = mockFoundryHooksPort.getStoredCallback("renderJournalDirectory");
-      expect(foundryCallback).toBeDefined();
-      foundryCallback!([{}, ["not an element"]]);
-
-      expect(callback).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("registerListener (generic)", () => {
-    it("should register generic event listener", () => {
-      const callback = vi.fn();
-      const result = adapter.registerListener("customEvent", callback);
-
-      expect(result.ok).toBe(true);
-      // registerListener wraps the callback, so we check that it was called with a function
-      expect(mockFoundryHooksPort.registerListener).toHaveBeenCalledWith(
-        "customEvent",
-        expect.any(Function)
-      );
-
-      // Test that the wrapped callback works correctly
-      const wrappedCallback = vi
-        .mocked(mockFoundryHooksPort.registerListener)
-        .mock.calls.find((call) => call[0] === "customEvent")?.[1] as (event: unknown) => void;
-      expect(wrappedCallback).toBeDefined();
-
-      // Call with array of arguments (as registerListener does)
-      const testEvent: JournalEvent = { journalId: "test-123", timestamp: Date.now() };
-      wrappedCallback([testEvent]);
-
-      // The original callback should be called with the first argument as JournalEvent
-      expect(callback).toHaveBeenCalledWith(testEvent);
-    });
-
-    it("should handle empty args array (coverage for line 329 else branch)", () => {
-      const callback = vi.fn();
-      const result = adapter.registerListener("emptyEvent", callback);
-      expect(result.ok).toBe(true);
-
-      // Get the foundryCallback that was created by registerListener
-      const platformCallback = mockFoundryHooksPort.getStoredCallback("emptyEvent");
-      expect(platformCallback).toBeDefined();
-
-      // Call platformCallback with an array containing empty array (which becomes empty after filtering)
-      // This triggers the foundryCallback with empty args
-      platformCallback!([null, undefined]); // After filtering, this becomes empty array
-
-      // Callback should not be called because args.length === 0
-      expect(callback).not.toHaveBeenCalled();
-    });
-
-    it("should handle args[0] that is not an object (coverage for line 329 else branch)", () => {
-      const callback = vi.fn();
-      const result = adapter.registerListener("primitiveEvent", callback);
-      expect(result.ok).toBe(true);
-
-      const platformCallback = mockFoundryHooksPort.getStoredCallback("primitiveEvent");
-      expect(platformCallback).toBeDefined();
-
-      // Call with primitive value as first arg
-      platformCallback!(["string value"]);
-
-      // Callback should not be called because args[0] is not an object
-      expect(callback).not.toHaveBeenCalled();
-    });
-
-    it("should handle args[0] that is null (coverage for line 329 else branch)", () => {
-      const callback = vi.fn();
-      const result = adapter.registerListener("nullEvent", callback);
-      expect(result.ok).toBe(true);
-
-      const platformCallback = mockFoundryHooksPort.getStoredCallback("nullEvent");
-      expect(platformCallback).toBeDefined();
-
-      // Call with null as first arg
-      platformCallback!([null]);
-
-      // Callback should not be called because args[0] is null
-      expect(callback).not.toHaveBeenCalled();
-    });
-
-    it("should handle candidate without journalId or timestamp (coverage for line 335 else branch)", () => {
-      const callback = vi.fn();
-      const result = adapter.registerListener("noJournalIdEvent", callback);
-      expect(result.ok).toBe(true);
-
-      const platformCallback = mockFoundryHooksPort.getStoredCallback("noJournalIdEvent");
-      expect(platformCallback).toBeDefined();
-
-      // Call with object that doesn't have journalId or timestamp
-      platformCallback!([{ otherProperty: "value" }]);
-
-      // Callback should not be called because candidate doesn't have journalId or timestamp
-      expect(callback).not.toHaveBeenCalled();
-    });
-
-    it("should handle candidate with timestamp but not journalId (coverage for line 339 and 342-344)", () => {
-      const callback = vi.fn();
-      const result = adapter.registerListener("timestampEvent", callback);
-      expect(result.ok).toBe(true);
-
-      const platformCallback = mockFoundryHooksPort.getStoredCallback("timestampEvent");
-      expect(platformCallback).toBeDefined();
-
-      // Call with object that has timestamp but journalId is not a string
-      platformCallback!([{ timestamp: 1234567890, journalId: 123 }]);
-
-      // Callback should be called with empty journalId (because journalId is not a string)
-      expect(callback).toHaveBeenCalledWith({
-        journalId: "",
-        timestamp: 1234567890,
-      });
-    });
-
-    it("should handle candidate with journalId but not timestamp (coverage for line 339 and 342-344)", () => {
-      const callback = vi.fn();
-      const result = adapter.registerListener("journalIdEvent", callback);
-      expect(result.ok).toBe(true);
-
-      const platformCallback = mockFoundryHooksPort.getStoredCallback("journalIdEvent");
-      expect(platformCallback).toBeDefined();
-
-      // Call with object that has journalId but timestamp is not a number
-      platformCallback!([{ journalId: "test-123", timestamp: "not a number" }]);
-
-      // Callback should be called with current timestamp (because timestamp is not a number)
-      expect(callback).toHaveBeenCalledWith({
-        journalId: "test-123",
-        timestamp: expect.any(Number),
-      });
-    });
-
-    it("should handle candidate with neither journalId nor timestamp as correct type (coverage for line 339 else branch)", () => {
-      const callback = vi.fn();
-      const result = adapter.registerListener("neitherEvent", callback);
-      expect(result.ok).toBe(true);
-
-      const platformCallback = mockFoundryHooksPort.getStoredCallback("neitherEvent");
-      expect(platformCallback).toBeDefined();
-
-      // Call with object that has journalId and timestamp but wrong types
-      // This should still pass the first check (line 335) but fail the second check (line 339)
-      // Actually, wait - line 339 is redundant with line 335, so it should always pass if line 335 passes
-      // But we need to test the else branch of line 339, which means the candidate doesn't have journalId or timestamp
-      // But that's already tested above. Let me check what the actual branch is.
-
-      // Actually, the redundant check on line 339 means we need to test when it fails
-      // But since it's the same condition as line 335, it will always have the same result
-      // The branch coverage issue might be from the ternary operators on lines 342-344
-      // Let me test when journalId is not a string AND timestamp is not a number
-      platformCallback!([{ journalId: null, timestamp: null }]);
-
-      // Callback should be called with empty journalId and current timestamp
-      expect(callback).toHaveBeenCalledWith({
-        journalId: "",
-        timestamp: expect.any(Number),
-      });
-    });
-
-    it("should handle validArgs.length === 0 (coverage for line 408 else branch)", () => {
-      const callback = vi.fn();
-      const result = adapter.onJournalCreated(callback);
-      expect(result.ok).toBe(true);
-
-      const platformCallback = mockFoundryHooksPort.getStoredCallback("createJournalEntry");
-      expect(platformCallback).toBeDefined();
-
-      // Call with array containing only null/undefined values
-      // After filtering, validArgs.length === 0
-      platformCallback!([null, undefined]);
-
-      // Callback should not be called because validArgs.length === 0
-      expect(callback).not.toHaveBeenCalled();
-    });
-  });
+  // NOTE: onJournalDirectoryRendered has been moved to PlatformJournalUiEventPort
+  // Tests for this method are now in foundry-journal-ui-event-adapter.test.ts
 
   describe("unregisterListener", () => {
     it("should cleanup Foundry hook", () => {
@@ -583,8 +344,27 @@ describe("FoundryJournalEventAdapter", () => {
     });
   });
 
-  describe("registerListener - non-array event fallback", () => {
-    it("should handle non-array event in registerFoundryHook (coverage for lines 417-418)", () => {
+  describe("registerFoundryHook - edge cases", () => {
+    it("should handle array with only null/undefined values (validArgs.length === 0)", () => {
+      // Use onJournalCreated to trigger registerFoundryHook, which creates platformCallback
+      const callback = vi.fn();
+      const result = adapter.onJournalCreated(callback);
+      expect(result.ok).toBe(true);
+
+      // Get the platformCallback that was registered by registerFoundryHook
+      const platformCallback = mockFoundryHooksPort.getStoredCallback("createJournalEntry");
+      expect(platformCallback).toBeDefined();
+
+      // Call with array containing only null/undefined values
+      // After filtering with isValidArg, validArgs.length === 0
+      // This should NOT call the callback (coverage for line 141 else branch)
+      platformCallback!([null, undefined, null]);
+
+      // Callback should not be called because validArgs.length === 0
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it("should handle non-array event in registerFoundryHook", () => {
       // Use onJournalCreated to trigger registerFoundryHook, which creates platformCallback
       const callback = vi.fn();
       const result = adapter.onJournalCreated(callback);
@@ -595,7 +375,7 @@ describe("FoundryJournalEventAdapter", () => {
       const platformCallback = mockFoundryHooksPort.getStoredCallback("createJournalEntry");
       expect(platformCallback).toBeDefined();
 
-      // Call platformCallback with a non-array event to trigger the else branch (lines 411-423)
+      // Call platformCallback with a non-array event to trigger the else branch
       // This simulates a case where FoundryHooksPort.registerListener passes a non-array event
       // The platformCallback should call the foundryCallback with the non-array event
       platformCallback!("not an array");
@@ -620,7 +400,7 @@ describe("FoundryJournalEventAdapter", () => {
       expect(callback).not.toHaveBeenCalled();
     });
 
-    it("should handle undefined event in non-array fallback (coverage for line 420 else branch)", () => {
+    it("should handle undefined event in non-array fallback", () => {
       const callback = vi.fn();
       const result = adapter.onJournalCreated(callback);
       expect(result.ok).toBe(true);
@@ -628,7 +408,7 @@ describe("FoundryJournalEventAdapter", () => {
       const platformCallback = mockFoundryHooksPort.getStoredCallback("createJournalEntry");
       expect(platformCallback).toBeDefined();
 
-      // Call with undefined to trigger the else branch of isNotNullOrUndefined check (line 420)
+      // Call with undefined to trigger the else branch of isNotNullOrUndefined check
       platformCallback!(undefined);
 
       // Callback should not be called because event is undefined
@@ -667,6 +447,33 @@ describe("FoundryJournalEventAdapter", () => {
       expect(callback).toHaveBeenCalledWith({
         journalId: "journal-456",
         changes: {}, // Should return empty object for primitive changes
+        timestamp: expect.any(Number),
+      });
+    });
+
+    it("should handle changes with flags as non-object (string/number)", () => {
+      const callback = vi.fn();
+      adapter.onJournalUpdated(callback);
+
+      const foundryCallback = mockFoundryHooksPort.getStoredCallback("updateJournalEntry");
+      expect(foundryCallback).toBeDefined();
+
+      // Call with changes that has flags as a string (not an object)
+      // This tests the case where changes.flags !== undefined but typeof !== "object"
+      foundryCallback!([
+        { id: "journal-789" },
+        { flags: "invalid flags", name: "Test" },
+        {},
+        "user-123",
+      ]);
+
+      // flags should be copied as-is (not normalized) because it's not an object
+      expect(callback).toHaveBeenCalledWith({
+        journalId: "journal-789",
+        changes: {
+          flags: "invalid flags", // Copied as-is, not normalized
+          name: "Test",
+        },
         timestamp: expect.any(Number),
       });
     });

@@ -70,19 +70,6 @@ export class FoundryJournalFacade implements IFoundryJournalFacade {
   }
 
   /**
-   * Remove a journal element from the UI.
-   *
-   * Delegates to FoundryUI.removeJournalElement().
-   *
-   * @param id - Journal entry ID
-   * @param name - Journal entry name (for logging)
-   * @param html - HTML container element
-   */
-  removeJournalElement(id: string, name: string, html: HTMLElement): Result<void, FoundryError> {
-    return this.ui.removeJournalElement(id, name, html);
-  }
-
-  /**
    * Set a module flag on a journal entry.
    *
    * Delegates to FoundryDocument.setFlag() with module scope.

@@ -14,16 +14,23 @@ import type { PlatformUIError } from "./errors/platform-ui-error.interface";
  */
 export interface PlatformJournalDirectoryUiPort {
   /**
-   * Removes a journal entry element from the journal directory UI.
-   * @param journalId - The ID of the journal entry
-   * @param journalName - The name of the journal entry (for error messages)
-   * @param html - The HTML element containing the journal directory
+   * Removes a journal directory entry from the journal directory UI.
+   *
+   * A journal directory entry is the list position in the sidebar that displays a journal.
+   * This is NOT a journal entry (which is a page within a journal).
+   *
+   * This method is DIP-compliant as it does not require HTMLElement in the Application layer.
+   * The port implementation will internally fetch the directory element.
+   *
+   * @param directoryId - The identifier for the directory (e.g., "journal" for Foundry)
+   * @param journalId - The ID of the journal whose directory entry should be removed
+   * @param journalName - The name of the journal (for error messages)
    * @returns Result indicating success or error
    */
-  removeJournalElement(
+  removeJournalDirectoryEntry(
+    directoryId: string,
     journalId: string,
-    journalName: string,
-    html: HTMLElement
+    journalName: string
   ): Result<void, PlatformUIError>;
 
   /**

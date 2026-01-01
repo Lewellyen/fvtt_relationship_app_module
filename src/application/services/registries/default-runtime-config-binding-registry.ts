@@ -9,7 +9,7 @@ import type { RuntimeConfigBindingRegistry } from "./runtime-config-binding-regi
 import type { RuntimeConfigKey } from "@/domain/types/runtime-config";
 import type { RuntimeConfigBinding } from "@/application/services/RuntimeConfigSync";
 import { castBindingToUnknown } from "@/application/utils/registry-casts";
-import { runtimeConfigBindings } from "@/application/services/RuntimeConfigSync";
+import { runtimeConfigBindings } from "@/application/config/runtime-config-bindings";
 
 /**
  * Default registry containing all runtime config bindings.

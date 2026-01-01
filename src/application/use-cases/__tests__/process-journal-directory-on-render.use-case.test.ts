@@ -3,28 +3,32 @@ import {
   ProcessJournalDirectoryOnRenderUseCase,
   DIProcessJournalDirectoryOnRenderUseCase,
 } from "../process-journal-directory-on-render.use-case";
-import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { PlatformJournalUiEventPort } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
+import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { JournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
 
 describe("ProcessJournalDirectoryOnRenderUseCase", () => {
-  let mockJournalEvents: PlatformJournalEventPort;
+  let mockJournalUiEvents: PlatformJournalUiEventPort;
+  let mockJournalDirectoryUI: PlatformJournalDirectoryUiPort;
   let mockJournalVisibility: JournalVisibilityService;
   let mockDirectoryProcessor: JournalDirectoryProcessor;
   let mockNotificationCenter: PlatformNotificationPort;
   let useCase: ProcessJournalDirectoryOnRenderUseCase;
 
   beforeEach(() => {
-    mockJournalEvents = {
-      onJournalCreated: vi.fn(),
-      onJournalUpdated: vi.fn(),
-      onJournalDeleted: vi.fn(),
+    mockJournalUiEvents = {
       onJournalDirectoryRendered: vi.fn().mockReturnValue({ ok: true, value: "1" }),
       registerListener: vi.fn(),
       unregisterListener: vi.fn(),
-    };
+    } as unknown as PlatformJournalUiEventPort;
+
+    mockJournalDirectoryUI = {
+      removeJournalDirectoryEntry: vi.fn(),
+      rerenderJournalDirectory: vi.fn(),
+    } as unknown as PlatformJournalDirectoryUiPort;
 
     mockJournalVisibility = {
       getHiddenJournalEntries: vi.fn().mockReturnValue({ ok: true, value: [] as JournalEntry[] }),
@@ -45,7 +49,8 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
     } as unknown as PlatformNotificationPort;
 
     useCase = new ProcessJournalDirectoryOnRenderUseCase(
-      mockJournalEvents,
+      mockJournalUiEvents,
+      mockJournalDirectoryUI,
       mockJournalVisibility,
       mockDirectoryProcessor,
       mockNotificationCenter
@@ -55,18 +60,17 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
   it("should register journal directory rendered listener", () => {
     useCase.register();
 
-    expect(mockJournalEvents.onJournalDirectoryRendered).toHaveBeenCalled();
+    expect(mockJournalUiEvents.onJournalDirectoryRendered).toHaveBeenCalled();
   });
 
   it("should process journal directory when rendered", () => {
     useCase.register();
 
-    const callback = vi.mocked(mockJournalEvents.onJournalDirectoryRendered).mock.calls[0]![0];
-    const mockElement = document.createElement("div");
-    callback({ htmlElement: mockElement, timestamp: Date.now() });
+    const callback = vi.mocked(mockJournalUiEvents.onJournalDirectoryRendered).mock.calls[0]![0];
+    callback({ directoryId: "journal", timestamp: Date.now() });
 
     expect(mockJournalVisibility.getHiddenJournalEntries).toHaveBeenCalled();
-    expect(mockDirectoryProcessor.processDirectory).toHaveBeenCalledWith(mockElement, []);
+    expect(mockDirectoryProcessor.processDirectory).toHaveBeenCalledWith("journal", []);
     expect(mockNotificationCenter.debug).toHaveBeenCalledWith(
       "Journal directory rendered, processing visibility",
       expect.any(Object),
@@ -81,9 +85,8 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
 
     useCase.register();
 
-    const callback = vi.mocked(mockJournalEvents.onJournalDirectoryRendered).mock.calls[0]![0];
-    const mockElement = document.createElement("div");
-    callback({ htmlElement: mockElement, timestamp: Date.now() });
+    const callback = vi.mocked(mockJournalUiEvents.onJournalDirectoryRendered).mock.calls[0]![0];
+    callback({ directoryId: "journal", timestamp: Date.now() });
 
     expect(mockNotificationCenter.error).toHaveBeenCalledWith(
       "Failed to get hidden entries",
@@ -100,9 +103,8 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
 
     useCase.register();
 
-    const callback = vi.mocked(mockJournalEvents.onJournalDirectoryRendered).mock.calls[0]![0];
-    const mockElement = document.createElement("div");
-    callback({ htmlElement: mockElement, timestamp: Date.now() });
+    const callback = vi.mocked(mockJournalUiEvents.onJournalDirectoryRendered).mock.calls[0]![0];
+    callback({ directoryId: "journal", timestamp: Date.now() });
 
     expect(mockNotificationCenter.error).toHaveBeenCalledWith(
       "Failed to process directory",
@@ -112,7 +114,7 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
   });
 
   it("should handle registration failure", () => {
-    mockJournalEvents.onJournalDirectoryRendered = vi
+    mockJournalUiEvents.onJournalDirectoryRendered = vi
       .fn()
       .mockReturnValue({ ok: false, error: { code: "TEST_ERROR", message: "Test error" } });
 
@@ -128,7 +130,7 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
     useCase.register();
     useCase.dispose();
 
-    expect(mockJournalEvents.unregisterListener).toHaveBeenCalledWith("1");
+    expect(mockJournalUiEvents.unregisterListener).toHaveBeenCalledWith("1");
   });
 
   it("should handle multiple dispose calls gracefully", () => {
@@ -137,32 +139,35 @@ describe("ProcessJournalDirectoryOnRenderUseCase", () => {
     useCase.dispose(); // Should not throw
 
     // Should only call unregister once
-    expect(mockJournalEvents.unregisterListener).toHaveBeenCalledTimes(1);
+    expect(mockJournalUiEvents.unregisterListener).toHaveBeenCalledTimes(1);
   });
 
   it("should handle dispose without register gracefully", () => {
     // Should not throw when disposing without registering
     expect(() => useCase.dispose()).not.toThrow();
-    expect(mockJournalEvents.unregisterListener).not.toHaveBeenCalled();
+    expect(mockJournalUiEvents.unregisterListener).not.toHaveBeenCalled();
   });
 });
 
 describe("DIProcessJournalDirectoryOnRenderUseCase", () => {
-  let mockJournalEvents: PlatformJournalEventPort;
+  let mockJournalUiEvents: PlatformJournalUiEventPort;
+  let mockJournalDirectoryUI: PlatformJournalDirectoryUiPort;
   let mockJournalVisibility: JournalVisibilityService;
   let mockDirectoryProcessor: JournalDirectoryProcessor;
   let mockNotificationCenter: PlatformNotificationPort;
   let useCase: DIProcessJournalDirectoryOnRenderUseCase;
 
   beforeEach(() => {
-    mockJournalEvents = {
-      onJournalCreated: vi.fn(),
-      onJournalUpdated: vi.fn(),
-      onJournalDeleted: vi.fn(),
+    mockJournalUiEvents = {
       onJournalDirectoryRendered: vi.fn().mockReturnValue({ ok: true, value: "1" }),
       registerListener: vi.fn(),
       unregisterListener: vi.fn(),
-    };
+    } as unknown as PlatformJournalUiEventPort;
+
+    mockJournalDirectoryUI = {
+      removeJournalDirectoryEntry: vi.fn(),
+      rerenderJournalDirectory: vi.fn(),
+    } as unknown as PlatformJournalDirectoryUiPort;
 
     mockJournalVisibility = {
       getHiddenJournalEntries: vi.fn().mockReturnValue({ ok: true, value: [] as JournalEntry[] }),
@@ -183,7 +188,8 @@ describe("DIProcessJournalDirectoryOnRenderUseCase", () => {
     } as unknown as PlatformNotificationPort;
 
     useCase = new DIProcessJournalDirectoryOnRenderUseCase(
-      mockJournalEvents,
+      mockJournalUiEvents,
+      mockJournalDirectoryUI,
       mockJournalVisibility,
       mockDirectoryProcessor,
       mockNotificationCenter
@@ -192,12 +198,12 @@ describe("DIProcessJournalDirectoryOnRenderUseCase", () => {
 
   it("should have correct dependencies", () => {
     expect(DIProcessJournalDirectoryOnRenderUseCase.dependencies).toBeDefined();
-    expect(DIProcessJournalDirectoryOnRenderUseCase.dependencies.length).toBe(4);
+    expect(DIProcessJournalDirectoryOnRenderUseCase.dependencies.length).toBe(5);
   });
 
   it("should work like base class", () => {
     const result = useCase.register();
     expect(result.ok).toBe(true);
-    expect(mockJournalEvents.onJournalDirectoryRendered).toHaveBeenCalled();
+    expect(mockJournalUiEvents.onJournalDirectoryRendered).toHaveBeenCalled();
   });
 });

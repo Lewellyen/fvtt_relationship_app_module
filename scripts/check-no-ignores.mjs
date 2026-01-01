@@ -248,6 +248,13 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Generic Set Cast: Type-Cast für type-safe Listener-Management mit generischen RuntimeConfigKey-Typen. TypeScript kann den generischen Typ nicht aus der Map-Struktur ableiten, obwohl zur Laufzeit type-safe.',
   },
 
+  // Foundry Event Adapters: Generic Event Type Guards
+  {
+    file: 'src/infrastructure/adapters/foundry/event-adapters/foundry-journal-ui-event-adapter.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Fallback Path for Generic registerListener: Type-Cast für Fallback-Pfad von registerListener, der in der Praxis nicht verwendet wird. Vollständige Validierung von ContextMenuOption[] wäre zu komplex.',
+  },
+
 ];
 
 // Ignore-Marker, nach denen gesucht wird

@@ -6,7 +6,6 @@ import type { JournalEntry, JournalVisibilityError } from "@/domain/entities/jou
 import { APP_DEFAULTS, MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { ok, err } from "@/domain/utils/result";
-import { createMockDOM } from "@/test/utils/test-helpers";
 import type { JournalVisibilityConfig } from "@/application/services/JournalVisibilityConfig";
 import type { DomainCacheKey } from "@/domain/types/cache/cache-types";
 
@@ -29,7 +28,7 @@ describe("JournalDirectoryProcessor", () => {
 
   beforeEach(() => {
     mockJournalDirectoryUI = {
-      removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
+      removeJournalDirectoryEntry: vi.fn().mockReturnValue(ok(undefined)),
       rerenderJournalDirectory: vi.fn().mockReturnValue(ok(true)),
     } as unknown as PlatformJournalDirectoryUiPort;
 
@@ -59,30 +58,24 @@ describe("JournalDirectoryProcessor", () => {
         name: "Hidden Journal",
       };
 
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalDirectoryEntry).mockReturnValue(ok(undefined));
 
-      const { container } = createMockDOM(
-        `<li class="directory-item" data-entry-id="journal-1">Hidden Journal</li>`
-      );
-
-      const result = processor.processDirectory(container, [journal]);
+      const result = processor.processDirectory("journal", [journal]);
 
       expect(result.ok).toBe(true);
-      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalledWith(
+      expect(mockJournalDirectoryUI.removeJournalDirectoryEntry).toHaveBeenCalledWith(
+        "journal",
         "journal-1",
-        "Hidden Journal",
-        container
+        "Hidden Journal"
       );
       expect(mockNotifications.debug).toHaveBeenCalled();
     });
 
     it("should return success when no hidden entries", () => {
-      const { container } = createMockDOM(`<div>Content</div>`);
-
-      const result = processor.processDirectory(container, []);
+      const result = processor.processDirectory("journal", []);
 
       expect(result.ok).toBe(true);
-      expect(mockJournalDirectoryUI.removeJournalElement).not.toHaveBeenCalled();
+      expect(mockJournalDirectoryUI.removeJournalDirectoryEntry).not.toHaveBeenCalled();
       expect(mockNotifications.debug).toHaveBeenCalledWith(
         "No hidden entries to process",
         expect.any(Object),
@@ -90,7 +83,7 @@ describe("JournalDirectoryProcessor", () => {
       );
     });
 
-    it("should return error when removeJournalElement fails", () => {
+    it("should return error when removeJournalDirectoryEntry fails", () => {
       const journal: JournalEntry = {
         id: "journal-1",
         name: "Hidden Journal",
@@ -101,26 +94,32 @@ describe("JournalDirectoryProcessor", () => {
         message: "Failed to remove",
       };
 
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(
+      vi.mocked(mockJournalDirectoryUI.removeJournalDirectoryEntry).mockReturnValue(
         err({
           code: "DOM_MANIPULATION_FAILED",
           message: "Failed to remove",
           operation: "remove",
-          details: { journalId: "journal-1", journalName: "Hidden Journal" },
+          details: {
+            directoryId: "journal",
+            journalId: "journal-1",
+            journalName: "Hidden Journal",
+          },
         })
       );
 
-      const { container } = createMockDOM(`<div>Content</div>`);
-
-      const result = processor.processDirectory(container, [journal]);
+      const result = processor.processDirectory("journal", [journal]);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error).toEqual(error);
       }
-      expect(mockNotifications.warn).toHaveBeenCalledWith("Error removing journal entry", error, {
-        channels: ["ConsoleChannel"],
-      });
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
+        "Error removing journal directory entry",
+        error,
+        {
+          channels: ["ConsoleChannel"],
+        }
+      );
     });
 
     it("should process multiple hidden entries", () => {
@@ -133,17 +132,12 @@ describe("JournalDirectoryProcessor", () => {
         name: "Hidden 2",
       };
 
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalDirectoryEntry).mockReturnValue(ok(undefined));
 
-      const { container } = createMockDOM(`
-        <li class="directory-item" data-entry-id="journal-1">Hidden 1</li>
-        <li class="directory-item" data-entry-id="journal-2">Hidden 2</li>
-      `);
-
-      const result = processor.processDirectory(container, [journal1, journal2]);
+      const result = processor.processDirectory("journal", [journal1, journal2]);
 
       expect(result.ok).toBe(true);
-      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalledTimes(2);
+      expect(mockJournalDirectoryUI.removeJournalDirectoryEntry).toHaveBeenCalledTimes(2);
     });
 
     it("should use default name when journal name is missing", () => {
@@ -152,19 +146,15 @@ describe("JournalDirectoryProcessor", () => {
         name: null,
       };
 
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalDirectoryEntry).mockReturnValue(ok(undefined));
 
-      const { container } = createMockDOM(
-        `<li class="directory-item" data-entry-id="journal-1"></li>`
-      );
-
-      const result = processor.processDirectory(container, [journal]);
+      const result = processor.processDirectory("journal", [journal]);
 
       expect(result.ok).toBe(true);
-      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalledWith(
+      expect(mockJournalDirectoryUI.removeJournalDirectoryEntry).toHaveBeenCalledWith(
+        "journal",
         "journal-1",
-        mockConfig.unknownName,
-        container
+        mockConfig.unknownName
       );
     });
 
@@ -174,13 +164,9 @@ describe("JournalDirectoryProcessor", () => {
         name: '<script>alert("XSS")</script>',
       };
 
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalDirectoryEntry).mockReturnValue(ok(undefined));
 
-      const { container } = createMockDOM(
-        `<li class="directory-item" data-entry-id="journal-1"></li>`
-      );
-
-      const result = processor.processDirectory(container, [xssJournal]);
+      const result = processor.processDirectory("journal", [xssJournal]);
       expect(result.ok).toBe(true);
 
       // Verify logger was called with sanitized name
@@ -206,20 +192,18 @@ describe("JournalDirectoryProcessor", () => {
         name: "Journal 2",
       };
 
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement)
+      vi.mocked(mockJournalDirectoryUI.removeJournalDirectoryEntry)
         .mockReturnValueOnce(
           err({
             code: "DOM_MANIPULATION_FAILED",
             message: "Failed to remove journal-1",
             operation: "remove",
-            details: { journalId: "journal-1", journalName: "Journal 1" },
+            details: { directoryId: "journal", journalId: "journal-1", journalName: "Journal 1" },
           })
         )
         .mockReturnValueOnce(ok(undefined));
 
-      const { container } = createMockDOM(`<div>Content</div>`);
-
-      const result = processor.processDirectory(container, [journal1, journal2]);
+      const result = processor.processDirectory("journal", [journal1, journal2]);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -237,11 +221,9 @@ describe("JournalDirectoryProcessor", () => {
         name: "Hidden Journal",
       };
 
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalDirectoryEntry).mockReturnValue(ok(undefined));
 
-      const { container } = createMockDOM(`<div>Content</div>`);
-
-      processor.processDirectory(container, [journal]);
+      processor.processDirectory("journal", [journal]);
 
       expect(mockNotifications.debug).toHaveBeenCalledWith(
         "Processing journal directory for hidden entries",
@@ -259,34 +241,32 @@ describe("JournalDirectoryProcessor", () => {
         name: longName,
       };
 
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
-
-      const { container } = createMockDOM(
-        `<li class="directory-item" data-entry-id="journal-1"></li>`
-      );
+      vi.mocked(mockJournalDirectoryUI.removeJournalDirectoryEntry).mockReturnValue(ok(undefined));
 
       // Should not crash or hang
       expect(() => {
-        processor.processDirectory(container, [journal]);
+        processor.processDirectory("journal", [journal]);
       }).not.toThrow();
 
-      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalled();
+      expect(mockJournalDirectoryUI.removeJournalDirectoryEntry).toHaveBeenCalled();
     });
 
-    it("should handle empty HTML element", () => {
+    it("should handle different directory IDs", () => {
       const journal: JournalEntry = {
         id: "journal-1",
         name: "Hidden Journal",
       };
 
-      vi.mocked(mockJournalDirectoryUI.removeJournalElement).mockReturnValue(ok(undefined));
+      vi.mocked(mockJournalDirectoryUI.removeJournalDirectoryEntry).mockReturnValue(ok(undefined));
 
-      const { container } = createMockDOM(`<div></div>`);
-
-      const result = processor.processDirectory(container, [journal]);
+      const result = processor.processDirectory("custom-directory", [journal]);
 
       expect(result.ok).toBe(true);
-      expect(mockJournalDirectoryUI.removeJournalElement).toHaveBeenCalled();
+      expect(mockJournalDirectoryUI.removeJournalDirectoryEntry).toHaveBeenCalledWith(
+        "custom-directory",
+        "journal-1",
+        "Hidden Journal"
+      );
     });
   });
 });

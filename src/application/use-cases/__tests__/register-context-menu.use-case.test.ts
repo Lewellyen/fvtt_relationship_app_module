@@ -6,7 +6,7 @@ import {
 import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 
 describe("RegisterContextMenuUseCase", () => {
   let mockContextMenuRegistration: PlatformContextMenuRegistrationPort;
@@ -52,7 +52,7 @@ describe("RegisterContextMenuUseCase", () => {
         event: JournalContextMenuEvent
       ) => void;
       const mockEvent: JournalContextMenuEvent = {
-        htmlElement: document.createElement("div"),
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -79,7 +79,7 @@ describe("RegisterContextMenuUseCase", () => {
         event: JournalContextMenuEvent
       ) => void;
       const mockEvent: JournalContextMenuEvent = {
-        htmlElement: document.createElement("div"),
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -111,7 +111,7 @@ describe("RegisterContextMenuUseCase", () => {
         event: JournalContextMenuEvent
       ) => void;
       const mockEvent: JournalContextMenuEvent = {
-        htmlElement: document.createElement("div"),
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };
@@ -147,7 +147,7 @@ describe("RegisterContextMenuUseCase", () => {
         event: JournalContextMenuEvent
       ) => void;
       const mockEvent: JournalContextMenuEvent = {
-        htmlElement: document.createElement("div"),
+        journalId: "journal-123",
         options: [],
         timestamp: Date.now(),
       };

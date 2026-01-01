@@ -33,10 +33,11 @@ describe("FoundryUIPort", () => {
     });
 
     mockPort = {
-      removeJournalElement: vi.fn().mockReturnValue(ok(undefined)),
+      removeJournalDirectoryEntry: vi.fn().mockReturnValue(ok(undefined)),
       findElement: vi.fn().mockReturnValue(ok(null)),
       notify: vi.fn().mockReturnValue(ok(undefined)),
       rerenderJournalDirectory: vi.fn().mockReturnValue(ok(true)),
+      getDirectoryElement: vi.fn().mockReturnValue(ok(null)),
       dispose: vi.fn(),
     };
 
@@ -93,15 +94,13 @@ describe("FoundryUIPort", () => {
 
   describe("Lazy Port Resolution", () => {
     it("should resolve port on first call using PortSelector", () => {
-      const element = document.createElement("div");
-      const result = service.removeJournalElement("id", "name", element);
+      const result = service.removeJournalDirectoryEntry("journal", "id", "name");
       expectResultOk(result);
     });
 
     it("should cache resolved port", () => {
-      const element = document.createElement("div");
-      const firstCall = service.removeJournalElement("id", "name", element);
-      const secondCall = service.removeJournalElement("id2", "name2", element);
+      const firstCall = service.removeJournalDirectoryEntry("journal", "id", "name");
+      const secondCall = service.removeJournalDirectoryEntry("journal", "id2", "name2");
 
       expectResultOk(firstCall);
       expectResultOk(secondCall);
@@ -140,34 +139,31 @@ describe("FoundryUIPort", () => {
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
       const failingService = new FoundryUIPort(failingSelector, mockRegistry, mockRetryService);
 
-      const element = document.createElement("div");
-      const result = failingService.removeJournalElement("id", "name", element);
+      const result = failingService.removeJournalDirectoryEntry("journal", "id", "name");
 
       expectResultErr(result);
       expect(result.error.message).toContain("Port selection failed");
     });
   });
 
-  describe("removeJournalElement delegation", () => {
+  describe("removeJournalDirectoryEntry delegation", () => {
     it("should delegate to port", () => {
-      const element = document.createElement("div");
-      mockPort.removeJournalElement = vi.fn().mockReturnValue(ok(undefined));
+      mockPort.removeJournalDirectoryEntry = vi.fn().mockReturnValue(ok(undefined));
 
-      const result = service.removeJournalElement("id", "name", element);
+      const result = service.removeJournalDirectoryEntry("journal", "id", "name");
 
       expectResultOk(result);
-      expect(mockPort.removeJournalElement).toHaveBeenCalledWith("id", "name", element);
+      expect(mockPort.removeJournalDirectoryEntry).toHaveBeenCalledWith("journal", "id", "name");
     });
 
     it("should handle port errors", () => {
-      const element = document.createElement("div");
       const mockError = {
         code: "NOT_FOUND" as const,
         message: "Element not found",
       };
-      mockPort.removeJournalElement = vi.fn().mockReturnValue(err(mockError));
+      mockPort.removeJournalDirectoryEntry = vi.fn().mockReturnValue(err(mockError));
 
-      const result = service.removeJournalElement("id", "name", element);
+      const result = service.removeJournalDirectoryEntry("journal", "id", "name");
 
       expectResultErr(result);
       expect(result.error.message).toContain("Element not found");
@@ -265,8 +261,7 @@ describe("FoundryUIPort", () => {
       vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
       const failingService = new FoundryUIPort(failingSelector, mockRegistry, mockRetryService);
 
-      const element = document.createElement("div");
-      const result = failingService.removeJournalElement("id", "name", element);
+      const result = failingService.removeJournalDirectoryEntry("journal", "id", "name");
 
       expectResultErr(result);
       expect(result.error.message).toContain("No compatible port");
@@ -275,27 +270,25 @@ describe("FoundryUIPort", () => {
 
   describe("dispose", () => {
     it("should reset port reference for garbage collection", () => {
-      const element = document.createElement("div");
       // Trigger port initialization
-      service.removeJournalElement("id", "name", element);
+      service.removeJournalDirectoryEntry("journal", "id", "name");
 
       // Dispose should reset port
       service.dispose();
 
       // After dispose, port should be re-initialized on next call
       const selectSpy = vi.spyOn(mockSelector, "selectPortFromTokens");
-      service.removeJournalElement("id", "name", element);
+      service.removeJournalDirectoryEntry("journal", "id", "name");
       expect(selectSpy).toHaveBeenCalled();
     });
 
     it("should call dispose on port if it implements Disposable", () => {
-      const element = document.createElement("div");
       const mockDispose = vi.fn();
       // Ensure port has dispose method to be recognized as Disposable
       mockPort.dispose = mockDispose;
 
       // Trigger port initialization
-      service.removeJournalElement("id", "name", element);
+      service.removeJournalDirectoryEntry("journal", "id", "name");
 
       // Dispose should call port.dispose() if port is Disposable
       service.dispose();
@@ -322,6 +315,71 @@ describe("FoundryUIPort", () => {
 
       expectResultOk(result);
       expect(result.value).toBe(false);
+    });
+  });
+
+  describe("getDirectoryElement delegation", () => {
+    it("should delegate to port", () => {
+      const mockElement = document.createElement("div");
+      mockPort.getDirectoryElement = vi.fn().mockReturnValue(ok(mockElement));
+
+      const result = service.getDirectoryElement("journal");
+
+      expectResultOk(result);
+      expect(result.value).toBe(mockElement);
+      expect(mockPort.getDirectoryElement).toHaveBeenCalledWith("journal");
+    });
+
+    it("should handle port selection failure (coverage for line 70)", () => {
+      const mockEventEmitter = new PortSelectionEventEmitter();
+      const mockObservability: IPortSelectionObservability = {
+        registerWithObservabilityRegistry: vi.fn(),
+        setupObservability: vi.fn(),
+      } as any;
+      const mockPerformanceTracker: IPortSelectionPerformanceTracker = {
+        startTracking: vi.fn(),
+        endTracking: vi.fn().mockReturnValue(0),
+      } as any;
+      const mockObserver: PortSelectionObserver = {
+        handleEvent: vi.fn((event: PortSelectionEvent) => {
+          mockEventEmitter.emit(event);
+        }),
+      } as any;
+      const mockVersionDetector: FoundryVersionDetector = {
+        getVersion: vi.fn().mockReturnValue(resultOk(13)),
+      } as any;
+      const failingSelector = new PortSelector(
+        mockVersionDetector,
+        mockEventEmitter,
+        mockObservability,
+        mockPerformanceTracker,
+        mockObserver,
+        mockContainer
+      );
+      const mockError = {
+        code: "PORT_SELECTION_FAILED" as const,
+        message: "Port selection failed",
+      };
+      vi.spyOn(failingSelector, "selectPortFromTokens").mockReturnValue(err(mockError));
+      const failingService = new FoundryUIPort(failingSelector, mockRegistry, mockRetryService);
+
+      const result = failingService.getDirectoryElement("journal");
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Port selection failed");
+    });
+
+    it("should handle port errors", () => {
+      const mockError = {
+        code: "NOT_FOUND" as const,
+        message: "Directory not found",
+      };
+      mockPort.getDirectoryElement = vi.fn().mockReturnValue(err(mockError));
+
+      const result = service.getDirectoryElement("journal");
+
+      expectResultErr(result);
+      expect(result.error.message).toContain("Directory not found");
     });
   });
 

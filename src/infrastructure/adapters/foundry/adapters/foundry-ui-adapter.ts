@@ -14,21 +14,34 @@ import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-u
 export class FoundryUIAdapter implements PlatformUIPort {
   constructor(private readonly foundryUI: FoundryUI) {}
 
-  removeJournalElement(
+  removeJournalDirectoryEntry(
+    directoryId: string,
     journalId: string,
-    journalName: string,
-    html: HTMLElement
+    journalName: string
   ): Result<void, PlatformUIError> {
-    const result = this.foundryUI.removeJournalElement(journalId, journalName, html);
+    const result = this.foundryUI.removeJournalDirectoryEntry(directoryId, journalId, journalName);
     if (!result.ok) {
       return err({
         code: "DOM_MANIPULATION_FAILED",
-        message: `Failed to remove journal element '${journalName}' (${journalId}): ${result.error.message}`,
-        operation: "removeJournalElement",
-        details: { journalId, journalName, cause: result.error },
+        message: `Failed to remove journal directory entry '${journalName}' (${journalId}) from directory '${directoryId}': ${result.error.message}`,
+        operation: "removeJournalDirectoryEntry",
+        details: { directoryId, journalId, journalName, cause: result.error },
       });
     }
     return ok(undefined);
+  }
+
+  getDirectoryElement(directoryId: string): Result<HTMLElement | null, PlatformUIError> {
+    const result = this.foundryUI.getDirectoryElement(directoryId);
+    if (!result.ok) {
+      return err({
+        code: "DOM_ACCESS_FAILED",
+        message: `Failed to get directory element for '${directoryId}': ${result.error.message}`,
+        operation: "getDirectoryElement",
+        details: { directoryId, cause: result.error },
+      });
+    }
+    return ok(result.value);
   }
 
   rerenderJournalDirectory(): Result<boolean, PlatformUIError> {

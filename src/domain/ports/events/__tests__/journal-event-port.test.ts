@@ -7,16 +7,12 @@ describe("JournalEventPort (Contract Test)", () => {
       onJournalCreated: vi.fn(),
       onJournalUpdated: vi.fn(),
       onJournalDeleted: vi.fn(),
-      onJournalDirectoryRendered: vi.fn(),
-      registerListener: vi.fn(),
       unregisterListener: vi.fn(),
     };
 
     expect(mockPort.onJournalCreated).toBeDefined();
     expect(mockPort.onJournalUpdated).toBeDefined();
     expect(mockPort.onJournalDeleted).toBeDefined();
-    expect(mockPort.onJournalDirectoryRendered).toBeDefined();
-    expect(mockPort.registerListener).toBeDefined();
     expect(mockPort.unregisterListener).toBeDefined();
   });
 
@@ -25,8 +21,6 @@ describe("JournalEventPort (Contract Test)", () => {
       onJournalCreated: vi.fn().mockReturnValue({ ok: true, value: "1" }),
       onJournalUpdated: vi.fn().mockReturnValue({ ok: true, value: "2" }),
       onJournalDeleted: vi.fn().mockReturnValue({ ok: true, value: "3" }),
-      onJournalDirectoryRendered: vi.fn().mockReturnValue({ ok: true, value: "4" }),
-      registerListener: vi.fn().mockReturnValue({ ok: true, value: "6" }),
       unregisterListener: vi.fn().mockReturnValue({ ok: true, value: undefined }),
     };
 
@@ -42,10 +36,6 @@ describe("JournalEventPort (Contract Test)", () => {
     const deletedCallback = vi.fn();
     mockPort.onJournalDeleted(deletedCallback);
     expect(mockPort.onJournalDeleted).toHaveBeenCalledWith(deletedCallback);
-
-    const renderedCallback = vi.fn();
-    mockPort.onJournalDirectoryRendered(renderedCallback);
-    expect(mockPort.onJournalDirectoryRendered).toHaveBeenCalledWith(renderedCallback);
 
     mockPort.unregisterListener("1");
     expect(mockPort.unregisterListener).toHaveBeenCalledWith("1");

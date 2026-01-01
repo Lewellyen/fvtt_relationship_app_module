@@ -5,7 +5,7 @@ import type {
   LibWrapperRegistrationId,
 } from "@/infrastructure/adapters/foundry/interfaces/lib-wrapper-service.interface";
 import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
 import { libWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/lib-wrapper-service.token";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
@@ -172,13 +172,19 @@ export class JournalContextMenuLibWrapperService implements PlatformContextMenuR
         target.getAttribute?.("data-entry-id") || target.getAttribute?.("data-document-id");
 
       if (journalId) {
-        // Erstelle Event-Objekt (wie im Hook-Pattern)
+        // Erstelle Event-Objekt (DIP-compliant: journalId statt htmlElement)
         const event: JournalContextMenuEvent = {
-          htmlElement: target,
+          journalId,
           options: menuItems.map((item: { name: string; icon: string; callback: () => void }) => ({
             name: item.name,
             icon: item.icon,
-            callback: item.callback,
+            // ContextMenuOption.callback erwartet jetzt journalId statt HTMLElement
+            callback: (_id: string) => {
+              // Foundry menuItems callback hat keine Parameter, aber wir rufen es trotzdem auf
+              // Der Handler wird die journalId aus dem Event erhalten
+              item.callback();
+              // Return void (nicht Promise) für Foundry-Kompatibilität
+            },
           })),
           timestamp: Date.now(),
         };
@@ -199,9 +205,8 @@ export class JournalContextMenuLibWrapperService implements PlatformContextMenuR
               name: newOption.name,
               icon: newOption.icon,
               callback: () => {
-                // ContextMenuOption callback erwartet HTMLElement, aber menuItems callback nicht
-                // Wir rufen den callback mit dem target-Element auf
-                const result = newOption.callback(target);
+                // ContextMenuOption callback erwartet jetzt journalId statt HTMLElement
+                const result = newOption.callback(journalId);
                 // Handle Promise falls vorhanden
                 if (result instanceof Promise) {
                   result.catch(() => {

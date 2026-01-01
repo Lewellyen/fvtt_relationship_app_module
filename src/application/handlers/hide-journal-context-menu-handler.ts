@@ -1,5 +1,5 @@
 import type { JournalContextMenuHandler } from "./journal-context-menu-handler.interface";
-import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
@@ -25,8 +25,8 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
   ) {}
 
   handle(event: JournalContextMenuEvent): void {
-    // Extrahiere Journal-ID aus HTML-Element
-    const journalId = this.extractJournalId(event.htmlElement);
+    // Journal-ID ist bereits im Event enthalten (DIP-compliant)
+    const journalId = event.journalId;
 
     if (!journalId) {
       return; // Kein Journal-Eintrag
@@ -51,7 +51,7 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
       event.options.push({
         name: "Journal ausblenden",
         icon: '<i class="fas fa-eye-slash"></i>',
-        callback: async (_li: HTMLElement) => {
+        callback: async (_journalId: string) => {
           // Journal verstecken
           const hideResult = await this.journalRepository.setFlag(
             journalId,
@@ -100,20 +100,6 @@ export class HideJournalContextMenuHandler implements JournalContextMenuHandler 
         },
       });
     }
-  }
-
-  /**
-   * Extract journal ID from an HTML element.
-   */
-  private extractJournalId(element: HTMLElement): string | null {
-    // Foundry v13 uses data-document-id, older versions used data-entry-id
-    const documentId = element.getAttribute("data-document-id");
-    if (documentId) return documentId;
-
-    const entryId = element.getAttribute("data-entry-id");
-    if (entryId) return entryId;
-
-    return null;
   }
 }
 

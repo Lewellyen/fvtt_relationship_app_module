@@ -19,14 +19,12 @@ describe("TriggerJournalDirectoryReRenderUseCase", () => {
       onJournalCreated: vi.fn(),
       onJournalUpdated: vi.fn().mockReturnValue({ ok: true, value: "1" }),
       onJournalDeleted: vi.fn(),
-      onJournalDirectoryRendered: vi.fn(),
-      registerListener: vi.fn(),
       unregisterListener: vi.fn(),
     };
 
     mockJournalDirectoryUI = {
       rerenderJournalDirectory: vi.fn().mockReturnValue({ ok: true, value: true }),
-      removeJournalElement: vi.fn(),
+      removeJournalDirectoryEntry: vi.fn(),
     };
 
     mockNotificationCenter = {

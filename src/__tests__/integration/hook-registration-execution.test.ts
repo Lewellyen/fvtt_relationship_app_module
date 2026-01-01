@@ -5,6 +5,8 @@ import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { createMockGame, createMockHooks, createMockUI } from "@/test/mocks/foundry";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_EVENTS } from "@/domain/constants/domain-constants";
+import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
+import type { JournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
 
 describe("Integration: Hook Registration + Execution", () => {
   let cleanup: (() => void) | undefined;
@@ -57,17 +59,36 @@ describe("Integration: Hook Registration + Execution", () => {
     );
 
     // 6. Services spyen (JournalVisibilityService + JournalDirectoryProcessor)
-    // Container über Module API holen (nach init Hook)
-    const mod = (global as any).game.modules.get(MODULE_METADATA.ID);
-    expect(mod).toBeDefined();
-    expect(mod.api).toBeDefined();
+    // Container direkt holen (nicht über API, da platformJournalDirectoryUiPortToken nicht API-safe ist)
+    const { getRootContainer } = await import("@/framework/core/init-solid");
+    const { journalVisibilityServiceToken } =
+      await import("@/application/tokens/application.tokens");
+    const { journalDirectoryProcessorToken } =
+      await import("@/application/tokens/application.tokens");
+    const { castResolvedService } =
+      await import("@/infrastructure/di/types/utilities/runtime-safe-cast");
 
-    // journalVisibilityServiceToken ist API-safe
-    const journalService = mod.api.resolve(mod.api.tokens.journalVisibilityServiceToken);
+    const containerResult = getRootContainer();
+    expect(containerResult.ok).toBe(true);
+    if (!containerResult.ok) return;
+    const container = containerResult.value;
+
+    // journalVisibilityServiceToken
+    const journalServiceResult = container.resolveWithError(journalVisibilityServiceToken);
+    expect(journalServiceResult.ok).toBe(true);
+    if (!journalServiceResult.ok) return;
+    const journalService = castResolvedService<JournalVisibilityService>(
+      journalServiceResult.value
+    );
     const getHiddenJournalEntriesSpy = vi.spyOn(journalService, "getHiddenJournalEntries");
 
-    // journalDirectoryProcessorToken ist API-safe
-    const directoryProcessor = mod.api.resolve(mod.api.tokens.journalDirectoryProcessorToken);
+    // journalDirectoryProcessorToken
+    const directoryProcessorResult = container.resolveWithError(journalDirectoryProcessorToken);
+    expect(directoryProcessorResult.ok).toBe(true);
+    if (!directoryProcessorResult.ok) return;
+    const directoryProcessor = castResolvedService<JournalDirectoryProcessor>(
+      directoryProcessorResult.value
+    );
     const processDirectorySpy = vi.spyOn(directoryProcessor, "processDirectory");
 
     // 7. Hook-Callback extrahieren
@@ -80,7 +101,7 @@ describe("Integration: Hook Registration + Execution", () => {
 
     // 8. Hook manuell feuern
     const mockApp = {
-      id: "journal-directory",
+      id: "journal",
       object: {},
       options: {},
     };
@@ -90,7 +111,7 @@ describe("Integration: Hook Registration + Execution", () => {
     // 9. Prüfen ob Service-Methoden aufgerufen wurden
     expect(getHiddenJournalEntriesSpy).toHaveBeenCalled();
     expect(processDirectorySpy).toHaveBeenCalledWith(
-      mockHtml,
+      "journal",
       expect.any(Array) // hidden entries array
     );
   });
