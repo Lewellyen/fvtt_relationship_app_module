@@ -2,12 +2,15 @@ var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
   throw TypeError(msg);
 };
+var __defNormalProp = (obj, key2, value2) => key2 in obj ? __defProp(obj, key2, { enumerable: true, configurable: true, writable: true, value: value2 }) : obj[key2] = value2;
 var __name = (target, value2) => __defProp(target, "name", { value: value2, configurable: true });
+var __publicField = (obj, key2, value2) => __defNormalProp(obj, typeof key2 !== "symbol" ? key2 + "" : key2, value2);
 var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
 var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
 var __privateAdd = (obj, member, value2) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value2);
 var __privateSet = (obj, member, value2, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value2) : member.set(obj, value2), value2);
-var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6;
+var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
+var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6, _b, _commit_callbacks, _discard_callbacks, _pending, _blocking_pending, _deferred, _dirty_effects, _maybe_dirty_effects, _Batch_instances, traverse_effect_tree_fn, defer_effects_fn, clear_marked_fn, resolve_fn, commit_fn, _pending2, _anchor, _hydrate_open, _props, _children, _effect, _main_effect, _pending_effect, _failed_effect, _offscreen_fragment, _pending_anchor, _local_pending_count, _pending_count, _is_creating_fallback, _effect_pending, _effect_pending_subscriber, _Boundary_instances, hydrate_resolved_content_fn, hydrate_pending_content_fn, get_anchor_fn, run_fn, show_pending_snippet_fn, update_pending_count_fn, _batches, _onscreen, _offscreen, _outroing, _transition, _commit, _discard, _listeners, _observer, _options, _ResizeObserverSingleton_instances, getObserver_fn, _events, _instance, _c;
 const MODULE_METADATA = {
   ID: "fvtt_relationship_app_module",
   NAME: "Beziehungsnetzwerke für Foundry",
@@ -61,8 +64,8 @@ function mapError(result, transform2) {
   return result.ok ? result : err(transform2(result.error));
 }
 __name(mapError, "mapError");
-function andThen(result, next) {
-  return result.ok ? next(result.value) : result;
+function andThen(result, next2) {
+  return result.ok ? next2(result.value) : result;
 }
 __name(andThen, "andThen");
 function unwrapOr(result, fallbackValue) {
@@ -81,15 +84,15 @@ function getOrThrow(result, toError) {
 __name(getOrThrow, "getOrThrow");
 function all(results) {
   const out = [];
-  for (const r of results) {
-    if (!r.ok) return r;
-    out.push(r.value);
+  for (const r2 of results) {
+    if (!r2.ok) return r2;
+    out.push(r2.value);
   }
   return ok(out);
 }
 __name(all, "all");
-function match(result, handlers) {
-  return result.ok ? handlers.onOk(result.value) : handlers.onErr(result.error);
+function match(result, handlers2) {
+  return result.ok ? handlers2.onOk(result.value) : handlers2.onErr(result.error);
 }
 __name(match, "match");
 function tryCatch(fn, mapUnknownError) {
@@ -109,9 +112,9 @@ async function asyncMap(asyncResult, transform2) {
   return result.ok ? ok(await transform2(result.value)) : result;
 }
 __name(asyncMap, "asyncMap");
-async function asyncAndThen(asyncResult, next) {
+async function asyncAndThen(asyncResult, next2) {
   const result = await asyncResult;
-  return result.ok ? next(result.value) : result;
+  return result.ok ? next2(result.value) : result;
 }
 __name(asyncAndThen, "asyncAndThen");
 async function fromPromise(promise2, mapUnknownError) {
@@ -178,8 +181,8 @@ function parsePositiveInteger(envValue, fallback2) {
   return Math.floor(parsed);
 }
 __name(parsePositiveInteger, "parsePositiveInteger");
-function getEnvVar(key, parser2) {
-  const value2 = __vite_import_meta_env__[key];
+function getEnvVar(key2, parser2) {
+  const value2 = __vite_import_meta_env__[key2];
   return parser2(value2);
 }
 __name(getEnvVar, "getEnvVar");
@@ -328,8 +331,8 @@ const _RuntimeConfigService = class _RuntimeConfigService {
   /**
    * Returns the current value for the given configuration key.
    */
-  get(key) {
-    return this.store.get(key);
+  get(key2) {
+    return this.store.get(key2);
   }
   /**
    * Updates the configuration value based on platform settings and notifies listeners
@@ -337,17 +340,17 @@ const _RuntimeConfigService = class _RuntimeConfigService {
    *
    * Implements PlatformRuntimeConfigPort interface.
    */
-  setFromPlatform(key, value2) {
-    const changed = this.store.set(key, value2);
+  setFromPlatform(key2, value2) {
+    const changed = this.store.set(key2, value2);
     if (changed) {
-      this.emitter.notify(key, value2);
+      this.emitter.notify(key2, value2);
     }
   }
   /**
    * Registers a listener for the given key. Returns an unsubscribe function.
    */
-  onChange(key, listener) {
-    return this.emitter.onChange(key, listener);
+  onChange(key2, listener) {
+    return this.emitter.onChange(key2, listener);
   }
 };
 __name(_RuntimeConfigService, "RuntimeConfigService");
@@ -371,19 +374,19 @@ const _RuntimeConfigStore = class _RuntimeConfigStore {
   /**
    * Returns the current value for the given configuration key.
    */
-  get(key) {
-    return this.values[key];
+  get(key2) {
+    return this.values[key2];
   }
   /**
    * Updates the configuration value.
    * Returns true if the value actually changed, false otherwise.
    */
-  set(key, value2) {
-    const current = this.values[key];
+  set(key2, value2) {
+    const current = this.values[key2];
     if (Object.is(current, value2)) {
       return false;
     }
-    this.values[key] = value2;
+    this.values[key2] = value2;
     return true;
   }
   /**
@@ -402,24 +405,24 @@ const _RuntimeConfigEventEmitter = class _RuntimeConfigEventEmitter {
   /**
    * Registers a listener for the given key. Returns an unsubscribe function.
    */
-  onChange(key, listener) {
-    const existing = this.getListenersForKey(key);
+  onChange(key2, listener) {
+    const existing = this.getListenersForKey(key2);
     const listeners = existing ?? /* @__PURE__ */ new Set();
     listeners.add(listener);
-    this.setListenersForKey(key, listeners);
+    this.setListenersForKey(key2, listeners);
     return () => {
-      const activeListeners = this.getListenersForKey(key);
+      const activeListeners = this.getListenersForKey(key2);
       activeListeners?.delete(listener);
       if (!activeListeners || activeListeners.size === 0) {
-        this.listeners.delete(key);
+        this.listeners.delete(key2);
       }
     };
   }
   /**
    * Notifies all listeners for the given key with the new value.
    */
-  notify(key, value2) {
-    const listeners = this.listeners.get(key);
+  notify(key2, value2) {
+    const listeners = this.listeners.get(key2);
     if (!listeners || listeners.size === 0) {
       return;
     }
@@ -431,15 +434,15 @@ const _RuntimeConfigEventEmitter = class _RuntimeConfigEventEmitter {
    * Type-safe helper to get listeners for a specific key.
    * @ts-expect-error - Type coverage exclusion for generic Set cast
    */
-  getListenersForKey(key) {
-    return this.listeners.get(key);
+  getListenersForKey(key2) {
+    return this.listeners.get(key2);
   }
   /**
    * Type-safe helper to set listeners for a specific key.
    * @ts-expect-error - Type coverage exclusion for generic Set cast
    */
-  setListenersForKey(key, listeners) {
-    this.listeners.set(key, listeners);
+  setListenersForKey(key2, listeners) {
+    this.listeners.set(key2, listeners);
   }
 };
 __name(_RuntimeConfigEventEmitter, "RuntimeConfigEventEmitter");
@@ -455,14 +458,14 @@ const _RuntimeConfigAdapter = class _RuntimeConfigAdapter {
   constructor(env) {
     this.service = createRuntimeConfig(env);
   }
-  get(key) {
-    return this.service.get(key);
+  get(key2) {
+    return this.service.get(key2);
   }
-  setFromPlatform(key, value2) {
-    this.service.setFromPlatform(key, value2);
+  setFromPlatform(key2, value2) {
+    this.service.setFromPlatform(key2, value2);
   }
-  onChange(key, listener) {
-    return this.service.onChange(key, listener);
+  onChange(key2, listener) {
+    return this.service.onChange(key2, listener);
   }
 };
 __name(_RuntimeConfigAdapter, "RuntimeConfigAdapter");
@@ -739,8 +742,8 @@ const _TypeSafeRegistrationMap = class _TypeSafeRegistrationMap {
    */
   clone() {
     const cloned = new _TypeSafeRegistrationMap();
-    this.map.forEach((value2, key) => {
-      cloned.map.set(key, value2);
+    this.map.forEach((value2, key2) => {
+      cloned.map.set(key2, value2);
     });
     return cloned;
   }
@@ -1413,12 +1416,12 @@ const _ServiceResolver = class _ServiceResolver {
       () => {
         const registration = this.registry.getRegistration(token);
         if (!registration) {
-          const stack = new Error().stack;
+          const stack2 = new Error().stack;
           const error = {
             code: "TokenNotRegistered",
             message: `Service ${String(token)} not registered`,
             tokenDescription: String(token),
-            ...stack !== void 0 && { stack },
+            ...stack2 !== void 0 && { stack: stack2 },
             // Only include stack if defined
             timestamp: Date.now(),
             containerScope: this.scopeName
@@ -1528,11 +1531,11 @@ const _ScopeManager = class _ScopeManager {
     }
     this.disposed = true;
     const childDisposalErrors = [];
-    for (const child of this.children) {
-      const childResult = child.dispose();
+    for (const child2 of this.children) {
+      const childResult = child2.dispose();
       if (isErr(childResult)) {
         childDisposalErrors.push({
-          scopeName: child.scopeName,
+          scopeName: child2.scopeName,
           error: childResult.error
         });
       }
@@ -1577,11 +1580,11 @@ const _ScopeManager = class _ScopeManager {
     }
     this.disposed = true;
     const childDisposalErrors = [];
-    for (const child of this.children) {
-      const childResult = await child.disposeAsync();
+    for (const child2 of this.children) {
+      const childResult = await child2.disposeAsync();
       if (isErr(childResult)) {
         childDisposalErrors.push({
-          scopeName: child.scopeName,
+          scopeName: child2.scopeName,
           error: childResult.error
         });
       }
@@ -2362,7 +2365,7 @@ const _ServiceContainer = class _ServiceContainer {
       // Parent resolver for singleton delegation
       scopeResult.value.scopeName
     );
-    const child = new _ServiceContainer(
+    const child2 = new _ServiceContainer(
       childRegistry,
       this.validator,
       // Shared (stateless)
@@ -2374,7 +2377,7 @@ const _ServiceContainer = class _ServiceContainer {
       this.env
       // Inherit ENV from parent
     );
-    return ok(child);
+    return ok(child2);
   }
   resolveWithError(token) {
     return this.resolutionManager.resolveWithError(token);
@@ -2639,9 +2642,9 @@ const _ContainerHealthCheck = class _ContainerHealthCheck {
     return this.container.getValidationState() === "validated";
   }
   getDetails() {
-    const state = this.container.getValidationState();
-    if (state !== "validated") {
-      return `Container state: ${state}`;
+    const state2 = this.container.getValidationState();
+    if (state2 !== "validated") {
+      return `Container state: ${state2}`;
     }
     return null;
   }
@@ -2669,19 +2672,19 @@ const _MetricsHealthCheck = class _MetricsHealthCheck {
     this.metricsSnapshotPort = metricsSnapshotPort;
   }
   check() {
-    const snapshot = this.metricsSnapshotPort.getSnapshot();
-    const hasPortFailures = Object.keys(snapshot.portSelectionFailures).length > 0;
-    const hasResolutionErrors = snapshot.resolutionErrors > 0;
+    const snapshot2 = this.metricsSnapshotPort.getSnapshot();
+    const hasPortFailures = Object.keys(snapshot2.portSelectionFailures).length > 0;
+    const hasResolutionErrors = snapshot2.resolutionErrors > 0;
     return !hasPortFailures && !hasResolutionErrors;
   }
   getDetails() {
-    const snapshot = this.metricsSnapshotPort.getSnapshot();
-    const failures = Object.keys(snapshot.portSelectionFailures);
+    const snapshot2 = this.metricsSnapshotPort.getSnapshot();
+    const failures = Object.keys(snapshot2.portSelectionFailures);
     if (failures.length > 0) {
       return `Port selection failures: ${failures.join(", ")}`;
     }
-    if (snapshot.resolutionErrors > 0) {
-      return `Resolution errors: ${snapshot.resolutionErrors}`;
+    if (snapshot2.resolutionErrors > 0) {
+      return `Resolution errors: ${snapshot2.resolutionErrors}`;
     }
     return null;
   }
@@ -3277,7 +3280,7 @@ function _stringify(input) {
   return type;
 }
 __name(_stringify, "_stringify");
-function _addIssue(context, label, dataset, config$1, other) {
+function _addIssue(context, label2, dataset, config$1, other) {
   const input = other && "input" in other ? other.input : dataset.value;
   const expected = other?.expected ?? context.expects ?? null;
   const received = other?.received ?? /* @__PURE__ */ _stringify(input);
@@ -3287,7 +3290,7 @@ function _addIssue(context, label, dataset, config$1, other) {
     input,
     expected,
     received,
-    message: `Invalid ${label}: ${expected ? `Expected ${expected} but r` : "R"}eceived ${received}`,
+    message: `Invalid ${label2}: ${expected ? `Expected ${expected} but r` : "R"}eceived ${received}`,
     requirement: context.requirement,
     path: other?.path,
     issues: other?.issues,
@@ -3324,8 +3327,8 @@ __name(_getGraphemeCount, "_getGraphemeCount");
 function _getLastMetadata(schema, type) {
   if ("pipe" in schema) {
     const nestedSchemas = [];
-    for (let index = schema.pipe.length - 1; index >= 0; index--) {
-      const item = schema.pipe[index];
+    for (let index2 = schema.pipe.length - 1; index2 >= 0; index2--) {
+      const item = schema.pipe[index2];
       if (item.kind === "schema" && "pipe" in item) nestedSchemas.push(item);
       else if (item.kind === "metadata" && item.type === type) return item[type];
     }
@@ -3385,8 +3388,8 @@ function _isLuhnAlgo(input) {
 }
 __name(_isLuhnAlgo, "_isLuhnAlgo");
 // @__NO_SIDE_EFFECTS__
-function _isValidObjectKey(object$1, key) {
-  return Object.hasOwn(object$1, key) && key !== "__proto__" && key !== "prototype" && key !== "constructor";
+function _isValidObjectKey(object$1, key2) {
+  return Object.hasOwn(object$1, key2) && key2 !== "__proto__" && key2 !== "prototype" && key2 !== "constructor";
 }
 __name(_isValidObjectKey, "_isValidObjectKey");
 // @__NO_SIDE_EFFECTS__
@@ -3399,7 +3402,7 @@ __name(_joinExpects, "_joinExpects");
 // @__NO_SIDE_EFFECTS__
 function entriesFromList(list, schema) {
   const entries$1 = {};
-  for (const key of list) entries$1[key] = schema;
+  for (const key2 of list) entries$1[key2] = schema;
   return entries$1;
 }
 __name(entriesFromList, "entriesFromList");
@@ -3413,11 +3416,11 @@ __name(entriesFromObjects, "entriesFromObjects");
 // @__NO_SIDE_EFFECTS__
 function getDotPath(issue) {
   if (issue.path) {
-    let key = "";
-    for (const item of issue.path) if (typeof item.key === "string" || typeof item.key === "number") if (key) key += `.${item.key}`;
-    else key += item.key;
+    let key2 = "";
+    for (const item of issue.path) if (typeof item.key === "string" || typeof item.key === "number") if (key2) key2 += `.${item.key}`;
+    else key2 += item.key;
     else return null;
-    return key;
+    return key2;
   }
   return null;
 }
@@ -3644,15 +3647,15 @@ function checkItems(requirement, message$1) {
     requirement,
     message: message$1,
     "~run"(dataset, config$1) {
-      if (dataset.typed) for (let index = 0; index < dataset.value.length; index++) {
-        const item = dataset.value[index];
-        if (!this.requirement(item, index, dataset.value)) _addIssue(this, "item", dataset, config$1, {
+      if (dataset.typed) for (let index2 = 0; index2 < dataset.value.length; index2++) {
+        const item = dataset.value[index2];
+        if (!this.requirement(item, index2, dataset.value)) _addIssue(this, "item", dataset, config$1, {
           input: item,
           path: [{
             type: "array",
             origin: "value",
             input: dataset.value,
-            key: index,
+            key: index2,
             value: item
           }]
         });
@@ -3675,15 +3678,15 @@ function checkItemsAsync(requirement, message$1) {
     async "~run"(dataset, config$1) {
       if (dataset.typed) {
         const requirementResults = await Promise.all(dataset.value.map(this.requirement));
-        for (let index = 0; index < dataset.value.length; index++) if (!requirementResults[index]) {
-          const item = dataset.value[index];
+        for (let index2 = 0; index2 < dataset.value.length; index2++) if (!requirementResults[index2]) {
+          const item = dataset.value[index2];
           _addIssue(this, "item", dataset, config$1, {
             input: item,
             path: [{
               type: "array",
               origin: "value",
               input: dataset.value,
-              key: index,
+              key: index2,
               value: item
             }]
           });
@@ -3821,11 +3824,11 @@ function emoji(message$1) {
 }
 __name(emoji, "emoji");
 // @__NO_SIDE_EFFECTS__
-function empty(message$1) {
+function empty$1(message$1) {
   return {
     kind: "validation",
     type: "empty",
-    reference: empty,
+    reference: empty$1,
     async: false,
     expects: "0",
     message: message$1,
@@ -3835,7 +3838,7 @@ function empty(message$1) {
     }
   };
 }
-__name(empty, "empty");
+__name(empty$1, "empty$1");
 // @__NO_SIDE_EFFECTS__
 function endsWith(requirement, message$1) {
   return {
@@ -4032,11 +4035,11 @@ const HASH_LENGTHS = {
   adler32: 8
 };
 // @__NO_SIDE_EFFECTS__
-function hash(types, message$1) {
+function hash$1(types, message$1) {
   return {
     kind: "validation",
     type: "hash",
-    reference: hash,
+    reference: hash$1,
     expects: null,
     async: false,
     requirement: RegExp(types.map((type) => `^[a-f0-9]{${HASH_LENGTHS[type]}}$`).join("|"), "iu"),
@@ -4047,7 +4050,7 @@ function hash(types, message$1) {
     }
   };
 }
-__name(hash, "hash");
+__name(hash$1, "hash$1");
 // @__NO_SIDE_EFFECTS__
 function hexadecimal(message$1) {
   return {
@@ -4936,7 +4939,7 @@ function _isPartiallyTyped(dataset, paths) {
   if (dataset.issues) for (const path of paths) for (const issue of dataset.issues) {
     let typed = false;
     const bound = Math.min(path.length, issue.path?.length ?? 0);
-    for (let index = 0; index < bound; index++) if (path[index] !== issue.path[index].key && (path[index] !== "$" || issue.path[index].type !== "array")) {
+    for (let index2 = 0; index2 < bound; index2++) if (path[index2] !== issue.path[index2].key && (path[index2] !== "$" || issue.path[index2].type !== "array")) {
       typed = true;
       break;
     }
@@ -4982,7 +4985,7 @@ function partialCheckAsync(paths, requirement, message$1) {
 }
 __name(partialCheckAsync, "partialCheckAsync");
 // @__NO_SIDE_EFFECTS__
-function rawCheck(action) {
+function rawCheck(action2) {
   return {
     kind: "validation",
     type: "raw_check",
@@ -4990,7 +4993,7 @@ function rawCheck(action) {
     async: false,
     expects: null,
     "~run"(dataset, config$1) {
-      action({
+      action2({
         dataset,
         config: config$1,
         addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info), "addIssue")
@@ -5001,7 +5004,7 @@ function rawCheck(action) {
 }
 __name(rawCheck, "rawCheck");
 // @__NO_SIDE_EFFECTS__
-function rawCheckAsync(action) {
+function rawCheckAsync(action2) {
   return {
     kind: "validation",
     type: "raw_check",
@@ -5009,7 +5012,7 @@ function rawCheckAsync(action) {
     async: true,
     expects: null,
     async "~run"(dataset, config$1) {
-      await action({
+      await action2({
         dataset,
         config: config$1,
         addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info), "addIssue")
@@ -5020,14 +5023,14 @@ function rawCheckAsync(action) {
 }
 __name(rawCheckAsync, "rawCheckAsync");
 // @__NO_SIDE_EFFECTS__
-function rawTransform(action) {
+function rawTransform(action2) {
   return {
     kind: "transformation",
     type: "raw_transform",
     reference: rawTransform,
     async: false,
     "~run"(dataset, config$1) {
-      const output = action({
+      const output = action2({
         dataset,
         config: config$1,
         addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info), "addIssue"),
@@ -5041,14 +5044,14 @@ function rawTransform(action) {
 }
 __name(rawTransform, "rawTransform");
 // @__NO_SIDE_EFFECTS__
-function rawTransformAsync(action) {
+function rawTransformAsync(action2) {
   return {
     kind: "transformation",
     type: "raw_transform",
     reference: rawTransformAsync,
     async: true,
     async "~run"(dataset, config$1) {
-      const output = await action({
+      const output = await action2({
         dataset,
         config: config$1,
         addIssue: /* @__PURE__ */ __name((info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info), "addIssue"),
@@ -5062,18 +5065,18 @@ function rawTransformAsync(action) {
 }
 __name(rawTransformAsync, "rawTransformAsync");
 // @__NO_SIDE_EFFECTS__
-function readonly() {
+function readonly$1() {
   return {
     kind: "transformation",
     type: "readonly",
-    reference: readonly,
+    reference: readonly$1,
     async: false,
     "~run"(dataset) {
       return dataset;
     }
   };
 }
-__name(readonly, "readonly");
+__name(readonly$1, "readonly$1");
 // @__NO_SIDE_EFFECTS__
 function reduceItems(operation, initial) {
   return {
@@ -5674,10 +5677,10 @@ function getFallback(schema, dataset, config$1) {
 }
 __name(getFallback, "getFallback");
 // @__NO_SIDE_EFFECTS__
-function fallback(schema, fallback$1) {
+function fallback$1(schema, fallback$12) {
   return {
     ...schema,
-    fallback: fallback$1,
+    fallback: fallback$12,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
     },
@@ -5690,12 +5693,12 @@ function fallback(schema, fallback$1) {
     }
   };
 }
-__name(fallback, "fallback");
+__name(fallback$1, "fallback$1");
 // @__NO_SIDE_EFFECTS__
-function fallbackAsync(schema, fallback$1) {
+function fallbackAsync(schema, fallback$12) {
   return {
     ...schema,
-    fallback: fallback$1,
+    fallback: fallback$12,
     async: true,
     get "~standard"() {
       return /* @__PURE__ */ _getStandardProps(this);
@@ -5711,7 +5714,7 @@ function fallbackAsync(schema, fallback$1) {
 }
 __name(fallbackAsync, "fallbackAsync");
 // @__NO_SIDE_EFFECTS__
-function flatten(issues) {
+function flatten$1(issues) {
   const flatErrors = {};
   for (const issue of issues) if (issue.path) {
     const dotPath = /* @__PURE__ */ getDotPath(issue);
@@ -5725,24 +5728,24 @@ function flatten(issues) {
   else flatErrors.root = [issue.message];
   return flatErrors;
 }
-__name(flatten, "flatten");
+__name(flatten$1, "flatten$1");
 // @__NO_SIDE_EFFECTS__
-function forward(action, path) {
+function forward(action2, path) {
   return {
-    ...action,
+    ...action2,
     "~run"(dataset, config$1) {
       const prevIssues = dataset.issues && [...dataset.issues];
-      dataset = action["~run"](dataset, config$1);
+      dataset = action2["~run"](dataset, config$1);
       if (dataset.issues) {
         for (const issue of dataset.issues) if (!prevIssues?.includes(issue)) {
           let pathInput = dataset.value;
-          for (const key of path) {
-            const pathValue = pathInput[key];
+          for (const key2 of path) {
+            const pathValue = pathInput[key2];
             const pathItem = {
               type: "unknown",
               origin: "value",
               input: pathInput,
-              key,
+              key: key2,
               value: pathValue
             };
             if (issue.path) issue.path.push(pathItem);
@@ -5758,23 +5761,23 @@ function forward(action, path) {
 }
 __name(forward, "forward");
 // @__NO_SIDE_EFFECTS__
-function forwardAsync(action, path) {
+function forwardAsync(action2, path) {
   return {
-    ...action,
+    ...action2,
     async: true,
     async "~run"(dataset, config$1) {
       const prevIssues = dataset.issues && [...dataset.issues];
-      dataset = await action["~run"](dataset, config$1);
+      dataset = await action2["~run"](dataset, config$1);
       if (dataset.issues) {
         for (const issue of dataset.issues) if (!prevIssues?.includes(issue)) {
           let pathInput = dataset.value;
-          for (const key of path) {
-            const pathValue = pathInput[key];
+          for (const key2 of path) {
+            const pathValue = pathInput[key2];
             const pathItem = {
               type: "unknown",
               origin: "value",
               input: pathInput,
-              key,
+              key: key2,
               value: pathValue
             };
             if (issue.path) issue.path.push(pathItem);
@@ -5798,7 +5801,7 @@ __name(getDefault, "getDefault");
 function getDefaults(schema) {
   if ("entries" in schema) {
     const object$1 = {};
-    for (const key in schema.entries) object$1[key] = /* @__PURE__ */ getDefaults(schema.entries[key]);
+    for (const key2 in schema.entries) object$1[key2] = /* @__PURE__ */ getDefaults(schema.entries[key2]);
     return object$1;
   }
   if ("items" in schema) return schema.items.map(getDefaults);
@@ -5807,7 +5810,7 @@ function getDefaults(schema) {
 __name(getDefaults, "getDefaults");
 // @__NO_SIDE_EFFECTS__
 async function getDefaultsAsync(schema) {
-  if ("entries" in schema) return Object.fromEntries(await Promise.all(Object.entries(schema.entries).map(async ([key, value$1]) => [key, await /* @__PURE__ */ getDefaultsAsync(value$1)])));
+  if ("entries" in schema) return Object.fromEntries(await Promise.all(Object.entries(schema.entries).map(async ([key2, value$1]) => [key2, await /* @__PURE__ */ getDefaultsAsync(value$1)])));
   if ("items" in schema) return Promise.all(schema.items.map(getDefaultsAsync));
   return /* @__PURE__ */ getDefault(schema);
 }
@@ -5835,7 +5838,7 @@ __name(getExamples, "getExamples");
 function getFallbacks(schema) {
   if ("entries" in schema) {
     const object$1 = {};
-    for (const key in schema.entries) object$1[key] = /* @__PURE__ */ getFallbacks(schema.entries[key]);
+    for (const key2 in schema.entries) object$1[key2] = /* @__PURE__ */ getFallbacks(schema.entries[key2]);
     return object$1;
   }
   if ("items" in schema) return schema.items.map(getFallbacks);
@@ -5844,7 +5847,7 @@ function getFallbacks(schema) {
 __name(getFallbacks, "getFallbacks");
 // @__NO_SIDE_EFFECTS__
 async function getFallbacksAsync(schema) {
-  if ("entries" in schema) return Object.fromEntries(await Promise.all(Object.entries(schema.entries).map(async ([key, value$1]) => [key, await /* @__PURE__ */ getFallbacksAsync(value$1)])));
+  if ("entries" in schema) return Object.fromEntries(await Promise.all(Object.entries(schema.entries).map(async ([key2, value$1]) => [key2, await /* @__PURE__ */ getFallbacksAsync(value$1)])));
   if ("items" in schema) return Promise.all(schema.items.map(getFallbacksAsync));
   return /* @__PURE__ */ getFallback(schema);
 }
@@ -5869,10 +5872,10 @@ function getTitle(schema) {
 }
 __name(getTitle, "getTitle");
 // @__NO_SIDE_EFFECTS__
-function is(schema, input) {
+function is$1(schema, input) {
   return !schema["~run"]({ value: input }, { abortEarly: true }).issues;
 }
-__name(is, "is");
+__name(is$1, "is$1");
 // @__NO_SIDE_EFFECTS__
 function any() {
   return {
@@ -5909,15 +5912,15 @@ function array(item, message$1) {
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        for (let key = 0; key < input.length; key++) {
-          const value$1 = input[key];
+        for (let key2 = 0; key2 < input.length; key2++) {
+          const value$1 = input[key2];
           const itemDataset = this.item["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -5959,15 +5962,15 @@ function arrayAsync(item, message$1) {
         dataset.typed = true;
         dataset.value = [];
         const itemDatasets = await Promise.all(input.map((value$1) => this.item["~run"]({ value: value$1 }, config$1)));
-        for (let key = 0; key < itemDatasets.length; key++) {
-          const itemDataset = itemDatasets[key];
+        for (let key2 = 0; key2 < itemDatasets.length; key2++) {
+          const itemDataset = itemDatasets[key2];
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
-              value: input[key]
+              key: key2,
+              value: input[key2]
             };
             for (const issue of itemDataset.issues) {
               if (issue.path) issue.path.unshift(pathItem);
@@ -6115,7 +6118,7 @@ __name(date, "date");
 // @__NO_SIDE_EFFECTS__
 function enum_(enum__, message$1) {
   const options = [];
-  for (const key in enum__) if (`${+key}` !== key || typeof enum__[key] !== "string" || !Object.is(enum__[enum__[key]], +key)) options.push(enum__[key]);
+  for (const key2 in enum__) if (`${+key2}` !== key2 || typeof enum__[key2] !== "string" || !Object.is(enum__[enum__[key2]], +key2)) options.push(enum__[key2]);
   return {
     kind: "schema",
     type: "enum",
@@ -6240,19 +6243,19 @@ function _merge(value1, value2) {
   if (typeof value1 === typeof value2) {
     if (value1 === value2 || value1 instanceof Date && value2 instanceof Date && +value1 === +value2) return { value: value1 };
     if (value1 && value2 && value1.constructor === Object && value2.constructor === Object) {
-      for (const key in value2) if (key in value1) {
-        const dataset = /* @__PURE__ */ _merge(value1[key], value2[key]);
+      for (const key2 in value2) if (key2 in value1) {
+        const dataset = /* @__PURE__ */ _merge(value1[key2], value2[key2]);
         if (dataset.issue) return dataset;
-        value1[key] = dataset.value;
-      } else value1[key] = value2[key];
+        value1[key2] = dataset.value;
+      } else value1[key2] = value2[key2];
       return { value: value1 };
     }
     if (Array.isArray(value1) && Array.isArray(value2)) {
       if (value1.length === value2.length) {
-        for (let index = 0; index < value1.length; index++) {
-          const dataset = /* @__PURE__ */ _merge(value1[index], value2[index]);
+        for (let index2 = 0; index2 < value1.length; index2++) {
+          const dataset = /* @__PURE__ */ _merge(value1[index2], value2[index2]);
           if (dataset.issue) return dataset;
-          value1[index] = dataset.value;
+          value1[index2] = dataset.value;
         }
         return { value: value1 };
       }
@@ -6295,8 +6298,8 @@ function intersect(options, message$1) {
         }
         if (dataset.typed) {
           dataset.value = outputs[0];
-          for (let index = 1; index < outputs.length; index++) {
-            const mergeDataset = /* @__PURE__ */ _merge(dataset.value, outputs[index]);
+          for (let index2 = 1; index2 < outputs.length; index2++) {
+            const mergeDataset = /* @__PURE__ */ _merge(dataset.value, outputs[index2]);
             if (mergeDataset.issue) {
               _addIssue(this, "type", dataset, config$1, { received: "unknown" });
               break;
@@ -6344,8 +6347,8 @@ function intersectAsync(options, message$1) {
         }
         if (dataset.typed) {
           dataset.value = outputs[0];
-          for (let index = 1; index < outputs.length; index++) {
-            const mergeDataset = /* @__PURE__ */ _merge(dataset.value, outputs[index]);
+          for (let index2 = 1; index2 < outputs.length; index2++) {
+            const mergeDataset = /* @__PURE__ */ _merge(dataset.value, outputs[index2]);
             if (mergeDataset.issue) {
               _addIssue(this, "type", dataset, config$1, { received: "unknown" });
               break;
@@ -6434,17 +6437,17 @@ function looseObject(entries$1, message$1) {
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        for (const key in this.entries) {
-          const valueSchema = this.entries[key];
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-            const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+        for (const key2 in this.entries) {
+          const valueSchema = this.entries[key2];
+          if (key2 in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key2 in input ? input[key2] : /* @__PURE__ */ getDefault(valueSchema);
             const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
             if (valueDataset.issues) {
               const pathItem = {
                 type: "object",
                 origin: "value",
                 input,
-                key,
+                key: key2,
                 value: value$1
               };
               for (const issue of valueDataset.issues) {
@@ -6459,25 +6462,25 @@ function looseObject(entries$1, message$1) {
               }
             }
             if (!valueDataset.typed) dataset.typed = false;
-            dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+            dataset.value[key2] = valueDataset.value;
+          } else if (valueSchema.fallback !== void 0) dataset.value[key2] = /* @__PURE__ */ getFallback(valueSchema);
           else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
             _addIssue(this, "key", dataset, config$1, {
               input: void 0,
-              expected: `"${key}"`,
+              expected: `"${key2}"`,
               path: [{
                 type: "object",
                 origin: "key",
                 input,
-                key,
-                value: input[key]
+                key: key2,
+                value: input[key2]
               }]
             });
             if (config$1.abortEarly) break;
           }
         }
         if (!dataset.issues || !config$1.abortEarly) {
-          for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
+          for (const key2 in input) if (/* @__PURE__ */ _isValidObjectKey(input, key2) && !(key2 in this.entries)) dataset.value[key2] = input[key2];
         }
       } else _addIssue(this, "type", dataset, config$1);
       return dataset;
@@ -6503,30 +6506,30 @@ function looseObjectAsync(entries$1, message$1) {
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-            const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
+        const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key2, valueSchema]) => {
+          if (key2 in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key2 in input ? input[key2] : await /* @__PURE__ */ getDefault(valueSchema);
             return [
-              key,
+              key2,
               value$1,
               valueSchema,
               await valueSchema["~run"]({ value: value$1 }, config$1)
             ];
           }
           return [
-            key,
-            input[key],
+            key2,
+            input[key2],
             valueSchema,
             null
           ];
         }));
-        for (const [key, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
+        for (const [key2, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
           if (valueDataset.issues) {
             const pathItem = {
               type: "object",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of valueDataset.issues) {
@@ -6541,24 +6544,24 @@ function looseObjectAsync(entries$1, message$1) {
             }
           }
           if (!valueDataset.typed) dataset.typed = false;
-          dataset.value[key] = valueDataset.value;
-        } else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+          dataset.value[key2] = valueDataset.value;
+        } else if (valueSchema.fallback !== void 0) dataset.value[key2] = await /* @__PURE__ */ getFallback(valueSchema);
         else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
           _addIssue(this, "key", dataset, config$1, {
             input: void 0,
-            expected: `"${key}"`,
+            expected: `"${key2}"`,
             path: [{
               type: "object",
               origin: "key",
               input,
-              key,
+              key: key2,
               value: value$1
             }]
           });
           if (config$1.abortEarly) break;
         }
         if (!dataset.issues || !config$1.abortEarly) {
-          for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
+          for (const key2 in input) if (/* @__PURE__ */ _isValidObjectKey(input, key2) && !(key2 in this.entries)) dataset.value[key2] = input[key2];
         }
       } else _addIssue(this, "type", dataset, config$1);
       return dataset;
@@ -6584,15 +6587,15 @@ function looseTuple(items, message$1) {
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        for (let key = 0; key < this.items.length; key++) {
-          const value$1 = input[key];
-          const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
+        for (let key2 = 0; key2 < this.items.length; key2++) {
+          const value$1 = input[key2];
+          const itemDataset = this.items[key2]["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -6609,7 +6612,7 @@ function looseTuple(items, message$1) {
           if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-        if (!dataset.issues || !config$1.abortEarly) for (let key = this.items.length; key < input.length; key++) dataset.value.push(input[key]);
+        if (!dataset.issues || !config$1.abortEarly) for (let key2 = this.items.length; key2 < input.length; key2++) dataset.value.push(input[key2]);
       } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
@@ -6634,21 +6637,21 @@ function looseTupleAsync(items, message$1) {
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        const itemDatasets = await Promise.all(this.items.map(async (item, key) => {
-          const value$1 = input[key];
+        const itemDatasets = await Promise.all(this.items.map(async (item, key2) => {
+          const value$1 = input[key2];
           return [
-            key,
+            key2,
             value$1,
             await item["~run"]({ value: value$1 }, config$1)
           ];
         }));
-        for (const [key, value$1, itemDataset] of itemDatasets) {
+        for (const [key2, value$1, itemDataset] of itemDatasets) {
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -6665,7 +6668,7 @@ function looseTupleAsync(items, message$1) {
           if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-        if (!dataset.issues || !config$1.abortEarly) for (let key = this.items.length; key < input.length; key++) dataset.value.push(input[key]);
+        if (!dataset.issues || !config$1.abortEarly) for (let key2 = this.items.length; key2 < input.length; key2++) dataset.value.push(input[key2]);
       } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
@@ -6673,14 +6676,14 @@ function looseTupleAsync(items, message$1) {
 }
 __name(looseTupleAsync, "looseTupleAsync");
 // @__NO_SIDE_EFFECTS__
-function map(key, value$1, message$1) {
+function map(key2, value$1, message$1) {
   return {
     kind: "schema",
     type: "map",
     reference: map,
     expects: "Map",
     async: false,
-    key,
+    key: key2,
     value: value$1,
     message: message$1,
     get "~standard"() {
@@ -6742,14 +6745,14 @@ function map(key, value$1, message$1) {
 }
 __name(map, "map");
 // @__NO_SIDE_EFFECTS__
-function mapAsync(key, value$1, message$1) {
+function mapAsync(key2, value$1, message$1) {
   return {
     kind: "schema",
     type: "map",
     reference: mapAsync,
     expects: "Map",
     async: true,
-    key,
+    key: key2,
     value: value$1,
     message: message$1,
     get "~standard"() {
@@ -7141,17 +7144,17 @@ function object(entries$1, message$1) {
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        for (const key in this.entries) {
-          const valueSchema = this.entries[key];
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-            const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+        for (const key2 in this.entries) {
+          const valueSchema = this.entries[key2];
+          if (key2 in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key2 in input ? input[key2] : /* @__PURE__ */ getDefault(valueSchema);
             const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
             if (valueDataset.issues) {
               const pathItem = {
                 type: "object",
                 origin: "value",
                 input,
-                key,
+                key: key2,
                 value: value$1
               };
               for (const issue of valueDataset.issues) {
@@ -7166,18 +7169,18 @@ function object(entries$1, message$1) {
               }
             }
             if (!valueDataset.typed) dataset.typed = false;
-            dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+            dataset.value[key2] = valueDataset.value;
+          } else if (valueSchema.fallback !== void 0) dataset.value[key2] = /* @__PURE__ */ getFallback(valueSchema);
           else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
             _addIssue(this, "key", dataset, config$1, {
               input: void 0,
-              expected: `"${key}"`,
+              expected: `"${key2}"`,
               path: [{
                 type: "object",
                 origin: "key",
                 input,
-                key,
-                value: input[key]
+                key: key2,
+                value: input[key2]
               }]
             });
             if (config$1.abortEarly) break;
@@ -7207,30 +7210,30 @@ function objectAsync(entries$1, message$1) {
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-            const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
+        const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key2, valueSchema]) => {
+          if (key2 in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key2 in input ? input[key2] : await /* @__PURE__ */ getDefault(valueSchema);
             return [
-              key,
+              key2,
               value$1,
               valueSchema,
               await valueSchema["~run"]({ value: value$1 }, config$1)
             ];
           }
           return [
-            key,
-            input[key],
+            key2,
+            input[key2],
             valueSchema,
             null
           ];
         }));
-        for (const [key, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
+        for (const [key2, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
           if (valueDataset.issues) {
             const pathItem = {
               type: "object",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of valueDataset.issues) {
@@ -7245,17 +7248,17 @@ function objectAsync(entries$1, message$1) {
             }
           }
           if (!valueDataset.typed) dataset.typed = false;
-          dataset.value[key] = valueDataset.value;
-        } else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+          dataset.value[key2] = valueDataset.value;
+        } else if (valueSchema.fallback !== void 0) dataset.value[key2] = await /* @__PURE__ */ getFallback(valueSchema);
         else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
           _addIssue(this, "key", dataset, config$1, {
             input: void 0,
-            expected: `"${key}"`,
+            expected: `"${key2}"`,
             path: [{
               type: "object",
               origin: "key",
               input,
-              key,
+              key: key2,
               value: value$1
             }]
           });
@@ -7286,17 +7289,17 @@ function objectWithRest(entries$1, rest, message$1) {
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        for (const key in this.entries) {
-          const valueSchema = this.entries[key];
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-            const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+        for (const key2 in this.entries) {
+          const valueSchema = this.entries[key2];
+          if (key2 in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key2 in input ? input[key2] : /* @__PURE__ */ getDefault(valueSchema);
             const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
             if (valueDataset.issues) {
               const pathItem = {
                 type: "object",
                 origin: "value",
                 input,
-                key,
+                key: key2,
                 value: value$1
               };
               for (const issue of valueDataset.issues) {
@@ -7311,33 +7314,33 @@ function objectWithRest(entries$1, rest, message$1) {
               }
             }
             if (!valueDataset.typed) dataset.typed = false;
-            dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+            dataset.value[key2] = valueDataset.value;
+          } else if (valueSchema.fallback !== void 0) dataset.value[key2] = /* @__PURE__ */ getFallback(valueSchema);
           else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
             _addIssue(this, "key", dataset, config$1, {
               input: void 0,
-              expected: `"${key}"`,
+              expected: `"${key2}"`,
               path: [{
                 type: "object",
                 origin: "key",
                 input,
-                key,
-                value: input[key]
+                key: key2,
+                value: input[key2]
               }]
             });
             if (config$1.abortEarly) break;
           }
         }
         if (!dataset.issues || !config$1.abortEarly) {
-          for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) {
-            const valueDataset = this.rest["~run"]({ value: input[key] }, config$1);
+          for (const key2 in input) if (/* @__PURE__ */ _isValidObjectKey(input, key2) && !(key2 in this.entries)) {
+            const valueDataset = this.rest["~run"]({ value: input[key2] }, config$1);
             if (valueDataset.issues) {
               const pathItem = {
                 type: "object",
                 origin: "value",
                 input,
-                key,
-                value: input[key]
+                key: key2,
+                value: input[key2]
               };
               for (const issue of valueDataset.issues) {
                 if (issue.path) issue.path.unshift(pathItem);
@@ -7351,7 +7354,7 @@ function objectWithRest(entries$1, rest, message$1) {
               }
             }
             if (!valueDataset.typed) dataset.typed = false;
-            dataset.value[key] = valueDataset.value;
+            dataset.value[key2] = valueDataset.value;
           }
         }
       } else _addIssue(this, "type", dataset, config$1);
@@ -7379,34 +7382,34 @@ function objectWithRestAsync(entries$1, rest, message$1) {
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        const [normalDatasets, restDatasets] = await Promise.all([Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-            const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
+        const [normalDatasets, restDatasets] = await Promise.all([Promise.all(Object.entries(this.entries).map(async ([key2, valueSchema]) => {
+          if (key2 in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key2 in input ? input[key2] : await /* @__PURE__ */ getDefault(valueSchema);
             return [
-              key,
+              key2,
               value$1,
               valueSchema,
               await valueSchema["~run"]({ value: value$1 }, config$1)
             ];
           }
           return [
-            key,
-            input[key],
+            key2,
+            input[key2],
             valueSchema,
             null
           ];
-        })), Promise.all(Object.entries(input).filter(([key]) => /* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)).map(async ([key, value$1]) => [
-          key,
+        })), Promise.all(Object.entries(input).filter(([key2]) => /* @__PURE__ */ _isValidObjectKey(input, key2) && !(key2 in this.entries)).map(async ([key2, value$1]) => [
+          key2,
           value$1,
           await this.rest["~run"]({ value: value$1 }, config$1)
         ]))]);
-        for (const [key, value$1, valueSchema, valueDataset] of normalDatasets) if (valueDataset) {
+        for (const [key2, value$1, valueSchema, valueDataset] of normalDatasets) if (valueDataset) {
           if (valueDataset.issues) {
             const pathItem = {
               type: "object",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of valueDataset.issues) {
@@ -7421,29 +7424,29 @@ function objectWithRestAsync(entries$1, rest, message$1) {
             }
           }
           if (!valueDataset.typed) dataset.typed = false;
-          dataset.value[key] = valueDataset.value;
-        } else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+          dataset.value[key2] = valueDataset.value;
+        } else if (valueSchema.fallback !== void 0) dataset.value[key2] = await /* @__PURE__ */ getFallback(valueSchema);
         else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
           _addIssue(this, "key", dataset, config$1, {
             input: void 0,
-            expected: `"${key}"`,
+            expected: `"${key2}"`,
             path: [{
               type: "object",
               origin: "key",
               input,
-              key,
+              key: key2,
               value: value$1
             }]
           });
           if (config$1.abortEarly) break;
         }
-        if (!dataset.issues || !config$1.abortEarly) for (const [key, value$1, valueDataset] of restDatasets) {
+        if (!dataset.issues || !config$1.abortEarly) for (const [key2, value$1, valueDataset] of restDatasets) {
           if (valueDataset.issues) {
             const pathItem = {
               type: "object",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of valueDataset.issues) {
@@ -7458,7 +7461,7 @@ function objectWithRestAsync(entries$1, rest, message$1) {
             }
           }
           if (!valueDataset.typed) dataset.typed = false;
-          dataset.value[key] = valueDataset.value;
+          dataset.value[key2] = valueDataset.value;
         }
       } else _addIssue(this, "type", dataset, config$1);
       return dataset;
@@ -7560,14 +7563,14 @@ function promise(message$1) {
 }
 __name(promise, "promise");
 // @__NO_SIDE_EFFECTS__
-function record(key, value$1, message$1) {
+function record(key2, value$1, message$1) {
   return {
     kind: "schema",
     type: "record",
     reference: record,
     expects: "Object",
     async: false,
-    key,
+    key: key2,
     value: value$1,
     message: message$1,
     get "~standard"() {
@@ -7629,14 +7632,14 @@ function record(key, value$1, message$1) {
 }
 __name(record, "record");
 // @__NO_SIDE_EFFECTS__
-function recordAsync(key, value$1, message$1) {
+function recordAsync(key2, value$1, message$1) {
   return {
     kind: "schema",
     type: "record",
     reference: recordAsync,
     expects: "Object",
     async: true,
-    key,
+    key: key2,
     value: value$1,
     message: message$1,
     get "~standard"() {
@@ -7701,11 +7704,11 @@ function recordAsync(key, value$1, message$1) {
 }
 __name(recordAsync, "recordAsync");
 // @__NO_SIDE_EFFECTS__
-function set(value$1, message$1) {
+function set$1(value$1, message$1) {
   return {
     kind: "schema",
     type: "set",
-    reference: set,
+    reference: set$1,
     expects: "Set",
     async: false,
     value: value$1,
@@ -7747,7 +7750,7 @@ function set(value$1, message$1) {
     }
   };
 }
-__name(set, "set");
+__name(set$1, "set$1");
 // @__NO_SIDE_EFFECTS__
 function setAsync(value$1, message$1) {
   return {
@@ -7814,17 +7817,17 @@ function strictObject(entries$1, message$1) {
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        for (const key in this.entries) {
-          const valueSchema = this.entries[key];
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-            const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+        for (const key2 in this.entries) {
+          const valueSchema = this.entries[key2];
+          if (key2 in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key2 in input ? input[key2] : /* @__PURE__ */ getDefault(valueSchema);
             const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
             if (valueDataset.issues) {
               const pathItem = {
                 type: "object",
                 origin: "value",
                 input,
-                key,
+                key: key2,
                 value: value$1
               };
               for (const issue of valueDataset.issues) {
@@ -7839,34 +7842,34 @@ function strictObject(entries$1, message$1) {
               }
             }
             if (!valueDataset.typed) dataset.typed = false;
-            dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+            dataset.value[key2] = valueDataset.value;
+          } else if (valueSchema.fallback !== void 0) dataset.value[key2] = /* @__PURE__ */ getFallback(valueSchema);
           else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
             _addIssue(this, "key", dataset, config$1, {
               input: void 0,
-              expected: `"${key}"`,
+              expected: `"${key2}"`,
               path: [{
                 type: "object",
                 origin: "key",
                 input,
-                key,
-                value: input[key]
+                key: key2,
+                value: input[key2]
               }]
             });
             if (config$1.abortEarly) break;
           }
         }
         if (!dataset.issues || !config$1.abortEarly) {
-          for (const key in input) if (!(key in this.entries)) {
+          for (const key2 in input) if (!(key2 in this.entries)) {
             _addIssue(this, "key", dataset, config$1, {
-              input: key,
+              input: key2,
               expected: "never",
               path: [{
                 type: "object",
                 origin: "key",
                 input,
-                key,
-                value: input[key]
+                key: key2,
+                value: input[key2]
               }]
             });
             break;
@@ -7896,30 +7899,30 @@ function strictObjectAsync(entries$1, message$1) {
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
-        const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
-            const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
+        const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key2, valueSchema]) => {
+          if (key2 in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key2 in input ? input[key2] : await /* @__PURE__ */ getDefault(valueSchema);
             return [
-              key,
+              key2,
               value$1,
               valueSchema,
               await valueSchema["~run"]({ value: value$1 }, config$1)
             ];
           }
           return [
-            key,
-            input[key],
+            key2,
+            input[key2],
             valueSchema,
             null
           ];
         }));
-        for (const [key, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
+        for (const [key2, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
           if (valueDataset.issues) {
             const pathItem = {
               type: "object",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of valueDataset.issues) {
@@ -7934,33 +7937,33 @@ function strictObjectAsync(entries$1, message$1) {
             }
           }
           if (!valueDataset.typed) dataset.typed = false;
-          dataset.value[key] = valueDataset.value;
-        } else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+          dataset.value[key2] = valueDataset.value;
+        } else if (valueSchema.fallback !== void 0) dataset.value[key2] = await /* @__PURE__ */ getFallback(valueSchema);
         else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
           _addIssue(this, "key", dataset, config$1, {
             input: void 0,
-            expected: `"${key}"`,
+            expected: `"${key2}"`,
             path: [{
               type: "object",
               origin: "key",
               input,
-              key,
+              key: key2,
               value: value$1
             }]
           });
           if (config$1.abortEarly) break;
         }
         if (!dataset.issues || !config$1.abortEarly) {
-          for (const key in input) if (!(key in this.entries)) {
+          for (const key2 in input) if (!(key2 in this.entries)) {
             _addIssue(this, "key", dataset, config$1, {
-              input: key,
+              input: key2,
               expected: "never",
               path: [{
                 type: "object",
                 origin: "key",
                 input,
-                key,
-                value: input[key]
+                key: key2,
+                value: input[key2]
               }]
             });
             break;
@@ -7990,15 +7993,15 @@ function strictTuple(items, message$1) {
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        for (let key = 0; key < this.items.length; key++) {
-          const value$1 = input[key];
-          const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
+        for (let key2 = 0; key2 < this.items.length; key2++) {
+          const value$1 = input[key2];
+          const itemDataset = this.items[key2]["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -8050,21 +8053,21 @@ function strictTupleAsync(items, message$1) {
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        const itemDatasets = await Promise.all(this.items.map(async (item, key) => {
-          const value$1 = input[key];
+        const itemDatasets = await Promise.all(this.items.map(async (item, key2) => {
+          const value$1 = input[key2];
           return [
-            key,
+            key2,
             value$1,
             await item["~run"]({ value: value$1 }, config$1)
           ];
         }));
-        for (const [key, value$1, itemDataset] of itemDatasets) {
+        for (const [key2, value$1, itemDataset] of itemDatasets) {
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -8156,15 +8159,15 @@ function tuple(items, message$1) {
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        for (let key = 0; key < this.items.length; key++) {
-          const value$1 = input[key];
-          const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
+        for (let key2 = 0; key2 < this.items.length; key2++) {
+          const value$1 = input[key2];
+          const itemDataset = this.items[key2]["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -8205,21 +8208,21 @@ function tupleAsync(items, message$1) {
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        const itemDatasets = await Promise.all(this.items.map(async (item, key) => {
-          const value$1 = input[key];
+        const itemDatasets = await Promise.all(this.items.map(async (item, key2) => {
+          const value$1 = input[key2];
           return [
-            key,
+            key2,
             value$1,
             await item["~run"]({ value: value$1 }, config$1)
           ];
         }));
-        for (const [key, value$1, itemDataset] of itemDatasets) {
+        for (const [key2, value$1, itemDataset] of itemDatasets) {
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -8261,15 +8264,15 @@ function tupleWithRest(items, rest, message$1) {
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        for (let key = 0; key < this.items.length; key++) {
-          const value$1 = input[key];
-          const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
+        for (let key2 = 0; key2 < this.items.length; key2++) {
+          const value$1 = input[key2];
+          const itemDataset = this.items[key2]["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -8286,15 +8289,15 @@ function tupleWithRest(items, rest, message$1) {
           if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-        if (!dataset.issues || !config$1.abortEarly) for (let key = this.items.length; key < input.length; key++) {
-          const value$1 = input[key];
+        if (!dataset.issues || !config$1.abortEarly) for (let key2 = this.items.length; key2 < input.length; key2++) {
+          const value$1 = input[key2];
           const itemDataset = this.rest["~run"]({ value: value$1 }, config$1);
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -8336,27 +8339,27 @@ function tupleWithRestAsync(items, rest, message$1) {
       if (Array.isArray(input)) {
         dataset.typed = true;
         dataset.value = [];
-        const [normalDatasets, restDatasets] = await Promise.all([Promise.all(this.items.map(async (item, key) => {
-          const value$1 = input[key];
+        const [normalDatasets, restDatasets] = await Promise.all([Promise.all(this.items.map(async (item, key2) => {
+          const value$1 = input[key2];
           return [
-            key,
+            key2,
             value$1,
             await item["~run"]({ value: value$1 }, config$1)
           ];
-        })), Promise.all(input.slice(this.items.length).map(async (value$1, key) => {
+        })), Promise.all(input.slice(this.items.length).map(async (value$1, key2) => {
           return [
-            key + this.items.length,
+            key2 + this.items.length,
             value$1,
             await this.rest["~run"]({ value: value$1 }, config$1)
           ];
         }))]);
-        for (const [key, value$1, itemDataset] of normalDatasets) {
+        for (const [key2, value$1, itemDataset] of normalDatasets) {
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -8373,13 +8376,13 @@ function tupleWithRestAsync(items, rest, message$1) {
           if (!itemDataset.typed) dataset.typed = false;
           dataset.value.push(itemDataset.value);
         }
-        if (!dataset.issues || !config$1.abortEarly) for (const [key, value$1, itemDataset] of restDatasets) {
+        if (!dataset.issues || !config$1.abortEarly) for (const [key2, value$1, itemDataset] of restDatasets) {
           if (itemDataset.issues) {
             const pathItem = {
               type: "array",
               origin: "value",
               input,
-              key,
+              key: key2,
               value: value$1
             };
             for (const issue of itemDataset.issues) {
@@ -8581,14 +8584,14 @@ function unknown() {
 }
 __name(unknown, "unknown");
 // @__NO_SIDE_EFFECTS__
-function variant(key, options, message$1) {
+function variant(key2, options, message$1) {
   return {
     kind: "schema",
     type: "variant",
     reference: variant,
     expects: "Object",
     async: false,
-    key,
+    key: key2,
     options,
     message: message$1,
     get "~standard"() {
@@ -8652,14 +8655,14 @@ function variant(key, options, message$1) {
 }
 __name(variant, "variant");
 // @__NO_SIDE_EFFECTS__
-function variantAsync(key, options, message$1) {
+function variantAsync(key2, options, message$1) {
   return {
     kind: "schema",
     type: "variant",
     reference: variantAsync,
     expects: "Object",
     async: true,
-    key,
+    key: key2,
     options,
     message: message$1,
     get "~standard"() {
@@ -8766,7 +8769,7 @@ __name(message, "message");
 // @__NO_SIDE_EFFECTS__
 function omit(schema, keys) {
   const entries$1 = { ...schema.entries };
-  for (const key of keys) delete entries$1[key];
+  for (const key2 of keys) delete entries$1[key2];
   return {
     ...schema,
     entries: entries$1,
@@ -8807,7 +8810,7 @@ __name(parserAsync, "parserAsync");
 // @__NO_SIDE_EFFECTS__
 function partial(schema, keys) {
   const entries$1 = {};
-  for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ optional(schema.entries[key]) : schema.entries[key];
+  for (const key2 in schema.entries) entries$1[key2] = !keys || keys.includes(key2) ? /* @__PURE__ */ optional(schema.entries[key2]) : schema.entries[key2];
   return {
     ...schema,
     entries: entries$1,
@@ -8820,7 +8823,7 @@ __name(partial, "partial");
 // @__NO_SIDE_EFFECTS__
 function partialAsync(schema, keys) {
   const entries$1 = {};
-  for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ optionalAsync(schema.entries[key]) : schema.entries[key];
+  for (const key2 in schema.entries) entries$1[key2] = !keys || keys.includes(key2) ? /* @__PURE__ */ optionalAsync(schema.entries[key2]) : schema.entries[key2];
   return {
     ...schema,
     entries: entries$1,
@@ -8833,7 +8836,7 @@ __name(partialAsync, "partialAsync");
 // @__NO_SIDE_EFFECTS__
 function pick(schema, keys) {
   const entries$1 = {};
-  for (const key of keys) entries$1[key] = schema.entries[key];
+  for (const key2 of keys) entries$1[key2] = schema.entries[key2];
   return {
     ...schema,
     entries: entries$1,
@@ -8891,7 +8894,7 @@ function required(schema, arg2, arg3) {
   const keys = Array.isArray(arg2) ? arg2 : void 0;
   const message$1 = Array.isArray(arg2) ? arg3 : arg2;
   const entries$1 = {};
-  for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ nonOptional(schema.entries[key], message$1) : schema.entries[key];
+  for (const key2 in schema.entries) entries$1[key2] = !keys || keys.includes(key2) ? /* @__PURE__ */ nonOptional(schema.entries[key2], message$1) : schema.entries[key2];
   return {
     ...schema,
     entries: entries$1,
@@ -8906,7 +8909,7 @@ function requiredAsync(schema, arg2, arg3) {
   const keys = Array.isArray(arg2) ? arg2 : void 0;
   const message$1 = Array.isArray(arg2) ? arg3 : arg2;
   const entries$1 = {};
-  for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ nonOptionalAsync(schema.entries[key], message$1) : schema.entries[key];
+  for (const key2 in schema.entries) entries$1[key2] = !keys || keys.includes(key2) ? /* @__PURE__ */ nonOptionalAsync(schema.entries[key2], message$1) : schema.entries[key2];
   return {
     ...schema,
     entries: entries$1,
@@ -9004,13 +9007,13 @@ function validateJournalEntries(entries2) {
   return ok(result.output);
 }
 __name(validateJournalEntries, "validateJournalEntries");
-function validateSettingValue(key, value2, expectedType, choices) {
+function validateSettingValue(key2, value2, expectedType, choices) {
   if (expectedType === "string" && typeof value2 !== "string") {
     return err(
       createFoundryError(
         "VALIDATION_FAILED",
-        `Setting ${key}: Expected string, got ${typeof value2}`,
-        { key, value: value2, expectedType }
+        `Setting ${key2}: Expected string, got ${typeof value2}`,
+        { key: key2, value: value2, expectedType }
       )
     );
   }
@@ -9018,8 +9021,8 @@ function validateSettingValue(key, value2, expectedType, choices) {
     return err(
       createFoundryError(
         "VALIDATION_FAILED",
-        `Setting ${key}: Expected number, got ${typeof value2}`,
-        { key, value: value2, expectedType }
+        `Setting ${key2}: Expected number, got ${typeof value2}`,
+        { key: key2, value: value2, expectedType }
       )
     );
   }
@@ -9027,8 +9030,8 @@ function validateSettingValue(key, value2, expectedType, choices) {
     return err(
       createFoundryError(
         "VALIDATION_FAILED",
-        `Setting ${key}: Expected boolean, got ${typeof value2}`,
-        { key, value: value2, expectedType }
+        `Setting ${key2}: Expected boolean, got ${typeof value2}`,
+        { key: key2, value: value2, expectedType }
       )
     );
   }
@@ -9037,8 +9040,8 @@ function validateSettingValue(key, value2, expectedType, choices) {
       return err(
         createFoundryError(
           "VALIDATION_FAILED",
-          `Setting ${key}: Invalid value "${value2}". Allowed: ${choices.join(", ")}`,
-          { key, value: value2, choices }
+          `Setting ${key2}: Invalid value "${value2}". Allowed: ${choices.join(", ")}`,
+          { key: key2, value: value2, choices }
         )
       );
     }
@@ -9059,21 +9062,21 @@ const SettingConfigSchema = /* @__PURE__ */ object({
   // Record keys must be string in TS
   onChange: /* @__PURE__ */ optional(/* @__PURE__ */ custom((val) => typeof val === "function"))
 });
-function validateSettingConfig(namespace, key, config2) {
+function validateSettingConfig(namespace, key2, config2) {
   if (!namespace || typeof namespace !== "string") {
     return err(
       createFoundryError(
         "VALIDATION_FAILED",
         "Invalid setting namespace: must be non-empty string",
-        { namespace, key }
+        { namespace, key: key2 }
       )
     );
   }
-  if (!key || typeof key !== "string") {
+  if (!key2 || typeof key2 !== "string") {
     return err(
       createFoundryError("VALIDATION_FAILED", "Invalid setting key: must be non-empty string", {
         namespace,
-        key
+        key: key2
       })
     );
   }
@@ -9081,7 +9084,7 @@ function validateSettingConfig(namespace, key, config2) {
     return err(
       createFoundryError("VALIDATION_FAILED", "Invalid setting config: must be object", {
         namespace,
-        key
+        key: key2
       })
     );
   }
@@ -9090,8 +9093,8 @@ function validateSettingConfig(namespace, key, config2) {
     return err(
       createFoundryError(
         "VALIDATION_FAILED",
-        `Setting config validation failed for ${namespace}.${key}: ${result.issues.map((i) => i.message).join(", ")}`,
-        { namespace, key, config: config2, issues: result.issues }
+        `Setting config validation failed for ${namespace}.${key2}: ${result.issues.map((i) => i.message).join(", ")}`,
+        { namespace, key: key2, config: config2, issues: result.issues }
       )
     );
   }
@@ -9102,9 +9105,9 @@ function sanitizeId(id) {
   return id.replace(/[^a-zA-Z0-9-_]/g, "");
 }
 __name(sanitizeId, "sanitizeId");
-function sanitizeHtml$1(text) {
+function sanitizeHtml$1(text2) {
   const div = document.createElement("div");
-  div.textContent = text;
+  div.textContent = text2;
   return div.innerHTML;
 }
 __name(sanitizeHtml$1, "sanitizeHtml$1");
@@ -9190,14 +9193,14 @@ function validateJournalName(name) {
   return ok(name);
 }
 __name(validateJournalName, "validateJournalName");
-function validateFlagKey(key) {
-  if (typeof key !== "string" || key.length === 0 || key.length > VALIDATION_CONSTRAINTS.MAX_FLAG_KEY_LENGTH) {
+function validateFlagKey(key2) {
+  if (typeof key2 !== "string" || key2.length === 0 || key2.length > VALIDATION_CONSTRAINTS.MAX_FLAG_KEY_LENGTH) {
     return err(createFoundryError("VALIDATION_FAILED", "Invalid flag key length"));
   }
-  if (!/^[a-zA-Z0-9_]+$/.test(key)) {
+  if (!/^[a-zA-Z0-9_]+$/.test(key2)) {
     return err(createFoundryError("VALIDATION_FAILED", "Invalid flag key format"));
   }
-  return ok(key);
+  return ok(key2);
 }
 __name(validateFlagKey, "validateFlagKey");
 const _FoundryV13GamePort = class _FoundryV13GamePort {
@@ -9216,8 +9219,8 @@ const _FoundryV13GamePort = class _FoundryV13GamePort {
     if (!this.foundryAPI?.journal) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry game API not available"));
     }
-    const now = Date.now();
-    const cacheAge = now - this.lastCheckTimestamp;
+    const now2 = Date.now();
+    const cacheAge = now2 - this.lastCheckTimestamp;
     if (this.cachedEntries !== null && cacheAge < this.cacheTtlMs) {
       return { ok: true, value: this.cachedEntries };
     }
@@ -9233,7 +9236,7 @@ const _FoundryV13GamePort = class _FoundryV13GamePort {
       return validationResult;
     }
     this.cachedEntries = entries2.value;
-    this.lastCheckTimestamp = now;
+    this.lastCheckTimestamp = now2;
     return { ok: true, value: this.cachedEntries };
   }
   /**
@@ -9487,8 +9490,8 @@ function ensureNonEmptyArray(arr) {
   return ok(arr);
 }
 __name(ensureNonEmptyArray, "ensureNonEmptyArray");
-function extractHtmlElement(html) {
-  return html instanceof HTMLElement ? html : null;
+function extractHtmlElement(html2) {
+  return html2 instanceof HTMLElement ? html2 : null;
 }
 __name(extractHtmlElement, "extractHtmlElement");
 function getFactoryOrError(factories, version) {
@@ -9543,6 +9546,58 @@ function castCreatedJournalEntry(document2) {
   return document2;
 }
 __name(castCreatedJournalEntry, "castCreatedJournalEntry");
+function castFoundryDocumentCollection(collections, documentType) {
+  if (!isObjectWithMethods(collections, ["get"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "game.collections does not have required method (get)",
+        {
+          missingMethods: ["get"]
+        }
+      )
+    );
+  }
+  const collection = collections.get(documentType);
+  if (!collection) {
+    return err(
+      createFoundryError("NOT_FOUND", `Collection for document type "${documentType}" not found`, {
+        documentType
+      })
+    );
+  }
+  if (!isObjectWithMethods(collection, ["get", "has"])) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `Collection for "${documentType}" does not have required methods (get, has)`,
+        {
+          documentType,
+          missingMethods: ["get", "has"]
+        }
+      )
+    );
+  }
+  return ok(collection);
+}
+__name(castFoundryDocumentCollection, "castFoundryDocumentCollection");
+function castSvelteStateRune() {
+  if (typeof globalThis === "undefined" || globalThis === null) {
+    return err(createFoundryError("API_NOT_AVAILABLE", "globalThis is not available", {}));
+  }
+  const $state = globalThis.$state;
+  if (typeof $state !== "function") {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "Svelte 5 $state rune is not available in globalThis",
+        {}
+      )
+    );
+  }
+  return ok($state);
+}
+__name(castSvelteStateRune, "castSvelteStateRune");
 const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
   constructor() {
     __privateAdd(this, _disposed3, false);
@@ -9574,11 +9629,11 @@ const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
       (error) => createFoundryError("OPERATION_FAILED", "Failed to delete document", void 0, error)
     );
   }
-  getFlag(document2, scope, key, schema) {
+  getFlag(document2, scope, key2, schema) {
     if (__privateGet(this, _disposed3)) {
       return {
         ok: false,
-        error: createFoundryError("DISPOSED", "Cannot get flag on disposed port", { scope, key })
+        error: createFoundryError("DISPOSED", "Cannot get flag on disposed port", { scope, key: key2 })
       };
     }
     return tryCatch(
@@ -9586,7 +9641,7 @@ const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
         if (!document2?.getFlag) {
           throw new Error("Document does not have getFlag method");
         }
-        const rawValue = document2.getFlag(scope, key);
+        const rawValue = document2.getFlag(scope, key2);
         if (rawValue === null || rawValue === void 0) {
           return null;
         }
@@ -9594,8 +9649,8 @@ const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
         if (!parseResult.success) {
           const error = createFoundryError(
             "VALIDATION_FAILED",
-            `Flag ${scope}.${key} failed validation: ${parseResult.issues.map((i) => i.message).join(", ")}`,
-            { scope, key, rawValue, issues: parseResult.issues }
+            `Flag ${scope}.${key2} failed validation: ${parseResult.issues.map((i) => i.message).join(", ")}`,
+            { scope, key: key2, rawValue, issues: parseResult.issues }
           );
           throw error;
         }
@@ -9607,18 +9662,18 @@ const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
         }
         return createFoundryError(
           "OPERATION_FAILED",
-          `Failed to get flag ${scope}.${key}`,
-          { scope, key },
+          `Failed to get flag ${scope}.${key2}`,
+          { scope, key: key2 },
           error
         );
       }
     );
   }
-  async setFlag(document2, scope, key, value2) {
+  async setFlag(document2, scope, key2, value2) {
     if (__privateGet(this, _disposed3)) {
       return {
         ok: false,
-        error: createFoundryError("DISPOSED", "Cannot set flag on disposed port", { scope, key })
+        error: createFoundryError("DISPOSED", "Cannot set flag on disposed port", { scope, key: key2 })
       };
     }
     return fromPromise(
@@ -9626,26 +9681,26 @@ const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
         if (!document2?.setFlag) {
           throw new Error("Document does not have setFlag method");
         }
-        await document2.setFlag(scope, key, value2);
+        await document2.setFlag(scope, key2, value2);
       })(),
       (error) => createFoundryError(
         "OPERATION_FAILED",
-        `Failed to set flag ${scope}.${key}`,
-        { scope, key, value: value2 },
+        `Failed to set flag ${scope}.${key2}`,
+        { scope, key: key2, value: value2 },
         error
       )
     );
   }
-  async unsetFlag(document2, scope, key) {
+  async unsetFlag(document2, scope, key2) {
     if (__privateGet(this, _disposed3)) {
       return err(
-        createFoundryError("DISPOSED", "Cannot unset flag on disposed port", { scope, key })
+        createFoundryError("DISPOSED", "Cannot unset flag on disposed port", { scope, key: key2 })
       );
     }
     return fromPromise(
       (async () => {
         if (document2.unsetFlag) {
-          await document2.unsetFlag(scope, key);
+          await document2.unsetFlag(scope, key2);
         } else {
           const docWithUpdateResult = castFoundryDocumentWithUpdate(document2);
           if (!docWithUpdateResult.ok) {
@@ -9654,14 +9709,14 @@ const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
             );
           }
           await docWithUpdateResult.value.update({
-            [`flags.${scope}.-=${key}`]: null
+            [`flags.${scope}.-=${key2}`]: null
           });
         }
       })(),
       (error) => createFoundryError(
         "OPERATION_FAILED",
-        `Failed to unset flag ${scope}.${key}`,
-        { scope, key },
+        `Failed to unset flag ${scope}.${key2}`,
+        { scope, key: key2 },
         error
       )
     );
@@ -9691,8 +9746,8 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
     if (!elementResult.ok) {
       return err(elementResult.error);
     }
-    const html = elementResult.value;
-    if (!html) {
+    const html2 = elementResult.value;
+    if (!html2) {
       return err(
         createFoundryError(
           "NOT_FOUND",
@@ -9702,10 +9757,10 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
       );
     }
     const safeId = sanitizeId(journalId);
-    const element = html.querySelector(
+    const element2 = html2.querySelector(
       `li.directory-item[data-document-id="${safeId}"], li.directory-item[data-entry-id="${safeId}"]`
     );
-    if (!element) {
+    if (!element2) {
       return err(
         createFoundryError(
           "NOT_FOUND",
@@ -9715,7 +9770,7 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
       );
     }
     try {
-      element.remove();
+      element2.remove();
       return ok(void 0);
     } catch (error) {
       return err(
@@ -9732,8 +9787,8 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
     if (__privateGet(this, _disposed4)) {
       return err(createFoundryError("DISPOSED", "Cannot find element on disposed port"));
     }
-    const element = container.querySelector(selector);
-    return ok(element);
+    const element2 = container.querySelector(selector);
+    return ok(element2);
   }
   notify(message2, type, options) {
     if (__privateGet(this, _disposed4)) {
@@ -9772,8 +9827,8 @@ const _FoundryV13UIPort = class _FoundryV13UIPort {
     }
     try {
       if (directoryId === "journal") {
-        const element = this.foundryDocumentAPI.querySelector("#journal");
-        return ok(element);
+        const element2 = this.foundryDocumentAPI.querySelector("#journal");
+        return ok(element2);
       }
       return ok(null);
     } catch (error) {
@@ -9868,16 +9923,16 @@ const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
     __privateAdd(this, _disposed5, false);
     this.foundryAPI = foundryAPI;
   }
-  register(namespace, key, config2) {
+  register(namespace, key2, config2) {
     if (__privateGet(this, _disposed5)) {
       return err(
         createFoundryError("DISPOSED", "Cannot register setting on disposed port", {
           namespace,
-          key
+          key: key2
         })
       );
     }
-    const configValidation = validateSettingConfig(namespace, key, config2);
+    const configValidation = validateSettingConfig(namespace, key2, config2);
     if (!configValidation.ok) {
       return err(configValidation.error);
     }
@@ -9887,21 +9942,21 @@ const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
     const api = this.foundryAPI;
     return tryCatch(
       () => {
-        api.register(namespace, key, config2);
+        api.register(namespace, key2, config2);
         return void 0;
       },
       (error) => createFoundryError(
         "OPERATION_FAILED",
-        `Failed to register setting ${namespace}.${key}`,
-        { namespace, key },
+        `Failed to register setting ${namespace}.${key2}`,
+        { namespace, key: key2 },
         error
       )
     );
   }
-  get(namespace, key, schema) {
+  get(namespace, key2, schema) {
     if (__privateGet(this, _disposed5)) {
       return err(
-        createFoundryError("DISPOSED", "Cannot get setting on disposed port", { namespace, key })
+        createFoundryError("DISPOSED", "Cannot get setting on disposed port", { namespace, key: key2 })
       );
     }
     if (!this.foundryAPI) {
@@ -9910,13 +9965,13 @@ const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
     const api = this.foundryAPI;
     return tryCatch(
       () => {
-        const rawValue = api.get(namespace, key);
+        const rawValue = api.get(namespace, key2);
         const parseResult = /* @__PURE__ */ safeParse(schema, rawValue);
         if (!parseResult.success) {
           const error = createFoundryError(
             "VALIDATION_FAILED",
-            `Setting ${namespace}.${key} failed validation: ${parseResult.issues.map((i) => i.message).join(", ")}`,
-            { namespace, key, rawValue, issues: parseResult.issues }
+            `Setting ${namespace}.${key2} failed validation: ${parseResult.issues.map((i) => i.message).join(", ")}`,
+            { namespace, key: key2, rawValue, issues: parseResult.issues }
           );
           throw error;
         }
@@ -9928,28 +9983,28 @@ const _FoundryV13SettingsPort = class _FoundryV13SettingsPort {
         }
         return createFoundryError(
           "OPERATION_FAILED",
-          `Failed to get setting ${namespace}.${key}`,
-          { namespace, key },
+          `Failed to get setting ${namespace}.${key2}`,
+          { namespace, key: key2 },
           error
         );
       }
     );
   }
-  async set(namespace, key, value2) {
+  async set(namespace, key2, value2) {
     if (__privateGet(this, _disposed5)) {
       return err(
-        createFoundryError("DISPOSED", "Cannot set setting on disposed port", { namespace, key })
+        createFoundryError("DISPOSED", "Cannot set setting on disposed port", { namespace, key: key2 })
       );
     }
     if (!this.foundryAPI) {
       return err(createFoundryError("API_NOT_AVAILABLE", "Foundry settings API not available"));
     }
     return fromPromise(
-      this.foundryAPI.set(namespace, key, value2).then(() => void 0),
+      this.foundryAPI.set(namespace, key2, value2).then(() => void 0),
       (error) => createFoundryError(
         "OPERATION_FAILED",
-        `Failed to set setting ${namespace}.${key}`,
-        { namespace, key, value: value2 },
+        `Failed to set setting ${namespace}.${key2}`,
+        { namespace, key: key2, value: value2 },
         error
       )
     );
@@ -9983,14 +10038,14 @@ function createFoundryV13SettingsPort() {
   }
   const settings = settingsResult.value;
   return new FoundryV13SettingsPort({
-    register: /* @__PURE__ */ __name((namespace, key, config2) => {
-      settings.register(namespace, key, config2);
+    register: /* @__PURE__ */ __name((namespace, key2, config2) => {
+      settings.register(namespace, key2, config2);
     }, "register"),
-    get: /* @__PURE__ */ __name((namespace, key) => {
-      return settings.get(namespace, key);
+    get: /* @__PURE__ */ __name((namespace, key2) => {
+      return settings.get(namespace, key2);
     }, "get"),
-    set: /* @__PURE__ */ __name((namespace, key, value2) => {
-      return settings.set(namespace, key, value2).then(() => void 0);
+    set: /* @__PURE__ */ __name((namespace, key2, value2) => {
+      return settings.set(namespace, key2, value2).then(() => void 0);
     }, "set")
   });
 }
@@ -10006,21 +10061,21 @@ const _FoundryV13I18nPort = class _FoundryV13I18nPort {
    * @param key - Translation key
    * @returns Result with translated string (returns key itself if not found)
    */
-  localize(key) {
+  localize(key2) {
     if (__privateGet(this, _disposed6)) {
       return {
         ok: false,
-        error: createFoundryError("DISPOSED", "Cannot localize on disposed port", { key })
+        error: createFoundryError("DISPOSED", "Cannot localize on disposed port", { key: key2 })
       };
     }
     try {
       if (!this.foundryAPI) {
-        return ok(key);
+        return ok(key2);
       }
-      const translated = this.foundryAPI.localize(key);
+      const translated = this.foundryAPI.localize(key2);
       return ok(translated);
     } catch {
-      return ok(key);
+      return ok(key2);
     }
   }
   /**
@@ -10030,27 +10085,27 @@ const _FoundryV13I18nPort = class _FoundryV13I18nPort {
    * @param data - Object with placeholder values
    * @returns Result with formatted string
    */
-  format(key, data) {
+  format(key2, data) {
     if (__privateGet(this, _disposed6)) {
       return {
         ok: false,
         error: createFoundryError("DISPOSED", "Cannot format translation on disposed port", {
-          key
+          key: key2
         })
       };
     }
     try {
       if (!this.foundryAPI) {
-        return ok(key);
+        return ok(key2);
       }
       const stringData = {};
       for (const [k, v] of Object.entries(data)) {
         stringData[k] = String(v);
       }
-      const formatted = this.foundryAPI.format(key, stringData);
+      const formatted = this.foundryAPI.format(key2, stringData);
       return ok(formatted);
     } catch {
-      return ok(key);
+      return ok(key2);
     }
   }
   /**
@@ -10059,12 +10114,12 @@ const _FoundryV13I18nPort = class _FoundryV13I18nPort {
    * @param key - Translation key to check
    * @returns Result with boolean indicating existence
    */
-  has(key) {
+  has(key2) {
     if (__privateGet(this, _disposed6)) {
       return {
         ok: false,
         error: createFoundryError("DISPOSED", "Cannot check translation key on disposed port", {
-          key
+          key: key2
         })
       };
     }
@@ -10072,7 +10127,7 @@ const _FoundryV13I18nPort = class _FoundryV13I18nPort {
       if (!this.foundryAPI) {
         return ok(false);
       }
-      const exists = this.foundryAPI.has(key);
+      const exists = this.foundryAPI.has(key2);
       return ok(exists);
     } catch {
       return ok(false);
@@ -10092,9 +10147,9 @@ function createFoundryV13I18nPort() {
     return new FoundryV13I18nPort(null);
   }
   return new FoundryV13I18nPort({
-    localize: /* @__PURE__ */ __name((key) => game.i18n.localize(key), "localize"),
-    format: /* @__PURE__ */ __name((key, data) => game.i18n.format(key, data), "format"),
-    has: /* @__PURE__ */ __name((key) => game.i18n.has(key), "has")
+    localize: /* @__PURE__ */ __name((key2) => game.i18n.localize(key2), "localize"),
+    format: /* @__PURE__ */ __name((key2, data) => game.i18n.format(key2, data), "format"),
+    has: /* @__PURE__ */ __name((key2) => game.i18n.has(key2), "has")
   });
 }
 __name(createFoundryV13I18nPort, "createFoundryV13I18nPort");
@@ -10549,17 +10604,17 @@ const _CacheStore = class _CacheStore {
   constructor() {
     this.store = /* @__PURE__ */ new Map();
   }
-  get(key) {
-    return this.store.get(key);
+  get(key2) {
+    return this.store.get(key2);
   }
-  set(key, entry) {
-    this.store.set(key, entry);
+  set(key2, entry) {
+    this.store.set(key2, entry);
   }
-  delete(key) {
-    return this.store.delete(key);
+  delete(key2) {
+    return this.store.delete(key2);
   }
-  has(key) {
-    return this.store.has(key);
+  has(key2) {
+    return this.store.has(key2);
   }
   clear() {
     const size2 = this.store.size;
@@ -10590,24 +10645,24 @@ const _CacheExpirationManager = class _CacheExpirationManager {
   constructor(clock) {
     this.clock = clock ?? defaultClock;
   }
-  isExpired(entry, now) {
-    return typeof entry.expiresAt === "number" && entry.expiresAt > 0 && entry.expiresAt <= now;
+  isExpired(entry, now2) {
+    return typeof entry.expiresAt === "number" && entry.expiresAt > 0 && entry.expiresAt <= now2;
   }
-  createMetadata(key, options, now, defaultTtlMs) {
+  createMetadata(key2, options, now2, defaultTtlMs) {
     const ttlMs = clampTtl$1(options?.ttlMs, defaultTtlMs);
-    const expiresAt = ttlMs > 0 ? now + ttlMs : null;
-    const tags = options?.tags ? Array.from(new Set(options.tags.map((tag) => String(tag)))) : [];
+    const expiresAt = ttlMs > 0 ? now2 + ttlMs : null;
+    const tags = options?.tags ? Array.from(new Set(options.tags.map((tag2) => String(tag2)))) : [];
     return {
-      key,
-      createdAt: now,
+      key: key2,
+      createdAt: now2,
       expiresAt,
-      lastAccessedAt: now,
+      lastAccessedAt: now2,
       hits: 0,
       tags
     };
   }
-  handleExpiration(key, store2) {
-    return store2.delete(key);
+  handleExpiration(key2, store2) {
+    return store2.delete(key2);
   }
 };
 __name(_CacheExpirationManager, "CacheExpirationManager");
@@ -10621,16 +10676,16 @@ const _CacheStatisticsCollector = class _CacheStatisticsCollector {
       evictions: 0
     };
   }
-  recordHit(key) {
-    this.metricsObserver.onCacheHit(key);
+  recordHit(key2) {
+    this.metricsObserver.onCacheHit(key2);
     this.stats.hits++;
   }
-  recordMiss(key) {
-    this.metricsObserver.onCacheMiss(key);
+  recordMiss(key2) {
+    this.metricsObserver.onCacheMiss(key2);
     this.stats.misses++;
   }
-  recordEviction(key) {
-    this.metricsObserver.onCacheEviction(key);
+  recordEviction(key2) {
+    this.metricsObserver.onCacheEviction(key2);
     this.stats.evictions++;
   }
   getStatistics(size2, enabled) {
@@ -10705,12 +10760,12 @@ const _CacheCapacityManager = class _CacheCapacityManager {
       return [];
     }
     const entriesMap = /* @__PURE__ */ new Map();
-    for (const [key, entry] of this.store.entries()) {
-      entriesMap.set(key, entry);
+    for (const [key2, entry] of this.store.entries()) {
+      entriesMap.set(key2, entry);
     }
     const keysToEvict = this.strategy.selectForEviction(entriesMap, maxEntries2);
-    for (const key of keysToEvict) {
-      this.store.delete(key);
+    for (const key2 of keysToEvict) {
+      this.store.delete(key2);
     }
     return keysToEvict;
   }
@@ -10736,7 +10791,7 @@ const _LRUEvictionStrategy = class _LRUEvictionStrategy {
     const sorted = Array.from(entries2.entries()).sort(
       (a, b) => a[1].metadata.lastAccessedAt - b[1].metadata.lastAccessedAt
     );
-    return sorted.slice(0, toRemove).map(([key]) => key);
+    return sorted.slice(0, toRemove).map(([key2]) => key2);
   }
 };
 __name(_LRUEvictionStrategy, "LRUEvictionStrategy");
@@ -10766,9 +10821,9 @@ const _EvictionStrategyRegistry = class _EvictionStrategyRegistry {
    * @param strategy - The strategy instance to register
    * @returns true if a strategy was replaced, false if it's a new registration
    */
-  register(key, strategy) {
-    const wasReplaced = this.strategies.has(key);
-    this.strategies.set(key, strategy);
+  register(key2, strategy) {
+    const wasReplaced = this.strategies.has(key2);
+    this.strategies.set(key2, strategy);
     return wasReplaced;
   }
   /**
@@ -10777,8 +10832,8 @@ const _EvictionStrategyRegistry = class _EvictionStrategyRegistry {
    * @param key - The strategy key
    * @returns The strategy if found, undefined otherwise
    */
-  get(key) {
-    return this.strategies.get(key);
+  get(key2) {
+    return this.strategies.get(key2);
   }
   /**
    * Gets a strategy by key, or returns the default strategy if not found.
@@ -10787,11 +10842,11 @@ const _EvictionStrategyRegistry = class _EvictionStrategyRegistry {
    * @param defaultKey - The key of the default strategy to use if key is not found
    * @returns The strategy if found, the default strategy if defaultKey is found, undefined otherwise
    */
-  getOrDefault(key, defaultKey) {
-    if (!key) {
+  getOrDefault(key2, defaultKey) {
+    if (!key2) {
       return this.get(defaultKey);
     }
-    return this.get(key) ?? this.get(defaultKey);
+    return this.get(key2) ?? this.get(defaultKey);
   }
   /**
    * Checks if a strategy is registered.
@@ -10799,8 +10854,8 @@ const _EvictionStrategyRegistry = class _EvictionStrategyRegistry {
    * @param key - The strategy key
    * @returns true if the strategy is registered, false otherwise
    */
-  has(key) {
-    return this.strategies.has(key);
+  has(key2) {
+    return this.strategies.has(key2);
   }
   /**
    * Unregisters a strategy.
@@ -10808,8 +10863,8 @@ const _EvictionStrategyRegistry = class _EvictionStrategyRegistry {
    * @param key - The strategy key to unregister
    * @returns true if a strategy was removed, false if it didn't exist
    */
-  unregister(key) {
-    return this.strategies.delete(key);
+  unregister(key2) {
+    return this.strategies.delete(key2);
   }
   /**
    * Gets all registered strategy keys.
@@ -10903,36 +10958,36 @@ const _CacheRuntime = class _CacheRuntime {
     this.policy = policy;
     this.clock = clock;
   }
-  get(key) {
+  get(key2) {
     const config2 = this.configManager.getConfig();
     if (!config2.enabled) {
       return null;
     }
-    const entry = this.store.get(key);
+    const entry = this.store.get(key2);
     if (!entry) {
-      this.telemetry.recordMiss(key);
+      this.telemetry.recordMiss(key2);
       return null;
     }
-    const now = this.clock();
-    if (this.policy.shouldExpire(entry.expiresAt, now)) {
-      this.handleExpiration(key, entry);
-      this.telemetry.recordEviction(key);
-      this.telemetry.recordMiss(key);
+    const now2 = this.clock();
+    if (this.policy.shouldExpire(entry.expiresAt, now2)) {
+      this.handleExpiration(key2, entry);
+      this.telemetry.recordEviction(key2);
+      this.telemetry.recordMiss(key2);
       return null;
     }
     entry.metadata.hits += 1;
-    entry.metadata.lastAccessedAt = now;
-    this.telemetry.recordHit(key);
+    entry.metadata.lastAccessedAt = now2;
+    this.telemetry.recordHit(key2);
     return {
       hit: true,
       value: castCacheValue(entry.value),
       metadata: this.cloneMetadata(entry.metadata)
     };
   }
-  set(key, value2, options) {
-    const now = this.clock();
+  set(key2, value2, options) {
+    const now2 = this.clock();
     const config2 = this.configManager.getConfig();
-    const metadata2 = this.expirationManager.createMetadata(key, options, now, config2.defaultTtlMs);
+    const metadata2 = this.expirationManager.createMetadata(key2, options, now2, config2.defaultTtlMs);
     if (!config2.enabled) {
       return metadata2;
     }
@@ -10941,15 +10996,15 @@ const _CacheRuntime = class _CacheRuntime {
       expiresAt: metadata2.expiresAt,
       metadata: metadata2
     };
-    this.store.set(key, entry);
+    this.store.set(key2, entry);
     const evictedKeys = this.policy.enforceCapacity(this.store.size, config2);
     for (const evictedKey of evictedKeys) {
       this.telemetry.recordEviction(evictedKey);
     }
     return { ...metadata2, tags: [...metadata2.tags] };
   }
-  async getOrSet(key, factory, options) {
-    const existing = this.get(key);
+  async getOrSet(key2, factory, options) {
+    const existing = this.get(key2);
     if (existing) {
       return ok(existing);
     }
@@ -10959,7 +11014,7 @@ const _CacheRuntime = class _CacheRuntime {
       if (factoryResult instanceof Promise) {
         const asyncResult = await fromPromise(
           factoryResult,
-          (error) => `Factory failed for cache key ${String(key)}: ${String(error)}`
+          (error) => `Factory failed for cache key ${String(key2)}: ${String(error)}`
         );
         if (!asyncResult.ok) {
           return asyncResult;
@@ -10969,19 +11024,19 @@ const _CacheRuntime = class _CacheRuntime {
         factoryValue = factoryResult;
       }
     } catch (error) {
-      return err(`Factory failed for cache key ${String(key)}: ${String(error)}`);
+      return err(`Factory failed for cache key ${String(key2)}: ${String(error)}`);
     }
-    const metadata2 = this.set(key, factoryValue, options);
+    const metadata2 = this.set(key2, factoryValue, options);
     return ok({
       hit: false,
       value: factoryValue,
       metadata: metadata2
     });
   }
-  handleExpiration(key, entry) {
-    const now = this.clock();
-    if (this.expirationManager.isExpired(entry, now)) {
-      this.expirationManager.handleExpiration(key, this.store);
+  handleExpiration(key2, entry) {
+    const now2 = this.clock();
+    if (this.expirationManager.isExpired(entry, now2)) {
+      this.expirationManager.handleExpiration(key2, this.store);
     }
   }
   cloneMetadata(metadata2) {
@@ -11003,11 +11058,11 @@ const _CachePolicy = class _CachePolicy {
     }
     return this.capacityManager.enforceCapacity(config2.maxEntries);
   }
-  shouldExpire(expiresAt, now) {
+  shouldExpire(expiresAt, now2) {
     if (expiresAt === null) {
       return false;
     }
-    return now >= expiresAt;
+    return now2 >= expiresAt;
   }
 };
 __name(_CachePolicy, "CachePolicy");
@@ -11016,14 +11071,14 @@ const _CacheTelemetry = class _CacheTelemetry {
   constructor(statisticsCollector) {
     this.statisticsCollector = statisticsCollector;
   }
-  recordHit(key) {
-    this.statisticsCollector.recordHit(key);
+  recordHit(key2) {
+    this.statisticsCollector.recordHit(key2);
   }
-  recordMiss(key) {
-    this.statisticsCollector.recordMiss(key);
+  recordMiss(key2) {
+    this.statisticsCollector.recordMiss(key2);
   }
-  recordEviction(key) {
-    this.statisticsCollector.recordEviction(key);
+  recordEviction(key2) {
+    this.statisticsCollector.recordEviction(key2);
   }
   getStatistics(currentSize, enabled) {
     return this.statisticsCollector.getStatistics(currentSize, enabled);
@@ -11115,35 +11170,35 @@ const _CacheService = class _CacheService {
   get size() {
     return this.store.size;
   }
-  get(key) {
-    return this.runtime.get(key);
+  get(key2) {
+    return this.runtime.get(key2);
   }
-  async getOrSet(key, factory, options) {
-    return this.runtime.getOrSet(key, factory, options);
+  async getOrSet(key2, factory, options) {
+    return this.runtime.getOrSet(key2, factory, options);
   }
-  set(key, value2, options) {
-    return this.runtime.set(key, value2, options);
+  set(key2, value2, options) {
+    return this.runtime.set(key2, value2, options);
   }
-  delete(key) {
+  delete(key2) {
     const config2 = this.configManager.getConfig();
     if (!config2.enabled) return false;
-    const removed = this.store.delete(key);
+    const removed = this.store.delete(key2);
     if (removed) {
-      this.telemetry.recordEviction(key);
+      this.telemetry.recordEviction(key2);
     }
     return removed;
   }
-  has(key) {
+  has(key2) {
     const config2 = this.configManager.getConfig();
     if (!config2.enabled) return false;
-    const entry = this.store.get(key);
+    const entry = this.store.get(key2);
     if (!entry) {
       return false;
     }
-    const now = this.clock();
-    if (this.policy.shouldExpire(entry.expiresAt, now)) {
-      this.expirationManager.handleExpiration(key, this.store);
-      this.telemetry.recordEviction(key);
+    const now2 = this.clock();
+    if (this.policy.shouldExpire(entry.expiresAt, now2)) {
+      this.expirationManager.handleExpiration(key2, this.store);
+      this.telemetry.recordEviction(key2);
       return false;
     }
     return true;
@@ -11152,13 +11207,13 @@ const _CacheService = class _CacheService {
     const config2 = this.configManager.getConfig();
     if (!config2.enabled) return 0;
     const keysToEvict = [];
-    for (const [key] of this.store.entries()) {
-      keysToEvict.push(key);
+    for (const [key2] of this.store.entries()) {
+      keysToEvict.push(key2);
     }
     const removed = this.store.clear();
     if (removed > 0) {
-      for (const key of keysToEvict) {
-        this.telemetry.recordEviction(key);
+      for (const key2 of keysToEvict) {
+        this.telemetry.recordEviction(key2);
       }
     }
     return removed;
@@ -11168,29 +11223,29 @@ const _CacheService = class _CacheService {
     if (!config2.enabled) return 0;
     let removed = 0;
     const keysToEvict = [];
-    for (const [key, entry] of this.store.entries()) {
+    for (const [key2, entry] of this.store.entries()) {
       if (predicate(entry.metadata)) {
-        keysToEvict.push(key);
+        keysToEvict.push(key2);
       }
     }
-    for (const key of keysToEvict) {
-      if (this.store.delete(key)) {
+    for (const key2 of keysToEvict) {
+      if (this.store.delete(key2)) {
         removed++;
-        this.telemetry.recordEviction(key);
+        this.telemetry.recordEviction(key2);
       }
     }
     return removed;
   }
-  getMetadata(key) {
+  getMetadata(key2) {
     const config2 = this.configManager.getConfig();
     if (!config2.enabled) return null;
-    const entry = this.store.get(key);
+    const entry = this.store.get(key2);
     if (!entry) return null;
-    const now = this.clock();
-    if (this.policy.shouldExpire(entry.expiresAt, now)) {
-      const wasRemoved = this.expirationManager.handleExpiration(key, this.store);
+    const now2 = this.clock();
+    if (this.policy.shouldExpire(entry.expiresAt, now2)) {
+      const wasRemoved = this.expirationManager.handleExpiration(key2, this.store);
       if (wasRemoved) {
-        this.telemetry.recordEviction(key);
+        this.telemetry.recordEviction(key2);
       }
       return null;
     }
@@ -11345,14 +11400,14 @@ const _CachePortAdapter = class _CachePortAdapter {
   /**
    * Maps Domain cache key (plain string) to Infrastructure cache key (branded type).
    */
-  mapDomainKeyToInfrastructure(key) {
-    return assertCacheKey(key);
+  mapDomainKeyToInfrastructure(key2) {
+    return assertCacheKey(key2);
   }
   /**
    * Maps Infrastructure cache key (branded type) to Domain cache key (plain string).
    */
-  mapInfrastructureKeyToDomain(key) {
-    return key;
+  mapInfrastructureKeyToDomain(key2) {
+    return key2;
   }
   /**
    * Maps Domain cache options to Infrastructure cache options.
@@ -11421,24 +11476,24 @@ const _CachePortAdapter = class _CachePortAdapter {
   get size() {
     return this.cacheService.size;
   }
-  get(key) {
-    const infraKey = this.mapDomainKeyToInfrastructure(key);
+  get(key2) {
+    const infraKey = this.mapDomainKeyToInfrastructure(key2);
     const result = this.cacheService.get(infraKey);
     if (!result) return null;
     return this.mapInfrastructureLookupResultToDomain(result);
   }
-  set(key, value2, options) {
-    const infraKey = this.mapDomainKeyToInfrastructure(key);
+  set(key2, value2, options) {
+    const infraKey = this.mapDomainKeyToInfrastructure(key2);
     const infraOptions = this.mapDomainOptionsToInfrastructure(options);
     const metadata2 = this.cacheService.set(infraKey, value2, infraOptions);
     return this.mapInfrastructureMetadataToDomain(metadata2);
   }
-  delete(key) {
-    const infraKey = this.mapDomainKeyToInfrastructure(key);
+  delete(key2) {
+    const infraKey = this.mapDomainKeyToInfrastructure(key2);
     return this.cacheService.delete(infraKey);
   }
-  has(key) {
-    const infraKey = this.mapDomainKeyToInfrastructure(key);
+  has(key2) {
+    const infraKey = this.mapDomainKeyToInfrastructure(key2);
     return this.cacheService.has(infraKey);
   }
   clear() {
@@ -11448,8 +11503,8 @@ const _CachePortAdapter = class _CachePortAdapter {
     const infraPredicate = this.mapDomainPredicateToInfrastructure(predicate);
     return this.cacheService.invalidateWhere(infraPredicate);
   }
-  getMetadata(key) {
-    const infraKey = this.mapDomainKeyToInfrastructure(key);
+  getMetadata(key2) {
+    const infraKey = this.mapDomainKeyToInfrastructure(key2);
     const metadata2 = this.cacheService.getMetadata(infraKey);
     if (!metadata2) return null;
     return this.mapInfrastructureMetadataToDomain(metadata2);
@@ -11458,8 +11513,8 @@ const _CachePortAdapter = class _CachePortAdapter {
     const statistics = this.cacheService.getStatistics();
     return this.mapInfrastructureStatisticsToDomain(statistics);
   }
-  async getOrSet(key, factory, options) {
-    const infraKey = this.mapDomainKeyToInfrastructure(key);
+  async getOrSet(key2, factory, options) {
+    const infraKey = this.mapDomainKeyToInfrastructure(key2);
     const infraOptions = this.mapDomainOptionsToInfrastructure(options);
     const result = await this.cacheService.getOrSet(infraKey, factory, infraOptions);
     if (!result.ok) {
@@ -11650,10 +11705,10 @@ function castToMetricDefinition(definition) {
   return definition;
 }
 __name(castToMetricDefinition, "castToMetricDefinition");
-function castMetricValue(value2, key) {
+function castMetricValue(value2, key2) {
   if (value2 === void 0) {
     throw new Error(
-      `Metric value for key "${key}" is undefined. This indicates a registry initialization issue.`
+      `Metric value for key "${key2}" is undefined. This indicates a registry initialization issue.`
     );
   }
   return value2;
@@ -11683,8 +11738,8 @@ const _MetricDefinitionRegistry = class _MetricDefinitionRegistry {
    * @param key - Metric key
    * @returns Metric definition or undefined if not found
    */
-  get(key) {
-    return this.definitions.get(key);
+  get(key2) {
+    return this.definitions.get(key2);
   }
   /**
    * Gets all registered metric definitions.
@@ -11700,8 +11755,8 @@ const _MetricDefinitionRegistry = class _MetricDefinitionRegistry {
    * @param key - Metric key
    * @returns True if definition exists
    */
-  has(key) {
-    return this.definitions.has(key);
+  has(key2) {
+    return this.definitions.has(key2);
   }
   /**
    * Removes a metric definition.
@@ -11709,8 +11764,8 @@ const _MetricDefinitionRegistry = class _MetricDefinitionRegistry {
    * @param key - Metric key to remove
    * @returns True if definition was removed, false if it didn't exist
    */
-  remove(key) {
-    return this.definitions.delete(key);
+  remove(key2) {
+    return this.definitions.delete(key2);
   }
   /**
    * Clears all registered definitions.
@@ -11729,16 +11784,16 @@ const _MetricDefinitionRegistry = class _MetricDefinitionRegistry {
 };
 __name(_MetricDefinitionRegistry, "MetricDefinitionRegistry");
 let MetricDefinitionRegistry = _MetricDefinitionRegistry;
-function isResolutionEvent(event) {
-  return typeof event === "object" && event !== null && "durationMs" in event && typeof event.durationMs === "number" && "success" in event && typeof event.success === "boolean";
+function isResolutionEvent(event2) {
+  return typeof event2 === "object" && event2 !== null && "durationMs" in event2 && typeof event2.durationMs === "number" && "success" in event2 && typeof event2.success === "boolean";
 }
 __name(isResolutionEvent, "isResolutionEvent");
-function isPortSelectionEvent(event) {
-  return typeof event === "object" && event !== null && "version" in event && typeof event.version === "number";
+function isPortSelectionEvent(event2) {
+  return typeof event2 === "object" && event2 !== null && "version" in event2 && typeof event2.version === "number";
 }
 __name(isPortSelectionEvent, "isPortSelectionEvent");
-function isCacheAccessEvent(event) {
-  return typeof event === "object" && event !== null && "hit" in event && typeof event.hit === "boolean";
+function isCacheAccessEvent(event2) {
+  return typeof event2 === "object" && event2 !== null && "hit" in event2 && typeof event2.hit === "boolean";
 }
 __name(isCacheAccessEvent, "isCacheAccessEvent");
 const containerResolutionsDefinition = {
@@ -11750,46 +11805,46 @@ const containerResolutionsDefinition = {
 const resolutionErrorsDefinition = {
   key: "resolutionErrors",
   initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isResolutionEvent(event)) {
+  reducer: /* @__PURE__ */ __name((current, event2) => {
+    if (!isResolutionEvent(event2)) {
       return current;
     }
-    return event.success ? current : current + 1;
+    return event2.success ? current : current + 1;
   }, "reducer"),
   serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
 };
 const cacheHitsDefinition = {
   key: "cacheHits",
   initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isCacheAccessEvent(event)) {
+  reducer: /* @__PURE__ */ __name((current, event2) => {
+    if (!isCacheAccessEvent(event2)) {
       return current;
     }
-    return event.hit ? current + 1 : current;
+    return event2.hit ? current + 1 : current;
   }, "reducer"),
   serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
 };
 const cacheMissesDefinition = {
   key: "cacheMisses",
   initialValue: 0,
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isCacheAccessEvent(event)) {
+  reducer: /* @__PURE__ */ __name((current, event2) => {
+    if (!isCacheAccessEvent(event2)) {
       return current;
     }
-    return event.hit ? current : current + 1;
+    return event2.hit ? current : current + 1;
   }, "reducer"),
   serializer: /* @__PURE__ */ __name((value2) => value2, "serializer")
 };
 const portSelectionsDefinition = {
   key: "portSelections",
   initialValue: /* @__PURE__ */ new Map(),
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isPortSelectionEvent(event)) {
+  reducer: /* @__PURE__ */ __name((current, event2) => {
+    if (!isPortSelectionEvent(event2)) {
       return current;
     }
-    const count = current.get(event.version) ?? 0;
+    const count = current.get(event2.version) ?? 0;
     const updated = new Map(current);
-    updated.set(event.version, count + 1);
+    updated.set(event2.version, count + 1);
     return updated;
   }, "reducer"),
   serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
@@ -11797,13 +11852,13 @@ const portSelectionsDefinition = {
 const portSelectionFailuresDefinition = {
   key: "portSelectionFailures",
   initialValue: /* @__PURE__ */ new Map(),
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isPortSelectionEvent(event)) {
+  reducer: /* @__PURE__ */ __name((current, event2) => {
+    if (!isPortSelectionEvent(event2)) {
       return current;
     }
-    const count = current.get(event.version) ?? 0;
+    const count = current.get(event2.version) ?? 0;
     const updated = new Map(current);
-    updated.set(event.version, count + 1);
+    updated.set(event2.version, count + 1);
     return updated;
   }, "reducer"),
   serializer: /* @__PURE__ */ __name((value2) => Object.fromEntries(value2), "serializer")
@@ -11815,13 +11870,13 @@ const resolutionTimesDefinition = {
     index: 0,
     count: 0
   },
-  reducer: /* @__PURE__ */ __name((current, event) => {
-    if (!isResolutionEvent(event)) {
+  reducer: /* @__PURE__ */ __name((current, event2) => {
+    if (!isResolutionEvent(event2)) {
       return current;
     }
     const buffer = new Float64Array(current.buffer);
     const maxSize2 = METRICS_CONFIG.RESOLUTION_TIMES_BUFFER_SIZE;
-    buffer[current.index] = event.durationMs;
+    buffer[current.index] = event2.durationMs;
     const newIndex = (current.index + 1) % maxSize2;
     const newCount = Math.min(current.count + 1, maxSize2);
     return {
@@ -11876,15 +11931,15 @@ const _MetricsCollector = class _MetricsCollector {
    * @param key - Metric key
    * @param event - Event data for the reducer
    */
-  updateMetric(key, event) {
-    const state = this.metricStates.get(key);
-    if (!state) {
+  updateMetric(key2, event2) {
+    const state2 = this.metricStates.get(key2);
+    if (!state2) {
       return;
     }
-    const newValue = state.definition.reducer(state.value, event);
-    this.metricStates.set(key, {
+    const newValue = state2.definition.reducer(state2.value, event2);
+    this.metricStates.set(key2, {
       value: newValue,
-      definition: state.definition
+      definition: state2.definition
     });
   }
   /**
@@ -11895,10 +11950,10 @@ const _MetricsCollector = class _MetricsCollector {
    * @param success - Whether resolution succeeded
    */
   recordResolution(token, durationMs, success) {
-    const event = { token, durationMs, success };
-    this.updateMetric("containerResolutions", event);
-    this.updateMetric("resolutionErrors", event);
-    this.updateMetric("resolutionTimes", event);
+    const event2 = { token, durationMs, success };
+    this.updateMetric("containerResolutions", event2);
+    this.updateMetric("resolutionErrors", event2);
+    this.updateMetric("resolutionTimes", event2);
     this.notifyStateChanged();
   }
   /**
@@ -11927,9 +11982,9 @@ const _MetricsCollector = class _MetricsCollector {
    * @param hit - True if cache hit, false if cache miss
    */
   recordCacheAccess(hit) {
-    const event = { hit };
-    this.updateMetric("cacheHits", event);
-    this.updateMetric("cacheMisses", event);
+    const event2 = { hit };
+    this.updateMetric("cacheHits", event2);
+    this.updateMetric("cacheMisses", event2);
     this.notifyStateChanged();
   }
   /**
@@ -11977,12 +12032,12 @@ const _MetricsCollector = class _MetricsCollector {
    * @param key - Metric key
    * @returns Metric value or undefined if not found
    */
-  getMetricValue(key) {
-    const state = this.metricStates.get(key);
-    if (!state) {
+  getMetricValue(key2) {
+    const state2 = this.metricStates.get(key2);
+    if (!state2) {
       return void 0;
     }
-    return castMetricValue(state.value, key);
+    return castMetricValue(state2.value, key2);
   }
   /**
    * Resets all collected metrics.
@@ -12027,8 +12082,8 @@ const _MetricsCollector = class _MetricsCollector {
    *
    * @param state - Persisted metrics state
    */
-  restoreFromPersistenceState(state) {
-    const rawMetrics = this.persistenceManager.deserialize(state);
+  restoreFromPersistenceState(state2) {
+    const rawMetrics = this.persistenceManager.deserialize(state2);
     this.applyRawMetrics(rawMetrics);
   }
   /**
@@ -12061,12 +12116,12 @@ const _MetricsCollector = class _MetricsCollector {
    * @param key - Metric key
    * @param value - New metric value
    */
-  setMetricValue(key, value2) {
-    const state = this.metricStates.get(key);
-    if (state) {
-      this.metricStates.set(key, {
+  setMetricValue(key2, value2) {
+    const state2 = this.metricStates.get(key2);
+    if (state2) {
+      this.metricStates.set(key2, {
         value: value2,
-        definition: state.definition
+        definition: state2.definition
       });
     }
   }
@@ -12130,18 +12185,18 @@ const _PersistentMetricsCollector = class _PersistentMetricsCollector extends Me
     this.persist();
   }
   restoreFromStorage() {
-    let state = null;
+    let state2 = null;
     try {
-      state = this.metricsStorage.load();
+      state2 = this.metricsStorage.load();
     } catch {
-      state = null;
+      state2 = null;
     }
-    if (!state) {
+    if (!state2) {
       return;
     }
     this.suppressPersistence = true;
     try {
-      this.restoreFromPersistenceState(state);
+      this.restoreFromPersistenceState(state2);
     } finally {
       this.suppressPersistence = false;
     }
@@ -12252,25 +12307,25 @@ const _MetricsPersistenceManager = class _MetricsPersistenceManager {
    * @param state - Persisted state (can be null or undefined)
    * @returns Raw metrics data
    */
-  deserialize(state) {
-    if (!state) {
+  deserialize(state2) {
+    if (!state2) {
       return this.createEmptyRawMetrics();
     }
-    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state;
+    const { metrics, resolutionTimes, resolutionTimesCount, resolutionTimesIndex } = state2;
     const rawMetrics = {
       containerResolutions: Math.max(0, metrics?.containerResolutions ?? 0),
       resolutionErrors: Math.max(0, metrics?.resolutionErrors ?? 0),
       cacheHits: Math.max(0, metrics?.cacheHits ?? 0),
       cacheMisses: Math.max(0, metrics?.cacheMisses ?? 0),
       portSelections: new Map(
-        Object.entries(metrics?.portSelections ?? {}).map(([key, value2]) => [
-          Number(key),
+        Object.entries(metrics?.portSelections ?? {}).map(([key2, value2]) => [
+          Number(key2),
           Number.isFinite(Number(value2)) ? Number(value2) : 0
         ])
       ),
       portSelectionFailures: new Map(
-        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key, value2]) => [
-          Number(key),
+        Object.entries(metrics?.portSelectionFailures ?? {}).map(([key2, value2]) => [
+          Number(key2),
           Number.isFinite(Number(value2)) ? Number(value2) : 0
         ])
       ),
@@ -12280,9 +12335,9 @@ const _MetricsPersistenceManager = class _MetricsPersistenceManager {
     };
     if (Array.isArray(resolutionTimes)) {
       const maxLength2 = Math.min(resolutionTimes.length, rawMetrics.resolutionTimes.length);
-      for (let index = 0; index < maxLength2; index++) {
-        const value2 = Number(resolutionTimes[index]);
-        rawMetrics.resolutionTimes[index] = Number.isFinite(value2) ? value2 : 0;
+      for (let index2 = 0; index2 < maxLength2; index2++) {
+        const value2 = Number(resolutionTimes[index2]);
+        rawMetrics.resolutionTimes[index2] = Number.isFinite(value2) ? value2 : 0;
       }
       const safeIndex = Number.isFinite(resolutionTimesIndex) ? Number(resolutionTimesIndex) : 0;
       const safeCount = Number.isFinite(resolutionTimesCount) ? Number(resolutionTimesCount) : 0;
@@ -12414,12 +12469,12 @@ const _MetricsReporter = class _MetricsReporter {
    * Uses console.table() for easy-to-read tabular output.
    */
   logSummary() {
-    const snapshot = this.collector.getSnapshot();
+    const snapshot2 = this.collector.getSnapshot();
     const tableData = {
-      "Total Resolutions": snapshot.containerResolutions,
-      Errors: snapshot.resolutionErrors,
-      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
-      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`
+      "Total Resolutions": snapshot2.containerResolutions,
+      Errors: snapshot2.resolutionErrors,
+      "Avg Time (ms)": snapshot2.avgResolutionTimeMs.toFixed(2),
+      "Cache Hit Rate": `${snapshot2.cacheHitRate.toFixed(1)}%`
     };
     console.table(tableData);
   }
@@ -12461,12 +12516,12 @@ const _LocalStorageMetricsStorage = class _LocalStorageMetricsStorage {
       return null;
     }
   }
-  save(state) {
+  save(state2) {
     if (!this.storage) {
       return;
     }
     try {
-      this.storage.setItem(this.storageKey, JSON.stringify(state));
+      this.storage.setItem(this.storageKey, JSON.stringify(state2));
     } catch {
     }
   }
@@ -12492,21 +12547,21 @@ function getStorage() {
   return null;
 }
 __name(getStorage, "getStorage");
-function createMetricsStorage(key) {
-  return new LocalStorageMetricsStorage(key);
+function createMetricsStorage(key2) {
+  return new LocalStorageMetricsStorage(key2);
 }
 __name(createMetricsStorage, "createMetricsStorage");
 function createInMemoryMetricsStorage() {
-  let state = null;
+  let state2 = null;
   return {
     load() {
-      return state;
+      return state2;
     },
     save(newState) {
-      state = newState;
+      state2 = newState;
     },
     clear() {
-      state = null;
+      state2 = null;
     }
   };
 }
@@ -12636,9 +12691,9 @@ const _StackTraceLoggerDecorator = class _StackTraceLoggerDecorator {
       return void 0;
     }
     try {
-      const stack = new Error().stack;
-      if (!stack) return void 0;
-      const lines = stack.split("\n");
+      const stack2 = new Error().stack;
+      if (!stack2) return void 0;
+      const lines = stack2.split("\n");
       const loggerPatterns = [
         /StackTraceLoggerDecorator/,
         /BaseConsoleLogger/,
@@ -13143,25 +13198,25 @@ const _ApiWrapperStrategyRegistry = class _ApiWrapperStrategyRegistry {
 };
 __name(_ApiWrapperStrategyRegistry, "ApiWrapperStrategyRegistry");
 let ApiWrapperStrategyRegistry = _ApiWrapperStrategyRegistry;
-function isAllowedKey(prop, allowed) {
-  if (typeof prop !== "string") {
+function isAllowedKey(prop2, allowed) {
+  if (typeof prop2 !== "string") {
     return false;
   }
-  return allowed.includes(prop);
+  return allowed.includes(prop2);
 }
 __name(isAllowedKey, "isAllowedKey");
 function createReadOnlyWrapper(service, allowedMethods) {
   return new Proxy(service, {
-    get(target, prop, receiver) {
-      if (isAllowedKey(prop, allowedMethods)) {
-        const value2 = Reflect.get(target, prop, receiver);
+    get(target, prop2, receiver) {
+      if (isAllowedKey(prop2, allowedMethods)) {
+        const value2 = Reflect.get(target, prop2, receiver);
         if (typeof value2 === "function") {
           return value2.bind(target);
         }
         return value2;
       }
       throw new Error(
-        `Property "${String(prop)}" is not accessible via Public API. Only these methods are allowed: ${allowedMethods.map(String).join(", ")}`
+        `Property "${String(prop2)}" is not accessible via Public API. Only these methods are allowed: ${allowedMethods.map(String).join(", ")}`
       );
     },
     set() {
@@ -13826,6 +13881,22 @@ const sidebarButtonBootstrapperToken = createInjectionToken(
   "SidebarButtonBootstrapper"
 );
 const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
+const windowFactoryToken = createInjectionToken("WindowFactory");
+const windowRegistryToken = createInjectionToken("WindowRegistry");
+const windowControllerToken = createInjectionToken("WindowController");
+const eventBusToken = createInjectionToken("EventBus");
+const stateStoreToken = createInjectionToken("StateStore");
+const actionDispatcherToken = createInjectionToken("ActionDispatcher");
+const rendererRegistryToken = createInjectionToken("RendererRegistry");
+const bindingEngineToken = createInjectionToken("BindingEngine");
+const viewModelBuilderToken = createInjectionToken("ViewModelBuilder");
+const remoteSyncGateToken = createInjectionToken("RemoteSyncGate");
+const persistAdapterToken = createInjectionToken("PersistAdapter");
+const foundryWindowAdapterToken = createInjectionToken("FoundryWindowAdapter");
+const statePortFactoryToken = createInjectionToken("StatePortFactory");
+const sharedDocumentCacheToken = createInjectionToken("SharedDocumentCache");
+const windowPositionManagerToken = createInjectionToken("WindowPositionManager");
+const windowHooksServiceToken = createInjectionToken("WindowHooksService");
 const _EventsBootstrapper = class _EventsBootstrapper {
   /**
    * Registers all event listeners.
@@ -13843,6 +13914,11 @@ const _EventsBootstrapper = class _EventsBootstrapper {
     if (!eventRegistrationResult.ok) {
       const errorMessages = eventRegistrationResult.error.map((e) => e.message).join(", ");
       return err(`Failed to register one or more event listeners: ${errorMessages}`);
+    }
+    const windowHooksResult = container.resolveWithError(windowHooksServiceToken);
+    if (windowHooksResult.ok) {
+      const windowHooksService = castResolvedService(windowHooksResult.value);
+      windowHooksService.register();
     }
     return ok(void 0);
   }
@@ -13945,8 +14021,8 @@ const _SidebarButtonBootstrapper = class _SidebarButtonBootstrapper {
       if (!(htmlArg instanceof HTMLElement)) {
         return;
       }
-      const html = htmlArg;
-      const existingButton = html.querySelector(".show-all-hidden-journals-button");
+      const html2 = htmlArg;
+      const existingButton = html2.querySelector(".show-all-hidden-journals-button");
       if (existingButton) {
         return;
       }
@@ -13961,15 +14037,15 @@ const _SidebarButtonBootstrapper = class _SidebarButtonBootstrapper {
         } else {
         }
       });
-      const actionButtons = html.querySelector(".header-actions.action-buttons");
+      const actionButtons = html2.querySelector(".header-actions.action-buttons");
       if (actionButtons) {
         actionButtons.appendChild(button);
       } else {
-        const directoryHeader = html.querySelector(".directory-header");
+        const directoryHeader = html2.querySelector(".directory-header");
         if (directoryHeader) {
           directoryHeader.appendChild(button);
         } else {
-          html.insertBefore(button, html.firstChild);
+          html2.insertBefore(button, html2.firstChild);
         }
       }
     });
@@ -14639,10 +14715,10 @@ const _PortSelectionEventEmitter = class _PortSelectionEventEmitter {
       this.subscribers.delete(callback);
     };
   }
-  emit(event) {
+  emit(event2) {
     for (const callback of this.subscribers) {
       try {
-        callback(event);
+        callback(event2);
       } catch (error) {
         console.error("PortSelectionEventEmitter subscriber error", error);
       }
@@ -14675,20 +14751,20 @@ const _ObservabilityRegistry = class _ObservabilityRegistry {
    * @param service - Observable service that emits PortSelectionEvents
    */
   registerPortSelector(service) {
-    const unsubscribe = service.onEvent((event) => {
-      if (event.type === "success") {
-        const adapterSuffix = event.adapterName ? ` for ${event.adapterName}` : "";
+    const unsubscribe = service.onEvent((event2) => {
+      if (event2.type === "success") {
+        const adapterSuffix = event2.adapterName ? ` for ${event2.adapterName}` : "";
         this.logger.debug(
-          `Port v${event.selectedVersion} selected in ${event.durationMs.toFixed(2)}ms${adapterSuffix}`
+          `Port v${event2.selectedVersion} selected in ${event2.durationMs.toFixed(2)}ms${adapterSuffix}`
         );
-        this.metrics.recordPortSelection(event.selectedVersion);
+        this.metrics.recordPortSelection(event2.selectedVersion);
       } else {
         this.logger.error("Port selection failed", {
-          foundryVersion: event.foundryVersion,
-          availableVersions: event.availableVersions,
-          adapterName: event.adapterName
+          foundryVersion: event2.foundryVersion,
+          availableVersions: event2.availableVersions,
+          adapterName: event2.adapterName
         });
-        this.metrics.recordPortSelectionFailure(event.foundryVersion);
+        this.metrics.recordPortSelectionFailure(event2.foundryVersion);
       }
     });
     this.subscriptions.push(unsubscribe);
@@ -14735,8 +14811,8 @@ const _PortSelectionObservability = class _PortSelectionObservability {
    * Wires PortSelector events to PortSelectionObserver.
    */
   setupObservability(selector, observer) {
-    selector.onEvent((event) => {
-      observer.handleEvent(event);
+    selector.onEvent((event2) => {
+      observer.handleEvent(event2);
     });
   }
 };
@@ -14794,12 +14870,12 @@ const _PortSelectionObserver = class _PortSelectionObserver {
    *
    * @param event - The port selection event to handle
    */
-  handleEvent(event) {
-    this.eventEmitter.emit(event);
-    if (event.type === "success") {
-      this.handleSuccess(event);
+  handleEvent(event2) {
+    this.eventEmitter.emit(event2);
+    if (event2.type === "success") {
+      this.handleSuccess(event2);
     } else {
-      this.handleFailure(event);
+      this.handleFailure(event2);
     }
   }
   /**
@@ -14807,24 +14883,24 @@ const _PortSelectionObserver = class _PortSelectionObserver {
    *
    * Logs debug message and records metrics.
    */
-  handleSuccess(event) {
+  handleSuccess(event2) {
     this.logger.debug(
-      `Port selection completed in ${event.durationMs.toFixed(2)}ms (selected: v${event.selectedVersion}${event.adapterName ? ` for ${event.adapterName}` : ""})`
+      `Port selection completed in ${event2.durationMs.toFixed(2)}ms (selected: v${event2.selectedVersion}${event2.adapterName ? ` for ${event2.adapterName}` : ""})`
     );
-    this.metrics.recordPortSelection(event.selectedVersion);
+    this.metrics.recordPortSelection(event2.selectedVersion);
   }
   /**
    * Handle failed port selection.
    *
    * Logs error and records failure metrics.
    */
-  handleFailure(event) {
+  handleFailure(event2) {
     this.logger.error("No compatible port found", {
-      foundryVersion: event.foundryVersion,
-      availableVersions: event.availableVersions,
-      adapterName: event.adapterName
+      foundryVersion: event2.foundryVersion,
+      availableVersions: event2.availableVersions,
+      adapterName: event2.adapterName
     });
-    this.metrics.recordPortSelectionFailure(event.foundryVersion);
+    this.metrics.recordPortSelectionFailure(event2.foundryVersion);
   }
 };
 __name(_PortSelectionObserver, "PortSelectionObserver");
@@ -15151,25 +15227,25 @@ const _FoundryDocumentPort = class _FoundryDocumentPort {
       return await portResult.value.delete(document2);
     }, "FoundryDocument.delete");
   }
-  getFlag(document2, scope, key, schema) {
+  getFlag(document2, scope, key2, schema) {
     return this.retryable.execute(() => {
       const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
-      return portResult.value.getFlag(document2, scope, key, schema);
+      return portResult.value.getFlag(document2, scope, key2, schema);
     }, "FoundryDocument.getFlag");
   }
-  async setFlag(document2, scope, key, value2) {
+  async setFlag(document2, scope, key2, value2) {
     return this.retryable.executeAsync(async () => {
       const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
-      return await portResult.value.setFlag(document2, scope, key, value2);
+      return await portResult.value.setFlag(document2, scope, key2, value2);
     }, "FoundryDocument.setFlag");
   }
-  async unsetFlag(document2, scope, key) {
+  async unsetFlag(document2, scope, key2) {
     return this.retryable.executeAsync(async () => {
       const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
-      return await portResult.value.unsetFlag(document2, scope, key);
+      return await portResult.value.unsetFlag(document2, scope, key2);
     }, "FoundryDocument.unsetFlag");
   }
   /**
@@ -15267,25 +15343,25 @@ const _FoundrySettingsPort = class _FoundrySettingsPort {
     this.portLoader = new PortLoader(portSelector, portRegistry);
     this.retryable = new RetryableOperation(retryService);
   }
-  register(namespace, key, config2) {
+  register(namespace, key2, config2) {
     return this.retryable.execute(() => {
       const portResult = this.portLoader.loadPort("FoundrySettings");
       if (!portResult.ok) return portResult;
-      return portResult.value.register(namespace, key, config2);
+      return portResult.value.register(namespace, key2, config2);
     }, "FoundrySettings.register");
   }
-  get(namespace, key, schema) {
+  get(namespace, key2, schema) {
     return this.retryable.execute(() => {
       const portResult = this.portLoader.loadPort("FoundrySettings");
       if (!portResult.ok) return portResult;
-      return portResult.value.get(namespace, key, schema);
+      return portResult.value.get(namespace, key2, schema);
     }, "FoundrySettings.get");
   }
-  async set(namespace, key, value2) {
+  async set(namespace, key2, value2) {
     return this.retryable.executeAsync(async () => {
       const portResult = this.portLoader.loadPort("FoundrySettings");
       if (!portResult.ok) return portResult;
-      return portResult.value.set(namespace, key, value2);
+      return portResult.value.set(namespace, key2, value2);
     }, "FoundrySettings.set");
   }
   /**
@@ -15340,12 +15416,12 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
    * @param key - The flag key
    * @param schema - Valibot schema for validation
    */
-  getEntryFlag(entry, key, schema) {
+  getEntryFlag(entry, key2, schema) {
     const documentResult = castFoundryDocumentForFlag(entry);
     if (!documentResult.ok) {
       return documentResult;
     }
-    return this.document.getFlag(documentResult.value, this.moduleId, key, schema);
+    return this.document.getFlag(documentResult.value, this.moduleId, key2, schema);
   }
   /**
    * Set a module flag on a journal entry.
@@ -15357,12 +15433,12 @@ const _FoundryJournalFacade = class _FoundryJournalFacade {
    * @param value - The boolean value to set
    * @returns Result indicating success or error
    */
-  async setEntryFlag(entry, key, value2) {
+  async setEntryFlag(entry, key2, value2) {
     const documentResult = castFoundryDocumentForFlag(entry);
     if (!documentResult.ok) {
       return documentResult;
     }
-    return await this.document.setFlag(documentResult.value, this.moduleId, key, value2);
+    return await this.document.setFlag(documentResult.value, this.moduleId, key2, value2);
   }
 };
 __name(_FoundryJournalFacade, "FoundryJournalFacade");
@@ -15380,9 +15456,9 @@ _DIFoundryJournalFacade.dependencies = [
   moduleIdToken
 ];
 let DIFoundryJournalFacade = _DIFoundryJournalFacade;
-function sanitizeHtml(text) {
+function sanitizeHtml(text2) {
   const div = document.createElement("div");
-  div.textContent = text;
+  div.textContent = text2;
   return div.innerHTML;
 }
 __name(sanitizeHtml, "sanitizeHtml");
@@ -15741,9 +15817,9 @@ const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapper
    * @param callback - The callback function to remove
    */
   removeCallback(callback) {
-    const index = this.callbacks.indexOf(callback);
-    if (index > -1) {
-      this.callbacks.splice(index, 1);
+    const index2 = this.callbacks.indexOf(callback);
+    if (index2 > -1) {
+      this.callbacks.splice(index2, 1);
     }
   }
   /**
@@ -15794,7 +15870,7 @@ const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapper
             menuItems.splice(i, 1);
           }
         }
-        const event = {
+        const event2 = {
           journalId,
           options: menuItems.map((item) => ({
             name: item.name,
@@ -15807,10 +15883,10 @@ const _JournalContextMenuLibWrapperService = class _JournalContextMenuLibWrapper
           timestamp: Date.now()
         };
         for (const cb of callbacksRef) {
-          cb(event);
+          cb(event2);
         }
         const existingNames = new Set(menuItems.map((item) => item.name));
-        for (const newOption of event.options) {
+        for (const newOption of event2.options) {
           if (!existingNames.has(newOption.name)) {
             const menuItem = {
               name: newOption.name,
@@ -15870,7 +15946,7 @@ const _FoundrySettingsRegistrationAdapter = class _FoundrySettingsRegistrationAd
   constructor(foundrySettings) {
     this.foundrySettings = foundrySettings;
   }
-  registerSetting(namespace, key, config2) {
+  registerSetting(namespace, key2, config2) {
     const foundryConfig = {
       name: config2.name,
       ...config2.hint !== void 0 && { hint: config2.hint },
@@ -15881,22 +15957,22 @@ const _FoundrySettingsRegistrationAdapter = class _FoundrySettingsRegistrationAd
       default: config2.default,
       ...config2.onChange !== void 0 && { onChange: config2.onChange }
     };
-    const result = this.foundrySettings.register(namespace, key, foundryConfig);
+    const result = this.foundrySettings.register(namespace, key2, foundryConfig);
     if (!result.ok) {
       return {
         ok: false,
-        error: this.mapFoundryError(result.error, "register", key)
+        error: this.mapFoundryError(result.error, "register", key2)
       };
     }
     return { ok: true, value: void 0 };
   }
-  getSettingValue(namespace, key, validator) {
+  getSettingValue(namespace, key2, validator) {
     const permissiveSchema = /* @__PURE__ */ unknown();
-    const result = this.foundrySettings.get(namespace, key, permissiveSchema);
+    const result = this.foundrySettings.get(namespace, key2, permissiveSchema);
     if (!result.ok) {
       return {
         ok: false,
-        error: this.mapFoundryError(result.error, "get", key)
+        error: this.mapFoundryError(result.error, "get", key2)
       };
     }
     if (!validator(result.value)) {
@@ -15904,25 +15980,25 @@ const _FoundrySettingsRegistrationAdapter = class _FoundrySettingsRegistrationAd
         ok: false,
         error: {
           code: "INVALID_SETTING_VALUE",
-          message: `Setting "${namespace}.${key}" has invalid value type`,
+          message: `Setting "${namespace}.${key2}" has invalid value type`,
           details: { value: result.value }
         }
       };
     }
     return { ok: true, value: result.value };
   }
-  async setSettingValue(namespace, key, value2) {
-    const result = await this.foundrySettings.set(namespace, key, value2);
+  async setSettingValue(namespace, key2, value2) {
+    const result = await this.foundrySettings.set(namespace, key2, value2);
     if (!result.ok) {
       return {
         ok: false,
-        error: this.mapFoundryError(result.error, "set", key)
+        error: this.mapFoundryError(result.error, "set", key2)
       };
     }
     return { ok: true, value: void 0 };
   }
   // ===== Private Helpers =====
-  mapFoundryError(foundryError, operation, key) {
+  mapFoundryError(foundryError, operation, key2) {
     let code;
     switch (foundryError.code) {
       case "API_NOT_AVAILABLE":
@@ -15945,7 +16021,7 @@ const _FoundrySettingsRegistrationAdapter = class _FoundrySettingsRegistrationAd
     }
     return {
       code,
-      message: `Failed to ${operation} setting "${key}": ${foundryError.message}`,
+      message: `Failed to ${operation} setting "${key2}": ${foundryError.message}`,
       details: foundryError
     };
   }
@@ -16408,25 +16484,25 @@ const _FoundryI18nPort = class _FoundryI18nPort {
     this.portLoader = new PortLoader(portSelector, portRegistry);
     this.retryable = new RetryableOperation(retryService);
   }
-  localize(key) {
+  localize(key2) {
     return this.retryable.execute(() => {
       const portResult = this.portLoader.loadPort("FoundryI18n");
       if (!portResult.ok) return portResult;
-      return portResult.value.localize(key);
+      return portResult.value.localize(key2);
     }, "FoundryI18n.localize");
   }
-  format(key, data) {
+  format(key2, data) {
     return this.retryable.execute(() => {
       const portResult = this.portLoader.loadPort("FoundryI18n");
       if (!portResult.ok) return portResult;
-      return portResult.value.format(key, data);
+      return portResult.value.format(key2, data);
     }, "FoundryI18n.format");
   }
-  has(key) {
+  has(key2) {
     return this.retryable.execute(() => {
       const portResult = this.portLoader.loadPort("FoundryI18n");
       if (!portResult.ok) return portResult;
-      return portResult.value.has(key);
+      return portResult.value.has(key2);
     }, "FoundryI18n.has");
   }
   /**
@@ -16492,8 +16568,8 @@ const _LocalI18nService = class _LocalI18nService {
    * ```
    */
   loadTranslations(translations) {
-    for (const [key, value2] of Object.entries(translations)) {
-      this.translations.set(key, value2);
+    for (const [key2, value2] of Object.entries(translations)) {
+      this.translations.set(key2, value2);
     }
   }
   /**
@@ -16510,9 +16586,9 @@ const _LocalI18nService = class _LocalI18nService {
    * }
    * ```
    */
-  translate(key) {
-    const value2 = this.translations.get(key);
-    return ok(value2 ?? key);
+  translate(key2) {
+    const value2 = this.translations.get(key2);
+    return ok(value2 ?? key2);
   }
   /**
    * Formats a string with placeholders.
@@ -16531,8 +16607,8 @@ const _LocalI18nService = class _LocalI18nService {
    * }
    * ```
    */
-  format(key, data) {
-    const template = this.translations.get(key) ?? key;
+  format(key2, data) {
+    const template = this.translations.get(key2) ?? key2;
     let formatted = template;
     for (const [placeholder, value2] of Object.entries(data)) {
       const escapedPlaceholder = escapeRegex(placeholder);
@@ -16547,8 +16623,8 @@ const _LocalI18nService = class _LocalI18nService {
    * @param key - Translation key to check
    * @returns Result with boolean
    */
-  has(key) {
-    return ok(this.translations.has(key));
+  has(key2) {
+    return ok(this.translations.has(key2));
   }
   /**
    * Gets the current locale.
@@ -16606,8 +16682,8 @@ const _I18nFacadeService = class _I18nFacadeService {
    * }
    * ```
    */
-  translate(key, fallback2) {
-    return this.handlerChain.handle(key, void 0, fallback2);
+  translate(key2, fallback2) {
+    return this.handlerChain.handle(key2, void 0, fallback2);
   }
   /**
    * Formats a string with placeholders using the handler chain.
@@ -16625,8 +16701,8 @@ const _I18nFacadeService = class _I18nFacadeService {
    * }
    * ```
    */
-  format(key, data, fallback2) {
-    return this.handlerChain.handle(key, data, fallback2);
+  format(key2, data, fallback2) {
+    return this.handlerChain.handle(key2, data, fallback2);
   }
   /**
    * Checks if a translation key exists in the handler chain.
@@ -16635,8 +16711,8 @@ const _I18nFacadeService = class _I18nFacadeService {
    * @param key - Translation key to check
    * @returns Result with true if key exists in Foundry or local i18n
    */
-  has(key) {
-    return this.handlerChain.has(key);
+  has(key2) {
+    return this.handlerChain.has(key2);
   }
   /**
    * Loads local translations from a JSON object.
@@ -16674,21 +16750,21 @@ const _AbstractTranslationHandler = class _AbstractTranslationHandler {
     this.nextHandler = handler;
     return handler;
   }
-  handle(key, data, fallback2) {
-    const result = this.doHandle(key, data, fallback2);
+  handle(key2, data, fallback2) {
+    const result = this.doHandle(key2, data, fallback2);
     if (result.ok) {
       return result;
     }
     if (this.nextHandler) {
-      return this.nextHandler.handle(key, data, fallback2);
+      return this.nextHandler.handle(key2, data, fallback2);
     }
     if (fallback2 !== void 0) {
       return ok(fallback2);
     }
-    return err(`Translation key not found: ${key}`);
+    return err(`Translation key not found: ${key2}`);
   }
-  has(key) {
-    const ourResult = this.doHas(key);
+  has(key2) {
+    const ourResult = this.doHas(key2);
     if (!ourResult.ok) {
       return ourResult;
     }
@@ -16696,7 +16772,7 @@ const _AbstractTranslationHandler = class _AbstractTranslationHandler {
       return ok(true);
     }
     if (this.nextHandler) {
-      return this.nextHandler.has(key);
+      return this.nextHandler.has(key2);
     }
     return ok(false);
   }
@@ -16708,17 +16784,17 @@ const _FoundryTranslationHandler = class _FoundryTranslationHandler extends Abst
     super();
     this.foundryI18n = foundryI18n;
   }
-  doHandle(key, data, _fallback) {
-    const result = data ? this.foundryI18n.format(key, data) : this.foundryI18n.localize(key);
-    if (result.ok && result.value !== key) {
+  doHandle(key2, data, _fallback) {
+    const result = data ? this.foundryI18n.format(key2, data) : this.foundryI18n.localize(key2);
+    if (result.ok && result.value !== key2) {
       return ok(result.value);
     }
-    return err(`Foundry i18n could not translate key: ${key}`);
+    return err(`Foundry i18n could not translate key: ${key2}`);
   }
-  doHas(key) {
-    const result = this.foundryI18n.has(key);
+  doHas(key2) {
+    const result = this.foundryI18n.has(key2);
     if (!result.ok) {
-      return err(`Failed to check Foundry i18n for key: ${key}`);
+      return err(`Failed to check Foundry i18n for key: ${key2}`);
     }
     return ok(result.value);
   }
@@ -16738,17 +16814,17 @@ const _LocalTranslationHandler = class _LocalTranslationHandler extends Abstract
     super();
     this.localI18n = localI18n;
   }
-  doHandle(key, data, _fallback) {
-    const result = data ? this.localI18n.format(key, data) : this.localI18n.translate(key);
-    if (result.ok && result.value !== key) {
+  doHandle(key2, data, _fallback) {
+    const result = data ? this.localI18n.format(key2, data) : this.localI18n.translate(key2);
+    if (result.ok && result.value !== key2) {
       return ok(result.value);
     }
-    return err(`Local i18n could not translate key: ${key}`);
+    return err(`Local i18n could not translate key: ${key2}`);
   }
-  doHas(key) {
-    const result = this.localI18n.has(key);
+  doHas(key2) {
+    const result = this.localI18n.has(key2);
     if (!result.ok) {
-      return err(`Failed to check local i18n for key: ${key}`);
+      return err(`Failed to check local i18n for key: ${key2}`);
     }
     return ok(result.value);
   }
@@ -16764,8 +16840,8 @@ __name(_DILocalTranslationHandler, "DILocalTranslationHandler");
 _DILocalTranslationHandler.dependencies = [localI18nToken];
 let DILocalTranslationHandler = _DILocalTranslationHandler;
 const _FallbackTranslationHandler = class _FallbackTranslationHandler extends AbstractTranslationHandler {
-  doHandle(key, _data, fallback2) {
-    return ok(fallback2 ?? key);
+  doHandle(key2, _data, fallback2) {
+    return ok(fallback2 ?? key2);
   }
   doHas(_key) {
     return ok(false);
@@ -16783,11 +16859,11 @@ __name(_DIFallbackTranslationHandler, "DIFallbackTranslationHandler");
 _DIFallbackTranslationHandler.dependencies = [];
 let DIFallbackTranslationHandler = _DIFallbackTranslationHandler;
 const _TranslationHandlerChain = class _TranslationHandlerChain {
-  constructor(handlers) {
-    assertNonEmptyHandlers(handlers);
-    const [head, ...rest] = handlers;
-    this.head = head;
-    let current = head;
+  constructor(handlers2) {
+    assertNonEmptyHandlers(handlers2);
+    const [head2, ...rest] = handlers2;
+    this.head = head2;
+    let current = head2;
     for (const handler of rest) {
       current = current.setNext(handler);
     }
@@ -16795,25 +16871,25 @@ const _TranslationHandlerChain = class _TranslationHandlerChain {
   setNext(handler) {
     return this.head.setNext(handler);
   }
-  handle(key, data, fallback2) {
-    return this.head.handle(key, data, fallback2);
+  handle(key2, data, fallback2) {
+    return this.head.handle(key2, data, fallback2);
   }
-  has(key) {
-    return this.head.has(key);
+  has(key2) {
+    return this.head.has(key2);
   }
 };
 __name(_TranslationHandlerChain, "TranslationHandlerChain");
 let TranslationHandlerChain = _TranslationHandlerChain;
 const _DITranslationHandlerChain = class _DITranslationHandlerChain extends TranslationHandlerChain {
-  constructor(handlers) {
-    super(handlers);
+  constructor(handlers2) {
+    super(handlers2);
   }
 };
 __name(_DITranslationHandlerChain, "DITranslationHandlerChain");
 _DITranslationHandlerChain.dependencies = [translationHandlersToken];
 let DITranslationHandlerChain = _DITranslationHandlerChain;
-function assertNonEmptyHandlers(handlers) {
-  if (handlers.length === 0) {
+function assertNonEmptyHandlers(handlers2) {
+  if (handlers2.length === 0) {
     throw new Error("TranslationHandlerChain requires at least one handler");
   }
 }
@@ -16822,14 +16898,14 @@ const _I18nPortAdapter = class _I18nPortAdapter {
   constructor(i18nFacade) {
     this.i18nFacade = i18nFacade;
   }
-  translate(key, fallback2) {
-    return this.i18nFacade.translate(key, fallback2);
+  translate(key2, fallback2) {
+    return this.i18nFacade.translate(key2, fallback2);
   }
-  format(key, data, fallback2) {
-    return this.i18nFacade.format(key, data, fallback2);
+  format(key2, data, fallback2) {
+    return this.i18nFacade.format(key2, data, fallback2);
   }
-  has(key) {
-    return this.i18nFacade.has(key);
+  has(key2) {
+    return this.i18nFacade.has(key2);
   }
   loadLocalTranslations(translations) {
     this.i18nFacade.loadLocalTranslations(translations);
@@ -16981,11 +17057,11 @@ const _NotificationCenter = class _NotificationCenter {
     }
   }
   removeChannel(name) {
-    const index = this.channels.findIndex((channel) => channel.name === name);
-    if (index === -1) {
+    const index2 = this.channels.findIndex((channel) => channel.name === name);
+    if (index2 === -1) {
       return false;
     }
-    this.channels.splice(index, 1);
+    this.channels.splice(index2, 1);
     return true;
   }
   getChannelNames() {
@@ -17853,8 +17929,8 @@ const cacheEnabledSetting = {
       type: Boolean,
       default: true,
       onChange: /* @__PURE__ */ __name((value2) => {
-        const action = value2 ? "enabled" : "disabled";
-        logger.info(`CacheService ${action} via module setting.`);
+        const action2 = value2 ? "enabled" : "disabled";
+        logger.info(`CacheService ${action2} via module setting.`);
       }, "onChange")
     };
   }
@@ -17937,8 +18013,8 @@ const performanceTrackingSetting = {
       type: Boolean,
       default: false,
       onChange: /* @__PURE__ */ __name((value2) => {
-        const action = value2 ? "enabled" : "disabled";
-        logger.info(`Performance tracking ${action} via module setting.`);
+        const action2 = value2 ? "enabled" : "disabled";
+        logger.info(`Performance tracking ${action2} via module setting.`);
       }, "onChange")
     };
   }
@@ -17991,8 +18067,8 @@ const metricsPersistenceEnabledSetting = {
       type: Boolean,
       default: false,
       onChange: /* @__PURE__ */ __name((value2) => {
-        const action = value2 ? "enabled" : "disabled";
-        logger.info(`Metrics persistence ${action} via module setting.`);
+        const action2 = value2 ? "enabled" : "disabled";
+        logger.info(`Metrics persistence ${action2} via module setting.`);
       }, "onChange")
     };
   }
@@ -18154,21 +18230,21 @@ function createSettingValidators() {
     }
   };
   return new Proxy({ ...standardValidators, ...registry }, {
-    get(target, prop) {
-      if (typeof prop === "symbol") {
-        return target[prop];
+    get(target, prop2) {
+      if (typeof prop2 === "symbol") {
+        return target[prop2];
       }
-      if (prop in standardValidators) {
-        return standardValidators[prop];
+      if (prop2 in standardValidators) {
+        return standardValidators[prop2];
       }
-      if (prop in registry) {
-        return registry[prop];
+      if (prop2 in registry) {
+        return registry[prop2];
       }
-      const custom2 = customValidators.get(prop);
+      const custom2 = customValidators.get(prop2);
       if (custom2) {
         return custom2;
       }
-      return target[prop];
+      return target[prop2];
     }
   });
 }
@@ -18228,8 +18304,8 @@ const runtimeConfigBindings = {
 const _DefaultRuntimeConfigBindingRegistry = class _DefaultRuntimeConfigBindingRegistry {
   getAll() {
     const map2 = /* @__PURE__ */ new Map();
-    Object.entries(runtimeConfigBindings).forEach(([key, binding]) => {
-      map2.set(key, castBindingToUnknown(binding));
+    Object.entries(runtimeConfigBindings).forEach(([key2, binding]) => {
+      map2.set(key2, castBindingToUnknown(binding));
     });
     return map2;
   }
@@ -18316,11 +18392,11 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
       // Foundry-spezifischer Hook-Name
       (...args2) => {
         const [foundryEntry] = args2;
-        const event = {
+        const event2 = {
           journalId: this.extractId(foundryEntry),
           timestamp: Date.now()
         };
-        callback(event);
+        callback(event2);
       }
     );
   }
@@ -18330,23 +18406,23 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
       // Foundry-spezifisch
       (...args2) => {
         const [foundryEntry, changes] = args2;
-        const event = {
+        const event2 = {
           journalId: this.extractId(foundryEntry),
           changes: this.normalizeChanges(changes),
           timestamp: Date.now()
         };
-        callback(event);
+        callback(event2);
       }
     );
   }
   onJournalDeleted(callback) {
     return this.registerFoundryHook("deleteJournalEntry", (...args2) => {
       const [foundryEntry] = args2;
-      const event = {
+      const event2 = {
         journalId: this.extractId(foundryEntry),
         timestamp: Date.now()
       };
-      callback(event);
+      callback(event2);
     });
   }
   unregisterListener(registrationId) {
@@ -18377,16 +18453,16 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
   }
   // ===== Private Helpers =====
   registerFoundryHook(hookName, callback) {
-    const platformCallback = /* @__PURE__ */ __name((event) => {
+    const platformCallback = /* @__PURE__ */ __name((event2) => {
       function isArrayOfUnknown(value2) {
         return Array.isArray(value2);
       }
       __name(isArrayOfUnknown, "isArrayOfUnknown");
-      if (isArrayOfUnknown(event)) {
+      if (isArrayOfUnknown(event2)) {
         let isValidArg = /* @__PURE__ */ __name(function(arg) {
           return arg !== null && arg !== void 0;
         }, "isValidArg");
-        const validArgs = event.filter(isValidArg);
+        const validArgs = event2.filter(isValidArg);
         if (validArgs.length > 0) {
           callback(...validArgs);
         }
@@ -18394,8 +18470,8 @@ const _FoundryJournalEventAdapter = class _FoundryJournalEventAdapter {
         let isNotNullOrUndefined = /* @__PURE__ */ __name(function(value2) {
           return value2 !== null && value2 !== void 0;
         }, "isNotNullOrUndefined");
-        if (isNotNullOrUndefined(event)) {
-          callback(event);
+        if (isNotNullOrUndefined(event2)) {
+          callback(event2);
         }
       }
     }, "platformCallback");
@@ -18451,20 +18527,20 @@ const _FoundryJournalUiEventAdapter = class _FoundryJournalUiEventAdapter {
   }
   // ===== UI Event Methods =====
   onJournalDirectoryRendered(callback) {
-    return this.registerFoundryHook("renderJournalDirectory", (app, html) => {
+    return this.registerFoundryHook("renderJournalDirectory", (app, html2) => {
       const directoryId = this.extractDirectoryId(app);
       if (!directoryId) {
         return;
       }
-      const htmlElement = this.extractHtmlElement(html);
+      const htmlElement = this.extractHtmlElement(html2);
       if (!htmlElement) {
         return;
       }
-      const event = {
+      const event2 = {
         directoryId,
         timestamp: Date.now()
       };
-      callback(event);
+      callback(event2);
     });
   }
   // ===== Generic Methods (from PlatformEventPort) =====
@@ -18472,9 +18548,9 @@ const _FoundryJournalUiEventAdapter = class _FoundryJournalUiEventAdapter {
     return this.registerFoundryHook(eventType, (...args2) => {
       if (args2.length > 0 && typeof args2[0] === "object" && args2[0] !== null) {
         const candidate = args2[0];
-        const event = this.toJournalUiEvent(candidate);
-        if (event) {
-          callback(event);
+        const event2 = this.toJournalUiEvent(candidate);
+        if (event2) {
+          callback(event2);
         }
       }
     });
@@ -18532,16 +18608,16 @@ const _FoundryJournalUiEventAdapter = class _FoundryJournalUiEventAdapter {
   }
   // ===== Private Helpers =====
   registerFoundryHook(hookName, callback) {
-    const platformCallback = /* @__PURE__ */ __name((event) => {
+    const platformCallback = /* @__PURE__ */ __name((event2) => {
       function isArrayOfUnknown(value2) {
         return Array.isArray(value2);
       }
       __name(isArrayOfUnknown, "isArrayOfUnknown");
-      if (isArrayOfUnknown(event)) {
+      if (isArrayOfUnknown(event2)) {
         let isValidArg = /* @__PURE__ */ __name(function(arg) {
           return arg !== null && arg !== void 0;
         }, "isValidArg");
-        const validArgs = event.filter(isValidArg);
+        const validArgs = event2.filter(isValidArg);
         if (validArgs.length > 0) {
           callback(...validArgs);
         }
@@ -18549,8 +18625,8 @@ const _FoundryJournalUiEventAdapter = class _FoundryJournalUiEventAdapter {
         let isNotNullOrUndefined = /* @__PURE__ */ __name(function(value2) {
           return value2 !== null && value2 !== void 0;
         }, "isNotNullOrUndefined");
-        if (isNotNullOrUndefined(event)) {
-          callback(event);
+        if (isNotNullOrUndefined(event2)) {
+          callback(event2);
         }
       }
     }, "platformCallback");
@@ -18602,17 +18678,17 @@ const _InvalidateJournalCacheOnChangeUseCase = class _InvalidateJournalCacheOnCh
    */
   register() {
     const results = [
-      this.journalEvents.onJournalCreated((event) => {
-        this.invalidateCache("created", event.journalId);
+      this.journalEvents.onJournalCreated((event2) => {
+        this.invalidateCache("created", event2.journalId);
       }),
-      this.journalEvents.onJournalUpdated((event) => {
-        this.invalidateCache("updated", event.journalId);
-        if (event.changes.flags?.["hidden"] !== void 0) {
-          this.triggerUIUpdate(event.journalId);
+      this.journalEvents.onJournalUpdated((event2) => {
+        this.invalidateCache("updated", event2.journalId);
+        if (event2.changes.flags?.["hidden"] !== void 0) {
+          this.triggerUIUpdate(event2.journalId);
         }
       }),
-      this.journalEvents.onJournalDeleted((event) => {
-        this.invalidateCache("deleted", event.journalId);
+      this.journalEvents.onJournalDeleted((event2) => {
+        this.invalidateCache("deleted", event2.journalId);
       })
     ];
     const errors = [];
@@ -18700,10 +18776,10 @@ const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOn
    * Register event listener for directory render events.
    */
   register() {
-    const result = this.journalUiEvents.onJournalDirectoryRendered((event) => {
+    const result = this.journalUiEvents.onJournalDirectoryRendered((event2) => {
       this.notifications.debug(
         "Journal directory rendered, processing visibility",
-        { timestamp: event.timestamp, directoryId: event.directoryId },
+        { timestamp: event2.timestamp, directoryId: event2.directoryId },
         { channels: ["ConsoleChannel"] }
       );
       const hiddenResult = this.journalVisibility.getHiddenJournalEntries();
@@ -18714,7 +18790,7 @@ const _ProcessJournalDirectoryOnRenderUseCase = class _ProcessJournalDirectoryOn
         return;
       }
       const processResult = this.directoryProcessor.processDirectory(
-        event.directoryId,
+        event2.directoryId,
         hiddenResult.value
       );
       if (!processResult.ok) {
@@ -18792,10 +18868,10 @@ const _TriggerJournalDirectoryReRenderUseCase = class _TriggerJournalDirectoryRe
    * Register event listener for journal update events.
    */
   register() {
-    const result = this.journalEvents.onJournalUpdated((event) => {
+    const result = this.journalEvents.onJournalUpdated((event2) => {
       const moduleId = MODULE_METADATA.ID;
       const flagKey = DOMAIN_FLAGS.HIDDEN;
-      const moduleFlags = event.changes.flags?.[moduleId];
+      const moduleFlags = event2.changes.flags?.[moduleId];
       if (moduleFlags && typeof moduleFlags === "object" && flagKey in moduleFlags) {
         this.scheduler.requestRerender();
       }
@@ -18832,9 +18908,9 @@ _DITriggerJournalDirectoryReRenderUseCase.dependencies = [
 ];
 let DITriggerJournalDirectoryReRenderUseCase = _DITriggerJournalDirectoryReRenderUseCase;
 const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
-  constructor(contextMenuRegistration, handlers, logger) {
+  constructor(contextMenuRegistration, handlers2, logger) {
     this.contextMenuRegistration = contextMenuRegistration;
-    this.handlers = handlers;
+    this.handlers = handlers2;
     this.logger = logger;
   }
   /**
@@ -18843,10 +18919,10 @@ const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
    * Errors in individual handlers are caught and logged, but don't stop other handlers.
    */
   register() {
-    this.callback = (event) => {
+    this.callback = (event2) => {
       for (const handler of this.handlers) {
         try {
-          handler.handle(event);
+          handler.handle(event2);
         } catch (error) {
           const handlerError = error instanceof Error ? error : new Error(String(error));
           this.logger.warn(`Context menu handler failed: ${handlerError.message}`, {
@@ -18872,8 +18948,8 @@ const _RegisterContextMenuUseCase = class _RegisterContextMenuUseCase {
 __name(_RegisterContextMenuUseCase, "RegisterContextMenuUseCase");
 let RegisterContextMenuUseCase = _RegisterContextMenuUseCase;
 const _DIRegisterContextMenuUseCase = class _DIRegisterContextMenuUseCase extends RegisterContextMenuUseCase {
-  constructor(contextMenuRegistration, handlers, logger) {
-    super(contextMenuRegistration, handlers, logger);
+  constructor(contextMenuRegistration, handlers2, logger) {
+    super(contextMenuRegistration, handlers2, logger);
   }
 };
 __name(_DIRegisterContextMenuUseCase, "DIRegisterContextMenuUseCase");
@@ -19030,8 +19106,8 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
     this.platformUI = platformUI;
     this.notifications = notifications;
   }
-  handle(event) {
-    const journalId = event.journalId;
+  handle(event2) {
+    const journalId = event2.journalId;
     if (!journalId) {
       return;
     }
@@ -19042,7 +19118,7 @@ const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
     );
     if (flagResult.ok && flagResult.value !== true) {
       const eventJournalId = journalId;
-      event.options.push({
+      event2.options.push({
         name: "Journal ausblenden",
         icon: '<i class="fas fa-eye-slash"></i>',
         callback: /* @__PURE__ */ __name(async (journalIdParam) => {
@@ -19445,9 +19521,9 @@ const _JournalMapperRegistry = class _JournalMapperRegistry {
    * @param mapper - The mapper to unregister
    */
   unregister(mapper) {
-    const index = this.mappers.indexOf(mapper);
-    if (index !== -1) {
-      this.mappers.splice(index, 1);
+    const index2 = this.mappers.indexOf(mapper);
+    if (index2 !== -1) {
+      this.mappers.splice(index2, 1);
     }
   }
   /**
@@ -20184,8 +20260,8 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
   async updateMany(updates) {
     const results = [];
     const errors = [];
-    for (const update of updates) {
-      const result = await this.update(update.id, update.changes);
+    for (const update2 of updates) {
+      const result = await this.update(update2.id, update2.changes);
       if (result.ok) {
         results.push(result.value);
       } else {
@@ -20250,7 +20326,7 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
     return ok(void 0);
   }
   // ===== Flag Convenience Methods =====
-  getFlag(id, scope, key) {
+  getFlag(id, scope, key2) {
     const foundryResult = this.foundryGame.getJournalEntryById(id);
     if (!foundryResult.ok || !foundryResult.value) {
       return err({
@@ -20267,17 +20343,17 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
         details: documentResult.error
       });
     }
-    const flagResult = this.foundryDocument.getFlag(documentResult.value, scope, key, /* @__PURE__ */ unknown());
+    const flagResult = this.foundryDocument.getFlag(documentResult.value, scope, key2, /* @__PURE__ */ unknown());
     if (!flagResult.ok) {
       return err({
         code: "OPERATION_FAILED",
-        message: `Failed to get flag ${scope}.${key}: ${flagResult.error.message}`,
+        message: `Failed to get flag ${scope}.${key2}: ${flagResult.error.message}`,
         details: flagResult.error
       });
     }
     return ok(flagResult.value);
   }
-  async setFlag(id, scope, key, value2) {
+  async setFlag(id, scope, key2, value2) {
     const foundryResult = this.foundryGame.getJournalEntryById(id);
     if (!foundryResult.ok || !foundryResult.value) {
       return err({
@@ -20294,17 +20370,17 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
         details: documentResult.error
       });
     }
-    const flagResult = await this.foundryDocument.setFlag(documentResult.value, scope, key, value2);
+    const flagResult = await this.foundryDocument.setFlag(documentResult.value, scope, key2, value2);
     if (!flagResult.ok) {
       return err({
         code: "OPERATION_FAILED",
-        message: `Failed to set flag ${scope}.${key}: ${flagResult.error.message}`,
+        message: `Failed to set flag ${scope}.${key2}: ${flagResult.error.message}`,
         details: flagResult.error
       });
     }
     return ok(void 0);
   }
-  async unsetFlag(id, scope, key) {
+  async unsetFlag(id, scope, key2) {
     const foundryResult = this.foundryGame.getJournalEntryById(id);
     if (!foundryResult.ok || !foundryResult.value) {
       return err({
@@ -20321,11 +20397,11 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
         details: documentResult.error
       });
     }
-    const unsetResult = await this.foundryDocument.unsetFlag(documentResult.value, scope, key);
+    const unsetResult = await this.foundryDocument.unsetFlag(documentResult.value, scope, key2);
     if (!unsetResult.ok) {
       return err({
         code: "OPERATION_FAILED",
-        message: `Failed to unset flag ${scope}.${key}: ${unsetResult.error.message}`,
+        message: `Failed to unset flag ${scope}.${key2}: ${unsetResult.error.message}`,
         details: unsetResult.error
       });
     }
@@ -20418,7 +20494,7 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
    *
    * Maps platform config → Foundry config.
    */
-  register(namespace, key, config2) {
+  register(namespace, key2, config2) {
     const typeResult = this.typeMapper.map(config2.type);
     if (!typeResult.ok) {
       return {
@@ -20436,12 +20512,12 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
       default: config2.default,
       ...config2.onChange !== void 0 && { onChange: config2.onChange }
     };
-    const result = this.foundrySettings.register(namespace, key, foundryConfig);
+    const result = this.foundrySettings.register(namespace, key2, foundryConfig);
     if (!result.ok) {
       const domainError = this.errorMapper.map(result.error, {
         operation: "register",
         namespace,
-        key
+        key: key2
       });
       return {
         ok: false,
@@ -20457,13 +20533,13 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
    * then validates it using the provided ValidationSchema. This allows any
    * ValidationSchema implementation to be used, not just ValibotValidationSchema.
    */
-  get(namespace, key, schema) {
-    const rawResult = this.foundrySettings.get(namespace, key, /* @__PURE__ */ unknown());
+  get(namespace, key2, schema) {
+    const rawResult = this.foundrySettings.get(namespace, key2, /* @__PURE__ */ unknown());
     if (!rawResult.ok) {
       const domainError = this.errorMapper.map(rawResult.error, {
         operation: "get",
         namespace,
-        key
+        key: key2
       });
       return {
         ok: false,
@@ -20481,13 +20557,13 @@ const _FoundrySettingsAdapter = class _FoundrySettingsAdapter {
    *
    * Persists to Foundry's database and triggers onChange.
    */
-  async set(namespace, key, value2) {
-    const result = await this.foundrySettings.set(namespace, key, value2);
+  async set(namespace, key2, value2) {
+    const result = await this.foundrySettings.set(namespace, key2, value2);
     if (!result.ok) {
       const domainError = this.errorMapper.map(result.error, {
         operation: "set",
         namespace,
-        key
+        key: key2
       });
       return {
         ok: false,
@@ -20663,6 +20739,12099 @@ registerDependencyStep({
   name: "JournalVisibilityConfig",
   priority: 110,
   execute: registerJournalVisibilityConfig
+});
+const _WindowRegistry = class _WindowRegistry {
+  constructor() {
+    this.definitions = /* @__PURE__ */ new Map();
+    this.instances = /* @__PURE__ */ new Map();
+  }
+  registerDefinition(definition) {
+    if (this.definitions.has(definition.definitionId)) {
+      return err({
+        code: "DefinitionAlreadyExists",
+        message: `Definition ${definition.definitionId} already exists`
+      });
+    }
+    this.definitions.set(definition.definitionId, definition);
+    return ok(void 0);
+  }
+  getDefinition(definitionId) {
+    const definition = this.definitions.get(definitionId);
+    if (!definition) {
+      return err({
+        code: "DefinitionNotFound",
+        message: `Definition ${definitionId} not found`
+      });
+    }
+    return ok(definition);
+  }
+  registerInstance(instance2) {
+    if (this.instances.has(instance2.instanceId)) {
+      return err({
+        code: "InstanceAlreadyExists",
+        message: `Instance ${instance2.instanceId} already exists`
+      });
+    }
+    this.instances.set(instance2.instanceId, instance2);
+    return ok(void 0);
+  }
+  getInstance(instanceId) {
+    const instance2 = this.instances.get(instanceId);
+    if (!instance2) {
+      return err({
+        code: "InstanceNotFound",
+        message: `Instance ${instanceId} not found`
+      });
+    }
+    return ok(instance2);
+  }
+  unregisterInstance(instanceId) {
+    if (!this.instances.has(instanceId)) {
+      return err({
+        code: "InstanceNotFound",
+        message: `Instance ${instanceId} not found`
+      });
+    }
+    this.instances.delete(instanceId);
+    return ok(void 0);
+  }
+  listInstances() {
+    return Array.from(this.instances.values());
+  }
+  listInstancesByDefinition(definitionId) {
+    return Array.from(this.instances.values()).filter(
+      (instance2) => instance2.definitionId === definitionId
+    );
+  }
+};
+__name(_WindowRegistry, "WindowRegistry");
+let WindowRegistry = _WindowRegistry;
+const _EventBus = class _EventBus {
+  constructor() {
+    this.listeners = /* @__PURE__ */ new Map();
+  }
+  emit(event2, payload) {
+    const eventListeners = this.listeners.get(event2);
+    if (!eventListeners) return;
+    for (const listener of eventListeners) {
+      listener(payload);
+    }
+  }
+  on(event2, handler) {
+    if (!this.listeners.has(event2)) {
+      this.listeners.set(event2, /* @__PURE__ */ new Set());
+    }
+    const eventListeners = this.listeners.get(event2);
+    eventListeners.add(handler);
+    return () => {
+      eventListeners.delete(handler);
+      if (eventListeners.size === 0) {
+        this.listeners.delete(event2);
+      }
+    };
+  }
+  off(event2, handler) {
+    const eventListeners = this.listeners.get(event2);
+    if (!eventListeners) return;
+    eventListeners.delete(handler);
+    if (eventListeners.size === 0) {
+      this.listeners.delete(event2);
+    }
+  }
+  once(event2, handler) {
+    const onceHandler = /* @__PURE__ */ __name((payload) => {
+      handler(payload);
+      this.off(event2, onceHandler);
+    }, "onceHandler");
+    this.on(event2, onceHandler);
+  }
+};
+__name(_EventBus, "EventBus");
+let EventBus = _EventBus;
+const _StateStore = class _StateStore {
+  constructor() {
+    this.state = /* @__PURE__ */ new Map();
+  }
+  set(instanceId, key2, value2) {
+    if (!this.state.has(instanceId)) {
+      this.state.set(instanceId, /* @__PURE__ */ new Map());
+    }
+    const instanceState = this.state.get(instanceId);
+    instanceState.set(key2, value2);
+    return ok(void 0);
+  }
+  get(instanceId, key2) {
+    const instanceState = this.state.get(instanceId);
+    if (!instanceState) {
+      return err({
+        code: "InstanceNotFound",
+        message: `Instance ${instanceId} not found`
+      });
+    }
+    if (!instanceState.has(key2)) {
+      return err({
+        code: "KeyNotFound",
+        message: `Key ${key2} not found for instance ${instanceId}`
+      });
+    }
+    return ok(instanceState.get(key2));
+  }
+  getAll(instanceId) {
+    const instanceState = this.state.get(instanceId);
+    if (!instanceState) {
+      return ok({});
+    }
+    const result = {};
+    for (const [key2, value2] of instanceState.entries()) {
+      result[key2] = value2;
+    }
+    return ok(result);
+  }
+  clear(instanceId) {
+    this.state.delete(instanceId);
+    return ok(void 0);
+  }
+};
+__name(_StateStore, "StateStore");
+let StateStore = _StateStore;
+const _ActionDispatcher = class _ActionDispatcher {
+  constructor(registry) {
+    this.registry = registry;
+  }
+  async dispatch(actionId, context) {
+    const instanceResult = this.registry.getInstance(context.windowInstanceId);
+    if (!instanceResult.ok) {
+      return err(instanceResult.error);
+    }
+    const definitionResult = this.registry.getDefinition(instanceResult.value.definitionId);
+    if (!definitionResult.ok) {
+      return err(definitionResult.error);
+    }
+    const definition = definitionResult.value;
+    const action2 = definition.actions?.find((a) => a.id === actionId);
+    if (!action2) {
+      return err({
+        code: "ActionNotFound",
+        message: `Action ${actionId} not found`
+      });
+    }
+    const permissionResult = this.checkPermissions(action2, context);
+    if (!permissionResult.ok) {
+      return err({
+        code: "PermissionDenied",
+        message: permissionResult.error.message
+      });
+    }
+    const validationResult = this.validateAction(action2, context);
+    if (!validationResult.ok) {
+      return err({
+        code: "ValidationFailed",
+        message: validationResult.error.message
+      });
+    }
+    if (action2.confirm) {
+      const confirmed = await this.requestConfirmation(action2.confirm);
+      if (!confirmed) {
+        return err({
+          code: "ActionCancelled",
+          message: "Action was cancelled by user"
+        });
+      }
+    }
+    const result = await action2.handler(context);
+    if (!result.ok) {
+      return err(result.error);
+    }
+    return ok(void 0);
+  }
+  /**
+   * Checks if the user has permission to execute the action
+   */
+  checkPermissions(action2, context) {
+    if (!action2.permissions || action2.permissions.length === 0) {
+      return ok(void 0);
+    }
+    for (const permission of action2.permissions) {
+      const checkResult = this.checkPermission(permission, context);
+      if (!checkResult.ok) {
+        return err(checkResult.error);
+      }
+    }
+    return ok(void 0);
+  }
+  /**
+   * Checks a single permission
+   */
+  checkPermission(permission, context) {
+    switch (permission.type) {
+      case "user":
+        if (typeof game === "undefined" || !game.user?.id) {
+          return err({
+            code: "NotAuthenticated",
+            message: "User is not authenticated"
+          });
+        }
+        return ok(void 0);
+      case "gm":
+        if (typeof game === "undefined") {
+          return err({
+            code: "NotAuthenticated",
+            message: "User is not authenticated"
+          });
+        }
+        const user = game.user;
+        if (!user) {
+          return err({
+            code: "NotAuthenticated",
+            message: "User is not authenticated"
+          });
+        }
+        const isGM = user.isGM === true || user.role >= 4;
+        if (!isGM) {
+          return err({
+            code: "InsufficientPermissions",
+            message: "This action requires Game Master permissions"
+          });
+        }
+        return ok(void 0);
+      case "custom":
+        if (!permission.check) {
+          return err({
+            code: "InvalidPermission",
+            message: "Custom permission check function is not defined"
+          });
+        }
+        const hasPermission = permission.check(context);
+        if (!hasPermission) {
+          return err({
+            code: "InsufficientPermissions",
+            message: "Custom permission check failed"
+          });
+        }
+        return ok(void 0);
+      default:
+        return err({
+          code: "UnknownPermissionType",
+          message: `Unknown permission type: ${permission.type}`
+        });
+    }
+  }
+  /**
+   * Validates the action context against validation rules
+   */
+  validateAction(action2, context) {
+    if (!action2.validation || action2.validation.length === 0) {
+      return ok(void 0);
+    }
+    for (const rule of action2.validation) {
+      const isValid = rule.validate(context);
+      if (!isValid) {
+        return err({
+          code: "ValidationFailed",
+          message: rule.message || "Action validation failed"
+        });
+      }
+    }
+    return ok(void 0);
+  }
+  /**
+   * Requests user confirmation before executing the action
+   */
+  async requestConfirmation(confirm) {
+    if (typeof foundry === "undefined" || !foundry.applications?.api?.DialogV2) {
+      console.warn("Foundry DialogV2 not available, action confirmation cancelled");
+      return false;
+    }
+    const result = await foundry.applications.api.DialogV2.confirm({
+      content: confirm.message,
+      rejectClose: false,
+      modal: true
+    });
+    return result === true;
+  }
+};
+__name(_ActionDispatcher, "ActionDispatcher");
+_ActionDispatcher.dependencies = [windowRegistryToken];
+let ActionDispatcher = _ActionDispatcher;
+const _RendererRegistry = class _RendererRegistry {
+  constructor() {
+    this.renderers = /* @__PURE__ */ new Map();
+  }
+  register(type, renderer) {
+    this.renderers.set(type, renderer);
+  }
+  get(type) {
+    const renderer = this.renderers.get(type);
+    if (!renderer) {
+      return err({
+        code: "RendererNotFound",
+        message: `Renderer for type ${type} not found`
+      });
+    }
+    return ok(renderer);
+  }
+};
+__name(_RendererRegistry, "RendererRegistry");
+let RendererRegistry = _RendererRegistry;
+const _BindingEngine = class _BindingEngine {
+  constructor(stateStore, persistAdapter, remoteSyncGate) {
+    this.stateStore = stateStore;
+    this.persistAdapter = persistAdapter;
+    this.remoteSyncGate = remoteSyncGate;
+    this.bindings = /* @__PURE__ */ new Map();
+    this.debounceTimers = /* @__PURE__ */ new Map();
+  }
+  initialize(definition, instanceId) {
+    const normalized = this.getNormalizedBindings(definition);
+    if (!this.bindings.has(instanceId)) {
+      this.bindings.set(instanceId, /* @__PURE__ */ new Map());
+    }
+    const instanceBindings = this.bindings.get(instanceId);
+    for (const binding of normalized) {
+      instanceBindings.set(binding.id || `${binding.source.key}-binding`, binding);
+      this.loadBindingValue(binding.source, instanceId).then((valueResult) => {
+        if (valueResult.ok && valueResult.value !== void 0) {
+          this.stateStore.set(instanceId, binding.target.stateKey, valueResult.value);
+        }
+      });
+    }
+    return ok(void 0);
+  }
+  async sync(instanceId, policy = "immediate") {
+    if (policy === "none") return ok(void 0);
+    const instanceBindings = this.bindings.get(instanceId);
+    if (!instanceBindings) return ok(void 0);
+    for (const binding of instanceBindings.values()) {
+      const bindingSyncPolicy = binding.syncPolicy === "manual" ? "none" : binding.syncPolicy;
+      const bindingPolicy = bindingSyncPolicy ?? policy;
+      if (bindingPolicy === "none") continue;
+      if (binding.twoWay) {
+        const stateResult = this.stateStore.get(instanceId, binding.target.stateKey);
+        if (!stateResult.ok) continue;
+        if (bindingPolicy === "debounced") {
+          this.scheduleDebouncedSync(
+            binding.id || `${binding.source.key}-binding`,
+            instanceId,
+            binding.source,
+            stateResult.value
+          );
+        } else {
+          const saveResult = await this.saveBindingValue(
+            binding.source,
+            instanceId,
+            stateResult.value
+          );
+          if (!saveResult.ok) return err(saveResult.error);
+        }
+      }
+    }
+    return ok(void 0);
+  }
+  /**
+   * Phase 2: Schedules a debounced sync for a binding
+   */
+  scheduleDebouncedSync(bindingId, instanceId, source2, value2) {
+    const timerKey = `${instanceId}:${bindingId}`;
+    const existingTimer = this.debounceTimers.get(timerKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+    const instanceBindings = this.bindings.get(instanceId);
+    const binding = instanceBindings?.get(bindingId);
+    const debounceMs = binding?.debounceMs ?? 300;
+    const timer = setTimeout(async () => {
+      this.debounceTimers.delete(timerKey);
+      const saveResult = await this.saveBindingValue(source2, instanceId, value2);
+      if (!saveResult.ok) {
+        console.error(`Failed to save debounced binding ${bindingId}:`, saveResult.error);
+      }
+    }, debounceMs);
+    this.debounceTimers.set(timerKey, timer);
+  }
+  getNormalizedBindings(definition) {
+    const normalized = [];
+    for (const control of definition.controls || []) {
+      if (control.binding) {
+        normalized.push({
+          ...control.binding,
+          id: control.binding.id || `${control.id}-binding`,
+          isLocal: true
+        });
+      }
+    }
+    for (const binding of definition.bindings || []) {
+      normalized.push({
+        ...binding,
+        isLocal: false
+      });
+    }
+    return normalized;
+  }
+  /**
+   * Phase 2: Loads a binding value from the source
+   */
+  async loadBindingValue(source2, instanceId) {
+    switch (source2.type) {
+      case "state":
+        return this.stateStore.get(instanceId, source2.key);
+      case "setting":
+      case "flag":
+        if (!this.persistAdapter) {
+          return ok(void 0);
+        }
+        const persistConfig = this.bindingSourceToPersistConfig(source2);
+        if (!persistConfig.ok) {
+          return err(persistConfig.error);
+        }
+        const loadResult = await this.persistAdapter.load(persistConfig.value);
+        if (!loadResult.ok) {
+          return err({
+            code: "BindingLoadFailed",
+            message: `Failed to load ${source2.type} binding: ${loadResult.error.message}`
+          });
+        }
+        const data = loadResult.value;
+        if (source2.key.includes(".")) {
+          const keys = source2.key.split(".");
+          let current = data;
+          for (const key2 of keys) {
+            if (current && typeof current === "object" && key2 in current) {
+              current = current[key2];
+            } else {
+              return ok(void 0);
+            }
+          }
+          return ok(current);
+        }
+        return ok(data[source2.key] ?? data);
+      case "journal":
+        return ok(void 0);
+      default:
+        return ok(void 0);
+    }
+  }
+  /**
+   * Phase 2: Saves a binding value to the source
+   */
+  async saveBindingValue(source2, instanceId, value2) {
+    switch (source2.type) {
+      case "state":
+        this.stateStore.set(instanceId, source2.key, value2);
+        return ok(void 0);
+      case "setting":
+      case "flag":
+        if (!this.persistAdapter) {
+          return ok(void 0);
+        }
+        const persistConfig = this.bindingSourceToPersistConfig(source2);
+        if (!persistConfig.ok) {
+          return err(persistConfig.error);
+        }
+        let data;
+        if (source2.key.includes(".")) {
+          const keys = source2.key.split(".");
+          const nested = {};
+          let current = nested;
+          for (let i = 0; i < keys.length - 1; i++) {
+            const key2 = keys[i];
+            if (key2) {
+              current[key2] = {};
+              current = current[key2];
+            }
+          }
+          const lastKey = keys[keys.length - 1];
+          if (lastKey) {
+            current[lastKey] = value2;
+          }
+          data = nested;
+        } else {
+          data = { [source2.key]: value2 };
+        }
+        const meta = this.remoteSyncGate?.makePersistMeta(instanceId);
+        const saveResult = await this.persistAdapter.save(persistConfig.value, data, meta);
+        if (!saveResult.ok) {
+          return err({
+            code: "BindingSaveFailed",
+            message: `Failed to save ${source2.type} binding: ${saveResult.error.message}`
+          });
+        }
+        return ok(void 0);
+      case "journal":
+        return ok(void 0);
+      default:
+        return ok(void 0);
+    }
+  }
+  /**
+   * Phase 2: Converts BindingSource to PersistConfig
+   */
+  bindingSourceToPersistConfig(source2) {
+    if (source2.type === "setting") {
+      if (!source2.namespace) {
+        return err({
+          code: "InvalidBindingSource",
+          message: "Setting binding requires namespace"
+        });
+      }
+      return ok({
+        type: "setting",
+        key: source2.key,
+        namespace: source2.namespace
+      });
+    }
+    if (source2.type === "flag") {
+      if (!source2.namespace || !source2.documentId) {
+        return err({
+          code: "InvalidBindingSource",
+          message: "Flag binding requires namespace and documentId"
+        });
+      }
+      return ok({
+        type: "flag",
+        key: source2.key,
+        namespace: source2.namespace,
+        documentId: source2.documentId
+      });
+    }
+    return err({
+      code: "InvalidBindingSource",
+      message: `Cannot convert ${source2.type} to PersistConfig`
+    });
+  }
+};
+__name(_BindingEngine, "BindingEngine");
+_BindingEngine.dependencies = [stateStoreToken, persistAdapterToken, remoteSyncGateToken];
+let BindingEngine = _BindingEngine;
+const _RemoteSyncGate = class _RemoteSyncGate {
+  constructor() {
+    this.OPT_KEY = "windowFrameworkOrigin";
+    this.clientId = typeof game !== "undefined" && game.userId ? game.userId : `client-${Date.now()}`;
+  }
+  makePersistMeta(instanceId) {
+    return {
+      originClientId: this.clientId,
+      originWindowInstanceId: instanceId,
+      render: false
+      // Kein Foundry-window rerender
+    };
+  }
+  isFromWindow(options, instanceId) {
+    if (!options) return false;
+    const meta = options[this.OPT_KEY];
+    return meta?.originWindowInstanceId === instanceId;
+  }
+  getClientId() {
+    return this.clientId;
+  }
+};
+__name(_RemoteSyncGate, "RemoteSyncGate");
+let RemoteSyncGate = _RemoteSyncGate;
+const _ViewModelBuilder = class _ViewModelBuilder {
+  build(definition, state2, actions) {
+    const computed = {};
+    return {
+      state: state2,
+      // StatePort (kann reaktiv sein, z.B. RuneState)
+      computed,
+      actions
+      // i18n und logger werden optional über DI injiziert (später)
+    };
+  }
+};
+__name(_ViewModelBuilder, "ViewModelBuilder");
+let ViewModelBuilder = _ViewModelBuilder;
+const _FoundryApplicationWrapper2 = class _FoundryApplicationWrapper2 {
+  static build(definition, controller, instanceId) {
+    var _a2;
+    const controllerMap = /* @__PURE__ */ new WeakMap();
+    const mountedMap = /* @__PURE__ */ new WeakMap();
+    const foundryApi = foundry;
+    const applicationBase = foundryApi.applications.api.ApplicationV2 ?? class {
+    };
+    const handlebarsMixin = foundryApi.applications.api.HandlebarsApplicationMixin ?? ((cls) => cls);
+    const appClass = (_a2 = class extends handlebarsMixin(applicationBase) {
+      constructor(options) {
+        super(options);
+        const appInstance = this;
+        controllerMap.set(appInstance, controller);
+        mountedMap.set(appInstance, false);
+        if (typeof process !== "undefined" && false) {
+          _FoundryApplicationWrapper._testControllerMaps.set(appInstance, controllerMap);
+          _FoundryApplicationWrapper._testMountedMaps.set(appInstance, mountedMap);
+        }
+      }
+      // Verwendet _onRender lifecycle method (Best Practice für ApplicationV2)
+      // Wird nach dem Rendering aufgerufen, wenn das HTML bereits im DOM ist
+      async _onRender(context, options) {
+        await super._onRender(
+          context,
+          options
+        );
+        const ctrl = controllerMap.get(this);
+        const isMounted = mountedMap.get(this) ?? false;
+        const element2 = this.element;
+        if (ctrl && element2) {
+          if (!isMounted) {
+            await ctrl.onFoundryRender(element2);
+            mountedMap.set(this, true);
+          } else {
+            await ctrl.onFoundryUpdate(element2);
+          }
+        }
+      }
+      async close(options) {
+        const ctrl = controllerMap.get(this);
+        if (ctrl) {
+          await ctrl.onFoundryClose();
+        }
+        mountedMap.set(this, false);
+        await super.close(options);
+        return this;
+      }
+    }, __name(_a2, "appClass"), _a2.DEFAULT_OPTIONS = {
+      id: instanceId,
+      // WICHTIG: instanceId, nicht definitionId!
+      title: definition.title,
+      classes: definition.classes || [],
+      window: {
+        resizable: definition.features?.resizable ?? true,
+        minimizable: definition.features?.minimizable ?? true,
+        draggable: definition.features?.draggable ?? true
+      },
+      ...definition.position && {
+        position: {
+          ...definition.position.top !== void 0 && { top: definition.position.top },
+          ...definition.position.left !== void 0 && { left: definition.position.left },
+          ...definition.position.width !== void 0 && { width: definition.position.width },
+          ...definition.position.height !== void 0 && { height: definition.position.height }
+        }
+      }
+    }, _a2.template = '<div id="svelte-mount-point"></div>', _a2);
+    return appClass;
+  }
+};
+__name(_FoundryApplicationWrapper2, "FoundryApplicationWrapper");
+_FoundryApplicationWrapper2._testControllerMaps = /* @__PURE__ */ new Map();
+_FoundryApplicationWrapper2._testMountedMaps = /* @__PURE__ */ new Map();
+let FoundryApplicationWrapper = _FoundryApplicationWrapper2;
+const _FoundryWindowAdapter = class _FoundryWindowAdapter {
+  buildApplicationWrapper(definition, controller, instanceId) {
+    try {
+      const appClass = FoundryApplicationWrapper.build(definition, controller, instanceId);
+      return ok(appClass);
+    } catch (error) {
+      return err({
+        code: "BuildApplicationFailed",
+        message: `Failed to build application wrapper: ${String(error)}`,
+        cause: error
+      });
+    }
+  }
+  async renderWindow(instance2, force) {
+    if (!instance2.foundryApp) {
+      return err({
+        code: "NoFoundryApp",
+        message: "FoundryApp not set on instance"
+      });
+    }
+    try {
+      await instance2.foundryApp.render({ force: force ?? false });
+      return ok(void 0);
+    } catch (error) {
+      return err({
+        code: "RenderFailed",
+        message: `Failed to render window: ${String(error)}`,
+        cause: error
+      });
+    }
+  }
+  async closeWindow(instance2) {
+    if (!instance2.foundryApp) {
+      return err({
+        code: "NoFoundryApp",
+        message: "FoundryApp not set on instance"
+      });
+    }
+    try {
+      await instance2.foundryApp.close();
+      return ok(void 0);
+    } catch (error) {
+      return err({
+        code: "CloseFailed",
+        message: `Failed to close window: ${String(error)}`,
+        cause: error
+      });
+    }
+  }
+};
+__name(_FoundryWindowAdapter, "FoundryWindowAdapter");
+let FoundryWindowAdapter = _FoundryWindowAdapter;
+const _RuneState = class _RuneState {
+  constructor(initial) {
+    const $stateResult = castSvelteStateRune();
+    if (!$stateResult.ok) {
+      throw new Error(`Svelte 5 $state rune not available: ${$stateResult.error.message}`);
+    }
+    this.runeState = $stateResult.value(initial);
+  }
+  get() {
+    return this.runeState;
+  }
+  patch(updates) {
+    for (const [key2, value2] of Object.entries(updates)) {
+      const currentValue = this.runeState[key2];
+      if (currentValue !== value2) {
+        this.runeState[key2] = value2;
+      }
+    }
+  }
+  subscribe(_fn) {
+    return () => {
+    };
+  }
+  snapshot() {
+    return { ...this.runeState };
+  }
+};
+__name(_RuneState, "RuneState");
+let RuneState = _RuneState;
+const _RuneStateFactory = class _RuneStateFactory {
+  create(instanceId, initial) {
+    return new RuneState(initial);
+  }
+};
+__name(_RuneStateFactory, "RuneStateFactory");
+let RuneStateFactory = _RuneStateFactory;
+const _GlobalDocumentCache = class _GlobalDocumentCache {
+  constructor() {
+    this.actorsById = (() => {
+      const $stateResult = castSvelteStateRune();
+      if ($stateResult.ok) {
+        return $stateResult.value(/* @__PURE__ */ new Map());
+      }
+      return /* @__PURE__ */ new Map();
+    })();
+    this.itemsById = (() => {
+      const $stateResult = castSvelteStateRune();
+      if ($stateResult.ok) {
+        return $stateResult.value(/* @__PURE__ */ new Map());
+      }
+      return /* @__PURE__ */ new Map();
+    })();
+    this.itemsByActorId = (() => {
+      const $stateResult = castSvelteStateRune();
+      if ($stateResult.ok) {
+        return $stateResult.value(/* @__PURE__ */ new Map());
+      }
+      return /* @__PURE__ */ new Map();
+    })();
+  }
+  static getInstance() {
+    if (!_GlobalDocumentCache.instance) {
+      _GlobalDocumentCache.instance = new _GlobalDocumentCache();
+    }
+    return _GlobalDocumentCache.instance;
+  }
+  // Idempotent Patch: nur ändern wenn value differs
+  patchActor(actorId, updates) {
+    const actor = this.actorsById.get(actorId);
+    if (!actor) {
+      this.actorsById.set(actorId, { ...updates, id: actorId });
+      return;
+    }
+    let hasChanges = false;
+    for (const [key2, value2] of Object.entries(updates)) {
+      const typedKey = key2;
+      if (actor[typedKey] !== value2) {
+        actor[key2] = value2;
+        hasChanges = true;
+      }
+    }
+    if (hasChanges) {
+      this.actorsById.set(actorId, actor);
+    }
+  }
+  patchItem(itemId, updates) {
+    const item = this.itemsById.get(itemId);
+    if (!item) {
+      this.itemsById.set(itemId, { ...updates, id: itemId });
+      if (updates.actorId) {
+        const actorItems = this.itemsByActorId.get(updates.actorId) || [];
+        if (!actorItems.includes(itemId)) {
+          this.itemsByActorId.set(updates.actorId, [...actorItems, itemId]);
+        }
+      }
+      return;
+    }
+    const oldActorId = item.actorId;
+    let hasChanges = false;
+    for (const [key2, value2] of Object.entries(updates)) {
+      const typedKey = key2;
+      if (item[typedKey] !== value2) {
+        item[key2] = value2;
+        hasChanges = true;
+      }
+    }
+    if (updates.actorId && updates.actorId !== oldActorId) {
+      if (oldActorId) {
+        const oldActorItems = this.itemsByActorId.get(oldActorId) || [];
+        this.itemsByActorId.set(
+          oldActorId,
+          oldActorItems.filter((id) => id !== itemId)
+        );
+      }
+      const newActorItems = this.itemsByActorId.get(updates.actorId) || [];
+      if (!newActorItems.includes(itemId)) {
+        this.itemsByActorId.set(updates.actorId, [...newActorItems, itemId]);
+      }
+    }
+    if (hasChanges) {
+      this.itemsById.set(itemId, item);
+    }
+  }
+  getActor(actorId) {
+    return this.actorsById.get(actorId);
+  }
+  getItem(itemId) {
+    return this.itemsById.get(itemId);
+  }
+  getItemsByActorId(actorId) {
+    return this.itemsByActorId.get(actorId) || [];
+  }
+};
+__name(_GlobalDocumentCache, "GlobalDocumentCache");
+_GlobalDocumentCache.instance = null;
+let GlobalDocumentCache = _GlobalDocumentCache;
+var BROWSER = true;
+var DEV = false;
+var is_array = Array.isArray;
+var index_of = Array.prototype.indexOf;
+var array_from = Array.from;
+var object_keys = Object.keys;
+var define_property = Object.defineProperty;
+var get_descriptor = Object.getOwnPropertyDescriptor;
+var get_descriptors = Object.getOwnPropertyDescriptors;
+var object_prototype = Object.prototype;
+var array_prototype = Array.prototype;
+var get_prototype_of = Object.getPrototypeOf;
+var is_extensible = Object.isExtensible;
+function is_function(thing) {
+  return typeof thing === "function";
+}
+__name(is_function, "is_function");
+const noop = /* @__PURE__ */ __name(() => {
+}, "noop");
+function is_promise(value2) {
+  return typeof value2?.then === "function";
+}
+__name(is_promise, "is_promise");
+function run$2(fn) {
+  return fn();
+}
+__name(run$2, "run$2");
+function run_all(arr) {
+  for (var i = 0; i < arr.length; i++) {
+    arr[i]();
+  }
+}
+__name(run_all, "run_all");
+function deferred() {
+  var resolve;
+  var reject;
+  var promise2 = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise: promise2, resolve, reject };
+}
+__name(deferred, "deferred");
+function fallback(value2, fallback2, lazy2 = false) {
+  return value2 === void 0 ? lazy2 ? (
+    /** @type {() => V} */
+    fallback2()
+  ) : (
+    /** @type {V} */
+    fallback2
+  ) : value2;
+}
+__name(fallback, "fallback");
+function to_array(value2, n) {
+  if (Array.isArray(value2)) {
+    return value2;
+  }
+  if (n === void 0 || !(Symbol.iterator in value2)) {
+    return Array.from(value2);
+  }
+  const array2 = [];
+  for (const element2 of value2) {
+    array2.push(element2);
+    if (array2.length === n) break;
+  }
+  return array2;
+}
+__name(to_array, "to_array");
+const DERIVED = 1 << 1;
+const EFFECT = 1 << 2;
+const RENDER_EFFECT = 1 << 3;
+const MANAGED_EFFECT = 1 << 24;
+const BLOCK_EFFECT = 1 << 4;
+const BRANCH_EFFECT = 1 << 5;
+const ROOT_EFFECT = 1 << 6;
+const BOUNDARY_EFFECT = 1 << 7;
+const CONNECTED = 1 << 9;
+const CLEAN = 1 << 10;
+const DIRTY = 1 << 11;
+const MAYBE_DIRTY = 1 << 12;
+const INERT = 1 << 13;
+const DESTROYED = 1 << 14;
+const EFFECT_RAN = 1 << 15;
+const EFFECT_TRANSPARENT = 1 << 16;
+const EAGER_EFFECT = 1 << 17;
+const HEAD_EFFECT = 1 << 18;
+const EFFECT_PRESERVED = 1 << 19;
+const USER_EFFECT = 1 << 20;
+const EFFECT_OFFSCREEN = 1 << 25;
+const WAS_MARKED = 1 << 15;
+const REACTION_IS_UPDATING = 1 << 21;
+const ASYNC = 1 << 22;
+const ERROR_VALUE = 1 << 23;
+const STATE_SYMBOL = /* @__PURE__ */ Symbol("$state");
+const LEGACY_PROPS = /* @__PURE__ */ Symbol("legacy props");
+const LOADING_ATTR_SYMBOL = /* @__PURE__ */ Symbol("");
+const PROXY_PATH_SYMBOL = /* @__PURE__ */ Symbol("proxy path");
+const STALE_REACTION = new (_b = class extends Error {
+  constructor() {
+    super(...arguments);
+    __publicField(this, "name", "StaleReactionError");
+    __publicField(this, "message", "The reaction that called `getAbortSignal()` was re-run or destroyed");
+  }
+}, __name(_b, "StaleReactionError"), _b)();
+const ELEMENT_NODE = 1;
+const TEXT_NODE = 3;
+const COMMENT_NODE = 8;
+const DOCUMENT_FRAGMENT_NODE = 11;
+function experimental_async_required(name) {
+  if (DEV) {
+    const error = new Error(`experimental_async_required
+Cannot use \`${name}(...)\` unless the \`experimental.async\` compiler option is \`true\`
+https://svelte.dev/e/experimental_async_required`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/experimental_async_required`);
+  }
+}
+__name(experimental_async_required, "experimental_async_required");
+function invalid_default_snippet() {
+  if (DEV) {
+    const error = new Error(`invalid_default_snippet
+Cannot use \`{@render children(...)}\` if the parent component uses \`let:\` directives. Consider using a named snippet instead
+https://svelte.dev/e/invalid_default_snippet`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/invalid_default_snippet`);
+  }
+}
+__name(invalid_default_snippet, "invalid_default_snippet");
+function invalid_snippet_arguments() {
+  if (DEV) {
+    const error = new Error(`invalid_snippet_arguments
+A snippet function was passed invalid arguments. Snippets should only be instantiated via \`{@render ...}\`
+https://svelte.dev/e/invalid_snippet_arguments`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/invalid_snippet_arguments`);
+  }
+}
+__name(invalid_snippet_arguments, "invalid_snippet_arguments");
+function lifecycle_outside_component(name) {
+  if (DEV) {
+    const error = new Error(`lifecycle_outside_component
+\`${name}(...)\` can only be used during component initialisation
+https://svelte.dev/e/lifecycle_outside_component`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/lifecycle_outside_component`);
+  }
+}
+__name(lifecycle_outside_component, "lifecycle_outside_component");
+function missing_context() {
+  if (DEV) {
+    const error = new Error(`missing_context
+Context was not set in a parent component
+https://svelte.dev/e/missing_context`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/missing_context`);
+  }
+}
+__name(missing_context, "missing_context");
+function snippet_without_render_tag() {
+  if (DEV) {
+    const error = new Error(`snippet_without_render_tag
+Attempted to render a snippet without a \`{@render}\` block. This would cause the snippet code to be stringified instead of its content being rendered to the DOM. To fix this, change \`{snippet}\` to \`{@render snippet()}\`.
+https://svelte.dev/e/snippet_without_render_tag`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/snippet_without_render_tag`);
+  }
+}
+__name(snippet_without_render_tag, "snippet_without_render_tag");
+function store_invalid_shape(name) {
+  if (DEV) {
+    const error = new Error(`store_invalid_shape
+\`${name}\` is not a store with a \`subscribe\` method
+https://svelte.dev/e/store_invalid_shape`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/store_invalid_shape`);
+  }
+}
+__name(store_invalid_shape, "store_invalid_shape");
+function svelte_element_invalid_this_value() {
+  if (DEV) {
+    const error = new Error(`svelte_element_invalid_this_value
+The \`this\` prop on \`<svelte:element>\` must be a string, if defined
+https://svelte.dev/e/svelte_element_invalid_this_value`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/svelte_element_invalid_this_value`);
+  }
+}
+__name(svelte_element_invalid_this_value, "svelte_element_invalid_this_value");
+function async_derived_orphan() {
+  if (DEV) {
+    const error = new Error(`async_derived_orphan
+Cannot create a \`$derived(...)\` with an \`await\` expression outside of an effect tree
+https://svelte.dev/e/async_derived_orphan`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/async_derived_orphan`);
+  }
+}
+__name(async_derived_orphan, "async_derived_orphan");
+function bind_invalid_checkbox_value() {
+  if (DEV) {
+    const error = new Error(`bind_invalid_checkbox_value
+Using \`bind:value\` together with a checkbox input is not allowed. Use \`bind:checked\` instead
+https://svelte.dev/e/bind_invalid_checkbox_value`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/bind_invalid_checkbox_value`);
+  }
+}
+__name(bind_invalid_checkbox_value, "bind_invalid_checkbox_value");
+function bind_invalid_export(component2, key2, name) {
+  if (DEV) {
+    const error = new Error(`bind_invalid_export
+Component ${component2} has an export named \`${key2}\` that a consumer component is trying to access using \`bind:${key2}\`, which is disallowed. Instead, use \`bind:this\` (e.g. \`<${name} bind:this={component} />\`) and then access the property on the bound component instance (e.g. \`component.${key2}\`)
+https://svelte.dev/e/bind_invalid_export`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/bind_invalid_export`);
+  }
+}
+__name(bind_invalid_export, "bind_invalid_export");
+function bind_not_bindable(key2, component2, name) {
+  if (DEV) {
+    const error = new Error(`bind_not_bindable
+A component is attempting to bind to a non-bindable property \`${key2}\` belonging to ${component2} (i.e. \`<${name} bind:${key2}={...}>\`). To mark a property as bindable: \`let { ${key2} = $bindable() } = $props()\`
+https://svelte.dev/e/bind_not_bindable`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/bind_not_bindable`);
+  }
+}
+__name(bind_not_bindable, "bind_not_bindable");
+function component_api_changed(method, component2) {
+  if (DEV) {
+    const error = new Error(`component_api_changed
+Calling \`${method}\` on a component instance (of ${component2}) is no longer valid in Svelte 5
+https://svelte.dev/e/component_api_changed`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/component_api_changed`);
+  }
+}
+__name(component_api_changed, "component_api_changed");
+function component_api_invalid_new(component2, name) {
+  if (DEV) {
+    const error = new Error(`component_api_invalid_new
+Attempted to instantiate ${component2} with \`new ${name}\`, which is no longer valid in Svelte 5. If this component is not under your control, set the \`compatibility.componentApi\` compiler option to \`4\` to keep it working.
+https://svelte.dev/e/component_api_invalid_new`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/component_api_invalid_new`);
+  }
+}
+__name(component_api_invalid_new, "component_api_invalid_new");
+function derived_references_self() {
+  if (DEV) {
+    const error = new Error(`derived_references_self
+A derived value cannot reference itself recursively
+https://svelte.dev/e/derived_references_self`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/derived_references_self`);
+  }
+}
+__name(derived_references_self, "derived_references_self");
+function each_key_duplicate(a, b, value2) {
+  if (DEV) {
+    const error = new Error(`each_key_duplicate
+${value2 ? `Keyed each block has duplicate key \`${value2}\` at indexes ${a} and ${b}` : `Keyed each block has duplicate key at indexes ${a} and ${b}`}
+https://svelte.dev/e/each_key_duplicate`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/each_key_duplicate`);
+  }
+}
+__name(each_key_duplicate, "each_key_duplicate");
+function effect_in_teardown(rune) {
+  if (DEV) {
+    const error = new Error(`effect_in_teardown
+\`${rune}\` cannot be used inside an effect cleanup function
+https://svelte.dev/e/effect_in_teardown`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/effect_in_teardown`);
+  }
+}
+__name(effect_in_teardown, "effect_in_teardown");
+function effect_in_unowned_derived() {
+  if (DEV) {
+    const error = new Error(`effect_in_unowned_derived
+Effect cannot be created inside a \`$derived\` value that was not itself created inside an effect
+https://svelte.dev/e/effect_in_unowned_derived`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/effect_in_unowned_derived`);
+  }
+}
+__name(effect_in_unowned_derived, "effect_in_unowned_derived");
+function effect_orphan(rune) {
+  if (DEV) {
+    const error = new Error(`effect_orphan
+\`${rune}\` can only be used inside an effect (e.g. during component initialisation)
+https://svelte.dev/e/effect_orphan`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/effect_orphan`);
+  }
+}
+__name(effect_orphan, "effect_orphan");
+function effect_pending_outside_reaction() {
+  if (DEV) {
+    const error = new Error(`effect_pending_outside_reaction
+\`$effect.pending()\` can only be called inside an effect or derived
+https://svelte.dev/e/effect_pending_outside_reaction`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/effect_pending_outside_reaction`);
+  }
+}
+__name(effect_pending_outside_reaction, "effect_pending_outside_reaction");
+function effect_update_depth_exceeded() {
+  if (DEV) {
+    const error = new Error(`effect_update_depth_exceeded
+Maximum update depth exceeded. This typically indicates that an effect reads and writes the same piece of state
+https://svelte.dev/e/effect_update_depth_exceeded`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/effect_update_depth_exceeded`);
+  }
+}
+__name(effect_update_depth_exceeded, "effect_update_depth_exceeded");
+function flush_sync_in_effect() {
+  if (DEV) {
+    const error = new Error(`flush_sync_in_effect
+Cannot use \`flushSync\` inside an effect
+https://svelte.dev/e/flush_sync_in_effect`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/flush_sync_in_effect`);
+  }
+}
+__name(flush_sync_in_effect, "flush_sync_in_effect");
+function fork_discarded() {
+  if (DEV) {
+    const error = new Error(`fork_discarded
+Cannot commit a fork that was already discarded
+https://svelte.dev/e/fork_discarded`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/fork_discarded`);
+  }
+}
+__name(fork_discarded, "fork_discarded");
+function fork_timing() {
+  if (DEV) {
+    const error = new Error(`fork_timing
+Cannot create a fork inside an effect or when state changes are pending
+https://svelte.dev/e/fork_timing`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/fork_timing`);
+  }
+}
+__name(fork_timing, "fork_timing");
+function get_abort_signal_outside_reaction() {
+  if (DEV) {
+    const error = new Error(`get_abort_signal_outside_reaction
+\`getAbortSignal()\` can only be called inside an effect or derived
+https://svelte.dev/e/get_abort_signal_outside_reaction`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/get_abort_signal_outside_reaction`);
+  }
+}
+__name(get_abort_signal_outside_reaction, "get_abort_signal_outside_reaction");
+function hydratable_missing_but_required(key2) {
+  if (DEV) {
+    const error = new Error(`hydratable_missing_but_required
+Expected to find a hydratable with key \`${key2}\` during hydration, but did not.
+https://svelte.dev/e/hydratable_missing_but_required`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/hydratable_missing_but_required`);
+  }
+}
+__name(hydratable_missing_but_required, "hydratable_missing_but_required");
+function hydration_failed() {
+  if (DEV) {
+    const error = new Error(`hydration_failed
+Failed to hydrate the application
+https://svelte.dev/e/hydration_failed`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/hydration_failed`);
+  }
+}
+__name(hydration_failed, "hydration_failed");
+function invalid_snippet() {
+  if (DEV) {
+    const error = new Error(`invalid_snippet
+Could not \`{@render}\` snippet due to the expression being \`null\` or \`undefined\`. Consider using optional chaining \`{@render snippet?.()}\`
+https://svelte.dev/e/invalid_snippet`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/invalid_snippet`);
+  }
+}
+__name(invalid_snippet, "invalid_snippet");
+function lifecycle_legacy_only(name) {
+  if (DEV) {
+    const error = new Error(`lifecycle_legacy_only
+\`${name}(...)\` cannot be used in runes mode
+https://svelte.dev/e/lifecycle_legacy_only`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/lifecycle_legacy_only`);
+  }
+}
+__name(lifecycle_legacy_only, "lifecycle_legacy_only");
+function props_invalid_value(key2) {
+  if (DEV) {
+    const error = new Error(`props_invalid_value
+Cannot do \`bind:${key2}={undefined}\` when \`${key2}\` has a fallback value
+https://svelte.dev/e/props_invalid_value`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/props_invalid_value`);
+  }
+}
+__name(props_invalid_value, "props_invalid_value");
+function props_rest_readonly(property) {
+  if (DEV) {
+    const error = new Error(`props_rest_readonly
+Rest element properties of \`$props()\` such as \`${property}\` are readonly
+https://svelte.dev/e/props_rest_readonly`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/props_rest_readonly`);
+  }
+}
+__name(props_rest_readonly, "props_rest_readonly");
+function rune_outside_svelte(rune) {
+  if (DEV) {
+    const error = new Error(`rune_outside_svelte
+The \`${rune}\` rune is only available inside \`.svelte\` and \`.svelte.js/ts\` files
+https://svelte.dev/e/rune_outside_svelte`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/rune_outside_svelte`);
+  }
+}
+__name(rune_outside_svelte, "rune_outside_svelte");
+function set_context_after_init() {
+  if (DEV) {
+    const error = new Error(`set_context_after_init
+\`setContext\` must be called when a component first initializes, not in a subsequent effect or after an \`await\` expression
+https://svelte.dev/e/set_context_after_init`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/set_context_after_init`);
+  }
+}
+__name(set_context_after_init, "set_context_after_init");
+function state_descriptors_fixed() {
+  if (DEV) {
+    const error = new Error(`state_descriptors_fixed
+Property descriptors defined on \`$state\` objects must contain \`value\` and always be \`enumerable\`, \`configurable\` and \`writable\`.
+https://svelte.dev/e/state_descriptors_fixed`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/state_descriptors_fixed`);
+  }
+}
+__name(state_descriptors_fixed, "state_descriptors_fixed");
+function state_prototype_fixed() {
+  if (DEV) {
+    const error = new Error(`state_prototype_fixed
+Cannot set prototype of \`$state\` object
+https://svelte.dev/e/state_prototype_fixed`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/state_prototype_fixed`);
+  }
+}
+__name(state_prototype_fixed, "state_prototype_fixed");
+function state_unsafe_mutation() {
+  if (DEV) {
+    const error = new Error(`state_unsafe_mutation
+Updating state inside \`$derived(...)\`, \`$inspect(...)\` or a template expression is forbidden. If the value should not be reactive, declare it without \`$state\`
+https://svelte.dev/e/state_unsafe_mutation`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/state_unsafe_mutation`);
+  }
+}
+__name(state_unsafe_mutation, "state_unsafe_mutation");
+function svelte_boundary_reset_onerror() {
+  if (DEV) {
+    const error = new Error(`svelte_boundary_reset_onerror
+A \`<svelte:boundary>\` \`reset\` function cannot be called while an error is still being handled
+https://svelte.dev/e/svelte_boundary_reset_onerror`);
+    error.name = "Svelte error";
+    throw error;
+  } else {
+    throw new Error(`https://svelte.dev/e/svelte_boundary_reset_onerror`);
+  }
+}
+__name(svelte_boundary_reset_onerror, "svelte_boundary_reset_onerror");
+const EACH_ITEM_REACTIVE = 1;
+const EACH_INDEX_REACTIVE = 1 << 1;
+const EACH_IS_CONTROLLED = 1 << 2;
+const EACH_IS_ANIMATED = 1 << 3;
+const EACH_ITEM_IMMUTABLE = 1 << 4;
+const PROPS_IS_IMMUTABLE = 1;
+const PROPS_IS_RUNES = 1 << 1;
+const PROPS_IS_UPDATED = 1 << 2;
+const PROPS_IS_BINDABLE = 1 << 3;
+const PROPS_IS_LAZY_INITIAL = 1 << 4;
+const TRANSITION_IN = 1;
+const TRANSITION_OUT = 1 << 1;
+const TRANSITION_GLOBAL = 1 << 2;
+const TEMPLATE_FRAGMENT = 1;
+const TEMPLATE_USE_IMPORT_NODE = 1 << 1;
+const TEMPLATE_USE_SVG = 1 << 2;
+const TEMPLATE_USE_MATHML = 1 << 3;
+const HYDRATION_START = "[";
+const HYDRATION_START_ELSE = "[!";
+const HYDRATION_END = "]";
+const HYDRATION_ERROR = {};
+const ELEMENT_IS_NAMESPACED = 1;
+const ELEMENT_PRESERVE_ATTRIBUTE_CASE = 1 << 1;
+const ELEMENT_IS_INPUT = 1 << 2;
+const UNINITIALIZED = /* @__PURE__ */ Symbol();
+const FILENAME = /* @__PURE__ */ Symbol("filename");
+const HMR = /* @__PURE__ */ Symbol("hmr");
+const NAMESPACE_HTML = "http://www.w3.org/1999/xhtml";
+const NAMESPACE_SVG = "http://www.w3.org/2000/svg";
+const NAMESPACE_MATHML = "http://www.w3.org/1998/Math/MathML";
+const IGNORABLE_RUNTIME_WARNINGS = (
+  /** @type {const} */
+  [
+    "await_waterfall",
+    "await_reactivity_loss",
+    "state_snapshot_uncloneable",
+    "binding_property_non_reactive",
+    "hydration_attribute_changed",
+    "hydration_html_changed",
+    "ownership_invalid_binding",
+    "ownership_invalid_mutation"
+  ]
+);
+const ELEMENTS_WITHOUT_TEXT = ["audio", "datalist", "dl", "optgroup", "select", "video"];
+const ATTACHMENT_KEY = "@attach";
+var bold$1 = "font-weight: bold";
+var normal$1 = "font-weight: normal";
+function assignment_value_stale(property, location) {
+  if (DEV) {
+    console.warn(`%c[svelte] assignment_value_stale
+%cAssignment to \`${property}\` property (${location}) will evaluate to the right-hand side, not the value of \`${property}\` following the assignment. This may result in unexpected behaviour.
+https://svelte.dev/e/assignment_value_stale`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/assignment_value_stale`);
+  }
+}
+__name(assignment_value_stale, "assignment_value_stale");
+function await_reactivity_loss(name) {
+  if (DEV) {
+    console.warn(`%c[svelte] await_reactivity_loss
+%cDetected reactivity loss when reading \`${name}\`. This happens when state is read in an async function after an earlier \`await\`
+https://svelte.dev/e/await_reactivity_loss`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/await_reactivity_loss`);
+  }
+}
+__name(await_reactivity_loss, "await_reactivity_loss");
+function await_waterfall(name, location) {
+  if (DEV) {
+    console.warn(`%c[svelte] await_waterfall
+%cAn async derived, \`${name}\` (${location}) was not read immediately after it resolved. This often indicates an unnecessary waterfall, which can slow down your app
+https://svelte.dev/e/await_waterfall`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/await_waterfall`);
+  }
+}
+__name(await_waterfall, "await_waterfall");
+function binding_property_non_reactive(binding, location) {
+  if (DEV) {
+    console.warn(
+      `%c[svelte] binding_property_non_reactive
+%c${location ? `\`${binding}\` (${location}) is binding to a non-reactive property` : `\`${binding}\` is binding to a non-reactive property`}
+https://svelte.dev/e/binding_property_non_reactive`,
+      bold$1,
+      normal$1
+    );
+  } else {
+    console.warn(`https://svelte.dev/e/binding_property_non_reactive`);
+  }
+}
+__name(binding_property_non_reactive, "binding_property_non_reactive");
+function console_log_state(method) {
+  if (DEV) {
+    console.warn(`%c[svelte] console_log_state
+%cYour \`console.${method}\` contained \`$state\` proxies. Consider using \`$inspect(...)\` or \`$state.snapshot(...)\` instead
+https://svelte.dev/e/console_log_state`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/console_log_state`);
+  }
+}
+__name(console_log_state, "console_log_state");
+function event_handler_invalid(handler, suggestion) {
+  if (DEV) {
+    console.warn(`%c[svelte] event_handler_invalid
+%c${handler} should be a function. Did you mean to ${suggestion}?
+https://svelte.dev/e/event_handler_invalid`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/event_handler_invalid`);
+  }
+}
+__name(event_handler_invalid, "event_handler_invalid");
+function hydratable_missing_but_expected(key2) {
+  if (DEV) {
+    console.warn(`%c[svelte] hydratable_missing_but_expected
+%cExpected to find a hydratable with key \`${key2}\` during hydration, but did not.
+https://svelte.dev/e/hydratable_missing_but_expected`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/hydratable_missing_but_expected`);
+  }
+}
+__name(hydratable_missing_but_expected, "hydratable_missing_but_expected");
+function hydration_attribute_changed(attribute, html2, value2) {
+  if (DEV) {
+    console.warn(`%c[svelte] hydration_attribute_changed
+%cThe \`${attribute}\` attribute on \`${html2}\` changed its value between server and client renders. The client value, \`${value2}\`, will be ignored in favour of the server value
+https://svelte.dev/e/hydration_attribute_changed`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/hydration_attribute_changed`);
+  }
+}
+__name(hydration_attribute_changed, "hydration_attribute_changed");
+function hydration_html_changed(location) {
+  if (DEV) {
+    console.warn(
+      `%c[svelte] hydration_html_changed
+%c${location ? `The value of an \`{@html ...}\` block ${location} changed between server and client renders. The client value will be ignored in favour of the server value` : "The value of an `{@html ...}` block changed between server and client renders. The client value will be ignored in favour of the server value"}
+https://svelte.dev/e/hydration_html_changed`,
+      bold$1,
+      normal$1
+    );
+  } else {
+    console.warn(`https://svelte.dev/e/hydration_html_changed`);
+  }
+}
+__name(hydration_html_changed, "hydration_html_changed");
+function hydration_mismatch(location) {
+  if (DEV) {
+    console.warn(
+      `%c[svelte] hydration_mismatch
+%c${location ? `Hydration failed because the initial UI does not match what was rendered on the server. The error occurred near ${location}` : "Hydration failed because the initial UI does not match what was rendered on the server"}
+https://svelte.dev/e/hydration_mismatch`,
+      bold$1,
+      normal$1
+    );
+  } else {
+    console.warn(`https://svelte.dev/e/hydration_mismatch`);
+  }
+}
+__name(hydration_mismatch, "hydration_mismatch");
+function invalid_raw_snippet_render() {
+  if (DEV) {
+    console.warn(`%c[svelte] invalid_raw_snippet_render
+%cThe \`render\` function passed to \`createRawSnippet\` should return HTML for a single element
+https://svelte.dev/e/invalid_raw_snippet_render`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/invalid_raw_snippet_render`);
+  }
+}
+__name(invalid_raw_snippet_render, "invalid_raw_snippet_render");
+function legacy_recursive_reactive_block(filename) {
+  if (DEV) {
+    console.warn(`%c[svelte] legacy_recursive_reactive_block
+%cDetected a migrated \`$:\` reactive block in \`${filename}\` that both accesses and updates the same reactive value. This may cause recursive updates when converted to an \`$effect\`.
+https://svelte.dev/e/legacy_recursive_reactive_block`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/legacy_recursive_reactive_block`);
+  }
+}
+__name(legacy_recursive_reactive_block, "legacy_recursive_reactive_block");
+function lifecycle_double_unmount() {
+  if (DEV) {
+    console.warn(`%c[svelte] lifecycle_double_unmount
+%cTried to unmount a component that was not mounted
+https://svelte.dev/e/lifecycle_double_unmount`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/lifecycle_double_unmount`);
+  }
+}
+__name(lifecycle_double_unmount, "lifecycle_double_unmount");
+function ownership_invalid_binding(parent, prop2, child2, owner) {
+  if (DEV) {
+    console.warn(`%c[svelte] ownership_invalid_binding
+%c${parent} passed property \`${prop2}\` to ${child2} with \`bind:\`, but its parent component ${owner} did not declare \`${prop2}\` as a binding. Consider creating a binding between ${owner} and ${parent} (e.g. \`bind:${prop2}={...}\` instead of \`${prop2}={...}\`)
+https://svelte.dev/e/ownership_invalid_binding`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/ownership_invalid_binding`);
+  }
+}
+__name(ownership_invalid_binding, "ownership_invalid_binding");
+function ownership_invalid_mutation(name, location, prop2, parent) {
+  if (DEV) {
+    console.warn(`%c[svelte] ownership_invalid_mutation
+%cMutating unbound props (\`${name}\`, at ${location}) is strongly discouraged. Consider using \`bind:${prop2}={...}\` in ${parent} (or using a callback) instead
+https://svelte.dev/e/ownership_invalid_mutation`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/ownership_invalid_mutation`);
+  }
+}
+__name(ownership_invalid_mutation, "ownership_invalid_mutation");
+function select_multiple_invalid_value() {
+  if (DEV) {
+    console.warn(`%c[svelte] select_multiple_invalid_value
+%cThe \`value\` property of a \`<select multiple>\` element should be an array, but it received a non-array value. The selection will be kept as is.
+https://svelte.dev/e/select_multiple_invalid_value`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/select_multiple_invalid_value`);
+  }
+}
+__name(select_multiple_invalid_value, "select_multiple_invalid_value");
+function state_proxy_equality_mismatch(operator) {
+  if (DEV) {
+    console.warn(`%c[svelte] state_proxy_equality_mismatch
+%cReactive \`$state(...)\` proxies and the values they proxy have different identities. Because of this, comparisons with \`${operator}\` will produce unexpected results
+https://svelte.dev/e/state_proxy_equality_mismatch`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/state_proxy_equality_mismatch`);
+  }
+}
+__name(state_proxy_equality_mismatch, "state_proxy_equality_mismatch");
+function state_proxy_unmount() {
+  if (DEV) {
+    console.warn(`%c[svelte] state_proxy_unmount
+%cTried to unmount a state proxy, rather than a component
+https://svelte.dev/e/state_proxy_unmount`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/state_proxy_unmount`);
+  }
+}
+__name(state_proxy_unmount, "state_proxy_unmount");
+function svelte_boundary_reset_noop() {
+  if (DEV) {
+    console.warn(`%c[svelte] svelte_boundary_reset_noop
+%cA \`<svelte:boundary>\` \`reset\` function only resets the boundary the first time it is called
+https://svelte.dev/e/svelte_boundary_reset_noop`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/svelte_boundary_reset_noop`);
+  }
+}
+__name(svelte_boundary_reset_noop, "svelte_boundary_reset_noop");
+function transition_slide_display(value2) {
+  if (DEV) {
+    console.warn(`%c[svelte] transition_slide_display
+%cThe \`slide\` transition does not work correctly for elements with \`display: ${value2}\`
+https://svelte.dev/e/transition_slide_display`, bold$1, normal$1);
+  } else {
+    console.warn(`https://svelte.dev/e/transition_slide_display`);
+  }
+}
+__name(transition_slide_display, "transition_slide_display");
+let hydrating = false;
+function set_hydrating(value2) {
+  hydrating = value2;
+}
+__name(set_hydrating, "set_hydrating");
+let hydrate_node;
+function set_hydrate_node(node) {
+  if (node === null) {
+    hydration_mismatch();
+    throw HYDRATION_ERROR;
+  }
+  return hydrate_node = node;
+}
+__name(set_hydrate_node, "set_hydrate_node");
+function hydrate_next() {
+  return set_hydrate_node(/* @__PURE__ */ get_next_sibling(hydrate_node));
+}
+__name(hydrate_next, "hydrate_next");
+function reset(node) {
+  if (!hydrating) return;
+  if (/* @__PURE__ */ get_next_sibling(hydrate_node) !== null) {
+    hydration_mismatch();
+    throw HYDRATION_ERROR;
+  }
+  hydrate_node = node;
+}
+__name(reset, "reset");
+function hydrate_template(template) {
+  if (hydrating) {
+    hydrate_node = template.content;
+  }
+}
+__name(hydrate_template, "hydrate_template");
+function next(count = 1) {
+  if (hydrating) {
+    var i = count;
+    var node = hydrate_node;
+    while (i--) {
+      node = /** @type {TemplateNode} */
+      /* @__PURE__ */ get_next_sibling(node);
+    }
+    hydrate_node = node;
+  }
+}
+__name(next, "next");
+function skip_nodes(remove = true) {
+  var depth = 0;
+  var node = hydrate_node;
+  while (true) {
+    if (node.nodeType === COMMENT_NODE) {
+      var data = (
+        /** @type {Comment} */
+        node.data
+      );
+      if (data === HYDRATION_END) {
+        if (depth === 0) return node;
+        depth -= 1;
+      } else if (data === HYDRATION_START || data === HYDRATION_START_ELSE) {
+        depth += 1;
+      }
+    }
+    var next2 = (
+      /** @type {TemplateNode} */
+      /* @__PURE__ */ get_next_sibling(node)
+    );
+    if (remove) node.remove();
+    node = next2;
+  }
+}
+__name(skip_nodes, "skip_nodes");
+function read_hydration_instruction(node) {
+  if (!node || node.nodeType !== COMMENT_NODE) {
+    hydration_mismatch();
+    throw HYDRATION_ERROR;
+  }
+  return (
+    /** @type {Comment} */
+    node.data
+  );
+}
+__name(read_hydration_instruction, "read_hydration_instruction");
+function equals$1(value2) {
+  return value2 === this.v;
+}
+__name(equals$1, "equals$1");
+function safe_not_equal(a, b) {
+  return a != a ? b == b : a !== b || a !== null && typeof a === "object" || typeof a === "function";
+}
+__name(safe_not_equal, "safe_not_equal");
+function not_equal(a, b) {
+  return a !== b;
+}
+__name(not_equal, "not_equal");
+function safe_equals(value2) {
+  return !safe_not_equal(value2, this.v);
+}
+__name(safe_equals, "safe_equals");
+let async_mode_flag = false;
+let legacy_mode_flag = false;
+let tracing_mode_flag = false;
+function enable_async_mode_flag() {
+  async_mode_flag = true;
+}
+__name(enable_async_mode_flag, "enable_async_mode_flag");
+function disable_async_mode_flag() {
+  async_mode_flag = false;
+}
+__name(disable_async_mode_flag, "disable_async_mode_flag");
+function enable_legacy_mode_flag() {
+  legacy_mode_flag = true;
+}
+__name(enable_legacy_mode_flag, "enable_legacy_mode_flag");
+function enable_tracing_mode_flag() {
+  tracing_mode_flag = true;
+}
+__name(enable_tracing_mode_flag, "enable_tracing_mode_flag");
+var bold = "font-weight: bold";
+var normal = "font-weight: normal";
+function dynamic_void_element_content(tag2) {
+  if (DEV) {
+    console.warn(`%c[svelte] dynamic_void_element_content
+%c\`<svelte:element this="${tag2}">\` is a void element — it cannot have content
+https://svelte.dev/e/dynamic_void_element_content`, bold, normal);
+  } else {
+    console.warn(`https://svelte.dev/e/dynamic_void_element_content`);
+  }
+}
+__name(dynamic_void_element_content, "dynamic_void_element_content");
+function state_snapshot_uncloneable(properties) {
+  if (DEV) {
+    console.warn(
+      `%c[svelte] state_snapshot_uncloneable
+%c${properties ? `The following properties cannot be cloned with \`$state.snapshot\` — the return value contains the originals:
+
+${properties}` : "Value cannot be cloned with `$state.snapshot` — the original value was returned"}
+https://svelte.dev/e/state_snapshot_uncloneable`,
+      bold,
+      normal
+    );
+  } else {
+    console.warn(`https://svelte.dev/e/state_snapshot_uncloneable`);
+  }
+}
+__name(state_snapshot_uncloneable, "state_snapshot_uncloneable");
+const empty = [];
+function snapshot(value2, skip_warning = false, no_tojson = false) {
+  if (DEV && !skip_warning) {
+    const paths = [];
+    const copy = clone(value2, /* @__PURE__ */ new Map(), "", paths, null, no_tojson);
+    if (paths.length === 1 && paths[0] === "") {
+      state_snapshot_uncloneable();
+    } else if (paths.length > 0) {
+      const slice = paths.length > 10 ? paths.slice(0, 7) : paths.slice(0, 10);
+      const excess = paths.length - slice.length;
+      let uncloned = slice.map((path) => `- <value>${path}`).join("\n");
+      if (excess > 0) uncloned += `
+- ...and ${excess} more`;
+      state_snapshot_uncloneable(uncloned);
+    }
+    return copy;
+  }
+  return clone(value2, /* @__PURE__ */ new Map(), "", empty, null, no_tojson);
+}
+__name(snapshot, "snapshot");
+function clone(value2, cloned, path, paths, original = null, no_tojson = false) {
+  if (typeof value2 === "object" && value2 !== null) {
+    var unwrapped = cloned.get(value2);
+    if (unwrapped !== void 0) return unwrapped;
+    if (value2 instanceof Map) return (
+      /** @type {Snapshot<T>} */
+      new Map(value2)
+    );
+    if (value2 instanceof Set) return (
+      /** @type {Snapshot<T>} */
+      new Set(value2)
+    );
+    if (is_array(value2)) {
+      var copy = (
+        /** @type {Snapshot<any>} */
+        Array(value2.length)
+      );
+      cloned.set(value2, copy);
+      if (original !== null) {
+        cloned.set(original, copy);
+      }
+      for (var i = 0; i < value2.length; i += 1) {
+        var element2 = value2[i];
+        if (i in value2) {
+          copy[i] = clone(element2, cloned, DEV ? `${path}[${i}]` : path, paths, null, no_tojson);
+        }
+      }
+      return copy;
+    }
+    if (get_prototype_of(value2) === object_prototype) {
+      copy = {};
+      cloned.set(value2, copy);
+      if (original !== null) {
+        cloned.set(original, copy);
+      }
+      for (var key2 in value2) {
+        copy[key2] = clone(
+          // @ts-expect-error
+          value2[key2],
+          cloned,
+          DEV ? `${path}.${key2}` : path,
+          paths,
+          null,
+          no_tojson
+        );
+      }
+      return copy;
+    }
+    if (value2 instanceof Date) {
+      return (
+        /** @type {Snapshot<T>} */
+        structuredClone(value2)
+      );
+    }
+    if (typeof /** @type {T & { toJSON?: any } } */
+    value2.toJSON === "function" && !no_tojson) {
+      return clone(
+        /** @type {T & { toJSON(): any } } */
+        value2.toJSON(),
+        cloned,
+        DEV ? `${path}.toJSON()` : path,
+        paths,
+        // Associate the instance with the toJSON clone
+        value2
+      );
+    }
+  }
+  if (value2 instanceof EventTarget) {
+    return (
+      /** @type {Snapshot<T>} */
+      value2
+    );
+  }
+  try {
+    return (
+      /** @type {Snapshot<T>} */
+      structuredClone(value2)
+    );
+  } catch (e) {
+    if (DEV) {
+      paths.push(path);
+    }
+    return (
+      /** @type {Snapshot<T>} */
+      value2
+    );
+  }
+}
+__name(clone, "clone");
+let tracing_expressions = null;
+function log_entry(signal, entry) {
+  const value2 = signal.v;
+  if (value2 === UNINITIALIZED) {
+    return;
+  }
+  const type = get_type(signal);
+  const current_reaction = (
+    /** @type {Reaction} */
+    active_reaction
+  );
+  const dirty = signal.wv > current_reaction.wv || current_reaction.wv === 0;
+  const style = dirty ? "color: CornflowerBlue; font-weight: bold" : "color: grey; font-weight: normal";
+  console.groupCollapsed(
+    signal.label ? `%c${type}%c ${signal.label}` : `%c${type}%c`,
+    style,
+    dirty ? "font-weight: normal" : style,
+    typeof value2 === "object" && value2 !== null && STATE_SYMBOL in value2 ? snapshot(value2, true) : value2
+  );
+  if (type === "$derived") {
+    const deps = new Set(
+      /** @type {Derived} */
+      signal.deps
+    );
+    for (const dep of deps) {
+      log_entry(dep);
+    }
+  }
+  if (signal.created) {
+    console.log(signal.created);
+  }
+  if (dirty && signal.updated) {
+    for (const updated of signal.updated.values()) {
+      if (updated.error) {
+        console.log(updated.error);
+      }
+    }
+  }
+  if (entry) {
+    for (var trace2 of entry.traces) {
+      console.log(trace2);
+    }
+  }
+  console.groupEnd();
+}
+__name(log_entry, "log_entry");
+function get_type(signal) {
+  if ((signal.f & (DERIVED | ASYNC)) !== 0) return "$derived";
+  return signal.label?.startsWith("$") ? "store" : "$state";
+}
+__name(get_type, "get_type");
+function trace(label2, fn) {
+  var previously_tracing_expressions = tracing_expressions;
+  try {
+    tracing_expressions = { entries: /* @__PURE__ */ new Map(), reaction: active_reaction };
+    var start = performance.now();
+    var value2 = fn();
+    var time = (performance.now() - start).toFixed(2);
+    var prefix = untrack(label2);
+    if (!effect_tracking()) {
+      console.log(`${prefix} %cran outside of an effect (${time}ms)`, "color: grey");
+    } else if (tracing_expressions.entries.size === 0) {
+      console.log(`${prefix} %cno reactive dependencies (${time}ms)`, "color: grey");
+    } else {
+      console.group(`${prefix} %c(${time}ms)`, "color: grey");
+      var entries2 = tracing_expressions.entries;
+      untrack(() => {
+        for (const [signal, traces] of entries2) {
+          log_entry(signal, traces);
+        }
+      });
+      tracing_expressions = null;
+      console.groupEnd();
+    }
+    return value2;
+  } finally {
+    tracing_expressions = previously_tracing_expressions;
+  }
+}
+__name(trace, "trace");
+function tag(source2, label2) {
+  source2.label = label2;
+  tag_proxy(source2.v, label2);
+  return source2;
+}
+__name(tag, "tag");
+function tag_proxy(value2, label2) {
+  value2?.[PROXY_PATH_SYMBOL]?.(label2);
+  return value2;
+}
+__name(tag_proxy, "tag_proxy");
+function label(value2) {
+  if (typeof value2 === "symbol") return `Symbol(${value2.description})`;
+  if (typeof value2 === "function") return "<function>";
+  if (typeof value2 === "object" && value2) return "<object>";
+  return String(value2);
+}
+__name(label, "label");
+function get_error(label2) {
+  const error = new Error();
+  const stack2 = get_stack();
+  if (stack2.length === 0) {
+    return null;
+  }
+  stack2.unshift("\n");
+  define_property(error, "stack", {
+    value: stack2.join("\n")
+  });
+  define_property(error, "name", {
+    value: label2
+  });
+  return (
+    /** @type {Error & { stack: string }} */
+    error
+  );
+}
+__name(get_error, "get_error");
+function get_stack() {
+  const limit = Error.stackTraceLimit;
+  Error.stackTraceLimit = Infinity;
+  const stack2 = new Error().stack;
+  Error.stackTraceLimit = limit;
+  if (!stack2) return [];
+  const lines = stack2.split("\n");
+  const new_lines = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const posixified = line.replaceAll("\\", "/");
+    if (line.trim() === "Error") {
+      continue;
+    }
+    if (line.includes("validate_each_keys")) {
+      return [];
+    }
+    if (posixified.includes("svelte/src/internal") || posixified.includes("node_modules/.vite")) {
+      continue;
+    }
+    new_lines.push(line);
+  }
+  return new_lines;
+}
+__name(get_stack, "get_stack");
+let component_context = null;
+function set_component_context(context) {
+  component_context = context;
+}
+__name(set_component_context, "set_component_context");
+let dev_stack = null;
+function set_dev_stack(stack2) {
+  dev_stack = stack2;
+}
+__name(set_dev_stack, "set_dev_stack");
+function add_svelte_meta(callback, type, component2, line, column, additional) {
+  const parent = dev_stack;
+  dev_stack = {
+    type,
+    file: component2[FILENAME],
+    line,
+    column,
+    parent,
+    ...additional
+  };
+  try {
+    return callback();
+  } finally {
+    dev_stack = parent;
+  }
+}
+__name(add_svelte_meta, "add_svelte_meta");
+let dev_current_component_function = null;
+function set_dev_current_component_function(fn) {
+  dev_current_component_function = fn;
+}
+__name(set_dev_current_component_function, "set_dev_current_component_function");
+function createContext() {
+  const key2 = {};
+  return [
+    () => {
+      if (!hasContext(key2)) {
+        missing_context();
+      }
+      return getContext(key2);
+    },
+    (context) => setContext(key2, context)
+  ];
+}
+__name(createContext, "createContext");
+function getContext(key2) {
+  const context_map = get_or_init_context_map("getContext");
+  const result = (
+    /** @type {T} */
+    context_map.get(key2)
+  );
+  return result;
+}
+__name(getContext, "getContext");
+function setContext(key2, context) {
+  const context_map = get_or_init_context_map("setContext");
+  if (async_mode_flag) {
+    var flags2 = (
+      /** @type {Effect} */
+      active_effect.f
+    );
+    var valid = !active_reaction && (flags2 & BRANCH_EFFECT) !== 0 && // pop() runs synchronously, so this indicates we're setting context after an await
+    !/** @type {ComponentContext} */
+    component_context.i;
+    if (!valid) {
+      set_context_after_init();
+    }
+  }
+  context_map.set(key2, context);
+  return context;
+}
+__name(setContext, "setContext");
+function hasContext(key2) {
+  const context_map = get_or_init_context_map("hasContext");
+  return context_map.has(key2);
+}
+__name(hasContext, "hasContext");
+function getAllContexts() {
+  const context_map = get_or_init_context_map("getAllContexts");
+  return (
+    /** @type {T} */
+    context_map
+  );
+}
+__name(getAllContexts, "getAllContexts");
+function push(props, runes = false, fn) {
+  component_context = {
+    p: component_context,
+    i: false,
+    c: null,
+    e: null,
+    s: props,
+    x: null,
+    l: legacy_mode_flag && !runes ? { s: null, u: null, $: [] } : null
+  };
+  if (DEV) {
+    component_context.function = fn;
+    dev_current_component_function = fn;
+  }
+}
+__name(push, "push");
+function pop(component2) {
+  var context = (
+    /** @type {ComponentContext} */
+    component_context
+  );
+  var effects = context.e;
+  if (effects !== null) {
+    context.e = null;
+    for (var fn of effects) {
+      create_user_effect(fn);
+    }
+  }
+  if (component2 !== void 0) {
+    context.x = component2;
+  }
+  context.i = true;
+  component_context = context.p;
+  if (DEV) {
+    dev_current_component_function = component_context?.function ?? null;
+  }
+  return component2 ?? /** @type {T} */
+  {};
+}
+__name(pop, "pop");
+function is_runes() {
+  return !legacy_mode_flag || component_context !== null && component_context.l === null;
+}
+__name(is_runes, "is_runes");
+function get_or_init_context_map(name) {
+  if (component_context === null) {
+    lifecycle_outside_component(name);
+  }
+  return component_context.c ?? (component_context.c = new Map(get_parent_context(component_context) || void 0));
+}
+__name(get_or_init_context_map, "get_or_init_context_map");
+function get_parent_context(component_context2) {
+  let parent = component_context2.p;
+  while (parent !== null) {
+    const context_map = parent.c;
+    if (context_map !== null) {
+      return context_map;
+    }
+    parent = parent.p;
+  }
+  return null;
+}
+__name(get_parent_context, "get_parent_context");
+let micro_tasks = [];
+function run_micro_tasks() {
+  var tasks = micro_tasks;
+  micro_tasks = [];
+  run_all(tasks);
+}
+__name(run_micro_tasks, "run_micro_tasks");
+function queue_micro_task(fn) {
+  if (micro_tasks.length === 0 && !is_flushing_sync) {
+    var tasks = micro_tasks;
+    queueMicrotask(() => {
+      if (tasks === micro_tasks) run_micro_tasks();
+    });
+  }
+  micro_tasks.push(fn);
+}
+__name(queue_micro_task, "queue_micro_task");
+function flush_tasks() {
+  while (micro_tasks.length > 0) {
+    run_micro_tasks();
+  }
+}
+__name(flush_tasks, "flush_tasks");
+const adjustments = /* @__PURE__ */ new WeakMap();
+function handle_error(error) {
+  var effect2 = active_effect;
+  if (effect2 === null) {
+    active_reaction.f |= ERROR_VALUE;
+    return error;
+  }
+  if (DEV && error instanceof Error && !adjustments.has(error)) {
+    adjustments.set(error, get_adjustments(error, effect2));
+  }
+  if ((effect2.f & EFFECT_RAN) === 0) {
+    if ((effect2.f & BOUNDARY_EFFECT) === 0) {
+      if (DEV && !effect2.parent && error instanceof Error) {
+        apply_adjustments(error);
+      }
+      throw error;
+    }
+    effect2.b.error(error);
+  } else {
+    invoke_error_boundary(error, effect2);
+  }
+}
+__name(handle_error, "handle_error");
+function invoke_error_boundary(error, effect2) {
+  while (effect2 !== null) {
+    if ((effect2.f & BOUNDARY_EFFECT) !== 0) {
+      try {
+        effect2.b.error(error);
+        return;
+      } catch (e) {
+        error = e;
+      }
+    }
+    effect2 = effect2.parent;
+  }
+  if (DEV && error instanceof Error) {
+    apply_adjustments(error);
+  }
+  throw error;
+}
+__name(invoke_error_boundary, "invoke_error_boundary");
+function get_adjustments(error, effect2) {
+  const message_descriptor = get_descriptor(error, "message");
+  if (message_descriptor && !message_descriptor.configurable) return;
+  var indent = is_firefox ? "  " : "	";
+  var component_stack = `
+${indent}in ${effect2.fn?.name || "<unknown>"}`;
+  var context = effect2.ctx;
+  while (context !== null) {
+    component_stack += `
+${indent}in ${context.function?.[FILENAME].split("/").pop()}`;
+    context = context.p;
+  }
+  return {
+    message: error.message + `
+${component_stack}
+`,
+    stack: error.stack?.split("\n").filter((line) => !line.includes("svelte/src/internal")).join("\n")
+  };
+}
+__name(get_adjustments, "get_adjustments");
+function apply_adjustments(error) {
+  const adjusted = adjustments.get(error);
+  if (adjusted) {
+    define_property(error, "message", {
+      value: adjusted.message
+    });
+    define_property(error, "stack", {
+      value: adjusted.stack
+    });
+  }
+}
+__name(apply_adjustments, "apply_adjustments");
+const batches = /* @__PURE__ */ new Set();
+let current_batch = null;
+let previous_batch = null;
+let batch_values = null;
+let queued_root_effects = [];
+let last_scheduled_effect = null;
+let is_flushing = false;
+let is_flushing_sync = false;
+const _Batch = class _Batch {
+  constructor() {
+    __privateAdd(this, _Batch_instances);
+    __publicField(this, "committed", false);
+    /**
+     * The current values of any sources that are updated in this batch
+     * They keys of this map are identical to `this.#previous`
+     * @type {Map<Source, any>}
+     */
+    __publicField(this, "current", /* @__PURE__ */ new Map());
+    /**
+     * The values of any sources that are updated in this batch _before_ those updates took place.
+     * They keys of this map are identical to `this.#current`
+     * @type {Map<Source, any>}
+     */
+    __publicField(this, "previous", /* @__PURE__ */ new Map());
+    /**
+     * When the batch is committed (and the DOM is updated), we need to remove old branches
+     * and append new ones by calling the functions added inside (if/each/key/etc) blocks
+     * @type {Set<() => void>}
+     */
+    __privateAdd(this, _commit_callbacks, /* @__PURE__ */ new Set());
+    /**
+     * If a fork is discarded, we need to destroy any effects that are no longer needed
+     * @type {Set<(batch: Batch) => void>}
+     */
+    __privateAdd(this, _discard_callbacks, /* @__PURE__ */ new Set());
+    /**
+     * The number of async effects that are currently in flight
+     */
+    __privateAdd(this, _pending, 0);
+    /**
+     * The number of async effects that are currently in flight, _not_ inside a pending boundary
+     */
+    __privateAdd(this, _blocking_pending, 0);
+    /**
+     * A deferred that resolves when the batch is committed, used with `settled()`
+     * TODO replace with Promise.withResolvers once supported widely enough
+     * @type {{ promise: Promise<void>, resolve: (value?: any) => void, reject: (reason: unknown) => void } | null}
+     */
+    __privateAdd(this, _deferred, null);
+    /**
+     * Deferred effects (which run after async work has completed) that are DIRTY
+     * @type {Set<Effect>}
+     */
+    __privateAdd(this, _dirty_effects, /* @__PURE__ */ new Set());
+    /**
+     * Deferred effects that are MAYBE_DIRTY
+     * @type {Set<Effect>}
+     */
+    __privateAdd(this, _maybe_dirty_effects, /* @__PURE__ */ new Set());
+    /**
+     * A set of branches that still exist, but will be destroyed when this batch
+     * is committed — we skip over these during `process`
+     * @type {Set<Effect>}
+     */
+    __publicField(this, "skipped_effects", /* @__PURE__ */ new Set());
+    __publicField(this, "is_fork", false);
+  }
+  is_deferred() {
+    return this.is_fork || __privateGet(this, _blocking_pending) > 0;
+  }
+  /**
+   *
+   * @param {Effect[]} root_effects
+   */
+  process(root_effects) {
+    queued_root_effects = [];
+    previous_batch = null;
+    this.apply();
+    var target = {
+      parent: null,
+      effect: null,
+      effects: [],
+      render_effects: []
+    };
+    for (const root2 of root_effects) {
+      __privateMethod(this, _Batch_instances, traverse_effect_tree_fn).call(this, root2, target);
+    }
+    if (!this.is_fork) {
+      __privateMethod(this, _Batch_instances, resolve_fn).call(this);
+    }
+    if (this.is_deferred()) {
+      __privateMethod(this, _Batch_instances, defer_effects_fn).call(this, target.effects);
+      __privateMethod(this, _Batch_instances, defer_effects_fn).call(this, target.render_effects);
+    } else {
+      previous_batch = this;
+      current_batch = null;
+      flush_queued_effects(target.render_effects);
+      flush_queued_effects(target.effects);
+      previous_batch = null;
+      __privateGet(this, _deferred)?.resolve();
+    }
+    batch_values = null;
+  }
+  /**
+   * Associate a change to a given source with the current
+   * batch, noting its previous and current values
+   * @param {Source} source
+   * @param {any} value
+   */
+  capture(source2, value2) {
+    if (!this.previous.has(source2)) {
+      this.previous.set(source2, value2);
+    }
+    if ((source2.f & ERROR_VALUE) === 0) {
+      this.current.set(source2, source2.v);
+      batch_values?.set(source2, source2.v);
+    }
+  }
+  activate() {
+    current_batch = this;
+    this.apply();
+  }
+  deactivate() {
+    if (current_batch !== this) return;
+    current_batch = null;
+    batch_values = null;
+  }
+  flush() {
+    this.activate();
+    if (queued_root_effects.length > 0) {
+      flush_effects();
+      if (current_batch !== null && current_batch !== this) {
+        return;
+      }
+    } else if (__privateGet(this, _pending) === 0) {
+      this.process([]);
+    }
+    this.deactivate();
+  }
+  discard() {
+    for (const fn of __privateGet(this, _discard_callbacks)) fn(this);
+    __privateGet(this, _discard_callbacks).clear();
+  }
+  /**
+   *
+   * @param {boolean} blocking
+   */
+  increment(blocking) {
+    __privateSet(this, _pending, __privateGet(this, _pending) + 1);
+    if (blocking) __privateSet(this, _blocking_pending, __privateGet(this, _blocking_pending) + 1);
+  }
+  /**
+   *
+   * @param {boolean} blocking
+   */
+  decrement(blocking) {
+    __privateSet(this, _pending, __privateGet(this, _pending) - 1);
+    if (blocking) __privateSet(this, _blocking_pending, __privateGet(this, _blocking_pending) - 1);
+    this.revive();
+  }
+  revive() {
+    for (const e of __privateGet(this, _dirty_effects)) {
+      __privateGet(this, _maybe_dirty_effects).delete(e);
+      set_signal_status(e, DIRTY);
+      schedule_effect(e);
+    }
+    for (const e of __privateGet(this, _maybe_dirty_effects)) {
+      set_signal_status(e, MAYBE_DIRTY);
+      schedule_effect(e);
+    }
+    this.flush();
+  }
+  /** @param {() => void} fn */
+  oncommit(fn) {
+    __privateGet(this, _commit_callbacks).add(fn);
+  }
+  /** @param {(batch: Batch) => void} fn */
+  ondiscard(fn) {
+    __privateGet(this, _discard_callbacks).add(fn);
+  }
+  settled() {
+    return (__privateGet(this, _deferred) ?? __privateSet(this, _deferred, deferred())).promise;
+  }
+  static ensure() {
+    if (current_batch === null) {
+      const batch = current_batch = new _Batch();
+      batches.add(current_batch);
+      if (!is_flushing_sync) {
+        _Batch.enqueue(() => {
+          if (current_batch !== batch) {
+            return;
+          }
+          batch.flush();
+        });
+      }
+    }
+    return current_batch;
+  }
+  /** @param {() => void} task */
+  static enqueue(task) {
+    queue_micro_task(task);
+  }
+  apply() {
+    if (!async_mode_flag || !this.is_fork && batches.size === 1) return;
+    batch_values = new Map(this.current);
+    for (const batch of batches) {
+      if (batch === this) continue;
+      for (const [source2, previous] of batch.previous) {
+        if (!batch_values.has(source2)) {
+          batch_values.set(source2, previous);
+        }
+      }
+    }
+  }
+};
+_commit_callbacks = new WeakMap();
+_discard_callbacks = new WeakMap();
+_pending = new WeakMap();
+_blocking_pending = new WeakMap();
+_deferred = new WeakMap();
+_dirty_effects = new WeakMap();
+_maybe_dirty_effects = new WeakMap();
+_Batch_instances = new WeakSet();
+/**
+ * Traverse the effect tree, executing effects or stashing
+ * them for later execution as appropriate
+ * @param {Effect} root
+ * @param {EffectTarget} target
+ */
+traverse_effect_tree_fn = /* @__PURE__ */ __name(function(root2, target) {
+  root2.f ^= CLEAN;
+  var effect2 = root2.first;
+  while (effect2 !== null) {
+    var flags2 = effect2.f;
+    var is_branch = (flags2 & (BRANCH_EFFECT | ROOT_EFFECT)) !== 0;
+    var is_skippable_branch = is_branch && (flags2 & CLEAN) !== 0;
+    var skip = is_skippable_branch || (flags2 & INERT) !== 0 || this.skipped_effects.has(effect2);
+    if ((effect2.f & BOUNDARY_EFFECT) !== 0 && effect2.b?.is_pending()) {
+      target = {
+        parent: target,
+        effect: effect2,
+        effects: [],
+        render_effects: []
+      };
+    }
+    if (!skip && effect2.fn !== null) {
+      if (is_branch) {
+        effect2.f ^= CLEAN;
+      } else if ((flags2 & EFFECT) !== 0) {
+        target.effects.push(effect2);
+      } else if (async_mode_flag && (flags2 & (RENDER_EFFECT | MANAGED_EFFECT)) !== 0) {
+        target.render_effects.push(effect2);
+      } else if (is_dirty(effect2)) {
+        if ((effect2.f & BLOCK_EFFECT) !== 0) __privateGet(this, _dirty_effects).add(effect2);
+        update_effect(effect2);
+      }
+      var child2 = effect2.first;
+      if (child2 !== null) {
+        effect2 = child2;
+        continue;
+      }
+    }
+    var parent = effect2.parent;
+    effect2 = effect2.next;
+    while (effect2 === null && parent !== null) {
+      if (parent === target.effect) {
+        __privateMethod(this, _Batch_instances, defer_effects_fn).call(this, target.effects);
+        __privateMethod(this, _Batch_instances, defer_effects_fn).call(this, target.render_effects);
+        target = /** @type {EffectTarget} */
+        target.parent;
+      }
+      effect2 = parent.next;
+      parent = parent.parent;
+    }
+  }
+}, "#traverse_effect_tree");
+/**
+ * @param {Effect[]} effects
+ */
+defer_effects_fn = /* @__PURE__ */ __name(function(effects) {
+  for (const e of effects) {
+    if ((e.f & DIRTY) !== 0) {
+      __privateGet(this, _dirty_effects).add(e);
+    } else if ((e.f & MAYBE_DIRTY) !== 0) {
+      __privateGet(this, _maybe_dirty_effects).add(e);
+    }
+    __privateMethod(this, _Batch_instances, clear_marked_fn).call(this, e.deps);
+    set_signal_status(e, CLEAN);
+  }
+}, "#defer_effects");
+/**
+ * @param {Value[] | null} deps
+ */
+clear_marked_fn = /* @__PURE__ */ __name(function(deps) {
+  if (deps === null) return;
+  for (const dep of deps) {
+    if ((dep.f & DERIVED) === 0 || (dep.f & WAS_MARKED) === 0) {
+      continue;
+    }
+    dep.f ^= WAS_MARKED;
+    __privateMethod(this, _Batch_instances, clear_marked_fn).call(
+      this,
+      /** @type {Derived} */
+      dep.deps
+    );
+  }
+}, "#clear_marked");
+resolve_fn = /* @__PURE__ */ __name(function() {
+  if (__privateGet(this, _blocking_pending) === 0) {
+    for (const fn of __privateGet(this, _commit_callbacks)) fn();
+    __privateGet(this, _commit_callbacks).clear();
+  }
+  if (__privateGet(this, _pending) === 0) {
+    __privateMethod(this, _Batch_instances, commit_fn).call(this);
+  }
+}, "#resolve");
+commit_fn = /* @__PURE__ */ __name(function() {
+  var _a2;
+  if (batches.size > 1) {
+    this.previous.clear();
+    var previous_batch_values = batch_values;
+    var is_earlier = true;
+    var dummy_target = {
+      parent: null,
+      effect: null,
+      effects: [],
+      render_effects: []
+    };
+    for (const batch of batches) {
+      if (batch === this) {
+        is_earlier = false;
+        continue;
+      }
+      const sources = [];
+      for (const [source2, value2] of this.current) {
+        if (batch.current.has(source2)) {
+          if (is_earlier && value2 !== batch.current.get(source2)) {
+            batch.current.set(source2, value2);
+          } else {
+            continue;
+          }
+        }
+        sources.push(source2);
+      }
+      if (sources.length === 0) {
+        continue;
+      }
+      const others = [...batch.current.keys()].filter((s) => !this.current.has(s));
+      if (others.length > 0) {
+        var prev_queued_root_effects = queued_root_effects;
+        queued_root_effects = [];
+        const marked = /* @__PURE__ */ new Set();
+        const checked = /* @__PURE__ */ new Map();
+        for (const source2 of sources) {
+          mark_effects(source2, others, marked, checked);
+        }
+        if (queued_root_effects.length > 0) {
+          current_batch = batch;
+          batch.apply();
+          for (const root2 of queued_root_effects) {
+            __privateMethod(_a2 = batch, _Batch_instances, traverse_effect_tree_fn).call(_a2, root2, dummy_target);
+          }
+          batch.deactivate();
+        }
+        queued_root_effects = prev_queued_root_effects;
+      }
+    }
+    current_batch = null;
+    batch_values = previous_batch_values;
+  }
+  this.committed = true;
+  batches.delete(this);
+}, "#commit");
+__name(_Batch, "Batch");
+let Batch = _Batch;
+function flushSync(fn) {
+  var was_flushing_sync = is_flushing_sync;
+  is_flushing_sync = true;
+  try {
+    var result;
+    if (fn) {
+      if (current_batch !== null) {
+        flush_effects();
+      }
+      result = fn();
+    }
+    while (true) {
+      flush_tasks();
+      if (queued_root_effects.length === 0) {
+        current_batch?.flush();
+        if (queued_root_effects.length === 0) {
+          last_scheduled_effect = null;
+          return (
+            /** @type {T} */
+            result
+          );
+        }
+      }
+      flush_effects();
+    }
+  } finally {
+    is_flushing_sync = was_flushing_sync;
+  }
+}
+__name(flushSync, "flushSync");
+function flush_effects() {
+  var was_updating_effect = is_updating_effect;
+  is_flushing = true;
+  var source_stacks = DEV ? /* @__PURE__ */ new Set() : null;
+  try {
+    var flush_count = 0;
+    set_is_updating_effect(true);
+    while (queued_root_effects.length > 0) {
+      var batch = Batch.ensure();
+      if (flush_count++ > 1e3) {
+        if (DEV) {
+          var updates = /* @__PURE__ */ new Map();
+          for (const source2 of batch.current.keys()) {
+            for (const [stack2, update2] of source2.updated ?? []) {
+              var entry = updates.get(stack2);
+              if (!entry) {
+                entry = { error: update2.error, count: 0 };
+                updates.set(stack2, entry);
+              }
+              entry.count += update2.count;
+            }
+          }
+          for (const update2 of updates.values()) {
+            if (update2.error) {
+              console.error(update2.error);
+            }
+          }
+        }
+        infinite_loop_guard();
+      }
+      batch.process(queued_root_effects);
+      old_values.clear();
+      if (DEV) {
+        for (const source2 of batch.current.keys()) {
+          source_stacks.add(source2);
+        }
+      }
+    }
+  } finally {
+    is_flushing = false;
+    set_is_updating_effect(was_updating_effect);
+    last_scheduled_effect = null;
+    if (DEV) {
+      for (
+        const source2 of
+        /** @type {Set<Source>} */
+        source_stacks
+      ) {
+        source2.updated = null;
+      }
+    }
+  }
+}
+__name(flush_effects, "flush_effects");
+function infinite_loop_guard() {
+  try {
+    effect_update_depth_exceeded();
+  } catch (error) {
+    if (DEV) {
+      define_property(error, "stack", { value: "" });
+    }
+    invoke_error_boundary(error, last_scheduled_effect);
+  }
+}
+__name(infinite_loop_guard, "infinite_loop_guard");
+let eager_block_effects = null;
+function flush_queued_effects(effects) {
+  var length2 = effects.length;
+  if (length2 === 0) return;
+  var i = 0;
+  while (i < length2) {
+    var effect2 = effects[i++];
+    if ((effect2.f & (DESTROYED | INERT)) === 0 && is_dirty(effect2)) {
+      eager_block_effects = /* @__PURE__ */ new Set();
+      update_effect(effect2);
+      if (effect2.deps === null && effect2.first === null && effect2.nodes === null) {
+        if (effect2.teardown === null && effect2.ac === null) {
+          unlink_effect(effect2);
+        } else {
+          effect2.fn = null;
+        }
+      }
+      if (eager_block_effects?.size > 0) {
+        old_values.clear();
+        for (const e of eager_block_effects) {
+          if ((e.f & (DESTROYED | INERT)) !== 0) continue;
+          const ordered_effects = [e];
+          let ancestor = e.parent;
+          while (ancestor !== null) {
+            if (eager_block_effects.has(ancestor)) {
+              eager_block_effects.delete(ancestor);
+              ordered_effects.push(ancestor);
+            }
+            ancestor = ancestor.parent;
+          }
+          for (let j = ordered_effects.length - 1; j >= 0; j--) {
+            const e2 = ordered_effects[j];
+            if ((e2.f & (DESTROYED | INERT)) !== 0) continue;
+            update_effect(e2);
+          }
+        }
+        eager_block_effects.clear();
+      }
+    }
+  }
+  eager_block_effects = null;
+}
+__name(flush_queued_effects, "flush_queued_effects");
+function mark_effects(value2, sources, marked, checked) {
+  if (marked.has(value2)) return;
+  marked.add(value2);
+  if (value2.reactions !== null) {
+    for (const reaction of value2.reactions) {
+      const flags2 = reaction.f;
+      if ((flags2 & DERIVED) !== 0) {
+        mark_effects(
+          /** @type {Derived} */
+          reaction,
+          sources,
+          marked,
+          checked
+        );
+      } else if ((flags2 & (ASYNC | BLOCK_EFFECT)) !== 0 && (flags2 & DIRTY) === 0 && depends_on(reaction, sources, checked)) {
+        set_signal_status(reaction, DIRTY);
+        schedule_effect(
+          /** @type {Effect} */
+          reaction
+        );
+      }
+    }
+  }
+}
+__name(mark_effects, "mark_effects");
+function mark_eager_effects(value2, effects) {
+  if (value2.reactions === null) return;
+  for (const reaction of value2.reactions) {
+    const flags2 = reaction.f;
+    if ((flags2 & DERIVED) !== 0) {
+      mark_eager_effects(
+        /** @type {Derived} */
+        reaction,
+        effects
+      );
+    } else if ((flags2 & EAGER_EFFECT) !== 0) {
+      set_signal_status(reaction, DIRTY);
+      effects.add(
+        /** @type {Effect} */
+        reaction
+      );
+    }
+  }
+}
+__name(mark_eager_effects, "mark_eager_effects");
+function depends_on(reaction, sources, checked) {
+  const depends = checked.get(reaction);
+  if (depends !== void 0) return depends;
+  if (reaction.deps !== null) {
+    for (const dep of reaction.deps) {
+      if (sources.includes(dep)) {
+        return true;
+      }
+      if ((dep.f & DERIVED) !== 0 && depends_on(
+        /** @type {Derived} */
+        dep,
+        sources,
+        checked
+      )) {
+        checked.set(
+          /** @type {Derived} */
+          dep,
+          true
+        );
+        return true;
+      }
+    }
+  }
+  checked.set(reaction, false);
+  return false;
+}
+__name(depends_on, "depends_on");
+function schedule_effect(signal) {
+  var effect2 = last_scheduled_effect = signal;
+  while (effect2.parent !== null) {
+    effect2 = effect2.parent;
+    var flags2 = effect2.f;
+    if (is_flushing && effect2 === active_effect && (flags2 & BLOCK_EFFECT) !== 0 && (flags2 & HEAD_EFFECT) === 0) {
+      return;
+    }
+    if ((flags2 & (ROOT_EFFECT | BRANCH_EFFECT)) !== 0) {
+      if ((flags2 & CLEAN) === 0) return;
+      effect2.f ^= CLEAN;
+    }
+  }
+  queued_root_effects.push(effect2);
+}
+__name(schedule_effect, "schedule_effect");
+let eager_versions = [];
+function eager_flush() {
+  try {
+    flushSync(() => {
+      for (const version of eager_versions) {
+        update(version);
+      }
+    });
+  } finally {
+    eager_versions = [];
+  }
+}
+__name(eager_flush, "eager_flush");
+function eager(fn) {
+  var version = source(0);
+  var initial = true;
+  var value2 = (
+    /** @type {T} */
+    void 0
+  );
+  get$1(version);
+  eager_effect(() => {
+    if (initial) {
+      var previous_batch_values = batch_values;
+      try {
+        batch_values = null;
+        value2 = fn();
+      } finally {
+        batch_values = previous_batch_values;
+      }
+      return;
+    }
+    if (eager_versions.length === 0) {
+      queue_micro_task(eager_flush);
+    }
+    eager_versions.push(version);
+  });
+  initial = false;
+  return value2;
+}
+__name(eager, "eager");
+function fork(fn) {
+  if (!async_mode_flag) {
+    experimental_async_required("fork");
+  }
+  if (current_batch !== null) {
+    fork_timing();
+  }
+  var batch = Batch.ensure();
+  batch.is_fork = true;
+  batch_values = /* @__PURE__ */ new Map();
+  var committed = false;
+  var settled2 = batch.settled();
+  flushSync(fn);
+  batch_values = null;
+  for (var [source2, value2] of batch.previous) {
+    source2.v = value2;
+  }
+  return {
+    commit: /* @__PURE__ */ __name(async () => {
+      if (committed) {
+        await settled2;
+        return;
+      }
+      if (!batches.has(batch)) {
+        fork_discarded();
+      }
+      committed = true;
+      batch.is_fork = false;
+      for (var [source3, value3] of batch.current) {
+        source3.v = value3;
+      }
+      flushSync(() => {
+        var eager_effects2 = /* @__PURE__ */ new Set();
+        for (var source4 of batch.current.keys()) {
+          mark_eager_effects(source4, eager_effects2);
+        }
+        set_eager_effects(eager_effects2);
+        flush_eager_effects();
+      });
+      batch.revive();
+      await settled2;
+    }, "commit"),
+    discard: /* @__PURE__ */ __name(() => {
+      if (!committed && batches.has(batch)) {
+        batches.delete(batch);
+        batch.discard();
+      }
+    }, "discard")
+  };
+}
+__name(fork, "fork");
+function clear() {
+  batches.clear();
+}
+__name(clear, "clear");
+function createSubscriber(start) {
+  let subscribers = 0;
+  let version = source(0);
+  let stop;
+  if (DEV) {
+    tag(version, "createSubscriber version");
+  }
+  return () => {
+    if (effect_tracking()) {
+      get$1(version);
+      render_effect(() => {
+        if (subscribers === 0) {
+          stop = untrack(() => start(() => increment(version)));
+        }
+        subscribers += 1;
+        return () => {
+          queue_micro_task(() => {
+            subscribers -= 1;
+            if (subscribers === 0) {
+              stop?.();
+              stop = void 0;
+              increment(version);
+            }
+          });
+        };
+      });
+    }
+  };
+}
+__name(createSubscriber, "createSubscriber");
+var flags = EFFECT_TRANSPARENT | EFFECT_PRESERVED | BOUNDARY_EFFECT;
+function boundary(node, props, children) {
+  new Boundary(node, props, children);
+}
+__name(boundary, "boundary");
+const _Boundary = class _Boundary {
+  /**
+   * @param {TemplateNode} node
+   * @param {BoundaryProps} props
+   * @param {((anchor: Node) => void)} children
+   */
+  constructor(node, props, children) {
+    __privateAdd(this, _Boundary_instances);
+    /** @type {Boundary | null} */
+    __publicField(this, "parent");
+    __privateAdd(this, _pending2, false);
+    /** @type {TemplateNode} */
+    __privateAdd(this, _anchor);
+    /** @type {TemplateNode | null} */
+    __privateAdd(this, _hydrate_open, hydrating ? hydrate_node : null);
+    /** @type {BoundaryProps} */
+    __privateAdd(this, _props);
+    /** @type {((anchor: Node) => void)} */
+    __privateAdd(this, _children);
+    /** @type {Effect} */
+    __privateAdd(this, _effect);
+    /** @type {Effect | null} */
+    __privateAdd(this, _main_effect, null);
+    /** @type {Effect | null} */
+    __privateAdd(this, _pending_effect, null);
+    /** @type {Effect | null} */
+    __privateAdd(this, _failed_effect, null);
+    /** @type {DocumentFragment | null} */
+    __privateAdd(this, _offscreen_fragment, null);
+    /** @type {TemplateNode | null} */
+    __privateAdd(this, _pending_anchor, null);
+    __privateAdd(this, _local_pending_count, 0);
+    __privateAdd(this, _pending_count, 0);
+    __privateAdd(this, _is_creating_fallback, false);
+    /**
+     * A source containing the number of pending async deriveds/expressions.
+     * Only created if `$effect.pending()` is used inside the boundary,
+     * otherwise updating the source results in needless `Batch.ensure()`
+     * calls followed by no-op flushes
+     * @type {Source<number> | null}
+     */
+    __privateAdd(this, _effect_pending, null);
+    __privateAdd(this, _effect_pending_subscriber, createSubscriber(() => {
+      __privateSet(this, _effect_pending, source(__privateGet(this, _local_pending_count)));
+      if (DEV) {
+        tag(__privateGet(this, _effect_pending), "$effect.pending()");
+      }
+      return () => {
+        __privateSet(this, _effect_pending, null);
+      };
+    }));
+    __privateSet(this, _anchor, node);
+    __privateSet(this, _props, props);
+    __privateSet(this, _children, children);
+    this.parent = /** @type {Effect} */
+    active_effect.b;
+    __privateSet(this, _pending2, !!__privateGet(this, _props).pending);
+    __privateSet(this, _effect, block(() => {
+      active_effect.b = this;
+      if (hydrating) {
+        const comment2 = __privateGet(this, _hydrate_open);
+        hydrate_next();
+        const server_rendered_pending = (
+          /** @type {Comment} */
+          comment2.nodeType === COMMENT_NODE && /** @type {Comment} */
+          comment2.data === HYDRATION_START_ELSE
+        );
+        if (server_rendered_pending) {
+          __privateMethod(this, _Boundary_instances, hydrate_pending_content_fn).call(this);
+        } else {
+          __privateMethod(this, _Boundary_instances, hydrate_resolved_content_fn).call(this);
+        }
+      } else {
+        var anchor = __privateMethod(this, _Boundary_instances, get_anchor_fn).call(this);
+        try {
+          __privateSet(this, _main_effect, branch(() => children(anchor)));
+        } catch (error) {
+          this.error(error);
+        }
+        if (__privateGet(this, _pending_count) > 0) {
+          __privateMethod(this, _Boundary_instances, show_pending_snippet_fn).call(this);
+        } else {
+          __privateSet(this, _pending2, false);
+        }
+      }
+      return () => {
+        __privateGet(this, _pending_anchor)?.remove();
+      };
+    }, flags));
+    if (hydrating) {
+      __privateSet(this, _anchor, hydrate_node);
+    }
+  }
+  /**
+   * Returns `true` if the effect exists inside a boundary whose pending snippet is shown
+   * @returns {boolean}
+   */
+  is_pending() {
+    return __privateGet(this, _pending2) || !!this.parent && this.parent.is_pending();
+  }
+  has_pending_snippet() {
+    return !!__privateGet(this, _props).pending;
+  }
+  /**
+   * Update the source that powers `$effect.pending()` inside this boundary,
+   * and controls when the current `pending` snippet (if any) is removed.
+   * Do not call from inside the class
+   * @param {1 | -1} d
+   */
+  update_pending_count(d) {
+    __privateMethod(this, _Boundary_instances, update_pending_count_fn).call(this, d);
+    __privateSet(this, _local_pending_count, __privateGet(this, _local_pending_count) + d);
+    if (__privateGet(this, _effect_pending)) {
+      internal_set(__privateGet(this, _effect_pending), __privateGet(this, _local_pending_count));
+    }
+  }
+  get_effect_pending() {
+    __privateGet(this, _effect_pending_subscriber).call(this);
+    return get$1(
+      /** @type {Source<number>} */
+      __privateGet(this, _effect_pending)
+    );
+  }
+  /** @param {unknown} error */
+  error(error) {
+    var onerror = __privateGet(this, _props).onerror;
+    let failed = __privateGet(this, _props).failed;
+    if (__privateGet(this, _is_creating_fallback) || !onerror && !failed) {
+      throw error;
+    }
+    if (__privateGet(this, _main_effect)) {
+      destroy_effect(__privateGet(this, _main_effect));
+      __privateSet(this, _main_effect, null);
+    }
+    if (__privateGet(this, _pending_effect)) {
+      destroy_effect(__privateGet(this, _pending_effect));
+      __privateSet(this, _pending_effect, null);
+    }
+    if (__privateGet(this, _failed_effect)) {
+      destroy_effect(__privateGet(this, _failed_effect));
+      __privateSet(this, _failed_effect, null);
+    }
+    if (hydrating) {
+      set_hydrate_node(
+        /** @type {TemplateNode} */
+        __privateGet(this, _hydrate_open)
+      );
+      next();
+      set_hydrate_node(skip_nodes());
+    }
+    var did_reset = false;
+    var calling_on_error = false;
+    const reset2 = /* @__PURE__ */ __name(() => {
+      if (did_reset) {
+        svelte_boundary_reset_noop();
+        return;
+      }
+      did_reset = true;
+      if (calling_on_error) {
+        svelte_boundary_reset_onerror();
+      }
+      Batch.ensure();
+      __privateSet(this, _local_pending_count, 0);
+      if (__privateGet(this, _failed_effect) !== null) {
+        pause_effect(__privateGet(this, _failed_effect), () => {
+          __privateSet(this, _failed_effect, null);
+        });
+      }
+      __privateSet(this, _pending2, this.has_pending_snippet());
+      __privateSet(this, _main_effect, __privateMethod(this, _Boundary_instances, run_fn).call(this, () => {
+        __privateSet(this, _is_creating_fallback, false);
+        return branch(() => __privateGet(this, _children).call(this, __privateGet(this, _anchor)));
+      }));
+      if (__privateGet(this, _pending_count) > 0) {
+        __privateMethod(this, _Boundary_instances, show_pending_snippet_fn).call(this);
+      } else {
+        __privateSet(this, _pending2, false);
+      }
+    }, "reset");
+    var previous_reaction = active_reaction;
+    try {
+      set_active_reaction(null);
+      calling_on_error = true;
+      onerror?.(error, reset2);
+      calling_on_error = false;
+    } catch (error2) {
+      invoke_error_boundary(error2, __privateGet(this, _effect) && __privateGet(this, _effect).parent);
+    } finally {
+      set_active_reaction(previous_reaction);
+    }
+    if (failed) {
+      queue_micro_task(() => {
+        __privateSet(this, _failed_effect, __privateMethod(this, _Boundary_instances, run_fn).call(this, () => {
+          Batch.ensure();
+          __privateSet(this, _is_creating_fallback, true);
+          try {
+            return branch(() => {
+              failed(
+                __privateGet(this, _anchor),
+                () => error,
+                () => reset2
+              );
+            });
+          } catch (error2) {
+            invoke_error_boundary(
+              error2,
+              /** @type {Effect} */
+              __privateGet(this, _effect).parent
+            );
+            return null;
+          } finally {
+            __privateSet(this, _is_creating_fallback, false);
+          }
+        }));
+      });
+    }
+  }
+};
+_pending2 = new WeakMap();
+_anchor = new WeakMap();
+_hydrate_open = new WeakMap();
+_props = new WeakMap();
+_children = new WeakMap();
+_effect = new WeakMap();
+_main_effect = new WeakMap();
+_pending_effect = new WeakMap();
+_failed_effect = new WeakMap();
+_offscreen_fragment = new WeakMap();
+_pending_anchor = new WeakMap();
+_local_pending_count = new WeakMap();
+_pending_count = new WeakMap();
+_is_creating_fallback = new WeakMap();
+_effect_pending = new WeakMap();
+_effect_pending_subscriber = new WeakMap();
+_Boundary_instances = new WeakSet();
+hydrate_resolved_content_fn = /* @__PURE__ */ __name(function() {
+  try {
+    __privateSet(this, _main_effect, branch(() => __privateGet(this, _children).call(this, __privateGet(this, _anchor))));
+  } catch (error) {
+    this.error(error);
+  }
+  __privateSet(this, _pending2, false);
+}, "#hydrate_resolved_content");
+hydrate_pending_content_fn = /* @__PURE__ */ __name(function() {
+  const pending2 = __privateGet(this, _props).pending;
+  if (!pending2) {
+    return;
+  }
+  __privateSet(this, _pending_effect, branch(() => pending2(__privateGet(this, _anchor))));
+  Batch.enqueue(() => {
+    var anchor = __privateMethod(this, _Boundary_instances, get_anchor_fn).call(this);
+    __privateSet(this, _main_effect, __privateMethod(this, _Boundary_instances, run_fn).call(this, () => {
+      Batch.ensure();
+      return branch(() => __privateGet(this, _children).call(this, anchor));
+    }));
+    if (__privateGet(this, _pending_count) > 0) {
+      __privateMethod(this, _Boundary_instances, show_pending_snippet_fn).call(this);
+    } else {
+      pause_effect(
+        /** @type {Effect} */
+        __privateGet(this, _pending_effect),
+        () => {
+          __privateSet(this, _pending_effect, null);
+        }
+      );
+      __privateSet(this, _pending2, false);
+    }
+  });
+}, "#hydrate_pending_content");
+get_anchor_fn = /* @__PURE__ */ __name(function() {
+  var anchor = __privateGet(this, _anchor);
+  if (__privateGet(this, _pending2)) {
+    __privateSet(this, _pending_anchor, create_text());
+    __privateGet(this, _anchor).before(__privateGet(this, _pending_anchor));
+    anchor = __privateGet(this, _pending_anchor);
+  }
+  return anchor;
+}, "#get_anchor");
+/**
+ * @param {() => Effect | null} fn
+ */
+run_fn = /* @__PURE__ */ __name(function(fn) {
+  var previous_effect = active_effect;
+  var previous_reaction = active_reaction;
+  var previous_ctx = component_context;
+  set_active_effect(__privateGet(this, _effect));
+  set_active_reaction(__privateGet(this, _effect));
+  set_component_context(__privateGet(this, _effect).ctx);
+  try {
+    return fn();
+  } catch (e2) {
+    handle_error(e2);
+    return null;
+  } finally {
+    set_active_effect(previous_effect);
+    set_active_reaction(previous_reaction);
+    set_component_context(previous_ctx);
+  }
+}, "#run");
+show_pending_snippet_fn = /* @__PURE__ */ __name(function() {
+  const pending2 = (
+    /** @type {(anchor: Node) => void} */
+    __privateGet(this, _props).pending
+  );
+  if (__privateGet(this, _main_effect) !== null) {
+    __privateSet(this, _offscreen_fragment, document.createDocumentFragment());
+    __privateGet(this, _offscreen_fragment).append(
+      /** @type {TemplateNode} */
+      __privateGet(this, _pending_anchor)
+    );
+    move_effect(__privateGet(this, _main_effect), __privateGet(this, _offscreen_fragment));
+  }
+  if (__privateGet(this, _pending_effect) === null) {
+    __privateSet(this, _pending_effect, branch(() => pending2(__privateGet(this, _anchor))));
+  }
+}, "#show_pending_snippet");
+/**
+ * Updates the pending count associated with the currently visible pending snippet,
+ * if any, such that we can replace the snippet with content once work is done
+ * @param {1 | -1} d
+ */
+update_pending_count_fn = /* @__PURE__ */ __name(function(d) {
+  var _a2;
+  if (!this.has_pending_snippet()) {
+    if (this.parent) {
+      __privateMethod(_a2 = this.parent, _Boundary_instances, update_pending_count_fn).call(_a2, d);
+    }
+    return;
+  }
+  __privateSet(this, _pending_count, __privateGet(this, _pending_count) + d);
+  if (__privateGet(this, _pending_count) === 0) {
+    __privateSet(this, _pending2, false);
+    if (__privateGet(this, _pending_effect)) {
+      pause_effect(__privateGet(this, _pending_effect), () => {
+        __privateSet(this, _pending_effect, null);
+      });
+    }
+    if (__privateGet(this, _offscreen_fragment)) {
+      __privateGet(this, _anchor).before(__privateGet(this, _offscreen_fragment));
+      __privateSet(this, _offscreen_fragment, null);
+    }
+  }
+}, "#update_pending_count");
+__name(_Boundary, "Boundary");
+let Boundary = _Boundary;
+function get_boundary() {
+  return (
+    /** @type {Boundary} */
+    /** @type {Effect} */
+    active_effect.b
+  );
+}
+__name(get_boundary, "get_boundary");
+function pending$1() {
+  if (active_effect === null) {
+    effect_pending_outside_reaction();
+  }
+  var boundary2 = active_effect.b;
+  if (boundary2 === null) {
+    return 0;
+  }
+  return boundary2.get_effect_pending();
+}
+__name(pending$1, "pending$1");
+function flatten(blockers, sync, async2, fn) {
+  const d = is_runes() ? derived$1 : derived_safe_equal;
+  if (async2.length === 0 && blockers.length === 0) {
+    fn(sync.map(d));
+    return;
+  }
+  var batch = current_batch;
+  var parent = (
+    /** @type {Effect} */
+    active_effect
+  );
+  var restore = capture();
+  function run2() {
+    Promise.all(async2.map((expression) => /* @__PURE__ */ async_derived(expression))).then((result) => {
+      restore();
+      try {
+        fn([...sync.map(d), ...result]);
+      } catch (error) {
+        if ((parent.f & DESTROYED) === 0) {
+          invoke_error_boundary(error, parent);
+        }
+      }
+      batch?.deactivate();
+      unset_context();
+    }).catch((error) => {
+      invoke_error_boundary(error, parent);
+    });
+  }
+  __name(run2, "run");
+  if (blockers.length > 0) {
+    Promise.all(blockers).then(() => {
+      restore();
+      try {
+        return run2();
+      } finally {
+        batch?.deactivate();
+        unset_context();
+      }
+    });
+  } else {
+    run2();
+  }
+}
+__name(flatten, "flatten");
+function run_after_blockers(blockers, fn) {
+  flatten(blockers, [], [], fn);
+}
+__name(run_after_blockers, "run_after_blockers");
+function capture() {
+  var previous_effect = active_effect;
+  var previous_reaction = active_reaction;
+  var previous_component_context = component_context;
+  var previous_batch2 = current_batch;
+  if (DEV) {
+    var previous_dev_stack = dev_stack;
+  }
+  return /* @__PURE__ */ __name(function restore(activate_batch = true) {
+    set_active_effect(previous_effect);
+    set_active_reaction(previous_reaction);
+    set_component_context(previous_component_context);
+    if (activate_batch) previous_batch2?.activate();
+    if (DEV) {
+      set_from_async_derived(null);
+      set_dev_stack(previous_dev_stack);
+    }
+  }, "restore");
+}
+__name(capture, "capture");
+async function save(promise2) {
+  var restore = capture();
+  var value2 = await promise2;
+  return () => {
+    restore();
+    return value2;
+  };
+}
+__name(save, "save");
+async function track_reactivity_loss(promise2) {
+  var previous_async_effect = current_async_effect;
+  var value2 = await promise2;
+  return () => {
+    set_from_async_derived(previous_async_effect);
+    return value2;
+  };
+}
+__name(track_reactivity_loss, "track_reactivity_loss");
+async function* for_await_track_reactivity_loss(iterable) {
+  const iterator = iterable[Symbol.asyncIterator]?.() ?? iterable[Symbol.iterator]?.();
+  if (iterator === void 0) {
+    throw new TypeError("value is not async iterable");
+  }
+  let normal_completion = false;
+  try {
+    while (true) {
+      const { done, value: value2 } = (await track_reactivity_loss(iterator.next()))();
+      if (done) {
+        normal_completion = true;
+        break;
+      }
+      yield value2;
+    }
+  } finally {
+    if (normal_completion && iterator.return !== void 0) {
+      return (
+        /** @type {TReturn} */
+        (await track_reactivity_loss(iterator.return()))().value
+      );
+    }
+  }
+}
+__name(for_await_track_reactivity_loss, "for_await_track_reactivity_loss");
+function unset_context() {
+  set_active_effect(null);
+  set_active_reaction(null);
+  set_component_context(null);
+  if (DEV) {
+    set_from_async_derived(null);
+    set_dev_stack(null);
+  }
+}
+__name(unset_context, "unset_context");
+async function async_body(anchor, fn) {
+  var boundary2 = get_boundary();
+  var batch = (
+    /** @type {Batch} */
+    current_batch
+  );
+  var blocking = !boundary2.is_pending();
+  boundary2.update_pending_count(1);
+  batch.increment(blocking);
+  var active = (
+    /** @type {Effect} */
+    active_effect
+  );
+  var was_hydrating = hydrating;
+  var next_hydrate_node = void 0;
+  if (was_hydrating) {
+    hydrate_next();
+    next_hydrate_node = skip_nodes(false);
+  }
+  try {
+    var promise2 = fn(anchor);
+  } finally {
+    if (next_hydrate_node) {
+      set_hydrate_node(next_hydrate_node);
+      hydrate_next();
+    }
+  }
+  try {
+    await promise2;
+  } catch (error) {
+    if (!aborted(active)) {
+      invoke_error_boundary(error, active);
+    }
+  } finally {
+    boundary2.update_pending_count(-1);
+    batch.decrement(blocking);
+    unset_context();
+  }
+}
+__name(async_body, "async_body");
+function run$1(thunks) {
+  const restore = capture();
+  var boundary2 = get_boundary();
+  var batch = (
+    /** @type {Batch} */
+    current_batch
+  );
+  var blocking = !boundary2.is_pending();
+  boundary2.update_pending_count(1);
+  batch.increment(blocking);
+  var active = (
+    /** @type {Effect} */
+    active_effect
+  );
+  var errored = null;
+  const handle_error2 = /* @__PURE__ */ __name((error) => {
+    errored = { error };
+    if (!aborted(active)) {
+      invoke_error_boundary(error, active);
+    }
+  }, "handle_error");
+  var promise2 = Promise.resolve(thunks[0]()).catch(handle_error2);
+  var promises = [promise2];
+  for (const fn of thunks.slice(1)) {
+    promise2 = promise2.then(() => {
+      if (errored) {
+        throw errored.error;
+      }
+      if (aborted(active)) {
+        throw STALE_REACTION;
+      }
+      try {
+        restore();
+        return fn();
+      } finally {
+        unset_context();
+      }
+    }).catch(handle_error2).finally(() => {
+      unset_context();
+    });
+    promises.push(promise2);
+  }
+  promise2.then(() => Promise.resolve()).finally(() => {
+    boundary2.update_pending_count(-1);
+    batch.decrement(blocking);
+  });
+  return promises;
+}
+__name(run$1, "run$1");
+let current_async_effect = null;
+function set_from_async_derived(v) {
+  current_async_effect = v;
+}
+__name(set_from_async_derived, "set_from_async_derived");
+const recent_async_deriveds = /* @__PURE__ */ new Set();
+// @__NO_SIDE_EFFECTS__
+function derived$1(fn) {
+  var flags2 = DERIVED | DIRTY;
+  var parent_derived = active_reaction !== null && (active_reaction.f & DERIVED) !== 0 ? (
+    /** @type {Derived} */
+    active_reaction
+  ) : null;
+  if (active_effect !== null) {
+    active_effect.f |= EFFECT_PRESERVED;
+  }
+  const signal = {
+    ctx: component_context,
+    deps: null,
+    effects: null,
+    equals: equals$1,
+    f: flags2,
+    fn,
+    reactions: null,
+    rv: 0,
+    v: (
+      /** @type {V} */
+      UNINITIALIZED
+    ),
+    wv: 0,
+    parent: parent_derived ?? active_effect,
+    ac: null
+  };
+  if (DEV && tracing_mode_flag) {
+    signal.created = get_error("created at");
+  }
+  return signal;
+}
+__name(derived$1, "derived$1");
+// @__NO_SIDE_EFFECTS__
+function async_derived(fn, location) {
+  let parent = (
+    /** @type {Effect | null} */
+    active_effect
+  );
+  if (parent === null) {
+    async_derived_orphan();
+  }
+  var boundary2 = (
+    /** @type {Boundary} */
+    parent.b
+  );
+  var promise2 = (
+    /** @type {Promise<V>} */
+    /** @type {unknown} */
+    void 0
+  );
+  var signal = source(
+    /** @type {V} */
+    UNINITIALIZED
+  );
+  var should_suspend = !active_reaction;
+  var deferreds = /* @__PURE__ */ new Map();
+  async_effect(() => {
+    if (DEV) current_async_effect = active_effect;
+    var d = deferred();
+    promise2 = d.promise;
+    try {
+      Promise.resolve(fn()).then(d.resolve, d.reject).then(() => {
+        if (batch === current_batch && batch.committed) {
+          batch.deactivate();
+        }
+        unset_context();
+      });
+    } catch (error) {
+      d.reject(error);
+      unset_context();
+    }
+    if (DEV) current_async_effect = null;
+    var batch = (
+      /** @type {Batch} */
+      current_batch
+    );
+    if (should_suspend) {
+      var blocking = !boundary2.is_pending();
+      boundary2.update_pending_count(1);
+      batch.increment(blocking);
+      deferreds.get(batch)?.reject(STALE_REACTION);
+      deferreds.delete(batch);
+      deferreds.set(batch, d);
+    }
+    const handler = /* @__PURE__ */ __name((value2, error = void 0) => {
+      current_async_effect = null;
+      batch.activate();
+      if (error) {
+        if (error !== STALE_REACTION) {
+          signal.f |= ERROR_VALUE;
+          internal_set(signal, error);
+        }
+      } else {
+        if ((signal.f & ERROR_VALUE) !== 0) {
+          signal.f ^= ERROR_VALUE;
+        }
+        internal_set(signal, value2);
+        for (const [b, d2] of deferreds) {
+          deferreds.delete(b);
+          if (b === batch) break;
+          d2.reject(STALE_REACTION);
+        }
+        if (DEV && location !== void 0) {
+          recent_async_deriveds.add(signal);
+          setTimeout(() => {
+            if (recent_async_deriveds.has(signal)) {
+              await_waterfall(
+                /** @type {string} */
+                signal.label,
+                location
+              );
+              recent_async_deriveds.delete(signal);
+            }
+          });
+        }
+      }
+      if (should_suspend) {
+        boundary2.update_pending_count(-1);
+        batch.decrement(blocking);
+      }
+    }, "handler");
+    d.promise.then(handler, (e) => handler(null, e || "unknown"));
+  });
+  teardown(() => {
+    for (const d of deferreds.values()) {
+      d.reject(STALE_REACTION);
+    }
+  });
+  if (DEV) {
+    signal.f |= ASYNC;
+  }
+  return new Promise((fulfil) => {
+    function next2(p) {
+      function go() {
+        if (p === promise2) {
+          fulfil(signal);
+        } else {
+          next2(promise2);
+        }
+      }
+      __name(go, "go");
+      p.then(go, go);
+    }
+    __name(next2, "next");
+    next2(promise2);
+  });
+}
+__name(async_derived, "async_derived");
+// @__NO_SIDE_EFFECTS__
+function user_derived(fn) {
+  const d = /* @__PURE__ */ derived$1(fn);
+  if (!async_mode_flag) push_reaction_value(d);
+  return d;
+}
+__name(user_derived, "user_derived");
+// @__NO_SIDE_EFFECTS__
+function derived_safe_equal(fn) {
+  const signal = /* @__PURE__ */ derived$1(fn);
+  signal.equals = safe_equals;
+  return signal;
+}
+__name(derived_safe_equal, "derived_safe_equal");
+function destroy_derived_effects(derived2) {
+  var effects = derived2.effects;
+  if (effects !== null) {
+    derived2.effects = null;
+    for (var i = 0; i < effects.length; i += 1) {
+      destroy_effect(
+        /** @type {Effect} */
+        effects[i]
+      );
+    }
+  }
+}
+__name(destroy_derived_effects, "destroy_derived_effects");
+let stack = [];
+function get_derived_parent_effect(derived2) {
+  var parent = derived2.parent;
+  while (parent !== null) {
+    if ((parent.f & DERIVED) === 0) {
+      return (parent.f & DESTROYED) === 0 ? (
+        /** @type {Effect} */
+        parent
+      ) : null;
+    }
+    parent = parent.parent;
+  }
+  return null;
+}
+__name(get_derived_parent_effect, "get_derived_parent_effect");
+function execute_derived(derived2) {
+  var value2;
+  var prev_active_effect = active_effect;
+  set_active_effect(get_derived_parent_effect(derived2));
+  if (DEV) {
+    let prev_eager_effects = eager_effects;
+    set_eager_effects(/* @__PURE__ */ new Set());
+    try {
+      if (stack.includes(derived2)) {
+        derived_references_self();
+      }
+      stack.push(derived2);
+      derived2.f &= ~WAS_MARKED;
+      destroy_derived_effects(derived2);
+      value2 = update_reaction(derived2);
+    } finally {
+      set_active_effect(prev_active_effect);
+      set_eager_effects(prev_eager_effects);
+      stack.pop();
+    }
+  } else {
+    try {
+      derived2.f &= ~WAS_MARKED;
+      destroy_derived_effects(derived2);
+      value2 = update_reaction(derived2);
+    } finally {
+      set_active_effect(prev_active_effect);
+    }
+  }
+  return value2;
+}
+__name(execute_derived, "execute_derived");
+function update_derived(derived2) {
+  var value2 = execute_derived(derived2);
+  if (!derived2.equals(value2)) {
+    if (!current_batch?.is_fork) {
+      derived2.v = value2;
+    }
+    derived2.wv = increment_write_version();
+  }
+  if (is_destroying_effect) {
+    return;
+  }
+  if (batch_values !== null) {
+    if (effect_tracking() || current_batch?.is_fork) {
+      batch_values.set(derived2, value2);
+    }
+  } else {
+    var status = (derived2.f & CONNECTED) === 0 ? MAYBE_DIRTY : CLEAN;
+    set_signal_status(derived2, status);
+  }
+}
+__name(update_derived, "update_derived");
+let eager_effects = /* @__PURE__ */ new Set();
+const old_values = /* @__PURE__ */ new Map();
+function set_eager_effects(v) {
+  eager_effects = v;
+}
+__name(set_eager_effects, "set_eager_effects");
+let eager_effects_deferred = false;
+function set_eager_effects_deferred() {
+  eager_effects_deferred = true;
+}
+__name(set_eager_effects_deferred, "set_eager_effects_deferred");
+function source(v, stack2) {
+  var signal = {
+    f: 0,
+    // TODO ideally we could skip this altogether, but it causes type errors
+    v,
+    reactions: null,
+    equals: equals$1,
+    rv: 0,
+    wv: 0
+  };
+  if (DEV && tracing_mode_flag) {
+    signal.created = stack2 ?? get_error("created at");
+    signal.updated = null;
+    signal.set_during_effect = false;
+    signal.trace = null;
+  }
+  return signal;
+}
+__name(source, "source");
+// @__NO_SIDE_EFFECTS__
+function state(v, stack2) {
+  const s = source(v, stack2);
+  push_reaction_value(s);
+  return s;
+}
+__name(state, "state");
+// @__NO_SIDE_EFFECTS__
+function mutable_source(initial_value, immutable = false, trackable = true) {
+  var _a2;
+  const s = source(initial_value);
+  if (!immutable) {
+    s.equals = safe_equals;
+  }
+  if (legacy_mode_flag && trackable && component_context !== null && component_context.l !== null) {
+    ((_a2 = component_context.l).s ?? (_a2.s = [])).push(s);
+  }
+  return s;
+}
+__name(mutable_source, "mutable_source");
+function mutate(source2, value2) {
+  set(
+    source2,
+    untrack(() => get$1(source2))
+  );
+  return value2;
+}
+__name(mutate, "mutate");
+function set(source2, value2, should_proxy = false) {
+  if (active_reaction !== null && // since we are untracking the function inside `$inspect.with` we need to add this check
+  // to ensure we error if state is set inside an inspect effect
+  (!untracking || (active_reaction.f & EAGER_EFFECT) !== 0) && is_runes() && (active_reaction.f & (DERIVED | BLOCK_EFFECT | ASYNC | EAGER_EFFECT)) !== 0 && !current_sources?.includes(source2)) {
+    state_unsafe_mutation();
+  }
+  let new_value = should_proxy ? proxy(value2) : value2;
+  if (DEV) {
+    tag_proxy(
+      new_value,
+      /** @type {string} */
+      source2.label
+    );
+  }
+  return internal_set(source2, new_value);
+}
+__name(set, "set");
+function internal_set(source2, value2) {
+  if (!source2.equals(value2)) {
+    var old_value = source2.v;
+    if (is_destroying_effect) {
+      old_values.set(source2, value2);
+    } else {
+      old_values.set(source2, old_value);
+    }
+    source2.v = value2;
+    var batch = Batch.ensure();
+    batch.capture(source2, old_value);
+    if (DEV) {
+      if (tracing_mode_flag || active_effect !== null) {
+        source2.updated ?? (source2.updated = /* @__PURE__ */ new Map());
+        const count = (source2.updated.get("")?.count ?? 0) + 1;
+        source2.updated.set("", { error: (
+          /** @type {any} */
+          null
+        ), count });
+        if (tracing_mode_flag || count > 5) {
+          const error = get_error("updated at");
+          if (error !== null) {
+            let entry = source2.updated.get(error.stack);
+            if (!entry) {
+              entry = { error, count: 0 };
+              source2.updated.set(error.stack, entry);
+            }
+            entry.count++;
+          }
+        }
+      }
+      if (active_effect !== null) {
+        source2.set_during_effect = true;
+      }
+    }
+    if ((source2.f & DERIVED) !== 0) {
+      if ((source2.f & DIRTY) !== 0) {
+        execute_derived(
+          /** @type {Derived} */
+          source2
+        );
+      }
+      set_signal_status(source2, (source2.f & CONNECTED) !== 0 ? CLEAN : MAYBE_DIRTY);
+    }
+    source2.wv = increment_write_version();
+    mark_reactions(source2, DIRTY);
+    if (is_runes() && active_effect !== null && (active_effect.f & CLEAN) !== 0 && (active_effect.f & (BRANCH_EFFECT | ROOT_EFFECT)) === 0) {
+      if (untracked_writes === null) {
+        set_untracked_writes([source2]);
+      } else {
+        untracked_writes.push(source2);
+      }
+    }
+    if (!batch.is_fork && eager_effects.size > 0 && !eager_effects_deferred) {
+      flush_eager_effects();
+    }
+  }
+  return value2;
+}
+__name(internal_set, "internal_set");
+function flush_eager_effects() {
+  eager_effects_deferred = false;
+  var prev_is_updating_effect = is_updating_effect;
+  set_is_updating_effect(true);
+  const inspects = Array.from(eager_effects);
+  try {
+    for (const effect2 of inspects) {
+      if ((effect2.f & CLEAN) !== 0) {
+        set_signal_status(effect2, MAYBE_DIRTY);
+      }
+      if (is_dirty(effect2)) {
+        update_effect(effect2);
+      }
+    }
+  } finally {
+    set_is_updating_effect(prev_is_updating_effect);
+  }
+  eager_effects.clear();
+}
+__name(flush_eager_effects, "flush_eager_effects");
+function update(source2, d = 1) {
+  var value2 = get$1(source2);
+  var result = d === 1 ? value2++ : value2--;
+  set(source2, value2);
+  return result;
+}
+__name(update, "update");
+function update_pre(source2, d = 1) {
+  var value2 = get$1(source2);
+  return set(source2, d === 1 ? ++value2 : --value2);
+}
+__name(update_pre, "update_pre");
+function increment(source2) {
+  set(source2, source2.v + 1);
+}
+__name(increment, "increment");
+function mark_reactions(signal, status) {
+  var reactions = signal.reactions;
+  if (reactions === null) return;
+  var runes = is_runes();
+  var length2 = reactions.length;
+  for (var i = 0; i < length2; i++) {
+    var reaction = reactions[i];
+    var flags2 = reaction.f;
+    if (!runes && reaction === active_effect) continue;
+    if (DEV && (flags2 & EAGER_EFFECT) !== 0) {
+      eager_effects.add(reaction);
+      continue;
+    }
+    var not_dirty = (flags2 & DIRTY) === 0;
+    if (not_dirty) {
+      set_signal_status(reaction, status);
+    }
+    if ((flags2 & DERIVED) !== 0) {
+      var derived2 = (
+        /** @type {Derived} */
+        reaction
+      );
+      batch_values?.delete(derived2);
+      if ((flags2 & WAS_MARKED) === 0) {
+        if (flags2 & CONNECTED) {
+          reaction.f |= WAS_MARKED;
+        }
+        mark_reactions(derived2, MAYBE_DIRTY);
+      }
+    } else if (not_dirty) {
+      if ((flags2 & BLOCK_EFFECT) !== 0 && eager_block_effects !== null) {
+        eager_block_effects.add(
+          /** @type {Effect} */
+          reaction
+        );
+      }
+      schedule_effect(
+        /** @type {Effect} */
+        reaction
+      );
+    }
+  }
+}
+__name(mark_reactions, "mark_reactions");
+const regex_is_valid_identifier = /^[a-zA-Z_$][a-zA-Z_$0-9]*$/;
+function proxy(value2) {
+  if (typeof value2 !== "object" || value2 === null || STATE_SYMBOL in value2) {
+    return value2;
+  }
+  const prototype = get_prototype_of(value2);
+  if (prototype !== object_prototype && prototype !== array_prototype) {
+    return value2;
+  }
+  var sources = /* @__PURE__ */ new Map();
+  var is_proxied_array = is_array(value2);
+  var version = /* @__PURE__ */ state(0);
+  var stack2 = DEV && tracing_mode_flag ? get_error("created at") : null;
+  var parent_version = update_version;
+  var with_parent = /* @__PURE__ */ __name((fn) => {
+    if (update_version === parent_version) {
+      return fn();
+    }
+    var reaction = active_reaction;
+    var version2 = update_version;
+    set_active_reaction(null);
+    set_update_version(parent_version);
+    var result = fn();
+    set_active_reaction(reaction);
+    set_update_version(version2);
+    return result;
+  }, "with_parent");
+  if (is_proxied_array) {
+    sources.set("length", /* @__PURE__ */ state(
+      /** @type {any[]} */
+      value2.length,
+      stack2
+    ));
+    if (DEV) {
+      value2 = /** @type {any} */
+      inspectable_array(
+        /** @type {any[]} */
+        value2
+      );
+    }
+  }
+  var path = "";
+  let updating = false;
+  function update_path(new_path) {
+    if (updating) return;
+    updating = true;
+    path = new_path;
+    tag(version, `${path} version`);
+    for (const [prop2, source2] of sources) {
+      tag(source2, get_label(path, prop2));
+    }
+    updating = false;
+  }
+  __name(update_path, "update_path");
+  return new Proxy(
+    /** @type {any} */
+    value2,
+    {
+      defineProperty(_, prop2, descriptor) {
+        if (!("value" in descriptor) || descriptor.configurable === false || descriptor.enumerable === false || descriptor.writable === false) {
+          state_descriptors_fixed();
+        }
+        var s = sources.get(prop2);
+        if (s === void 0) {
+          s = with_parent(() => {
+            var s2 = /* @__PURE__ */ state(descriptor.value, stack2);
+            sources.set(prop2, s2);
+            if (DEV && typeof prop2 === "string") {
+              tag(s2, get_label(path, prop2));
+            }
+            return s2;
+          });
+        } else {
+          set(s, descriptor.value, true);
+        }
+        return true;
+      },
+      deleteProperty(target, prop2) {
+        var s = sources.get(prop2);
+        if (s === void 0) {
+          if (prop2 in target) {
+            const s2 = with_parent(() => /* @__PURE__ */ state(UNINITIALIZED, stack2));
+            sources.set(prop2, s2);
+            increment(version);
+            if (DEV) {
+              tag(s2, get_label(path, prop2));
+            }
+          }
+        } else {
+          set(s, UNINITIALIZED);
+          increment(version);
+        }
+        return true;
+      },
+      get(target, prop2, receiver) {
+        if (prop2 === STATE_SYMBOL) {
+          return value2;
+        }
+        if (DEV && prop2 === PROXY_PATH_SYMBOL) {
+          return update_path;
+        }
+        var s = sources.get(prop2);
+        var exists = prop2 in target;
+        if (s === void 0 && (!exists || get_descriptor(target, prop2)?.writable)) {
+          s = with_parent(() => {
+            var p = proxy(exists ? target[prop2] : UNINITIALIZED);
+            var s2 = /* @__PURE__ */ state(p, stack2);
+            if (DEV) {
+              tag(s2, get_label(path, prop2));
+            }
+            return s2;
+          });
+          sources.set(prop2, s);
+        }
+        if (s !== void 0) {
+          var v = get$1(s);
+          return v === UNINITIALIZED ? void 0 : v;
+        }
+        return Reflect.get(target, prop2, receiver);
+      },
+      getOwnPropertyDescriptor(target, prop2) {
+        var descriptor = Reflect.getOwnPropertyDescriptor(target, prop2);
+        if (descriptor && "value" in descriptor) {
+          var s = sources.get(prop2);
+          if (s) descriptor.value = get$1(s);
+        } else if (descriptor === void 0) {
+          var source2 = sources.get(prop2);
+          var value3 = source2?.v;
+          if (source2 !== void 0 && value3 !== UNINITIALIZED) {
+            return {
+              enumerable: true,
+              configurable: true,
+              value: value3,
+              writable: true
+            };
+          }
+        }
+        return descriptor;
+      },
+      has(target, prop2) {
+        if (prop2 === STATE_SYMBOL) {
+          return true;
+        }
+        var s = sources.get(prop2);
+        var has = s !== void 0 && s.v !== UNINITIALIZED || Reflect.has(target, prop2);
+        if (s !== void 0 || active_effect !== null && (!has || get_descriptor(target, prop2)?.writable)) {
+          if (s === void 0) {
+            s = with_parent(() => {
+              var p = has ? proxy(target[prop2]) : UNINITIALIZED;
+              var s2 = /* @__PURE__ */ state(p, stack2);
+              if (DEV) {
+                tag(s2, get_label(path, prop2));
+              }
+              return s2;
+            });
+            sources.set(prop2, s);
+          }
+          var value3 = get$1(s);
+          if (value3 === UNINITIALIZED) {
+            return false;
+          }
+        }
+        return has;
+      },
+      set(target, prop2, value3, receiver) {
+        var s = sources.get(prop2);
+        var has = prop2 in target;
+        if (is_proxied_array && prop2 === "length") {
+          for (var i = value3; i < /** @type {Source<number>} */
+          s.v; i += 1) {
+            var other_s = sources.get(i + "");
+            if (other_s !== void 0) {
+              set(other_s, UNINITIALIZED);
+            } else if (i in target) {
+              other_s = with_parent(() => /* @__PURE__ */ state(UNINITIALIZED, stack2));
+              sources.set(i + "", other_s);
+              if (DEV) {
+                tag(other_s, get_label(path, i));
+              }
+            }
+          }
+        }
+        if (s === void 0) {
+          if (!has || get_descriptor(target, prop2)?.writable) {
+            s = with_parent(() => /* @__PURE__ */ state(void 0, stack2));
+            if (DEV) {
+              tag(s, get_label(path, prop2));
+            }
+            set(s, proxy(value3));
+            sources.set(prop2, s);
+          }
+        } else {
+          has = s.v !== UNINITIALIZED;
+          var p = with_parent(() => proxy(value3));
+          set(s, p);
+        }
+        var descriptor = Reflect.getOwnPropertyDescriptor(target, prop2);
+        if (descriptor?.set) {
+          descriptor.set.call(receiver, value3);
+        }
+        if (!has) {
+          if (is_proxied_array && typeof prop2 === "string") {
+            var ls = (
+              /** @type {Source<number>} */
+              sources.get("length")
+            );
+            var n = Number(prop2);
+            if (Number.isInteger(n) && n >= ls.v) {
+              set(ls, n + 1);
+            }
+          }
+          increment(version);
+        }
+        return true;
+      },
+      ownKeys(target) {
+        get$1(version);
+        var own_keys = Reflect.ownKeys(target).filter((key3) => {
+          var source3 = sources.get(key3);
+          return source3 === void 0 || source3.v !== UNINITIALIZED;
+        });
+        for (var [key2, source2] of sources) {
+          if (source2.v !== UNINITIALIZED && !(key2 in target)) {
+            own_keys.push(key2);
+          }
+        }
+        return own_keys;
+      },
+      setPrototypeOf() {
+        state_prototype_fixed();
+      }
+    }
+  );
+}
+__name(proxy, "proxy");
+function get_label(path, prop2) {
+  if (typeof prop2 === "symbol") return `${path}[Symbol(${prop2.description ?? ""})]`;
+  if (regex_is_valid_identifier.test(prop2)) return `${path}.${prop2}`;
+  return /^\d+$/.test(prop2) ? `${path}[${prop2}]` : `${path}['${prop2}']`;
+}
+__name(get_label, "get_label");
+function get_proxied_value(value2) {
+  try {
+    if (value2 !== null && typeof value2 === "object" && STATE_SYMBOL in value2) {
+      return value2[STATE_SYMBOL];
+    }
+  } catch {
+  }
+  return value2;
+}
+__name(get_proxied_value, "get_proxied_value");
+function is(a, b) {
+  return Object.is(get_proxied_value(a), get_proxied_value(b));
+}
+__name(is, "is");
+const ARRAY_MUTATING_METHODS = /* @__PURE__ */ new Set([
+  "copyWithin",
+  "fill",
+  "pop",
+  "push",
+  "reverse",
+  "shift",
+  "sort",
+  "splice",
+  "unshift"
+]);
+function inspectable_array(array2) {
+  return new Proxy(array2, {
+    get(target, prop2, receiver) {
+      var value2 = Reflect.get(target, prop2, receiver);
+      if (!ARRAY_MUTATING_METHODS.has(
+        /** @type {string} */
+        prop2
+      )) {
+        return value2;
+      }
+      return function(...args2) {
+        set_eager_effects_deferred();
+        var result = value2.apply(this, args2);
+        flush_eager_effects();
+        return result;
+      };
+    }
+  });
+}
+__name(inspectable_array, "inspectable_array");
+function init_array_prototype_warnings() {
+  const array_prototype2 = Array.prototype;
+  const cleanup = Array.__svelte_cleanup;
+  if (cleanup) {
+    cleanup();
+  }
+  const { indexOf, lastIndexOf, includes: includes2 } = array_prototype2;
+  array_prototype2.indexOf = function(item, from_index) {
+    const index2 = indexOf.call(this, item, from_index);
+    if (index2 === -1) {
+      for (let i = from_index ?? 0; i < this.length; i += 1) {
+        if (get_proxied_value(this[i]) === item) {
+          state_proxy_equality_mismatch("array.indexOf(...)");
+          break;
+        }
+      }
+    }
+    return index2;
+  };
+  array_prototype2.lastIndexOf = function(item, from_index) {
+    const index2 = lastIndexOf.call(this, item, from_index ?? this.length - 1);
+    if (index2 === -1) {
+      for (let i = 0; i <= (from_index ?? this.length - 1); i += 1) {
+        if (get_proxied_value(this[i]) === item) {
+          state_proxy_equality_mismatch("array.lastIndexOf(...)");
+          break;
+        }
+      }
+    }
+    return index2;
+  };
+  array_prototype2.includes = function(item, from_index) {
+    const has = includes2.call(this, item, from_index);
+    if (!has) {
+      for (let i = 0; i < this.length; i += 1) {
+        if (get_proxied_value(this[i]) === item) {
+          state_proxy_equality_mismatch("array.includes(...)");
+          break;
+        }
+      }
+    }
+    return has;
+  };
+  Array.__svelte_cleanup = () => {
+    array_prototype2.indexOf = indexOf;
+    array_prototype2.lastIndexOf = lastIndexOf;
+    array_prototype2.includes = includes2;
+  };
+}
+__name(init_array_prototype_warnings, "init_array_prototype_warnings");
+function strict_equals(a, b, equal = true) {
+  try {
+    if (a === b !== (get_proxied_value(a) === get_proxied_value(b))) {
+      state_proxy_equality_mismatch(equal ? "===" : "!==");
+    }
+  } catch {
+  }
+  return a === b === equal;
+}
+__name(strict_equals, "strict_equals");
+function equals(a, b, equal = true) {
+  if (a == b !== (get_proxied_value(a) == get_proxied_value(b))) {
+    state_proxy_equality_mismatch(equal ? "==" : "!=");
+  }
+  return a == b === equal;
+}
+__name(equals, "equals");
+var $window;
+var $document;
+var is_firefox;
+var first_child_getter;
+var next_sibling_getter;
+function init_operations() {
+  if ($window !== void 0) {
+    return;
+  }
+  $window = window;
+  $document = document;
+  is_firefox = /Firefox/.test(navigator.userAgent);
+  var element_prototype = Element.prototype;
+  var node_prototype = Node.prototype;
+  var text_prototype = Text.prototype;
+  first_child_getter = get_descriptor(node_prototype, "firstChild").get;
+  next_sibling_getter = get_descriptor(node_prototype, "nextSibling").get;
+  if (is_extensible(element_prototype)) {
+    element_prototype.__click = void 0;
+    element_prototype.__className = void 0;
+    element_prototype.__attributes = null;
+    element_prototype.__style = void 0;
+    element_prototype.__e = void 0;
+  }
+  if (is_extensible(text_prototype)) {
+    text_prototype.__t = void 0;
+  }
+  if (DEV) {
+    element_prototype.__svelte_meta = null;
+    init_array_prototype_warnings();
+  }
+}
+__name(init_operations, "init_operations");
+function create_text(value2 = "") {
+  return document.createTextNode(value2);
+}
+__name(create_text, "create_text");
+// @__NO_SIDE_EFFECTS__
+function get_first_child(node) {
+  return (
+    /** @type {TemplateNode | null} */
+    first_child_getter.call(node)
+  );
+}
+__name(get_first_child, "get_first_child");
+// @__NO_SIDE_EFFECTS__
+function get_next_sibling(node) {
+  return (
+    /** @type {TemplateNode | null} */
+    next_sibling_getter.call(node)
+  );
+}
+__name(get_next_sibling, "get_next_sibling");
+function child(node, is_text) {
+  if (!hydrating) {
+    return /* @__PURE__ */ get_first_child(node);
+  }
+  var child2 = /* @__PURE__ */ get_first_child(hydrate_node);
+  if (child2 === null) {
+    child2 = hydrate_node.appendChild(create_text());
+  } else if (is_text && child2.nodeType !== TEXT_NODE) {
+    var text2 = create_text();
+    child2?.before(text2);
+    set_hydrate_node(text2);
+    return text2;
+  }
+  set_hydrate_node(child2);
+  return child2;
+}
+__name(child, "child");
+function first_child(node, is_text = false) {
+  if (!hydrating) {
+    var first = /* @__PURE__ */ get_first_child(node);
+    if (first instanceof Comment && first.data === "") return /* @__PURE__ */ get_next_sibling(first);
+    return first;
+  }
+  if (is_text && hydrate_node?.nodeType !== TEXT_NODE) {
+    var text2 = create_text();
+    hydrate_node?.before(text2);
+    set_hydrate_node(text2);
+    return text2;
+  }
+  return hydrate_node;
+}
+__name(first_child, "first_child");
+function sibling(node, count = 1, is_text = false) {
+  let next_sibling = hydrating ? hydrate_node : node;
+  var last_sibling;
+  while (count--) {
+    last_sibling = next_sibling;
+    next_sibling = /** @type {TemplateNode} */
+    /* @__PURE__ */ get_next_sibling(next_sibling);
+  }
+  if (!hydrating) {
+    return next_sibling;
+  }
+  if (is_text && next_sibling?.nodeType !== TEXT_NODE) {
+    var text2 = create_text();
+    if (next_sibling === null) {
+      last_sibling?.after(text2);
+    } else {
+      next_sibling.before(text2);
+    }
+    set_hydrate_node(text2);
+    return text2;
+  }
+  set_hydrate_node(next_sibling);
+  return next_sibling;
+}
+__name(sibling, "sibling");
+function clear_text_content(node) {
+  node.textContent = "";
+}
+__name(clear_text_content, "clear_text_content");
+function should_defer_append() {
+  if (!async_mode_flag) return false;
+  if (eager_block_effects !== null) return false;
+  var flags2 = (
+    /** @type {Effect} */
+    active_effect.f
+  );
+  return (flags2 & EFFECT_RAN) !== 0;
+}
+__name(should_defer_append, "should_defer_append");
+function create_element(tag2, namespace, is2) {
+  let options = is2 ? { is: is2 } : void 0;
+  if (namespace) {
+    return document.createElementNS(namespace, tag2, options);
+  }
+  return document.createElement(tag2, options);
+}
+__name(create_element, "create_element");
+function create_fragment() {
+  return document.createDocumentFragment();
+}
+__name(create_fragment, "create_fragment");
+function create_comment(data = "") {
+  return document.createComment(data);
+}
+__name(create_comment, "create_comment");
+function set_attribute$1(element2, key2, value2 = "") {
+  if (key2.startsWith("xlink:")) {
+    element2.setAttributeNS("http://www.w3.org/1999/xlink", key2, value2);
+    return;
+  }
+  return element2.setAttribute(key2, value2);
+}
+__name(set_attribute$1, "set_attribute$1");
+function autofocus(dom, value2) {
+  if (value2) {
+    const body = document.body;
+    dom.autofocus = true;
+    queue_micro_task(() => {
+      if (document.activeElement === body) {
+        dom.focus();
+      }
+    });
+  }
+}
+__name(autofocus, "autofocus");
+function remove_textarea_child(dom) {
+  if (hydrating && /* @__PURE__ */ get_first_child(dom) !== null) {
+    clear_text_content(dom);
+  }
+}
+__name(remove_textarea_child, "remove_textarea_child");
+let listening_to_form_reset = false;
+function add_form_reset_listener() {
+  if (!listening_to_form_reset) {
+    listening_to_form_reset = true;
+    document.addEventListener(
+      "reset",
+      (evt) => {
+        Promise.resolve().then(() => {
+          if (!evt.defaultPrevented) {
+            for (
+              const e of
+              /**@type {HTMLFormElement} */
+              evt.target.elements
+            ) {
+              e.__on_r?.();
+            }
+          }
+        });
+      },
+      // In the capture phase to guarantee we get noticed of it (no possibility of stopPropagation)
+      { capture: true }
+    );
+  }
+}
+__name(add_form_reset_listener, "add_form_reset_listener");
+function listen(target, events, handler, call_handler_immediately = true) {
+  if (call_handler_immediately) {
+    handler();
+  }
+  for (var name of events) {
+    target.addEventListener(name, handler);
+  }
+  teardown(() => {
+    for (var name2 of events) {
+      target.removeEventListener(name2, handler);
+    }
+  });
+}
+__name(listen, "listen");
+function without_reactive_context(fn) {
+  var previous_reaction = active_reaction;
+  var previous_effect = active_effect;
+  set_active_reaction(null);
+  set_active_effect(null);
+  try {
+    return fn();
+  } finally {
+    set_active_reaction(previous_reaction);
+    set_active_effect(previous_effect);
+  }
+}
+__name(without_reactive_context, "without_reactive_context");
+function listen_to_event_and_reset_event(element2, event2, handler, on_reset = handler) {
+  element2.addEventListener(event2, () => without_reactive_context(handler));
+  const prev = element2.__on_r;
+  if (prev) {
+    element2.__on_r = () => {
+      prev();
+      on_reset(true);
+    };
+  } else {
+    element2.__on_r = () => on_reset(true);
+  }
+  add_form_reset_listener();
+}
+__name(listen_to_event_and_reset_event, "listen_to_event_and_reset_event");
+function validate_effect(rune) {
+  if (active_effect === null) {
+    if (active_reaction === null) {
+      effect_orphan(rune);
+    }
+    effect_in_unowned_derived();
+  }
+  if (is_destroying_effect) {
+    effect_in_teardown(rune);
+  }
+}
+__name(validate_effect, "validate_effect");
+function push_effect(effect2, parent_effect) {
+  var parent_last = parent_effect.last;
+  if (parent_last === null) {
+    parent_effect.last = parent_effect.first = effect2;
+  } else {
+    parent_last.next = effect2;
+    effect2.prev = parent_last;
+    parent_effect.last = effect2;
+  }
+}
+__name(push_effect, "push_effect");
+function create_effect(type, fn, sync) {
+  var parent = active_effect;
+  if (DEV) {
+    while (parent !== null && (parent.f & EAGER_EFFECT) !== 0) {
+      parent = parent.parent;
+    }
+  }
+  if (parent !== null && (parent.f & INERT) !== 0) {
+    type |= INERT;
+  }
+  var effect2 = {
+    ctx: component_context,
+    deps: null,
+    nodes: null,
+    f: type | DIRTY | CONNECTED,
+    first: null,
+    fn,
+    last: null,
+    next: null,
+    parent,
+    b: parent && parent.b,
+    prev: null,
+    teardown: null,
+    wv: 0,
+    ac: null
+  };
+  if (DEV) {
+    effect2.component_function = dev_current_component_function;
+  }
+  if (sync) {
+    try {
+      update_effect(effect2);
+      effect2.f |= EFFECT_RAN;
+    } catch (e3) {
+      destroy_effect(effect2);
+      throw e3;
+    }
+  } else if (fn !== null) {
+    schedule_effect(effect2);
+  }
+  var e2 = effect2;
+  if (sync && e2.deps === null && e2.teardown === null && e2.nodes === null && e2.first === e2.last && // either `null`, or a singular child
+  (e2.f & EFFECT_PRESERVED) === 0) {
+    e2 = e2.first;
+    if ((type & BLOCK_EFFECT) !== 0 && (type & EFFECT_TRANSPARENT) !== 0 && e2 !== null) {
+      e2.f |= EFFECT_TRANSPARENT;
+    }
+  }
+  if (e2 !== null) {
+    e2.parent = parent;
+    if (parent !== null) {
+      push_effect(e2, parent);
+    }
+    if (active_reaction !== null && (active_reaction.f & DERIVED) !== 0 && (type & ROOT_EFFECT) === 0) {
+      var derived2 = (
+        /** @type {Derived} */
+        active_reaction
+      );
+      (derived2.effects ?? (derived2.effects = [])).push(e2);
+    }
+  }
+  return effect2;
+}
+__name(create_effect, "create_effect");
+function effect_tracking() {
+  return active_reaction !== null && !untracking;
+}
+__name(effect_tracking, "effect_tracking");
+function teardown(fn) {
+  const effect2 = create_effect(RENDER_EFFECT, null, false);
+  set_signal_status(effect2, CLEAN);
+  effect2.teardown = fn;
+  return effect2;
+}
+__name(teardown, "teardown");
+function user_effect(fn) {
+  validate_effect("$effect");
+  if (DEV) {
+    define_property(fn, "name", {
+      value: "$effect"
+    });
+  }
+  var flags2 = (
+    /** @type {Effect} */
+    active_effect.f
+  );
+  var defer = !active_reaction && (flags2 & BRANCH_EFFECT) !== 0 && (flags2 & EFFECT_RAN) === 0;
+  if (defer) {
+    var context = (
+      /** @type {ComponentContext} */
+      component_context
+    );
+    (context.e ?? (context.e = [])).push(fn);
+  } else {
+    return create_user_effect(fn);
+  }
+}
+__name(user_effect, "user_effect");
+function create_user_effect(fn) {
+  return create_effect(EFFECT | USER_EFFECT, fn, false);
+}
+__name(create_user_effect, "create_user_effect");
+function user_pre_effect(fn) {
+  validate_effect("$effect.pre");
+  if (DEV) {
+    define_property(fn, "name", {
+      value: "$effect.pre"
+    });
+  }
+  return create_effect(RENDER_EFFECT | USER_EFFECT, fn, true);
+}
+__name(user_pre_effect, "user_pre_effect");
+function eager_effect(fn) {
+  return create_effect(EAGER_EFFECT, fn, true);
+}
+__name(eager_effect, "eager_effect");
+function effect_root(fn) {
+  Batch.ensure();
+  const effect2 = create_effect(ROOT_EFFECT | EFFECT_PRESERVED, fn, true);
+  return () => {
+    destroy_effect(effect2);
+  };
+}
+__name(effect_root, "effect_root");
+function component_root(fn) {
+  Batch.ensure();
+  const effect2 = create_effect(ROOT_EFFECT | EFFECT_PRESERVED, fn, true);
+  return (options = {}) => {
+    return new Promise((fulfil) => {
+      if (options.outro) {
+        pause_effect(effect2, () => {
+          destroy_effect(effect2);
+          fulfil(void 0);
+        });
+      } else {
+        destroy_effect(effect2);
+        fulfil(void 0);
+      }
+    });
+  };
+}
+__name(component_root, "component_root");
+function effect(fn) {
+  return create_effect(EFFECT, fn, false);
+}
+__name(effect, "effect");
+function legacy_pre_effect(deps, fn) {
+  var context = (
+    /** @type {ComponentContextLegacy} */
+    component_context
+  );
+  var token = { effect: null, ran: false, deps };
+  context.l.$.push(token);
+  token.effect = render_effect(() => {
+    deps();
+    if (token.ran) return;
+    token.ran = true;
+    untrack(fn);
+  });
+}
+__name(legacy_pre_effect, "legacy_pre_effect");
+function legacy_pre_effect_reset() {
+  var context = (
+    /** @type {ComponentContextLegacy} */
+    component_context
+  );
+  render_effect(() => {
+    for (var token of context.l.$) {
+      token.deps();
+      var effect2 = token.effect;
+      if ((effect2.f & CLEAN) !== 0) {
+        set_signal_status(effect2, MAYBE_DIRTY);
+      }
+      if (is_dirty(effect2)) {
+        update_effect(effect2);
+      }
+      token.ran = false;
+    }
+  });
+}
+__name(legacy_pre_effect_reset, "legacy_pre_effect_reset");
+function async_effect(fn) {
+  return create_effect(ASYNC | EFFECT_PRESERVED, fn, true);
+}
+__name(async_effect, "async_effect");
+function render_effect(fn, flags2 = 0) {
+  return create_effect(RENDER_EFFECT | flags2, fn, true);
+}
+__name(render_effect, "render_effect");
+function template_effect(fn, sync = [], async2 = [], blockers = []) {
+  flatten(blockers, sync, async2, (values2) => {
+    create_effect(RENDER_EFFECT, () => fn(...values2.map(get$1)), true);
+  });
+}
+__name(template_effect, "template_effect");
+function deferred_template_effect(fn, sync = [], async2 = [], blockers = []) {
+  var batch = (
+    /** @type {Batch} */
+    current_batch
+  );
+  var is_async = async2.length > 0 || blockers.length > 0;
+  if (is_async) batch.increment(true);
+  flatten(blockers, sync, async2, (values2) => {
+    create_effect(EFFECT, () => fn(...values2.map(get$1)), false);
+    if (is_async) batch.decrement(true);
+  });
+}
+__name(deferred_template_effect, "deferred_template_effect");
+function block(fn, flags2 = 0) {
+  var effect2 = create_effect(BLOCK_EFFECT | flags2, fn, true);
+  if (DEV) {
+    effect2.dev_stack = dev_stack;
+  }
+  return effect2;
+}
+__name(block, "block");
+function managed(fn, flags2 = 0) {
+  var effect2 = create_effect(MANAGED_EFFECT | flags2, fn, true);
+  if (DEV) {
+    effect2.dev_stack = dev_stack;
+  }
+  return effect2;
+}
+__name(managed, "managed");
+function branch(fn) {
+  return create_effect(BRANCH_EFFECT | EFFECT_PRESERVED, fn, true);
+}
+__name(branch, "branch");
+function execute_effect_teardown(effect2) {
+  var teardown2 = effect2.teardown;
+  if (teardown2 !== null) {
+    const previously_destroying_effect = is_destroying_effect;
+    const previous_reaction = active_reaction;
+    set_is_destroying_effect(true);
+    set_active_reaction(null);
+    try {
+      teardown2.call(null);
+    } finally {
+      set_is_destroying_effect(previously_destroying_effect);
+      set_active_reaction(previous_reaction);
+    }
+  }
+}
+__name(execute_effect_teardown, "execute_effect_teardown");
+function destroy_effect_children(signal, remove_dom = false) {
+  var effect2 = signal.first;
+  signal.first = signal.last = null;
+  while (effect2 !== null) {
+    const controller = effect2.ac;
+    if (controller !== null) {
+      without_reactive_context(() => {
+        controller.abort(STALE_REACTION);
+      });
+    }
+    var next2 = effect2.next;
+    if ((effect2.f & ROOT_EFFECT) !== 0) {
+      effect2.parent = null;
+    } else {
+      destroy_effect(effect2, remove_dom);
+    }
+    effect2 = next2;
+  }
+}
+__name(destroy_effect_children, "destroy_effect_children");
+function destroy_block_effect_children(signal) {
+  var effect2 = signal.first;
+  while (effect2 !== null) {
+    var next2 = effect2.next;
+    if ((effect2.f & BRANCH_EFFECT) === 0) {
+      destroy_effect(effect2);
+    }
+    effect2 = next2;
+  }
+}
+__name(destroy_block_effect_children, "destroy_block_effect_children");
+function destroy_effect(effect2, remove_dom = true) {
+  var removed = false;
+  if ((remove_dom || (effect2.f & HEAD_EFFECT) !== 0) && effect2.nodes !== null && effect2.nodes.end !== null) {
+    remove_effect_dom(
+      effect2.nodes.start,
+      /** @type {TemplateNode} */
+      effect2.nodes.end
+    );
+    removed = true;
+  }
+  destroy_effect_children(effect2, remove_dom && !removed);
+  remove_reactions(effect2, 0);
+  set_signal_status(effect2, DESTROYED);
+  var transitions = effect2.nodes && effect2.nodes.t;
+  if (transitions !== null) {
+    for (const transition2 of transitions) {
+      transition2.stop();
+    }
+  }
+  execute_effect_teardown(effect2);
+  var parent = effect2.parent;
+  if (parent !== null && parent.first !== null) {
+    unlink_effect(effect2);
+  }
+  if (DEV) {
+    effect2.component_function = null;
+  }
+  effect2.next = effect2.prev = effect2.teardown = effect2.ctx = effect2.deps = effect2.fn = effect2.nodes = effect2.ac = null;
+}
+__name(destroy_effect, "destroy_effect");
+function remove_effect_dom(node, end) {
+  while (node !== null) {
+    var next2 = node === end ? null : /* @__PURE__ */ get_next_sibling(node);
+    node.remove();
+    node = next2;
+  }
+}
+__name(remove_effect_dom, "remove_effect_dom");
+function unlink_effect(effect2) {
+  var parent = effect2.parent;
+  var prev = effect2.prev;
+  var next2 = effect2.next;
+  if (prev !== null) prev.next = next2;
+  if (next2 !== null) next2.prev = prev;
+  if (parent !== null) {
+    if (parent.first === effect2) parent.first = next2;
+    if (parent.last === effect2) parent.last = prev;
+  }
+}
+__name(unlink_effect, "unlink_effect");
+function pause_effect(effect2, callback, destroy = true) {
+  var transitions = [];
+  pause_children(effect2, transitions, true);
+  var fn = /* @__PURE__ */ __name(() => {
+    if (destroy) destroy_effect(effect2);
+    if (callback) callback();
+  }, "fn");
+  var remaining = transitions.length;
+  if (remaining > 0) {
+    var check2 = /* @__PURE__ */ __name(() => --remaining || fn(), "check");
+    for (var transition2 of transitions) {
+      transition2.out(check2);
+    }
+  } else {
+    fn();
+  }
+}
+__name(pause_effect, "pause_effect");
+function pause_children(effect2, transitions, local) {
+  if ((effect2.f & INERT) !== 0) return;
+  effect2.f ^= INERT;
+  var t = effect2.nodes && effect2.nodes.t;
+  if (t !== null) {
+    for (const transition2 of t) {
+      if (transition2.is_global || local) {
+        transitions.push(transition2);
+      }
+    }
+  }
+  var child2 = effect2.first;
+  while (child2 !== null) {
+    var sibling2 = child2.next;
+    var transparent = (child2.f & EFFECT_TRANSPARENT) !== 0 || // If this is a branch effect without a block effect parent,
+    // it means the parent block effect was pruned. In that case,
+    // transparency information was transferred to the branch effect.
+    (child2.f & BRANCH_EFFECT) !== 0 && (effect2.f & BLOCK_EFFECT) !== 0;
+    pause_children(child2, transitions, transparent ? local : false);
+    child2 = sibling2;
+  }
+}
+__name(pause_children, "pause_children");
+function resume_effect(effect2) {
+  resume_children(effect2, true);
+}
+__name(resume_effect, "resume_effect");
+function resume_children(effect2, local) {
+  if ((effect2.f & INERT) === 0) return;
+  effect2.f ^= INERT;
+  if ((effect2.f & CLEAN) === 0) {
+    set_signal_status(effect2, DIRTY);
+    schedule_effect(effect2);
+  }
+  var child2 = effect2.first;
+  while (child2 !== null) {
+    var sibling2 = child2.next;
+    var transparent = (child2.f & EFFECT_TRANSPARENT) !== 0 || (child2.f & BRANCH_EFFECT) !== 0;
+    resume_children(child2, transparent ? local : false);
+    child2 = sibling2;
+  }
+  var t = effect2.nodes && effect2.nodes.t;
+  if (t !== null) {
+    for (const transition2 of t) {
+      if (transition2.is_global || local) {
+        transition2.in();
+      }
+    }
+  }
+}
+__name(resume_children, "resume_children");
+function aborted(effect2 = (
+  /** @type {Effect} */
+  active_effect
+)) {
+  return (effect2.f & DESTROYED) !== 0;
+}
+__name(aborted, "aborted");
+function move_effect(effect2, fragment) {
+  if (!effect2.nodes) return;
+  var node = effect2.nodes.start;
+  var end = effect2.nodes.end;
+  while (node !== null) {
+    var next2 = node === end ? null : /* @__PURE__ */ get_next_sibling(node);
+    fragment.append(node);
+    node = next2;
+  }
+}
+__name(move_effect, "move_effect");
+let captured_signals = null;
+function capture_signals(fn) {
+  var previous_captured_signals = captured_signals;
+  try {
+    captured_signals = /* @__PURE__ */ new Set();
+    untrack(fn);
+    if (previous_captured_signals !== null) {
+      for (var signal of captured_signals) {
+        previous_captured_signals.add(signal);
+      }
+    }
+    return captured_signals;
+  } finally {
+    captured_signals = previous_captured_signals;
+  }
+}
+__name(capture_signals, "capture_signals");
+function invalidate_inner_signals(fn) {
+  for (var signal of capture_signals(fn)) {
+    internal_set(signal, signal.v);
+  }
+}
+__name(invalidate_inner_signals, "invalidate_inner_signals");
+let is_updating_effect = false;
+function set_is_updating_effect(value2) {
+  is_updating_effect = value2;
+}
+__name(set_is_updating_effect, "set_is_updating_effect");
+let is_destroying_effect = false;
+function set_is_destroying_effect(value2) {
+  is_destroying_effect = value2;
+}
+__name(set_is_destroying_effect, "set_is_destroying_effect");
+let active_reaction = null;
+let untracking = false;
+function set_active_reaction(reaction) {
+  active_reaction = reaction;
+}
+__name(set_active_reaction, "set_active_reaction");
+let active_effect = null;
+function set_active_effect(effect2) {
+  active_effect = effect2;
+}
+__name(set_active_effect, "set_active_effect");
+let current_sources = null;
+function push_reaction_value(value2) {
+  if (active_reaction !== null && (!async_mode_flag || (active_reaction.f & DERIVED) !== 0)) {
+    if (current_sources === null) {
+      current_sources = [value2];
+    } else {
+      current_sources.push(value2);
+    }
+  }
+}
+__name(push_reaction_value, "push_reaction_value");
+let new_deps = null;
+let skipped_deps = 0;
+let untracked_writes = null;
+function set_untracked_writes(value2) {
+  untracked_writes = value2;
+}
+__name(set_untracked_writes, "set_untracked_writes");
+let write_version = 1;
+let read_version = 0;
+let update_version = read_version;
+function set_update_version(value2) {
+  update_version = value2;
+}
+__name(set_update_version, "set_update_version");
+function increment_write_version() {
+  return ++write_version;
+}
+__name(increment_write_version, "increment_write_version");
+function is_dirty(reaction) {
+  var flags2 = reaction.f;
+  if ((flags2 & DIRTY) !== 0) {
+    return true;
+  }
+  if (flags2 & DERIVED) {
+    reaction.f &= ~WAS_MARKED;
+  }
+  if ((flags2 & MAYBE_DIRTY) !== 0) {
+    var dependencies = reaction.deps;
+    if (dependencies !== null) {
+      var length2 = dependencies.length;
+      for (var i = 0; i < length2; i++) {
+        var dependency = dependencies[i];
+        if (is_dirty(
+          /** @type {Derived} */
+          dependency
+        )) {
+          update_derived(
+            /** @type {Derived} */
+            dependency
+          );
+        }
+        if (dependency.wv > reaction.wv) {
+          return true;
+        }
+      }
+    }
+    if ((flags2 & CONNECTED) !== 0 && // During time traveling we don't want to reset the status so that
+    // traversal of the graph in the other batches still happens
+    batch_values === null) {
+      set_signal_status(reaction, CLEAN);
+    }
+  }
+  return false;
+}
+__name(is_dirty, "is_dirty");
+function schedule_possible_effect_self_invalidation(signal, effect2, root2 = true) {
+  var reactions = signal.reactions;
+  if (reactions === null) return;
+  if (!async_mode_flag && current_sources?.includes(signal)) {
+    return;
+  }
+  for (var i = 0; i < reactions.length; i++) {
+    var reaction = reactions[i];
+    if ((reaction.f & DERIVED) !== 0) {
+      schedule_possible_effect_self_invalidation(
+        /** @type {Derived} */
+        reaction,
+        effect2,
+        false
+      );
+    } else if (effect2 === reaction) {
+      if (root2) {
+        set_signal_status(reaction, DIRTY);
+      } else if ((reaction.f & CLEAN) !== 0) {
+        set_signal_status(reaction, MAYBE_DIRTY);
+      }
+      schedule_effect(
+        /** @type {Effect} */
+        reaction
+      );
+    }
+  }
+}
+__name(schedule_possible_effect_self_invalidation, "schedule_possible_effect_self_invalidation");
+function update_reaction(reaction) {
+  var _a2;
+  var previous_deps = new_deps;
+  var previous_skipped_deps = skipped_deps;
+  var previous_untracked_writes = untracked_writes;
+  var previous_reaction = active_reaction;
+  var previous_sources = current_sources;
+  var previous_component_context = component_context;
+  var previous_untracking = untracking;
+  var previous_update_version = update_version;
+  var flags2 = reaction.f;
+  new_deps = /** @type {null | Value[]} */
+  null;
+  skipped_deps = 0;
+  untracked_writes = null;
+  active_reaction = (flags2 & (BRANCH_EFFECT | ROOT_EFFECT)) === 0 ? reaction : null;
+  current_sources = null;
+  set_component_context(reaction.ctx);
+  untracking = false;
+  update_version = ++read_version;
+  if (reaction.ac !== null) {
+    without_reactive_context(() => {
+      reaction.ac.abort(STALE_REACTION);
+    });
+    reaction.ac = null;
+  }
+  try {
+    reaction.f |= REACTION_IS_UPDATING;
+    var fn = (
+      /** @type {Function} */
+      reaction.fn
+    );
+    var result = fn();
+    var deps = reaction.deps;
+    if (new_deps !== null) {
+      var i;
+      remove_reactions(reaction, skipped_deps);
+      if (deps !== null && skipped_deps > 0) {
+        deps.length = skipped_deps + new_deps.length;
+        for (i = 0; i < new_deps.length; i++) {
+          deps[skipped_deps + i] = new_deps[i];
+        }
+      } else {
+        reaction.deps = deps = new_deps;
+      }
+      if (effect_tracking() && (reaction.f & CONNECTED) !== 0) {
+        for (i = skipped_deps; i < deps.length; i++) {
+          ((_a2 = deps[i]).reactions ?? (_a2.reactions = [])).push(reaction);
+        }
+      }
+    } else if (deps !== null && skipped_deps < deps.length) {
+      remove_reactions(reaction, skipped_deps);
+      deps.length = skipped_deps;
+    }
+    if (is_runes() && untracked_writes !== null && !untracking && deps !== null && (reaction.f & (DERIVED | MAYBE_DIRTY | DIRTY)) === 0) {
+      for (i = 0; i < /** @type {Source[]} */
+      untracked_writes.length; i++) {
+        schedule_possible_effect_self_invalidation(
+          untracked_writes[i],
+          /** @type {Effect} */
+          reaction
+        );
+      }
+    }
+    if (previous_reaction !== null && previous_reaction !== reaction) {
+      read_version++;
+      if (untracked_writes !== null) {
+        if (previous_untracked_writes === null) {
+          previous_untracked_writes = untracked_writes;
+        } else {
+          previous_untracked_writes.push(.../** @type {Source[]} */
+          untracked_writes);
+        }
+      }
+    }
+    if ((reaction.f & ERROR_VALUE) !== 0) {
+      reaction.f ^= ERROR_VALUE;
+    }
+    return result;
+  } catch (error) {
+    return handle_error(error);
+  } finally {
+    reaction.f ^= REACTION_IS_UPDATING;
+    new_deps = previous_deps;
+    skipped_deps = previous_skipped_deps;
+    untracked_writes = previous_untracked_writes;
+    active_reaction = previous_reaction;
+    current_sources = previous_sources;
+    set_component_context(previous_component_context);
+    untracking = previous_untracking;
+    update_version = previous_update_version;
+  }
+}
+__name(update_reaction, "update_reaction");
+function remove_reaction(signal, dependency) {
+  let reactions = dependency.reactions;
+  if (reactions !== null) {
+    var index2 = index_of.call(reactions, signal);
+    if (index2 !== -1) {
+      var new_length = reactions.length - 1;
+      if (new_length === 0) {
+        reactions = dependency.reactions = null;
+      } else {
+        reactions[index2] = reactions[new_length];
+        reactions.pop();
+      }
+    }
+  }
+  if (reactions === null && (dependency.f & DERIVED) !== 0 && // Destroying a child effect while updating a parent effect can cause a dependency to appear
+  // to be unused, when in fact it is used by the currently-updating parent. Checking `new_deps`
+  // allows us to skip the expensive work of disconnecting and immediately reconnecting it
+  (new_deps === null || !new_deps.includes(dependency))) {
+    set_signal_status(dependency, MAYBE_DIRTY);
+    if ((dependency.f & CONNECTED) !== 0) {
+      dependency.f ^= CONNECTED;
+      dependency.f &= ~WAS_MARKED;
+    }
+    destroy_derived_effects(
+      /** @type {Derived} **/
+      dependency
+    );
+    remove_reactions(
+      /** @type {Derived} **/
+      dependency,
+      0
+    );
+  }
+}
+__name(remove_reaction, "remove_reaction");
+function remove_reactions(signal, start_index) {
+  var dependencies = signal.deps;
+  if (dependencies === null) return;
+  for (var i = start_index; i < dependencies.length; i++) {
+    remove_reaction(signal, dependencies[i]);
+  }
+}
+__name(remove_reactions, "remove_reactions");
+function update_effect(effect2) {
+  var flags2 = effect2.f;
+  if ((flags2 & DESTROYED) !== 0) {
+    return;
+  }
+  set_signal_status(effect2, CLEAN);
+  var previous_effect = active_effect;
+  var was_updating_effect = is_updating_effect;
+  active_effect = effect2;
+  is_updating_effect = true;
+  if (DEV) {
+    var previous_component_fn = dev_current_component_function;
+    set_dev_current_component_function(effect2.component_function);
+    var previous_stack = (
+      /** @type {any} */
+      dev_stack
+    );
+    set_dev_stack(effect2.dev_stack ?? dev_stack);
+  }
+  try {
+    if ((flags2 & (BLOCK_EFFECT | MANAGED_EFFECT)) !== 0) {
+      destroy_block_effect_children(effect2);
+    } else {
+      destroy_effect_children(effect2);
+    }
+    execute_effect_teardown(effect2);
+    var teardown2 = update_reaction(effect2);
+    effect2.teardown = typeof teardown2 === "function" ? teardown2 : null;
+    effect2.wv = write_version;
+    if (DEV && tracing_mode_flag && (effect2.f & DIRTY) !== 0 && effect2.deps !== null) {
+      for (var dep of effect2.deps) {
+        if (dep.set_during_effect) {
+          dep.wv = increment_write_version();
+          dep.set_during_effect = false;
+        }
+      }
+    }
+  } finally {
+    is_updating_effect = was_updating_effect;
+    active_effect = previous_effect;
+    if (DEV) {
+      set_dev_current_component_function(previous_component_fn);
+      set_dev_stack(previous_stack);
+    }
+  }
+}
+__name(update_effect, "update_effect");
+async function tick() {
+  if (async_mode_flag) {
+    return new Promise((f) => {
+      requestAnimationFrame(() => f());
+      setTimeout(() => f());
+    });
+  }
+  await Promise.resolve();
+  flushSync();
+}
+__name(tick, "tick");
+function settled() {
+  return Batch.ensure().settled();
+}
+__name(settled, "settled");
+function get$1(signal) {
+  var flags2 = signal.f;
+  var is_derived = (flags2 & DERIVED) !== 0;
+  captured_signals?.add(signal);
+  if (active_reaction !== null && !untracking) {
+    var destroyed = active_effect !== null && (active_effect.f & DESTROYED) !== 0;
+    if (!destroyed && !current_sources?.includes(signal)) {
+      var deps = active_reaction.deps;
+      if ((active_reaction.f & REACTION_IS_UPDATING) !== 0) {
+        if (signal.rv < read_version) {
+          signal.rv = read_version;
+          if (new_deps === null && deps !== null && deps[skipped_deps] === signal) {
+            skipped_deps++;
+          } else if (new_deps === null) {
+            new_deps = [signal];
+          } else if (!new_deps.includes(signal)) {
+            new_deps.push(signal);
+          }
+        }
+      } else {
+        (active_reaction.deps ?? (active_reaction.deps = [])).push(signal);
+        var reactions = signal.reactions;
+        if (reactions === null) {
+          signal.reactions = [active_reaction];
+        } else if (!reactions.includes(active_reaction)) {
+          reactions.push(active_reaction);
+        }
+      }
+    }
+  }
+  if (DEV) {
+    recent_async_deriveds.delete(signal);
+    if (tracing_mode_flag && !untracking && tracing_expressions !== null && active_reaction !== null && tracing_expressions.reaction === active_reaction) {
+      if (signal.trace) {
+        signal.trace();
+      } else {
+        var trace2 = get_error("traced at");
+        if (trace2) {
+          var entry = tracing_expressions.entries.get(signal);
+          if (entry === void 0) {
+            entry = { traces: [] };
+            tracing_expressions.entries.set(signal, entry);
+          }
+          var last = entry.traces[entry.traces.length - 1];
+          if (trace2.stack !== last?.stack) {
+            entry.traces.push(trace2);
+          }
+        }
+      }
+    }
+  }
+  if (is_destroying_effect) {
+    if (old_values.has(signal)) {
+      return old_values.get(signal);
+    }
+    if (is_derived) {
+      var derived2 = (
+        /** @type {Derived} */
+        signal
+      );
+      var value2 = derived2.v;
+      if ((derived2.f & CLEAN) === 0 && derived2.reactions !== null || depends_on_old_values(derived2)) {
+        value2 = execute_derived(derived2);
+      }
+      old_values.set(derived2, value2);
+      return value2;
+    }
+  } else if (is_derived && (!batch_values?.has(signal) || current_batch?.is_fork && !effect_tracking())) {
+    derived2 = /** @type {Derived} */
+    signal;
+    if (is_dirty(derived2)) {
+      update_derived(derived2);
+    }
+    if (is_updating_effect && effect_tracking() && (derived2.f & CONNECTED) === 0) {
+      reconnect(derived2);
+    }
+  }
+  if (batch_values?.has(signal)) {
+    return batch_values.get(signal);
+  }
+  if ((signal.f & ERROR_VALUE) !== 0) {
+    throw signal.v;
+  }
+  return signal.v;
+}
+__name(get$1, "get$1");
+function reconnect(derived2) {
+  if (derived2.deps === null) return;
+  derived2.f ^= CONNECTED;
+  for (const dep of derived2.deps) {
+    (dep.reactions ?? (dep.reactions = [])).push(derived2);
+    if ((dep.f & DERIVED) !== 0 && (dep.f & CONNECTED) === 0) {
+      reconnect(
+        /** @type {Derived} */
+        dep
+      );
+    }
+  }
+}
+__name(reconnect, "reconnect");
+function depends_on_old_values(derived2) {
+  if (derived2.v === UNINITIALIZED) return true;
+  if (derived2.deps === null) return false;
+  for (const dep of derived2.deps) {
+    if (old_values.has(dep)) {
+      return true;
+    }
+    if ((dep.f & DERIVED) !== 0 && depends_on_old_values(
+      /** @type {Derived} */
+      dep
+    )) {
+      return true;
+    }
+  }
+  return false;
+}
+__name(depends_on_old_values, "depends_on_old_values");
+function safe_get(signal) {
+  return signal && get$1(signal);
+}
+__name(safe_get, "safe_get");
+function untrack(fn) {
+  var previous_untracking = untracking;
+  try {
+    untracking = true;
+    return fn();
+  } finally {
+    untracking = previous_untracking;
+  }
+}
+__name(untrack, "untrack");
+const STATUS_MASK = ~(DIRTY | MAYBE_DIRTY | CLEAN);
+function set_signal_status(signal, status) {
+  signal.f = signal.f & STATUS_MASK | status;
+}
+__name(set_signal_status, "set_signal_status");
+function exclude_from_object(obj, keys) {
+  var result = {};
+  for (var key2 in obj) {
+    if (!keys.includes(key2)) {
+      result[key2] = obj[key2];
+    }
+  }
+  for (var symbol2 of Object.getOwnPropertySymbols(obj)) {
+    if (Object.propertyIsEnumerable.call(obj, symbol2) && !keys.includes(symbol2)) {
+      result[symbol2] = obj[symbol2];
+    }
+  }
+  return result;
+}
+__name(exclude_from_object, "exclude_from_object");
+function deep_read_state(value2) {
+  if (typeof value2 !== "object" || !value2 || value2 instanceof EventTarget) {
+    return;
+  }
+  if (STATE_SYMBOL in value2) {
+    deep_read(value2);
+  } else if (!Array.isArray(value2)) {
+    for (let key2 in value2) {
+      const prop2 = value2[key2];
+      if (typeof prop2 === "object" && prop2 && STATE_SYMBOL in prop2) {
+        deep_read(prop2);
+      }
+    }
+  }
+}
+__name(deep_read_state, "deep_read_state");
+function deep_read(value2, visited = /* @__PURE__ */ new Set()) {
+  if (typeof value2 === "object" && value2 !== null && // We don't want to traverse DOM elements
+  !(value2 instanceof EventTarget) && !visited.has(value2)) {
+    visited.add(value2);
+    if (value2 instanceof Date) {
+      value2.getTime();
+    }
+    for (let key2 in value2) {
+      try {
+        deep_read(value2[key2], visited);
+      } catch (e) {
+      }
+    }
+    const proto = get_prototype_of(value2);
+    if (proto !== Object.prototype && proto !== Array.prototype && proto !== Map.prototype && proto !== Set.prototype && proto !== Date.prototype) {
+      const descriptors = get_descriptors(proto);
+      for (let key2 in descriptors) {
+        const get2 = descriptors[key2].get;
+        if (get2) {
+          try {
+            get2.call(value2);
+          } catch (e) {
+          }
+        }
+      }
+    }
+  }
+}
+__name(deep_read, "deep_read");
+function createAttachmentKey() {
+  return Symbol(ATTACHMENT_KEY);
+}
+__name(createAttachmentKey, "createAttachmentKey");
+function fromAction(action2, fn = (
+  /** @type {() => T} */
+  noop
+)) {
+  return (element2) => {
+    const { update: update2, destroy } = untrack(() => action2(element2, fn()) ?? {});
+    if (update2) {
+      var ran = false;
+      render_effect(() => {
+        const arg = fn();
+        if (ran) update2(arg);
+      });
+      ran = true;
+    }
+    if (destroy) {
+      teardown(destroy);
+    }
+  };
+}
+__name(fromAction, "fromAction");
+const regex_return_characters = /\r/g;
+function hash(str) {
+  str = str.replace(regex_return_characters, "");
+  let hash2 = 5381;
+  let i = str.length;
+  while (i--) hash2 = (hash2 << 5) - hash2 ^ str.charCodeAt(i);
+  return (hash2 >>> 0).toString(36);
+}
+__name(hash, "hash");
+const VOID_ELEMENT_NAMES = [
+  "area",
+  "base",
+  "br",
+  "col",
+  "command",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "keygen",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr"
+];
+function is_void(name) {
+  return VOID_ELEMENT_NAMES.includes(name) || name.toLowerCase() === "!doctype";
+}
+__name(is_void, "is_void");
+const RESERVED_WORDS = [
+  "arguments",
+  "await",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "enum",
+  "eval",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "implements",
+  "import",
+  "in",
+  "instanceof",
+  "interface",
+  "let",
+  "new",
+  "null",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "return",
+  "static",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield"
+];
+function is_reserved(word) {
+  return RESERVED_WORDS.includes(word);
+}
+__name(is_reserved, "is_reserved");
+function is_capture_event(name) {
+  return name.endsWith("capture") && name !== "gotpointercapture" && name !== "lostpointercapture";
+}
+__name(is_capture_event, "is_capture_event");
+const DELEGATED_EVENTS = [
+  "beforeinput",
+  "click",
+  "change",
+  "dblclick",
+  "contextmenu",
+  "focusin",
+  "focusout",
+  "input",
+  "keydown",
+  "keyup",
+  "mousedown",
+  "mousemove",
+  "mouseout",
+  "mouseover",
+  "mouseup",
+  "pointerdown",
+  "pointermove",
+  "pointerout",
+  "pointerover",
+  "pointerup",
+  "touchend",
+  "touchmove",
+  "touchstart"
+];
+function can_delegate_event(event_name) {
+  return DELEGATED_EVENTS.includes(event_name);
+}
+__name(can_delegate_event, "can_delegate_event");
+const DOM_BOOLEAN_ATTRIBUTES = [
+  "allowfullscreen",
+  "async",
+  "autofocus",
+  "autoplay",
+  "checked",
+  "controls",
+  "default",
+  "disabled",
+  "formnovalidate",
+  "indeterminate",
+  "inert",
+  "ismap",
+  "loop",
+  "multiple",
+  "muted",
+  "nomodule",
+  "novalidate",
+  "open",
+  "playsinline",
+  "readonly",
+  "required",
+  "reversed",
+  "seamless",
+  "selected",
+  "webkitdirectory",
+  "defer",
+  "disablepictureinpicture",
+  "disableremoteplayback"
+];
+function is_boolean_attribute(name) {
+  return DOM_BOOLEAN_ATTRIBUTES.includes(name);
+}
+__name(is_boolean_attribute, "is_boolean_attribute");
+const ATTRIBUTE_ALIASES = {
+  // no `class: 'className'` because we handle that separately
+  formnovalidate: "formNoValidate",
+  ismap: "isMap",
+  nomodule: "noModule",
+  playsinline: "playsInline",
+  readonly: "readOnly",
+  defaultvalue: "defaultValue",
+  defaultchecked: "defaultChecked",
+  srcobject: "srcObject",
+  novalidate: "noValidate",
+  allowfullscreen: "allowFullscreen",
+  disablepictureinpicture: "disablePictureInPicture",
+  disableremoteplayback: "disableRemotePlayback"
+};
+function normalize_attribute(name) {
+  name = name.toLowerCase();
+  return ATTRIBUTE_ALIASES[name] ?? name;
+}
+__name(normalize_attribute, "normalize_attribute");
+const DOM_PROPERTIES = [
+  ...DOM_BOOLEAN_ATTRIBUTES,
+  "formNoValidate",
+  "isMap",
+  "noModule",
+  "playsInline",
+  "readOnly",
+  "value",
+  "volume",
+  "defaultValue",
+  "defaultChecked",
+  "srcObject",
+  "noValidate",
+  "allowFullscreen",
+  "disablePictureInPicture",
+  "disableRemotePlayback"
+];
+function is_dom_property(name) {
+  return DOM_PROPERTIES.includes(name);
+}
+__name(is_dom_property, "is_dom_property");
+const NON_STATIC_PROPERTIES = ["autofocus", "muted", "defaultValue", "defaultChecked"];
+function cannot_be_set_statically(name) {
+  return NON_STATIC_PROPERTIES.includes(name);
+}
+__name(cannot_be_set_statically, "cannot_be_set_statically");
+const PASSIVE_EVENTS = ["touchstart", "touchmove"];
+function is_passive_event(name) {
+  return PASSIVE_EVENTS.includes(name);
+}
+__name(is_passive_event, "is_passive_event");
+const CONTENT_EDITABLE_BINDINGS = ["textContent", "innerHTML", "innerText"];
+function is_content_editable_binding(name) {
+  return CONTENT_EDITABLE_BINDINGS.includes(name);
+}
+__name(is_content_editable_binding, "is_content_editable_binding");
+const LOAD_ERROR_ELEMENTS = [
+  "body",
+  "embed",
+  "iframe",
+  "img",
+  "link",
+  "object",
+  "script",
+  "style",
+  "track"
+];
+function is_load_error_element(name) {
+  return LOAD_ERROR_ELEMENTS.includes(name);
+}
+__name(is_load_error_element, "is_load_error_element");
+const SVG_ELEMENTS = [
+  "altGlyph",
+  "altGlyphDef",
+  "altGlyphItem",
+  "animate",
+  "animateColor",
+  "animateMotion",
+  "animateTransform",
+  "circle",
+  "clipPath",
+  "color-profile",
+  "cursor",
+  "defs",
+  "desc",
+  "discard",
+  "ellipse",
+  "feBlend",
+  "feColorMatrix",
+  "feComponentTransfer",
+  "feComposite",
+  "feConvolveMatrix",
+  "feDiffuseLighting",
+  "feDisplacementMap",
+  "feDistantLight",
+  "feDropShadow",
+  "feFlood",
+  "feFuncA",
+  "feFuncB",
+  "feFuncG",
+  "feFuncR",
+  "feGaussianBlur",
+  "feImage",
+  "feMerge",
+  "feMergeNode",
+  "feMorphology",
+  "feOffset",
+  "fePointLight",
+  "feSpecularLighting",
+  "feSpotLight",
+  "feTile",
+  "feTurbulence",
+  "filter",
+  "font",
+  "font-face",
+  "font-face-format",
+  "font-face-name",
+  "font-face-src",
+  "font-face-uri",
+  "foreignObject",
+  "g",
+  "glyph",
+  "glyphRef",
+  "hatch",
+  "hatchpath",
+  "hkern",
+  "image",
+  "line",
+  "linearGradient",
+  "marker",
+  "mask",
+  "mesh",
+  "meshgradient",
+  "meshpatch",
+  "meshrow",
+  "metadata",
+  "missing-glyph",
+  "mpath",
+  "path",
+  "pattern",
+  "polygon",
+  "polyline",
+  "radialGradient",
+  "rect",
+  "set",
+  "solidcolor",
+  "stop",
+  "svg",
+  "switch",
+  "symbol",
+  "text",
+  "textPath",
+  "tref",
+  "tspan",
+  "unknown",
+  "use",
+  "view",
+  "vkern"
+];
+function is_svg(name) {
+  return SVG_ELEMENTS.includes(name);
+}
+__name(is_svg, "is_svg");
+const MATHML_ELEMENTS = [
+  "annotation",
+  "annotation-xml",
+  "maction",
+  "math",
+  "merror",
+  "mfrac",
+  "mi",
+  "mmultiscripts",
+  "mn",
+  "mo",
+  "mover",
+  "mpadded",
+  "mphantom",
+  "mprescripts",
+  "mroot",
+  "mrow",
+  "ms",
+  "mspace",
+  "msqrt",
+  "mstyle",
+  "msub",
+  "msubsup",
+  "msup",
+  "mtable",
+  "mtd",
+  "mtext",
+  "mtr",
+  "munder",
+  "munderover",
+  "semantics"
+];
+function is_mathml(name) {
+  return MATHML_ELEMENTS.includes(name);
+}
+__name(is_mathml, "is_mathml");
+const STATE_CREATION_RUNES = (
+  /** @type {const} */
+  [
+    "$state",
+    "$state.raw",
+    "$derived",
+    "$derived.by"
+  ]
+);
+const RUNES = (
+  /** @type {const} */
+  [
+    ...STATE_CREATION_RUNES,
+    "$state.eager",
+    "$state.snapshot",
+    "$props",
+    "$props.id",
+    "$bindable",
+    "$effect",
+    "$effect.pre",
+    "$effect.tracking",
+    "$effect.root",
+    "$effect.pending",
+    "$inspect",
+    "$inspect().with",
+    "$inspect.trace",
+    "$host"
+  ]
+);
+function is_rune(name) {
+  return RUNES.includes(
+    /** @type {RuneName} */
+    name
+  );
+}
+__name(is_rune, "is_rune");
+function is_state_creation_rune(name) {
+  return STATE_CREATION_RUNES.includes(
+    /** @type {StateCreationRuneName} */
+    name
+  );
+}
+__name(is_state_creation_rune, "is_state_creation_rune");
+const RAW_TEXT_ELEMENTS = (
+  /** @type {const} */
+  ["textarea", "script", "style", "title"]
+);
+function is_raw_text_element(name) {
+  return RAW_TEXT_ELEMENTS.includes(
+    /** @type {typeof RAW_TEXT_ELEMENTS[number]} */
+    name
+  );
+}
+__name(is_raw_text_element, "is_raw_text_element");
+function sanitize_location(location) {
+  return (
+    /** @type {T} */
+    location?.replace(/\//g, "/​")
+  );
+}
+__name(sanitize_location, "sanitize_location");
+function compare(a, b, property, location) {
+  if (a !== b) {
+    assignment_value_stale(
+      property,
+      /** @type {string} */
+      sanitize_location(location)
+    );
+  }
+  return a;
+}
+__name(compare, "compare");
+function assign(object2, property, value2, location) {
+  return compare(
+    object2[property] = value2,
+    untrack(() => object2[property]),
+    property,
+    location
+  );
+}
+__name(assign, "assign");
+function assign_and(object2, property, value2, location) {
+  return compare(
+    object2[property] && (object2[property] = value2),
+    untrack(() => object2[property]),
+    property,
+    location
+  );
+}
+__name(assign_and, "assign_and");
+function assign_or(object2, property, value2, location) {
+  return compare(
+    object2[property] || (object2[property] = value2),
+    untrack(() => object2[property]),
+    property,
+    location
+  );
+}
+__name(assign_or, "assign_or");
+function assign_nullish(object2, property, value2, location) {
+  return compare(
+    object2[property] ?? (object2[property] = value2),
+    untrack(() => object2[property]),
+    property,
+    location
+  );
+}
+__name(assign_nullish, "assign_nullish");
+var all_styles = /* @__PURE__ */ new Map();
+function register_style(hash2, style) {
+  var styles = all_styles.get(hash2);
+  if (!styles) {
+    styles = /* @__PURE__ */ new Set();
+    all_styles.set(hash2, styles);
+  }
+  styles.add(style);
+}
+__name(register_style, "register_style");
+function cleanup_styles(hash2) {
+  var styles = all_styles.get(hash2);
+  if (!styles) return;
+  for (const style of styles) {
+    style.remove();
+  }
+  all_styles.delete(hash2);
+}
+__name(cleanup_styles, "cleanup_styles");
+function add_locations(fn, filename, locations) {
+  return (...args2) => {
+    const dom = fn(...args2);
+    var node = hydrating ? dom : dom.nodeType === DOCUMENT_FRAGMENT_NODE ? dom.firstChild : dom;
+    assign_locations(node, filename, locations);
+    return dom;
+  };
+}
+__name(add_locations, "add_locations");
+function assign_location(element2, filename, location) {
+  element2.__svelte_meta = {
+    parent: dev_stack,
+    loc: { file: filename, line: location[0], column: location[1] }
+  };
+  if (location[2]) {
+    assign_locations(element2.firstChild, filename, location[2]);
+  }
+}
+__name(assign_location, "assign_location");
+function assign_locations(node, filename, locations) {
+  var i = 0;
+  var depth = 0;
+  while (node && i < locations.length) {
+    if (hydrating && node.nodeType === COMMENT_NODE) {
+      var comment2 = (
+        /** @type {Comment} */
+        node
+      );
+      if (comment2.data === HYDRATION_START || comment2.data === HYDRATION_START_ELSE) depth += 1;
+      else if (comment2.data[0] === HYDRATION_END) depth -= 1;
+    }
+    if (depth === 0 && node.nodeType === ELEMENT_NODE) {
+      assign_location(
+        /** @type {Element} */
+        node,
+        filename,
+        locations[i++]
+      );
+    }
+    node = node.nextSibling;
+  }
+}
+__name(assign_locations, "assign_locations");
+const all_registered_events = /* @__PURE__ */ new Set();
+const root_event_handles = /* @__PURE__ */ new Set();
+function replay_events(dom) {
+  if (!hydrating) return;
+  dom.removeAttribute("onload");
+  dom.removeAttribute("onerror");
+  const event2 = dom.__e;
+  if (event2 !== void 0) {
+    dom.__e = void 0;
+    queueMicrotask(() => {
+      if (dom.isConnected) {
+        dom.dispatchEvent(event2);
+      }
+    });
+  }
+}
+__name(replay_events, "replay_events");
+function create_event(event_name, dom, handler, options = {}) {
+  function target_handler(event2) {
+    if (!options.capture) {
+      handle_event_propagation.call(dom, event2);
+    }
+    if (!event2.cancelBubble) {
+      return without_reactive_context(() => {
+        return handler?.call(this, event2);
+      });
+    }
+  }
+  __name(target_handler, "target_handler");
+  if (event_name.startsWith("pointer") || event_name.startsWith("touch") || event_name === "wheel") {
+    queue_micro_task(() => {
+      dom.addEventListener(event_name, target_handler, options);
+    });
+  } else {
+    dom.addEventListener(event_name, target_handler, options);
+  }
+  return target_handler;
+}
+__name(create_event, "create_event");
+function on(element2, type, handler, options = {}) {
+  var target_handler = create_event(type, element2, handler, options);
+  return () => {
+    element2.removeEventListener(type, target_handler, options);
+  };
+}
+__name(on, "on");
+function event(event_name, dom, handler, capture2, passive2) {
+  var options = { capture: capture2, passive: passive2 };
+  var target_handler = create_event(event_name, dom, handler, options);
+  if (dom === document.body || // @ts-ignore
+  dom === window || // @ts-ignore
+  dom === document || // Firefox has quirky behavior, it can happen that we still get "canplay" events when the element is already removed
+  dom instanceof HTMLMediaElement) {
+    teardown(() => {
+      dom.removeEventListener(event_name, target_handler, options);
+    });
+  }
+}
+__name(event, "event");
+function delegate(events) {
+  for (var i = 0; i < events.length; i++) {
+    all_registered_events.add(events[i]);
+  }
+  for (var fn of root_event_handles) {
+    fn(events);
+  }
+}
+__name(delegate, "delegate");
+let last_propagated_event = null;
+function handle_event_propagation(event2) {
+  var handler_element = this;
+  var owner_document = (
+    /** @type {Node} */
+    handler_element.ownerDocument
+  );
+  var event_name = event2.type;
+  var path = event2.composedPath?.() || [];
+  var current_target = (
+    /** @type {null | Element} */
+    path[0] || event2.target
+  );
+  last_propagated_event = event2;
+  var path_idx = 0;
+  var handled_at = last_propagated_event === event2 && event2.__root;
+  if (handled_at) {
+    var at_idx = path.indexOf(handled_at);
+    if (at_idx !== -1 && (handler_element === document || handler_element === /** @type {any} */
+    window)) {
+      event2.__root = handler_element;
+      return;
+    }
+    var handler_idx = path.indexOf(handler_element);
+    if (handler_idx === -1) {
+      return;
+    }
+    if (at_idx <= handler_idx) {
+      path_idx = at_idx;
+    }
+  }
+  current_target = /** @type {Element} */
+  path[path_idx] || event2.target;
+  if (current_target === handler_element) return;
+  define_property(event2, "currentTarget", {
+    configurable: true,
+    get() {
+      return current_target || owner_document;
+    }
+  });
+  var previous_reaction = active_reaction;
+  var previous_effect = active_effect;
+  set_active_reaction(null);
+  set_active_effect(null);
+  try {
+    var throw_error;
+    var other_errors = [];
+    while (current_target !== null) {
+      var parent_element = current_target.assignedSlot || current_target.parentNode || /** @type {any} */
+      current_target.host || null;
+      try {
+        var delegated = current_target["__" + event_name];
+        if (delegated != null && (!/** @type {any} */
+        current_target.disabled || // DOM could've been updated already by the time this is reached, so we check this as well
+        // -> the target could not have been disabled because it emits the event in the first place
+        event2.target === current_target)) {
+          delegated.call(current_target, event2);
+        }
+      } catch (error) {
+        if (throw_error) {
+          other_errors.push(error);
+        } else {
+          throw_error = error;
+        }
+      }
+      if (event2.cancelBubble || parent_element === handler_element || parent_element === null) {
+        break;
+      }
+      current_target = parent_element;
+    }
+    if (throw_error) {
+      for (let error of other_errors) {
+        queueMicrotask(() => {
+          throw error;
+        });
+      }
+      throw throw_error;
+    }
+  } finally {
+    event2.__root = handler_element;
+    delete event2.currentTarget;
+    set_active_reaction(previous_reaction);
+    set_active_effect(previous_effect);
+  }
+}
+__name(handle_event_propagation, "handle_event_propagation");
+function apply(thunk, element2, args2, component2, loc, has_side_effects = false, remove_parens = false) {
+  let handler;
+  let error;
+  try {
+    handler = thunk();
+  } catch (e) {
+    error = e;
+  }
+  if (typeof handler !== "function" && (has_side_effects || handler != null || error)) {
+    const filename = component2?.[FILENAME];
+    const location = loc ? ` at ${filename}:${loc[0]}:${loc[1]}` : ` in ${filename}`;
+    const phase = args2[0]?.eventPhase < Event.BUBBLING_PHASE ? "capture" : "";
+    const event_name = args2[0]?.type + phase;
+    const description2 = `\`${event_name}\` handler${location}`;
+    const suggestion = remove_parens ? "remove the trailing `()`" : "add a leading `() =>`";
+    event_handler_invalid(description2, suggestion);
+    if (error) {
+      throw error;
+    }
+  }
+  handler?.apply(element2, args2);
+}
+__name(apply, "apply");
+function create_fragment_from_html(html2) {
+  var elem = document.createElement("template");
+  elem.innerHTML = html2.replaceAll("<!>", "<!---->");
+  return elem.content;
+}
+__name(create_fragment_from_html, "create_fragment_from_html");
+function assign_nodes(start, end) {
+  var effect2 = (
+    /** @type {Effect} */
+    active_effect
+  );
+  if (effect2.nodes === null) {
+    effect2.nodes = { start, end, a: null, t: null };
+  }
+}
+__name(assign_nodes, "assign_nodes");
+// @__NO_SIDE_EFFECTS__
+function from_html(content, flags2) {
+  var is_fragment = (flags2 & TEMPLATE_FRAGMENT) !== 0;
+  var use_import_node = (flags2 & TEMPLATE_USE_IMPORT_NODE) !== 0;
+  var node;
+  var has_start = !content.startsWith("<!>");
+  return () => {
+    if (hydrating) {
+      assign_nodes(hydrate_node, null);
+      return hydrate_node;
+    }
+    if (node === void 0) {
+      node = create_fragment_from_html(has_start ? content : "<!>" + content);
+      if (!is_fragment) node = /** @type {TemplateNode} */
+      /* @__PURE__ */ get_first_child(node);
+    }
+    var clone2 = (
+      /** @type {TemplateNode} */
+      use_import_node || is_firefox ? document.importNode(node, true) : node.cloneNode(true)
+    );
+    if (is_fragment) {
+      var start = (
+        /** @type {TemplateNode} */
+        /* @__PURE__ */ get_first_child(clone2)
+      );
+      var end = (
+        /** @type {TemplateNode} */
+        clone2.lastChild
+      );
+      assign_nodes(start, end);
+    } else {
+      assign_nodes(clone2, clone2);
+    }
+    return clone2;
+  };
+}
+__name(from_html, "from_html");
+// @__NO_SIDE_EFFECTS__
+function from_namespace(content, flags2, ns = "svg") {
+  var has_start = !content.startsWith("<!>");
+  var is_fragment = (flags2 & TEMPLATE_FRAGMENT) !== 0;
+  var wrapped = `<${ns}>${has_start ? content : "<!>" + content}</${ns}>`;
+  var node;
+  return () => {
+    if (hydrating) {
+      assign_nodes(hydrate_node, null);
+      return hydrate_node;
+    }
+    if (!node) {
+      var fragment = (
+        /** @type {DocumentFragment} */
+        create_fragment_from_html(wrapped)
+      );
+      var root2 = (
+        /** @type {Element} */
+        /* @__PURE__ */ get_first_child(fragment)
+      );
+      if (is_fragment) {
+        node = document.createDocumentFragment();
+        while (/* @__PURE__ */ get_first_child(root2)) {
+          node.appendChild(
+            /** @type {TemplateNode} */
+            /* @__PURE__ */ get_first_child(root2)
+          );
+        }
+      } else {
+        node = /** @type {Element} */
+        /* @__PURE__ */ get_first_child(root2);
+      }
+    }
+    var clone2 = (
+      /** @type {TemplateNode} */
+      node.cloneNode(true)
+    );
+    if (is_fragment) {
+      var start = (
+        /** @type {TemplateNode} */
+        /* @__PURE__ */ get_first_child(clone2)
+      );
+      var end = (
+        /** @type {TemplateNode} */
+        clone2.lastChild
+      );
+      assign_nodes(start, end);
+    } else {
+      assign_nodes(clone2, clone2);
+    }
+    return clone2;
+  };
+}
+__name(from_namespace, "from_namespace");
+// @__NO_SIDE_EFFECTS__
+function from_svg(content, flags2) {
+  return /* @__PURE__ */ from_namespace(content, flags2, "svg");
+}
+__name(from_svg, "from_svg");
+// @__NO_SIDE_EFFECTS__
+function from_mathml(content, flags2) {
+  return /* @__PURE__ */ from_namespace(content, flags2, "math");
+}
+__name(from_mathml, "from_mathml");
+function fragment_from_tree(structure, ns) {
+  var fragment = create_fragment();
+  for (var item of structure) {
+    if (typeof item === "string") {
+      fragment.append(create_text(item));
+      continue;
+    }
+    if (item === void 0 || item[0][0] === "/") {
+      fragment.append(create_comment(item ? item[0].slice(3) : ""));
+      continue;
+    }
+    const [name, attributes, ...children] = item;
+    const namespace = name === "svg" ? NAMESPACE_SVG : name === "math" ? NAMESPACE_MATHML : ns;
+    var element2 = create_element(name, namespace, attributes?.is);
+    for (var key2 in attributes) {
+      set_attribute$1(element2, key2, attributes[key2]);
+    }
+    if (children.length > 0) {
+      var target = element2.tagName === "TEMPLATE" ? (
+        /** @type {HTMLTemplateElement} */
+        element2.content
+      ) : element2;
+      target.append(
+        fragment_from_tree(children, element2.tagName === "foreignObject" ? void 0 : namespace)
+      );
+    }
+    fragment.append(element2);
+  }
+  return fragment;
+}
+__name(fragment_from_tree, "fragment_from_tree");
+// @__NO_SIDE_EFFECTS__
+function from_tree(structure, flags2) {
+  var is_fragment = (flags2 & TEMPLATE_FRAGMENT) !== 0;
+  var use_import_node = (flags2 & TEMPLATE_USE_IMPORT_NODE) !== 0;
+  var node;
+  return () => {
+    if (hydrating) {
+      assign_nodes(hydrate_node, null);
+      return hydrate_node;
+    }
+    if (node === void 0) {
+      const ns = (flags2 & TEMPLATE_USE_SVG) !== 0 ? NAMESPACE_SVG : (flags2 & TEMPLATE_USE_MATHML) !== 0 ? NAMESPACE_MATHML : void 0;
+      node = fragment_from_tree(structure, ns);
+      if (!is_fragment) node = /** @type {TemplateNode} */
+      /* @__PURE__ */ get_first_child(node);
+    }
+    var clone2 = (
+      /** @type {TemplateNode} */
+      use_import_node || is_firefox ? document.importNode(node, true) : node.cloneNode(true)
+    );
+    if (is_fragment) {
+      var start = (
+        /** @type {TemplateNode} */
+        /* @__PURE__ */ get_first_child(clone2)
+      );
+      var end = (
+        /** @type {TemplateNode} */
+        clone2.lastChild
+      );
+      assign_nodes(start, end);
+    } else {
+      assign_nodes(clone2, clone2);
+    }
+    return clone2;
+  };
+}
+__name(from_tree, "from_tree");
+function with_script(fn) {
+  return () => run_scripts(fn());
+}
+__name(with_script, "with_script");
+function run_scripts(node) {
+  if (hydrating) return node;
+  const is_fragment = node.nodeType === DOCUMENT_FRAGMENT_NODE;
+  const scripts = (
+    /** @type {HTMLElement} */
+    node.tagName === "SCRIPT" ? [
+      /** @type {HTMLScriptElement} */
+      node
+    ] : node.querySelectorAll("script")
+  );
+  const effect2 = (
+    /** @type {Effect & { nodes: EffectNodes }} */
+    active_effect
+  );
+  for (const script of scripts) {
+    const clone2 = document.createElement("script");
+    for (var attribute of script.attributes) {
+      clone2.setAttribute(attribute.name, attribute.value);
+    }
+    clone2.textContent = script.textContent;
+    if (is_fragment ? node.firstChild === script : node === script) {
+      effect2.nodes.start = clone2;
+    }
+    if (is_fragment ? node.lastChild === script : node === script) {
+      effect2.nodes.end = clone2;
+    }
+    script.replaceWith(clone2);
+  }
+  return node;
+}
+__name(run_scripts, "run_scripts");
+function text(value2 = "") {
+  if (!hydrating) {
+    var t = create_text(value2 + "");
+    assign_nodes(t, t);
+    return t;
+  }
+  var node = hydrate_node;
+  if (node.nodeType !== TEXT_NODE) {
+    node.before(node = create_text());
+    set_hydrate_node(node);
+  }
+  assign_nodes(node, node);
+  return node;
+}
+__name(text, "text");
+function comment() {
+  if (hydrating) {
+    assign_nodes(hydrate_node, null);
+    return hydrate_node;
+  }
+  var frag = document.createDocumentFragment();
+  var start = document.createComment("");
+  var anchor = create_text();
+  frag.append(start, anchor);
+  assign_nodes(start, anchor);
+  return frag;
+}
+__name(comment, "comment");
+function append(anchor, dom) {
+  if (hydrating) {
+    var effect2 = (
+      /** @type {Effect & { nodes: EffectNodes }} */
+      active_effect
+    );
+    if ((effect2.f & EFFECT_RAN) === 0 || effect2.nodes.end === null) {
+      effect2.nodes.end = hydrate_node;
+    }
+    hydrate_next();
+    return;
+  }
+  if (anchor === null) {
+    return;
+  }
+  anchor.before(
+    /** @type {Node} */
+    dom
+  );
+}
+__name(append, "append");
+function props_id() {
+  var _a2;
+  if (hydrating && hydrate_node && hydrate_node.nodeType === COMMENT_NODE && hydrate_node.textContent?.startsWith(`$`)) {
+    const id = hydrate_node.textContent.substring(1);
+    hydrate_next();
+    return id;
+  }
+  (_a2 = window.__svelte ?? (window.__svelte = {})).uid ?? (_a2.uid = 1);
+  return `c${window.__svelte.uid++}`;
+}
+__name(props_id, "props_id");
+let should_intro = true;
+function set_should_intro(value2) {
+  should_intro = value2;
+}
+__name(set_should_intro, "set_should_intro");
+function set_text(text2, value2) {
+  var str = value2 == null ? "" : typeof value2 === "object" ? value2 + "" : value2;
+  if (str !== (text2.__t ?? (text2.__t = text2.nodeValue))) {
+    text2.__t = str;
+    text2.nodeValue = str + "";
+  }
+}
+__name(set_text, "set_text");
+function mount(component2, options) {
+  return _mount(component2, options);
+}
+__name(mount, "mount");
+function hydrate(component2, options) {
+  init_operations();
+  options.intro = options.intro ?? false;
+  const target = options.target;
+  const was_hydrating = hydrating;
+  const previous_hydrate_node = hydrate_node;
+  try {
+    var anchor = /* @__PURE__ */ get_first_child(target);
+    while (anchor && (anchor.nodeType !== COMMENT_NODE || /** @type {Comment} */
+    anchor.data !== HYDRATION_START)) {
+      anchor = /* @__PURE__ */ get_next_sibling(anchor);
+    }
+    if (!anchor) {
+      throw HYDRATION_ERROR;
+    }
+    set_hydrating(true);
+    set_hydrate_node(
+      /** @type {Comment} */
+      anchor
+    );
+    const instance2 = _mount(component2, { ...options, anchor });
+    set_hydrating(false);
+    return (
+      /**  @type {Exports} */
+      instance2
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message.split("\n").some((line) => line.startsWith("https://svelte.dev/e/"))) {
+      throw error;
+    }
+    if (error !== HYDRATION_ERROR) {
+      console.warn("Failed to hydrate: ", error);
+    }
+    if (options.recover === false) {
+      hydration_failed();
+    }
+    init_operations();
+    clear_text_content(target);
+    set_hydrating(false);
+    return mount(component2, options);
+  } finally {
+    set_hydrating(was_hydrating);
+    set_hydrate_node(previous_hydrate_node);
+  }
+}
+__name(hydrate, "hydrate");
+const document_listeners = /* @__PURE__ */ new Map();
+function _mount(Component, { target, anchor, props = {}, events, context, intro = true }) {
+  init_operations();
+  var registered_events = /* @__PURE__ */ new Set();
+  var event_handle = /* @__PURE__ */ __name((events2) => {
+    for (var i = 0; i < events2.length; i++) {
+      var event_name = events2[i];
+      if (registered_events.has(event_name)) continue;
+      registered_events.add(event_name);
+      var passive2 = is_passive_event(event_name);
+      target.addEventListener(event_name, handle_event_propagation, { passive: passive2 });
+      var n = document_listeners.get(event_name);
+      if (n === void 0) {
+        document.addEventListener(event_name, handle_event_propagation, { passive: passive2 });
+        document_listeners.set(event_name, 1);
+      } else {
+        document_listeners.set(event_name, n + 1);
+      }
+    }
+  }, "event_handle");
+  event_handle(array_from(all_registered_events));
+  root_event_handles.add(event_handle);
+  var component2 = void 0;
+  var unmount2 = component_root(() => {
+    var anchor_node = anchor ?? target.appendChild(create_text());
+    boundary(
+      /** @type {TemplateNode} */
+      anchor_node,
+      {
+        pending: /* @__PURE__ */ __name(() => {
+        }, "pending")
+      },
+      (anchor_node2) => {
+        if (context) {
+          push({});
+          var ctx = (
+            /** @type {ComponentContext} */
+            component_context
+          );
+          ctx.c = context;
+        }
+        if (events) {
+          props.$$events = events;
+        }
+        if (hydrating) {
+          assign_nodes(
+            /** @type {TemplateNode} */
+            anchor_node2,
+            null
+          );
+        }
+        should_intro = intro;
+        component2 = Component(anchor_node2, props) || {};
+        should_intro = true;
+        if (hydrating) {
+          active_effect.nodes.end = hydrate_node;
+          if (hydrate_node === null || hydrate_node.nodeType !== COMMENT_NODE || /** @type {Comment} */
+          hydrate_node.data !== HYDRATION_END) {
+            hydration_mismatch();
+            throw HYDRATION_ERROR;
+          }
+        }
+        if (context) {
+          pop();
+        }
+      }
+    );
+    return () => {
+      for (var event_name of registered_events) {
+        target.removeEventListener(event_name, handle_event_propagation);
+        var n = (
+          /** @type {number} */
+          document_listeners.get(event_name)
+        );
+        if (--n === 0) {
+          document.removeEventListener(event_name, handle_event_propagation);
+          document_listeners.delete(event_name);
+        } else {
+          document_listeners.set(event_name, n);
+        }
+      }
+      root_event_handles.delete(event_handle);
+      if (anchor_node !== anchor) {
+        anchor_node.parentNode?.removeChild(anchor_node);
+      }
+    };
+  });
+  mounted_components.set(component2, unmount2);
+  return component2;
+}
+__name(_mount, "_mount");
+let mounted_components = /* @__PURE__ */ new WeakMap();
+function unmount(component2, options) {
+  const fn = mounted_components.get(component2);
+  if (fn) {
+    mounted_components.delete(component2);
+    return fn(options);
+  }
+  if (DEV) {
+    if (STATE_SYMBOL in component2) {
+      state_proxy_unmount();
+    } else {
+      lifecycle_double_unmount();
+    }
+  }
+  return Promise.resolve();
+}
+__name(unmount, "unmount");
+function hmr(original, get_source) {
+  function wrapper(anchor, props) {
+    let instance2 = {};
+    let effect2;
+    let ran = false;
+    block(() => {
+      const source2 = get_source();
+      const component2 = get$1(source2);
+      if (effect2) {
+        for (var k in instance2) delete instance2[k];
+        destroy_effect(effect2);
+      }
+      effect2 = branch(() => {
+        if (ran) set_should_intro(false);
+        Object.defineProperties(
+          instance2,
+          Object.getOwnPropertyDescriptors(
+            // @ts-expect-error
+            new.target ? new component2(anchor, props) : component2(anchor, props)
+          )
+        );
+        if (ran) set_should_intro(true);
+      });
+    }, EFFECT_TRANSPARENT);
+    ran = true;
+    if (hydrating) {
+      anchor = hydrate_node;
+    }
+    return instance2;
+  }
+  __name(wrapper, "wrapper");
+  wrapper[FILENAME] = original[FILENAME];
+  wrapper[HMR] = {
+    // When we accept an update, we set the original source to the new component
+    original,
+    // The `get_source` parameter reads `wrapper[HMR].source`, but in the `accept`
+    // function we always replace it with `previous[HMR].source`, which in practice
+    // means we only ever update the original
+    source: source(original)
+  };
+  return wrapper;
+}
+__name(hmr, "hmr");
+function create_ownership_validator(props) {
+  const component2 = component_context?.function;
+  const parent = component_context?.p?.function;
+  return {
+    /**
+     * @param {string} prop
+     * @param {any[]} path
+     * @param {any} result
+     * @param {number} line
+     * @param {number} column
+     */
+    mutation: /* @__PURE__ */ __name((prop2, path, result, line, column) => {
+      const name = path[0];
+      if (is_bound_or_unset(props, name) || !parent) {
+        return result;
+      }
+      let value2 = props;
+      for (let i = 0; i < path.length - 1; i++) {
+        value2 = value2[path[i]];
+        if (!value2?.[STATE_SYMBOL]) {
+          return result;
+        }
+      }
+      const location = sanitize_location(`${component2[FILENAME]}:${line}:${column}`);
+      ownership_invalid_mutation(name, location, prop2, parent[FILENAME]);
+      return result;
+    }, "mutation"),
+    /**
+     * @param {any} key
+     * @param {any} child_component
+     * @param {() => any} value
+     */
+    binding: /* @__PURE__ */ __name((key2, child_component, value2) => {
+      if (!is_bound_or_unset(props, key2) && parent && value2()?.[STATE_SYMBOL]) {
+        ownership_invalid_binding(
+          component2[FILENAME],
+          key2,
+          child_component[FILENAME],
+          parent[FILENAME]
+        );
+      }
+    }, "binding")
+  };
+}
+__name(create_ownership_validator, "create_ownership_validator");
+function is_bound_or_unset(props, prop_name) {
+  const is_entry_props = STATE_SYMBOL in props || LEGACY_PROPS in props;
+  return !!get_descriptor(props, prop_name)?.set || is_entry_props && prop_name in props || !(prop_name in props);
+}
+__name(is_bound_or_unset, "is_bound_or_unset");
+function check_target(target) {
+  if (target) {
+    component_api_invalid_new(target[FILENAME] ?? "a component", target.name);
+  }
+}
+__name(check_target, "check_target");
+function legacy_api() {
+  const component2 = component_context?.function;
+  function error(method) {
+    component_api_changed(method, component2[FILENAME]);
+  }
+  __name(error, "error");
+  return {
+    $destroy: /* @__PURE__ */ __name(() => error("$destroy()"), "$destroy"),
+    $on: /* @__PURE__ */ __name(() => error("$on(...)"), "$on"),
+    $set: /* @__PURE__ */ __name(() => error("$set(...)"), "$set")
+  };
+}
+__name(legacy_api, "legacy_api");
+function inspect(get_value, inspector, show_stack = false) {
+  validate_effect("$inspect");
+  let initial = true;
+  let error = (
+    /** @type {any} */
+    UNINITIALIZED
+  );
+  eager_effect(() => {
+    try {
+      var value2 = get_value();
+    } catch (e) {
+      error = e;
+      return;
+    }
+    var snap = snapshot(value2, true, true);
+    untrack(() => {
+      if (show_stack) {
+        inspector(...snap);
+        if (!initial) {
+          const stack2 = get_error("$inspect(...)");
+          if (stack2) {
+            console.groupCollapsed("stack trace");
+            console.log(stack2);
+            console.groupEnd();
+          }
+        }
+      } else {
+        inspector(initial ? "init" : "update", ...snap);
+      }
+    });
+    initial = false;
+  });
+  render_effect(() => {
+    try {
+      get_value();
+    } catch {
+    }
+    if (error !== UNINITIALIZED) {
+      console.error(error);
+      error = UNINITIALIZED;
+    }
+  });
+}
+__name(inspect, "inspect");
+function async(node, blockers = [], expressions = [], fn) {
+  var boundary2 = get_boundary();
+  var batch = (
+    /** @type {Batch} */
+    current_batch
+  );
+  var blocking = !boundary2.is_pending();
+  boundary2.update_pending_count(1);
+  batch.increment(blocking);
+  var was_hydrating = hydrating;
+  if (was_hydrating) {
+    hydrate_next();
+    var previous_hydrate_node = hydrate_node;
+    var end = skip_nodes(false);
+    set_hydrate_node(end);
+  }
+  flatten(blockers, [], expressions, (values2) => {
+    if (was_hydrating) {
+      set_hydrating(true);
+      set_hydrate_node(previous_hydrate_node);
+    }
+    try {
+      for (const d of values2) get$1(d);
+      fn(node, ...values2);
+    } finally {
+      if (was_hydrating) {
+        set_hydrating(false);
+      }
+      boundary2.update_pending_count(-1);
+      batch.decrement(blocking);
+    }
+  });
+}
+__name(async, "async");
+function validate_snippet_args(anchor, ...args2) {
+  if (typeof anchor !== "object" || !(anchor instanceof Node)) {
+    invalid_snippet_arguments();
+  }
+  for (let arg of args2) {
+    if (typeof arg !== "function") {
+      invalid_snippet_arguments();
+    }
+  }
+}
+__name(validate_snippet_args, "validate_snippet_args");
+const _BranchManager = class _BranchManager {
+  /**
+   * @param {TemplateNode} anchor
+   * @param {boolean} transition
+   */
+  constructor(anchor, transition2 = true) {
+    /** @type {TemplateNode} */
+    __publicField(this, "anchor");
+    /** @type {Map<Batch, Key>} */
+    __privateAdd(this, _batches, /* @__PURE__ */ new Map());
+    /**
+     * Map of keys to effects that are currently rendered in the DOM.
+     * These effects are visible and actively part of the document tree.
+     * Example:
+     * ```
+     * {#if condition}
+     * 	foo
+     * {:else}
+     * 	bar
+     * {/if}
+     * ```
+     * Can result in the entries `true->Effect` and `false->Effect`
+     * @type {Map<Key, Effect>}
+     */
+    __privateAdd(this, _onscreen, /* @__PURE__ */ new Map());
+    /**
+     * Similar to #onscreen with respect to the keys, but contains branches that are not yet
+     * in the DOM, because their insertion is deferred.
+     * @type {Map<Key, Branch>}
+     */
+    __privateAdd(this, _offscreen, /* @__PURE__ */ new Map());
+    /**
+     * Keys of effects that are currently outroing
+     * @type {Set<Key>}
+     */
+    __privateAdd(this, _outroing, /* @__PURE__ */ new Set());
+    /**
+     * Whether to pause (i.e. outro) on change, or destroy immediately.
+     * This is necessary for `<svelte:element>`
+     */
+    __privateAdd(this, _transition, true);
+    __privateAdd(this, _commit, /* @__PURE__ */ __name(() => {
+      var batch = (
+        /** @type {Batch} */
+        current_batch
+      );
+      if (!__privateGet(this, _batches).has(batch)) return;
+      var key2 = (
+        /** @type {Key} */
+        __privateGet(this, _batches).get(batch)
+      );
+      var onscreen = __privateGet(this, _onscreen).get(key2);
+      if (onscreen) {
+        resume_effect(onscreen);
+        __privateGet(this, _outroing).delete(key2);
+      } else {
+        var offscreen = __privateGet(this, _offscreen).get(key2);
+        if (offscreen) {
+          __privateGet(this, _onscreen).set(key2, offscreen.effect);
+          __privateGet(this, _offscreen).delete(key2);
+          offscreen.fragment.lastChild.remove();
+          this.anchor.before(offscreen.fragment);
+          onscreen = offscreen.effect;
+        }
+      }
+      for (const [b, k] of __privateGet(this, _batches)) {
+        __privateGet(this, _batches).delete(b);
+        if (b === batch) {
+          break;
+        }
+        const offscreen2 = __privateGet(this, _offscreen).get(k);
+        if (offscreen2) {
+          destroy_effect(offscreen2.effect);
+          __privateGet(this, _offscreen).delete(k);
+        }
+      }
+      for (const [k, effect2] of __privateGet(this, _onscreen)) {
+        if (k === key2 || __privateGet(this, _outroing).has(k)) continue;
+        const on_destroy = /* @__PURE__ */ __name(() => {
+          const keys = Array.from(__privateGet(this, _batches).values());
+          if (keys.includes(k)) {
+            var fragment = document.createDocumentFragment();
+            move_effect(effect2, fragment);
+            fragment.append(create_text());
+            __privateGet(this, _offscreen).set(k, { effect: effect2, fragment });
+          } else {
+            destroy_effect(effect2);
+          }
+          __privateGet(this, _outroing).delete(k);
+          __privateGet(this, _onscreen).delete(k);
+        }, "on_destroy");
+        if (__privateGet(this, _transition) || !onscreen) {
+          __privateGet(this, _outroing).add(k);
+          pause_effect(effect2, on_destroy, false);
+        } else {
+          on_destroy();
+        }
+      }
+    }, "#commit"));
+    /**
+     * @param {Batch} batch
+     */
+    __privateAdd(this, _discard, /* @__PURE__ */ __name((batch) => {
+      __privateGet(this, _batches).delete(batch);
+      const keys = Array.from(__privateGet(this, _batches).values());
+      for (const [k, branch2] of __privateGet(this, _offscreen)) {
+        if (!keys.includes(k)) {
+          destroy_effect(branch2.effect);
+          __privateGet(this, _offscreen).delete(k);
+        }
+      }
+    }, "#discard"));
+    this.anchor = anchor;
+    __privateSet(this, _transition, transition2);
+  }
+  /**
+   *
+   * @param {any} key
+   * @param {null | ((target: TemplateNode) => void)} fn
+   */
+  ensure(key2, fn) {
+    var batch = (
+      /** @type {Batch} */
+      current_batch
+    );
+    var defer = should_defer_append();
+    if (fn && !__privateGet(this, _onscreen).has(key2) && !__privateGet(this, _offscreen).has(key2)) {
+      if (defer) {
+        var fragment = document.createDocumentFragment();
+        var target = create_text();
+        fragment.append(target);
+        __privateGet(this, _offscreen).set(key2, {
+          effect: branch(() => fn(target)),
+          fragment
+        });
+      } else {
+        __privateGet(this, _onscreen).set(
+          key2,
+          branch(() => fn(this.anchor))
+        );
+      }
+    }
+    __privateGet(this, _batches).set(batch, key2);
+    if (defer) {
+      for (const [k, effect2] of __privateGet(this, _onscreen)) {
+        if (k === key2) {
+          batch.skipped_effects.delete(effect2);
+        } else {
+          batch.skipped_effects.add(effect2);
+        }
+      }
+      for (const [k, branch2] of __privateGet(this, _offscreen)) {
+        if (k === key2) {
+          batch.skipped_effects.delete(branch2.effect);
+        } else {
+          batch.skipped_effects.add(branch2.effect);
+        }
+      }
+      batch.oncommit(__privateGet(this, _commit));
+      batch.ondiscard(__privateGet(this, _discard));
+    } else {
+      if (hydrating) {
+        this.anchor = hydrate_node;
+      }
+      __privateGet(this, _commit).call(this);
+    }
+  }
+};
+_batches = new WeakMap();
+_onscreen = new WeakMap();
+_offscreen = new WeakMap();
+_outroing = new WeakMap();
+_transition = new WeakMap();
+_commit = new WeakMap();
+_discard = new WeakMap();
+__name(_BranchManager, "BranchManager");
+let BranchManager = _BranchManager;
+const PENDING = 0;
+const THEN = 1;
+const CATCH = 2;
+function await_block(node, get_input, pending_fn, then_fn, catch_fn) {
+  if (hydrating) {
+    hydrate_next();
+  }
+  var runes = is_runes();
+  var v = (
+    /** @type {V} */
+    UNINITIALIZED
+  );
+  var value2 = runes ? source(v) : /* @__PURE__ */ mutable_source(v, false, false);
+  var error = runes ? source(v) : /* @__PURE__ */ mutable_source(v, false, false);
+  var branches = new BranchManager(node);
+  block(() => {
+    var input = get_input();
+    var destroyed = false;
+    let mismatch = hydrating && is_promise(input) === (node.data === HYDRATION_START_ELSE);
+    if (mismatch) {
+      set_hydrate_node(skip_nodes());
+      set_hydrating(false);
+    }
+    if (is_promise(input)) {
+      var restore = capture();
+      var resolved = false;
+      const resolve = /* @__PURE__ */ __name((fn) => {
+        if (destroyed) return;
+        resolved = true;
+        restore(false);
+        Batch.ensure();
+        if (hydrating) {
+          set_hydrating(false);
+        }
+        try {
+          fn();
+        } finally {
+          unset_context();
+          if (!is_flushing_sync) flushSync();
+        }
+      }, "resolve");
+      input.then(
+        (v2) => {
+          resolve(() => {
+            internal_set(value2, v2);
+            branches.ensure(THEN, then_fn && ((target) => then_fn(target, value2)));
+          });
+        },
+        (e) => {
+          resolve(() => {
+            internal_set(error, e);
+            branches.ensure(THEN, catch_fn && ((target) => catch_fn(target, error)));
+            if (!catch_fn) {
+              throw error.v;
+            }
+          });
+        }
+      );
+      if (hydrating) {
+        branches.ensure(PENDING, pending_fn);
+      } else {
+        queue_micro_task(() => {
+          if (!resolved) {
+            resolve(() => {
+              branches.ensure(PENDING, pending_fn);
+            });
+          }
+        });
+      }
+    } else {
+      internal_set(value2, input);
+      branches.ensure(THEN, then_fn && ((target) => then_fn(target, value2)));
+    }
+    if (mismatch) {
+      set_hydrating(true);
+    }
+    return () => {
+      destroyed = true;
+    };
+  });
+}
+__name(await_block, "await_block");
+function if_block(node, fn, elseif = false) {
+  if (hydrating) {
+    hydrate_next();
+  }
+  var branches = new BranchManager(node);
+  var flags2 = elseif ? EFFECT_TRANSPARENT : 0;
+  function update_branch(condition, fn2) {
+    if (hydrating) {
+      const is_else = read_hydration_instruction(node) === HYDRATION_START_ELSE;
+      if (condition === is_else) {
+        var anchor = skip_nodes();
+        set_hydrate_node(anchor);
+        branches.anchor = anchor;
+        set_hydrating(false);
+        branches.ensure(condition, fn2);
+        set_hydrating(true);
+        return;
+      }
+    }
+    branches.ensure(condition, fn2);
+  }
+  __name(update_branch, "update_branch");
+  block(() => {
+    var has_branch = false;
+    fn((fn2, flag = true) => {
+      has_branch = true;
+      update_branch(flag, fn2);
+    });
+    if (!has_branch) {
+      update_branch(false, null);
+    }
+  }, flags2);
+}
+__name(if_block, "if_block");
+function key(node, get_key, render_fn) {
+  if (hydrating) {
+    hydrate_next();
+  }
+  var branches = new BranchManager(node);
+  var legacy = !is_runes();
+  block(() => {
+    var key2 = get_key();
+    if (legacy && key2 !== null && typeof key2 === "object") {
+      key2 = /** @type {V} */
+      {};
+    }
+    branches.ensure(key2, render_fn);
+  });
+}
+__name(key, "key");
+function css_props(element2, get_styles) {
+  if (hydrating) {
+    set_hydrate_node(/* @__PURE__ */ get_first_child(element2));
+  }
+  render_effect(() => {
+    var styles = get_styles();
+    for (var key2 in styles) {
+      var value2 = styles[key2];
+      if (value2) {
+        element2.style.setProperty(key2, value2);
+      } else {
+        element2.style.removeProperty(key2);
+      }
+    }
+  });
+}
+__name(css_props, "css_props");
+function index(_, i) {
+  return i;
+}
+__name(index, "index");
+function pause_effects(state2, to_destroy, controlled_anchor) {
+  var transitions = [];
+  var length2 = to_destroy.length;
+  var group;
+  var remaining = to_destroy.length;
+  for (var i = 0; i < length2; i++) {
+    let effect2 = to_destroy[i];
+    pause_effect(
+      effect2,
+      () => {
+        if (group) {
+          group.pending.delete(effect2);
+          group.done.add(effect2);
+          if (group.pending.size === 0) {
+            var groups = (
+              /** @type {Set<EachOutroGroup>} */
+              state2.outrogroups
+            );
+            destroy_effects(array_from(group.done));
+            groups.delete(group);
+            if (groups.size === 0) {
+              state2.outrogroups = null;
+            }
+          }
+        } else {
+          remaining -= 1;
+        }
+      },
+      false
+    );
+  }
+  if (remaining === 0) {
+    var fast_path = transitions.length === 0 && controlled_anchor !== null;
+    if (fast_path) {
+      var anchor = (
+        /** @type {Element} */
+        controlled_anchor
+      );
+      var parent_node = (
+        /** @type {Element} */
+        anchor.parentNode
+      );
+      clear_text_content(parent_node);
+      parent_node.append(anchor);
+      state2.items.clear();
+    }
+    destroy_effects(to_destroy, !fast_path);
+  } else {
+    group = {
+      pending: new Set(to_destroy),
+      done: /* @__PURE__ */ new Set()
+    };
+    (state2.outrogroups ?? (state2.outrogroups = /* @__PURE__ */ new Set())).add(group);
+  }
+}
+__name(pause_effects, "pause_effects");
+function destroy_effects(to_destroy, remove_dom = true) {
+  for (var i = 0; i < to_destroy.length; i++) {
+    destroy_effect(to_destroy[i], remove_dom);
+  }
+}
+__name(destroy_effects, "destroy_effects");
+var offscreen_anchor;
+function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = null) {
+  var anchor = node;
+  var items = /* @__PURE__ */ new Map();
+  var is_controlled = (flags2 & EACH_IS_CONTROLLED) !== 0;
+  if (is_controlled) {
+    var parent_node = (
+      /** @type {Element} */
+      node
+    );
+    anchor = hydrating ? set_hydrate_node(/* @__PURE__ */ get_first_child(parent_node)) : parent_node.appendChild(create_text());
+  }
+  if (hydrating) {
+    hydrate_next();
+  }
+  var fallback2 = null;
+  var each_array = /* @__PURE__ */ derived_safe_equal(() => {
+    var collection = get_collection();
+    return is_array(collection) ? collection : collection == null ? [] : array_from(collection);
+  });
+  var array2;
+  var first_run = true;
+  function commit() {
+    state2.fallback = fallback2;
+    reconcile(state2, array2, anchor, flags2, get_key);
+    if (fallback2 !== null) {
+      if (array2.length === 0) {
+        if ((fallback2.f & EFFECT_OFFSCREEN) === 0) {
+          resume_effect(fallback2);
+        } else {
+          fallback2.f ^= EFFECT_OFFSCREEN;
+          move(fallback2, null, anchor);
+        }
+      } else {
+        pause_effect(fallback2, () => {
+          fallback2 = null;
+        });
+      }
+    }
+  }
+  __name(commit, "commit");
+  var effect2 = block(() => {
+    array2 = /** @type {V[]} */
+    get$1(each_array);
+    var length2 = array2.length;
+    let mismatch = false;
+    if (hydrating) {
+      var is_else = read_hydration_instruction(anchor) === HYDRATION_START_ELSE;
+      if (is_else !== (length2 === 0)) {
+        anchor = skip_nodes();
+        set_hydrate_node(anchor);
+        set_hydrating(false);
+        mismatch = true;
+      }
+    }
+    var keys = /* @__PURE__ */ new Set();
+    var batch = (
+      /** @type {Batch} */
+      current_batch
+    );
+    var defer = should_defer_append();
+    for (var index2 = 0; index2 < length2; index2 += 1) {
+      if (hydrating && hydrate_node.nodeType === COMMENT_NODE && /** @type {Comment} */
+      hydrate_node.data === HYDRATION_END) {
+        anchor = /** @type {Comment} */
+        hydrate_node;
+        mismatch = true;
+        set_hydrating(false);
+      }
+      var value2 = array2[index2];
+      var key2 = get_key(value2, index2);
+      var item = first_run ? null : items.get(key2);
+      if (item) {
+        if (item.v) internal_set(item.v, value2);
+        if (item.i) internal_set(item.i, index2);
+        if (defer) {
+          batch.skipped_effects.delete(item.e);
+        }
+      } else {
+        item = create_item(
+          items,
+          first_run ? anchor : offscreen_anchor ?? (offscreen_anchor = create_text()),
+          value2,
+          key2,
+          index2,
+          render_fn,
+          flags2,
+          get_collection
+        );
+        if (!first_run) {
+          item.e.f |= EFFECT_OFFSCREEN;
+        }
+        items.set(key2, item);
+      }
+      keys.add(key2);
+    }
+    if (length2 === 0 && fallback_fn && !fallback2) {
+      if (first_run) {
+        fallback2 = branch(() => fallback_fn(anchor));
+      } else {
+        fallback2 = branch(() => fallback_fn(offscreen_anchor ?? (offscreen_anchor = create_text())));
+        fallback2.f |= EFFECT_OFFSCREEN;
+      }
+    }
+    if (hydrating && length2 > 0) {
+      set_hydrate_node(skip_nodes());
+    }
+    if (!first_run) {
+      if (defer) {
+        for (const [key3, item2] of items) {
+          if (!keys.has(key3)) {
+            batch.skipped_effects.add(item2.e);
+          }
+        }
+        batch.oncommit(commit);
+        batch.ondiscard(() => {
+        });
+      } else {
+        commit();
+      }
+    }
+    if (mismatch) {
+      set_hydrating(true);
+    }
+    get$1(each_array);
+  });
+  var state2 = { effect: effect2, flags: flags2, items, outrogroups: null, fallback: fallback2 };
+  first_run = false;
+  if (hydrating) {
+    anchor = hydrate_node;
+  }
+}
+__name(each, "each");
+function reconcile(state2, array2, anchor, flags2, get_key) {
+  var is_animated = (flags2 & EACH_IS_ANIMATED) !== 0;
+  var length2 = array2.length;
+  var items = state2.items;
+  var current = state2.effect.first;
+  var seen;
+  var prev = null;
+  var to_animate;
+  var matched = [];
+  var stashed = [];
+  var value2;
+  var key2;
+  var effect2;
+  var i;
+  if (is_animated) {
+    for (i = 0; i < length2; i += 1) {
+      value2 = array2[i];
+      key2 = get_key(value2, i);
+      effect2 = /** @type {EachItem} */
+      items.get(key2).e;
+      if ((effect2.f & EFFECT_OFFSCREEN) === 0) {
+        effect2.nodes?.a?.measure();
+        (to_animate ?? (to_animate = /* @__PURE__ */ new Set())).add(effect2);
+      }
+    }
+  }
+  for (i = 0; i < length2; i += 1) {
+    value2 = array2[i];
+    key2 = get_key(value2, i);
+    effect2 = /** @type {EachItem} */
+    items.get(key2).e;
+    if (state2.outrogroups !== null) {
+      for (const group of state2.outrogroups) {
+        group.pending.delete(effect2);
+        group.done.delete(effect2);
+      }
+    }
+    if ((effect2.f & EFFECT_OFFSCREEN) !== 0) {
+      effect2.f ^= EFFECT_OFFSCREEN;
+      if (effect2 === current) {
+        move(effect2, null, anchor);
+      } else {
+        var next2 = prev ? prev.next : current;
+        if (effect2 === state2.effect.last) {
+          state2.effect.last = effect2.prev;
+        }
+        if (effect2.prev) effect2.prev.next = effect2.next;
+        if (effect2.next) effect2.next.prev = effect2.prev;
+        link(state2, prev, effect2);
+        link(state2, effect2, next2);
+        move(effect2, next2, anchor);
+        prev = effect2;
+        matched = [];
+        stashed = [];
+        current = prev.next;
+        continue;
+      }
+    }
+    if ((effect2.f & INERT) !== 0) {
+      resume_effect(effect2);
+      if (is_animated) {
+        effect2.nodes?.a?.unfix();
+        (to_animate ?? (to_animate = /* @__PURE__ */ new Set())).delete(effect2);
+      }
+    }
+    if (effect2 !== current) {
+      if (seen !== void 0 && seen.has(effect2)) {
+        if (matched.length < stashed.length) {
+          var start = stashed[0];
+          var j;
+          prev = start.prev;
+          var a = matched[0];
+          var b = matched[matched.length - 1];
+          for (j = 0; j < matched.length; j += 1) {
+            move(matched[j], start, anchor);
+          }
+          for (j = 0; j < stashed.length; j += 1) {
+            seen.delete(stashed[j]);
+          }
+          link(state2, a.prev, b.next);
+          link(state2, prev, a);
+          link(state2, b, start);
+          current = start;
+          prev = b;
+          i -= 1;
+          matched = [];
+          stashed = [];
+        } else {
+          seen.delete(effect2);
+          move(effect2, current, anchor);
+          link(state2, effect2.prev, effect2.next);
+          link(state2, effect2, prev === null ? state2.effect.first : prev.next);
+          link(state2, prev, effect2);
+          prev = effect2;
+        }
+        continue;
+      }
+      matched = [];
+      stashed = [];
+      while (current !== null && current !== effect2) {
+        (seen ?? (seen = /* @__PURE__ */ new Set())).add(current);
+        stashed.push(current);
+        current = current.next;
+      }
+      if (current === null) {
+        continue;
+      }
+    }
+    if ((effect2.f & EFFECT_OFFSCREEN) === 0) {
+      matched.push(effect2);
+    }
+    prev = effect2;
+    current = effect2.next;
+  }
+  if (state2.outrogroups !== null) {
+    for (const group of state2.outrogroups) {
+      if (group.pending.size === 0) {
+        destroy_effects(array_from(group.done));
+        state2.outrogroups?.delete(group);
+      }
+    }
+    if (state2.outrogroups.size === 0) {
+      state2.outrogroups = null;
+    }
+  }
+  if (current !== null || seen !== void 0) {
+    var to_destroy = [];
+    if (seen !== void 0) {
+      for (effect2 of seen) {
+        if ((effect2.f & INERT) === 0) {
+          to_destroy.push(effect2);
+        }
+      }
+    }
+    while (current !== null) {
+      if ((current.f & INERT) === 0 && current !== state2.fallback) {
+        to_destroy.push(current);
+      }
+      current = current.next;
+    }
+    var destroy_length = to_destroy.length;
+    if (destroy_length > 0) {
+      var controlled_anchor = (flags2 & EACH_IS_CONTROLLED) !== 0 && length2 === 0 ? anchor : null;
+      if (is_animated) {
+        for (i = 0; i < destroy_length; i += 1) {
+          to_destroy[i].nodes?.a?.measure();
+        }
+        for (i = 0; i < destroy_length; i += 1) {
+          to_destroy[i].nodes?.a?.fix();
+        }
+      }
+      pause_effects(state2, to_destroy, controlled_anchor);
+    }
+  }
+  if (is_animated) {
+    queue_micro_task(() => {
+      if (to_animate === void 0) return;
+      for (effect2 of to_animate) {
+        effect2.nodes?.a?.apply();
+      }
+    });
+  }
+}
+__name(reconcile, "reconcile");
+function create_item(items, anchor, value2, key2, index2, render_fn, flags2, get_collection) {
+  var v = (flags2 & EACH_ITEM_REACTIVE) !== 0 ? (flags2 & EACH_ITEM_IMMUTABLE) === 0 ? /* @__PURE__ */ mutable_source(value2, false, false) : source(value2) : null;
+  var i = (flags2 & EACH_INDEX_REACTIVE) !== 0 ? source(index2) : null;
+  if (DEV && v) {
+    v.trace = () => {
+      get_collection()[i?.v ?? index2];
+    };
+  }
+  return {
+    v,
+    i,
+    e: branch(() => {
+      render_fn(anchor, v ?? value2, i ?? index2, get_collection);
+      return () => {
+        items.delete(key2);
+      };
+    })
+  };
+}
+__name(create_item, "create_item");
+function move(effect2, next2, anchor) {
+  if (!effect2.nodes) return;
+  var node = effect2.nodes.start;
+  var end = effect2.nodes.end;
+  var dest = next2 && (next2.f & EFFECT_OFFSCREEN) === 0 ? (
+    /** @type {EffectNodes} */
+    next2.nodes.start
+  ) : anchor;
+  while (node !== null) {
+    var next_node = (
+      /** @type {TemplateNode} */
+      /* @__PURE__ */ get_next_sibling(node)
+    );
+    dest.before(node);
+    if (node === end) {
+      return;
+    }
+    node = next_node;
+  }
+}
+__name(move, "move");
+function link(state2, prev, next2) {
+  if (prev === null) {
+    state2.effect.first = next2;
+  } else {
+    prev.next = next2;
+  }
+  if (next2 === null) {
+    state2.effect.last = prev;
+  } else {
+    next2.prev = prev;
+  }
+}
+__name(link, "link");
+function check_hash(element2, server_hash, value2) {
+  if (!server_hash || server_hash === hash(String(value2 ?? ""))) return;
+  let location;
+  const loc = element2.__svelte_meta?.loc;
+  if (loc) {
+    location = `near ${loc.file}:${loc.line}:${loc.column}`;
+  } else if (dev_current_component_function?.[FILENAME]) {
+    location = `in ${dev_current_component_function[FILENAME]}`;
+  }
+  hydration_html_changed(sanitize_location(location));
+}
+__name(check_hash, "check_hash");
+function html(node, get_value, svg = false, mathml = false, skip_warning = false) {
+  var anchor = node;
+  var value2 = "";
+  template_effect(() => {
+    var effect2 = (
+      /** @type {Effect} */
+      active_effect
+    );
+    if (value2 === (value2 = get_value() ?? "")) {
+      if (hydrating) hydrate_next();
+      return;
+    }
+    if (effect2.nodes !== null) {
+      remove_effect_dom(
+        effect2.nodes.start,
+        /** @type {TemplateNode} */
+        effect2.nodes.end
+      );
+      effect2.nodes = null;
+    }
+    if (value2 === "") return;
+    if (hydrating) {
+      var hash2 = (
+        /** @type {Comment} */
+        hydrate_node.data
+      );
+      var next2 = hydrate_next();
+      var last = next2;
+      while (next2 !== null && (next2.nodeType !== COMMENT_NODE || /** @type {Comment} */
+      next2.data !== "")) {
+        last = next2;
+        next2 = /* @__PURE__ */ get_next_sibling(next2);
+      }
+      if (next2 === null) {
+        hydration_mismatch();
+        throw HYDRATION_ERROR;
+      }
+      if (DEV && !skip_warning) {
+        check_hash(
+          /** @type {Element} */
+          next2.parentNode,
+          hash2,
+          value2
+        );
+      }
+      assign_nodes(hydrate_node, last);
+      anchor = set_hydrate_node(next2);
+      return;
+    }
+    var html2 = value2 + "";
+    if (svg) html2 = `<svg>${html2}</svg>`;
+    else if (mathml) html2 = `<math>${html2}</math>`;
+    var node2 = create_fragment_from_html(html2);
+    if (svg || mathml) {
+      node2 = /** @type {Element} */
+      /* @__PURE__ */ get_first_child(node2);
+    }
+    assign_nodes(
+      /** @type {TemplateNode} */
+      /* @__PURE__ */ get_first_child(node2),
+      /** @type {TemplateNode} */
+      node2.lastChild
+    );
+    if (svg || mathml) {
+      while (/* @__PURE__ */ get_first_child(node2)) {
+        anchor.before(
+          /** @type {TemplateNode} */
+          /* @__PURE__ */ get_first_child(node2)
+        );
+      }
+    } else {
+      anchor.before(node2);
+    }
+  });
+}
+__name(html, "html");
+function slot(anchor, $$props, name, slot_props, fallback_fn) {
+  if (hydrating) {
+    hydrate_next();
+  }
+  var slot_fn = $$props.$$slots?.[name];
+  var is_interop = false;
+  if (slot_fn === true) {
+    slot_fn = $$props[name === "default" ? "children" : name];
+    is_interop = true;
+  }
+  if (slot_fn === void 0) {
+    if (fallback_fn !== null) {
+      fallback_fn(anchor);
+    }
+  } else {
+    slot_fn(anchor, is_interop ? () => slot_props : slot_props);
+  }
+}
+__name(slot, "slot");
+function sanitize_slots(props) {
+  const sanitized = {};
+  if (props.children) sanitized.default = true;
+  for (const key2 in props.$$slots) {
+    sanitized[key2] = true;
+  }
+  return sanitized;
+}
+__name(sanitize_slots, "sanitize_slots");
+function validate_void_dynamic_element(tag_fn) {
+  const tag2 = tag_fn();
+  if (tag2 && is_void(tag2)) {
+    dynamic_void_element_content(tag2);
+  }
+}
+__name(validate_void_dynamic_element, "validate_void_dynamic_element");
+function validate_dynamic_element_tag(tag_fn) {
+  const tag2 = tag_fn();
+  const is_string = typeof tag2 === "string";
+  if (tag2 && !is_string) {
+    svelte_element_invalid_this_value();
+  }
+}
+__name(validate_dynamic_element_tag, "validate_dynamic_element_tag");
+function validate_store(store2, name) {
+  if (store2 != null && typeof store2.subscribe !== "function") {
+    store_invalid_shape(name);
+  }
+}
+__name(validate_store, "validate_store");
+function prevent_snippet_stringification(fn) {
+  fn.toString = () => {
+    snippet_without_render_tag();
+    return "";
+  };
+  return fn;
+}
+__name(prevent_snippet_stringification, "prevent_snippet_stringification");
+function snippet(node, get_snippet, ...args2) {
+  var branches = new BranchManager(node);
+  block(() => {
+    const snippet2 = get_snippet() ?? null;
+    if (DEV && snippet2 == null) {
+      invalid_snippet();
+    }
+    branches.ensure(snippet2, snippet2 && ((anchor) => snippet2(anchor, ...args2)));
+  }, EFFECT_TRANSPARENT);
+}
+__name(snippet, "snippet");
+function wrap_snippet(component2, fn) {
+  const snippet2 = /* @__PURE__ */ __name((node, ...args2) => {
+    var previous_component_function = dev_current_component_function;
+    set_dev_current_component_function(component2);
+    try {
+      return fn(node, ...args2);
+    } finally {
+      set_dev_current_component_function(previous_component_function);
+    }
+  }, "snippet");
+  prevent_snippet_stringification(snippet2);
+  return snippet2;
+}
+__name(wrap_snippet, "wrap_snippet");
+function createRawSnippet(fn) {
+  return (anchor, ...params) => {
+    var snippet2 = fn(...params);
+    var element2;
+    if (hydrating) {
+      element2 = /** @type {Element} */
+      hydrate_node;
+      hydrate_next();
+    } else {
+      var html2 = snippet2.render().trim();
+      var fragment = create_fragment_from_html(html2);
+      element2 = /** @type {Element} */
+      /* @__PURE__ */ get_first_child(fragment);
+      if (DEV && (/* @__PURE__ */ get_next_sibling(element2) !== null || element2.nodeType !== ELEMENT_NODE)) {
+        invalid_raw_snippet_render();
+      }
+      anchor.before(element2);
+    }
+    const result = snippet2.setup?.(element2);
+    assign_nodes(element2, element2);
+    if (typeof result === "function") {
+      teardown(result);
+    }
+  };
+}
+__name(createRawSnippet, "createRawSnippet");
+function component(node, get_component, render_fn) {
+  if (hydrating) {
+    hydrate_next();
+  }
+  var branches = new BranchManager(node);
+  block(() => {
+    var component2 = get_component() ?? null;
+    branches.ensure(component2, component2 && ((target) => render_fn(target, component2)));
+  }, EFFECT_TRANSPARENT);
+}
+__name(component, "component");
+const now = BROWSER ? () => performance.now() : () => Date.now();
+const raf = {
+  // don't access requestAnimationFrame eagerly outside method
+  // this allows basic testing of user code without JSDOM
+  // bunder will eval and remove ternary when the user's app is built
+  tick: (
+    /** @param {any} _ */
+    /* @__PURE__ */ __name((_) => (BROWSER ? requestAnimationFrame : noop)(_), "tick")
+  ),
+  now: /* @__PURE__ */ __name(() => now(), "now"),
+  tasks: /* @__PURE__ */ new Set()
+};
+function run_tasks() {
+  const now2 = raf.now();
+  raf.tasks.forEach((task) => {
+    if (!task.c(now2)) {
+      raf.tasks.delete(task);
+      task.f();
+    }
+  });
+  if (raf.tasks.size !== 0) {
+    raf.tick(run_tasks);
+  }
+}
+__name(run_tasks, "run_tasks");
+function loop(callback) {
+  let task;
+  if (raf.tasks.size === 0) {
+    raf.tick(run_tasks);
+  }
+  return {
+    promise: new Promise((fulfill) => {
+      raf.tasks.add(task = { c: callback, f: fulfill });
+    }),
+    abort() {
+      raf.tasks.delete(task);
+    }
+  };
+}
+__name(loop, "loop");
+function dispatch_event(element2, type) {
+  without_reactive_context(() => {
+    element2.dispatchEvent(new CustomEvent(type));
+  });
+}
+__name(dispatch_event, "dispatch_event");
+function css_property_to_camelcase(style) {
+  if (style === "float") return "cssFloat";
+  if (style === "offset") return "cssOffset";
+  if (style.startsWith("--")) return style;
+  const parts = style.split("-");
+  if (parts.length === 1) return parts[0];
+  return parts[0] + parts.slice(1).map(
+    /** @param {any} word */
+    (word) => word[0].toUpperCase() + word.slice(1)
+  ).join("");
+}
+__name(css_property_to_camelcase, "css_property_to_camelcase");
+function css_to_keyframe(css) {
+  const keyframe = {};
+  const parts = css.split(";");
+  for (const part of parts) {
+    const [property, value2] = part.split(":");
+    if (!property || value2 === void 0) break;
+    const formatted_property = css_property_to_camelcase(property.trim());
+    keyframe[formatted_property] = value2.trim();
+  }
+  return keyframe;
+}
+__name(css_to_keyframe, "css_to_keyframe");
+const linear = /* @__PURE__ */ __name((t) => t, "linear");
+let animation_effect_override = null;
+function set_animation_effect_override(v) {
+  animation_effect_override = v;
+}
+__name(set_animation_effect_override, "set_animation_effect_override");
+function animation(element2, get_fn, get_params) {
+  var effect2 = animation_effect_override ?? /** @type {Effect} */
+  active_effect;
+  var nodes = (
+    /** @type {EffectNodes} */
+    effect2.nodes
+  );
+  var from;
+  var to;
+  var animation2;
+  var original_styles = null;
+  nodes.a ?? (nodes.a = {
+    element: element2,
+    measure() {
+      from = this.element.getBoundingClientRect();
+    },
+    apply() {
+      animation2?.abort();
+      to = this.element.getBoundingClientRect();
+      if (from.left !== to.left || from.right !== to.right || from.top !== to.top || from.bottom !== to.bottom) {
+        const options = get_fn()(this.element, { from, to }, get_params?.());
+        animation2 = animate(this.element, options, void 0, 1, () => {
+          animation2?.abort();
+          animation2 = void 0;
+        });
+      }
+    },
+    fix() {
+      if (element2.getAnimations().length) return;
+      var { position, width, height } = getComputedStyle(element2);
+      if (position !== "absolute" && position !== "fixed") {
+        var style = (
+          /** @type {HTMLElement | SVGElement} */
+          element2.style
+        );
+        original_styles = {
+          position: style.position,
+          width: style.width,
+          height: style.height,
+          transform: style.transform
+        };
+        style.position = "absolute";
+        style.width = width;
+        style.height = height;
+        var to2 = element2.getBoundingClientRect();
+        if (from.left !== to2.left || from.top !== to2.top) {
+          var transform2 = `translate(${from.left - to2.left}px, ${from.top - to2.top}px)`;
+          style.transform = style.transform ? `${style.transform} ${transform2}` : transform2;
+        }
+      }
+    },
+    unfix() {
+      if (original_styles) {
+        var style = (
+          /** @type {HTMLElement | SVGElement} */
+          element2.style
+        );
+        style.position = original_styles.position;
+        style.width = original_styles.width;
+        style.height = original_styles.height;
+        style.transform = original_styles.transform;
+      }
+    }
+  });
+  nodes.a.element = element2;
+}
+__name(animation, "animation");
+function transition(flags2, element2, get_fn, get_params) {
+  var _a2;
+  var is_intro = (flags2 & TRANSITION_IN) !== 0;
+  var is_outro = (flags2 & TRANSITION_OUT) !== 0;
+  var is_both = is_intro && is_outro;
+  var is_global = (flags2 & TRANSITION_GLOBAL) !== 0;
+  var direction = is_both ? "both" : is_intro ? "in" : "out";
+  var current_options;
+  var inert = element2.inert;
+  var overflow = element2.style.overflow;
+  var intro;
+  var outro;
+  function get_options() {
+    return without_reactive_context(() => {
+      return current_options ?? (current_options = get_fn()(element2, get_params?.() ?? /** @type {P} */
+      {}, {
+        direction
+      }));
+    });
+  }
+  __name(get_options, "get_options");
+  var transition2 = {
+    is_global,
+    in() {
+      element2.inert = inert;
+      if (!is_intro) {
+        outro?.abort();
+        outro?.reset?.();
+        return;
+      }
+      if (!is_outro) {
+        intro?.abort();
+      }
+      dispatch_event(element2, "introstart");
+      intro = animate(element2, get_options(), outro, 1, () => {
+        dispatch_event(element2, "introend");
+        intro?.abort();
+        intro = current_options = void 0;
+        element2.style.overflow = overflow;
+      });
+    },
+    out(fn) {
+      if (!is_outro) {
+        fn?.();
+        current_options = void 0;
+        return;
+      }
+      element2.inert = true;
+      dispatch_event(element2, "outrostart");
+      outro = animate(element2, get_options(), intro, 0, () => {
+        dispatch_event(element2, "outroend");
+        fn?.();
+      });
+    },
+    stop: /* @__PURE__ */ __name(() => {
+      intro?.abort();
+      outro?.abort();
+    }, "stop")
+  };
+  var e = (
+    /** @type {Effect & { nodes: EffectNodes }} */
+    active_effect
+  );
+  ((_a2 = e.nodes).t ?? (_a2.t = [])).push(transition2);
+  if (is_intro && should_intro) {
+    var run2 = is_global;
+    if (!run2) {
+      var block2 = (
+        /** @type {Effect | null} */
+        e.parent
+      );
+      while (block2 && (block2.f & EFFECT_TRANSPARENT) !== 0) {
+        while (block2 = block2.parent) {
+          if ((block2.f & BLOCK_EFFECT) !== 0) break;
+        }
+      }
+      run2 = !block2 || (block2.f & EFFECT_RAN) !== 0;
+    }
+    if (run2) {
+      effect(() => {
+        untrack(() => transition2.in());
+      });
+    }
+  }
+}
+__name(transition, "transition");
+function animate(element2, options, counterpart, t2, on_finish) {
+  var is_intro = t2 === 1;
+  if (is_function(options)) {
+    var a;
+    var aborted2 = false;
+    queue_micro_task(() => {
+      if (aborted2) return;
+      var o = options({ direction: is_intro ? "in" : "out" });
+      a = animate(element2, o, counterpart, t2, on_finish);
+    });
+    return {
+      abort: /* @__PURE__ */ __name(() => {
+        aborted2 = true;
+        a?.abort();
+      }, "abort"),
+      deactivate: /* @__PURE__ */ __name(() => a.deactivate(), "deactivate"),
+      reset: /* @__PURE__ */ __name(() => a.reset(), "reset"),
+      t: /* @__PURE__ */ __name(() => a.t(), "t")
+    };
+  }
+  counterpart?.deactivate();
+  if (!options?.duration) {
+    on_finish();
+    return {
+      abort: noop,
+      deactivate: noop,
+      reset: noop,
+      t: /* @__PURE__ */ __name(() => t2, "t")
+    };
+  }
+  const { delay = 0, css, tick: tick2, easing = linear } = options;
+  var keyframes = [];
+  if (is_intro && counterpart === void 0) {
+    if (tick2) {
+      tick2(0, 1);
+    }
+    if (css) {
+      var styles = css_to_keyframe(css(0, 1));
+      keyframes.push(styles, styles);
+    }
+  }
+  var get_t = /* @__PURE__ */ __name(() => 1 - t2, "get_t");
+  var animation2 = element2.animate(keyframes, { duration: delay, fill: "forwards" });
+  animation2.onfinish = () => {
+    animation2.cancel();
+    var t1 = counterpart?.t() ?? 1 - t2;
+    counterpart?.abort();
+    var delta = t2 - t1;
+    var duration = (
+      /** @type {number} */
+      options.duration * Math.abs(delta)
+    );
+    var keyframes2 = [];
+    if (duration > 0) {
+      var needs_overflow_hidden = false;
+      if (css) {
+        var n = Math.ceil(duration / (1e3 / 60));
+        for (var i = 0; i <= n; i += 1) {
+          var t = t1 + delta * easing(i / n);
+          var styles2 = css_to_keyframe(css(t, 1 - t));
+          keyframes2.push(styles2);
+          needs_overflow_hidden || (needs_overflow_hidden = styles2.overflow === "hidden");
+        }
+      }
+      if (needs_overflow_hidden) {
+        element2.style.overflow = "hidden";
+      }
+      get_t = /* @__PURE__ */ __name(() => {
+        var time = (
+          /** @type {number} */
+          /** @type {globalThis.Animation} */
+          animation2.currentTime
+        );
+        return t1 + delta * easing(time / duration);
+      }, "get_t");
+      if (tick2) {
+        loop(() => {
+          if (animation2.playState !== "running") return false;
+          var t3 = get_t();
+          tick2(t3, 1 - t3);
+          return true;
+        });
+      }
+    }
+    animation2 = element2.animate(keyframes2, { duration, fill: "forwards" });
+    animation2.onfinish = () => {
+      get_t = /* @__PURE__ */ __name(() => t2, "get_t");
+      tick2?.(t2, 1 - t2);
+      on_finish();
+    };
+  };
+  return {
+    abort: /* @__PURE__ */ __name(() => {
+      if (animation2) {
+        animation2.cancel();
+        animation2.effect = null;
+        animation2.onfinish = noop;
+      }
+    }, "abort"),
+    deactivate: /* @__PURE__ */ __name(() => {
+      on_finish = noop;
+    }, "deactivate"),
+    reset: /* @__PURE__ */ __name(() => {
+      if (t2 === 0) {
+        tick2?.(1, 0);
+      }
+    }, "reset"),
+    t: /* @__PURE__ */ __name(() => get_t(), "t")
+  };
+}
+__name(animate, "animate");
+function element(node, get_tag, is_svg2, render_fn, get_namespace, location) {
+  let was_hydrating = hydrating;
+  if (hydrating) {
+    hydrate_next();
+  }
+  var filename = DEV && location && component_context?.function[FILENAME];
+  var element2 = null;
+  if (hydrating && hydrate_node.nodeType === ELEMENT_NODE) {
+    element2 = /** @type {Element} */
+    hydrate_node;
+    hydrate_next();
+  }
+  var anchor = (
+    /** @type {TemplateNode} */
+    hydrating ? hydrate_node : node
+  );
+  var parent_effect = (
+    /** @type {Effect} */
+    active_effect
+  );
+  var branches = new BranchManager(anchor, false);
+  block(() => {
+    const next_tag = get_tag() || null;
+    var ns = get_namespace ? get_namespace() : is_svg2 || next_tag === "svg" ? NAMESPACE_SVG : null;
+    if (next_tag === null) {
+      branches.ensure(null, null);
+      set_should_intro(true);
+      return;
+    }
+    branches.ensure(next_tag, (anchor2) => {
+      if (next_tag) {
+        element2 = hydrating ? (
+          /** @type {Element} */
+          element2
+        ) : ns ? document.createElementNS(ns, next_tag) : document.createElement(next_tag);
+        if (DEV && location) {
+          element2.__svelte_meta = {
+            parent: dev_stack,
+            loc: {
+              file: filename,
+              line: location[0],
+              column: location[1]
+            }
+          };
+        }
+        assign_nodes(element2, element2);
+        if (render_fn) {
+          if (hydrating && is_raw_text_element(next_tag)) {
+            element2.append(document.createComment(""));
+          }
+          var child_anchor = hydrating ? /* @__PURE__ */ get_first_child(element2) : element2.appendChild(create_text());
+          if (hydrating) {
+            if (child_anchor === null) {
+              set_hydrating(false);
+            } else {
+              set_hydrate_node(child_anchor);
+            }
+          }
+          set_animation_effect_override(parent_effect);
+          render_fn(element2, child_anchor);
+          set_animation_effect_override(null);
+        }
+        active_effect.nodes.end = element2;
+        anchor2.before(element2);
+      }
+      if (hydrating) {
+        set_hydrate_node(anchor2);
+      }
+    });
+    set_should_intro(true);
+    return () => {
+      if (next_tag) {
+        set_should_intro(false);
+      }
+    };
+  }, EFFECT_TRANSPARENT);
+  teardown(() => {
+    set_should_intro(true);
+  });
+  if (was_hydrating) {
+    set_hydrating(true);
+    set_hydrate_node(anchor);
+  }
+}
+__name(element, "element");
+function head(hash2, render_fn) {
+  let previous_hydrate_node = null;
+  let was_hydrating = hydrating;
+  var anchor;
+  if (hydrating) {
+    previous_hydrate_node = hydrate_node;
+    var head_anchor = /* @__PURE__ */ get_first_child(document.head);
+    while (head_anchor !== null && (head_anchor.nodeType !== COMMENT_NODE || /** @type {Comment} */
+    head_anchor.data !== hash2)) {
+      head_anchor = /* @__PURE__ */ get_next_sibling(head_anchor);
+    }
+    if (head_anchor === null) {
+      set_hydrating(false);
+    } else {
+      var start = (
+        /** @type {TemplateNode} */
+        /* @__PURE__ */ get_next_sibling(head_anchor)
+      );
+      head_anchor.remove();
+      set_hydrate_node(start);
+    }
+  }
+  if (!hydrating) {
+    anchor = document.head.appendChild(create_text());
+  }
+  try {
+    block(() => render_fn(anchor), HEAD_EFFECT);
+  } finally {
+    if (was_hydrating) {
+      set_hydrating(true);
+      set_hydrate_node(
+        /** @type {TemplateNode} */
+        previous_hydrate_node
+      );
+    }
+  }
+}
+__name(head, "head");
+function append_styles$1(anchor, css) {
+  effect(() => {
+    var root2 = anchor.getRootNode();
+    var target = (
+      /** @type {ShadowRoot} */
+      root2.host ? (
+        /** @type {ShadowRoot} */
+        root2
+      ) : (
+        /** @type {Document} */
+        root2.head ?? /** @type {Document} */
+        root2.ownerDocument.head
+      )
+    );
+    if (!target.querySelector("#" + css.hash)) {
+      const style = document.createElement("style");
+      style.id = css.hash;
+      style.textContent = css.code;
+      target.appendChild(style);
+      if (DEV) {
+        register_style(css.hash, style);
+      }
+    }
+  });
+}
+__name(append_styles$1, "append_styles$1");
+function action(dom, action2, get_value) {
+  effect(() => {
+    var payload = untrack(() => action2(dom, get_value?.()) || {});
+    if (get_value && payload?.update) {
+      var inited = false;
+      var prev = (
+        /** @type {any} */
+        {}
+      );
+      render_effect(() => {
+        var value2 = get_value();
+        deep_read_state(value2);
+        if (inited && safe_not_equal(prev, value2)) {
+          prev = value2;
+          payload.update(value2);
+        }
+      });
+      inited = true;
+    }
+    if (payload?.destroy) {
+      return () => (
+        /** @type {Function} */
+        payload.destroy()
+      );
+    }
+  });
+}
+__name(action, "action");
+function attach(node, get_fn) {
+  var fn = void 0;
+  var e;
+  managed(() => {
+    if (fn !== (fn = get_fn())) {
+      if (e) {
+        destroy_effect(e);
+        e = null;
+      }
+      if (fn) {
+        e = branch(() => {
+          effect(() => (
+            /** @type {(node: Element) => void} */
+            fn(node)
+          ));
+        });
+      }
+    }
+  });
+}
+__name(attach, "attach");
+const ATTR_REGEX = /[&"<]/g;
+const CONTENT_REGEX = /[&<]/g;
+function escape_html(value2, is_attr) {
+  const str = String(value2 ?? "");
+  const pattern = is_attr ? ATTR_REGEX : CONTENT_REGEX;
+  pattern.lastIndex = 0;
+  let escaped = "";
+  let last = 0;
+  while (pattern.test(str)) {
+    const i = pattern.lastIndex - 1;
+    const ch = str[i];
+    escaped += str.substring(last, i) + (ch === "&" ? "&amp;" : ch === '"' ? "&quot;" : "&lt;");
+    last = i + 1;
+  }
+  return escaped + str.substring(last);
+}
+__name(escape_html, "escape_html");
+function r(e) {
+  var t, f, n = "";
+  if ("string" == typeof e || "number" == typeof e) n += e;
+  else if ("object" == typeof e) if (Array.isArray(e)) {
+    var o = e.length;
+    for (t = 0; t < o; t++) e[t] && (f = r(e[t])) && (n && (n += " "), n += f);
+  } else for (f in e) e[f] && (n && (n += " "), n += f);
+  return n;
+}
+__name(r, "r");
+function clsx$1() {
+  for (var e, t, f = 0, n = "", o = arguments.length; f < o; f++) (e = arguments[f]) && (t = r(e)) && (n && (n += " "), n += t);
+  return n;
+}
+__name(clsx$1, "clsx$1");
+const replacements = {
+  translate: /* @__PURE__ */ new Map([
+    [true, "yes"],
+    [false, "no"]
+  ])
+};
+function attr(name, value2, is_boolean = false) {
+  if (name === "hidden" && value2 !== "until-found") {
+    is_boolean = true;
+  }
+  if (value2 == null || !value2 && is_boolean) return "";
+  const normalized = name in replacements && replacements[name].get(value2) || value2;
+  const assignment = is_boolean ? "" : `="${escape_html(normalized, true)}"`;
+  return ` ${name}${assignment}`;
+}
+__name(attr, "attr");
+function clsx(value2) {
+  if (typeof value2 === "object") {
+    return clsx$1(value2);
+  } else {
+    return value2 ?? "";
+  }
+}
+__name(clsx, "clsx");
+const whitespace = [..." 	\n\r\f \v\uFEFF"];
+function to_class(value2, hash2, directives) {
+  var classname = value2 == null ? "" : "" + value2;
+  if (hash2) {
+    classname = classname ? classname + " " + hash2 : hash2;
+  }
+  if (directives) {
+    for (var key2 in directives) {
+      if (directives[key2]) {
+        classname = classname ? classname + " " + key2 : key2;
+      } else if (classname.length) {
+        var len = key2.length;
+        var a = 0;
+        while ((a = classname.indexOf(key2, a)) >= 0) {
+          var b = a + len;
+          if ((a === 0 || whitespace.includes(classname[a - 1])) && (b === classname.length || whitespace.includes(classname[b]))) {
+            classname = (a === 0 ? "" : classname.substring(0, a)) + classname.substring(b + 1);
+          } else {
+            a = b;
+          }
+        }
+      }
+    }
+  }
+  return classname === "" ? null : classname;
+}
+__name(to_class, "to_class");
+function append_styles(styles, important = false) {
+  var separator = important ? " !important;" : ";";
+  var css = "";
+  for (var key2 in styles) {
+    var value2 = styles[key2];
+    if (value2 != null && value2 !== "") {
+      css += " " + key2 + ": " + value2 + separator;
+    }
+  }
+  return css;
+}
+__name(append_styles, "append_styles");
+function to_css_name(name) {
+  if (name[0] !== "-" || name[1] !== "-") {
+    return name.toLowerCase();
+  }
+  return name;
+}
+__name(to_css_name, "to_css_name");
+function to_style(value2, styles) {
+  if (styles) {
+    var new_style = "";
+    var normal_styles;
+    var important_styles;
+    if (Array.isArray(styles)) {
+      normal_styles = styles[0];
+      important_styles = styles[1];
+    } else {
+      normal_styles = styles;
+    }
+    if (value2) {
+      value2 = String(value2).replaceAll(/\s*\/\*.*?\*\/\s*/g, "").trim();
+      var in_str = false;
+      var in_apo = 0;
+      var in_comment = false;
+      var reserved_names = [];
+      if (normal_styles) {
+        reserved_names.push(...Object.keys(normal_styles).map(to_css_name));
+      }
+      if (important_styles) {
+        reserved_names.push(...Object.keys(important_styles).map(to_css_name));
+      }
+      var start_index = 0;
+      var name_index = -1;
+      const len = value2.length;
+      for (var i = 0; i < len; i++) {
+        var c = value2[i];
+        if (in_comment) {
+          if (c === "/" && value2[i - 1] === "*") {
+            in_comment = false;
+          }
+        } else if (in_str) {
+          if (in_str === c) {
+            in_str = false;
+          }
+        } else if (c === "/" && value2[i + 1] === "*") {
+          in_comment = true;
+        } else if (c === '"' || c === "'") {
+          in_str = c;
+        } else if (c === "(") {
+          in_apo++;
+        } else if (c === ")") {
+          in_apo--;
+        }
+        if (!in_comment && in_str === false && in_apo === 0) {
+          if (c === ":" && name_index === -1) {
+            name_index = i;
+          } else if (c === ";" || i === len - 1) {
+            if (name_index !== -1) {
+              var name = to_css_name(value2.substring(start_index, name_index).trim());
+              if (!reserved_names.includes(name)) {
+                if (c !== ";") {
+                  i++;
+                }
+                var property = value2.substring(start_index, i).trim();
+                new_style += " " + property + ";";
+              }
+            }
+            start_index = i + 1;
+            name_index = -1;
+          }
+        }
+      }
+    }
+    if (normal_styles) {
+      new_style += append_styles(normal_styles);
+    }
+    if (important_styles) {
+      new_style += append_styles(important_styles, true);
+    }
+    new_style = new_style.trim();
+    return new_style === "" ? null : new_style;
+  }
+  return value2 == null ? null : String(value2);
+}
+__name(to_style, "to_style");
+function set_class(dom, is_html, value2, hash2, prev_classes, next_classes) {
+  var prev = dom.__className;
+  if (hydrating || prev !== value2 || prev === void 0) {
+    var next_class_name = to_class(value2, hash2, next_classes);
+    if (!hydrating || next_class_name !== dom.getAttribute("class")) {
+      if (next_class_name == null) {
+        dom.removeAttribute("class");
+      } else if (is_html) {
+        dom.className = next_class_name;
+      } else {
+        dom.setAttribute("class", next_class_name);
+      }
+    }
+    dom.__className = value2;
+  } else if (next_classes && prev_classes !== next_classes) {
+    for (var key2 in next_classes) {
+      var is_present = !!next_classes[key2];
+      if (prev_classes == null || is_present !== !!prev_classes[key2]) {
+        dom.classList.toggle(key2, is_present);
+      }
+    }
+  }
+  return next_classes;
+}
+__name(set_class, "set_class");
+function update_styles(dom, prev = {}, next2, priority) {
+  for (var key2 in next2) {
+    var value2 = next2[key2];
+    if (prev[key2] !== value2) {
+      if (next2[key2] == null) {
+        dom.style.removeProperty(key2);
+      } else {
+        dom.style.setProperty(key2, value2, priority);
+      }
+    }
+  }
+}
+__name(update_styles, "update_styles");
+function set_style(dom, value2, prev_styles, next_styles) {
+  var prev = dom.__style;
+  if (hydrating || prev !== value2) {
+    var next_style_attr = to_style(value2, next_styles);
+    if (!hydrating || next_style_attr !== dom.getAttribute("style")) {
+      if (next_style_attr == null) {
+        dom.removeAttribute("style");
+      } else {
+        dom.style.cssText = next_style_attr;
+      }
+    }
+    dom.__style = value2;
+  } else if (next_styles) {
+    if (Array.isArray(next_styles)) {
+      update_styles(dom, prev_styles?.[0], next_styles[0]);
+      update_styles(dom, prev_styles?.[1], next_styles[1], "important");
+    } else {
+      update_styles(dom, prev_styles, next_styles);
+    }
+  }
+  return next_styles;
+}
+__name(set_style, "set_style");
+function select_option(select, value2, mounting = false) {
+  if (select.multiple) {
+    if (value2 == void 0) {
+      return;
+    }
+    if (!is_array(value2)) {
+      return select_multiple_invalid_value();
+    }
+    for (var option of select.options) {
+      option.selected = value2.includes(get_option_value(option));
+    }
+    return;
+  }
+  for (option of select.options) {
+    var option_value = get_option_value(option);
+    if (is(option_value, value2)) {
+      option.selected = true;
+      return;
+    }
+  }
+  if (!mounting || value2 !== void 0) {
+    select.selectedIndex = -1;
+  }
+}
+__name(select_option, "select_option");
+function init_select(select) {
+  var observer = new MutationObserver(() => {
+    select_option(select, select.__value);
+  });
+  observer.observe(select, {
+    // Listen to option element changes
+    childList: true,
+    subtree: true,
+    // because of <optgroup>
+    // Listen to option element value attribute changes
+    // (doesn't get notified of select value changes,
+    // because that property is not reflected as an attribute)
+    attributes: true,
+    attributeFilter: ["value"]
+  });
+  teardown(() => {
+    observer.disconnect();
+  });
+}
+__name(init_select, "init_select");
+function bind_select_value(select, get2, set2 = get2) {
+  var batches2 = /* @__PURE__ */ new WeakSet();
+  var mounting = true;
+  listen_to_event_and_reset_event(select, "change", (is_reset) => {
+    var query = is_reset ? "[selected]" : ":checked";
+    var value2;
+    if (select.multiple) {
+      value2 = [].map.call(select.querySelectorAll(query), get_option_value);
+    } else {
+      var selected_option = select.querySelector(query) ?? // will fall back to first non-disabled option if no option is selected
+      select.querySelector("option:not([disabled])");
+      value2 = selected_option && get_option_value(selected_option);
+    }
+    set2(value2);
+    if (current_batch !== null) {
+      batches2.add(current_batch);
+    }
+  });
+  effect(() => {
+    var value2 = get2();
+    if (select === document.activeElement) {
+      var batch = (
+        /** @type {Batch} */
+        previous_batch ?? current_batch
+      );
+      if (batches2.has(batch)) {
+        return;
+      }
+    }
+    select_option(select, value2, mounting);
+    if (mounting && value2 === void 0) {
+      var selected_option = select.querySelector(":checked");
+      if (selected_option !== null) {
+        value2 = get_option_value(selected_option);
+        set2(value2);
+      }
+    }
+    select.__value = value2;
+    mounting = false;
+  });
+  init_select(select);
+}
+__name(bind_select_value, "bind_select_value");
+function get_option_value(option) {
+  if ("__value" in option) {
+    return option.__value;
+  } else {
+    return option.value;
+  }
+}
+__name(get_option_value, "get_option_value");
+const CLASS = /* @__PURE__ */ Symbol("class");
+const STYLE = /* @__PURE__ */ Symbol("style");
+const IS_CUSTOM_ELEMENT = /* @__PURE__ */ Symbol("is custom element");
+const IS_HTML = /* @__PURE__ */ Symbol("is html");
+function remove_input_defaults(input) {
+  if (!hydrating) return;
+  var already_removed = false;
+  var remove_defaults = /* @__PURE__ */ __name(() => {
+    if (already_removed) return;
+    already_removed = true;
+    if (input.hasAttribute("value")) {
+      var value2 = input.value;
+      set_attribute(input, "value", null);
+      input.value = value2;
+    }
+    if (input.hasAttribute("checked")) {
+      var checked = input.checked;
+      set_attribute(input, "checked", null);
+      input.checked = checked;
+    }
+  }, "remove_defaults");
+  input.__on_r = remove_defaults;
+  queue_micro_task(remove_defaults);
+  add_form_reset_listener();
+}
+__name(remove_input_defaults, "remove_input_defaults");
+function set_value(element2, value2) {
+  var attributes = get_attributes(element2);
+  if (attributes.value === (attributes.value = // treat null and undefined the same for the initial value
+  value2 ?? void 0) || // @ts-expect-error
+  // `progress` elements always need their value set when it's `0`
+  element2.value === value2 && (value2 !== 0 || element2.nodeName !== "PROGRESS")) {
+    return;
+  }
+  element2.value = value2 ?? "";
+}
+__name(set_value, "set_value");
+function set_checked(element2, checked) {
+  var attributes = get_attributes(element2);
+  if (attributes.checked === (attributes.checked = // treat null and undefined the same for the initial value
+  checked ?? void 0)) {
+    return;
+  }
+  element2.checked = checked;
+}
+__name(set_checked, "set_checked");
+function set_selected(element2, selected) {
+  if (selected) {
+    if (!element2.hasAttribute("selected")) {
+      element2.setAttribute("selected", "");
+    }
+  } else {
+    element2.removeAttribute("selected");
+  }
+}
+__name(set_selected, "set_selected");
+function set_default_checked(element2, checked) {
+  const existing_value = element2.checked;
+  element2.defaultChecked = checked;
+  element2.checked = existing_value;
+}
+__name(set_default_checked, "set_default_checked");
+function set_default_value(element2, value2) {
+  const existing_value = element2.value;
+  element2.defaultValue = value2;
+  element2.value = existing_value;
+}
+__name(set_default_value, "set_default_value");
+function set_attribute(element2, attribute, value2, skip_warning) {
+  var attributes = get_attributes(element2);
+  if (hydrating) {
+    attributes[attribute] = element2.getAttribute(attribute);
+    if (attribute === "src" || attribute === "srcset" || attribute === "href" && element2.nodeName === "LINK") {
+      if (!skip_warning) {
+        check_src_in_dev_hydration(element2, attribute, value2 ?? "");
+      }
+      return;
+    }
+  }
+  if (attributes[attribute] === (attributes[attribute] = value2)) return;
+  if (attribute === "loading") {
+    element2[LOADING_ATTR_SYMBOL] = value2;
+  }
+  if (value2 == null) {
+    element2.removeAttribute(attribute);
+  } else if (typeof value2 !== "string" && get_setters(element2).includes(attribute)) {
+    element2[attribute] = value2;
+  } else {
+    element2.setAttribute(attribute, value2);
+  }
+}
+__name(set_attribute, "set_attribute");
+function set_xlink_attribute(dom, attribute, value2) {
+  dom.setAttributeNS("http://www.w3.org/1999/xlink", attribute, value2);
+}
+__name(set_xlink_attribute, "set_xlink_attribute");
+function set_custom_element_data(node, prop2, value2) {
+  var previous_reaction = active_reaction;
+  var previous_effect = active_effect;
+  let was_hydrating = hydrating;
+  if (hydrating) {
+    set_hydrating(false);
+  }
+  set_active_reaction(null);
+  set_active_effect(null);
+  try {
+    if (
+      // `style` should use `set_attribute` rather than the setter
+      prop2 !== "style" && // Don't compute setters for custom elements while they aren't registered yet,
+      // because during their upgrade/instantiation they might add more setters.
+      // Instead, fall back to a simple "an object, then set as property" heuristic.
+      (setters_cache.has(node.getAttribute("is") || node.nodeName) || // customElements may not be available in browser extension contexts
+      !customElements || customElements.get(node.getAttribute("is") || node.tagName.toLowerCase()) ? get_setters(node).includes(prop2) : value2 && typeof value2 === "object")
+    ) {
+      node[prop2] = value2;
+    } else {
+      set_attribute(node, prop2, value2 == null ? value2 : String(value2));
+    }
+  } finally {
+    set_active_reaction(previous_reaction);
+    set_active_effect(previous_effect);
+    if (was_hydrating) {
+      set_hydrating(true);
+    }
+  }
+}
+__name(set_custom_element_data, "set_custom_element_data");
+function set_attributes(element2, prev, next2, css_hash, should_remove_defaults = false, skip_warning = false) {
+  if (hydrating && should_remove_defaults && element2.tagName === "INPUT") {
+    var input = (
+      /** @type {HTMLInputElement} */
+      element2
+    );
+    var attribute = input.type === "checkbox" ? "defaultChecked" : "defaultValue";
+    if (!(attribute in next2)) {
+      remove_input_defaults(input);
+    }
+  }
+  var attributes = get_attributes(element2);
+  var is_custom_element = attributes[IS_CUSTOM_ELEMENT];
+  var preserve_attribute_case = !attributes[IS_HTML];
+  let is_hydrating_custom_element = hydrating && is_custom_element;
+  if (is_hydrating_custom_element) {
+    set_hydrating(false);
+  }
+  var current = prev || {};
+  var is_option_element = element2.tagName === "OPTION";
+  for (var key2 in prev) {
+    if (!(key2 in next2)) {
+      next2[key2] = null;
+    }
+  }
+  if (next2.class) {
+    next2.class = clsx(next2.class);
+  } else if (css_hash || next2[CLASS]) {
+    next2.class = null;
+  }
+  if (next2[STYLE]) {
+    next2.style ?? (next2.style = null);
+  }
+  var setters = get_setters(element2);
+  for (const key3 in next2) {
+    let value2 = next2[key3];
+    if (is_option_element && key3 === "value" && value2 == null) {
+      element2.value = element2.__value = "";
+      current[key3] = value2;
+      continue;
+    }
+    if (key3 === "class") {
+      var is_html = element2.namespaceURI === "http://www.w3.org/1999/xhtml";
+      set_class(element2, is_html, value2, css_hash, prev?.[CLASS], next2[CLASS]);
+      current[key3] = value2;
+      current[CLASS] = next2[CLASS];
+      continue;
+    }
+    if (key3 === "style") {
+      set_style(element2, value2, prev?.[STYLE], next2[STYLE]);
+      current[key3] = value2;
+      current[STYLE] = next2[STYLE];
+      continue;
+    }
+    var prev_value = current[key3];
+    if (value2 === prev_value && !(value2 === void 0 && element2.hasAttribute(key3))) {
+      continue;
+    }
+    current[key3] = value2;
+    var prefix = key3[0] + key3[1];
+    if (prefix === "$$") continue;
+    if (prefix === "on") {
+      const opts = {};
+      const event_handle_key = "$$" + key3;
+      let event_name = key3.slice(2);
+      var delegated = can_delegate_event(event_name);
+      if (is_capture_event(event_name)) {
+        event_name = event_name.slice(0, -7);
+        opts.capture = true;
+      }
+      if (!delegated && prev_value) {
+        if (value2 != null) continue;
+        element2.removeEventListener(event_name, current[event_handle_key], opts);
+        current[event_handle_key] = null;
+      }
+      if (value2 != null) {
+        if (!delegated) {
+          let handle2 = function(evt) {
+            current[key3].call(this, evt);
+          };
+          var handle = handle2;
+          __name(handle2, "handle");
+          current[event_handle_key] = create_event(event_name, element2, handle2, opts);
+        } else {
+          element2[`__${event_name}`] = value2;
+          delegate([event_name]);
+        }
+      } else if (delegated) {
+        element2[`__${event_name}`] = void 0;
+      }
+    } else if (key3 === "style") {
+      set_attribute(element2, key3, value2);
+    } else if (key3 === "autofocus") {
+      autofocus(
+        /** @type {HTMLElement} */
+        element2,
+        Boolean(value2)
+      );
+    } else if (!is_custom_element && (key3 === "__value" || key3 === "value" && value2 != null)) {
+      element2.value = element2.__value = value2;
+    } else if (key3 === "selected" && is_option_element) {
+      set_selected(
+        /** @type {HTMLOptionElement} */
+        element2,
+        value2
+      );
+    } else {
+      var name = key3;
+      if (!preserve_attribute_case) {
+        name = normalize_attribute(name);
+      }
+      var is_default = name === "defaultValue" || name === "defaultChecked";
+      if (value2 == null && !is_custom_element && !is_default) {
+        attributes[key3] = null;
+        if (name === "value" || name === "checked") {
+          let input2 = (
+            /** @type {HTMLInputElement} */
+            element2
+          );
+          const use_default = prev === void 0;
+          if (name === "value") {
+            let previous = input2.defaultValue;
+            input2.removeAttribute(name);
+            input2.defaultValue = previous;
+            input2.value = input2.__value = use_default ? previous : null;
+          } else {
+            let previous = input2.defaultChecked;
+            input2.removeAttribute(name);
+            input2.defaultChecked = previous;
+            input2.checked = use_default ? previous : false;
+          }
+        } else {
+          element2.removeAttribute(key3);
+        }
+      } else if (is_default || setters.includes(name) && (is_custom_element || typeof value2 !== "string")) {
+        element2[name] = value2;
+        if (name in attributes) attributes[name] = UNINITIALIZED;
+      } else if (typeof value2 !== "function") {
+        set_attribute(element2, name, value2, skip_warning);
+      }
+    }
+  }
+  if (is_hydrating_custom_element) {
+    set_hydrating(true);
+  }
+  return current;
+}
+__name(set_attributes, "set_attributes");
+function attribute_effect(element2, fn, sync = [], async2 = [], blockers = [], css_hash, should_remove_defaults = false, skip_warning = false) {
+  flatten(blockers, sync, async2, (values2) => {
+    var prev = void 0;
+    var effects = {};
+    var is_select = element2.nodeName === "SELECT";
+    var inited = false;
+    managed(() => {
+      var next2 = fn(...values2.map(get$1));
+      var current = set_attributes(
+        element2,
+        prev,
+        next2,
+        css_hash,
+        should_remove_defaults,
+        skip_warning
+      );
+      if (inited && is_select && "value" in next2) {
+        select_option(
+          /** @type {HTMLSelectElement} */
+          element2,
+          next2.value
+        );
+      }
+      for (let symbol2 of Object.getOwnPropertySymbols(effects)) {
+        if (!next2[symbol2]) destroy_effect(effects[symbol2]);
+      }
+      for (let symbol2 of Object.getOwnPropertySymbols(next2)) {
+        var n = next2[symbol2];
+        if (symbol2.description === ATTACHMENT_KEY && (!prev || n !== prev[symbol2])) {
+          if (effects[symbol2]) destroy_effect(effects[symbol2]);
+          effects[symbol2] = branch(() => attach(element2, () => n));
+        }
+        current[symbol2] = n;
+      }
+      prev = current;
+    });
+    if (is_select) {
+      var select = (
+        /** @type {HTMLSelectElement} */
+        element2
+      );
+      effect(() => {
+        select_option(
+          select,
+          /** @type {Record<string | symbol, any>} */
+          prev.value,
+          true
+        );
+        init_select(select);
+      });
+    }
+    inited = true;
+  });
+}
+__name(attribute_effect, "attribute_effect");
+function get_attributes(element2) {
+  return (
+    /** @type {Record<string | symbol, unknown>} **/
+    // @ts-expect-error
+    element2.__attributes ?? (element2.__attributes = {
+      [IS_CUSTOM_ELEMENT]: element2.nodeName.includes("-"),
+      [IS_HTML]: element2.namespaceURI === NAMESPACE_HTML
+    })
+  );
+}
+__name(get_attributes, "get_attributes");
+var setters_cache = /* @__PURE__ */ new Map();
+function get_setters(element2) {
+  var cache_key = element2.getAttribute("is") || element2.nodeName;
+  var setters = setters_cache.get(cache_key);
+  if (setters) return setters;
+  setters_cache.set(cache_key, setters = []);
+  var descriptors;
+  var proto = element2;
+  var element_proto = Element.prototype;
+  while (element_proto !== proto) {
+    descriptors = get_descriptors(proto);
+    for (var key2 in descriptors) {
+      if (descriptors[key2].set) {
+        setters.push(key2);
+      }
+    }
+    proto = get_prototype_of(proto);
+  }
+  return setters;
+}
+__name(get_setters, "get_setters");
+function check_src_in_dev_hydration(element2, attribute, value2) {
+  if (!DEV) return;
+  if (attribute === "srcset" && srcset_url_equal(element2, value2)) return;
+  if (src_url_equal(element2.getAttribute(attribute) ?? "", value2)) return;
+  hydration_attribute_changed(
+    attribute,
+    element2.outerHTML.replace(element2.innerHTML, element2.innerHTML && "..."),
+    String(value2)
+  );
+}
+__name(check_src_in_dev_hydration, "check_src_in_dev_hydration");
+function src_url_equal(element_src, url2) {
+  if (element_src === url2) return true;
+  return new URL(element_src, document.baseURI).href === new URL(url2, document.baseURI).href;
+}
+__name(src_url_equal, "src_url_equal");
+function split_srcset(srcset) {
+  return srcset.split(",").map((src) => src.trim().split(" ").filter(Boolean));
+}
+__name(split_srcset, "split_srcset");
+function srcset_url_equal(element2, srcset) {
+  var element_urls = split_srcset(element2.srcset);
+  var urls = split_srcset(srcset);
+  return urls.length === element_urls.length && urls.every(
+    ([url2, width], i) => width === element_urls[i][1] && // We need to test both ways because Vite will create an a full URL with
+    // `new URL(asset, import.meta.url).href` for the client when `base: './'`, and the
+    // relative URLs inside srcset are not automatically resolved to absolute URLs by
+    // browsers (in contrast to img.src). This means both SSR and DOM code could
+    // contain relative or absolute URLs.
+    (src_url_equal(element_urls[i][0], url2) || src_url_equal(url2, element_urls[i][0]))
+  );
+}
+__name(srcset_url_equal, "srcset_url_equal");
+function bind_active_element(update2) {
+  listen(document, ["focusin", "focusout"], (event2) => {
+    if (event2 && event2.type === "focusout" && /** @type {FocusEvent} */
+    event2.relatedTarget) {
+      return;
+    }
+    update2(document.activeElement);
+  });
+}
+__name(bind_active_element, "bind_active_element");
+function bind_value(input, get2, set2 = get2) {
+  var batches2 = /* @__PURE__ */ new WeakSet();
+  listen_to_event_and_reset_event(input, "input", async (is_reset) => {
+    if (DEV && input.type === "checkbox") {
+      bind_invalid_checkbox_value();
+    }
+    var value2 = is_reset ? input.defaultValue : input.value;
+    value2 = is_numberlike_input(input) ? to_number(value2) : value2;
+    set2(value2);
+    if (current_batch !== null) {
+      batches2.add(current_batch);
+    }
+    await tick();
+    if (value2 !== (value2 = get2())) {
+      var start = input.selectionStart;
+      var end = input.selectionEnd;
+      var length2 = input.value.length;
+      input.value = value2 ?? "";
+      if (end !== null) {
+        var new_length = input.value.length;
+        if (start === end && end === length2 && new_length > length2) {
+          input.selectionStart = new_length;
+          input.selectionEnd = new_length;
+        } else {
+          input.selectionStart = start;
+          input.selectionEnd = Math.min(end, new_length);
+        }
+      }
+    }
+  });
+  if (
+    // If we are hydrating and the value has since changed,
+    // then use the updated value from the input instead.
+    hydrating && input.defaultValue !== input.value || // If defaultValue is set, then value == defaultValue
+    // TODO Svelte 6: remove input.value check and set to empty string?
+    untrack(get2) == null && input.value
+  ) {
+    set2(is_numberlike_input(input) ? to_number(input.value) : input.value);
+    if (current_batch !== null) {
+      batches2.add(current_batch);
+    }
+  }
+  render_effect(() => {
+    if (DEV && input.type === "checkbox") {
+      bind_invalid_checkbox_value();
+    }
+    var value2 = get2();
+    if (input === document.activeElement) {
+      var batch = (
+        /** @type {Batch} */
+        previous_batch ?? current_batch
+      );
+      if (batches2.has(batch)) {
+        return;
+      }
+    }
+    if (is_numberlike_input(input) && value2 === to_number(input.value)) {
+      return;
+    }
+    if (input.type === "date" && !value2 && !input.value) {
+      return;
+    }
+    if (value2 !== input.value) {
+      input.value = value2 ?? "";
+    }
+  });
+}
+__name(bind_value, "bind_value");
+const pending = /* @__PURE__ */ new Set();
+function bind_group(inputs, group_index, input, get2, set2 = get2) {
+  var is_checkbox = input.getAttribute("type") === "checkbox";
+  var binding_group = inputs;
+  let hydration_mismatch2 = false;
+  if (group_index !== null) {
+    for (var index2 of group_index) {
+      binding_group = binding_group[index2] ?? (binding_group[index2] = []);
+    }
+  }
+  binding_group.push(input);
+  listen_to_event_and_reset_event(
+    input,
+    "change",
+    () => {
+      var value2 = input.__value;
+      if (is_checkbox) {
+        value2 = get_binding_group_value(binding_group, value2, input.checked);
+      }
+      set2(value2);
+    },
+    // TODO better default value handling
+    () => set2(is_checkbox ? [] : null)
+  );
+  render_effect(() => {
+    var value2 = get2();
+    if (hydrating && input.defaultChecked !== input.checked) {
+      hydration_mismatch2 = true;
+      return;
+    }
+    if (is_checkbox) {
+      value2 = value2 || [];
+      input.checked = value2.includes(input.__value);
+    } else {
+      input.checked = is(input.__value, value2);
+    }
+  });
+  teardown(() => {
+    var index3 = binding_group.indexOf(input);
+    if (index3 !== -1) {
+      binding_group.splice(index3, 1);
+    }
+  });
+  if (!pending.has(binding_group)) {
+    pending.add(binding_group);
+    queue_micro_task(() => {
+      binding_group.sort((a, b) => a.compareDocumentPosition(b) === 4 ? -1 : 1);
+      pending.delete(binding_group);
+    });
+  }
+  queue_micro_task(() => {
+    if (hydration_mismatch2) {
+      var value2;
+      if (is_checkbox) {
+        value2 = get_binding_group_value(binding_group, value2, input.checked);
+      } else {
+        var hydration_input = binding_group.find((input2) => input2.checked);
+        value2 = hydration_input?.__value;
+      }
+      set2(value2);
+    }
+  });
+}
+__name(bind_group, "bind_group");
+function bind_checked(input, get2, set2 = get2) {
+  listen_to_event_and_reset_event(input, "change", (is_reset) => {
+    var value2 = is_reset ? input.defaultChecked : input.checked;
+    set2(value2);
+  });
+  if (
+    // If we are hydrating and the value has since changed,
+    // then use the update value from the input instead.
+    hydrating && input.defaultChecked !== input.checked || // If defaultChecked is set, then checked == defaultChecked
+    untrack(get2) == null
+  ) {
+    set2(input.checked);
+  }
+  render_effect(() => {
+    var value2 = get2();
+    input.checked = Boolean(value2);
+  });
+}
+__name(bind_checked, "bind_checked");
+function get_binding_group_value(group, __value, checked) {
+  var value2 = /* @__PURE__ */ new Set();
+  for (var i = 0; i < group.length; i += 1) {
+    if (group[i].checked) {
+      value2.add(group[i].__value);
+    }
+  }
+  if (!checked) {
+    value2.delete(__value);
+  }
+  return Array.from(value2);
+}
+__name(get_binding_group_value, "get_binding_group_value");
+function is_numberlike_input(input) {
+  var type = input.type;
+  return type === "number" || type === "range";
+}
+__name(is_numberlike_input, "is_numberlike_input");
+function to_number(value2) {
+  return value2 === "" ? null : +value2;
+}
+__name(to_number, "to_number");
+function bind_files(input, get2, set2 = get2) {
+  listen_to_event_and_reset_event(input, "change", () => {
+    set2(input.files);
+  });
+  if (
+    // If we are hydrating and the value has since changed,
+    // then use the updated value from the input instead.
+    hydrating && input.files
+  ) {
+    set2(input.files);
+  }
+  render_effect(() => {
+    input.files = get2();
+  });
+}
+__name(bind_files, "bind_files");
+function time_ranges_to_array(ranges) {
+  var array2 = [];
+  for (var i = 0; i < ranges.length; i += 1) {
+    array2.push({ start: ranges.start(i), end: ranges.end(i) });
+  }
+  return array2;
+}
+__name(time_ranges_to_array, "time_ranges_to_array");
+function bind_current_time(media, get2, set2 = get2) {
+  var raf_id;
+  var value2;
+  var callback = /* @__PURE__ */ __name(() => {
+    cancelAnimationFrame(raf_id);
+    if (!media.paused) {
+      raf_id = requestAnimationFrame(callback);
+    }
+    var next_value = media.currentTime;
+    if (value2 !== next_value) {
+      set2(value2 = next_value);
+    }
+  }, "callback");
+  raf_id = requestAnimationFrame(callback);
+  media.addEventListener("timeupdate", callback);
+  render_effect(() => {
+    var next_value = Number(get2());
+    if (value2 !== next_value && !isNaN(
+      /** @type {any} */
+      next_value
+    )) {
+      media.currentTime = value2 = next_value;
+    }
+  });
+  teardown(() => {
+    cancelAnimationFrame(raf_id);
+    media.removeEventListener("timeupdate", callback);
+  });
+}
+__name(bind_current_time, "bind_current_time");
+function bind_buffered(media, set2) {
+  var current;
+  listen(media, ["loadedmetadata", "progress", "timeupdate", "seeking"], () => {
+    var ranges = media.buffered;
+    if (!current || current.length !== ranges.length || current.some((range, i) => ranges.start(i) !== range.start || ranges.end(i) !== range.end)) {
+      current = time_ranges_to_array(ranges);
+      set2(current);
+    }
+  });
+}
+__name(bind_buffered, "bind_buffered");
+function bind_seekable(media, set2) {
+  listen(media, ["loadedmetadata"], () => set2(time_ranges_to_array(media.seekable)));
+}
+__name(bind_seekable, "bind_seekable");
+function bind_played(media, set2) {
+  listen(media, ["timeupdate"], () => set2(time_ranges_to_array(media.played)));
+}
+__name(bind_played, "bind_played");
+function bind_seeking(media, set2) {
+  listen(media, ["seeking", "seeked"], () => set2(media.seeking));
+}
+__name(bind_seeking, "bind_seeking");
+function bind_ended(media, set2) {
+  listen(media, ["timeupdate", "ended"], () => set2(media.ended));
+}
+__name(bind_ended, "bind_ended");
+function bind_ready_state(media, set2) {
+  listen(
+    media,
+    ["loadedmetadata", "loadeddata", "canplay", "canplaythrough", "playing", "waiting", "emptied"],
+    () => set2(media.readyState)
+  );
+}
+__name(bind_ready_state, "bind_ready_state");
+function bind_playback_rate(media, get2, set2 = get2) {
+  effect(() => {
+    var value2 = Number(get2());
+    if (value2 !== media.playbackRate && !isNaN(value2)) {
+      media.playbackRate = value2;
+    }
+  });
+  effect(() => {
+    listen(media, ["ratechange"], () => {
+      set2(media.playbackRate);
+    });
+  });
+}
+__name(bind_playback_rate, "bind_playback_rate");
+function bind_paused(media, get2, set2 = get2) {
+  var paused = get2();
+  var update2 = /* @__PURE__ */ __name(() => {
+    if (paused !== media.paused) {
+      set2(paused = media.paused);
+    }
+  }, "update");
+  listen(media, ["play", "pause", "canplay"], update2, paused == null);
+  effect(() => {
+    if ((paused = !!get2()) !== media.paused) {
+      if (paused) {
+        media.pause();
+      } else {
+        media.play().catch(() => {
+          set2(paused = true);
+        });
+      }
+    }
+  });
+}
+__name(bind_paused, "bind_paused");
+function bind_volume(media, get2, set2 = get2) {
+  var callback = /* @__PURE__ */ __name(() => {
+    set2(media.volume);
+  }, "callback");
+  if (get2() == null) {
+    callback();
+  }
+  listen(media, ["volumechange"], callback, false);
+  render_effect(() => {
+    var value2 = Number(get2());
+    if (value2 !== media.volume && !isNaN(value2)) {
+      media.volume = value2;
+    }
+  });
+}
+__name(bind_volume, "bind_volume");
+function bind_muted(media, get2, set2 = get2) {
+  var callback = /* @__PURE__ */ __name(() => {
+    set2(media.muted);
+  }, "callback");
+  if (get2() == null) {
+    callback();
+  }
+  listen(media, ["volumechange"], callback, false);
+  render_effect(() => {
+    var value2 = !!get2();
+    if (media.muted !== value2) media.muted = value2;
+  });
+}
+__name(bind_muted, "bind_muted");
+function bind_online(update2) {
+  listen(window, ["online", "offline"], () => {
+    update2(navigator.onLine);
+  });
+}
+__name(bind_online, "bind_online");
+function bind_prop(props, prop2, value2) {
+  var desc = get_descriptor(props, prop2);
+  if (desc && desc.set) {
+    props[prop2] = value2;
+    teardown(() => {
+      props[prop2] = null;
+    });
+  }
+}
+__name(bind_prop, "bind_prop");
+const _ResizeObserverSingleton = class _ResizeObserverSingleton {
+  /** @param {ResizeObserverOptions} options */
+  constructor(options) {
+    __privateAdd(this, _ResizeObserverSingleton_instances);
+    /** */
+    __privateAdd(this, _listeners, /* @__PURE__ */ new WeakMap());
+    /** @type {ResizeObserver | undefined} */
+    __privateAdd(this, _observer);
+    /** @type {ResizeObserverOptions} */
+    __privateAdd(this, _options);
+    __privateSet(this, _options, options);
+  }
+  /**
+   * @param {Element} element
+   * @param {(entry: ResizeObserverEntry) => any} listener
+   */
+  observe(element2, listener) {
+    var listeners = __privateGet(this, _listeners).get(element2) || /* @__PURE__ */ new Set();
+    listeners.add(listener);
+    __privateGet(this, _listeners).set(element2, listeners);
+    __privateMethod(this, _ResizeObserverSingleton_instances, getObserver_fn).call(this).observe(element2, __privateGet(this, _options));
+    return () => {
+      var listeners2 = __privateGet(this, _listeners).get(element2);
+      listeners2.delete(listener);
+      if (listeners2.size === 0) {
+        __privateGet(this, _listeners).delete(element2);
+        __privateGet(this, _observer).unobserve(element2);
+      }
+    };
+  }
+};
+_listeners = new WeakMap();
+_observer = new WeakMap();
+_options = new WeakMap();
+_ResizeObserverSingleton_instances = new WeakSet();
+getObserver_fn = /* @__PURE__ */ __name(function() {
+  return __privateGet(this, _observer) ?? __privateSet(this, _observer, new ResizeObserver(
+    /** @param {any} entries */
+    (entries2) => {
+      for (var entry of entries2) {
+        _ResizeObserverSingleton.entries.set(entry.target, entry);
+        for (var listener of __privateGet(this, _listeners).get(entry.target) || []) {
+          listener(entry);
+        }
+      }
+    }
+  ));
+}, "#getObserver");
+__name(_ResizeObserverSingleton, "ResizeObserverSingleton");
+/** @static */
+__publicField(_ResizeObserverSingleton, "entries", /* @__PURE__ */ new WeakMap());
+let ResizeObserverSingleton = _ResizeObserverSingleton;
+var resize_observer_content_box = /* @__PURE__ */ new ResizeObserverSingleton({
+  box: "content-box"
+});
+var resize_observer_border_box = /* @__PURE__ */ new ResizeObserverSingleton({
+  box: "border-box"
+});
+var resize_observer_device_pixel_content_box = /* @__PURE__ */ new ResizeObserverSingleton({
+  box: "device-pixel-content-box"
+});
+function bind_resize_observer(element2, type, set2) {
+  var observer = type === "contentRect" || type === "contentBoxSize" ? resize_observer_content_box : type === "borderBoxSize" ? resize_observer_border_box : resize_observer_device_pixel_content_box;
+  var unsub = observer.observe(
+    element2,
+    /** @param {any} entry */
+    (entry) => set2(entry[type])
+  );
+  teardown(unsub);
+}
+__name(bind_resize_observer, "bind_resize_observer");
+function bind_element_size(element2, type, set2) {
+  var unsub = resize_observer_border_box.observe(element2, () => set2(element2[type]));
+  effect(() => {
+    untrack(() => set2(element2[type]));
+    return unsub;
+  });
+}
+__name(bind_element_size, "bind_element_size");
+function is_bound_this(bound_value, element_or_component) {
+  return bound_value === element_or_component || bound_value?.[STATE_SYMBOL] === element_or_component;
+}
+__name(is_bound_this, "is_bound_this");
+function bind_this(element_or_component = {}, update2, get_value, get_parts) {
+  effect(() => {
+    var old_parts;
+    var parts;
+    render_effect(() => {
+      old_parts = parts;
+      parts = get_parts?.() || [];
+      untrack(() => {
+        if (element_or_component !== get_value(...parts)) {
+          update2(element_or_component, ...parts);
+          if (old_parts && is_bound_this(get_value(...old_parts), element_or_component)) {
+            update2(null, ...old_parts);
+          }
+        }
+      });
+    });
+    return () => {
+      queue_micro_task(() => {
+        if (parts && is_bound_this(get_value(...parts), element_or_component)) {
+          update2(null, ...parts);
+        }
+      });
+    };
+  });
+  return element_or_component;
+}
+__name(bind_this, "bind_this");
+function bind_content_editable(property, element2, get2, set2 = get2) {
+  element2.addEventListener("input", () => {
+    set2(element2[property]);
+  });
+  render_effect(() => {
+    var value2 = get2();
+    if (element2[property] !== value2) {
+      if (value2 == null) {
+        var non_null_value = element2[property];
+        set2(non_null_value);
+      } else {
+        element2[property] = value2 + "";
+      }
+    }
+  });
+}
+__name(bind_content_editable, "bind_content_editable");
+function bind_property(property, event_name, element2, set2, get2) {
+  var handler = /* @__PURE__ */ __name(() => {
+    set2(element2[property]);
+  }, "handler");
+  element2.addEventListener(event_name, handler);
+  if (get2) {
+    render_effect(() => {
+      element2[property] = get2();
+    });
+  } else {
+    handler();
+  }
+  if (element2 === document.body || element2 === window || element2 === document) {
+    teardown(() => {
+      element2.removeEventListener(event_name, handler);
+    });
+  }
+}
+__name(bind_property, "bind_property");
+function bind_focused(element2, set2) {
+  listen(element2, ["focus", "blur"], () => {
+    set2(element2 === document.activeElement);
+  });
+}
+__name(bind_focused, "bind_focused");
+function bind_window_scroll(type, get2, set2 = get2) {
+  var is_scrolling_x = type === "x";
+  var target_handler = /* @__PURE__ */ __name(() => without_reactive_context(() => {
+    scrolling = true;
+    clearTimeout(timeout);
+    timeout = setTimeout(clear2, 100);
+    set2(window[is_scrolling_x ? "scrollX" : "scrollY"]);
+  }), "target_handler");
+  addEventListener("scroll", target_handler, {
+    passive: true
+  });
+  var scrolling = false;
+  var timeout;
+  var clear2 = /* @__PURE__ */ __name(() => {
+    scrolling = false;
+  }, "clear");
+  var first = true;
+  render_effect(() => {
+    var latest_value = get2();
+    if (first) {
+      first = false;
+    } else if (!scrolling && latest_value != null) {
+      scrolling = true;
+      clearTimeout(timeout);
+      if (is_scrolling_x) {
+        scrollTo(latest_value, window.scrollY);
+      } else {
+        scrollTo(window.scrollX, latest_value);
+      }
+      timeout = setTimeout(clear2, 100);
+    }
+  });
+  effect(target_handler);
+  teardown(() => {
+    removeEventListener("scroll", target_handler);
+  });
+}
+__name(bind_window_scroll, "bind_window_scroll");
+function bind_window_size(type, set2) {
+  listen(window, ["resize"], () => without_reactive_context(() => set2(window[type])));
+}
+__name(bind_window_size, "bind_window_size");
+function trusted(fn) {
+  return function(...args2) {
+    var event2 = (
+      /** @type {Event} */
+      args2[0]
+    );
+    if (event2.isTrusted) {
+      fn?.apply(this, args2);
+    }
+  };
+}
+__name(trusted, "trusted");
+function self(fn) {
+  return function(...args2) {
+    var event2 = (
+      /** @type {Event} */
+      args2[0]
+    );
+    if (event2.target === this) {
+      fn?.apply(this, args2);
+    }
+  };
+}
+__name(self, "self");
+function stopPropagation(fn) {
+  return function(...args2) {
+    var event2 = (
+      /** @type {Event} */
+      args2[0]
+    );
+    event2.stopPropagation();
+    return fn?.apply(this, args2);
+  };
+}
+__name(stopPropagation, "stopPropagation");
+function once(fn) {
+  var ran = false;
+  return function(...args2) {
+    if (ran) return;
+    ran = true;
+    return fn?.apply(this, args2);
+  };
+}
+__name(once, "once");
+function stopImmediatePropagation(fn) {
+  return function(...args2) {
+    var event2 = (
+      /** @type {Event} */
+      args2[0]
+    );
+    event2.stopImmediatePropagation();
+    return fn?.apply(this, args2);
+  };
+}
+__name(stopImmediatePropagation, "stopImmediatePropagation");
+function preventDefault(fn) {
+  return function(...args2) {
+    var event2 = (
+      /** @type {Event} */
+      args2[0]
+    );
+    event2.preventDefault();
+    return fn?.apply(this, args2);
+  };
+}
+__name(preventDefault, "preventDefault");
+function passive(node, [event2, handler]) {
+  user_pre_effect(() => {
+    return on(node, event2, handler() ?? noop, {
+      passive: true
+    });
+  });
+}
+__name(passive, "passive");
+function nonpassive(node, [event2, handler]) {
+  user_pre_effect(() => {
+    return on(node, event2, handler() ?? noop, {
+      passive: false
+    });
+  });
+}
+__name(nonpassive, "nonpassive");
+function init(immutable = false) {
+  const context = (
+    /** @type {ComponentContextLegacy} */
+    component_context
+  );
+  const callbacks = context.l.u;
+  if (!callbacks) return;
+  let props = /* @__PURE__ */ __name(() => deep_read_state(context.s), "props");
+  if (immutable) {
+    let version = 0;
+    let prev = (
+      /** @type {Record<string, any>} */
+      {}
+    );
+    const d = /* @__PURE__ */ derived$1(() => {
+      let changed = false;
+      const props2 = context.s;
+      for (const key2 in props2) {
+        if (props2[key2] !== prev[key2]) {
+          prev[key2] = props2[key2];
+          changed = true;
+        }
+      }
+      if (changed) version++;
+      return version;
+    });
+    props = /* @__PURE__ */ __name(() => get$1(d), "props");
+  }
+  if (callbacks.b.length) {
+    user_pre_effect(() => {
+      observe_all(context, props);
+      run_all(callbacks.b);
+    });
+  }
+  user_effect(() => {
+    const fns = untrack(() => callbacks.m.map(run$2));
+    return () => {
+      for (const fn of fns) {
+        if (typeof fn === "function") {
+          fn();
+        }
+      }
+    };
+  });
+  if (callbacks.a.length) {
+    user_effect(() => {
+      observe_all(context, props);
+      run_all(callbacks.a);
+    });
+  }
+}
+__name(init, "init");
+function observe_all(context, props) {
+  if (context.l.s) {
+    for (const signal of context.l.s) get$1(signal);
+  }
+  props();
+}
+__name(observe_all, "observe_all");
+function reactive_import(fn) {
+  var s = source(0);
+  return function() {
+    if (arguments.length === 1) {
+      set(s, get$1(s) + 1);
+      return arguments[0];
+    } else {
+      get$1(s);
+      return fn();
+    }
+  };
+}
+__name(reactive_import, "reactive_import");
+function bubble_event($$props, event2) {
+  var events = (
+    /** @type {Record<string, Function[] | Function>} */
+    $$props.$$events?.[event2.type]
+  );
+  var callbacks = is_array(events) ? events.slice() : events == null ? [] : [events];
+  for (var fn of callbacks) {
+    fn.call(this, event2);
+  }
+}
+__name(bubble_event, "bubble_event");
+function add_legacy_event_listener($$props, event_name, event_callback) {
+  var _a2;
+  $$props.$$events || ($$props.$$events = {});
+  (_a2 = $$props.$$events)[event_name] || (_a2[event_name] = []);
+  $$props.$$events[event_name].push(event_callback);
+}
+__name(add_legacy_event_listener, "add_legacy_event_listener");
+function update_legacy_props($$new_props) {
+  for (var key2 in $$new_props) {
+    if (key2 in this) {
+      this[key2] = $$new_props[key2];
+    }
+  }
+}
+__name(update_legacy_props, "update_legacy_props");
+function subscribe_to_store(store2, run2, invalidate) {
+  if (store2 == null) {
+    run2(void 0);
+    if (invalidate) invalidate(void 0);
+    return noop;
+  }
+  const unsub = untrack(
+    () => store2.subscribe(
+      run2,
+      // @ts-expect-error
+      invalidate
+    )
+  );
+  return unsub.unsubscribe ? () => unsub.unsubscribe() : unsub;
+}
+__name(subscribe_to_store, "subscribe_to_store");
+const subscriber_queue = [];
+function readable(value2, start) {
+  return {
+    subscribe: writable(value2, start).subscribe
+  };
+}
+__name(readable, "readable");
+function writable(value2, start = noop) {
+  let stop = null;
+  const subscribers = /* @__PURE__ */ new Set();
+  function set2(new_value) {
+    if (safe_not_equal(value2, new_value)) {
+      value2 = new_value;
+      if (stop) {
+        const run_queue = !subscriber_queue.length;
+        for (const subscriber of subscribers) {
+          subscriber[1]();
+          subscriber_queue.push(subscriber, value2);
+        }
+        if (run_queue) {
+          for (let i = 0; i < subscriber_queue.length; i += 2) {
+            subscriber_queue[i][0](subscriber_queue[i + 1]);
+          }
+          subscriber_queue.length = 0;
+        }
+      }
+    }
+  }
+  __name(set2, "set");
+  function update2(fn) {
+    set2(fn(
+      /** @type {T} */
+      value2
+    ));
+  }
+  __name(update2, "update");
+  function subscribe(run2, invalidate = noop) {
+    const subscriber = [run2, invalidate];
+    subscribers.add(subscriber);
+    if (subscribers.size === 1) {
+      stop = start(set2, update2) || noop;
+    }
+    run2(
+      /** @type {T} */
+      value2
+    );
+    return () => {
+      subscribers.delete(subscriber);
+      if (subscribers.size === 0 && stop) {
+        stop();
+        stop = null;
+      }
+    };
+  }
+  __name(subscribe, "subscribe");
+  return { set: set2, update: update2, subscribe };
+}
+__name(writable, "writable");
+function derived(stores, fn, initial_value) {
+  const single = !Array.isArray(stores);
+  const stores_array = single ? [stores] : stores;
+  if (!stores_array.every(Boolean)) {
+    throw new Error("derived() expects stores as input, got a falsy value");
+  }
+  const auto = fn.length < 2;
+  return readable(initial_value, (set2, update2) => {
+    let started = false;
+    const values2 = [];
+    let pending2 = 0;
+    let cleanup = noop;
+    const sync = /* @__PURE__ */ __name(() => {
+      if (pending2) {
+        return;
+      }
+      cleanup();
+      const result = fn(single ? values2[0] : values2, set2, update2);
+      if (auto) {
+        set2(result);
+      } else {
+        cleanup = typeof result === "function" ? result : noop;
+      }
+    }, "sync");
+    const unsubscribers = stores_array.map(
+      (store2, i) => subscribe_to_store(
+        store2,
+        (value2) => {
+          values2[i] = value2;
+          pending2 &= ~(1 << i);
+          if (started) {
+            sync();
+          }
+        },
+        () => {
+          pending2 |= 1 << i;
+        }
+      )
+    );
+    started = true;
+    sync();
+    return /* @__PURE__ */ __name(function stop() {
+      run_all(unsubscribers);
+      cleanup();
+      started = false;
+    }, "stop");
+  });
+}
+__name(derived, "derived");
+function readonly(store2) {
+  return {
+    // @ts-expect-error TODO i suspect the bind is unnecessary
+    subscribe: store2.subscribe.bind(store2)
+  };
+}
+__name(readonly, "readonly");
+function get(store2) {
+  let value2;
+  subscribe_to_store(store2, (_) => value2 = _)();
+  return value2;
+}
+__name(get, "get");
+let is_store_binding = false;
+let IS_UNMOUNTED = /* @__PURE__ */ Symbol();
+function store_get(store2, store_name, stores) {
+  const entry = stores[store_name] ?? (stores[store_name] = {
+    store: null,
+    source: /* @__PURE__ */ mutable_source(void 0),
+    unsubscribe: noop
+  });
+  if (DEV) {
+    entry.source.label = store_name;
+  }
+  if (entry.store !== store2 && !(IS_UNMOUNTED in stores)) {
+    entry.unsubscribe();
+    entry.store = store2 ?? null;
+    if (store2 == null) {
+      entry.source.v = void 0;
+      entry.unsubscribe = noop;
+    } else {
+      var is_synchronous_callback = true;
+      entry.unsubscribe = subscribe_to_store(store2, (v) => {
+        if (is_synchronous_callback) {
+          entry.source.v = v;
+        } else {
+          set(entry.source, v);
+        }
+      });
+      is_synchronous_callback = false;
+    }
+  }
+  if (store2 && IS_UNMOUNTED in stores) {
+    return get(store2);
+  }
+  return get$1(entry.source);
+}
+__name(store_get, "store_get");
+function store_unsub(store2, store_name, stores) {
+  let entry = stores[store_name];
+  if (entry && entry.store !== store2) {
+    entry.unsubscribe();
+    entry.unsubscribe = noop;
+  }
+  return store2;
+}
+__name(store_unsub, "store_unsub");
+function store_set(store2, value2) {
+  store2.set(value2);
+  return value2;
+}
+__name(store_set, "store_set");
+function invalidate_store(stores, store_name) {
+  var entry = stores[store_name];
+  if (entry.store !== null) {
+    store_set(entry.store, entry.source.v);
+  }
+}
+__name(invalidate_store, "invalidate_store");
+function setup_stores() {
+  const stores = {};
+  function cleanup() {
+    teardown(() => {
+      for (var store_name in stores) {
+        const ref = stores[store_name];
+        ref.unsubscribe();
+      }
+      define_property(stores, IS_UNMOUNTED, {
+        enumerable: false,
+        value: true
+      });
+    });
+  }
+  __name(cleanup, "cleanup");
+  return [stores, cleanup];
+}
+__name(setup_stores, "setup_stores");
+function store_mutate(store2, expression, new_value) {
+  store2.set(new_value);
+  return expression;
+}
+__name(store_mutate, "store_mutate");
+function update_store(store2, store_value, d = 1) {
+  store2.set(store_value + d);
+  return store_value;
+}
+__name(update_store, "update_store");
+function update_pre_store(store2, store_value, d = 1) {
+  const value2 = store_value + d;
+  store2.set(value2);
+  return value2;
+}
+__name(update_pre_store, "update_pre_store");
+function mark_store_binding() {
+  is_store_binding = true;
+}
+__name(mark_store_binding, "mark_store_binding");
+function capture_store_binding(fn) {
+  var previous_is_store_binding = is_store_binding;
+  try {
+    is_store_binding = false;
+    return [fn(), is_store_binding];
+  } finally {
+    is_store_binding = previous_is_store_binding;
+  }
+}
+__name(capture_store_binding, "capture_store_binding");
+function update_prop(fn, d = 1) {
+  const value2 = fn();
+  fn(value2 + d);
+  return value2;
+}
+__name(update_prop, "update_prop");
+function update_pre_prop(fn, d = 1) {
+  const value2 = fn() + d;
+  fn(value2);
+  return value2;
+}
+__name(update_pre_prop, "update_pre_prop");
+const rest_props_handler = {
+  get(target, key2) {
+    if (target.exclude.includes(key2)) return;
+    return target.props[key2];
+  },
+  set(target, key2) {
+    if (DEV) {
+      props_rest_readonly(`${target.name}.${String(key2)}`);
+    }
+    return false;
+  },
+  getOwnPropertyDescriptor(target, key2) {
+    if (target.exclude.includes(key2)) return;
+    if (key2 in target.props) {
+      return {
+        enumerable: true,
+        configurable: true,
+        value: target.props[key2]
+      };
+    }
+  },
+  has(target, key2) {
+    if (target.exclude.includes(key2)) return false;
+    return key2 in target.props;
+  },
+  ownKeys(target) {
+    return Reflect.ownKeys(target.props).filter((key2) => !target.exclude.includes(key2));
+  }
+};
+// @__NO_SIDE_EFFECTS__
+function rest_props(props, exclude, name) {
+  return new Proxy(
+    DEV ? { props, exclude, name, other: {}, to_proxy: [] } : { props, exclude },
+    rest_props_handler
+  );
+}
+__name(rest_props, "rest_props");
+const legacy_rest_props_handler = {
+  get(target, key2) {
+    if (target.exclude.includes(key2)) return;
+    get$1(target.version);
+    return key2 in target.special ? target.special[key2]() : target.props[key2];
+  },
+  set(target, key2, value2) {
+    if (!(key2 in target.special)) {
+      var previous_effect = active_effect;
+      try {
+        set_active_effect(target.parent_effect);
+        target.special[key2] = prop(
+          {
+            get [key2]() {
+              return target.props[key2];
+            }
+          },
+          /** @type {string} */
+          key2,
+          PROPS_IS_UPDATED
+        );
+      } finally {
+        set_active_effect(previous_effect);
+      }
+    }
+    target.special[key2](value2);
+    update(target.version);
+    return true;
+  },
+  getOwnPropertyDescriptor(target, key2) {
+    if (target.exclude.includes(key2)) return;
+    if (key2 in target.props) {
+      return {
+        enumerable: true,
+        configurable: true,
+        value: target.props[key2]
+      };
+    }
+  },
+  deleteProperty(target, key2) {
+    if (target.exclude.includes(key2)) return true;
+    target.exclude.push(key2);
+    update(target.version);
+    return true;
+  },
+  has(target, key2) {
+    if (target.exclude.includes(key2)) return false;
+    return key2 in target.props;
+  },
+  ownKeys(target) {
+    return Reflect.ownKeys(target.props).filter((key2) => !target.exclude.includes(key2));
+  }
+};
+function legacy_rest_props(props, exclude) {
+  return new Proxy(
+    {
+      props,
+      exclude,
+      special: {},
+      version: source(0),
+      // TODO this is only necessary because we need to track component
+      // destruction inside `prop`, because of `bind:this`, but it
+      // seems likely that we can simplify `bind:this` instead
+      parent_effect: (
+        /** @type {Effect} */
+        active_effect
+      )
+    },
+    legacy_rest_props_handler
+  );
+}
+__name(legacy_rest_props, "legacy_rest_props");
+const spread_props_handler = {
+  get(target, key2) {
+    let i = target.props.length;
+    while (i--) {
+      let p = target.props[i];
+      if (is_function(p)) p = p();
+      if (typeof p === "object" && p !== null && key2 in p) return p[key2];
+    }
+  },
+  set(target, key2, value2) {
+    let i = target.props.length;
+    while (i--) {
+      let p = target.props[i];
+      if (is_function(p)) p = p();
+      const desc = get_descriptor(p, key2);
+      if (desc && desc.set) {
+        desc.set(value2);
+        return true;
+      }
+    }
+    return false;
+  },
+  getOwnPropertyDescriptor(target, key2) {
+    let i = target.props.length;
+    while (i--) {
+      let p = target.props[i];
+      if (is_function(p)) p = p();
+      if (typeof p === "object" && p !== null && key2 in p) {
+        const descriptor = get_descriptor(p, key2);
+        if (descriptor && !descriptor.configurable) {
+          descriptor.configurable = true;
+        }
+        return descriptor;
+      }
+    }
+  },
+  has(target, key2) {
+    if (key2 === STATE_SYMBOL || key2 === LEGACY_PROPS) return false;
+    for (let p of target.props) {
+      if (is_function(p)) p = p();
+      if (p != null && key2 in p) return true;
+    }
+    return false;
+  },
+  ownKeys(target) {
+    const keys = [];
+    for (let p of target.props) {
+      if (is_function(p)) p = p();
+      if (!p) continue;
+      for (const key2 in p) {
+        if (!keys.includes(key2)) keys.push(key2);
+      }
+      for (const key2 of Object.getOwnPropertySymbols(p)) {
+        if (!keys.includes(key2)) keys.push(key2);
+      }
+    }
+    return keys;
+  }
+};
+function spread_props(...props) {
+  return new Proxy({ props }, spread_props_handler);
+}
+__name(spread_props, "spread_props");
+function prop(props, key2, flags2, fallback2) {
+  var runes = !legacy_mode_flag || (flags2 & PROPS_IS_RUNES) !== 0;
+  var bindable = (flags2 & PROPS_IS_BINDABLE) !== 0;
+  var lazy2 = (flags2 & PROPS_IS_LAZY_INITIAL) !== 0;
+  var fallback_value = (
+    /** @type {V} */
+    fallback2
+  );
+  var fallback_dirty = true;
+  var get_fallback = /* @__PURE__ */ __name(() => {
+    if (fallback_dirty) {
+      fallback_dirty = false;
+      fallback_value = lazy2 ? untrack(
+        /** @type {() => V} */
+        fallback2
+      ) : (
+        /** @type {V} */
+        fallback2
+      );
+    }
+    return fallback_value;
+  }, "get_fallback");
+  var setter;
+  if (bindable) {
+    var is_entry_props = STATE_SYMBOL in props || LEGACY_PROPS in props;
+    setter = get_descriptor(props, key2)?.set ?? (is_entry_props && key2 in props ? (v) => props[key2] = v : void 0);
+  }
+  var initial_value;
+  var is_store_sub = false;
+  if (bindable) {
+    [initial_value, is_store_sub] = capture_store_binding(() => (
+      /** @type {V} */
+      props[key2]
+    ));
+  } else {
+    initial_value = /** @type {V} */
+    props[key2];
+  }
+  if (initial_value === void 0 && fallback2 !== void 0) {
+    initial_value = get_fallback();
+    if (setter) {
+      if (runes) props_invalid_value(key2);
+      setter(initial_value);
+    }
+  }
+  var getter;
+  if (runes) {
+    getter = /* @__PURE__ */ __name(() => {
+      var value2 = (
+        /** @type {V} */
+        props[key2]
+      );
+      if (value2 === void 0) return get_fallback();
+      fallback_dirty = true;
+      return value2;
+    }, "getter");
+  } else {
+    getter = /* @__PURE__ */ __name(() => {
+      var value2 = (
+        /** @type {V} */
+        props[key2]
+      );
+      if (value2 !== void 0) {
+        fallback_value = /** @type {V} */
+        void 0;
+      }
+      return value2 === void 0 ? fallback_value : value2;
+    }, "getter");
+  }
+  if (runes && (flags2 & PROPS_IS_UPDATED) === 0) {
+    return getter;
+  }
+  if (setter) {
+    var legacy_parent = props.$$legacy;
+    return (
+      /** @type {() => V} */
+      (function(value2, mutation) {
+        if (arguments.length > 0) {
+          if (!runes || !mutation || legacy_parent || is_store_sub) {
+            setter(mutation ? getter() : value2);
+          }
+          return value2;
+        }
+        return getter();
+      })
+    );
+  }
+  var overridden = false;
+  var d = ((flags2 & PROPS_IS_IMMUTABLE) !== 0 ? derived$1 : derived_safe_equal)(() => {
+    overridden = false;
+    return getter();
+  });
+  if (DEV) {
+    d.label = key2;
+  }
+  if (bindable) get$1(d);
+  var parent_effect = (
+    /** @type {Effect} */
+    active_effect
+  );
+  return (
+    /** @type {() => V} */
+    (function(value2, mutation) {
+      if (arguments.length > 0) {
+        const new_value = mutation ? get$1(d) : runes && bindable ? proxy(value2) : value2;
+        set(d, new_value);
+        overridden = true;
+        if (fallback_value !== void 0) {
+          fallback_value = new_value;
+        }
+        return value2;
+      }
+      if (is_destroying_effect && overridden || (parent_effect.f & DESTROYED) !== 0) {
+        return d.v;
+      }
+      return get$1(d);
+    })
+  );
+}
+__name(prop, "prop");
+function validate_each_keys(collection, key_fn) {
+  render_effect(() => {
+    const keys = /* @__PURE__ */ new Map();
+    const maybe_array = collection();
+    const array2 = is_array(maybe_array) ? maybe_array : maybe_array == null ? [] : Array.from(maybe_array);
+    const length2 = array2.length;
+    for (let i = 0; i < length2; i++) {
+      const key2 = key_fn(array2[i], i);
+      if (keys.has(key2)) {
+        const a = String(keys.get(key2));
+        const b = String(i);
+        let k = String(key2);
+        if (k.startsWith("[object ")) k = null;
+        each_key_duplicate(a, b, k);
+      }
+      keys.set(key2, i);
+    }
+  });
+}
+__name(validate_each_keys, "validate_each_keys");
+function validate_binding(binding, blockers, get_object, get_property, line, column) {
+  run_after_blockers(blockers, () => {
+    var warned = false;
+    var filename = dev_current_component_function?.[FILENAME];
+    render_effect(() => {
+      if (warned) return;
+      var [object2, is_store_sub] = capture_store_binding(get_object);
+      if (is_store_sub) return;
+      var property = get_property();
+      var ran = false;
+      var effect2 = render_effect(() => {
+        if (ran) return;
+        object2[property];
+      });
+      ran = true;
+      if (effect2.deps === null) {
+        var location = `${filename}:${line}:${column}`;
+        binding_property_non_reactive(binding, location);
+        warned = true;
+      }
+    });
+  });
+}
+__name(validate_binding, "validate_binding");
+function createClassComponent(options) {
+  return new Svelte4Component(options);
+}
+__name(createClassComponent, "createClassComponent");
+function asClassComponent(component2) {
+  return class extends Svelte4Component {
+    /** @param {any} options */
+    constructor(options) {
+      super({
+        component: component2,
+        ...options
+      });
+    }
+  };
+}
+__name(asClassComponent, "asClassComponent");
+const _Svelte4Component = class _Svelte4Component {
+  /**
+   * @param {ComponentConstructorOptions & {
+   *  component: any;
+   * }} options
+   */
+  constructor(options) {
+    /** @type {any} */
+    __privateAdd(this, _events);
+    /** @type {Record<string, any>} */
+    __privateAdd(this, _instance);
+    var sources = /* @__PURE__ */ new Map();
+    var add_source = /* @__PURE__ */ __name((key2, value2) => {
+      var s = /* @__PURE__ */ mutable_source(value2, false, false);
+      sources.set(key2, s);
+      return s;
+    }, "add_source");
+    const props = new Proxy(
+      { ...options.props || {}, $$events: {} },
+      {
+        get(target, prop2) {
+          return get$1(sources.get(prop2) ?? add_source(prop2, Reflect.get(target, prop2)));
+        },
+        has(target, prop2) {
+          if (prop2 === LEGACY_PROPS) return true;
+          get$1(sources.get(prop2) ?? add_source(prop2, Reflect.get(target, prop2)));
+          return Reflect.has(target, prop2);
+        },
+        set(target, prop2, value2) {
+          set(sources.get(prop2) ?? add_source(prop2, value2), value2);
+          return Reflect.set(target, prop2, value2);
+        }
+      }
+    );
+    __privateSet(this, _instance, (options.hydrate ? hydrate : mount)(options.component, {
+      target: options.target,
+      anchor: options.anchor,
+      props,
+      context: options.context,
+      intro: options.intro ?? false,
+      recover: options.recover
+    }));
+    if (!async_mode_flag && (!options?.props?.$$host || options.sync === false)) {
+      flushSync();
+    }
+    __privateSet(this, _events, props.$$events);
+    for (const key2 of Object.keys(__privateGet(this, _instance))) {
+      if (key2 === "$set" || key2 === "$destroy" || key2 === "$on") continue;
+      define_property(this, key2, {
+        get() {
+          return __privateGet(this, _instance)[key2];
+        },
+        /** @param {any} value */
+        set(value2) {
+          __privateGet(this, _instance)[key2] = value2;
+        },
+        enumerable: true
+      });
+    }
+    __privateGet(this, _instance).$set = /** @param {Record<string, any>} next */
+    (next2) => {
+      Object.assign(props, next2);
+    };
+    __privateGet(this, _instance).$destroy = () => {
+      unmount(__privateGet(this, _instance));
+    };
+  }
+  /** @param {Record<string, any>} props */
+  $set(props) {
+    __privateGet(this, _instance).$set(props);
+  }
+  /**
+   * @param {string} event
+   * @param {(...args: any[]) => any} callback
+   * @returns {any}
+   */
+  $on(event2, callback) {
+    __privateGet(this, _events)[event2] = __privateGet(this, _events)[event2] || [];
+    const cb = /* @__PURE__ */ __name((...args2) => callback.call(this, ...args2), "cb");
+    __privateGet(this, _events)[event2].push(cb);
+    return () => {
+      __privateGet(this, _events)[event2] = __privateGet(this, _events)[event2].filter(
+        /** @param {any} fn */
+        (fn) => fn !== cb
+      );
+    };
+  }
+  $destroy() {
+    __privateGet(this, _instance).$destroy();
+  }
+};
+_events = new WeakMap();
+_instance = new WeakMap();
+__name(_Svelte4Component, "Svelte4Component");
+let Svelte4Component = _Svelte4Component;
+function run(fn) {
+  user_pre_effect(() => {
+    fn();
+    var effect2 = (
+      /** @type {import('#client').Effect} */
+      active_effect
+    );
+    if ((effect2.f & DIRTY) !== 0) {
+      let filename = "a file (we can't know which one)";
+      if (DEV) {
+        filename = dev_current_component_function?.[FILENAME] ?? filename;
+      }
+      legacy_recursive_reactive_block(filename);
+      set_signal_status(effect2, MAYBE_DIRTY);
+    }
+  });
+}
+__name(run, "run");
+function handlers(...handlers2) {
+  return function(event2) {
+    const { stopImmediatePropagation: stopImmediatePropagation2 } = event2;
+    let stopped = false;
+    event2.stopImmediatePropagation = () => {
+      stopped = true;
+      stopImmediatePropagation2.call(event2);
+    };
+    const errors = [];
+    for (const handler of handlers2) {
+      try {
+        handler?.call(this, event2);
+      } catch (e) {
+        errors.push(e);
+      }
+      if (stopped) {
+        break;
+      }
+    }
+    for (let error of errors) {
+      queueMicrotask(() => {
+        throw error;
+      });
+    }
+  };
+}
+__name(handlers, "handlers");
+function createBubbler() {
+  const active_component_context = component_context;
+  if (active_component_context === null) {
+    lifecycle_outside_component("createBubbler");
+  }
+  return (type) => (event2) => {
+    const events = (
+      /** @type {Record<string, Function | Function[]>} */
+      active_component_context.s.$$events?.[
+        /** @type {any} */
+        type
+      ]
+    );
+    if (events) {
+      const callbacks = is_array(events) ? events.slice() : [events];
+      for (const fn of callbacks) {
+        fn.call(active_component_context.x, event2);
+      }
+      return !event2.defaultPrevented;
+    }
+    return true;
+  };
+}
+__name(createBubbler, "createBubbler");
+let SvelteElement;
+if (typeof HTMLElement === "function") {
+  SvelteElement = (_c = class extends HTMLElement {
+    /**
+     * @param {*} $$componentCtor
+     * @param {*} $$slots
+     * @param {*} use_shadow_dom
+     */
+    constructor($$componentCtor, $$slots, use_shadow_dom) {
+      super();
+      /** The Svelte component constructor */
+      __publicField(this, "$$ctor");
+      /** Slots */
+      __publicField(this, "$$s");
+      /** @type {any} The Svelte component instance */
+      __publicField(this, "$$c");
+      /** Whether or not the custom element is connected */
+      __publicField(this, "$$cn", false);
+      /** @type {Record<string, any>} Component props data */
+      __publicField(this, "$$d", {});
+      /** `true` if currently in the process of reflecting component props back to attributes */
+      __publicField(this, "$$r", false);
+      /** @type {Record<string, CustomElementPropDefinition>} Props definition (name, reflected, type etc) */
+      __publicField(this, "$$p_d", {});
+      /** @type {Record<string, EventListenerOrEventListenerObject[]>} Event listeners */
+      __publicField(this, "$$l", {});
+      /** @type {Map<EventListenerOrEventListenerObject, Function>} Event listener unsubscribe functions */
+      __publicField(this, "$$l_u", /* @__PURE__ */ new Map());
+      /** @type {any} The managed render effect for reflecting attributes */
+      __publicField(this, "$$me");
+      this.$$ctor = $$componentCtor;
+      this.$$s = $$slots;
+      if (use_shadow_dom) {
+        this.attachShadow({ mode: "open" });
+      }
+    }
+    /**
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     */
+    addEventListener(type, listener, options) {
+      this.$$l[type] = this.$$l[type] || [];
+      this.$$l[type].push(listener);
+      if (this.$$c) {
+        const unsub = this.$$c.$on(type, listener);
+        this.$$l_u.set(listener, unsub);
+      }
+      super.addEventListener(type, listener, options);
+    }
+    /**
+     * @param {string} type
+     * @param {EventListenerOrEventListenerObject} listener
+     * @param {boolean | AddEventListenerOptions} [options]
+     */
+    removeEventListener(type, listener, options) {
+      super.removeEventListener(type, listener, options);
+      if (this.$$c) {
+        const unsub = this.$$l_u.get(listener);
+        if (unsub) {
+          unsub();
+          this.$$l_u.delete(listener);
+        }
+      }
+    }
+    async connectedCallback() {
+      this.$$cn = true;
+      if (!this.$$c) {
+        let create_slot2 = function(name) {
+          return (anchor) => {
+            const slot2 = document.createElement("slot");
+            if (name !== "default") slot2.name = name;
+            append(anchor, slot2);
+          };
+        };
+        var create_slot = create_slot2;
+        __name(create_slot2, "create_slot");
+        await Promise.resolve();
+        if (!this.$$cn || this.$$c) {
+          return;
+        }
+        const $$slots = {};
+        const existing_slots = get_custom_elements_slots(this);
+        for (const name of this.$$s) {
+          if (name in existing_slots) {
+            if (name === "default" && !this.$$d.children) {
+              this.$$d.children = create_slot2(name);
+              $$slots.default = true;
+            } else {
+              $$slots[name] = create_slot2(name);
+            }
+          }
+        }
+        for (const attribute of this.attributes) {
+          const name = this.$$g_p(attribute.name);
+          if (!(name in this.$$d)) {
+            this.$$d[name] = get_custom_element_value(name, attribute.value, this.$$p_d, "toProp");
+          }
+        }
+        for (const key2 in this.$$p_d) {
+          if (!(key2 in this.$$d) && this[key2] !== void 0) {
+            this.$$d[key2] = this[key2];
+            delete this[key2];
+          }
+        }
+        this.$$c = createClassComponent({
+          component: this.$$ctor,
+          target: this.shadowRoot || this,
+          props: {
+            ...this.$$d,
+            $$slots,
+            $$host: this
+          }
+        });
+        this.$$me = effect_root(() => {
+          render_effect(() => {
+            this.$$r = true;
+            for (const key2 of object_keys(this.$$c)) {
+              if (!this.$$p_d[key2]?.reflect) continue;
+              this.$$d[key2] = this.$$c[key2];
+              const attribute_value = get_custom_element_value(
+                key2,
+                this.$$d[key2],
+                this.$$p_d,
+                "toAttribute"
+              );
+              if (attribute_value == null) {
+                this.removeAttribute(this.$$p_d[key2].attribute || key2);
+              } else {
+                this.setAttribute(this.$$p_d[key2].attribute || key2, attribute_value);
+              }
+            }
+            this.$$r = false;
+          });
+        });
+        for (const type in this.$$l) {
+          for (const listener of this.$$l[type]) {
+            const unsub = this.$$c.$on(type, listener);
+            this.$$l_u.set(listener, unsub);
+          }
+        }
+        this.$$l = {};
+      }
+    }
+    // We don't need this when working within Svelte code, but for compatibility of people using this outside of Svelte
+    // and setting attributes through setAttribute etc, this is helpful
+    /**
+     * @param {string} attr
+     * @param {string} _oldValue
+     * @param {string} newValue
+     */
+    attributeChangedCallback(attr2, _oldValue, newValue) {
+      if (this.$$r) return;
+      attr2 = this.$$g_p(attr2);
+      this.$$d[attr2] = get_custom_element_value(attr2, newValue, this.$$p_d, "toProp");
+      this.$$c?.$set({ [attr2]: this.$$d[attr2] });
+    }
+    disconnectedCallback() {
+      this.$$cn = false;
+      Promise.resolve().then(() => {
+        if (!this.$$cn && this.$$c) {
+          this.$$c.$destroy();
+          this.$$me();
+          this.$$c = void 0;
+        }
+      });
+    }
+    /**
+     * @param {string} attribute_name
+     */
+    $$g_p(attribute_name) {
+      return object_keys(this.$$p_d).find(
+        (key2) => this.$$p_d[key2].attribute === attribute_name || !this.$$p_d[key2].attribute && key2.toLowerCase() === attribute_name
+      ) || attribute_name;
+    }
+  }, __name(_c, "SvelteElement"), _c);
+}
+function get_custom_element_value(prop2, value2, props_definition, transform2) {
+  const type = props_definition[prop2]?.type;
+  value2 = type === "Boolean" && typeof value2 !== "boolean" ? value2 != null : value2;
+  if (!transform2 || !props_definition[prop2]) {
+    return value2;
+  } else if (transform2 === "toAttribute") {
+    switch (type) {
+      case "Object":
+      case "Array":
+        return value2 == null ? null : JSON.stringify(value2);
+      case "Boolean":
+        return value2 ? "" : null;
+      case "Number":
+        return value2 == null ? null : value2;
+      default:
+        return value2;
+    }
+  } else {
+    switch (type) {
+      case "Object":
+      case "Array":
+        return value2 && JSON.parse(value2);
+      case "Boolean":
+        return value2;
+      // conversion already handled above
+      case "Number":
+        return value2 != null ? +value2 : value2;
+      default:
+        return value2;
+    }
+  }
+}
+__name(get_custom_element_value, "get_custom_element_value");
+function get_custom_elements_slots(element2) {
+  const result = {};
+  element2.childNodes.forEach((node) => {
+    result[
+      /** @type {Element} node */
+      node.slot || "default"
+    ] = true;
+  });
+  return result;
+}
+__name(get_custom_elements_slots, "get_custom_elements_slots");
+function create_custom_element(Component, props_definition, slots, exports, use_shadow_dom, extend) {
+  var _a2;
+  let Class = (_a2 = class extends SvelteElement {
+    constructor() {
+      super(Component, slots, use_shadow_dom);
+      this.$$p_d = props_definition;
+    }
+    static get observedAttributes() {
+      return object_keys(props_definition).map(
+        (key2) => (props_definition[key2].attribute || key2).toLowerCase()
+      );
+    }
+  }, __name(_a2, "Class"), _a2);
+  object_keys(props_definition).forEach((prop2) => {
+    define_property(Class.prototype, prop2, {
+      get() {
+        return this.$$c && prop2 in this.$$c ? this.$$c[prop2] : this.$$d[prop2];
+      },
+      set(value2) {
+        value2 = get_custom_element_value(prop2, value2, props_definition);
+        this.$$d[prop2] = value2;
+        var component2 = this.$$c;
+        if (component2) {
+          var setter = get_descriptor(component2, prop2)?.get;
+          if (setter) {
+            component2[prop2] = value2;
+          } else {
+            component2.$set({ [prop2]: value2 });
+          }
+        }
+      }
+    });
+  });
+  exports.forEach((property) => {
+    define_property(Class.prototype, property, {
+      get() {
+        return this.$$c?.[property];
+      }
+    });
+  });
+  if (extend) {
+    Class = extend(Class);
+  }
+  Component.element = /** @type {any} */
+  Class;
+  return Class;
+}
+__name(create_custom_element, "create_custom_element");
+function log_if_contains_state(method, ...objects) {
+  untrack(() => {
+    try {
+      let has_state = false;
+      const transformed = [];
+      for (const obj of objects) {
+        if (obj && typeof obj === "object" && STATE_SYMBOL in obj) {
+          transformed.push(snapshot(obj, true));
+          has_state = true;
+        } else {
+          transformed.push(obj);
+        }
+      }
+      if (has_state) {
+        console_log_state(method);
+        console.log("%c[snapshot]", "color: grey", ...transformed);
+      }
+    } catch {
+    }
+  });
+  return objects;
+}
+__name(log_if_contains_state, "log_if_contains_state");
+function hydratable(key2, fn) {
+  if (!async_mode_flag) {
+    experimental_async_required("hydratable");
+  }
+  if (hydrating) {
+    const store2 = window.__svelte?.h;
+    if (store2?.has(key2)) {
+      return (
+        /** @type {T} */
+        store2.get(key2)
+      );
+    }
+    if (DEV) {
+      hydratable_missing_but_required(key2);
+    } else {
+      hydratable_missing_but_expected(key2);
+    }
+  }
+  return fn();
+}
+__name(hydratable, "hydratable");
+if (DEV) {
+  let throw_rune_error = /* @__PURE__ */ __name(function(rune) {
+    if (!(rune in globalThis)) {
+      let value2;
+      Object.defineProperty(globalThis, rune, {
+        configurable: true,
+        // eslint-disable-next-line getter-return
+        get: /* @__PURE__ */ __name(() => {
+          if (value2 !== void 0) {
+            return value2;
+          }
+          rune_outside_svelte(rune);
+        }, "get"),
+        set: /* @__PURE__ */ __name((v) => {
+          value2 = v;
+        }, "set")
+      });
+    }
+  }, "throw_rune_error");
+  throw_rune_error("$state");
+  throw_rune_error("$effect");
+  throw_rune_error("$derived");
+  throw_rune_error("$inspect");
+  throw_rune_error("$props");
+  throw_rune_error("$bindable");
+}
+function getAbortSignal() {
+  if (active_reaction === null) {
+    get_abort_signal_outside_reaction();
+  }
+  return (active_reaction.ac ?? (active_reaction.ac = new AbortController())).signal;
+}
+__name(getAbortSignal, "getAbortSignal");
+function onMount(fn) {
+  if (component_context === null) {
+    lifecycle_outside_component("onMount");
+  }
+  if (legacy_mode_flag && component_context.l !== null) {
+    init_update_callbacks(component_context).m.push(fn);
+  } else {
+    user_effect(() => {
+      const cleanup = untrack(fn);
+      if (typeof cleanup === "function") return (
+        /** @type {() => void} */
+        cleanup
+      );
+    });
+  }
+}
+__name(onMount, "onMount");
+function onDestroy(fn) {
+  if (component_context === null) {
+    lifecycle_outside_component("onDestroy");
+  }
+  onMount(() => () => untrack(fn));
+}
+__name(onDestroy, "onDestroy");
+function create_custom_event(type, detail, { bubbles = false, cancelable = false } = {}) {
+  return new CustomEvent(type, { detail, bubbles, cancelable });
+}
+__name(create_custom_event, "create_custom_event");
+function createEventDispatcher() {
+  const active_component_context = component_context;
+  if (active_component_context === null) {
+    lifecycle_outside_component("createEventDispatcher");
+  }
+  return (type, detail, options) => {
+    const events = (
+      /** @type {Record<string, Function | Function[]>} */
+      active_component_context.s.$$events?.[
+        /** @type {string} */
+        type
+      ]
+    );
+    if (events) {
+      const callbacks = is_array(events) ? events.slice() : [events];
+      const event2 = create_custom_event(
+        /** @type {string} */
+        type,
+        detail,
+        options
+      );
+      for (const fn of callbacks) {
+        fn.call(active_component_context.x, event2);
+      }
+      return !event2.defaultPrevented;
+    }
+    return true;
+  };
+}
+__name(createEventDispatcher, "createEventDispatcher");
+function beforeUpdate(fn) {
+  if (component_context === null) {
+    lifecycle_outside_component("beforeUpdate");
+  }
+  if (component_context.l === null) {
+    lifecycle_legacy_only("beforeUpdate");
+  }
+  init_update_callbacks(component_context).b.push(fn);
+}
+__name(beforeUpdate, "beforeUpdate");
+function afterUpdate(fn) {
+  if (component_context === null) {
+    lifecycle_outside_component("afterUpdate");
+  }
+  if (component_context.l === null) {
+    lifecycle_legacy_only("afterUpdate");
+  }
+  init_update_callbacks(component_context).a.push(fn);
+}
+__name(afterUpdate, "afterUpdate");
+function init_update_callbacks(context) {
+  var l = (
+    /** @type {ComponentContextLegacy} */
+    context.l
+  );
+  return l.u ?? (l.u = { a: [], b: [], m: [] });
+}
+__name(init_update_callbacks, "init_update_callbacks");
+const _SvelteRenderer = class _SvelteRenderer {
+  mount(descriptor, target, viewModel) {
+    if (descriptor.type !== "svelte") {
+      return err({
+        code: "InvalidType",
+        message: `SvelteRenderer can only mount svelte components`
+      });
+    }
+    try {
+      const component2 = descriptor.component;
+      const mounted = mount(component2, {
+        target,
+        props: {
+          ...descriptor.props,
+          viewModel
+          // ViewModel als Prop
+        }
+      });
+      return ok({
+        id: `svelte-${Date.now()}-${Math.random()}`,
+        type: "svelte",
+        element: target,
+        props: { ...descriptor.props, viewModel },
+        instance: mounted
+        // Svelte-spezifisch: mount() Rückgabe
+      });
+    } catch (error) {
+      return err({
+        code: "MountFailed",
+        message: `Failed to mount svelte component: ${String(error)}`,
+        cause: error
+      });
+    }
+  }
+  unmount(instance2) {
+    try {
+      if (instance2.instance) {
+        unmount(instance2.instance);
+      }
+      return ok(void 0);
+    } catch (error) {
+      return err({
+        code: "UnmountFailed",
+        message: `Failed to unmount component: ${String(error)}`,
+        cause: error
+      });
+    }
+  }
+  update(_instance2, _viewModel) {
+    try {
+      return ok(void 0);
+    } catch (error) {
+      return err({
+        code: "UpdateFailed",
+        message: `Failed to update component: ${String(error)}`,
+        cause: error
+      });
+    }
+  }
+};
+__name(_SvelteRenderer, "SvelteRenderer");
+let SvelteRenderer = _SvelteRenderer;
+const _FlagsPersistAdapter = class _FlagsPersistAdapter {
+  async save(config2, data, meta) {
+    if (config2.type !== "flag") {
+      return err({ code: "InvalidType", message: "Not a flag persist config" });
+    }
+    if (!config2.documentId || !config2.namespace || !config2.key) {
+      return err({
+        code: "InvalidConfig",
+        message: "Flag config requires documentId, namespace, and key"
+      });
+    }
+    try {
+      if (typeof game === "undefined") {
+        return err({ code: "GameNotAvailable", message: "Foundry game object not available" });
+      }
+      const documentType = config2.documentId.split(".")[0];
+      if (!documentType) {
+        return err({ code: "InvalidConfig", message: "Invalid document ID format" });
+      }
+      const collectionResult = castFoundryDocumentCollection(game.collections, documentType);
+      if (!collectionResult.ok) {
+        return err({
+          code: "DocumentNotFound",
+          message: `Document collection not found: ${collectionResult.error.message}`
+        });
+      }
+      const collection = collectionResult.value;
+      const doc = collection.get(config2.documentId);
+      if (!doc) {
+        return err({
+          code: "DocumentNotFound",
+          message: `Document ${config2.documentId} not found`
+        });
+      }
+      const documentWithUpdate = doc;
+      const changes = {
+        [`flags.${config2.namespace}.${config2.key}`]: data
+      };
+      const options = {
+        render: meta?.render ?? false,
+        // Kein Rerender (in options, nicht in changes!)
+        windowFrameworkOrigin: meta
+        // Origin-Meta für Hook-Bridge
+      };
+      await documentWithUpdate.update(changes, options);
+      return ok(void 0);
+    } catch (error) {
+      return err({
+        code: "SaveFailed",
+        message: `Failed to save flag: ${String(error)}`,
+        cause: error
+      });
+    }
+  }
+  async load(config2) {
+    if (config2.type !== "flag") {
+      return err({ code: "InvalidType", message: "Not a flag persist config" });
+    }
+    if (!config2.documentId || !config2.namespace || !config2.key) {
+      return err({
+        code: "InvalidConfig",
+        message: "Flag config requires documentId, namespace, and key"
+      });
+    }
+    try {
+      if (typeof game === "undefined") {
+        return err({ code: "GameNotAvailable", message: "Foundry game object not available" });
+      }
+      const documentType = config2.documentId.split(".")[0];
+      if (!documentType) {
+        return err({ code: "InvalidConfig", message: "Invalid document ID format" });
+      }
+      const collectionResult = castFoundryDocumentCollection(game.collections, documentType);
+      if (!collectionResult.ok) {
+        return err({
+          code: "DocumentNotFound",
+          message: `Document collection not found: ${collectionResult.error.message}`
+        });
+      }
+      const collection = collectionResult.value;
+      const doc = collection.get(config2.documentId);
+      if (!doc) {
+        return err({
+          code: "DocumentNotFound",
+          message: `Document ${config2.documentId} not found`
+        });
+      }
+      const documentWithFlags = doc;
+      let flags2;
+      if (typeof documentWithFlags.getFlag === "function") {
+        try {
+          flags2 = documentWithFlags.getFlag(config2.namespace, config2.key);
+        } catch {
+          flags2 = void 0;
+        }
+      }
+      if (!flags2) {
+        const docFlags = documentWithFlags.flags?.[config2.namespace];
+        flags2 = docFlags?.[config2.key];
+      }
+      return ok(flags2 || {});
+    } catch (error) {
+      return err({
+        code: "LoadFailed",
+        message: `Failed to load flag: ${String(error)}`,
+        cause: error
+      });
+    }
+  }
+};
+__name(_FlagsPersistAdapter, "FlagsPersistAdapter");
+let FlagsPersistAdapter = _FlagsPersistAdapter;
+const recordSchema = {
+  validate(value2) {
+    if (value2 && typeof value2 === "object" && !Array.isArray(value2)) {
+      return ok(value2);
+    }
+    return err({
+      code: "SETTING_VALIDATION_FAILED",
+      message: "Value is not a valid object"
+    });
+  }
+};
+const _SettingsPersistAdapter = class _SettingsPersistAdapter {
+  constructor(settingsPort) {
+    this.settingsPort = settingsPort;
+  }
+  async save(config2, data, _meta) {
+    if (config2.type !== "setting") {
+      return err({ code: "InvalidType", message: "Not a setting persist config" });
+    }
+    if (!config2.namespace || !config2.key) {
+      return err({
+        code: "InvalidConfig",
+        message: "Setting config requires namespace and key"
+      });
+    }
+    const result = await this.settingsPort.set(config2.namespace, config2.key, data);
+    if (!result.ok) {
+      return err({
+        code: "SaveFailed",
+        message: result.error.message,
+        cause: result.error
+      });
+    }
+    return ok(void 0);
+  }
+  async load(config2) {
+    if (config2.type !== "setting") {
+      return err({ code: "InvalidType", message: "Not a setting persist config" });
+    }
+    if (!config2.namespace || !config2.key) {
+      return err({
+        code: "InvalidConfig",
+        message: "Setting config requires namespace and key"
+      });
+    }
+    const result = this.settingsPort.get(config2.namespace, config2.key, recordSchema);
+    if (!result.ok) {
+      return err({
+        code: "LoadFailed",
+        message: result.error.message,
+        cause: result.error
+      });
+    }
+    return ok(result.value || {});
+  }
+};
+__name(_SettingsPersistAdapter, "SettingsPersistAdapter");
+let SettingsPersistAdapter = _SettingsPersistAdapter;
+const _CompositePersistAdapter = class _CompositePersistAdapter {
+  constructor(settingsPort) {
+    this.flagsAdapter = new FlagsPersistAdapter();
+    this.settingsAdapter = new SettingsPersistAdapter(settingsPort);
+  }
+  async save(config2, data, meta) {
+    const adapter = this.getAdapter(config2.type);
+    return adapter.save(config2, data, meta);
+  }
+  async load(config2) {
+    const adapter = this.getAdapter(config2.type);
+    return adapter.load(config2);
+  }
+  getAdapter(type) {
+    switch (type) {
+      case "flag":
+        return this.flagsAdapter;
+      case "setting":
+        return this.settingsAdapter;
+      default:
+        return this.flagsAdapter;
+    }
+  }
+};
+__name(_CompositePersistAdapter, "CompositePersistAdapter");
+_CompositePersistAdapter.dependencies = [platformSettingsPortToken];
+let CompositePersistAdapter = _CompositePersistAdapter;
+const _WindowController = class _WindowController {
+  constructor(instanceId, definitionId, definition, registry, stateStore, statePortFactory, actionDispatcher, rendererRegistry, bindingEngine, viewModelBuilder, eventBus, remoteSyncGate, persistAdapter) {
+    this.registry = registry;
+    this.stateStore = stateStore;
+    this.statePortFactory = statePortFactory;
+    this.actionDispatcher = actionDispatcher;
+    this.rendererRegistry = rendererRegistry;
+    this.bindingEngine = bindingEngine;
+    this.viewModelBuilder = viewModelBuilder;
+    this.eventBus = eventBus;
+    this.remoteSyncGate = remoteSyncGate;
+    this.persistAdapter = persistAdapter;
+    this.componentInstance = null;
+    this.isMounted = false;
+    this.instanceId = instanceId;
+    this.definitionId = definitionId;
+    this.definition = definition;
+    this.statePort = this.createStatePort();
+  }
+  get state() {
+    const result = this.stateStore.getAll(this.instanceId);
+    return result.ok ? result.value : {};
+  }
+  async onFoundryRender(element2) {
+    if (this.isMounted) {
+      return ok(void 0);
+    }
+    this.element = element2;
+    const bindResult = this.bindingEngine.initialize(this.definition, this.instanceId);
+    if (!bindResult.ok) return err(bindResult.error);
+    const viewModel = this.viewModelBuilder.build(
+      this.definition,
+      this.statePort,
+      // StatePort statt Plain Object
+      this.createActions()
+    );
+    this.cachedViewModel = viewModel;
+    const rendererResult = this.rendererRegistry.get(this.definition.component.type);
+    if (!rendererResult.ok) return err(rendererResult.error);
+    const mountPoint = element2.querySelector("#svelte-mount-point");
+    if (!mountPoint) {
+      return err({
+        code: "MountPointNotFound",
+        message: "Mount point #svelte-mount-point not found"
+      });
+    }
+    const mountResult = rendererResult.value.mount(
+      this.definition.component,
+      mountPoint,
+      viewModel
+    );
+    if (!mountResult.ok) return err(mountResult.error);
+    this.componentInstance = mountResult.value;
+    this.isMounted = true;
+    this.registerEventListeners();
+    this.eventBus.emit("window:rendered", { instanceId: this.instanceId });
+    return ok(void 0);
+  }
+  async onFoundryUpdate(_element) {
+    return ok(void 0);
+  }
+  async onFoundryClose() {
+    if (this.componentInstance !== null) {
+      const rendererResult = this.rendererRegistry.get(this.definition.component.type);
+      if (rendererResult.ok) {
+        if (this.componentInstance !== null) {
+          rendererResult.value.unmount(this.componentInstance);
+        }
+      }
+      this.componentInstance = null;
+    }
+    this.isMounted = false;
+    if (this.definition.persist) {
+      const meta = this.remoteSyncGate.makePersistMeta(this.instanceId);
+      await this.persist(meta);
+    }
+    this.eventBus.emit("window:closed", { instanceId: this.instanceId });
+    return ok(void 0);
+  }
+  async updateStateLocal(updates, options) {
+    const { persist = false, sync = "none" } = options ?? {};
+    this.statePort.patch(updates);
+    if (persist && this.definition.persist) {
+      const meta = this.remoteSyncGate.makePersistMeta(this.instanceId);
+      const persistResult = await this.persist(meta);
+      if (!persistResult.ok) return err(persistResult.error);
+    }
+    if (sync !== "none") {
+      const syncResult = await this.bindingEngine.sync(this.instanceId, sync);
+      if (!syncResult.ok) return err(syncResult.error);
+    }
+    for (const [key2, value2] of Object.entries(updates)) {
+      this.eventBus.emit("state:updated", { instanceId: this.instanceId, key: key2, value: value2 });
+    }
+    return ok(void 0);
+  }
+  async applyRemotePatch(updates) {
+    this.statePort.patch(updates);
+    for (const [key2, value2] of Object.entries(updates)) {
+      this.eventBus.emit("state:updated", { instanceId: this.instanceId, key: key2, value: value2 });
+    }
+    return ok(void 0);
+  }
+  async dispatchAction(actionId, controlId, event2) {
+    const context = {
+      windowInstanceId: this.instanceId,
+      ...controlId !== void 0 && { controlId },
+      state: this.state,
+      ...event2 !== void 0 && { event: event2 }
+    };
+    const result = await this.actionDispatcher.dispatch(actionId, context);
+    if (!result.ok) return err(result.error);
+    return ok(void 0);
+  }
+  async persist(meta) {
+    if (!this.definition.persist) {
+      return err({
+        code: "NoPersistConfig",
+        message: "No persist configuration found"
+      });
+    }
+    if (!this.persistAdapter) {
+      return err({
+        code: "NoPersistAdapter",
+        message: "No persist adapter available"
+      });
+    }
+    const state2 = this.statePort.get();
+    const persistMeta = meta ?? this.remoteSyncGate.makePersistMeta(this.instanceId);
+    const result = await this.persistAdapter.save(this.definition.persist, state2, persistMeta);
+    if (!result.ok) return err(result.error);
+    return ok(void 0);
+  }
+  async restore() {
+    if (!this.definition.persist?.restoreOnOpen) {
+      return ok(void 0);
+    }
+    if (!this.persistAdapter) {
+      return err({
+        code: "NoPersistAdapter",
+        message: "No persist adapter available"
+      });
+    }
+    const result = await this.persistAdapter.load(this.definition.persist);
+    if (!result.ok) return err(result.error);
+    await this.applyRemotePatch(result.value);
+    return ok(void 0);
+  }
+  getViewModel() {
+    if (this.cachedViewModel) {
+      return this.cachedViewModel;
+    }
+    return this.viewModelBuilder.build(this.definition, this.statePort, this.createActions());
+  }
+  createStatePort() {
+    const initialStateResult = this.stateStore.getAll(this.instanceId);
+    const initialState = initialStateResult.ok ? initialStateResult.value : {};
+    return this.statePortFactory.create(this.instanceId, initialState);
+  }
+  createActions() {
+    const actions = {};
+    for (const actionDef of this.definition.actions || []) {
+      actions[actionDef.id] = () => {
+        this.dispatchAction(actionDef.id);
+      };
+    }
+    return actions;
+  }
+  registerEventListeners() {
+    this.eventBus.on("control:action", (payload) => {
+      if (payload.instanceId === this.instanceId) {
+        this.dispatchAction(payload.actionId, payload.controlId, payload.event);
+      }
+    });
+  }
+};
+__name(_WindowController, "WindowController");
+let WindowController = _WindowController;
+const _WindowFactory = class _WindowFactory {
+  constructor(registry, foundryWindowAdapter, container) {
+    this.registry = registry;
+    this.foundryWindowAdapter = foundryWindowAdapter;
+    this.container = container;
+  }
+  async createWindow(definitionId, instanceKey, overrides) {
+    const definitionResult = this.registry.getDefinition(definitionId);
+    if (!definitionResult.ok) return err(definitionResult.error);
+    let definition = definitionResult.value;
+    if (overrides) {
+      definition = { ...definition, ...overrides };
+    }
+    const instanceId = instanceKey ? `${definitionId}:${instanceKey}` : `${definitionId}:${Date.now()}-${Math.random()}`;
+    const controller = this.createController(instanceId, definitionId, definition);
+    const appClassResult = this.foundryWindowAdapter.buildApplicationWrapper(
+      definition,
+      controller,
+      instanceId
+    );
+    if (!appClassResult.ok) return err(appClassResult.error);
+    const appClass = appClassResult.value;
+    const app = new appClass();
+    const instance2 = {
+      instanceId,
+      definitionId,
+      foundryApp: app,
+      controller
+      // Für Hook-Bridge Zugriff
+    };
+    const registerResult = this.registry.registerInstance(instance2);
+    if (!registerResult.ok) return err(registerResult.error);
+    const registry = this.registry;
+    const handle = {
+      instanceId,
+      definitionId,
+      controller,
+      definition,
+      async show() {
+        await app.render();
+        return ok(void 0);
+      },
+      async hide() {
+        await app.render({ force: false });
+        return ok(void 0);
+      },
+      async close() {
+        await app.close();
+        const unregisterResult = registry.unregisterInstance(instanceId);
+        return unregisterResult;
+      },
+      async update(state2) {
+        return controller.updateStateLocal(state2);
+      },
+      async persist() {
+        return controller.persist();
+      },
+      async restore() {
+        return controller.restore();
+      }
+    };
+    return ok(handle);
+  }
+  createController(instanceId, definitionId, definition) {
+    const registry = this.container.resolve(windowRegistryToken);
+    const stateStore = this.container.resolve(
+      stateStoreToken
+    );
+    const statePortFactory = this.container.resolve(
+      statePortFactoryToken
+    );
+    const actionDispatcher = this.container.resolve(
+      actionDispatcherToken
+    );
+    const rendererRegistry = this.container.resolve(
+      rendererRegistryToken
+    );
+    const bindingEngine = this.container.resolve(
+      bindingEngineToken
+    );
+    const viewModelBuilder = this.container.resolve(
+      viewModelBuilderToken
+    );
+    const eventBus = this.container.resolve(
+      eventBusToken
+    );
+    const remoteSyncGate = this.container.resolve(
+      remoteSyncGateToken
+    );
+    const persistAdapter = this.container.resolve(persistAdapterToken);
+    return new WindowController(
+      instanceId,
+      definitionId,
+      definition,
+      registry,
+      stateStore,
+      statePortFactory,
+      actionDispatcher,
+      rendererRegistry,
+      bindingEngine,
+      viewModelBuilder,
+      eventBus,
+      remoteSyncGate,
+      persistAdapter
+    );
+  }
+};
+__name(_WindowFactory, "WindowFactory");
+let WindowFactory = _WindowFactory;
+const _WindowHooksBridge = class _WindowHooksBridge {
+  constructor(registry, remoteSyncGate, sharedDocumentCache) {
+    this.registry = registry;
+    this.remoteSyncGate = remoteSyncGate;
+    this.sharedDocumentCache = sharedDocumentCache;
+  }
+  register() {
+    if (typeof Hooks !== "undefined") {
+      const hooksApi = Hooks;
+      hooksApi.on("updateDocument", (...args2) => {
+        const [document2, _update, options] = args2;
+        this.handleDocumentUpdate(document2, _update, options);
+      });
+      hooksApi.on("settingChange", (...args2) => {
+        const [namespace, key2, value2, options] = args2;
+        this.handleSettingChange(
+          // type-coverage:ignore-next-line
+          namespace,
+          // type-coverage:ignore-next-line
+          key2,
+          value2,
+          options
+        );
+      });
+    }
+  }
+  handleDocumentUpdate(document2, update2, options) {
+    const optionsRecord = options;
+    const instances = this.registry.listInstances();
+    for (const instance2 of instances) {
+      if (this.remoteSyncGate.isFromWindow(optionsRecord, instance2.instanceId)) {
+        continue;
+      }
+      const instanceResult = this.registry.getInstance(instance2.instanceId);
+      if (!instanceResult.ok) continue;
+      const definitionResult = this.registry.getDefinition(instance2.definitionId);
+      if (!definitionResult.ok) continue;
+      const definition = definitionResult.value;
+      if (this.isRelevant(definition, document2, update2)) {
+        const controller = instanceResult.value.controller;
+        if (controller) {
+          const patch = this.extractPatch(document2, update2);
+          controller.applyRemotePatch(patch);
+        }
+      }
+    }
+    this.updateSharedCache(document2, update2);
+  }
+  handleSettingChange(namespace, key2, value2, options) {
+    const instances = this.registry.listInstances();
+    const optionsRecord = options;
+    for (const instance2 of instances) {
+      if (this.remoteSyncGate.isFromWindow(optionsRecord, instance2.instanceId)) {
+        continue;
+      }
+      const definitionResult = this.registry.getDefinition(instance2.definitionId);
+      if (!definitionResult.ok) continue;
+      const definition = definitionResult.value;
+      if (this.isRelevantForSetting(definition, namespace, key2)) {
+      }
+    }
+  }
+  isRelevantForSetting(definition, namespace, key2) {
+    if (definition.persist?.type === "setting" && definition.persist.namespace === namespace && definition.persist.key === key2) {
+      return true;
+    }
+    if (definition.dependencies) {
+      for (const dep of definition.dependencies) {
+        if (dep.type === "setting" && dep.namespace === namespace && dep.key === key2) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  isRelevant(definition, document2, _update) {
+    if (definition.persist) {
+      if (definition.persist.type === "flag" && definition.persist.documentId === document2.id) {
+        return true;
+      }
+      if (definition.persist.type === "journal" && definition.persist.documentId === document2.id) {
+        return true;
+      }
+    }
+    if (definition.dependencies) {
+      for (const dep of definition.dependencies) {
+        if (dep.type === "document" && dep.documentId === document2.id) {
+          return true;
+        }
+        if (dep.type === "document" && dep.documentType) {
+          const docType = document2.constructor?.name;
+          if (docType === dep.documentType) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+  extractPatch(document2, update2) {
+    const updateRecord = update2;
+    return updateRecord || {};
+  }
+  updateSharedCache(document2, update2) {
+    const documentType = document2.constructor?.name || "";
+    const updateRecord = update2 || {};
+    const docRecord = document2;
+    if (documentType === "Actor" || document2.id.startsWith("Actor.")) {
+      const actorSnapshot = {
+        id: document2.id,
+        // type-coverage:ignore-next-line
+        name: docRecord.name || "",
+        system: (
+          // type-coverage:ignore-next-line
+          updateRecord.system || // type-coverage:ignore-next-line
+          docRecord.system || {}
+        ),
+        flags: (
+          // type-coverage:ignore-next-line
+          updateRecord.flags || // type-coverage:ignore-next-line
+          docRecord.flags || {}
+        )
+      };
+      this.sharedDocumentCache.patchActor(document2.id, actorSnapshot);
+    } else if (documentType === "Item" || document2.id.startsWith("Item.")) {
+      const itemSnapshot = {
+        id: document2.id,
+        // type-coverage:ignore-next-line
+        name: docRecord.name || "",
+        system: (
+          // type-coverage:ignore-next-line
+          updateRecord.system || // type-coverage:ignore-next-line
+          docRecord.system || {}
+        ),
+        flags: (
+          // type-coverage:ignore-next-line
+          updateRecord.flags || // type-coverage:ignore-next-line
+          docRecord.flags || {}
+        ),
+        // type-coverage:ignore-next-line
+        actorId: updateRecord.actorId || docRecord.actorId
+      };
+      this.sharedDocumentCache.patchItem(document2.id, itemSnapshot);
+    }
+  }
+};
+__name(_WindowHooksBridge, "WindowHooksBridge");
+let WindowHooksBridge = _WindowHooksBridge;
+const _WindowHooksService = class _WindowHooksService {
+  constructor(registry, remoteSyncGate, sharedDocumentCache) {
+    this.registry = registry;
+    this.remoteSyncGate = remoteSyncGate;
+    this.sharedDocumentCache = sharedDocumentCache;
+    this.bridge = null;
+  }
+  /**
+   * Registriert die WindowHooksBridge.
+   * Muss nach erfolgreichem Bootstrap aufgerufen werden.
+   */
+  register() {
+    if (this.bridge) {
+      return;
+    }
+    this.bridge = new WindowHooksBridge(
+      this.registry,
+      this.remoteSyncGate,
+      this.sharedDocumentCache
+    );
+    this.bridge.register();
+  }
+  /**
+   * Entfernt die Hook-Registrierungen.
+   * Sollte bei Shutdown aufgerufen werden.
+   */
+  unregister() {
+    this.bridge = null;
+  }
+};
+__name(_WindowHooksService, "WindowHooksService");
+_WindowHooksService.dependencies = [
+  windowRegistryToken,
+  remoteSyncGateToken,
+  sharedDocumentCacheToken
+];
+let WindowHooksService = _WindowHooksService;
+const _WindowPositionManager = class _WindowPositionManager {
+  constructor() {
+    this.STORAGE_KEY_PREFIX = "windowPosition:";
+  }
+  loadPosition(instanceId) {
+    try {
+      const key2 = this.getStorageKey(instanceId);
+      const stored = localStorage.getItem(key2);
+      if (!stored) {
+        return ok(void 0);
+      }
+      const position = JSON.parse(stored);
+      return ok(position);
+    } catch (error) {
+      return err({
+        code: "PositionLoadFailed",
+        message: `Failed to load position for ${instanceId}: ${String(error)}`
+      });
+    }
+  }
+  savePosition(instanceId, position) {
+    try {
+      const key2 = this.getStorageKey(instanceId);
+      localStorage.setItem(key2, JSON.stringify(position));
+      return ok(void 0);
+    } catch (error) {
+      return err({
+        code: "PositionSaveFailed",
+        message: `Failed to save position for ${instanceId}: ${String(error)}`
+      });
+    }
+  }
+  getEffectivePosition(instanceId, initialPosition) {
+    const savedResult = this.loadPosition(instanceId);
+    if (!savedResult.ok) {
+      return err(savedResult.error);
+    }
+    const saved = savedResult.value;
+    if (!saved && !initialPosition) {
+      return ok(void 0);
+    }
+    if (!saved) {
+      return ok(initialPosition);
+    }
+    if (!initialPosition) {
+      return ok(saved);
+    }
+    return ok({
+      ...initialPosition,
+      ...saved
+    });
+  }
+  getStorageKey(instanceId) {
+    return `${this.STORAGE_KEY_PREFIX}${instanceId}`;
+  }
+};
+__name(_WindowPositionManager, "WindowPositionManager");
+let WindowPositionManager = _WindowPositionManager;
+function registerWindowServices(container) {
+  const eventBusResult = container.registerClass(
+    eventBusToken,
+    EventBus,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(eventBusResult)) {
+    return err(`Failed to register EventBus: ${eventBusResult.error.message}`);
+  }
+  const stateStoreResult = container.registerClass(
+    stateStoreToken,
+    StateStore,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(stateStoreResult)) {
+    return err(`Failed to register StateStore: ${stateStoreResult.error.message}`);
+  }
+  const windowRegistryResult = container.registerClass(
+    windowRegistryToken,
+    WindowRegistry,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(windowRegistryResult)) {
+    return err(`Failed to register WindowRegistry: ${windowRegistryResult.error.message}`);
+  }
+  const remoteSyncGateResult = container.registerClass(
+    remoteSyncGateToken,
+    RemoteSyncGate,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(remoteSyncGateResult)) {
+    return err(`Failed to register RemoteSyncGate: ${remoteSyncGateResult.error.message}`);
+  }
+  const rendererRegistryResult = container.registerClass(
+    rendererRegistryToken,
+    RendererRegistry,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(rendererRegistryResult)) {
+    return err(`Failed to register RendererRegistry: ${rendererRegistryResult.error.message}`);
+  }
+  const statePortFactoryResult = container.registerClass(
+    statePortFactoryToken,
+    RuneStateFactory,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(statePortFactoryResult)) {
+    return err(`Failed to register StatePortFactory: ${statePortFactoryResult.error.message}`);
+  }
+  const sharedCache = GlobalDocumentCache.getInstance();
+  const sharedCacheResult = container.registerValue(sharedDocumentCacheToken, sharedCache);
+  if (isErr(sharedCacheResult)) {
+    return err(`Failed to register SharedDocumentCache: ${sharedCacheResult.error.message}`);
+  }
+  const persistAdapterResult = container.registerClass(
+    persistAdapterToken,
+    CompositePersistAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(persistAdapterResult)) {
+    return err(`Failed to register PersistAdapter: ${persistAdapterResult.error.message}`);
+  }
+  const foundryAdapterResult = container.registerClass(
+    foundryWindowAdapterToken,
+    FoundryWindowAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(foundryAdapterResult)) {
+    return err(`Failed to register FoundryWindowAdapter: ${foundryAdapterResult.error.message}`);
+  }
+  const actionDispatcherResult = container.registerClass(
+    actionDispatcherToken,
+    ActionDispatcher,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(actionDispatcherResult)) {
+    return err(`Failed to register ActionDispatcher: ${actionDispatcherResult.error.message}`);
+  }
+  const bindingEngineResult = container.registerClass(
+    bindingEngineToken,
+    BindingEngine,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(bindingEngineResult)) {
+    return err(`Failed to register BindingEngine: ${bindingEngineResult.error.message}`);
+  }
+  const viewModelBuilderResult = container.registerClass(
+    viewModelBuilderToken,
+    ViewModelBuilder,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(viewModelBuilderResult)) {
+    return err(`Failed to register ViewModelBuilder: ${viewModelBuilderResult.error.message}`);
+  }
+  const windowFactoryFactoryResult = container.registerFactory(
+    windowFactoryToken,
+    () => {
+      const registry = container.resolve(
+        windowRegistryToken
+      );
+      const foundryAdapter = container.resolve(
+        foundryWindowAdapterToken
+      );
+      const containerPort = container.resolve(
+        platformContainerPortToken
+      );
+      return new WindowFactory(registry, foundryAdapter, containerPort);
+    },
+    ServiceLifecycle.SINGLETON,
+    [windowRegistryToken, foundryWindowAdapterToken, platformContainerPortToken]
+  );
+  if (isErr(windowFactoryFactoryResult)) {
+    return err(`Failed to register WindowFactory: ${windowFactoryFactoryResult.error.message}`);
+  }
+  const windowPositionManagerResult = container.registerClass(
+    windowPositionManagerToken,
+    WindowPositionManager,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(windowPositionManagerResult)) {
+    return err(
+      `Failed to register WindowPositionManager: ${windowPositionManagerResult.error.message}`
+    );
+  }
+  const windowHooksServiceResult = container.registerClass(
+    windowHooksServiceToken,
+    WindowHooksService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(windowHooksServiceResult)) {
+    return err(`Failed to register WindowHooksService: ${windowHooksServiceResult.error.message}`);
+  }
+  const rendererRegistryResolvedResult = container.resolveWithError(rendererRegistryToken);
+  if (rendererRegistryResolvedResult.ok) {
+    const rendererRegistryResolved = castResolvedService(rendererRegistryResolvedResult.value);
+    const svelteRenderer = new SvelteRenderer();
+    rendererRegistryResolved.register("svelte", svelteRenderer);
+  }
+  return ok(void 0);
+}
+__name(registerWindowServices, "registerWindowServices");
+dependencyRegistry.register({
+  name: "WindowServices",
+  priority: 150,
+  // After core services (140), before validation (170)
+  execute: registerWindowServices
 });
 let internalStepsRegistered = false;
 function createDependencyRegistrationRegistry() {

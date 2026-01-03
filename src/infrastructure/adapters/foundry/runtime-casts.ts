@@ -330,3 +330,119 @@ export function castCreatedJournalEntry<TDocument extends { id: string }>(
   // type-coverage:ignore-next-line - Runtime cast required for generic TDocument to FoundryJournalEntry
   return document as unknown as import("./types").FoundryJournalEntry;
 }
+
+/**
+ * Type definition for Foundry Document Collections.
+ * Collections are Maps that store Foundry documents by ID.
+ */
+type FoundryDocumentCollection<TDocument extends { id: string } = { id: string }> = Map<
+  string,
+  TDocument
+> & {
+  get: (id: string) => TDocument | undefined;
+  has: (id: string) => boolean;
+};
+
+/**
+ * Kapselt den notwendigen Cast für `game.collections.get()` mit dynamischen Document-Typen.
+ * Foundry's Collections API unterstützt verschiedene Document-Typen (Actor, Item, etc.),
+ * aber fvtt-types hat restriktive Typen, die nicht alle Document-Typen abdecken.
+ *
+ * Diese Funktion führt eine Runtime-Validierung durch, um sicherzustellen,
+ * dass die Collection die erforderlichen Methoden hat. Bei Fehlern wird
+ * ein FoundryError zurückgegeben statt einen Error zu werfen, um konsistent
+ * mit dem Result-Pattern zu bleiben.
+ *
+ * @template TDocument - Der spezifische Document-Typ (optional, standardmäßig { id: string })
+ * @param collections - Das game.collections Objekt (unknown, da game global ist)
+ * @param documentType - Der Document-Typ (z.B. "Actor", "Item")
+ * @returns Result mit der Collection als FoundryDocumentCollection oder FoundryError
+ *
+ * @remarks
+ * Die Validierung prüft zur Laufzeit, ob die Collection die Methoden `get` und `has`
+ * vorhanden sind. Dies stellt sicher, dass die Collection die erwartete
+ * API-Struktur hat.
+ */
+export function castFoundryDocumentCollection<TDocument extends { id: string } = { id: string }>(
+  collections: unknown,
+  documentType: string
+): Result<FoundryDocumentCollection<TDocument>, FoundryError> {
+  if (!isObjectWithMethods(collections, ["get"])) {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "game.collections does not have required method (get)",
+        {
+          missingMethods: ["get"],
+        }
+      )
+    );
+  }
+
+  const collection = (collections as { get: (key: string) => unknown }).get(documentType);
+
+  if (!collection) {
+    return err(
+      createFoundryError("NOT_FOUND", `Collection for document type "${documentType}" not found`, {
+        documentType,
+      })
+    );
+  }
+
+  if (!isObjectWithMethods(collection, ["get", "has"])) {
+    return err(
+      createFoundryError(
+        "VALIDATION_FAILED",
+        `Collection for "${documentType}" does not have required methods (get, has)`,
+        {
+          documentType,
+          missingMethods: ["get", "has"],
+        }
+      )
+    );
+  }
+
+  return ok(collection as FoundryDocumentCollection<TDocument>);
+}
+
+/**
+ * Type definition for Svelte 5 $state rune function.
+ * $state is a compile-time rune that creates reactive state.
+ */
+type SvelteStateRune = <T>(initial: T) => T;
+
+/**
+ * Kapselt den notwendigen Cast für Svelte 5 `$state` Rune aus globalThis.
+ * Svelte 5 Runes sind zur Compile-Zeit verfügbar, aber in Tests oder
+ * Non-Svelte-Umgebungen müssen wir prüfen, ob $state verfügbar ist.
+ *
+ * Diese Funktion führt eine Runtime-Validierung durch, um sicherzustellen,
+ * dass $state als Funktion verfügbar ist. Bei Fehlern wird ein FoundryError
+ * zurückgegeben statt einen Error zu werfen, um konsistent mit dem
+ * Result-Pattern zu bleiben.
+ *
+ * @returns Result mit $state als SvelteStateRune oder FoundryError
+ *
+ * @remarks
+ * Die Validierung prüft zur Laufzeit, ob $state im globalThis verfügbar ist
+ * und eine Funktion ist. Dies stellt sicher, dass Svelte 5 korrekt geladen ist.
+ */
+export function castSvelteStateRune(): Result<SvelteStateRune, FoundryError> {
+  if (typeof globalThis === "undefined" || globalThis === null) {
+    return err(createFoundryError("API_NOT_AVAILABLE", "globalThis is not available", {}));
+  }
+
+  const $state = (globalThis as Record<string, unknown>).$state;
+
+  if (typeof $state !== "function") {
+    return err(
+      createFoundryError(
+        "API_NOT_AVAILABLE",
+        "Svelte 5 $state rune is not available in globalThis",
+        {}
+      )
+    );
+  }
+
+  return ok($state as SvelteStateRune);
+}

@@ -5,8 +5,8 @@ declare module "*.hbs" {
 }
 
 declare module "*.svelte" {
-  import type { ComponentType, SvelteComponent } from "svelte";
-  const component: ComponentType<SvelteComponent<Record<string, unknown>>>;
+  import type { Component } from "svelte";
+  const component: Component<Record<string, unknown>>;
   export default component;
 }
 

@@ -26,12 +26,10 @@ import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready
  * Function to encapsulate initialization logic.
  * This allows us to use return statements for soft aborts.
  *
- * NOTE: The function is fully covered via init-solid.test.ts; only truly
- * environment-dependent branches (Foundry globals) use fine-grained v8 ignores.
+ * NOTE: The function is fully covered via init-solid.test.ts.
  */
 function initializeFoundryModule(): void {
   const containerResult = root.getContainer();
-  /* v8 ignore start -- @preserve */
   // Edge case: getContainer() fails after successful bootstrap.
   // This is extremely unlikely in practice, but the error path exists for defensive programming.
   // The root instance is created at module level (line 162), making it difficult to mock
@@ -40,7 +38,6 @@ function initializeFoundryModule(): void {
     console.error(`${LOG_PREFIX} ${containerResult.error}`);
     return;
   }
-  /* v8 ignore stop -- @preserve */
 
   const loggerResult = containerResult.value.resolveWithError(loggerToken);
   if (!loggerResult.ok) {
@@ -100,10 +97,8 @@ export function getRootContainer(): Result<ServiceContainer, string> {
   return root.getContainer();
 }
 
-/* v8 ignore start -- @preserve */
-/* Bootstrap-Fehlerpfade sind stark Foundry-versionsabhängig und schwer
- * deterministisch in Unit-Tests abzudecken. Die Logik wird über Integrationspfade geprüft;
- * für das Coverage-Gateway markieren wir diese Zweige vorerst als ignoriert. */
+// Bootstrap-Fehlerpfade sind stark Foundry-versionsabhängig und schwer
+// deterministisch in Unit-Tests abzudecken. Die Logik wird über Integrationspfade geprüft.
 if (!bootstrapOk) {
   // Detect version once and reuse for both error logging and version-specific checks
   const foundryVersion = tryGetFoundryVersion();
@@ -124,7 +119,6 @@ if (!bootstrapOk) {
   ) {
     if (foundryVersion !== undefined && foundryVersion < 13) {
       isOldFoundryVersion = true;
-      /* v8 ignore next -- @preserve */
       if (typeof ui !== "undefined" && ui?.notifications) {
         ui.notifications.error(
           `${MODULE_METADATA.NAME} benötigt mindestens Foundry VTT Version 13. ` +
@@ -149,4 +143,3 @@ if (!bootstrapOk) {
   // Only initialize if bootstrap succeeded
   initializeFoundryModule();
 }
-/* v8 ignore stop -- @preserve */

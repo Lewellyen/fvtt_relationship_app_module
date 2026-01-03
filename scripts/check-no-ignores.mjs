@@ -255,6 +255,73 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Fallback Path for Generic registerListener: Type-Cast für Fallback-Pfad von registerListener, der in der Praxis nicht verwendet wird. Vollständige Validierung von ContextMenuOption[] wäre zu komplex.',
   },
 
+  // Window Framework: Foundry API Integration
+  {
+    file: 'src/infrastructure/windows/state/global-document-cache.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Svelte 5 Runes: $state ist eine Svelte 5 Rune, die zur Compile-Zeit verfügbar ist. In Tests nicht verfügbar, daher Fallback auf normale Map. eslint-disable und type-coverage:ignore für Type-Casts notwendig.',
+  },
+  {
+    file: 'src/infrastructure/windows/state/rune-state.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Svelte 5 Runes: $state ist eine Svelte 5 Rune, die zur Compile-Zeit verfügbar ist. eslint-disable und type-coverage:ignore für Type-Casts notwendig.',
+  },
+  {
+    file: 'src/infrastructure/windows/adapters/persist/settings-persist-adapter.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Foundry API: Verwendet PlatformSettingsPort (DI), type-coverage:ignore für Type-Casts notwendig.',
+  },
+  {
+    file: 'src/infrastructure/windows/adapters/persist/flags-persist-adapter.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Foundry API: Direkte Verwendung von game (fvtt-types). eslint-disable und type-coverage:ignore für collections.get() und flags Type-Casts notwendig, da Foundry-Typen nicht vollständig verfügbar sind.',
+  },
+  {
+    file: 'src/infrastructure/windows/adapters/foundry/window/foundry-application-wrapper.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Foundry API: ApplicationV2 Constructor und super.render() benötigen Type-Casts, da Foundry-Typen komplexe Overloads haben. eslint-disable und type-coverage:ignore für any-Type-Casts notwendig.',
+  },
+  {
+    file: 'src/application/windows/services/remote-sync-gate.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Foundry API: Direkte Verwendung von game (fvtt-types), type-coverage:ignore für Type-Casts notwendig.',
+  },
+  {
+    file: 'src/application/windows/services/action-dispatcher.ts',
+    allowed: [],
+    reason: 'Window Framework: Direkte Verwendung von foundry.appv1.api.Dialog, keine ignore-Direktiven mehr notwendig.',
+  },
+  {
+    file: 'src/application/windows/utils/patch-utils.ts',
+    allowed: ['type-coverage:ignore-next-line', 'eslint-disable-next-line'],
+    reason: 'Partial<T> Type Narrowing: TypeScript kann den Typ nicht aus Partial<T> ableiten, obwohl der Zugriff type-safe ist. Type-Cast ist notwendig für type-coverage. eslint-disable für any-Type-Cast notwendig.',
+  },
+  {
+    file: 'src/infrastructure/windows/adapters/foundry/hooks/window-hooks.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Foundry API: Hooks.on() für "updateDocument" und "settingChange" benötigt Type-Casts, da diese Hooks nicht in fvtt-types definiert sind. eslint-disable und type-coverage:ignore für Type-Casts notwendig.',
+  },
+  {
+    file: 'src/infrastructure/windows/renderers/svelte-renderer.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Svelte 5 Runes: $state und Svelte-Komponenten benötigen Type-Casts, da Svelte-Typen zur Compile-Zeit verfügbar sind.',
+  },
+  {
+    file: 'src/application/windows/services/binding-engine.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Window Framework: Non-Null-Assertions und Type-Casts für Binding-Engine notwendig, da TypeScript den Typ nicht aus Map-Strukturen ableiten kann.',
+  },
+  {
+    file: 'src/application/windows/services/event-bus.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Window Framework: Type-Casts für Event-Bus notwendig, da TypeScript den Typ nicht aus Map-Strukturen ableiten kann.',
+  },
+  {
+    file: 'src/application/windows/services/state-store.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Window Framework: Type-Casts für State-Store notwendig, da TypeScript den Typ nicht aus Map-Strukturen ableiten kann.',
+  },
+
 ];
 
 // Ignore-Marker, nach denen gesucht wird

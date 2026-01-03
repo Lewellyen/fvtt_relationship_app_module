@@ -12,3 +12,13 @@
 
 // Vitest globals sind bereits durch vitest.config.ts aktiviert
 // Keine globalThis-Mocks hier!
+
+// Mock Svelte 5 $state rune for tests
+// Svelte runes are compile-time features, but we need a runtime mock for tests
+// This allows RuneState and GlobalDocumentCache to work in test environments
+if (typeof globalThis.$state === "undefined") {
+  // Simple mock: just return the value as-is (no reactivity in tests)
+  (globalThis as Record<string, unknown>).$state = <T>(initial: T): T => {
+    return initial;
+  };
+}

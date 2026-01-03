@@ -31,3 +31,4 @@ import "./modules/event-ports.config";
 import "./modules/entity-ports.config";
 import "./modules/settings-ports.config";
 import "./modules/journal-visibility.config";
+import "./modules/window-services.config";

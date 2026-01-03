@@ -2377,9 +2377,11 @@ describe("WindowController", () => {
 - ✅ **Persist `render:false`** (kein Foundry-window rerender)
 - ✅ Typisiertes EventBus (EventMap)
 - ✅ Einfache Actions (ohne Permissions/Validation)
-- ⬜ **GlobalDocumentCache (RuneState Singleton)** + HookBridge patcht Cache
-- ⬜ **Idempotent Patch Utility** (applyPatch: nur ändern wenn value differs)
-- ⬜ **HookBridge (Dependency-basiert)** - nur "relevant windows" patched (zunächst grob)
+- ✅ **GlobalDocumentCache (RuneState Singleton)** + HookBridge patcht Cache
+- ✅ **Idempotent Patch Utility** (applyPatch: nur ändern wenn value differs)
+- ✅ **HookBridge (Dependency-basiert)** - nur "relevant windows" patched (zunächst grob)
+- ✅ **DI-Container Integration** - Alle Services registriert
+- ✅ **Hook-Registrierung** - WindowHooksBridge in Bootstrap integriert
 
 **Deliverables:**
 - Einfaches Fenster mit Svelte-Component
@@ -2399,9 +2401,9 @@ Diese Phase macht klar, dass reaktive StatePort-Implementierungen (z.B. RuneStat
 
 - ✅ RuneState als Default-Implementierung
 - ✅ Keine Renderer.update() bei State-Änderungen (Dogma)
-- ⬜ Idempotente Patch Utilities (vollständig)
-- ⬜ GlobalDocumentCache Performance-Review (Patch vs Snapshot)
-- ⬜ Dokumentation: "Why this is not overengineered"
+- ✅ Idempotente Patch Utilities (MVP: Basis-Implementierung)
+- ⬜ GlobalDocumentCache Performance-Review (Patch vs Snapshot) - für später
+- ⬜ Dokumentation: "Why this is not overengineered" - für später
 
 ### Phase 2: Erweiterte Features
 

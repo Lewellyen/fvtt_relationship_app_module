@@ -4,6 +4,7 @@ import type { PlatformContainerPort } from "@/domain/ports/platform-container-po
 import { moduleEventRegistrarToken } from "@/application/tokens/event.tokens";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
+import { windowHooksServiceToken } from "@/application/windows/tokens/window.tokens";
 
 /**
  * Orchestrator for registering event listeners during bootstrap.
@@ -11,6 +12,7 @@ import type { ModuleEventRegistrar } from "@/application/services/ModuleEventReg
  * Responsibilities:
  * - Resolve ModuleEventRegistrar
  * - Register all event listeners
+ * - Register WindowHooksService (for Window Framework)
  */
 export class EventsBootstrapper {
   /**
@@ -32,6 +34,16 @@ export class EventsBootstrapper {
       const errorMessages = eventRegistrationResult.error.map((e: Error) => e.message).join(", ");
       return err(`Failed to register one or more event listeners: ${errorMessages}`);
     }
+
+    // Register WindowHooksService (if available)
+    const windowHooksResult = container.resolveWithError(windowHooksServiceToken);
+    if (windowHooksResult.ok) {
+      const windowHooksService = castResolvedService<
+        import("@/application/windows/services/window-hooks-service").WindowHooksService
+      >(windowHooksResult.value);
+      windowHooksService.register();
+    }
+    // If WindowHooksService is not registered, silently continue (optional feature)
 
     return ok(undefined);
   }

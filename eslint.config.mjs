@@ -390,6 +390,74 @@ export default [
     }
   },
 
+  // WindowHooksService: Bootstrap-Service, der Application und Infrastructure verbindet
+  {
+    files: ['**/window-hooks-service.ts'],
+    rules: {
+      'import/no-restricted-paths': 'off'
+    }
+  },
+
+  // FoundryApplicationWrapper: Verwendet neue Foundry API (render({ force }))
+  // Basisklasse hat noch beide Overloads (deprecated + neu), daher Warnung
+  {
+    files: ['**/foundry-application-wrapper.ts'],
+    rules: {
+      '@typescript-eslint/no-deprecated': 'off'
+    }
+  },
+
+
+  // Event-Map Interfaces: Event-Namen mit Doppelpunkt erlauben (z.B. "window:created")
+  {
+    files: ['**/event-map.interface.ts', '**/event-map.ts'],
+    rules: {
+      '@typescript-eslint/naming-convention': [
+        'error',
+        {
+          selector: ['class', 'interface', 'typeAlias', 'enum'],
+          format: ['PascalCase'],
+        },
+        {
+          selector: 'typeParameter',
+          format: ['PascalCase'],
+          filter: {
+            regex: '^(T|K|V|E)$',
+            match: false,
+          },
+        },
+        {
+          selector: ['variable', 'function'],
+          format: ['camelCase'],
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: 'variable',
+          modifiers: ['const'],
+          format: ['UPPER_CASE', 'camelCase'],
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: ['property', 'method'],
+          format: null, // Keine Format-Prüfung für Event-Namen (z.B. "window:created")
+        },
+        {
+          selector: 'property',
+          format: null,
+          filter: {
+            regex: '^__.*',
+            match: true
+          }
+        },
+        {
+          selector: 'memberLike',
+          modifiers: ['private'],
+          format: ['camelCase'],
+        },
+      ]
+    }
+  },
+
   // Deprecated Barrel-Exports: Warnung bei Import von deprecated Token-Barrel-Exports
   {
     files: ['**/*.ts'],
