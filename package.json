@@ -78,7 +78,7 @@
     "@types/cytoscape": "^3.31.0",
     "@types/jquery": "^3.5.33",
     "@types/node": "^20.19.27",
-    "@typescript-eslint/eslint-plugin": "^8.50.1",
+    "@typescript-eslint/eslint-plugin": "^8.51.0",
     "@typescript-eslint/parser": "^8.36.0",
     "@vitest/coverage-v8": "^4.0.16",
     "@vitest/ui": "^4.0.10",
